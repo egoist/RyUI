@@ -65,6 +65,42 @@ class NuiScreen(context: Context, val nodeID: Int, private val rt: NuiRuntime) :
     var icon = ""
     var actions: List<NuiAction> = emptyList()
     var backGesture = true
+    /** A search field's placeholder (ScreenOptions.Search); empty: none. */
+    var search = ""
+    var searchText = ""
+    private var searching = false // the text is being set from code
+    private var searchView: androidx.appcompat.widget.SearchView? = null
+
+    /** The toolbar's search field, made once: typing and submits go to the screen's node. */
+    fun searchView(ctx: Context): androidx.appcompat.widget.SearchView {
+        searchView?.let { return it }
+        val v = androidx.appcompat.widget.SearchView(ctx)
+        v.maxWidth = Int.MAX_VALUE
+        v.setOnQueryTextListener(object : androidx.appcompat.widget.SearchView.OnQueryTextListener {
+            override fun onQueryTextChange(t: String): Boolean {
+                if (!searching) {
+                    searchText = t
+                    rt.emit(nodeID, NuiEventKind.TEXT_CHANGED) { NuiEvents.textChanged(nodeID, t) }
+                }
+                return true
+            }
+            override fun onQueryTextSubmit(t: String): Boolean {
+                rt.emit(nodeID, NuiEventKind.SUBMIT) { NuiEvents.submit(nodeID) }
+                v.clearFocus()
+                return true
+            }
+        })
+        searchView = v
+        return v
+    }
+
+    fun showSearchText(t: String) {
+        searchText = t
+        val v = searchView ?: return
+        searching = true
+        v.setQuery(t, false)
+        searching = false
+    }
     /** The keyboard's height over the window as it animates, in px; -1: as the window's insets say. */
     var ime = -1
     private var lastEnv: NuiEnvironment? = null
@@ -282,13 +318,29 @@ class NuiStack(context: Context, val nodeID: Int, private val rt: NuiRuntime) : 
                 setTint(MaterialColors.getColor(rt.themed, com.google.android.material.R.attr.colorOnSurfaceVariant, Color.DKGRAY))
             }
         }
+        if (s.search.isNotEmpty()) {
+            // Material's pattern: a search action that expands into the field.
+            val sv = s.searchView(bar.context)
+            sv.queryHint = s.search
+            val item = bar.menu.add(0, SEARCH_ITEM, 0, s.search)
+            item.icon = rt.symbol("magnifyingglass")?.apply {
+                setTint(MaterialColors.getColor(rt.themed, com.google.android.material.R.attr.colorOnSurfaceVariant, Color.DKGRAY))
+            }
+            item.actionView = sv
+            item.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS or MenuItem.SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW)
+            if (s.searchText.isNotEmpty()) { item.expandActionView(); s.showSearchText(s.searchText) }
+        }
         val id = t.id
         bar.setOnMenuItemClickListener { item ->
+            if (item.itemId == SEARCH_ITEM) return@setOnMenuItemClickListener false // it expands
             rt.emit(id, NuiEventKind.ACTION) { NuiEvents.action(id, item.itemId.toLong()) }
             true
         }
     }
 }
+
+/** The toolbar menu item of a screen's search field. */
+private const val SEARCH_ITEM = 0x5eac
 
 /** Tabs: a Material navigation bar under its pages. */
 class NuiTabs(context: Context, val nodeID: Int, private val rt: NuiRuntime) : ViewGroup(context) {
@@ -589,6 +641,8 @@ fun NuiRuntime.setNavProp(n: NuiNode, prop: Int, v: Any): Boolean {
                 NuiProp.Screen.ICON -> s.icon = v as String
                 NuiProp.Screen.BACK_GESTURE -> s.backGesture = v as Boolean
                 NuiProp.Screen.ACTIONS -> s.actions = decodeActions(v as ByteBuffer)
+                NuiProp.Screen.SEARCH -> s.search = v as String
+                NuiProp.Screen.SEARCH_TEXT -> { s.showSearchText(v as String); return true }
                 else -> return false
             }
             when (val pv = n.parent?.view) {

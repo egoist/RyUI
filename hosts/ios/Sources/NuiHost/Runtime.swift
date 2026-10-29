@@ -36,6 +36,7 @@ import CNui
     var baseTransform: CGAffineTransform = .identity // Style.Transform's
     var gradient: CAGradientLayer?
     var material: UIVisualEffectView?
+    var search: NuiSearch? // a screen's search field
     var gradientColors: [UIColor?] = []
     var menuTrigger: Int32 = 0
     var menuOverlay: UIButton?

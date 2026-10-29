@@ -6,6 +6,8 @@
 package main
 
 import (
+	"strings"
+
 	"github.com/egoist/nui/app"
 	"github.com/egoist/nui/signal"
 	"github.com/egoist/nui/sqlite"
@@ -42,6 +44,7 @@ func write(query string, args ...any) {
 }
 
 func App() ui.Node {
+	query := signal.New("")
 	return ui.Stack(func() ui.Node {
 		notes := sqlite.Watch[note](db, `select * from notes order by done, id desc`)
 		draft := signal.New("")
@@ -51,7 +54,16 @@ func App() ui.Node {
 				draft.Set("")
 			}
 		}
-		rows := signal.Func(func() []note { return notes.Get().Rows })
+		rows := signal.Func(func() []note {
+			q := strings.ToLower(query.Get())
+			var out []note
+			for _, n := range notes.Get().Rows {
+				if q == "" || strings.Contains(strings.ToLower(n.Text), q) {
+					out = append(out, n)
+				}
+			}
+			return out
+		})
 		return ui.SafeArea(ui.Style{Grow: 1},
 			ui.Row(ui.Style{Gap: 8, Padding: ui.Symmetric(8, 16), Align: ui.AlignEnd},
 				ui.TextField(ui.TextFieldProps{Value: draft, Placeholder: ui.Val("New note"), ReturnKey: ui.ReturnDone,
@@ -90,7 +102,7 @@ func App() ui.Node {
 				)
 			}),
 		)
-	}, ui.ScreenOptions{Title: ui.Val("Notes")})
+	}, ui.ScreenOptions{Title: ui.Val("Notes"), Search: &ui.Search{Text: query, Placeholder: "Search notes"}})
 }
 
 func main() {

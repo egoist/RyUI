@@ -138,6 +138,8 @@ object NuiProp {
         const val ACTIONS = 65
         const val BACK_GESTURE = 66
         const val ICON = 67
+        const val SEARCH = 68
+        const val SEARCH_TEXT = 69
     }
 
     object Tabs {

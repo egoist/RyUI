@@ -388,6 +388,16 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [NuiAction] {
             n.vc?.title = v.string
         case (.screen, NuiProp.Screen.icon):
             n.vc?.tabBarItem.image = UIImage(systemName: v.string)
+        case (.screen, NuiProp.Screen.search):
+            guard let vc = n.vc else { return }
+            let s = n.search ?? NuiSearch(id: n.id, runtime: self)
+            n.search = s
+            s.controller.searchBar.placeholder = v.string
+            vc.navigationItem.searchController = s.controller
+            vc.navigationItem.hidesSearchBarWhenScrolling = false
+            vc.definesPresentationContext = true
+        case (.screen, NuiProp.Screen.searchText):
+            n.search?.setText(v.string)
         case (.screen, NuiProp.Screen.backGesture):
             (n.vc as? NuiScreenController)?.backGesture = v.bool
         case (.screen, NuiProp.Screen.actions):
@@ -446,6 +456,41 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [NuiAction] {
         case .error: UINotificationFeedbackGenerator().notificationOccurred(.error)
         default: break
         }
+    }
+}
+
+/// A screen's search field (ScreenOptions.Search): typing and the search
+/// key go to the screen's node.
+@MainActor final class NuiSearch: NSObject, UISearchResultsUpdating, UISearchBarDelegate {
+    let controller = UISearchController(searchResultsController: nil)
+    let id: UInt32
+    weak var runtime: NuiRuntime?
+    private var setting = false
+
+    init(id: UInt32, runtime: NuiRuntime) {
+        self.id = id
+        self.runtime = runtime
+        super.init()
+        controller.obscuresBackgroundDuringPresentation = false
+        controller.searchResultsUpdater = self
+        controller.searchBar.delegate = self
+    }
+
+    func setText(_ s: String) {
+        setting = true
+        controller.searchBar.text = s
+        setting = false
+    }
+
+    func updateSearchResults(for c: UISearchController) {
+        guard !setting else { return }
+        let id = self.id, s = c.searchBar.text ?? ""
+        runtime?.emit(id, .textChanged) { NuiEvents.textChanged(id, s) }
+    }
+
+    func searchBarSearchButtonClicked(_ bar: UISearchBar) {
+        let id = self.id
+        runtime?.emit(id, .submit) { NuiEvents.submit(id) }
     }
 }
 #endif

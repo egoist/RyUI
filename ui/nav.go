@@ -133,6 +133,49 @@ type ScreenOptions struct {
 	// Android).
 	Actions       []Action
 	NoBackGesture bool
+	// Search puts a search field in the bar (SwiftUI's searchable).
+	Search *Search
+}
+
+// Search is a screen's search field.
+type Search struct {
+	// Text is what's typed: the user's typing writes it, code's is shown.
+	Text        *signal.Signal[string]
+	Placeholder string // "Search" when empty
+	OnSubmit    func()
+}
+
+// search wires a screen's search field.
+func search(e *element, s *Search) {
+	if s == nil {
+		return
+	}
+	ph := s.Placeholder
+	if ph == "" {
+		ph = "Search"
+	}
+	e.r.batch.SetString(e.id, ops.PropScreenSearch, ph)
+	h := e.handlers()
+	if s.Text != nil {
+		reported, known := "", false
+		signal.RenderEffect(func() {
+			v := s.Text.Get()
+			if known && v == reported {
+				return
+			}
+			reported, known = v, true
+			e.r.batch.SetString(e.id, ops.PropScreenSearchText, v)
+		})
+		h.text = func(v string) {
+			reported, known = v, true
+			s.Text.Set(v)
+		}
+		e.listen(ops.EventTextChanged)
+	}
+	if s.OnSubmit != nil {
+		h.submit = s.OnSubmit
+		e.listen(ops.EventSubmit)
+	}
 }
 
 // Navigator pushes and pops the screens of the Stack it came from.
@@ -221,6 +264,7 @@ func (st *stackState) push(build func() Node, o ScreenOptions) {
 			signal.Root(func(dispose func()) {
 				s.dispose = dispose
 				bind(o.Title, func(v string) { r.batch.SetString(id, ops.PropScreenTitle, v) })
+				search(s.el, o.Search)
 				navCtx.Provide(st.nav, func() {
 					envCtx.Provide(s.el.env, func() {
 						if n := build(); n.e != nil {

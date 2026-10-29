@@ -351,3 +351,28 @@ func TestGrowingWrapperAroundScroll(t *testing.T) {
 		t.Fatalf("toast frame %v", f)
 	}
 }
+
+// A screen's search field: its placeholder, typing writes Text, code's
+// text is sent.
+func TestScreenSearch(t *testing.T) {
+	q := signal.New("")
+	submitted := 0
+	h, r := mount(t, func() ui.Node {
+		return ui.Stack(func() ui.Node { return ui.StaticText("list") },
+			ui.ScreenOptions{Title: ui.Val("Inbox"), Search: &ui.Search{Text: q, OnSubmit: func() { submitted++ }}})
+	})
+	s := h.OfKind(ops.KindScreen)[0]
+	if s.String(ops.PropScreenSearch) != "Search" {
+		t.Fatalf("placeholder %q", s.String(ops.PropScreenSearch))
+	}
+	h.Dispatch(ops.Event{ID: s.ID, Kind: ops.EventTextChanged, Str: "ada"})
+	h.Dispatch(ops.Event{ID: s.ID, Kind: ops.EventSubmit})
+	if q.Peek() != "ada" || submitted != 1 {
+		t.Fatalf("q %q submitted %d", q.Peek(), submitted)
+	}
+	q.Set("")
+	r.Flush()
+	if s.String(ops.PropScreenSearchText) != "" {
+		t.Fatal("code's text not sent")
+	}
+}
