@@ -171,8 +171,10 @@ var Schema = SchemaDef{
 			{Name: "Prop", Type: TBytes, Doc: "one named value: string name, u8 type (1 bool, 2 int, 3 float, 4 string), value"},
 		}, Doc: "a view the app registers with each host; its events are Native"},
 		{Name: "RichText", Props: []PropDef{
-			{Name: "Content", Type: TBytes, Doc: "u32 style count, per style: u8 TextStyle (0: the view's), f32 size (0: the view's), u8 FontWeight (0: the view's), u8 flags (1 italic, 2 monospaced, 4 underline, 8 strikethrough), u64 color (0: the view's), u64 background (0: none), string link; then u32 paragraph count, per paragraph u32 run count, per run u32 style index and a string"},
-		}, Doc: "styled paragraphs typeset and drawn by nui's own view (CoreText, StaticLayout); the common text props are its defaults. A tapped link reports Link"},
+			{Name: "Content", Type: TBytes, Doc: "u32 style count, per style: u8 TextStyle (0: the view's), f32 size (0: the view's), u8 FontWeight (0: the view's), u8 flags (1 italic, 2 monospaced, 4 underline, 8 strikethrough, 16 inline: the run is U+FFFC, the next inline component), u64 color (0: the view's), u64 background (0: none), string link; then u32 paragraph count, per paragraph u32 run count, per run u32 style index and a string"},
+			{Name: "Inlines", Type: TBytes, Doc: "the inline components, in the order of their runs: u32 count, per component u32 node id (a child of the view), f32 width, f32 height. Each sits on the baseline at its run's place; the host positions the child there (its frame's origin is 0, 0)"},
+		}, Doc: "styled paragraphs typeset and drawn by nui's own view (CoreText, StaticLayout); the common text props are its defaults. A tapped link reports Link. Its children are its inline components"},
+		{Name: "Selectable", Doc: "a container whose RichText descendants share one selection, across texts: the platform's handles, loupe and edit menu; Copy copies the selected text"},
 	},
 	Events: []EventDef{
 		{Name: "Press", Payload: PNone},
@@ -207,6 +209,7 @@ var Schema = SchemaDef{
 		{Name: "Haptic", Doc: "args: u8 Haptic; sent to the root"},
 		{Name: "AnimateBegin", Doc: "args: f32 duration (seconds), u8 AnimationCurve; sent to the root: the frames and visual props up to AnimateEnd animate"},
 		{Name: "AnimateEnd"},
+		{Name: "OpenURL", Doc: "args: the URL; sent to the root: the system opens it (a browser, another app)"},
 	},
 	Enums: []EnumDef{
 		{Name: "Role", Values: []string{"None", "Button", "Header", "Image", "Link", "Text", "Search"}},

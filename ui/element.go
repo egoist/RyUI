@@ -40,6 +40,7 @@ type element struct {
 	real   bool
 	frag   bool
 	cell   bool // a list cell: the host made its view
+	inline bool // a RichText's inline component: a layout root of its own
 	dead   bool
 	parent *element
 	kids   []*element
@@ -53,10 +54,13 @@ type element struct {
 	style    Style
 	extraPad Edges // SafeArea's insets
 	fill     bool  // the root's child: fills the screen
-	h        *handlers
-	list     listImpl
-	text     string // Text's text or Button's title, for the measure cache
-	variant  int32
+	// adjust is what the component sets on the layout style its Style
+	// gives (a Scroll's overflow), kept whenever that's derived again.
+	adjust  func(*layout.Style)
+	h       *handlers
+	list    listImpl
+	text    string // Text's text or Button's title, for the measure cache
+	variant int32
 
 	// Host-sized layout roots (screens, tab pages, sheets) have their own
 	// environment, which the host reports.
@@ -146,7 +150,7 @@ func (e *element) relink() {
 	buf := e.r.boxBuf[:0]
 	var collect func(k *element)
 	collect = func(k *element) {
-		if k.hostSized {
+		if k.hostSized || k.inline {
 			return // a layout root of its own
 		}
 		if k.frag {
@@ -382,6 +386,9 @@ func (e *element) layoutStyle(s *Style) layout.Style {
 	l := s.layoutStyle(e.extraPad)
 	if e.fill && s.Height.IsAuto() && s.Grow == 0 {
 		l.FlexGrow = 1
+	}
+	if e.adjust != nil {
+		e.adjust(&l)
 	}
 	return l
 }

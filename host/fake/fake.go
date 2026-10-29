@@ -107,7 +107,7 @@ func (h *Host) RunPosted() {
 func (h *Host) Reset() {
 	clear(h.Ops)
 	h.Ops = h.Ops[:0]
-	h.opsAlloc = h.opsAlloc[:0]
+	h.opsAlloc = nil // the views' props still hold the bytes in it
 	h.Applies, h.Measures = 0, 0
 }
 
@@ -274,11 +274,20 @@ func (h *Host) Measure(id ops.NodeID, c layout.Constraints) layout.Size {
 	case ops.KindActivity:
 		s = layout.Size{W: 20, H: 20}
 	case ops.KindRichText:
-		// As text: the paragraphs' text, a line each at least.
+		// As text: the paragraphs' text, a line each at least, as tall
+		// as its inline components.
 		var h float32
+		inl := v.Inlines()
+		next := 0
 		for _, p := range v.Rich() {
 			t := measureText(p.Text(), c)
 			s.W = max(s.W, t.W)
+			for _, r := range p {
+				if r.Style.Inline && next < len(inl) {
+					t.H = max(t.H, inl[next].H)
+					next++
+				}
+			}
 			h += max(t.H, 20)
 		}
 		s.H = h
@@ -608,6 +617,7 @@ type RichStyle struct {
 	Underline, Strike bool
 	Color, Background ops.Color
 	Link              string
+	Inline            bool // the run is an inline component
 }
 
 // RichRun is a run of a RichText's paragraph.
@@ -626,6 +636,27 @@ func (p RichParagraph) Text() string {
 		b.WriteString(r.Text)
 	}
 	return b.String()
+}
+
+// RichInline is an inline component of a RichText, as its host was told.
+type RichInline struct {
+	ID   ops.NodeID
+	W, H float32
+}
+
+// Inlines decodes a RichText's inline components.
+func (v *View) Inlines() []RichInline {
+	b := v.Props[ops.PropRichTextInlines].Bytes
+	if len(b) < 4 {
+		return nil
+	}
+	le := binary.LittleEndian
+	out := make([]RichInline, le.Uint32(b))
+	for i := range out {
+		o := 4 + i*12
+		out[i] = RichInline{ops.NodeID(le.Uint32(b[o:])), math.Float32frombits(le.Uint32(b[o+4:])), math.Float32frombits(le.Uint32(b[o+8:]))}
+	}
+	return out
 }
 
 // Rich decodes a RichText's content.
@@ -652,7 +683,7 @@ func (v *View) Rich() []RichParagraph {
 		st.Size = math.Float32frombits(u32())
 		st.Weight = ops.FontWeight(take(1)[0])
 		f := take(1)[0]
-		st.Italic, st.Mono, st.Underline, st.Strike = f&1 != 0, f&2 != 0, f&4 != 0, f&8 != 0
+		st.Italic, st.Mono, st.Underline, st.Strike, st.Inline = f&1 != 0, f&2 != 0, f&4 != 0, f&8 != 0, f&16 != 0
 		st.Color = ops.Color(le.Uint64(take(8)))
 		st.Background = ops.Color(le.Uint64(take(8)))
 		st.Link = str()

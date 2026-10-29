@@ -25,6 +25,7 @@ object NuiKind {
     const val IMAGE = 15
     const val NATIVE = 16
     const val RICH_TEXT = 17
+    const val SELECTABLE = 18
 
     fun name(kind: Int): String = when (kind) {
         1 -> "View"
@@ -44,6 +45,7 @@ object NuiKind {
         15 -> "Image"
         16 -> "Native"
         17 -> "RichText"
+        18 -> "Selectable"
         else -> "Kind($kind)"
     }
 }
@@ -150,6 +152,7 @@ object NuiProp {
 
     object RichText {
         const val CONTENT = 64
+        const val INLINES = 65
     }
 }
 
@@ -187,6 +190,7 @@ object NuiCommand {
     const val HAPTIC = 5
     const val ANIMATE_BEGIN = 6
     const val ANIMATE_END = 7
+    const val OPEN_URL = 8
 }
 
 object NuiRole {

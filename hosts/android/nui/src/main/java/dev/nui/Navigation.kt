@@ -626,7 +626,11 @@ fun NuiRuntime.setNavProp(n: NuiNode, prop: Int, v: Any): Boolean {
             else -> return false
         }
         NuiKind.NATIVE -> return setNativeProp(n, prop, v)
-        NuiKind.RICH_TEXT -> if (prop == NuiProp.RichText.CONTENT) (n.view as NuiRichText).setContent(v as ByteBuffer) else return false
+        NuiKind.RICH_TEXT -> when (prop) {
+            NuiProp.RichText.CONTENT -> (n.view as NuiRichText).setContent(v as ByteBuffer)
+            NuiProp.RichText.INLINES -> (n.view as NuiRichText).setInlines(v as ByteBuffer)
+            else -> return false
+        }
         else -> return false
     }
     return true

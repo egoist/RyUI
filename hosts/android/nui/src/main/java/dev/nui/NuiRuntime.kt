@@ -268,6 +268,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
             NuiKind.IMAGE -> androidx.appcompat.widget.AppCompatImageView(ctx).apply { scaleType = android.widget.ImageView.ScaleType.FIT_CENTER }
             NuiKind.NATIVE -> NuiNativeHost(ctx)
             NuiKind.RICH_TEXT -> NuiRichText(this, id)
+            NuiKind.SELECTABLE -> NuiSelectionArea(this)
             else -> error("nui: the Android host can't show ${NuiKind.name(kind)} ($kind) yet")
         }
     }
@@ -408,6 +409,8 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
         v.measure(View.MeasureSpec.makeMeasureSpec(r - l, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(b - t, View.MeasureSpec.EXACTLY))
         v.layout(l, t, r, b)
         val parent = v.parent
+        // An inline component: its size is the core's, its place the text's.
+        if (parent is NuiRichText) parent.placeInlines()
         if (parent is NestedScrollView || parent is HorizontalScrollView || parent is FrameLayout) {
             (parent as View).requestLayout()
         }
@@ -449,6 +452,12 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
             NuiCommand.HAPTIC -> if (args.remaining() > 0) haptic(args.get().toInt() and 0xff)
             NuiCommand.ANIMATE_BEGIN -> beginAnimation(args)
             NuiCommand.ANIMATE_END -> animation = null
+            NuiCommand.OPEN_URL -> {
+                val b = ByteArray(args.remaining())
+                args.get(b)
+                val i = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(String(b, Charsets.UTF_8)))
+                runCatching { (activity ?: app).startActivity(if (activity == null) i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) else i) }
+            }
         }
     }
 

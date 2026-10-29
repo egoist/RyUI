@@ -20,6 +20,7 @@ public enum NuiKind: UInt16 {
     case image = 15
     case native = 16
     case richText = 17
+    case selectable = 18
 
     public var name: String {
         switch self {
@@ -40,6 +41,7 @@ public enum NuiKind: UInt16 {
         case .image: return "Image"
         case .native: return "Native"
         case .richText: return "RichText"
+        case .selectable: return "Selectable"
         }
     }
 }
@@ -147,6 +149,7 @@ public enum NuiProp {
 
     public enum RichText {
         public static let content: UInt16 = 64
+        public static let inlines: UInt16 = 65
     }
 }
 
@@ -184,6 +187,7 @@ public enum NuiCommand: UInt16 {
     case haptic = 5
     case animateBegin = 6
     case animateEnd = 7
+    case openURL = 8
 }
 
 public enum NuiRole: Int32 {

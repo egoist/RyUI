@@ -268,6 +268,8 @@ final class NuiTextField: UITextField {
             view = iv
         case .native:
             view = NuiNativeHostView()
+        case .selectable:
+            view = NuiSelectionArea()
         case .richText:
             let r = NuiRichTextView()
             r.onLink = { [weak self] url in self?.emit(id, .link) { NuiEvents.link(id, url) } }
@@ -311,6 +313,12 @@ final class NuiTextField: UITextField {
         let f = CGRect(x: CGFloat(x), y: CGFloat(y), width: CGFloat(width), height: CGFloat(height))
         let v = n.view
         let scroll = n.parent?.view as? UIScrollView
+        if let r = v.superview as? NuiRichTextView {
+            // An inline component: its size is the core's, its place the text's.
+            v.frame.size = f.size
+            r.setNeedsLayout()
+            return
+        }
         animated(v) {
             v.frame = f
             scroll?.contentSize = f.size
@@ -369,6 +377,8 @@ final class NuiTextField: UITextField {
             beginAnimation(args)
         case .animateEnd:
             animation = nil
+        case .openURL:
+            if let url = URL(string: String(decoding: args, as: UTF8.self)) { UIApplication.shared.open(url) }
         case .listUpdate:
             var r = NuiReader(args)
             let count = Int(r.u32())

@@ -3,6 +3,7 @@ package ui
 import (
 	"encoding/binary"
 
+	"github.com/egoist/nui/layout"
 	"github.com/egoist/nui/ops"
 	"github.com/egoist/nui/signal"
 )
@@ -58,10 +59,12 @@ const (
 // growByDefault gives a container that fills its space (Stack, Tabs,
 // List) Grow 1 unless its style sizes it.
 func growByDefault(e *element) {
-	if ls := e.box.Style; ls.Height.IsAuto() && ls.FlexGrow == 0 {
-		ls.FlexGrow = 1
-		e.box.SetStyle(ls)
+	e.adjust = func(ls *layout.Style) {
+		if ls.Height.IsAuto() && ls.FlexGrow == 0 {
+			ls.FlexGrow = 1
+		}
 	}
+	e.box.SetStyle(e.layoutStyle(&e.style))
 }
 
 // ScreenOptions configures a screen of a Stack.

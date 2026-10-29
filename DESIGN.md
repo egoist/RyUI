@@ -756,9 +756,11 @@ Each one ends with its examples running and its tests in CI.
   `-simulator`), `nui build -android` (`.aab` and `.apk`). Not yet:
   uploading, screenshots and store listings (Transporter and the Play
   Console do those), iPad builds.
-- **Rich text**, phase 1 (done): `ui.RichText` (spans, per-line
-  backgrounds, links, per-paragraph layout cache); next, selection,
-  link accessibility, Markdown. See "Rich text".
+- **Rich text** (done): `ui.RichText` (spans, per-line backgrounds,
+  links, per-paragraph layout cache prepared off the main thread, inline
+  components), links as accessibility elements, `ui.Selectable`
+  (selection across texts), and the `markdown` package (incremental,
+  streaming). See "Rich text".
 - **Then desktop** (below), only when it's called for: until then the
   work is maturing iOS and Android.
 
@@ -772,7 +774,7 @@ components that wrap with the line, selection that crosses paragraphs
 `ui.RichText` owns its text model and its view; `ui.Text` stays a
 platform label, with native accessibility, Dynamic Type and behavior.
 
-**Built (phase 1):**
+**Built:**
 
 - The model is `ui.Rich`, a list of `ui.Span`s (text, font fields that
   default to the view's, italic, monospaced, color, underline,
@@ -799,22 +801,64 @@ platform label, with native accessibility, Dynamic Type and behavior.
   with the app's content size category and the view's other traits.
 - Links are hit-tested on the typeset lines and reported as `Link`.
 
-**Next:**
+- Links are accessibility elements of their own, so a screen reader
+  finds and activates each: `UIAccessibilityElement`s on iOS (the text
+  becomes a container of the whole text and its links),
+  `ExploreByTouchHelper` virtual views on Android.
+- Layouts are prepared off the main thread. When a text's content
+  changes, the paragraphs not in the cache start typesetting on
+  background threads (CoreText's typesetter and `StaticLayout` are
+  thread-safe) at the width the view was last laid out at. The main
+  thread, measuring moments later, takes a layout that's done, waits for
+  one in flight (the rest of its work, not all of it), or typesets it
+  itself. The attributed or spanned strings are built on the main thread
+  (they read the view's tint and theme); the line breaking, the work,
+  isn't. Texts set in one flush typeset in parallel.
+- Inline components: `ui.Embed(key, build)` is a span that's a component
+  (an image, a badge, a button), sitting on the baseline and wrapping
+  with the words. It's built once for its key, a child view of the
+  RichText and a layout root of its own, laid out at its max-content
+  size (at most the screen's width). In the text it's U+FFFC with a flag.
+  Its size has to reach the host before the host measures the text, and
+  the host can measure the component's leaves only once their props are
+  applied. So a flush lays out inline components after applying the
+  props and before the layout that measures the texts. When a size
+  changed, the sizes (`RichText.Inlines`: node ids and sizes) go out in
+  a crossing of their own; otherwise there's none. The host reserves
+  each placeholder (a `CTRunDelegate`, a `ReplacementSpan`) and puts the
+  child there: its frame's size is the core's, its origin the text's.
+- `ui.Selectable` makes the RichTexts inside it one text (joined by
+  newlines) with one selection, as the platform selects:
+  - iOS: `UITextInteraction` (loupe, handles, the edit menu with Copy and
+    Select All) on a `UITextInput` overlay that answers with the texts'
+    geometry. The overlay is hidden from VoiceOver, so the texts and
+    links stay accessible. Touches on a text in a scroll view within
+    (a code block) are the scroll view's.
+  - Android: as a `TextView` selects. A long press selects a word and a
+    drag goes on word by word. The theme's handles move the ends, which
+    never cross. The floating action mode has Copy and Select all, and a
+    tap clears. Each text draws its part of the selection in the theme's
+    highlight color. A scroll view's taking the gesture over cancels the
+    long press.
+  - Copying leaves out the inline components.
+- The `markdown` package renders Markdown with incremental parsing, the
+  parser vendored from MyGo (`markdown/parser`). `Document.Set` reparses
+  only from the last block that changed, `SetStreaming` heals what a
+  stream leaves open (an unclosed emphasis, a link being written), and
+  each block has a revision. The view is a `ui.For` over blocks keyed by
+  start and kind, each with comparable descriptors, so a streaming reply
+  updates only the RichText of the block being written. Paragraphs,
+  headings, lists (tight and loose, ordered, tasks), quotes, code, math
+  and HTML blocks (horizontally scrolled; tabs expanded to 4 columns),
+  tables, thematic breaks and footnotes. Images alone in a paragraph are
+  images; in text they're inline components, a linked one following its
+  link. `Props.Code` replaces code blocks' rendering (for highlighting).
+  The view is selectable unless `NotSelectable`; links open with
+  `ui.OpenURL` unless `OnLink` says otherwise.
 
-- Selection across texts: on iOS through `UITextInput` and
-  `UITextInteraction` (UIKit's loupe, handles and edit menu, nui's
-  ranges), on Android with handles and an action mode; Markdown to
-  `Rich`.
-- Accessibility of links: each link a separate accessibility element
-  (accessibility elements on iOS, `ExploreByTouchHelper` virtual views on
-  Android), so a screen reader can find and activate them; today the
-  text is one element and links need a touch.
-- Preparing layouts off the main thread (the typesetters are
-  thread-safe) once frame-time measurements show main-thread
-  typesetting missing the frame budget: in the synchronous flush the
-  core measures right after the content changes, so the paragraph cache
-  is what makes streaming cheap today.
-- Inline components that wrap with the line.
+**Not yet:** selection for screen reader users (VoiceOver and TalkBack
+read the texts and links but don't select across them); bidirectional
+text in selection geometry (the rectangles assume left-to-right lines).
 
 ## Desktop, later
 

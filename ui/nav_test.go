@@ -67,6 +67,28 @@ func TestStackPushPopDisposesTheScreen(t *testing.T) {
 	}
 }
 
+// A Scroll filling a screen is the screen's height, its content taller:
+// filling it keeps what makes it a Scroll (its overflow).
+func TestScreenScroll(t *testing.T) {
+	h, _ := mount(t, func() ui.Node {
+		return ui.Stack(func() ui.Node {
+			var kids []ui.Node
+			for range 60 {
+				kids = append(kids, ui.StaticText("line"))
+			}
+			return ui.Scroll(ui.ScrollProps{}, kids...)
+		}, ui.ScreenOptions{Title: ui.Val("Home")})
+	})
+	h.Dispatch(ops.Event{ID: h.OfKind(ops.KindScreen)[0].ID, Kind: ops.EventEnvironment, Env: h.Env})
+	scroll := h.OfKind(ops.KindScroll)[0]
+	if f := scroll.Frame; f[3] != h.Env.Height {
+		t.Fatalf("scroll frame %v, want the screen's height %v", f, h.Env.Height)
+	}
+	if f := scroll.Children[0].Frame; f[3] <= h.Env.Height {
+		t.Fatalf("content frame %v", f)
+	}
+}
+
 func TestScreenSafeAreaUsesTheScreensEnvironment(t *testing.T) {
 	h, _ := mount(t, func() ui.Node {
 		return ui.Stack(func() ui.Node {

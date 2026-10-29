@@ -463,28 +463,28 @@ type ScrollProps struct {
 // so it has something to scroll within.
 func Scroll(p ScrollProps, children ...Node) Node {
 	e := newElement(ops.KindScroll, true)
-	e.setStyle(p.Style, false)
-	ls := e.box.Style
-	ls.FlexDirection = layout.Column
-	if p.Horizontal {
-		ls.FlexDirection = layout.Row
-		ls.OverflowX = layout.OverflowScroll
-		e.r.batch.SetBool(e.id, ops.PropScrollHorizontal, true)
-	} else {
-		ls.OverflowY = layout.OverflowScroll
+	e.adjust = func(ls *layout.Style) {
+		ls.FlexDirection = layout.Column
+		if p.Horizontal {
+			ls.FlexDirection = layout.Row
+			ls.OverflowX = layout.OverflowScroll
+		} else {
+			ls.OverflowY = layout.OverflowScroll
+		}
+		ls.AlignItems = layout.AlignStretch
 	}
-	ls.AlignItems = layout.AlignStretch
-	e.box.SetStyle(ls)
+	e.setStyle(p.Style, false)
+	if p.Horizontal {
+		e.r.batch.SetBool(e.id, ops.PropScrollHorizontal, true)
+	}
 	dir := ColumnDir
 	if p.Horizontal {
 		dir = RowDir
 	}
 	refreshable(e, p.OnRefresh, p.Refreshing, ops.PropScrollRefreshable, ops.PropScrollRefreshing)
 	content := newElement(ops.KindView, true)
+	content.adjust = func(cs *layout.Style) { cs.FlexShrink = 0 } // the content keeps its size; that's the point
 	content.setStyle(withDirection(p.ContentStyle, dir), false)
-	cs := content.box.Style
-	cs.FlexShrink = 0 // the content keeps its size; that's the point
-	content.box.SetStyle(cs)
 	addKids(content, children)
 	e.appendKid(content)
 	return Node{e}

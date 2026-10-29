@@ -21,23 +21,25 @@ import (
 // Root is a mounted tree: on mobile, the app's screen; on desktop
 // (later), a window.
 type Root struct {
-	host     host.Host
-	batch    *ops.Batch   // where ops go
-	spare    []*ops.Batch // batches for ops written while one is applied
-	el       *element
-	env      *signal.Signal[host.Environment]
-	envV     host.Environment
-	scale    float32
-	dispose  func()
-	pass     layout.Pass
-	kidsQ    []*element
-	frameQ   []*element
-	boxBuf   []*layout.Node
-	lists    []*element
-	size     layout.Size
-	flushes  int
-	measures measureCache
-	provs    []*element // host-sized layout roots
+	host      host.Host
+	batch     *ops.Batch   // where ops go
+	spare     []*ops.Batch // batches for ops written while one is applied
+	el        *element
+	env       *signal.Signal[host.Environment]
+	envV      host.Environment
+	scale     float32
+	dispose   func()
+	pass      layout.Pass
+	kidsQ     []*element
+	frameQ    []*element
+	boxBuf    []*layout.Node
+	lists     []*element
+	size      layout.Size
+	flushes   int
+	measures  measureCache
+	provs     []*element // host-sized layout roots
+	inlines   []*richState
+	inlineBuf []byte
 
 	anim      Animation // what ui.Animate asked for, for this flush
 	animating bool
@@ -176,6 +178,9 @@ func (r *Root) layout() {
 	size := layout.Size{W: r.envV.Width, H: r.envV.Height}
 	p := &r.pass
 	p.Changed = p.Changed[:0]
+	if len(r.inlines) > 0 {
+		r.layoutInlines(size.W, p)
+	}
 	if r.el.box.Dirty() || size != r.size {
 		r.size = size
 		r.el.box.Layout(size, p)
@@ -206,6 +211,23 @@ func (r *Root) layout() {
 	}
 	clear(p.Changed)
 	p.Changed = p.Changed[:0]
+}
+
+// layoutInlines lays out the RichTexts' inline components before what
+// holds them, which the host measures with their sizes: when those
+// changed, it's told first (only then is there a crossing more).
+func (r *Root) layoutInlines(width float32, p *layout.Pass) {
+	live := r.inlines[:0]
+	for _, st := range r.inlines {
+		if st.e.dead {
+			continue
+		}
+		live = append(live, st)
+		st.layout(width, p)
+	}
+	clear(r.inlines[len(live):])
+	r.inlines = live
+	r.apply()
 }
 
 func (r *Root) setEnvironment(env host.Environment) {
