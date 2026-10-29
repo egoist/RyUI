@@ -30,6 +30,12 @@ import CNui
     var selected: Int?
     var actions: [NuiAction] = []
     var swipeActions: [NuiAction] = [] // a list cell's
+    var shadowColor: UIColor?
+    var transition: NuiTransition?
+    var opacity: CGFloat = 1 // its own, as Style.Opacity sets it
+    var baseTransform: CGAffineTransform = .identity // Style.Transform's
+    var gradient: CAGradientLayer?
+    var gradientColors: [UIColor?] = []
     var menuTrigger: Int32 = 0
     var menuOverlay: UIButton?
     var contextMenu: UIContextMenuInteraction?
@@ -103,6 +109,10 @@ final class NuiTextField: UITextField {
     var animation: (Double, Int32)?
     /// The app's accent color (nui.json's), nil for the system's: the tint color.
     var accent: UIColor?
+    /// Views coming in with a transition in the batch being applied.
+    var entering: [(NuiNode, (Double, Int32))] = []
+    /// Views going out with a transition, still shown.
+    var exiting = Set<ObjectIdentifier>()
     public static let shared = NuiRuntime()
 
     var nodes: [UInt32: NuiNode] = [:]
@@ -192,6 +202,7 @@ final class NuiTextField: UITextField {
 
     func apply(_ buf: UnsafeRawBufferPointer) {
         nuiDecode(buf, self)
+        runEnters()
     }
 
     public func create(_ id: UInt32, kind raw: UInt16) {
@@ -312,8 +323,15 @@ final class NuiTextField: UITextField {
     public func destroy(_ id: UInt32) {
         guard let n = nodes.removeValue(forKey: id) else { return }
         if destroyController(n) { return }
-        n.parent?.remove(n)
         for c in n.children { c.parent = nil }
+        // Going out with a transition, or inside a view that is: shown
+        // until it's gone.
+        if leaving(n.view) || exit(n) {
+            if let p = n.parent, let i = p.children.firstIndex(where: { $0 === n }) { p.children.remove(at: i) }
+            n.parent = nil
+            return
+        }
+        n.parent?.remove(n)
         n.view.removeFromSuperview()
     }
 
@@ -321,6 +339,7 @@ final class NuiTextField: UITextField {
         guard let p = nodes[parent], let c = nodes[child] else { return }
         if insertController(p, c, index) { return }
         p.insert(c, at: index)
+        enter(c)
     }
 
     public func remove(_ parent: UInt32, child: UInt32) {
@@ -344,9 +363,13 @@ final class NuiTextField: UITextField {
             return
         }
         animated(v) {
-            v.frame = f
+            // Through bounds and center: a transformed view's frame isn't its
+            // layout's (and a scroll view's bounds origin is its offset).
+            v.bounds = CGRect(origin: v.bounds.origin, size: f.size)
+            v.center = CGPoint(x: f.midX, y: f.midY)
             scroll?.contentSize = f.size
         }
+        n.updateLayers()
     }
 
     /// Makes c the windows' tint color, which UIKit's controls and the

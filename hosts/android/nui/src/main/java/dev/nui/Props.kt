@@ -200,7 +200,7 @@ fun NuiRuntime.applyColor(n: NuiNode) {
 }
 
 fun NuiRuntime.applyBackground(n: NuiNode) {
-    if (n.background == 0L && n.cornerRadius == 0f && n.borderWidth == 0f) return
+    if (n.background == 0L && n.cornerRadius == 0f && n.borderWidth == 0f && n.gradient == null) return
     if (n.view is MaterialButton) {
         val b = n.view as MaterialButton
         if (n.background != 0L) b.backgroundTintList = ColorStateList.valueOf(color(n.background))
@@ -211,6 +211,17 @@ fun NuiRuntime.applyBackground(n: NuiNode) {
     val toRadius = n.cornerRadius * density
     if (n.view is android.widget.ImageView) n.view.clipToOutline = n.cornerRadius > 0
     val old = n.view.background as? GradientDrawable
+    val g = n.gradient
+    if (g != null) {
+        // Over the background color: a GradientDrawable fills one or the other.
+        n.backgroundAnimator?.cancel()
+        val d = GradientDrawable(g.orientation(), g.colors)
+        if (Build.VERSION.SDK_INT >= 29) d.setColors(g.colors, g.offsets)
+        d.cornerRadius = toRadius
+        if (n.borderWidth > 0) d.setStroke(Math.round(n.borderWidth * density), color(n.borderColor, Color.GRAY))
+        n.view.background = d
+        return
+    }
     if (old != null && animates(n.view)) {
         if (n.borderWidth > 0) old.setStroke(Math.round(n.borderWidth * density), color(n.borderColor, Color.GRAY))
         animateBackground(n, old, old.color?.defaultColor ?: toColor, toColor, old.cornerRadius, toRadius)
@@ -289,6 +300,7 @@ fun NuiRuntime.propFloat(id: Int, prop: Int, v: Double) {
         NuiProp.CORNER_RADIUS -> { n.cornerRadius = v.toFloat(); applyBackground(n) }
         NuiProp.BORDER_WIDTH -> { n.borderWidth = v.toFloat(); applyBackground(n) }
         NuiProp.OPACITY -> {
+            n.base.alpha = v.toFloat()
             val a = animation
             if (a != null && animates(n.view)) n.view.animate().alpha(v.toFloat()).setDuration(a.millis).setInterpolator(a.interpolator()).start()
             else n.view.alpha = v.toFloat()

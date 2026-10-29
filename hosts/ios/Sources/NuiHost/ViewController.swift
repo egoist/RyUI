@@ -22,6 +22,7 @@ public final class NuiViewController: UIViewController {
         if #available(iOS 17.0, *) {
             registerForTraitChanges([UITraitUserInterfaceStyle.self, UITraitDisplayScale.self]) { (vc: NuiViewController, _: UITraitCollection) in
                 vc.sendEnvironment()
+                NuiRuntime.shared.resolveLayerColors()
             }
         }
         let rt = NuiRuntime.shared

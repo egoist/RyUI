@@ -150,15 +150,42 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             view.layer.cornerCurve = .continuous
             let r = CGFloat(v.float)
             animated(view) { view.layer.cornerRadius = r }
+            n.updateLayers()
         case NuiProp.borderWidth: view.layer.borderWidth = CGFloat(v.float)
         case NuiProp.borderColor:
             n.borderColor = v.color
             view.layer.borderColor = nuiColor(v.color)?.resolvedColor(with: view.traitCollection).cgColor
         case NuiProp.opacity:
             let a = CGFloat(v.float)
+            n.opacity = a
             animated(view) { view.alpha = a }
         case NuiProp.hidden: view.isHidden = v.bool
         case NuiProp.clip: view.clipsToBounds = v.bool
+        case NuiProp.transform:
+            guard case .bytes(let b) = v, b.count >= 20 else { return }
+            var r = NuiReader(b)
+            let tx = CGFloat(r.f32()), ty = CGFloat(r.f32()), sx = CGFloat(r.f32()), sy = CGFloat(r.f32())
+            let rot = CGFloat(r.f32()) * .pi / 180
+            let t = CGAffineTransform(translationX: tx, y: ty).rotated(by: rot).scaledBy(x: sx, y: sy)
+            n.baseTransform = t
+            animated(view) { view.transform = t }
+        case NuiProp.shadow:
+            guard case .bytes(let b) = v, b.count >= 20 else { return }
+            var r = NuiReader(b)
+            let c = nuiColor(r.u64())
+            let radius = CGFloat(r.f32()), x = CGFloat(r.f32()), y = CGFloat(r.f32())
+            n.shadowColor = c
+            view.layer.shadowColor = c?.resolvedColor(with: view.traitCollection).cgColor
+            view.layer.shadowOpacity = c == nil ? 0 : 1
+            view.layer.shadowRadius = radius / 2 // a blur radius, as CSS and SwiftUI mean it
+            view.layer.shadowOffset = CGSize(width: x, height: y)
+            n.updateLayers()
+        case NuiProp.transition:
+            guard case .bytes(let b) = v else { return }
+            n.transition = NuiTransition(b)
+        case NuiProp.gradient:
+            guard case .bytes(let b) = v else { return }
+            n.setGradient(b)
         case NuiProp.a11yLabel:
             view.isAccessibilityElement = true
             view.accessibilityLabel = v.string

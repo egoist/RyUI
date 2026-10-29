@@ -54,6 +54,9 @@ class NuiNode(val id: Int, val kind: Int, var view: View) {
     var gestures: NuiGestures? = null
     var frameAnimator: android.animation.Animator? = null
     var backgroundAnimator: android.animation.Animator? = null
+    var gradient: NuiGradient? = null
+    var transition: NuiTransition? = null
+    val base = NuiBase()
 
     fun listens(event: Int) = listens and (1 shl event) != 0
 

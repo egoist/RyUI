@@ -109,6 +109,10 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
     val nativeFactories = HashMap<String, (NuiNativeContext) -> NuiNativeView>()
     /** Between AnimateBegin and AnimateEnd. */
     var animation: NuiAnimation? = null
+    /** Views coming in with a transition in the batch being applied. */
+    val entering = ArrayList<Pair<NuiNode, NuiAnimation>>()
+    /** Views going out with a transition, still shown. */
+    val exiting = HashSet<View>()
 
     /** Registers a native view kind for ui.Native. */
     fun registerNative(type: String, make: (NuiNativeContext) -> NuiNativeView) {
@@ -279,7 +283,10 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
     // JNI callbacks
 
     @Keep
-    fun apply(buf: ByteBuffer) = nuiDecode(buf, this)
+    fun apply(buf: ByteBuffer) {
+        nuiDecode(buf, this)
+        runEnters()
+    }
 
     @Keep
     fun measure(id: Int, w: Float, h: Float, aw: Float, ah: Float): Long {
@@ -444,6 +451,12 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
             n.swipeActions = decodeActions(v)
             return
         }
+        when (prop) {
+            NuiProp.TRANSFORM -> { setTransform(n, v); return }
+            NuiProp.TRANSITION -> { n.transition = NuiTransition(v); return }
+            NuiProp.SHADOW -> { setShadow(n, v); return }
+            NuiProp.GRADIENT -> { setGradient(n, v); return }
+        }
         setNavProp(n, prop, v)
     }
 
@@ -452,6 +465,14 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
         stacks.remove(n)
         if (n.underDying) return // its views leave with the animating screen or sheet
         if ((n.kind == NuiKind.SCREEN || n.kind == NuiKind.SHEET || n.kind == NuiKind.ALERT) && destroyNav(n)) return
+        // Going out with a transition, or inside a view that is: shown
+        // until it's gone.
+        if (leaving(n.outer) || exit(n)) {
+            n.parent?.children?.remove(n)
+            n.parent = null
+            for (c in n.children) c.parent = null
+            return
+        }
         n.parent?.remove(n)
         for (c in n.children) c.parent = null
         (n.outer.parent as? ViewGroup)?.removeView(n.outer)
@@ -462,6 +483,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
         val c = nodes[child] ?: return
         if (insertNav(p, c, index)) return
         p.insert(c, index)
+        enter(c)
     }
 
     override fun remove(parent: Int, child: Int) {

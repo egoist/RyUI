@@ -76,7 +76,11 @@ public enum NuiProp {
     public static let disabled: UInt16 = 17
     public static let menu: UInt16 = 18
     public static let menuTrigger: UInt16 = 19
-    public static let swipeActions: UInt16 = 20
+    public static let transform: UInt16 = 20
+    public static let shadow: UInt16 = 21
+    public static let gradient: UInt16 = 22
+    public static let transition: UInt16 = 23
+    public static let swipeActions: UInt16 = 24
 
     public enum Text {
         public static let text: UInt16 = 64

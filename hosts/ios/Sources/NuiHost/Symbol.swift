@@ -67,3 +67,67 @@ final class NuiDatePickerView: UIView {
     }
 }
 #endif
+
+#if canImport(UIKit)
+@MainActor extension NuiNode {
+    /// A background gradient (Style.Gradient): a layer under the subviews.
+    func setGradient(_ b: UnsafeRawBufferPointer) {
+        var r = NuiReader(b)
+        let n = b.count >= 4 ? Int(r.u32()) : 0
+        guard n > 0 else {
+            gradient?.removeFromSuperlayer()
+            gradient = nil
+            return
+        }
+        var colors: [UIColor?] = []
+        var locations: [NSNumber] = []
+        for _ in 0..<n {
+            colors.append(nuiColor(r.u64()))
+            locations.append(NSNumber(value: r.f32()))
+        }
+        let g = gradient ?? CAGradientLayer()
+        if gradient == nil {
+            view.layer.insertSublayer(g, at: 0)
+            gradient = g
+        }
+        gradientColors = colors
+        g.locations = locations
+        g.startPoint = CGPoint(x: CGFloat(r.f32()), y: CGFloat(r.f32()))
+        g.endPoint = CGPoint(x: CGFloat(r.f32()), y: CGFloat(r.f32()))
+        resolveLayerColors()
+        updateLayers()
+    }
+
+    /// Resolves the layers' dynamic colors with the view's traits (dark mode).
+    func resolveLayerColors() {
+        let t = view.traitCollection
+        if borderColor != 0 { view.layer.borderColor = nuiColor(borderColor)?.resolvedColor(with: t).cgColor }
+        gradient?.colors = gradientColors.map { ($0 ?? .clear).resolvedColor(with: t).cgColor }
+        if let c = shadowColor { view.layer.shadowColor = c.resolvedColor(with: t).cgColor }
+    }
+
+    /// Fits the shadow's path and the gradient to the view's bounds.
+    func updateLayers() {
+        let b = view.bounds
+        if let g = gradient {
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            g.frame = b
+            g.cornerRadius = view.layer.cornerRadius
+            g.cornerCurve = view.layer.cornerCurve
+            CATransaction.commit()
+        }
+        if view.layer.shadowOpacity > 0 {
+            view.layer.shadowPath = UIBezierPath(roundedRect: b, cornerRadius: view.layer.cornerRadius).cgPath
+        }
+    }
+}
+
+@MainActor extension NuiRuntime {
+    /// Layer colors (borders, shadows, gradients) don't follow dark mode
+    /// as views' do: they're resolved again when it changes.
+    func resolveLayerColors() {
+        for n in nodes.values { n.resolveLayerColors() }
+    }
+}
+#endif

@@ -24,6 +24,7 @@ func App() ui.Node {
 							{Title: "Top", Icon: ui.IconUp, OnPress: func() { ui.ScrollToItem(inboxList, 0, true) }},
 						}})
 					}}),
+				motion(),
 				symbols(),
 				textInput(),
 				controls(),
@@ -200,6 +201,66 @@ func services() ui.Node {
 			ui.Button(ui.ButtonProps{Title: ui.Val("Share"), Icon: ui.IconShare, Variant: ui.ButtonGray,
 				OnPress: func() { ui.Share("https://go.dev") }}),
 		),
+	)
+}
+
+// motion animates transforms (a tap flips and grows the card, with a
+// spring), follows a drag, and brings a toast in and out with a
+// transition.
+func motion() ui.Node {
+	flipped := signal.New(false)
+	drag := signal.New(ui.Gesture{})
+	toast := signal.New(false)
+	card := ui.View(ui.ViewProps{
+		OnPress: func() {
+			ui.AnimateWith(ui.Animation{Curve: ui.Spring, Duration: 0.5}, func() { flipped.Set(!flipped.Peek()) })
+		},
+		Style: ui.StyleFunc(func() ui.Style {
+			t := ui.Transform{}
+			if flipped.Get() {
+				t = ui.Transform{Rotate: 6, Scale: 1.04}
+			}
+			return ui.Style{Height: ui.Pt(120), CornerRadius: 20, Padding: ui.All(20), Justify: ui.JustifyEnd,
+				Gradient:  ui.LinearGradient(ui.RGB(99, 102, 241), ui.RGB(236, 72, 153)),
+				Shadow:    ui.Shadow{Color: ui.RGBA(0, 0, 0, 80), Radius: 16, Y: 8},
+				Transform: t}
+		}),
+	}, ui.StaticText("Tap me", ui.Style{Color: ui.RGB(255, 255, 255), Font: ui.Title3.Weighted(ui.Bold)}))
+	puck := ui.View(ui.ViewProps{
+		OnPan: func(g ui.Gesture) {
+			if g.State == ui.GestureEnded || g.State == ui.GestureCancelled {
+				ui.AnimateWith(ui.Animation{Curve: ui.Spring, Duration: 0.45}, func() { drag.Set(ui.Gesture{}) })
+				return
+			}
+			drag.Set(g)
+		},
+		Style: ui.StyleFunc(func() ui.Style {
+			g := drag.Get()
+			return ui.Style{Width: ui.Pt(64), Height: ui.Pt(64), CornerRadius: 32, Background: ui.Accent,
+				Shadow:    ui.Shadow{Color: ui.RGBA(0, 0, 0, 60), Radius: 10, Y: 4},
+				Transform: ui.Transform{TranslateX: g.TranslationX, TranslateY: g.TranslationY}}
+		}),
+	})
+	return section("Motion",
+		card,
+		ui.Row(ui.Style{Gap: 16, Align: ui.AlignCenter},
+			puck,
+			ui.StaticText("Drag the dot; it springs back.", ui.Style{Color: ui.SecondaryLabel, Font: ui.Footnote, Grow: 1}),
+		),
+		ui.Button(ui.ButtonProps{Title: ui.Val("Show a toast"), Variant: ui.ButtonGray, OnPress: func() {
+			ui.Animate(func() { toast.Set(true) })
+			go func() {
+				time.Sleep(1500 * time.Millisecond)
+				ui.Post(func() { ui.Animate(func() { toast.Set(false) }) })
+			}()
+		}}),
+		ui.Show(toast, func() ui.Node {
+			return ui.View(ui.ViewProps{Style: ui.Style{Background: ui.SecondaryBackground, CornerRadius: 14, Padding: ui.All(14),
+				Transition: ui.SlideUp}},
+				ui.Row(ui.Style{Gap: 10, Align: ui.AlignCenter},
+					ui.Symbol(ui.IconCheck, ui.Style{Color: ui.Green}),
+					ui.StaticText("Saved")))
+		}),
 	)
 }
 

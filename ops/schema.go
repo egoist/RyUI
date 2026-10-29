@@ -102,6 +102,10 @@ var Schema = SchemaDef{
 		{Name: "Disabled", Type: TBool},
 		{Name: "Menu", Type: TBytes, Doc: "a menu: u32 count, then per item u8 role (AlertButtonRole), a u32-length title and a u32-length icon (Symbol.Name; empty: none); Action events carry the item's index"},
 		{Name: "MenuTrigger", Type: TEnum, Enum: "MenuTrigger"},
+		{Name: "Transform", Type: TBytes, Doc: "f32 translate x, y (points), scale x, y, rotation (degrees, clockwise), around the view's center; layout doesn't see it"},
+		{Name: "Shadow", Type: TBytes, Doc: "u64 color (0: none), f32 blur radius, offset x, y (points), from the view's shape"},
+		{Name: "Gradient", Type: TBytes, Doc: "a linear background gradient: u32 count, per stop u64 color and f32 location (0 to 1); f32 start x, y, end x, y (unit points of the view)"},
+		{Name: "Transition", Type: TBytes, Doc: "u8 fade, f32 scale (0: none), offset x, y (points): the state a view comes in from when it's inserted during an animation, and goes out to when it's destroyed during one (the host keeps it until it has)"},
 		{Name: "SwipeActions", Type: TBytes, Doc: "a List cell's swipe actions, encoded as Menu (iOS: its trailing actions; Android: a full swipe runs the first); Action events on the cell carry the index"},
 	},
 	Kinds: []KindDef{

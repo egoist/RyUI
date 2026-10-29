@@ -79,7 +79,11 @@ object NuiProp {
     const val DISABLED = 17
     const val MENU = 18
     const val MENU_TRIGGER = 19
-    const val SWIPE_ACTIONS = 20
+    const val TRANSFORM = 20
+    const val SHADOW = 21
+    const val GRADIENT = 22
+    const val TRANSITION = 23
+    const val SWIPE_ACTIONS = 24
 
     object Text {
         const val TEXT = 64

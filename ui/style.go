@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"encoding/binary"
+	"math"
 	"strconv"
 	"strings"
 
@@ -226,6 +228,20 @@ type Style struct {
 	Opacity      float32 // 0: opaque; Hidden hides
 	Hidden       bool
 	Clip         bool
+	// Transform moves, scales and rotates the view as it's drawn; layout
+	// doesn't see it. ui.Animate animates it.
+	Transform Transform
+	// Shadow is drawn under the view, from its shape (a clipped view's
+	// isn't seen, as on iOS). Android draws its elevation shadow: the
+	// radius is the elevation, the color tints it, and the light sets
+	// the offset.
+	Shadow Shadow
+	// Gradient fills the background (over Background).
+	Gradient *Gradient
+	// Transition is how the view comes in when it's added during
+	// ui.Animate (a Show turning true, an item added to a For), and goes
+	// out when it's removed during one.
+	Transition Transition
 
 	Font      Font
 	Color     Color // text color, or tint for controls
@@ -248,7 +264,150 @@ func (f StyleFunc) styler() (Style, func() Style) { return Style{}, f }
 
 func (s *Style) visual() bool {
 	return s.Background != 0 || s.CornerRadius != 0 || s.BorderWidth != 0 || s.BorderColor != 0 ||
-		s.Opacity != 0 || s.Hidden || s.Clip
+		s.Opacity != 0 || s.Hidden || s.Clip || s.Transform != (Transform{}) || s.Shadow.Color != 0 || s.Gradient != nil ||
+		s.Transition != (Transition{})
+}
+
+// Transform moves, scales and rotates a view around its center.
+type Transform struct {
+	TranslateX, TranslateY float32 // points
+	Scale                  float32 // both axes; 0: 1
+	ScaleX, ScaleY         float32 // 0: Scale
+	Rotate                 float32 // degrees, clockwise
+}
+
+// Transition is the state a view comes in from and goes out to, when
+// it's added or removed during ui.Animate: faded out, scaled, moved.
+// They combine: Transition{Fade: true, Y: 20} fades and slides.
+type Transition struct {
+	Fade  bool
+	Scale float32 // 0: none
+	X, Y  float32 // an offset, in points
+}
+
+var (
+	// Fade fades a view in and out.
+	Fade = Transition{Fade: true}
+	// Pop fades and grows a view in (a popover, a badge).
+	Pop = Transition{Fade: true, Scale: 0.85}
+	// SlideUp fades a view in from a little below (a toast, a new row).
+	SlideUp = Transition{Fade: true, Y: 24}
+)
+
+func (t Transition) bytes(b []byte) []byte {
+	f := byte(0)
+	if t.Fade {
+		f = 1
+	}
+	b = append(b, f)
+	for _, v := range [...]float32{t.Scale, t.X, t.Y} {
+		b = binary.LittleEndian.AppendUint32(b, math.Float32bits(v))
+	}
+	return b
+}
+
+// Shadow is a view's drop shadow.
+type Shadow struct {
+	Color  Color // 0: none
+	Radius float32
+	X, Y   float32 // its offset, in points
+}
+
+// Point is a point in a view, in units of its size: (0, 0) its top
+// leading corner, (1, 1) its bottom trailing one.
+type Point struct{ X, Y float32 }
+
+// Gradient is a linear gradient, from Start to End through Colors.
+// Android draws it along the nearest of eight directions.
+type Gradient struct {
+	Colors []Color
+	// Locations are the colors' places from Start (0) to End (1), one
+	// per color; nil spaces them evenly. Android 10 and later.
+	Locations []float32
+	// Start and End default (both zero) to top to bottom.
+	Start, End Point
+}
+
+// LinearGradient is a gradient from the top to the bottom through colors.
+func LinearGradient(colors ...Color) *Gradient { return &Gradient{Colors: colors} }
+
+func (t Transform) bytes(b []byte) []byte {
+	sx, sy := t.ScaleX, t.ScaleY
+	if t.Scale != 0 {
+		if sx == 0 {
+			sx = t.Scale
+		}
+		if sy == 0 {
+			sy = t.Scale
+		}
+	}
+	if sx == 0 {
+		sx = 1
+	}
+	if sy == 0 {
+		sy = 1
+	}
+	for _, f := range [...]float32{t.TranslateX, t.TranslateY, sx, sy, t.Rotate} {
+		b = binary.LittleEndian.AppendUint32(b, math.Float32bits(f))
+	}
+	return b
+}
+
+func (s Shadow) bytes(b []byte) []byte {
+	b = binary.LittleEndian.AppendUint64(b, uint64(s.Color))
+	for _, f := range [...]float32{s.Radius, s.X, s.Y} {
+		b = binary.LittleEndian.AppendUint32(b, math.Float32bits(f))
+	}
+	return b
+}
+
+// equal compares gradients by value: a StyleFunc makes a new one each run.
+func (g *Gradient) equal(o *Gradient) bool {
+	if g == nil || o == nil {
+		return g == o
+	}
+	if len(g.Colors) != len(o.Colors) || len(g.Locations) != len(o.Locations) || g.Start != o.Start || g.End != o.End {
+		return false
+	}
+	for i := range g.Colors {
+		if g.Colors[i] != o.Colors[i] {
+			return false
+		}
+	}
+	for i := range g.Locations {
+		if g.Locations[i] != o.Locations[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func (g *Gradient) bytes(b []byte) []byte {
+	le := binary.LittleEndian
+	if g == nil {
+		return le.AppendUint32(b, 0)
+	}
+	n := len(g.Colors)
+	b = le.AppendUint32(b, uint32(n))
+	for i, c := range g.Colors {
+		loc := float32(0)
+		switch {
+		case i < len(g.Locations):
+			loc = g.Locations[i]
+		case n > 1:
+			loc = float32(i) / float32(n-1)
+		}
+		b = le.AppendUint64(b, uint64(c))
+		b = le.AppendUint32(b, math.Float32bits(loc))
+	}
+	start, end := g.Start, g.End
+	if start == (Point{}) && end == (Point{}) {
+		start, end = Point{0.5, 0}, Point{0.5, 1}
+	}
+	for _, f := range [...]float32{start.X, start.Y, end.X, end.Y} {
+		b = le.AppendUint32(b, math.Float32bits(f))
+	}
+	return b
 }
 
 func edges(e Edges) layout.Rect[layout.Length] {
@@ -360,6 +519,22 @@ func (e *element) applyVisual(s, prev *Style, text bool) (remeasure bool) {
 	}
 	if s.Clip != prev.Clip {
 		b.SetBool(id, ops.PropClip, s.Clip)
+	}
+	if s.Transform != prev.Transform {
+		var buf [20]byte
+		b.SetBytes(id, ops.PropTransform, s.Transform.bytes(buf[:0]))
+	}
+	if s.Shadow != prev.Shadow {
+		var buf [20]byte
+		b.SetBytes(id, ops.PropShadow, s.Shadow.bytes(buf[:0]))
+	}
+	if s.Transition != prev.Transition {
+		var buf [13]byte
+		b.SetBytes(id, ops.PropTransition, s.Transition.bytes(buf[:0]))
+	}
+	if !s.Gradient.equal(prev.Gradient) {
+		var buf [128]byte
+		b.SetBytes(id, ops.PropGradient, s.Gradient.bytes(buf[:0]))
 	}
 	if s.Color != prev.Color {
 		b.SetColor(id, ops.PropColor, s.Color)

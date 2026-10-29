@@ -741,3 +741,39 @@ func TestCopyShare(t *testing.T) {
 		t.Fatalf("share %v", c)
 	}
 }
+
+// Transforms, shadows and gradients are sent as bytes props; a view with
+// only a transform is a real view (it's drawn moved).
+func TestTransformShadowGradient(t *testing.T) {
+	spin := signal.New(float32(0))
+	h, r := mount(t, func() ui.Node {
+		return ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style {
+			return ui.Style{Transform: ui.Transform{TranslateX: 10, Scale: 2, Rotate: spin.Get()},
+				Shadow:   ui.Shadow{Color: ui.Label, Radius: 8, Y: 2},
+				Gradient: ui.LinearGradient(ui.Red, ui.Blue)}
+		})}, ui.StaticText("x"))
+	})
+	v := h.Find(ops.KindView, "")[0]
+	for v.Props[ops.PropTransform].Bytes == nil && len(v.Children) > 0 {
+		v = v.Children[0]
+	}
+	f32 := func(b []byte, i int) float32 { return math.Float32frombits(binary.LittleEndian.Uint32(b[4*i:])) }
+	tb := v.Props[ops.PropTransform].Bytes
+	if len(tb) != 20 || f32(tb, 0) != 10 || f32(tb, 2) != 2 || f32(tb, 3) != 2 || f32(tb, 4) != 0 {
+		t.Fatalf("transform %v", tb)
+	}
+	g := v.Props[ops.PropGradient].Bytes
+	if binary.LittleEndian.Uint32(g) != 2 || f32(g[24:], 0) != 1 { // two stops; the second at 1
+		t.Fatalf("gradient %v", g)
+	}
+	if len(v.Props[ops.PropShadow].Bytes) != 20 {
+		t.Fatalf("shadow %v", v.Props[ops.PropShadow].Bytes)
+	}
+	h.Reset()
+	spin.Set(90)
+	r.Flush()
+	// One prop, and no layout: a transform is drawn, not laid out.
+	if h.Count(ops.OpSetProp) != 1 || h.Count(ops.OpSetFrame) != 0 || f32(v.Props[ops.PropTransform].Bytes, 4) != 90 {
+		t.Fatalf("%d props, %d frames for a rotation", h.Count(ops.OpSetProp), h.Count(ops.OpSetFrame))
+	}
+}

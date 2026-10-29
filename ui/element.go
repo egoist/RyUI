@@ -399,6 +399,7 @@ func layoutPart(s Style) Style {
 	s.CornerRadius, s.Opacity = 0, 0
 	s.Hidden = false
 	s.Font, s.TextAlign, s.Lines = Font{}, 0, 0
+	s.Transform, s.Shadow, s.Gradient, s.Transition = Transform{}, Shadow{}, nil, Transition{} // drawn, not laid out
 	return s
 }
 
