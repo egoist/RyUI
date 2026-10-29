@@ -308,7 +308,7 @@ const (
 	CmdPresent CommandID = 4
 	// CmdHaptic: args: u8 Haptic; sent to the root.
 	CmdHaptic CommandID = 5
-	// CmdAnimateBegin: args: f32 duration (seconds), u8 AnimationCurve; sent to the root: the frames and visual props up to AnimateEnd animate.
+	// CmdAnimateBegin: args: f32 duration (seconds), u8 AnimationCurve, i32 repeat (times more; -1: forever), u8 autoreverses; sent to the root: the frames and visual props up to AnimateEnd animate. A repeating animation stops when its prop is set again.
 	CmdAnimateBegin CommandID = 6
 	CmdAnimateEnd   CommandID = 7
 	// CmdOpenURL: args: the URL; sent to the root: the system opens it (a browser, another app).

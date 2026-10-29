@@ -302,8 +302,8 @@ fun NuiRuntime.propFloat(id: Int, prop: Int, v: Double) {
         NuiProp.OPACITY -> {
             n.base.alpha = v.toFloat()
             val a = animation
-            if (a != null && animates(n.view)) n.view.animate().alpha(v.toFloat()).setDuration(a.millis).setInterpolator(a.interpolator()).start()
-            else n.view.alpha = v.toFloat()
+            if (a != null && animates(n.view)) animateProps(n.view, a, View.ALPHA to v.toFloat())
+            else { stopRepeating(n.view, View.ALPHA); n.view.alpha = v.toFloat() }
         }
         NuiProp.FONT_SIZE -> { n.fontSize = v.toFloat(); applyText(n) }
         else -> if (n.kind == NuiKind.PROGRESS && prop == NuiProp.Progress.VALUE) {

@@ -366,7 +366,7 @@ fun NuiRuntime.listenGesture(n: NuiNode, event: Int) {
 // Animation: between AnimateBegin and AnimateEnd, frames, opacity and
 // backgrounds change with animators.
 
-class NuiAnimation(val millis: Long, val curve: Int) {
+class NuiAnimation(val millis: Long, val curve: Int, val repeat: Int = 0, val autoreverses: Boolean = false) {
     fun interpolator(): Interpolator = when (curve) {
         NuiAnimationCurve.LINEAR -> LinearInterpolator()
         NuiAnimationCurve.EASE_IN -> PathInterpolator(0.42f, 0f, 1f, 1f)
@@ -379,7 +379,14 @@ class NuiAnimation(val millis: Long, val curve: Int) {
 fun NuiRuntime.beginAnimation(args: ByteBuffer) {
     if (args.remaining() < 5) return
     val seconds = args.float
-    animation = NuiAnimation((seconds * 1000).toLong(), args.get().toInt())
+    val curve = args.get().toInt()
+    var repeat = 0
+    var auto = false
+    if (args.remaining() >= 5) {
+        repeat = args.int
+        auto = args.get().toInt() != 0
+    }
+    animation = NuiAnimation((seconds * 1000).toLong(), curve, repeat, auto)
 }
 
 /** Whether a change to v animates now: an animation is on and v is on screen. */

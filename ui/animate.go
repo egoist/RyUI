@@ -23,7 +23,15 @@ const (
 type Animation struct {
 	Duration float32 // seconds; 0: 0.25
 	Curve    Curve
+	// Repeat runs it again, this many times more; Forever, until its
+	// props change again (a pulse, a spinner of your own). With
+	// Autoreverses each run goes back before the next.
+	Repeat       int
+	Autoreverses bool
 }
+
+// Forever repeats an animation until its props change again.
+const Forever = -1
 
 // Animate runs f, and the frames and visual props (opacity, background,
 // corner radius) that the next flush changes animate natively, with
@@ -54,6 +62,11 @@ func AnimateWith(a Animation, f func()) {
 func (r *Root) animBegin() {
 	binary.LittleEndian.PutUint32(r.animArgs[:4], math.Float32bits(r.anim.Duration))
 	r.animArgs[4] = byte(r.anim.Curve)
+	binary.LittleEndian.PutUint32(r.animArgs[5:9], uint32(int32(r.anim.Repeat)))
+	r.animArgs[9] = 0
+	if r.anim.Autoreverses {
+		r.animArgs[9] = 1
+	}
 	r.batch.Command(r.el.id, ops.CmdAnimateBegin, r.animArgs[:])
 }
 

@@ -107,6 +107,10 @@ final class NuiTextField: UITextField {
     let gestureDelegate = NuiGestureDelegate()
     /// Between AnimateBegin and AnimateEnd: the duration and curve.
     var animation: (Double, Int32)?
+    /// The animation's repeat: times more (-1 forever), and autoreverses.
+    var repeating: (Int32, Bool)?
+    /// Views with a repeating animation, which a plain change stops.
+    var repeatingViews = Set<ObjectIdentifier>()
     /// The app's accent color (nui.json's), nil for the system's: the tint color.
     var accent: UIColor?
     /// Views coming in with a transition in the batch being applied.
@@ -435,6 +439,7 @@ final class NuiTextField: UITextField {
             beginAnimation(args)
         case .animateEnd:
             animation = nil
+            repeating = nil
         case .copy:
             UIPasteboard.general.string = String(decoding: args, as: UTF8.self)
         case .share:

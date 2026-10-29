@@ -326,19 +326,40 @@ final class NuiGestureDelegate: NSObject, UIGestureRecognizerDelegate {
         guard args.count >= 5 else { return }
         var r = NuiReader(args)
         animation = (Double(r.f32()), Int32(r.u8()))
+        repeating = nil
+        if args.count >= 10 {
+            let n = Int32(bitPattern: r.u32()), auto = r.u8() != 0
+            if n != 0 || auto { repeating = (n, auto) }
+        }
     }
 
     /// Runs change, animated if an animation is on and the view is shown.
     func animated(_ view: UIView, _ change: @escaping () -> Void) {
         guard let (duration, curve) = animation, view.window != nil, view.bounds.size != .zero else {
+            // A change without an animation stops a repeating one.
+            if repeatingViews.remove(ObjectIdentifier(view)) != nil { view.layer.removeAllAnimations() }
             change()
             return
+        }
+        var change = change
+        var rep: UIView.AnimationOptions = []
+        if let (n, auto) = repeating {
+            repeatingViews.insert(ObjectIdentifier(view))
+            view.layer.removeAllAnimations()
+            if n < 0 {
+                rep = auto ? [.repeat, .autoreverse] : [.repeat]
+            } else {
+                let inner = change
+                change = {
+                    UIView.modifyAnimations(withRepeatCount: CGFloat(n + 1), autoreverses: auto, animations: inner)
+                }
+            }
         }
         let ui = UIView.self
         switch NuiAnimationCurve(rawValue: curve) {
         case .spring:
             ui.animate(withDuration: duration, delay: 0, usingSpringWithDamping: 0.85, initialSpringVelocity: 0,
-                       options: [.beginFromCurrentState, .allowUserInteraction], animations: change)
+                       options: [.beginFromCurrentState, .allowUserInteraction, rep], animations: change)
         default:
             let c: UIView.AnimationOptions
             switch NuiAnimationCurve(rawValue: curve) {
@@ -347,7 +368,7 @@ final class NuiGestureDelegate: NSObject, UIGestureRecognizerDelegate {
             case .easeOut: c = .curveEaseOut
             default: c = .curveEaseInOut
             }
-            ui.animate(withDuration: duration, delay: 0, options: [c, .beginFromCurrentState, .allowUserInteraction], animations: change)
+            ui.animate(withDuration: duration, delay: 0, options: [c, .beginFromCurrentState, .allowUserInteraction, rep], animations: change)
         }
     }
 }

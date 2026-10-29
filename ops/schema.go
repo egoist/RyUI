@@ -231,7 +231,7 @@ var Schema = SchemaDef{
 		{Name: "ListUpdate", Doc: "args: u32 count, then count i64 item IDs in order"},
 		{Name: "Present", Doc: "show a Sheet or Alert"},
 		{Name: "Haptic", Doc: "args: u8 Haptic; sent to the root"},
-		{Name: "AnimateBegin", Doc: "args: f32 duration (seconds), u8 AnimationCurve; sent to the root: the frames and visual props up to AnimateEnd animate"},
+		{Name: "AnimateBegin", Doc: "args: f32 duration (seconds), u8 AnimationCurve, i32 repeat (times more; -1: forever), u8 autoreverses; sent to the root: the frames and visual props up to AnimateEnd animate. A repeating animation stops when its prop is set again"},
 		{Name: "AnimateEnd"},
 		{Name: "OpenURL", Doc: "args: the URL; sent to the root: the system opens it (a browser, another app)"},
 		{Name: "Copy", Doc: "args: the text; sent to the root: it's put on the clipboard"},

@@ -39,10 +39,10 @@ fun NuiRuntime.setTransform(n: NuiNode, b: ByteBuffer) {
     val v = n.outer
     val a = animation
     if (a != null && animates(v)) {
-        v.animate().translationX(tx).translationY(ty).scaleX(sx).scaleY(sy).rotation(rot)
-            .setDuration(a.millis).setInterpolator(a.interpolator()).start()
+        animateProps(v, a, View.TRANSLATION_X to tx, View.TRANSLATION_Y to ty, View.SCALE_X to sx, View.SCALE_Y to sy, View.ROTATION to rot)
         return
     }
+    for (p in listOf(View.TRANSLATION_X, View.TRANSLATION_Y, View.SCALE_X, View.SCALE_Y, View.ROTATION)) stopRepeating(v, p)
     v.translationX = tx
     v.translationY = ty
     v.scaleX = sx

@@ -247,12 +247,42 @@ func motion(toast *signal.Signal[bool]) ui.Node {
 			puck,
 			ui.StaticText("Drag the dot; it springs back.", ui.Style{Color: ui.SecondaryLabel, Font: ui.Footnote, Grow: 1}),
 		),
+		pulse(),
 		ui.Button(ui.ButtonProps{Title: ui.Val("Show a toast"), Variant: ui.ButtonGray, OnPress: func() {
 			ui.Animate(func() { toast.Set(true) })
 			go func() {
 				time.Sleep(1500 * time.Millisecond)
 				ui.Post(func() { ui.Animate(func() { toast.Set(false) }) })
 			}()
+		}}),
+	)
+}
+
+// pulse is a repeating animation: a dot that breathes until it's
+// stopped (set without an animation).
+func pulse() ui.Node {
+	on := signal.New(false)
+	return ui.Row(ui.Style{Gap: 16, Align: ui.AlignCenter},
+		ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(64), Height: ui.Pt(64), Justify: ui.JustifyCenter, Align: ui.AlignCenter}},
+			ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style {
+				s := ui.Style{Width: ui.Pt(24), Height: ui.Pt(24), CornerRadius: 12, Background: ui.Red}
+				if on.Get() {
+					s.Transform = ui.Transform{Scale: 1.6}
+					s.Opacity = 0.35
+				}
+				return s
+			})})),
+		ui.Button(ui.ButtonProps{Title: signal.Func(func() string {
+			if on.Get() {
+				return "Stop"
+			}
+			return "Pulse"
+		}), Variant: ui.ButtonGray, OnPress: func() {
+			if on.Peek() {
+				on.Set(false)
+				return
+			}
+			ui.AnimateWith(ui.Animation{Duration: 0.8, Curve: ui.EaseInOut, Repeat: ui.Forever, Autoreverses: true}, func() { on.Set(true) })
 		}}),
 	)
 }

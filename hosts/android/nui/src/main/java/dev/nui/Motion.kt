@@ -91,6 +91,53 @@ fun NuiRuntime.exit(n: NuiNode): Boolean {
     return true
 }
 
+/**
+ * Animates v's properties to values with a: a ViewPropertyAnimator, or,
+ * repeating, an ObjectAnimator (which can repeat and reverse). A
+ * repeating one stops when they're set again.
+ */
+fun NuiRuntime.animateProps(v: View, a: NuiAnimation, vararg values: Pair<android.util.Property<View, Float>, Float>) {
+    for ((prop, _) in values) stopRepeating(v, prop)
+    if (a.repeat == 0 && !a.autoreverses) {
+        val p = v.animate().setDuration(a.millis).setInterpolator(a.interpolator())
+        for ((prop, to) in values) when (prop) {
+            View.ALPHA -> p.alpha(to)
+            View.TRANSLATION_X -> p.translationX(to)
+            View.TRANSLATION_Y -> p.translationY(to)
+            View.SCALE_X -> p.scaleX(to)
+            View.SCALE_Y -> p.scaleY(to)
+            View.ROTATION -> p.rotation(to)
+        }
+        p.start()
+        return
+    }
+    val holders = values.map { (prop, to) -> android.animation.PropertyValuesHolder.ofFloat(prop, prop.get(v), to) }
+    val o = android.animation.ObjectAnimator.ofPropertyValuesHolder(v, *holders.toTypedArray())
+    o.duration = a.millis
+    o.interpolator = a.interpolator()
+    o.repeatCount = if (a.repeat < 0) android.animation.ValueAnimator.INFINITE else a.repeat
+    o.repeatMode = if (a.autoreverses) android.animation.ValueAnimator.REVERSE else android.animation.ValueAnimator.RESTART
+    for ((prop, _) in values) repeatingOf(v)[prop.name] = o
+    o.start()
+}
+
+/** v's repeating animators, by the property each animates. */
+@Suppress("UNCHECKED_CAST")
+private fun repeatingOf(v: View): HashMap<String, android.animation.Animator> =
+    (v.getTag(R.id.nui_repeating) as? HashMap<String, android.animation.Animator>)
+        ?: HashMap<String, android.animation.Animator>().also { v.setTag(R.id.nui_repeating, it) }
+
+/** Stops v's repeating animation of prop (set without an animation), or of all. */
+fun stopRepeating(v: View, prop: android.util.Property<View, Float>? = null) {
+    val m = v.getTag(R.id.nui_repeating) as? HashMap<*, *> ?: return
+    if (prop == null) {
+        for (o in m.values.toList()) (o as android.animation.Animator).cancel()
+        m.clear()
+        return
+    }
+    (m.remove(prop.name) as? android.animation.Animator)?.cancel()
+}
+
 /** Whether v is in a view going out: it leaves with it. */
 fun NuiRuntime.leaving(v: View): Boolean {
     if (exiting.isEmpty()) return false

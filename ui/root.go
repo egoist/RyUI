@@ -45,7 +45,7 @@ type Root struct {
 
 	anim      Animation // what ui.Animate asked for, for this flush
 	animating bool
-	animArgs  [5]byte
+	animArgs  [10]byte
 }
 
 var (

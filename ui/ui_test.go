@@ -777,3 +777,22 @@ func TestTransformShadowGradient(t *testing.T) {
 		t.Fatalf("%d props, %d frames for a rotation", h.Count(ops.OpSetProp), h.Count(ops.OpSetFrame))
 	}
 }
+
+// A repeating animation's count and autoreverse ride with AnimateBegin.
+func TestRepeatingAnimation(t *testing.T) {
+	on := signal.New(false)
+	h, r := mount(t, func() ui.Node {
+		return ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style {
+			if on.Get() {
+				return ui.Style{Opacity: 0.5}
+			}
+			return ui.Style{Opacity: 1}
+		})})
+	})
+	ui.AnimateWith(ui.Animation{Duration: 0.8, Repeat: ui.Forever, Autoreverses: true}, func() { on.Set(true) })
+	r.Flush()
+	b := h.Commands(ops.CmdAnimateBegin)[0].Value.Bytes
+	if len(b) != 10 || int32(binary.LittleEndian.Uint32(b[5:])) != -1 || b[9] != 1 {
+		t.Fatalf("args %v", b)
+	}
+}
