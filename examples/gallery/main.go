@@ -9,6 +9,7 @@ import (
 
 	"github.com/egoist/nui/app"
 	"github.com/egoist/nui/signal"
+	"github.com/egoist/nui/store"
 	"github.com/egoist/nui/ui"
 )
 
@@ -27,6 +28,7 @@ func App() ui.Node {
 				textInput(),
 				controls(),
 				dates(),
+				services(),
 			),
 		)
 	}, ui.ScreenOptions{Title: ui.Val("Gallery"), Actions: []ui.Action{
@@ -95,7 +97,7 @@ func textInput() ui.Node {
 }
 
 func controls() ui.Node {
-	period := signal.New(1)
+	period := store.Signal("period", 1) // kept across launches
 	volume := signal.New(0.4)
 	wifi := signal.New(true)
 	return section("Controls",
@@ -182,6 +184,23 @@ func inbox() ui.Node {
 		)
 	})
 	return inboxList
+}
+
+func services() ui.Node {
+	copied := signal.New(false)
+	return section("Services",
+		ui.StaticText("The segment above is kept: relaunch to see it.", ui.Style{Color: ui.SecondaryLabel, Font: ui.Footnote}),
+		ui.Row(ui.Style{Gap: 12},
+			ui.Button(ui.ButtonProps{Title: signal.Func(func() string {
+				if copied.Get() {
+					return "Copied"
+				}
+				return "Copy link"
+			}), Icon: ui.IconCopy, Variant: ui.ButtonGray, OnPress: func() { ui.Copy("https://go.dev"); copied.Set(true) }}),
+			ui.Button(ui.ButtonProps{Title: ui.Val("Share"), Icon: ui.IconShare, Variant: ui.ButtonGray,
+				OnPress: func() { ui.Share("https://go.dev") }}),
+		),
+	)
 }
 
 // inboxList is the inbox's List, which the bar's button scrolls.

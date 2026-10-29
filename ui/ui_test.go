@@ -726,3 +726,18 @@ func TestListSwipeAndEnd(t *testing.T) {
 		t.Fatalf("scroll commands %v", cmds)
 	}
 }
+
+// Copy and Share are commands to the root.
+func TestCopyShare(t *testing.T) {
+	h, r := mount(t, func() ui.Node {
+		return ui.Button(ui.ButtonProps{Title: ui.Val("Share"), OnPress: func() { ui.Copy("hi"); ui.Share("https://go.dev") }})
+	})
+	h.Tap(h.One(ops.KindButton, "Share"))
+	r.Flush()
+	if c := h.Commands(ops.CmdCopy); len(c) != 1 || string(c[0].Value.Bytes) != "hi" {
+		t.Fatalf("copy %v", c)
+	}
+	if c := h.Commands(ops.CmdShare); len(c) != 1 || string(c[0].Value.Bytes) != "https://go.dev" {
+		t.Fatalf("share %v", c)
+	}
+}

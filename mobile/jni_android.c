@@ -96,3 +96,11 @@ JNIEXPORT void JNICALL Java_dev_nui_NuiNative_listUnbind(JNIEnv *e, jclass cls, 
 }
 
 JNIEXPORT void JNICALL Java_dev_nui_NuiNative_runPosted(JNIEnv *e, jclass cls) { nui_run_posted(); }
+
+JNIEXPORT void JNICALL Java_dev_nui_NuiNative_setenv(JNIEnv *e, jclass cls, jstring key, jstring value) {
+	const char *k = (*e)->GetStringUTFChars(e, key, NULL);
+	const char *v = (*e)->GetStringUTFChars(e, value, NULL);
+	nui_setenv((char *)k, (char *)v);
+	(*e)->ReleaseStringUTFChars(e, key, k);
+	(*e)->ReleaseStringUTFChars(e, value, v);
+}

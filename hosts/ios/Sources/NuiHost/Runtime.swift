@@ -412,6 +412,20 @@ final class NuiTextField: UITextField {
             beginAnimation(args)
         case .animateEnd:
             animation = nil
+        case .copy:
+            UIPasteboard.general.string = String(decoding: args, as: UTF8.self)
+        case .share:
+            let s = String(decoding: args, as: UTF8.self)
+            // A URL is shared as one (a link preview, Safari's actions).
+            let item: Any = URL(string: s).flatMap { $0.scheme != nil && $0.host != nil ? $0 : nil } ?? s
+            let vc = UIActivityViewController(activityItems: [item], applicationActivities: nil)
+            guard let top = topController else { return }
+            if let pop = vc.popoverPresentationController { // iPad
+                pop.sourceView = top.view
+                pop.sourceRect = CGRect(x: top.view.bounds.midX, y: top.view.bounds.midY, width: 0, height: 0)
+                pop.permittedArrowDirections = []
+            }
+            top.present(vc, animated: true)
         case .scrollTo:
             guard args.count >= 5 else { return }
             var r = NuiReader(args)

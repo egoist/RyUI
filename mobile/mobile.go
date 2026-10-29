@@ -137,6 +137,16 @@ func nui_list_unbind(list C.uint32_t, cell C.uint32_t) {
 	core.ListUnbind(ops.NodeID(list), ops.NodeID(cell))
 }
 
+// nui_setenv sets an environment variable for the Go code: Android
+// hands a library the environment the process started with, so a
+// variable the host sets later (NUI_DATA, the app's files directory) is
+// given here.
+//
+//export nui_setenv
+func nui_setenv(key, value *C.char) {
+	os.Setenv(C.GoString(key), C.GoString(value))
+}
+
 //export nui_run_posted
 func nui_run_posted() {
 	h := theHost

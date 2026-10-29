@@ -556,6 +556,22 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
                 val flags = args.get().toInt()
                 setAccent(if (c != 0L) color(c) else null, flags and 1 != 0)
             }
+            NuiCommand.COPY -> {
+                val b = ByteArray(args.remaining())
+                args.get(b)
+                (app.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
+                    .setPrimaryClip(android.content.ClipData.newPlainText(null, String(b, Charsets.UTF_8)))
+            }
+            NuiCommand.SHARE -> {
+                val b = ByteArray(args.remaining())
+                args.get(b)
+                val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(android.content.Intent.EXTRA_TEXT, String(b, Charsets.UTF_8))
+                }
+                val i = android.content.Intent.createChooser(send, null)
+                runCatching { (activity ?: app).startActivity(if (activity == null) i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) else i) }
+            }
             NuiCommand.SCROLL_TO -> {
                 if (args.remaining() < 5) return
                 val i = args.int

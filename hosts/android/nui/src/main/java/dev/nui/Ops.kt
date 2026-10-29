@@ -223,8 +223,10 @@ object NuiCommand {
     const val ANIMATE_BEGIN = 6
     const val ANIMATE_END = 7
     const val OPEN_URL = 8
-    const val SCROLL_TO = 9
-    const val ACCENT = 10
+    const val COPY = 9
+    const val SHARE = 10
+    const val SCROLL_TO = 11
+    const val ACCENT = 12
 }
 
 object NuiRole {

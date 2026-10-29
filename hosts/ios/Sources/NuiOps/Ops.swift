@@ -220,8 +220,10 @@ public enum NuiCommand: UInt16 {
     case animateBegin = 6
     case animateEnd = 7
     case openURL = 8
-    case scrollTo = 9
-    case accent = 10
+    case copy = 9
+    case share = 10
+    case scrollTo = 11
+    case accent = 12
 }
 
 public enum NuiRole: Int32 {

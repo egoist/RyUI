@@ -305,13 +305,17 @@ const (
 	CmdAnimateEnd   CommandID = 7
 	// CmdOpenURL: args: the URL; sent to the root: the system opens it (a browser, another app).
 	CmdOpenURL CommandID = 8
+	// CmdCopy: args: the text; sent to the root: it's put on the clipboard.
+	CmdCopy CommandID = 9
+	// CmdShare: args: the text (a URL is shared as one); sent to the root: the system's share sheet.
+	CmdShare CommandID = 10
 	// CmdScrollTo: args: u32 item index, u8 animated; sent to a List: it scrolls the item into view.
-	CmdScrollTo CommandID = 9
+	CmdScrollTo CommandID = 11
 	// CmdAccent: args: u64 Color (0: the platform's), u8 flags (1: on Android, the wallpaper's colors where the system has them); sent to the root when it mounts: the app's accent color, which the platform's controls and Accent take (iOS: the tint color; Android: a Material 3 color scheme made from it).
-	CmdAccent CommandID = 10
+	CmdAccent CommandID = 12
 )
 
-var commandNames = [...]string{"", "Focus", "Blur", "ListUpdate", "Present", "Haptic", "AnimateBegin", "AnimateEnd", "OpenURL", "ScrollTo", "Accent"}
+var commandNames = [...]string{"", "Focus", "Blur", "ListUpdate", "Present", "Haptic", "AnimateBegin", "AnimateEnd", "OpenURL", "Copy", "Share", "ScrollTo", "Accent"}
 
 func (c CommandID) String() string {
 	if int(c) < len(commandNames) && c > 0 {

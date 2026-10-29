@@ -13,6 +13,7 @@ object NuiNative {
     @JvmStatic external fun listBind(list: Int, index: Long, cell: Int)
     @JvmStatic external fun listUnbind(list: Int, cell: Int)
     @JvmStatic external fun runPosted()
+    @JvmStatic external fun setenv(key: String, value: String)
 
     private var loaded = false
 
@@ -32,5 +33,8 @@ object NuiNative {
         } else {
             System.loadLibrary("nui")
         }
+        // Where the Go code keeps its files (nui/store). A library from
+        // before nui_setenv hasn't it: nothing to set then.
+        runCatching { setenv("NUI_DATA", context.filesDir.absolutePath) }
     }
 }
