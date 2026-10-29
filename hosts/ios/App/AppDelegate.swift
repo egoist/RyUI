@@ -25,6 +25,21 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         w.rootViewController = NuiViewController()
         w.makeKeyAndVisible()
         window = w
+        // Opened with a URL, or a universal link.
+        for c in options.urlContexts { NuiRuntime.shared.openURL(c.url) }
+        for a in options.userActivities where a.activityType == NSUserActivityTypeBrowsingWeb {
+            if let u = a.webpageURL { NuiRuntime.shared.openURL(u) }
+        }
+    }
+
+    func scene(_ scene: UIScene, openURLContexts contexts: Set<UIOpenURLContext>) {
+        for c in contexts { NuiRuntime.shared.openURL(c.url) }
+    }
+
+    func scene(_ scene: UIScene, continue activity: NSUserActivity) {
+        if activity.activityType == NSUserActivityTypeBrowsingWeb, let u = activity.webpageURL {
+            NuiRuntime.shared.openURL(u)
+        }
     }
 
     func sceneWillEnterForeground(_ scene: UIScene) { NuiRuntime.shared.lifecycle(.foreground) }

@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"html"
 	"image/color"
 	"os"
 	"path/filepath"
@@ -80,13 +79,7 @@ and give its password in NUI_KEYSTORE_PASSWORD (and NUI_KEY_PASSWORD if the key'
 		fmt.Println("nui: no icon in nui.json; Google Play needs one (512×512 or larger PNG)")
 	}
 	manifest := filepath.Join(work, "AndroidManifest.xml")
-	var perms strings.Builder
-	for _, p := range cfg.Android.Permissions {
-		fmt.Fprintf(&perms, "    <uses-permission android:name=\"%s\" />\n", html.EscapeString(p))
-	}
-	if err := os.WriteFile(manifest, []byte(`<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-`+perms.String()+`</manifest>
-`), 0o644); err != nil {
+	if err := os.WriteFile(manifest, []byte(cfg.androidManifest(false)), 0o644); err != nil {
 		return err
 	}
 

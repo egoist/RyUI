@@ -818,3 +818,21 @@ func TestCall(t *testing.T) {
 		t.Fatalf("got %q", got)
 	}
 }
+
+// A URL the app is opened with goes to its handlers; one before any
+// handler waits for the first.
+func TestIncomingURL(t *testing.T) {
+	var got []string
+	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })
+	h.Dispatch(ops.Event{ID: 0, Kind: ops.EventIncomingURL, Str: "myapp://launch"})
+	r2 := ui.Mount(h, func() ui.Node {
+		ui.OnOpenURL(func(u string) { got = append(got, u) })
+		return ui.StaticText("y")
+	})
+	h.Dispatch(ops.Event{ID: 0, Kind: ops.EventIncomingURL, Str: "myapp://later"})
+	r2.Dispose()
+	h.Dispatch(ops.Event{ID: 0, Kind: ops.EventIncomingURL, Str: "myapp://gone"})
+	if strings.Join(got, " ") != "myapp://launch myapp://later" {
+		t.Fatalf("got %v", got)
+	}
+}

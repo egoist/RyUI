@@ -312,6 +312,9 @@ func dispatch(ev ops.Event) {
 	case ops.EventResult:
 		result(ev.Bytes)
 		return
+	case ops.EventIncomingURL:
+		incoming(ev.Str)
+		return
 	case ops.EventLifecycle:
 		for _, f := range boot.Lifecycle {
 			f(int(ev.Int))

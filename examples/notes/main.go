@@ -6,6 +6,7 @@
 package main
 
 import (
+	"net/url"
 	"strings"
 
 	"github.com/egoist/nui/app"
@@ -45,6 +46,14 @@ func write(query string, args ...any) {
 
 func App() ui.Node {
 	query := signal.New("")
+	// nuinotes://add?text=... adds a note (nui.json's scheme).
+	ui.OnOpenURL(func(raw string) {
+		if u, err := url.Parse(raw); err == nil && u.Host == "add" {
+			if t := u.Query().Get("text"); t != "" {
+				write(`insert into notes (text) values (?)`, t)
+			}
+		}
+	})
 	return ui.Stack(func() ui.Node {
 		notes := sqlite.Watch[note](db, `select * from notes order by done, id desc`)
 		draft := signal.New("")

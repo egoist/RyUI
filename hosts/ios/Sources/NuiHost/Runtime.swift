@@ -116,6 +116,7 @@ final class NuiTextField: UITextField {
     /// Native modules' methods, by module and method name (ui.Call).
     var modules: [String: [String: NuiModuleMethod]] = [:]
     var builtinModules = false
+    var pendingURLs: [URL] = []
     /// The app's accent color (nui.json's), nil for the system's: the tint color.
     var accent: UIColor?
     /// Views coming in with a transition in the batch being applied.
@@ -200,6 +201,16 @@ final class NuiTextField: UITextField {
             }
         )
         enter { nui_start(&cb) }
+        let urls = pendingURLs
+        pendingURLs = []
+        for u in urls { openURL(u) }
+    }
+
+    /// The app was opened with url (its scheme, a universal link): the
+    /// core's ui.OnOpenURL handlers get it, once it has started.
+    public func openURL(_ url: URL) {
+        guard started else { pendingURLs.append(url); return }
+        send(NuiEvents.incomingURL(rootID, url.absoluteString))
     }
 
     public func lifecycle(_ state: NuiLifecycle) {

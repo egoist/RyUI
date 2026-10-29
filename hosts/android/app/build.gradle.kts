@@ -44,6 +44,11 @@ android {
         }
     }
     sourceSets {
+        // The app's manifest (nui.json's permissions, scheme and links),
+        // over the debug one in development.
+        getByName("debug") {
+            prop("nuiManifest")?.let { manifest.srcFile(it) }
+        }
         getByName("release") {
             prop("nuiJniLibs")?.let { jniLibs.srcDir(it) }
             prop("nuiAssets")?.let { assets.srcDir(it) }

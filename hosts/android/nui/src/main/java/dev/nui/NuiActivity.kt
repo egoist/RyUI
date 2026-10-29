@@ -56,6 +56,8 @@ open class NuiActivity : AppCompatActivity() {
             if (r - l != or_ - ol || b - t != ob - ot) sendEnvironment()
         }
         frame.post { runtime.attach(this) }
+        // Opened with a URL (a scheme's, an app link).
+        if (savedInstanceState == null) intent?.data?.let { runtime.openURL(it.toString()) }
     }
 
     fun mount(root: View) {
@@ -88,6 +90,13 @@ open class NuiActivity : AppCompatActivity() {
         window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(
             com.google.android.material.color.MaterialColors.getColor(runtime.themed, com.google.android.material.R.attr.colorSurface, 0)))
         frame.post { sendEnvironment() }
+    }
+
+    // singleTask: a URL that opens the running app comes here.
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        intent.data?.let { runtime.openURL(it.toString()) }
     }
 
     override fun onStart() {

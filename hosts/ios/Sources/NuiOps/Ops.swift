@@ -216,7 +216,8 @@ public enum NuiEventKind: UInt16 {
     case failed = 21
     case native = 22
     case link = 23
-    case result = 24
+    case incomingURL = 24
+    case result = 25
 }
 
 public enum NuiCommand: UInt16 {
@@ -624,7 +625,10 @@ public enum NuiEvents {
     public static func link(_ id: UInt32, _ v: String) -> [UInt8] {
         var w = NuiWriter(); w.header(id, 23); w.string(v); return w.bytes
     }
+    public static func incomingURL(_ id: UInt32, _ v: String) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 24); w.string(v); return w.bytes
+    }
     public static func result(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
-        var w = NuiWriter(); w.header(id, 24); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
+        var w = NuiWriter(); w.header(id, 25); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
     }
 }

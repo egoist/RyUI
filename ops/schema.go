@@ -227,6 +227,7 @@ var Schema = SchemaDef{
 		{Name: "Failed", Payload: PString},
 		{Name: "Native", Payload: PBytes, Doc: "a native view's event: string name, u32 count, then named values as in Native's Prop"},
 		{Name: "Link", Payload: PString, Doc: "a rich text's link was tapped (its URL)"},
+		{Name: "IncomingURL", Payload: PString, Doc: "the app was opened with a URL (its scheme, or a universal or app link), at launch or since; to the root"},
 		{Name: "Result", Payload: PBytes, Doc: "a Call's answer, to the root: u32 call id, u8 ok, then the result's bytes (an error's message when not ok)"},
 	},
 	Commands: []CommandDef{

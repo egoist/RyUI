@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -28,5 +29,32 @@ func TestAccent(t *testing.T) {
 	write(`{"accent": "purple"}`)
 	if _, err := loadConfig(dir); err == nil {
 		t.Fatal("a bad accent was taken")
+	}
+}
+
+func TestLinks(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "nui.json"), []byte(`{"id": "com.example.notes", "scheme": "notes", "links": ["notes.example.com"],
+		"android": {"permissions": ["android.permission.CAMERA"]}}`), 0o644)
+	c, err := loadConfig(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := c.androidManifest(true)
+	for _, want := range []string{`android.permission.CAMERA`, `android:scheme="notes"`, `android:autoVerify="true"`,
+		`android:host="notes.example.com"`, `usesCleartextTraffic`} {
+		if !strings.Contains(m, want) {
+			t.Errorf("manifest lacks %s:\n%s", want, m)
+		}
+	}
+	if strings.Contains(c.androidManifest(false), "Cleartext") {
+		t.Error("a release manifest allows cleartext")
+	}
+	if d := c.associatedDomains(true); len(d) != 1 || d[0] != "applinks:notes.example.com?mode=developer" {
+		t.Errorf("domains %v", d)
+	}
+	os.WriteFile(filepath.Join(dir, "nui.json"), []byte(`{"scheme": "my app"}`), 0o644)
+	if _, err := loadConfig(dir); err == nil {
+		t.Error("a bad scheme was taken")
 	}
 }

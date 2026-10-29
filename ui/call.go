@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/egoist/nui/ops"
+	"github.com/egoist/nui/signal"
 )
 
 // calls are the Calls waiting for their Result, by call id.
@@ -76,4 +77,46 @@ func result(b []byte) {
 		return
 	}
 	done(append([]byte(nil), b[5:]...), nil)
+}
+
+// urlHandlers get the URLs the app is opened with; pendingURL is one
+// that came before any handler (the URL the app launched with).
+var (
+	urlHandlers []*func(string)
+	pendingURL  string
+)
+
+// OnOpenURL calls f with each URL the app is opened with: its scheme
+// (nui.json's "scheme", myapp://...), or a universal or app link
+// (nui.json's "links"), at launch or since. A URL that came before any
+// handler (the one the app launched with) goes to the first. It stops
+// with the component's owner. Main thread.
+func OnOpenURL(f func(url string)) {
+	p := &f
+	urlHandlers = append(urlHandlers, p)
+	signal.OnCleanup(func() {
+		for i, h := range urlHandlers {
+			if h == p {
+				urlHandlers = append(urlHandlers[:i], urlHandlers[i+1:]...)
+				return
+			}
+		}
+	})
+	if pendingURL != "" {
+		u := pendingURL
+		pendingURL = ""
+		f(u)
+	}
+}
+
+func incoming(url string) {
+	if len(urlHandlers) == 0 {
+		pendingURL = url
+		return
+	}
+	hs := make([]*func(string), len(urlHandlers))
+	copy(hs, urlHandlers)
+	for _, h := range hs {
+		(*h)(url)
+	}
 }

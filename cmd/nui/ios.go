@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -223,7 +224,7 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 	if err := os.MkdirAll(bundle, 0o755); err != nil {
 		return "", err
 	}
-	ents, err := simulatorEntitlements(work, app.bundleID)
+	ents, err := simulatorEntitlements(work, app.cfg)
 	if err != nil {
 		return "", err
 	}
@@ -235,7 +236,13 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 	if err := copyDir(filepath.Join(app.dir, "assets"), filepath.Join(bundle, "assets")); err != nil {
 		return "", err
 	}
-	plist := fmt.Sprintf(infoPlist, app.bundleID, app.displayName(), app.displayName(), iosMin)
+	urls := ""
+	if app.cfg.Scheme != "" {
+		urls = fmt.Sprintf("<key>CFBundleURLTypes</key><array><dict><key>CFBundleURLName</key><string>%s</string>"+
+			"<key>CFBundleURLSchemes</key><array><string>%s</string></array></dict></array>\n",
+			html.EscapeString(app.bundleID), html.EscapeString(app.cfg.Scheme))
+	}
+	plist := fmt.Sprintf(infoPlist, app.bundleID, app.displayName(), app.displayName(), iosMin, urls)
 	if err := os.WriteFile(filepath.Join(bundle, "Info.plist"), []byte(plist), 0o644); err != nil {
 		return "", err
 	}
@@ -247,13 +254,17 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 // group; without them SecItemAdd fails with errSecMissingEntitlement, and
 // nui/secure with it). As Xcode does: in the binary's __entitlements
 // section, for an ad hoc signature can't carry them.
-func simulatorEntitlements(work, bundleID string) ([]string, error) {
-	id := "NUISIMULAT." + bundleID // a team ID's shape: ten characters
+func simulatorEntitlements(work string, cfg *appConfig) ([]string, error) {
+	id := "NUISIMULAT." + cfg.ID // a team ID's shape: ten characters
 	ent := filepath.Join(work, "simulator.entitlements")
-	text := plist(map[string]any{
+	m := map[string]any{
 		"application-identifier": id,
 		"keychain-access-groups": []string{id},
-	})
+	}
+	if ds := cfg.associatedDomains(true); len(ds) > 0 {
+		m["com.apple.developer.associated-domains"] = ds
+	}
+	text := plist(m)
 	if err := os.WriteFile(ent, []byte(text), 0o644); err != nil {
 		return nil, err
 	}
@@ -277,7 +288,7 @@ const infoPlist = `<?xml version="1.0" encoding="UTF-8"?>
 <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
 <key>UIApplicationSceneManifest</key><dict><key>UIApplicationSupportsMultipleScenes</key><false/></dict>
 <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string></array>
-</dict></plist>
+%s</dict></plist>
 `
 
 type simDevice struct {

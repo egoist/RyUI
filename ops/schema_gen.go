@@ -283,13 +283,15 @@ const (
 	EventNative EventKind = 22
 	// EventLink: a rich text's link was tapped (its URL).
 	EventLink EventKind = 23
+	// EventIncomingURL: the app was opened with a URL (its scheme, or a universal or app link), at launch or since; to the root.
+	EventIncomingURL EventKind = 24
 	// EventResult: a Call's answer, to the root: u32 call id, u8 ok, then the result's bytes (an error's message when not ok).
-	EventResult EventKind = 24
+	EventResult EventKind = 25
 )
 
-var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh", "Pan", "Pinch", "Swipe", "Loaded", "Failed", "Native", "Link", "Result"}
+var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh", "Pan", "Pinch", "Swipe", "Loaded", "Failed", "Native", "Link", "IncomingURL", "Result"}
 
-var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone, PGesture, PGesture, PInt, PPoint, PString, PBytes, PString, PBytes}
+var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone, PGesture, PGesture, PInt, PPoint, PString, PBytes, PString, PString, PBytes}
 
 func (e EventKind) String() string {
 	if int(e) < len(eventNames) && e > 0 {

@@ -192,10 +192,21 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
             registerNatives()
             activity.sendEnvironment(force = true)
             enter { NuiNative.start(this) }
+            val urls = ArrayList(pendingURLs)
+            pendingURLs.clear()
+            for (u in urls) openURL(u)
         } else {
             activity.sendEnvironment(force = true)
             enter { NuiNative.attach() }
         }
+    }
+
+    private val pendingURLs = ArrayList<String>()
+
+    /** The app was opened with url (its scheme, an app link): ui.OnOpenURL gets it, once the core started. */
+    fun openURL(url: String) {
+        if (!started) { pendingURLs.add(url); return }
+        send(NuiEvents.incomingURL(rootID, url))
     }
 
     fun detach(activity: NuiActivity) {

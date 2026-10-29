@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -63,7 +64,7 @@ func buildIOS(app *goApp, o *buildOptions) error {
 		"-o", filepath.Join(bundle, "NuiApp"), "-framework", "UIKit", "-framework", "Foundation", "-lresolv",
 		"-Xlinker", "-dead_strip"}
 	if o.simulator {
-		ents, err := simulatorEntitlements(work, cfg.ID)
+		ents, err := simulatorEntitlements(work, cfg)
 		if err != nil {
 			return err
 		}
@@ -102,7 +103,7 @@ func buildIOS(app *goApp, o *buildOptions) error {
 		fmt.Printf("nui: %s in %.0fs (install: xcrun simctl install booted %s)\n", out, time.Since(start).Seconds(), out)
 		return nil
 	}
-	if err := prof.sign(tc, work, bundle, cfg.ID); err != nil {
+	if err := prof.sign(tc, work, bundle, cfg); err != nil {
 		return err
 	}
 	ipa := filepath.Join(o.out, safeName(cfg.Name)+".ipa")
@@ -186,6 +187,9 @@ func (t *iosToolchain) infoPlist(cfg *appConfig, simulator bool) (map[string]any
 		"DTXcode":                          xcode,
 		"DTXcodeBuild":                     xcodeBuild,
 		"DTCompiler":                       "com.apple.compilers.llvm.clang.1_0",
+	}
+	if t := cfg.urlTypes(); t != nil {
+		m["CFBundleURLTypes"] = t
 	}
 	for k, v := range cfg.IOS.Usage {
 		m[k] = v
@@ -418,7 +422,8 @@ func pickProfile(cfg *appConfig, o *buildOptions) (*profile, error) {
 
 // sign embeds the profile, signs the bundle with its entitlements and
 // checks the signature.
-func (p *profile) sign(t *iosToolchain, work, bundle, id string) error {
+func (p *profile) sign(t *iosToolchain, work, bundle string, cfg *appConfig) error {
+	id := cfg.ID
 	data, err := os.ReadFile(p.path)
 	if err != nil {
 		return err
@@ -439,6 +444,14 @@ func (p *profile) sign(t *iosToolchain, work, bundle, id string) error {
 	// A wildcard profile's app ID becomes the app's.
 	if err := t.run(work, nil, "plutil", "-replace", "application-identifier", "-string", p.team+"."+id, ent); err != nil {
 		return err
+	}
+	// Universal links: the domains, which the profile must allow (the
+	// Associated Domains capability of the app ID).
+	if ds := cfg.associatedDomains(false); len(ds) > 0 {
+		js, _ := json.Marshal(ds)
+		if err := t.run(work, nil, "plutil", "-replace", "com.apple.developer.associated-domains", "-json", string(js), ent); err != nil {
+			return err
+		}
 	}
 	if err := t.run(work, nil, "codesign", "--force", "--sign", p.identity, "--entitlements", ent,
 		"--generate-entitlement-der", bundle); err != nil {

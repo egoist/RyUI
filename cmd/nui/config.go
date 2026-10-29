@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -59,7 +60,14 @@ type appConfig struct {
 	// tint color on iOS; on Android, the seed of the Material 3 color
 	// scheme (Android 12 and later; before, nui's own uses of the accent
 	// take it). Default: the platform's.
-	Accent  string `json:"accent"`
+	Accent string `json:"accent"`
+	// Scheme is the app's URL scheme: myapp://anything opens it
+	// (ui.OnOpenURL gets the URL).
+	Scheme string `json:"scheme"`
+	// Links are the web domains whose https links open the app: iOS's
+	// universal links (the domain serves apple-app-site-association) and
+	// Android's App Links (assetlinks.json).
+	Links   []string `json:"links"`
 	Android struct {
 		// DynamicColor takes the colors from the user's wallpaper where
 		// the system has them (Android 12 and later), as Material apps do;
@@ -76,6 +84,8 @@ type appConfig struct {
 var (
 	idPart   = regexp.MustCompile(`[^A-Za-z0-9]+`)
 	hexColor = regexp.MustCompile(`^#?([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$`)
+	scheme   = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9+.-]*$`)
+	domain   = regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)+$`)
 )
 
 // loadConfig reads dir/nui.json, filling in the defaults.
@@ -115,6 +125,14 @@ func loadConfig(dir string) (*appConfig, error) {
 			return nil, fmt.Errorf("nui.json: accent %q (want #rrggbb or #rrggbbaa)", c.Accent)
 		}
 	}
+	if c.Scheme != "" && !scheme.MatchString(c.Scheme) {
+		return nil, fmt.Errorf("nui.json: scheme %q (want letters, digits, + - .; a letter first)", c.Scheme)
+	}
+	for _, l := range c.Links {
+		if !domain.MatchString(l) {
+			return nil, fmt.Errorf("nui.json: link domain %q (want a host name, as example.com)", l)
+		}
+	}
 	if c.Icon != "" && !filepath.IsAbs(c.Icon) {
 		c.Icon = filepath.Join(dir, c.Icon)
 	}
@@ -138,6 +156,65 @@ func (c *appConfig) ldflags(release bool) string {
 		f = append(f, "-X", "github.com/egoist/nui/internal/boot.DynamicColor=1")
 	}
 	return "-ldflags=" + strings.Join(f, " ")
+}
+
+// urlTypes is Info.plist's CFBundleURLTypes for the scheme.
+func (c *appConfig) urlTypes() []map[string]any {
+	if c == nil || c.Scheme == "" {
+		return nil
+	}
+	return []map[string]any{{"CFBundleURLName": c.ID, "CFBundleURLSchemes": []string{c.Scheme}}}
+}
+
+// associatedDomains is the entitlement for the links (simulator: in the
+// developer mode, which needs no CDN's copy of the association file).
+func (c *appConfig) associatedDomains(simulator bool) []string {
+	var out []string
+	for _, l := range c.Links {
+		d := "applinks:" + l
+		if simulator {
+			d += "?mode=developer"
+		}
+		out = append(out, d)
+	}
+	return out
+}
+
+// androidManifest is the app's manifest, merged over the host's: its
+// permissions, and the intent filters for its scheme and links. A debug
+// build's also lets nui dev serve over plain HTTP.
+func (c *appConfig) androidManifest(debug bool) string {
+	var b strings.Builder
+	b.WriteString("<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n")
+	for _, p := range c.Android.Permissions {
+		fmt.Fprintf(&b, "    <uses-permission android:name=\"%s\" />\n", html.EscapeString(p))
+	}
+	b.WriteString("    <application")
+	if debug {
+		b.WriteString(" android:usesCleartextTraffic=\"true\"")
+	}
+	b.WriteString(">\n        <activity android:name=\"dev.nui.NuiActivity\" android:exported=\"true\">\n")
+	filter := func(verify bool, data string) {
+		v := ""
+		if verify {
+			v = " android:autoVerify=\"true\""
+		}
+		fmt.Fprintf(&b, `            <intent-filter%s>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                %s
+            </intent-filter>
+`, v, data)
+	}
+	if c.Scheme != "" {
+		filter(false, fmt.Sprintf(`<data android:scheme="%s" />`, html.EscapeString(c.Scheme)))
+	}
+	for _, l := range c.Links {
+		filter(true, fmt.Sprintf(`<data android:scheme="https" android:host="%s" />`, html.EscapeString(l)))
+	}
+	b.WriteString("        </activity>\n    </application>\n</manifest>\n")
+	return b.String()
 }
 
 func (c *appConfig) allows(o string) bool {

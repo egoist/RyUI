@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash/crc32"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -196,12 +197,19 @@ func (t *androidToolchain) buildAPK(app *goApp, work string) (apk, hash string, 
 	if err != nil {
 		return "", "", err
 	}
+	man := app.cfg.androidManifest(true)
+	manifest := filepath.Join(work, "AndroidManifest.xml")
+	if err := os.WriteFile(manifest, []byte(man), 0o644); err != nil {
+		return "", "", err
+	}
+	hash = fmt.Sprintf("%s-%08x", hash, crc32.ChecksumIEEE([]byte(man))) // a manifest change rebuilds
 	apk = filepath.Join(work, "app-"+hash+".apk")
 	if exists(apk) {
 		return apk, hash, nil
 	}
 	fmt.Println("nui: building the Android app with Gradle (once; the first time downloads Gradle and Android libraries)")
-	if err := t.gradle(src, ":app:assembleDebug", "-PnuiApplicationId="+androidPackage(app.bundleID), "-PnuiAppName="+app.displayName()); err != nil {
+	if err := t.gradle(src, ":app:assembleDebug", "-PnuiApplicationId="+androidPackage(app.bundleID), "-PnuiAppName="+app.displayName(),
+		"-PnuiManifest="+manifest); err != nil {
 		return "", "", err
 	}
 	data, err := os.ReadFile(filepath.Join(src, "app", "build", "outputs", "apk", "debug", "app-debug.apk"))

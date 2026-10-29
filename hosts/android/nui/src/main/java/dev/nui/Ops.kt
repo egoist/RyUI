@@ -219,7 +219,8 @@ object NuiEventKind {
     const val FAILED = 21
     const val NATIVE = 22
     const val LINK = 23
-    const val RESULT = 24
+    const val INCOMING_URL = 24
+    const val RESULT = 25
 }
 
 object NuiCommand {
@@ -564,5 +565,6 @@ object NuiEvents {
     fun failed(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 21); string(v) }.bytes()
     fun native(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 22); u32(v.size); raw(v) }.bytes()
     fun link(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 23); string(v) }.bytes()
-    fun result(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 24); u32(v.size); raw(v) }.bytes()
+    fun incomingURL(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 24); string(v) }.bytes()
+    fun result(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 25); u32(v.size); raw(v) }.bytes()
 }
