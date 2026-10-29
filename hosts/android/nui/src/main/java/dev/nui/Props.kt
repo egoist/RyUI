@@ -251,7 +251,10 @@ fun NuiRuntime.propBool(id: Int, prop: Int, v: Boolean) {
                 (view as MaterialSwitch).isChecked = v
                 settingProp = false
             }
-            NuiKind.ACTIVITY -> if (prop == NuiProp.Activity.ANIMATING) view.visibility = if (v) View.VISIBLE else View.INVISIBLE
+            // Material starts and stops its animation in show and hide.
+            NuiKind.ACTIVITY -> if (prop == NuiProp.Activity.ANIMATING) (view as CircularProgressIndicator).let {
+                if (v) { it.visibility = View.VISIBLE; it.show() } else it.hide()
+            }
         }
     }
 }
