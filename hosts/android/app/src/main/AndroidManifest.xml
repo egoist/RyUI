@@ -3,6 +3,7 @@
         android:label="${nuiAppName}"
         android:supportsRtl="true"
         android:enableOnBackInvokedCallback="true"
+        android:usesCleartextTraffic="true"
         android:theme="@style/Theme.Nui">
         <!-- Rotation, dark mode, font scale and the keyboard are handled
              live; other configuration changes recreate the Activity, which
@@ -10,6 +11,7 @@
         <activity
             android:name="dev.nui.NuiActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|fontScale|density"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>

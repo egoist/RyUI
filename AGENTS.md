@@ -46,8 +46,10 @@ go test ./ops -update               # after changing the wire format: refresh go
 swift test --package-path hosts/ios # the Swift decoder against the golden files (macOS)
 (cd hosts/android && ./gradlew :nui:testDebugUnitTest)  # the Kotlin decoder, likewise (ANDROID_HOME set)
 go generate ./ops                   # Go constants, Swift and Kotlin decoders
-go run ./cmd/nui dev -ios examples/counter       # iOS simulator (Xcode)
-go run ./cmd/nui dev -android examples/counter   # Android emulator (SDK + NDK)
+go run ./cmd/nui dev -ios examples/counter       # iOS simulator (Xcode): the Go code runs here, in the player
+go run ./cmd/nui dev -android examples/counter   # Android emulator (SDK + NDK), likewise
+go run ./cmd/nui dev -ios -once examples/counter # build the app with its Go code, launch once (-embed: and watch)
+go test ./internal/remote                        # the dev transport, against the fake host
 ```
 
 ## Conventions

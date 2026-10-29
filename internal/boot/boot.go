@@ -8,3 +8,7 @@ var Runner func(root any)
 
 // Lifecycle handlers get app.State values.
 var Lifecycle []func(state int)
+
+// AssetBase, when set (a player running the app over nui dev), is the URL
+// the app's assets are served from: ui.Image loads asset paths from it.
+var AssetBase string

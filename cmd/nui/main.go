@@ -56,6 +56,7 @@ type devOptions struct {
 	ios, android bool
 	device       string
 	once         bool
+	embed        bool
 	verbose      bool
 }
 
@@ -64,7 +65,8 @@ func devFlags(o *devOptions) *flag.FlagSet {
 	fs.BoolVar(&o.ios, "ios", false, "run on the iOS simulator")
 	fs.BoolVar(&o.android, "android", false, "run on an Android device or emulator")
 	fs.StringVar(&o.device, "device", "", "iOS: simulator name or UDID (default: the booted one, else the newest iPhone); Android: adb serial or AVD name")
-	fs.BoolVar(&o.once, "once", false, "build and launch once, without watching or streaming logs")
+	fs.BoolVar(&o.once, "once", false, "build the app with its Go code and launch it once, without watching or streaming logs")
+	fs.BoolVar(&o.embed, "embed", false, "build the app with its Go code (the default runs the Go code here, in the player)")
 	fs.BoolVar(&o.verbose, "v", false, "print the commands nui runs")
 	return fs
 }

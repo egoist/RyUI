@@ -39,7 +39,17 @@ type mobileHost struct {
 var (
 	theHost = &mobileHost{env: host.Environment{Scale: 1, FontScale: 1}}
 	started bool
+	// core takes the host's events and list requests: the app's, in
+	// process, unless a player forwards them (SetCore).
+	core host.Core = ui.Core()
 )
+
+// Host returns the platform host (for a player).
+func Host() host.Host { return theHost }
+
+// SetCore sends the host's events and list requests to c instead of the
+// app's core (a player, which forwards them to a core elsewhere).
+func SetCore(c host.Core) { core = c }
 
 func (h *mobileHost) Apply(b *ops.Batch) {
 	buf := b.Encode()
@@ -86,7 +96,12 @@ func nui_start(cb *C.nui_host_callbacks) {
 func nui_attach() {
 	// A new Activity took over the existing views (Android): tell it
 	// which view is the root again.
-	if started {
+	if !started {
+		return
+	}
+	if r, ok := core.(interface{ Reattach() }); ok {
+		r.Reattach()
+	} else {
 		ui.Reattach()
 	}
 }
@@ -103,23 +118,23 @@ func nui_event(buf *C.uint8_t, n C.size_t) {
 		theHost.env = ev.Env
 	}
 	if started {
-		ui.Dispatch(ev)
+		core.Dispatch(ev)
 	}
 }
 
 //export nui_list_count
 func nui_list_count(list C.uint32_t) C.int64_t {
-	return C.int64_t(ui.Core().ListCount(ops.NodeID(list)))
+	return C.int64_t(core.ListCount(ops.NodeID(list)))
 }
 
 //export nui_list_bind
 func nui_list_bind(list C.uint32_t, index C.int64_t, cell C.uint32_t) {
-	ui.Core().ListBind(ops.NodeID(list), int(index), ops.NodeID(cell))
+	core.ListBind(ops.NodeID(list), int(index), ops.NodeID(cell))
 }
 
 //export nui_list_unbind
 func nui_list_unbind(list C.uint32_t, cell C.uint32_t) {
-	ui.Core().ListUnbind(ops.NodeID(list), ops.NodeID(cell))
+	core.ListUnbind(ops.NodeID(list), ops.NodeID(cell))
 }
 
 //export nui_run_posted

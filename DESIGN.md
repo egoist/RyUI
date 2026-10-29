@@ -533,9 +533,13 @@ root (`ui.Reattach`) and every frame, with no app state lost. Android
 views resolve theme colors and text sizes when they're made, so after a
 dark mode, font scale or density change the host makes its text and
 Material views again, replaying the props it was sent and keeping the
-user's state (text, selection, checked, value). Process death loses
-state, as in any native app; restoring it is later
-(`signal.Persist(key)`).
+user's state (text, selection, checked, value). There's one Activity
+(`singleTask`), and whichever instance comes to the front takes the
+views. Process death loses state, as in any native app; saving state to
+the device for that is later, under a name that says storage (say
+`signal.Saved(key, initial)` over `UserDefaults` / `SharedPreferences`),
+not to be confused with keeping state across `nui dev` reloads (below),
+which needs no code.
 
 ## mobile
 
@@ -588,22 +592,53 @@ nui dev -ios|-android <dir>       build, run, rebuild and restart on save
 nui build -platform ios|android <dir>   .ipa via xcodebuild, .apk/.aab via Gradle
 ```
 
-`nui dev` rebuilds the Go library and relaunches on the iOS simulator
-(no Xcode project: `swiftc` compiles the embedded host once into one
-object, cached across apps; each change rebuilds the archive, links,
-ad-hoc signs and reinstalls with `xcrun simctl`, in about a second) or
-an Android device or emulator (Gradle builds the shell app once per
-host version and app ID, and it's installed once; each change rebuilds
-the `.so`, pushes it into the app's private files with `adb` and
-`run-as`, where the debug shell app loads it from, and restarts the app:
-about a second and a half) or the
-Android emulator (`adb`; the AAR is built once, the `.so` is replaced
-and the app restarted). It should take a few seconds. Then (M5) a
-socket transport carries ops and events between a Go process on the
-Mac and a prebuilt player app on the simulator, emulator or a device,
-so that a change shows without reinstalling; the synchronous requests
-(`Measure`, `ListBind`) become round trips, fast enough over localhost
-and USB for development.
+**`nui dev` runs the app's Go code on the Mac, and its views in a
+player** (`internal/remote`): the platform host with a small Go library
+(`mobile/player`) in place of an app, built and installed once and
+shared by every app. A change rebuilds the Go code for the Mac and
+restarts that process, under a second; the player reconnects and shows
+the new code, with no install. The app's logs are the process's output.
+
+- **The protocol** is the host interface over a socket, synchronous both
+  ways, with calls nesting as they do in process: while a side waits
+  for its reply it serves the other's requests (a list binding cells in
+  the middle of a batch, a measure during layout). The core takes no
+  events while it waits for a player (hosts never send them in the
+  middle of an `Apply`); one that arrives meanwhile is served when the
+  call returns. Both ends are Go, so the protocol is tested in Go, with
+  the fake host as the player. A call that gets no reply in 10s gives
+  up rather than hang a main thread.
+- **Several players at once**: each connection is a session with its
+  own root, multiplexed on the core's one loop (the app on an iPhone
+  and an Android phone together). A reconnecting player clears the last
+  session's views first.
+- **State survives a reload** without code, as React's Fast Refresh
+  keeps hooks' state: the process saves every app signal's value as it
+  stops, and the next run gives it back to the signal made at the same
+  place: the same call path (function names), type and position among
+  the live signals of that type there. A signal made by nui itself
+  isn't kept, nor a value JSON would change (funcs, unexported fields).
+  Adding a signal before others of its type made at the same place, or
+  changing its type, resets those. Navigation isn't kept (screens are
+  closures): a reload starts at the root screen. Off in a built app,
+  where `signal.New` pays one nil check.
+- **Reaching the Mac**: the simulator shares its loopback; an Android
+  emulator reaches it at `10.0.2.2`, directly (`adb reverse` adds a
+  round trip's worth of latency to every call); a device goes through
+  `adb reverse`. Assets are served over HTTP from the Mac
+  (`boot.AssetBase`).
+- **Not in the player**: an app's own native code (`ios/`, `android/`),
+  which only an app built with it can show. Such apps, `-once` and
+  `-embed` build the app with its Go code, as before: `nui dev`
+  rebuilds the library and relaunches on the iOS simulator (no Xcode
+  project: `swiftc` compiles the embedded host, with the app's Swift,
+  into one object, cached; each change rebuilds the archive, links,
+  ad-hoc signs and reinstalls with `xcrun simctl`, in about a second)
+  or an Android device or emulator (Gradle builds the shell app, with
+  the app's Kotlin, once per host version and app ID; each change
+  rebuilds the `.so`, pushes it into the app's private files with `adb`
+  and `run-as`, where the debug shell app loads it from, and restarts
+  the app: about a second and a half).
 
 ## Repository layout
 
@@ -683,8 +718,10 @@ Each one ends with its examples running and its tests in CI.
   (`ui.Animate`), images loaded and decoded off the main thread by the
   host, with a cache; the media example runs on both. (`Activity`, the
   spinner, came with M1.)
-- **M5, dev without reinstalling**: the socket transport and player
-  apps; signals marked `signal.Persist(key)` survive `nui dev` restarts.
+- **M5, dev without reinstalling** (done): the socket transport and the
+  player apps (iOS simulator, Android emulator and devices); app state
+  survives a reload with no code. Not yet: physical iOS devices (the
+  player would need signing and the Mac's address).
 - **M6, shipping**: signing, `.ipa` and `.aab` builds, store metadata.
 - **Rich text** (when the measurements below say so, or when an app
   needs what platform labels can't do): see "Rich text, later".

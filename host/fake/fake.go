@@ -13,6 +13,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/egoist/nui/host"
 	"github.com/egoist/nui/layout"
@@ -55,6 +56,7 @@ type Host struct {
 
 	core     host.Core
 	posted   []func()
+	postMu   sync.Mutex
 	nextCell ops.NodeID
 	opsAlloc []byte
 }
@@ -76,14 +78,25 @@ func (h *Host) Connect(c host.Core) { h.core = c }
 // Environment implements host.Host.
 func (h *Host) Environment() host.Environment { return h.Env }
 
-// Post implements host.Host: f runs at the next RunPosted.
-func (h *Host) Post(f func()) { h.posted = append(h.posted, f) }
+// Post implements host.Host: f runs at the next RunPosted. Safe from
+// any goroutine.
+func (h *Host) Post(f func()) {
+	h.postMu.Lock()
+	h.posted = append(h.posted, f)
+	h.postMu.Unlock()
+}
 
 // RunPosted runs what was posted, in order, as the main thread would.
 func (h *Host) RunPosted() {
-	for len(h.posted) > 0 {
+	for {
+		h.postMu.Lock()
+		if len(h.posted) == 0 {
+			h.postMu.Unlock()
+			return
+		}
 		f := h.posted[0]
 		h.posted = h.posted[1:]
+		h.postMu.Unlock()
 		f()
 	}
 }

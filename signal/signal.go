@@ -19,13 +19,21 @@ func eq[T comparable](a, b T) bool { return a == b }
 
 // New makes a signal that skips writes equal to the current value.
 func New[T comparable](v T) *Signal[T] {
-	return &Signal[T]{value: v, equal: eq[T]}
+	s := &Signal[T]{value: v, equal: eq[T]}
+	if keep != nil {
+		keepSignal(s, s.equal)
+	}
+	return s
 }
 
 // NewFunc makes a signal with a custom equality. With a nil equal, every
 // write notifies.
 func NewFunc[T any](v T, equal func(a, b T) bool) *Signal[T] {
-	return &Signal[T]{value: v, equal: equal}
+	s := &Signal[T]{value: v, equal: equal}
+	if keep != nil {
+		keepSignal(s, equal)
+	}
+	return s
 }
 
 // Get returns the value and subscribes the current computation.

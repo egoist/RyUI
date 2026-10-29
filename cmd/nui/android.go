@@ -265,6 +265,9 @@ func devAndroid(dir string, o *devOptions, stop <-chan os.Signal) error {
 		return err
 	}
 	fmt.Printf("nui: %s on %s\n", app.name, serial)
+	if usePlayer(app, o, "android") {
+		return devAndroidPlayer(app, tc, work, serial, stop)
+	}
 	pkg := androidPackage(app.bundleID)
 
 	var logs *exec.Cmd

@@ -7,7 +7,11 @@
 package app
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/egoist/nui/internal/boot"
+	"github.com/egoist/nui/internal/remote"
 	"github.com/egoist/nui/ui"
 )
 
@@ -15,10 +19,19 @@ import (
 // ui.SafeArea to keep content clear of the notch, the home indicator and
 // the keyboard.
 func Run(root func() ui.Node) {
-	if boot.Runner == nil {
-		panic("nui: no host on this platform yet; run the app with `nui dev -ios` (or -android)")
+	if boot.Runner != nil {
+		boot.Runner(root)
+		return
 	}
-	boot.Runner(root)
+	// `nui dev` runs the app here and its views in a player app.
+	if addr := os.Getenv("NUI_REMOTE"); addr != "" {
+		if err := remote.Run(addr, root); err != nil {
+			fmt.Fprintln(os.Stderr, "nui:", err)
+			os.Exit(1)
+		}
+		return
+	}
+	panic("nui: no host on this platform yet; run the app with `nui dev -ios` (or -android)")
 }
 
 // State is the app's lifecycle state.

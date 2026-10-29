@@ -92,6 +92,9 @@ open class NuiActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
+        // Another instance had the views (one launched on top of this
+        // one, then closed): take them back.
+        if (runtime.activity != null && runtime.activity !== this) frame.post { runtime.attach(this) }
         runtime.lifecycle(NuiLifecycle.FOREGROUND)
     }
 

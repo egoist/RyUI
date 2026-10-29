@@ -2,3 +2,6 @@
 hosts/ios/.build/
 hosts/ios/.swiftpm/
 .DS_Store
+
+# go build in cmd/nui
+cmd/nui/nui

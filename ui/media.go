@@ -2,7 +2,9 @@ package ui
 
 import (
 	"math"
+	"strings"
 
+	"github.com/egoist/nui/internal/boot"
 	"github.com/egoist/nui/layout"
 	"github.com/egoist/nui/ops"
 	"github.com/egoist/nui/signal"
@@ -64,9 +66,18 @@ func Image(p ImageProps) Node {
 		e.r.batch.SetString(e.id, ops.PropA11yLabel, p.Label)
 		e.r.batch.SetEnum(e.id, ops.PropA11yRole, int32(RoleImage))
 	}
-	bind(p.Source, func(v string) { e.r.batch.SetString(e.id, ops.PropImageSource, v) })
+	bind(p.Source, func(v string) { e.r.batch.SetString(e.id, ops.PropImageSource, assetURL(v)) })
 	e.setStyle(p.Style, false)
 	return Node{e}
+}
+
+// assetURL is where a player gets an asset from (boot.AssetBase), or
+// source as it is.
+func assetURL(source string) string {
+	if boot.AssetBase == "" || source == "" || strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://") {
+		return source
+	}
+	return strings.TrimSuffix(boot.AssetBase, "/") + "/" + strings.TrimPrefix(source, "/")
 }
 
 // imageSize is an image's size within c, from its natural size; a
