@@ -34,9 +34,9 @@ import kotlin.math.abs
 class NuiImage(val bitmap: Bitmap, val width: Int, val height: Int)
 
 /**
- * Loads images off the main thread: fetched (http, https) or read (the
- * app's assets), decoded there (subsampled to the screen's size), then
- * cached in memory.
+ * Loads images off the main thread: fetched (http, https; kept on disk,
+ * NuiDiskCache) or read (the app's assets), decoded there (subsampled to
+ * the screen's size), then cached in memory.
  */
 object NuiImages {
     private val cache = object : LruCache<String, NuiImage>(maxOf(16 shl 20, (Runtime.getRuntime().maxMemory() / 8).toInt())) {
@@ -56,7 +56,14 @@ object NuiImages {
         val app = context.applicationContext
         val maxSide = maxOf(app.resources.displayMetrics.widthPixels, app.resources.displayMetrics.heightPixels)
         pool.execute {
-            val r = runCatching { decode(read(app, source), maxSide) }
+            val r = runCatching {
+                if (source.startsWith("http://") || source.startsWith("https://")) {
+                    val disk = NuiDiskCache.images(app)
+                    disk.read(source)?.let { d -> runCatching { decode(d, maxSide) }.getOrNull() }?.let { return@runCatching it }
+                    val (data, storable) = fetch(source)
+                    decode(data, maxSide).also { if (storable) disk.write(source, data) }
+                } else decode(read(app, source), maxSide)
+            }
             main.post {
                 r.getOrNull()?.let { cache.put(source, it) }
                 waiting.remove(source)?.forEach { it(r) }
@@ -64,18 +71,24 @@ object NuiImages {
         }
     }
 
-    private fun read(app: Context, source: String): ByteArray {
-        if (source.startsWith("http://") || source.startsWith("https://")) {
-            val c = URL(source).openConnection() as HttpURLConnection
-            try {
-                c.connectTimeout = 15000
-                c.readTimeout = 30000
-                if (c.responseCode !in 200..299) error("HTTP ${c.responseCode}")
-                return c.inputStream.use { it.readBytes() }
-            } finally {
-                c.disconnect()
-            }
+    /** An image over http(s), and whether it may be kept on disk: not one its response says not to keep, nor one from this machine (nui dev's assets, which change). */
+    private fun fetch(source: String): Pair<ByteArray, Boolean> {
+        val url = URL(source)
+        val c = url.openConnection() as HttpURLConnection
+        try {
+            c.connectTimeout = 15000
+            c.readTimeout = 30000
+            if (c.responseCode !in 200..299) error("HTTP ${c.responseCode}")
+            val data = c.inputStream.use { it.readBytes() }
+            val noStore = c.getHeaderField("Cache-Control")?.contains("no-store", ignoreCase = true) == true
+            val local = url.host in setOf("localhost", "127.0.0.1", "::1", "10.0.2.2")
+            return data to (!noStore && !local)
+        } finally {
+            c.disconnect()
         }
+    }
+
+    private fun read(app: Context, source: String): ByteArray {
         // A file (a picked photo).
         if (source.startsWith("/")) return File(source).readBytes()
         if (source.startsWith("file://")) return File(Uri.parse(source).path!!).readBytes()
@@ -100,13 +113,15 @@ object NuiImages {
 
 fun NuiRuntime.loadImage(n: NuiNode, source: String) {
     n.imageSource = source
+    n.imageLoaded = false
     val iv = n.view as ImageView
     val id = n.id
-    if (source.isEmpty()) { iv.setImageDrawable(null); return }
+    if (source.isEmpty()) { iv.setImageDrawable(null); showPlaceholder(n); return }
     val show = { r: Result<NuiImage> ->
         val cur = nodes[id]
         if (cur != null && cur.imageSource == source) {
             r.onSuccess {
+                cur.imageLoaded = true
                 (cur.view as ImageView).setImageBitmap(it.bitmap)
                 // One point per pixel, as on the web.
                 emit(id, NuiEventKind.LOADED) { NuiEvents.loaded(id, it.width.toDouble(), it.height.toDouble()) }
@@ -119,7 +134,71 @@ fun NuiRuntime.loadImage(n: NuiNode, source: String) {
     val hit = NuiImages.cached(source)
     if (hit != null) show(Result.success(hit)) else {
         iv.setImageDrawable(null)
+        showPlaceholder(n)
         NuiImages.load(app, source, show)
+    }
+}
+
+/** Shows an image's placeholder until (or unless) the image loads. */
+fun NuiRuntime.showPlaceholder(n: NuiNode) {
+    val p = n.imagePlaceholder
+    if (p.isEmpty() || n.imageLoaded) return
+    val id = n.id
+    NuiImages.load(app, p) { r ->
+        val cur = nodes[id] ?: return@load
+        if (cur.imageLoaded || cur.imagePlaceholder != p) return@load
+        r.onSuccess { (cur.view as ImageView).setImageBitmap(it.bitmap) }
+    }
+}
+
+/**
+ * Files kept across launches in the app's cache directory (which the
+ * system may clear), the least recently used going first past a limit.
+ * Any thread.
+ */
+class NuiDiskCache(private val dir: File, private val limit: Long) {
+    @Volatile private var trimming = false
+
+    private fun file(key: String): File {
+        val h = java.security.MessageDigest.getInstance("SHA-256").digest(key.toByteArray())
+        return File(dir, h.joinToString("") { "%02x".format(it) })
+    }
+
+    fun read(key: String): ByteArray? {
+        val f = file(key)
+        if (!f.exists()) return null
+        return try { f.readBytes().also { f.setLastModified(System.currentTimeMillis()) } } catch (_: Exception) { null }
+    }
+
+    fun write(key: String, data: ByteArray) {
+        try {
+            dir.mkdirs()
+            val tmp = File(dir, "tmp-" + Thread.currentThread().id)
+            tmp.writeBytes(data)
+            tmp.renameTo(file(key))
+        } catch (_: Exception) { return }
+        // Once a launch, after it has written: what's past the limit goes.
+        if (!trimming) {
+            trimming = true
+            Thread { Thread.sleep(5000); trim() }.apply { priority = Thread.MIN_PRIORITY }.start()
+        }
+    }
+
+    fun trim() {
+        val files = dir.listFiles()?.sortedBy { it.lastModified() } ?: return
+        var total = files.sumOf { it.length() }
+        for (f in files) {
+            if (total <= limit) break
+            total -= f.length()
+            f.delete()
+        }
+    }
+
+    companion object {
+        private var images: NuiDiskCache? = null
+        /** Images fetched over http(s), up to 256 MB. */
+        @Synchronized fun images(ctx: Context): NuiDiskCache =
+            images ?: NuiDiskCache(File(ctx.cacheDir, "nui-images"), 256L shl 20).also { images = it }
     }
 }
 

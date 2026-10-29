@@ -32,6 +32,7 @@ func App() ui.Node {
 				motion(toast),
 				symbols(),
 				fonts(),
+				images(),
 				textInput(),
 				controls(),
 				dates(),
@@ -94,6 +95,16 @@ func fonts() ui.Node {
 		ui.StaticText("And its monospace", ui.Style{Font: ui.Custom("monospace", ui.Callout)}),
 		ui.Button(ui.ButtonProps{Title: ui.Val("A button in Pacifico"), Variant: ui.ButtonTinted,
 			Style: ui.Style{Font: ui.Font{Family: "Pacifico-Regular"}}}),
+	)
+}
+
+// images: a photo over the network, kept on disk once fetched; until it
+// arrives (or if it can't), a placeholder from the app's assets.
+func images() ui.Node {
+	return section("Images",
+		ui.Image(ui.ImageProps{Source: ui.Val("https://picsum.photos/id/1015/600/400"), Placeholder: "placeholder.png",
+			Mode: ui.ImageFill, Label: "A river in a valley",
+			Style: ui.Style{AspectRatio: 3.0 / 2, CornerRadius: 12}}),
 	)
 }
 

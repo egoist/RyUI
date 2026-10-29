@@ -159,6 +159,7 @@ public enum NuiProp {
     public enum Image {
         public static let source: UInt16 = 64
         public static let mode: UInt16 = 65
+        public static let placeholder: UInt16 = 66
     }
 
     public enum Native {

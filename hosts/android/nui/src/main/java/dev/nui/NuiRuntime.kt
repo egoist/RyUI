@@ -180,7 +180,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
 
     /** Reports a Scroll's offset, in points, as Scrolled (when the core listens). */
     private fun reportScrolls(v: View, id: Int) {
-        val r = NuiScrollReporter(this, id)
+        val r = NuiScrollReporter(this, id, v)
         v.setOnScrollChangeListener { _, x, y, _, _ -> r.scrolled(x, y) }
     }
 

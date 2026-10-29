@@ -176,7 +176,8 @@ var Schema = SchemaDef{
 		{Name: "Image", Props: []PropDef{
 			{Name: "Source", Type: TString, Doc: "an http(s) URL, or a file in the app's assets"},
 			{Name: "Mode", Type: TEnum, Enum: "ImageMode"},
-		}, Doc: "loaded and decoded off the main thread, cached; reports Loaded with its natural size (one point per pixel), or Failed. Color tints it"},
+			{Name: "Placeholder", Type: TString, Doc: "an image (usually an asset) shown until Source loads, and if it fails"},
+		}, Doc: "loaded and decoded off the main thread, cached (in memory; one fetched over http(s) on disk too, unless its response says no-store); reports Loaded with its natural size (one point per pixel), or Failed. Color tints it"},
 		{Name: "Native", Props: []PropDef{
 			{Name: "Type", Type: TString, Doc: "the registered native kind; sent right after Create"},
 			{Name: "Prop", Type: TBytes, Doc: "one named value: string name, u8 type (1 bool, 2 int, 3 float, 4 string), value"},

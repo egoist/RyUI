@@ -4,6 +4,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import android.view.View
 import com.google.android.material.divider.MaterialDividerItemDecoration
 
 /**
@@ -29,7 +30,7 @@ class NuiList(val id: Int, val runtime: NuiRuntime) {
         recycler.adapter = adapter
         recycler.itemAnimator = null
         recycler.addItemDecoration(divider)
-        val reporter = NuiScrollReporter(runtime, id)
+        val reporter = NuiScrollReporter(runtime, id, recycler)
         recycler.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
                 reporter.scrolled(rv.computeHorizontalScrollOffset(), rv.computeVerticalScrollOffset())
@@ -166,12 +167,14 @@ class NuiList(val id: Int, val runtime: NuiRuntime) {
  * with the event (adding, removing views) mustn't happen in the middle
  * of that: it stops the scroll.
  */
-class NuiScrollReporter(private val rt: NuiRuntime, private val id: Int) {
+class NuiScrollReporter(private val rt: NuiRuntime, private val id: Int, private val view: View) {
     private var x = 0
     private var y = 0
     private var posted = false
     private val send = Runnable {
         posted = false
+        // Not a view on its way out, whose ID may be another view's by now.
+        if (!view.isAttachedToWindow || rt.nodes[id]?.view !== view) return@Runnable
         val d = rt.density
         rt.emit(id, NuiEventKind.SCROLLED) { NuiEvents.scrolled(id, (x / d).toDouble(), (y / d).toDouble()) }
     }

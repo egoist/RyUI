@@ -1,13 +1,15 @@
 #if canImport(UIKit)
 import UIKit
+import CryptoKit
 #if canImport(NuiOps)
 import NuiOps
 #endif
 
 // Images
 
-/// Loads images off the main thread: fetched (http, https) or read (the
-/// app's assets), decoded and prepared for display there, then cached.
+/// Loads images off the main thread: fetched (http, https; kept on disk,
+/// NuiDiskCache) or read (the app's assets), decoded and prepared for
+/// display there, then cached in memory.
 final class NuiImageLoader: @unchecked Sendable {
     static let shared = NuiImageLoader()
     private let cache = NSCache<NSString, UIImage>()
@@ -34,13 +36,24 @@ final class NuiImageLoader: @unchecked Sendable {
             }
         }
         if source.hasPrefix("http://") || source.hasPrefix("https://"), let url = URL(string: source) {
-            URLSession.shared.dataTask(with: url) { data, resp, err in
-                if let err { finish(.failure(err)); return }
-                if let h = resp as? HTTPURLResponse, !(200..<300).contains(h.statusCode) {
-                    finish(.failure(NuiImageError("HTTP \(h.statusCode)"))); return
+            let disk = NuiDiskCache.images
+            queue.async {
+                if let d = disk.read(source), case .success(let img) = Self.decode(d) {
+                    finish(.success(img))
+                    return
                 }
-                finish(Self.decode(data))
-            }.resume()
+                URLSession.shared.dataTask(with: url) { data, resp, err in
+                    if let err { finish(.failure(err)); return }
+                    if let h = resp as? HTTPURLResponse {
+                        if !(200..<300).contains(h.statusCode) { finish(.failure(NuiImageError("HTTP \(h.statusCode)"))); return }
+                        let r = Self.decode(data)
+                        if case .success = r, let data, NuiDiskCache.storable(url, h) { disk.write(source, data) }
+                        finish(r)
+                        return
+                    }
+                    finish(Self.decode(data))
+                }.resume()
+            }
             return
         }
         queue.async {
@@ -56,6 +69,68 @@ final class NuiImageLoader: @unchecked Sendable {
         // One point per pixel, as on the web; decoded now, off the main thread.
         guard let data, let img = UIImage(data: data, scale: 1) else { return .failure(NuiImageError("can't decode the image")) }
         return .success(img.preparingForDisplay() ?? img)
+    }
+}
+
+/// Files kept across launches in the app's caches (which the system may
+/// clear), the least recently used going first past a limit.
+final class NuiDiskCache: @unchecked Sendable {
+    /// Images fetched over http(s), up to 256 MB.
+    static let images = NuiDiskCache("nui-images", limit: 256 << 20)
+
+    let dir: URL
+    let limit: Int
+    private let lock = NSLock()
+    private var trimming = false
+
+    init(_ name: String, limit: Int) {
+        dir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent(name, isDirectory: true)
+        self.limit = limit
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    }
+
+    private func file(_ key: String) -> URL {
+        dir.appendingPathComponent(SHA256.hash(data: Data(key.utf8)).map { String(format: "%02x", $0) }.joined())
+    }
+
+    func read(_ key: String) -> Data? {
+        let f = file(key)
+        guard let d = try? Data(contentsOf: f) else { return nil }
+        try? FileManager.default.setAttributes([.modificationDate: Date()], ofItemAtPath: f.path) // used now
+        return d
+    }
+
+    func write(_ key: String, _ data: Data) {
+        try? data.write(to: file(key), options: .atomic)
+        lock.lock()
+        let start = !trimming
+        trimming = true
+        lock.unlock()
+        // Once a launch, after it has written: what's past the limit goes.
+        if start { DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 5) { self.trim() } }
+    }
+
+    func trim() {
+        let keys: [URLResourceKey] = [.fileSizeKey, .contentModificationDateKey]
+        guard let files = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: keys) else { return }
+        var list = files.compactMap { f -> (URL, Int, Date)? in
+            guard let v = try? f.resourceValues(forKeys: Set(keys)) else { return nil }
+            return (f, v.fileSize ?? 0, v.contentModificationDate ?? .distantPast)
+        }
+        var total = list.reduce(0) { $0 + $1.1 }
+        list.sort { $0.2 < $1.2 }
+        for (f, size, _) in list where total > limit {
+            try? FileManager.default.removeItem(at: f)
+            total -= size
+        }
+    }
+
+    /// Whether a response may be kept: not one that says not to, nor one
+    /// from this machine (nui dev's assets, which change).
+    static func storable(_ url: URL, _ resp: HTTPURLResponse) -> Bool {
+        if let cc = resp.value(forHTTPHeaderField: "Cache-Control")?.lowercased(), cc.contains("no-store") { return false }
+        let h = url.host ?? ""
+        return !(h == "localhost" || h == "127.0.0.1" || h == "::1" || h == "10.0.2.2")
     }
 }
 
@@ -190,6 +265,10 @@ final class NuiGestureDelegate: NSObject, UIGestureRecognizerDelegate {
             s.name = v.string
         case (.image, NuiProp.Image.source):
             loadImage(n, v.string)
+        case (.image, NuiProp.Image.placeholder):
+            n.imagePlaceholder = v.string
+            if !n.imageLoaded { (n.view as? UIImageView)?.image = nil }
+            showPlaceholder(n)
         case (.image, NuiProp.Image.mode):
             let iv = n.view as! UIImageView
             switch NuiImageMode(rawValue: v.enumValue) {
@@ -232,13 +311,15 @@ final class NuiGestureDelegate: NSObject, UIGestureRecognizerDelegate {
 
     func loadImage(_ n: NuiNode, _ source: String) {
         n.imageSource = source
+        n.imageLoaded = false
         let iv = n.view as! UIImageView
         let id = n.id
-        if source.isEmpty { iv.image = nil; return }
+        if source.isEmpty { iv.image = nil; showPlaceholder(n); return }
         let show = { [weak self] (r: Result<UIImage, Error>) in
             guard let self, let n = self.nodes[id], n.imageSource == source else { return }
             switch r {
             case .success(let img):
+                n.imageLoaded = true
                 iv.image = n.color != 0 ? img.withRenderingMode(.alwaysTemplate) : img
                 let w = Double(img.size.width * img.scale), h = Double(img.size.height * img.scale)
                 self.emit(id, .loaded) { NuiEvents.loaded(id, x: w, y: h) }
@@ -251,7 +332,18 @@ final class NuiGestureDelegate: NSObject, UIGestureRecognizerDelegate {
             show(.success(img))
         } else {
             iv.image = nil
+            showPlaceholder(n)
             NuiImageLoader.shared.load(source, done: show)
+        }
+    }
+
+    /// Shows an image's placeholder until (or unless) the image loads.
+    func showPlaceholder(_ n: NuiNode) {
+        guard !n.imagePlaceholder.isEmpty, !n.imageLoaded, let iv = n.view as? UIImageView else { return }
+        let id = n.id, p = n.imagePlaceholder
+        NuiImageLoader.shared.load(p) { [weak self] r in
+            guard let self, let n = self.nodes[id], !n.imageLoaded, n.imagePlaceholder == p, case .success(let img) = r else { return }
+            iv.image = n.color != 0 ? img.withRenderingMode(.alwaysTemplate) : img
         }
     }
 

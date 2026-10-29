@@ -125,6 +125,9 @@ final class NuiWeakList {
     }
 
     func scrollViewDidScroll(_ s: UIScrollView) {
+        // Not a view on its way out (its insets change as it leaves the
+        // window), whose ID may be another view's by the time it's read.
+        guard s.window != nil, runtime?.nodes[id]?.view === s else { return }
         let i = s.adjustedContentInset
         let p = CGPoint(x: s.contentOffset.x + i.left, y: s.contentOffset.y + i.top)
         guard p != last else { return }

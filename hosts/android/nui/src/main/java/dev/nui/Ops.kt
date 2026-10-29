@@ -162,6 +162,7 @@ object NuiProp {
     object Image {
         const val SOURCE = 64
         const val MODE = 65
+        const val PLACEHOLDER = 66
     }
 
     object Native {

@@ -52,6 +52,8 @@ class NuiNode(val id: Int, val kind: Int, var view: View) {
     var detents = 0L
     var grabber = false
     var imageSource: String? = null
+    var imageLoaded = false
+    var imagePlaceholder = ""
     var gestures: NuiGestures? = null
     var frameAnimator: android.animation.Animator? = null
     var backgroundAnimator: android.animation.Animator? = null

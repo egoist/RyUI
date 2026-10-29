@@ -676,6 +676,11 @@ fun NuiRuntime.setNavProp(n: NuiNode, prop: Int, v: Any): Boolean {
         }
         NuiKind.IMAGE -> when (prop) {
             NuiProp.Image.SOURCE -> loadImage(n, v as String)
+            NuiProp.Image.PLACEHOLDER -> {
+                n.imagePlaceholder = v as String
+                if (!n.imageLoaded) (n.view as android.widget.ImageView).setImageDrawable(null)
+                showPlaceholder(n)
+            }
             NuiProp.Image.MODE -> (n.view as android.widget.ImageView).scaleType = imageScaleType(v as Int)
             else -> return false
         }

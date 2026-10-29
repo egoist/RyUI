@@ -811,10 +811,12 @@ Each one ends with its examples running and its tests in CI.
     and `ui.ScrollToEnd`. Android posts its scroll events to the next
     turn of the main loop: a scroll runs while the view draws, and the
     core changing views then stops it.
+  - Images fetched over http(s) kept on disk across launches (256 MB,
+    least recently used first; not a `no-store` response, nor nui dev's
+    assets from this machine), and `ImageProps.Placeholder`.
   - `examples/gallery` shows each; `examples/notes` is SQLite's.
 
   Next:
-  - An image disk cache, and placeholders.
   - An accessibility pass over every component with VoiceOver and
     TalkBack.
   - GUI tests on CI (XCUITest, Espresso).

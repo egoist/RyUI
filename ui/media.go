@@ -30,6 +30,11 @@ type ImageProps struct {
 	Source signal.Accessor[string]
 	Mode   ImageMode
 	Style  Styler
+	// Placeholder is an image shown until Source loads, and if it fails:
+	// usually an asset, at hand at once. It takes the image's Mode; the
+	// box's size is still the image's (give it one so the placeholder
+	// has room).
+	Placeholder string
 	// Label describes the image to screen readers; without it the image
 	// is decorative.
 	Label   string
@@ -38,7 +43,8 @@ type ImageProps struct {
 }
 
 // Image shows a picture the host loads and decodes off the main thread
-// (and caches). Until it has loaded, an image without a size is empty;
+// (and caches: in memory, and one fetched over http(s) on disk, across
+// launches). Until it has loaded, an image without a size is empty;
 // then it takes its natural size, one point per pixel, no wider than
 // the space it has, and keeps its aspect ratio when one side is set.
 func Image(p ImageProps) Node {
@@ -64,6 +70,9 @@ func Image(p ImageProps) Node {
 	}
 	if p.Mode != ImageFit {
 		e.r.batch.SetEnum(e.id, ops.PropImageMode, int32(p.Mode))
+	}
+	if p.Placeholder != "" {
+		e.r.batch.SetString(e.id, ops.PropImagePlaceholder, assetURL(p.Placeholder))
 	}
 	if p.Label != "" {
 		e.r.batch.SetString(e.id, ops.PropA11yLabel, p.Label)

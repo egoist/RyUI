@@ -181,3 +181,21 @@ func TestFontFamily(t *testing.T) {
 		t.Fatalf("%d measures after the font loaded", h.Measures)
 	}
 }
+
+// An image's placeholder goes to the host (an asset, by URL under nui dev).
+func TestImagePlaceholder(t *testing.T) {
+	h, _ := mount(t, func() ui.Node {
+		return ui.Image(ui.ImageProps{Source: ui.Val("https://example.com/a.png"), Placeholder: "gray.png"})
+	})
+	if v := h.OfKind(ops.KindImage)[0].String(ops.PropImagePlaceholder); v != "gray.png" {
+		t.Fatalf("placeholder %q", v)
+	}
+	boot.AssetBase = "http://127.0.0.1:7462/"
+	defer func() { boot.AssetBase = "" }()
+	h2, _ := mount(t, func() ui.Node {
+		return ui.Image(ui.ImageProps{Source: ui.Val("https://example.com/a.png"), Placeholder: "gray.png"})
+	})
+	if v := h2.OfKind(ops.KindImage)[0].String(ops.PropImagePlaceholder); v != "http://127.0.0.1:7462/gray.png" {
+		t.Fatalf("placeholder under nui dev %q", v)
+	}
+}

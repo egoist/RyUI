@@ -48,6 +48,8 @@ import CNui
     var alertMessage: String?
     var alertStyle: Int32 = 0
     var imageSource: String?
+    var imageLoaded = false
+    var imagePlaceholder = ""
     var native: NuiNativeView?
 
     /// Whether an ancestor is being popped or dismissed.
