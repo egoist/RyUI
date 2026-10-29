@@ -90,6 +90,7 @@ public enum NuiProp {
         public static let autocapitalize: UInt16 = 69
         public static let autocorrect: UInt16 = 70
         public static let contentType: UInt16 = 71
+        public static let multiline: UInt16 = 72
     }
 
     public enum Toggle {

@@ -122,6 +122,7 @@ var Schema = SchemaDef{
 			{Name: "Autocapitalize", Type: TEnum, Enum: "Autocapitalize"},
 			{Name: "Autocorrect", Type: TEnum, Enum: "Autocorrect"},
 			{Name: "ContentType", Type: TString, Doc: "AutoFill hint, e.g. username"},
+			{Name: "Multiline", Type: TBool, Doc: "lines of text: return is a new line (no Submit), and the field grows with its text up to LineLimit lines (none: no limit), then scrolls; sent before it's inserted"},
 		}},
 		{Name: "Toggle", Props: []PropDef{
 			{Name: "On", Type: TBool},

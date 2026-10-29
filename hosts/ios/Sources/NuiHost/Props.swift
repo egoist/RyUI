@@ -98,6 +98,9 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
         case let t as UITextField:
             t.font = f
             t.adjustsFontForContentSizeCategory = true
+        case let t as NuiTextView:
+            t.font = f
+            t.adjustsFontForContentSizeCategory = true
         case let s as NuiSymbolView:
             s.node = self
             s.refresh()
@@ -120,6 +123,7 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
         switch view {
         case let l as UILabel: l.textColor = c ?? .label
         case let t as UITextField: t.textColor = c ?? .label
+        case let t as NuiTextView: t.textColor = c ?? .label
         case let s as UISwitch: s.onTintColor = c
         case let a as UIActivityIndicatorView: a.color = c ?? .secondaryLabel
         case let r as NuiRichTextView:
@@ -192,12 +196,15 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             }
             (view as? UILabel)?.textAlignment = a
             (view as? UITextField)?.textAlignment = a
+            (view as? UITextView)?.textAlignment = a
             (view as? NuiRichTextView)?.base.align = v.enumValue
         case NuiProp.lineLimit:
             (view as? UILabel)?.numberOfLines = Int(v.int)
             (view as? NuiRichTextView)?.base.lines = Int(v.int)
+            (view as? NuiTextView)?.maxLines = Int(v.int)
         case NuiProp.disabled:
             (view as? UIControl)?.isEnabled = !v.bool
+            (view as? NuiTextView)?.isEditable = !v.bool
         case NuiProp.menu:
             if case .bytes(let b) = v { n.actions = decodeActions(b) }
             installMenu(n)
@@ -243,8 +250,12 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             b.configuration = c
         case (.textField, NuiProp.TextField.value):
             (n.view as? UITextField)?.text = v.string
+            (n.view as? NuiTextView)?.text = v.string
         case (.textField, NuiProp.TextField.placeholder):
             (n.view as? UITextField)?.placeholder = v.string
+            (n.view as? NuiTextView)?.placeholder = v.string
+        case (.textField, NuiProp.TextField.multiline):
+            if v.bool { makeMultiline(n) }
         case (.textField, NuiProp.TextField.keyboard):
             let t: UIKeyboardType
             switch NuiKeyboard(rawValue: v.enumValue) {
@@ -256,6 +267,7 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             default: t = .default
             }
             (n.view as? UITextField)?.keyboardType = t
+            (n.view as? NuiTextView)?.keyboardType = t
         case (.textField, NuiProp.TextField.returnKey):
             let k: UIReturnKeyType
             switch NuiReturnKey(rawValue: v.enumValue) {
@@ -267,8 +279,10 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             default: k = .default
             }
             (n.view as? UITextField)?.returnKeyType = k
+            (n.view as? NuiTextView)?.returnKeyType = k
         case (.textField, NuiProp.TextField.secure):
             (n.view as? UITextField)?.isSecureTextEntry = v.bool
+            (n.view as? NuiTextView)?.isSecureTextEntry = v.bool
         case (.textField, NuiProp.TextField.autocapitalize):
             let a: UITextAutocapitalizationType
             switch NuiAutocapitalize(rawValue: v.enumValue) {
@@ -278,6 +292,7 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             default: a = .sentences
             }
             (n.view as? UITextField)?.autocapitalizationType = a
+            (n.view as? NuiTextView)?.autocapitalizationType = a
         case (.textField, NuiProp.TextField.autocorrect):
             let a: UITextAutocorrectionType
             switch NuiAutocorrect(rawValue: v.enumValue) {
@@ -286,8 +301,10 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             default: a = .default
             }
             (n.view as? UITextField)?.autocorrectionType = a
+            (n.view as? NuiTextView)?.autocorrectionType = a
         case (.textField, NuiProp.TextField.contentType):
             (n.view as? UITextField)?.textContentType = UITextContentType(rawValue: v.string)
+            (n.view as? NuiTextView)?.textContentType = UITextContentType(rawValue: v.string)
         case (.toggle, NuiProp.Toggle.on):
             (n.view as? UISwitch)?.setOn(v.bool, animated: n.view.window != nil)
         case (.slider, NuiProp.Slider.value):
@@ -337,6 +354,10 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
         case is UISlider:
             s = n.view.sizeThatFits(CGSize(width: big, height: big))
             s.width = w.isNaN ? (aw.isFinite ? CGFloat(aw) : 200) : CGFloat(w)
+        case let t as NuiTextView:
+            // As wide as a field would be; as tall as its text, to its limit.
+            let width = w.isNaN ? (aw.isFinite ? CGFloat(max(aw, 0)) : 200) : CGFloat(w)
+            s = CGSize(width: width, height: t.height(at: width))
         case is UITextField:
             // A text field scrolls its text: it can be narrow.
             s = n.view.sizeThatFits(CGSize(width: big, height: big))

@@ -264,6 +264,14 @@ func (h *Host) Measure(id ops.NodeID, c layout.Constraints) layout.Size {
 		s = layout.Size{W: float32(len([]rune(v.String(ops.PropButtonTitle))))*8 + 24, H: 44}
 	case ops.KindTextField:
 		s = layout.Size{W: 200, H: 36}
+		if v.Bool(ops.PropTextFieldMultiline) {
+			// 20pt lines, as many as its text has, up to its line limit.
+			lines := strings.Count(v.String(ops.PropTextFieldValue), "\n") + 1
+			if l := int(v.Props[ops.PropLineLimit].Int); l > 0 {
+				lines = min(lines, l)
+			}
+			s.H = float32(16 + 20*lines)
+		}
 	case ops.KindToggle:
 		s = layout.Size{W: 51, H: 31}
 	case ops.KindSlider:

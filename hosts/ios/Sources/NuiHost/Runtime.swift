@@ -11,7 +11,7 @@ import CNui
 @MainActor final class NuiNode {
     let id: UInt32
     let kind: NuiKind?
-    let view: UIView
+    var view: UIView // replaced only by a TextField made multiline
     var children: [NuiNode] = []
     weak var parent: NuiNode?
     var listens = Set<UInt16>()

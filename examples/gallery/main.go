@@ -14,6 +14,7 @@ func App() ui.Node {
 		return ui.Scroll(ui.ScrollProps{Style: ui.Style{Grow: 1}},
 			ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 28},
 				symbols(),
+				textInput(),
 			),
 		)
 	}, ui.ScreenOptions{Title: ui.Val("Gallery"), Actions: []ui.Action{
@@ -56,6 +57,28 @@ func symbols() ui.Node {
 				{Title: "Delete", Icon: ui.IconTrash, Role: ui.ActionDestructive},
 			}}),
 		),
+	)
+}
+
+func textInput() ui.Node {
+	name := signal.New("")
+	message := signal.New("")
+	sent := signal.New("")
+	return section("Text input",
+		ui.TextField(ui.TextFieldProps{Value: name, Placeholder: ui.Val("Name"), ContentType: "name", Autocapitalize: ui.CapitalizeWords}),
+		ui.Row(ui.Style{Gap: 8, Align: ui.AlignEnd},
+			ui.TextField(ui.TextFieldProps{Value: message, Placeholder: ui.Val("Message"), Multiline: true,
+				Style: ui.Style{Grow: 1, Lines: 5}}),
+			ui.Button(ui.ButtonProps{Icon: ui.IconSend, Label: "Send", Variant: ui.ButtonFilled,
+				Disabled: signal.Func(func() bool { return message.Get() == "" }),
+				OnPress: func() { sent.Set(message.Peek()); message.Set("") }}),
+		),
+		ui.Text(signal.Func(func() string {
+			if sent.Get() == "" {
+				return "Grows to five lines, then scrolls."
+			}
+			return "Sent: " + sent.Get()
+		}), ui.Style{Color: ui.SecondaryLabel, Font: ui.Footnote}),
 	)
 }
 

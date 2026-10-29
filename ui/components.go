@@ -297,20 +297,27 @@ type TextFieldProps struct {
 	Autocapitalize Autocapitalize
 	Autocorrect    Autocorrect
 	ContentType    string // AutoFill hint: "username", "password", "email", ...
-	OnSubmit       func()
-	OnFocus        func()
-	OnBlur         func()
-	Disabled       signal.Accessor[bool]
-	Style          Styler
+	// Multiline makes it lines of text (a message, a comment): return is
+	// a new line, not OnSubmit, and it grows with its text up to Style's
+	// Lines lines (0: no limit), then scrolls.
+	Multiline bool
+	OnSubmit  func()
+	OnFocus   func()
+	OnBlur    func()
+	Disabled  signal.Accessor[bool]
+	Style     Styler
 }
 
-// TextField is a single-line text input.
+// TextField is a text input: a line, or lines with Multiline.
 func TextField(p TextFieldProps) Node {
 	e := newElement(ops.KindTextField, true)
 	e.measure()
-	e.setStyle(p.Style, true)
 	b := e.r.batch
 	id := e.id
+	if p.Multiline {
+		b.SetBool(id, ops.PropTextFieldMultiline, true)
+	}
+	e.setStyle(p.Style, true)
 	if p.Keyboard != KeyboardDefault {
 		b.SetEnum(id, ops.PropTextFieldKeyboard, int32(p.Keyboard))
 	}
@@ -344,11 +351,20 @@ func TextField(p TextFieldProps) Node {
 			}
 			reported, known = v, true
 			e.r.batch.SetString(id, ops.PropTextFieldValue, v)
+			if p.Multiline {
+				e.remeasure()
+			}
 		})
 		h.text = func(s string) {
 			reported, known = s, true
 			p.Value.Set(s)
+			if p.Multiline {
+				e.remeasure() // its height is its text's
+			}
 		}
+		e.listen(ops.EventTextChanged)
+	} else if p.Multiline {
+		h.text = func(string) { e.remeasure() }
 		e.listen(ops.EventTextChanged)
 	}
 	if p.OnSubmit != nil {

@@ -121,6 +121,30 @@ fun NuiRuntime.applyTextStyle(tv: TextView, style: Int, size: Float = 0f, weight
     }
 }
 
+/**
+ * Makes a field lines of text: return is a new line (no editor action,
+ * so no Submit), and it grows with its text up to its line limit (none:
+ * no limit), then scrolls.
+ */
+fun NuiRuntime.setMultiline(n: NuiNode, e: EditText, on: Boolean) {
+    e.isSingleLine = !on
+    if (!on) return
+    e.setHorizontallyScrolling(false)
+    e.minLines = 1
+    val limit = (n.props[NuiProp.LINE_LIMIT] as? Long)?.toInt() ?: 0
+    e.maxLines = if (limit > 0) limit else Int.MAX_VALUE
+    e.isVerticalScrollBarEnabled = limit > 0
+    e.gravity = android.view.Gravity.TOP or android.view.Gravity.START
+    keepMultiline(n, e)
+}
+
+/** Keeps a multiline field's input type multiline when another prop sets it. */
+fun keepMultiline(n: NuiNode, e: EditText) {
+    if (n.props[NuiProp.TextField.MULTILINE] != true) return
+    if (e.inputType and InputType.TYPE_TEXT_FLAG_MULTI_LINE == 0) e.inputType = e.inputType or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+    e.imeOptions = e.imeOptions or EditorInfo.IME_FLAG_NO_ENTER_ACTION
+}
+
 /** A button's icon, before its title (or alone), in the button's text color. */
 fun NuiRuntime.setButtonIcon(n: NuiNode, b: MaterialButton, name: String) {
     // A start drawable counts only once the view has a layout direction,
@@ -140,6 +164,13 @@ fun NuiRuntime.iconPadding(n: NuiNode, b: MaterialButton) {
     if (b.icon == null) return
     val alone = b.text.isNullOrEmpty()
     b.iconPadding = if (alone) 0 else Math.round(8 * density)
+    if (alone) {
+        // An icon button: as wide as tall, not a text button's minimum.
+        b.minWidth = 0
+        b.minimumWidth = 0
+        val pad = Math.round(10 * density)
+        b.setPaddingRelative(pad, b.paddingTop, pad, b.paddingBottom)
+    }
     if (n.props[NuiProp.A11Y_LABEL] == null) {
         b.contentDescription = if (alone) symbolLabels[n.props[NuiProp.Button.ICON] as? String ?: ""] else null
     }
@@ -203,9 +234,13 @@ fun NuiRuntime.propBool(id: Int, prop: Int, v: Boolean) {
         NuiProp.CLIP -> { view.clipToOutline = v; (view as? android.view.ViewGroup)?.clipChildren = v }
         NuiProp.DISABLED -> view.isEnabled = !v
         else -> if (!setNavProp(n, prop, v)) when (n.kind) {
-            NuiKind.TEXT_FIELD -> if (prop == NuiProp.TextField.SECURE) {
-                val e = view as EditText
-                e.inputType = if (v) InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD else InputType.TYPE_CLASS_TEXT
+            NuiKind.TEXT_FIELD -> when (prop) {
+                NuiProp.TextField.SECURE -> {
+                    val e = view as EditText
+                    e.inputType = if (v) InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD else InputType.TYPE_CLASS_TEXT
+                    keepMultiline(n, e)
+                }
+                NuiProp.TextField.MULTILINE -> setMultiline(n, view as EditText, v)
             }
             NuiKind.TOGGLE -> if (prop == NuiProp.Toggle.ON) {
                 settingProp = true
@@ -222,6 +257,10 @@ fun NuiRuntime.propInt(id: Int, prop: Int, v: Long) {
     n.props[prop] = v
     if (setNavProp(n, prop, v)) return
     if (prop == NuiProp.LINE_LIMIT) (n.view as? NuiRichText)?.let { it.lines = v.toInt(); it.invalidateText() }
+    if (prop == NuiProp.LINE_LIMIT && n.props[NuiProp.TextField.MULTILINE] == true) {
+        (n.view as? EditText)?.let { setMultiline(n, it, true) }
+        return
+    }
     if (prop == NuiProp.LINE_LIMIT) (n.view as? TextView)?.let {
         it.maxLines = if (v > 0) v.toInt() else Int.MAX_VALUE
         it.ellipsize = if (v > 0) android.text.TextUtils.TruncateAt.END else null
@@ -345,6 +384,7 @@ fun NuiRuntime.propEnum(id: Int, prop: Int, v: Int) {
                     }
                     NuiProp.TextField.AUTOCORRECT -> if (v == NuiAutocorrect.NO) e.inputType = e.inputType or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
                 }
+                keepMultiline(n, e)
             }
         }
     }

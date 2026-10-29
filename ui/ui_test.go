@@ -579,3 +579,25 @@ func TestSymbol(t *testing.T) {
 		t.Fatalf("icons %v", got)
 	}
 }
+
+// A multiline field grows with its text, up to its line limit.
+func TestMultilineTextField(t *testing.T) {
+	text := signal.New("")
+	h, r := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{}, ui.TextField(ui.TextFieldProps{Value: text, Multiline: true, Style: ui.Style{Lines: 3}}))
+	})
+	f := h.OfKind(ops.KindTextField)[0]
+	if !f.Bool(ops.PropTextFieldMultiline) || f.Frame[3] != 36 {
+		t.Fatalf("frame %v", f.Frame)
+	}
+	h.Type(f, "a\nb")
+	r.Flush()
+	if f.Frame[3] != 56 || text.Peek() != "a\nb" {
+		t.Fatalf("after two lines: %v %q", f.Frame, text.Peek())
+	}
+	text.Set("1\n2\n3\n4\n5")
+	r.Flush()
+	if f.Frame[3] != 76 {
+		t.Fatalf("past the limit: %v", f.Frame)
+	}
+}

@@ -93,6 +93,7 @@ object NuiProp {
         const val AUTOCAPITALIZE = 69
         const val AUTOCORRECT = 70
         const val CONTENT_TYPE = 71
+        const val MULTILINE = 72
     }
 
     object Toggle {
