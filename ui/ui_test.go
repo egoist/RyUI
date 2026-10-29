@@ -890,3 +890,23 @@ func TestDecorativeAnnounce(t *testing.T) {
 		t.Fatalf("announce commands %v", c)
 	}
 }
+
+// A grid's cells are laid out at a column's width: (390 - 10*2) / 3.
+func TestListGrid(t *testing.T) {
+	items := signal.NewFunc([]todo{{ID: 1, Title: "a"}, {ID: 2, Title: "b"}}, nil)
+	h, _ := mount(t, func() ui.Node {
+		return ui.List(ui.ListProps{Columns: 3, Gap: 10}, items, func(t todo) int { return t.ID },
+			func(it signal.Accessor[todo], _ signal.Accessor[int]) ui.Node {
+				return ui.View(ui.ViewProps{Style: ui.Style{AspectRatio: 1}})
+			})
+	})
+	list := h.OfKind(ops.KindList)[0]
+	if list.Int(ops.PropListColumns) != 3 || list.Float(ops.PropListGap) != 10 {
+		t.Fatalf("columns %d gap %v", list.Int(ops.PropListColumns), list.Float(ops.PropListGap))
+	}
+	c := h.NewCell()
+	h.Bind(list, 0, c)
+	if w := float32(370) / 3; c.Frame[2] != w || c.Frame[3] != w {
+		t.Fatalf("cell %v, want %v square", c.Frame, w)
+	}
+}

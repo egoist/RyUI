@@ -40,6 +40,9 @@ final class NuiWeakList {
     var pending: [Int64]?
     var applied = false
     var binding = false
+    var columns = 1
+    var gap: CGFloat = 0
+    private var listLayout: UICollectionViewLayout!
 
     init(id: UInt32, runtime: NuiRuntime) {
         self.id = id
@@ -63,12 +66,14 @@ final class NuiWeakList {
             }
             return UISwipeActionsConfiguration(actions: actions)
         }
-        collection = UICollectionView(frame: .zero, collectionViewLayout: UICollectionViewCompositionalLayout.list(using: config))
+        let layout = UICollectionViewCompositionalLayout.list(using: config)
+        collection = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collection.keyboardDismissMode = .interactive
         // Rows handle their own presses; a cell selection would stick.
         collection.allowsSelection = false
         collection.selfSizingInvalidation = .enabled
         super.init()
+        listLayout = layout
         box.list = self
         let reg = UICollectionView.CellRegistration<NuiListCell, Int64> { _, _, _ in }
         source = UICollectionViewDiffableDataSource(collectionView: collection) { [weak self] cv, path, item in
@@ -86,6 +91,33 @@ final class NuiWeakList {
     }
 
     func update(_ ids: [Int64]) { pending = ids }
+
+    /// A grid of columns, gap apart (as LazyVGrid's): each cell an equal
+    /// share of the width, a row as tall as its tallest; or, columns 1,
+    /// the list again.
+    func setGrid(columns: Int, gap: CGFloat) {
+        let columns = max(columns, 1)
+        guard columns != self.columns || gap != self.gap else { return }
+        self.columns = columns
+        self.gap = gap
+        if columns == 1 {
+            collection.setCollectionViewLayout(listLayout, animated: false)
+            return
+        }
+        // Each cell exactly as wide as the core lays it out.
+        let layout = UICollectionViewCompositionalLayout { _, env in
+            let w = (env.container.effectiveContentSize.width - gap * CGFloat(columns - 1)) / CGFloat(columns)
+            let item = NSCollectionLayoutItem(layoutSize: .init(widthDimension: .absolute(max(w, 1)), heightDimension: .estimated(100)))
+            let group = NSCollectionLayoutGroup.horizontal(
+                layoutSize: .init(widthDimension: .fractionalWidth(1), heightDimension: .estimated(100)),
+                repeatingSubitem: item, count: columns)
+            group.interItemSpacing = .fixed(gap)
+            let section = NSCollectionLayoutSection(group: group)
+            section.interGroupSpacing = gap
+            return section
+        }
+        collection.setCollectionViewLayout(layout, animated: false)
+    }
 
     /// Scrolls item i into view, at the top.
     func scroll(to i: Int, animated: Bool) {

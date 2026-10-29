@@ -126,6 +126,8 @@ public enum NuiProp {
     public enum List {
         public static let refreshable: UInt16 = 64
         public static let refreshing: UInt16 = 65
+        public static let columns: UInt16 = 66
+        public static let gap: UInt16 = 67
     }
 
     public enum Activity {

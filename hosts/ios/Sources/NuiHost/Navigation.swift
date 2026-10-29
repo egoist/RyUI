@@ -441,6 +441,10 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [NuiAction] {
         case (.scroll, NuiProp.Scroll.refreshing), (.list, NuiProp.List.refreshing):
             guard let rc = (n.view as? UIScrollView)?.refreshControl else { return }
             if v.bool { rc.beginRefreshing() } else { rc.endRefreshing() }
+        case (.list, NuiProp.List.columns):
+            n.list?.setGrid(columns: Int(v.int), gap: n.list?.gap ?? 0)
+        case (.list, NuiProp.List.gap):
+            n.list?.setGrid(columns: n.list?.columns ?? 1, gap: CGFloat(v.float))
         default:
             break
         }

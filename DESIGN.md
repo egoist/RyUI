@@ -813,6 +813,9 @@ Each one ends with its examples running and its tests in CI.
   - `ui.Segmented`, `ui.Progress` and `ui.DatePicker`, each the
     platform's control (Material's pickers on Android).
   - List swipe actions, `OnEndReached` and `ui.ScrollToItem`.
+  - Grids: `ListProps.Columns` and `Gap` (a compositional grid on iOS,
+    a GridLayoutManager on Android); the core lays each cell out at
+    exactly the column width the host gives it.
   - `nui/store` (small values kept across launches, `store.Signal`),
     `ui.Copy`, `ui.Share`.
   - The app's accent color (`nui.json`).
@@ -839,8 +842,7 @@ Each one ends with its examples running and its tests in CI.
   - `examples/gallery` shows each; `examples/notes` is SQLite's.
 
   Next:
-  - More accessibility: rotor headings from markdown, adjustable
-    custom controls, and checking every component with VoiceOver and
+  - More accessibility: adjustable custom controls, and checking every component with VoiceOver and
     TalkBack on a device.
   - More GUI tests: navigation, sheets, gestures, the gallery.
 - **Then desktop** (below), only when it's called for: until then the

@@ -326,7 +326,9 @@ fun NuiRuntime.propFloat(id: Int, prop: Int, v: Double) {
             else { stopRepeating(n.view, View.ALPHA); n.view.alpha = v.toFloat() }
         }
         NuiProp.FONT_SIZE -> { n.fontSize = v.toFloat(); applyText(n) }
-        else -> if (n.kind == NuiKind.PROGRESS && prop == NuiProp.Progress.VALUE) {
+        else -> if (n.kind == NuiKind.LIST && prop == NuiProp.List.GAP) {
+            n.list?.let { it.setGrid(it.columns, v.toFloat()) }
+        } else if (n.kind == NuiKind.PROGRESS && prop == NuiProp.Progress.VALUE) {
             setProgress(n.view as com.google.android.material.progressindicator.LinearProgressIndicator, v)
         } else if (n.kind == NuiKind.SLIDER) {
             val s = n.view as Slider

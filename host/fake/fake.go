@@ -45,6 +45,12 @@ func (v *View) String(p ops.PropID) string { return v.Props[p].Str }
 // Bool returns a bool prop.
 func (v *View) Bool(p ops.PropID) bool { return v.Props[p].Int != 0 }
 
+// Int returns an int (or enum) prop.
+func (v *View) Int(p ops.PropID) int64 { return v.Props[p].Int }
+
+// Float returns a float prop.
+func (v *View) Float(p ops.PropID) float64 { return v.Props[p].Float }
+
 // Host is the fake host.
 type Host struct {
 	Views map[ops.NodeID]*View

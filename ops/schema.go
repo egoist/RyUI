@@ -148,6 +148,8 @@ var Schema = SchemaDef{
 		{Name: "List", Props: []PropDef{
 			{Name: "Refreshable", Type: TBool},
 			{Name: "Refreshing", Type: TBool},
+			{Name: "Columns", Type: TInt, Doc: "a grid of this many columns (0, 1: a list, with separators); each cell (width - gap * (columns - 1)) / columns wide, a row as tall as its tallest"},
+			{Name: "Gap", Type: TFloat, Doc: "a grid's spacing between cells, across and down"},
 		}, Doc: "rows live in host-made cells, bound through ListBind"},
 		{Name: "Activity", Props: []PropDef{
 			{Name: "Animating", Type: TBool},

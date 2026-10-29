@@ -129,6 +129,8 @@ object NuiProp {
     object List {
         const val REFRESHABLE = 64
         const val REFRESHING = 65
+        const val COLUMNS = 66
+        const val GAP = 67
     }
 
     object Activity {

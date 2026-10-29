@@ -38,6 +38,51 @@ class NuiList(val id: Int, val runtime: NuiRuntime) {
         })
     }
 
+    var columns = 1
+        private set
+    var gap = 0f
+        private set
+    private var gapDecoration: RecyclerView.ItemDecoration? = null
+
+    /**
+     * A grid of columns, gap points apart (a GridLayoutManager): each
+     * cell an equal share of the width, a row as tall as its tallest; or,
+     * columns 1, the list again, with its dividers.
+     */
+    fun setGrid(columns: Int, gap: Float) {
+        val c = maxOf(columns, 1)
+        if (c == this.columns && gap == this.gap) return
+        this.columns = c
+        this.gap = gap
+        gapDecoration?.let { recycler.removeItemDecoration(it) }
+        gapDecoration = null
+        recycler.removeItemDecoration(divider)
+        if (c == 1) {
+            recycler.layoutManager = LinearLayoutManager(runtime.themed)
+            recycler.addItemDecoration(divider)
+            return
+        }
+        recycler.layoutManager = androidx.recyclerview.widget.GridLayoutManager(runtime.themed, c)
+        val g = gap * runtime.density
+        if (g > 0) {
+            // Equal shares: column i's cell gives up i*g/c on its start and
+            // g - (i+1)*g/c on its end, so each is (width - g*(c-1)) / c.
+            val d = object : RecyclerView.ItemDecoration() {
+                override fun getItemOffsets(out: android.graphics.Rect, view: View, parent: RecyclerView, state: RecyclerView.State) {
+                    val pos = parent.getChildAdapterPosition(view)
+                    if (pos == RecyclerView.NO_POSITION) return
+                    val i = pos % c
+                    val start = Math.round(i * g / c)
+                    val end = Math.round(g - (i + 1) * g / c)
+                    if (parent.layoutDirection == View.LAYOUT_DIRECTION_RTL) out.set(end, 0, start, 0) else out.set(start, 0, end, 0)
+                    if (pos >= c) out.top = Math.round(g)
+                }
+            }
+            recycler.addItemDecoration(d)
+            gapDecoration = d
+        }
+    }
+
     /** Scrolls item i into view, at the top. */
     fun scroll(i: Int, animated: Boolean) {
         applyPending()

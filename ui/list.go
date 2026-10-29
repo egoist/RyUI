@@ -34,6 +34,12 @@ type ListProps struct {
 	SwipeActions func(index int) []Action
 	// OnScroll is called as it scrolls; see ScrollProps.
 	OnScroll func(x, y float32)
+	// Columns makes it a grid (a LazyVGrid, a GridLayoutManager): items
+	// fill rows of this many, each as wide as the others, Gap apart
+	// across and down; a row is as tall as its tallest. A grid has no
+	// separators and no swipe actions.
+	Columns int
+	Gap     float32
 }
 
 type listCell[T any, K comparable] struct {
@@ -61,6 +67,9 @@ type listState[T any, K comparable] struct {
 	swipe func(int) []Action
 	end   func()
 	endAt int // the length the end was last reached at
+	// A grid's.
+	columns int
+	gap     float32
 }
 
 // List is For backed by the platform's recycling list (UICollectionView,
@@ -73,12 +82,20 @@ func List[T any, K comparable](p ListProps, items signal.Accessor[[]T], key func
 	growByDefault(e)
 	refreshable(e, p.OnRefresh, p.Refreshing, ops.PropListRefreshable, ops.PropListRefreshing)
 	onScroll(e, p.OnScroll)
+	if p.Columns > 1 {
+		e.r.batch.SetInt(e.id, ops.PropListColumns, int64(p.Columns))
+		if p.Gap > 0 {
+			e.r.batch.SetFloat(e.id, ops.PropListGap, float64(p.Gap))
+		}
+		p.SwipeActions = nil
+	}
 	st := &listState[T, K]{
 		e: e, key: key, row: row, eq: equality[T](),
 		owner: signal.CurrentOwner(),
 		ids:   map[K]int64{},
 		cells: map[ops.NodeID]*listCell[T, K]{},
 		swipe: p.SwipeActions, end: p.OnEndReached, endAt: -1,
+		columns: max(p.Columns, 1), gap: p.Gap,
 	}
 	e.list = st
 	e.r.lists = append(e.r.lists, e)
@@ -265,10 +282,14 @@ func (st *listState[T, K]) unbind(cell ops.NodeID) {
 	}
 }
 
-// layoutCells lays out the bound rows at the list's width; each cell's
-// frame tells the host the row's height.
+// layoutCells lays out the bound rows at the list's width (a grid's
+// cells at a column's); each cell's frame tells the host the row's
+// height.
 func (st *listState[T, K]) layoutCells(p *layout.Pass) {
 	w := st.e.box.W
+	if st.columns > 1 {
+		w = (w - st.gap*float32(st.columns-1)) / float32(st.columns)
+	}
 	if w <= 0 {
 		return
 	}

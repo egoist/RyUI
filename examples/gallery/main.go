@@ -29,6 +29,8 @@ func App() ui.Node {
 							{Title: "Top", Icon: ui.IconUp, OnPress: func() { ui.ScrollToItem(inboxList, 0, true) }},
 						}})
 					}}),
+				ui.Button(ui.ButtonProps{Title: ui.Val("Open the photos (a grid)"), Icon: ui.IconPhoto, Variant: ui.ButtonBordered,
+					OnPress: func() { nav.Push(photos, ui.ScreenOptions{Title: ui.Val("Photos")}) }}),
 				motion(toast),
 				symbols(),
 				fonts(),
@@ -189,6 +191,23 @@ func messages(from, n int) []message {
 
 // inbox is a List: swipe a row to archive or delete it; more load at the
 // end; the bar's button scrolls back to the top.
+// photos is a grid of photos over the network: a List with Columns,
+// each cell square, the images kept on disk once fetched.
+func photos() ui.Node {
+	var ids []int
+	for i := range 90 {
+		ids = append(ids, 10+i)
+	}
+	return ui.List(ui.ListProps{Columns: 3, Gap: 2}, ui.Val(ids), func(id int) int { return id },
+		func(id signal.Accessor[int], _ signal.Accessor[int]) ui.Node {
+			return ui.Image(ui.ImageProps{
+				Source:      signal.Func(func() string { return fmt.Sprintf("https://picsum.photos/id/%d/300/300", id.Get()) }),
+				Placeholder: "placeholder.png", Mode: ui.ImageFill,
+				Style: ui.Style{AspectRatio: 1},
+			})
+		})
+}
+
 func inbox() ui.Node {
 	items := signal.NewFunc(messages(0, 30), nil)
 	remove := func(i int) {

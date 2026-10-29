@@ -673,6 +673,7 @@ fun NuiRuntime.setNavProp(n: NuiNode, prop: Int, v: Any): Boolean {
         NuiKind.LIST -> when (prop) {
             NuiProp.List.REFRESHABLE -> setRefreshable(n, v as Boolean)
             NuiProp.List.REFRESHING -> (n.wrapper as? SwipeRefreshLayout)?.isRefreshing = v as Boolean
+            NuiProp.List.COLUMNS -> n.list?.let { it.setGrid((v as Long).toInt(), it.gap) }
             else -> return false
         }
         NuiKind.IMAGE -> when (prop) {
