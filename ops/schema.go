@@ -225,6 +225,7 @@ var Schema = SchemaDef{
 		{Name: "Failed", Payload: PString},
 		{Name: "Native", Payload: PBytes, Doc: "a native view's event: string name, u32 count, then named values as in Native's Prop"},
 		{Name: "Link", Payload: PString, Doc: "a rich text's link was tapped (its URL)"},
+		{Name: "Result", Payload: PBytes, Doc: "a Call's answer, to the root: u32 call id, u8 ok, then the result's bytes (an error's message when not ok)"},
 	},
 	Commands: []CommandDef{
 		{Name: "Focus"},
@@ -235,6 +236,7 @@ var Schema = SchemaDef{
 		{Name: "AnimateBegin", Doc: "args: f32 duration (seconds), u8 AnimationCurve, i32 repeat (times more; -1: forever), u8 autoreverses; sent to the root: the frames and visual props up to AnimateEnd animate. A repeating animation stops when its prop is set again"},
 		{Name: "AnimateEnd"},
 		{Name: "OpenURL", Doc: "args: the URL; sent to the root: the system opens it (a browser, another app)"},
+		{Name: "Call", Doc: "args: u32 call id, string module, string method, then the call's bytes; sent to the root: the host runs the module's method (its own, or one an app registers) and answers with Result"},
 		{Name: "Copy", Doc: "args: the text; sent to the root: it's put on the clipboard"},
 		{Name: "Share", Doc: "args: the text (a URL is shared as one); sent to the root: the system's share sheet"},
 		{Name: "ScrollTo", Doc: "args: u32 item index, u8 animated; sent to a List: it scrolls the item into view"},

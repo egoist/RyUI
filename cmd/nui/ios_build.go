@@ -59,9 +59,17 @@ func buildIOS(app *goApp, o *buildOptions) error {
 	if err := os.MkdirAll(bundle, 0o755); err != nil {
 		return err
 	}
-	if err := tc.run(work, nil, "xcrun", "swiftc", "-target", tc.target, "-sdk", tc.sdk, hostObj, lib,
+	args := []string{"swiftc", "-target", tc.target, "-sdk", tc.sdk, hostObj, lib,
 		"-o", filepath.Join(bundle, "NuiApp"), "-framework", "UIKit", "-framework", "Foundation", "-lresolv",
-		"-Xlinker", "-dead_strip"); err != nil {
+		"-Xlinker", "-dead_strip"}
+	if o.simulator {
+		ents, err := simulatorEntitlements(work, cfg.ID)
+		if err != nil {
+			return err
+		}
+		args = append(args, ents...)
+	}
+	if err := tc.run(work, nil, "xcrun", args...); err != nil {
 		return err
 	}
 	if err := copyDir(filepath.Join(app.dir, "assets"), filepath.Join(bundle, "assets")); err != nil {

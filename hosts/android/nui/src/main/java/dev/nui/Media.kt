@@ -21,6 +21,7 @@ import android.view.animation.PathInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
 import java.io.File
+import android.net.Uri
 import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.ByteBuffer
@@ -75,6 +76,9 @@ object NuiImages {
                 c.disconnect()
             }
         }
+        // A file (a picked photo).
+        if (source.startsWith("/")) return File(source).readBytes()
+        if (source.startsWith("file://")) return File(Uri.parse(source).path!!).readBytes()
         // In development `nui dev` pushes the assets into the app's files.
         val dev = File(app.filesDir, "nui/assets/$source")
         if (dev.exists()) return dev.readBytes()

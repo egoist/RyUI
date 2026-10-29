@@ -2,6 +2,7 @@ package ui
 
 import (
 	"math"
+	"path/filepath"
 	"strings"
 
 	"github.com/egoist/nui/internal/boot"
@@ -22,8 +23,9 @@ const (
 
 // ImageProps configures an Image.
 type ImageProps struct {
-	// Source is an http(s) URL, or the path of a file in the app's
-	// assets directory.
+	// Source is an http(s) URL, the path of a file in the app's assets
+	// directory, or an absolute path (a file the app wrote, a picked
+	// photo).
 	Source signal.Accessor[string]
 	Mode   ImageMode
 	Style  Styler
@@ -74,7 +76,9 @@ func Image(p ImageProps) Node {
 // assetURL is where a player gets an asset from (boot.AssetBase), or
 // source as it is.
 func assetURL(source string) string {
-	if boot.AssetBase == "" || source == "" || strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://") {
+	// A file on the device (a picked photo) is the device's, not an asset.
+	if boot.AssetBase == "" || source == "" || strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://") ||
+		strings.HasPrefix(source, "file://") || filepath.IsAbs(source) {
 		return source
 	}
 	return strings.TrimSuffix(boot.AssetBase, "/") + "/" + strings.TrimPrefix(source, "/")

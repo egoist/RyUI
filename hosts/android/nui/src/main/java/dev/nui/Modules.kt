@@ -1,0 +1,186 @@
+package dev.nui
+
+import android.content.Context
+import android.net.Uri
+import android.os.Build
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
+import android.util.Base64
+import java.io.File
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.security.KeyStore
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
+
+/** A native module's method: the call's bytes, and a reply (once). */
+typealias NuiModuleMethod = (args: ByteArray, reply: (Result<ByteArray>) -> Unit) -> Unit
+
+/** Registers a module's methods for ui.Call: an app's, alongside the host's own. */
+fun NuiRuntime.registerModule(name: String, methods: Map<String, NuiModuleMethod>) {
+    modules[name] = methods
+}
+
+/** Runs a Call command and answers with a Result event. */
+fun NuiRuntime.call(root: Int, args: ByteBuffer) {
+    if (args.remaining() < 12) return
+    val b = args.order(ByteOrder.LITTLE_ENDIAN)
+    val id = b.int
+    fun str(): String { val a = ByteArray(b.int); b.get(a); return String(a, Charsets.UTF_8) }
+    val module = str()
+    val method = str()
+    val payload = ByteArray(b.remaining())
+    b.get(payload)
+    if (!builtinModules) {
+        builtinModules = true
+        val apps = HashMap(modules)
+        registerBuiltinModules()
+        modules.putAll(apps) // an app's module of the same name stays the app's
+    }
+    var answered = false
+    val reply: (Result<ByteArray>) -> Unit = { res ->
+        onMain {
+            if (!answered) {
+                answered = true
+                val out = ByteBuffer.allocate(5 + (res.getOrNull()?.size ?: 0) + (res.exceptionOrNull()?.message?.length ?: 0) * 4)
+                    .order(ByteOrder.LITTLE_ENDIAN)
+                out.putInt(id)
+                res.fold({ out.put(1); out.put(it) }, { out.put(0); out.put((it.message ?: "error").toByteArray()) })
+                val bytes = out.array().copyOf(out.position())
+                // An answer, not an event the root listens for: sent as is.
+                send(NuiEvents.result(root, bytes))
+            }
+        }
+    }
+    val m = modules[module]?.get(method) ?: return reply(Result.failure(Exception("no module method $module.$method")))
+    try {
+        m(payload, reply)
+    } catch (e: Exception) {
+        reply(Result.failure(e))
+    }
+}
+
+/** A u32-length string, then the rest. */
+private fun split(b: ByteArray): Pair<String, ByteArray> {
+    val buf = ByteBuffer.wrap(b).order(ByteOrder.LITTLE_ENDIAN)
+    if (buf.remaining() < 4) return "" to ByteArray(0)
+    val k = ByteArray(buf.int)
+    buf.get(k)
+    val rest = ByteArray(buf.remaining())
+    buf.get(rest)
+    return String(k, Charsets.UTF_8) to rest
+}
+
+/** The secure store's key: in the Android Keystore, never out of it. */
+private fun secureKey(): SecretKey {
+    val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+    (ks.getKey("nui.secure", null) as? SecretKey)?.let { return it }
+    val g = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
+    g.init(KeyGenParameterSpec.Builder("nui.secure", KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
+        .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+        .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+        .build())
+    return g.generateKey()
+}
+
+private fun NuiRuntime.registerBuiltinModules() {
+    val prefs = app.getSharedPreferences("nui.secure", Context.MODE_PRIVATE)
+    modules["secureStore"] = mapOf(
+        // args: key; result: u8 found, then the value. Values are AES-GCM
+        // ciphertext (iv first), base64, in private preferences.
+        "get" to { args, reply ->
+            val v = prefs.getString(String(args, Charsets.UTF_8), null)
+            if (v == null) reply(Result.success(byteArrayOf(0)))
+            else {
+                val raw = Base64.decode(v, Base64.NO_WRAP)
+                val c = Cipher.getInstance("AES/GCM/NoPadding")
+                c.init(Cipher.DECRYPT_MODE, secureKey(), GCMParameterSpec(128, raw, 0, 12))
+                reply(Result.success(byteArrayOf(1) + c.doFinal(raw, 12, raw.size - 12)))
+            }
+        },
+        "set" to { args, reply ->
+            val (key, value) = split(args)
+            val c = Cipher.getInstance("AES/GCM/NoPadding")
+            c.init(Cipher.ENCRYPT_MODE, secureKey())
+            val sealed = c.iv + c.doFinal(value)
+            prefs.edit().putString(key, Base64.encodeToString(sealed, Base64.NO_WRAP)).apply()
+            reply(Result.success(ByteArray(0)))
+        },
+        "delete" to { args, reply ->
+            prefs.edit().remove(String(args, Charsets.UTF_8)).apply()
+            reply(Result.success(ByteArray(0)))
+        },
+    )
+    modules["browser"] = mapOf(
+        // args: the URL: shown in the app (a Custom Tab).
+        "open" to { args, reply ->
+            val act = activity
+            val url = Uri.parse(String(args, Charsets.UTF_8))
+            if (act == null || (url.scheme != "https" && url.scheme != "http")) reply(Result.failure(Exception("not a web URL")))
+            else {
+                androidx.browser.customtabs.CustomTabsIntent.Builder().build().launchUrl(act, url)
+                reply(Result.success(ByteArray(0)))
+            }
+        },
+    )
+    modules["photos"] = mapOf(
+        // args: u8 limit (0: one); result: the picked images' files, a
+        // line each (none: cancelled). The system's Photo Picker.
+        "pick" to { args, reply ->
+            val act = activity
+            if (act == null) reply(Result.failure(Exception("no screen")))
+            else pickPhotos(act, maxOf(args.firstOrNull()?.toInt() ?: 1, 1), reply)
+        },
+    )
+    modules["device"] = mapOf(
+        // result: JSON: model, system, systemVersion, appVersion, build.
+        "info" to { _, reply ->
+            val p = app.packageManager.getPackageInfo(app.packageName, 0)
+            val build = if (Build.VERSION.SDK_INT >= 28) p.longVersionCode else @Suppress("DEPRECATION") p.versionCode.toLong()
+            val json = org.json.JSONObject(mapOf(
+                "model" to Build.MODEL, "system" to "Android", "systemVersion" to Build.VERSION.RELEASE,
+                "appVersion" to (p.versionName ?: ""), "build" to build.toString(),
+            ))
+            reply(Result.success(json.toString().toByteArray()))
+        },
+    )
+}
+
+private var pickers = 0
+
+/** Picks images with the Photo Picker; copies them to files (its URIs are the picker's). */
+private fun NuiRuntime.pickPhotos(act: NuiActivity, limit: Int, reply: (Result<ByteArray>) -> Unit) {
+    val reg = act.activityResultRegistry
+    val key = "nui-photos-${pickers++}"
+    val done = { uris: List<Uri> ->
+        Thread {
+            val dir = File(app.cacheDir, "nui-photos").apply { mkdirs() }
+            val paths = uris.mapNotNull { u ->
+                runCatching {
+                    val f = File(dir, java.util.UUID.randomUUID().toString() + ".jpg")
+                    app.contentResolver.openInputStream(u)!!.use { i -> f.outputStream().use { o -> i.copyTo(o) } }
+                    f.absolutePath
+                }.getOrNull()
+            }
+            reply(Result.success(paths.joinToString("\n").toByteArray()))
+        }.start()
+    }
+    val request = androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly)
+    if (limit > 1) {
+        var launcher: androidx.activity.result.ActivityResultLauncher<androidx.activity.result.PickVisualMediaRequest>? = null
+        launcher = reg.register(key, androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia(limit)) { uris ->
+            launcher?.unregister()
+            done(uris)
+        }
+        launcher.launch(request)
+    } else {
+        var launcher: androidx.activity.result.ActivityResultLauncher<androidx.activity.result.PickVisualMediaRequest>? = null
+        launcher = reg.register(key, androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()) { uri ->
+            launcher?.unregister()
+            done(listOfNotNull(uri))
+        }
+        launcher.launch(request)
+    }
+}

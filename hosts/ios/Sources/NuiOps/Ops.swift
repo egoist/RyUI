@@ -214,6 +214,7 @@ public enum NuiEventKind: UInt16 {
     case failed = 21
     case native = 22
     case link = 23
+    case result = 24
 }
 
 public enum NuiCommand: UInt16 {
@@ -225,10 +226,11 @@ public enum NuiCommand: UInt16 {
     case animateBegin = 6
     case animateEnd = 7
     case openURL = 8
-    case copy = 9
-    case share = 10
-    case scrollTo = 11
-    case accent = 12
+    case call = 9
+    case copy = 10
+    case share = 11
+    case scrollTo = 12
+    case accent = 13
 }
 
 public enum NuiRole: Int32 {
@@ -619,5 +621,8 @@ public enum NuiEvents {
     }
     public static func link(_ id: UInt32, _ v: String) -> [UInt8] {
         var w = NuiWriter(); w.header(id, 23); w.string(v); return w.bytes
+    }
+    public static func result(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 24); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
     }
 }

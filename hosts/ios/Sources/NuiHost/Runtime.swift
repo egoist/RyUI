@@ -112,6 +112,9 @@ final class NuiTextField: UITextField {
     var repeating: (Int32, Bool)?
     /// Views with a repeating animation, which a plain change stops.
     var repeatingViews = Set<ObjectIdentifier>()
+    /// Native modules' methods, by module and method name (ui.Call).
+    var modules: [String: [String: NuiModuleMethod]] = [:]
+    var builtinModules = false
     /// The app's accent color (nui.json's), nil for the system's: the tint color.
     var accent: UIColor?
     /// Views coming in with a transition in the batch being applied.
@@ -441,6 +444,8 @@ final class NuiTextField: UITextField {
         case .animateEnd:
             animation = nil
             repeating = nil
+        case .call:
+            call(id, args)
         case .copy:
             UIPasteboard.general.string = String(decoding: args, as: UTF8.self)
         case .share:

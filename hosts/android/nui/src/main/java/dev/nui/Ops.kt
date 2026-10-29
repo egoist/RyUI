@@ -217,6 +217,7 @@ object NuiEventKind {
     const val FAILED = 21
     const val NATIVE = 22
     const val LINK = 23
+    const val RESULT = 24
 }
 
 object NuiCommand {
@@ -228,10 +229,11 @@ object NuiCommand {
     const val ANIMATE_BEGIN = 6
     const val ANIMATE_END = 7
     const val OPEN_URL = 8
-    const val COPY = 9
-    const val SHARE = 10
-    const val SCROLL_TO = 11
-    const val ACCENT = 12
+    const val CALL = 9
+    const val COPY = 10
+    const val SHARE = 11
+    const val SCROLL_TO = 12
+    const val ACCENT = 13
 }
 
 object NuiRole {
@@ -560,4 +562,5 @@ object NuiEvents {
     fun failed(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 21); string(v) }.bytes()
     fun native(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 22); u32(v.size); raw(v) }.bytes()
     fun link(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 23); string(v) }.bytes()
+    fun result(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 24); u32(v.size); raw(v) }.bytes()
 }

@@ -55,6 +55,9 @@ type Host struct {
 	Env               host.Environment
 	// MeasureFunc, if set, measures views instead of the built-in rules.
 	MeasureFunc func(v *View, c layout.Constraints) layout.Size
+	// Modules answer Calls, by module name: as a host's, with Result
+	// events (posted: run them with RunPosted).
+	Modules map[string]func(method string, args []byte) ([]byte, error)
 
 	core     host.Core
 	posted   []func()
@@ -223,6 +226,10 @@ func (h *Host) apply(op *ops.Op) {
 		delete(h.view(op.ID, "Unlisten").Listens, op.Event)
 	case ops.OpCommand:
 		v := h.view(op.ID, "Command")
+		if op.Cmd == ops.CmdCall {
+			h.call(op.ID, op.Value.Bytes)
+			return
+		}
 		if op.Cmd == ops.CmdPresent {
 			if v.Kind != ops.KindSheet && v.Kind != ops.KindAlert {
 				panic(fmt.Sprintf("fake: Present on a %s", v.Kind))
@@ -351,6 +358,33 @@ func measureText(text string, c layout.Constraints) layout.Size {
 	perLine := max(1, int(w/8))
 	lines := (n + perLine - 1) / perLine
 	return layout.Size{W: w, H: float32(lines * 20)}
+}
+
+// call runs a Call with h.Modules and posts its Result.
+func (h *Host) call(root ops.NodeID, b []byte) {
+	le := binary.LittleEndian
+	id := le.Uint32(b)
+	b = b[4:]
+	n := le.Uint32(b)
+	module := string(b[4 : 4+n])
+	b = b[4+n:]
+	n = le.Uint32(b)
+	method := string(b[4 : 4+n])
+	args := append([]byte(nil), b[4+n:]...)
+	var res []byte
+	var err error
+	if f := h.Modules[module]; f != nil {
+		res, err = f(method, args)
+	} else {
+		err = fmt.Errorf("no module %q", module)
+	}
+	out := le.AppendUint32(nil, id)
+	if err != nil {
+		out = append(append(out, 0), err.Error()...)
+	} else {
+		out = append(append(out, 1), res...)
+	}
+	h.Post(func() { h.dispatch(ops.Event{ID: root, Kind: ops.EventResult, Bytes: out}) })
 }
 
 // Root returns the view set as root.

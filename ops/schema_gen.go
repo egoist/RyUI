@@ -279,11 +279,13 @@ const (
 	EventNative EventKind = 22
 	// EventLink: a rich text's link was tapped (its URL).
 	EventLink EventKind = 23
+	// EventResult: a Call's answer, to the root: u32 call id, u8 ok, then the result's bytes (an error's message when not ok).
+	EventResult EventKind = 24
 )
 
-var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh", "Pan", "Pinch", "Swipe", "Loaded", "Failed", "Native", "Link"}
+var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh", "Pan", "Pinch", "Swipe", "Loaded", "Failed", "Native", "Link", "Result"}
 
-var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone, PGesture, PGesture, PInt, PPoint, PString, PBytes, PString}
+var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone, PGesture, PGesture, PInt, PPoint, PString, PBytes, PString, PBytes}
 
 func (e EventKind) String() string {
 	if int(e) < len(eventNames) && e > 0 {
@@ -315,17 +317,19 @@ const (
 	CmdAnimateEnd   CommandID = 7
 	// CmdOpenURL: args: the URL; sent to the root: the system opens it (a browser, another app).
 	CmdOpenURL CommandID = 8
+	// CmdCall: args: u32 call id, string module, string method, then the call's bytes; sent to the root: the host runs the module's method (its own, or one an app registers) and answers with Result.
+	CmdCall CommandID = 9
 	// CmdCopy: args: the text; sent to the root: it's put on the clipboard.
-	CmdCopy CommandID = 9
+	CmdCopy CommandID = 10
 	// CmdShare: args: the text (a URL is shared as one); sent to the root: the system's share sheet.
-	CmdShare CommandID = 10
+	CmdShare CommandID = 11
 	// CmdScrollTo: args: u32 item index, u8 animated; sent to a List: it scrolls the item into view.
-	CmdScrollTo CommandID = 11
+	CmdScrollTo CommandID = 12
 	// CmdAccent: args: u64 Color (0: the platform's), u8 flags (1: on Android, the wallpaper's colors where the system has them); sent to the root when it mounts: the app's accent color, which the platform's controls and Accent take (iOS: the tint color; Android: a Material 3 color scheme made from it).
-	CmdAccent CommandID = 12
+	CmdAccent CommandID = 13
 )
 
-var commandNames = [...]string{"", "Focus", "Blur", "ListUpdate", "Present", "Haptic", "AnimateBegin", "AnimateEnd", "OpenURL", "Copy", "Share", "ScrollTo", "Accent"}
+var commandNames = [...]string{"", "Focus", "Blur", "ListUpdate", "Present", "Haptic", "AnimateBegin", "AnimateEnd", "OpenURL", "Call", "Copy", "Share", "ScrollTo", "Accent"}
 
 func (c CommandID) String() string {
 	if int(c) < len(commandNames) && c > 0 {

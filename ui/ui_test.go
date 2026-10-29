@@ -796,3 +796,25 @@ func TestRepeatingAnimation(t *testing.T) {
 		t.Fatalf("args %v", b)
 	}
 }
+
+// A Call goes to the host as a command; its Result comes to done.
+func TestCall(t *testing.T) {
+	h, r := mount(t, func() ui.Node { return ui.StaticText("x") })
+	h.Modules = map[string]func(string, []byte) ([]byte, error){
+		"echo": func(method string, args []byte) ([]byte, error) {
+			if method == "fail" {
+				return nil, fmt.Errorf("nope")
+			}
+			return append([]byte(method+":"), args...), nil
+		},
+	}
+	var got []string
+	ui.Call("echo", "say", []byte("hi"), func(b []byte, err error) { got = append(got, string(b)) })
+	ui.Call("echo", "fail", nil, func(b []byte, err error) { got = append(got, "err "+err.Error()) })
+	ui.Call("missing", "x", nil, func(b []byte, err error) { got = append(got, "err "+err.Error()) })
+	r.Flush()
+	h.RunPosted()
+	if strings.Join(got, "|") != `say:hi|err nope|err no module "missing"` {
+		t.Fatalf("got %q", got)
+	}
+}

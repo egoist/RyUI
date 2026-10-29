@@ -309,6 +309,9 @@ func dispatch(ev ops.Event) {
 			}
 		}
 		return
+	case ops.EventResult:
+		result(ev.Bytes)
+		return
 	case ops.EventLifecycle:
 		for _, f := range boot.Lifecycle {
 			f(int(ev.Int))

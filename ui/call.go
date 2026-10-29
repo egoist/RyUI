@@ -1,0 +1,79 @@
+package ui
+
+import (
+	"encoding/binary"
+	"errors"
+
+	"github.com/egoist/nui/ops"
+)
+
+// calls are the Calls waiting for their Result, by call id.
+var (
+	calls    = map[uint32]func([]byte, error){}
+	nextCall uint32
+)
+
+// Call runs method of a native module (the host's own, such as
+// "secureStore" or "photos", or one the app registers in Swift and
+// Kotlin), with args; done gets its result, on the main thread. Main
+// thread.
+//
+// Packages wrap the built-in modules (nui/secure); an app's own modules
+// take whatever bytes it gives them, JSON for instance.
+func Call(module, method string, args []byte, done func(result []byte, err error)) {
+	r := activeRoot()
+	if r == nil {
+		if done != nil {
+			done(nil, errors.New("ui: Call before Mount"))
+		}
+		return
+	}
+	nextCall++
+	id := nextCall
+	if done != nil {
+		calls[id] = done
+	}
+	r.batch.CommandArgs(r.el.id, ops.CmdCall, func(b []byte) []byte {
+		le := binary.LittleEndian
+		b = le.AppendUint32(b, id)
+		b = le.AppendUint32(b, uint32(len(module)))
+		b = append(b, module...)
+		b = le.AppendUint32(b, uint32(len(method)))
+		b = append(b, method...)
+		return append(b, args...)
+	})
+}
+
+// CallWait is Call from a goroutine: it waits for the result. Never on
+// the main thread, which the result comes on.
+func CallWait(module, method string, args []byte) ([]byte, error) {
+	type result struct {
+		b   []byte
+		err error
+	}
+	ch := make(chan result, 1)
+	Post(func() {
+		Call(module, method, args, func(b []byte, err error) { ch <- result{b, err} })
+		flushAll()
+	})
+	r := <-ch
+	return r.b, r.err
+}
+
+// result delivers a Result event to its Call.
+func result(b []byte) {
+	if len(b) < 5 {
+		return
+	}
+	id := binary.LittleEndian.Uint32(b)
+	done := calls[id]
+	if done == nil {
+		return
+	}
+	delete(calls, id)
+	if b[4] == 0 {
+		done(nil, errors.New(string(b[5:])))
+		return
+	}
+	done(append([]byte(nil), b[5:]...), nil)
+}

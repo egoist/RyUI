@@ -223,8 +223,13 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 	if err := os.MkdirAll(bundle, 0o755); err != nil {
 		return "", err
 	}
-	if err := t.run(work, nil, "xcrun", "swiftc", "-target", t.target, "-sdk", t.sdk, hostObj, lib,
-		"-o", filepath.Join(bundle, "NuiApp"), "-framework", "UIKit", "-framework", "Foundation", "-lresolv"); err != nil {
+	ents, err := simulatorEntitlements(work, app.bundleID)
+	if err != nil {
+		return "", err
+	}
+	args := append([]string{"swiftc", "-target", t.target, "-sdk", t.sdk, hostObj, lib,
+		"-o", filepath.Join(bundle, "NuiApp"), "-framework", "UIKit", "-framework", "Foundation", "-lresolv"}, ents...)
+	if err := t.run(work, nil, "xcrun", args...); err != nil {
 		return "", err
 	}
 	if err := copyDir(filepath.Join(app.dir, "assets"), filepath.Join(bundle, "assets")); err != nil {
@@ -235,6 +240,24 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 		return "", err
 	}
 	return bundle, t.run(work, nil, "codesign", "--force", "--sign", "-", bundle)
+}
+
+// simulatorEntitlements are the linker flags that give a simulator build
+// the entitlements the keychain wants (an app identifier and its access
+// group; without them SecItemAdd fails with errSecMissingEntitlement, and
+// nui/secure with it). As Xcode does: in the binary's __entitlements
+// section, for an ad hoc signature can't carry them.
+func simulatorEntitlements(work, bundleID string) ([]string, error) {
+	id := "NUISIMULAT." + bundleID // a team ID's shape: ten characters
+	ent := filepath.Join(work, "simulator.entitlements")
+	text := plist(map[string]any{
+		"application-identifier": id,
+		"keychain-access-groups": []string{id},
+	})
+	if err := os.WriteFile(ent, []byte(text), 0o644); err != nil {
+		return nil, err
+	}
+	return []string{"-Xlinker", "-sectcreate", "-Xlinker", "__TEXT", "-Xlinker", "__entitlements", "-Xlinker", ent}, nil
 }
 
 const infoPlist = `<?xml version="1.0" encoding="UTF-8"?>

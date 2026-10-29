@@ -98,6 +98,9 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
     var activity: NuiActivity? = null
     private var started = false
     private val main = Handler(Looper.getMainLooper())
+
+    /** Runs f on the main thread, later (a module's reply from any thread). */
+    fun onMain(f: () -> Unit) { main.post(f) }
     private var depth = 0
     private val pendingLists = ArrayList<NuiList>()
     private val pendingEvents = ArrayList<ByteArray>()
@@ -113,6 +116,9 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
     val entering = ArrayList<Pair<NuiNode, NuiAnimation>>()
     /** Views going out with a transition, still shown. */
     val exiting = HashSet<View>()
+    /** Native modules' methods, by module and method name (ui.Call). */
+    val modules = HashMap<String, Map<String, NuiModuleMethod>>()
+    var builtinModules = false
 
     /** Registers a native view kind for ui.Native. */
     fun registerNative(type: String, make: (NuiNativeContext) -> NuiNativeView) {
@@ -578,6 +584,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
                 val flags = args.get().toInt()
                 setAccent(if (c != 0L) color(c) else null, flags and 1 != 0)
             }
+            NuiCommand.CALL -> call(id, args)
             NuiCommand.COPY -> {
                 val b = ByteArray(args.remaining())
                 args.get(b)

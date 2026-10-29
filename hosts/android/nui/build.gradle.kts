@@ -24,7 +24,8 @@ dependencies {
     api("androidx.appcompat:appcompat:1.7.1")
     implementation("androidx.core:core-ktx:1.16.0")
     implementation("androidx.recyclerview:recyclerview:1.4.0")
-    implementation("androidx.activity:activity:1.10.1") // predictive back
+    implementation("androidx.activity:activity:1.10.1") // predictive back, the photo picker
+    implementation("androidx.browser:browser:1.9.0") // in-app browser tabs
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
     testImplementation("junit:junit:4.13.2")
 }

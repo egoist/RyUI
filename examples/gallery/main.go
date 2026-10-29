@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/egoist/nui/app"
+	"github.com/egoist/nui/device"
+	"github.com/egoist/nui/secure"
 	"github.com/egoist/nui/signal"
 	"github.com/egoist/nui/store"
 	"github.com/egoist/nui/ui"
@@ -31,6 +33,7 @@ func App() ui.Node {
 				controls(),
 				dates(),
 				services(),
+				platform(),
 			),
 		), toastOverlay(toast))
 	}, ui.ScreenOptions{Title: ui.Val("Gallery"), Actions: []ui.Action{
@@ -288,6 +291,42 @@ func pulse() ui.Node {
 			}
 			ui.AnimateWith(ui.Animation{Duration: 0.8, Curve: ui.EaseInOut, Repeat: ui.Forever, Autoreverses: true}, func() { on.Set(true) })
 		}}),
+	)
+}
+
+// platform uses the native modules: the secure store, device info, the
+// in-app browser and the photo picker.
+func platform() ui.Node {
+	secret := signal.New("")
+	info := signal.New("")
+	photos := signal.NewFunc([]string(nil), nil)
+	go func() {
+		if i, err := device.GetInfo(); err == nil {
+			ui.Post(func() { info.Set(i.Model + ", " + i.System + " " + i.SystemVersion) })
+		}
+	}()
+	return section("Platform",
+		ui.Text(info, ui.Style{Color: ui.SecondaryLabel}),
+		ui.Row(ui.Style{Gap: 12, Wrap: true},
+			ui.Button(ui.ButtonProps{Title: ui.Val("Keep a secret"), Icon: ui.IconLock, Variant: ui.ButtonGray, OnPress: func() {
+				secure.Save("token", "s3cr3t-"+time.Now().Format("150405"), func(err error) {
+					if err != nil {
+						secret.Set("Couldn't keep it: " + err.Error())
+						return
+					}
+					secure.Load("token", func(v string, ok bool, err error) { secret.Set("Kept: " + v) })
+				})
+			}}),
+			ui.Button(ui.ButtonProps{Title: ui.Val("Browse"), Icon: ui.IconGlobe, Variant: ui.ButtonGray,
+				OnPress: func() { device.Browse("https://go.dev") }}),
+			ui.Button(ui.ButtonProps{Title: ui.Val("Pick photos"), Icon: ui.IconPhoto, Variant: ui.ButtonGray, OnPress: func() {
+				device.PickPhotos(3, func(paths []string, err error) { photos.Set(paths) })
+			}}),
+		),
+		ui.Text(secret, ui.Style{Color: ui.SecondaryLabel, Font: ui.Footnote}),
+		ui.Row(ui.Style{Gap: 8}, ui.For(photos, func(p string) string { return p }, func(p signal.Accessor[string], _ signal.Accessor[int]) ui.Node {
+			return ui.Image(ui.ImageProps{Source: p, Mode: ui.ImageFill, Style: ui.Style{Width: ui.Pt(96), Height: ui.Pt(96), CornerRadius: 12, Clip: true}})
+		})),
 	)
 }
 
