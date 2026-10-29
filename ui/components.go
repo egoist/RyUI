@@ -641,6 +641,9 @@ type ScrollProps struct {
 	// spinner hides when it's false.
 	OnRefresh  func()
 	Refreshing signal.Accessor[bool]
+	// OnScroll is called as it scrolls, with its content offset: points
+	// from its content's top left.
+	OnScroll func(x, y float32)
 }
 
 // Scroll scrolls its children along one axis. Give it a size (or Grow)
@@ -666,6 +669,7 @@ func Scroll(p ScrollProps, children ...Node) Node {
 		dir = RowDir
 	}
 	refreshable(e, p.OnRefresh, p.Refreshing, ops.PropScrollRefreshable, ops.PropScrollRefreshing)
+	onScroll(e, p.OnScroll)
 	content := newElement(ops.KindView, true)
 	content.adjust = func(cs *layout.Style) { cs.FlexShrink = 0 } // the content keeps its size; that's the point
 	content.setStyle(withDirection(p.ContentStyle, dir), false)

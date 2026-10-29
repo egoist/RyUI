@@ -178,6 +178,12 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
         back.isEnabled = activeStack() != null
     }
 
+    /** Reports a Scroll's offset, in points, as Scrolled (when the core listens). */
+    private fun reportScrolls(v: View, id: Int) {
+        val r = NuiScrollReporter(this, id)
+        v.setOnScrollChangeListener { _, x, y, _, _ -> r.scrolled(x, y) }
+    }
+
     fun emit(id: Int, event: Int, make: () -> ByteArray) {
         val n = nodes[id] ?: return
         if (n.listens(event)) send(make())
@@ -342,7 +348,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
             NuiKind.SLIDER -> Slider(ctx).apply {
                 addOnChangeListener { _, v, fromUser -> if (fromUser) emit(id, NuiEventKind.VALUE_CHANGED) { NuiEvents.valueChanged(id, v.toDouble()) } }
             }
-            NuiKind.SCROLL -> NestedScrollView(ctx).apply { isFillViewport = false }
+            NuiKind.SCROLL -> NestedScrollView(ctx).apply { isFillViewport = false; reportScrolls(this, id) }
             NuiKind.LIST -> NuiList(id, this).recycler
             NuiKind.ACTIVITY -> CircularProgressIndicator(ctx).apply { isIndeterminate = true }
             NuiKind.SYMBOL -> NuiSymbol(this)
@@ -411,6 +417,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
         if ((old is HorizontalScrollView) == horizontal) return
         val v: android.widget.FrameLayout = if (horizontal) HorizontalScrollView(themed).apply { isFillViewport = false }
             else NestedScrollView(themed).apply { isFillViewport = false }
+        reportScrolls(v, n.id)
         while (old.childCount > 0) {
             val c = old.getChildAt(0)
             val lp = c.layoutParams
@@ -616,6 +623,17 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
                 if (args.remaining() < 5) return
                 val i = args.int
                 n.list?.scroll(i, args.get().toInt() != 0)
+            }
+            NuiCommand.SCROLL_TO_OFFSET -> {
+                if (args.remaining() < 9) return
+                val x = (args.float * density).coerceAtMost(1e9f).toInt()
+                val y = (args.float * density).coerceAtMost(1e9f).toInt()
+                val animated = args.get().toInt() != 0
+                // Each clamps to what it can scroll.
+                when (val v = n.view) {
+                    is NestedScrollView -> if (animated) v.smoothScrollTo(x, y) else v.scrollTo(x, y)
+                    is HorizontalScrollView -> if (animated) v.smoothScrollTo(x, y) else v.scrollTo(x, y)
+                }
             }
             NuiCommand.OPEN_URL -> {
                 val b = ByteArray(args.remaining())

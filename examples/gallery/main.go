@@ -19,7 +19,9 @@ func App() ui.Node {
 	return ui.Stack(func() ui.Node {
 		nav := ui.UseNavigator()
 		toast := signal.New(false) // shown over the screen, at its bottom
-		return ui.View(ui.ViewProps{Style: ui.Style{Grow: 1}}, ui.Scroll(ui.ScrollProps{Style: ui.Style{Grow: 1}},
+		down := signal.New(false)  // scrolled past the first screen
+		var page ui.Node
+		page = ui.Scroll(ui.ScrollProps{Style: ui.Style{Grow: 1}, OnScroll: func(_, y float32) { down.Set(y > 300) }},
 			ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 28},
 				ui.Button(ui.ButtonProps{Title: ui.Val("Open the inbox (a List)"), Icon: ui.IconMail, Variant: ui.ButtonBordered,
 					OnPress: func() {
@@ -36,7 +38,9 @@ func App() ui.Node {
 				services(),
 				platform(),
 			),
-		), toastOverlay(toast))
+		)
+		return ui.View(ui.ViewProps{Style: ui.Style{Grow: 1}}, page, toastOverlay(toast),
+			topButton(down, func() { ui.ScrollTo(page, 0, 0, true) }))
 	}, ui.ScreenOptions{Title: ui.Val("Gallery"), Actions: []ui.Action{
 		{Title: "Share", Icon: ui.IconShare, OnPress: func() {}},
 	}})
@@ -358,6 +362,18 @@ func toastOverlay(shown signal.Accessor[bool]) ui.Node {
 			ui.Row(ui.Style{Gap: 10, Align: ui.AlignCenter},
 				ui.Symbol(ui.IconCheck, ui.Style{Color: ui.Green}),
 				ui.StaticText("Saved")))
+	})
+}
+
+// topButton scrolls the page back to its top: shown once it's scrolled
+// down (ScrollProps.OnScroll, ui.ScrollTo).
+func topButton(shown signal.Accessor[bool], top func()) ui.Node {
+	env := ui.UseEnvironment()
+	return ui.Show(shown, func() ui.Node {
+		return ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style {
+			return ui.Style{Absolute: true, Right: ui.Pt(20), Bottom: ui.Pt(env.Get().SafeBottom + 12), Transition: ui.Pop}
+		})},
+			ui.Button(ui.ButtonProps{Icon: ui.IconUp, Label: "Back to top", Variant: ui.ButtonFilled, OnPress: top}))
 	})
 }
 

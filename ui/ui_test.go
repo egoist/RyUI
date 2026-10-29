@@ -836,3 +836,32 @@ func TestIncomingURL(t *testing.T) {
 		t.Fatalf("got %v", got)
 	}
 }
+
+// A Scroll reports its offset as it scrolls, and scrolls from code.
+func TestScrollOffset(t *testing.T) {
+	var at [2]float32
+	var scroll ui.Node
+	h, r := mount(t, func() ui.Node {
+		scroll = ui.Scroll(ui.ScrollProps{OnScroll: func(x, y float32) { at = [2]float32{x, y} }},
+			ui.StaticText("a"))
+		return scroll
+	})
+	h.Scroll(h.OfKind(ops.KindScroll)[0], 0, 120)
+	if at != [2]float32{0, 120} {
+		t.Fatalf("offset %v", at)
+	}
+	ui.ScrollTo(scroll, 0, 40, true)
+	ui.ScrollToEnd(scroll, false)
+	r.Flush()
+	cmds := h.Commands(ops.CmdScrollToOffset)
+	if len(cmds) != 2 {
+		t.Fatalf("commands %v", cmds)
+	}
+	b := cmds[0].Value.Bytes
+	if math.Float32frombits(binary.LittleEndian.Uint32(b[4:])) != 40 || b[8] != 1 {
+		t.Fatalf("ScrollTo %v", b)
+	}
+	if b := cmds[1].Value.Bytes; math.Float32frombits(binary.LittleEndian.Uint32(b[4:])) != math.MaxFloat32 || b[8] != 0 {
+		t.Fatalf("ScrollToEnd %v", b)
+	}
+}

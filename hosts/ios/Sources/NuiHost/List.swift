@@ -110,3 +110,27 @@ final class NuiWeakList {
     }
 }
 #endif
+
+#if canImport(UIKit)
+/// Reports a scroll view's offset (from its content's start) as Scrolled.
+/// A list's collection view takes it as its delegate too.
+@MainActor final class NuiScrollReporter: NSObject, UICollectionViewDelegate {
+    let id: UInt32
+    weak var runtime: NuiRuntime?
+    private var last = CGPoint(x: CGFloat.nan, y: .nan)
+
+    init(_ id: UInt32, _ rt: NuiRuntime) {
+        self.id = id
+        runtime = rt
+    }
+
+    func scrollViewDidScroll(_ s: UIScrollView) {
+        let i = s.adjustedContentInset
+        let p = CGPoint(x: s.contentOffset.x + i.left, y: s.contentOffset.y + i.top)
+        guard p != last else { return }
+        last = p
+        let id = self.id
+        runtime?.emit(id, .scrolled) { NuiEvents.scrolled(id, x: Double(p.x), y: Double(p.y)) }
+    }
+}
+#endif

@@ -238,7 +238,8 @@ object NuiCommand {
     const val COPY = 10
     const val SHARE = 11
     const val SCROLL_TO = 12
-    const val ACCENT = 13
+    const val SCROLL_TO_OFFSET = 13
+    const val ACCENT = 14
 }
 
 object NuiRole {

@@ -39,6 +39,7 @@ import CNui
     var material: UIVisualEffectView?
     var search: NuiSearch? // a screen's search field
     var gradientColors: [UIColor?] = []
+    var scrolls: NuiScrollReporter? // a Scroll's or List's, when the core listens for Scrolled
     var menuTrigger: Int32 = 0
     var menuOverlay: UIButton?
     var contextMenu: UIContextMenuInteraction?
@@ -448,6 +449,10 @@ final class NuiTextField: UITextField {
     public func listen(_ id: UInt32, event: UInt16) {
         guard let n = nodes[id] else { return }
         n.listens.insert(event)
+        if event == NuiEventKind.scrolled.rawValue, let s = n.view as? UIScrollView, n.scrolls == nil {
+            n.scrolls = NuiScrollReporter(id, self)
+            s.delegate = n.scrolls
+        }
         guard n.kind == .view, let e = NuiEventKind(rawValue: event) else { return }
         switch e {
         case .pan, .pinch, .swipe:
@@ -519,6 +524,18 @@ final class NuiTextField: UITextField {
             var r = NuiReader(args)
             let i = Int(r.u32())
             n.list?.scroll(to: i, animated: r.u8() != 0)
+        case .scrollToOffset:
+            guard args.count >= 9, let s = n.view as? UIScrollView else { return }
+            var r = NuiReader(args)
+            let x = CGFloat(r.f32()), y = CGFloat(r.f32())
+            n.list?.applyPending()
+            s.layoutIfNeeded()
+            // From the content's start, clamped to what it can scroll.
+            let i = s.adjustedContentInset
+            let maxX = max(-i.left, s.contentSize.width - s.bounds.width + i.right)
+            let maxY = max(-i.top, s.contentSize.height - s.bounds.height + i.bottom)
+            let to = CGPoint(x: min(max(x - i.left, -i.left), maxX), y: min(max(y - i.top, -i.top), maxY))
+            s.setContentOffset(to, animated: r.u8() != 0)
         case .openURL:
             if let url = URL(string: String(decoding: args, as: UTF8.self)) { UIApplication.shared.open(url) }
         case .accent:

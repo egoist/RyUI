@@ -2,6 +2,7 @@ package ui
 
 import (
 	"encoding/binary"
+	"math"
 
 	"github.com/egoist/nui/layout"
 	"github.com/egoist/nui/ops"
@@ -31,6 +32,8 @@ type ListProps struct {
 	// swipe's); on Android a full swipe runs the first, over its color
 	// and icon, as Material's swipe to dismiss.
 	SwipeActions func(index int) []Action
+	// OnScroll is called as it scrolls; see ScrollProps.
+	OnScroll func(x, y float32)
 }
 
 type listCell[T any, K comparable] struct {
@@ -69,6 +72,7 @@ func List[T any, K comparable](p ListProps, items signal.Accessor[[]T], key func
 	e.setStyle(p.Style, false)
 	growByDefault(e)
 	refreshable(e, p.OnRefresh, p.Refreshing, ops.PropListRefreshable, ops.PropListRefreshing)
+	onScroll(e, p.OnScroll)
 	st := &listState[T, K]{
 		e: e, key: key, row: row, eq: equality[T](),
 		owner: signal.CurrentOwner(),
@@ -197,6 +201,35 @@ func (st *listState[T, K]) bind(i int, cell ops.NodeID) {
 		el.listen(ops.EventAction)
 		st.swipeActions(c, i)
 	}
+}
+
+func onScroll(e *element, f func(x, y float32)) {
+	if f != nil {
+		e.handlers().scrolled = f
+		e.listen(ops.EventScrolled)
+	}
+}
+
+// ScrollTo scrolls a Scroll to the content offset x, y (points from its
+// content's top left, as OnScroll reports; past the end is the end).
+func ScrollTo(scroll Node, x, y float32, animated bool) {
+	e := scroll.e
+	if e == nil || e.kind != ops.KindScroll {
+		return
+	}
+	var args [9]byte
+	binary.LittleEndian.PutUint32(args[:], math.Float32bits(x))
+	binary.LittleEndian.PutUint32(args[4:], math.Float32bits(y))
+	if animated {
+		args[8] = 1
+	}
+	e.r.batch.Command(e.id, ops.CmdScrollToOffset, args[:])
+}
+
+// ScrollToEnd scrolls a Scroll to its end: its bottom, or a horizontal
+// one's trailing edge.
+func ScrollToEnd(scroll Node, animated bool) {
+	ScrollTo(scroll, math.MaxFloat32, math.MaxFloat32, animated)
 }
 
 // ScrollToItem scrolls a List so that item index shows.

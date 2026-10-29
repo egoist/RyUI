@@ -260,7 +260,8 @@ const (
 	EventBlur         EventKind = 6
 	EventToggled      EventKind = 7
 	EventValueChanged EventKind = 8
-	EventScrolled     EventKind = 9
+	// EventScrolled: a Scroll's or List's content offset, in points from its content's top left, as it scrolls.
+	EventScrolled EventKind = 9
 	// EventEnvironment: sent for the root; the ID is the root's.
 	EventEnvironment EventKind = 10
 	// EventLifecycle: a Lifecycle value.
@@ -335,11 +336,13 @@ const (
 	CmdShare CommandID = 11
 	// CmdScrollTo: args: u32 item index, u8 animated; sent to a List: it scrolls the item into view.
 	CmdScrollTo CommandID = 12
+	// CmdScrollToOffset: args: f32 x, f32 y (points from the content's top left; clamped, so a large one is the end), u8 animated; sent to a Scroll.
+	CmdScrollToOffset CommandID = 13
 	// CmdAccent: args: u64 Color (0: the platform's), u8 flags (1: on Android, the wallpaper's colors where the system has them); sent to the root when it mounts: the app's accent color, which the platform's controls and Accent take (iOS: the tint color; Android: a Material 3 color scheme made from it).
-	CmdAccent CommandID = 13
+	CmdAccent CommandID = 14
 )
 
-var commandNames = [...]string{"", "Focus", "Blur", "ListUpdate", "Present", "Haptic", "AnimateBegin", "AnimateEnd", "OpenURL", "Call", "Copy", "Share", "ScrollTo", "Accent"}
+var commandNames = [...]string{"", "Focus", "Blur", "ListUpdate", "Present", "Haptic", "AnimateBegin", "AnimateEnd", "OpenURL", "Call", "Copy", "Share", "ScrollTo", "ScrollToOffset", "Accent"}
 
 func (c CommandID) String() string {
 	if int(c) < len(commandNames) && c > 0 {

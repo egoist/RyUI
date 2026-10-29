@@ -235,7 +235,8 @@ public enum NuiCommand: UInt16 {
     case copy = 10
     case share = 11
     case scrollTo = 12
-    case accent = 13
+    case scrollToOffset = 13
+    case accent = 14
 }
 
 public enum NuiRole: Int32 {

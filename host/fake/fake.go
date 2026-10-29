@@ -623,6 +623,12 @@ func (h *Host) Choose(v *View, index int) {
 	h.dispatch(ops.Event{ID: v.ID, Kind: ops.EventAction, Int: int64(index)})
 }
 
+// Scroll scrolls a Scroll or List to the content offset x, y.
+func (h *Host) Scroll(v *View, x, y float32) {
+	h.listening(v, ops.EventScrolled)
+	h.dispatch(ops.Event{ID: v.ID, Kind: ops.EventScrolled, X: float64(x), Y: float64(y)})
+}
+
 // PullToRefresh pulls a Scroll or List.
 func (h *Host) PullToRefresh(v *View) {
 	h.listening(v, ops.EventRefresh)

@@ -807,10 +807,13 @@ Each one ends with its examples running and its tests in CI.
   - A search field in the navigation bar (`ScreenOptions.Search`).
   - Incoming links: `nui.json`'s `scheme` and `links`, `ui.OnOpenURL`.
   - Custom fonts (`Font.Family`).
+  - Scroll position: `OnScroll` on `Scroll` and `List`, `ui.ScrollTo`
+    and `ui.ScrollToEnd`. Android posts its scroll events to the next
+    turn of the main loop: a scroll runs while the view draws, and the
+    core changing views then stops it.
   - `examples/gallery` shows each; `examples/notes` is SQLite's.
 
   Next:
-  - Scroll position: events, and scrolling a `Scroll` from code.
   - An image disk cache, and placeholders.
   - An accessibility pass over every component with VoiceOver and
     TalkBack.

@@ -213,7 +213,7 @@ var Schema = SchemaDef{
 		{Name: "Blur", Payload: PNone},
 		{Name: "Toggled", Payload: PBool},
 		{Name: "ValueChanged", Payload: PFloat},
-		{Name: "Scrolled", Payload: PPoint},
+		{Name: "Scrolled", Payload: PPoint, Doc: "a Scroll's or List's content offset, in points from its content's top left, as it scrolls"},
 		{Name: "Environment", Payload: PEnvironment, Doc: "sent for the root; the ID is the root's"},
 		{Name: "Lifecycle", Payload: PInt, Doc: "a Lifecycle value"},
 		{Name: "Popped", Payload: PInt, Doc: "the user popped a Stack's top screen (its ID)"},
@@ -245,6 +245,7 @@ var Schema = SchemaDef{
 		{Name: "Copy", Doc: "args: the text; sent to the root: it's put on the clipboard"},
 		{Name: "Share", Doc: "args: the text (a URL is shared as one); sent to the root: the system's share sheet"},
 		{Name: "ScrollTo", Doc: "args: u32 item index, u8 animated; sent to a List: it scrolls the item into view"},
+		{Name: "ScrollToOffset", Doc: "args: f32 x, f32 y (points from the content's top left; clamped, so a large one is the end), u8 animated; sent to a Scroll"},
 		{Name: "Accent", Doc: "args: u64 Color (0: the platform's), u8 flags (1: on Android, the wallpaper's colors where the system has them); sent to the root when it mounts: the app's accent color, which the platform's controls and Accent take (iOS: the tint color; Android: a Material 3 color scheme made from it)"},
 	},
 	Enums: []EnumDef{

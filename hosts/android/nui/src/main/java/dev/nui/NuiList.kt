@@ -29,6 +29,12 @@ class NuiList(val id: Int, val runtime: NuiRuntime) {
         recycler.adapter = adapter
         recycler.itemAnimator = null
         recycler.addItemDecoration(divider)
+        val reporter = NuiScrollReporter(runtime, id)
+        recycler.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
+                reporter.scrolled(rv.computeHorizontalScrollOffset(), rv.computeVerticalScrollOffset())
+            }
+        })
     }
 
     /** Scrolls item i into view, at the top. */
@@ -149,6 +155,33 @@ class NuiList(val id: Int, val runtime: NuiRuntime) {
             holder.cell.binding = true
             runtime.enter { NuiNative.listBind(id, position.toLong(), holder.cell.nuiID) }
             holder.cell.binding = false
+        }
+    }
+}
+
+/**
+ * Reports a scroll view's offset (pixels in, points out) as Scrolled: on
+ * the main thread's next turn, the latest once. Scrolling happens while
+ * the view draws (an animated scroll, a fling), and what the core does
+ * with the event (adding, removing views) mustn't happen in the middle
+ * of that: it stops the scroll.
+ */
+class NuiScrollReporter(private val rt: NuiRuntime, private val id: Int) {
+    private var x = 0
+    private var y = 0
+    private var posted = false
+    private val send = Runnable {
+        posted = false
+        val d = rt.density
+        rt.emit(id, NuiEventKind.SCROLLED) { NuiEvents.scrolled(id, (x / d).toDouble(), (y / d).toDouble()) }
+    }
+
+    fun scrolled(x: Int, y: Int) {
+        this.x = x
+        this.y = y
+        if (!posted) {
+            posted = true
+            rt.onMain { send.run() }
         }
     }
 }
