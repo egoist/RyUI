@@ -322,6 +322,8 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
             NuiKind.LIST -> NuiList(id, this).recycler
             NuiKind.ACTIVITY -> CircularProgressIndicator(ctx).apply { isIndeterminate = true }
             NuiKind.SYMBOL -> NuiSymbol(this)
+            NuiKind.SEGMENTED -> NuiSegmented(this, id)
+            NuiKind.PROGRESS -> makeProgress()
             NuiKind.STACK -> NuiStack(ctx, id, this)
             NuiKind.TABS -> NuiTabs(ctx, id, this)
             NuiKind.SCREEN, NuiKind.SHEET -> NuiScreen(ctx, id, this)

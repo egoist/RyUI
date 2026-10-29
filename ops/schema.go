@@ -180,6 +180,14 @@ var Schema = SchemaDef{
 		{Name: "Symbol", Props: []PropDef{
 			{Name: "Name", Type: TString, Doc: "an SF Symbol name: iOS draws any; Android the common ones, as Material Symbols"},
 		}, Doc: "a symbol sized by the text props (a text style, scaled as text is) and colored by Color (the label color by default)"},
+		{Name: "Segmented", Props: []PropDef{
+			{Name: "Segments", Type: TBytes, Doc: "u32 count, then each segment's u32-length title"},
+			{Name: "Selected", Type: TInt, Doc: "the selected segment's index"},
+		}, Doc: "one of a few options, side by side (UISegmentedControl; a Material segmented button group). The user's choice is reported with Selected"},
+		{Name: "Progress", Props: []PropDef{
+			{Name: "Value", Type: TFloat, Doc: "done, from 0 to 1"},
+			{Name: "Indeterminate", Type: TBool, Doc: "under way, how far unknown (Android animates; iOS shows the track)"},
+		}, Doc: "a progress bar (UIProgressView, a Material linear progress indicator); Color is its fill"},
 	},
 	Events: []EventDef{
 		{Name: "Press", Payload: PNone},
@@ -194,7 +202,7 @@ var Schema = SchemaDef{
 		{Name: "Environment", Payload: PEnvironment, Doc: "sent for the root; the ID is the root's"},
 		{Name: "Lifecycle", Payload: PInt, Doc: "a Lifecycle value"},
 		{Name: "Popped", Payload: PInt, Doc: "the user popped a Stack's top screen (its ID)"},
-		{Name: "Selected", Payload: PInt, Doc: "the user selected a tab (its index)"},
+		{Name: "Selected", Payload: PInt, Doc: "the user selected a tab or a segment (its index)"},
 		{Name: "Action", Payload: PInt, Doc: "a menu item, alert button or bar button (its index)"},
 		{Name: "Dismissed", Payload: PNone},
 		{Name: "Refresh", Payload: PNone, Doc: "the user pulled to refresh"},

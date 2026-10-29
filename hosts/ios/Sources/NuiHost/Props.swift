@@ -126,6 +126,8 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
         case let t as NuiTextView: t.textColor = c ?? .label
         case let s as UISwitch: s.onTintColor = c
         case let a as UIActivityIndicatorView: a.color = c ?? .secondaryLabel
+        case let p as UIProgressView: p.progressTintColor = c
+        case let s as UISegmentedControl: s.selectedSegmentTintColor = c
         case let r as NuiRichTextView:
             r.base.color = color
         case let s as NuiSymbolView: s.tintColor = c ?? .label
@@ -366,6 +368,9 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             if aw.isFinite { s.width = min(s.width, CGFloat(max(aw, 0))) }
         case let r as NuiRichTextView:
             s = r.measure(w, aw)
+        case let p as UIProgressView:
+            // As wide as it's let be; as tall as UIKit makes it.
+            s = CGSize(width: w.isNaN ? (aw.isFinite ? CGFloat(max(aw, 0)) : 100) : CGFloat(w), height: p.intrinsicContentSize.height)
         case let sym as NuiSymbolView:
             sym.refresh()
             s = sym.image?.size ?? .zero

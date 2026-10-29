@@ -27,6 +27,8 @@ object NuiKind {
     const val RICH_TEXT = 17
     const val SELECTABLE = 18
     const val SYMBOL = 19
+    const val SEGMENTED = 20
+    const val PROGRESS = 21
 
     fun name(kind: Int): String = when (kind) {
         1 -> "View"
@@ -48,6 +50,8 @@ object NuiKind {
         17 -> "RichText"
         18 -> "Selectable"
         19 -> "Symbol"
+        20 -> "Segmented"
+        21 -> "Progress"
         else -> "Kind($kind)"
     }
 }
@@ -161,6 +165,16 @@ object NuiProp {
 
     object Symbol {
         const val NAME = 64
+    }
+
+    object Segmented {
+        const val SEGMENTS = 64
+        const val SELECTED = 65
+    }
+
+    object Progress {
+        const val VALUE = 64
+        const val INDETERMINATE = 65
     }
 }
 

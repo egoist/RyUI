@@ -87,6 +87,7 @@ const (
 	IconCamera    Icon = "camera"
 	IconPhoto     Icon = "photo"
 	IconMic       Icon = "mic"
+	IconSpeaker   Icon = "speaker.wave.2"
 	IconPlay      Icon = "play"
 	IconPause     Icon = "pause"
 	IconCalendar  Icon = "calendar"

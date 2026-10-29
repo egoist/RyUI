@@ -15,6 +15,7 @@ func App() ui.Node {
 			ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 28},
 				symbols(),
 				textInput(),
+				controls(),
 			),
 		)
 	}, ui.ScreenOptions{Title: ui.Val("Gallery"), Actions: []ui.Action{
@@ -79,6 +80,32 @@ func textInput() ui.Node {
 			}
 			return "Sent: " + sent.Get()
 		}), ui.Style{Color: ui.SecondaryLabel, Font: ui.Footnote}),
+	)
+}
+
+func controls() ui.Node {
+	period := signal.New(1)
+	volume := signal.New(0.4)
+	wifi := signal.New(true)
+	return section("Controls",
+		ui.Segmented(ui.SegmentedProps{Segments: []string{"Day", "Week", "Month"}, Selected: period}),
+		ui.Text(signal.Func(func() string {
+			return []string{"Today", "This week", "This month"}[period.Get()]
+		}), ui.Style{Color: ui.SecondaryLabel}),
+		ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
+			ui.Symbol(ui.IconSpeaker),
+			ui.Slider(ui.SliderProps{Value: volume, Style: ui.Style{Grow: 1}}),
+		),
+		ui.Progress(volume),
+		ui.Progress(nil),
+		ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
+			ui.Text(ui.Val("Wi-Fi"), ui.Style{Grow: 1}),
+			ui.Toggle(ui.ToggleProps{Value: wifi}),
+		),
+		ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
+			ui.Activity(),
+			ui.StaticText("Loading…", ui.Style{Color: ui.SecondaryLabel}),
+		),
 	)
 }
 

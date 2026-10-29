@@ -601,3 +601,38 @@ func TestMultilineTextField(t *testing.T) {
 		t.Fatalf("past the limit: %v", f.Frame)
 	}
 }
+
+// A segmented control writes the user's choice; code's choice is sent.
+// A progress bar clamps its value.
+func TestSegmentedAndProgress(t *testing.T) {
+	sel := signal.New(1)
+	done := signal.New(0.25)
+	h, r := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{},
+			ui.Segmented(ui.SegmentedProps{Segments: []string{"Day", "Week", "Month"}, Selected: sel}),
+			ui.Progress(done),
+			ui.Progress(nil),
+		)
+	})
+	s := h.OfKind(ops.KindSegmented)[0]
+	if s.Props[ops.PropSegmentedSelected].Int != 1 || s.Frame[3] != 32 {
+		t.Fatalf("segmented %+v", s.Frame)
+	}
+	h.Reset()
+	h.Select(s, 2)
+	r.Flush()
+	if sel.Peek() != 2 || h.Count(ops.OpSetProp) != 0 {
+		t.Fatalf("selected %d, %d props sent back", sel.Peek(), h.Count(ops.OpSetProp))
+	}
+	sel.Set(0)
+	r.Flush()
+	if s.Props[ops.PropSegmentedSelected].Int != 0 {
+		t.Fatal("code's choice not sent")
+	}
+	ps := h.OfKind(ops.KindProgress)
+	done.Set(1.5)
+	r.Flush()
+	if ps[0].Props[ops.PropProgressValue].Float != 1 || !ps[1].Bool(ops.PropProgressIndeterminate) {
+		t.Fatalf("progress %v %v", ps[0].Props[ops.PropProgressValue].Float, ps[1].Bool(ops.PropProgressIndeterminate))
+	}
+}

@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"encoding/binary"
+
 	"github.com/egoist/nui/layout"
 	"github.com/egoist/nui/ops"
 	"github.com/egoist/nui/signal"
@@ -477,6 +479,63 @@ func Symbol(name Icon, style ...Styler) Node {
 	e.text = string(name)
 	e.setStyle(firstStyle(style), true)
 	e.r.batch.SetString(e.id, ops.PropSymbolName, string(name))
+	return Node{e}
+}
+
+// SegmentedProps configures a Segmented control.
+type SegmentedProps struct {
+	Segments []string
+	// Selected is the selected segment's index: the user's choice writes
+	// it.
+	Selected *signal.Signal[int]
+	Disabled signal.Accessor[bool]
+	Style    Styler
+}
+
+// Segmented is one of a few options side by side: UIKit's segmented
+// control, Material's segmented buttons.
+func Segmented(p SegmentedProps) Node {
+	e := newElement(ops.KindSegmented, true)
+	e.measure()
+	e.setStyle(p.Style, false)
+	b := binary.LittleEndian.AppendUint32(nil, uint32(len(p.Segments)))
+	for _, s := range p.Segments {
+		b = binary.LittleEndian.AppendUint32(b, uint32(len(s)))
+		b = append(b, s...)
+	}
+	e.r.batch.SetBytes(e.id, ops.PropSegmentedSegments, b)
+	bind(p.Disabled, func(v bool) { e.r.batch.SetBool(e.id, ops.PropDisabled, v) })
+	if p.Selected != nil {
+		reported, known := 0, false
+		signal.RenderEffect(func() {
+			v := p.Selected.Get()
+			if known && v == reported {
+				return
+			}
+			reported, known = v, true
+			e.r.batch.SetInt(e.id, ops.PropSegmentedSelected, int64(v))
+		})
+		e.handlers().selected = func(i int64) {
+			reported, known = int(i), true
+			p.Selected.Set(int(i))
+		}
+		e.listen(ops.EventSelected)
+	}
+	return Node{e}
+}
+
+// Progress is a progress bar: value is done, from 0 to 1; a nil value is
+// under way, how far unknown. Its Style's Color is its fill (the accent
+// color by default).
+func Progress(value signal.Accessor[float64], style ...Styler) Node {
+	e := newElement(ops.KindProgress, true)
+	e.measure()
+	e.setStyle(firstStyle(style), true)
+	if value == nil {
+		e.r.batch.SetBool(e.id, ops.PropProgressIndeterminate, true)
+		return Node{e}
+	}
+	bind(value, func(v float64) { e.r.batch.SetFloat(e.id, ops.PropProgressValue, min(max(v, 0), 1)) })
 	return Node{e}
 }
 

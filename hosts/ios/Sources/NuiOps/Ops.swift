@@ -22,6 +22,8 @@ public enum NuiKind: UInt16 {
     case richText = 17
     case selectable = 18
     case symbol = 19
+    case segmented = 20
+    case progress = 21
 
     public var name: String {
         switch self {
@@ -44,6 +46,8 @@ public enum NuiKind: UInt16 {
         case .richText: return "RichText"
         case .selectable: return "Selectable"
         case .symbol: return "Symbol"
+        case .segmented: return "Segmented"
+        case .progress: return "Progress"
         }
     }
 }
@@ -158,6 +162,16 @@ public enum NuiProp {
 
     public enum Symbol {
         public static let name: UInt16 = 64
+    }
+
+    public enum Segmented {
+        public static let segments: UInt16 = 64
+        public static let selected: UInt16 = 65
+    }
+
+    public enum Progress {
+        public static let value: UInt16 = 64
+        public static let indeterminate: UInt16 = 65
     }
 }
 

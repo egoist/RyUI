@@ -186,6 +186,7 @@ fun NuiRuntime.restyle(n: NuiNode) {
 fun NuiRuntime.applyColor(n: NuiNode) {
     when (val v = n.view) {
         is NuiSymbol -> { v.tint = n.color; v.applyTint() }
+        is com.google.android.material.progressindicator.LinearProgressIndicator -> if (n.color != 0L) v.setIndicatorColor(color(n.color))
         is MaterialButton -> if (n.color != 0L) v.setTextColor(color(n.color))
         is TextView -> v.setTextColor(if (n.color != 0L) color(n.color) else MaterialColors.getColor(themed, com.google.android.material.R.attr.colorOnSurface, Color.BLACK))
         is MaterialSwitch -> if (n.color != 0L) v.trackTintList = ColorStateList(
@@ -242,6 +243,9 @@ fun NuiRuntime.propBool(id: Int, prop: Int, v: Boolean) {
                 }
                 NuiProp.TextField.MULTILINE -> setMultiline(n, view as EditText, v)
             }
+            NuiKind.PROGRESS -> if (prop == NuiProp.Progress.INDETERMINATE) {
+                (view as com.google.android.material.progressindicator.LinearProgressIndicator).isIndeterminate = v
+            }
             NuiKind.TOGGLE -> if (prop == NuiProp.Toggle.ON) {
                 settingProp = true
                 (view as MaterialSwitch).isChecked = v
@@ -256,6 +260,7 @@ fun NuiRuntime.propInt(id: Int, prop: Int, v: Long) {
     val n = node(id) ?: return
     n.props[prop] = v
     if (setNavProp(n, prop, v)) return
+    if (n.kind == NuiKind.SEGMENTED && prop == NuiProp.Segmented.SELECTED) (n.view as NuiSegmented).select(v.toInt())
     if (prop == NuiProp.LINE_LIMIT) (n.view as? NuiRichText)?.let { it.lines = v.toInt(); it.invalidateText() }
     if (prop == NuiProp.LINE_LIMIT && n.props[NuiProp.TextField.MULTILINE] == true) {
         (n.view as? EditText)?.let { setMultiline(n, it, true) }
@@ -279,7 +284,9 @@ fun NuiRuntime.propFloat(id: Int, prop: Int, v: Double) {
             else n.view.alpha = v.toFloat()
         }
         NuiProp.FONT_SIZE -> { n.fontSize = v.toFloat(); applyText(n) }
-        else -> if (n.kind == NuiKind.SLIDER) {
+        else -> if (n.kind == NuiKind.PROGRESS && prop == NuiProp.Progress.VALUE) {
+            setProgress(n.view as com.google.android.material.progressindicator.LinearProgressIndicator, v)
+        } else if (n.kind == NuiKind.SLIDER) {
             val s = n.view as Slider
             val f = v.toFloat()
             when (prop) {
@@ -406,6 +413,12 @@ fun NuiRuntime.measureNode(n: NuiNode, w: Float, h: Float, aw: Float, ah: Float)
     if (v is NuiRichText) {
         val (mw, mh) = v.measureRich(w, aw)
         return mw to (if (!h.isNaN()) h else mh)
+    }
+    if (v is com.google.android.material.progressindicator.LinearProgressIndicator) {
+        // As wide as it's let be; as tall as Material makes it.
+        v.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+        val mw = if (!w.isNaN()) w else if (aw.isFinite()) maxOf(aw, 0f) else 100f
+        return mw to (if (!h.isNaN()) h else v.measuredHeight / d)
     }
     if (v is NuiSymbol) {
         val s = v.sizePx() / d

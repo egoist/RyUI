@@ -152,6 +152,22 @@ final class NuiGestureDelegate: NSObject, UIGestureRecognizerDelegate {
 
     func setMediaProp(_ n: NuiNode, _ prop: UInt16, _ v: NuiValue) -> Bool {
         switch (n.kind, prop) {
+        case (.segmented, NuiProp.Segmented.segments):
+            guard case .bytes(let b) = v, let s = n.view as? UISegmentedControl else { return true }
+            var r = NuiReader(b)
+            let selected = s.selectedSegmentIndex
+            s.removeAllSegments()
+            if b.count >= 4 {
+                for i in 0..<Int(r.u32()) { s.insertSegment(withTitle: r.string(), at: i, animated: false) }
+            }
+            s.selectedSegmentIndex = selected < s.numberOfSegments ? selected : UISegmentedControl.noSegment
+        case (.segmented, NuiProp.Segmented.selected):
+            (n.view as? UISegmentedControl)?.selectedSegmentIndex = Int(v.int)
+        case (.progress, NuiProp.Progress.value):
+            guard let p = n.view as? UIProgressView else { return true }
+            p.setProgress(Float(v.float), animated: p.window != nil)
+        case (.progress, NuiProp.Progress.indeterminate):
+            break // UIKit's bar has no such state: its track shows
         case (.symbol, NuiProp.Symbol.name):
             guard let s = n.view as? NuiSymbolView else { return true }
             s.node = n

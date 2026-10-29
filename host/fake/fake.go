@@ -283,6 +283,18 @@ func (h *Host) Measure(id ops.NodeID, c layout.Constraints) layout.Size {
 		s = layout.Size{W: 20, H: 20}
 	case ops.KindSymbol:
 		s = layout.Size{W: 22, H: 22}
+	case ops.KindSegmented:
+		b := v.Props[ops.PropSegmentedSegments].Bytes
+		n := 0
+		if len(b) >= 4 {
+			n = int(binary.LittleEndian.Uint32(b))
+		}
+		s = layout.Size{W: float32(70 * n), H: 32}
+	case ops.KindProgress:
+		s = layout.Size{W: 100, H: 4}
+		if fin(c.AvailW) {
+			s.W = c.AvailW
+		}
 	case ops.KindRichText:
 		// As text: the paragraphs' text, a line each at least, as tall
 		// as its inline components.
@@ -547,9 +559,13 @@ func (h *Host) Back(stack *View) {
 	h.dispatch(ops.Event{ID: stack.ID, Kind: ops.EventPopped, Int: int64(top.ID)})
 }
 
-// Select picks a tab.
+// Select selects a tab or a segment, as the user does.
 func (h *Host) Select(tabs *View, index int) {
-	tabs.Props[ops.PropTabsSelected] = ops.Value{Type: ops.TInt, Int: int64(index)}
+	p := ops.PropTabsSelected
+	if tabs.Kind == ops.KindSegmented {
+		p = ops.PropSegmentedSelected
+	}
+	tabs.Props[p] = ops.Value{Type: ops.TInt, Int: int64(index)}
 	h.listening(tabs, ops.EventSelected)
 	h.dispatch(ops.Event{ID: tabs.ID, Kind: ops.EventSelected, Int: int64(index)})
 }

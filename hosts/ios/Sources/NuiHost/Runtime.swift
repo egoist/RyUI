@@ -266,6 +266,16 @@ final class NuiTextField: UITextField {
             view = UIActivityIndicatorView(style: .medium)
         case .symbol:
             view = NuiSymbolView(frame: .zero)
+        case .segmented:
+            let s = UISegmentedControl()
+            s.addAction(UIAction { [weak self, weak s] _ in
+                guard let s else { return }
+                let i = Int64(s.selectedSegmentIndex)
+                self?.emit(id, .selected) { NuiEvents.selected(id, i) }
+            }, for: .valueChanged)
+            view = s
+        case .progress:
+            view = UIProgressView(progressViewStyle: .default)
         case .image:
             let iv = UIImageView()
             iv.contentMode = .scaleAspectFit
