@@ -312,10 +312,45 @@ scale), so dark mode and Dynamic Type / font scale need no app code.
 ### Native escape hatch
 
 `ui.Native(kind string, props ui.NativeProps) ui.Node` makes a view of a
-kind the app registers with each host (a Swift `NuiViewFactory`, a
-Kotlin `NuiViewFactory`). Props and events pass as typed values through
-the same ops. Maps, video, camera previews, web views and
-platform-only controls go through this.
+kind the app registers with each host. Props are named bools, ints,
+floats and strings (or accessors of them); events come back by name with
+named values. Maps, video, camera previews, web views and platform-only
+controls go through this.
+
+An app's native code lives beside its Go: `ios/*.swift` is compiled
+with the iOS host (same module), `android/*.kt` is built into the
+Android app. Each registers its kinds from a well-known class the host
+looks up at start: `@objc(NuiAppNatives)` conforming to
+`NuiNativeModule` in Swift, `object dev.nui.app.NuiAppNatives :
+NuiNativeModule` in Kotlin, calling `registerNative(kind) { ctx -> view }`.
+A native view implements `set(name, value)` and sends events with
+`ctx.emit(name, values)`; the host measures it as it measures any view.
+On the wire it's one kind (`Native`) whose `Type` prop, sent right
+after `Create`, picks the factory.
+
+### Images, gestures, animation
+
+- `ui.Image` takes an http(s) URL or a path in the app's `assets/`
+  (copied into the iOS bundle; pushed beside the library on Android).
+  The host fetches, decodes (Android subsamples to the screen) and
+  prepares it off the main thread, caches it in memory, and reports
+  `Loaded` with its natural size: one point per pixel, as on the web.
+  The core sizes the image itself: natural size, no wider than the space
+  it has, the other side from the aspect ratio; a style's `AspectRatio`
+  overrides the image's, so a box keeps its size before and after
+  loading.
+- Gestures are `View` props (`OnPan`, `OnPinch`, `OnSwipe`) with the
+  platform's recognizers on iOS (pan and pinch recognize together) and a
+  touch listener on Android that claims the touch once it moves past the
+  touch slop: it cancels the view's press and stops the parent
+  intercepting. Android's `ScaleGestureDetector` isn't used: it ignores
+  pinches narrower than about 27mm.
+- `ui.Animate(f)` (or `AnimateWith` a duration and curve) brackets the
+  next flush's two batches with `AnimateBegin`/`AnimateEnd`; the host
+  changes frames, opacity, background and corner radius inside UIView
+  animations, and with animators on Android (a frame animates by
+  interpolating the layout bounds; views that weren't on screen don't
+  animate in).
 
 ### Accessibility
 
@@ -643,12 +678,11 @@ Each one ends with its examples running and its tests in CI.
   tap and long press), pull to refresh, haptics; the navigation example
   runs on both. Not yet: gestures beyond press and long press (pan,
   pinch, swipe: moved to M4).
-- **M4, the rest of mobile v0**: gestures (pan, pinch, swipe, with the
-  platform recognizers), `ui.Native`, native animations
-  (`ui.Animate(func(){…})` makes the frames and props it changes
-  animate with `UIView.animate` and `ViewPropertyAnimator`), images
-  loaded and decoded off the main thread by the host (with a cache),
-  `Activity`.
+- **M4, the rest of mobile v0** (done): gestures (pan, pinch, swipe),
+  `ui.Native` with the app's Swift and Kotlin, native animations
+  (`ui.Animate`), images loaded and decoded off the main thread by the
+  host, with a cache; the media example runs on both. (`Activity`, the
+  spinner, came with M1.)
 - **M5, dev without reinstalling**: the socket transport and player
   apps; signals marked `signal.Persist(key)` survive `nui dev` restarts.
 - **M6, shipping**: signing, `.ipa` and `.aab` builds, store metadata.

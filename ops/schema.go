@@ -35,6 +35,8 @@ const (
 	PString
 	PPoint
 	PEnvironment
+	PGesture // a pan or pinch: state, location, translation, velocity, scale
+	PBytes
 )
 
 type PropDef struct {
@@ -160,6 +162,14 @@ var Schema = SchemaDef{
 			{Name: "Buttons", Type: TBytes, Doc: "encoded as Menu"},
 			{Name: "Style", Type: TEnum, Enum: "AlertStyle"},
 		}, Doc: "an alert or action sheet: Present shows it; a button reports Action with its index and dismisses it; dismissing otherwise reports Dismissed"},
+		{Name: "Image", Props: []PropDef{
+			{Name: "Source", Type: TString, Doc: "an http(s) URL, or a file in the app's assets"},
+			{Name: "Mode", Type: TEnum, Enum: "ImageMode"},
+		}, Doc: "loaded and decoded off the main thread, cached; reports Loaded with its natural size (one point per pixel), or Failed. Color tints it"},
+		{Name: "Native", Props: []PropDef{
+			{Name: "Type", Type: TString, Doc: "the registered native kind; sent right after Create"},
+			{Name: "Prop", Type: TBytes, Doc: "one named value: string name, u8 type (1 bool, 2 int, 3 float, 4 string), value"},
+		}, Doc: "a view the app registers with each host; its events are Native"},
 	},
 	Events: []EventDef{
 		{Name: "Press", Payload: PNone},
@@ -178,6 +188,12 @@ var Schema = SchemaDef{
 		{Name: "Action", Payload: PInt, Doc: "a menu item, alert button or bar button (its index)"},
 		{Name: "Dismissed", Payload: PNone},
 		{Name: "Refresh", Payload: PNone, Doc: "the user pulled to refresh"},
+		{Name: "Pan", Payload: PGesture},
+		{Name: "Pinch", Payload: PGesture},
+		{Name: "Swipe", Payload: PInt, Doc: "a SwipeDirection bit"},
+		{Name: "Loaded", Payload: PPoint, Doc: "an image loaded: its natural size"},
+		{Name: "Failed", Payload: PString},
+		{Name: "Native", Payload: PBytes, Doc: "a native view's event: string name, u32 count, then named values as in Native's Prop"},
 	},
 	Commands: []CommandDef{
 		{Name: "Focus"},
@@ -185,6 +201,8 @@ var Schema = SchemaDef{
 		{Name: "ListUpdate", Doc: "args: u32 count, then count i64 item IDs in order"},
 		{Name: "Present", Doc: "show a Sheet or Alert"},
 		{Name: "Haptic", Doc: "args: u8 Haptic; sent to the root"},
+		{Name: "AnimateBegin", Doc: "args: f32 duration (seconds), u8 AnimationCurve; sent to the root: the frames and visual props up to AnimateEnd animate"},
+		{Name: "AnimateEnd"},
 	},
 	Enums: []EnumDef{
 		{Name: "Role", Values: []string{"None", "Button", "Header", "Image", "Link", "Text", "Search"}},
@@ -201,6 +219,9 @@ var Schema = SchemaDef{
 		{Name: "AlertButtonRole", Values: []string{"Default", "Cancel", "Destructive"}},
 		{Name: "MenuTrigger", Values: []string{"Tap", "LongPress"}},
 		{Name: "Haptic", Values: []string{"Selection", "Light", "Medium", "Heavy", "Success", "Warning", "Error"}},
+		{Name: "ImageMode", Values: []string{"Fit", "Fill", "Stretch", "Center"}},
+		{Name: "GestureState", Values: []string{"Began", "Changed", "Ended", "Cancelled"}},
+		{Name: "AnimationCurve", Values: []string{"EaseInOut", "Linear", "EaseIn", "EaseOut", "Spring"}},
 		{Name: "SemanticColor", Values: []string{"None", "Label", "SecondaryLabel", "TertiaryLabel", "Background", "SecondaryBackground", "GroupedBackground", "Separator", "Accent", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink", "Gray", "Clear"}},
 	},
 }

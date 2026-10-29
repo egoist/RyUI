@@ -38,6 +38,10 @@ type Root struct {
 	flushes  int
 	measures measureCache
 	provs    []*element // host-sized layout roots
+
+	anim      Animation // what ui.Animate asked for, for this flush
+	animating bool
+	animArgs  [5]byte
 }
 
 var (
@@ -119,11 +123,22 @@ func (r *Root) Flush() {
 	}
 	clear(r.kidsQ)
 	r.kidsQ = r.kidsQ[:0]
+	animating := r.animating
+	if animating {
+		r.animEnd()
+	}
 	r.apply()
 	r.layout()
+	if animating && len(r.frameQ) > 0 {
+		r.animBegin()
+	}
 	for _, e := range r.frameQ {
 		e.emitFrame()
 	}
+	if animating && len(r.frameQ) > 0 {
+		r.animEnd()
+	}
+	r.animating = false
 	clear(r.frameQ)
 	r.frameQ = r.frameQ[:0]
 	r.apply()
@@ -290,6 +305,30 @@ func dispatch(ev ops.Event) {
 		call(h.dismissed)
 	case ops.EventRefresh:
 		call(h.refresh)
+	case ops.EventPan:
+		if h.pan != nil {
+			h.pan(ev.G)
+		}
+	case ops.EventPinch:
+		if h.pinch != nil {
+			h.pinch(ev.G)
+		}
+	case ops.EventSwipe:
+		if h.swipe != nil {
+			h.swipe(SwipeDirection(ev.Int))
+		}
+	case ops.EventLoaded:
+		if h.loaded != nil {
+			h.loaded(float32(ev.X), float32(ev.Y))
+		}
+	case ops.EventFailed:
+		if h.failed != nil {
+			h.failed(ev.Str)
+		}
+	case ops.EventNative:
+		if h.native != nil {
+			h.native(ev.Bytes)
+		}
 	}
 }
 

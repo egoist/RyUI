@@ -34,7 +34,10 @@ func (w *watcher) scan() string {
 				}
 				return nil
 			}
-			if !strings.HasSuffix(name, ".go") && name != "go.mod" || strings.HasSuffix(name, "_test.go") {
+			// Go, the app's native code (ios/, android/) and its assets.
+			code := strings.HasSuffix(name, ".go") || name == "go.mod" || strings.HasSuffix(name, ".swift") || strings.HasSuffix(name, ".kt")
+			asset := strings.Contains(filepath.ToSlash(path), "/assets/")
+			if !code && !asset || strings.HasSuffix(name, "_test.go") {
 				return nil
 			}
 			if info, err := d.Info(); err == nil {

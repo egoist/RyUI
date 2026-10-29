@@ -49,6 +49,10 @@ class NuiNode(val id: Int, val kind: Int, var view: View) {
     var alertStyle = NuiAlertStyle.ALERT
     var detents = 0L
     var grabber = false
+    var imageSource: String? = null
+    var gestures: NuiGestures? = null
+    var frameAnimator: android.animation.Animator? = null
+    var backgroundAnimator: android.animation.Animator? = null
 
     fun listens(event: Int) = listens and (1 shl event) != 0
 

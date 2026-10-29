@@ -112,6 +112,9 @@ private func uiWeight(_ v: Int32) -> UIFont.Weight? {
         case let t as UITextField: t.textColor = c ?? .label
         case let s as UISwitch: s.onTintColor = c
         case let a as UIActivityIndicatorView: a.color = c ?? .secondaryLabel
+        case let i as UIImageView:
+            i.tintColor = c
+            i.image = i.image?.withRenderingMode(c != nil ? .alwaysTemplate : .automatic)
         default: view.tintColor = c
         }
     }
@@ -121,15 +124,20 @@ private func uiWeight(_ v: Int32) -> UIFont.Weight? {
     func setCommon(_ n: NuiNode, _ prop: UInt16, _ v: NuiValue) {
         let view = n.view
         switch prop {
-        case NuiProp.background: view.backgroundColor = nuiColor(v.color)
+        case NuiProp.background:
+            let c = nuiColor(v.color)
+            animated(view) { view.backgroundColor = c }
         case NuiProp.cornerRadius:
-            view.layer.cornerRadius = CGFloat(v.float)
             view.layer.cornerCurve = .continuous
+            let r = CGFloat(v.float)
+            animated(view) { view.layer.cornerRadius = r }
         case NuiProp.borderWidth: view.layer.borderWidth = CGFloat(v.float)
         case NuiProp.borderColor:
             n.borderColor = v.color
             view.layer.borderColor = nuiColor(v.color)?.resolvedColor(with: view.traitCollection).cgColor
-        case NuiProp.opacity: view.alpha = CGFloat(v.float)
+        case NuiProp.opacity:
+            let a = CGFloat(v.float)
+            animated(view) { view.alpha = a }
         case NuiProp.hidden: view.isHidden = v.bool
         case NuiProp.clip: view.clipsToBounds = v.bool
         case NuiProp.a11yLabel:
@@ -272,7 +280,7 @@ private func uiWeight(_ v: Int32) -> UIFont.Weight? {
             guard let a = n.view as? UIActivityIndicatorView else { return }
             if v.bool { a.startAnimating() } else { a.stopAnimating() }
         default:
-            setNavProp(n, prop, v)
+            if !setMediaProp(n, prop, v) { setNavProp(n, prop, v) }
         }
     }
 

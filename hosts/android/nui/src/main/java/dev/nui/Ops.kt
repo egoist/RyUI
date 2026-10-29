@@ -22,6 +22,8 @@ object NuiKind {
     const val TABS = 12
     const val SHEET = 13
     const val ALERT = 14
+    const val IMAGE = 15
+    const val NATIVE = 16
 
     fun name(kind: Int): String = when (kind) {
         1 -> "View"
@@ -38,6 +40,8 @@ object NuiKind {
         12 -> "Tabs"
         13 -> "Sheet"
         14 -> "Alert"
+        15 -> "Image"
+        16 -> "Native"
         else -> "Kind($kind)"
     }
 }
@@ -131,6 +135,16 @@ object NuiProp {
         const val BUTTONS = 66
         const val STYLE = 67
     }
+
+    object Image {
+        const val SOURCE = 64
+        const val MODE = 65
+    }
+
+    object Native {
+        const val TYPE = 64
+        const val PROP = 65
+    }
 }
 
 object NuiEventKind {
@@ -150,6 +164,12 @@ object NuiEventKind {
     const val ACTION = 14
     const val DISMISSED = 15
     const val REFRESH = 16
+    const val PAN = 17
+    const val PINCH = 18
+    const val SWIPE = 19
+    const val LOADED = 20
+    const val FAILED = 21
+    const val NATIVE = 22
 }
 
 object NuiCommand {
@@ -158,6 +178,8 @@ object NuiCommand {
     const val LIST_UPDATE = 3
     const val PRESENT = 4
     const val HAPTIC = 5
+    const val ANIMATE_BEGIN = 6
+    const val ANIMATE_END = 7
 }
 
 object NuiRole {
@@ -274,6 +296,28 @@ object NuiHaptic {
     const val SUCCESS = 4
     const val WARNING = 5
     const val ERROR = 6
+}
+
+object NuiImageMode {
+    const val FIT = 0
+    const val FILL = 1
+    const val STRETCH = 2
+    const val CENTER = 3
+}
+
+object NuiGestureState {
+    const val BEGAN = 0
+    const val CHANGED = 1
+    const val ENDED = 2
+    const val CANCELLED = 3
+}
+
+object NuiAnimationCurve {
+    const val EASE_IN_OUT = 0
+    const val LINEAR = 1
+    const val EASE_IN = 2
+    const val EASE_OUT = 3
+    const val SPRING = 4
 }
 
 object NuiSemanticColor {
@@ -405,8 +449,22 @@ class NuiWriter {
         u8(if (e.dark) 1 else 0)
         string(e.locale)
     }
+    fun gesture(g: NuiGesture) {
+        u8(g.state)
+        for (f in floatArrayOf(g.x, g.y, g.translationX, g.translationY, g.velocityX, g.velocityY, g.scale)) f32(f)
+    }
+    fun raw(v: ByteArray) { room(v.size); buf.put(v) }
     fun bytes(): ByteArray = buf.array().copyOf(buf.position())
 }
+
+/** A pan or pinch (see ops.Gesture), in points relative to the view. */
+data class NuiGesture(
+    val state: Int = 0,
+    val x: Float = 0f, val y: Float = 0f,
+    val translationX: Float = 0f, val translationY: Float = 0f,
+    val velocityX: Float = 0f, val velocityY: Float = 0f,
+    val scale: Float = 1f,
+)
 
 /** Encoders for the events hosts send, one per event kind. */
 object NuiEvents {
@@ -426,4 +484,10 @@ object NuiEvents {
     fun action(id: Int, v: Long): ByteArray = NuiWriter().apply { header(id, 14); u64(v) }.bytes()
     fun dismissed(id: Int): ByteArray = NuiWriter().apply { header(id, 15) }.bytes()
     fun refresh(id: Int): ByteArray = NuiWriter().apply { header(id, 16) }.bytes()
+    fun pan(id: Int, g: NuiGesture): ByteArray = NuiWriter().apply { header(id, 17); gesture(g) }.bytes()
+    fun pinch(id: Int, g: NuiGesture): ByteArray = NuiWriter().apply { header(id, 18); gesture(g) }.bytes()
+    fun swipe(id: Int, v: Long): ByteArray = NuiWriter().apply { header(id, 19); u64(v) }.bytes()
+    fun loaded(id: Int, x: Double, y: Double): ByteArray = NuiWriter().apply { header(id, 20); f64(x); f64(y) }.bytes()
+    fun failed(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 21); string(v) }.bytes()
+    fun native(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 22); u32(v.size); raw(v) }.bytes()
 }

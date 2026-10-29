@@ -109,9 +109,10 @@ func filterLinker(out []byte) string {
 	return strings.TrimSpace(strings.Join(keep, "\n"))
 }
 
-// buildHost compiles the embedded Swift host into one object file,
+// buildHost compiles the embedded Swift host, with the app's own Swift
+// (its ios/*.swift: native views for ui.Native), into one object file,
 // cached by the hash of its sources and the SDK.
-func (t *iosToolchain) buildHost(work string) (string, error) {
+func (t *iosToolchain) buildHost(work string, app *goApp) (string, error) {
 	h := sha256.New()
 	fmt.Fprintln(h, t.sdk, t.target)
 	var files []string
@@ -141,6 +142,19 @@ func (t *iosToolchain) buildHost(work string) (string, error) {
 		}
 		if strings.HasSuffix(f, ".swift") {
 			swift = append(swift, dst)
+		}
+	}
+	if app != nil {
+		own, _ := filepath.Glob(filepath.Join(app.dir, "ios", "*.swift"))
+		sort.Strings(own)
+		for _, f := range own {
+			data, err := os.ReadFile(f)
+			if err != nil {
+				return "", err
+			}
+			h.Write([]byte(f))
+			h.Write(data)
+			swift = append(swift, f)
 		}
 	}
 	obj := filepath.Join(shared, hex.EncodeToString(h.Sum(nil))[:16]+".o")
@@ -192,6 +206,9 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 	}
 	if err := t.run(work, nil, "xcrun", "swiftc", "-target", t.target, "-sdk", t.sdk, hostObj, lib,
 		"-o", filepath.Join(bundle, "NuiApp"), "-framework", "UIKit", "-framework", "Foundation", "-lresolv"); err != nil {
+		return "", err
+	}
+	if err := copyDir(filepath.Join(app.dir, "assets"), filepath.Join(bundle, "assets")); err != nil {
 		return "", err
 	}
 	plist := fmt.Sprintf(infoPlist, app.bundleID, app.name, app.name, iosMin)
@@ -332,7 +349,7 @@ func devIOS(dir string, o *devOptions, stop <-chan os.Signal) error {
 	var logs *exec.Cmd
 	build := func() error {
 		start := time.Now()
-		hostObj, err := tc.buildHost(work)
+		hostObj, err := tc.buildHost(work, app)
 		if err != nil {
 			return err
 		}
@@ -390,4 +407,26 @@ func devIOS(dir string, o *devOptions, stop <-chan os.Signal) error {
 			}
 		}
 	}
+}
+
+// copyDir copies the files under src (if it exists) to dst.
+func copyDir(src, dst string) error {
+	if _, err := os.Stat(src); err != nil {
+		return nil
+	}
+	return filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(src, path)
+		out := filepath.Join(dst, rel)
+		if d.IsDir() {
+			return os.MkdirAll(out, 0o755)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(out, data, 0o644)
+	})
 }

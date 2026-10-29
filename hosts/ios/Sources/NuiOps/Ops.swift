@@ -17,6 +17,8 @@ public enum NuiKind: UInt16 {
     case tabs = 12
     case sheet = 13
     case alert = 14
+    case image = 15
+    case native = 16
 
     public var name: String {
         switch self {
@@ -34,6 +36,8 @@ public enum NuiKind: UInt16 {
         case .tabs: return "Tabs"
         case .sheet: return "Sheet"
         case .alert: return "Alert"
+        case .image: return "Image"
+        case .native: return "Native"
         }
     }
 }
@@ -128,6 +132,16 @@ public enum NuiProp {
         public static let buttons: UInt16 = 66
         public static let style: UInt16 = 67
     }
+
+    public enum Image {
+        public static let source: UInt16 = 64
+        public static let mode: UInt16 = 65
+    }
+
+    public enum Native {
+        public static let type: UInt16 = 64
+        public static let prop: UInt16 = 65
+    }
 }
 
 public enum NuiEventKind: UInt16 {
@@ -147,6 +161,12 @@ public enum NuiEventKind: UInt16 {
     case action = 14
     case dismissed = 15
     case refresh = 16
+    case pan = 17
+    case pinch = 18
+    case swipe = 19
+    case loaded = 20
+    case failed = 21
+    case native = 22
 }
 
 public enum NuiCommand: UInt16 {
@@ -155,6 +175,8 @@ public enum NuiCommand: UInt16 {
     case listUpdate = 3
     case present = 4
     case haptic = 5
+    case animateBegin = 6
+    case animateEnd = 7
 }
 
 public enum NuiRole: Int32 {
@@ -271,6 +293,28 @@ public enum NuiHaptic: Int32 {
     case success = 4
     case warning = 5
     case error = 6
+}
+
+public enum NuiImageMode: Int32 {
+    case fit = 0
+    case fill = 1
+    case stretch = 2
+    case center = 3
+}
+
+public enum NuiGestureState: Int32 {
+    case began = 0
+    case changed = 1
+    case ended = 2
+    case cancelled = 3
+}
+
+public enum NuiAnimationCurve: Int32 {
+    case easeInOut = 0
+    case linear = 1
+    case easeIn = 2
+    case easeOut = 3
+    case spring = 4
 }
 
 public enum NuiSemanticColor: Int32 {
@@ -420,6 +464,20 @@ public struct NuiWriter {
         u8(e.dark ? 1 : 0)
         string(e.locale)
     }
+    public mutating func gesture(_ g: NuiGesture) {
+        u8(UInt8(g.state))
+        for f in [g.x, g.y, g.translationX, g.translationY, g.velocityX, g.velocityY, g.scale] { f32(f) }
+    }
+}
+
+/// A pan or pinch (see ops.Gesture), in points relative to the view.
+public struct NuiGesture {
+    public var state: Int32 = 0
+    public var x: Float = 0, y: Float = 0
+    public var translationX: Float = 0, translationY: Float = 0
+    public var velocityX: Float = 0, velocityY: Float = 0
+    public var scale: Float = 1
+    public init() {}
 }
 
 /// Encoders for the events hosts send, one per event kind.
@@ -471,5 +529,23 @@ public enum NuiEvents {
     }
     public static func refresh(_ id: UInt32) -> [UInt8] {
         var w = NuiWriter(); w.header(id, 16); return w.bytes
+    }
+    public static func pan(_ id: UInt32, _ g: NuiGesture) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 17); w.gesture(g); return w.bytes
+    }
+    public static func pinch(_ id: UInt32, _ g: NuiGesture) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 18); w.gesture(g); return w.bytes
+    }
+    public static func swipe(_ id: UInt32, _ v: Int64) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 19); w.u64(UInt64(bitPattern: v)); return w.bytes
+    }
+    public static func loaded(_ id: UInt32, x: Double, y: Double) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 20); w.f64(x); w.f64(y); return w.bytes
+    }
+    public static func failed(_ id: UInt32, _ v: String) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 21); w.string(v); return w.bytes
+    }
+    public static func native(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 22); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
     }
 }

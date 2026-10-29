@@ -24,6 +24,11 @@ type ViewProps struct {
 	Style       Styler
 	OnPress     func()
 	OnLongPress func()
+	// Gestures, with the platform's recognizers: a pan (drag), a pinch,
+	// and swipes in any direction.
+	OnPan   func(Gesture)
+	OnPinch func(Gesture)
+	OnSwipe func(SwipeDirection)
 	// Accessibility. A view with any of these is an accessibility
 	// element; plain containers never appear in the accessibility tree.
 	Label string
@@ -86,7 +91,8 @@ func addKids(e *element, kids []Node) {
 // props it makes no native view: its children are placed in the nearest
 // ancestor that has one.
 func View(p ViewProps, children ...Node) Node {
-	real := p.OnPress != nil || p.OnLongPress != nil || p.Label != "" || p.Hint != "" || p.Role != RoleNone
+	real := p.OnPress != nil || p.OnLongPress != nil || p.Label != "" || p.Hint != "" || p.Role != RoleNone ||
+		p.OnPan != nil || p.OnPinch != nil || p.OnSwipe != nil
 	if s, ok := p.Style.(Style); ok && s.visual() {
 		real = true
 	}
@@ -109,6 +115,7 @@ func View(p ViewProps, children ...Node) Node {
 		if p.Role != RoleNone {
 			e.r.batch.SetEnum(e.id, ops.PropA11yRole, int32(p.Role))
 		}
+		e.listenGestures(&p)
 	}
 	e.setStyle(p.Style, false)
 	addKids(e, children)

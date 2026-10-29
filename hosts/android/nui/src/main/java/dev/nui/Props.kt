@@ -119,6 +119,7 @@ fun NuiRuntime.applyColor(n: NuiNode) {
             intArrayOf(color(n.color), MaterialColors.getColor(themed, com.google.android.material.R.attr.colorSurfaceContainerHighest, Color.LTGRAY)))
         is Slider -> if (n.color != 0L) { v.trackActiveTintList = ColorStateList.valueOf(color(n.color)); v.thumbTintList = ColorStateList.valueOf(color(n.color)) }
         is CircularProgressIndicator -> if (n.color != 0L) v.setIndicatorColor(color(n.color))
+        is android.widget.ImageView -> v.imageTintList = if (n.color != 0L) ColorStateList.valueOf(color(n.color)) else null
     }
 }
 
@@ -130,9 +131,19 @@ fun NuiRuntime.applyBackground(n: NuiNode) {
         if (n.cornerRadius > 0) b.cornerRadius = Math.round(n.cornerRadius * density)
         return
     }
+    val toColor = color(n.background)
+    val toRadius = n.cornerRadius * density
+    if (n.view is android.widget.ImageView) n.view.clipToOutline = n.cornerRadius > 0
+    val old = n.view.background as? GradientDrawable
+    if (old != null && animates(n.view)) {
+        if (n.borderWidth > 0) old.setStroke(Math.round(n.borderWidth * density), color(n.borderColor, Color.GRAY))
+        animateBackground(n, old, old.color?.defaultColor ?: toColor, toColor, old.cornerRadius, toRadius)
+        return
+    }
+    n.backgroundAnimator?.cancel()
     val d = GradientDrawable()
-    d.setColor(color(n.background))
-    d.cornerRadius = n.cornerRadius * density
+    d.setColor(toColor)
+    d.cornerRadius = toRadius
     if (n.borderWidth > 0) d.setStroke(Math.round(n.borderWidth * density), color(n.borderColor, Color.GRAY))
     n.view.background = d
 }
@@ -178,7 +189,11 @@ fun NuiRuntime.propFloat(id: Int, prop: Int, v: Double) {
     when (prop) {
         NuiProp.CORNER_RADIUS -> { n.cornerRadius = v.toFloat(); applyBackground(n) }
         NuiProp.BORDER_WIDTH -> { n.borderWidth = v.toFloat(); applyBackground(n) }
-        NuiProp.OPACITY -> n.view.alpha = v.toFloat()
+        NuiProp.OPACITY -> {
+            val a = animation
+            if (a != null && animates(n.view)) n.view.animate().alpha(v.toFloat()).setDuration(a.millis).setInterpolator(a.interpolator()).start()
+            else n.view.alpha = v.toFloat()
+        }
         NuiProp.FONT_SIZE -> { n.fontSize = v.toFloat(); applyText(n) }
         else -> if (n.kind == NuiKind.SLIDER) {
             val s = n.view as Slider

@@ -57,6 +57,9 @@ final class GoldenTests: XCTestCase {
         var env = NuiEnvironment()
         env.width = 402; env.height = 874; env.safeTop = 62; env.safeBottom = 34; env.keyboard = 336
         env.scale = 3; env.fontScale = 1.25; env.dark = true; env.locale = "en_US"
+        var pan = NuiGesture()
+        pan.state = NuiGestureState.changed.rawValue
+        pan.x = 10; pan.y = 20; pan.translationX = 5; pan.translationY = -3; pan.velocityX = 100; pan.velocityY = -50; pan.scale = 1
         let events: [[UInt8]] = [
             NuiEvents.press(7),
             NuiEvents.textChanged(7, "hé"),
@@ -65,6 +68,8 @@ final class GoldenTests: XCTestCase {
             NuiEvents.scrolled(10, x: 1.5, y: -2),
             NuiEvents.lifecycle(1, Int64(NuiLifecycle.background.rawValue)),
             NuiEvents.environment(1, env),
+            NuiEvents.pan(11, pan),
+            NuiEvents.native(12, [1, 2, 3]),
         ]
         var w = NuiWriter()
         for e in events { w.u32(UInt32(e.count)); w.bytes.append(contentsOf: e) }

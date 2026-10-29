@@ -55,6 +55,14 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
     val stacks = LinkedHashSet<NuiNode>()
     /** Back pops the active stack's top screen, following the predictive back gesture. */
     val back = makeBackCallback()
+    val nativeFactories = HashMap<String, (NuiNativeContext) -> NuiNativeView>()
+    /** Between AnimateBegin and AnimateEnd. */
+    var animation: NuiAnimation? = null
+
+    /** Registers a native view kind for ui.Native. */
+    fun registerNative(type: String, make: (NuiNativeContext) -> NuiNativeView) {
+        nativeFactories[type] = make
+    }
     private var nextCellID = 0
     var density = app.resources.displayMetrics.density
         private set
@@ -120,6 +128,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
         if (!started) {
             started = true
             NuiNative.load(app)
+            registerNatives()
             activity.sendEnvironment(force = true)
             enter { NuiNative.start(this) }
         } else {
@@ -256,6 +265,8 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
             NuiKind.TABS -> NuiTabs(ctx, id, this)
             NuiKind.SCREEN, NuiKind.SHEET -> NuiScreen(ctx, id, this)
             NuiKind.ALERT -> View(ctx)
+            NuiKind.IMAGE -> androidx.appcompat.widget.AppCompatImageView(ctx).apply { scaleType = android.widget.ImageView.ScaleType.FIT_CENTER }
+            NuiKind.NATIVE -> NuiNativeHost(ctx)
             else -> error("nui: the Android host can't show ${NuiKind.name(kind)} ($kind) yet")
         }
     }
@@ -374,6 +385,14 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
             }
             return
         }
+        if (animates(v)) animateFrame(n, v, l, t, r, b) { l2, t2, r2, b2 -> applyFrame(v, l2, t2, r2, b2) }
+        else {
+            n.frameAnimator?.cancel()
+            applyFrame(v, l, t, r, b)
+        }
+    }
+
+    private fun applyFrame(v: View, l: Int, t: Int, r: Int, b: Int) {
         if (v is NuiContainer) {
             v.frameWidth = r - l
             v.frameHeight = b - t
@@ -397,6 +416,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
         val n = nodes[id] ?: return
         n.listens = n.listens or (1 shl event)
         if (event == NuiEventKind.PRESS || event == NuiEventKind.LONG_PRESS) wirePresses(n)
+        if (n.kind == NuiKind.VIEW && (event == NuiEventKind.PAN || event == NuiEventKind.PINCH || event == NuiEventKind.SWIPE)) listenGesture(n, event)
     }
 
     override fun unlisten(id: Int, event: Int) {
@@ -426,6 +446,8 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
             }
             NuiCommand.PRESENT -> present(n)
             NuiCommand.HAPTIC -> if (args.remaining() > 0) haptic(args.get().toInt() and 0xff)
+            NuiCommand.ANIMATE_BEGIN -> beginAnimation(args)
+            NuiCommand.ANIMATE_END -> animation = null
         }
     }
 

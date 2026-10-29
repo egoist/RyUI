@@ -28,9 +28,13 @@ const (
 	KindSheet Kind = 13
 	// KindAlert: an alert or action sheet: Present shows it; a button reports Action with its index and dismisses it; dismissing otherwise reports Dismissed.
 	KindAlert Kind = 14
+	// KindImage: loaded and decoded off the main thread, cached; reports Loaded with its natural size (one point per pixel), or Failed. Color tints it.
+	KindImage Kind = 15
+	// KindNative: a view the app registers with each host; its events are Native.
+	KindNative Kind = 16
 )
 
-var kindNames = [...]string{"", "View", "Text", "Button", "TextField", "Toggle", "Slider", "Scroll", "List", "Activity", "Stack", "Screen", "Tabs", "Sheet", "Alert"}
+var kindNames = [...]string{"", "View", "Text", "Button", "TextField", "Toggle", "Slider", "Scroll", "List", "Activity", "Stack", "Screen", "Tabs", "Sheet", "Alert", "Image", "Native"}
 
 func (k Kind) String() string {
 	if int(k) < len(kindNames) && k > 0 {
@@ -152,9 +156,24 @@ const (
 	PropAlertStyle   PropID = 67
 )
 
+// Image props.
+const (
+	// PropImageSource: an http(s) URL, or a file in the app's assets.
+	PropImageSource PropID = 64
+	PropImageMode   PropID = 65
+)
+
+// Native props.
+const (
+	// PropNativeType: the registered native kind; sent right after Create.
+	PropNativeType PropID = 64
+	// PropNativeProp: one named value: string name, u8 type (1 bool, 2 int, 3 float, 4 string), value.
+	PropNativeProp PropID = 65
+)
+
 var commonProps = [...]propInfo{{}, {"Background", TColor}, {"CornerRadius", TFloat}, {"BorderWidth", TFloat}, {"BorderColor", TColor}, {"Opacity", TFloat}, {"Hidden", TBool}, {"Clip", TBool}, {"A11yLabel", TString}, {"A11yHint", TString}, {"A11yRole", TEnum}, {"Color", TColor}, {"TextStyle", TEnum}, {"FontSize", TFloat}, {"FontWeight", TEnum}, {"TextAlign", TEnum}, {"LineLimit", TInt}, {"Disabled", TBool}, {"Menu", TBytes}, {"MenuTrigger", TEnum}}
 
-var kindProps = [...][]propInfo{nil, {}, {{"Text", TString}}, {{"Title", TString}, {"Variant", TEnum}}, {{"Value", TString}, {"Placeholder", TString}, {"Keyboard", TEnum}, {"ReturnKey", TEnum}, {"Secure", TBool}, {"Autocapitalize", TEnum}, {"Autocorrect", TEnum}, {"ContentType", TString}}, {{"On", TBool}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}}, {{"Horizontal", TBool}, {"Refreshable", TBool}, {"Refreshing", TBool}}, {{"Refreshable", TBool}, {"Refreshing", TBool}}, {{"Animating", TBool}}, {}, {{"Title", TString}, {"Actions", TBytes}, {"BackGesture", TBool}, {"Icon", TString}}, {{"Selected", TInt}}, {{"Detents", TInt}, {"Grabber", TBool}}, {{"Title", TString}, {"Message", TString}, {"Buttons", TBytes}, {"Style", TEnum}}}
+var kindProps = [...][]propInfo{nil, {}, {{"Text", TString}}, {{"Title", TString}, {"Variant", TEnum}}, {{"Value", TString}, {"Placeholder", TString}, {"Keyboard", TEnum}, {"ReturnKey", TEnum}, {"Secure", TBool}, {"Autocapitalize", TEnum}, {"Autocorrect", TEnum}, {"ContentType", TString}}, {{"On", TBool}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}}, {{"Horizontal", TBool}, {"Refreshable", TBool}, {"Refreshing", TBool}}, {{"Refreshable", TBool}, {"Refreshing", TBool}}, {{"Animating", TBool}}, {}, {{"Title", TString}, {"Actions", TBytes}, {"BackGesture", TBool}, {"Icon", TString}}, {{"Selected", TInt}}, {{"Detents", TInt}, {"Grabber", TBool}}, {{"Title", TString}, {"Message", TString}, {"Buttons", TBytes}, {"Style", TEnum}}, {{"Source", TString}, {"Mode", TEnum}}, {{"Type", TString}, {"Prop", TBytes}}}
 
 // Events.
 const (
@@ -180,11 +199,20 @@ const (
 	EventDismissed EventKind = 15
 	// EventRefresh: the user pulled to refresh.
 	EventRefresh EventKind = 16
+	EventPan     EventKind = 17
+	EventPinch   EventKind = 18
+	// EventSwipe: a SwipeDirection bit.
+	EventSwipe EventKind = 19
+	// EventLoaded: an image loaded: its natural size.
+	EventLoaded EventKind = 20
+	EventFailed EventKind = 21
+	// EventNative: a native view's event: string name, u32 count, then named values as in Native's Prop.
+	EventNative EventKind = 22
 )
 
-var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh"}
+var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh", "Pan", "Pinch", "Swipe", "Loaded", "Failed", "Native"}
 
-var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone}
+var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone, PGesture, PGesture, PInt, PPoint, PString, PBytes}
 
 func (e EventKind) String() string {
 	if int(e) < len(eventNames) && e > 0 {
@@ -211,9 +239,12 @@ const (
 	CmdPresent CommandID = 4
 	// CmdHaptic: args: u8 Haptic; sent to the root.
 	CmdHaptic CommandID = 5
+	// CmdAnimateBegin: args: f32 duration (seconds), u8 AnimationCurve; sent to the root: the frames and visual props up to AnimateEnd animate.
+	CmdAnimateBegin CommandID = 6
+	CmdAnimateEnd   CommandID = 7
 )
 
-var commandNames = [...]string{"", "Focus", "Blur", "ListUpdate", "Present", "Haptic"}
+var commandNames = [...]string{"", "Focus", "Blur", "ListUpdate", "Present", "Haptic", "AnimateBegin", "AnimateEnd"}
 
 func (c CommandID) String() string {
 	if int(c) < len(commandNames) && c > 0 {
@@ -364,6 +395,34 @@ const (
 	HapticSuccess
 	HapticWarning
 	HapticError
+)
+
+type ImageMode int32
+
+const (
+	ImageModeFit ImageMode = iota
+	ImageModeFill
+	ImageModeStretch
+	ImageModeCenter
+)
+
+type GestureState int32
+
+const (
+	GestureStateBegan GestureState = iota
+	GestureStateChanged
+	GestureStateEnded
+	GestureStateCancelled
+)
+
+type AnimationCurve int32
+
+const (
+	AnimationCurveEaseInOut AnimationCurve = iota
+	AnimationCurveLinear
+	AnimationCurveEaseIn
+	AnimationCurveEaseOut
+	AnimationCurveSpring
 )
 
 type SemanticColor int32

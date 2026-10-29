@@ -1,1 +1,4 @@
-<manifest />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- ui.Image loads http(s) URLs. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+</manifest>

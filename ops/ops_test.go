@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -104,6 +105,8 @@ func goldenEvents() []Event {
 			Width: 402, Height: 874, SafeTop: 62, SafeBottom: 34, Keyboard: 336,
 			Scale: 3, FontScale: 1.25, Dark: true, Locale: "en_US",
 		}},
+		{ID: 11, Kind: EventPan, G: Gesture{State: GestureStateChanged, X: 10, Y: 20, TranslationX: 5, TranslationY: -3, VelocityX: 100, VelocityY: -50, Scale: 1}},
+		{ID: 12, Kind: EventNative, Bytes: []byte{1, 2, 3}},
 	}
 }
 
@@ -162,7 +165,7 @@ func TestEventRoundTrip(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got != e {
+		if !reflect.DeepEqual(got, e) {
 			t.Fatalf("got %+v, want %+v", got, e)
 		}
 	}

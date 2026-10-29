@@ -36,6 +36,8 @@ import CNui
     var alertTitle: String?
     var alertMessage: String?
     var alertStyle: Int32 = 0
+    var imageSource: String?
+    var native: NuiNativeView?
 
     /// Whether an ancestor is being popped or dismissed.
     var underDying: Bool {
@@ -94,6 +96,10 @@ final class NuiTextField: UITextField {
 /// The iOS host: applies the core's ops to UIKit views and reports
 /// events back. Everything runs on the main thread.
 @MainActor public final class NuiRuntime: NSObject, NuiOpHandler {
+    var nativeFactories: [String: (NuiNativeContext) -> NuiNativeView] = [:]
+    let gestureDelegate = NuiGestureDelegate()
+    /// Between AnimateBegin and AnimateEnd: the duration and curve.
+    var animation: (Double, Int32)?
     public static let shared = NuiRuntime()
 
     var nodes: [UInt32: NuiNode] = [:]
@@ -151,6 +157,7 @@ final class NuiTextField: UITextField {
         #if DEBUG
         NuiAutomation.start()
         #endif
+        registerNatives()
         var cb = nui_host_callbacks(
             apply: { buf, len in
                 MainActor.assumeIsolated {
@@ -255,6 +262,12 @@ final class NuiTextField: UITextField {
             view = l.collection
         case .activity:
             view = UIActivityIndicatorView(style: .medium)
+        case .image:
+            let iv = UIImageView()
+            iv.contentMode = .scaleAspectFit
+            view = iv
+        case .native:
+            view = NuiNativeHostView()
         default:
             fatalError("nui: the iOS host can't show \(kind.name) yet")
         }
@@ -291,9 +304,12 @@ final class NuiTextField: UITextField {
             cell.setRowHeight(CGFloat(height))
             return
         }
-        n.view.frame = CGRect(x: CGFloat(x), y: CGFloat(y), width: CGFloat(width), height: CGFloat(height))
-        if let scroll = n.parent?.view as? UIScrollView {
-            scroll.contentSize = CGSize(width: CGFloat(width), height: CGFloat(height))
+        let f = CGRect(x: CGFloat(x), y: CGFloat(y), width: CGFloat(width), height: CGFloat(height))
+        let v = n.view
+        let scroll = n.parent?.view as? UIScrollView
+        animated(v) {
+            v.frame = f
+            scroll?.contentSize = f.size
         }
     }
 
@@ -302,6 +318,8 @@ final class NuiTextField: UITextField {
         n.listens.insert(event)
         guard n.kind == .view, let e = NuiEventKind(rawValue: event) else { return }
         switch e {
+        case .pan, .pinch, .swipe:
+            listenGesture(n, e)
         case .press:
             let tap = UITapGestureRecognizer(target: self, action: #selector(tapped(_:)))
             n.view.addGestureRecognizer(tap)
@@ -343,6 +361,10 @@ final class NuiTextField: UITextField {
             present(n)
         case .haptic:
             if args.count > 0 { haptic(Int32(args[0])) }
+        case .animateBegin:
+            beginAnimation(args)
+        case .animateEnd:
+            animation = nil
         case .listUpdate:
             var r = NuiReader(args)
             let count = Int(r.u32())

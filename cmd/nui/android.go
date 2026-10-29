@@ -208,6 +208,24 @@ func (t *androidToolchain) buildAPK(app *goApp, work string) (apk, hash string, 
 			}
 		}
 	}
+	// The app's own Kotlin (android/*.kt: native views for ui.Native)
+	// builds into the shell app.
+	own := filepath.Join(src, "app", "src", "main", "java", "dev", "nui", "app", "own")
+	os.RemoveAll(own)
+	kts, _ := filepath.Glob(filepath.Join(app.dir, "android", "*.kt"))
+	sort.Strings(kts)
+	for _, f := range kts {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			return "", "", err
+		}
+		h.Write([]byte(filepath.Base(f)))
+		h.Write(data)
+		os.MkdirAll(own, 0o755)
+		if err := os.WriteFile(filepath.Join(own, filepath.Base(f)), data, 0o644); err != nil {
+			return "", "", err
+		}
+	}
 	hash = hex.EncodeToString(h.Sum(nil))[:16]
 	apk = filepath.Join(work, "app-"+hash+".apk")
 	if exists(apk) {
@@ -282,6 +300,9 @@ func devAndroid(dir string, o *devOptions, stop <-chan os.Signal) error {
 			"'mkdir -p files/nui && rm -f files/nui/libnui.so && cp "+tmp+" files/nui/libnui.so && chmod 444 files/nui/libnui.so'"); err != nil {
 			return err
 		}
+		if err := tc.pushAssets(app, work, serial, pkg); err != nil {
+			return err
+		}
 		if err := tc.run(work, nil, tc.adb, "-s", serial, "shell", "am", "start", "-W", "-n", pkg+"/dev.nui.NuiActivity"); err != nil {
 			return err
 		}
@@ -340,4 +361,38 @@ func androidPackage(id string) string {
 		}
 	}
 	return strings.Join(parts, ".")
+}
+
+// pushAssets copies the app's assets directory into its private files
+// (files/nui/assets), where the debug shell app reads them, when they
+// changed.
+func (t *androidToolchain) pushAssets(app *goApp, work, serial, pkg string) error {
+	dir := filepath.Join(app.dir, "assets")
+	if !exists(dir) {
+		return nil
+	}
+	h := sha256.New()
+	filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err == nil && !d.IsDir() {
+			data, _ := os.ReadFile(path)
+			h.Write([]byte(path))
+			h.Write(data)
+		}
+		return nil
+	})
+	sum := hex.EncodeToString(h.Sum(nil))
+	marker := filepath.Join(work, "assets-"+serial)
+	if prev, _ := os.ReadFile(marker); string(prev) == sum {
+		return nil
+	}
+	tmp := "/data/local/tmp/nui-" + pkg + "-assets"
+	t.run(work, nil, t.adb, "-s", serial, "shell", "rm", "-rf", tmp)
+	if err := t.run(work, nil, t.adb, "-s", serial, "push", dir, tmp); err != nil {
+		return err
+	}
+	if err := t.run(work, nil, t.adb, "-s", serial, "shell", "run-as", pkg, "sh", "-c",
+		"'mkdir -p files/nui && rm -rf files/nui/assets && cp -r "+tmp+" files/nui/assets'"); err != nil {
+		return err
+	}
+	return os.WriteFile(marker, []byte(sum), 0o644)
 }

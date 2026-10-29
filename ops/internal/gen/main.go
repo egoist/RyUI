@@ -57,6 +57,7 @@ var typeNames = map[ops.Type]string{
 var payloadNames = map[ops.Payload]string{
 	ops.PNone: "PNone", ops.PBool: "PBool", ops.PInt: "PInt", ops.PFloat: "PFloat",
 	ops.PString: "PString", ops.PPoint: "PPoint", ops.PEnvironment: "PEnvironment",
+	ops.PGesture: "PGesture", ops.PBytes: "PBytes",
 }
 
 func goFile(s ops.SchemaDef) []byte {
@@ -277,6 +278,10 @@ func swiftFile(s ops.SchemaDef) []byte {
 			p("    public static func %s(_ id: UInt32, x: Double, y: Double) -> [UInt8] {\n        var w = NuiWriter(); w.header(id, %d); w.f64(x); w.f64(y); return w.bytes\n    }\n", name, i+1)
 		case ops.PEnvironment:
 			p("    public static func %s(_ id: UInt32, _ e: NuiEnvironment) -> [UInt8] {\n        var w = NuiWriter(); w.header(id, %d); w.environment(e); return w.bytes\n    }\n", name, i+1)
+		case ops.PGesture:
+			p("    public static func %s(_ id: UInt32, _ g: NuiGesture) -> [UInt8] {\n        var w = NuiWriter(); w.header(id, %d); w.gesture(g); return w.bytes\n    }\n", name, i+1)
+		case ops.PBytes:
+			p("    public static func %s(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {\n        var w = NuiWriter(); w.header(id, %d); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes\n    }\n", name, i+1)
 		}
 	}
 	p("}\n")
@@ -410,6 +415,20 @@ public struct NuiWriter {
         u8(e.dark ? 1 : 0)
         string(e.locale)
     }
+    public mutating func gesture(_ g: NuiGesture) {
+        u8(UInt8(g.state))
+        for f in [g.x, g.y, g.translationX, g.translationY, g.velocityX, g.velocityY, g.scale] { f32(f) }
+    }
+}
+
+/// A pan or pinch (see ops.Gesture), in points relative to the view.
+public struct NuiGesture {
+    public var state: Int32 = 0
+    public var x: Float = 0, y: Float = 0
+    public var translationX: Float = 0, translationY: Float = 0
+    public var velocityX: Float = 0, velocityY: Float = 0
+    public var scale: Float = 1
+    public init() {}
 }
 `
 
@@ -494,6 +513,10 @@ func kotlinFile(s ops.SchemaDef) []byte {
 			p("    fun %s(id: Int, x: Double, y: Double): ByteArray = NuiWriter().apply { header(id, %d); f64(x); f64(y) }.bytes()\n", name, i+1)
 		case ops.PEnvironment:
 			p("    fun %s(id: Int, e: NuiEnvironment): ByteArray = NuiWriter().apply { header(id, %d); environment(e) }.bytes()\n", name, i+1)
+		case ops.PGesture:
+			p("    fun %s(id: Int, g: NuiGesture): ByteArray = NuiWriter().apply { header(id, %d); gesture(g) }.bytes()\n", name, i+1)
+		case ops.PBytes:
+			p("    fun %s(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, %d); u32(v.size); raw(v) }.bytes()\n", name, i+1)
 		}
 	}
 	p("}\n")
@@ -609,6 +632,20 @@ class NuiWriter {
         u8(if (e.dark) 1 else 0)
         string(e.locale)
     }
+    fun gesture(g: NuiGesture) {
+        u8(g.state)
+        for (f in floatArrayOf(g.x, g.y, g.translationX, g.translationY, g.velocityX, g.velocityY, g.scale)) f32(f)
+    }
+    fun raw(v: ByteArray) { room(v.size); buf.put(v) }
     fun bytes(): ByteArray = buf.array().copyOf(buf.position())
 }
+
+/** A pan or pinch (see ops.Gesture), in points relative to the view. */
+data class NuiGesture(
+    val state: Int = 0,
+    val x: Float = 0f, val y: Float = 0f,
+    val translationX: Float = 0f, val translationY: Float = 0f,
+    val velocityX: Float = 0f, val velocityY: Float = 0f,
+    val scale: Float = 1f,
+)
 `

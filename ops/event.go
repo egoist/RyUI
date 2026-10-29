@@ -21,6 +21,18 @@ type Environment struct {
 	Locale                                   string
 }
 
+// Gesture is a continuous gesture's state, in points relative to the
+// view (velocity in points per second).
+//
+// Wire format: u8 state; f32 x, y, translation x, y, velocity x, y, scale.
+type Gesture struct {
+	State                      GestureState
+	X, Y                       float32
+	TranslationX, TranslationY float32
+	VelocityX, VelocityY       float32
+	Scale                      float32
+}
+
 // Event is something a host reports.
 type Event struct {
 	ID    NodeID
@@ -30,7 +42,9 @@ type Event struct {
 	Float float64
 	X, Y  float64
 	Str   string
+	Bytes []byte
 	Env   Environment
+	G     Gesture
 }
 
 func (e Event) String() string {
@@ -71,6 +85,15 @@ func AppendEvent(buf []byte, e *Event) []byte {
 		buf = append(buf, d)
 		buf = le.AppendUint32(buf, uint32(len(v.Locale)))
 		buf = append(buf, v.Locale...)
+	case PGesture:
+		g := &e.G
+		buf = append(buf, byte(g.State))
+		for _, f := range [...]float32{g.X, g.Y, g.TranslationX, g.TranslationY, g.VelocityX, g.VelocityY, g.Scale} {
+			buf = le.AppendUint32(buf, math.Float32bits(f))
+		}
+	case PBytes:
+		buf = le.AppendUint32(buf, uint32(len(e.Bytes)))
+		buf = append(buf, e.Bytes...)
 	}
 	return buf
 }
@@ -98,6 +121,14 @@ func DecodeEvent(data []byte) (Event, error) {
 		}
 		v.Dark = r.u8() != 0
 		v.Locale = string(r.bytes())
+	case PGesture:
+		g := &e.G
+		g.State = GestureState(r.u8())
+		for _, f := range [...]*float32{&g.X, &g.Y, &g.TranslationX, &g.TranslationY, &g.VelocityX, &g.VelocityY, &g.Scale} {
+			*f = r.f32()
+		}
+	case PBytes:
+		e.Bytes = append([]byte(nil), r.bytes()...)
 	default:
 		return e, fmt.Errorf("ops: unknown event kind %d", e.Kind)
 	}

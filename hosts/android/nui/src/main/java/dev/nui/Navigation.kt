@@ -620,6 +620,12 @@ fun NuiRuntime.setNavProp(n: NuiNode, prop: Int, v: Any): Boolean {
             NuiProp.List.REFRESHING -> (n.wrapper as? SwipeRefreshLayout)?.isRefreshing = v as Boolean
             else -> return false
         }
+        NuiKind.IMAGE -> when (prop) {
+            NuiProp.Image.SOURCE -> loadImage(n, v as String)
+            NuiProp.Image.MODE -> (n.view as android.widget.ImageView).scaleType = imageScaleType(v as Int)
+            else -> return false
+        }
+        NuiKind.NATIVE -> return setNativeProp(n, prop, v)
         else -> return false
     }
     return true

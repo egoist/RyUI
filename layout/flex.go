@@ -145,11 +145,13 @@ func (n *Node) flex(in *input, p *Pass) output {
 		ratio := ch.Style.AspectRatio
 		switch {
 		case isDef(b):
-		case ratio > 0 && isDef(it.size.get(x)):
+		case ratio > 0 && isDef(it.knownX):
+			// A definite cross size, set or stretched (§9.2 3B, §9.8):
+			// the base size follows from the aspect ratio.
 			if m == 0 {
-				b = it.size.get(x) * ratio
+				b = it.knownX * ratio
 			} else {
-				b = it.size.get(x) / ratio
+				b = it.knownX / ratio
 			}
 		case isDef(it.size.get(m)):
 			b = it.size.get(m)

@@ -22,6 +22,11 @@ type handlers struct {
 	popped, selected    func(int64)
 	action              func(int64)
 	dismissed, refresh  func()
+	pan, pinch          func(Gesture)
+	swipe               func(SwipeDirection)
+	loaded              func(w, h float32)
+	failed              func(string)
+	native              func([]byte)
 }
 
 // element is a node of the UI tree. Real elements have a native view;
