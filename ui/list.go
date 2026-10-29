@@ -23,6 +23,14 @@ type ListProps struct {
 	// OnRefresh enables pull to refresh; see ScrollProps.
 	OnRefresh  func()
 	Refreshing signal.Accessor[bool]
+	// OnEndReached is called when the last rows are about to show, to
+	// load more: once for each length the list has.
+	OnEndReached func()
+	// SwipeActions are row index's actions, revealed by swiping it: on
+	// iOS its trailing actions (a destructive one red, the first a full
+	// swipe's); on Android a full swipe runs the first, over its color
+	// and icon, as Material's swipe to dismiss.
+	SwipeActions func(index int) []Action
 }
 
 type listCell[T any, K comparable] struct {
@@ -32,6 +40,8 @@ type listCell[T any, K comparable] struct {
 	key     K
 	dispose func()
 	width   float32
+	actions []Action // its swipe actions
+	sent    []byte   // as last sent
 }
 
 type listState[T any, K comparable] struct {
@@ -45,6 +55,9 @@ type listState[T any, K comparable] struct {
 	next  int64
 	cells map[ops.NodeID]*listCell[T, K]
 	order []*listCell[T, K]
+	swipe func(int) []Action
+	end   func()
+	endAt int // the length the end was last reached at
 }
 
 // List is For backed by the platform's recycling list (UICollectionView,
@@ -61,6 +74,7 @@ func List[T any, K comparable](p ListProps, items signal.Accessor[[]T], key func
 		owner: signal.CurrentOwner(),
 		ids:   map[K]int64{},
 		cells: map[ops.NodeID]*listCell[T, K]{},
+		swipe: p.SwipeActions, end: p.OnEndReached, endAt: -1,
 	}
 	e.list = st
 	e.r.lists = append(e.r.lists, e)
@@ -110,8 +124,34 @@ func (st *listState[T, K]) update(list []T) {
 		if i, ok := index[c.key]; ok {
 			c.item.Set(list[i])
 			c.index.Set(i)
+			st.swipeActions(c, i)
 		}
 	}
+}
+
+// swipeActions sends cell c's swipe actions for row i, if they changed.
+func (st *listState[T, K]) swipeActions(c *listCell[T, K], i int) {
+	if st.swipe == nil {
+		return
+	}
+	c.actions = st.swipe(i)
+	b := encodeActions(c.actions)
+	if string(b) == string(c.sent) {
+		return
+	}
+	c.sent = b
+	st.e.r.batch.SetBytes(c.el.id, ops.PropSwipeActions, b)
+}
+
+// reached calls OnEndReached when row i is near the end, once per length.
+func (st *listState[T, K]) reached(i int) {
+	n := len(st.items)
+	if st.end == nil || i < n-3 || n == st.endAt {
+		return
+	}
+	st.endAt = n
+	// Rows bind while the host lays out: not then.
+	Post(st.end)
 }
 
 func (st *listState[T, K]) count() int { return len(st.items) }
@@ -121,11 +161,13 @@ func (st *listState[T, K]) bind(i int, cell ops.NodeID) {
 		return
 	}
 	item := st.items[i]
+	st.reached(i)
 	c := st.cells[cell]
 	if c != nil {
 		c.item.Set(item)
 		c.index.Set(i)
 		c.key = st.key(item)
+		st.swipeActions(c, i)
 		return
 	}
 	r := st.e.r
@@ -150,6 +192,25 @@ func (st *listState[T, K]) bind(i int, cell ops.NodeID) {
 	})
 	st.cells[cell] = c
 	st.order = append(st.order, c)
+	if st.swipe != nil {
+		el.handlers().action = func(k int64) { runAction(c.actions, k) }
+		el.listen(ops.EventAction)
+		st.swipeActions(c, i)
+	}
+}
+
+// ScrollToItem scrolls a List so that item index shows.
+func ScrollToItem(list Node, index int, animated bool) {
+	e := list.e
+	if e == nil || e.kind != ops.KindList {
+		return
+	}
+	var args [5]byte
+	binary.LittleEndian.PutUint32(args[:], uint32(index))
+	if animated {
+		args[4] = 1
+	}
+	e.r.batch.Command(e.id, ops.CmdScrollTo, args[:])
 }
 
 func (st *listState[T, K]) unbind(cell ops.NodeID) {

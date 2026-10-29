@@ -79,6 +79,7 @@ object NuiProp {
     const val DISABLED = 17
     const val MENU = 18
     const val MENU_TRIGGER = 19
+    const val SWIPE_ACTIONS = 20
 
     object Text {
         const val TEXT = 64
@@ -222,7 +223,8 @@ object NuiCommand {
     const val ANIMATE_BEGIN = 6
     const val ANIMATE_END = 7
     const val OPEN_URL = 8
-    const val ACCENT = 9
+    const val SCROLL_TO = 9
+    const val ACCENT = 10
 }
 
 object NuiRole {

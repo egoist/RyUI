@@ -76,6 +76,7 @@ public enum NuiProp {
     public static let disabled: UInt16 = 17
     public static let menu: UInt16 = 18
     public static let menuTrigger: UInt16 = 19
+    public static let swipeActions: UInt16 = 20
 
     public enum Text {
         public static let text: UInt16 = 64
@@ -219,7 +220,8 @@ public enum NuiCommand: UInt16 {
     case animateBegin = 6
     case animateEnd = 7
     case openURL = 8
-    case accent = 9
+    case scrollTo = 9
+    case accent = 10
 }
 
 public enum NuiRole: Int32 {

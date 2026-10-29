@@ -671,3 +671,58 @@ func TestTimeZone(t *testing.T) {
 		t.Fatalf("time.Local %v", time.Local)
 	}
 }
+
+// A bound row carries its swipe actions, which run for its current
+// index; binding near the end loads more, once per length; ScrollToItem
+// is a command.
+func TestListSwipeAndEnd(t *testing.T) {
+	items := signal.NewFunc([]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, nil)
+	var deleted []int
+	ends := 0
+	var list ui.Node
+	h, r := mount(t, func() ui.Node {
+		list = ui.List(ui.ListProps{
+			SwipeActions: func(i int) []ui.Action {
+				return []ui.Action{{Title: "Delete", Icon: ui.IconTrash, Role: ui.ActionDestructive, OnPress: func() { deleted = append(deleted, i) }}}
+			},
+			OnEndReached: func() {
+				ends++
+				items.Set(append(items.Peek(), 10, 11))
+			},
+		}, items, func(i int) int { return i }, func(it signal.Accessor[int], _ signal.Accessor[int]) ui.Node {
+			return ui.Text(signal.Func(func() string { return fmt.Sprint(it.Get()) }))
+		})
+		return list
+	})
+	lv := h.OfKind(ops.KindList)[0]
+	cell := h.NewCell()
+	h.Bind(lv, 2, cell)
+	r.Flush()
+	if got := cell.Actions(ops.PropSwipeActions); len(got) != 1 || got[0] != "Delete" {
+		t.Fatalf("swipe actions %v", got)
+	}
+	h.Dispatch(ops.Event{ID: cell.ID, Kind: ops.EventAction, Int: 0})
+	if len(deleted) != 1 || deleted[0] != 2 {
+		t.Fatalf("deleted %v", deleted)
+	}
+
+	// Near the end: more, once.
+	h.Bind(lv, 8, cell)
+	h.Bind(lv, 9, cell)
+	h.RunPosted()
+	r.Flush()
+	if ends != 1 || len(items.Peek()) != 12 {
+		t.Fatalf("ends %d, %d items", ends, len(items.Peek()))
+	}
+	h.Bind(lv, 11, cell)
+	h.RunPosted()
+	if ends != 2 {
+		t.Fatalf("ends %d after the new end", ends)
+	}
+
+	ui.ScrollToItem(list, 5, true)
+	r.Flush()
+	if cmds := h.Commands(ops.CmdScrollTo); len(cmds) != 1 || cmds[0].Value.Bytes[0] != 5 || cmds[0].Value.Bytes[4] != 1 {
+		t.Fatalf("scroll commands %v", cmds)
+	}
+}

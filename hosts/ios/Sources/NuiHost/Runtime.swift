@@ -29,6 +29,7 @@ import CNui
     var dying = false // being popped or dismissed: its views leave with it
     var selected: Int?
     var actions: [NuiAction] = []
+    var swipeActions: [NuiAction] = [] // a list cell's
     var menuTrigger: Int32 = 0
     var menuOverlay: UIButton?
     var contextMenu: UIContextMenuInteraction?
@@ -411,6 +412,11 @@ final class NuiTextField: UITextField {
             beginAnimation(args)
         case .animateEnd:
             animation = nil
+        case .scrollTo:
+            guard args.count >= 5 else { return }
+            var r = NuiReader(args)
+            let i = Int(r.u32())
+            n.list?.scroll(to: i, animated: r.u8() != 0)
         case .openURL:
             if let url = URL(string: String(decoding: args, as: UTF8.self)) { UIApplication.shared.open(url) }
         case .accent:

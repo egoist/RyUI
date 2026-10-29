@@ -25,6 +25,11 @@ final class NuiListCell: UICollectionViewListCell {
     }
 }
 
+/// Lets the list's layout configuration reach the list made after it.
+final class NuiWeakList {
+    weak var list: NuiList?
+}
+
 /// A List: a UICollectionView with a list layout, fed by a diffable data
 /// source from the core's item IDs. Cells bind their rows through
 /// nui_list_bind when they're about to show.
@@ -40,12 +45,31 @@ final class NuiListCell: UICollectionViewListCell {
         self.id = id
         var config = UICollectionLayoutListConfiguration(appearance: .plain)
         config.showsSeparators = true
+        // A row's swipe actions are its cell's (the core sends them as it binds it).
+        let box = NuiWeakList()
+        config.trailingSwipeActionsConfigurationProvider = { [weak runtime] path in
+            guard let runtime, let list = box.list,
+                  let cell = list.collection.cellForItem(at: path) as? NuiListCell,
+                  let n = runtime.nodes[cell.nuiID], !n.swipeActions.isEmpty else { return nil }
+            let id = cell.nuiID
+            let actions = n.swipeActions.enumerated().map { i, act in
+                let a = UIContextualAction(style: act.role == NuiAlertButtonRole.destructive.rawValue ? .destructive : .normal,
+                                           title: act.title) { [weak runtime] _, _, done in
+                    runtime?.emit(id, .action) { NuiEvents.action(id, Int64(i)) }
+                    done(true)
+                }
+                a.image = act.image
+                return a
+            }
+            return UISwipeActionsConfiguration(actions: actions)
+        }
         collection = UICollectionView(frame: .zero, collectionViewLayout: UICollectionViewCompositionalLayout.list(using: config))
         collection.keyboardDismissMode = .interactive
         // Rows handle their own presses; a cell selection would stick.
         collection.allowsSelection = false
         collection.selfSizingInvalidation = .enabled
         super.init()
+        box.list = self
         let reg = UICollectionView.CellRegistration<NuiListCell, Int64> { _, _, _ in }
         source = UICollectionViewDiffableDataSource(collectionView: collection) { [weak self] cv, path, item in
             let cell = cv.dequeueConfiguredReusableCell(using: reg, for: path, item: item)
@@ -62,6 +86,13 @@ final class NuiListCell: UICollectionViewListCell {
     }
 
     func update(_ ids: [Int64]) { pending = ids }
+
+    /// Scrolls item i into view, at the top.
+    func scroll(to i: Int, animated: Bool) {
+        applyPending()
+        guard i >= 0, i < collection.numberOfItems(inSection: 0) else { return }
+        collection.scrollToItem(at: IndexPath(item: i, section: 0), at: .top, animated: animated)
+    }
 
     func applyPending() {
         guard let ids = pending else { return }

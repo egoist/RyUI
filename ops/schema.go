@@ -102,6 +102,7 @@ var Schema = SchemaDef{
 		{Name: "Disabled", Type: TBool},
 		{Name: "Menu", Type: TBytes, Doc: "a menu: u32 count, then per item u8 role (AlertButtonRole), a u32-length title and a u32-length icon (Symbol.Name; empty: none); Action events carry the item's index"},
 		{Name: "MenuTrigger", Type: TEnum, Enum: "MenuTrigger"},
+		{Name: "SwipeActions", Type: TBytes, Doc: "a List cell's swipe actions, encoded as Menu (iOS: its trailing actions; Android: a full swipe runs the first); Action events on the cell carry the index"},
 	},
 	Kinds: []KindDef{
 		{Name: "View", Doc: "a plain container"},
@@ -229,6 +230,7 @@ var Schema = SchemaDef{
 		{Name: "AnimateBegin", Doc: "args: f32 duration (seconds), u8 AnimationCurve; sent to the root: the frames and visual props up to AnimateEnd animate"},
 		{Name: "AnimateEnd"},
 		{Name: "OpenURL", Doc: "args: the URL; sent to the root: the system opens it (a browser, another app)"},
+		{Name: "ScrollTo", Doc: "args: u32 item index, u8 animated; sent to a List: it scrolls the item into view"},
 		{Name: "Accent", Doc: "args: u64 Color (0: the platform's), u8 flags (1: on Android, the wallpaper's colors where the system has them); sent to the root when it mounts: the app's accent color, which the platform's controls and Accent take (iOS: the tint color; Android: a Material 3 color scheme made from it)"},
 	},
 	Enums: []EnumDef{

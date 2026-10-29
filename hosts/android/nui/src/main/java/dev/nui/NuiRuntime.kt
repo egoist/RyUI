@@ -440,6 +440,10 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
             wirePresses(n)
             return
         }
+        if (prop == NuiProp.SWIPE_ACTIONS) {
+            n.swipeActions = decodeActions(v)
+            return
+        }
         setNavProp(n, prop, v)
     }
 
@@ -551,6 +555,11 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
                 val c = args.long
                 val flags = args.get().toInt()
                 setAccent(if (c != 0L) color(c) else null, flags and 1 != 0)
+            }
+            NuiCommand.SCROLL_TO -> {
+                if (args.remaining() < 5) return
+                val i = args.int
+                n.list?.scroll(i, args.get().toInt() != 0)
             }
             NuiCommand.OPEN_URL -> {
                 val b = ByteArray(args.remaining())

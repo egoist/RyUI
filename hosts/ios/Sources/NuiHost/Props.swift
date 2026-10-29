@@ -210,6 +210,9 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
         case NuiProp.menu:
             if case .bytes(let b) = v { n.actions = decodeActions(b) }
             installMenu(n)
+        case NuiProp.swipeActions:
+            guard case .bytes(let b) = v else { return }
+            n.swipeActions = decodeActions(b)
         case NuiProp.menuTrigger:
             n.menuTrigger = v.enumValue
             installMenu(n)
