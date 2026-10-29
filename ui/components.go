@@ -38,6 +38,9 @@ type ViewProps struct {
 	Label string
 	Hint  string
 	Role  Role
+	// Decorative hides the view, and everything in it, from screen
+	// readers: a decoration, or what its neighbors already say.
+	Decorative bool
 }
 
 // Val is a value that never changes, for a prop that takes an accessor:
@@ -95,7 +98,7 @@ func addKids(e *element, kids []Node) {
 // props it makes no native view: its children are placed in the nearest
 // ancestor that has one.
 func View(p ViewProps, children ...Node) Node {
-	real := p.OnPress != nil || p.OnLongPress != nil || p.Label != "" || p.Hint != "" || p.Role != RoleNone ||
+	real := p.OnPress != nil || p.OnLongPress != nil || p.Label != "" || p.Hint != "" || p.Role != RoleNone || p.Decorative ||
 		p.OnPan != nil || p.OnPinch != nil || p.OnSwipe != nil
 	if s, ok := p.Style.(Style); ok && s.visual() {
 		real = true
@@ -118,6 +121,9 @@ func View(p ViewProps, children ...Node) Node {
 		}
 		if p.Role != RoleNone {
 			e.r.batch.SetEnum(e.id, ops.PropA11yRole, int32(p.Role))
+		}
+		if p.Decorative {
+			e.r.batch.SetBool(e.id, ops.PropA11yHidden, true)
 		}
 		e.listenGestures(&p)
 	}

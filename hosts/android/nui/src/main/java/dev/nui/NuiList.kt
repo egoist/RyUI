@@ -188,3 +188,24 @@ class NuiScrollReporter(private val rt: NuiRuntime, private val id: Int, private
         }
     }
 }
+
+/**
+ * Offers a row's swipe actions to TalkBack, as actions on the row (its
+ * pressable content, which TalkBack focuses): swiping isn't something a
+ * screen reader's user can do.
+ */
+fun NuiRuntime.swipeAccessibility(n: NuiNode) {
+    n.swipeA11y?.let { (v, ids) -> for (i in ids) androidx.core.view.ViewCompat.removeAccessibilityAction(v, i) }
+    n.swipeA11y = null
+    if (n.swipeActions.isEmpty()) return
+    var v: View = n.view
+    while (!v.isClickable && v is ViewGroup && v.childCount == 1) v = v.getChildAt(0)
+    val id = n.id
+    val ids = n.swipeActions.mapIndexed { i, a ->
+        androidx.core.view.ViewCompat.addAccessibilityAction(v, a.title) { _, _ ->
+            emit(id, NuiEventKind.ACTION) { NuiEvents.action(id, i.toLong()) }
+            true
+        }
+    }
+    n.swipeA11y = v to ids
+}

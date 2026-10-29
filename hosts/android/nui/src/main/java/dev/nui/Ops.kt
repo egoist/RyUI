@@ -70,22 +70,23 @@ object NuiProp {
     const val A11Y_LABEL = 8
     const val A11Y_HINT = 9
     const val A11Y_ROLE = 10
-    const val COLOR = 11
-    const val TEXT_STYLE = 12
-    const val FONT_SIZE = 13
-    const val FONT_WEIGHT = 14
-    const val TEXT_ALIGN = 15
-    const val LINE_LIMIT = 16
-    const val DISABLED = 17
-    const val MENU = 18
-    const val MENU_TRIGGER = 19
-    const val TRANSFORM = 20
-    const val SHADOW = 21
-    const val GRADIENT = 22
-    const val TRANSITION = 23
-    const val MATERIAL = 24
-    const val FONT_FAMILY = 25
-    const val SWIPE_ACTIONS = 26
+    const val A11Y_HIDDEN = 11
+    const val COLOR = 12
+    const val TEXT_STYLE = 13
+    const val FONT_SIZE = 14
+    const val FONT_WEIGHT = 15
+    const val TEXT_ALIGN = 16
+    const val LINE_LIMIT = 17
+    const val DISABLED = 18
+    const val MENU = 19
+    const val MENU_TRIGGER = 20
+    const val TRANSFORM = 21
+    const val SHADOW = 22
+    const val GRADIENT = 23
+    const val TRANSITION = 24
+    const val MATERIAL = 25
+    const val FONT_FAMILY = 26
+    const val SWIPE_ACTIONS = 27
 
     object Text {
         const val TEXT = 64
@@ -237,10 +238,11 @@ object NuiCommand {
     const val OPEN_URL = 8
     const val CALL = 9
     const val COPY = 10
-    const val SHARE = 11
-    const val SCROLL_TO = 12
-    const val SCROLL_TO_OFFSET = 13
-    const val ACCENT = 14
+    const val ANNOUNCE = 11
+    const val SHARE = 12
+    const val SCROLL_TO = 13
+    const val SCROLL_TO_OFFSET = 14
+    const val ACCENT = 15
 }
 
 object NuiRole {
@@ -498,6 +500,7 @@ data class NuiEnvironment(
     val scale: Float = 1f,
     val fontScale: Float = 1f,
     val dark: Boolean = false,
+    val reduceMotion: Boolean = false,
     val locale: String = "",
     val timeZone: String = java.util.TimeZone.getDefault().id,
 )
@@ -523,7 +526,7 @@ class NuiWriter {
     fun header(id: Int, kind: Int) { u32(id); u16(kind) }
     fun environment(e: NuiEnvironment) {
         for (f in floatArrayOf(e.width, e.height, e.safeTop, e.safeRight, e.safeBottom, e.safeLeft, e.keyboard, e.scale, e.fontScale)) f32(f)
-        u8(if (e.dark) 1 else 0)
+        u8((if (e.dark) 1 else 0) or (if (e.reduceMotion) 2 else 0))
         string(e.locale)
         string(e.timeZone)
     }

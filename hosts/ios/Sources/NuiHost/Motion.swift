@@ -18,7 +18,18 @@ struct NuiTransition {
         x = CGFloat(r.f32()); y = CGFloat(r.f32())
     }
 
+    init() {}
+
     var none: Bool { !fade && scale == 0 && x == 0 && y == 0 }
+
+    /// Under Reduce Motion, a dissolve in place of movement, as UIKit's
+    /// own transitions do then.
+    @MainActor var reduced: NuiTransition {
+        guard !none, UIAccessibility.isReduceMotionEnabled else { return self }
+        var t = NuiTransition()
+        t.fade = true
+        return t
+    }
 
     /// The transform it adds to the view's own.
     var transform: CGAffineTransform {
@@ -32,7 +43,7 @@ struct NuiTransition {
     /// in the transition's state, and animates to its own once the batch
     /// is applied (and the rest of the change starts with it).
     func enter(_ n: NuiNode) {
-        guard let t = n.transition, !t.none, animation != nil, n.view.superview?.window != nil else { return }
+        guard let t = n.transition?.reduced, !t.none, animation != nil, n.view.superview?.window != nil else { return }
         if t.fade { n.view.alpha = 0 }
         n.view.transform = n.baseTransform.concatenating(t.transform)
         entering.append((n, animation!))
@@ -58,7 +69,7 @@ struct NuiTransition {
     /// A view destroyed during an animation, with a transition: it stays
     /// until it has gone out. True if it does.
     func exit(_ n: NuiNode) -> Bool {
-        guard let t = n.transition, !t.none, let a = animation, n.view.window != nil else { return false }
+        guard let t = n.transition?.reduced, !t.none, let a = animation, n.view.window != nil else { return false }
         let v = n.view
         exiting.insert(ObjectIdentifier(v))
         let (duration, curve) = a

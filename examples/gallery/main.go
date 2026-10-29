@@ -286,6 +286,7 @@ func motion(toast *signal.Signal[bool]) ui.Node {
 		pulse(),
 		ui.Button(ui.ButtonProps{Title: ui.Val("Show a toast"), Variant: ui.ButtonGray, OnPress: func() {
 			ui.Animate(func() { toast.Set(true) })
+			ui.Announce("Saved") // a screen reader wouldn't notice the toast
 			go func() {
 				time.Sleep(1500 * time.Millisecond)
 				ui.Post(func() { ui.Animate(func() { toast.Set(false) }) })
@@ -371,7 +372,7 @@ func toastOverlay(shown signal.Accessor[bool]) ui.Node {
 				Transition: ui.SlideUp}
 		})},
 			ui.Row(ui.Style{Gap: 10, Align: ui.AlignCenter},
-				ui.Symbol(ui.IconCheck, ui.Style{Color: ui.Green}),
+				ui.View(ui.ViewProps{Decorative: true}, ui.Symbol(ui.IconCheck, ui.Style{Color: ui.Green})),
 				ui.StaticText("Saved")))
 	})
 }

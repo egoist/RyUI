@@ -394,6 +394,7 @@ public struct NuiEnvironment: Equatable {
     public var scale: Float = 1
     public var fontScale: Float = 1
     public var dark = false
+    public var reduceMotion = false
     public var locale = ""
     public var timeZone = TimeZone.current.identifier
     public init() {}
@@ -413,7 +414,7 @@ public struct NuiWriter {
     public mutating func header(_ id: UInt32, _ kind: UInt16) { u32(id); u16(kind) }
     public mutating func environment(_ e: NuiEnvironment) {
         for f in [e.width, e.height, e.safeTop, e.safeRight, e.safeBottom, e.safeLeft, e.keyboard, e.scale, e.fontScale] { f32(f) }
-        u8(e.dark ? 1 : 0)
+        u8((e.dark ? 1 : 0) | (e.reduceMotion ? 2 : 0))
         string(e.locale)
         string(e.timeZone)
     }
@@ -607,6 +608,7 @@ data class NuiEnvironment(
     val scale: Float = 1f,
     val fontScale: Float = 1f,
     val dark: Boolean = false,
+    val reduceMotion: Boolean = false,
     val locale: String = "",
     val timeZone: String = java.util.TimeZone.getDefault().id,
 )
@@ -632,7 +634,7 @@ class NuiWriter {
     fun header(id: Int, kind: Int) { u32(id); u16(kind) }
     fun environment(e: NuiEnvironment) {
         for (f in floatArrayOf(e.width, e.height, e.safeTop, e.safeRight, e.safeBottom, e.safeLeft, e.keyboard, e.scale, e.fontScale)) f32(f)
-        u8(if (e.dark) 1 else 0)
+        u8((if (e.dark) 1 else 0) or (if (e.reduceMotion) 2 else 0))
         string(e.locale)
         string(e.timeZone)
     }

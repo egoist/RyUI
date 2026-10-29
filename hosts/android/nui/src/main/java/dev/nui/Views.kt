@@ -44,6 +44,7 @@ class NuiNode(val id: Int, val kind: Int, var view: View) {
     /** A menu, an alert's buttons. */
     var actions: List<NuiAction> = emptyList()
     var swipeActions: List<NuiAction> = emptyList() // a list cell's
+    var swipeA11y: Pair<View, List<Int>>? = null // the TalkBack actions made from them: the view, their IDs
     var menuTrigger = NuiMenuTrigger.TAP
     var dialog: android.app.Dialog? = null
     var alertTitle = ""

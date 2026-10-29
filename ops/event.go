@@ -18,6 +18,7 @@ type Environment struct {
 	Scale                                    float32 // pixels per point
 	FontScale                                float32 // Dynamic Type / Android font scale; 1 is the default
 	Dark                                     bool
+	ReduceMotion                             bool // the user asked for less motion (iOS's Reduce Motion; Android's animations off)
 	Locale                                   string
 	TimeZone                                 string // IANA, e.g. Asia/Shanghai: the core's time.Local
 }
@@ -79,9 +80,12 @@ func AppendEvent(buf []byte, e *Event) []byte {
 		for _, f := range [...]float32{v.Width, v.Height, v.SafeTop, v.SafeRight, v.SafeBottom, v.SafeLeft, v.Keyboard, v.Scale, v.FontScale} {
 			buf = le.AppendUint32(buf, math.Float32bits(f))
 		}
-		d := byte(0)
+		d := byte(0) // flags: 1 dark, 2 reduce motion
 		if v.Dark {
-			d = 1
+			d |= 1
+		}
+		if v.ReduceMotion {
+			d |= 2
 		}
 		buf = append(buf, d)
 		buf = le.AppendUint32(buf, uint32(len(v.Locale)))
@@ -122,7 +126,8 @@ func DecodeEvent(data []byte) (Event, error) {
 		for _, f := range [...]*float32{&v.Width, &v.Height, &v.SafeTop, &v.SafeRight, &v.SafeBottom, &v.SafeLeft, &v.Keyboard, &v.Scale, &v.FontScale} {
 			*f = r.f32()
 		}
-		v.Dark = r.u8() != 0
+		f := r.u8()
+		v.Dark, v.ReduceMotion = f&1 != 0, f&2 != 0
 		v.Locale = string(r.bytes())
 		v.TimeZone = string(r.bytes())
 	case PGesture:

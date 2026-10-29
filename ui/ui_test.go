@@ -865,3 +865,28 @@ func TestScrollOffset(t *testing.T) {
 		t.Fatalf("ScrollToEnd %v", b)
 	}
 }
+
+// A decorative view is hidden from screen readers (so it has a view);
+// Announce is a command to the root.
+func TestDecorativeAnnounce(t *testing.T) {
+	h, r := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{},
+			ui.View(ui.ViewProps{Decorative: true}, ui.Symbol("star")),
+			ui.Button(ui.ButtonProps{Title: ui.Val("Save"), OnPress: func() { ui.Announce("Saved") }}))
+	})
+	views := h.OfKind(ops.KindView)
+	found := false
+	for _, v := range views {
+		if v.Bool(ops.PropA11yHidden) {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("no view hidden from screen readers")
+	}
+	h.Tap(h.One(ops.KindButton, "Save"))
+	r.Flush()
+	if c := h.Commands(ops.CmdAnnounce); len(c) != 1 || string(c[0].Value.Bytes) != "Saved" {
+		t.Fatalf("announce commands %v", c)
+	}
+}

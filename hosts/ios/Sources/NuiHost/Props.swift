@@ -168,6 +168,9 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             n.opacity = a
             animated(view) { view.alpha = a }
         case NuiProp.hidden: view.isHidden = v.bool
+        case NuiProp.a11yHidden:
+            view.accessibilityElementsHidden = v.bool
+            if v.bool { view.isAccessibilityElement = false }
         case NuiProp.clip: view.clipsToBounds = v.bool
         case NuiProp.transform:
             guard case .bytes(let b) = v, b.count >= 20 else { return }

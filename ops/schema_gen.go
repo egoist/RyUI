@@ -67,32 +67,34 @@ const (
 	PropA11yLabel    PropID = 8
 	PropA11yHint     PropID = 9
 	PropA11yRole     PropID = 10
+	// PropA11yHidden: hidden from screen readers, with everything in it: a decoration.
+	PropA11yHidden PropID = 11
 	// PropColor: text color, or tint for controls.
-	PropColor      PropID = 11
-	PropTextStyle  PropID = 12
-	PropFontSize   PropID = 13
-	PropFontWeight PropID = 14
-	PropTextAlign  PropID = 15
+	PropColor      PropID = 12
+	PropTextStyle  PropID = 13
+	PropFontSize   PropID = 14
+	PropFontWeight PropID = 15
+	PropTextAlign  PropID = 16
 	// PropLineLimit: 0: no limit.
-	PropLineLimit PropID = 16
-	PropDisabled  PropID = 17
+	PropLineLimit PropID = 17
+	PropDisabled  PropID = 18
 	// PropMenu: a menu: u32 count, then per item u8 role (AlertButtonRole), a u32-length title and a u32-length icon (Symbol.Name; empty: none); Action events carry the item's index.
-	PropMenu        PropID = 18
-	PropMenuTrigger PropID = 19
+	PropMenu        PropID = 19
+	PropMenuTrigger PropID = 20
 	// PropTransform: f32 translate x, y (points), scale x, y, rotation (degrees, clockwise), around the view's center; layout doesn't see it.
-	PropTransform PropID = 20
+	PropTransform PropID = 21
 	// PropShadow: u64 color (0: none), f32 blur radius, offset x, y (points), from the view's shape.
-	PropShadow PropID = 21
+	PropShadow PropID = 22
 	// PropGradient: a linear background gradient: u32 count, per stop u64 color and f32 location (0 to 1); f32 start x, y, end x, y (unit points of the view).
-	PropGradient PropID = 22
+	PropGradient PropID = 23
 	// PropTransition: u8 fade, f32 scale (0: none), offset x, y (points): the state a view comes in from when it's inserted during an animation, and goes out to when it's destroyed during one (the host keeps it until it has).
-	PropTransition PropID = 23
+	PropTransition PropID = 24
 	// PropMaterial: a translucent background that blurs what's behind (iOS's materials); Android, which can't, shows its surface color, translucent.
-	PropMaterial PropID = 24
+	PropMaterial PropID = 25
 	// PropFontFamily: a font file's name in the app's assets/fonts (Inter-Bold.ttf: Inter-Bold), a family of them (Inter: Inter-Regular, Inter-Bold...), a generic family (serif, monospace, rounded) or a system family; scaled as the text style is. Under nui dev, a font file's URL, which the host loads, then sends FontLoaded.
-	PropFontFamily PropID = 25
+	PropFontFamily PropID = 26
 	// PropSwipeActions: a List cell's swipe actions, encoded as Menu (iOS: its trailing actions; Android: a full swipe runs the first); Action events on the cell carry the index.
-	PropSwipeActions PropID = 26
+	PropSwipeActions PropID = 27
 )
 
 // Text props.
@@ -248,7 +250,7 @@ const (
 	PropDatePickerMax PropID = 67
 )
 
-var commonProps = [...]propInfo{{}, {"Background", TColor}, {"CornerRadius", TFloat}, {"BorderWidth", TFloat}, {"BorderColor", TColor}, {"Opacity", TFloat}, {"Hidden", TBool}, {"Clip", TBool}, {"A11yLabel", TString}, {"A11yHint", TString}, {"A11yRole", TEnum}, {"Color", TColor}, {"TextStyle", TEnum}, {"FontSize", TFloat}, {"FontWeight", TEnum}, {"TextAlign", TEnum}, {"LineLimit", TInt}, {"Disabled", TBool}, {"Menu", TBytes}, {"MenuTrigger", TEnum}, {"Transform", TBytes}, {"Shadow", TBytes}, {"Gradient", TBytes}, {"Transition", TBytes}, {"Material", TEnum}, {"FontFamily", TString}, {"SwipeActions", TBytes}}
+var commonProps = [...]propInfo{{}, {"Background", TColor}, {"CornerRadius", TFloat}, {"BorderWidth", TFloat}, {"BorderColor", TColor}, {"Opacity", TFloat}, {"Hidden", TBool}, {"Clip", TBool}, {"A11yLabel", TString}, {"A11yHint", TString}, {"A11yRole", TEnum}, {"A11yHidden", TBool}, {"Color", TColor}, {"TextStyle", TEnum}, {"FontSize", TFloat}, {"FontWeight", TEnum}, {"TextAlign", TEnum}, {"LineLimit", TInt}, {"Disabled", TBool}, {"Menu", TBytes}, {"MenuTrigger", TEnum}, {"Transform", TBytes}, {"Shadow", TBytes}, {"Gradient", TBytes}, {"Transition", TBytes}, {"Material", TEnum}, {"FontFamily", TString}, {"SwipeActions", TBytes}}
 
 var kindProps = [...][]propInfo{nil, {}, {{"Text", TString}}, {{"Title", TString}, {"Variant", TEnum}, {"Icon", TString}}, {{"Value", TString}, {"Placeholder", TString}, {"Keyboard", TEnum}, {"ReturnKey", TEnum}, {"Secure", TBool}, {"Autocapitalize", TEnum}, {"Autocorrect", TEnum}, {"ContentType", TString}, {"Multiline", TBool}}, {{"On", TBool}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}}, {{"Horizontal", TBool}, {"Refreshable", TBool}, {"Refreshing", TBool}}, {{"Refreshable", TBool}, {"Refreshing", TBool}}, {{"Animating", TBool}}, {}, {{"Title", TString}, {"Actions", TBytes}, {"BackGesture", TBool}, {"Icon", TString}, {"Search", TString}, {"SearchText", TString}}, {{"Selected", TInt}}, {{"Detents", TInt}, {"Grabber", TBool}}, {{"Title", TString}, {"Message", TString}, {"Buttons", TBytes}, {"Style", TEnum}}, {{"Source", TString}, {"Mode", TEnum}, {"Placeholder", TString}}, {{"Type", TString}, {"Prop", TBytes}}, {{"Content", TBytes}, {"Inlines", TBytes}}, {}, {{"Name", TString}}, {{"Segments", TBytes}, {"Selected", TInt}}, {{"Value", TFloat}, {"Indeterminate", TBool}}, {{"Value", TInt}, {"Mode", TEnum}, {"Min", TInt}, {"Max", TInt}}}
 
@@ -334,17 +336,19 @@ const (
 	CmdCall CommandID = 9
 	// CmdCopy: args: the text; sent to the root: it's put on the clipboard.
 	CmdCopy CommandID = 10
+	// CmdAnnounce: args: the text; sent to the root: a screen reader, if one is on, reads it out.
+	CmdAnnounce CommandID = 11
 	// CmdShare: args: the text (a URL is shared as one); sent to the root: the system's share sheet.
-	CmdShare CommandID = 11
+	CmdShare CommandID = 12
 	// CmdScrollTo: args: u32 item index, u8 animated; sent to a List: it scrolls the item into view.
-	CmdScrollTo CommandID = 12
+	CmdScrollTo CommandID = 13
 	// CmdScrollToOffset: args: f32 x, f32 y (points from the content's top left; clamped, so a large one is the end), u8 animated; sent to a Scroll.
-	CmdScrollToOffset CommandID = 13
+	CmdScrollToOffset CommandID = 14
 	// CmdAccent: args: u64 Color (0: the platform's), u8 flags (1: on Android, the wallpaper's colors where the system has them); sent to the root when it mounts: the app's accent color, which the platform's controls and Accent take (iOS: the tint color; Android: a Material 3 color scheme made from it).
-	CmdAccent CommandID = 14
+	CmdAccent CommandID = 15
 )
 
-var commandNames = [...]string{"", "Focus", "Blur", "ListUpdate", "Present", "Haptic", "AnimateBegin", "AnimateEnd", "OpenURL", "Call", "Copy", "Share", "ScrollTo", "ScrollToOffset", "Accent"}
+var commandNames = [...]string{"", "Focus", "Blur", "ListUpdate", "Present", "Haptic", "AnimateBegin", "AnimateEnd", "OpenURL", "Call", "Copy", "Announce", "Share", "ScrollTo", "ScrollToOffset", "Accent"}
 
 func (c CommandID) String() string {
 	if int(c) < len(commandNames) && c > 0 {

@@ -67,22 +67,23 @@ public enum NuiProp {
     public static let a11yLabel: UInt16 = 8
     public static let a11yHint: UInt16 = 9
     public static let a11yRole: UInt16 = 10
-    public static let color: UInt16 = 11
-    public static let textStyle: UInt16 = 12
-    public static let fontSize: UInt16 = 13
-    public static let fontWeight: UInt16 = 14
-    public static let textAlign: UInt16 = 15
-    public static let lineLimit: UInt16 = 16
-    public static let disabled: UInt16 = 17
-    public static let menu: UInt16 = 18
-    public static let menuTrigger: UInt16 = 19
-    public static let transform: UInt16 = 20
-    public static let shadow: UInt16 = 21
-    public static let gradient: UInt16 = 22
-    public static let transition: UInt16 = 23
-    public static let material: UInt16 = 24
-    public static let fontFamily: UInt16 = 25
-    public static let swipeActions: UInt16 = 26
+    public static let a11yHidden: UInt16 = 11
+    public static let color: UInt16 = 12
+    public static let textStyle: UInt16 = 13
+    public static let fontSize: UInt16 = 14
+    public static let fontWeight: UInt16 = 15
+    public static let textAlign: UInt16 = 16
+    public static let lineLimit: UInt16 = 17
+    public static let disabled: UInt16 = 18
+    public static let menu: UInt16 = 19
+    public static let menuTrigger: UInt16 = 20
+    public static let transform: UInt16 = 21
+    public static let shadow: UInt16 = 22
+    public static let gradient: UInt16 = 23
+    public static let transition: UInt16 = 24
+    public static let material: UInt16 = 25
+    public static let fontFamily: UInt16 = 26
+    public static let swipeActions: UInt16 = 27
 
     public enum Text {
         public static let text: UInt16 = 64
@@ -234,10 +235,11 @@ public enum NuiCommand: UInt16 {
     case openURL = 8
     case call = 9
     case copy = 10
-    case share = 11
-    case scrollTo = 12
-    case scrollToOffset = 13
-    case accent = 14
+    case announce = 11
+    case share = 12
+    case scrollTo = 13
+    case scrollToOffset = 14
+    case accent = 15
 }
 
 public enum NuiRole: Int32 {
@@ -519,6 +521,7 @@ public struct NuiEnvironment: Equatable {
     public var scale: Float = 1
     public var fontScale: Float = 1
     public var dark = false
+    public var reduceMotion = false
     public var locale = ""
     public var timeZone = TimeZone.current.identifier
     public init() {}
@@ -538,7 +541,7 @@ public struct NuiWriter {
     public mutating func header(_ id: UInt32, _ kind: UInt16) { u32(id); u16(kind) }
     public mutating func environment(_ e: NuiEnvironment) {
         for f in [e.width, e.height, e.safeTop, e.safeRight, e.safeBottom, e.safeLeft, e.keyboard, e.scale, e.fontScale] { f32(f) }
-        u8(e.dark ? 1 : 0)
+        u8((e.dark ? 1 : 0) | (e.reduceMotion ? 2 : 0))
         string(e.locale)
         string(e.timeZone)
     }

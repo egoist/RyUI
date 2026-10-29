@@ -56,6 +56,9 @@ open class NuiActivity : AppCompatActivity() {
             if (r - l != or_ - ol || b - t != ob - ot) sendEnvironment()
         }
         frame.post { runtime.attach(this) }
+        // Animations turned off (or on) in the system's settings: less motion.
+        contentResolver.registerContentObserver(
+            android.provider.Settings.Global.getUriFor(android.provider.Settings.Global.ANIMATOR_DURATION_SCALE), false, motion)
         // Opened with a URL (a scheme's, an app link).
         if (savedInstanceState == null) intent?.data?.let { runtime.openURL(it.toString()) }
     }
@@ -76,6 +79,7 @@ open class NuiActivity : AppCompatActivity() {
             scale = d,
             fontScale = c.fontScale,
             dark = (c.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES,
+            reduceMotion = !android.animation.ValueAnimator.areAnimatorsEnabled(),
             locale = c.locales[0].toLanguageTag(),
         )
         if (!force && e == last) return
@@ -117,7 +121,15 @@ open class NuiActivity : AppCompatActivity() {
         if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) runtime.lifecycle(NuiLifecycle.MEMORY_WARNING)
     }
 
+    private val motion = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
+        override fun onChange(selfChange: Boolean) {
+            sendEnvironment()
+            runtime.reportScreens()
+        }
+    }
+
     override fun onDestroy() {
+        contentResolver.unregisterContentObserver(motion)
         runtime.detach(this)
         super.onDestroy()
     }

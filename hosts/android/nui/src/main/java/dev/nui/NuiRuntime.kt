@@ -474,6 +474,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
         }
         if (prop == NuiProp.SWIPE_ACTIONS) {
             n.swipeActions = decodeActions(v)
+            swipeAccessibility(n)
             return
         }
         when (prop) {
@@ -604,6 +605,12 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
                 setAccent(if (c != 0L) color(c) else null, flags and 1 != 0)
             }
             NuiCommand.CALL -> call(id, args)
+            NuiCommand.ANNOUNCE -> {
+                val b = ByteArray(args.remaining())
+                args.get(b)
+                @Suppress("DEPRECATION") // its replacements (live regions, pane titles) describe views, not events
+                activity?.window?.decorView?.announceForAccessibility(String(b, Charsets.UTF_8))
+            }
             NuiCommand.COPY -> {
                 val b = ByteArray(args.remaining())
                 args.get(b)

@@ -263,6 +263,8 @@ fun NuiRuntime.propBool(id: Int, prop: Int, v: Boolean) {
         NuiProp.HIDDEN -> view.visibility = if (v) View.INVISIBLE else View.VISIBLE
         NuiProp.CLIP -> { view.clipToOutline = v; (view as? android.view.ViewGroup)?.clipChildren = v }
         NuiProp.DISABLED -> view.isEnabled = !v
+        NuiProp.A11Y_HIDDEN -> view.importantForAccessibility =
+            if (v) View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS else View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
         else -> if (!setNavProp(n, prop, v)) when (n.kind) {
             NuiKind.TEXT_FIELD -> when (prop) {
                 NuiProp.TextField.SECURE -> {

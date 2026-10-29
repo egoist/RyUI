@@ -509,6 +509,8 @@ final class NuiTextField: UITextField {
             call(id, args)
         case .copy:
             UIPasteboard.general.string = String(decoding: args, as: UTF8.self)
+        case .announce:
+            UIAccessibility.post(notification: .announcement, argument: String(decoding: args, as: UTF8.self))
         case .share:
             let s = String(decoding: args, as: UTF8.self)
             // A URL is shared as one (a link preview, Safari's actions).

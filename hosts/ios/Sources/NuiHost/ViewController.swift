@@ -19,6 +19,7 @@ public final class NuiViewController: UIViewController {
         nc.addObserver(self, selector: #selector(keyboardWillChange(_:)), name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
         nc.addObserver(self, selector: #selector(keyboardWillChange(_:)), name: UIResponder.keyboardWillHideNotification, object: nil)
         nc.addObserver(self, selector: #selector(contentSizeChanged), name: UIContentSizeCategory.didChangeNotification, object: nil)
+        nc.addObserver(self, selector: #selector(contentSizeChanged), name: UIAccessibility.reduceMotionStatusDidChangeNotification, object: nil)
         if #available(iOS 17.0, *) {
             registerForTraitChanges([UITraitUserInterfaceStyle.self, UITraitDisplayScale.self]) { (vc: NuiViewController, _: UITraitCollection) in
                 vc.sendEnvironment()
@@ -57,8 +58,12 @@ public final class NuiViewController: UIViewController {
     // Labels pick up the new Dynamic Type size in their own trait
     // update, after this notification: report it a turn later so the
     // core measures with the new fonts.
+    /// Text size or Reduce Motion changed: the root and the screens report it.
     @objc func contentSizeChanged() {
-        DispatchQueue.main.async { self.sendEnvironment() }
+        DispatchQueue.main.async {
+            self.sendEnvironment()
+            NuiRuntime.shared.reportScreens()
+        }
     }
 
     func updateKeyboard() {
@@ -103,6 +108,7 @@ public final class NuiViewController: UIViewController {
         e.scale = Float(scale > 0 ? scale : UIScreen.main.scale)
         e.fontScale = Float(UIFontMetrics.default.scaledValue(for: 17) / 17)
         e.dark = traitCollection.userInterfaceStyle == .dark
+        e.reduceMotion = UIAccessibility.isReduceMotionEnabled
         e.locale = Locale.current.identifier
         guard e != lastEnv, e.width > 0 else { return }
         lastEnv = e

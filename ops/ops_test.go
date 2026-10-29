@@ -103,7 +103,7 @@ func goldenEvents() []Event {
 		{ID: 1, Kind: EventLifecycle, Int: int64(LifecycleBackground)},
 		{ID: 1, Kind: EventEnvironment, Env: Environment{
 			Width: 402, Height: 874, SafeTop: 62, SafeBottom: 34, Keyboard: 336,
-			Scale: 3, FontScale: 1.25, Dark: true, Locale: "en_US", TimeZone: "Asia/Shanghai",
+			Scale: 3, FontScale: 1.25, Dark: true, ReduceMotion: true, Locale: "en_US", TimeZone: "Asia/Shanghai",
 		}},
 		{ID: 11, Kind: EventPan, G: Gesture{State: GestureStateChanged, X: 10, Y: 20, TranslationX: 5, TranslationY: -3, VelocityX: 100, VelocityY: -50, Scale: 1}},
 		{ID: 12, Kind: EventNative, Bytes: []byte{1, 2, 3}},

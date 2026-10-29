@@ -364,10 +364,23 @@ after `Create`, picks the factory.
 ### Accessibility
 
 Native widgets bring their own. `View` takes `Label`, `Hint`, `Role`
-(button, header, image, …) and `Hidden`, which hosts map to UIKit's
-accessibility properties and Android's `AccessibilityNodeInfo` (through
-`ViewCompat`). Layout-only views (below) never appear in the
-accessibility tree.
+(button, header, image, …) and `Decorative` (hidden from screen readers
+with what's in it), which hosts map to UIKit's accessibility properties
+and Android's `AccessibilityNodeInfo` (through `ViewCompat`). Layout-only
+views (below) never appear in the accessibility tree.
+
+- A pressable `View` is one element, a button, read as its contents'
+  labels joined (VoiceOver; TalkBack merges a clickable view's text
+  itself).
+- `ui.Announce` has the screen reader say what changed where focus
+  isn't (a toast, a count of results).
+- A List row's swipe actions are its accessibility actions on Android
+  (UIKit's list offers its contextual actions to VoiceOver itself).
+- `Environment.ReduceMotion` is iOS's Reduce Motion, or Android's
+  animations turned off; on iOS, `Transition`s then dissolve instead of
+  moving, as UIKit's do (Android's animator scale already makes every
+  animation instant).
+- Text follows Dynamic Type and Android's font scale, custom fonts too.
 
 ## Flush
 
@@ -812,6 +825,8 @@ Each one ends with its examples running and its tests in CI.
   - A search field in the navigation bar (`ScreenOptions.Search`).
   - Incoming links: `nui.json`'s `scheme` and `links`, `ui.OnOpenURL`.
   - Custom fonts (`Font.Family`).
+  - Accessibility: pressable views as buttons, `Decorative`,
+    `ui.Announce`, swipe actions for TalkBack, Reduce Motion.
   - Scroll position: `OnScroll` on `Scroll` and `List`, `ui.ScrollTo`
     and `ui.ScrollToEnd`. Android posts its scroll events to the next
     turn of the main loop: a scroll runs while the view draws, and the
@@ -824,8 +839,9 @@ Each one ends with its examples running and its tests in CI.
   - `examples/gallery` shows each; `examples/notes` is SQLite's.
 
   Next:
-  - An accessibility pass over every component with VoiceOver and
-    TalkBack.
+  - More accessibility: rotor headings from markdown, adjustable
+    custom controls, and checking every component with VoiceOver and
+    TalkBack on a device.
   - More GUI tests: navigation, sheets, gestures, the gallery.
 - **Then desktop** (below), only when it's called for: until then the
   work is maturing iOS and Android.

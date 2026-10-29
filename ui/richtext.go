@@ -380,6 +380,15 @@ func Selectable(p SelectableProps, children ...Node) Node {
 	return Node{e}
 }
 
+// Announce has a screen reader, if one is on, read text out: what
+// changed that the screen doesn't say where focus is ("Saved", "3
+// results"). Main thread.
+func Announce(text string) {
+	if r := activeRoot(); r != nil {
+		r.batch.Command(r.el.id, ops.CmdAnnounce, []byte(text))
+	}
+}
+
 // Copy puts text on the clipboard. Main thread.
 func Copy(text string) {
 	if r := activeRoot(); r != nil {
