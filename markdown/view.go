@@ -162,7 +162,7 @@ func (v *view) block(b signal.Accessor[block], tight bool, quote int) ui.Node {
 		if quote == 0 {
 			color = h.Color
 		}
-		return ui.RichText(ui.RichTextProps{OnLink: v.p.OnLink, Style: ui.Style{Font: h.Font, Color: color, Margin: ui.Edges{Top: h.Top}},
+		return ui.RichText(ui.RichTextProps{OnLink: v.p.OnLink, Role: ui.RoleHeader, Style: ui.Style{Font: h.Font, Color: color, Margin: ui.Edges{Top: h.Top}},
 			Text: signal.Func(func() ui.Rich { return v.spans(b.Get().i) })})
 	case parser.ThematicBreak:
 		return ui.View(ui.ViewProps{Style: ui.Style{Height: ui.Pt(1), Background: th.Rule, Margin: ui.Symmetric(6, 0)}})

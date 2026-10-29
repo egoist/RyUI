@@ -206,6 +206,10 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             view.isAccessibilityElement = true
             view.accessibilityHint = v.string
         case NuiProp.a11yRole:
+            if let r = view as? NuiRichTextView { // its own elements: the text, its links
+                r.heading = NuiRole(rawValue: v.enumValue) == .header
+                return
+            }
             view.isAccessibilityElement = true
             switch NuiRole(rawValue: v.enumValue) {
             case .button: view.accessibilityTraits.insert(.button)

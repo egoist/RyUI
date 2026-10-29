@@ -313,7 +313,9 @@ final class NuiRichTextView: UIView {
         var v = superview
         while let x = v, !(x is NuiSelectionArea) { v = x.superview }
         (v as? NuiSelectionArea)?.textChanged()
-        accessibilityTraits = styles.contains { !$0.link.isEmpty } ? [.staticText, .link] : .staticText
+        var traits: UIAccessibilityTraits = styles.contains { !$0.link.isEmpty } ? [.staticText, .link] : .staticText
+        if heading { traits.insert(.header) }
+        accessibilityTraits = traits
         invalidate()
         prepare()
     }
@@ -628,6 +630,13 @@ final class NuiRichTextView: UIView {
     // VoiceOver can find and activate.
 
     private var a11y: [UIAccessibilityElement]?
+    /// A heading (Role header), for VoiceOver's rotor.
+    var heading = false {
+        didSet {
+            if heading { accessibilityTraits.insert(.header) } else { accessibilityTraits.remove(.header) }
+            a11y = nil
+        }
+    }
 
     override var isAccessibilityElement: Bool {
         get { links.isEmpty && subviews.isEmpty }
@@ -640,7 +649,7 @@ final class NuiRichTextView: UIView {
             if let a11y { return a11y + subviews }
             let whole = UIAccessibilityElement(accessibilityContainer: self)
             whole.accessibilityLabel = plain.replacingOccurrences(of: "\u{FFFC}", with: "")
-            whole.accessibilityTraits = .staticText
+            whole.accessibilityTraits = heading ? [.staticText, .header] : .staticText
             whole.accessibilityFrameInContainerSpace = bounds
             var out = [whole]
             for l in links {

@@ -404,7 +404,8 @@ fun NuiRuntime.propEnum(id: Int, prop: Int, v: Int) {
             NuiTextAlign.END -> Gravity.END
             else -> Gravity.START
         } or Gravity.CENTER_VERTICAL
-        NuiProp.A11Y_ROLE -> ViewCompat.setAccessibilityDelegate(view, object : AccessibilityDelegateCompat() {
+        NuiProp.A11Y_ROLE -> if (view is NuiRichText) view.heading = v == NuiRole.HEADER
+        else ViewCompat.setAccessibilityDelegate(view, object : AccessibilityDelegateCompat() {
             override fun onInitializeAccessibilityNodeInfo(host: View, info: AccessibilityNodeInfoCompat) {
                 super.onInitializeAccessibilityNodeInfo(host, info)
                 when (v) {

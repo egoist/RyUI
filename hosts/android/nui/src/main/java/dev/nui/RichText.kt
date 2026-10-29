@@ -84,6 +84,8 @@ class NuiRichText(private val rt: NuiRuntime, private val id2: Int) : NuiContain
     var color = 0L
     var align = NuiTextAlign.START
     var lines = 0
+    /** A heading, for TalkBack's navigation by headings (its own delegate handles links, so the role comes here). */
+    var heading = false
     private var laid: List<StaticLayout> = emptyList()
     private var laidWidth = -1
     private var downLink: String? = null
@@ -573,6 +575,7 @@ class NuiRichText(private val rt: NuiRuntime, private val id2: Int) : NuiContain
         // A node provider hides the view's children: the inline components.
         override fun onPopulateNodeForHost(node: androidx.core.view.accessibility.AccessibilityNodeInfoCompat) {
             for (i in 0 until childCount) node.addChild(getChildAt(i))
+            node.isHeading = heading
         }
 
         override fun getVisibleVirtualViews(ids: MutableList<Int>) {

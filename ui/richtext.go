@@ -244,6 +244,9 @@ type RichTextProps struct {
 	// Style's Font, Color, TextAlign and Lines are the text's defaults.
 	Style  Styler
 	OnLink func(url string)
+	// Role is what it is to screen readers: RoleHeader for a heading,
+	// which VoiceOver's rotor and TalkBack's navigation by headings find.
+	Role Role
 }
 
 // RichText shows styled paragraphs, typeset by the platform's engine
@@ -256,6 +259,9 @@ func RichText(p RichTextProps) Node {
 	e := newElement(ops.KindRichText, true)
 	e.measure()
 	e.setStyle(p.Style, true)
+	if p.Role != RoleNone {
+		e.r.batch.SetEnum(e.id, ops.PropA11yRole, int32(p.Role))
+	}
 	if p.OnLink != nil {
 		e.handlers().link = p.OnLink
 		e.listen(ops.EventLink)
