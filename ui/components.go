@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"time"
 
+	"github.com/egoist/nui/host"
 	"github.com/egoist/nui/layout"
 	"github.com/egoist/nui/ops"
 	"github.com/egoist/nui/signal"
@@ -149,6 +150,21 @@ func Column(style Styler, children ...Node) Node {
 // Row stacks its children leading to trailing.
 func Row(style Styler, children ...Node) Node {
 	return View(ViewProps{Style: withDirection(style, RowDir)}, children...)
+}
+
+// Environment is what the platform says about where a component shows:
+// its size, the safe area's insets, the keyboard, dark mode, the text
+// size, the locale and time zone.
+type Environment = host.Environment
+
+// UseEnvironment is the environment of the screen (sheet, tab, or root)
+// the component is in, as a signal: read it in an effect or a
+// StyleFunc, and it follows rotation, the keyboard, dark mode.
+func UseEnvironment() signal.Accessor[Environment] {
+	if s := envCtx.Use(); s != nil {
+		return s
+	}
+	return current().env
 }
 
 // SafeArea is a Column padded by the safe area insets (the notch, the

@@ -16,7 +16,8 @@ import (
 func App() ui.Node {
 	return ui.Stack(func() ui.Node {
 		nav := ui.UseNavigator()
-		return ui.Scroll(ui.ScrollProps{Style: ui.Style{Grow: 1}},
+		toast := signal.New(false) // shown over the screen, at its bottom
+		return ui.View(ui.ViewProps{Style: ui.Style{Grow: 1}}, ui.Scroll(ui.ScrollProps{Style: ui.Style{Grow: 1}},
 			ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 28},
 				ui.Button(ui.ButtonProps{Title: ui.Val("Open the inbox (a List)"), Icon: ui.IconMail, Variant: ui.ButtonBordered,
 					OnPress: func() {
@@ -24,14 +25,14 @@ func App() ui.Node {
 							{Title: "Top", Icon: ui.IconUp, OnPress: func() { ui.ScrollToItem(inboxList, 0, true) }},
 						}})
 					}}),
-				motion(),
+				motion(toast),
 				symbols(),
 				textInput(),
 				controls(),
 				dates(),
 				services(),
 			),
-		)
+		), toastOverlay(toast))
 	}, ui.ScreenOptions{Title: ui.Val("Gallery"), Actions: []ui.Action{
 		{Title: "Share", Icon: ui.IconShare, OnPress: func() {}},
 	}})
@@ -207,10 +208,9 @@ func services() ui.Node {
 // motion animates transforms (a tap flips and grows the card, with a
 // spring), follows a drag, and brings a toast in and out with a
 // transition.
-func motion() ui.Node {
+func motion(toast *signal.Signal[bool]) ui.Node {
 	flipped := signal.New(false)
 	drag := signal.New(ui.Gesture{})
-	toast := signal.New(false)
 	card := ui.View(ui.ViewProps{
 		OnPress: func() {
 			ui.AnimateWith(ui.Animation{Curve: ui.Spring, Duration: 0.5}, func() { flipped.Set(!flipped.Peek()) })
@@ -254,14 +254,24 @@ func motion() ui.Node {
 				ui.Post(func() { ui.Animate(func() { toast.Set(false) }) })
 			}()
 		}}),
-		ui.Show(toast, func() ui.Node {
-			return ui.View(ui.ViewProps{Style: ui.Style{Background: ui.SecondaryBackground, CornerRadius: 14, Padding: ui.All(14),
-				Transition: ui.SlideUp}},
-				ui.Row(ui.Style{Gap: 10, Align: ui.AlignCenter},
-					ui.Symbol(ui.IconCheck, ui.Style{Color: ui.Green}),
-					ui.StaticText("Saved")))
-		}),
 	)
+}
+
+// toastOverlay floats the toast over the screen's bottom, above the home
+// indicator, sliding up in and down out.
+func toastOverlay(shown signal.Accessor[bool]) ui.Node {
+	env := ui.UseEnvironment()
+	return ui.Show(shown, func() ui.Node {
+		return ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style {
+			return ui.Style{Absolute: true, Left: ui.Pt(20), Right: ui.Pt(20), Bottom: ui.Pt(env.Get().SafeBottom + 12),
+				Background: ui.SecondaryBackground, CornerRadius: 16, Padding: ui.Symmetric(14, 18),
+				Shadow:     ui.Shadow{Color: ui.RGBA(0, 0, 0, 50), Radius: 14, Y: 4},
+				Transition: ui.SlideUp}
+		})},
+			ui.Row(ui.Style{Gap: 10, Align: ui.AlignCenter},
+				ui.Symbol(ui.IconCheck, ui.Style{Color: ui.Green}),
+				ui.StaticText("Saved")))
+	})
 }
 
 // inboxList is the inbox's List, which the bar's button scrolls.

@@ -318,3 +318,36 @@ func TestScreenTitleFollowsItsSignal(t *testing.T) {
 		t.Fatalf("\n%s", h.Log())
 	}
 }
+
+// A growing view around a Scroll is held to the screen (its minimum
+// height is 0, as React Native's flex: 1), so the Scroll scrolls and an
+// overlay pinned to the wrapper's bottom shows above the safe area.
+func TestGrowingWrapperAroundScroll(t *testing.T) {
+	h, _ := mount(t, func() ui.Node {
+		return ui.Stack(func() ui.Node {
+			env := ui.UseEnvironment()
+			var rows []ui.Node
+			for range 100 {
+				rows = append(rows, ui.StaticText("row"))
+			}
+			return ui.View(ui.ViewProps{Style: ui.Style{Grow: 1}},
+				ui.Scroll(ui.ScrollProps{Style: ui.Style{Grow: 1}}, rows...),
+				ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style {
+					return ui.Style{Absolute: true, Left: ui.Pt(20), Right: ui.Pt(20), Bottom: ui.Pt(env.Get().SafeBottom + 12), Height: ui.Pt(48), Background: ui.Red}
+				})}))
+		}, ui.ScreenOptions{})
+	})
+	h.Dispatch(ops.Event{ID: h.OfKind(ops.KindScreen)[0].ID, Kind: ops.EventEnvironment, Env: h.Env})
+	if f := h.OfKind(ops.KindScroll)[0].Frame; f[3] != h.Env.Height {
+		t.Fatalf("scroll frame %v, want the screen's height", f)
+	}
+	var toast *fake.View
+	for _, v := range h.OfKind(ops.KindView) {
+		if v.Props[ops.PropBackground].Int != 0 {
+			toast = v
+		}
+	}
+	if f := toast.Frame; f[1]+f[3] != h.Env.Height-h.Env.SafeBottom-12 {
+		t.Fatalf("toast frame %v", f)
+	}
+}

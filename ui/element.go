@@ -390,6 +390,18 @@ func (e *element) layoutStyle(s *Style) layout.Style {
 	if e.adjust != nil {
 		e.adjust(&l)
 	}
+	// A view that grows into its parent's leftover space can be held to
+	// its share: its automatic minimum sizes are 0, as React Native's
+	// flex: 1 is (in CSS, min-height: 0), so that a growing view around a
+	// Scroll scrolls rather than growing to the Scroll's content.
+	if l.FlexGrow > 0 {
+		if l.MinWidth.IsAuto() {
+			l.MinWidth = layout.Pt(0)
+		}
+		if l.MinHeight.IsAuto() {
+			l.MinHeight = layout.Pt(0)
+		}
+	}
 	return l
 }
 
