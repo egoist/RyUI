@@ -611,6 +611,7 @@ fun NuiRuntime.setNavProp(n: NuiNode, prop: Int, v: Any): Boolean {
             else -> return false
         }
         NuiKind.SCROLL -> when (prop) {
+            NuiProp.Scroll.HORIZONTAL -> setHorizontal(n, v as Boolean)
             NuiProp.Scroll.REFRESHABLE -> setRefreshable(n, v as Boolean)
             NuiProp.Scroll.REFRESHING -> (n.wrapper as? SwipeRefreshLayout)?.isRefreshing = v as Boolean
             else -> return false

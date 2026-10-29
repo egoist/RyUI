@@ -313,6 +313,35 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
         }
     }
 
+    /**
+     * Makes a Scroll scroll horizontally, or vertically again: Android's are
+     * two views (HorizontalScrollView, NestedScrollView), so the view is
+     * replaced, its content moved to the new one.
+     */
+    fun setHorizontal(n: NuiNode, horizontal: Boolean) {
+        val old = n.view as? android.widget.FrameLayout ?: return
+        if ((old is HorizontalScrollView) == horizontal) return
+        val v: android.widget.FrameLayout = if (horizontal) HorizontalScrollView(themed).apply { isFillViewport = false }
+            else NestedScrollView(themed).apply { isFillViewport = false }
+        while (old.childCount > 0) {
+            val c = old.getChildAt(0)
+            val lp = c.layoutParams
+            old.removeViewAt(0)
+            v.addView(c, lp)
+        }
+        val parent = old.parent as? ViewGroup
+        if (parent != null) {
+            val i = parent.indexOfChild(old)
+            val lp = old.layoutParams
+            parent.removeViewAt(i)
+            parent.addView(v, i, lp)
+            v.measure(View.MeasureSpec.makeMeasureSpec(old.width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(old.height, View.MeasureSpec.EXACTLY))
+            v.layout(old.left, old.top, old.right, old.bottom)
+        }
+        n.view = v
+        restyle(n)
+    }
+
     /** Replaces a button with one of another variant (a style is fixed when a view is made). */
     fun replaceButton(n: NuiNode, variant: Int) {
         val old = n.view as MaterialButton
