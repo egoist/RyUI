@@ -411,7 +411,7 @@ func layoutPart(s Style) Style {
 	s.CornerRadius, s.Opacity = 0, 0
 	s.Hidden = false
 	s.Font, s.TextAlign, s.Lines = Font{}, 0, 0
-	s.Transform, s.Shadow, s.Gradient, s.Transition = Transform{}, Shadow{}, nil, Transition{} // drawn, not laid out
+	s.Transform, s.Shadow, s.Gradient, s.Transition, s.Material = Transform{}, Shadow{}, nil, Transition{}, 0 // drawn, not laid out
 	return s
 }
 

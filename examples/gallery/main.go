@@ -225,7 +225,11 @@ func motion(toast *signal.Signal[bool]) ui.Node {
 				Shadow:    ui.Shadow{Color: ui.RGBA(0, 0, 0, 80), Radius: 16, Y: 8},
 				Transform: t}
 		}),
-	}, ui.StaticText("Tap me", ui.Style{Color: ui.RGB(255, 255, 255), Font: ui.Title3.Weighted(ui.Bold)}))
+	}, ui.StaticText("Tap me", ui.Style{Color: ui.RGB(255, 255, 255), Font: ui.Title3.Weighted(ui.Bold)}),
+		// A material: frosted glass over the gradient.
+		ui.View(ui.ViewProps{Style: ui.Style{Absolute: true, Top: ui.Pt(16), Right: ui.Pt(16), Material: ui.MaterialThin,
+			CornerRadius: 12, Padding: ui.Symmetric(6, 12)}},
+			ui.StaticText("Material", ui.Style{Font: ui.Footnote.Weighted(ui.Semibold)})))
 	puck := ui.View(ui.ViewProps{
 		OnPan: func(g ui.Gesture) {
 			if g.State == ui.GestureEnded || g.State == ui.GestureCancelled {

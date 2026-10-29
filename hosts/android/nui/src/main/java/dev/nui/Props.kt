@@ -176,6 +176,19 @@ fun NuiRuntime.iconPadding(n: NuiNode, b: MaterialButton) {
     }
 }
 
+/** A material's stand-in: the theme's surface, as opaque as the material is thick. */
+fun NuiRuntime.materialColor(m: Int): Int {
+    val surface = MaterialColors.getColor(themed, com.google.android.material.R.attr.colorSurfaceContainer, Color.WHITE)
+    val alpha = when (m) {
+        NuiMaterial.ULTRA_THIN -> 0.6f
+        NuiMaterial.THIN -> 0.72f
+        NuiMaterial.REGULAR -> 0.82f
+        NuiMaterial.THICK -> 0.9f
+        else -> 0.94f
+    }
+    return (Math.round(alpha * 255) shl 24) or (surface and 0xffffff)
+}
+
 /** Reapplies what came from the theme, after a configuration change. */
 fun NuiRuntime.restyle(n: NuiNode) {
     applyText(n)
@@ -200,14 +213,15 @@ fun NuiRuntime.applyColor(n: NuiNode) {
 }
 
 fun NuiRuntime.applyBackground(n: NuiNode) {
-    if (n.background == 0L && n.cornerRadius == 0f && n.borderWidth == 0f && n.gradient == null) return
+    if (n.background == 0L && n.cornerRadius == 0f && n.borderWidth == 0f && n.gradient == null && n.material == 0) return
     if (n.view is MaterialButton) {
         val b = n.view as MaterialButton
         if (n.background != 0L) b.backgroundTintList = ColorStateList.valueOf(color(n.background))
         if (n.cornerRadius > 0) b.cornerRadius = Math.round(n.cornerRadius * density)
         return
     }
-    val toColor = color(n.background)
+    // A material, which Android can't blur behind: the surface, translucent.
+    val toColor = if (n.background == 0L && n.material != 0) materialColor(n.material) else color(n.background)
     val toRadius = n.cornerRadius * density
     if (n.view is android.widget.ImageView) n.view.clipToOutline = n.cornerRadius > 0
     val old = n.view.background as? GradientDrawable
@@ -364,6 +378,7 @@ fun NuiRuntime.propColor(id: Int, prop: Int, v: Long) {
 fun NuiRuntime.propEnum(id: Int, prop: Int, v: Int) {
     val n = node(id) ?: return
     n.props[prop] = v
+    if (prop == NuiProp.MATERIAL) { n.material = v; applyBackground(n); return }
     if (n.kind == NuiKind.DATE_PICKER && prop == NuiProp.DatePicker.MODE) { (n.view as NuiDatePicker).mode = v; return }
     val view = n.view
     when (prop) {

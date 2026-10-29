@@ -106,6 +106,7 @@ var Schema = SchemaDef{
 		{Name: "Shadow", Type: TBytes, Doc: "u64 color (0: none), f32 blur radius, offset x, y (points), from the view's shape"},
 		{Name: "Gradient", Type: TBytes, Doc: "a linear background gradient: u32 count, per stop u64 color and f32 location (0 to 1); f32 start x, y, end x, y (unit points of the view)"},
 		{Name: "Transition", Type: TBytes, Doc: "u8 fade, f32 scale (0: none), offset x, y (points): the state a view comes in from when it's inserted during an animation, and goes out to when it's destroyed during one (the host keeps it until it has)"},
+		{Name: "Material", Type: TEnum, Enum: "Material", Doc: "a translucent background that blurs what's behind (iOS's materials); Android, which can't, shows its surface color, translucent"},
 		{Name: "SwipeActions", Type: TBytes, Doc: "a List cell's swipe actions, encoded as Menu (iOS: its trailing actions; Android: a full swipe runs the first); Action events on the cell carry the index"},
 	},
 	Kinds: []KindDef{
@@ -256,6 +257,7 @@ var Schema = SchemaDef{
 		{Name: "Haptic", Values: []string{"Selection", "Light", "Medium", "Heavy", "Success", "Warning", "Error"}},
 		{Name: "ImageMode", Values: []string{"Fit", "Fill", "Stretch", "Center"}},
 		{Name: "DateMode", Values: []string{"Date", "Time", "DateTime"}},
+		{Name: "Material", Values: []string{"None", "UltraThin", "Thin", "Regular", "Thick", "Bar"}},
 		{Name: "GestureState", Values: []string{"Began", "Changed", "Ended", "Cancelled"}},
 		{Name: "AnimationCurve", Values: []string{"EaseInOut", "Linear", "EaseIn", "EaseOut", "Spring"}},
 		{Name: "SemanticColor", Values: []string{"None", "Label", "SecondaryLabel", "TertiaryLabel", "Background", "SecondaryBackground", "GroupedBackground", "Separator", "Accent", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink", "Gray", "Clear"}},

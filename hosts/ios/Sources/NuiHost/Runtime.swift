@@ -35,6 +35,7 @@ import CNui
     var opacity: CGFloat = 1 // its own, as Style.Opacity sets it
     var baseTransform: CGAffineTransform = .identity // Style.Transform's
     var gradient: CAGradientLayer?
+    var material: UIVisualEffectView?
     var gradientColors: [UIColor?] = []
     var menuTrigger: Int32 = 0
     var menuOverlay: UIButton?

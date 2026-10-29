@@ -83,7 +83,8 @@ object NuiProp {
     const val SHADOW = 21
     const val GRADIENT = 22
     const val TRANSITION = 23
-    const val SWIPE_ACTIONS = 24
+    const val MATERIAL = 24
+    const val SWIPE_ACTIONS = 25
 
     object Text {
         const val TEXT = 64
@@ -360,6 +361,15 @@ object NuiDateMode {
     const val DATE = 0
     const val TIME = 1
     const val DATE_TIME = 2
+}
+
+object NuiMaterial {
+    const val NONE = 0
+    const val ULTRA_THIN = 1
+    const val THIN = 2
+    const val REGULAR = 3
+    const val THICK = 4
+    const val BAR = 5
 }
 
 object NuiGestureState {

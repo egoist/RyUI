@@ -117,6 +117,10 @@ final class NuiDatePickerView: UIView {
             g.cornerCurve = view.layer.cornerCurve
             CATransaction.commit()
         }
+        if let m = material {
+            m.layer.cornerRadius = view.layer.cornerRadius
+            container.sendSubviewToBack(m)
+        }
         if view.layer.shadowOpacity > 0 {
             view.layer.shadowPath = UIBezierPath(roundedRect: b, cornerRadius: view.layer.cornerRadius).cgPath
         }
@@ -128,6 +132,38 @@ final class NuiDatePickerView: UIView {
     /// as views' do: they're resolved again when it changes.
     func resolveLayerColors() {
         for n in nodes.values { n.resolveLayerColors() }
+    }
+}
+
+@MainActor extension NuiNode {
+    /// Style.Material: a system material's blur, under the subviews.
+    func setMaterial(_ m: NuiMaterial) {
+        let style: UIBlurEffect.Style?
+        switch m {
+        case .ultraThin: style = .systemUltraThinMaterial
+        case .thin: style = .systemThinMaterial
+        case .regular: style = .systemMaterial
+        case .thick: style = .systemThickMaterial
+        case .bar: style = .systemChromeMaterial
+        default: style = nil
+        }
+        guard let style else {
+            material?.removeFromSuperview()
+            material = nil
+            return
+        }
+        let v = material ?? UIVisualEffectView()
+        v.effect = UIBlurEffect(style: style)
+        if material == nil {
+            v.frame = view.bounds
+            v.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            v.isUserInteractionEnabled = false
+            v.clipsToBounds = true
+            view.insertSubview(v, at: 0)
+            material = v
+        }
+        v.layer.cornerRadius = view.layer.cornerRadius
+        v.layer.cornerCurve = .continuous
     }
 }
 #endif

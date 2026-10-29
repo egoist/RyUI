@@ -80,7 +80,8 @@ public enum NuiProp {
     public static let shadow: UInt16 = 21
     public static let gradient: UInt16 = 22
     public static let transition: UInt16 = 23
-    public static let swipeActions: UInt16 = 24
+    public static let material: UInt16 = 24
+    public static let swipeActions: UInt16 = 25
 
     public enum Text {
         public static let text: UInt16 = 64
@@ -357,6 +358,15 @@ public enum NuiDateMode: Int32 {
     case date = 0
     case time = 1
     case dateTime = 2
+}
+
+public enum NuiMaterial: Int32 {
+    case none = 0
+    case ultraThin = 1
+    case thin = 2
+    case regular = 3
+    case thick = 4
+    case bar = 5
 }
 
 public enum NuiGestureState: Int32 {

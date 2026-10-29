@@ -55,6 +55,7 @@ class NuiNode(val id: Int, val kind: Int, var view: View) {
     var frameAnimator: android.animation.Animator? = null
     var backgroundAnimator: android.animation.Animator? = null
     var gradient: NuiGradient? = null
+    var material = 0 // Style.Material
     var transition: NuiTransition? = null
     val base = NuiBase()
 

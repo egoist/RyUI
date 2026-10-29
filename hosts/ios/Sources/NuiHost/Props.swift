@@ -180,6 +180,8 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             view.layer.shadowRadius = radius / 2 // a blur radius, as CSS and SwiftUI mean it
             view.layer.shadowOffset = CGSize(width: x, height: y)
             n.updateLayers()
+        case NuiProp.material:
+            n.setMaterial(NuiMaterial(rawValue: v.enumValue) ?? .none)
         case NuiProp.transition:
             guard case .bytes(let b) = v else { return }
             n.transition = NuiTransition(b)

@@ -238,6 +238,10 @@ type Style struct {
 	Shadow Shadow
 	// Gradient fills the background (over Background).
 	Gradient *Gradient
+	// Material is a translucent background that blurs what's behind it
+	// (iOS's materials, as SwiftUI's .regularMaterial). Android, which
+	// can't blur behind a view, shows its surface color, translucent.
+	Material Material
 	// Transition is how the view comes in when it's added during
 	// ui.Animate (a Show turning true, an item added to a For), and goes
 	// out when it's removed during one.
@@ -265,7 +269,7 @@ func (f StyleFunc) styler() (Style, func() Style) { return Style{}, f }
 func (s *Style) visual() bool {
 	return s.Background != 0 || s.CornerRadius != 0 || s.BorderWidth != 0 || s.BorderColor != 0 ||
 		s.Opacity != 0 || s.Hidden || s.Clip || s.Transform != (Transform{}) || s.Shadow.Color != 0 || s.Gradient != nil ||
-		s.Transition != (Transition{})
+		s.Transition != (Transition{}) || s.Material != 0
 }
 
 // Transform moves, scales and rotates a view around its center.
@@ -275,6 +279,17 @@ type Transform struct {
 	ScaleX, ScaleY         float32 // 0: Scale
 	Rotate                 float32 // degrees, clockwise
 }
+
+// Material is a translucent, blurring background.
+type Material = ops.Material
+
+const (
+	MaterialUltraThin = ops.MaterialUltraThin
+	MaterialThin      = ops.MaterialThin
+	MaterialRegular   = ops.MaterialRegular
+	MaterialThick     = ops.MaterialThick
+	MaterialBar       = ops.MaterialBar // a navigation or tab bar's
+)
 
 // Transition is the state a view comes in from and goes out to, when
 // it's added or removed during ui.Animate: faded out, scaled, moved.
@@ -527,6 +542,9 @@ func (e *element) applyVisual(s, prev *Style, text bool) (remeasure bool) {
 	if s.Shadow != prev.Shadow {
 		var buf [20]byte
 		b.SetBytes(id, ops.PropShadow, s.Shadow.bytes(buf[:0]))
+	}
+	if s.Material != prev.Material {
+		b.SetEnum(id, ops.PropMaterial, int32(s.Material))
 	}
 	if s.Transition != prev.Transition {
 		var buf [13]byte
