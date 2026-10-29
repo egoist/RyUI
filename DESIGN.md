@@ -598,6 +598,23 @@ name, ID (bundle ID and application ID), version and build number, a
 descriptions and extra Info.plist keys, the Android permissions and
 upload key. `nui dev` and `nui build` read it alike.
 
+**The accent color** (`"accent": "#7c3aed"`) is the one color an app's
+brand sets on native controls; the controls are the platform's, so
+nui has no theme of its own over them (`Style` changes one view). It
+travels with the Go code, not the shell: the CLI builds it in
+(`-ldflags -X`, `internal/boot`), and each root, as it mounts, sends
+the `Accent` command before any view is made. That way the dev player,
+which runs any app, takes each one's, and drops it between apps. On iOS
+it's the windows' tint color, which UIKit's controls and `ui.Accent`
+take. On Android it's the seed of a Material 3 color scheme
+(`SchemeContent`, light and dark, as Material's `DynamicColors` makes
+it) on Android 12 and later; before that, Material's baseline colors,
+with nui's own uses of the accent (links, `ui.Accent`) taking the color
+itself. `"android": {"dynamicColor": true}` takes the wallpaper's colors
+instead, where the system has them. The theme context is made again
+and the views that resolved theme colors are rebuilt, as on a dark mode
+change.
+
 **`nui build -ios`** makes an `.ipa`, still without an Xcode project:
 the host compiled optimized (no debug automation), the Go archive for
 `arm64` devices, linked with dead stripping; an Info.plist with the

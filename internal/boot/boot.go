@@ -9,6 +9,11 @@ var Runner func(root any)
 // Lifecycle handlers get app.State values.
 var Lifecycle []func(state int)
 
+// Accent is the app's accent color from nui.json ("#rrggbb" or
+// "#rrggbbaa"), and DynamicColor "1" when its Android colors are the
+// wallpaper's: set by the nui CLI when it builds the app (-ldflags -X).
+var Accent, DynamicColor string
+
 // AssetBase, when set (a player running the app over nui dev), is the URL
 // the app's assets are served from: ui.Image loads asset paths from it.
 var AssetBase string

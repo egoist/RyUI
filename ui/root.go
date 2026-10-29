@@ -9,6 +9,7 @@
 package ui
 
 import (
+	"encoding/binary"
 	"sync/atomic"
 
 	"github.com/egoist/nui/host"
@@ -73,6 +74,7 @@ func Mount(h host.Host, root func() Node) *Root {
 		signal.Root(func(dispose func()) {
 			r.dispose = dispose
 			r.el = newElement(ops.KindView, true)
+			r.sendAccent()
 			st := layout.DefaultStyle
 			st.FlexDirection = layout.Column
 			st.Width, st.Height = layout.Pct(100), layout.Pct(100)
@@ -211,6 +213,21 @@ func (r *Root) layout() {
 	}
 	clear(p.Changed)
 	p.Changed = p.Changed[:0]
+}
+
+// sendAccent tells the host the app's accent color (nui.json's), before
+// any view is made with the theme.
+func (r *Root) sendAccent() {
+	c, ok := ParseHex(boot.Accent)
+	if !ok && boot.DynamicColor == "" {
+		return
+	}
+	var args [9]byte
+	binary.LittleEndian.PutUint64(args[:], uint64(c))
+	if boot.DynamicColor == "1" {
+		args[8] = 1
+	}
+	r.batch.Command(r.el.id, ops.CmdAccent, args[:])
 }
 
 // layoutInlines lays out the RichTexts' inline components before what

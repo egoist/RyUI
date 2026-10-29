@@ -68,7 +68,7 @@ fun NuiRuntime.color(v: Long, fallback: Int = Color.TRANSPARENT): Int {
                 NuiSemanticColor.SECONDARY_BACKGROUND -> attr(com.google.android.material.R.attr.colorSurfaceContainer)
                 NuiSemanticColor.GROUPED_BACKGROUND -> attr(com.google.android.material.R.attr.colorSurfaceContainerLow)
                 NuiSemanticColor.SEPARATOR -> attr(com.google.android.material.R.attr.colorOutlineVariant)
-                NuiSemanticColor.ACCENT -> attr(androidx.appcompat.R.attr.colorPrimary)
+                NuiSemanticColor.ACCENT -> accentColor()
                 NuiSemanticColor.RED -> attr(androidx.appcompat.R.attr.colorError)
                 NuiSemanticColor.ORANGE -> 0xFFF57C00.toInt()
                 NuiSemanticColor.YELLOW -> 0xFFFBC02D.toInt()

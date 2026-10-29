@@ -642,7 +642,7 @@ private fun NuiRuntime.setRefreshable(n: NuiNode, on: Boolean) {
     var srl = n.wrapper as? SwipeRefreshLayout
     if (srl == null && on) {
         val s = SwipeRefreshLayout(themed)
-        s.setColorSchemeColors(MaterialColors.getColor(themed, androidx.appcompat.R.attr.colorPrimary, Color.BLUE))
+        s.setColorSchemeColors(accentColor())
         s.setProgressBackgroundColorSchemeColor(MaterialColors.getColor(themed, com.google.android.material.R.attr.colorSurfaceContainerHigh, Color.WHITE))
         val v = n.view
         val parent = v.parent as? ViewGroup

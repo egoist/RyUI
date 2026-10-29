@@ -18,6 +18,7 @@ import (
 //	  "version": "1.2.0",
 //	  "build": 7,
 //	  "icon": "icon.png",
+//	  "accent": "#7c3aed",
 //	  "orientations": ["portrait"],
 //	  "ios": {
 //	    "team": "ABCDE12345",
@@ -26,7 +27,8 @@ import (
 //	  "android": {
 //	    "permissions": ["android.permission.CAMERA"],
 //	    "keystore": "upload.jks",
-//	    "keyAlias": "upload"
+//	    "keyAlias": "upload",
+//	    "dynamicColor": true
 //	  }
 //	}
 type appConfig struct {
@@ -53,8 +55,17 @@ type appConfig struct {
 		// InfoPlist adds string keys to Info.plist.
 		InfoPlist map[string]string `json:"infoPlist"`
 	} `json:"ios"`
+	// Accent is the app's accent color, "#rrggbb" or "#rrggbbaa": the
+	// tint color on iOS; on Android, the seed of the Material 3 color
+	// scheme (Android 12 and later; before, nui's own uses of the accent
+	// take it). Default: the platform's.
+	Accent  string `json:"accent"`
 	Android struct {
-		Permissions []string `json:"permissions"`
+		// DynamicColor takes the colors from the user's wallpaper where
+		// the system has them (Android 12 and later), as Material apps do;
+		// the accent is the seed elsewhere.
+		DynamicColor bool     `json:"dynamicColor"`
+		Permissions  []string `json:"permissions"`
 		// The upload key; its passwords come from NUI_KEYSTORE_PASSWORD
 		// and NUI_KEY_PASSWORD (default: the keystore's).
 		Keystore string `json:"keystore"`
@@ -62,7 +73,10 @@ type appConfig struct {
 	} `json:"android"`
 }
 
-var idPart = regexp.MustCompile(`[^A-Za-z0-9]+`)
+var (
+	idPart   = regexp.MustCompile(`[^A-Za-z0-9]+`)
+	hexColor = regexp.MustCompile(`^#?([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$`)
+)
 
 // loadConfig reads dir/nui.json, filling in the defaults.
 func loadConfig(dir string) (*appConfig, error) {
@@ -96,6 +110,11 @@ func loadConfig(dir string) (*appConfig, error) {
 			return nil, fmt.Errorf("nui.json: orientation %q (want portrait or landscape)", o)
 		}
 	}
+	if c.Accent != "" {
+		if !hexColor.MatchString(c.Accent) {
+			return nil, fmt.Errorf("nui.json: accent %q (want #rrggbb or #rrggbbaa)", c.Accent)
+		}
+	}
 	if c.Icon != "" && !filepath.IsAbs(c.Icon) {
 		c.Icon = filepath.Join(dir, c.Icon)
 	}
@@ -103,6 +122,22 @@ func loadConfig(dir string) (*appConfig, error) {
 		c.Android.Keystore = filepath.Join(dir, c.Android.Keystore)
 	}
 	return c, nil
+}
+
+// ldflags is the go build -ldflags for the app: what of nui.json its Go
+// code reads (internal/boot), and, for a release, no symbol tables.
+func (c *appConfig) ldflags(release bool) string {
+	var f []string
+	if release {
+		f = append(f, "-s", "-w")
+	}
+	if c != nil && c.Accent != "" {
+		f = append(f, "-X", "github.com/egoist/nui/internal/boot.Accent="+c.Accent)
+	}
+	if c != nil && c.Android.DynamicColor {
+		f = append(f, "-X", "github.com/egoist/nui/internal/boot.DynamicColor=1")
+	}
+	return "-ldflags=" + strings.Join(f, " ")
 }
 
 func (c *appConfig) allows(o string) bool {

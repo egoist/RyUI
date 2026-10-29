@@ -61,7 +61,7 @@ and give its password in NUI_KEYSTORE_PASSWORD (and NUI_KEY_PASSWORD if the key'
 		if a.goarm != "" {
 			env = append(env, "GOARM="+a.goarm)
 		}
-		if err := tc.run(app.dir, env, "go", "build", "-buildmode=c-shared", "-trimpath", "-ldflags=-s -w",
+		if err := tc.run(app.dir, env, "go", "build", "-buildmode=c-shared", "-trimpath", app.cfg.ldflags(true),
 			"-overlay", ov, "-o", out, "."); err != nil {
 			return fmt.Errorf("%s: %v", a.abi, err)
 		}

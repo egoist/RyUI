@@ -195,6 +195,13 @@ final class NuiLayoutCache: @unchecked Sendable {
         }
     }
 
+    /// Forgets the layouts (the accent color changed: links are colored with it).
+    func clear() {
+        lock.lock()
+        done.removeAll()
+        lock.unlock()
+    }
+
     private func store(_ key: Key, _ l: NuiParagraphLayout) {
         lock.lock()
         if done.count > 2048 { done.removeAll(keepingCapacity: true) }

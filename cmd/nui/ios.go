@@ -209,9 +209,9 @@ func (t *iosToolchain) buildGo(app *goApp, work string) (string, error) {
 	flags := "-isysroot " + t.sdk + " -target " + t.target
 	env := []string{"GOOS=ios", "GOARCH=" + t.goarch, "CGO_ENABLED=1", "CC=" + t.clang,
 		"CGO_CFLAGS=" + flags, "CGO_LDFLAGS=" + flags}
-	args := []string{"build", "-tags", "ios", "-buildmode=c-archive", "-overlay", ovPath, "-o", lib}
+	args := []string{"build", "-tags", "ios", "-buildmode=c-archive", "-overlay", ovPath, "-o", lib, app.cfg.ldflags(t.release)}
 	if t.release {
-		args = append(args, "-trimpath", "-ldflags=-s -w")
+		args = append(args, "-trimpath")
 	}
 	err = t.run(app.dir, env, "go", append(args, ".")...)
 	return lib, err

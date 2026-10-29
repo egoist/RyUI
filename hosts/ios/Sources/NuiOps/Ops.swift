@@ -188,6 +188,7 @@ public enum NuiCommand: UInt16 {
     case animateBegin = 6
     case animateEnd = 7
     case openURL = 8
+    case accent = 9
 }
 
 public enum NuiRole: Int32 {

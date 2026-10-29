@@ -26,6 +26,9 @@ type Proxy struct {
 	live map[ops.NodeID]bool // the views the core made, to clear them for the next session
 	root ops.NodeID
 	env  []byte // the root's last environment event (ID 0), to send again on connect
+	// accented: the session set the app's accent color, which the next
+	// session (another app) mustn't keep.
+	accented bool
 }
 
 // NewProxy makes a proxy for local, the player's platform host.
@@ -50,6 +53,10 @@ func (x *Proxy) serve(method byte, b []byte) []byte {
 				delete(x.live, op.ID)
 			case ops.OpSetRoot:
 				x.root = op.ID
+			case ops.OpCommand:
+				if op.Cmd == ops.CmdAccent {
+					x.accented = true
+				}
 			}
 		}
 		x.local.Apply(&batch)
@@ -170,6 +177,11 @@ func (x *Proxy) disconnected(p *peer) {
 func (x *Proxy) Attach(conn net.Conn) {
 	if len(x.live) > 0 {
 		var b ops.Batch
+		if x.accented && x.live[x.root] {
+			// The platform's accent again, while the root is there to take it.
+			b.Command(x.root, ops.CmdAccent, make([]byte, 9))
+			x.accented = false
+		}
 		for id := range x.live {
 			b.Destroy(id)
 		}

@@ -1,6 +1,9 @@
 package ui
 
 import (
+	"strconv"
+	"strings"
+
 	"github.com/egoist/nui/layout"
 	"github.com/egoist/nui/ops"
 )
@@ -73,6 +76,24 @@ func RGBA(r, g, b, a uint8) Color { return ops.RGBA(r, g, b, a) }
 
 // Hex makes an opaque color from 0xRRGGBB.
 func Hex(v uint32) Color { return RGB(uint8(v>>16), uint8(v>>8), uint8(v)) }
+
+// ParseHex parses "#rrggbb" or "#rrggbbaa" (the "#" optional).
+func ParseHex(s string) (Color, bool) {
+	s = strings.TrimPrefix(s, "#")
+	if len(s) != 6 && len(s) != 8 {
+		return 0, false
+	}
+	var v [4]uint8
+	v[3] = 255
+	for i := 0; i < len(s)/2; i++ {
+		n, err := strconv.ParseUint(s[2*i:2*i+2], 16, 8)
+		if err != nil {
+			return 0, false
+		}
+		v[i] = uint8(n)
+	}
+	return RGBA(v[0], v[1], v[2], v[3]), true
+}
 
 func semantic(c ops.SemanticColor) Color { return ops.SemanticColorValue(c) }
 

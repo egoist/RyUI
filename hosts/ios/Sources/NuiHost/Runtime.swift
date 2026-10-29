@@ -100,6 +100,8 @@ final class NuiTextField: UITextField {
     let gestureDelegate = NuiGestureDelegate()
     /// Between AnimateBegin and AnimateEnd: the duration and curve.
     var animation: (Double, Int32)?
+    /// The app's accent color (nui.json's), nil for the system's: the tint color.
+    var accent: UIColor?
     public static let shared = NuiRuntime()
 
     var nodes: [UInt32: NuiNode] = [:]
@@ -325,6 +327,17 @@ final class NuiTextField: UITextField {
         }
     }
 
+    /// Makes c the windows' tint color, which UIKit's controls and the
+    /// accent color take; rich texts typeset their links again.
+    func setAccent(_ c: UIColor?) {
+        accent = c
+        for case let s as UIWindowScene in UIApplication.shared.connectedScenes {
+            for w in s.windows { w.tintColor = c }
+        }
+        NuiLayoutCache.shared.clear()
+        for n in nodes.values { (n.view as? NuiRichTextView)?.invalidate() }
+    }
+
     public func listen(_ id: UInt32, event: UInt16) {
         guard let n = nodes[id] else { return }
         n.listens.insert(event)
@@ -379,6 +392,10 @@ final class NuiTextField: UITextField {
             animation = nil
         case .openURL:
             if let url = URL(string: String(decoding: args, as: UTF8.self)) { UIApplication.shared.open(url) }
+        case .accent:
+            guard args.count >= 8 else { return }
+            var r = NuiReader(args)
+            setAccent(nuiColor(r.u64()))
         case .listUpdate:
             var r = NuiReader(args)
             let count = Int(r.u32())

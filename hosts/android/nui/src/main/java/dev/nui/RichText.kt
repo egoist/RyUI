@@ -242,7 +242,7 @@ class NuiRichText(private val rt: NuiRuntime, private val id2: Int) : NuiContain
     /** The base paint: the view's text style, as a Text's would be (and its line spacing). */
     private fun basePaint(): TextPaint {
         val cfg = resources.configuration
-        val key = "$textStyle|$size|$weight|$color|${cfg.fontScale}|${cfg.uiMode}|${cfg.densityDpi}"
+        val key = "$textStyle|$size|$weight|$color|${cfg.fontScale}|${cfg.uiMode}|${cfg.densityDpi}|${rt.themeVersion}"
         paint?.let { if (key == paintKey) return it }
         val tv = MaterialTextView(rt.themed)
         rt.applyTextStyle(tv, textStyle, size, weight)
@@ -289,7 +289,7 @@ class NuiRichText(private val rt: NuiRuntime, private val id2: Int) : NuiContain
             }
             val c = when {
                 s.color != 0L -> rt.color(s.color)
-                s.link.isNotEmpty() -> MaterialColors.getColor(rt.themed, androidx.appcompat.R.attr.colorPrimary, Color.BLUE)
+                s.link.isNotEmpty() -> rt.accentColor()
                 else -> null
             }
             c?.let { span(ForegroundColorSpan(it)) }
@@ -311,7 +311,7 @@ class NuiRichText(private val rt: NuiRuntime, private val id2: Int) : NuiContain
         val cfg = resources.configuration
         // With its inline components' sizes.
         val ins = if (p.inlines.isEmpty()) "" else p.inlines.joinToString(",") { i -> inlines.getOrNull(i)?.let { "${it.second}x${it.third}" } ?: "0x0" }
-        return "${p.key}|$ins|$textStyle|$size|$weight|$color|$align|$left|$width|${cfg.fontScale}|${cfg.uiMode}|${cfg.densityDpi}"
+        return "${p.key}|$ins|$textStyle|$size|$weight|$color|$align|$left|$width|${cfg.fontScale}|${cfg.uiMode}|${cfg.densityDpi}|${rt.themeVersion}"
     }
 
     /** The paragraphs' layouts at a width in px (cached). */

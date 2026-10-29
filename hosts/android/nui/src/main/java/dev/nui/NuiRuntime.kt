@@ -17,6 +17,7 @@ import androidx.annotation.Keep
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.appcompat.widget.AppCompatEditText
 import androidx.core.widget.NestedScrollView
+import com.google.android.material.color.MaterialColors
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.progressindicator.CircularProgressIndicator
@@ -42,6 +43,56 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
     /** Views are made with the app's Material theme, not an Activity's. */
     var themed: Context = ContextThemeWrapper(app, R.style.Theme_Nui)
         private set
+    /** The context the theme is made on: the app's, in the current configuration. */
+    private var themeBase: Context = app.createConfigurationContext(app.resources.configuration)
+    /** The app's accent color (nui.json's), the seed of its color scheme; null: Material's. */
+    var accent: Int? = null
+        private set
+    /** Whether the colors are the wallpaper's (nui.json's android.dynamicColor). */
+    private var wallpaperColors = false
+    /** Changes when the theme does: what caches theme colors keys by it. */
+    var themeVersion = 0
+        private set
+
+    /**
+     * The app's Material theme on base: with a color scheme from the
+     * wallpaper or the accent where the system can make one (Android 12
+     * and later), as Material's DynamicColors does.
+     */
+    private fun theme(base: Context): Context {
+        val t = ContextThemeWrapper(base, R.style.Theme_Nui)
+        if (!com.google.android.material.color.DynamicColors.isDynamicColorAvailable()) return t
+        val seed = accent
+        return when {
+            wallpaperColors -> com.google.android.material.color.DynamicColors.wrapContextIfAvailable(t)
+            seed != null -> com.google.android.material.color.DynamicColors.wrapContextIfAvailable(t,
+                com.google.android.material.color.DynamicColorsOptions.Builder().setContentBasedSource(seed).build()).also {
+                // The scheme's context resolves the colors but loses the
+                // theme's other attributes (a toolbar's homeAsUpIndicator):
+                // fill them in, not over the colors.
+                if (it !== t) it.theme.applyStyle(R.style.Theme_Nui, false)
+            }
+            else -> t
+        }
+    }
+
+    /** The accent color: the scheme's primary, or the accent itself where there's no scheme from it. */
+    fun accentColor(): Int {
+        val seed = accent
+        if (seed != null && !wallpaperColors && !com.google.android.material.color.DynamicColors.isDynamicColorAvailable()) return seed
+        return MaterialColors.getColor(themed, androidx.appcompat.R.attr.colorPrimary, android.graphics.Color.BLUE)
+    }
+
+    /** Sets the accent (the Accent command) and makes the views the theme decided again. */
+    private fun setAccent(c: Int?, wallpaper: Boolean) {
+        if (c == accent && wallpaper == wallpaperColors) return
+        accent = c
+        wallpaperColors = wallpaper
+        themeBase = app.createConfigurationContext(app.resources.configuration)
+        themed = theme(themeBase)
+        themeVersion++
+        restyleAll(true)
+    }
     val nodes = HashMap<Int, NuiNode>()
     var rootID = 0
     var activity: NuiActivity? = null
@@ -152,7 +203,8 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
     fun configurationChanged(config: android.content.res.Configuration) {
         val night = (config.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
             android.content.res.Configuration.UI_MODE_NIGHT_YES
-        themed = ContextThemeWrapper(app.createConfigurationContext(config), R.style.Theme_Nui)
+        themeBase = app.createConfigurationContext(config)
+        themed = theme(themeBase)
         density = config.densityDpi / 160f
         // Views resolve theme colors and text sizes when they're made:
         // after a dark mode, font scale or density change, make the ones
@@ -161,6 +213,14 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
         this.night = night
         fontScale = config.fontScale
         densityDpi = config.densityDpi
+        if (changed) themeVersion++
+        restyleAll(changed)
+    }
+
+    /** Restyles every view; with changed, makes those that show text or Material colors again. */
+    private fun restyleAll(changed: Boolean) {
+        activity?.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(
+            MaterialColors.getColor(themed, com.google.android.material.R.attr.colorSurface, android.graphics.Color.WHITE)))
         for (n in ArrayList(nodes.values)) {
             if (changed && n.kind in rebuilt) rebuild(n) else restyle(n)
             if (changed) {
@@ -481,6 +541,12 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
             NuiCommand.HAPTIC -> if (args.remaining() > 0) haptic(args.get().toInt() and 0xff)
             NuiCommand.ANIMATE_BEGIN -> beginAnimation(args)
             NuiCommand.ANIMATE_END -> animation = null
+            NuiCommand.ACCENT -> {
+                if (args.remaining() < 9) return
+                val c = args.long
+                val flags = args.get().toInt()
+                setAccent(if (c != 0L) color(c) else null, flags and 1 != 0)
+            }
             NuiCommand.OPEN_URL -> {
                 val b = ByteArray(args.remaining())
                 args.get(b)

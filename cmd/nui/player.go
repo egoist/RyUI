@@ -69,7 +69,7 @@ type hostProcess struct {
 
 func (p *hostProcess) build() error {
 	p.bin = filepath.Join(p.work, "app-host")
-	c := exec.Command("go", "build", "-o", p.bin, ".")
+	c := exec.Command("go", "build", p.app.cfg.ldflags(false), "-o", p.bin, ".")
 	c.Dir = p.app.dir
 	c.Env = append(os.Environ(), "CGO_ENABLED=0")
 	if out, err := c.CombinedOutput(); err != nil {

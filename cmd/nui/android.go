@@ -186,7 +186,7 @@ func (t *androidToolchain) buildGo(app *goApp, work, serial string) (string, err
 	lib := filepath.Join(work, "libnui.so")
 	env := []string{"GOOS=android", "GOARCH=" + goarch, "CGO_ENABLED=1", "CC=" + filepath.Join(t.ndkBin, clang),
 		"CGO_LDFLAGS=-Wl,-z,max-page-size=16384"}
-	return lib, t.run(app.dir, env, "go", "build", "-buildmode=c-shared", "-overlay", ov, "-o", lib, ".")
+	return lib, t.run(app.dir, env, "go", "build", "-buildmode=c-shared", app.cfg.ldflags(false), "-overlay", ov, "-o", lib, ".")
 }
 
 // buildAPK builds the shell app for app with Gradle, cached by the host

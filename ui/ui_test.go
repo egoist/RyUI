@@ -1,12 +1,14 @@
 package ui_test
 
 import (
+	"encoding/binary"
 	"fmt"
 	"math"
 	"strings"
 	"testing"
 
 	"github.com/egoist/nui/host/fake"
+	"github.com/egoist/nui/internal/boot"
 	"github.com/egoist/nui/layout"
 	"github.com/egoist/nui/ops"
 	"github.com/egoist/nui/signal"
@@ -512,5 +514,37 @@ func TestNilPropsAreZeroValues(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+// The app's accent color (nui.json's) goes to the host when a root
+// mounts, before its views.
+func TestAccent(t *testing.T) {
+	boot.Accent, boot.DynamicColor = "#7c3aed", "1"
+	t.Cleanup(func() { boot.Accent, boot.DynamicColor = "", "" })
+	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })
+	cmds := h.Commands(ops.CmdAccent)
+	if len(cmds) != 1 {
+		t.Fatalf("%d accent commands", len(cmds))
+	}
+	args := cmds[0].Value.Bytes
+	if len(args) != 9 || ops.Color(binary.LittleEndian.Uint64(args)) != ui.RGB(0x7c, 0x3a, 0xed) || args[8] != 1 {
+		t.Fatalf("args %v", args)
+	}
+	for i, op := range h.Ops {
+		if op.Code == ops.OpCommand {
+			for _, o := range h.Ops[:i] {
+				if o.Code == ops.OpCreate && o.Kind != ops.KindView {
+					t.Fatal("a view was made before the accent")
+				}
+			}
+			break
+		}
+	}
+	if c, ok := ui.ParseHex("7c3aed80"); !ok || c != ui.RGBA(0x7c, 0x3a, 0xed, 0x80) {
+		t.Fatalf("ParseHex %x %v", c, ok)
+	}
+	if _, ok := ui.ParseHex("#7c3ae"); ok {
+		t.Fatal("ParseHex took 5 digits")
 	}
 }
