@@ -19,6 +19,7 @@ import CNui
     var textStyle: Int32 = 0
     var fontSize: Float = 0
     var fontWeight: Int32 = 0
+    var fontFamily = ""
     var color: UInt64 = 0
     var borderColor: UInt64 = 0
     var list: NuiList?

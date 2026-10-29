@@ -29,6 +29,7 @@ func App() ui.Node {
 					}}),
 				motion(toast),
 				symbols(),
+				fonts(),
 				textInput(),
 				controls(),
 				dates(),
@@ -76,6 +77,19 @@ func symbols() ui.Node {
 				{Title: "Delete", Icon: ui.IconTrash, Role: ui.ActionDestructive},
 			}}),
 		),
+	)
+}
+
+// fonts: a font file in the app's assets (assets/fonts/Pacifico-Regular.ttf,
+// under the SIL Open Font License), and a system family. Both scale with
+// the text size the user picked, as the text styles do.
+func fonts() ui.Node {
+	return section("Fonts",
+		ui.StaticText("Hello from Pacifico", ui.Style{Font: ui.Custom("Pacifico-Regular", ui.Title)}),
+		ui.StaticText("The system's serif, in bold", ui.Style{Font: ui.Font{Family: "serif", Weight: ui.Bold}}),
+		ui.StaticText("And its monospace", ui.Style{Font: ui.Custom("monospace", ui.Callout)}),
+		ui.Button(ui.ButtonProps{Title: ui.Val("A button in Pacifico"), Variant: ui.ButtonTinted,
+			Style: ui.Style{Font: ui.Font{Family: "Pacifico-Regular"}}}),
 	)
 }
 

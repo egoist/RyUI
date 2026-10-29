@@ -14,6 +14,7 @@ class NuiNode(val id: Int, val kind: Int, var view: View) {
     var textStyle = 0
     var fontSize = 0f
     var fontWeight = 0
+    var fontFamily = ""
     var color = 0L
     var background = 0L
     var cornerRadius = 0f

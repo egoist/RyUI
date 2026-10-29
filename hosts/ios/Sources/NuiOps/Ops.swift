@@ -81,7 +81,8 @@ public enum NuiProp {
     public static let gradient: UInt16 = 22
     public static let transition: UInt16 = 23
     public static let material: UInt16 = 24
-    public static let swipeActions: UInt16 = 25
+    public static let fontFamily: UInt16 = 25
+    public static let swipeActions: UInt16 = 26
 
     public enum Text {
         public static let text: UInt16 = 64
@@ -217,7 +218,8 @@ public enum NuiEventKind: UInt16 {
     case native = 22
     case link = 23
     case incomingURL = 24
-    case result = 25
+    case fontLoaded = 25
+    case result = 26
 }
 
 public enum NuiCommand: UInt16 {
@@ -628,7 +630,10 @@ public enum NuiEvents {
     public static func incomingURL(_ id: UInt32, _ v: String) -> [UInt8] {
         var w = NuiWriter(); w.header(id, 24); w.string(v); return w.bytes
     }
+    public static func fontLoaded(_ id: UInt32, _ v: String) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 25); w.string(v); return w.bytes
+    }
     public static func result(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
-        var w = NuiWriter(); w.header(id, 25); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
+        var w = NuiWriter(); w.header(id, 26); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
     }
 }

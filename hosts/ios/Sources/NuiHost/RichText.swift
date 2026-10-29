@@ -35,6 +35,7 @@ struct NuiRichBase: Hashable {
     var textStyle: Int32 = 0
     var size: Float = 0
     var weight: Int32 = 0
+    var family = ""
     var color: UInt64 = 0
     var align: Int32 = 0
     var lines = 0
@@ -42,7 +43,7 @@ struct NuiRichBase: Hashable {
 
 /// A font from text props: a Dynamic Type text style, or a system font
 /// scaled like one; italic and monospaced as asked.
-func nuiFont(_ textStyle: Int32, _ size: Float, _ weight: Int32, italic: Bool = false, mono: Bool = false) -> UIFont {
+func nuiFont(_ textStyle: Int32, _ size: Float, _ weight: Int32, family: String = "", italic: Bool = false, mono: Bool = false) -> UIFont {
     let style = uiTextStyle(textStyle)
     let metrics = UIFontMetrics(forTextStyle: style)
     let w = uiWeight(weight)
@@ -52,6 +53,8 @@ func nuiFont(_ textStyle: Int32, _ size: Float, _ weight: Int32, italic: Bool = 
     let t = UITraitCollection.current
     if mono {
         f = metrics.scaledFont(for: .monospacedSystemFont(ofSize: base * 0.94, weight: w ?? .regular), compatibleWith: t)
+    } else if !family.isEmpty, let c = NuiFonts.font(family, size: base, weight: w) {
+        f = metrics.scaledFont(for: c, compatibleWith: t)
     } else if size > 0 || w != nil {
         f = metrics.scaledFont(for: .systemFont(ofSize: base, weight: w ?? .regular), compatibleWith: t)
     } else {
@@ -365,7 +368,7 @@ final class NuiRichTextView: UIView {
                 continue
             }
             let font = nuiFont(s.textStyle != 0 ? s.textStyle : base.textStyle, s.size > 0 ? s.size : base.size,
-                               s.weight != 0 ? s.weight : base.weight, italic: s.italic, mono: s.mono)
+                               s.weight != 0 ? s.weight : base.weight, family: base.family, italic: s.italic, mono: s.mono)
             var color = nuiColor(s.color != 0 ? s.color : base.color) ?? .label
             if s.color == 0 && !s.link.isEmpty { color = tintColor }
             var a: [NSAttributedString.Key: Any] = [.font: font, .ctForeground: color.resolvedColor(with: t).cgColor]
@@ -402,7 +405,7 @@ final class NuiRichTextView: UIView {
         var out: [NuiParagraphLayout] = []
         var left = base.lines
         let t = traits
-        let emptyFont = nuiFont(base.textStyle, base.size, base.weight)
+        let emptyFont = nuiFont(base.textStyle, base.size, base.weight, family: base.family)
         if width < 1e6 { lastWidth = width }
         for p in paragraphs {
             if base.lines > 0 && left <= 0 { break }
@@ -425,7 +428,7 @@ final class NuiRichTextView: UIView {
         let width = lastWidth
         let t = traits
         t.performAsCurrent {
-            let emptyFont = nuiFont(base.textStyle, base.size, base.weight)
+            let emptyFont = nuiFont(base.textStyle, base.size, base.weight, family: base.family)
             for p in paragraphs {
                 let key = NuiLayoutCache.Key(paragraph: layoutKey(p), base: base, width: width, lines: 0, size: t.preferredContentSizeCategory, dark: t.userInterfaceStyle == .dark)
                 if !p.inlines.isEmpty || NuiLayoutCache.shared.has(key) { continue }
@@ -583,7 +586,7 @@ final class NuiRichTextView: UIView {
     func caretRect(at offset: Int) -> CGRect {
         let ls = lineGeometry()
         guard let g = line(at: offset, ls) else {
-            let f = nuiFont(base.textStyle, base.size, base.weight)
+            let f = nuiFont(base.textStyle, base.size, base.weight, family: base.family)
             return CGRect(x: 0, y: 0, width: 2, height: f.lineHeight)
         }
         let r = g.rect

@@ -309,6 +309,15 @@ Colors and fonts can be semantic (`ui.Label`, `ui.SecondaryLabel`,
 semantic colors and text styles; Material 3's color roles and type
 scale), so dark mode and Dynamic Type / font scale need no app code.
 
+`Font.Family` (`ui.Custom("Inter-Bold", ui.Title)`) takes a font file
+of the app's, by its name in `assets/fonts`; a family of them (`Inter`:
+`Inter-Regular`, `Inter-Bold`..., picked by `Weight`); a generic family
+(`serif`, `monospace`, `rounded`: on iOS the system font's designs); or
+a system family. It scales as its text style does. Under `nui dev` the
+core sends a font file's URL instead, since the player hasn't the app's
+assets: the host loads it, then sends `FontLoaded`, and the core
+measures text again (its measure cache cleared).
+
 ### Native escape hatch
 
 `ui.Native(kind string, props ui.NativeProps) ui.Node` makes a view of a
@@ -790,13 +799,17 @@ Each one ends with its examples running and its tests in CI.
     `ui.Copy`, `ui.Share`.
   - The app's accent color (`nui.json`).
   - The device's time zone as Go's `time.Local`.
-  - `examples/gallery` shows each.
+  - Motion: `Style.Transform`, shadows, gradients, `Style.Material`
+    (blur), repeating animations, enter and exit `Transition`s.
+  - `nui/sqlite` (pure Go, live queries with `sqlite.Watch`), native
+    modules (`ui.Call`: `nui/secure`, the keychain and Keystore;
+    `nui/device`: info, an in-app browser, the photo picker).
+  - A search field in the navigation bar (`ScreenOptions.Search`).
+  - Incoming links: `nui.json`'s `scheme` and `links`, `ui.OnOpenURL`.
+  - Custom fonts (`Font.Family`).
+  - `examples/gallery` shows each; `examples/notes` is SQLite's.
 
   Next:
-  - A search field in the navigation bar (UISearchController,
-    Material's search bar).
-  - Incoming links (URL schemes, universal and app links, from
-    `nui.json`).
   - Scroll position: events, and scrolling a `Scroll` from code.
   - An image disk cache, and placeholders.
   - An accessibility pass over every component with VoiceOver and

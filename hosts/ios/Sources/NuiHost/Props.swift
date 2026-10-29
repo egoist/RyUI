@@ -69,10 +69,17 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
 
 @MainActor extension NuiNode {
     /// The font for the node's text props: a Dynamic Type text style,
-    /// or a system font scaled like one.
+    /// or a system font (or its own family's) scaled like one.
     var font: UIFont {
         let style = uiTextStyle(textStyle)
         let metrics = UIFontMetrics(forTextStyle: style)
+        if !fontFamily.isEmpty {
+            let base = fontSize > 0 ? CGFloat(fontSize)
+                : UIFont.preferredFont(forTextStyle: style, compatibleWith: UITraitCollection(preferredContentSizeCategory: .large)).pointSize
+            if let f = NuiFonts.font(fontFamily, size: base, weight: uiWeight(fontWeight)) {
+                return metrics.scaledFont(for: f)
+            }
+        }
         if fontSize > 0 {
             return metrics.scaledFont(for: .systemFont(ofSize: CGFloat(fontSize), weight: uiWeight(fontWeight) ?? .regular))
         }
@@ -88,6 +95,7 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             r.base.textStyle = textStyle
             r.base.size = fontSize
             r.base.weight = fontWeight
+            r.base.family = fontFamily
             return
         }
         let f = font
@@ -216,6 +224,20 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             n.applyFont()
         case NuiProp.fontWeight:
             n.fontWeight = v.enumValue
+            n.applyFont()
+        case NuiProp.fontFamily:
+            n.fontFamily = v.string
+            if n.fontFamily.contains("://"), NuiFonts.loaded == nil {
+                NuiFonts.loaded = { [weak self] url in
+                    guard let self else { return }
+                    NuiLayoutCache.shared.clear()
+                    for m in self.nodes.values where m.fontFamily == url {
+                        m.applyFont()
+                        (m.view as? NuiRichTextView)?.invalidate()
+                    }
+                    self.send(NuiEvents.fontLoaded(self.rootID, url))
+                }
+            }
             n.applyFont()
         case NuiProp.textAlign:
             let a: NSTextAlignment

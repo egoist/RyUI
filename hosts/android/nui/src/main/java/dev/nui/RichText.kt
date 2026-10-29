@@ -80,6 +80,7 @@ class NuiRichText(private val rt: NuiRuntime, private val id2: Int) : NuiContain
     var textStyle = 0
     var size = 0f
     var weight = 0
+    var family = ""
     var color = 0L
     var align = NuiTextAlign.START
     var lines = 0
@@ -242,10 +243,10 @@ class NuiRichText(private val rt: NuiRuntime, private val id2: Int) : NuiContain
     /** The base paint: the view's text style, as a Text's would be (and its line spacing). */
     private fun basePaint(): TextPaint {
         val cfg = resources.configuration
-        val key = "$textStyle|$size|$weight|$color|${cfg.fontScale}|${cfg.uiMode}|${cfg.densityDpi}|${rt.themeVersion}"
+        val key = "$textStyle|$size|$weight|$family|${NuiFonts.version}|$color|${cfg.fontScale}|${cfg.uiMode}|${cfg.densityDpi}|${rt.themeVersion}"
         paint?.let { if (key == paintKey) return it }
         val tv = MaterialTextView(rt.themed)
-        rt.applyTextStyle(tv, textStyle, size, weight)
+        rt.applyTextStyle(tv, textStyle, size, weight, family)
         spacingExtra = tv.lineSpacingExtra
         spacingMult = tv.lineSpacingMultiplier
         val p = TextPaint(tv.paint)
@@ -278,7 +279,10 @@ class NuiRichText(private val rt: NuiRuntime, private val id2: Int) : NuiContain
                 span(RelativeSizeSpan(0.94f))
             }
             val w = weightOf(s.weight)
-            if (w > 0 && Build.VERSION.SDK_INT >= 28) {
+            val custom = if (family.isNotEmpty() && !s.mono && (w > 0 || s.italic)) NuiFonts.typeface(rt.app, family, w, s.italic) else null
+            if (custom != null && Build.VERSION.SDK_INT >= 28) {
+                span(TypefaceSpan(custom))
+            } else if (w > 0 && Build.VERSION.SDK_INT >= 28) {
                 span(TypefaceSpan(Typeface.create(if (s.mono) Typeface.MONOSPACE else Typeface.DEFAULT, w, s.italic)))
             } else if (w >= 600 || s.italic) {
                 span(StyleSpan(when {
@@ -311,7 +315,7 @@ class NuiRichText(private val rt: NuiRuntime, private val id2: Int) : NuiContain
         val cfg = resources.configuration
         // With its inline components' sizes.
         val ins = if (p.inlines.isEmpty()) "" else p.inlines.joinToString(",") { i -> inlines.getOrNull(i)?.let { "${it.second}x${it.third}" } ?: "0x0" }
-        return "${p.key}|$ins|$textStyle|$size|$weight|$color|$align|$left|$width|${cfg.fontScale}|${cfg.uiMode}|${cfg.densityDpi}|${rt.themeVersion}"
+        return "${p.key}|$ins|$textStyle|$size|$weight|$family|${NuiFonts.version}|$color|$align|$left|$width|${cfg.fontScale}|${cfg.uiMode}|${cfg.densityDpi}|${rt.themeVersion}"
     }
 
     /** The paragraphs' layouts at a width in px (cached). */

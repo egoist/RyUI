@@ -268,18 +268,24 @@ func (r *Root) setEnvironment(env host.Environment) {
 		r.scale = env.Scale
 	}
 	if env.FontScale != old.FontScale {
-		var walk func(e *element)
-		walk = func(e *element) {
-			if e.box != nil && e.real && e.kind != ops.KindView {
-				e.box.MarkDirty()
-			}
-			for _, k := range e.kids {
-				walk(k)
-			}
-		}
-		walk(r.el)
+		r.remeasureText()
 	}
 	r.env.Set(env)
+}
+
+// remeasureText marks the root's measured views (text, controls) for
+// measuring again: their fonts changed.
+func (r *Root) remeasureText() {
+	var walk func(e *element)
+	walk = func(e *element) {
+		if e.box != nil && e.real && e.kind != ops.KindView {
+			e.box.MarkDirty()
+		}
+		for _, k := range e.kids {
+			walk(k)
+		}
+	}
+	walk(r.el)
 }
 
 func flushAll() {
@@ -314,6 +320,12 @@ func dispatch(ev ops.Event) {
 		return
 	case ops.EventIncomingURL:
 		incoming(ev.Str)
+		return
+	case ops.EventFontLoaded:
+		for _, r := range roots {
+			r.measures = measureCache{} // its measurements were in another font
+			r.remeasureText()
+		}
 		return
 	case ops.EventLifecycle:
 		for _, f := range boot.Lifecycle {

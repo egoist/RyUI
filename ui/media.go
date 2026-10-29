@@ -2,6 +2,7 @@ package ui
 
 import (
 	"math"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -162,4 +163,27 @@ func (e *element) listenGestures(p *ViewProps) {
 		h.swipe = p.OnSwipe
 		e.listen(ops.EventSwipe)
 	}
+}
+
+// fonts maps a font family to what a player gets it as: its file's URL
+// when the app has one in assets/fonts (nui dev runs the app in its
+// directory), or the family as it is.
+var fonts = map[string]string{}
+
+func fontFamily(family string) string {
+	if boot.AssetBase == "" || family == "" {
+		return family
+	}
+	if v, ok := fonts[family]; ok {
+		return v
+	}
+	v := family
+	for _, ext := range []string{".ttf", ".otf"} {
+		if _, err := os.Stat(filepath.Join("assets", "fonts", family+ext)); err == nil {
+			v = assetURL("fonts/" + family + ext)
+			break
+		}
+	}
+	fonts[family] = v
+	return v
 }

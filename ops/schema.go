@@ -107,6 +107,7 @@ var Schema = SchemaDef{
 		{Name: "Gradient", Type: TBytes, Doc: "a linear background gradient: u32 count, per stop u64 color and f32 location (0 to 1); f32 start x, y, end x, y (unit points of the view)"},
 		{Name: "Transition", Type: TBytes, Doc: "u8 fade, f32 scale (0: none), offset x, y (points): the state a view comes in from when it's inserted during an animation, and goes out to when it's destroyed during one (the host keeps it until it has)"},
 		{Name: "Material", Type: TEnum, Enum: "Material", Doc: "a translucent background that blurs what's behind (iOS's materials); Android, which can't, shows its surface color, translucent"},
+		{Name: "FontFamily", Type: TString, Doc: "a font file's name in the app's assets/fonts (Inter-Bold.ttf: Inter-Bold), a family of them (Inter: Inter-Regular, Inter-Bold...), a generic family (serif, monospace, rounded) or a system family; scaled as the text style is. Under nui dev, a font file's URL, which the host loads, then sends FontLoaded"},
 		{Name: "SwipeActions", Type: TBytes, Doc: "a List cell's swipe actions, encoded as Menu (iOS: its trailing actions; Android: a full swipe runs the first); Action events on the cell carry the index"},
 	},
 	Kinds: []KindDef{
@@ -228,6 +229,7 @@ var Schema = SchemaDef{
 		{Name: "Native", Payload: PBytes, Doc: "a native view's event: string name, u32 count, then named values as in Native's Prop"},
 		{Name: "Link", Payload: PString, Doc: "a rich text's link was tapped (its URL)"},
 		{Name: "IncomingURL", Payload: PString, Doc: "the app was opened with a URL (its scheme, or a universal or app link), at launch or since; to the root"},
+		{Name: "FontLoaded", Payload: PString, Doc: "a font a FontFamily named by URL (under nui dev) loaded, to the root: text in it is measured again"},
 		{Name: "Result", Payload: PBytes, Doc: "a Call's answer, to the root: u32 call id, u8 ok, then the result's bytes (an error's message when not ok)"},
 	},
 	Commands: []CommandDef{

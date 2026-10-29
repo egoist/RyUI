@@ -89,8 +89,10 @@ const (
 	PropTransition PropID = 23
 	// PropMaterial: a translucent background that blurs what's behind (iOS's materials); Android, which can't, shows its surface color, translucent.
 	PropMaterial PropID = 24
+	// PropFontFamily: a font file's name in the app's assets/fonts (Inter-Bold.ttf: Inter-Bold), a family of them (Inter: Inter-Regular, Inter-Bold...), a generic family (serif, monospace, rounded) or a system family; scaled as the text style is. Under nui dev, a font file's URL, which the host loads, then sends FontLoaded.
+	PropFontFamily PropID = 25
 	// PropSwipeActions: a List cell's swipe actions, encoded as Menu (iOS: its trailing actions; Android: a full swipe runs the first); Action events on the cell carry the index.
-	PropSwipeActions PropID = 25
+	PropSwipeActions PropID = 26
 )
 
 // Text props.
@@ -244,7 +246,7 @@ const (
 	PropDatePickerMax PropID = 67
 )
 
-var commonProps = [...]propInfo{{}, {"Background", TColor}, {"CornerRadius", TFloat}, {"BorderWidth", TFloat}, {"BorderColor", TColor}, {"Opacity", TFloat}, {"Hidden", TBool}, {"Clip", TBool}, {"A11yLabel", TString}, {"A11yHint", TString}, {"A11yRole", TEnum}, {"Color", TColor}, {"TextStyle", TEnum}, {"FontSize", TFloat}, {"FontWeight", TEnum}, {"TextAlign", TEnum}, {"LineLimit", TInt}, {"Disabled", TBool}, {"Menu", TBytes}, {"MenuTrigger", TEnum}, {"Transform", TBytes}, {"Shadow", TBytes}, {"Gradient", TBytes}, {"Transition", TBytes}, {"Material", TEnum}, {"SwipeActions", TBytes}}
+var commonProps = [...]propInfo{{}, {"Background", TColor}, {"CornerRadius", TFloat}, {"BorderWidth", TFloat}, {"BorderColor", TColor}, {"Opacity", TFloat}, {"Hidden", TBool}, {"Clip", TBool}, {"A11yLabel", TString}, {"A11yHint", TString}, {"A11yRole", TEnum}, {"Color", TColor}, {"TextStyle", TEnum}, {"FontSize", TFloat}, {"FontWeight", TEnum}, {"TextAlign", TEnum}, {"LineLimit", TInt}, {"Disabled", TBool}, {"Menu", TBytes}, {"MenuTrigger", TEnum}, {"Transform", TBytes}, {"Shadow", TBytes}, {"Gradient", TBytes}, {"Transition", TBytes}, {"Material", TEnum}, {"FontFamily", TString}, {"SwipeActions", TBytes}}
 
 var kindProps = [...][]propInfo{nil, {}, {{"Text", TString}}, {{"Title", TString}, {"Variant", TEnum}, {"Icon", TString}}, {{"Value", TString}, {"Placeholder", TString}, {"Keyboard", TEnum}, {"ReturnKey", TEnum}, {"Secure", TBool}, {"Autocapitalize", TEnum}, {"Autocorrect", TEnum}, {"ContentType", TString}, {"Multiline", TBool}}, {{"On", TBool}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}}, {{"Horizontal", TBool}, {"Refreshable", TBool}, {"Refreshing", TBool}}, {{"Refreshable", TBool}, {"Refreshing", TBool}}, {{"Animating", TBool}}, {}, {{"Title", TString}, {"Actions", TBytes}, {"BackGesture", TBool}, {"Icon", TString}, {"Search", TString}, {"SearchText", TString}}, {{"Selected", TInt}}, {{"Detents", TInt}, {"Grabber", TBool}}, {{"Title", TString}, {"Message", TString}, {"Buttons", TBytes}, {"Style", TEnum}}, {{"Source", TString}, {"Mode", TEnum}}, {{"Type", TString}, {"Prop", TBytes}}, {{"Content", TBytes}, {"Inlines", TBytes}}, {}, {{"Name", TString}}, {{"Segments", TBytes}, {"Selected", TInt}}, {{"Value", TFloat}, {"Indeterminate", TBool}}, {{"Value", TInt}, {"Mode", TEnum}, {"Min", TInt}, {"Max", TInt}}}
 
@@ -285,13 +287,15 @@ const (
 	EventLink EventKind = 23
 	// EventIncomingURL: the app was opened with a URL (its scheme, or a universal or app link), at launch or since; to the root.
 	EventIncomingURL EventKind = 24
+	// EventFontLoaded: a font a FontFamily named by URL (under nui dev) loaded, to the root: text in it is measured again.
+	EventFontLoaded EventKind = 25
 	// EventResult: a Call's answer, to the root: u32 call id, u8 ok, then the result's bytes (an error's message when not ok).
-	EventResult EventKind = 25
+	EventResult EventKind = 26
 )
 
-var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh", "Pan", "Pinch", "Swipe", "Loaded", "Failed", "Native", "Link", "IncomingURL", "Result"}
+var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh", "Pan", "Pinch", "Swipe", "Loaded", "Failed", "Native", "Link", "IncomingURL", "FontLoaded", "Result"}
 
-var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone, PGesture, PGesture, PInt, PPoint, PString, PBytes, PString, PString, PBytes}
+var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone, PGesture, PGesture, PInt, PPoint, PString, PBytes, PString, PString, PString, PBytes}
 
 func (e EventKind) String() string {
 	if int(e) < len(eventNames) && e > 0 {

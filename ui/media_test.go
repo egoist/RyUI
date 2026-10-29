@@ -1,8 +1,11 @@
 package ui_test
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/egoist/nui/internal/boot"
 	"github.com/egoist/nui/ops"
 	"github.com/egoist/nui/signal"
 	"github.com/egoist/nui/ui"
@@ -148,5 +151,33 @@ func TestImageAspectRatioOverridesItsOwn(t *testing.T) {
 	h.Dispatch(ops.Event{ID: img.ID, Kind: ops.EventLoaded, X: 1200, Y: 800}) // 3:2
 	if img.Frame[3] != 197 {
 		t.Fatalf("after loading: %v", img.Frame)
+	}
+}
+
+func TestFontFamily(t *testing.T) {
+	// Under nui dev, an app's font file goes to the player by URL; when
+	// it has loaded, text is measured again.
+	dir := t.TempDir()
+	os.MkdirAll(filepath.Join(dir, "assets", "fonts"), 0o755)
+	os.WriteFile(filepath.Join(dir, "assets", "fonts", "Pacifico-Regular.ttf"), []byte("font"), 0o644)
+	t.Chdir(dir)
+	boot.AssetBase = "http://127.0.0.1:7462/"
+	t.Cleanup(func() { boot.AssetBase = "" })
+	h, _ := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{},
+			ui.StaticText("a", ui.Style{Font: ui.Custom("Pacifico-Regular", ui.Title)}),
+			ui.StaticText("b", ui.Style{Font: ui.Custom("serif", ui.Body)}),
+		)
+	})
+	if v := h.One(ops.KindText, "a").String(ops.PropFontFamily); v != "http://127.0.0.1:7462/fonts/Pacifico-Regular.ttf" {
+		t.Fatalf("a: %q", v)
+	}
+	if v := h.One(ops.KindText, "b").String(ops.PropFontFamily); v != "serif" {
+		t.Fatalf("b: %q", v)
+	}
+	h.Measures = 0
+	h.Dispatch(ops.Event{ID: h.Root().ID, Kind: ops.EventFontLoaded, Str: "http://127.0.0.1:7462/fonts/Pacifico-Regular.ttf"})
+	if h.Measures != 2 {
+		t.Fatalf("%d measures after the font loaded", h.Measures)
 	}
 }

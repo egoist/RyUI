@@ -188,7 +188,7 @@ func devIOSPlayer(app *goApp, tc *iosToolchain, work string, sim *simDevice, sto
 	sum := fileHash(hostObj, lib)
 	marker := filepath.Join(dir, "installed-"+sim.UDID)
 	if prev, _ := os.ReadFile(marker); string(prev) != sum {
-		player := &goApp{dir: dir, name: playerName, bundleID: playerID}
+		player := &goApp{dir: dir, name: playerName, bundleID: playerID, cfg: &appConfig{ID: playerID}}
 		bundle, err := tc.link(player, dir, hostObj, lib)
 		if err != nil {
 			return err
@@ -234,7 +234,7 @@ func devAndroidPlayer(app *goApp, tc *androidToolchain, work, serial string, sto
 		return err
 	}
 	dir := playerDir(work, "android")
-	player := &goApp{dir: dir, name: playerName, bundleID: playerID}
+	player := &goApp{dir: dir, name: playerName, bundleID: playerID, cfg: &appConfig{ID: playerID}}
 	apk, hash, err := tc.buildAPK(player, dir)
 	if err != nil {
 		return err

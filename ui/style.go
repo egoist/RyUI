@@ -142,10 +142,23 @@ type Font struct {
 	Style  ops.TextStyle
 	Size   float32 // points; 0: the text style's size
 	Weight Weight
+	// Family is a font of the app's: a font file's name in its assets
+	// (assets/fonts/Inter-Bold.ttf is "Inter-Bold"), a family of them
+	// ("Inter": Inter-Regular, Inter-Bold..., in Weight), a generic
+	// family ("serif", "monospace", "rounded": the system font's designs
+	// on iOS; Android has no rounded one), or a system family
+	// ("Georgia"). It's scaled as its text style is (Dynamic Type,
+	// Android's font scale). Empty, or one the platform hasn't: the
+	// system font.
+	Family string
 }
 
 // Weighted returns f with weight w.
 func (f Font) Weighted(w Weight) Font { f.Weight = w; return f }
+
+// Custom is f in the font family (see Font.Family), scaled as f is:
+// Custom("Inter-Bold", Title).
+func Custom(family string, f Font) Font { f.Family = family; return f }
 
 // System is the system font at size points.
 func System(size float32) Font { return Font{Size: size} }
@@ -566,6 +579,10 @@ func (e *element) applyVisual(s, prev *Style, text bool) (remeasure bool) {
 	}
 	if s.Font.Size != prev.Font.Size {
 		b.SetFloat(id, ops.PropFontSize, float64(s.Font.Size))
+		remeasure = true
+	}
+	if s.Font.Family != prev.Font.Family {
+		b.SetString(id, ops.PropFontFamily, fontFamily(s.Font.Family))
 		remeasure = true
 	}
 	if s.Font.Weight != prev.Font.Weight {

@@ -99,23 +99,27 @@ fun NuiRuntime.applyText(n: NuiNode) {
         it.textStyle = n.textStyle
         it.size = n.fontSize
         it.weight = n.fontWeight
+        it.family = n.fontFamily
         it.color = n.color
         it.invalidateText()
         return
     }
     val tv = n.view as? TextView ?: return
-    if (tv is MaterialButton && n.fontSize == 0f && n.fontWeight == 0 && n.textStyle == 0) return
-    applyTextStyle(tv, n.textStyle, n.fontSize, n.fontWeight)
+    if (tv is MaterialButton && n.fontSize == 0f && n.fontWeight == 0 && n.textStyle == 0 && n.fontFamily.isEmpty()) return
+    applyTextStyle(tv, n.textStyle, n.fontSize, n.fontWeight, n.fontFamily)
     applyColor(n)
 }
 
-/** Applies a text style, size and weight. */
-fun NuiRuntime.applyTextStyle(tv: TextView, style: Int, size: Float = 0f, weight: Int = 0) {
+/** Applies a text style, size, weight and font family (an app's font, or the system's). */
+fun NuiRuntime.applyTextStyle(tv: TextView, style: Int, size: Float = 0f, weight: Int = 0, family: String = "") {
     val res = textAppearances[style] ?: com.google.android.material.R.style.TextAppearance_Material3_BodyLarge
     if (tv !is MaterialButton) TextViewCompat.setTextAppearance(tv, res)
     if (size > 0) tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, size)
     val w = weightOf(weight)
-    if (w > 0) {
+    val custom = if (family.isNotEmpty()) NuiFonts.typeface(app, family, w) else null
+    if (custom != null) {
+        tv.typeface = custom
+    } else if (w > 0) {
         tv.typeface = if (Build.VERSION.SDK_INT >= 28) Typeface.create(tv.typeface, w, false)
         else Typeface.create(tv.typeface, if (w >= 600) Typeface.BOLD else Typeface.NORMAL)
     }
@@ -341,6 +345,14 @@ fun NuiRuntime.propString(id: Int, prop: Int, v: String) {
     when (prop) {
         NuiProp.A11Y_LABEL -> view.contentDescription = v
         NuiProp.A11Y_HINT -> ViewCompat.setStateDescription(view, v)
+        NuiProp.FONT_FAMILY -> {
+            n.fontFamily = v
+            if ("://" in v && NuiFonts.loaded == null) NuiFonts.loaded = { url ->
+                for (m in nodes.values) if (m.fontFamily == url) { applyText(m); m.view.requestLayout() }
+                send(NuiEvents.fontLoaded(rootID, url))
+            }
+            applyText(n)
+        }
         else -> if (!setNavProp(n, prop, v)) when (n.kind) {
             NuiKind.TEXT -> if (prop == NuiProp.Text.TEXT) (view as TextView).text = v
             NuiKind.BUTTON -> when (prop) {

@@ -84,7 +84,8 @@ object NuiProp {
     const val GRADIENT = 22
     const val TRANSITION = 23
     const val MATERIAL = 24
-    const val SWIPE_ACTIONS = 25
+    const val FONT_FAMILY = 25
+    const val SWIPE_ACTIONS = 26
 
     object Text {
         const val TEXT = 64
@@ -220,7 +221,8 @@ object NuiEventKind {
     const val NATIVE = 22
     const val LINK = 23
     const val INCOMING_URL = 24
-    const val RESULT = 25
+    const val FONT_LOADED = 25
+    const val RESULT = 26
 }
 
 object NuiCommand {
@@ -566,5 +568,6 @@ object NuiEvents {
     fun native(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 22); u32(v.size); raw(v) }.bytes()
     fun link(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 23); string(v) }.bytes()
     fun incomingURL(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 24); string(v) }.bytes()
-    fun result(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 25); u32(v.size); raw(v) }.bytes()
+    fun fontLoaded(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 25); string(v) }.bytes()
+    fun result(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 26); u32(v.size); raw(v) }.bytes()
 }
