@@ -1,0 +1,108 @@
+package ops
+
+import (
+	"fmt"
+	"math"
+)
+
+// Environment is what a host reports about a root view: its size, safe
+// area insets, the keyboard, and display and text settings. Sizes are in
+// points.
+//
+// Wire format: f32 width, height, safe top, right, bottom, left,
+// keyboard, scale, font scale; u8 dark; string locale.
+type Environment struct {
+	Width, Height                            float32
+	SafeTop, SafeRight, SafeBottom, SafeLeft float32
+	Keyboard                                 float32 // how much of the root's bottom the keyboard covers
+	Scale                                    float32 // pixels per point
+	FontScale                                float32 // Dynamic Type / Android font scale; 1 is the default
+	Dark                                     bool
+	Locale                                   string
+}
+
+// Event is something a host reports.
+type Event struct {
+	ID    NodeID
+	Kind  EventKind
+	Bool  bool
+	Int   int64
+	Float float64
+	X, Y  float64
+	Str   string
+	Env   Environment
+}
+
+func (e Event) String() string {
+	return fmt.Sprintf("%s %d", e.Kind, e.ID)
+}
+
+// AppendEvent appends the encoding of e (hosts do this in their own
+// language; Go does it for tests and transports).
+func AppendEvent(buf []byte, e *Event) []byte {
+	buf = le.AppendUint32(buf, uint32(e.ID))
+	buf = le.AppendUint16(buf, uint16(e.Kind))
+	switch EventPayload(e.Kind) {
+	case PBool:
+		b := byte(0)
+		if e.Bool {
+			b = 1
+		}
+		buf = append(buf, b)
+	case PInt:
+		buf = le.AppendUint64(buf, uint64(e.Int))
+	case PFloat:
+		buf = le.AppendUint64(buf, math.Float64bits(e.Float))
+	case PString:
+		buf = le.AppendUint32(buf, uint32(len(e.Str)))
+		buf = append(buf, e.Str...)
+	case PPoint:
+		buf = le.AppendUint64(buf, math.Float64bits(e.X))
+		buf = le.AppendUint64(buf, math.Float64bits(e.Y))
+	case PEnvironment:
+		v := &e.Env
+		for _, f := range [...]float32{v.Width, v.Height, v.SafeTop, v.SafeRight, v.SafeBottom, v.SafeLeft, v.Keyboard, v.Scale, v.FontScale} {
+			buf = le.AppendUint32(buf, math.Float32bits(f))
+		}
+		d := byte(0)
+		if v.Dark {
+			d = 1
+		}
+		buf = append(buf, d)
+		buf = le.AppendUint32(buf, uint32(len(v.Locale)))
+		buf = append(buf, v.Locale...)
+	}
+	return buf
+}
+
+// DecodeEvent decodes one event.
+func DecodeEvent(data []byte) (Event, error) {
+	r := &reader{b: data}
+	e := Event{ID: NodeID(r.u32()), Kind: EventKind(r.u16())}
+	switch EventPayload(e.Kind) {
+	case PNone:
+	case PBool:
+		e.Bool = r.u8() != 0
+	case PInt:
+		e.Int = int64(r.u64())
+	case PFloat:
+		e.Float = r.f64()
+	case PString:
+		e.Str = string(r.bytes())
+	case PPoint:
+		e.X, e.Y = r.f64(), r.f64()
+	case PEnvironment:
+		v := &e.Env
+		for _, f := range [...]*float32{&v.Width, &v.Height, &v.SafeTop, &v.SafeRight, &v.SafeBottom, &v.SafeLeft, &v.Keyboard, &v.Scale, &v.FontScale} {
+			*f = r.f32()
+		}
+		v.Dark = r.u8() != 0
+		v.Locale = string(r.bytes())
+	default:
+		return e, fmt.Errorf("ops: unknown event kind %d", e.Kind)
+	}
+	if r.err == nil && len(r.b) != 0 {
+		return e, fmt.Errorf("ops: %d bytes after event", len(r.b))
+	}
+	return e, r.err
+}

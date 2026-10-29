@@ -1,0 +1,324 @@
+package dev.nui
+
+import android.content.res.ColorStateList
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.os.Build
+import android.text.InputType
+import android.util.TypedValue
+import android.view.Gravity
+import android.view.View
+import android.view.inputmethod.EditorInfo
+import android.widget.EditText
+import android.widget.TextView
+import androidx.core.view.AccessibilityDelegateCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
+import androidx.core.widget.TextViewCompat
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.color.MaterialColors
+import com.google.android.material.materialswitch.MaterialSwitch
+import com.google.android.material.progressindicator.CircularProgressIndicator
+import com.google.android.material.slider.Slider
+import kotlin.math.ceil
+
+private val textAppearances = mapOf(
+    NuiTextStyle.LARGE_TITLE to com.google.android.material.R.style.TextAppearance_Material3_DisplaySmall,
+    NuiTextStyle.TITLE to com.google.android.material.R.style.TextAppearance_Material3_HeadlineMedium,
+    NuiTextStyle.TITLE2 to com.google.android.material.R.style.TextAppearance_Material3_HeadlineSmall,
+    NuiTextStyle.TITLE3 to com.google.android.material.R.style.TextAppearance_Material3_TitleLarge,
+    NuiTextStyle.HEADLINE to com.google.android.material.R.style.TextAppearance_Material3_TitleMedium,
+    NuiTextStyle.SUBHEADLINE to com.google.android.material.R.style.TextAppearance_Material3_TitleSmall,
+    NuiTextStyle.BODY to com.google.android.material.R.style.TextAppearance_Material3_BodyLarge,
+    NuiTextStyle.CALLOUT to com.google.android.material.R.style.TextAppearance_Material3_BodyMedium,
+    NuiTextStyle.FOOTNOTE to com.google.android.material.R.style.TextAppearance_Material3_BodySmall,
+    NuiTextStyle.CAPTION to com.google.android.material.R.style.TextAppearance_Material3_LabelMedium,
+    NuiTextStyle.CAPTION2 to com.google.android.material.R.style.TextAppearance_Material3_LabelSmall,
+)
+
+private fun weightOf(w: Int): Int = when (w) {
+    NuiFontWeight.ULTRALIGHT -> 100
+    NuiFontWeight.THIN -> 200
+    NuiFontWeight.LIGHT -> 300
+    NuiFontWeight.REGULAR -> 400
+    NuiFontWeight.MEDIUM -> 500
+    NuiFontWeight.SEMIBOLD -> 600
+    NuiFontWeight.BOLD -> 700
+    NuiFontWeight.HEAVY -> 800
+    NuiFontWeight.BLACK -> 900
+    else -> 0
+}
+
+/** Resolves a core color: a semantic one from the Material 3 theme, or RGBA. */
+fun NuiRuntime.color(v: Long, fallback: Int = Color.TRANSPARENT): Int {
+    val kind = (v ushr 32).toInt()
+    val c = (v and 0xffffffffL).toInt()
+    return when (kind) {
+        1 -> {
+            fun attr(a: Int) = MaterialColors.getColor(themed, a, fallback)
+            when (c) {
+                NuiSemanticColor.LABEL -> attr(com.google.android.material.R.attr.colorOnSurface)
+                NuiSemanticColor.SECONDARY_LABEL -> attr(com.google.android.material.R.attr.colorOnSurfaceVariant)
+                NuiSemanticColor.TERTIARY_LABEL -> attr(com.google.android.material.R.attr.colorOutline)
+                NuiSemanticColor.BACKGROUND -> attr(com.google.android.material.R.attr.colorSurface)
+                NuiSemanticColor.SECONDARY_BACKGROUND -> attr(com.google.android.material.R.attr.colorSurfaceContainer)
+                NuiSemanticColor.GROUPED_BACKGROUND -> attr(com.google.android.material.R.attr.colorSurfaceContainerLow)
+                NuiSemanticColor.SEPARATOR -> attr(com.google.android.material.R.attr.colorOutlineVariant)
+                NuiSemanticColor.ACCENT -> attr(androidx.appcompat.R.attr.colorPrimary)
+                NuiSemanticColor.RED -> attr(androidx.appcompat.R.attr.colorError)
+                NuiSemanticColor.ORANGE -> 0xFFF57C00.toInt()
+                NuiSemanticColor.YELLOW -> 0xFFFBC02D.toInt()
+                NuiSemanticColor.GREEN -> 0xFF388E3C.toInt()
+                NuiSemanticColor.BLUE -> 0xFF1976D2.toInt()
+                NuiSemanticColor.PURPLE -> 0xFF7B1FA2.toInt()
+                NuiSemanticColor.PINK -> 0xFFC2185B.toInt()
+                NuiSemanticColor.GRAY -> 0xFF757575.toInt()
+                NuiSemanticColor.CLEAR -> Color.TRANSPARENT
+                else -> fallback
+            }
+        }
+        2 -> Color.argb(c and 0xff, (c ushr 24) and 0xff, (c ushr 16) and 0xff, (c ushr 8) and 0xff)
+        else -> fallback
+    }
+}
+
+/** Applies a node's text style, size, weight and (since a text appearance carries one) color. */
+fun NuiRuntime.applyText(n: NuiNode) {
+    val tv = n.view as? TextView ?: return
+    if (tv is MaterialButton && n.fontSize == 0f && n.fontWeight == 0 && n.textStyle == 0) return
+    applyTextStyle(tv, n.textStyle, n.fontSize, n.fontWeight)
+    applyColor(n)
+}
+
+/** Applies a text style, size and weight. */
+fun NuiRuntime.applyTextStyle(tv: TextView, style: Int, size: Float = 0f, weight: Int = 0) {
+    val res = textAppearances[style] ?: com.google.android.material.R.style.TextAppearance_Material3_BodyLarge
+    if (tv !is MaterialButton) TextViewCompat.setTextAppearance(tv, res)
+    if (size > 0) tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, size)
+    val w = weightOf(weight)
+    if (w > 0) {
+        tv.typeface = if (Build.VERSION.SDK_INT >= 28) Typeface.create(tv.typeface, w, false)
+        else Typeface.create(tv.typeface, if (w >= 600) Typeface.BOLD else Typeface.NORMAL)
+    }
+}
+
+/** Reapplies what came from the theme, after a configuration change. */
+fun NuiRuntime.restyle(n: NuiNode) {
+    applyText(n)
+    applyColor(n)
+    applyBackground(n)
+}
+
+fun NuiRuntime.applyColor(n: NuiNode) {
+    when (val v = n.view) {
+        is MaterialButton -> if (n.color != 0L) v.setTextColor(color(n.color))
+        is TextView -> v.setTextColor(if (n.color != 0L) color(n.color) else MaterialColors.getColor(themed, com.google.android.material.R.attr.colorOnSurface, Color.BLACK))
+        is MaterialSwitch -> if (n.color != 0L) v.trackTintList = ColorStateList(
+            arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
+            intArrayOf(color(n.color), MaterialColors.getColor(themed, com.google.android.material.R.attr.colorSurfaceContainerHighest, Color.LTGRAY)))
+        is Slider -> if (n.color != 0L) { v.trackActiveTintList = ColorStateList.valueOf(color(n.color)); v.thumbTintList = ColorStateList.valueOf(color(n.color)) }
+        is CircularProgressIndicator -> if (n.color != 0L) v.setIndicatorColor(color(n.color))
+    }
+}
+
+fun NuiRuntime.applyBackground(n: NuiNode) {
+    if (n.background == 0L && n.cornerRadius == 0f && n.borderWidth == 0f) return
+    if (n.view is MaterialButton) {
+        val b = n.view as MaterialButton
+        if (n.background != 0L) b.backgroundTintList = ColorStateList.valueOf(color(n.background))
+        if (n.cornerRadius > 0) b.cornerRadius = Math.round(n.cornerRadius * density)
+        return
+    }
+    val d = GradientDrawable()
+    d.setColor(color(n.background))
+    d.cornerRadius = n.cornerRadius * density
+    if (n.borderWidth > 0) d.setStroke(Math.round(n.borderWidth * density), color(n.borderColor, Color.GRAY))
+    n.view.background = d
+}
+
+private fun NuiRuntime.node(id: Int) = nodes[id]
+
+fun NuiRuntime.propBool(id: Int, prop: Int, v: Boolean) {
+    val n = node(id) ?: return
+    n.props[prop] = v
+    val view = n.view
+    when (prop) {
+        NuiProp.HIDDEN -> view.visibility = if (v) View.INVISIBLE else View.VISIBLE
+        NuiProp.CLIP -> { view.clipToOutline = v; (view as? android.view.ViewGroup)?.clipChildren = v }
+        NuiProp.DISABLED -> view.isEnabled = !v
+        else -> if (!setNavProp(n, prop, v)) when (n.kind) {
+            NuiKind.TEXT_FIELD -> if (prop == NuiProp.TextField.SECURE) {
+                val e = view as EditText
+                e.inputType = if (v) InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD else InputType.TYPE_CLASS_TEXT
+            }
+            NuiKind.TOGGLE -> if (prop == NuiProp.Toggle.ON) {
+                settingProp = true
+                (view as MaterialSwitch).isChecked = v
+                settingProp = false
+            }
+            NuiKind.ACTIVITY -> if (prop == NuiProp.Activity.ANIMATING) view.visibility = if (v) View.VISIBLE else View.INVISIBLE
+        }
+    }
+}
+
+fun NuiRuntime.propInt(id: Int, prop: Int, v: Long) {
+    val n = node(id) ?: return
+    n.props[prop] = v
+    if (setNavProp(n, prop, v)) return
+    if (prop == NuiProp.LINE_LIMIT) (n.view as? TextView)?.let {
+        it.maxLines = if (v > 0) v.toInt() else Int.MAX_VALUE
+        it.ellipsize = if (v > 0) android.text.TextUtils.TruncateAt.END else null
+    }
+}
+
+fun NuiRuntime.propFloat(id: Int, prop: Int, v: Double) {
+    val n = node(id) ?: return
+    n.props[prop] = v
+    when (prop) {
+        NuiProp.CORNER_RADIUS -> { n.cornerRadius = v.toFloat(); applyBackground(n) }
+        NuiProp.BORDER_WIDTH -> { n.borderWidth = v.toFloat(); applyBackground(n) }
+        NuiProp.OPACITY -> n.view.alpha = v.toFloat()
+        NuiProp.FONT_SIZE -> { n.fontSize = v.toFloat(); applyText(n) }
+        else -> if (n.kind == NuiKind.SLIDER) {
+            val s = n.view as Slider
+            val f = v.toFloat()
+            when (prop) {
+                NuiProp.Slider.MIN -> { s.valueFrom = f; if (s.value < f) s.value = f }
+                NuiProp.Slider.MAX -> { if (s.value > f) s.value = f; s.valueTo = f }
+                NuiProp.Slider.VALUE -> s.value = f.coerceIn(s.valueFrom, s.valueTo)
+            }
+        }
+    }
+}
+
+fun NuiRuntime.propString(id: Int, prop: Int, v: String) {
+    val n = node(id) ?: return
+    n.props[prop] = v
+    val view = n.view
+    when (prop) {
+        NuiProp.A11Y_LABEL -> view.contentDescription = v
+        NuiProp.A11Y_HINT -> ViewCompat.setStateDescription(view, v)
+        else -> if (!setNavProp(n, prop, v)) when (n.kind) {
+            NuiKind.TEXT -> if (prop == NuiProp.Text.TEXT) (view as TextView).text = v
+            NuiKind.BUTTON -> if (prop == NuiProp.Button.TITLE) (view as TextView).text = v
+            NuiKind.TEXT_FIELD -> {
+                val e = view as EditText
+                when (prop) {
+                    NuiProp.TextField.VALUE -> {
+                        settingProp = true
+                        e.setText(v)
+                        e.setSelection(e.text?.length ?: 0)
+                        settingProp = false
+                    }
+                    NuiProp.TextField.PLACEHOLDER -> e.hint = v
+                    NuiProp.TextField.CONTENT_TYPE -> if (Build.VERSION.SDK_INT >= 26) e.setAutofillHints(v)
+                }
+            }
+        }
+    }
+}
+
+fun NuiRuntime.propColor(id: Int, prop: Int, v: Long) {
+    val n = node(id) ?: return
+    n.props[prop] = v
+    when (prop) {
+        NuiProp.BACKGROUND -> { n.background = v; applyBackground(n) }
+        NuiProp.BORDER_COLOR -> { n.borderColor = v; applyBackground(n) }
+        NuiProp.COLOR -> { n.color = v; applyColor(n) }
+    }
+}
+
+fun NuiRuntime.propEnum(id: Int, prop: Int, v: Int) {
+    val n = node(id) ?: return
+    n.props[prop] = v
+    val view = n.view
+    when (prop) {
+        NuiProp.TEXT_STYLE -> { n.textStyle = v; applyText(n) }
+        NuiProp.FONT_WEIGHT -> { n.fontWeight = v; applyText(n) }
+        NuiProp.MENU_TRIGGER -> { n.menuTrigger = v; wirePresses(n) }
+        NuiProp.TEXT_ALIGN -> (view as? TextView)?.gravity = when (v) {
+            NuiTextAlign.CENTER -> Gravity.CENTER_HORIZONTAL
+            NuiTextAlign.END -> Gravity.END
+            else -> Gravity.START
+        } or Gravity.CENTER_VERTICAL
+        NuiProp.A11Y_ROLE -> ViewCompat.setAccessibilityDelegate(view, object : AccessibilityDelegateCompat() {
+            override fun onInitializeAccessibilityNodeInfo(host: View, info: AccessibilityNodeInfoCompat) {
+                super.onInitializeAccessibilityNodeInfo(host, info)
+                when (v) {
+                    NuiRole.BUTTON, NuiRole.LINK -> info.className = "android.widget.Button"
+                    NuiRole.HEADER -> info.isHeading = true
+                    NuiRole.IMAGE -> info.className = "android.widget.ImageView"
+                }
+            }
+        })
+        else -> if (!setNavProp(n, prop, v)) when (n.kind) {
+            NuiKind.BUTTON -> if (prop == NuiProp.Button.VARIANT) replaceButton(n, v)
+            NuiKind.TEXT_FIELD -> {
+                val e = view as EditText
+                when (prop) {
+                    NuiProp.TextField.KEYBOARD -> e.inputType = when (v) {
+                        NuiKeyboard.NUMBER -> InputType.TYPE_CLASS_NUMBER
+                        NuiKeyboard.DECIMAL -> InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
+                        NuiKeyboard.EMAIL -> InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+                        NuiKeyboard.URL -> InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+                        NuiKeyboard.PHONE -> InputType.TYPE_CLASS_PHONE
+                        else -> InputType.TYPE_CLASS_TEXT
+                    }
+                    NuiProp.TextField.RETURN_KEY -> e.imeOptions = when (v) {
+                        NuiReturnKey.GO -> EditorInfo.IME_ACTION_GO
+                        NuiReturnKey.NEXT -> EditorInfo.IME_ACTION_NEXT
+                        NuiReturnKey.SEARCH -> EditorInfo.IME_ACTION_SEARCH
+                        NuiReturnKey.SEND -> EditorInfo.IME_ACTION_SEND
+                        else -> EditorInfo.IME_ACTION_DONE
+                    }
+                    NuiProp.TextField.AUTOCAPITALIZE -> e.inputType = (e.inputType and (InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS or
+                        InputType.TYPE_TEXT_FLAG_CAP_WORDS or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES).inv()) or when (v) {
+                        NuiAutocapitalize.NONE -> 0
+                        NuiAutocapitalize.WORDS -> InputType.TYPE_TEXT_FLAG_CAP_WORDS
+                        NuiAutocapitalize.CHARACTERS -> InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
+                        else -> InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+                    }
+                    NuiProp.TextField.AUTOCORRECT -> if (v == NuiAutocorrect.NO) e.inputType = e.inputType or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+                }
+            }
+        }
+    }
+}
+
+// Measuring
+
+/** Measures a view's content in dp: known sizes (NaN: free) and the space available. */
+fun NuiRuntime.measureNode(n: NuiNode, w: Float, h: Float, aw: Float, ah: Float): Pair<Float, Float> {
+    val d = density
+    val v = n.view
+    fun spec(known: Float, avail: Float, minContent: Int): Int = when {
+        !known.isNaN() -> View.MeasureSpec.makeMeasureSpec(Math.round(known * d), View.MeasureSpec.EXACTLY)
+        avail == Float.POSITIVE_INFINITY -> View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        avail == Float.NEGATIVE_INFINITY -> if (minContent >= 0) View.MeasureSpec.makeMeasureSpec(minContent, View.MeasureSpec.AT_MOST)
+            else View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        else -> View.MeasureSpec.makeMeasureSpec(Math.round(maxOf(avail, 0f) * d), View.MeasureSpec.AT_MOST)
+    }
+    var minW = -1
+    when {
+        v is EditText -> minW = Math.round(80 * d) // it scrolls its text: it can be narrow
+        v is TextView && v !is MaterialButton -> {
+            // Min-content: the widest word.
+            val p = v.paint
+            var widest = 0f
+            for (word in v.text.split(' ', '\n', '\t')) widest = maxOf(widest, p.measureText(word))
+            minW = ceil(widest).toInt() + v.totalPaddingLeft + v.totalPaddingRight
+        }
+    }
+    var ws = spec(w, aw, minW)
+    if (v is Slider && w.isNaN()) {
+        ws = View.MeasureSpec.makeMeasureSpec(Math.round((if (aw.isFinite()) maxOf(aw, 0f) else 200f) * d), View.MeasureSpec.EXACTLY)
+    }
+    v.measure(ws, spec(h, ah, -1))
+    var mw = v.measuredWidth / d
+    var mh = v.measuredHeight / d
+    if (v is EditText && aw == Float.NEGATIVE_INFINITY && w.isNaN()) mw = 80f
+    if (!w.isNaN()) mw = w
+    if (!h.isNaN()) mh = h
+    return mw to mh
+}

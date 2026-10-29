@@ -1,0 +1,35 @@
+package dev.nui
+
+import android.content.Context
+import android.util.Log
+import java.io.File
+
+/** The Go core's JNI entry points (mobile/jni_android.c). Main thread. */
+object NuiNative {
+    @JvmStatic external fun start(runtime: NuiRuntime)
+    @JvmStatic external fun attach()
+    @JvmStatic external fun event(bytes: ByteArray)
+    @JvmStatic external fun listCount(list: Int): Long
+    @JvmStatic external fun listBind(list: Int, index: Long, cell: Int)
+    @JvmStatic external fun listUnbind(list: Int, cell: Int)
+    @JvmStatic external fun runPosted()
+
+    private var loaded = false
+
+    /**
+     * Loads the core. In development `nui dev` pushes the app's library to
+     * files/nui/libnui.so, so a change needs no reinstall; otherwise it's
+     * packaged with the app.
+     */
+    fun load(context: Context) {
+        if (loaded) return
+        loaded = true
+        val dev = File(context.filesDir, "nui/libnui.so")
+        if (dev.exists()) {
+            Log.i("nui", "loading ${dev.path}")
+            System.load(dev.absolutePath)
+        } else {
+            System.loadLibrary("nui")
+        }
+    }
+}

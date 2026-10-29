@@ -1,0 +1,25 @@
+package main
+
+import (
+	"fmt"
+
+	"github.com/egoist/nui/app"
+	"github.com/egoist/nui/signal"
+	"github.com/egoist/nui/ui"
+)
+
+func App() ui.Node {
+	count := signal.New(0)
+	return ui.SafeArea(ui.Style{Justify: ui.JustifyCenter, Align: ui.AlignCenter, Gap: 16},
+		ui.Text(signal.Func(func() string {
+			return fmt.Sprintf("{{.Name}}: %d", count.Get())
+		}), ui.Style{Font: ui.Title}),
+		ui.Button(ui.ButtonProps{
+			Title:   ui.Val("Add"),
+			Variant: ui.ButtonFilled,
+			OnPress: func() { count.Update(func(n int) int { return n + 1 }) },
+		}),
+	)
+}
+
+func main() { app.Run(App) }

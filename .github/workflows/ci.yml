@@ -1,0 +1,46 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: stable }
+      - run: CGO_ENABLED=0 go build ./... && go vet ./...
+      - run: go test ./...
+      - run: go test -tags nui_debug ./signal
+      - name: generated files are up to date
+        run: go generate ./ops && git diff --exit-code
+  swift:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: stable }
+      - run: swift test --package-path hosts/ios
+      - name: the app builds for the simulator
+        run: |
+          SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
+          CC=$(xcrun --sdk iphonesimulator --find clang)
+          F="-isysroot $SDK -target arm64-apple-ios16.0-simulator"
+          GOOS=ios GOARCH=arm64 CGO_ENABLED=1 CC=$CC CGO_CFLAGS="$F" CGO_LDFLAGS="$F" \
+            go build -tags ios -buildmode=c-archive -o /tmp/libnui.a ./examples/counter
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: stable }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: android-actions/setup-android@v3
+      - name: the Kotlin decoder agrees with the golden files; the shell app builds
+        working-directory: hosts/android
+        run: ./gradlew :nui:testDebugUnitTest :app:assembleDebug
+      - name: the app builds for Android
+        run: |
+          NDK=$(ls -d $ANDROID_HOME/ndk/* 2>/dev/null | tail -1)
+          if [ -z "$NDK" ]; then sdkmanager "ndk;27.1.12297006"; NDK=$ANDROID_HOME/ndk/27.1.12297006; fi
+          GOOS=android GOARCH=arm64 CGO_ENABLED=1 CC=$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android26-clang \
+            CGO_LDFLAGS="-Wl,-z,max-page-size=16384" go build -buildmode=c-shared -o /tmp/libnui.so ./examples/counter

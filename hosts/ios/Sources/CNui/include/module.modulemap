@@ -1,0 +1,4 @@
+module CNui {
+    header "nui.h"
+    export *
+}

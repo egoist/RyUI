@@ -1,0 +1,106 @@
+#if canImport(UIKit) && DEBUG
+import UIKit
+import notify
+#if canImport(NuiOps)
+import NuiOps
+#endif
+
+/// Drives a debug build from outside, for development and tests:
+/// write commands to <data container>/tmp/nui-commands.txt, then post
+/// the dev.nui.automation notification:
+///
+///	xcrun simctl spawn booted notifyutil -p dev.nui.automation
+///
+/// Commands, one per line: `tap <text>` presses the Button, View or
+/// Toggle whose title, text or accessibility label is <text>; `type
+/// <text>` replaces the focused text field's text (or the first text
+/// field's); `submit` presses return in it; `switch <n>` flips the
+/// n-th switch (from 0, in creation order); `scroll <points>` scrolls
+/// the first scroll view or list down by that much.
+@MainActor enum NuiAutomation {
+    static var token: Int32 = 0
+
+    static func start() {
+        notify_register_dispatch("dev.nui.automation", &token, .main) { _ in
+            MainActor.assumeIsolated { run() }
+        }
+    }
+
+    static func run() {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("nui-commands.txt")
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return }
+        try? FileManager.default.removeItem(at: url)
+        for line in text.split(separator: "\n") {
+            let parts = line.split(separator: " ", maxSplits: 1)
+            guard let cmd = parts.first else { continue }
+            let arg = parts.count > 1 ? String(parts[1]) : ""
+            switch cmd {
+            case "tap": tap(arg)
+            case "type": type(arg)
+            case "submit": submit()
+            case "switch": flip(Int(arg) ?? 0)
+            case "scroll": scroll(CGFloat(Double(arg) ?? 0))
+            default: break
+            }
+        }
+    }
+
+    static var rt: NuiRuntime { NuiRuntime.shared }
+
+    static func find(_ text: String) -> NuiNode? {
+        rt.nodes.values.sorted(by: { $0.id < $1.id }).first { n in
+            switch n.view {
+            case let b as UIButton: return b.configuration?.title == text
+            case let l as UILabel: return l.text == text
+            default: return n.view.accessibilityLabel == text
+            }
+        }
+    }
+
+    static func tap(_ text: String) {
+        guard var n = find(text) else { print("nui automation: nothing reads \(text)"); return }
+        if n.view is UILabel, let p = n.parent { n = p } // a label inside a pressable view
+        switch n.view {
+        case let b as UIButton:
+            b.sendActions(for: .primaryActionTriggered)
+        case let s as UISwitch:
+            s.setOn(!s.isOn, animated: true)
+            s.sendActions(for: .valueChanged)
+        default:
+            rt.emit(n.id, .press) { NuiEvents.press(n.id) }
+        }
+    }
+
+    static func flip(_ i: Int) {
+        let switches = rt.nodes.values.sorted(by: { $0.id < $1.id }).compactMap { $0.view as? UISwitch }
+        guard i < switches.count else { return }
+        let s = switches[i]
+        s.setOn(!s.isOn, animated: true)
+        s.sendActions(for: .valueChanged)
+    }
+
+    static func scroll(_ dy: CGFloat) {
+        guard let s = rt.nodes.values.sorted(by: { $0.id < $1.id }).compactMap({ $0.view as? UIScrollView }).first else { return }
+        let maxY = max(0, s.contentSize.height - s.bounds.height + s.adjustedContentInset.bottom)
+        s.setContentOffset(CGPoint(x: 0, y: min(maxY, max(0, s.contentOffset.y + dy))), animated: false)
+        s.layoutIfNeeded()
+    }
+
+    static func field() -> NuiTextField? {
+        let fields = rt.nodes.values.sorted(by: { $0.id < $1.id }).compactMap { $0.view as? NuiTextField }
+        return fields.first(where: { $0.isFirstResponder }) ?? fields.first
+    }
+
+    static func type(_ text: String) {
+        guard let f = field() else { return }
+        f.becomeFirstResponder()
+        f.text = text
+        f.sendActions(for: .editingChanged)
+    }
+
+    static func submit() {
+        guard let f = field() else { return }
+        _ = rt.textFieldShouldReturn(f)
+    }
+}
+#endif

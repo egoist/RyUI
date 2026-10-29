@@ -1,0 +1,4 @@
+# Build outputs
+hosts/ios/.build/
+hosts/ios/.swiftpm/
+.DS_Store
