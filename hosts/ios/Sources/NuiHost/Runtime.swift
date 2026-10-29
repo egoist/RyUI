@@ -91,11 +91,52 @@ import CNui
 
 /// A container: nui positions its subviews itself.
 final class NuiContainerView: UIView {
+    /// It presses (OnPress): one element for VoiceOver, a button.
+    var pressable = false {
+        didSet {
+            isAccessibilityElement = pressable || super.accessibilityLabel != nil
+            if pressable { accessibilityTraits.insert(.button) }
+        }
+    }
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         isAccessibilityElement = false
     }
     required init?(coder: NSCoder) { fatalError() }
+
+    /// The app's label, or a pressable view's content, as VoiceOver reads
+    /// a row: its texts and labeled images, in order.
+    override var accessibilityLabel: String? {
+        get {
+            if let l = super.accessibilityLabel { return l }
+            guard pressable else { return nil }
+            var parts: [String] = []
+            func walk(_ v: UIView) {
+                for s in v.subviews where !s.isHidden && s.alpha > 0 {
+                    if s.isAccessibilityElement, let l = s.accessibilityLabel, !l.isEmpty {
+                        parts.append(l)
+                    } else if let l = s as? UILabel, let t = l.text, !t.isEmpty {
+                        parts.append(t)
+                    } else {
+                        walk(s)
+                    }
+                }
+            }
+            walk(self)
+            return parts.isEmpty ? nil : parts.joined(separator: ", ")
+        }
+        set { super.accessibilityLabel = newValue }
+    }
+
+    /// VoiceOver's double tap: the press, not a tap at the center (which a
+    /// subview could take).
+    override func accessibilityActivate() -> Bool {
+        guard pressable, tag > 0 else { return false }
+        let id = UInt32(tag)
+        NuiRuntime.shared.emit(id, .press) { NuiEvents.press(id) }
+        return true
+    }
 }
 
 final class NuiTextField: UITextField {
@@ -413,7 +454,7 @@ final class NuiTextField: UITextField {
         case .press:
             let tap = UITapGestureRecognizer(target: self, action: #selector(tapped(_:)))
             n.view.addGestureRecognizer(tap)
-            n.view.accessibilityTraits.insert(.button)
+            if let c = n.view as? NuiContainerView { c.pressable = true } else { n.view.accessibilityTraits.insert(.button) }
         case .longPress:
             n.view.addGestureRecognizer(UILongPressGestureRecognizer(target: self, action: #selector(longPressed(_:))))
         default:
