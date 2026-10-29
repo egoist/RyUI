@@ -188,6 +188,12 @@ var Schema = SchemaDef{
 			{Name: "Value", Type: TFloat, Doc: "done, from 0 to 1"},
 			{Name: "Indeterminate", Type: TBool, Doc: "under way, how far unknown (Android animates; iOS shows the track)"},
 		}, Doc: "a progress bar (UIProgressView, a Material linear progress indicator); Color is its fill"},
+		{Name: "DatePicker", Props: []PropDef{
+			{Name: "Value", Type: TInt, Doc: "the instant, in Unix milliseconds"},
+			{Name: "Mode", Type: TEnum, Enum: "DateMode"},
+			{Name: "Min", Type: TInt, Doc: "the earliest choice, in Unix milliseconds (0: none)"},
+			{Name: "Max", Type: TInt, Doc: "the latest choice, in Unix milliseconds (0: none)"},
+		}, Doc: "a date or a time, chosen the platform's way (a compact UIDatePicker; Material's date and time pickers from buttons that show it), in the device's time zone and format. The user's choice is reported with ValueChanged, in Unix milliseconds"},
 	},
 	Events: []EventDef{
 		{Name: "Press", Payload: PNone},
@@ -241,6 +247,7 @@ var Schema = SchemaDef{
 		{Name: "MenuTrigger", Values: []string{"Tap", "LongPress"}},
 		{Name: "Haptic", Values: []string{"Selection", "Light", "Medium", "Heavy", "Success", "Warning", "Error"}},
 		{Name: "ImageMode", Values: []string{"Fit", "Fill", "Stretch", "Center"}},
+		{Name: "DateMode", Values: []string{"Date", "Time", "DateTime"}},
 		{Name: "GestureState", Values: []string{"Began", "Changed", "Ended", "Cancelled"}},
 		{Name: "AnimationCurve", Values: []string{"EaseInOut", "Linear", "EaseIn", "EaseOut", "Spring"}},
 		{Name: "SemanticColor", Values: []string{"None", "Label", "SecondaryLabel", "TertiaryLabel", "Background", "SecondaryBackground", "GroupedBackground", "Separator", "Accent", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink", "Gray", "Clear"}},

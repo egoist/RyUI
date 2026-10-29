@@ -29,6 +29,7 @@ object NuiKind {
     const val SYMBOL = 19
     const val SEGMENTED = 20
     const val PROGRESS = 21
+    const val DATE_PICKER = 22
 
     fun name(kind: Int): String = when (kind) {
         1 -> "View"
@@ -52,6 +53,7 @@ object NuiKind {
         19 -> "Symbol"
         20 -> "Segmented"
         21 -> "Progress"
+        22 -> "DatePicker"
         else -> "Kind($kind)"
     }
 }
@@ -175,6 +177,13 @@ object NuiProp {
     object Progress {
         const val VALUE = 64
         const val INDETERMINATE = 65
+    }
+
+    object DatePicker {
+        const val VALUE = 64
+        const val MODE = 65
+        const val MIN = 66
+        const val MAX = 67
     }
 }
 
@@ -339,6 +348,12 @@ object NuiImageMode {
     const val CENTER = 3
 }
 
+object NuiDateMode {
+    const val DATE = 0
+    const val TIME = 1
+    const val DATE_TIME = 2
+}
+
 object NuiGestureState {
     const val BEGAN = 0
     const val CHANGED = 1
@@ -457,6 +472,7 @@ data class NuiEnvironment(
     val fontScale: Float = 1f,
     val dark: Boolean = false,
     val locale: String = "",
+    val timeZone: String = java.util.TimeZone.getDefault().id,
 )
 
 /** Writes the little-endian wire format. */
@@ -482,6 +498,7 @@ class NuiWriter {
         for (f in floatArrayOf(e.width, e.height, e.safeTop, e.safeRight, e.safeBottom, e.safeLeft, e.keyboard, e.scale, e.fontScale)) f32(f)
         u8(if (e.dark) 1 else 0)
         string(e.locale)
+        string(e.timeZone)
     }
     fun gesture(g: NuiGesture) {
         u8(g.state)

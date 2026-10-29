@@ -276,6 +276,15 @@ final class NuiTextField: UITextField {
             view = s
         case .progress:
             view = UIProgressView(progressViewStyle: .default)
+        case .datePicker:
+            let h = NuiDatePickerView()
+            let d = h.picker
+            d.addAction(UIAction { [weak self, weak d] _ in
+                guard let d else { return }
+                let ms = (d.date.timeIntervalSince1970 * 1000).rounded()
+                self?.emit(id, .valueChanged) { NuiEvents.valueChanged(id, ms) }
+            }, for: .valueChanged)
+            view = h
         case .image:
             let iv = UIImageView()
             iv.contentMode = .scaleAspectFit

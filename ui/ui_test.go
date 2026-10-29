@@ -6,6 +6,7 @@ import (
 	"math"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/egoist/nui/host/fake"
 	"github.com/egoist/nui/internal/boot"
@@ -634,5 +635,39 @@ func TestSegmentedAndProgress(t *testing.T) {
 	r.Flush()
 	if ps[0].Props[ops.PropProgressValue].Float != 1 || !ps[1].Bool(ops.PropProgressIndeterminate) {
 		t.Fatalf("progress %v %v", ps[0].Props[ops.PropProgressValue].Float, ps[1].Bool(ops.PropProgressIndeterminate))
+	}
+}
+
+// A date picker sends its instant in Unix milliseconds, and the user's
+// choice writes the signal without being sent back.
+func TestDatePicker(t *testing.T) {
+	when := signal.New(time.Date(2026, 10, 30, 9, 30, 0, 0, time.UTC))
+	h, r := mount(t, func() ui.Node {
+		return ui.Row(ui.Style{}, ui.DatePicker(ui.DatePickerProps{Value: when, Mode: ui.DateAndTime,
+			Min: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}))
+	})
+	d := h.OfKind(ops.KindDatePicker)[0]
+	if d.Props[ops.PropDatePickerValue].Int != when.Peek().UnixMilli() || d.Props[ops.PropDatePickerMin].Int == 0 || d.Frame[2] != 200 {
+		t.Fatalf("props %+v frame %v", d.Props, d.Frame)
+	}
+	picked := time.Date(2026, 12, 24, 18, 0, 0, 0, time.UTC)
+	h.Reset()
+	h.Dispatch(ops.Event{ID: d.ID, Kind: ops.EventValueChanged, Float: float64(picked.UnixMilli())})
+	r.Flush()
+	if !when.Peek().Equal(picked) || h.Count(ops.OpSetProp) != 0 {
+		t.Fatalf("picked %v, %d props sent", when.Peek(), h.Count(ops.OpSetProp))
+	}
+}
+
+// The host's time zone is Go's local time.
+func TestTimeZone(t *testing.T) {
+	saved := time.Local
+	t.Cleanup(func() { time.Local = saved })
+	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })
+	env := h.Env
+	env.TimeZone = "Asia/Tokyo"
+	h.SetEnvironment(env)
+	if time.Local.String() != "Asia/Tokyo" {
+		t.Fatalf("time.Local %v", time.Local)
 	}
 }

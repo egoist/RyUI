@@ -290,6 +290,11 @@ func (h *Host) Measure(id ops.NodeID, c layout.Constraints) layout.Size {
 			n = int(binary.LittleEndian.Uint32(b))
 		}
 		s = layout.Size{W: float32(70 * n), H: 32}
+	case ops.KindDatePicker:
+		s = layout.Size{W: 120, H: 34}
+		if v.Props[ops.PropDatePickerMode].Int == int64(ops.DateModeDateTime) {
+			s.W = 200
+		}
 	case ops.KindProgress:
 		s = layout.Size{W: 100, H: 4}
 		if fin(c.AvailW) {

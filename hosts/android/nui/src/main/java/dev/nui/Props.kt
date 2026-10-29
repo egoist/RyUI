@@ -261,6 +261,13 @@ fun NuiRuntime.propInt(id: Int, prop: Int, v: Long) {
     n.props[prop] = v
     if (setNavProp(n, prop, v)) return
     if (n.kind == NuiKind.SEGMENTED && prop == NuiProp.Segmented.SELECTED) (n.view as NuiSegmented).select(v.toInt())
+    if (n.kind == NuiKind.DATE_PICKER) (n.view as NuiDatePicker).let {
+        when (prop) {
+            NuiProp.DatePicker.VALUE -> it.value = v
+            NuiProp.DatePicker.MIN -> it.min = v
+            NuiProp.DatePicker.MAX -> it.max = v
+        }
+    }
     if (prop == NuiProp.LINE_LIMIT) (n.view as? NuiRichText)?.let { it.lines = v.toInt(); it.invalidateText() }
     if (prop == NuiProp.LINE_LIMIT && n.props[NuiProp.TextField.MULTILINE] == true) {
         (n.view as? EditText)?.let { setMultiline(n, it, true) }
@@ -342,6 +349,7 @@ fun NuiRuntime.propColor(id: Int, prop: Int, v: Long) {
 fun NuiRuntime.propEnum(id: Int, prop: Int, v: Int) {
     val n = node(id) ?: return
     n.props[prop] = v
+    if (n.kind == NuiKind.DATE_PICKER && prop == NuiProp.DatePicker.MODE) { (n.view as NuiDatePicker).mode = v; return }
     val view = n.view
     when (prop) {
         NuiProp.TEXT_STYLE -> { n.textStyle = v; applyText(n) }

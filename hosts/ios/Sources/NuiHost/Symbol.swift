@@ -30,3 +30,40 @@ final class NuiSymbolView: UIImageView {
     }
 }
 #endif
+
+#if canImport(UIKit)
+/// Holds a compact UIDatePicker, which computes NaN frames when UIKit
+/// resizes it from a zero size: it's laid out here, only once there's room.
+final class NuiDatePickerView: UIView {
+    let picker = UIDatePicker()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        autoresizesSubviews = false
+        picker.preferredDatePickerStyle = .compact
+        picker.datePickerMode = .date
+        picker.autoresizingMask = []
+        addSubview(picker)
+    }
+    required init?(coder: NSCoder) { fatalError() }
+
+    /// Its own size: a compact picker asked to fit a size takes all of it.
+    override func sizeThatFits(_ size: CGSize) -> CGSize {
+        picker.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        guard bounds.width > 0, bounds.height > 0 else { return }
+        // At its own size, at the end (as a trailing control sits).
+        let s = sizeThatFits(bounds.size)
+        let w = min(s.width, bounds.width)
+        picker.frame = CGRect(x: bounds.width - w, y: (bounds.height - s.height) / 2, width: w, height: s.height)
+    }
+
+    override var tintColor: UIColor! {
+        get { super.tintColor }
+        set { super.tintColor = newValue; picker.tintColor = newValue }
+    }
+}
+#endif

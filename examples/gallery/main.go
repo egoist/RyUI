@@ -4,6 +4,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/egoist/nui/app"
 	"github.com/egoist/nui/signal"
 	"github.com/egoist/nui/ui"
@@ -16,6 +18,7 @@ func App() ui.Node {
 				symbols(),
 				textInput(),
 				controls(),
+				dates(),
 			),
 		)
 	}, ui.ScreenOptions{Title: ui.Val("Gallery"), Actions: []ui.Action{
@@ -106,6 +109,22 @@ func controls() ui.Node {
 			ui.Activity(),
 			ui.StaticText("Loading…", ui.Style{Color: ui.SecondaryLabel}),
 		),
+	)
+}
+
+func dates() ui.Node {
+	when := signal.New(time.Now().Add(24 * time.Hour).Truncate(time.Hour))
+	row := func(label string, mode ui.DateMode) ui.Node {
+		return ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
+			ui.Text(ui.Val(label), ui.Style{Grow: 1}),
+			ui.DatePicker(ui.DatePickerProps{Value: when, Mode: mode, Min: time.Now()}))
+	}
+	return section("Dates",
+		row("Date", ui.DateOnly),
+		row("Time", ui.TimeOnly),
+		row("Starts", ui.DateAndTime),
+		ui.Text(signal.Func(func() string { return when.Get().Format("Mon Jan 2, 15:04") }),
+			ui.Style{Color: ui.SecondaryLabel, Font: ui.Footnote}),
 	)
 }
 

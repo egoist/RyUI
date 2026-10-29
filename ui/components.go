@@ -2,6 +2,7 @@ package ui
 
 import (
 	"encoding/binary"
+	"time"
 
 	"github.com/egoist/nui/layout"
 	"github.com/egoist/nui/ops"
@@ -536,6 +537,72 @@ func Progress(value signal.Accessor[float64], style ...Styler) Node {
 		return Node{e}
 	}
 	bind(value, func(v float64) { e.r.batch.SetFloat(e.id, ops.PropProgressValue, min(max(v, 0), 1)) })
+	return Node{e}
+}
+
+// DateMode is what a DatePicker picks.
+type DateMode = ops.DateMode
+
+const (
+	DateOnly    = ops.DateModeDate
+	TimeOnly    = ops.DateModeTime
+	DateAndTime = ops.DateModeDateTime
+)
+
+// DatePickerProps configures a DatePicker.
+type DatePickerProps struct {
+	// Value is the chosen instant: the user's choice writes it. Dates and
+	// times are shown in the device's time zone.
+	Value *signal.Signal[time.Time]
+	Mode  DateMode
+	// Min and Max bound the choice (zero: no bound).
+	Min, Max time.Time
+	Disabled signal.Accessor[bool]
+	Style    Styler
+}
+
+// DatePicker picks a date, a time or both, the platform's way: UIKit's
+// compact date picker (its popover calendar and wheels); on Android
+// buttons showing the date and time that open Material's pickers.
+func DatePicker(p DatePickerProps) Node {
+	e := newElement(ops.KindDatePicker, true)
+	e.measure()
+	e.setStyle(p.Style, false)
+	b := e.r.batch
+	if p.Mode != DateOnly {
+		b.SetEnum(e.id, ops.PropDatePickerMode, int32(p.Mode))
+	}
+	if !p.Min.IsZero() {
+		b.SetInt(e.id, ops.PropDatePickerMin, p.Min.UnixMilli())
+	}
+	if !p.Max.IsZero() {
+		b.SetInt(e.id, ops.PropDatePickerMax, p.Max.UnixMilli())
+	}
+	bind(p.Disabled, func(v bool) { e.r.batch.SetBool(e.id, ops.PropDisabled, v) })
+	if p.Value != nil {
+		var reported int64
+		known := false
+		signal.RenderEffect(func() {
+			v := p.Value.Get()
+			if v.IsZero() {
+				v = time.Now()
+			}
+			ms := v.UnixMilli()
+			if known && ms == reported {
+				return
+			}
+			reported, known = ms, true
+			e.r.batch.SetInt(e.id, ops.PropDatePickerValue, ms)
+			e.remeasure() // its text is the date's
+		})
+		e.handlers().value = func(f float64) {
+			ms := int64(f)
+			reported, known = ms, true
+			p.Value.Set(time.UnixMilli(ms))
+			e.remeasure()
+		}
+		e.listen(ops.EventValueChanged)
+	}
 	return Node{e}
 }
 

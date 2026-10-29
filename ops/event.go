@@ -10,7 +10,7 @@ import (
 // points.
 //
 // Wire format: f32 width, height, safe top, right, bottom, left,
-// keyboard, scale, font scale; u8 dark; string locale.
+// keyboard, scale, font scale; u8 dark; string locale; string time zone.
 type Environment struct {
 	Width, Height                            float32
 	SafeTop, SafeRight, SafeBottom, SafeLeft float32
@@ -19,6 +19,7 @@ type Environment struct {
 	FontScale                                float32 // Dynamic Type / Android font scale; 1 is the default
 	Dark                                     bool
 	Locale                                   string
+	TimeZone                                 string // IANA, e.g. Asia/Shanghai: the core's time.Local
 }
 
 // Gesture is a continuous gesture's state, in points relative to the
@@ -85,6 +86,8 @@ func AppendEvent(buf []byte, e *Event) []byte {
 		buf = append(buf, d)
 		buf = le.AppendUint32(buf, uint32(len(v.Locale)))
 		buf = append(buf, v.Locale...)
+		buf = le.AppendUint32(buf, uint32(len(v.TimeZone)))
+		buf = append(buf, v.TimeZone...)
 	case PGesture:
 		g := &e.G
 		buf = append(buf, byte(g.State))
@@ -121,6 +124,7 @@ func DecodeEvent(data []byte) (Event, error) {
 		}
 		v.Dark = r.u8() != 0
 		v.Locale = string(r.bytes())
+		v.TimeZone = string(r.bytes())
 	case PGesture:
 		g := &e.G
 		g.State = GestureState(r.u8())

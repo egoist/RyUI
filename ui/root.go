@@ -11,6 +11,7 @@ package ui
 import (
 	"encoding/binary"
 	"sync/atomic"
+	"time"
 
 	"github.com/egoist/nui/host"
 	"github.com/egoist/nui/internal/boot"
@@ -60,6 +61,7 @@ func Mount(h host.Host, root func() Node) *Root {
 	signal.BindThread()
 	r := &Root{host: h, batch: new(ops.Batch)}
 	r.envV = h.Environment()
+	setTimeZone(r.envV.TimeZone)
 	r.scale = r.envV.Scale
 	if r.scale <= 0 {
 		r.scale = 1
@@ -247,7 +249,19 @@ func (r *Root) layoutInlines(width float32, p *layout.Pass) {
 	r.apply()
 }
 
+// setTimeZone makes the device's time zone Go's local time (Go on iOS and
+// Android doesn't know it): time.Now().Format shows what the device does.
+func setTimeZone(name string) {
+	if name == "" || name == time.Local.String() {
+		return
+	}
+	if loc, err := time.LoadLocation(name); err == nil {
+		time.Local = loc
+	}
+}
+
 func (r *Root) setEnvironment(env host.Environment) {
+	setTimeZone(env.TimeZone)
 	old := r.envV
 	r.envV = env
 	if env.Scale > 0 {
@@ -284,6 +298,7 @@ func Dispatch(ev ops.Event) {
 func dispatch(ev ops.Event) {
 	switch ev.Kind {
 	case ops.EventEnvironment:
+		setTimeZone(ev.Env.TimeZone)
 		if e := elems[ev.ID]; e != nil && e.env != nil && !e.dead {
 			e.env.Set(ev.Env)
 			return

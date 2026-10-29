@@ -395,6 +395,7 @@ public struct NuiEnvironment: Equatable {
     public var fontScale: Float = 1
     public var dark = false
     public var locale = ""
+    public var timeZone = TimeZone.current.identifier
     public init() {}
 }
 
@@ -414,6 +415,7 @@ public struct NuiWriter {
         for f in [e.width, e.height, e.safeTop, e.safeRight, e.safeBottom, e.safeLeft, e.keyboard, e.scale, e.fontScale] { f32(f) }
         u8(e.dark ? 1 : 0)
         string(e.locale)
+        string(e.timeZone)
     }
     public mutating func gesture(_ g: NuiGesture) {
         u8(UInt8(g.state))
@@ -606,6 +608,7 @@ data class NuiEnvironment(
     val fontScale: Float = 1f,
     val dark: Boolean = false,
     val locale: String = "",
+    val timeZone: String = java.util.TimeZone.getDefault().id,
 )
 
 /** Writes the little-endian wire format. */
@@ -631,6 +634,7 @@ class NuiWriter {
         for (f in floatArrayOf(e.width, e.height, e.safeTop, e.safeRight, e.safeBottom, e.safeLeft, e.keyboard, e.scale, e.fontScale)) f32(f)
         u8(if (e.dark) 1 else 0)
         string(e.locale)
+        string(e.timeZone)
     }
     fun gesture(g: NuiGesture) {
         u8(g.state)

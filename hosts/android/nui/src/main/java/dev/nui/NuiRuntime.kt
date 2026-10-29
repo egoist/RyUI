@@ -324,6 +324,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
             NuiKind.SYMBOL -> NuiSymbol(this)
             NuiKind.SEGMENTED -> NuiSegmented(this, id)
             NuiKind.PROGRESS -> makeProgress()
+            NuiKind.DATE_PICKER -> NuiDatePicker(this, id)
             NuiKind.STACK -> NuiStack(ctx, id, this)
             NuiKind.TABS -> NuiTabs(ctx, id, this)
             NuiKind.SCREEN, NuiKind.SHEET -> NuiScreen(ctx, id, this)

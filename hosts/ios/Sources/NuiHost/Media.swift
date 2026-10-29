@@ -152,6 +152,19 @@ final class NuiGestureDelegate: NSObject, UIGestureRecognizerDelegate {
 
     func setMediaProp(_ n: NuiNode, _ prop: UInt16, _ v: NuiValue) -> Bool {
         switch (n.kind, prop) {
+        case (.datePicker, NuiProp.DatePicker.value):
+            (n.view as? NuiDatePickerView)?.picker.date = Date(timeIntervalSince1970: Double(v.int) / 1000)
+        case (.datePicker, NuiProp.DatePicker.mode):
+            guard let d = (n.view as? NuiDatePickerView)?.picker else { return true }
+            switch NuiDateMode(rawValue: v.enumValue) {
+            case .time: d.datePickerMode = .time
+            case .dateTime: d.datePickerMode = .dateAndTime
+            default: d.datePickerMode = .date
+            }
+        case (.datePicker, NuiProp.DatePicker.min):
+            (n.view as? NuiDatePickerView)?.picker.minimumDate = v.int == 0 ? nil : Date(timeIntervalSince1970: Double(v.int) / 1000)
+        case (.datePicker, NuiProp.DatePicker.max):
+            (n.view as? NuiDatePickerView)?.picker.maximumDate = v.int == 0 ? nil : Date(timeIntervalSince1970: Double(v.int) / 1000)
         case (.segmented, NuiProp.Segmented.segments):
             guard case .bytes(let b) = v, let s = n.view as? UISegmentedControl else { return true }
             var r = NuiReader(b)

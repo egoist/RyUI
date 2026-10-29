@@ -56,7 +56,7 @@ class GoldenTest {
 
     @Test fun encodesGoldenEvents() {
         val env = NuiEnvironment(width = 402f, height = 874f, safeTop = 62f, safeBottom = 34f, keyboard = 336f,
-            scale = 3f, fontScale = 1.25f, dark = true, locale = "en_US")
+            scale = 3f, fontScale = 1.25f, dark = true, locale = "en_US", timeZone = "Asia/Shanghai")
         val events = listOf(
             NuiEvents.press(7),
             NuiEvents.textChanged(7, "hé"),

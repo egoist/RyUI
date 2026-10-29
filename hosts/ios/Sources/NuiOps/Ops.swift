@@ -24,6 +24,7 @@ public enum NuiKind: UInt16 {
     case symbol = 19
     case segmented = 20
     case progress = 21
+    case datePicker = 22
 
     public var name: String {
         switch self {
@@ -48,6 +49,7 @@ public enum NuiKind: UInt16 {
         case .symbol: return "Symbol"
         case .segmented: return "Segmented"
         case .progress: return "Progress"
+        case .datePicker: return "DatePicker"
         }
     }
 }
@@ -172,6 +174,13 @@ public enum NuiProp {
     public enum Progress {
         public static let value: UInt16 = 64
         public static let indeterminate: UInt16 = 65
+    }
+
+    public enum DatePicker {
+        public static let value: UInt16 = 64
+        public static let mode: UInt16 = 65
+        public static let min: UInt16 = 66
+        public static let max: UInt16 = 67
     }
 }
 
@@ -336,6 +345,12 @@ public enum NuiImageMode: Int32 {
     case center = 3
 }
 
+public enum NuiDateMode: Int32 {
+    case date = 0
+    case time = 1
+    case dateTime = 2
+}
+
 public enum NuiGestureState: Int32 {
     case began = 0
     case changed = 1
@@ -478,6 +493,7 @@ public struct NuiEnvironment: Equatable {
     public var fontScale: Float = 1
     public var dark = false
     public var locale = ""
+    public var timeZone = TimeZone.current.identifier
     public init() {}
 }
 
@@ -497,6 +513,7 @@ public struct NuiWriter {
         for f in [e.width, e.height, e.safeTop, e.safeRight, e.safeBottom, e.safeLeft, e.keyboard, e.scale, e.fontScale] { f32(f) }
         u8(e.dark ? 1 : 0)
         string(e.locale)
+        string(e.timeZone)
     }
     public mutating func gesture(_ g: NuiGesture) {
         u8(UInt8(g.state))
