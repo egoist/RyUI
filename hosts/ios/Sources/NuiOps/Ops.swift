@@ -19,6 +19,7 @@ public enum NuiKind: UInt16 {
     case alert = 14
     case image = 15
     case native = 16
+    case richText = 17
 
     public var name: String {
         switch self {
@@ -38,6 +39,7 @@ public enum NuiKind: UInt16 {
         case .alert: return "Alert"
         case .image: return "Image"
         case .native: return "Native"
+        case .richText: return "RichText"
         }
     }
 }
@@ -142,6 +144,10 @@ public enum NuiProp {
         public static let type: UInt16 = 64
         public static let prop: UInt16 = 65
     }
+
+    public enum RichText {
+        public static let content: UInt16 = 64
+    }
 }
 
 public enum NuiEventKind: UInt16 {
@@ -167,6 +173,7 @@ public enum NuiEventKind: UInt16 {
     case loaded = 20
     case failed = 21
     case native = 22
+    case link = 23
 }
 
 public enum NuiCommand: UInt16 {
@@ -547,5 +554,8 @@ public enum NuiEvents {
     }
     public static func native(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
         var w = NuiWriter(); w.header(id, 22); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
+    }
+    public static func link(_ id: UInt32, _ v: String) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 23); w.string(v); return w.bytes
     }
 }

@@ -24,6 +24,7 @@ object NuiKind {
     const val ALERT = 14
     const val IMAGE = 15
     const val NATIVE = 16
+    const val RICH_TEXT = 17
 
     fun name(kind: Int): String = when (kind) {
         1 -> "View"
@@ -42,6 +43,7 @@ object NuiKind {
         14 -> "Alert"
         15 -> "Image"
         16 -> "Native"
+        17 -> "RichText"
         else -> "Kind($kind)"
     }
 }
@@ -145,6 +147,10 @@ object NuiProp {
         const val TYPE = 64
         const val PROP = 65
     }
+
+    object RichText {
+        const val CONTENT = 64
+    }
 }
 
 object NuiEventKind {
@@ -170,6 +176,7 @@ object NuiEventKind {
     const val LOADED = 20
     const val FAILED = 21
     const val NATIVE = 22
+    const val LINK = 23
 }
 
 object NuiCommand {
@@ -490,4 +497,5 @@ object NuiEvents {
     fun loaded(id: Int, x: Double, y: Double): ByteArray = NuiWriter().apply { header(id, 20); f64(x); f64(y) }.bytes()
     fun failed(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 21); string(v) }.bytes()
     fun native(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 22); u32(v.size); raw(v) }.bytes()
+    fun link(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 23); string(v) }.bytes()
 }

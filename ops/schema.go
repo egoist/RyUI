@@ -170,6 +170,9 @@ var Schema = SchemaDef{
 			{Name: "Type", Type: TString, Doc: "the registered native kind; sent right after Create"},
 			{Name: "Prop", Type: TBytes, Doc: "one named value: string name, u8 type (1 bool, 2 int, 3 float, 4 string), value"},
 		}, Doc: "a view the app registers with each host; its events are Native"},
+		{Name: "RichText", Props: []PropDef{
+			{Name: "Content", Type: TBytes, Doc: "u32 style count, per style: u8 TextStyle (0: the view's), f32 size (0: the view's), u8 FontWeight (0: the view's), u8 flags (1 italic, 2 monospaced, 4 underline, 8 strikethrough), u64 color (0: the view's), u64 background (0: none), string link; then u32 paragraph count, per paragraph u32 run count, per run u32 style index and a string"},
+		}, Doc: "styled paragraphs typeset and drawn by nui's own view (CoreText, StaticLayout); the common text props are its defaults. A tapped link reports Link"},
 	},
 	Events: []EventDef{
 		{Name: "Press", Payload: PNone},
@@ -194,6 +197,7 @@ var Schema = SchemaDef{
 		{Name: "Loaded", Payload: PPoint, Doc: "an image loaded: its natural size"},
 		{Name: "Failed", Payload: PString},
 		{Name: "Native", Payload: PBytes, Doc: "a native view's event: string name, u32 count, then named values as in Native's Prop"},
+		{Name: "Link", Payload: PString, Doc: "a rich text's link was tapped (its URL)"},
 	},
 	Commands: []CommandDef{
 		{Name: "Focus"},

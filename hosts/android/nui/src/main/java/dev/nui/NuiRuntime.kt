@@ -267,6 +267,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
             NuiKind.ALERT -> View(ctx)
             NuiKind.IMAGE -> androidx.appcompat.widget.AppCompatImageView(ctx).apply { scaleType = android.widget.ImageView.ScaleType.FIT_CENTER }
             NuiKind.NATIVE -> NuiNativeHost(ctx)
+            NuiKind.RICH_TEXT -> NuiRichText(this, id)
             else -> error("nui: the Android host can't show ${NuiKind.name(kind)} ($kind) yet")
         }
     }

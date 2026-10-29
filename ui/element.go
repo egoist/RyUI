@@ -27,6 +27,7 @@ type handlers struct {
 	loaded              func(w, h float32)
 	failed              func(string)
 	native              func([]byte)
+	link                func(string)
 }
 
 // element is a node of the UI tree. Real elements have a native view;

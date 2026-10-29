@@ -170,6 +170,9 @@ final class NuiGestureDelegate: NSObject, UIGestureRecognizerDelegate {
             let nv = make(NuiNativeContext(id: n.id))
             n.native = nv
             (n.view as? NuiNativeHostView)?.content = nv.view
+        case (.richText, NuiProp.RichText.content):
+            guard case .bytes(let b) = v else { return true }
+            (n.view as? NuiRichTextView)?.setContent(b)
         case (.native, NuiProp.Native.prop):
             guard case .bytes(let b) = v, b.count >= 5 else { return true }
             var r = NuiReader(b)

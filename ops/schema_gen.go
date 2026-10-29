@@ -32,9 +32,11 @@ const (
 	KindImage Kind = 15
 	// KindNative: a view the app registers with each host; its events are Native.
 	KindNative Kind = 16
+	// KindRichText: styled paragraphs typeset and drawn by nui's own view (CoreText, StaticLayout); the common text props are its defaults. A tapped link reports Link.
+	KindRichText Kind = 17
 )
 
-var kindNames = [...]string{"", "View", "Text", "Button", "TextField", "Toggle", "Slider", "Scroll", "List", "Activity", "Stack", "Screen", "Tabs", "Sheet", "Alert", "Image", "Native"}
+var kindNames = [...]string{"", "View", "Text", "Button", "TextField", "Toggle", "Slider", "Scroll", "List", "Activity", "Stack", "Screen", "Tabs", "Sheet", "Alert", "Image", "Native", "RichText"}
 
 func (k Kind) String() string {
 	if int(k) < len(kindNames) && k > 0 {
@@ -171,9 +173,15 @@ const (
 	PropNativeProp PropID = 65
 )
 
+// RichText props.
+const (
+	// PropRichTextContent: u32 style count, per style: u8 TextStyle (0: the view's), f32 size (0: the view's), u8 FontWeight (0: the view's), u8 flags (1 italic, 2 monospaced, 4 underline, 8 strikethrough), u64 color (0: the view's), u64 background (0: none), string link; then u32 paragraph count, per paragraph u32 run count, per run u32 style index and a string.
+	PropRichTextContent PropID = 64
+)
+
 var commonProps = [...]propInfo{{}, {"Background", TColor}, {"CornerRadius", TFloat}, {"BorderWidth", TFloat}, {"BorderColor", TColor}, {"Opacity", TFloat}, {"Hidden", TBool}, {"Clip", TBool}, {"A11yLabel", TString}, {"A11yHint", TString}, {"A11yRole", TEnum}, {"Color", TColor}, {"TextStyle", TEnum}, {"FontSize", TFloat}, {"FontWeight", TEnum}, {"TextAlign", TEnum}, {"LineLimit", TInt}, {"Disabled", TBool}, {"Menu", TBytes}, {"MenuTrigger", TEnum}}
 
-var kindProps = [...][]propInfo{nil, {}, {{"Text", TString}}, {{"Title", TString}, {"Variant", TEnum}}, {{"Value", TString}, {"Placeholder", TString}, {"Keyboard", TEnum}, {"ReturnKey", TEnum}, {"Secure", TBool}, {"Autocapitalize", TEnum}, {"Autocorrect", TEnum}, {"ContentType", TString}}, {{"On", TBool}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}}, {{"Horizontal", TBool}, {"Refreshable", TBool}, {"Refreshing", TBool}}, {{"Refreshable", TBool}, {"Refreshing", TBool}}, {{"Animating", TBool}}, {}, {{"Title", TString}, {"Actions", TBytes}, {"BackGesture", TBool}, {"Icon", TString}}, {{"Selected", TInt}}, {{"Detents", TInt}, {"Grabber", TBool}}, {{"Title", TString}, {"Message", TString}, {"Buttons", TBytes}, {"Style", TEnum}}, {{"Source", TString}, {"Mode", TEnum}}, {{"Type", TString}, {"Prop", TBytes}}}
+var kindProps = [...][]propInfo{nil, {}, {{"Text", TString}}, {{"Title", TString}, {"Variant", TEnum}}, {{"Value", TString}, {"Placeholder", TString}, {"Keyboard", TEnum}, {"ReturnKey", TEnum}, {"Secure", TBool}, {"Autocapitalize", TEnum}, {"Autocorrect", TEnum}, {"ContentType", TString}}, {{"On", TBool}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}}, {{"Horizontal", TBool}, {"Refreshable", TBool}, {"Refreshing", TBool}}, {{"Refreshable", TBool}, {"Refreshing", TBool}}, {{"Animating", TBool}}, {}, {{"Title", TString}, {"Actions", TBytes}, {"BackGesture", TBool}, {"Icon", TString}}, {{"Selected", TInt}}, {{"Detents", TInt}, {"Grabber", TBool}}, {{"Title", TString}, {"Message", TString}, {"Buttons", TBytes}, {"Style", TEnum}}, {{"Source", TString}, {"Mode", TEnum}}, {{"Type", TString}, {"Prop", TBytes}}, {{"Content", TBytes}}}
 
 // Events.
 const (
@@ -208,11 +216,13 @@ const (
 	EventFailed EventKind = 21
 	// EventNative: a native view's event: string name, u32 count, then named values as in Native's Prop.
 	EventNative EventKind = 22
+	// EventLink: a rich text's link was tapped (its URL).
+	EventLink EventKind = 23
 )
 
-var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh", "Pan", "Pinch", "Swipe", "Loaded", "Failed", "Native"}
+var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh", "Pan", "Pinch", "Swipe", "Loaded", "Failed", "Native", "Link"}
 
-var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone, PGesture, PGesture, PInt, PPoint, PString, PBytes}
+var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone, PGesture, PGesture, PInt, PPoint, PString, PBytes, PString}
 
 func (e EventKind) String() string {
 	if int(e) < len(eventNames) && e > 0 {

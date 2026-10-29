@@ -9,7 +9,9 @@
 package fake
 
 import (
+	"encoding/binary"
 	"fmt"
+	"math"
 	"slices"
 	"sort"
 	"strings"
@@ -271,6 +273,15 @@ func (h *Host) Measure(id ops.NodeID, c layout.Constraints) layout.Size {
 		}
 	case ops.KindActivity:
 		s = layout.Size{W: 20, H: 20}
+	case ops.KindRichText:
+		// As text: the paragraphs' text, a line each at least.
+		var h float32
+		for _, p := range v.Rich() {
+			t := measureText(p.Text(), c)
+			s.W = max(s.W, t.W)
+			h += max(t.H, 20)
+		}
+		s.H = h
 	}
 	if c.Width == c.Width {
 		s.W = c.Width
@@ -587,3 +598,73 @@ func (v *View) Actions(p ops.PropID) []string {
 
 // Dispatch sends an event to the core, as a host does.
 func (h *Host) Dispatch(e ops.Event) { h.dispatch(e) }
+
+// RichStyle is a style of a RichText's content.
+type RichStyle struct {
+	TextStyle         ops.TextStyle
+	Size              float32
+	Weight            ops.FontWeight
+	Italic, Mono      bool
+	Underline, Strike bool
+	Color, Background ops.Color
+	Link              string
+}
+
+// RichRun is a run of a RichText's paragraph.
+type RichRun struct {
+	Style RichStyle
+	Text  string
+}
+
+// RichParagraph is a paragraph of a RichText.
+type RichParagraph []RichRun
+
+// Text is the paragraph's text.
+func (p RichParagraph) Text() string {
+	var b strings.Builder
+	for _, r := range p {
+		b.WriteString(r.Text)
+	}
+	return b.String()
+}
+
+// Rich decodes a RichText's content.
+func (v *View) Rich() []RichParagraph {
+	b := v.Props[ops.PropRichTextContent].Bytes
+	le := binary.LittleEndian
+	take := func(n int) []byte {
+		if len(b) < n {
+			panic("fake: short RichText content")
+		}
+		x := b[:n]
+		b = b[n:]
+		return x
+	}
+	u32 := func() uint32 { return le.Uint32(take(4)) }
+	str := func() string { return string(take(int(u32()))) }
+	if len(b) == 0 {
+		return nil
+	}
+	styles := make([]RichStyle, u32())
+	for i := range styles {
+		st := &styles[i]
+		st.TextStyle = ops.TextStyle(take(1)[0])
+		st.Size = math.Float32frombits(u32())
+		st.Weight = ops.FontWeight(take(1)[0])
+		f := take(1)[0]
+		st.Italic, st.Mono, st.Underline, st.Strike = f&1 != 0, f&2 != 0, f&4 != 0, f&8 != 0
+		st.Color = ops.Color(le.Uint64(take(8)))
+		st.Background = ops.Color(le.Uint64(take(8)))
+		st.Link = str()
+	}
+	paras := make([]RichParagraph, u32())
+	for i := range paras {
+		runs := make(RichParagraph, u32())
+		for j := range runs {
+			runs[j].Style = styles[u32()]
+			runs[j].Text = str()
+		}
+		paras[i] = runs
+	}
+	return paras
+}

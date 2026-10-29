@@ -114,7 +114,7 @@ and give its password in NUI_KEYSTORE_PASSWORD (and NUI_KEY_PASSWORD if the key'
 	name := safeName(cfg.Name)
 	outs := map[string]string{
 		filepath.Join(src, "app", "build", "outputs", "bundle", "release", "app-release.aab"): filepath.Join(o.out, name+".aab"),
-		filepath.Join(src, "app", "build", "outputs", "apk", "release", "app-release.apk"):   filepath.Join(o.out, name+".apk"),
+		filepath.Join(src, "app", "build", "outputs", "apk", "release", "app-release.apk"):    filepath.Join(o.out, name+".apk"),
 	}
 	for from, to := range outs {
 		data, err := os.ReadFile(from)

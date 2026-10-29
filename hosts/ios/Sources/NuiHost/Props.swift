@@ -36,7 +36,7 @@ func nuiColor(_ v: UInt64) -> UIColor? {
     }
 }
 
-private func uiTextStyle(_ v: Int32) -> UIFont.TextStyle {
+func uiTextStyle(_ v: Int32) -> UIFont.TextStyle {
     switch NuiTextStyle(rawValue: v) {
     case .largeTitle: return .largeTitle
     case .title: return .title1
@@ -52,7 +52,7 @@ private func uiTextStyle(_ v: Int32) -> UIFont.TextStyle {
     }
 }
 
-private func uiWeight(_ v: Int32) -> UIFont.Weight? {
+func uiWeight(_ v: Int32) -> UIFont.Weight? {
     switch NuiFontWeight(rawValue: v) {
     case .ultralight: return .ultraLight
     case .thin: return .thin
@@ -84,6 +84,12 @@ private func uiWeight(_ v: Int32) -> UIFont.Weight? {
     }
 
     func applyFont() {
+        if let r = view as? NuiRichTextView {
+            r.base.textStyle = textStyle
+            r.base.size = fontSize
+            r.base.weight = fontWeight
+            return
+        }
         let f = font
         switch view {
         case let l as UILabel:
@@ -112,6 +118,8 @@ private func uiWeight(_ v: Int32) -> UIFont.Weight? {
         case let t as UITextField: t.textColor = c ?? .label
         case let s as UISwitch: s.onTintColor = c
         case let a as UIActivityIndicatorView: a.color = c ?? .secondaryLabel
+        case let r as NuiRichTextView:
+            r.base.color = color
         case let i as UIImageView:
             i.tintColor = c
             i.image = i.image?.withRenderingMode(c != nil ? .alwaysTemplate : .automatic)
@@ -179,8 +187,10 @@ private func uiWeight(_ v: Int32) -> UIFont.Weight? {
             }
             (view as? UILabel)?.textAlignment = a
             (view as? UITextField)?.textAlignment = a
+            (view as? NuiRichTextView)?.base.align = v.enumValue
         case NuiProp.lineLimit:
             (view as? UILabel)?.numberOfLines = Int(v.int)
+            (view as? NuiRichTextView)?.base.lines = Int(v.int)
         case NuiProp.disabled:
             (view as? UIControl)?.isEnabled = !v.bool
         case NuiProp.menu:
@@ -319,6 +329,8 @@ private func uiWeight(_ v: Int32) -> UIFont.Weight? {
             s.width = max(s.width, 120)
             if aw == -.infinity { s.width = 80 }
             if aw.isFinite { s.width = min(s.width, CGFloat(max(aw, 0))) }
+        case let r as NuiRichTextView:
+            s = r.measure(w, aw)
         case let b as UIButton:
             // A configured button applies a new Dynamic Type size on its
             // next configuration update: apply it before measuring.

@@ -329,6 +329,10 @@ func dispatch(ev ops.Event) {
 		if h.native != nil {
 			h.native(ev.Bytes)
 		}
+	case ops.EventLink:
+		if h.link != nil {
+			h.link(ev.Str)
+		}
 	}
 }
 

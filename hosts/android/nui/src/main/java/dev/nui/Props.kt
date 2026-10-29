@@ -37,7 +37,10 @@ private val textAppearances = mapOf(
     NuiTextStyle.CAPTION2 to com.google.android.material.R.style.TextAppearance_Material3_LabelSmall,
 )
 
-private fun weightOf(w: Int): Int = when (w) {
+/** A text style's Material text appearance. */
+fun textAppearance(style: Int): Int? = textAppearances[style]
+
+fun weightOf(w: Int): Int = when (w) {
     NuiFontWeight.ULTRALIGHT -> 100
     NuiFontWeight.THIN -> 200
     NuiFontWeight.LIGHT -> 300
@@ -85,6 +88,14 @@ fun NuiRuntime.color(v: Long, fallback: Int = Color.TRANSPARENT): Int {
 
 /** Applies a node's text style, size, weight and (since a text appearance carries one) color. */
 fun NuiRuntime.applyText(n: NuiNode) {
+    (n.view as? NuiRichText)?.let {
+        it.textStyle = n.textStyle
+        it.size = n.fontSize
+        it.weight = n.fontWeight
+        it.color = n.color
+        it.invalidateText()
+        return
+    }
     val tv = n.view as? TextView ?: return
     if (tv is MaterialButton && n.fontSize == 0f && n.fontWeight == 0 && n.textStyle == 0) return
     applyTextStyle(tv, n.textStyle, n.fontSize, n.fontWeight)
@@ -120,6 +131,7 @@ fun NuiRuntime.applyColor(n: NuiNode) {
         is Slider -> if (n.color != 0L) { v.trackActiveTintList = ColorStateList.valueOf(color(n.color)); v.thumbTintList = ColorStateList.valueOf(color(n.color)) }
         is CircularProgressIndicator -> if (n.color != 0L) v.setIndicatorColor(color(n.color))
         is android.widget.ImageView -> v.imageTintList = if (n.color != 0L) ColorStateList.valueOf(color(n.color)) else null
+        is NuiRichText -> { v.color = n.color; v.invalidateText() }
     }
 }
 
@@ -177,6 +189,7 @@ fun NuiRuntime.propInt(id: Int, prop: Int, v: Long) {
     val n = node(id) ?: return
     n.props[prop] = v
     if (setNavProp(n, prop, v)) return
+    if (prop == NuiProp.LINE_LIMIT) (n.view as? NuiRichText)?.let { it.lines = v.toInt(); it.invalidateText() }
     if (prop == NuiProp.LINE_LIMIT) (n.view as? TextView)?.let {
         it.maxLines = if (v > 0) v.toInt() else Int.MAX_VALUE
         it.ellipsize = if (v > 0) android.text.TextUtils.TruncateAt.END else null
@@ -252,7 +265,7 @@ fun NuiRuntime.propEnum(id: Int, prop: Int, v: Int) {
         NuiProp.TEXT_STYLE -> { n.textStyle = v; applyText(n) }
         NuiProp.FONT_WEIGHT -> { n.fontWeight = v; applyText(n) }
         NuiProp.MENU_TRIGGER -> { n.menuTrigger = v; wirePresses(n) }
-        NuiProp.TEXT_ALIGN -> (view as? TextView)?.gravity = when (v) {
+        NuiProp.TEXT_ALIGN -> if (view is NuiRichText) { view.align = v; view.invalidateText() } else (view as? TextView)?.gravity = when (v) {
             NuiTextAlign.CENTER -> Gravity.CENTER_HORIZONTAL
             NuiTextAlign.END -> Gravity.END
             else -> Gravity.START
@@ -313,6 +326,10 @@ fun NuiRuntime.measureNode(n: NuiNode, w: Float, h: Float, aw: Float, ah: Float)
         avail == Float.NEGATIVE_INFINITY -> if (minContent >= 0) View.MeasureSpec.makeMeasureSpec(minContent, View.MeasureSpec.AT_MOST)
             else View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
         else -> View.MeasureSpec.makeMeasureSpec(Math.round(maxOf(avail, 0f) * d), View.MeasureSpec.AT_MOST)
+    }
+    if (v is NuiRichText) {
+        val (mw, mh) = v.measureRich(w, aw)
+        return mw to (if (!h.isNaN()) h else mh)
     }
     var minW = -1
     when {

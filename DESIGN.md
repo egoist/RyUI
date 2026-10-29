@@ -11,7 +11,7 @@ platform's own widgets. **Mobile comes first: iOS and Android.** Desktop
    changes, and crosses into native code once per batch.
 
 Non-goals: drawing widgets ourselves (that is MyGo's native UI; the one
-planned exception is rich text, see "Rich text, later"), web views, pixel-identical looks across platforms, stability across a
+planned exception is rich text, see "Rich text"), web views, pixel-identical looks across platforms, stability across a
 large audience before 1.0. Desktop is not a non-goal, only later: no
 core API may assume a phone (one window, touch only) where desktop would
 need something else; such APIs get a desktop-shaped extension point now
@@ -25,7 +25,7 @@ and an implementation later.
 | Language | Go | Fast compiles; GC and closures make UI code quick to write; MyGo's purego/Objective-C experience carries over. The cost per frame is in the platform toolkits, so a faster core language would not show. |
 | Retained or immediate | Retained | Native widgets are retained objects that own focus, selection, IME, scroll and accessibility state. Rebuilding a description every frame would mean diffing it against them. |
 | Reactivity | Fine-grained signals (Solid-like), no virtual tree | A signal write re-runs only the effects that read it, and each effect emits exactly the property change it causes. |
-| Threads | Core runs on the platform's main thread | Native callbacks that need answers synchronously (list data sources, text field delegates, measurement, layout inside the keyboard's animation) call straight into the core. Frameworks that run logic and layout off the main thread (React Native, Texture, Litho, NSH) do it so slow or garbage-collected app logic can't drop frames, and pay with asynchronous interop: blank cells, input races, layout a frame late. Fabric added synchronous layout and Flutter merged its UI and platform threads (3.29) for that reason; SwiftUI and Compose stay on main. nui's logic is compiled Go with fine-grained updates, so the main thread suffices; slow work runs on goroutines that post results back. The place off-main work does pay, preparing long, rich or streaming text, is handled without moving the core (see "Rich text, later"). |
+| Threads | Core runs on the platform's main thread | Native callbacks that need answers synchronously (list data sources, text field delegates, measurement, layout inside the keyboard's animation) call straight into the core. Frameworks that run logic and layout off the main thread (React Native, Texture, Litho, NSH) do it so slow or garbage-collected app logic can't drop frames, and pay with asynchronous interop: blank cells, input races, layout a frame late. Fabric added synchronous layout and Flutter merged its UI and platform threads (3.29) for that reason; SwiftUI and Compose stay on main. nui's logic is compiled Go with fine-grained updates, so the main thread suffices; slow work runs on goroutines that post results back. The place off-main work does pay, preparing long, rich or streaming text, is handled without moving the core (see "Rich text"). |
 | Core ↔ native contract | Batched mount operations (`ops`) | One crossing per batch. The same stream works in process and over a socket. |
 | Layout | Our own engine in Go: CSS block, flexbox and grid (Taffy-like, checked against Chrome), measured by the host | One layout engine for every platform, with the semantics web and React Native developers know; native widgets report their own sizes. Designed for our tree and for zero allocation, not ported from Yoga or Taffy. |
 | iOS host | Swift + UIKit, with Go linked as a `c-archive` | UIKit subclasses and delegates are trivial in Swift. Not SwiftUI: it is a second reconciler. |
@@ -756,38 +756,65 @@ Each one ends with its examples running and its tests in CI.
   `-simulator`), `nui build -android` (`.aab` and `.apk`). Not yet:
   uploading, screenshots and store listings (Transporter and the Play
   Console do those), iPad builds.
-- **Rich text** (when the measurements below say so, or when an app
-  needs what platform labels can't do): see "Rich text, later".
-- **Then desktop** (below).
+- **Rich text**, phase 1 (done): `ui.RichText` (spans, per-line
+  backgrounds, links, per-paragraph layout cache); next, selection,
+  link accessibility, Markdown. See "Rich text".
+- **Then desktop** (below), only when it's called for: until then the
+  work is maturing iOS and Android.
 
-## Rich text, later
+## Rich text
 
 Platform labels can't express everything a rich text model needs: span
 backgrounds shaped per line (radius, box-decoration-break), inline
 components that wrap with the line, selection that crosses paragraphs
 (markdown, chat transcripts), and cheap updates to long streaming text
 (an append re-typesets the whole string on the main thread).
-`ui.RichText` will own its text model (spans, inline nodes, line
-decorations, a selection model across texts) and its view:
+`ui.RichText` owns its text model and its view; `ui.Text` stays a
+platform label, with native accessibility, Dynamic Type and behavior.
 
-- Typeset with each platform's engine (CoreText or TextKit on Apple,
-  `StaticLayout` on Android), drawn by a view of nui's own that draws
-  exactly the prepared layout, so measure and draw agree. Selection on
-  iOS through `UITextInput` and `UITextInteraction` (UIKit's loupe,
-  handles and edit menu, nui's ranges).
-- Prepared off the main thread as soon as the content changes (the
-  typesetters are thread-safe), cached by content and width, so the
-  core's synchronous measure is normally a cache hit; a miss prepares
-  on the spot, so correctness never waits on another thread. Color-only
-  changes don't re-typeset; appends re-typeset only the changed
-  paragraph.
-- `ui.Text` stays a platform label: native accessibility, Dynamic Type
-  and behavior.
+**Built (phase 1):**
 
-It's gated on numbers, not guesses: before building it, add frame-time
-measurements (frames dropped while flinging list10k, and while
-streaming a long reply into a Text) and build it when main-thread text
-work misses the frame budget, or when an app needs rich text.
+- The model is `ui.Rich`, a list of `ui.Span`s (text, font fields that
+  default to the view's, italic, monospaced, color, underline,
+  strikethrough, a background, a link); a `"\n"` starts a paragraph.
+  Helpers: `Plain`, `Strong`, `Em`, `Code`, `Link`, `.Colored`,
+  `.Highlighted`, `.Weighted`. The view's `Style` (font, color, align,
+  lines) is the spans' default, through the common text props.
+- On the wire it's one prop: a table of the spans' styles, then the
+  paragraphs' runs, each a style index and text. The core sends it only
+  when the encoding changed.
+- Each host typesets with its platform's engine (CoreText's typesetter
+  on iOS, `StaticLayout` on Android) and draws in a view of nui's own
+  exactly the layout it measured: backgrounds per line fragment with
+  rounded corners (fitted to the text, not past a line's end), then the
+  text, then underlines and strikethroughs (CoreText draws neither).
+  Line limits truncate the last line with an ellipsis; Android takes
+  the text appearance's line height, as `TextView` does.
+- Layouts are cached per paragraph by its bytes (runs and their
+  styles), the view's text props, the width and the environment (text
+  size, dark mode), so appending to a streaming reply typesets only the
+  paragraph being written.
+- Dynamic Type: the core measures as soon as the text size changes,
+  before UIKit hands views their new traits, so iOS measures and draws
+  with the app's content size category and the view's other traits.
+- Links are hit-tested on the typeset lines and reported as `Link`.
+
+**Next:**
+
+- Selection across texts: on iOS through `UITextInput` and
+  `UITextInteraction` (UIKit's loupe, handles and edit menu, nui's
+  ranges), on Android with handles and an action mode; Markdown to
+  `Rich`.
+- Accessibility of links: each link a separate accessibility element
+  (accessibility elements on iOS, `ExploreByTouchHelper` virtual views on
+  Android), so a screen reader can find and activate them; today the
+  text is one element and links need a touch.
+- Preparing layouts off the main thread (the typesetters are
+  thread-safe) once frame-time measurements show main-thread
+  typesetting missing the frame budget: in the synchronous flush the
+  core measures right after the content changes, so the paragraph cache
+  is what makes streaming cheap today.
+- Inline components that wrap with the line.
 
 ## Desktop, later
 

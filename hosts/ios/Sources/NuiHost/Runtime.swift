@@ -268,6 +268,10 @@ final class NuiTextField: UITextField {
             view = iv
         case .native:
             view = NuiNativeHostView()
+        case .richText:
+            let r = NuiRichTextView()
+            r.onLink = { [weak self] url in self?.emit(id, .link) { NuiEvents.link(id, url) } }
+            view = r
         default:
             fatalError("nui: the iOS host can't show \(kind.name) yet")
         }
