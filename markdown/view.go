@@ -34,7 +34,10 @@ type Props struct {
 	// NotSelectable makes the text not selectable; by default the whole
 	// view is one selection, across its paragraphs.
 	NotSelectable bool
-	Style         ui.Styler
+	// Theme is the look: DefaultTheme where it leaves fields zero.
+	Theme *Theme
+	// Style is the view's own (its Gap: Theme.BlockSpacing by default).
+	Style ui.Styler
 }
 
 // block is what a view of a block depends on: when it's equal, the
@@ -50,8 +53,9 @@ type block struct {
 }
 
 type view struct {
-	p Props
-	d *parser.Document
+	p  Props
+	d  *parser.Document
+	th Theme
 }
 
 // View shows Markdown.
@@ -63,7 +67,8 @@ func View(p Props) ui.Node {
 	if p.OnLink == nil {
 		p.OnLink = ui.OpenURL
 	}
-	v := &view{p: p, d: parser.New(ext)}
+	v := &view{p: p, d: parser.New(ext), th: resolve(p.Theme, DefaultTheme())}
+	th := &v.th
 	top := signal.NewMemoFunc(func() []block {
 		src := ""
 		if p.Text != nil {
@@ -77,7 +82,7 @@ func View(p Props) ui.Node {
 	content := v.blocks(top, false, 0)
 	style := p.Style
 	if style == nil {
-		style = ui.Style{Gap: 12}
+		style = ui.Style{Gap: th.BlockSpacing}
 	}
 	if p.NotSelectable {
 		return ui.Column(style, content)
@@ -143,20 +148,24 @@ func (v *view) sub(b signal.Accessor[block]) signal.Accessor[[]block] {
 
 func (v *view) block(b signal.Accessor[block], tight bool, quote int) ui.Node {
 	d := v.d
+	th := &v.th
 	first := signal.Untrack(b.Get)
-	color := ui.Color(0)
+	color := th.Text
 	if quote > 0 {
-		color = ui.SecondaryLabel
+		color = th.QuoteText
 	}
 	switch first.kind {
 	case parser.Paragraph:
 		return v.paragraph(b, color)
 	case parser.Heading:
-		font := headingFont(first.level)
-		return ui.RichText(ui.RichTextProps{OnLink: v.p.OnLink, Style: ui.Style{Font: font, Color: color, Margin: ui.Edges{Top: 4}},
+		h := th.Headings[min(max(first.level, 1), 6)-1]
+		if quote == 0 {
+			color = h.Color
+		}
+		return ui.RichText(ui.RichTextProps{OnLink: v.p.OnLink, Style: ui.Style{Font: h.Font, Color: color, Margin: ui.Edges{Top: h.Top}},
 			Text: signal.Func(func() ui.Rich { return v.spans(b.Get().i) })})
 	case parser.ThematicBreak:
-		return ui.View(ui.ViewProps{Style: ui.Style{Height: ui.Pt(1), Background: ui.Separator, Margin: ui.Symmetric(6, 0)}})
+		return ui.View(ui.ViewProps{Style: ui.Style{Height: ui.Pt(1), Background: th.Rule, Margin: ui.Symmetric(6, 0)}})
 	case parser.CodeBlock, parser.HTMLBlock, parser.MathBlock:
 		code := signal.Func(func() string {
 			bl := b.Get()
@@ -172,27 +181,32 @@ func (v *view) block(b signal.Accessor[block], tight bool, quote int) ui.Node {
 		if first.kind == parser.MathBlock {
 			align = ui.TextCenter
 		}
-		return ui.View(ui.ViewProps{Style: ui.Style{Background: ui.SecondaryBackground, CornerRadius: 10, Clip: true}},
+		box := ui.Style{Background: th.CodeBlockBackground, CornerRadius: th.CodeBlockRadius, Clip: true}
+		if th.CodeBlockBorder != 0 {
+			box.BorderWidth, box.BorderColor = 1, th.CodeBlockBorder
+		}
+		return ui.View(ui.ViewProps{Style: box},
 			ui.Scroll(ui.ScrollProps{Horizontal: true},
-				ui.View(ui.ViewProps{Style: ui.Style{Padding: ui.All(12)}},
-					ui.RichText(ui.RichTextProps{Style: ui.Style{Font: ui.Callout, TextAlign: align},
+				ui.View(ui.ViewProps{Style: ui.Style{Padding: ui.All(th.CodeBlockPadding)}},
+					ui.RichText(ui.RichTextProps{Style: ui.Style{Font: th.CodeFont, Color: th.Code, TextAlign: align},
 						Text: signal.Func(func() ui.Rich {
 							return ui.Rich{{Text: code.Get(), Mono: true}}
 						})}))))
 	case parser.Quote:
 		return ui.Row(ui.Style{Gap: 12},
-			ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(3), Background: ui.Separator, CornerRadius: 1.5}}),
-			ui.Column(ui.Style{Grow: 1, Gap: 10}, v.blocks(v.sub(b), false, quote+1)))
+			ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(th.QuoteBarWidth), Background: th.QuoteBar, CornerRadius: th.QuoteBarWidth / 2}}),
+			ui.Column(ui.Style{Grow: 1, Gap: th.BlockSpacing}, v.blocks(v.sub(b), false, quote+1)))
 	case parser.List:
 		blk := d.Block(first.i)
-		gap := float32(10)
+		gap := th.BlockSpacing
 		if blk.Tight {
-			gap = 4
+			gap = th.ItemSpacing
 		}
 		ordered, number := blk.Ordered, blk.Number
 		items := v.sub(b)
 		return ui.Column(ui.Style{Gap: gap}, ui.For(items, func(it block) int { return it.start },
 			func(it signal.Accessor[block], index signal.Accessor[int]) ui.Node {
+				checked := signal.Func(func() bool { return it.Get().task == parser.Checked })
 				marker := signal.Func(func() string {
 					if t := it.Get().task; t != parser.NoTask {
 						if t == parser.Checked {
@@ -205,39 +219,54 @@ func (v *view) block(b signal.Accessor[block], tight bool, quote int) ui.Node {
 					}
 					return "•"
 				})
+				// The marker's room is the indent, but for the gap after it.
+				markerStyle := ui.StyleFunc(func() ui.Style {
+					c := th.Muted
+					if checked.Get() {
+						c = th.Checkbox
+					}
+					return ui.Style{Width: ui.Pt(max(th.ListIndent-6, 0)), Shrink: ui.NoShrink, TextAlign: ui.TextEnd, Color: c, Font: th.Font}
+				})
 				return ui.Row(ui.Style{Gap: 6, Align: ui.AlignStart},
-					ui.Text(marker, ui.Style{Width: ui.Pt(22), Shrink: ui.NoShrink, TextAlign: ui.TextEnd, Color: ui.SecondaryLabel}),
+					ui.Text(marker, markerStyle),
 					ui.Column(ui.Style{Grow: 1, Shrink: 1, Gap: gap}, v.blocks(v.sub(it), blk.Tight, quote)))
 			}))
 	case parser.Table:
 		rows := v.sub(b)
 		return ui.Scroll(ui.ScrollProps{Horizontal: true},
-			ui.Column(ui.Style{BorderWidth: 1, BorderColor: ui.Separator, CornerRadius: 8, Clip: true},
+			ui.Column(ui.Style{BorderWidth: 1, BorderColor: th.TableBorder, CornerRadius: th.TableRadius, Clip: true},
 				ui.For(rows, func(r block) int { return r.start }, func(r signal.Accessor[block], ri signal.Accessor[int]) ui.Node {
 					header := d.Block(signal.Untrack(r.Get).i).Header
 					cells := v.sub(r)
-					bg := ui.Color(0)
-					if header {
-						bg = ui.SecondaryBackground
-					}
-					return ui.Row(ui.Style{Background: bg},
+					// Striped by its index among the rows.
+					bg := ui.StyleFunc(func() ui.Style {
+						switch {
+						case header:
+							return ui.Style{Background: th.TableHeader}
+						case th.TableStripe != 0 && ri.Get()%2 == 0:
+							return ui.Style{Background: th.TableStripe}
+						}
+						return ui.Style{}
+					})
+					return ui.Row(bg,
 						ui.For(cells, func(c block) int { return c.start }, func(c signal.Accessor[block], ci signal.Accessor[int]) ui.Node {
-							font := ui.Callout
-							if header {
+							font := th.TableFont
+							if header && (v.p.Theme == nil || v.p.Theme.TableFont.Weight == 0) {
 								font = font.Weighted(ui.Semibold)
 							}
-							return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(140), Padding: ui.Symmetric(8, 10), BorderWidth: 0.5, BorderColor: ui.Separator}},
-								ui.RichText(ui.RichTextProps{OnLink: v.p.OnLink, Style: ui.Style{Font: font, TextAlign: tableAlign(d, signal.Untrack(r.Get).i, signal.Untrack(ci.Get))},
+							pad := th.TableCellPadding
+							return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(th.TableColumnWidth), Padding: ui.Symmetric(pad[1], pad[0]), BorderWidth: 0.5, BorderColor: th.TableBorder}},
+								ui.RichText(ui.RichTextProps{OnLink: v.p.OnLink, Style: ui.Style{Font: font, Color: th.Text, TextAlign: tableAlign(d, signal.Untrack(r.Get).i, signal.Untrack(ci.Get))},
 									Text: signal.Func(func() ui.Rich { return v.spans(c.Get().i) })}))
 						}))
 				})))
 	case parser.FootnoteDefinition:
 		label := d.Block(first.i).Label()
 		return ui.Row(ui.Style{Gap: 6, Align: ui.AlignStart},
-			ui.StaticText(label+".", ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel}),
+			ui.StaticText(label+".", ui.Style{Font: th.FootnoteFont, Color: th.Muted}),
 			ui.Column(ui.Style{Grow: 1, Shrink: 1, Gap: 6}, v.blocks(v.sub(b), true, quote+1)))
 	}
-	return ui.Column(ui.Style{Gap: 10}, v.blocks(v.sub(b), tight, quote))
+	return ui.Column(ui.Style{Gap: th.BlockSpacing}, v.blocks(v.sub(b), tight, quote))
 }
 
 func tableAlign(d *parser.Document, row, col int) ui.TextAlign {
@@ -256,22 +285,6 @@ func tableAlign(d *parser.Document, row, col int) ui.TextAlign {
 		return ui.TextEnd
 	}
 	return ui.TextStart
-}
-
-func headingFont(level int) ui.Font {
-	switch level {
-	case 1:
-		return ui.Title.Weighted(ui.Bold)
-	case 2:
-		return ui.Title2.Weighted(ui.Bold)
-	case 3:
-		return ui.Title3.Weighted(ui.Semibold)
-	case 4:
-		return ui.Headline
-	case 5:
-		return ui.Subheadline.Weighted(ui.Semibold)
-	}
-	return ui.Footnote.Weighted(ui.Semibold)
 }
 
 // paragraph shows a paragraph: its text, or the images it is made of.
@@ -294,11 +307,11 @@ func (v *view) paragraph(b signal.Accessor[block], color ui.Color) ui.Node {
 				var kids []ui.Node
 				for _, im := range images {
 					kids = append(kids, ui.Image(ui.ImageProps{Source: ui.Val(im.dest), Label: im.alt,
-						Style: ui.Style{AlignSelf: ui.AlignStart, CornerRadius: 8, Clip: true}}))
+						Style: ui.Style{AlignSelf: ui.AlignStart, CornerRadius: v.th.ImageRadius, Clip: true}}))
 				}
 				return ui.Column(ui.Style{Gap: 8}, kids...)
 			}
-			return ui.RichText(ui.RichTextProps{OnLink: v.p.OnLink, Style: ui.Style{Font: ui.Body, Color: color},
+			return ui.RichText(ui.RichTextProps{OnLink: v.p.OnLink, Style: ui.Style{Font: v.th.Font, Color: color},
 				Text: signal.Func(func() ui.Rich { return v.spans(b.Get().i) })})
 		})
 	})
@@ -369,7 +382,10 @@ func (v *view) spans(i int) ui.Rich {
 				t := s
 				t.Text, t.Mono = n.Text, true
 				if !n.Display {
-					t.Background = ui.SecondaryBackground
+					t.Background = v.th.CodeBackground
+					if t.Color == 0 || t.Color == v.th.Text {
+						t.Color = v.th.Code
+					}
 				}
 				out = append(out, t)
 			case parser.Emphasis:
@@ -378,7 +394,10 @@ func (v *view) spans(i int) ui.Rich {
 				walk(k+1, n.Next, t)
 			case parser.Strong:
 				t := s
-				t.Font.Weight = ui.Bold
+				t.Font.Weight = v.th.StrongWeight
+				if t.Link == "" && v.th.Strong != v.th.Text {
+					t.Color = v.th.Strong
+				}
 				walk(k+1, n.Next, t)
 			case parser.Strikethrough:
 				t := s
@@ -386,10 +405,13 @@ func (v *view) spans(i int) ui.Rich {
 				walk(k+1, n.Next, t)
 			case parser.Link:
 				t := s
-				t.Link = n.Dest
+				t.Link, t.Color = n.Dest, v.th.Link
 				if n.Pending {
 					// Its destination is still being written.
-					t.Link, t.Color = "", ui.Accent
+					t.Link = ""
+					if t.Color == 0 {
+						t.Color = ui.Accent
+					}
 				}
 				walk(k+1, n.Next, t)
 			case parser.Image:

@@ -153,3 +153,45 @@ func TestLinkedImage(t *testing.T) {
 		t.Fatalf("links %v", got)
 	}
 }
+
+// A theme sets what it changes; what it leaves zero is the default's.
+func TestTheme(t *testing.T) {
+	src := "# Title\n\nSee [docs](https://x.dev) and `code`.\n\n```\nx\n```\n"
+	th := &markdown.Theme{
+		Link:                ui.Purple,
+		CodeBlockBackground: ui.Yellow,
+		Headings:            [6]markdown.HeadingStyle{{Font: ui.Font{Weight: ui.Semibold}}},
+	}
+	h, _ := mount(t, func() ui.Node { return markdown.View(markdown.Props{Text: ui.Val(src), Theme: th}) })
+	rts := h.OfKind(ops.KindRichText)
+	title := rts[0]
+	// The weight it set, the style it didn't.
+	if title.Props[ops.PropFontWeight].Int != int64(ui.Semibold) || title.Props[ops.PropTextStyle].Int != int64(ops.TextStyleTitle) {
+		t.Fatalf("heading props %+v", title.Props)
+	}
+	var link, code fake.RichRun
+	for _, r := range rts[1].Rich()[0] {
+		switch r.Text {
+		case "docs":
+			link = r
+		case "code":
+			code = r
+		}
+	}
+	if link.Style.Color != ui.Purple || link.Style.Link != "https://x.dev" {
+		t.Fatalf("link %+v", link)
+	}
+	if code.Style.Background != ui.SecondaryBackground {
+		t.Fatalf("code span %+v", code)
+	}
+	block := rts[2]
+	for p := block.Parent; p != nil; p = p.Parent {
+		if p.Props[ops.PropBackground].Int != 0 {
+			if ops.Color(p.Props[ops.PropBackground].Int) != ui.Yellow {
+				t.Fatalf("code block background %x", p.Props[ops.PropBackground].Int)
+			}
+			return
+		}
+	}
+	t.Fatal("no code block background")
+}

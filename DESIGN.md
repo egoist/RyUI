@@ -855,6 +855,11 @@ platform label, with native accessibility, Dynamic Type and behavior.
   link. `Props.Code` replaces code blocks' rendering (for highlighting).
   The view is selectable unless `NotSelectable`; links open with
   `ui.OpenURL` unless `OnLink` says otherwise.
+  `markdown.Theme`, as MyGo's, sets fonts, colors and spacing per kind
+  of block and inline; what it leaves zero is `DefaultTheme`'s. Its
+  fonts are text styles (they follow the user's text size, a field left
+  zero keeps the default's) and its colors the platform's semantic ones
+  (dark mode needs nothing), so a view with no theme looks native.
 
 **Not yet:** selection for screen reader users (VoiceOver and TalkBack
 read the texts and links but don't select across them); bidirectional
