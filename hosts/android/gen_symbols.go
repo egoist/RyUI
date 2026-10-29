@@ -35,6 +35,7 @@ var symbols = map[string]string{
 	"xmark":                              "close",
 	"checkmark":                          "check",
 	"checkmark.circle":                   "check_circle",
+	"circle":                             "radio_button_unchecked",
 	"xmark.circle":                       "cancel",
 	"plus.circle":                        "add_circle",
 	"chevron.left":                       "chevron_left",
