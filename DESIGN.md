@@ -739,12 +739,17 @@ Desktop adds `host/darwin`, `host/windows`, `host/linux` and
 - `ops`: the Go encoder and the generated Swift and Kotlin decoders
   round-trip the same golden batches (`swift test --package-path
   hosts/ios`; `./gradlew :nui:testDebugUnitTest` in `hosts/android`).
-- Hosts: GUI tests on the iOS simulator (XCUITest) and the Android
-  emulator (Espresso / UI Automator), in CI, driving `examples/` and
-  checking the native views' properties. Until then, debug iOS builds
-  take automation commands (tap, type, submit, switch, scroll) from a
-  file in the app's container, triggered by the `dev.nui.automation`
-  Darwin notification (see `hosts/ios/Sources/NuiHost/Automation.swift`).
+- Hosts: GUI tests (`e2e/`, build tag `e2e`, in CI on a simulator and
+  an emulator) build `examples/` with `nui dev -once` and drive them
+  through the native views. Debug builds take automation commands (tap,
+  type, submit, dump: what the screen shows), on iOS from a file in the
+  app's container on the `dev.nui.automation` Darwin notification
+  (`hosts/ios/Sources/NuiHost/Automation.swift`), on Android from a
+  `dev.nui.automation` broadcast (`Automation.kt`; the dump read with
+  `run-as`). So both platforms run the same test, and neither needs
+  UI Automator's single connection, which device tools hold. Each test
+  waits for the screen to show what it expects, bounded so a broken app
+  fails.
 - Tests never pass or fail on wall-clock time: wait for the condition,
   count the work.
 
@@ -811,6 +816,8 @@ Each one ends with its examples running and its tests in CI.
     and `ui.ScrollToEnd`. Android posts its scroll events to the next
     turn of the main loop: a scroll runs while the view draws, and the
     core changing views then stops it.
+  - GUI tests on CI (`e2e/`): the counter, and notes (a text field,
+    SQLite, a List, a relaunch), on both platforms.
   - Images fetched over http(s) kept on disk across launches (256 MB,
     least recently used first; not a `no-store` response, nor nui dev's
     assets from this machine), and `ImageProps.Placeholder`.
@@ -819,7 +826,7 @@ Each one ends with its examples running and its tests in CI.
   Next:
   - An accessibility pass over every component with VoiceOver and
     TalkBack.
-  - GUI tests on CI (XCUITest, Espresso).
+  - More GUI tests: navigation, sheets, gestures, the gallery.
 - **Then desktop** (below), only when it's called for: until then the
   work is maturing iOS and Android.
 

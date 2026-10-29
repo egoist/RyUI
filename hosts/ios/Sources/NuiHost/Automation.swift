@@ -16,7 +16,10 @@ import NuiOps
 /// <text>` replaces the focused text field's text (or the first text
 /// field's); `submit` presses return in it; `switch <n>` flips the
 /// n-th switch (from 0, in creation order); `scroll <points>` scrolls
-/// the first scroll view or list down by that much.
+/// the first scroll view or list down by that much; `dump` writes what
+/// the screen shows (each label's text, button's title or view's
+/// accessibility label, a line each, in creation order) to
+/// tmp/nui-dump.txt.
 @MainActor enum NuiAutomation {
     static var token: Int32 = 0
 
@@ -40,12 +43,38 @@ import NuiOps
             case "submit": submit()
             case "switch": flip(Int(arg) ?? 0)
             case "scroll": scroll(CGFloat(Double(arg) ?? 0))
+            case "dump": dump()
             default: break
             }
         }
     }
 
     static var rt: NuiRuntime { NuiRuntime.shared }
+
+    static func dump() {
+        var lines: [String] = []
+        for n in rt.nodes.values.sorted(by: { $0.id < $1.id }) {
+            let v = n.view
+            guard v.window != nil, !v.isHidden, v.alpha > 0 else { continue }
+            var hidden = false
+            var p = v.superview
+            while let x = p { if x.isHidden { hidden = true; break }; p = x.superview }
+            if hidden { continue }
+            let text: String?
+            switch v {
+            case let b as UIButton: text = b.configuration?.title ?? b.accessibilityLabel
+            case let l as UILabel: text = l.text
+            case let f as UITextField: text = f.text
+            default: text = v.accessibilityLabel
+            }
+            if let text, !text.isEmpty { lines.append(text) }
+        }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("nui-dump.txt")
+        // Written whole, then moved: a reader never sees half of it.
+        let tmp = url.appendingPathExtension("part")
+        try? (lines.joined(separator: "\n") + "\n").write(to: tmp, atomically: false, encoding: .utf8)
+        _ = try? FileManager.default.replaceItemAt(url, withItemAt: tmp)
+    }
 
     static func find(_ text: String) -> NuiNode? {
         rt.nodes.values.sorted(by: { $0.id < $1.id }).first { n in

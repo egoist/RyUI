@@ -194,6 +194,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
         density = activity.resources.displayMetrics.density
         if (!started) {
             started = true
+            NuiAutomation.start(this)
             NuiNative.load(app)
             registerNatives()
             activity.sendEnvironment(force = true)
