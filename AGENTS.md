@@ -50,6 +50,8 @@ go run ./cmd/nui dev -ios examples/counter       # iOS simulator (Xcode): the Go
 go run ./cmd/nui dev -android examples/counter   # Android emulator (SDK + NDK), likewise
 go run ./cmd/nui dev -ios -once examples/counter # build the app with its Go code, launch once (-embed: and watch)
 go test ./internal/remote                        # the dev transport, against the fake host
+go run ./cmd/nui build -ios -simulator examples/counter    # a release build (-ios alone: a signed .ipa)
+go run ./cmd/nui build -android examples/counter           # .aab and .apk (NUI_KEYSTORE, NUI_KEY_ALIAS, NUI_KEYSTORE_PASSWORD)
 ```
 
 ## Conventions

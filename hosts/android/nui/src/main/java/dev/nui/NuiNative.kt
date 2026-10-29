@@ -18,14 +18,15 @@ object NuiNative {
 
     /**
      * Loads the core. In development `nui dev` pushes the app's library to
-     * files/nui/libnui.so, so a change needs no reinstall; otherwise it's
-     * packaged with the app.
+     * files/nui/libnui.so, so a change needs no reinstall; otherwise (and
+     * always in a release build) it's packaged with the app.
      */
     fun load(context: Context) {
         if (loaded) return
         loaded = true
+        val debuggable = context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0
         val dev = File(context.filesDir, "nui/libnui.so")
-        if (dev.exists()) {
+        if (debuggable && dev.exists()) {
             Log.i("nui", "loading ${dev.path}")
             System.load(dev.absolutePath)
         } else {

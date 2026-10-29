@@ -19,7 +19,7 @@ func usage() {
   nui new <dir>                  make a project from the template
   nui dev -ios [flags] [dir]     run on the iOS simulator, rebuilding on save
   nui dev -android [flags] [dir] run on an Android device or emulator, rebuilding on save
-  nui build -platform ios|android [dir]   (not yet: M6)
+  nui build -ios|-android [flags] [dir]   a release build for the stores
 
 nui dev flags:
 `)
@@ -37,7 +37,7 @@ func main() {
 	case "dev":
 		err = cmdDev(os.Args[2:])
 	case "build":
-		err = errors.New("nui build comes with M6 (shipping); use nui dev for now")
+		err = cmdBuild(os.Args[2:])
 	case "-h", "-help", "--help", "help":
 		usage()
 		devFlags(new(devOptions)).PrintDefaults()

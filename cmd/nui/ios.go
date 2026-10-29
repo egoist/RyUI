@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"sort"
 	"strings"
@@ -31,6 +30,15 @@ type goApp struct {
 	name      string // its base name
 	moduleDir string
 	bundleID  string
+	cfg       *appConfig // nui.json
+}
+
+// displayName is the name under the app's icon.
+func (a *goApp) displayName() string {
+	if a.cfg != nil {
+		return a.cfg.Name
+	}
+	return a.name
 }
 
 func loadApp(dir string) (*goApp, error) {
@@ -46,14 +54,17 @@ func loadApp(dir string) (*goApp, error) {
 	if len(f) != 3 || f[0] != "main" {
 		return nil, fmt.Errorf("%s is not a main package (it should call app.Run in main)", dir)
 	}
-	name := filepath.Base(abs)
-	id := strings.ToLower(regexp.MustCompile(`[^A-Za-z0-9]+`).ReplaceAllString(name, "-"))
-	return &goApp{dir: f[2], name: name, moduleDir: f[1], bundleID: "dev.nui." + strings.Trim(id, "-")}, nil
+	cfg, err := loadConfig(f[2])
+	if err != nil {
+		return nil, err
+	}
+	return &goApp{dir: f[2], name: filepath.Base(abs), moduleDir: f[1], bundleID: cfg.ID, cfg: cfg}, nil
 }
 
 type iosToolchain struct {
-	sdk, clang, target, goarch string
-	verbose                    bool
+	sdk, sdkName, clang, target, goarch string
+	release                             bool // optimized, without the debug automation
+	verbose                             bool
 }
 
 func newIOSToolchain(verbose bool) (*iosToolchain, error) {
@@ -69,7 +80,7 @@ func newIOSToolchain(verbose bool) (*iosToolchain, error) {
 	if runtime.GOARCH == "amd64" {
 		arch, goarch = "x86_64", "amd64"
 	}
-	return &iosToolchain{sdk: sdk, clang: clang, target: arch + "-apple-ios" + iosMin + "-simulator", goarch: goarch, verbose: verbose}, nil
+	return &iosToolchain{sdk: sdk, sdkName: "iphonesimulator", clang: clang, target: arch + "-apple-ios" + iosMin + "-simulator", goarch: goarch, verbose: verbose}, nil
 }
 
 func output(name string, args ...string) (string, error) {
@@ -114,7 +125,7 @@ func filterLinker(out []byte) string {
 // cached by the hash of its sources and the SDK.
 func (t *iosToolchain) buildHost(work string, app *goApp) (string, error) {
 	h := sha256.New()
-	fmt.Fprintln(h, t.sdk, t.target)
+	fmt.Fprintln(h, t.sdk, t.target, t.release)
 	var files []string
 	err := fs.WalkDir(iosHost.Files, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
@@ -162,9 +173,13 @@ func (t *iosToolchain) buildHost(work string, app *goApp) (string, error) {
 		return obj, nil
 	}
 	fmt.Println("nui: compiling the iOS host (once)")
-	args := []string{"swiftc", "-target", t.target, "-sdk", t.sdk, "-swift-version", "5",
-		"-module-name", "NuiApp", "-parse-as-library", "-wmo", "-Onone", "-D", "DEBUG",
-		"-I", filepath.Join(src, "Sources", "CNui", "include"), "-c", "-o", obj}
+	opt := []string{"-Onone", "-D", "DEBUG"}
+	if t.release {
+		opt = []string{"-O"}
+	}
+	args := append([]string{"swiftc", "-target", t.target, "-sdk", t.sdk, "-swift-version", "5",
+		"-module-name", "NuiApp", "-parse-as-library", "-wmo"}, opt...)
+	args = append(args, "-I", filepath.Join(src, "Sources", "CNui", "include"), "-c", "-o", obj)
 	if err := t.run(shared, nil, "xcrun", append(args, swift...)...); err != nil {
 		return "", err
 	}
@@ -194,7 +209,11 @@ func (t *iosToolchain) buildGo(app *goApp, work string) (string, error) {
 	flags := "-isysroot " + t.sdk + " -target " + t.target
 	env := []string{"GOOS=ios", "GOARCH=" + t.goarch, "CGO_ENABLED=1", "CC=" + t.clang,
 		"CGO_CFLAGS=" + flags, "CGO_LDFLAGS=" + flags}
-	err = t.run(app.dir, env, "go", "build", "-tags", "ios", "-buildmode=c-archive", "-overlay", ovPath, "-o", lib, ".")
+	args := []string{"build", "-tags", "ios", "-buildmode=c-archive", "-overlay", ovPath, "-o", lib}
+	if t.release {
+		args = append(args, "-trimpath", "-ldflags=-s -w")
+	}
+	err = t.run(app.dir, env, "go", append(args, ".")...)
 	return lib, err
 }
 
@@ -211,7 +230,7 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 	if err := copyDir(filepath.Join(app.dir, "assets"), filepath.Join(bundle, "assets")); err != nil {
 		return "", err
 	}
-	plist := fmt.Sprintf(infoPlist, app.bundleID, app.name, app.name, iosMin)
+	plist := fmt.Sprintf(infoPlist, app.bundleID, app.displayName(), app.displayName(), iosMin)
 	if err := os.WriteFile(filepath.Join(bundle, "Info.plist"), []byte(plist), 0o644); err != nil {
 		return "", err
 	}

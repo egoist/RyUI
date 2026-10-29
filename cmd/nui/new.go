@@ -41,8 +41,9 @@ func cmdNew(args []string) error {
 		return err
 	}
 	name := filepath.Base(abs)
-	data := struct{ Name, Module, Version, Replace string }{
+	data := struct{ Name, Module, ID, Version, Replace string }{
 		Name: name, Module: strings.ToLower(name), Version: "v0.0.0",
+		ID: "com.example." + strings.Trim(strings.ToLower(idPart.ReplaceAllString(name, "")), "-"),
 	}
 	if c := nuiCheckout(); c != "" {
 		data.Replace = c

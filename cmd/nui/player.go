@@ -241,7 +241,7 @@ func devAndroidPlayer(app *goApp, tc *androidToolchain, work, serial string, sto
 	}
 	marker := filepath.Join(dir, "installed-"+serial)
 	if prev, _ := os.ReadFile(marker); string(prev) != hash {
-		if err := tc.run(dir, nil, tc.adb, "-s", serial, "install", "-r", "-d", apk); err != nil {
+		if err := tc.install(serial, androidPackage(playerID), apk); err != nil {
 			return err
 		}
 		os.WriteFile(marker, []byte(hash), 0o644)

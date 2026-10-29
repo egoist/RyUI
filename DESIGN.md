@@ -589,8 +589,38 @@ The CLI does these builds itself (no gomobile).
 ```
 nui new <dir>                     a project from the template
 nui dev -ios|-android <dir>       build, run, rebuild and restart on save
-nui build -platform ios|android <dir>   .ipa via xcodebuild, .apk/.aab via Gradle
+nui build -ios|-android <dir>     a release build for the stores
 ```
+
+**An app's metadata** is `nui.json` beside its Go code, all optional:
+name, ID (bundle ID and application ID), version and build number, a
+1024×1024 icon, orientations, the iOS team, provisioning profile, usage
+descriptions and extra Info.plist keys, the Android permissions and
+upload key. `nui dev` and `nui build` read it alike.
+
+**`nui build -ios`** makes an `.ipa`, still without an Xcode project:
+the host compiled optimized (no debug automation), the Go archive for
+`arm64` devices, linked with dead stripping; an Info.plist with the
+keys App Store validation checks (`DT*` from the SDK and Xcode,
+`ITSAppUsesNonExemptEncryption`); the icon as an asset catalog compiled
+by `actool`; then signing as Xcode would: the installed provisioning
+profile that fits the app ID best (exact before prefix before `*`) for
+the distribution (`app-store` by default, `ad-hoc`, `development`),
+unexpired, whose certificate's identity is in the keychain; its
+entitlements, with a wildcard app ID made the app's; `codesign` with
+the identity's SHA-1, verified. Uploading is Transporter's or `altool`'s.
+`-simulator` makes the same release build for the simulator.
+
+**`nui build -android`** makes an `.aab` for Google Play and an `.apk`:
+the Go code as a stripped `.so` for arm64-v8a, armeabi-v7a and x86_64,
+the assets, launcher icons (legacy per density, and adaptive: the icon
+inside the safe zone over its corner color), the permissions, the
+version; Kotlin shrunk by R8 (the classes JNI and reflection reach are
+kept); signed with the upload key named in `nui.json` or `NUI_KEYSTORE`,
+its passwords from the environment (never on a command line). A
+release build never loads a library from the app's files, as debug
+builds do in development; cleartext HTTP (the player's assets) is
+debug-only, as is iOS's local networking exception.
 
 **`nui dev` runs the app's Go code on the Mac, and its views in a
 player** (`internal/remote`): the platform host with a small Go library
@@ -722,7 +752,10 @@ Each one ends with its examples running and its tests in CI.
   player apps (iOS simulator, Android emulator and devices); app state
   survives a reload with no code. Not yet: physical iOS devices (the
   player would need signing and the Mac's address).
-- **M6, shipping**: signing, `.ipa` and `.aab` builds, store metadata.
+- **M6, shipping** (done): `nui.json`, `nui build -ios` (signed `.ipa`;
+  `-simulator`), `nui build -android` (`.aab` and `.apk`). Not yet:
+  uploading, screenshots and store listings (Transporter and the Play
+  Console do those), iPad builds.
 - **Rich text** (when the measurements below say so, or when an app
   needs what platform labels can't do): see "Rich text, later".
 - **Then desktop** (below).

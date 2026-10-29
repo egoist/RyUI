@@ -81,7 +81,14 @@ func (t *androidToolchain) run(dir string, env []string, name string, args ...st
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), env...)
 	if t.verbose {
-		fmt.Fprintln(os.Stderr, "+", strings.Join(append(env, append([]string{name}, args...)...), " "))
+		shown := make([]string, len(env))
+		for i, e := range env {
+			if k, _, _ := strings.Cut(e, "="); strings.Contains(strings.ToLower(k), "password") {
+				e = k + "=***"
+			}
+			shown[i] = e
+		}
+		fmt.Fprintln(os.Stderr, "+", strings.Join(append(shown, append([]string{name}, args...)...), " "))
 	}
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -185,8 +192,43 @@ func (t *androidToolchain) buildGo(app *goApp, work, serial string) (string, err
 // buildAPK builds the shell app for app with Gradle, cached by the host
 // sources and the app ID.
 func (t *androidToolchain) buildAPK(app *goApp, work string) (apk, hash string, err error) {
+	src, hash, err := prepareAndroidHost(app, work)
+	if err != nil {
+		return "", "", err
+	}
+	apk = filepath.Join(work, "app-"+hash+".apk")
+	if exists(apk) {
+		return apk, hash, nil
+	}
+	fmt.Println("nui: building the Android app with Gradle (once; the first time downloads Gradle and Android libraries)")
+	if err := t.gradle(src, ":app:assembleDebug", "-PnuiApplicationId="+androidPackage(app.bundleID), "-PnuiAppName="+app.displayName()); err != nil {
+		return "", "", err
+	}
+	data, err := os.ReadFile(filepath.Join(src, "app", "build", "outputs", "apk", "debug", "app-debug.apk"))
+	if err != nil {
+		return "", "", err
+	}
+	return apk, hash, os.WriteFile(apk, data, 0o644)
+}
+
+func (t *androidToolchain) gradle(src string, args ...string) error {
+	return t.gradleEnv(src, nil, args...)
+}
+
+func (t *androidToolchain) gradleEnv(src string, extra []string, args ...string) error {
+	env := append([]string{"ANDROID_HOME=" + t.sdk}, extra...)
+	if t.javaHome != "" {
+		env = append(env, "JAVA_HOME="+t.javaHome)
+	}
+	return t.run(src, env, filepath.Join(src, "gradlew"), append([]string{"-q"}, args...)...)
+}
+
+// prepareAndroidHost writes the embedded host, with the app's own
+// Kotlin, where Gradle builds it (shared by the apps), and returns its
+// directory and a hash of what it holds.
+func prepareAndroidHost(app *goApp, work string) (src, hash string, err error) {
 	h := sha256.New()
-	fmt.Fprintln(h, app.bundleID, app.name)
+	fmt.Fprintln(h, app.bundleID, app.name, app.displayName())
 	var files []string
 	fs.WalkDir(androidHost.Files, ".", func(path string, d fs.DirEntry, err error) error {
 		if err == nil && !d.IsDir() {
@@ -195,7 +237,7 @@ func (t *androidToolchain) buildAPK(app *goApp, work string) (apk, hash string, 
 		return nil
 	})
 	sort.Strings(files)
-	src := filepath.Join(filepath.Dir(filepath.Dir(work)), "android-host")
+	src = filepath.Join(filepath.Dir(filepath.Dir(work)), "android-host")
 	for _, f := range files {
 		data, _ := androidHost.Files.ReadFile(f)
 		h.Write([]byte(f))
@@ -226,25 +268,7 @@ func (t *androidToolchain) buildAPK(app *goApp, work string) (apk, hash string, 
 			return "", "", err
 		}
 	}
-	hash = hex.EncodeToString(h.Sum(nil))[:16]
-	apk = filepath.Join(work, "app-"+hash+".apk")
-	if exists(apk) {
-		return apk, hash, nil
-	}
-	fmt.Println("nui: building the Android app with Gradle (once; the first time downloads Gradle and Android libraries)")
-	env := []string{"ANDROID_HOME=" + t.sdk}
-	if t.javaHome != "" {
-		env = append(env, "JAVA_HOME="+t.javaHome)
-	}
-	if err := t.run(src, env, filepath.Join(src, "gradlew"), "-q", ":app:assembleDebug",
-		"-PnuiApplicationId="+androidPackage(app.bundleID), "-PnuiAppName="+app.name); err != nil {
-		return "", "", err
-	}
-	data, err := os.ReadFile(filepath.Join(src, "app", "build", "outputs", "apk", "debug", "app-debug.apk"))
-	if err != nil {
-		return "", "", err
-	}
-	return apk, hash, os.WriteFile(apk, data, 0o644)
+	return src, hex.EncodeToString(h.Sum(nil))[:16], nil
 }
 
 func devAndroid(dir string, o *devOptions, stop <-chan os.Signal) error {
@@ -279,7 +303,7 @@ func devAndroid(dir string, o *devOptions, stop <-chan os.Signal) error {
 		}
 		marker := filepath.Join(work, "installed-"+serial)
 		if prev, _ := os.ReadFile(marker); string(prev) != hash {
-			if err := tc.run(work, nil, tc.adb, "-s", serial, "install", "-r", "-d", apk); err != nil {
+			if err := tc.install(serial, pkg, apk); err != nil {
 				return err
 			}
 			os.WriteFile(marker, []byte(hash), 0o644)
@@ -398,4 +422,16 @@ func (t *androidToolchain) pushAssets(app *goApp, work, serial, pkg string) erro
 		return err
 	}
 	return os.WriteFile(marker, []byte(sum), 0o644)
+}
+
+// install installs a debug build, replacing a build signed with another
+// key (a release build) on the way, which adb can't update.
+func (t *androidToolchain) install(serial, pkg, apk string) error {
+	err := t.run("", nil, t.adb, "-s", serial, "install", "-r", "-d", apk)
+	if err != nil && strings.Contains(err.Error(), "INSTALL_FAILED_UPDATE_INCOMPATIBLE") {
+		fmt.Printf("nui: %s is installed with another signing key (a release build?): replacing it, and its data\n", pkg)
+		t.run("", nil, t.adb, "-s", serial, "uninstall", pkg)
+		err = t.run("", nil, t.adb, "-s", serial, "install", "-r", "-d", apk)
+	}
+	return err
 }

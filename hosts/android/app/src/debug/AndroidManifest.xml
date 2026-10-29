@@ -1,0 +1,5 @@
+<!-- Debug builds only: nui dev serves assets to the player over plain
+     HTTP from the development machine. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:usesCleartextTraffic="true" />
+</manifest>

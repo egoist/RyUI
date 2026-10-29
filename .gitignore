@@ -5,3 +5,6 @@ hosts/ios/.swiftpm/
 
 # go build in cmd/nui
 cmd/nui/nui
+
+# nui build output
+examples/*/dist/
