@@ -349,6 +349,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
             NuiKind.SLIDER -> Slider(ctx).apply {
                 addOnChangeListener { _, v, fromUser -> if (fromUser) emit(id, NuiEventKind.VALUE_CHANGED) { NuiEvents.valueChanged(id, v.toDouble()) } }
             }
+            NuiKind.WEB_VIEW -> NuiWebView(this, id)
             NuiKind.SCROLL -> NestedScrollView(ctx).apply { isFillViewport = false; reportScrolls(this, id) }
             NuiKind.LIST -> NuiList(id, this).recycler
             NuiKind.ACTIVITY -> CircularProgressIndicator(ctx).apply { isIndeterminate = true }
@@ -605,6 +606,11 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
                 setAccent(if (c != 0L) color(c) else null, flags and 1 != 0)
             }
             NuiCommand.CALL -> call(id, args)
+            NuiCommand.EVAL -> {
+                val b = ByteArray(args.remaining())
+                args.get(b)
+                (n.view as? NuiWebView)?.evaluateJavascript(String(b, Charsets.UTF_8), null)
+            }
             NuiCommand.ANNOUNCE -> {
                 val b = ByteArray(args.remaining())
                 args.get(b)

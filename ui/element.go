@@ -29,6 +29,7 @@ type handlers struct {
 	native              func([]byte)
 	link                func(string)
 	scrolled            func(x, y float32)
+	navigated, message  func(string)
 }
 
 // element is a node of the UI tree. Real elements have a native view;

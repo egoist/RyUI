@@ -201,6 +201,10 @@ var Schema = SchemaDef{
 			{Name: "Value", Type: TFloat, Doc: "done, from 0 to 1"},
 			{Name: "Indeterminate", Type: TBool, Doc: "under way, how far unknown (Android animates; iOS shows the track)"},
 		}, Doc: "a progress bar (UIProgressView, a Material linear progress indicator); Color is its fill"},
+		{Name: "WebView", Props: []PropDef{
+			{Name: "URL", Type: TString, Doc: "the page: an http(s) URL, or a file in the app's assets"},
+			{Name: "HTML", Type: TString, Doc: "markup to show instead of URL"},
+		}, Doc: "a web page (WKWebView, android.webkit.WebView). Navigated reports each page loaded (its URL), Failed a page that couldn't load, Message what the page posts with window.nui.postMessage(text); the Eval command runs script in it"},
 		{Name: "DatePicker", Props: []PropDef{
 			{Name: "Value", Type: TInt, Doc: "the instant, in Unix milliseconds"},
 			{Name: "Mode", Type: TEnum, Enum: "DateMode"},
@@ -232,6 +236,8 @@ var Schema = SchemaDef{
 		{Name: "Failed", Payload: PString},
 		{Name: "Native", Payload: PBytes, Doc: "a native view's event: string name, u32 count, then named values as in Native's Prop"},
 		{Name: "Link", Payload: PString, Doc: "a rich text's link was tapped (its URL)"},
+		{Name: "Navigated", Payload: PString, Doc: "a WebView loaded a page (its URL)"},
+		{Name: "Message", Payload: PString, Doc: "a WebView's page posted a message: window.nui.postMessage(text)"},
 		{Name: "IncomingURL", Payload: PString, Doc: "the app was opened with a URL (its scheme, or a universal or app link), at launch or since; to the root"},
 		{Name: "FontLoaded", Payload: PString, Doc: "a font a FontFamily named by URL (under nui dev) loaded, to the root: text in it is measured again"},
 		{Name: "Result", Payload: PBytes, Doc: "a Call's answer, to the root: u32 call id, u8 ok, then the result's bytes (an error's message when not ok)"},
@@ -247,6 +253,7 @@ var Schema = SchemaDef{
 		{Name: "OpenURL", Doc: "args: the URL; sent to the root: the system opens it (a browser, another app)"},
 		{Name: "Call", Doc: "args: u32 call id, string module, string method, then the call's bytes; sent to the root: the host runs the module's method (its own, or one an app registers) and answers with Result"},
 		{Name: "Copy", Doc: "args: the text; sent to the root: it's put on the clipboard"},
+		{Name: "Eval", Doc: "args: JavaScript; sent to a WebView: run in its page"},
 		{Name: "Announce", Doc: "args: the text; sent to the root: a screen reader, if one is on, reads it out"},
 		{Name: "Share", Doc: "args: the text (a URL is shared as one); sent to the root: the system's share sheet"},
 		{Name: "ScrollTo", Doc: "args: u32 item index, u8 animated; sent to a List: it scrolls the item into view"},

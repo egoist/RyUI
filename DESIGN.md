@@ -813,6 +813,10 @@ Each one ends with its examples running and its tests in CI.
   - `ui.Segmented`, `ui.Progress` and `ui.DatePicker`, each the
     platform's control (Material's pickers on Android).
   - List swipe actions, `OnEndReached` and `ui.ScrollToItem`.
+  - `ui.WebView` (WKWebView, Android's WebView): a URL, an asset or
+    markup; `OnLoad`, `OnError`; the page posts to Go with
+    `window.nui.postMessage`, the same on both, and `ui.EvalJS` runs
+    script in it.
   - Grids: `ListProps.Columns` and `Gap` (a compositional grid on iOS,
     a GridLayoutManager on Android); the core lays each cell out at
     exactly the column width the host gives it.

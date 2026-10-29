@@ -29,7 +29,8 @@ object NuiKind {
     const val SYMBOL = 19
     const val SEGMENTED = 20
     const val PROGRESS = 21
-    const val DATE_PICKER = 22
+    const val WEB_VIEW = 22
+    const val DATE_PICKER = 23
 
     fun name(kind: Int): String = when (kind) {
         1 -> "View"
@@ -53,7 +54,8 @@ object NuiKind {
         19 -> "Symbol"
         20 -> "Segmented"
         21 -> "Progress"
-        22 -> "DatePicker"
+        22 -> "WebView"
+        23 -> "DatePicker"
         else -> "Kind($kind)"
     }
 }
@@ -192,6 +194,11 @@ object NuiProp {
         const val INDETERMINATE = 65
     }
 
+    object WebView {
+        const val URL = 64
+        const val HTML = 65
+    }
+
     object DatePicker {
         const val VALUE = 64
         const val MODE = 65
@@ -224,9 +231,11 @@ object NuiEventKind {
     const val FAILED = 21
     const val NATIVE = 22
     const val LINK = 23
-    const val INCOMING_URL = 24
-    const val FONT_LOADED = 25
-    const val RESULT = 26
+    const val NAVIGATED = 24
+    const val MESSAGE = 25
+    const val INCOMING_URL = 26
+    const val FONT_LOADED = 27
+    const val RESULT = 28
 }
 
 object NuiCommand {
@@ -240,11 +249,12 @@ object NuiCommand {
     const val OPEN_URL = 8
     const val CALL = 9
     const val COPY = 10
-    const val ANNOUNCE = 11
-    const val SHARE = 12
-    const val SCROLL_TO = 13
-    const val SCROLL_TO_OFFSET = 14
-    const val ACCENT = 15
+    const val EVAL = 11
+    const val ANNOUNCE = 12
+    const val SHARE = 13
+    const val SCROLL_TO = 14
+    const val SCROLL_TO_OFFSET = 15
+    const val ACCENT = 16
 }
 
 object NuiRole {
@@ -574,7 +584,9 @@ object NuiEvents {
     fun failed(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 21); string(v) }.bytes()
     fun native(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 22); u32(v.size); raw(v) }.bytes()
     fun link(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 23); string(v) }.bytes()
-    fun incomingURL(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 24); string(v) }.bytes()
-    fun fontLoaded(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 25); string(v) }.bytes()
-    fun result(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 26); u32(v.size); raw(v) }.bytes()
+    fun navigated(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 24); string(v) }.bytes()
+    fun message(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 25); string(v) }.bytes()
+    fun incomingURL(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 26); string(v) }.bytes()
+    fun fontLoaded(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 27); string(v) }.bytes()
+    fun result(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 28); u32(v.size); raw(v) }.bytes()
 }

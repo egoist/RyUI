@@ -31,6 +31,14 @@ func App() ui.Node {
 					}}),
 				ui.Button(ui.ButtonProps{Title: ui.Val("Open the photos (a grid)"), Icon: ui.IconPhoto, Variant: ui.ButtonBordered,
 					OnPress: func() { nav.Push(photos, ui.ScreenOptions{Title: ui.Val("Photos")}) }}),
+				ui.Button(ui.ButtonProps{Title: ui.Val("Open a web page"), Icon: ui.IconGlobe, Variant: ui.ButtonBordered,
+					OnPress: func() {
+						nav.Push(webPage, ui.ScreenOptions{Title: ui.Val("Web"), Actions: []ui.Action{
+							{Title: "Run script", Icon: "curlybraces", OnPress: func() {
+								ui.EvalJS(webView, `document.getElementById("out").textContent = "Set from Go at " + new Date().toLocaleTimeString()`)
+							}},
+						}})
+					}}),
 				motion(toast),
 				symbols(),
 				fonts(),
@@ -406,6 +414,25 @@ func topButton(shown signal.Accessor[bool], top func()) ui.Node {
 		})},
 			ui.Button(ui.ButtonProps{Icon: ui.IconUp, Label: "Back to top", Variant: ui.ButtonFilled, OnPress: top}))
 	})
+}
+
+// webView is the web page's, which the bar's button runs script in.
+var webView ui.Node
+
+// webPage is a web page from markup: its button posts a message to Go
+// (window.nui.postMessage); the bar's button runs script in it.
+func webPage() ui.Node {
+	webView = ui.WebView(ui.WebViewProps{
+		HTML: ui.Val(`<!doctype html><meta name="viewport" content="width=device-width, initial-scale=1">
+<style>:root { color-scheme: light dark; font: -apple-system-body; font-family: system-ui; } body { padding: 20px; }
+button { font: inherit; padding: 10px 16px; border-radius: 10px; border: 0; background: #0a84ff; color: white; }</style>
+<h2>A web page</h2>
+<p>Its button talks to Go; the bar's button runs script here.</p>
+<button onclick="nui.postMessage('Hello from the page')">Post a message</button>
+<p id="out"></p>`),
+		OnMessage: func(m string) { ui.Alert(ui.AlertProps{Title: "The page says", Message: m}) },
+	})
+	return ui.SafeArea(ui.Style{Grow: 1}, webView)
 }
 
 // inboxList is the inbox's List, which the bar's button scrolls.

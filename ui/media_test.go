@@ -199,3 +199,29 @@ func TestImagePlaceholder(t *testing.T) {
 		t.Fatalf("placeholder under nui dev %q", v)
 	}
 }
+
+// A WebView grows, takes its page, reports loads and messages, and runs
+// script.
+func TestWebView(t *testing.T) {
+	var loaded, msg string
+	var web ui.Node
+	h, r := mount(t, func() ui.Node {
+		web = ui.WebView(ui.WebViewProps{URL: ui.Val("https://go.dev"),
+			OnLoad: func(u string) { loaded = u }, OnMessage: func(m string) { msg = m }})
+		return ui.Column(ui.Style{Grow: 1}, web)
+	})
+	v := h.OfKind(ops.KindWebView)[0]
+	if v.String(ops.PropWebViewURL) != "https://go.dev" || v.Frame[3] != 844 {
+		t.Fatalf("url %q frame %v", v.String(ops.PropWebViewURL), v.Frame)
+	}
+	h.Dispatch(ops.Event{ID: v.ID, Kind: ops.EventNavigated, Str: "https://go.dev/"})
+	h.Dispatch(ops.Event{ID: v.ID, Kind: ops.EventMessage, Str: "hi"})
+	if loaded != "https://go.dev/" || msg != "hi" {
+		t.Fatalf("loaded %q message %q", loaded, msg)
+	}
+	ui.EvalJS(web, "1+1")
+	r.Flush()
+	if c := h.Commands(ops.CmdEval); len(c) != 1 || string(c[0].Value.Bytes) != "1+1" {
+		t.Fatalf("eval %v", c)
+	}
+}

@@ -363,6 +363,10 @@ fun NuiRuntime.propString(id: Int, prop: Int, v: String) {
                 NuiProp.Button.TITLE -> { (view as TextView).text = v; (view as? MaterialButton)?.let { iconPadding(n, it) } }
                 NuiProp.Button.ICON -> setButtonIcon(n, view as MaterialButton, v)
             }
+            NuiKind.WEB_VIEW -> when (prop) {
+                NuiProp.WebView.URL -> (view as NuiWebView).load(v)
+                NuiProp.WebView.HTML -> if (v.isNotEmpty()) (view as NuiWebView).loadDataWithBaseURL(null, v, "text/html", "utf-8", null)
+            }
             NuiKind.SYMBOL -> if (prop == NuiProp.Symbol.NAME) (view as NuiSymbol).apply { name = v; refresh() }
             NuiKind.TEXT_FIELD -> {
                 val e = view as EditText

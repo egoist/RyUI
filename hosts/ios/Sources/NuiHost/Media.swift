@@ -263,6 +263,10 @@ final class NuiGestureDelegate: NSObject, UIGestureRecognizerDelegate {
             guard let s = n.view as? NuiSymbolView else { return true }
             s.node = n
             s.name = v.string
+        case (.webView, NuiProp.WebView.url):
+            (n.view as? NuiWebView)?.load(source: v.string)
+        case (.webView, NuiProp.WebView.html):
+            if !v.string.isEmpty { (n.view as? NuiWebView)?.loadHTMLString(v.string, baseURL: nil) }
         case (.image, NuiProp.Image.source):
             loadImage(n, v.string)
         case (.image, NuiProp.Image.placeholder):

@@ -335,6 +335,8 @@ final class NuiTextField: UITextField {
             s.alwaysBounceVertical = true
             s.contentInsetAdjustmentBehavior = .never
             view = s
+        case .webView:
+            view = NuiWebView(id, self)
         case .list:
             let l = NuiList(id: id, runtime: self)
             list = l
@@ -509,6 +511,8 @@ final class NuiTextField: UITextField {
             call(id, args)
         case .copy:
             UIPasteboard.general.string = String(decoding: args, as: UTF8.self)
+        case .eval:
+            (n.view as? NuiWebView)?.evaluateJavaScript(String(decoding: args, as: UTF8.self))
         case .announce:
             UIAccessibility.post(notification: .announcement, argument: String(decoding: args, as: UTF8.self))
         case .share:

@@ -389,6 +389,14 @@ func dispatch(ev ops.Event) {
 		if h.swipe != nil {
 			h.swipe(SwipeDirection(ev.Int))
 		}
+	case ops.EventNavigated:
+		if h.navigated != nil {
+			h.navigated(ev.Str)
+		}
+	case ops.EventMessage:
+		if h.message != nil {
+			h.message(ev.Str)
+		}
 	case ops.EventScrolled:
 		if h.scrolled != nil {
 			h.scrolled(float32(ev.X), float32(ev.Y))
