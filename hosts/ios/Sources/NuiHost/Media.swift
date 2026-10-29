@@ -263,6 +263,18 @@ final class NuiGestureDelegate: NSObject, UIGestureRecognizerDelegate {
             guard let s = n.view as? NuiSymbolView else { return true }
             s.node = n
             s.name = v.string
+        case (.video, NuiProp.Video.source):
+            (n.view as? NuiVideoView)?.load(source: v.string)
+        case (.video, NuiProp.Video.mode):
+            (n.view as? NuiVideoView)?.vc.videoGravity = NuiImageMode(rawValue: v.enumValue) == .fill ? .resizeAspectFill : .resizeAspect
+        case (.video, NuiProp.Video.hideControls):
+            (n.view as? NuiVideoView)?.vc.showsPlaybackControls = !v.bool
+        case (.video, NuiProp.Video.autoPlay):
+            (n.view as? NuiVideoView)?.autoPlay = v.bool
+        case (.video, NuiProp.Video.loop):
+            (n.view as? NuiVideoView)?.loop = v.bool
+        case (.video, NuiProp.Video.muted):
+            (n.view as? NuiVideoView)?.player.isMuted = v.bool
         case (.webView, NuiProp.WebView.url):
             (n.view as? NuiWebView)?.load(source: v.string)
         case (.webView, NuiProp.WebView.html):

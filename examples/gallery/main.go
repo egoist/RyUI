@@ -43,6 +43,7 @@ func App() ui.Node {
 				symbols(),
 				fonts(),
 				images(),
+				video(),
 				textInput(),
 				controls(),
 				dates(),
@@ -116,6 +117,21 @@ func images() ui.Node {
 			Mode: ui.ImageFill, Label: "A river in a valley",
 			Style: ui.Style{AspectRatio: 3.0 / 2, CornerRadius: 12}}),
 	)
+}
+
+// video plays a clip with the platform's player and its controls:
+// muted, looping, from the start. It takes the video's size once known.
+func video() ui.Node {
+	ends := signal.New(0)
+	var v ui.Node
+	v = ui.Video(ui.VideoProps{Source: ui.Val("https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"),
+		AutoPlay: true, Muted: true, Loop: true, OnEnd: func() { ends.Update(func(n int) int { return n + 1 }) },
+		Style: ui.Style{CornerRadius: 12}})
+	return section("Video", v,
+		ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
+			ui.Button(ui.ButtonProps{Title: ui.Val("Start over"), Variant: ui.ButtonGray, OnPress: func() { ui.Seek(v, 0); ui.Play(v) }}),
+			ui.Text(signal.Func(func() string { return fmt.Sprintf("Played through %d times", ends.Get()) }),
+				ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel})))
 }
 
 func textInput() ui.Node {

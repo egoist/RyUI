@@ -227,7 +227,8 @@ fun NuiRuntime.applyBackground(n: NuiNode) {
     // A material, which Android can't blur behind: the surface, translucent.
     val toColor = if (n.background == 0L && n.material != 0) materialColor(n.material) else color(n.background)
     val toRadius = n.cornerRadius * density
-    if (n.view is android.widget.ImageView) n.view.clipToOutline = n.cornerRadius > 0
+    // Media (pictures, videos) clips to its corners, as on iOS.
+    if (n.view is android.widget.ImageView || n.view is NuiVideo) n.view.clipToOutline = n.cornerRadius > 0
     val old = n.view.background as? GradientDrawable
     val g = n.gradient
     if (g != null) {
@@ -266,6 +267,14 @@ fun NuiRuntime.propBool(id: Int, prop: Int, v: Boolean) {
         NuiProp.A11Y_HIDDEN -> view.importantForAccessibility =
             if (v) View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS else View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
         else -> if (!setNavProp(n, prop, v)) when (n.kind) {
+            NuiKind.VIDEO -> (view as NuiVideo).let {
+                when (prop) {
+                    NuiProp.Video.HIDE_CONTROLS -> it.setControls(!v)
+                    NuiProp.Video.AUTO_PLAY -> it.autoPlay = v
+                    NuiProp.Video.LOOP -> it.loop = v
+                    NuiProp.Video.MUTED -> it.player.volume = if (v) 0f else 1f
+                }
+            }
             NuiKind.TEXT_FIELD -> when (prop) {
                 NuiProp.TextField.SECURE -> {
                     val e = view as EditText
@@ -363,6 +372,7 @@ fun NuiRuntime.propString(id: Int, prop: Int, v: String) {
                 NuiProp.Button.TITLE -> { (view as TextView).text = v; (view as? MaterialButton)?.let { iconPadding(n, it) } }
                 NuiProp.Button.ICON -> setButtonIcon(n, view as MaterialButton, v)
             }
+            NuiKind.VIDEO -> if (prop == NuiProp.Video.SOURCE) (view as NuiVideo).load(v)
             NuiKind.WEB_VIEW -> when (prop) {
                 NuiProp.WebView.URL -> (view as NuiWebView).load(v)
                 NuiProp.WebView.HTML -> if (v.isNotEmpty()) (view as NuiWebView).loadDataWithBaseURL(null, v, "text/html", "utf-8", null)
@@ -422,6 +432,7 @@ fun NuiRuntime.propEnum(id: Int, prop: Int, v: Int) {
             }
         })
         else -> if (!setNavProp(n, prop, v)) when (n.kind) {
+            NuiKind.VIDEO -> if (prop == NuiProp.Video.MODE) (view as NuiVideo).setFill(v == NuiImageMode.FILL)
             NuiKind.BUTTON -> if (prop == NuiProp.Button.VARIANT) replaceButton(n, v)
             NuiKind.TEXT_FIELD -> {
                 val e = view as EditText

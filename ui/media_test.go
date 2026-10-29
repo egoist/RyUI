@@ -225,3 +225,29 @@ func TestWebView(t *testing.T) {
 		t.Fatalf("eval %v", c)
 	}
 }
+
+// A Video takes its natural size, as an Image does, and is driven by
+// commands.
+func TestVideo(t *testing.T) {
+	var v ui.Node
+	ended := 0
+	h, r := mount(t, func() ui.Node {
+		v = ui.Video(ui.VideoProps{Source: ui.Val("https://example.com/a.mp4"), Loop: true, OnEnd: func() { ended++ }})
+		return ui.Column(ui.Style{Align: ui.AlignStart}, v)
+	})
+	n := h.OfKind(ops.KindVideo)[0]
+	if !n.Bool(ops.PropVideoLoop) || n.Bool(ops.PropVideoAutoPlay) || n.String(ops.PropVideoSource) != "https://example.com/a.mp4" {
+		t.Fatalf("props %v", n.Props)
+	}
+	h.Dispatch(ops.Event{ID: n.ID, Kind: ops.EventLoaded, X: 1920, Y: 1080})
+	if d := n.Frame[3] - 390*1080/1920.0; n.Frame[2] != 390 || d > 0.5 || d < -0.5 { // snapped to pixels
+		t.Fatalf("frame %v", n.Frame)
+	}
+	h.Dispatch(ops.Event{ID: n.ID, Kind: ops.EventEnded})
+	ui.Play(v)
+	ui.Seek(v, 1.5)
+	r.Flush()
+	if ended != 1 || len(h.Commands(ops.CmdPlay)) != 1 || len(h.Commands(ops.CmdSeek)) != 1 {
+		t.Fatalf("ended %d, commands %v", ended, h.Commands(ops.CmdSeek))
+	}
+}

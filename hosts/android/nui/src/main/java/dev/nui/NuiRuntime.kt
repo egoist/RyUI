@@ -350,6 +350,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
                 addOnChangeListener { _, v, fromUser -> if (fromUser) emit(id, NuiEventKind.VALUE_CHANGED) { NuiEvents.valueChanged(id, v.toDouble()) } }
             }
             NuiKind.WEB_VIEW -> NuiWebView(this, id)
+            NuiKind.VIDEO -> NuiVideo(this, id)
             NuiKind.SCROLL -> NestedScrollView(ctx).apply { isFillViewport = false; reportScrolls(this, id) }
             NuiKind.LIST -> NuiList(id, this).recycler
             NuiKind.ACTIVITY -> CircularProgressIndicator(ctx).apply { isIndeterminate = true }
@@ -489,6 +490,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
 
     override fun destroy(id: Int) {
         val n = nodes.remove(id) ?: return
+        (n.view as? NuiVideo)?.release()
         stacks.remove(n)
         if (n.underDying) return // its views leave with the animating screen or sheet
         if ((n.kind == NuiKind.SCREEN || n.kind == NuiKind.SHEET || n.kind == NuiKind.ALERT) && destroyNav(n)) return
@@ -606,6 +608,9 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
                 setAccent(if (c != 0L) color(c) else null, flags and 1 != 0)
             }
             NuiCommand.CALL -> call(id, args)
+            NuiCommand.PLAY -> (n.view as? NuiVideo)?.player?.play()
+            NuiCommand.PAUSE -> (n.view as? NuiVideo)?.player?.pause()
+            NuiCommand.SEEK -> if (args.remaining() >= 8) (n.view as? NuiVideo)?.player?.seekTo((args.double * 1000).toLong())
             NuiCommand.EVAL -> {
                 val b = ByteArray(args.remaining())
                 args.get(b)

@@ -337,6 +337,8 @@ final class NuiTextField: UITextField {
             view = s
         case .webView:
             view = NuiWebView(id, self)
+        case .video:
+            view = NuiVideoView(id, self)
         case .list:
             let l = NuiList(id: id, runtime: self)
             list = l
@@ -511,6 +513,14 @@ final class NuiTextField: UITextField {
             call(id, args)
         case .copy:
             UIPasteboard.general.string = String(decoding: args, as: UTF8.self)
+        case .play:
+            (n.view as? NuiVideoView)?.play()
+        case .pause:
+            (n.view as? NuiVideoView)?.player.pause()
+        case .seek:
+            guard args.count >= 8, let v = n.view as? NuiVideoView else { return }
+            var r = NuiReader(args)
+            v.seek(r.f64())
         case .eval:
             (n.view as? NuiWebView)?.evaluateJavaScript(String(decoding: args, as: UTF8.self))
         case .announce:

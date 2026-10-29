@@ -24,8 +24,9 @@ public enum NuiKind: UInt16 {
     case symbol = 19
     case segmented = 20
     case progress = 21
-    case webView = 22
-    case datePicker = 23
+    case video = 22
+    case webView = 23
+    case datePicker = 24
 
     public var name: String {
         switch self {
@@ -50,6 +51,7 @@ public enum NuiKind: UInt16 {
         case .symbol: return "Symbol"
         case .segmented: return "Segmented"
         case .progress: return "Progress"
+        case .video: return "Video"
         case .webView: return "WebView"
         case .datePicker: return "DatePicker"
         }
@@ -191,6 +193,15 @@ public enum NuiProp {
         public static let indeterminate: UInt16 = 65
     }
 
+    public enum Video {
+        public static let source: UInt16 = 64
+        public static let mode: UInt16 = 65
+        public static let hideControls: UInt16 = 66
+        public static let autoPlay: UInt16 = 67
+        public static let loop: UInt16 = 68
+        public static let muted: UInt16 = 69
+    }
+
     public enum WebView {
         public static let url: UInt16 = 64
         public static let html: UInt16 = 65
@@ -228,11 +239,12 @@ public enum NuiEventKind: UInt16 {
     case failed = 21
     case native = 22
     case link = 23
-    case navigated = 24
-    case message = 25
-    case incomingURL = 26
-    case fontLoaded = 27
-    case result = 28
+    case ended = 24
+    case navigated = 25
+    case message = 26
+    case incomingURL = 27
+    case fontLoaded = 28
+    case result = 29
 }
 
 public enum NuiCommand: UInt16 {
@@ -246,12 +258,15 @@ public enum NuiCommand: UInt16 {
     case openURL = 8
     case call = 9
     case copy = 10
-    case eval = 11
-    case announce = 12
-    case share = 13
-    case scrollTo = 14
-    case scrollToOffset = 15
-    case accent = 16
+    case play = 11
+    case pause = 12
+    case seek = 13
+    case eval = 14
+    case announce = 15
+    case share = 16
+    case scrollTo = 17
+    case scrollToOffset = 18
+    case accent = 19
 }
 
 public enum NuiRole: Int32 {
@@ -644,19 +659,22 @@ public enum NuiEvents {
     public static func link(_ id: UInt32, _ v: String) -> [UInt8] {
         var w = NuiWriter(); w.header(id, 23); w.string(v); return w.bytes
     }
-    public static func navigated(_ id: UInt32, _ v: String) -> [UInt8] {
-        var w = NuiWriter(); w.header(id, 24); w.string(v); return w.bytes
+    public static func ended(_ id: UInt32) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 24); return w.bytes
     }
-    public static func message(_ id: UInt32, _ v: String) -> [UInt8] {
+    public static func navigated(_ id: UInt32, _ v: String) -> [UInt8] {
         var w = NuiWriter(); w.header(id, 25); w.string(v); return w.bytes
     }
-    public static func incomingURL(_ id: UInt32, _ v: String) -> [UInt8] {
+    public static func message(_ id: UInt32, _ v: String) -> [UInt8] {
         var w = NuiWriter(); w.header(id, 26); w.string(v); return w.bytes
     }
-    public static func fontLoaded(_ id: UInt32, _ v: String) -> [UInt8] {
+    public static func incomingURL(_ id: UInt32, _ v: String) -> [UInt8] {
         var w = NuiWriter(); w.header(id, 27); w.string(v); return w.bytes
     }
+    public static func fontLoaded(_ id: UInt32, _ v: String) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 28); w.string(v); return w.bytes
+    }
     public static func result(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
-        var w = NuiWriter(); w.header(id, 28); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
+        var w = NuiWriter(); w.header(id, 29); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
     }
 }

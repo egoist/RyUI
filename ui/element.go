@@ -30,6 +30,7 @@ type handlers struct {
 	link                func(string)
 	scrolled            func(x, y float32)
 	navigated, message  func(string)
+	ended               func()
 }
 
 // element is a node of the UI tree. Real elements have a native view;

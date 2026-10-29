@@ -62,13 +62,20 @@ object NuiFonts {
             }
             val p = faces["$family-Regular"] ?: faces.values.first()
             val t = if (p.startsWith("/")) Typeface.createFromFile(p) else Typeface.createFromAsset(ctx.assets, p)
-            return Typeface.create(t, (if (weight >= 600) Typeface.BOLD else 0) or (if (italic) Typeface.ITALIC else 0))
+            return Typeface.create(t, styleOf(weight, italic))
         }
         // A system family; an unknown one is the default.
         val t = Typeface.create(family, Typeface.NORMAL)
         if (t == Typeface.DEFAULT) return null
         return if (weight > 0 && Build.VERSION.SDK_INT >= 28) Typeface.create(t, weight, italic)
-        else Typeface.create(t, (if (weight >= 600) Typeface.BOLD else 0) or (if (italic) Typeface.ITALIC else 0))
+        else Typeface.create(t, styleOf(weight, italic))
+    }
+
+    private fun styleOf(weight: Int, italic: Boolean) = when {
+        weight >= 600 && italic -> Typeface.BOLD_ITALIC
+        weight >= 600 -> Typeface.BOLD
+        italic -> Typeface.ITALIC
+        else -> Typeface.NORMAL
     }
 
     /** A font file's name (no extension) → its path: a pushed file's, or an asset's ("fonts/Inter-Bold.ttf"). */
