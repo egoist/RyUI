@@ -20,8 +20,11 @@ const (
 
 // Action is a button of an alert, a menu item or a bar button.
 type Action struct {
-	Title   string
-	Role    ActionRole
+	Title string
+	Role  ActionRole
+	// Icon is a symbol beside the title in a menu; a navigation bar
+	// shows it instead of the title (which VoiceOver and TalkBack read).
+	Icon    Icon
 	OnPress func()
 }
 
@@ -31,6 +34,8 @@ func encodeActions(as []Action) []byte {
 		b = append(b, byte(a.Role))
 		b = binary.LittleEndian.AppendUint32(b, uint32(len(a.Title)))
 		b = append(b, a.Title...)
+		b = binary.LittleEndian.AppendUint32(b, uint32(len(a.Icon)))
+		b = append(b, a.Icon...)
 	}
 	return b
 }
@@ -41,20 +46,73 @@ func runAction(as []Action, i int64) {
 	}
 }
 
-// Icon is a symbol for tabs: an SF Symbol name on iOS; Android draws the
-// common ones (the constants here) itself.
+// Icon is a symbol (ui.Symbol, tabs, buttons, actions): an SF Symbol
+// name. iOS draws any; Android draws the common ones, as the Material
+// Symbols for them: the constants here, and more (see
+// hosts/android/gen_symbols.go). A name with ".fill" is the filled
+// symbol.
 type Icon string
 
 const (
-	IconHome     Icon = "house"
-	IconSearch   Icon = "magnifyingglass"
-	IconSettings Icon = "gearshape"
-	IconPerson   Icon = "person"
-	IconStar     Icon = "star"
-	IconList     Icon = "list.bullet"
-	IconHeart    Icon = "heart"
-	IconPlus     Icon = "plus"
+	IconHome      Icon = "house"
+	IconSearch    Icon = "magnifyingglass"
+	IconSettings  Icon = "gearshape"
+	IconPerson    Icon = "person"
+	IconPeople    Icon = "person.2"
+	IconStar      Icon = "star"
+	IconHeart     Icon = "heart"
+	IconList      Icon = "list.bullet"
+	IconMenu      Icon = "line.3.horizontal"
+	IconFilter    Icon = "line.3.horizontal.decrease"
+	IconMore      Icon = "ellipsis"
+	IconPlus      Icon = "plus"
+	IconMinus     Icon = "minus"
+	IconClose     Icon = "xmark"
+	IconCheck     Icon = "checkmark"
+	IconBack      Icon = "chevron.left"
+	IconForward   Icon = "chevron.right"
+	IconUp        Icon = "chevron.up"
+	IconDown      Icon = "chevron.down"
+	IconRefresh   Icon = "arrow.clockwise"
+	IconTrash     Icon = "trash"
+	IconEdit      Icon = "pencil"
+	IconCompose   Icon = "square.and.pencil"
+	IconShare     Icon = "square.and.arrow.up"
+	IconDownload  Icon = "square.and.arrow.down"
+	IconSend      Icon = "paperplane"
+	IconBell      Icon = "bell"
+	IconMail      Icon = "envelope"
+	IconPhone     Icon = "phone"
+	IconMessage   Icon = "message"
+	IconCamera    Icon = "camera"
+	IconPhoto     Icon = "photo"
+	IconMic       Icon = "mic"
+	IconPlay      Icon = "play"
+	IconPause     Icon = "pause"
+	IconCalendar  Icon = "calendar"
+	IconClock     Icon = "clock"
+	IconLocation  Icon = "location"
+	IconPin       Icon = "mappin"
+	IconCart      Icon = "cart"
+	IconBookmark  Icon = "bookmark"
+	IconLock      Icon = "lock"
+	IconEye       Icon = "eye"
+	IconInfo      Icon = "info.circle"
+	IconWarning   Icon = "exclamationmark.triangle"
+	IconHelp      Icon = "questionmark.circle"
+	IconFolder    Icon = "folder"
+	IconDocument  Icon = "doc"
+	IconCopy      Icon = "doc.on.doc"
+	IconLink      Icon = "link"
+	IconAttach    Icon = "paperclip"
+	IconGlobe     Icon = "globe"
+	IconLightMode Icon = "sun.max"
+	IconDarkMode  Icon = "moon"
+	IconSignOut   Icon = "rectangle.portrait.and.arrow.right"
 )
+
+// Filled returns the icon's filled symbol (name.fill).
+func (i Icon) Filled() Icon { return i + ".fill" }
 
 // growByDefault gives a container that fills its space (Stack, Tabs,
 // List) Grow 1 unless its style sizes it.

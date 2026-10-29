@@ -26,6 +26,7 @@ object NuiKind {
     const val NATIVE = 16
     const val RICH_TEXT = 17
     const val SELECTABLE = 18
+    const val SYMBOL = 19
 
     fun name(kind: Int): String = when (kind) {
         1 -> "View"
@@ -46,6 +47,7 @@ object NuiKind {
         16 -> "Native"
         17 -> "RichText"
         18 -> "Selectable"
+        19 -> "Symbol"
         else -> "Kind($kind)"
     }
 }
@@ -79,6 +81,7 @@ object NuiProp {
     object Button {
         const val TITLE = 64
         const val VARIANT = 65
+        const val ICON = 66
     }
 
     object TextField {
@@ -153,6 +156,10 @@ object NuiProp {
     object RichText {
         const val CONTENT = 64
         const val INLINES = 65
+    }
+
+    object Symbol {
+        const val NAME = 64
     }
 }
 

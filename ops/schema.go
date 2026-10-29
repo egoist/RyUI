@@ -100,7 +100,7 @@ var Schema = SchemaDef{
 		{Name: "TextAlign", Type: TEnum, Enum: "TextAlign"},
 		{Name: "LineLimit", Type: TInt, Doc: "0: no limit"},
 		{Name: "Disabled", Type: TBool},
-		{Name: "Menu", Type: TBytes, Doc: "a menu: u32 count, then per item u8 role (AlertButtonRole) and a u32-length title; Action events carry the item's index"},
+		{Name: "Menu", Type: TBytes, Doc: "a menu: u32 count, then per item u8 role (AlertButtonRole), a u32-length title and a u32-length icon (Symbol.Name; empty: none); Action events carry the item's index"},
 		{Name: "MenuTrigger", Type: TEnum, Enum: "MenuTrigger"},
 	},
 	Kinds: []KindDef{
@@ -111,6 +111,7 @@ var Schema = SchemaDef{
 		{Name: "Button", Props: []PropDef{
 			{Name: "Title", Type: TString},
 			{Name: "Variant", Type: TEnum, Enum: "ButtonVariant"},
+			{Name: "Icon", Type: TString, Doc: "a symbol (Symbol.Name) before the title"},
 		}},
 		{Name: "TextField", Props: []PropDef{
 			{Name: "Value", Type: TString},
@@ -175,6 +176,9 @@ var Schema = SchemaDef{
 			{Name: "Inlines", Type: TBytes, Doc: "the inline components, in the order of their runs: u32 count, per component u32 node id (a child of the view), f32 width, f32 height. Each sits on the baseline at its run's place; the host positions the child there (its frame's origin is 0, 0)"},
 		}, Doc: "styled paragraphs typeset and drawn by nui's own view (CoreText, StaticLayout); the common text props are its defaults. A tapped link reports Link. Its children are its inline components"},
 		{Name: "Selectable", Doc: "a container whose RichText descendants share one selection, across texts: the platform's handles, loupe and edit menu; Copy copies the selected text"},
+		{Name: "Symbol", Props: []PropDef{
+			{Name: "Name", Type: TString, Doc: "an SF Symbol name: iOS draws any; Android the common ones, as Material Symbols"},
+		}, Doc: "a symbol sized by the text props (a text style, scaled as text is) and colored by Color (the label color by default)"},
 	},
 	Events: []EventDef{
 		{Name: "Press", Payload: PNone},

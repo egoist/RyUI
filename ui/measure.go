@@ -55,7 +55,7 @@ func bits(f float32) uint32 { return math.Float32bits(f) }
 
 func (e *element) cacheable() bool {
 	switch e.kind {
-	case ops.KindText, ops.KindButton, ops.KindToggle, ops.KindActivity:
+	case ops.KindText, ops.KindButton, ops.KindToggle, ops.KindActivity, ops.KindSymbol:
 		return true
 	}
 	return false

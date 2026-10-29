@@ -21,6 +21,7 @@ public enum NuiKind: UInt16 {
     case native = 16
     case richText = 17
     case selectable = 18
+    case symbol = 19
 
     public var name: String {
         switch self {
@@ -42,6 +43,7 @@ public enum NuiKind: UInt16 {
         case .native: return "Native"
         case .richText: return "RichText"
         case .selectable: return "Selectable"
+        case .symbol: return "Symbol"
         }
     }
 }
@@ -76,6 +78,7 @@ public enum NuiProp {
     public enum Button {
         public static let title: UInt16 = 64
         public static let variant: UInt16 = 65
+        public static let icon: UInt16 = 66
     }
 
     public enum TextField {
@@ -150,6 +153,10 @@ public enum NuiProp {
     public enum RichText {
         public static let content: UInt16 = 64
         public static let inlines: UInt16 = 65
+    }
+
+    public enum Symbol {
+        public static let name: UInt16 = 64
     }
 }
 

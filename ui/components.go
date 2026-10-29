@@ -205,8 +205,15 @@ type ButtonProps struct {
 	OnPress func()
 	// Menu shows these actions when the button is tapped (instead of
 	// OnPress).
-	Menu     []Action
-	Variant  ButtonVariant
+	Menu    []Action
+	Variant ButtonVariant
+	// Icon is a symbol before the title (see Symbol); a button with an
+	// icon and no title is the icon alone.
+	Icon Icon
+	// Label is what VoiceOver and TalkBack read: the title by default.
+	// Give an icon-only button one (the platforms name a few symbols
+	// themselves, in English on Android).
+	Label    string
 	Disabled signal.Accessor[bool]
 	Style    Styler
 }
@@ -220,8 +227,14 @@ func Button(p ButtonProps) Node {
 		e.variant = int32(p.Variant)
 		e.r.batch.SetEnum(e.id, ops.PropButtonVariant, int32(p.Variant))
 	}
+	if p.Icon != "" {
+		e.r.batch.SetString(e.id, ops.PropButtonIcon, string(p.Icon))
+	}
+	if p.Label != "" {
+		e.r.batch.SetString(e.id, ops.PropA11yLabel, p.Label)
+	}
 	bind(p.Title, func(v string) {
-		e.text = v
+		e.text = string(p.Icon) + "\x00" + v // the measure cache's key
 		e.r.batch.SetString(e.id, ops.PropButtonTitle, v)
 		e.remeasure()
 	})
@@ -435,6 +448,19 @@ func Slider(p SliderProps) Node {
 		}
 		e.listen(ops.EventValueChanged)
 	}
+	return Node{e}
+}
+
+// Symbol is a symbol: an SF Symbol on iOS, the Material Symbol for it on
+// Android (the Icon constants and more; see Icon). It's sized as text of
+// the Style's Font is (a text style, so it follows the user's text
+// size) and colored with its Color (the label color by default).
+func Symbol(name Icon, style ...Styler) Node {
+	e := newElement(ops.KindSymbol, true)
+	e.measure()
+	e.text = string(name)
+	e.setStyle(firstStyle(style), true)
+	e.r.batch.SetString(e.id, ops.PropSymbolName, string(name))
 	return Node{e}
 }
 

@@ -264,6 +264,8 @@ final class NuiTextField: UITextField {
             view = l.collection
         case .activity:
             view = UIActivityIndicatorView(style: .medium)
+        case .symbol:
+            view = NuiSymbolView(frame: .zero)
         case .image:
             let iv = UIImageView()
             iv.contentMode = .scaleAspectFit

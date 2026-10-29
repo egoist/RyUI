@@ -273,6 +273,8 @@ func (h *Host) Measure(id ops.NodeID, c layout.Constraints) layout.Size {
 		}
 	case ops.KindActivity:
 		s = layout.Size{W: 20, H: 20}
+	case ops.KindSymbol:
+		s = layout.Size{W: 22, H: 22}
 	case ops.KindRichText:
 		// As text: the paragraphs' text, a line each at least, as tall
 		// as its inline components.
@@ -601,6 +603,29 @@ func (v *View) Actions(p ops.PropID) []string {
 		l := int(uint32(b[1]) | uint32(b[2])<<8 | uint32(b[3])<<16 | uint32(b[4])<<24)
 		out = append(out, string(b[5:5+l]))
 		b = b[5+l:]
+		l = int(uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24)
+		b = b[4+l:] // the icon
+	}
+	return out
+}
+
+// ActionIcons decodes the icons of a Menu, Screen Actions or Alert
+// Buttons prop.
+func (v *View) ActionIcons(p ops.PropID) []string {
+	b := v.Props[p].Bytes
+	if len(b) < 4 {
+		return nil
+	}
+	u32 := func(b []byte) int { return int(uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24) }
+	n := u32(b)
+	b = b[4:]
+	var out []string
+	for range n {
+		l := u32(b[1:])
+		b = b[5+l:]
+		l = u32(b)
+		out = append(out, string(b[4:4+l]))
+		b = b[4+l:]
 	}
 	return out
 }

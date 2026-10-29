@@ -2,6 +2,7 @@ package dev.nui
 
 import android.content.Context
 import android.graphics.Color
+import android.os.Build
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
@@ -31,17 +32,21 @@ import com.google.android.material.navigation.NavigationBarView
 import java.nio.ByteBuffer
 
 /** An item of a menu, an alert or a toolbar. */
-data class NuiAction(val title: String, val role: Int)
+data class NuiAction(val title: String, val role: Int, val icon: String = "")
 
-/** Decodes actions: u32 count, then per item u8 role and a u32-length title. */
+/** Decodes actions: u32 count, then per item u8 role, a u32-length title and a u32-length icon. */
 fun decodeActions(b: ByteBuffer): List<NuiAction> {
     if (b.remaining() < 4) return emptyList()
     val n = b.int
-    return List(n) {
-        val role = b.get().toInt() and 0xff
+    fun str(): String {
         val a = ByteArray(b.int)
         b.get(a)
-        NuiAction(String(a, Charsets.UTF_8), role)
+        return String(a, Charsets.UTF_8)
+    }
+    return List(n) {
+        val role = b.get().toInt() and 0xff
+        val title = str()
+        NuiAction(title, role, str())
     }
 }
 
@@ -270,7 +275,12 @@ class NuiStack(context: Context, val nodeID: Int, private val rt: NuiRuntime) : 
         }
         bar.menu.clear()
         for ((i, a) in s.actions.withIndex()) {
-            bar.menu.add(0, i, i, rt.styled(a)).setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+            val item = bar.menu.add(0, i, i, rt.styled(a))
+            item.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+            // An icon stands for the title, which TalkBack reads (and a long press shows).
+            if (a.icon.isNotEmpty()) item.icon = rt.symbol(a.icon)?.apply {
+                setTint(MaterialColors.getColor(rt.themed, com.google.android.material.R.attr.colorOnSurfaceVariant, Color.DKGRAY))
+            }
         }
         val id = t.id
         bar.setOnMenuItemClickListener { item ->
@@ -279,17 +289,6 @@ class NuiStack(context: Context, val nodeID: Int, private val rt: NuiRuntime) : 
         }
     }
 }
-
-private val tabIcons = mapOf(
-    "house" to R.drawable.nui_ic_house,
-    "magnifyingglass" to R.drawable.nui_ic_search,
-    "gearshape" to R.drawable.nui_ic_settings,
-    "person" to R.drawable.nui_ic_person,
-    "star" to R.drawable.nui_ic_star,
-    "list.bullet" to R.drawable.nui_ic_list,
-    "heart" to R.drawable.nui_ic_heart,
-    "plus" to R.drawable.nui_ic_add,
-)
 
 /** Tabs: a Material navigation bar under its pages. */
 class NuiTabs(context: Context, val nodeID: Int, private val rt: NuiRuntime) : ViewGroup(context) {
@@ -372,7 +371,7 @@ class NuiTabs(context: Context, val nodeID: Int, private val rt: NuiRuntime) : V
             if (i >= bar.maxItemCount) break
             val s = p.view as NuiScreen
             val item = bar.menu.add(0, i, i, s.title)
-            tabIcons[s.icon.removeSuffix(".fill")]?.let { item.setIcon(it) }
+            rt.symbol(s.icon)?.let { item.icon = it }
         }
         if (selected < bar.menu.size()) bar.selectedItemId = selected
         selecting = false
@@ -670,7 +669,14 @@ fun NuiRuntime.styled(a: NuiAction): CharSequence {
 fun NuiRuntime.showMenu(n: NuiNode) {
     val act = activity ?: return
     val m = PopupMenu(act, n.outer)
-    for ((i, a) in n.actions.withIndex()) m.menu.add(0, i, i, styled(a))
+    for ((i, a) in n.actions.withIndex()) {
+        val item = m.menu.add(0, i, i, styled(a))
+        if (a.icon.isNotEmpty()) item.icon = symbol(a.icon)?.apply {
+            setTint(MaterialColors.getColor(themed, if (a.role == NuiAlertButtonRole.DESTRUCTIVE) androidx.appcompat.R.attr.colorError
+                else com.google.android.material.R.attr.colorOnSurfaceVariant, Color.DKGRAY))
+        }
+    }
+    if (Build.VERSION.SDK_INT >= 29 && n.actions.any { it.icon.isNotEmpty() }) m.setForceShowIcon(true)
     val id = n.id
     m.setOnMenuItemClickListener { item ->
         emit(id, NuiEventKind.ACTION) { NuiEvents.action(id, item.itemId.toLong()) }

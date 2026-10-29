@@ -88,6 +88,13 @@ fun NuiRuntime.color(v: Long, fallback: Int = Color.TRANSPARENT): Int {
 
 /** Applies a node's text style, size, weight and (since a text appearance carries one) color. */
 fun NuiRuntime.applyText(n: NuiNode) {
+    (n.view as? NuiSymbol)?.let {
+        it.textStyle = n.textStyle
+        it.size = n.fontSize
+        it.tint = n.color
+        it.applyTint()
+        return
+    }
     (n.view as? NuiRichText)?.let {
         it.textStyle = n.textStyle
         it.size = n.fontSize
@@ -114,6 +121,30 @@ fun NuiRuntime.applyTextStyle(tv: TextView, style: Int, size: Float = 0f, weight
     }
 }
 
+/** A button's icon, before its title (or alone), in the button's text color. */
+fun NuiRuntime.setButtonIcon(n: NuiNode, b: MaterialButton, name: String) {
+    // A start drawable counts only once the view has a layout direction,
+    // which it inherits when attached: the core measures it before.
+    b.layoutDirection = android.text.TextUtils.getLayoutDirectionFromLocale(java.util.Locale.getDefault())
+    b.icon = if (name.isEmpty()) null else symbol(name)
+    b.iconGravity = MaterialButton.ICON_GRAVITY_TEXT_START
+    b.iconTint = b.textColors
+    iconPadding(n, b)
+}
+
+/**
+ * An icon alone has no room after it, and a label (the app's, or the
+ * symbol's); one before a title has Material's room.
+ */
+fun NuiRuntime.iconPadding(n: NuiNode, b: MaterialButton) {
+    if (b.icon == null) return
+    val alone = b.text.isNullOrEmpty()
+    b.iconPadding = if (alone) 0 else Math.round(8 * density)
+    if (n.props[NuiProp.A11Y_LABEL] == null) {
+        b.contentDescription = if (alone) symbolLabels[n.props[NuiProp.Button.ICON] as? String ?: ""] else null
+    }
+}
+
 /** Reapplies what came from the theme, after a configuration change. */
 fun NuiRuntime.restyle(n: NuiNode) {
     applyText(n)
@@ -123,6 +154,7 @@ fun NuiRuntime.restyle(n: NuiNode) {
 
 fun NuiRuntime.applyColor(n: NuiNode) {
     when (val v = n.view) {
+        is NuiSymbol -> { v.tint = n.color; v.applyTint() }
         is MaterialButton -> if (n.color != 0L) v.setTextColor(color(n.color))
         is TextView -> v.setTextColor(if (n.color != 0L) color(n.color) else MaterialColors.getColor(themed, com.google.android.material.R.attr.colorOnSurface, Color.BLACK))
         is MaterialSwitch -> if (n.color != 0L) v.trackTintList = ColorStateList(
@@ -229,7 +261,11 @@ fun NuiRuntime.propString(id: Int, prop: Int, v: String) {
         NuiProp.A11Y_HINT -> ViewCompat.setStateDescription(view, v)
         else -> if (!setNavProp(n, prop, v)) when (n.kind) {
             NuiKind.TEXT -> if (prop == NuiProp.Text.TEXT) (view as TextView).text = v
-            NuiKind.BUTTON -> if (prop == NuiProp.Button.TITLE) (view as TextView).text = v
+            NuiKind.BUTTON -> when (prop) {
+                NuiProp.Button.TITLE -> { (view as TextView).text = v; (view as? MaterialButton)?.let { iconPadding(n, it) } }
+                NuiProp.Button.ICON -> setButtonIcon(n, view as MaterialButton, v)
+            }
+            NuiKind.SYMBOL -> if (prop == NuiProp.Symbol.NAME) (view as NuiSymbol).apply { name = v; refresh() }
             NuiKind.TEXT_FIELD -> {
                 val e = view as EditText
                 when (prop) {
@@ -330,6 +366,10 @@ fun NuiRuntime.measureNode(n: NuiNode, w: Float, h: Float, aw: Float, ah: Float)
     if (v is NuiRichText) {
         val (mw, mh) = v.measureRich(w, aw)
         return mw to (if (!h.isNaN()) h else mh)
+    }
+    if (v is NuiSymbol) {
+        val s = v.sizePx() / d
+        return (if (!w.isNaN()) w else s) to (if (!h.isNaN()) h else s)
     }
     var minW = -1
     when {

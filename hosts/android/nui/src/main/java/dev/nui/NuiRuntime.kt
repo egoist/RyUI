@@ -321,6 +321,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
             NuiKind.SCROLL -> NestedScrollView(ctx).apply { isFillViewport = false }
             NuiKind.LIST -> NuiList(id, this).recycler
             NuiKind.ACTIVITY -> CircularProgressIndicator(ctx).apply { isIndeterminate = true }
+            NuiKind.SYMBOL -> NuiSymbol(this)
             NuiKind.STACK -> NuiStack(ctx, id, this)
             NuiKind.TABS -> NuiTabs(ctx, id, this)
             NuiKind.SCREEN, NuiKind.SHEET -> NuiScreen(ctx, id, this)
@@ -408,6 +409,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
         val b = makeButton(n.id, variant)
         b.text = old.text
         b.isEnabled = old.isEnabled
+        (n.props[NuiProp.Button.ICON] as? String)?.let { setButtonIcon(n, b, it) }
         val parent = old.parent as? ViewGroup
         if (parent != null) {
             val i = parent.indexOfChild(old)

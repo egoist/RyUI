@@ -152,6 +152,10 @@ final class NuiGestureDelegate: NSObject, UIGestureRecognizerDelegate {
 
     func setMediaProp(_ n: NuiNode, _ prop: UInt16, _ v: NuiValue) -> Bool {
         switch (n.kind, prop) {
+        case (.symbol, NuiProp.Symbol.name):
+            guard let s = n.view as? NuiSymbolView else { return true }
+            s.node = n
+            s.name = v.string
         case (.image, NuiProp.Image.source):
             loadImage(n, v.string)
         case (.image, NuiProp.Image.mode):

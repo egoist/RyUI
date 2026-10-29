@@ -548,3 +548,34 @@ func TestAccent(t *testing.T) {
 		t.Fatal("ParseHex took 5 digits")
 	}
 }
+
+// Symbols: their name on the view, measured once for a name and font;
+// icons ride with buttons and actions.
+func TestSymbol(t *testing.T) {
+	h, _ := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{},
+			ui.Symbol(ui.IconHeart.Filled(), ui.Style{Color: ui.Red}),
+			ui.Symbol(ui.IconHeart.Filled(), ui.Style{Color: ui.Red}),
+			ui.Button(ui.ButtonProps{Title: ui.Val("Share"), Icon: ui.IconShare, Menu: []ui.Action{
+				{Title: "Copy", Icon: ui.IconCopy}, {Title: "Delete", Role: ui.ActionDestructive},
+			}}),
+		)
+	})
+	syms := h.OfKind(ops.KindSymbol)
+	if len(syms) != 2 || syms[0].String(ops.PropSymbolName) != "heart.fill" || syms[0].Frame[3] != 22 {
+		t.Fatalf("symbols %q %v", syms[0].String(ops.PropSymbolName), syms[0].Frame)
+	}
+	if h.Measures != 2 { // the two symbols are measured once; the button
+		t.Fatalf("%d measures", h.Measures)
+	}
+	b := h.OfKind(ops.KindButton)[0]
+	if b.String(ops.PropButtonIcon) != "square.and.arrow.up" {
+		t.Fatalf("button icon %q", b.String(ops.PropButtonIcon))
+	}
+	if got := b.Actions(ops.PropMenu); len(got) != 2 || got[0] != "Copy" || got[1] != "Delete" {
+		t.Fatalf("titles %v", got)
+	}
+	if got := b.ActionIcons(ops.PropMenu); len(got) != 2 || got[0] != "doc.on.doc" || got[1] != "" {
+		t.Fatalf("icons %v", got)
+	}
+}

@@ -98,8 +98,12 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
         case let t as UITextField:
             t.font = f
             t.adjustsFontForContentSizeCategory = true
+        case let s as NuiSymbolView:
+            s.node = self
+            s.refresh()
         case let b as UIButton:
             var c = b.configuration ?? .plain()
+            c.preferredSymbolConfigurationForImage = UIImage.SymbolConfiguration(font: f, scale: .medium)
             c.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { a in
                 var a = a
                 a.font = f
@@ -120,6 +124,7 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
         case let a as UIActivityIndicatorView: a.color = c ?? .secondaryLabel
         case let r as NuiRichTextView:
             r.base.color = color
+        case let s as NuiSymbolView: s.tintColor = c ?? .label
         case let i as UIImageView:
             i.tintColor = c
             i.image = i.image?.withRenderingMode(c != nil ? .alwaysTemplate : .automatic)
@@ -226,6 +231,15 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             }
             c.title = old?.title
             c.titleTextAttributesTransformer = old?.titleTextAttributesTransformer
+            c.image = old?.image
+            c.imagePadding = old?.imagePadding ?? 0
+            c.preferredSymbolConfigurationForImage = old?.preferredSymbolConfigurationForImage
+            b.configuration = c
+        case (.button, NuiProp.Button.icon):
+            guard let b = n.view as? UIButton else { return }
+            var c = b.configuration ?? .plain()
+            c.image = v.string.isEmpty ? nil : UIImage(systemName: v.string)
+            c.imagePadding = 6
             b.configuration = c
         case (.textField, NuiProp.TextField.value):
             (n.view as? UITextField)?.text = v.string
@@ -331,6 +345,9 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             if aw.isFinite { s.width = min(s.width, CGFloat(max(aw, 0))) }
         case let r as NuiRichTextView:
             s = r.measure(w, aw)
+        case let sym as NuiSymbolView:
+            sym.refresh()
+            s = sym.image?.size ?? .zero
         case let b as UIButton:
             // A configured button applies a new Dynamic Type size on its
             // next configuration update: apply it before measuring.

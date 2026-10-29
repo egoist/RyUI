@@ -120,6 +120,9 @@ final class NuiContextMenu: NSObject, UIContextMenuInteractionDelegate {
 struct NuiAction {
     var title: String
     var role: Int32
+    var icon = ""
+    /// The icon's symbol, if it has one.
+    var image: UIImage? { icon.isEmpty ? nil : UIImage(systemName: icon) }
 }
 
 func decodeActions(_ b: UnsafeRawBufferPointer) -> [NuiAction] {
@@ -129,7 +132,8 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [NuiAction] {
     var out: [NuiAction] = []
     for _ in 0..<n {
         let role = Int32(r.u8())
-        out.append(NuiAction(title: r.string(), role: role))
+        let title = r.string()
+        out.append(NuiAction(title: title, role: role, icon: r.string()))
     }
     return out
 }
@@ -339,7 +343,7 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [NuiAction] {
     func menu(for n: NuiNode) -> UIMenu {
         let id = n.id
         let items: [UIMenuElement] = n.actions.enumerated().map { i, act in
-            UIAction(title: act.title, attributes: act.role == NuiAlertButtonRole.destructive.rawValue ? .destructive : []) { [weak self] _ in
+            UIAction(title: act.title, image: act.image, attributes: act.role == NuiAlertButtonRole.destructive.rawValue ? .destructive : []) { [weak self] _ in
                 self?.emit(id, .action) { NuiEvents.action(id, Int64(i)) }
             }
         }
@@ -390,9 +394,11 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [NuiAction] {
             guard case .bytes(let b) = v, let vc = n.vc else { return }
             let id = n.id
             vc.navigationItem.rightBarButtonItems = decodeActions(b).enumerated().map { i, act in
-                let item = UIBarButtonItem(title: act.title, primaryAction: UIAction(title: act.title) { [weak self] _ in
+                // An icon stands for the title, which VoiceOver reads.
+                let item = UIBarButtonItem(title: act.image == nil ? act.title : nil, image: act.image, primaryAction: UIAction(title: act.title) { [weak self] _ in
                     self?.emit(id, .action) { NuiEvents.action(id, Int64(i)) }
                 })
+                item.accessibilityLabel = act.title
                 if act.role == NuiAlertButtonRole.destructive.rawValue { item.tintColor = .systemRed }
                 return item
             }
