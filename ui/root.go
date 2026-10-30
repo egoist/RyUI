@@ -302,6 +302,15 @@ func (r *Root) setEnvironment(env host.Environment) {
 	r.env.Set(env)
 }
 
+// Remeasure measures the root's views again (what the host measured them
+// as may be stale: the remote core's, after a player came back), then
+// flushes.
+func (r *Root) Remeasure() {
+	r.measures = measureCache{}
+	r.remeasureText()
+	r.Flush()
+}
+
 // remeasureText marks the root's measured views (text, controls) for
 // measuring again: their fonts changed.
 func (r *Root) remeasureText() {

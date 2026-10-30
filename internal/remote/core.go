@@ -8,6 +8,7 @@ import (
 	"slices"
 	"sync/atomic"
 	"syscall"
+	"time"
 
 	"github.com/egoist/nui/host"
 	"github.com/egoist/nui/internal/boot"
@@ -26,27 +27,50 @@ type Host struct {
 	posts  chan func()
 	closed bool
 	mount  func() // the first environment mounts the app, before it's answered
+	resume func(token string) bool
+
+	// Cut off (its connection gone, the session kept for it to come
+	// back): batches wait, and measurements are the last of each view's.
+	cut     bool
+	backlog [][]byte
+	sizes   map[ops.NodeID]layout.Size
 }
 
 func (h *Host) Apply(b *ops.Batch) {
 	if h.closed {
 		return
 	}
+	if h.cut {
+		h.backlog = append(h.backlog, b.Encode())
+		return
+	}
 	if _, err := h.p.call(mApply, b.Encode()); err != nil {
-		h.closed = true
+		h.cutOff()
 	}
 }
 
 func (h *Host) Measure(id ops.NodeID, c layout.Constraints) layout.Size {
-	if h.closed {
-		return layout.Size{}
+	if h.closed || h.cut {
+		return h.sizes[id]
 	}
 	r, err := h.p.call(mMeasure, encodeMeasure(uint32(id), c.Width, c.Height, c.AvailW, c.AvailH))
 	if err != nil || len(r) < 8 {
-		h.closed = true
-		return layout.Size{}
+		h.cutOff()
+		return h.sizes[id]
 	}
-	return layout.Size{W: f32(r, 0), H: f32(r, 4)}
+	s := layout.Size{W: f32(r, 0), H: f32(r, 4)}
+	if h.sizes == nil {
+		h.sizes = map[ops.NodeID]layout.Size{}
+	}
+	h.sizes[id] = s
+	return s
+}
+
+// cutOff notes the connection's gone (its reader ends the session, or
+// keeps it for the player to resume).
+func (h *Host) cutOff() {
+	h.cut = true
+	h.p.rw.Close()
 }
 
 // Post runs f on the core's loop. Safe from any goroutine.
@@ -93,6 +117,11 @@ func (h *Host) serve(method byte, b []byte) []byte {
 		if h.core != nil {
 			ui.Reattach()
 		}
+	case mResume:
+		if h.resume != nil && h.resume(string(b)) {
+			return []byte{1}
+		}
+		return []byte{0}
 	}
 	return nil
 }
@@ -114,7 +143,14 @@ type session struct {
 	h     *Host
 	r     *ui.Root
 	woken atomic.Bool // a wake-up is in ready: at most one, so the reader never blocks
+	token string      // the player's, to resume it
+	cut   bool        // its connection's gone: kept a while for the player to come back
 }
+
+// keepCut is how long a session is kept for its player to come back:
+// Android cuts a backgrounded app's network (a photo with the camera
+// app, a page in the browser), and the player reconnects when it's back.
+const keepCut = 3 * time.Minute
 
 // NewServer makes a server for root; posts carries ui.Post's functions
 // to the loop.
@@ -133,20 +169,83 @@ func (s *Server) add(conn net.Conn) {
 	// Events wait while the core waits for a player; list requests
 	// can't (the player is binding cells for the core's batch).
 	p.defer_ = func(m byte) bool { return m == mEvent || m == mAttach }
+	// In the background a player may be frozen: the core's calls wait for
+	// it. Seen as the event arrives: events wait while a call does.
+	p.peek = func(m byte, b []byte) {
+		if m != mEvent {
+			return
+		}
+		if ev, err := ops.DecodeEvent(b); err == nil && ev.Kind == ops.EventLifecycle {
+			p.asleep = ops.Lifecycle(ev.Int) == ops.LifecycleBackground
+		}
+	}
 	h.mount = func() { ss.r = ui.Mount(h, s.root) }
+	h.resume = func(token string) bool { return s.resume(ss, token) }
 	s.sessions = append(s.sessions, ss)
-	// The reader wakes the loop, but mustn't wait for it: the loop may be
-	// deep in nested calls, waiting for the reader's next frame.
+	s.listen(ss, p)
+}
+
+// listen reads p's frames for ss. The reader wakes the loop, but mustn't
+// wait for it: the loop may be deep in nested calls, waiting for the
+// reader's next frame.
+func (s *Server) listen(ss *session, p *peer) {
+	p.owner.Store(ss)
 	go p.read(func() {
-		if !ss.woken.Swap(true) {
-			s.ready <- ss
+		// Its session: the one it was made for, or the one it resumed.
+		o := p.owner.Load().(*session)
+		if !o.woken.Swap(true) {
+			s.ready <- o
 		}
 	})
+}
+
+// resume gives the new connection fresh's player the session it had
+// (token's), if it's kept: fresh's peer becomes that session's, its
+// waiting batches go, and its text is measured again. Otherwise fresh
+// takes the token, for later. Loop only.
+func (s *Server) resume(fresh *session, token string) bool {
+	if token == "" {
+		return false
+	}
+	var old *session
+	for _, x := range s.sessions {
+		if x.cut && x.token == token {
+			old = x
+		}
+	}
+	if old == nil {
+		fresh.token = token
+		return false
+	}
+	p := fresh.h.p
+	// The new connection is old's now; fresh never mounted.
+	s.sessions = slices.DeleteFunc(s.sessions, func(x *session) bool { return x == fresh })
+	fresh.h.closed = true
+	old.conn, old.cut = fresh.conn, false
+	old.h.p, old.h.cut = p, false
+	p.serve = old.h.serve
+	p.owner.Store(old)
+	backlog := old.h.backlog
+	old.h.backlog = nil
+	s.posts <- func() {
+		for _, b := range backlog {
+			if _, err := p.call(mApply, b); err != nil {
+				return
+			}
+		}
+		if old.r != nil {
+			old.r.Remeasure() // what it measured while cut off was a guess
+		}
+	}
+	return true
 }
 
 // step serves what a session's player sent while the loop was idle.
 func (s *Server) step(ss *session) {
 	ss.woken.Store(false)
+	if ss.cut {
+		return // its connection's gone; the next is read for it if it resumes
+	}
 	p := ss.h.p
 	for {
 		select {
@@ -172,6 +271,25 @@ func (s *Server) end(ss *session) {
 	if i < 0 {
 		return
 	}
+	if ss.cut && !ss.h.closed {
+		return // kept for its player already
+	}
+	// A mounted session whose player can come back is kept for it.
+	if !ss.cut && ss.r != nil && ss.token != "" && !ss.h.closed {
+		ss.cut = true
+		ss.h.cut = true
+		ss.conn.Close()
+		time.AfterFunc(keepCut, func() {
+			s.posts <- func() {
+				if ss.cut {
+					ss.cut = false
+					ss.h.closed = true
+					s.end(ss)
+				}
+			}
+		})
+		return
+	}
 	s.sessions = slices.Delete(s.sessions, i, i+1)
 	ss.h.closed = true
 	ss.conn.Close()
@@ -194,7 +312,9 @@ func (s *Server) Loop(conns <-chan net.Conn) {
 		case c, ok := <-conns:
 			if !ok {
 				for len(s.sessions) > 0 {
-					s.end(s.sessions[0])
+					ss := s.sessions[0]
+					ss.cut, ss.h.closed = false, true // ending: none is kept
+					s.end(ss)
 				}
 				return
 			}

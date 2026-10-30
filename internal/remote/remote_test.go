@@ -211,3 +211,38 @@ func TestManyRoundTripsInOneCall(t *testing.T) {
 		t.Fatalf("%d texts, %d measures", got, s.h.Measures)
 	}
 }
+
+// A player cut off (Android cuts a backgrounded app's network) resumes
+// its session: the app isn't mounted again, its views stay, and what the
+// player sent while cut off arrives.
+func TestACutSessionResumes(t *testing.T) {
+	var count *signal.Signal[int]
+	mounts := 0
+	app := func() ui.Node {
+		mounts++
+		count = signal.New(0)
+		return ui.Column(ui.Style{},
+			ui.Text(signal.Func(func() string { return fmt.Sprint("Count: ", count.Get()) })),
+			ui.Button(ui.ButtonProps{Title: ui.Val("Add"), OnPress: func() { count.Set(count.Peek() + 1) }}),
+		)
+	}
+	s := start(t, app)
+	s.h.Tap(s.h.One(ops.KindButton, "Add"))
+	if s.h.One(ops.KindText, "Count: 1") == nil {
+		t.Fatalf("\n%s", s.h.Log())
+	}
+	root := s.h.Root().ID
+	s.conn.Close()
+	s.until("the proxy to notice", func() bool { return s.x.peer() == nil })
+	// A tap while cut off waits.
+	s.h.Tap(s.h.One(ops.KindButton, "Add"))
+	if s.h.One(ops.KindText, "Count: 1") == nil {
+		t.Fatalf("changed while cut off\n%s", s.h.Log())
+	}
+	s.h.Reset()
+	s.connect()
+	s.until("Count: 2", func() bool { return hasText(s.h, "Count: 2") })
+	if mounts != 1 || s.h.Root().ID != root || s.h.Count(ops.OpDestroy) != 0 || s.h.Count(ops.OpCreate) != 0 {
+		t.Fatalf("mounted %d times; root %d (was %d); ops:\n%s", mounts, s.h.Root().ID, root, s.h.Log())
+	}
+}

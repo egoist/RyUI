@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -29,11 +30,16 @@ type Proxy struct {
 	// accented: the session set the app's accent color, which the next
 	// session (another app) mustn't keep.
 	accented bool
+	// token names this player's session to the core, to resume it after
+	// the connection's cut (Android cuts a backgrounded app's network);
+	// queued are the events that came meanwhile.
+	token  string
+	queued [][]byte
 }
 
 // NewProxy makes a proxy for local, the player's platform host.
 func NewProxy(local host.Host) *Proxy {
-	return &Proxy{local: local, live: map[ops.NodeID]bool{}}
+	return &Proxy{local: local, live: map[ops.NodeID]bool{}, token: strconv.FormatInt(time.Now().UnixNano(), 36)}
 }
 
 // serve answers the core's requests, on the main thread.
@@ -97,7 +103,14 @@ func (x *Proxy) Dispatch(ev ops.Event) {
 		e.ID = 0 // any session's root
 		x.env = ops.AppendEvent(nil, &e)
 	}
-	x.call(mEvent, ops.AppendEvent(nil, &ev))
+	b := ops.AppendEvent(nil, &ev)
+	if x.peer() == nil && len(x.live) > 0 {
+		// Cut off: kept for the session's return (a Call's result, the
+		// lifecycle), or dropped with its views if it doesn't come back.
+		x.queued = append(x.queued, b)
+		return
+	}
+	x.call(mEvent, b)
 }
 
 // SetEnvironment sets the root's environment the proxy sends the core on
@@ -175,6 +188,23 @@ func (x *Proxy) disconnected(p *peer) {
 // views of the last session, and sends the root's environment, which
 // makes the core mount the app.
 func (x *Proxy) Attach(conn net.Conn) {
+	p := newPeer(conn)
+	p.serve = x.serve
+	x.mu.Lock()
+	x.p = p
+	x.mu.Unlock()
+	go p.read(x.notify)
+	// The session it had, if the core kept it: its views stay, and what
+	// came while cut off goes now.
+	if r := x.call(mResume, []byte(x.token)); len(x.live) > 0 && len(r) == 1 && r[0] == 1 {
+		q := x.queued
+		x.queued = nil
+		for _, b := range q {
+			x.call(mEvent, b)
+		}
+		return
+	}
+	x.queued = nil
 	if len(x.live) > 0 {
 		var b ops.Batch
 		if x.accented && x.live[x.root] {
@@ -189,12 +219,6 @@ func (x *Proxy) Attach(conn net.Conn) {
 		x.root = 0
 		x.local.Apply(&b)
 	}
-	p := newPeer(conn)
-	p.serve = x.serve
-	x.mu.Lock()
-	x.p = p
-	x.mu.Unlock()
-	go p.read(x.notify)
 	if x.env != nil {
 		x.call(mEvent, x.env)
 	}

@@ -22,6 +22,7 @@ import (
 	"math"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -34,6 +35,7 @@ const (
 	mListBind   = 5 // host → core: u32 list, i64 index, u32 cell
 	mListUnbind = 6 // host → core: u32 list, u32 cell
 	mAttach     = 7 // host → core: the Activity was recreated
+	mResume     = 8 // host → core: its session's token → u8 resumed (the session it had, kept while it was cut off)
 )
 
 // Frame kinds.
@@ -46,8 +48,14 @@ var le = binary.LittleEndian
 
 var errClosed = errors.New("remote: connection closed")
 
-// callTimeout is how long a call waits for its reply.
-const callTimeout = 10 * time.Second
+// callTimeout is how long a call waits for its reply; asleepTimeout,
+// while the player's app is in the background, where the system may
+// freeze it (Android does, after a few seconds) until it's back: a photo
+// taken with the camera app, a page in the browser.
+const (
+	callTimeout   = 10 * time.Second
+	asleepTimeout = 10 * time.Minute
+)
 
 // frame is a message: u32 length (of the rest), u8 kind, u32 call ID,
 // u8 method (requests), payload.
@@ -74,6 +82,11 @@ type peer struct {
 	serve  func(method byte, payload []byte) []byte
 	defer_ func(method byte) bool
 	held   []frame
+	asleep bool // the other side's app is in the background
+	// peek sees each request as it arrives, before it's held.
+	peek func(method byte, payload []byte)
+	// owner is the session (the core's) its frames are for.
+	owner atomic.Value
 }
 
 func newPeer(rw io.ReadWriteCloser) *peer {
@@ -148,6 +161,13 @@ func (p *peer) send(kind byte, id uint32, method byte, payload []byte) error {
 
 // call sends a request and waits for its reply, serving the other
 // side's requests meanwhile.
+func (p *peer) timeout() time.Duration {
+	if p.asleep {
+		return asleepTimeout
+	}
+	return callTimeout
+}
+
 func (p *peer) call(method byte, payload []byte) ([]byte, error) {
 	p.nextID++
 	id := p.nextID
@@ -161,12 +181,24 @@ func (p *peer) call(method byte, payload []byte) ([]byte, error) {
 			p.serveHeld()
 		}
 	}()
+	// The time waited counts what this process was awake for: frozen (an
+	// app in the background, Android's freezer), the wall clock runs on,
+	// and a timer would fire the moment it thaws, the reply there.
+	tick := time.NewTicker(time.Second)
+	defer tick.Stop()
+	var waited time.Duration
+	last := time.Now()
 	for {
 		var f frame
 		var ok bool
 		select {
 		case f, ok = <-p.in:
-		case <-time.After(callTimeout):
+		case now := <-tick.C:
+			waited += min(now.Sub(last), 2*time.Second)
+			last = now
+			if waited < p.timeout() {
+				continue
+			}
 			// The other side is gone without closing (a player killed
 			// behind adb reverse): don't wait forever on a main thread.
 			p.rw.Close()
@@ -187,6 +219,9 @@ func (p *peer) call(method byte, payload []byte) ([]byte, error) {
 
 // handle serves a request, or holds it.
 func (p *peer) handle(f frame) {
+	if p.peek != nil {
+		p.peek(f.method, f.payload)
+	}
 	if len(p.calls) > 0 && p.defer_ != nil && p.defer_(f.method) {
 		p.held = append(p.held, f)
 		return
