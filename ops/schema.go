@@ -271,7 +271,7 @@ var Schema = SchemaDef{
 		{Name: "Announce", Doc: "args: the text; sent to the root: a screen reader, if one is on, reads it out"},
 		{Name: "Share", Doc: "args: the text (a URL is shared as one); sent to the root: the system's share sheet"},
 		{Name: "ScrollTo", Doc: "args: u32 item index, u8 animated; sent to a List: it scrolls the item into view"},
-		{Name: "ScrollToOffset", Doc: "args: f32 x, f32 y (points from the content's top left; clamped, so a large one is the end), u8 animated; sent to a Scroll"},
+		{Name: "ScrollToOffset", Doc: "args: f32 x, f32 y (points from the content's top left; clamped, so a large one is the end), u8 animated; sent to a Scroll or List"},
 		{Name: "Accent", Doc: "args: u64 Color (0: the platform's), u8 flags (1: on Android, the wallpaper's colors where the system has them); sent to the root when it mounts: the app's accent color, which the platform's controls and Accent take (iOS: the tint color; Android: a Material 3 color scheme made from it)"},
 	},
 	Enums: []EnumDef{

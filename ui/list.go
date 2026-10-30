@@ -227,11 +227,12 @@ func onScroll(e *element, f func(x, y float32)) {
 	}
 }
 
-// ScrollTo scrolls a Scroll to the content offset x, y (points from its
-// content's top left, as OnScroll reports; past the end is the end).
+// ScrollTo scrolls a Scroll or List to the content offset x, y (points
+// from its content's top left, as OnScroll reports; past the end is the
+// end).
 func ScrollTo(scroll Node, x, y float32, animated bool) {
 	e := scroll.e
-	if e == nil || e.kind != ops.KindScroll {
+	if e == nil || (e.kind != ops.KindScroll && e.kind != ops.KindList) {
 		return
 	}
 	var args [9]byte
@@ -243,8 +244,8 @@ func ScrollTo(scroll Node, x, y float32, animated bool) {
 	e.r.batch.Command(e.id, ops.CmdScrollToOffset, args[:])
 }
 
-// ScrollToEnd scrolls a Scroll to its end: its bottom, or a horizontal
-// one's trailing edge.
+// ScrollToEnd scrolls a Scroll or List to its end: its bottom, or a
+// horizontal one's trailing edge.
 func ScrollToEnd(scroll Node, animated bool) {
 	ScrollTo(scroll, math.MaxFloat32, math.MaxFloat32, animated)
 }

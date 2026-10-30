@@ -670,6 +670,13 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
                 when (val v = n.view) {
                     is NestedScrollView -> if (animated) v.smoothScrollTo(x, y) else v.scrollTo(x, y)
                     is HorizontalScrollView -> if (animated) v.smoothScrollTo(x, y) else v.scrollTo(x, y)
+                    is androidx.recyclerview.widget.RecyclerView -> {
+                        n.list?.applyPending()
+                        // By the difference: a list knows where it is, not where an offset is.
+                        val dx = x - v.computeHorizontalScrollOffset()
+                        val dy = y - v.computeVerticalScrollOffset()
+                        if (animated) v.smoothScrollBy(dx, dy) else v.scrollBy(dx, dy)
+                    }
                 }
             }
             NuiCommand.OPEN_URL -> {
