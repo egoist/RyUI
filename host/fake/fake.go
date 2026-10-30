@@ -296,6 +296,10 @@ func (h *Host) Measure(id ops.NodeID, c layout.Constraints) layout.Size {
 		s = layout.Size{W: 20, H: 20}
 	case ops.KindSymbol:
 		s = layout.Size{W: 22, H: 22}
+	case ops.KindWheel:
+		s = layout.Size{W: 320, H: 216} // UIPickerView's
+	case ops.KindStepper:
+		s = layout.Size{W: 94, H: 32} // UIStepper's
 	case ops.KindSegmented:
 		b := v.Props[ops.PropSegmentedSegments].Bytes
 		n := 0

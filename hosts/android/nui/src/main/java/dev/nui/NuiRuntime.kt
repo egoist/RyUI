@@ -421,6 +421,8 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
             NuiKind.ACTIVITY -> CircularProgressIndicator(ctx).apply { isIndeterminate = true }
             NuiKind.SYMBOL -> NuiSymbol(this)
             NuiKind.SEGMENTED -> NuiSegmented(this, id)
+            NuiKind.WHEEL -> NuiWheel(this, id)
+            NuiKind.STEPPER -> NuiStepper(this, id)
             NuiKind.PROGRESS -> makeProgress()
             NuiKind.DATE_PICKER -> NuiDatePicker(this, id)
             NuiKind.STACK -> NuiStack(ctx, id, this)
@@ -535,6 +537,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
     override fun setBytes(id: Int, prop: Int, v: ByteBuffer) {
         val n = nodes[id] ?: return
         if (n.kind == NuiKind.SHAPE && setShapeProp(n, prop, v)) return
+        if (n.kind == NuiKind.WHEEL && setWheelProp(n, prop, v)) return
         if (prop == NuiProp.MENU) {
             n.actions = decodeActions(v)
             wirePresses(n)

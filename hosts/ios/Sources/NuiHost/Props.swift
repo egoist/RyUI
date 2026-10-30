@@ -398,7 +398,7 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             guard let a = n.view as? UIActivityIndicatorView else { return }
             if v.bool { a.startAnimating() } else { a.stopAnimating() }
         default:
-            if !setShapeProp(n, prop, v), !setMediaProp(n, prop, v) { setNavProp(n, prop, v) }
+            if !setShapeProp(n, prop, v), !setWheelProp(n, prop, v), !setMediaProp(n, prop, v) { setNavProp(n, prop, v) }
         }
     }
 
@@ -443,6 +443,9 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             if aw.isFinite { s.width = min(s.width, CGFloat(max(aw, 0))) }
         case let r as NuiRichTextView:
             s = r.measure(w, aw)
+        case is NuiWheelView:
+            // As wide as it's let be; as tall as UIKit makes a wheel.
+            s = CGSize(width: w.isNaN ? (aw.isFinite ? CGFloat(max(aw, 0)) : 320) : CGFloat(w), height: 216)
         case let p as UIProgressView:
             // As wide as it's let be; as tall as UIKit makes it.
             s = CGSize(width: w.isNaN ? (aw.isFinite ? CGFloat(max(aw, 0)) : 100) : CGFloat(w), height: p.intrinsicContentSize.height)

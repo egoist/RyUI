@@ -26,7 +26,7 @@
 | Segmented control | `Picker(.segmented)` | community | ✓ `Segmented` |
 | Date and time | `DatePicker` | community | ✓ `DatePicker` (date, time, both) |
 | Progress, spinner | `ProgressView` | `ActivityIndicator` | ✓ `Progress`, `Activity` |
-| Wheel and menu pickers, stepper | `Picker`, `Stepper` | community | ◐ a menu from `Button.Menu`; no wheel picker, no stepper |
+| Wheel and menu pickers, stepper | `Picker`, `Stepper` | community | ✓ `Wheel`, `Stepper`, a menu from `Button.Menu` |
 | Color picker | `ColorPicker` | community | ✗ |
 | Icons | SF Symbols | `@expo/vector-icons` | ✓ `Symbol` (SF Symbols; Material Symbols on Android, a curated set) |
 | Images (remote, cached, placeholders) | `AsyncImage` | `expo-image` | ✓ `Image` (memory and disk cache, `Placeholder`) |
@@ -105,5 +105,5 @@
 ## Not yet
 
 In order of what apps miss most: push notifications; camera; maps; shared-element
-transitions; wheel pickers and steppers. Maps and the camera can be an app's own native
+transitions. Maps and the camera can be an app's own native
 view through `ui.Native` until then.

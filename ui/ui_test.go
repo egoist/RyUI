@@ -1011,3 +1011,29 @@ func TestA11yActions(t *testing.T) {
 		t.Fatalf("did %v, n %d", did, n)
 	}
 }
+
+// A Wheel and a Stepper show their signals' values and write the user's.
+func TestWheelStepper(t *testing.T) {
+	pick := signal.New(1)
+	count := signal.New(2.0)
+	h, r := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{},
+			ui.Wheel(ui.WheelProps{Items: []string{"S", "M", "L"}, Selected: pick}),
+			ui.Stepper(ui.StepperProps{Value: count, Min: 0, Max: 10}))
+	})
+	w, s := h.OfKind(ops.KindWheel)[0], h.OfKind(ops.KindStepper)[0]
+	if w.Int(ops.PropWheelSelected) != 1 || s.Float(ops.PropStepperValue) != 2 || s.Float(ops.PropStepperMax) != 10 || s.Float(ops.PropStepperStep) != 1 || w.Frame[3] != 216 {
+		t.Fatalf("wheel %v stepper %v", w.Props, s.Props)
+	}
+	h.Dispatch(ops.Event{ID: w.ID, Kind: ops.EventSelected, Int: 2})
+	h.Dispatch(ops.Event{ID: s.ID, Kind: ops.EventValueChanged, Float: 3})
+	if pick.Peek() != 2 || count.Peek() != 3 {
+		t.Fatalf("pick %d count %v", pick.Peek(), count.Peek())
+	}
+	h.Reset()
+	count.Set(5)
+	r.Flush()
+	if s.Float(ops.PropStepperValue) != 5 || h.Count(ops.OpSetProp) != 1 {
+		t.Fatalf("after the app's write: %v\n%s", s.Float(ops.PropStepperValue), h.Log())
+	}
+}

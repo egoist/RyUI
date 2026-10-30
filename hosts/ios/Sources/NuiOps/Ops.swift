@@ -23,11 +23,13 @@ public enum NuiKind: UInt16 {
     case selectable = 18
     case symbol = 19
     case segmented = 20
-    case progress = 21
-    case shape = 22
-    case video = 23
-    case webView = 24
-    case datePicker = 25
+    case wheel = 21
+    case stepper = 22
+    case progress = 23
+    case shape = 24
+    case video = 25
+    case webView = 26
+    case datePicker = 27
 
     public var name: String {
         switch self {
@@ -51,6 +53,8 @@ public enum NuiKind: UInt16 {
         case .selectable: return "Selectable"
         case .symbol: return "Symbol"
         case .segmented: return "Segmented"
+        case .wheel: return "Wheel"
+        case .stepper: return "Stepper"
         case .progress: return "Progress"
         case .shape: return "Shape"
         case .video: return "Video"
@@ -190,6 +194,18 @@ public enum NuiProp {
     public enum Segmented {
         public static let segments: UInt16 = 64
         public static let selected: UInt16 = 65
+    }
+
+    public enum Wheel {
+        public static let items: UInt16 = 64
+        public static let selected: UInt16 = 65
+    }
+
+    public enum Stepper {
+        public static let value: UInt16 = 64
+        public static let min: UInt16 = 65
+        public static let max: UInt16 = 66
+        public static let step: UInt16 = 67
     }
 
     public enum Progress {

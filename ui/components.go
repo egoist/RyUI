@@ -730,3 +730,93 @@ func Scroll(p ScrollProps, children ...Node) Node {
 	e.appendKid(content)
 	return Node{e}
 }
+
+// WheelProps configures a Wheel.
+type WheelProps struct {
+	Items []string
+	// Selected is the selected item's index: the user's choice writes it.
+	Selected *signal.Signal[int]
+	Disabled signal.Accessor[bool]
+	Style    Styler
+}
+
+// Wheel picks one of many options on a spinning wheel (SwiftUI's
+// Picker(.wheel): UIPickerView; Android's NumberPicker).
+func Wheel(p WheelProps) Node {
+	e := newElement(ops.KindWheel, true)
+	e.measure()
+	e.setStyle(p.Style, false)
+	b := binary.LittleEndian.AppendUint32(nil, uint32(len(p.Items)))
+	for _, s := range p.Items {
+		b = binary.LittleEndian.AppendUint32(b, uint32(len(s)))
+		b = append(b, s...)
+	}
+	e.r.batch.SetBytes(e.id, ops.PropWheelItems, b)
+	bind(p.Disabled, func(v bool) { e.r.batch.SetBool(e.id, ops.PropDisabled, v) })
+	if p.Selected != nil {
+		reported, known := 0, false
+		signal.RenderEffect(func() {
+			v := p.Selected.Get()
+			if known && v == reported {
+				return
+			}
+			reported, known = v, true
+			e.r.batch.SetInt(e.id, ops.PropWheelSelected, int64(v))
+		})
+		e.handlers().selected = func(i int64) {
+			reported, known = int(i), true
+			p.Selected.Set(int(i))
+		}
+		e.listen(ops.EventSelected)
+	}
+	return Node{e}
+}
+
+// StepperProps configures a Stepper.
+type StepperProps struct {
+	// Value is the value: the user's steps write it.
+	Value    *signal.Signal[float64]
+	Min, Max float64 // 0 and 0: 0 to 100
+	Step     float64 // 0: 1
+	Disabled signal.Accessor[bool]
+	Style    Styler
+}
+
+// Stepper steps a value with minus and plus buttons (SwiftUI's Stepper:
+// UIStepper; Android has none, so two Material icon buttons). Show the
+// value beside it: it has no label of its own.
+func Stepper(p StepperProps) Node {
+	e := newElement(ops.KindStepper, true)
+	e.measure()
+	e.setStyle(p.Style, false)
+	lo, hi, step := p.Min, p.Max, p.Step
+	if lo == 0 && hi == 0 {
+		hi = 100
+	}
+	if step <= 0 {
+		step = 1
+	}
+	b := e.r.batch
+	b.SetFloat(e.id, ops.PropStepperMin, lo)
+	b.SetFloat(e.id, ops.PropStepperMax, hi)
+	b.SetFloat(e.id, ops.PropStepperStep, step)
+	bind(p.Disabled, func(v bool) { e.r.batch.SetBool(e.id, ops.PropDisabled, v) })
+	if p.Value != nil {
+		var reported float64
+		known := false
+		signal.RenderEffect(func() {
+			v := p.Value.Get()
+			if known && v == reported {
+				return
+			}
+			reported, known = v, true
+			e.r.batch.SetFloat(e.id, ops.PropStepperValue, v)
+		})
+		e.handlers().value = func(v float64) {
+			reported, known = v, true
+			p.Value.Set(v)
+		}
+		e.listen(ops.EventValueChanged)
+	}
+	return Node{e}
+}

@@ -212,6 +212,9 @@ func controls() ui.Node {
 	period := store.Signal("period", 1) // kept across launches
 	volume := signal.New(0.4)
 	wifi := signal.New(true)
+	sizes := []string{"Extra small", "Small", "Medium", "Large", "Extra large"}
+	size := signal.New(2)
+	cups := signal.New(2.0)
 	return section("Controls",
 		ui.Segmented(ui.SegmentedProps{Segments: []string{"Day", "Week", "Month"}, Selected: period}),
 		ui.Text(signal.Func(func() string {
@@ -231,6 +234,12 @@ func controls() ui.Node {
 			ui.Activity(),
 			ui.StaticText("Loading…", ui.Style{Color: ui.SecondaryLabel}),
 		),
+		ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
+			ui.Text(signal.Func(func() string { return fmt.Sprintf("%.0f cups", cups.Get()) }), ui.Style{Grow: 1}),
+			ui.Stepper(ui.StepperProps{Value: cups, Min: 1, Max: 8}),
+		),
+		ui.Wheel(ui.WheelProps{Items: sizes, Selected: size}),
+		ui.Text(signal.Func(func() string { return "Size: " + sizes[size.Get()] }), ui.Style{Color: ui.SecondaryLabel}),
 	)
 }
 

@@ -199,6 +199,16 @@ var Schema = SchemaDef{
 			{Name: "Segments", Type: TBytes, Doc: "u32 count, then each segment's u32-length title"},
 			{Name: "Selected", Type: TInt, Doc: "the selected segment's index"},
 		}, Doc: "one of a few options, side by side (UISegmentedControl; a Material segmented button group). The user's choice is reported with Selected"},
+		{Name: "Wheel", Props: []PropDef{
+			{Name: "Items", Type: TBytes, Doc: "u32 count, then each item's u32-length title"},
+			{Name: "Selected", Type: TInt, Doc: "the selected item's index"},
+		}, Doc: "one of many options on a spinning wheel (UIPickerView; Android's NumberPicker). The user's choice is reported with Selected"},
+		{Name: "Stepper", Props: []PropDef{
+			{Name: "Value", Type: TFloat},
+			{Name: "Min", Type: TFloat},
+			{Name: "Max", Type: TFloat},
+			{Name: "Step", Type: TFloat},
+		}, Doc: "minus and plus buttons that step a value (UIStepper; on Android, which has none, two Material icon buttons). The user's steps are reported with ValueChanged"},
 		{Name: "Progress", Props: []PropDef{
 			{Name: "Value", Type: TFloat, Doc: "done, from 0 to 1"},
 			{Name: "Indeterminate", Type: TBool, Doc: "under way, how far unknown (Android animates; iOS shows the track)"},

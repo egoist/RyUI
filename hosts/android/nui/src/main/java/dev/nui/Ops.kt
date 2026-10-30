@@ -28,11 +28,13 @@ object NuiKind {
     const val SELECTABLE = 18
     const val SYMBOL = 19
     const val SEGMENTED = 20
-    const val PROGRESS = 21
-    const val SHAPE = 22
-    const val VIDEO = 23
-    const val WEB_VIEW = 24
-    const val DATE_PICKER = 25
+    const val WHEEL = 21
+    const val STEPPER = 22
+    const val PROGRESS = 23
+    const val SHAPE = 24
+    const val VIDEO = 25
+    const val WEB_VIEW = 26
+    const val DATE_PICKER = 27
 
     fun name(kind: Int): String = when (kind) {
         1 -> "View"
@@ -55,11 +57,13 @@ object NuiKind {
         18 -> "Selectable"
         19 -> "Symbol"
         20 -> "Segmented"
-        21 -> "Progress"
-        22 -> "Shape"
-        23 -> "Video"
-        24 -> "WebView"
-        25 -> "DatePicker"
+        21 -> "Wheel"
+        22 -> "Stepper"
+        23 -> "Progress"
+        24 -> "Shape"
+        25 -> "Video"
+        26 -> "WebView"
+        27 -> "DatePicker"
         else -> "Kind($kind)"
     }
 }
@@ -193,6 +197,18 @@ object NuiProp {
     object Segmented {
         const val SEGMENTS = 64
         const val SELECTED = 65
+    }
+
+    object Wheel {
+        const val ITEMS = 64
+        const val SELECTED = 65
+    }
+
+    object Stepper {
+        const val VALUE = 64
+        const val MIN = 65
+        const val MAX = 66
+        const val STEP = 67
     }
 
     object Progress {

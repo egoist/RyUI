@@ -346,6 +346,7 @@ fun NuiRuntime.propBool(id: Int, prop: Int, v: Boolean) {
 
 fun NuiRuntime.propInt(id: Int, prop: Int, v: Long) {
     val n = node(id) ?: return
+    if ((n.kind == NuiKind.WHEEL || n.kind == NuiKind.STEPPER) && setWheelProp(n, prop, v)) return
     n.props[prop] = v
     if (setNavProp(n, prop, v)) return
     if (n.kind == NuiKind.SEGMENTED && prop == NuiProp.Segmented.SELECTED) (n.view as NuiSegmented).select(v.toInt())
@@ -369,6 +370,7 @@ fun NuiRuntime.propInt(id: Int, prop: Int, v: Long) {
 
 fun NuiRuntime.propFloat(id: Int, prop: Int, v: Double) {
     val n = node(id) ?: return
+    if ((n.kind == NuiKind.WHEEL || n.kind == NuiKind.STEPPER) && setWheelProp(n, prop, v)) return
     n.props[prop] = v
     if (n.kind == NuiKind.SHAPE && setShapeProp(n, prop, v)) return
     when (prop) {
