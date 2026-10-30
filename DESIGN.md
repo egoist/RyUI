@@ -854,6 +854,11 @@ Each one ends with its examples running and its tests in CI.
 
   docs/parity.md has what nui has against SwiftUI and Expo.
 
+  Known: under `nui dev` on Android, a photo from `camera.Take` doesn't
+  reach the Go code (it's taken and saved; the player's call is lost
+  when the camera app returns); in a build with the Go code embedded it
+  does.
+
   Next:
   - More accessibility: adjustable custom controls, and checking every component with VoiceOver and
     TalkBack on a device.

@@ -104,6 +104,7 @@
 
 ## Not yet
 
-In order of what apps miss most: push notifications; camera; maps; shared-element
-transitions. Maps and the camera can be an app's own native
-view through `ui.Native` until then.
+In order of what apps miss most: push notifications; maps; an in-app
+camera view (a live preview: scanning, video); shared-element
+transitions. Maps and a camera view can be an app's own native view
+through `ui.Native` until then.
