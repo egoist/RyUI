@@ -83,6 +83,12 @@ func Image(p ImageProps) Node {
 	return Node{e}
 }
 
+// AssetURL is where the host gets source from: under nui dev, which runs
+// the app's Go code on the computer, an asset's URL there; otherwise
+// source as it is (an asset's path, a URL, a file). For a package of an
+// app's own that hands the host a source, as Image does.
+func AssetURL(source string) string { return assetURL(source) }
+
 // assetURL is where a player gets an asset from (boot.AssetBase), or
 // source as it is.
 func assetURL(source string) string {

@@ -78,7 +78,7 @@
 | Push notifications | APNs | `expo-notifications` | ✗ |
 | Clipboard, share sheet, browser | `UIPasteboard`, `ShareLink`, `SFSafariViewController` | `expo-clipboard`, `expo-sharing`, `expo-web-browser` | ✓ `Copy`, `device.Clipboard`, `Share`, `device.Browse` |
 | Keep awake, device info | `isIdleTimerDisabled`, `UIDevice` | `expo-keep-awake`, `expo-device` | ✓ `device.KeepAwake`, `device.GetInfo` |
-| Audio | AVAudioPlayer | `expo-audio` | ✗ (a `Video` plays audio, without a view) |
+| Audio | AVAudioPlayer | `expo-audio` | ✓ `nui/audio` (load, play, pause, seek, volume, loop); no recording |
 | Custom fonts | `.font(.custom)` | `expo-font` | ✓ `Font.Family` |
 | Lifecycle | `scenePhase` | AppState | ✓ `app.OnLifecycle` |
 
@@ -104,6 +104,6 @@
 
 ## Not yet
 
-In order of what apps miss most: push notifications; camera; maps; audio; shared-element
+In order of what apps miss most: push notifications; camera; maps; shared-element
 transitions; wheel pickers and steppers. Maps and the camera can be an app's own native
 view through `ui.Native` until then.

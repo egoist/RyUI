@@ -144,6 +144,9 @@ struct NuiModuleError: LocalizedError {
         #if NUI_NOTIFY
         modules["notify"] = NuiNotify.shared.methods()
         #endif
+        #if NUI_AUDIO
+        modules["audio"] = NuiAudio.shared.methods()
+        #endif
         modules["device"] = [
             // result: JSON: model, system, systemVersion, appVersion, build.
             "info": { args, reply in

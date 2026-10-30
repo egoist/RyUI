@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/egoist/nui/app"
+	"github.com/egoist/nui/audio"
 	"github.com/egoist/nui/device"
 	"github.com/egoist/nui/location"
 	"github.com/egoist/nui/notify"
@@ -516,6 +517,8 @@ func platform() ui.Node {
 					})
 				}()
 			}}),
+			ui.Button(ui.ButtonProps{Title: ui.Val("Play a chime"), Icon: "speaker.wave.2", Variant: ui.ButtonGray,
+				OnPress: func() { audio.Play("sounds/chime.wav") }}),
 			ui.Button(ui.ButtonProps{Title: ui.Val("Remind me in 5 s"), Icon: ui.IconBell, Variant: ui.ButtonGray, OnPress: func() {
 				go func() {
 					ok, err := notify.Request()
