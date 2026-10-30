@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"text/template"
 
@@ -42,11 +44,15 @@ func cmdNew(args []string) error {
 	}
 	name := filepath.Base(abs)
 	data := struct{ Name, Module, ID, Version, Replace string }{
-		Name: name, Module: strings.ToLower(name), Version: "v0.0.0",
+		Name: name, Module: strings.ToLower(name),
 		ID: "com.example." + strings.Trim(strings.ToLower(idPart.ReplaceAllString(name, "")), "-"),
 	}
+	// The nui the project uses: this checkout, or the version this CLI is
+	// (go install github.com/egoist/nui/cmd/nui@v0.1.0), else the latest.
 	if c := nuiCheckout(); c != "" {
-		data.Replace = c
+		data.Replace, data.Version = c, "v0.0.0"
+	} else if bi, ok := debug.ReadBuildInfo(); ok && strings.HasPrefix(bi.Main.Version, "v") {
+		data.Version = bi.Main.Version
 	}
 	err = fs.WalkDir(tpl.Files, "files", func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
@@ -72,8 +78,17 @@ func cmdNew(args []string) error {
 	if err != nil {
 		return err
 	}
-	if data.Replace == "" {
-		fmt.Println("nui: note: nui isn't published yet; add a replace directive to go.mod pointing at a nui checkout")
+	// go.sum (and, with no version, the latest nui).
+	steps := [][]string{{"mod", "tidy"}}
+	if data.Version == "" {
+		steps = [][]string{{"get", "github.com/egoist/nui@latest"}, {"mod", "tidy"}}
+	}
+	for _, s := range steps {
+		c := exec.Command("go", s...)
+		c.Dir, c.Stdout, c.Stderr = abs, os.Stdout, os.Stderr
+		if err := c.Run(); err != nil {
+			return fmt.Errorf("go %s: %v", strings.Join(s, " "), err)
+		}
 	}
 	fmt.Printf("nui: made %s\n\n  cd %s\n  nui dev -ios\n", dir, dir)
 	return nil
