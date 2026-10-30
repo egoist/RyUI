@@ -642,7 +642,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
         val n = nodes[id] ?: return
         n.listens = n.listens or (1 shl event)
         if (event == NuiEventKind.PRESS || event == NuiEventKind.LONG_PRESS) wirePresses(n)
-        if (n.kind == NuiKind.VIEW && (event == NuiEventKind.PAN || event == NuiEventKind.PINCH || event == NuiEventKind.SWIPE)) listenGesture(n, event)
+        if (n.kind == NuiKind.VIEW && (event == NuiEventKind.PAN || event == NuiEventKind.PINCH || event == NuiEventKind.SWIPE || event == NuiEventKind.ROTATE)) listenGesture(n, event)
     }
 
     override fun unlisten(id: Int, event: Int) {

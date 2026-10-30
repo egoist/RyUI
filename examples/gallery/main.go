@@ -384,6 +384,7 @@ func motion(toast *signal.Signal[bool]) ui.Node {
 		),
 		pulse(),
 		spinner(),
+		turner(),
 		ui.Button(ui.ButtonProps{Title: ui.Val("Show a toast"), Variant: ui.ButtonGray, OnPress: func() {
 			ui.Animate(func() { toast.Set(true) })
 			ui.Announce("Saved") // a screen reader wouldn't notice the toast
@@ -415,6 +416,35 @@ func spinner() ui.Node {
 			return ui.Style{Width: ui.Pt(64), Justify: ui.JustifyCenter, Align: ui.AlignCenter, Transform: ui.Transform{Rotate: angle.Get()}}
 		})}, ui.Symbol(ui.IconSettings, ui.Style{Font: ui.LargeTitle, Color: ui.Accent})),
 		ui.Slider(ui.SliderProps{Value: speed, Min: 0, Max: 2, Style: ui.Style{Grow: 1}}))
+}
+
+// turner is a square two fingers turn (OnRotate) and pinch (OnPinch);
+// letting go keeps where it is.
+func turner() ui.Node {
+	angle, base := signal.New(float32(0)), float32(0)
+	scale, baseScale := signal.New(float32(1)), float32(1)
+	return ui.Column(ui.Style{Gap: 12, Align: ui.AlignCenter, Padding: ui.Symmetric(24, 0)},
+		ui.View(ui.ViewProps{
+			Label: "A square to turn",
+			OnRotate: func(g ui.Gesture) {
+				angle.Set(base + g.Rotation*180/math.Pi)
+				if g.State == ui.GestureEnded || g.State == ui.GestureCancelled {
+					base = angle.Peek()
+				}
+			},
+			OnPinch: func(g ui.Gesture) {
+				scale.Set(min(max(baseScale*g.Scale, 0.5), 2))
+				if g.State == ui.GestureEnded || g.State == ui.GestureCancelled {
+					baseScale = scale.Peek()
+				}
+			},
+			Style: ui.StyleFunc(func() ui.Style {
+				return ui.Style{Width: ui.Pt(160), Height: ui.Pt(160), CornerRadius: 24, Background: ui.Purple,
+					Transform: ui.Transform{Rotate: angle.Get(), Scale: scale.Get()}}
+			}),
+		}),
+		ui.Text(signal.Func(func() string { return fmt.Sprintf("Turned %.0f°, at %.1f×", angle.Get(), scale.Get()) }),
+			ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel}))
 }
 
 func pulse() ui.Node {

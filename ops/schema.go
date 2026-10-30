@@ -251,6 +251,7 @@ var Schema = SchemaDef{
 		{Name: "Refresh", Payload: PNone, Doc: "the user pulled to refresh"},
 		{Name: "Pan", Payload: PGesture},
 		{Name: "Pinch", Payload: PGesture},
+		{Name: "Rotate", Payload: PGesture, Doc: "two fingers turning: Rotation is the angle since they began"},
 		{Name: "Swipe", Payload: PInt, Doc: "a SwipeDirection bit"},
 		{Name: "Loaded", Payload: PPoint, Doc: "an image loaded: its natural size"},
 		{Name: "Failed", Payload: PString},

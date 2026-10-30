@@ -381,6 +381,10 @@ final class NuiGestureDelegate: NSObject, UIGestureRecognizerDelegate {
             let g = UIPinchGestureRecognizer(target: self, action: #selector(pinched(_:)))
             g.delegate = gestureDelegate
             v.addGestureRecognizer(g)
+        case .rotate:
+            let g = UIRotationGestureRecognizer(target: self, action: #selector(rotated(_:)))
+            g.delegate = gestureDelegate
+            v.addGestureRecognizer(g)
         case .swipe:
             for d: UISwipeGestureRecognizer.Direction in [.right, .left, .up, .down] {
                 let g = UISwipeGestureRecognizer(target: self, action: #selector(swiped(_:)))
@@ -423,6 +427,17 @@ final class NuiGestureDelegate: NSObject, UIGestureRecognizerDelegate {
         e.scale = Float(g.scale)
         e.velocityX = Float(g.velocity)
         emit(id, .pinch) { NuiEvents.pinch(id, e) }
+    }
+
+    @objc func rotated(_ g: UIRotationGestureRecognizer) {
+        guard let v = g.view, let id = nodeID(of: v), let s = gestureState(g) else { return }
+        var e = NuiGesture()
+        e.state = s
+        let p = g.location(in: v)
+        e.x = Float(p.x); e.y = Float(p.y)
+        e.rotation = Float(g.rotation)
+        e.velocityX = Float(g.velocity)
+        emit(id, .rotate) { NuiEvents.rotate(id, e) }
     }
 
     @objc func swiped(_ g: UISwipeGestureRecognizer) {

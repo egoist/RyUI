@@ -755,7 +755,7 @@ Desktop adds `host/darwin`, `host/windows`, `host/linux` and
 - Hosts: GUI tests (`e2e/`, build tag `e2e`, in CI on a simulator and
   an emulator) build `examples/` with `nui dev -once` and drive them
   through the native views. Debug builds take automation commands (tap,
-  type, submit, back, tab, dump: what the screen shows), on iOS from a file in the
+  type, submit, back, tab, rotate, dump: what the screen shows), on iOS from a file in the
   app's container on the `dev.nui.automation` Darwin notification
   (`hosts/ios/Sources/NuiHost/Automation.swift`), on Android from a
   `dev.nui.automation` broadcast (`Automation.kt`; the dump read with

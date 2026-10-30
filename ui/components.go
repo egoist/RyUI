@@ -33,6 +33,9 @@ type ViewProps struct {
 	OnPan   func(Gesture)
 	OnPinch func(Gesture)
 	OnSwipe func(SwipeDirection)
+	// OnRotate is two fingers turning: Gesture.Rotation is the angle, in
+	// radians clockwise, since they began.
+	OnRotate func(Gesture)
 	// Accessibility. A view with any of these is an accessibility
 	// element; plain containers never appear in the accessibility tree.
 	Label string
@@ -126,7 +129,7 @@ func addKids(e *element, kids []Node) {
 func View(p ViewProps, children ...Node) Node {
 	real := p.OnPress != nil || p.OnLongPress != nil || p.Label != "" || p.Hint != "" || p.Role != RoleNone || p.Decorative || p.OnLayout != nil ||
 		len(p.Actions) > 0 || p.OnAdjust != nil ||
-		p.OnPan != nil || p.OnPinch != nil || p.OnSwipe != nil
+		p.OnPan != nil || p.OnPinch != nil || p.OnSwipe != nil || p.OnRotate != nil
 	if s, ok := p.Style.(Style); ok && s.visual() {
 		real = true
 	}

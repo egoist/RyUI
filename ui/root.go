@@ -436,6 +436,10 @@ func dispatch(ev ops.Event) {
 		if h.pinch != nil {
 			h.pinch(ev.G)
 		}
+	case ops.EventRotate:
+		if h.rotate != nil {
+			h.rotate(ev.G)
+		}
 	case ops.EventSwipe:
 		if h.swipe != nil {
 			h.swipe(SwipeDirection(ev.Int))

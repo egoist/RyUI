@@ -330,38 +330,40 @@ const (
 	EventRefresh EventKind = 16
 	EventPan     EventKind = 17
 	EventPinch   EventKind = 18
+	// EventRotate: two fingers turning: Rotation is the angle since they began.
+	EventRotate EventKind = 19
 	// EventSwipe: a SwipeDirection bit.
-	EventSwipe EventKind = 19
+	EventSwipe EventKind = 20
 	// EventLoaded: an image loaded: its natural size.
-	EventLoaded EventKind = 20
-	EventFailed EventKind = 21
+	EventLoaded EventKind = 21
+	EventFailed EventKind = 22
 	// EventNative: a native view's event: string name, u32 count, then named values as in Native's Prop.
-	EventNative EventKind = 22
+	EventNative EventKind = 23
 	// EventLink: a rich text's link was tapped (its URL).
-	EventLink EventKind = 23
+	EventLink EventKind = 24
 	// EventA11yAction: a screen reader took one of the view's A11yActions (its index).
-	EventA11yAction EventKind = 24
+	EventA11yAction EventKind = 25
 	// EventAdjust: a screen reader adjusted the view: 1 up, -1 down.
-	EventAdjust EventKind = 25
+	EventAdjust EventKind = 26
 	// EventEnded: a Video played to its end.
-	EventEnded EventKind = 26
+	EventEnded EventKind = 27
 	// EventNavigated: a WebView loaded a page (its URL).
-	EventNavigated EventKind = 27
+	EventNavigated EventKind = 28
 	// EventMessage: a WebView's page posted a message: window.nui.postMessage(text).
-	EventMessage EventKind = 28
+	EventMessage EventKind = 29
 	// EventIncomingURL: the app was opened with a URL (its scheme, or a universal or app link), at launch or since; to the root.
-	EventIncomingURL EventKind = 29
+	EventIncomingURL EventKind = 30
 	// EventFontLoaded: a font a FontFamily named by URL (under nui dev) loaded, to the root: text in it is measured again.
-	EventFontLoaded EventKind = 30
+	EventFontLoaded EventKind = 31
 	// EventFrame: a frame the display draws (vsync), while Frames is on: its time in seconds (monotonic); to the root.
-	EventFrame EventKind = 31
+	EventFrame EventKind = 32
 	// EventResult: a Call's answer, to the root: u32 call id, u8 ok, then the result's bytes (an error's message when not ok).
-	EventResult EventKind = 32
+	EventResult EventKind = 33
 )
 
-var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh", "Pan", "Pinch", "Swipe", "Loaded", "Failed", "Native", "Link", "A11yAction", "Adjust", "Ended", "Navigated", "Message", "IncomingURL", "FontLoaded", "Frame", "Result"}
+var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh", "Pan", "Pinch", "Rotate", "Swipe", "Loaded", "Failed", "Native", "Link", "A11yAction", "Adjust", "Ended", "Navigated", "Message", "IncomingURL", "FontLoaded", "Frame", "Result"}
 
-var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone, PGesture, PGesture, PInt, PPoint, PString, PBytes, PString, PInt, PInt, PNone, PString, PString, PString, PString, PFloat, PBytes}
+var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone, PGesture, PGesture, PGesture, PInt, PPoint, PString, PBytes, PString, PInt, PInt, PNone, PString, PString, PString, PString, PFloat, PBytes}
 
 func (e EventKind) String() string {
 	if int(e) < len(eventNames) && e > 0 {

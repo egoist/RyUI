@@ -57,7 +57,7 @@
 | Enter and exit transitions | `.transition` | entering/exiting | ✓ `Style.Transition` (`Fade`, `Pop`, `SlideUp`, your own) |
 | Frame-driven animation | `TimelineView(.animation)` | `useFrameCallback` | ✓ `OnFrame` |
 | Shadows, gradients, blur | `.shadow`, `LinearGradient`, materials | style, expo-linear-gradient, expo-blur | ✓ `Shadow`, `LinearGradient`, `Material` |
-| Gestures | tap, long press, drag, magnify, rotate | Gesture Handler | ◐ tap, long press, pan, pinch, swipe; no rotation |
+| Gestures | tap, long press, drag, magnify, rotate | Gesture Handler | ✓ tap, long press, pan, pinch, rotate, swipe |
 | Shared-element transitions | `matchedGeometryEffect` | shared transitions | ✗ |
 | Haptics | `sensoryFeedback` | `expo-haptics` | ✓ `Haptic` |
 | Reduce Motion | `accessibilityReduceMotion` | `useReducedMotion` | ✓ `Environment.ReduceMotion` (iOS transitions dissolve) |
@@ -105,5 +105,5 @@
 ## Not yet
 
 In order of what apps miss most: push notifications; camera; maps; audio; shared-element
-transitions; wheel pickers and steppers; rotation gestures. Maps and the camera can be an app's own native
+transitions; wheel pickers and steppers. Maps and the camera can be an app's own native
 view through `ui.Native` until then.

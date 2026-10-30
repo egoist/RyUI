@@ -492,7 +492,7 @@ final class NuiTextField: UITextField {
         }
         guard n.kind == .view, let e = NuiEventKind(rawValue: event) else { return }
         switch e {
-        case .pan, .pinch, .swipe:
+        case .pan, .pinch, .swipe, .rotate:
             listenGesture(n, e)
         case .press:
             let tap = UITapGestureRecognizer(target: self, action: #selector(tapped(_:)))

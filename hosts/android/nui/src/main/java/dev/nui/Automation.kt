@@ -21,7 +21,9 @@ import java.io.File
  * content description is <text> (or the pressable view it's in); `type
  * <text>` replaces the focused text field's text (or the first one's);
  * `submit` presses its return key; `back` is the system's back; `tab
- * <title>` selects the tab with that title; `dump`
+ * <title>` selects the tab with that title; `rotate <degrees> <text>`
+ * turns two fingers on the view with that text or content description
+ * (a two-pointer touch, as a person's); `dump`
  * writes what the screen shows (each text, or content description, a
  * line each, in creation order) to files/nui-dump.txt:
  *
@@ -53,6 +55,10 @@ object NuiAutomation {
             "type" -> field(rt)?.apply { requestFocus(); setText(arg); setSelection(arg.length) }
             "submit" -> field(rt)?.onEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_DONE)
             "dump" -> dump(rt)
+            "rotate" -> {
+                val deg = arg.substringBefore(' ').toFloatOrNull() ?: return
+                shown(rt).firstOrNull { textOf(it) == arg.substringAfter(' ') }?.let { rotate(it, deg) }
+            }
             "back" -> rt.activity?.onBackPressedDispatcher?.onBackPressed()
             "tab" -> rt.activity?.window?.decorView?.let { tab(it, arg) }
         }
@@ -69,6 +75,31 @@ object NuiAutomation {
     private fun field(rt: NuiRuntime): android.widget.EditText? {
         val fields = shown(rt).filterIsInstance<android.widget.EditText>()
         return fields.firstOrNull { it.isFocused } ?: fields.firstOrNull()
+    }
+
+    /** Two fingers on v, a quarter of its width from its center, turning by degrees in 10 steps. */
+    private fun rotate(v: View, degrees: Float) {
+        val cx = v.width / 2f
+        val cy = v.height / 2f
+        val r = v.width / 4f
+        val t0 = android.os.SystemClock.uptimeMillis()
+        val props = Array(2) { android.view.MotionEvent.PointerProperties().apply { id = it; toolType = android.view.MotionEvent.TOOL_TYPE_FINGER } }
+        fun coords(a: Double) = Array(2) { i ->
+            val b = a + i * Math.PI
+            android.view.MotionEvent.PointerCoords().apply { x = cx + r * Math.cos(b).toFloat(); y = cy + r * Math.sin(b).toFloat(); pressure = 1f; size = 1f }
+        }
+        fun send(action: Int, n: Int, a: Double, at: Long) {
+            val e = android.view.MotionEvent.obtain(t0, t0 + at, action, n, props, coords(a), 0, 0, 1f, 1f, 0, 0, 0, 0)
+            v.dispatchTouchEvent(e)
+            e.recycle()
+        }
+        val second = android.view.MotionEvent.ACTION_POINTER_DOWN or (1 shl android.view.MotionEvent.ACTION_POINTER_INDEX_SHIFT)
+        val secondUp = android.view.MotionEvent.ACTION_POINTER_UP or (1 shl android.view.MotionEvent.ACTION_POINTER_INDEX_SHIFT)
+        send(android.view.MotionEvent.ACTION_DOWN, 1, 0.0, 0)
+        send(second, 2, 0.0, 10)
+        for (s in 1..10) send(android.view.MotionEvent.ACTION_MOVE, 2, Math.toRadians(degrees * s / 10.0), 10L + s * 16)
+        send(secondUp, 2, Math.toRadians(degrees.toDouble()), 200)
+        send(android.view.MotionEvent.ACTION_UP, 1, Math.toRadians(degrees.toDouble()), 210)
     }
 
     private fun tap(rt: NuiRuntime, text: String) {

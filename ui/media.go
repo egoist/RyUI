@@ -172,6 +172,10 @@ func (e *element) listenGestures(p *ViewProps) {
 		h.swipe = p.OnSwipe
 		e.listen(ops.EventSwipe)
 	}
+	if p.OnRotate != nil {
+		h.rotate = p.OnRotate
+		e.listen(ops.EventRotate)
+	}
 }
 
 // fonts maps a font family to what a player gets it as: its file's URL

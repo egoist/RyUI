@@ -252,20 +252,21 @@ object NuiEventKind {
     const val REFRESH = 16
     const val PAN = 17
     const val PINCH = 18
-    const val SWIPE = 19
-    const val LOADED = 20
-    const val FAILED = 21
-    const val NATIVE = 22
-    const val LINK = 23
-    const val A11Y_ACTION = 24
-    const val ADJUST = 25
-    const val ENDED = 26
-    const val NAVIGATED = 27
-    const val MESSAGE = 28
-    const val INCOMING_URL = 29
-    const val FONT_LOADED = 30
-    const val FRAME = 31
-    const val RESULT = 32
+    const val ROTATE = 19
+    const val SWIPE = 20
+    const val LOADED = 21
+    const val FAILED = 22
+    const val NATIVE = 23
+    const val LINK = 24
+    const val A11Y_ACTION = 25
+    const val ADJUST = 26
+    const val ENDED = 27
+    const val NAVIGATED = 28
+    const val MESSAGE = 29
+    const val INCOMING_URL = 30
+    const val FONT_LOADED = 31
+    const val FRAME = 32
+    const val RESULT = 33
 }
 
 object NuiCommand {
@@ -603,7 +604,7 @@ class NuiWriter {
     }
     fun gesture(g: NuiGesture) {
         u8(g.state)
-        for (f in floatArrayOf(g.x, g.y, g.translationX, g.translationY, g.velocityX, g.velocityY, g.scale)) f32(f)
+        for (f in floatArrayOf(g.x, g.y, g.translationX, g.translationY, g.velocityX, g.velocityY, g.scale, g.rotation)) f32(f)
     }
     fun raw(v: ByteArray) { room(v.size); buf.put(v) }
     fun bytes(): ByteArray = buf.array().copyOf(buf.position())
@@ -616,6 +617,7 @@ data class NuiGesture(
     val translationX: Float = 0f, val translationY: Float = 0f,
     val velocityX: Float = 0f, val velocityY: Float = 0f,
     val scale: Float = 1f,
+    val rotation: Float = 0f,
 )
 
 /** Encoders for the events hosts send, one per event kind. */
@@ -638,18 +640,19 @@ object NuiEvents {
     fun refresh(id: Int): ByteArray = NuiWriter().apply { header(id, 16) }.bytes()
     fun pan(id: Int, g: NuiGesture): ByteArray = NuiWriter().apply { header(id, 17); gesture(g) }.bytes()
     fun pinch(id: Int, g: NuiGesture): ByteArray = NuiWriter().apply { header(id, 18); gesture(g) }.bytes()
-    fun swipe(id: Int, v: Long): ByteArray = NuiWriter().apply { header(id, 19); u64(v) }.bytes()
-    fun loaded(id: Int, x: Double, y: Double): ByteArray = NuiWriter().apply { header(id, 20); f64(x); f64(y) }.bytes()
-    fun failed(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 21); string(v) }.bytes()
-    fun native(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 22); u32(v.size); raw(v) }.bytes()
-    fun link(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 23); string(v) }.bytes()
-    fun a11yAction(id: Int, v: Long): ByteArray = NuiWriter().apply { header(id, 24); u64(v) }.bytes()
-    fun adjust(id: Int, v: Long): ByteArray = NuiWriter().apply { header(id, 25); u64(v) }.bytes()
-    fun ended(id: Int): ByteArray = NuiWriter().apply { header(id, 26) }.bytes()
-    fun navigated(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 27); string(v) }.bytes()
-    fun message(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 28); string(v) }.bytes()
-    fun incomingURL(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 29); string(v) }.bytes()
-    fun fontLoaded(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 30); string(v) }.bytes()
-    fun frame(id: Int, v: Double): ByteArray = NuiWriter().apply { header(id, 31); f64(v) }.bytes()
-    fun result(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 32); u32(v.size); raw(v) }.bytes()
+    fun rotate(id: Int, g: NuiGesture): ByteArray = NuiWriter().apply { header(id, 19); gesture(g) }.bytes()
+    fun swipe(id: Int, v: Long): ByteArray = NuiWriter().apply { header(id, 20); u64(v) }.bytes()
+    fun loaded(id: Int, x: Double, y: Double): ByteArray = NuiWriter().apply { header(id, 21); f64(x); f64(y) }.bytes()
+    fun failed(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 22); string(v) }.bytes()
+    fun native(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 23); u32(v.size); raw(v) }.bytes()
+    fun link(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 24); string(v) }.bytes()
+    fun a11yAction(id: Int, v: Long): ByteArray = NuiWriter().apply { header(id, 25); u64(v) }.bytes()
+    fun adjust(id: Int, v: Long): ByteArray = NuiWriter().apply { header(id, 26); u64(v) }.bytes()
+    fun ended(id: Int): ByteArray = NuiWriter().apply { header(id, 27) }.bytes()
+    fun navigated(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 28); string(v) }.bytes()
+    fun message(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 29); string(v) }.bytes()
+    fun incomingURL(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 30); string(v) }.bytes()
+    fun fontLoaded(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 31); string(v) }.bytes()
+    fun frame(id: Int, v: Double): ByteArray = NuiWriter().apply { header(id, 32); f64(v) }.bytes()
+    fun result(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 33); u32(v.size); raw(v) }.bytes()
 }

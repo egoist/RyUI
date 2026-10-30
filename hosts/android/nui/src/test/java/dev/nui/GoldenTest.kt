@@ -65,7 +65,7 @@ class GoldenTest {
             NuiEvents.scrolled(10, 1.5, -2.0),
             NuiEvents.lifecycle(1, NuiLifecycle.BACKGROUND.toLong()),
             NuiEvents.environment(1, env),
-            NuiEvents.pan(11, NuiGesture(NuiGestureState.CHANGED, 10f, 20f, 5f, -3f, 100f, -50f, 1f)),
+            NuiEvents.pan(11, NuiGesture(NuiGestureState.CHANGED, 10f, 20f, 5f, -3f, 100f, -50f, 1f, 0.5f)),
             NuiEvents.native(12, byteArrayOf(1, 2, 3)),
         )
         val out = ByteBuffer.allocate(4096).order(ByteOrder.LITTLE_ENDIAN)

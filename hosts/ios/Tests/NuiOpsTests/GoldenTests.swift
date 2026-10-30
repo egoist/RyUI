@@ -59,7 +59,7 @@ final class GoldenTests: XCTestCase {
         env.scale = 3; env.fontScale = 1.25; env.dark = true; env.reduceMotion = true; env.locale = "en_US"; env.timeZone = "Asia/Shanghai"
         var pan = NuiGesture()
         pan.state = NuiGestureState.changed.rawValue
-        pan.x = 10; pan.y = 20; pan.translationX = 5; pan.translationY = -3; pan.velocityX = 100; pan.velocityY = -50; pan.scale = 1
+        pan.x = 10; pan.y = 20; pan.translationX = 5; pan.translationY = -3; pan.velocityX = 100; pan.velocityY = -50; pan.scale = 1; pan.rotation = 0.5
         let events: [[UInt8]] = [
             NuiEvents.press(7),
             NuiEvents.textChanged(7, "hé"),

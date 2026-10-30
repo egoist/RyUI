@@ -420,7 +420,7 @@ public struct NuiWriter {
     }
     public mutating func gesture(_ g: NuiGesture) {
         u8(UInt8(g.state))
-        for f in [g.x, g.y, g.translationX, g.translationY, g.velocityX, g.velocityY, g.scale] { f32(f) }
+        for f in [g.x, g.y, g.translationX, g.translationY, g.velocityX, g.velocityY, g.scale, g.rotation] { f32(f) }
     }
 }
 
@@ -431,6 +431,7 @@ public struct NuiGesture {
     public var translationX: Float = 0, translationY: Float = 0
     public var velocityX: Float = 0, velocityY: Float = 0
     public var scale: Float = 1
+    public var rotation: Float = 0
     public init() {}
 }
 `
@@ -640,7 +641,7 @@ class NuiWriter {
     }
     fun gesture(g: NuiGesture) {
         u8(g.state)
-        for (f in floatArrayOf(g.x, g.y, g.translationX, g.translationY, g.velocityX, g.velocityY, g.scale)) f32(f)
+        for (f in floatArrayOf(g.x, g.y, g.translationX, g.translationY, g.velocityX, g.velocityY, g.scale, g.rotation)) f32(f)
     }
     fun raw(v: ByteArray) { room(v.size); buf.put(v) }
     fun bytes(): ByteArray = buf.array().copyOf(buf.position())
@@ -653,5 +654,6 @@ data class NuiGesture(
     val translationX: Float = 0f, val translationY: Float = 0f,
     val velocityX: Float = 0f, val velocityY: Float = 0f,
     val scale: Float = 1f,
+    val rotation: Float = 0f,
 )
 `

@@ -249,20 +249,21 @@ public enum NuiEventKind: UInt16 {
     case refresh = 16
     case pan = 17
     case pinch = 18
-    case swipe = 19
-    case loaded = 20
-    case failed = 21
-    case native = 22
-    case link = 23
-    case a11yAction = 24
-    case adjust = 25
-    case ended = 26
-    case navigated = 27
-    case message = 28
-    case incomingURL = 29
-    case fontLoaded = 30
-    case frame = 31
-    case result = 32
+    case rotate = 19
+    case swipe = 20
+    case loaded = 21
+    case failed = 22
+    case native = 23
+    case link = 24
+    case a11yAction = 25
+    case adjust = 26
+    case ended = 27
+    case navigated = 28
+    case message = 29
+    case incomingURL = 30
+    case fontLoaded = 31
+    case frame = 32
+    case result = 33
 }
 
 public enum NuiCommand: UInt16 {
@@ -618,7 +619,7 @@ public struct NuiWriter {
     }
     public mutating func gesture(_ g: NuiGesture) {
         u8(UInt8(g.state))
-        for f in [g.x, g.y, g.translationX, g.translationY, g.velocityX, g.velocityY, g.scale] { f32(f) }
+        for f in [g.x, g.y, g.translationX, g.translationY, g.velocityX, g.velocityY, g.scale, g.rotation] { f32(f) }
     }
 }
 
@@ -629,6 +630,7 @@ public struct NuiGesture {
     public var translationX: Float = 0, translationY: Float = 0
     public var velocityX: Float = 0, velocityY: Float = 0
     public var scale: Float = 1
+    public var rotation: Float = 0
     public init() {}
 }
 
@@ -688,46 +690,49 @@ public enum NuiEvents {
     public static func pinch(_ id: UInt32, _ g: NuiGesture) -> [UInt8] {
         var w = NuiWriter(); w.header(id, 18); w.gesture(g); return w.bytes
     }
+    public static func rotate(_ id: UInt32, _ g: NuiGesture) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 19); w.gesture(g); return w.bytes
+    }
     public static func swipe(_ id: UInt32, _ v: Int64) -> [UInt8] {
-        var w = NuiWriter(); w.header(id, 19); w.u64(UInt64(bitPattern: v)); return w.bytes
+        var w = NuiWriter(); w.header(id, 20); w.u64(UInt64(bitPattern: v)); return w.bytes
     }
     public static func loaded(_ id: UInt32, x: Double, y: Double) -> [UInt8] {
-        var w = NuiWriter(); w.header(id, 20); w.f64(x); w.f64(y); return w.bytes
+        var w = NuiWriter(); w.header(id, 21); w.f64(x); w.f64(y); return w.bytes
     }
     public static func failed(_ id: UInt32, _ v: String) -> [UInt8] {
-        var w = NuiWriter(); w.header(id, 21); w.string(v); return w.bytes
+        var w = NuiWriter(); w.header(id, 22); w.string(v); return w.bytes
     }
     public static func native(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
-        var w = NuiWriter(); w.header(id, 22); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
+        var w = NuiWriter(); w.header(id, 23); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
     }
     public static func link(_ id: UInt32, _ v: String) -> [UInt8] {
-        var w = NuiWriter(); w.header(id, 23); w.string(v); return w.bytes
+        var w = NuiWriter(); w.header(id, 24); w.string(v); return w.bytes
     }
     public static func a11yAction(_ id: UInt32, _ v: Int64) -> [UInt8] {
-        var w = NuiWriter(); w.header(id, 24); w.u64(UInt64(bitPattern: v)); return w.bytes
-    }
-    public static func adjust(_ id: UInt32, _ v: Int64) -> [UInt8] {
         var w = NuiWriter(); w.header(id, 25); w.u64(UInt64(bitPattern: v)); return w.bytes
     }
+    public static func adjust(_ id: UInt32, _ v: Int64) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 26); w.u64(UInt64(bitPattern: v)); return w.bytes
+    }
     public static func ended(_ id: UInt32) -> [UInt8] {
-        var w = NuiWriter(); w.header(id, 26); return w.bytes
+        var w = NuiWriter(); w.header(id, 27); return w.bytes
     }
     public static func navigated(_ id: UInt32, _ v: String) -> [UInt8] {
-        var w = NuiWriter(); w.header(id, 27); w.string(v); return w.bytes
-    }
-    public static func message(_ id: UInt32, _ v: String) -> [UInt8] {
         var w = NuiWriter(); w.header(id, 28); w.string(v); return w.bytes
     }
-    public static func incomingURL(_ id: UInt32, _ v: String) -> [UInt8] {
+    public static func message(_ id: UInt32, _ v: String) -> [UInt8] {
         var w = NuiWriter(); w.header(id, 29); w.string(v); return w.bytes
     }
-    public static func fontLoaded(_ id: UInt32, _ v: String) -> [UInt8] {
+    public static func incomingURL(_ id: UInt32, _ v: String) -> [UInt8] {
         var w = NuiWriter(); w.header(id, 30); w.string(v); return w.bytes
     }
+    public static func fontLoaded(_ id: UInt32, _ v: String) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 31); w.string(v); return w.bytes
+    }
     public static func frame(_ id: UInt32, _ v: Double) -> [UInt8] {
-        var w = NuiWriter(); w.header(id, 31); w.f64(v); return w.bytes
+        var w = NuiWriter(); w.header(id, 32); w.f64(v); return w.bytes
     }
     public static func result(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
-        var w = NuiWriter(); w.header(id, 32); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
+        var w = NuiWriter(); w.header(id, 33); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
     }
 }

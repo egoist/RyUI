@@ -312,6 +312,11 @@ class NuiGestures(private val rt: NuiRuntime, private val id: Int, context: Cont
     var pan = false
     var pinch = false
     var swipe = false
+    var rotate = false
+    private var rotating = false
+    private var startAngle = 0.0
+    private var lastAngle = 0.0
+    private var turned = 0.0 // radians since the rotation began, unwrapped
     private val slop = ViewConfiguration.get(context).scaledTouchSlop
     private val minFling = ViewConfiguration.get(context).scaledMinimumFlingVelocity * 4
     private var downX = 0f
@@ -361,6 +366,42 @@ class NuiGestures(private val rt: NuiRuntime, private val id: Int, context: Cont
         }
     }
 
+    private fun angle(e: MotionEvent) = Math.atan2((e.getY(1) - e.getY(0)).toDouble(), (e.getX(1) - e.getX(0)).toDouble())
+
+    // A rotation: two fingers whose line turns by more than 5 degrees.
+    private fun trackRotate(v: View, e: MotionEvent) {
+        when (e.actionMasked) {
+            MotionEvent.ACTION_POINTER_DOWN -> if (e.pointerCount == 2) { startAngle = angle(e); lastAngle = startAngle; turned = 0.0; rotating = false }
+            MotionEvent.ACTION_MOVE -> if (e.pointerCount >= 2) {
+                val a = angle(e)
+                var step = a - lastAngle
+                if (step > Math.PI) step -= 2 * Math.PI
+                if (step < -Math.PI) step += 2 * Math.PI
+                lastAngle = a
+                turned += step
+                val fx = (e.getX(0) + e.getX(1)) / 2
+                val fy = (e.getY(0) + e.getY(1)) / 2
+                if (!rotating && abs(turned) > Math.toRadians(5.0)) {
+                    rotating = true
+                    turned = 0.0
+                    claim(v, e)
+                    sendRotate(NuiGestureState.BEGAN, fx, fy)
+                } else if (rotating) {
+                    sendRotate(NuiGestureState.CHANGED, fx, fy)
+                }
+            }
+            MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                if (rotating) sendRotate(if (e.actionMasked == MotionEvent.ACTION_CANCEL) NuiGestureState.CANCELLED else NuiGestureState.ENDED, e.x, e.y)
+                rotating = false
+            }
+        }
+    }
+
+    private fun sendRotate(state: Int, x: Float, y: Float) {
+        val g = NuiGesture(state, x / d, y / d, rotation = turned.toFloat())
+        rt.emit(id, NuiEventKind.ROTATE) { NuiEvents.rotate(id, g) }
+    }
+
     /** The touch is a gesture now, not a press, and the parent mustn't take it. */
     private fun claim(v: View, e: MotionEvent) {
         v.parent?.requestDisallowInterceptTouchEvent(true)
@@ -391,10 +432,11 @@ class NuiGestures(private val rt: NuiRuntime, private val id: Int, context: Cont
 
     override fun onTouch(v: View, e: MotionEvent): Boolean {
         if (pinch) trackPinch(v, e)
+        if (rotate) trackRotate(v, e)
         if (swipe) flinger.onTouchEvent(e)
         if (pan) trackPan(v, e)
         if (e.actionMasked == MotionEvent.ACTION_DOWN) return !v.isClickable // keep getting this touch's events
-        return panning || scaling
+        return panning || scaling || rotating
     }
 
     private fun trackPan(v: View, e: MotionEvent) {
@@ -442,6 +484,7 @@ fun NuiRuntime.listenGesture(n: NuiNode, event: Int) {
     when (event) {
         NuiEventKind.PAN -> g.pan = true
         NuiEventKind.PINCH -> g.pinch = true
+        NuiEventKind.ROTATE -> g.rotate = true
         NuiEventKind.SWIPE -> g.swipe = true
     }
 }
