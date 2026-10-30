@@ -10,6 +10,7 @@ import (
 
 	"github.com/egoist/nui/app"
 	"github.com/egoist/nui/audio"
+	"github.com/egoist/nui/camera"
 	"github.com/egoist/nui/device"
 	"github.com/egoist/nui/location"
 	"github.com/egoist/nui/notify"
@@ -525,6 +526,16 @@ func platform() ui.Node {
 						where.Set(fmt.Sprintf("%.4f, %.4f (within %.0f m)", p.Latitude, p.Longitude, p.Accuracy))
 					})
 				}()
+			}}),
+			ui.Button(ui.ButtonProps{Title: ui.Val("Take a photo"), Icon: ui.IconCamera, Variant: ui.ButtonGray, OnPress: func() {
+				camera.Take(func(path string, err error) {
+					switch {
+					case err != nil:
+						where.Set(err.Error())
+					case path != "":
+						photos.Set([]string{path})
+					}
+				})
 			}}),
 			ui.Button(ui.ButtonProps{Title: ui.Val("Play a chime"), Icon: "speaker.wave.2", Variant: ui.ButtonGray,
 				OnPress: func() { audio.Play("sounds/chime.wav") }}),

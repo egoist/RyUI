@@ -72,7 +72,7 @@
 | Secure storage | Keychain | `expo-secure-store` | ✓ `nui/secure` |
 | Files, network | Foundation | `expo-file-system`, fetch | ✓ Go's `os`, `net/http` |
 | Photos | `PhotosPicker` | `expo-image-picker` | ✓ `device.PickPhotos` |
-| Camera | AVFoundation | `expo-camera` | ✗ |
+| Camera | AVFoundation | `expo-camera` | ◐ `nui/camera`: a photo with the system's camera; no camera view of your own (preview, video, scanning) |
 | Location | Core Location | `expo-location` | ✓ `nui/location` |
 | Local notifications | UserNotifications | `expo-notifications` | ✓ `nui/notify` (local; no push yet) |
 | Push notifications | APNs | `expo-notifications` | ✗ |
