@@ -24,9 +24,10 @@ public enum NuiKind: UInt16 {
     case symbol = 19
     case segmented = 20
     case progress = 21
-    case video = 22
-    case webView = 23
-    case datePicker = 24
+    case shape = 22
+    case video = 23
+    case webView = 24
+    case datePicker = 25
 
     public var name: String {
         switch self {
@@ -51,6 +52,7 @@ public enum NuiKind: UInt16 {
         case .symbol: return "Symbol"
         case .segmented: return "Segmented"
         case .progress: return "Progress"
+        case .shape: return "Shape"
         case .video: return "Video"
         case .webView: return "WebView"
         case .datePicker: return "DatePicker"
@@ -191,6 +193,17 @@ public enum NuiProp {
     public enum Progress {
         public static let value: UInt16 = 64
         public static let indeterminate: UInt16 = 65
+    }
+
+    public enum Shape {
+        public static let path: UInt16 = 64
+        public static let fill: UInt16 = 65
+        public static let stroke: UInt16 = 66
+        public static let lineWidth: UInt16 = 67
+        public static let lineCap: UInt16 = 68
+        public static let lineJoin: UInt16 = 69
+        public static let trimStart: UInt16 = 70
+        public static let trimEnd: UInt16 = 71
     }
 
     public enum Video {
@@ -414,6 +427,31 @@ public enum NuiGestureState: Int32 {
     case changed = 1
     case ended = 2
     case cancelled = 3
+}
+
+public enum NuiPathOp: Int32 {
+    case end = 0
+    case move = 1
+    case line = 2
+    case quad = 3
+    case cubic = 4
+    case close = 5
+    case rect = 6
+    case roundedRect = 7
+    case ellipse = 8
+    case arc = 9
+}
+
+public enum NuiLineCap: Int32 {
+    case butt = 0
+    case round = 1
+    case square = 2
+}
+
+public enum NuiLineJoin: Int32 {
+    case miter = 0
+    case round = 1
+    case bevel = 2
 }
 
 public enum NuiAnimationCurve: Int32 {

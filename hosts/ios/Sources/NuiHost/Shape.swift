@@ -1,0 +1,123 @@
+#if canImport(UIKit)
+import UIKit
+#if canImport(NuiOps)
+import NuiOps
+#endif
+
+/// A Shape: a CAShapeLayer, its path and trim the core's; inside an
+/// Animate, the trim and the path animate (UIView animations don't
+/// reach a shape layer's).
+final class NuiShapeView: UIView {
+    override class var layerClass: AnyClass { CAShapeLayer.self }
+    var shape: CAShapeLayer { layer as! CAShapeLayer }
+    var fill: UIColor? { didSet { colors() } }
+    var stroke: UIColor? { didSet { colors() } }
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        shape.fillColor = nil
+        shape.strokeColor = nil
+        isAccessibilityElement = false
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    private func colors() {
+        traitCollection.performAsCurrent {
+            shape.fillColor = fill?.cgColor
+            shape.strokeColor = stroke?.cgColor
+        }
+    }
+
+    override func traitCollectionDidChange(_ previous: UITraitCollection?) {
+        super.traitCollectionDidChange(previous)
+        colors() // a CGColor is one appearance's
+    }
+
+    /// Sets a shape layer property, animated if an animation is running.
+    func set(_ key: String, _ value: Any?, _ animation: (Double, Int32)?) {
+        if let (duration, curve) = animation, window != nil {
+            let from = shape.presentation()?.value(forKeyPath: key) ?? shape.value(forKeyPath: key)
+            let a: CABasicAnimation
+            if NuiAnimationCurve(rawValue: curve) == .spring {
+                let s = CASpringAnimation(keyPath: key)
+                s.damping = 18
+                s.stiffness = 180
+                s.duration = s.settlingDuration
+                a = s
+            } else {
+                a = CABasicAnimation(keyPath: key)
+                a.duration = duration
+                a.timingFunction = CAMediaTimingFunction(name: {
+                    switch NuiAnimationCurve(rawValue: curve) {
+                    case .linear: return .linear
+                    case .easeIn: return .easeIn
+                    case .easeOut: return .easeOut
+                    default: return .easeInEaseOut
+                    }
+                }())
+            }
+            a.fromValue = from
+            a.toValue = value
+            shape.add(a, forKey: key)
+        }
+        shape.setValue(value, forKeyPath: key)
+    }
+
+    /// The path from its wire format: u8 PathOp, then its f32 arguments.
+    static func path(_ b: UnsafeRawBufferPointer) -> CGPath {
+        let p = CGMutablePath()
+        var r = NuiReader(b)
+        func f() -> CGFloat { CGFloat(r.f32()) }
+        while r.p < r.end {
+            switch NuiPathOp(rawValue: Int32(r.u8())) {
+            case .move: p.move(to: CGPoint(x: f(), y: f()))
+            case .line: p.addLine(to: CGPoint(x: f(), y: f()))
+            case .quad:
+                let c = CGPoint(x: f(), y: f())
+                p.addQuadCurve(to: CGPoint(x: f(), y: f()), control: c)
+            case .cubic:
+                let c1 = CGPoint(x: f(), y: f()), c2 = CGPoint(x: f(), y: f())
+                p.addCurve(to: CGPoint(x: f(), y: f()), control1: c1, control2: c2)
+            case .close: p.closeSubpath()
+            case .rect: p.addRect(CGRect(x: f(), y: f(), width: f(), height: f()))
+            case .roundedRect:
+                let rect = CGRect(x: f(), y: f(), width: f(), height: f())
+                let rad = min(f(), rect.width / 2, rect.height / 2)
+                p.addRoundedRect(in: rect, cornerWidth: rad, cornerHeight: rad)
+            case .ellipse: p.addEllipse(in: CGRect(x: f(), y: f(), width: f(), height: f()))
+            case .arc:
+                let c = CGPoint(x: f(), y: f())
+                let rad = f(), start = f(), end = f(), cw = f() != 0
+                // Screen coordinates: y down, so the screen's clockwise is
+                // Core Graphics' counterclockwise flag set false.
+                p.addArc(center: c, radius: rad, startAngle: start, endAngle: end, clockwise: !cw)
+            default: return p
+            }
+        }
+        return p
+    }
+}
+
+@MainActor extension NuiRuntime {
+    func setShapeProp(_ n: NuiNode, _ prop: UInt16, _ v: NuiValue) -> Bool {
+        guard let s = n.view as? NuiShapeView else { return false }
+        switch prop {
+        case NuiProp.Shape.path:
+            guard case .bytes(let b) = v else { return true }
+            s.set("path", NuiShapeView.path(b), animation)
+        case NuiProp.Shape.fill: s.fill = nuiColor(v.color)
+        case NuiProp.Shape.stroke: s.stroke = nuiColor(v.color)
+        case NuiProp.Shape.lineWidth: s.shape.lineWidth = CGFloat(v.float)
+        case NuiProp.Shape.lineCap:
+            s.shape.lineCap = NuiLineCap(rawValue: v.enumValue) == .round ? .round : NuiLineCap(rawValue: v.enumValue) == .square ? .square : .butt
+        case NuiProp.Shape.lineJoin:
+            s.shape.lineJoin = NuiLineJoin(rawValue: v.enumValue) == .round ? .round : NuiLineJoin(rawValue: v.enumValue) == .bevel ? .bevel : .miter
+        case NuiProp.Shape.trimStart: s.set("strokeStart", CGFloat(v.float), animation)
+        case NuiProp.Shape.trimEnd: s.set("strokeEnd", CGFloat(v.float), animation)
+        default: return false
+        }
+        return true
+    }
+}
+#endif

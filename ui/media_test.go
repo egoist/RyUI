@@ -1,6 +1,8 @@
 package ui_test
 
 import (
+	"encoding/binary"
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
@@ -249,5 +251,48 @@ func TestVideo(t *testing.T) {
 	r.Flush()
 	if ended != 1 || len(h.Commands(ops.CmdPlay)) != 1 || len(h.Commands(ops.CmdSeek)) != 1 {
 		t.Fatalf("ended %d, commands %v", ended, h.Commands(ops.CmdSeek))
+	}
+}
+
+// A Shape's path is made for its size once it's laid out, and again when
+// what it reads or its size changes; its trim animates in Animate.
+func TestShape(t *testing.T) {
+	progress := signal.New(float32(0.25))
+	inset := signal.New(float32(0))
+	h, r := mount(t, func() ui.Node {
+		return ui.Shape(ui.ShapeProps{
+			Path: func(w, h float32) *ui.Path {
+				i := inset.Get()
+				return new(ui.Path).Ellipse(i, i, w-2*i, h-2*i)
+			},
+			Stroke: ui.Accent, LineWidth: 4, LineCap: ui.CapRound, TrimEnd: progress,
+			Style: ui.Style{Width: ui.Pt(100), Height: ui.Pt(100)},
+		})
+	})
+	s := h.OfKind(ops.KindShape)[0]
+	path := func() []float32 {
+		b := s.Props[ops.PropShapePath].Bytes
+		if len(b) != 17 || b[0] != byte(ops.PathOpEllipse) {
+			t.Fatalf("path %v", b)
+		}
+		var out []float32
+		for i := 1; i < 17; i += 4 {
+			out = append(out, math.Float32frombits(binary.LittleEndian.Uint32(b[i:])))
+		}
+		return out
+	}
+	if p := path(); p[2] != 100 || p[3] != 100 || s.Float(ops.PropShapeTrimEnd) != 0.25 || s.Float(ops.PropShapeLineWidth) != 4 {
+		t.Fatalf("path %v trim %v", p, s.Float(ops.PropShapeTrimEnd))
+	}
+	inset.Set(2)
+	r.Flush()
+	if p := path(); p[0] != 2 || p[2] != 96 {
+		t.Fatalf("after the inset: %v", p)
+	}
+	h.Reset()
+	ui.Animate(func() { progress.Set(1) })
+	r.Flush()
+	if s.Float(ops.PropShapeTrimEnd) != 1 || len(h.Commands(ops.CmdAnimateBegin)) != 1 {
+		t.Fatalf("trim %v, %s", s.Float(ops.PropShapeTrimEnd), h.Log())
 	}
 }

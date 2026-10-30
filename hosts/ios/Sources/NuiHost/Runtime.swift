@@ -333,6 +333,8 @@ final class NuiTextField: UITextField {
                 self?.emit(id, .valueChanged) { NuiEvents.valueChanged(id, v) }
             }, for: .valueChanged)
             view = s
+        case .shape:
+            view = NuiShapeView()
         case .scroll:
             let s = NuiScrollView()
             s.keyboardDismissMode = .interactive

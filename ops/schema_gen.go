@@ -42,15 +42,17 @@ const (
 	KindSegmented Kind = 20
 	// KindProgress: a progress bar (UIProgressView, a Material linear progress indicator); Color is its fill.
 	KindProgress Kind = 21
+	// KindShape: a drawn outline (CAShapeLayer; a Path on Android's canvas), filled and/or stroked.
+	KindShape Kind = 22
 	// KindVideo: a video (AVPlayerViewController, Media3's PlayerView). Loaded reports its natural size once known, Ended its end (each time, looping), Failed an error; the Play, Pause and Seek commands drive it.
-	KindVideo Kind = 22
+	KindVideo Kind = 23
 	// KindWebView: a web page (WKWebView, android.webkit.WebView). Navigated reports each page loaded (its URL), Failed a page that couldn't load, Message what the page posts with window.nui.postMessage(text); the Eval command runs script in it.
-	KindWebView Kind = 23
+	KindWebView Kind = 24
 	// KindDatePicker: a date or a time, chosen the platform's way (a compact UIDatePicker; Material's date and time pickers from buttons that show it), in the device's time zone and format. The user's choice is reported with ValueChanged, in Unix milliseconds.
-	KindDatePicker Kind = 24
+	KindDatePicker Kind = 25
 )
 
-var kindNames = [...]string{"", "View", "Text", "Button", "TextField", "Toggle", "Slider", "Scroll", "List", "Activity", "Stack", "Screen", "Tabs", "Sheet", "Alert", "Image", "Native", "RichText", "Selectable", "Symbol", "Segmented", "Progress", "Video", "WebView", "DatePicker"}
+var kindNames = [...]string{"", "View", "Text", "Button", "TextField", "Toggle", "Slider", "Scroll", "List", "Activity", "Stack", "Screen", "Tabs", "Sheet", "Alert", "Image", "Native", "RichText", "Selectable", "Symbol", "Segmented", "Progress", "Shape", "Video", "WebView", "DatePicker"}
 
 func (k Kind) String() string {
 	if int(k) < len(kindNames) && k > 0 {
@@ -247,6 +249,20 @@ const (
 	PropProgressIndeterminate PropID = 65
 )
 
+// Shape props.
+const (
+	// PropShapePath: the outline, in points from the view's top left: per segment a u8 PathOp and its f32 arguments.
+	PropShapePath      PropID = 64
+	PropShapeFill      PropID = 65
+	PropShapeStroke    PropID = 66
+	PropShapeLineWidth PropID = 67
+	PropShapeLineCap   PropID = 68
+	PropShapeLineJoin  PropID = 69
+	// PropShapeTrimStart: the part of the outline drawn: from 0 (its start) to 1 (its end); animatable.
+	PropShapeTrimStart PropID = 70
+	PropShapeTrimEnd   PropID = 71
+)
+
 // Video props.
 const (
 	// PropVideoSource: an http(s) URL (a file, an HLS stream), or a file in the app's assets.
@@ -281,7 +297,7 @@ const (
 
 var commonProps = [...]propInfo{{}, {"Background", TColor}, {"CornerRadius", TFloat}, {"BorderWidth", TFloat}, {"BorderColor", TColor}, {"Opacity", TFloat}, {"Hidden", TBool}, {"Clip", TBool}, {"A11yLabel", TString}, {"A11yHint", TString}, {"A11yRole", TEnum}, {"A11yHidden", TBool}, {"Color", TColor}, {"TextStyle", TEnum}, {"FontSize", TFloat}, {"FontWeight", TEnum}, {"TextAlign", TEnum}, {"LineLimit", TInt}, {"Disabled", TBool}, {"Menu", TBytes}, {"MenuTrigger", TEnum}, {"Transform", TBytes}, {"Shadow", TBytes}, {"Gradient", TBytes}, {"Transition", TBytes}, {"Material", TEnum}, {"FontFamily", TString}, {"SwipeActions", TBytes}}
 
-var kindProps = [...][]propInfo{nil, {}, {{"Text", TString}}, {{"Title", TString}, {"Variant", TEnum}, {"Icon", TString}}, {{"Value", TString}, {"Placeholder", TString}, {"Keyboard", TEnum}, {"ReturnKey", TEnum}, {"Secure", TBool}, {"Autocapitalize", TEnum}, {"Autocorrect", TEnum}, {"ContentType", TString}, {"Multiline", TBool}}, {{"On", TBool}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}}, {{"Horizontal", TBool}, {"Refreshable", TBool}, {"Refreshing", TBool}}, {{"Refreshable", TBool}, {"Refreshing", TBool}, {"Columns", TInt}, {"Gap", TFloat}}, {{"Animating", TBool}}, {}, {{"Title", TString}, {"Actions", TBytes}, {"BackGesture", TBool}, {"Icon", TString}, {"Search", TString}, {"SearchText", TString}}, {{"Selected", TInt}}, {{"Detents", TInt}, {"Grabber", TBool}}, {{"Title", TString}, {"Message", TString}, {"Buttons", TBytes}, {"Style", TEnum}}, {{"Source", TString}, {"Mode", TEnum}, {"Placeholder", TString}}, {{"Type", TString}, {"Prop", TBytes}}, {{"Content", TBytes}, {"Inlines", TBytes}}, {}, {{"Name", TString}}, {{"Segments", TBytes}, {"Selected", TInt}}, {{"Value", TFloat}, {"Indeterminate", TBool}}, {{"Source", TString}, {"Mode", TEnum}, {"HideControls", TBool}, {"AutoPlay", TBool}, {"Loop", TBool}, {"Muted", TBool}}, {{"URL", TString}, {"HTML", TString}}, {{"Value", TInt}, {"Mode", TEnum}, {"Min", TInt}, {"Max", TInt}}}
+var kindProps = [...][]propInfo{nil, {}, {{"Text", TString}}, {{"Title", TString}, {"Variant", TEnum}, {"Icon", TString}}, {{"Value", TString}, {"Placeholder", TString}, {"Keyboard", TEnum}, {"ReturnKey", TEnum}, {"Secure", TBool}, {"Autocapitalize", TEnum}, {"Autocorrect", TEnum}, {"ContentType", TString}, {"Multiline", TBool}}, {{"On", TBool}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}}, {{"Horizontal", TBool}, {"Refreshable", TBool}, {"Refreshing", TBool}}, {{"Refreshable", TBool}, {"Refreshing", TBool}, {"Columns", TInt}, {"Gap", TFloat}}, {{"Animating", TBool}}, {}, {{"Title", TString}, {"Actions", TBytes}, {"BackGesture", TBool}, {"Icon", TString}, {"Search", TString}, {"SearchText", TString}}, {{"Selected", TInt}}, {{"Detents", TInt}, {"Grabber", TBool}}, {{"Title", TString}, {"Message", TString}, {"Buttons", TBytes}, {"Style", TEnum}}, {{"Source", TString}, {"Mode", TEnum}, {"Placeholder", TString}}, {{"Type", TString}, {"Prop", TBytes}}, {{"Content", TBytes}, {"Inlines", TBytes}}, {}, {{"Name", TString}}, {{"Segments", TBytes}, {"Selected", TInt}}, {{"Value", TFloat}, {"Indeterminate", TBool}}, {{"Path", TBytes}, {"Fill", TColor}, {"Stroke", TColor}, {"LineWidth", TFloat}, {"LineCap", TEnum}, {"LineJoin", TEnum}, {"TrimStart", TFloat}, {"TrimEnd", TFloat}}, {{"Source", TString}, {"Mode", TEnum}, {"HideControls", TBool}, {"AutoPlay", TBool}, {"Loop", TBool}, {"Muted", TBool}}, {{"URL", TString}, {"HTML", TString}}, {{"Value", TInt}, {"Mode", TEnum}, {"Min", TInt}, {"Max", TInt}}}
 
 // Events.
 const (
@@ -583,6 +599,37 @@ const (
 	GestureStateChanged
 	GestureStateEnded
 	GestureStateCancelled
+)
+
+type PathOp int32
+
+const (
+	PathOpEnd PathOp = iota
+	PathOpMove
+	PathOpLine
+	PathOpQuad
+	PathOpCubic
+	PathOpClose
+	PathOpRect
+	PathOpRoundedRect
+	PathOpEllipse
+	PathOpArc
+)
+
+type LineCap int32
+
+const (
+	LineCapButt LineCap = iota
+	LineCapRound
+	LineCapSquare
+)
+
+type LineJoin int32
+
+const (
+	LineJoinMiter LineJoin = iota
+	LineJoinRound
+	LineJoinBevel
 )
 
 type AnimationCurve int32

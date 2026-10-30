@@ -46,6 +46,7 @@ func App() ui.Node {
 				symbols(),
 				fonts(),
 				images(),
+				shapes(),
 				video(),
 				textInput(),
 				controls(),
@@ -135,6 +136,53 @@ func video() ui.Node {
 			ui.Button(ui.ButtonProps{Title: ui.Val("Start over"), Variant: ui.ButtonGray, OnPress: func() { ui.Seek(v, 0); ui.Play(v) }}),
 			ui.Text(signal.Func(func() string { return fmt.Sprintf("Played through %d times", ends.Get()) }),
 				ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel})))
+}
+
+// shapes draws outlines (ui.Shape): a ring whose trim animates, and a
+// star made of lines.
+func shapes() ui.Node {
+	done := signal.New(float32(0.3))
+	return section("Shapes",
+		ui.Row(ui.Style{Gap: 24, Align: ui.AlignCenter},
+			ui.View(ui.ViewProps{Label: "Progress", Style: ui.Style{Width: ui.Pt(72), Height: ui.Pt(72)}},
+				ui.Shape(ui.ShapeProps{Path: ring, Stroke: ui.SecondaryBackground, LineWidth: 8,
+					Style: ui.Style{Absolute: true, Left: ui.Pt(0), Top: ui.Pt(0), Width: ui.Pt(72), Height: ui.Pt(72)}}),
+				ui.Shape(ui.ShapeProps{Path: ring, Stroke: ui.Accent, LineWidth: 8, LineCap: ui.CapRound, TrimEnd: done,
+					Style: ui.Style{Absolute: true, Left: ui.Pt(0), Top: ui.Pt(0), Width: ui.Pt(72), Height: ui.Pt(72)}})),
+			ui.Shape(ui.ShapeProps{Path: star, Fill: ui.Orange, Style: ui.Style{Width: ui.Pt(72), Height: ui.Pt(72)}}),
+			ui.Button(ui.ButtonProps{Title: ui.Val("Fill the ring"), Variant: ui.ButtonGray, OnPress: func() {
+				next := float32(0.3)
+				if done.Peek() < 1 {
+					next = 1
+				}
+				ui.AnimateWith(ui.Animation{Duration: 0.8, Curve: ui.EaseInOut}, func() { done.Set(next) })
+			}}),
+		))
+}
+
+// ring is a circle inset by half the stroke, starting at the top.
+func ring(w, h float32) *ui.Path {
+	r := min(w, h)/2 - 4
+	return new(ui.Path).Arc(w/2, h/2, r, -math.Pi/2, 3*math.Pi/2, true)
+}
+
+// star is a five-pointed star in the box.
+func star(w, h float32) *ui.Path {
+	p := new(ui.Path)
+	for i := range 10 {
+		r := min(w, h) / 2
+		if i%2 == 1 {
+			r *= 0.42
+		}
+		a := float64(i)*math.Pi/5 - math.Pi/2
+		x, y := w/2+r*float32(math.Cos(a)), h/2+r*float32(math.Sin(a))
+		if i == 0 {
+			p.MoveTo(x, y)
+		} else {
+			p.LineTo(x, y)
+		}
+	}
+	return p.Close()
 }
 
 func textInput() ui.Node {

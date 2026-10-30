@@ -33,7 +33,7 @@
 | Video | `VideoPlayer` | `expo-video` | ✓ `Video` |
 | Web content | `WKWebView` | `react-native-webview` | ✓ `WebView` (URL, HTML, messages both ways) |
 | Maps | `Map` | `react-native-maps` | ✗ (a native view through `ui.Native` meanwhile) |
-| Custom drawing | `Shape`, `Path`, `Canvas` | `react-native-svg`, Skia | ✗ |
+| Custom drawing | `Shape`, `Path`, `Canvas` | `react-native-svg`, Skia | ◐ `Shape` and `Path` (lines, curves, arcs, rects, ellipses; fill, stroke, caps, joins; an animatable trim); no immediate-mode canvas, no gradient fills |
 | Native escape hatch | `UIViewRepresentable` | native modules | ✓ `ui.Native` views, `ui.Call` modules |
 
 ## Navigation and presentation
@@ -104,8 +104,7 @@
 
 ## Not yet
 
-In order of what apps miss most: custom drawing (`Shape`, `Path`,
-`Canvas`); push notifications; camera; maps; audio; shared-element
+In order of what apps miss most: push notifications; camera; maps; audio; shared-element
 transitions; wheel pickers and steppers; rotation gestures; custom
 accessibility actions. Maps and the camera can be an app's own native
 view through `ui.Native` until then.

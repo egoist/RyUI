@@ -29,9 +29,10 @@ object NuiKind {
     const val SYMBOL = 19
     const val SEGMENTED = 20
     const val PROGRESS = 21
-    const val VIDEO = 22
-    const val WEB_VIEW = 23
-    const val DATE_PICKER = 24
+    const val SHAPE = 22
+    const val VIDEO = 23
+    const val WEB_VIEW = 24
+    const val DATE_PICKER = 25
 
     fun name(kind: Int): String = when (kind) {
         1 -> "View"
@@ -55,9 +56,10 @@ object NuiKind {
         19 -> "Symbol"
         20 -> "Segmented"
         21 -> "Progress"
-        22 -> "Video"
-        23 -> "WebView"
-        24 -> "DatePicker"
+        22 -> "Shape"
+        23 -> "Video"
+        24 -> "WebView"
+        25 -> "DatePicker"
         else -> "Kind($kind)"
     }
 }
@@ -194,6 +196,17 @@ object NuiProp {
     object Progress {
         const val VALUE = 64
         const val INDETERMINATE = 65
+    }
+
+    object Shape {
+        const val PATH = 64
+        const val FILL = 65
+        const val STROKE = 66
+        const val LINE_WIDTH = 67
+        const val LINE_CAP = 68
+        const val LINE_JOIN = 69
+        const val TRIM_START = 70
+        const val TRIM_END = 71
     }
 
     object Video {
@@ -417,6 +430,31 @@ object NuiGestureState {
     const val CHANGED = 1
     const val ENDED = 2
     const val CANCELLED = 3
+}
+
+object NuiPathOp {
+    const val END = 0
+    const val MOVE = 1
+    const val LINE = 2
+    const val QUAD = 3
+    const val CUBIC = 4
+    const val CLOSE = 5
+    const val RECT = 6
+    const val ROUNDED_RECT = 7
+    const val ELLIPSE = 8
+    const val ARC = 9
+}
+
+object NuiLineCap {
+    const val BUTT = 0
+    const val ROUND = 1
+    const val SQUARE = 2
+}
+
+object NuiLineJoin {
+    const val MITER = 0
+    const val ROUND = 1
+    const val BEVEL = 2
 }
 
 object NuiAnimationCurve {

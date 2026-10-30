@@ -414,6 +414,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
                 addOnChangeListener { _, v, fromUser -> if (fromUser) emit(id, NuiEventKind.VALUE_CHANGED) { NuiEvents.valueChanged(id, v.toDouble()) } }
             }
             NuiKind.WEB_VIEW -> NuiWebView(this, id)
+            NuiKind.SHAPE -> NuiShape(this)
             NuiKind.VIDEO -> NuiVideo(this, id)
             NuiKind.SCROLL -> NestedScrollView(ctx).apply { isFillViewport = false; reportScrolls(this, id) }
             NuiKind.LIST -> NuiList(id, this).recycler
@@ -533,6 +534,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
     override fun setEnum(id: Int, prop: Int, v: Int) = propEnum(id, prop, v)
     override fun setBytes(id: Int, prop: Int, v: ByteBuffer) {
         val n = nodes[id] ?: return
+        if (n.kind == NuiKind.SHAPE && setShapeProp(n, prop, v)) return
         if (prop == NuiProp.MENU) {
             n.actions = decodeActions(v)
             wirePresses(n)

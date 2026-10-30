@@ -384,7 +384,7 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             guard let a = n.view as? UIActivityIndicatorView else { return }
             if v.bool { a.startAnimating() } else { a.stopAnimating() }
         default:
-            if !setMediaProp(n, prop, v) { setNavProp(n, prop, v) }
+            if !setShapeProp(n, prop, v), !setMediaProp(n, prop, v) { setNavProp(n, prop, v) }
         }
     }
 

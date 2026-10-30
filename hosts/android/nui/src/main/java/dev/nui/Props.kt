@@ -369,6 +369,7 @@ fun NuiRuntime.propInt(id: Int, prop: Int, v: Long) {
 fun NuiRuntime.propFloat(id: Int, prop: Int, v: Double) {
     val n = node(id) ?: return
     n.props[prop] = v
+    if (n.kind == NuiKind.SHAPE && setShapeProp(n, prop, v)) return
     when (prop) {
         NuiProp.CORNER_RADIUS -> { n.cornerRadius = v.toFloat(); applyBackground(n) }
         NuiProp.BORDER_WIDTH -> { n.borderWidth = v.toFloat(); applyBackground(n) }
@@ -442,6 +443,7 @@ fun NuiRuntime.propString(id: Int, prop: Int, v: String) {
 fun NuiRuntime.propColor(id: Int, prop: Int, v: Long) {
     val n = node(id) ?: return
     n.props[prop] = v
+    if (n.kind == NuiKind.SHAPE && setShapeProp(n, prop, v)) return
     when (prop) {
         NuiProp.BACKGROUND -> { n.background = v; applyBackground(n) }
         NuiProp.BORDER_COLOR -> { n.borderColor = v; applyBackground(n) }
@@ -452,6 +454,7 @@ fun NuiRuntime.propColor(id: Int, prop: Int, v: Long) {
 fun NuiRuntime.propEnum(id: Int, prop: Int, v: Int) {
     val n = node(id) ?: return
     n.props[prop] = v
+    if (n.kind == NuiKind.SHAPE && setShapeProp(n, prop, v)) return
     if (prop == NuiProp.MATERIAL) { n.material = v; applyBackground(n); return }
     if (n.kind == NuiKind.DATE_PICKER && prop == NuiProp.DatePicker.MODE) { (n.view as NuiDatePicker).mode = v; return }
     val view = n.view
