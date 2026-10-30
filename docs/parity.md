@@ -104,7 +104,8 @@
 
 ## Not yet
 
-In order of what apps miss most: push notifications; maps; an in-app
-camera view (a live preview: scanning, video); shared-element
-transitions. Maps and a camera view can be an app's own native view
+In order of what apps miss most: push notifications and maps (both set
+aside for now: push needs an APNs key and a Firebase project, Android's
+maps a provider's choice); an in-app camera view (a live preview:
+scanning, video); shared-element transitions. Maps and a camera view can be an app's own native view
 through `ui.Native` until then.
