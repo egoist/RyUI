@@ -40,6 +40,9 @@ Turn the screen reader on (Settings → Accessibility), open the gallery.
 - [ ] Text size: at the largest accessibility size, texts and the
       Pacifico font grow, and nothing is cut off on the gallery's first
       screens.
+- [ ] Display size (Android: Settings → Display → Display size): change
+      it with the gallery open, then go back to it. Everything is resized,
+      nothing cut off or out of place (the notes example's checkboxes too).
 - [ ] Reduce Motion (iOS: Accessibility → Motion): "Show a toast" fades
       instead of sliding. Android's Remove animations: it appears at once.
 
