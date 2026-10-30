@@ -35,6 +35,7 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
       - uses: android-actions/setup-android@v3
+        with: { packages: platform-tools } # its default asks for "tools", which the SDK no longer has
       - name: the Kotlin decoder agrees with the golden files; the shell app builds
         working-directory: hosts/android
         run: ./gradlew :nui:testDebugUnitTest :app:assembleDebug
@@ -62,6 +63,7 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
       - uses: android-actions/setup-android@v3
+        with: { packages: platform-tools } # its default asks for "tools", which the SDK no longer has
       - name: an NDK
         run: ls -d $ANDROID_HOME/ndk/* 2>/dev/null || sdkmanager "ndk;27.1.12297006"
       - name: KVM, for the emulator
