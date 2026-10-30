@@ -20,7 +20,8 @@ import java.io.File
  * Commands, a line each: `tap <text>` presses the view whose text or
  * content description is <text> (or the pressable view it's in); `type
  * <text>` replaces the focused text field's text (or the first one's);
- * `submit` presses its return key; `dump`
+ * `submit` presses its return key; `back` is the system's back; `tab
+ * <title>` selects the tab with that title; `dump`
  * writes what the screen shows (each text, or content description, a
  * line each, in creation order) to files/nui-dump.txt:
  *
@@ -52,6 +53,8 @@ object NuiAutomation {
             "type" -> field(rt)?.apply { requestFocus(); setText(arg); setSelection(arg.length) }
             "submit" -> field(rt)?.onEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_DONE)
             "dump" -> dump(rt)
+            "back" -> rt.activity?.onBackPressedDispatcher?.onBackPressed()
+            "tab" -> rt.activity?.window?.decorView?.let { tab(it, arg) }
         }
     }
 
@@ -73,6 +76,15 @@ object NuiAutomation {
         // A label inside a pressable view: the view.
         while (v != null && !v.isClickable && v !is CompoundButton) v = v.parent as? View
         v?.performClick()
+    }
+
+    private fun tab(v: View, title: String): Boolean {
+        if (v is com.google.android.material.navigation.NavigationBarView) {
+            val m = v.menu
+            for (i in 0 until m.size()) if (m.getItem(i).title == title) { v.selectedItemId = m.getItem(i).itemId; return true }
+        }
+        if (v is android.view.ViewGroup) for (i in 0 until v.childCount) if (tab(v.getChildAt(i), title)) return true
+        return false
     }
 
     private fun dump(rt: NuiRuntime) {

@@ -755,7 +755,7 @@ Desktop adds `host/darwin`, `host/windows`, `host/linux` and
 - Hosts: GUI tests (`e2e/`, build tag `e2e`, in CI on a simulator and
   an emulator) build `examples/` with `nui dev -once` and drive them
   through the native views. Debug builds take automation commands (tap,
-  type, submit, dump: what the screen shows), on iOS from a file in the
+  type, submit, back, tab, dump: what the screen shows), on iOS from a file in the
   app's container on the `dev.nui.automation` Darwin notification
   (`hosts/ios/Sources/NuiHost/Automation.swift`), on Android from a
   `dev.nui.automation` broadcast (`Automation.kt`; the dump read with
@@ -841,8 +841,9 @@ Each one ends with its examples running and its tests in CI.
     and `ui.ScrollToEnd`. Android posts its scroll events to the next
     turn of the main loop: a scroll runs while the view draws, and the
     core changing views then stops it.
-  - GUI tests on CI (`e2e/`): the counter, and notes (a text field,
-    SQLite, a List, a relaunch), on both platforms.
+  - GUI tests on CI (`e2e/`): the counter; notes (a text field,
+    SQLite, a List, a relaunch); navigation (a push, a sheet with a
+    field, back, tabs), on both platforms.
   - Images fetched over http(s) kept on disk across launches (256 MB,
     least recently used first; not a `no-store` response, nor nui dev's
     assets from this machine), and `ImageProps.Placeholder`.
@@ -851,7 +852,7 @@ Each one ends with its examples running and its tests in CI.
   Next:
   - More accessibility: adjustable custom controls, and checking every component with VoiceOver and
     TalkBack on a device.
-  - More GUI tests: navigation, sheets, gestures, the gallery.
+  - More GUI tests: gestures, alerts and menus, the gallery.
 - **Then desktop** (below), only when it's called for: until then the
   work is maturing iOS and Android.
 

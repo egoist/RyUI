@@ -129,6 +129,30 @@ func notes(t *testing.T, s screen) {
 	waitFor(t, s, []string{"Add", note})
 }
 
+// navigation is the same test on each platform: a row pushes its
+// screen; a button there presents a sheet, whose field and Save button
+// write back to the screen; back pops it; a tab shows another stack.
+func navigation(t *testing.T, s screen) {
+	waitFor(t, s, []string{"Message 20", "Message 19"})
+	s.tap("Message 20")
+	waitFor(t, s, []string{"Add a note", "No note yet."})
+	s.tap("Add a note")
+	waitFor(t, s, []string{"Save", "Note"})
+	s.command("type hello")
+	s.tap("Save")
+	waitFor(t, s, []string{"Note: hello"}, "Save")
+	s.command("back")
+	waitFor(t, s, []string{"Message 19"}, "Add a note", "Note: hello")
+	s.command("tab Settings")
+	waitFor(t, s, []string{"Notifications", "About"}, "Message 19")
+	s.tap("About")
+	waitFor(t, s, []string{"Native widgets, driven by Go and fine-grained signals."})
+	s.command("back")
+	waitFor(t, s, []string{"About"}, "Native widgets, driven by Go and fine-grained signals.")
+	s.command("tab Inbox")
+	waitFor(t, s, []string{"Message 19"}, "Notifications")
+}
+
 // iOS
 
 type iosScreen struct {
@@ -179,6 +203,9 @@ func iosApp(t *testing.T, example, bundle string) *iosScreen {
 
 func TestCounterIOS(t *testing.T) { counter(t, iosApp(t, "counter", "dev.nui.counter")) }
 func TestNotesIOS(t *testing.T)   { notes(t, iosApp(t, "notes", "dev.nui.notes")) }
+func TestNavigationIOS(t *testing.T) {
+	navigation(t, iosApp(t, "navigation", "dev.nui.navigation"))
+}
 
 // Android
 
@@ -196,9 +223,16 @@ func (s *androidScreen) adb(args ...string) (string, error) {
 func (s *androidScreen) command(cmds string) {
 	// adb shell joins its arguments into a command line: quoted once more.
 	q := "'" + strings.ReplaceAll(cmds, "'", `'\''`) + "'"
-	if out, err := s.adb("shell", "am", "broadcast", "-a", "dev.nui.automation", "-p", s.pkg, "--es", "commands", q); err != nil {
-		s.t.Fatalf("broadcast: %v\n%s", err, out)
+	// adb fails now and then just after an install: tried again.
+	var out string
+	var err error
+	for range 5 {
+		if out, err = s.adb("shell", "am", "broadcast", "-a", "dev.nui.automation", "-p", s.pkg, "--es", "commands", q); err == nil {
+			return
+		}
+		time.Sleep(500 * time.Millisecond)
 	}
+	s.t.Fatalf("broadcast %q: %v\n%s", cmds, err, out)
 }
 
 func (s *androidScreen) texts() []string {
@@ -227,7 +261,7 @@ func androidApp(t *testing.T, example, pkg string) *androidScreen {
 		t.Skip("no adb")
 	}
 	out := launch(t, "android", example)
-	m := regexp.MustCompile(`on (\S+)`).FindStringSubmatch(out)
+	m := regexp.MustCompile(`(?m)^nui: \S+ on (\S+)$`).FindStringSubmatch(out)
 	if m == nil {
 		t.Fatalf("no device in:\n%s", out)
 	}
@@ -236,3 +270,6 @@ func androidApp(t *testing.T, example, pkg string) *androidScreen {
 
 func TestCounterAndroid(t *testing.T) { counter(t, androidApp(t, "counter", "dev.nui.counter")) }
 func TestNotesAndroid(t *testing.T)   { notes(t, androidApp(t, "notes", "dev.nui.notes")) }
+func TestNavigationAndroid(t *testing.T) {
+	navigation(t, androidApp(t, "navigation", "dev.nui.navigation"))
+}

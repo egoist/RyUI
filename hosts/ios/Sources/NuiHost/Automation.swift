@@ -19,7 +19,9 @@ import NuiOps
 /// the first scroll view or list down by that much; `dump` writes what
 /// the screen shows (each label's text, button's title or view's
 /// accessibility label, a line each, in creation order) to
-/// tmp/nui-dump.txt.
+/// tmp/nui-dump.txt; `back` pops the shown stack's top screen, as its
+/// back button does; `tab <title>` selects the tab with that title, as
+/// tapping it does.
 @MainActor enum NuiAutomation {
     static var token: Int32 = 0
 
@@ -44,12 +46,39 @@ import NuiOps
             case "switch": flip(Int(arg) ?? 0)
             case "scroll": scroll(CGFloat(Double(arg) ?? 0))
             case "dump": dump()
+            case "back": back()
+            case "tab": tab(arg)
             default: break
             }
         }
     }
 
     static var rt: NuiRuntime { NuiRuntime.shared }
+
+    /// The containers the core made (stacks, tabs) that are on screen,
+    /// newest last (a sheet's after the screen under it).
+    static func containers() -> [UIViewController] {
+        rt.nodes.values.sorted(by: { $0.id < $1.id }).compactMap { n in
+            guard let vc = n.vc, vc.isViewLoaded, vc.view.window != nil else { return nil }
+            return vc
+        }
+    }
+
+    static func back() {
+        for case let s as UINavigationController in containers().reversed() where s.viewControllers.count > 1 {
+            s.popViewController(animated: true)
+            return
+        }
+    }
+
+    static func tab(_ title: String) {
+        for case let t as UITabBarController in containers() {
+            guard let vcs = t.viewControllers, let i = vcs.firstIndex(where: { $0.tabBarItem.title == title }) else { continue }
+            t.selectedIndex = i
+            t.delegate?.tabBarController?(t, didSelect: vcs[i])
+            return
+        }
+    }
 
     static func dump() {
         var lines: [String] = []
