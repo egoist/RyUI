@@ -305,12 +305,30 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
         // Views resolve theme colors and text sizes when they're made:
         // after a dark mode, font scale or density change, make the ones
         // that show text or Material colors again.
-        val changed = night != this.night || config.fontScale != fontScale || config.densityDpi != densityDpi
+        val dense = config.densityDpi != densityDpi
+        val changed = night != this.night || config.fontScale != fontScale || dense
         this.night = night
         fontScale = config.fontScale
         densityDpi = config.densityDpi
         if (changed) themeVersion++
         restyleAll(changed)
+        if (dense) reframe()
+    }
+
+    /**
+     * The core's frames are in points: after a density change (the
+     * user's display size) each view's is set again, in its pixels. The
+     * core sends none, its layout being the same.
+     */
+    private fun reframe() {
+        val a = animation
+        animation = null
+        for (n in ArrayList(nodes.values)) {
+            val f = n.frame ?: continue
+            setFrame(n.id, f[0], f[1], f[2], f[3])
+        }
+        animation = a
+        framesApplied = false
     }
 
     /** Restyles every view; with changed, makes those that show text or Material colors again. */
@@ -613,6 +631,8 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
     override fun setFrame(id: Int, x: Float, y: Float, width: Float, height: Float) {
         val n = nodes[id] ?: return
         framesApplied = true
+        val f = n.frame ?: FloatArray(4).also { n.frame = it }
+        f[0] = x; f[1] = y; f[2] = width; f[3] = height
         // A Scroll, or a row of its content, moved: what it takes out is redone.
         if (n.kind == NuiKind.SCROLL) pendingCulls.add(n)
         n.parent?.parent?.let { if (it.kind == NuiKind.SCROLL) pendingCulls.add(it) }

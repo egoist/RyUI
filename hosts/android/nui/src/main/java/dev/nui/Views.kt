@@ -65,6 +65,7 @@ class NuiNode(val id: Int, val kind: Int, var view: View) {
     var match: String? = null // Style.Match's key
     var targetX = Int.MIN_VALUE // the frame's place set last (px), which an animation may still be on its way to
     var targetY = 0
+    var frame: FloatArray? = null // the frame set last, in points: applied again if the density changes
     val base = NuiBase()
 
     fun listens(event: Int) = listens and (1 shl event) != 0
