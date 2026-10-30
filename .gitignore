@@ -8,3 +8,13 @@ cmd/nui/nui
 
 # nui build output
 examples/*/dist/
+
+# go build ./cmd/nui at the root
+/nui
+
+# The benchmarks' builds
+bench/*/dist/
+bench/compose/.gradle/
+bench/compose/app/build/
+bench/compose/build/
+bench/compose/local.properties
