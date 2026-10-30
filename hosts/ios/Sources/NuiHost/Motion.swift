@@ -122,4 +122,100 @@ struct NuiTransition {
         return false
     }
 }
+// MARK: Style.Match
+
+@MainActor extension NuiRuntime {
+    /// A view with a key destroyed during an animation: it goes into the
+    /// window, where it was, until the view coming with its key (if one
+    /// does) is laid out. True if it does.
+    func matchOut(_ n: NuiNode) -> Bool {
+        guard let a = animation, !UIAccessibility.isReduceMotionEnabled, !matchViews.isEmpty || n.match != nil else {
+            if let k = n.match, matchViews[k] === n { matchViews[k] = nil }
+            return false
+        }
+        // Where every view with a key is, before the batch takes any away
+        // (one may go with an ancestor, destroyed first).
+        if matchFrames == nil {
+            var fs: [String: CGRect] = [:]
+            for (k, m) in matchViews {
+                guard let w = m.view.window else { continue }
+                fs[k] = m.view.convert(m.view.bounds, to: nil)
+                matchWindow = w
+            }
+            matchFrames = fs
+        }
+        guard let k = n.match else { return false }
+        if matchViews[k] === n { matchViews[k] = nil }
+        guard let f = matchFrames?[k], let w = matchWindow else { return false }
+        let v = n.view
+        n.parent?.remove(n)
+        v.removeFromSuperview()
+        v.transform = .identity
+        v.frame = f
+        v.isUserInteractionEnabled = false
+        w.addSubview(v)
+        matchOut[k] = (v, f)
+        matchAnimation = a
+        finish(v, after: a.0 + 1) // if no frames ever come
+        return true
+    }
+
+    /// A view inserted during an animation: if it has a key (or holds
+    /// views that do), it's matched once laid out.
+    func matchIn(_ n: NuiNode) {
+        guard animation != nil, !matchViews.isEmpty || !matchOut.isEmpty else { return }
+        matchIn.append(n)
+    }
+
+    /// Once the batch's frames are applied: each view coming with a key
+    /// grows from where the one going with it was, which moves along and
+    /// fades; one going alone fades.
+    func runMatches() {
+        if !framesApplied {
+            matchFrames = nil // a props batch: the frames come next
+            return
+        }
+        framesApplied = false
+        matchFrames = nil
+        guard !matchOut.isEmpty else { matchIn = []; return }
+        let a = matchAnimation ?? (0.35, NuiAnimationCurve.easeInOut.rawValue)
+        var coming: [NuiNode] = []
+        func collect(_ n: NuiNode) {
+            if let k = n.match, matchOut[k] != nil { coming.append(n) }
+            for c in n.children { collect(c) }
+        }
+        for n in matchIn { collect(n) }
+        matchIn = []
+        let saved = animation
+        animation = a
+        for n in coming {
+            guard let k = n.match, let out = matchOut.removeValue(forKey: k), n.view.window != nil else { continue }
+            let v = n.view
+            let to = v.convert(v.bounds, to: nil)
+            guard to.width > 0, to.height > 0, out.frame.width > 0, out.frame.height > 0 else { continue }
+            let from = out.frame
+            v.transform = n.baseTransform.concatenating(CGAffineTransform(translationX: from.midX - to.midX, y: from.midY - to.midY)
+                .scaledBy(x: from.width / to.width, y: from.height / to.height))
+            let old = out.view
+            animated(v) { v.transform = n.baseTransform }
+            animated(old) {
+                old.center = CGPoint(x: to.midX, y: to.midY)
+                old.transform = CGAffineTransform(scaleX: to.width / from.width, y: to.height / from.height)
+                old.alpha = 0
+            }
+            finish(old, after: a.0)
+        }
+        for (_, out) in matchOut {
+            let old = out.view
+            animated(old) { old.alpha = 0 }
+            finish(old, after: a.0)
+        }
+        matchOut = [:]
+        animation = saved
+    }
+
+    private func finish(_ v: UIView, after d: Double) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + d) { v.removeFromSuperview() }
+    }
+}
 #endif

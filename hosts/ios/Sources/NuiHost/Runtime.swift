@@ -33,6 +33,7 @@ import CNui
     var swipeActions: [NuiAction] = [] // a list cell's
     var shadowColor: UIColor?
     var transition: NuiTransition?
+    var match: String? // Style.Match's key
     var opacity: CGFloat = 1 // its own, as Style.Opacity sets it
     var baseTransform: CGAffineTransform = .identity // Style.Transform's
     var gradient: CAGradientLayer?
@@ -185,6 +186,15 @@ final class NuiTextField: UITextField {
     var entering: [(NuiNode, (Double, Int32))] = []
     /// Views going out with a transition, still shown.
     var exiting = Set<ObjectIdentifier>()
+    /// Style.Match: the views with keys, where they were as an animated
+    /// batch began destroying, and those going and coming in it.
+    var matchViews: [String: NuiNode] = [:]
+    var matchFrames: [String: CGRect]?
+    var matchOut: [String: (view: UIView, frame: CGRect)] = [:]
+    var matchIn: [NuiNode] = []
+    var matchAnimation: (Double, Int32)?
+    var framesApplied = false
+    weak var matchWindow: UIWindow?
     public static let shared = NuiRuntime()
 
     var nodes: [UInt32: NuiNode] = [:]
@@ -289,6 +299,7 @@ final class NuiTextField: UITextField {
     func apply(_ buf: UnsafeRawBufferPointer) {
         nuiDecode(buf, self)
         runEnters()
+        runMatches()
     }
 
     public func create(_ id: UInt32, kind raw: UInt16) {
@@ -428,6 +439,7 @@ final class NuiTextField: UITextField {
         guard let n = nodes.removeValue(forKey: id) else { return }
         if destroyController(n) { return }
         for c in n.children { c.parent = nil }
+        if matchOut(n) { return }
         // Going out with a transition, or inside a view that is: shown
         // until it's gone.
         if leaving(n.view) || exit(n) {
@@ -444,6 +456,7 @@ final class NuiTextField: UITextField {
         if insertController(p, c, index) { return }
         p.insert(c, at: index)
         enter(c)
+        matchIn(c)
     }
 
     public func remove(_ parent: UInt32, child: UInt32) {
@@ -453,6 +466,7 @@ final class NuiTextField: UITextField {
 
     public func setFrame(_ id: UInt32, x: Float, y: Float, width: Float, height: Float) {
         guard let n = nodes[id] else { return }
+        framesApplied = true
         if let cell = n.cell {
             cell.setRowHeight(CGFloat(height))
             return

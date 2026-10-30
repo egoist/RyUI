@@ -101,6 +101,7 @@ object NuiProp {
     const val MATERIAL = 27
     const val FONT_FAMILY = 28
     const val SWIPE_ACTIONS = 29
+    const val MATCH = 30
 
     object Text {
         const val TEXT = 64

@@ -120,6 +120,13 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
     val entering = ArrayList<Pair<NuiNode, NuiAnimation>>()
     /** Views going out with a transition, still shown. */
     val exiting = HashSet<View>()
+    /** Style.Match: the views with keys, where they were as an animated batch began destroying, and those going and coming in it. */
+    val matchViews = HashMap<String, NuiNode>()
+    var matchFrames: HashMap<String, android.graphics.Rect>? = null
+    val matchOut = HashMap<String, Pair<View, android.graphics.Rect>>()
+    val matchIn = ArrayList<NuiNode>()
+    var matchAnimation: NuiAnimation? = null
+    var framesApplied = false
     /** Native modules' methods, by module and method name (ui.Call). */
     val modules = HashMap<String, Map<String, NuiModuleMethod>>()
     var builtinModules = false
@@ -371,6 +378,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
     fun apply(buf: ByteBuffer) {
         nuiDecode(buf, this)
         runEnters()
+        runMatches()
     }
 
     @Keep
@@ -568,6 +576,12 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
         stacks.remove(n)
         if (n.underDying) return // its views leave with the animating screen or sheet
         if ((n.kind == NuiKind.SCREEN || n.kind == NuiKind.SHEET || n.kind == NuiKind.ALERT) && destroyNav(n)) return
+        if (matchOut(n)) {
+            n.parent?.children?.remove(n)
+            n.parent = null
+            for (c in n.children) c.parent = null
+            return
+        }
         // Going out with a transition, or inside a view that is: shown
         // until it's gone.
         if (leaving(n.outer) || exit(n)) {
@@ -587,6 +601,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
         if (insertNav(p, c, index)) return
         p.insert(c, index)
         enter(c)
+        matchIn(c)
     }
 
     override fun remove(parent: Int, child: Int) {
@@ -597,6 +612,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
 
     override fun setFrame(id: Int, x: Float, y: Float, width: Float, height: Float) {
         val n = nodes[id] ?: return
+        framesApplied = true
         // A Scroll, or a row of its content, moved: what it takes out is redone.
         if (n.kind == NuiKind.SCROLL) pendingCulls.add(n)
         n.parent?.parent?.let { if (it.kind == NuiKind.SCROLL) pendingCulls.add(it) }
@@ -605,6 +621,8 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
         val t = Math.round(y * d)
         val r = Math.round((x + width) * d)
         val b = Math.round((y + height) * d)
+        n.targetX = l
+        n.targetY = t
         val v = n.outer
         if (v is NuiCell) {
             if (v.rowHeight != b - t) {

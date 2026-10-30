@@ -1061,3 +1061,39 @@ func TestColorPicker(t *testing.T) {
 	}
 	r.Dispose()
 }
+
+func TestMatch(t *testing.T) {
+	open := signal.New(false)
+	h, r := mount(t, func() ui.Node {
+		return ui.Show(open, func() ui.Node {
+			return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(200), Height: ui.Pt(200), Match: "art"}})
+		}, func() ui.Node {
+			return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(40), Height: ui.Pt(40), Match: "art"}})
+		})
+	})
+	views := h.OfKind(ops.KindView)
+	var small *fake.View
+	for _, v := range views {
+		if v.String(ops.PropMatch) == "art" {
+			small = v
+		}
+	}
+	if small == nil || small.Frame[2] != 40 {
+		t.Fatalf("the small one: %v", views)
+	}
+	// The two branches share the key: the host matches the one destroyed
+	// with the one created, in the same animated flush.
+	h.Reset()
+	ui.Animate(func() { open.Set(true) })
+	r.Flush()
+	var big *fake.View
+	for _, v := range h.OfKind(ops.KindView) {
+		if v.String(ops.PropMatch) == "art" {
+			big = v
+		}
+	}
+	if big == nil || big == small || big.Frame[2] != 200 || h.Count(ops.OpDestroy) != 1 || len(h.Commands(ops.CmdAnimateBegin)) == 0 {
+		t.Fatalf("after opening\n%s", h.Log())
+	}
+	r.Dispose()
+}

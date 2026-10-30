@@ -62,6 +62,9 @@ class NuiNode(val id: Int, val kind: Int, var view: View) {
     var gradient: NuiGradient? = null
     var material = 0 // Style.Material
     var transition: NuiTransition? = null
+    var match: String? = null // Style.Match's key
+    var targetX = Int.MIN_VALUE // the frame's place set last (px), which an animation may still be on its way to
+    var targetY = 0
     val base = NuiBase()
 
     fun listens(event: Int) = listens and (1 shl event) != 0

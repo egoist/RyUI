@@ -402,6 +402,12 @@ fun NuiRuntime.propFloat(id: Int, prop: Int, v: Double) {
 
 fun NuiRuntime.propString(id: Int, prop: Int, v: String) {
     val n = node(id) ?: return
+    if (prop == NuiProp.MATCH) {
+        n.match?.let { if (matchViews[it] === n) matchViews.remove(it) }
+        n.match = v.ifEmpty { null }
+        n.match?.let { matchViews[it] = n }
+        return
+    }
     if (n.kind == NuiKind.COLOR_PICKER && setWheelProp(n, prop, v)) return
     n.props[prop] = v
     val view = n.view

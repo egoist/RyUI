@@ -112,6 +112,7 @@ var Schema = SchemaDef{
 		{Name: "Material", Type: TEnum, Enum: "Material", Doc: "a translucent background that blurs what's behind (iOS's materials); Android, which can't, shows its surface color, translucent"},
 		{Name: "FontFamily", Type: TString, Doc: "a font file's name in the app's assets/fonts (Inter-Bold.ttf: Inter-Bold), a family of them (Inter: Inter-Regular, Inter-Bold...), a generic family (serif, monospace, rounded) or a system family; scaled as the text style is. Under nui dev, a font file's URL, which the host loads, then sends FontLoaded"},
 		{Name: "SwipeActions", Type: TBytes, Doc: "a List cell's swipe actions, encoded as Menu (iOS: its trailing actions; Android: a full swipe runs the first); Action events on the cell carry the index"},
+		{Name: "Match", Type: TString, Doc: "a key it shares with another view: when one with the key is destroyed during an animation and another inserted, the new one comes in from the old one's place and size, and the old one goes out to the new one's, fading (SwiftUI's matchedGeometryEffect). The host notes where the views with keys are as an animated batch starts destroying, and matches them once the batch's frames are applied"},
 	},
 	Kinds: []KindDef{
 		{Name: "View", Doc: "a plain container"},

@@ -148,3 +148,114 @@ fun NuiRuntime.leaving(v: View): Boolean {
     }
     return false
 }
+
+// Style.Match
+
+/** Where v is in the window (px). */
+private fun windowRect(v: View): android.graphics.Rect {
+    val p = IntArray(2)
+    v.getLocationInWindow(p)
+    return android.graphics.Rect(p[0], p[1], p[0] + v.width, p[1] + v.height)
+}
+
+/**
+ * A view with a key destroyed during an animation: it goes into the
+ * window's overlay, where it was, until the view coming with its key (if
+ * one does) is laid out. True if it does.
+ */
+fun NuiRuntime.matchOut(n: NuiNode): Boolean {
+    val a = animation
+    if (a == null || (matchViews.isEmpty() && n.match == null)) {
+        n.match?.let { if (matchViews[it] === n) matchViews.remove(it) }
+        return false
+    }
+    // Where every view with a key is, before the batch takes any away (one
+    // may go with an ancestor, destroyed first).
+    val frames = matchFrames ?: HashMap<String, android.graphics.Rect>().also { fs ->
+        for ((k, m) in matchViews) if (m.outer.isAttachedToWindow) fs[k] = windowRect(m.outer)
+        matchFrames = fs
+    }
+    val k = n.match ?: return false
+    if (matchViews[k] === n) matchViews.remove(k)
+    val f = frames[k] ?: return false
+    val decor = activity?.window?.decorView as? ViewGroup ?: return false
+    val v = n.outer
+    v.animate().cancel()
+    n.frameAnimator?.cancel()
+    decor.overlay.add(v) // out of its parent
+    v.translationX = 0f
+    v.translationY = 0f
+    v.scaleX = 1f
+    v.scaleY = 1f
+    v.rotation = 0f
+    v.layout(f.left, f.top, f.right, f.bottom)
+    v.isEnabled = false
+    matchOut[k] = v to f
+    matchAnimation = a
+    // If no frames ever come.
+    decor.postDelayed({ if (matchOut[k]?.first === v) { matchOut.remove(k); decor.overlay.remove(v) } }, a.millis + 1000)
+    return true
+}
+
+/** A view inserted during an animation: if it has a key (or holds views that do), it's matched once laid out. */
+fun NuiRuntime.matchIn(n: NuiNode) {
+    if (animation == null || (matchViews.isEmpty() && matchOut.isEmpty())) return
+    matchIn.add(n)
+}
+
+/**
+ * Once the batch's frames are applied: each view coming with a key grows
+ * from where the one going with it was, which moves along and fades; one
+ * going alone fades.
+ */
+fun NuiRuntime.runMatches() {
+    if (!framesApplied) {
+        matchFrames = null // a props batch: the frames come next
+        return
+    }
+    framesApplied = false
+    matchFrames = null
+    if (matchOut.isEmpty()) { matchIn.clear(); return }
+    val a = matchAnimation ?: return
+    val decor = activity?.window?.decorView as? ViewGroup
+    val coming = ArrayList<NuiNode>()
+    fun collect(n: NuiNode) {
+        n.match?.let { if (matchOut.containsKey(it)) coming.add(n) }
+        for (c in n.children) collect(c)
+    }
+    for (n in matchIn) collect(n)
+    matchIn.clear()
+    fun gone(v: View) = decor?.overlay?.remove(v)
+    for (n in coming) {
+        val k = n.match ?: continue
+        val v = n.outer
+        if (!v.isAttachedToWindow) continue
+        val (old, from) = matchOut.remove(k) ?: continue
+        // Where it will be: an ancestor's frame may still be on its way.
+        val to = windowRect(v)
+        var m: NuiNode? = n
+        while (m != null) {
+            if (m.targetX != Int.MIN_VALUE && m.frameAnimator?.isRunning == true) to.offset(m.targetX - m.outer.left, m.targetY - m.outer.top)
+            m = m.parent
+        }
+        if (to.width() <= 0 || to.height() <= 0 || from.width() <= 0 || from.height() <= 0) {
+            old.animate().alpha(0f).setDuration(a.millis).withEndAction { gone(old) }.start()
+            continue
+        }
+        val b = n.base
+        v.translationX = b.tx + (from.exactCenterX() - to.exactCenterX())
+        v.translationY = b.ty + (from.exactCenterY() - to.exactCenterY())
+        v.scaleX = b.sx * from.width() / to.width()
+        v.scaleY = b.sy * from.height() / to.height()
+        v.animate().translationX(b.tx).translationY(b.ty).scaleX(b.sx).scaleY(b.sy)
+            .setDuration(a.millis).setInterpolator(a.interpolator()).start()
+        old.animate().translationX(to.exactCenterX() - from.exactCenterX()).translationY(to.exactCenterY() - from.exactCenterY())
+            .scaleX(to.width().toFloat() / from.width()).scaleY(to.height().toFloat() / from.height()).alpha(0f)
+            .setDuration(a.millis).setInterpolator(a.interpolator()).withEndAction { gone(old) }.start()
+    }
+    for ((_, out) in matchOut) {
+        val old = out.first
+        old.animate().alpha(0f).setDuration(a.millis).setInterpolator(a.interpolator()).withEndAction { gone(old) }.start()
+    }
+    matchOut.clear()
+}

@@ -403,6 +403,7 @@ func motion(toast *signal.Signal[bool]) ui.Node {
 			puck,
 			ui.StaticText("Drag the dot; it springs back.", ui.Style{Color: ui.SecondaryLabel, Font: ui.Footnote, Grow: 1}),
 		),
+		matched(),
 		pulse(),
 		spinner(),
 		turner(),
@@ -415,6 +416,32 @@ func motion(toast *signal.Signal[bool]) ui.Node {
 			}()
 		}}),
 	)
+}
+
+// matched is a row that opens into a card: its artwork and title are
+// the card's (Style.Match), growing from the row's places into the
+// card's, and back.
+func matched() ui.Node {
+	open := signal.New(false)
+	toggle := func() {
+		ui.AnimateWith(ui.Animation{Curve: ui.Spring, Duration: 0.5}, func() { open.Set(!open.Peek()) })
+	}
+	art := func(size ui.Dim, radius float32) ui.Style {
+		return ui.Style{Width: size, Height: size, AspectRatio: 1, CornerRadius: radius, Match: "album",
+			Gradient: ui.LinearGradient(ui.RGB(251, 146, 60), ui.RGB(219, 39, 119))}
+	}
+	return ui.Column(ui.Style{},
+		ui.Show(open, func() ui.Node {
+			return ui.View(ui.ViewProps{OnPress: toggle, Label: "Night Drive, close",
+				Style: ui.Style{Gap: 12, Align: ui.AlignCenter}},
+				ui.View(ui.ViewProps{Style: art(ui.Pt(240), 24)}),
+				ui.StaticText("Night Drive", ui.Style{Font: ui.Title2.Weighted(ui.Bold), Match: "album-title"}))
+		}, func() ui.Node {
+			return ui.View(ui.ViewProps{OnPress: toggle, Label: "Night Drive, open",
+				Style: ui.Style{Direction: ui.RowDir, Gap: 12, Align: ui.AlignCenter}},
+				ui.View(ui.ViewProps{Style: art(ui.Pt(56), 10)}),
+				ui.StaticText("Night Drive", ui.Style{Font: ui.Headline, Match: "album-title"}))
+		}))
 }
 
 // pulse is a repeating animation: a dot that breathes until it's

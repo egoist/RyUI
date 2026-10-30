@@ -98,6 +98,7 @@ public enum NuiProp {
     public static let material: UInt16 = 27
     public static let fontFamily: UInt16 = 28
     public static let swipeActions: UInt16 = 29
+    public static let match: UInt16 = 30
 
     public enum Text {
         public static let text: UInt16 = 64

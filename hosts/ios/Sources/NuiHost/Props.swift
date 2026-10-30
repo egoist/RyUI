@@ -210,6 +210,10 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
         case NuiProp.transition:
             guard case .bytes(let b) = v else { return }
             n.transition = NuiTransition(b)
+        case NuiProp.match:
+            if let k = n.match, matchViews[k] === n { matchViews[k] = nil }
+            n.match = v.string.isEmpty ? nil : v.string
+            if let k = n.match { matchViews[k] = n }
         case NuiProp.gradient:
             guard case .bytes(let b) = v else { return }
             n.setGradient(b)

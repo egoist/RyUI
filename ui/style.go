@@ -259,6 +259,13 @@ type Style struct {
 	// ui.Animate (a Show turning true, an item added to a For), and goes
 	// out when it's removed during one.
 	Transition Transition
+	// Match is a key the view shares with another (SwiftUI's
+	// matchedGeometryEffect): when, during ui.Animate, a view with the key
+	// goes and another with it comes (a Show's two branches, a thumbnail
+	// and its enlarged view), the new one grows from the old one's place
+	// and size into its own, while the old one moves along and fades.
+	// Keys are the root's: one view at a time has each.
+	Match string
 
 	Font      Font
 	Color     Color // text color, or tint for controls
@@ -282,7 +289,7 @@ func (f StyleFunc) styler() (Style, func() Style) { return Style{}, f }
 func (s *Style) visual() bool {
 	return s.Background != 0 || s.CornerRadius != 0 || s.BorderWidth != 0 || s.BorderColor != 0 ||
 		s.Opacity != 0 || s.Hidden || s.Clip || s.Transform != (Transform{}) || s.Shadow.Color != 0 || s.Gradient != nil ||
-		s.Transition != (Transition{}) || s.Material != 0
+		s.Transition != (Transition{}) || s.Material != 0 || s.Match != ""
 }
 
 // Transform moves, scales and rotates a view around its center.
@@ -562,6 +569,9 @@ func (e *element) applyVisual(s, prev *Style, text bool) (remeasure bool) {
 	if s.Transition != prev.Transition {
 		var buf [13]byte
 		b.SetBytes(id, ops.PropTransition, s.Transition.bytes(buf[:0]))
+	}
+	if s.Match != prev.Match {
+		b.SetString(id, ops.PropMatch, s.Match)
 	}
 	if !s.Gradient.equal(prev.Gradient) {
 		var buf [128]byte
