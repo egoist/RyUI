@@ -11,6 +11,7 @@ package ui
 import (
 	"encoding/binary"
 	"runtime/debug"
+	"slices"
 	"sync/atomic"
 	"time"
 
@@ -25,6 +26,8 @@ import (
 // (later), a window.
 type Root struct {
 	frames    []*frameFn // OnFrame's
+	layoutQ   []*element // OnLayout's, whose frames changed this flush
+	laying    int        // OnLayout passes in progress
 	framesOn  bool
 	host      host.Host
 	batch     *ops.Batch   // where ops go
@@ -151,6 +154,29 @@ func (r *Root) Flush() {
 	clear(r.frameQ)
 	r.frameQ = r.frameQ[:0]
 	r.apply()
+	r.reportLayouts()
+}
+
+// reportLayouts calls the OnLayout of the views whose frames changed, then
+// flushes what they wrote. A few rounds at most: a callback that changes
+// its own size in turn can't loop forever.
+func (r *Root) reportLayouts() {
+	if len(r.layoutQ) == 0 || r.laying >= 3 {
+		return
+	}
+	q := slices.Clone(r.layoutQ)
+	clear(r.layoutQ)
+	r.layoutQ = r.layoutQ[:0]
+	r.laying++
+	defer func() { r.laying-- }()
+	signal.Batch(func() {
+		for _, e := range q {
+			if !e.dead && e.h != nil && e.h.layout != nil {
+				e.h.layout(Frame{X: e.sent[0], Y: e.sent[1], Width: e.sent[2], Height: e.sent[3]})
+			}
+		}
+	})
+	r.Flush()
 }
 
 // apply hands the batch to the host. A host may call back into the core

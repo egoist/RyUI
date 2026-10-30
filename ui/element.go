@@ -31,6 +31,7 @@ type handlers struct {
 	scrolled            func(x, y float32)
 	navigated, message  func(string)
 	ended               func()
+	layout              func(Frame)
 }
 
 // element is a node of the UI tree. Real elements have a native view;
@@ -332,6 +333,9 @@ func (e *element) emitFrame() {
 	if f != e.sent {
 		e.sent = f
 		e.r.batch.SetFrame(e.id, f[0], f[1], f[2], f[3])
+		if e.h != nil && e.h.layout != nil {
+			e.r.layoutQ = append(e.r.layoutQ, e)
+		}
 	}
 }
 

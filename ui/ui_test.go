@@ -954,3 +954,33 @@ func TestOnFrame(t *testing.T) {
 		t.Fatalf("%v allocations a frame", a)
 	}
 }
+
+// OnLayout reports a view's frame when it's laid out and when it
+// changes, and what it writes is laid out in the same flush.
+func TestOnLayout(t *testing.T) {
+	var frames []ui.Frame
+	width := signal.New(float32(0))
+	wide := signal.New(false)
+	h, r := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{Padding: ui.All(10)},
+			ui.View(ui.ViewProps{OnLayout: func(f ui.Frame) { frames = append(frames, f); width.Set(f.Width) },
+				Style: ui.StyleFunc(func() ui.Style {
+					if wide.Get() {
+						return ui.Style{Height: ui.Pt(20)}
+					}
+					return ui.Style{Height: ui.Pt(20), Margin: ui.Edges{Right: 100}}
+				})}),
+			ui.Text(signal.Func(func() string { return fmt.Sprint("width ", width.Get()) })))
+	})
+	if len(frames) != 1 || frames[0] != (ui.Frame{X: 10, Y: 10, Width: 270, Height: 20}) {
+		t.Fatalf("frames %v", frames)
+	}
+	if h.One(ops.KindText, "width 270") == nil {
+		t.Fatal("what OnLayout wrote wasn't shown")
+	}
+	wide.Set(true)
+	r.Flush()
+	if len(frames) != 2 || frames[1].Width != 370 || h.One(ops.KindText, "width 370") == nil {
+		t.Fatalf("after the change: %v", frames)
+	}
+}

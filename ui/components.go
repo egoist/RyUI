@@ -41,6 +41,17 @@ type ViewProps struct {
 	// Decorative hides the view, and everything in it, from screen
 	// readers: a decoration, or what its neighbors already say.
 	Decorative bool
+	// OnLayout is called with the view's frame once it's laid out, and
+	// again each time layout changes it (SwiftUI's GeometryReader, React
+	// Native's onLayout): to size something else by it, or to know where
+	// it is. It runs after the frame is applied; what it writes is laid
+	// out in turn.
+	OnLayout func(Frame)
+}
+
+// Frame is a view's place in its parent and its size, in points.
+type Frame struct {
+	X, Y, Width, Height float32
 }
 
 // Val is a value that never changes, for a prop that takes an accessor:
@@ -98,7 +109,7 @@ func addKids(e *element, kids []Node) {
 // props it makes no native view: its children are placed in the nearest
 // ancestor that has one.
 func View(p ViewProps, children ...Node) Node {
-	real := p.OnPress != nil || p.OnLongPress != nil || p.Label != "" || p.Hint != "" || p.Role != RoleNone || p.Decorative ||
+	real := p.OnPress != nil || p.OnLongPress != nil || p.Label != "" || p.Hint != "" || p.Role != RoleNone || p.Decorative || p.OnLayout != nil ||
 		p.OnPan != nil || p.OnPinch != nil || p.OnSwipe != nil
 	if s, ok := p.Style.(Style); ok && s.visual() {
 		real = true
@@ -125,6 +136,7 @@ func View(p ViewProps, children ...Node) Node {
 		if p.Decorative {
 			e.r.batch.SetBool(e.id, ops.PropA11yHidden, true)
 		}
+		h.layout = p.OnLayout
 		e.listenGestures(&p)
 	}
 	e.setStyle(p.Style, false)
