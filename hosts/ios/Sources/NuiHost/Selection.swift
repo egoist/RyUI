@@ -34,6 +34,7 @@ final class NuiSelectionRect: UITextSelectionRect {
 /// stays a container whose texts (and their links) VoiceOver reads.
 final class NuiSelectionArea: UIView {
     let input = NuiSelectionInput()
+    weak var node: NuiNode?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -111,15 +112,21 @@ final class NuiSelectionInput: UIView, UITextInput, UIGestureRecognizerDelegate 
 
     // The texts
 
-    /// The area's rich texts, in document order.
+    /// The area's rich texts, in document order: from the core's tree,
+    /// which has those a Scroll took out of the views' (out of sight).
     var segments: [NuiRichTextView] {
         var out: [NuiRichTextView] = []
+        func walk(_ n: NuiNode) {
+            for c in n.children {
+                if let r = c.view as? NuiRichTextView { out.append(r) } else { walk(c) }
+            }
+        }
         func walk(_ v: UIView) {
             for s in v.subviews where s !== self {
                 if let r = s as? NuiRichTextView { out.append(r) } else { walk(s) }
             }
         }
-        if let area { walk(area) }
+        if let n = area?.node { walk(n) } else if let area { walk(area) }
         return out
     }
 

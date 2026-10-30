@@ -222,6 +222,7 @@ final class NuiTextField: UITextField {
         self.controller = controller
         guard !started else { return }
         started = true
+        NotificationCenter.default.addObserver(self, selector: #selector(voiceOverChanged), name: UIAccessibility.voiceOverStatusDidChangeNotification, object: nil)
         #if DEBUG
         NuiAutomation.start()
         #endif
@@ -330,7 +331,7 @@ final class NuiTextField: UITextField {
             }, for: .valueChanged)
             view = s
         case .scroll:
-            let s = UIScrollView()
+            let s = NuiScrollView()
             s.keyboardDismissMode = .interactive
             s.alwaysBounceVertical = true
             s.contentInsetAdjustmentBehavior = .never
@@ -390,6 +391,8 @@ final class NuiTextField: UITextField {
         view.autoresizingMask = []
         let node = NuiNode(id: id, kind: kind, view: view)
         node.list = list
+        (view as? NuiScrollView)?.node = node
+        (view as? NuiSelectionArea)?.node = node
         nodes[id] = node
     }
 
@@ -442,6 +445,8 @@ final class NuiTextField: UITextField {
             v.center = CGPoint(x: f.midX, y: f.midY)
             scroll?.contentSize = f.size
         }
+        // A row of a Scroll's content moved: what it takes out is redone.
+        (n.parent?.parent?.view as? NuiScrollView)?.setNeedsLayout()
         n.updateLayers()
     }
 
