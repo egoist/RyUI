@@ -9,7 +9,15 @@ import UIKit
     private var reply: ((Result<Data, Error>) -> Void)?
 
     func methods() -> [String: NuiModuleMethod] {
-        ["take": { [unowned self] _, reply in
+        ["capture": { _, reply in
+            #if NUI_CAMERAVIEW
+            guard let v = NuiCameraView.current else { reply(.failure(NuiModuleError("no camera view"))); return }
+            v.capture(reply)
+            #else
+            reply(.failure(NuiModuleError("no camera view")))
+            #endif
+        },
+         "take": { [unowned self] _, reply in
             guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
                 reply(.failure(NuiModuleError("no camera"))); return
             }

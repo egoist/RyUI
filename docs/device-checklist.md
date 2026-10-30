@@ -47,6 +47,10 @@ Turn the screen reader on (Settings → Accessibility), open the gallery.
 
 - [ ] **Camera** (iPhone): Platform → "Take a photo": the camera opens;
       the photo appears under the buttons.
+- [ ] **Camera view** (both): gallery → "Open the camera": after the
+      permission prompt the camera shows live, filling the screen; the
+      shutter puts the photo, upright, at the bottom left. Going back
+      turns the camera off (iPhone: the green dot goes).
 - [ ] **Two-finger rotation** (iPhone): Motion → the purple square turns
       with two fingers and the label follows ("Turned 30°").
 - [ ] **Sound**: Platform → "Play a chime": you hear it, with the

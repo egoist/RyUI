@@ -31,5 +31,10 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.11.1")
     implementation("androidx.media3:media3-exoplayer-hls:1.11.1")
     implementation("androidx.media3:media3-ui:1.11.1")
+    // nui/camera's View: CameraX's preview and photo capture.
+    implementation("androidx.exifinterface:exifinterface:1.4.1") // a photo's orientation
+    implementation("androidx.camera:camera-camera2:1.6.2")
+    implementation("androidx.camera:camera-lifecycle:1.6.2")
+    implementation("androidx.camera:camera-view:1.6.2")
     testImplementation("junit:junit:4.13.2")
 }

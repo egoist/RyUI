@@ -223,6 +223,9 @@ final class NuiGestureDelegate: NSObject, UIGestureRecognizerDelegate {
 
 @MainActor extension NuiRuntime {
     func registerNatives() {
+        #if NUI_CAMERAVIEW
+        registerNative("nui.camera") { NuiCameraView($0) }
+        #endif
         (NSClassFromString("NuiAppNatives") as? NuiNativeModule.Type)?.register()
     }
 

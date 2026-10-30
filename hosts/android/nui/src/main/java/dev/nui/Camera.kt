@@ -13,7 +13,27 @@ private var shots = 0
  * "no camera".
  */
 fun NuiRuntime.cameraMethods(): Map<String, NuiModuleMethod> = mapOf(
-    "take" to { _, reply ->
+    "capture" to { _, reply ->
+        val v = NuiCameraView.current
+        if (v == null) reply(Result.failure(Exception("no camera view"))) else v.capture(reply)
+    },
+    "take" to { _, reply -> takePhoto(reply) },
+)
+
+/** The camera app, after the camera permission if the app declares it (then the camera app needs it granted). */
+private fun NuiRuntime.takePhoto(reply: (Result<ByteArray>) -> Unit) {
+    val declared = try {
+        app.packageManager.getPackageInfo(app.packageName, android.content.pm.PackageManager.GET_PERMISSIONS)
+            .requestedPermissions?.contains(android.Manifest.permission.CAMERA) == true
+    } catch (_: Exception) { false }
+    if (declared) {
+        withPermission(arrayOf(android.Manifest.permission.CAMERA)) { ok ->
+            if (ok) launchCamera(reply) else reply(Result.failure(Exception("not allowed")))
+        }
+    } else launchCamera(reply)
+}
+
+private fun NuiRuntime.launchCamera(reply: (Result<ByteArray>) -> Unit) {
         val act = activity
         if (act == null) {
             reply(Result.failure(Exception("no screen")))
@@ -37,5 +57,81 @@ fun NuiRuntime.cameraMethods(): Map<String, NuiModuleMethod> = mapOf(
                 reply(Result.failure(Exception("no camera")))
             }
         }
-    },
-)
+}
+
+/**
+ * nui/camera's View: CameraX's PreviewView, bound to the Activity's
+ * lifecycle with a preview and an image capture (for camera.Capture),
+ * once the camera's allowed.
+ */
+class NuiCameraView(private val rt: NuiRuntime, private val ctx: NuiNativeContext) : NuiNativeView {
+    companion object {
+        var current: NuiCameraView? = null
+    }
+
+    private val preview = androidx.camera.view.PreviewView(ctx.context).apply {
+        scaleType = androidx.camera.view.PreviewView.ScaleType.FILL_CENTER
+    }
+    override val view: android.view.View get() = preview
+    private var capture: androidx.camera.core.ImageCapture? = null
+    private var provider: androidx.camera.lifecycle.ProcessCameraProvider? = null
+    private var front = false
+
+    init {
+        // The camera is open while the view is in a window: leaving the
+        // screen closes it.
+        preview.addOnAttachStateChangeListener(object : android.view.View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(v: android.view.View) { current = this@NuiCameraView; bind() }
+            override fun onViewDetachedFromWindow(v: android.view.View) { unbind() }
+        })
+    }
+
+    override fun set(name: String, value: Any) {
+        if (name == "facing") {
+            front = value == "front"
+            if (preview.isAttachedToWindow) bind()
+        }
+    }
+
+    private fun unbind() {
+        if (current === this) current = null
+        provider?.unbindAll()
+        provider = null
+        capture = null
+    }
+
+    private fun bind() {
+        val act = rt.activity ?: return
+        rt.withPermission(arrayOf(android.Manifest.permission.CAMERA)) { ok ->
+            if (!ok) { ctx.emit("error", mapOf("message" to "not allowed")); return@withPermission }
+            val future = androidx.camera.lifecycle.ProcessCameraProvider.getInstance(act)
+            future.addListener({
+                if (!preview.isAttachedToWindow) return@addListener // gone meanwhile
+                try {
+                    val provider = future.get()
+                    this.provider = provider
+                    val p = androidx.camera.core.Preview.Builder().build().also { it.surfaceProvider = preview.surfaceProvider }
+                    val c = androidx.camera.core.ImageCapture.Builder().build()
+                    val selector = if (front) androidx.camera.core.CameraSelector.DEFAULT_FRONT_CAMERA else androidx.camera.core.CameraSelector.DEFAULT_BACK_CAMERA
+                    provider.unbindAll()
+                    provider.bindToLifecycle(act, selector, p, c)
+                    capture = c
+                } catch (e: Exception) {
+                    ctx.emit("error", mapOf("message" to (e.message ?: "no camera")))
+                }
+            }, androidx.core.content.ContextCompat.getMainExecutor(act))
+        }
+    }
+
+    fun capture(reply: (Result<ByteArray>) -> Unit) {
+        val c = capture ?: run { reply(Result.failure(Exception("the camera isn't showing"))); return }
+        val dir = File(rt.app.cacheDir, "nui-camera").apply { mkdirs() }
+        val f = File(dir, java.util.UUID.randomUUID().toString() + ".jpg")
+        c.takePicture(androidx.camera.core.ImageCapture.OutputFileOptions.Builder(f).build(),
+            androidx.core.content.ContextCompat.getMainExecutor(rt.app),
+            object : androidx.camera.core.ImageCapture.OnImageSavedCallback {
+                override fun onImageSaved(r: androidx.camera.core.ImageCapture.OutputFileResults) = reply(Result.success(f.absolutePath.toByteArray()))
+                override fun onError(e: androidx.camera.core.ImageCaptureException) = reply(Result.failure(e))
+            })
+    }
+}

@@ -72,7 +72,7 @@
 | Secure storage | Keychain | `expo-secure-store` | ✓ `nui/secure` |
 | Files, network | Foundation | `expo-file-system`, fetch | ✓ Go's `os`, `net/http` |
 | Photos | `PhotosPicker` | `expo-image-picker` | ✓ `device.PickPhotos` |
-| Camera | AVFoundation | `expo-camera` | ◐ `nui/camera`: a photo with the system's camera; no camera view of your own (preview, video, scanning) |
+| Camera | AVFoundation | `expo-camera` | ◐ `nui/camera`: `Take` (the system's camera), `View` (a live preview, front or back) and `Capture`; no video recording or code scanning yet |
 | Location | Core Location | `expo-location` | ✓ `nui/location` |
 | Local notifications | UserNotifications | `expo-notifications` | ✓ `nui/notify` (local; no push yet) |
 | Push notifications | APNs | `expo-notifications` | ✗ |
@@ -106,6 +106,6 @@
 
 In order of what apps miss most: push notifications and maps (both set
 aside for now: push needs an APNs key and a Firebase project, Android's
-maps a provider's choice); an in-app camera view (a live preview:
-scanning, video); shared-element transitions. Maps and a camera view can be an app's own native view
-through `ui.Native` until then.
+maps a provider's choice); shared-element transitions; the camera's
+video and code scanning. Maps can be an app's own native view through
+`ui.Native` until then.

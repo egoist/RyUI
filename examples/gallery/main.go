@@ -36,6 +36,8 @@ func App() ui.Node {
 					}}),
 				ui.Button(ui.ButtonProps{Title: ui.Val("Open the photos (a grid)"), Icon: ui.IconPhoto, Variant: ui.ButtonBordered,
 					OnPress: func() { nav.Push(photos, ui.ScreenOptions{Title: ui.Val("Photos")}) }}),
+				ui.Button(ui.ButtonProps{Title: ui.Val("Open the camera"), Icon: ui.IconCamera, Variant: ui.ButtonBordered,
+					OnPress: func() { nav.Push(cameraScreen, ui.ScreenOptions{Title: ui.Val("Camera")}) }}),
 				ui.Button(ui.ButtonProps{Title: ui.Val("Open a web page"), Icon: ui.IconGlobe, Variant: ui.ButtonBordered,
 					OnPress: func() {
 						nav.Push(webPage, ui.ScreenOptions{Title: ui.Val("Web"), Actions: []ui.Action{
@@ -589,6 +591,31 @@ func topButton(shown signal.Accessor[bool], top func()) ui.Node {
 		})},
 			ui.Button(ui.ButtonProps{Icon: ui.IconUp, Label: "Back to top", Variant: ui.ButtonFilled, OnPress: top}))
 	})
+}
+
+// cameraScreen shows the camera live (camera.View) with a shutter
+// (camera.Capture), and the last photo taken.
+func cameraScreen() ui.Node {
+	last := signal.New("")
+	status := signal.New("")
+	return ui.Column(ui.Style{Grow: 1},
+		camera.View(camera.ViewProps{Style: ui.Style{Grow: 1}, OnError: func(m string) { status.Set(m) }}),
+		ui.SafeArea(nil, ui.Row(ui.Style{Padding: ui.All(16), Gap: 16, Align: ui.AlignCenter},
+			ui.Show(signal.Func(func() bool { return last.Get() != "" }), func() ui.Node {
+				return ui.Image(ui.ImageProps{Source: last, Mode: ui.ImageFill, Label: "The last photo",
+					Style: ui.Style{Width: ui.Pt(56), Height: ui.Pt(56), CornerRadius: 8, Clip: true}})
+			}),
+			ui.Text(status, ui.Style{Grow: 1, Color: ui.SecondaryLabel, Font: ui.Footnote}),
+			ui.Button(ui.ButtonProps{Icon: ui.IconCamera, Label: "Take a photo", Variant: ui.ButtonFilled, OnPress: func() {
+				camera.Capture(func(path string, err error) {
+					if err != nil {
+						status.Set(err.Error())
+						return
+					}
+					last.Set(path)
+					status.Set("Saved")
+				})
+			}}))))
 }
 
 // webView is the web page's, which the bar's button runs script in.

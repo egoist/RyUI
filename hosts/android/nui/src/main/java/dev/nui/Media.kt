@@ -4,6 +4,9 @@ import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import androidx.exifinterface.media.ExifInterface
+import java.io.ByteArrayInputStream
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
@@ -104,10 +107,39 @@ object NuiImages {
         if (o.outWidth <= 0) error("can't decode the image")
         var sample = 1
         while (maxOf(o.outWidth, o.outHeight) / (sample * 2) >= maxSide) sample *= 2
-        val b = BitmapFactory.decodeByteArray(data, 0, data.size, BitmapFactory.Options().apply { inSampleSize = sample })
+        var b = BitmapFactory.decodeByteArray(data, 0, data.size, BitmapFactory.Options().apply { inSampleSize = sample })
             ?: error("can't decode the image")
+        // A camera's photo is stored as the sensor saw it, with the turn to
+        // show it upright in its EXIF (BitmapFactory ignores it).
+        var w = o.outWidth
+        var h = o.outHeight
+        val m = exifMatrix(data)
+        if (m != null) {
+            b = Bitmap.createBitmap(b, 0, 0, b.width, b.height, m.first, true)
+            if (m.second) { w = o.outHeight; h = o.outWidth }
+        }
         b.prepareToDraw()
-        return NuiImage(b, o.outWidth, o.outHeight)
+        return NuiImage(b, w, h)
+    }
+
+    // exifMatrix is the transform a JPEG's EXIF orientation asks for, and
+    // whether it swaps width and height; null if none.
+    private fun exifMatrix(data: ByteArray): Pair<Matrix, Boolean>? {
+        val orientation = try {
+            ExifInterface(ByteArrayInputStream(data)).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+        } catch (_: Exception) { return null }
+        val m = Matrix()
+        val swap = when (orientation) {
+            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> { m.setScale(-1f, 1f); false }
+            ExifInterface.ORIENTATION_ROTATE_180 -> { m.setRotate(180f); false }
+            ExifInterface.ORIENTATION_FLIP_VERTICAL -> { m.setScale(1f, -1f); false }
+            ExifInterface.ORIENTATION_TRANSPOSE -> { m.setRotate(90f); m.postScale(-1f, 1f); true }
+            ExifInterface.ORIENTATION_ROTATE_90 -> { m.setRotate(90f); true }
+            ExifInterface.ORIENTATION_TRANSVERSE -> { m.setRotate(-90f); m.postScale(-1f, 1f); true }
+            ExifInterface.ORIENTATION_ROTATE_270 -> { m.setRotate(-90f); true }
+            else -> return null
+        }
+        return m to swap
     }
 }
 
@@ -260,6 +292,7 @@ class NuiNativeHost(context: Context) : FrameLayout(context) {
 }
 
 fun NuiRuntime.registerNatives() {
+    registerNative("nui.camera") { ctx -> NuiCameraView(this, ctx) }
     try {
         val c = Class.forName("dev.nui.app.NuiAppNatives")
         (c.getField("INSTANCE").get(null) as NuiNativeModule).register(this)

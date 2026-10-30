@@ -195,8 +195,9 @@ var featurePermissions = []struct {
 	{"github.com/egoist/nui/location", []string{"android.permission.ACCESS_COARSE_LOCATION", "android.permission.ACCESS_FINE_LOCATION"},
 		map[string]string{"NSLocationWhenInUseUsageDescription": "To show where you are."}},
 	{"github.com/egoist/nui/notify", []string{"android.permission.POST_NOTIFICATIONS"}, nil},
-	// The system's camera app takes the photo: no camera permission.
-	{"github.com/egoist/nui/camera", nil, map[string]string{"NSCameraUsageDescription": "To take a photo."}},
+	// camera.View's preview is the app's own: the camera permission (and
+	// with it declared, the system's camera app needs it granted too).
+	{"github.com/egoist/nui/camera", []string{"android.permission.CAMERA"}, map[string]string{"NSCameraUsageDescription": "To take a photo."}},
 }
 
 // permissionsFor adds the permissions the packages deps (an app's
