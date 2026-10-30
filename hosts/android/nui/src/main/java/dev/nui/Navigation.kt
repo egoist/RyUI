@@ -65,6 +65,8 @@ class NuiScreen(context: Context, val nodeID: Int, private val rt: NuiRuntime) :
     var icon = ""
     var actions: List<NuiAction> = emptyList()
     var backGesture = true
+    /** ScreenOptions.ZoomFrom: the Match key of the view below it zooms out of; empty: none. */
+    var zoomFrom = ""
     /** A search field's placeholder (ScreenOptions.Search); empty: none. */
     var search = ""
     var searchText = ""
@@ -209,6 +211,7 @@ class NuiStack(context: Context, val nodeID: Int, private val rt: NuiRuntime) : 
             layoutNow(v)
             refreshBar()
             if (prev == null) return
+            if (isAttachedToWindow && zoom(n, prev, true)) return
             if (isAttachedToWindow) {
                 v.translationX = slide
                 v.alpha = 0f
@@ -251,17 +254,94 @@ class NuiStack(context: Context, val nodeID: Int, private val rt: NuiRuntime) : 
         val b = below.view
         b.visibility = VISIBLE
         if (backing) {
-            // The predictive back gesture already shows what's below.
+            // The predictive back gesture already shows what's below; a
+            // screen that zoomed out of a view goes back into it.
             backing = false
+            if (zoom(n, below, false)) return
             v.animate().alpha(0f).translationX(v.translationX + slide).setDuration(popMillis / 2).setInterpolator(emphasized)
                 .withEndAction { removeView(v) }.start()
             return
         }
+        if (zoom(n, below, false)) return
         b.translationX = -slide
         b.alpha = 0f
         b.animate().translationX(0f).alpha(1f).setDuration(popMillis).setInterpolator(emphasized).start()
         v.animate().translationX(slide).alpha(0f).setDuration(popMillis).setInterpolator(emphasized)
             .withEndAction { removeView(v) }.start()
+    }
+
+    /**
+     * ScreenOptions.ZoomFrom: Material's container transform. The screen's
+     * container grows from the view with its key on the screen below into
+     * its own bounds (or, popping, back into the view), its content scaled
+     * to the container's width and clipped to it, rounded; the view is
+     * hidden meanwhile. False if there's no such view on screen.
+     */
+    private fun zoom(n: NuiNode, below: NuiNode, push: Boolean): Boolean {
+        val key = (n.view as NuiScreen).zoomFrom
+        if (key.isEmpty()) return false
+        val src = rt.zoomSource(key, below, n) ?: return false
+        val v = n.view
+        if (v.width == 0 || v.height == 0 || src.width == 0 || src.height == 0) return false
+        val at = IntArray(2)
+        val me = IntArray(2)
+        src.getLocationInWindow(at)
+        getLocationInWindow(me)
+        val from = android.graphics.RectF((at[0] - me[0]).toFloat(), (at[1] - me[1]).toFloat(), 0f, 0f)
+        from.right = from.left + src.width
+        from.bottom = from.top + src.height
+        val to = android.graphics.RectF(v.left.toFloat(), v.top.toFloat(), v.right.toFloat(), v.bottom.toFloat())
+        val radius = 16 * rt.density
+        var clip = android.graphics.RectF()
+        var corner = 0f
+        v.outlineProvider = object : android.view.ViewOutlineProvider() {
+            override fun getOutline(view: View, o: android.graphics.Outline) {
+                o.setRoundRect(Math.round(clip.left), Math.round(clip.top), Math.round(clip.right), Math.round(clip.bottom), corner)
+            }
+        }
+        v.clipToOutline = true
+        v.pivotX = 0f
+        v.pivotY = 0f
+        fun frame(p: Float) {
+            fun lerp(a: Float, b: Float) = a + (b - a) * p
+            val l = lerp(from.left, to.left)
+            val t = lerp(from.top, to.top)
+            val w = lerp(from.width(), to.width())
+            val h = lerp(from.height(), to.height())
+            val s = w / to.width() // the content fits the container's width
+            v.scaleX = s
+            v.scaleY = s
+            v.translationX = l - v.left
+            v.translationY = t - v.top
+            clip = android.graphics.RectF(0f, 0f, to.width(), h / s)
+            corner = lerp(radius, 0f) / s
+            v.invalidateOutline()
+            // The screen fades in over the first part, out over the last.
+            v.alpha = (p / 0.3f).coerceIn(0f, 1f)
+        }
+        val shown = src.alpha
+        src.alpha = 0f
+        below.view.visibility = VISIBLE
+        below.view.alpha = 1f
+        below.view.translationX = 0f
+        frame(if (push) 0f else 1f)
+        android.animation.ValueAnimator.ofFloat(if (push) 0f else 1f, if (push) 1f else 0f).apply {
+            duration = if (push) pushMillis + 100 else popMillis + 100
+            interpolator = emphasized
+            addUpdateListener { frame(it.animatedValue as Float) }
+            addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(a: android.animation.Animator) {
+                    src.alpha = shown
+                    v.clipToOutline = false
+                    v.outlineProvider = android.view.ViewOutlineProvider.BACKGROUND
+                    v.scaleX = 1f; v.scaleY = 1f; v.translationX = 0f; v.translationY = 0f; v.alpha = 1f
+                    v.pivotX = v.width / 2f; v.pivotY = v.height / 2f
+                    if (push) { if (below !== top) below.view.visibility = INVISIBLE } else removeView(v)
+                }
+            })
+            start()
+        }
+        return true
     }
 
     // Predictive back: the top screen shrinks and follows the gesture,
@@ -641,6 +721,7 @@ fun NuiRuntime.setNavProp(n: NuiNode, prop: Int, v: Any): Boolean {
                 NuiProp.Screen.TITLE -> s.title = v as String
                 NuiProp.Screen.ICON -> s.icon = v as String
                 NuiProp.Screen.BACK_GESTURE -> s.backGesture = v as Boolean
+                NuiProp.Screen.ZOOM_FROM -> { s.zoomFrom = v as String; return true }
                 NuiProp.Screen.ACTIONS -> s.actions = decodeActions(v as ByteBuffer)
                 NuiProp.Screen.SEARCH -> s.search = v as String
                 NuiProp.Screen.SEARCH_TEXT -> { s.showSearchText(v as String); return true }
@@ -914,4 +995,27 @@ fun NuiRuntime.haptic(kind: Int) {
         else -> return
     }
     v.performHapticFeedback(c)
+}
+
+/**
+ * The view with Style.Match key on the screen below (a List's cells aren't
+ * in the tree: then the one registered with the key), if it's on screen
+ * and not the zooming screen's own.
+ */
+fun NuiRuntime.zoomSource(key: String, below: NuiNode, screen: NuiNode): View? {
+    fun find(n: NuiNode): View? {
+        if (n.match == key && n.outer.isAttachedToWindow) return n.outer
+        for (c in n.children) find(c)?.let { return it }
+        return null
+    }
+    find(below)?.let { return it }
+    val m = matchViews[key] ?: return null
+    val v = m.outer
+    if (!v.isAttachedToWindow) return null
+    var p = v.parent
+    while (p != null) {
+        if (p === screen.view) return null
+        p = p.parent
+    }
+    return v
 }

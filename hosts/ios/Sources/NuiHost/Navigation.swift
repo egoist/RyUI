@@ -230,6 +230,18 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [NuiAction] {
             p.children.insert(c, at: i)
             c.parent = p
             if i == nav.viewControllers.count {
+                if #available(iOS 18, *), let key = c.zoomFrom, i > 0 {
+                    // Zooms out of the view with the key on the screen
+                    // below, and into it as it's popped (asked each time).
+                    // A list's cells aren't in the tree: then the view
+                    // registered with the key, if it isn't this screen's.
+                    let below = p.children[i - 1]
+                    screen.preferredTransition = .zoom { [weak self, weak below, weak screen] _ in
+                        if let m = below.flatMap({ NuiRuntime.matched(key, in: $0) }) { return m.view }
+                        guard let m = self?.matchViews[key], m.view.window != nil, let s = screen?.view, !m.view.isDescendant(of: s) else { return nil }
+                        return m.view
+                    }
+                }
                 nav.pushViewController(screen, animated: !nav.viewControllers.isEmpty && nav.view.window != nil)
             } else {
                 var vcs = nav.viewControllers
@@ -399,6 +411,8 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [NuiAction] {
             vc.definesPresentationContext = true
         case (.screen, NuiProp.Screen.searchText):
             n.search?.setText(v.string)
+        case (.screen, NuiProp.Screen.zoomFrom):
+            n.zoomFrom = v.string.isEmpty ? nil : v.string
         case (.screen, NuiProp.Screen.backGesture):
             (n.vc as? NuiScreenController)?.backGesture = v.bool
         case (.screen, NuiProp.Screen.actions):
@@ -496,6 +510,14 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [NuiAction] {
     func searchBarSearchButtonClicked(_ bar: UISearchBar) {
         let id = self.id
         runtime?.emit(id, .submit) { NuiEvents.submit(id) }
+    }
+}
+@MainActor extension NuiRuntime {
+    /// The view with Style.Match key in n's subtree, if it's on screen.
+    static func matched(_ key: String, in n: NuiNode) -> NuiNode? {
+        if n.match == key, n.view.window != nil { return n }
+        for c in n.children { if let m = matched(key, in: c) { return m } }
+        return nil
     }
 }
 #endif

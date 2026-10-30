@@ -34,6 +34,7 @@ import CNui
     var shadowColor: UIColor?
     var transition: NuiTransition?
     var match: String? // Style.Match's key
+    var zoomFrom: String? // a screen's ZoomFrom
     var opacity: CGFloat = 1 // its own, as Style.Opacity sets it
     var baseTransform: CGAffineTransform = .identity // Style.Transform's
     var gradient: CAGradientLayer?

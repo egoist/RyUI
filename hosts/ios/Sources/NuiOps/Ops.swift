@@ -156,6 +156,7 @@ public enum NuiProp {
         public static let icon: UInt16 = 67
         public static let search: UInt16 = 68
         public static let searchText: UInt16 = 69
+        public static let zoomFrom: UInt16 = 70
     }
 
     public enum Tabs {

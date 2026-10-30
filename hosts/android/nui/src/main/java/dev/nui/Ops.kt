@@ -159,6 +159,7 @@ object NuiProp {
         const val ICON = 67
         const val SEARCH = 68
         const val SEARCH_TEXT = 69
+        const val ZOOM_FROM = 70
     }
 
     object Tabs {

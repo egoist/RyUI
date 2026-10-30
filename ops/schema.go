@@ -165,6 +165,7 @@ var Schema = SchemaDef{
 			{Name: "Icon", Type: TString, Doc: "a tab's icon: an SF Symbol name (Android maps the common ones)"},
 			{Name: "Search", Type: TString, Doc: "a search field in the bar, with this placeholder (UISearchController; a toolbar search action expanding to a SearchView): typing is reported with TextChanged, the search key with Submit"},
 			{Name: "SearchText", Type: TString, Doc: "the search field's text, set from code"},
+			{Name: "ZoomFrom", Type: TString, Doc: "a Match key: the view with it on the screen below, which the screen zooms out of as it's pushed and into as it's popped (iOS 18's zoom transition, whose back swipe shrinks it into the view; on Android, Material's container transform)"},
 		}, Doc: "a screen of a Stack, or a page of Tabs: sized by the host, which reports its Environment"},
 		{Name: "Tabs", Props: []PropDef{
 			{Name: "Selected", Type: TInt},

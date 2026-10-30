@@ -376,3 +376,21 @@ func TestScreenSearch(t *testing.T) {
 		t.Fatal("code's text not sent")
 	}
 }
+
+// ZoomFrom names the view the pushed screen zooms out of; the screen
+// below keeps its key.
+func TestZoomFrom(t *testing.T) {
+	var nav *ui.Navigator
+	h, r := mount(t, func() ui.Node {
+		return ui.Stack(func() ui.Node {
+			nav = ui.UseNavigator()
+			return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(80), Height: ui.Pt(80), Match: "photo-1"}})
+		}, ui.ScreenOptions{Title: ui.Val("Photos")})
+	})
+	nav.Push(func() ui.Node { return ui.StaticText("photo") }, ui.ScreenOptions{ZoomFrom: "photo-1"})
+	r.Flush()
+	screens := h.OfKind(ops.KindScreen)
+	if len(screens) != 2 || screens[1].String(ops.PropScreenZoomFrom) != "photo-1" || screens[0].String(ops.PropScreenZoomFrom) != "" {
+		t.Fatalf("\n%s", h.Log())
+	}
+}

@@ -58,6 +58,9 @@ Turn the screen reader on (Settings → Accessibility), open the gallery.
       a screen) and a product's barcode: the status says `qr: …` or
       `ean13: …` (a UPC-A in the US: `upca: …`) once, with a haptic, while
       the code stays in view.
+- [ ] **Zoom** (both): gallery → "Open the photos", tap one: its screen
+      grows out of the photo; back (and the back swipe, which follows your
+      finger) shrinks it into the photo again.
 - [ ] **Two-finger rotation** (iPhone): Motion → the purple square turns
       with two fingers and the label follows ("Turned 30°").
 - [ ] **Sound**: Platform → "Play a chime": you hear it, with the

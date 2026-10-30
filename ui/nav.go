@@ -137,6 +137,11 @@ type ScreenOptions struct {
 	NoBackGesture bool
 	// Search puts a search field in the bar (SwiftUI's searchable).
 	Search *Search
+	// ZoomFrom is the Style.Match key of a view on the screen below (a
+	// photo in a grid, a card): the screen zooms out of it as it's pushed,
+	// and back into it as it's popped (SwiftUI's
+	// navigationTransition(.zoom); iOS before 18 pushes as usual).
+	ZoomFrom string
 }
 
 // Search is a screen's search field.
@@ -261,6 +266,9 @@ func (st *stackState) push(build func() Node, o ScreenOptions) {
 		}
 		if o.NoBackGesture {
 			b.SetBool(id, ops.PropScreenBackGesture, false)
+		}
+		if o.ZoomFrom != "" {
+			b.SetString(id, ops.PropScreenZoomFrom, o.ZoomFrom)
 		}
 		signal.RunWithOwner(st.owner, func() {
 			signal.Root(func(dispose func()) {

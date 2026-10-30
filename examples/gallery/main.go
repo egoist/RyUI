@@ -296,12 +296,29 @@ func photos() ui.Node {
 	}
 	return ui.List(ui.ListProps{Columns: 3, Gap: 2}, ui.Val(ids), func(id int) int { return id },
 		func(id signal.Accessor[int], _ signal.Accessor[int]) ui.Node {
-			return ui.Image(ui.ImageProps{
+			nav := ui.UseNavigator()
+			// Each photo has a key: its screen zooms out of it (ZoomFrom).
+			return ui.View(ui.ViewProps{
+				Label: "Photo",
+				OnPress: func() {
+					i := signal.Untrack(id.Get)
+					nav.Push(func() ui.Node { return photo(i) },
+						ui.ScreenOptions{Title: ui.Val("Photo"), ZoomFrom: fmt.Sprintf("photo-%d", i)})
+				},
+				Style: ui.StyleFunc(func() ui.Style { return ui.Style{AspectRatio: 1, Match: fmt.Sprintf("photo-%d", id.Get())} }),
+			}, ui.Image(ui.ImageProps{
 				Source:      signal.Func(func() string { return fmt.Sprintf("https://picsum.photos/id/%d/300/300", id.Get()) }),
 				Placeholder: "placeholder.png", Mode: ui.ImageFill,
-				Style: ui.Style{AspectRatio: 1},
-			})
+				Style: ui.Style{Grow: 1},
+			}))
 		})
+}
+
+// photo is one photo, large: its screen zooms out of the grid's.
+func photo(id int) ui.Node {
+	return ui.Column(ui.Style{Grow: 1, Background: ui.RGB(0, 0, 0), Justify: ui.JustifyCenter},
+		ui.Image(ui.ImageProps{Source: ui.Val(fmt.Sprintf("https://picsum.photos/id/%d/1200/1200", id)),
+			Placeholder: "placeholder.png", Mode: ui.ImageFit, Style: ui.Style{AspectRatio: 1}}))
 }
 
 func inbox() ui.Node {
