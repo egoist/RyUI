@@ -32,6 +32,8 @@ type handlers struct {
 	navigated, message  func(string)
 	ended               func()
 	layout              func(Frame)
+	a11yActions         []func()
+	adjust              func(by int)
 }
 
 // element is a node of the UI tree. Real elements have a native view;

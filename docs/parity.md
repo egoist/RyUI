@@ -90,7 +90,7 @@
 | Dynamic Type, font scale | automatic | `allowFontScaling` | ✓ text styles and custom fonts scale |
 | Screen reader labels, roles, hiding | `.accessibilityLabel`... | `accessibilityLabel`... | ✓ `Label`, `Hint`, `Role`, `Decorative`; pressable views are buttons |
 | Announcements | `AccessibilityNotification.Announcement` | `announceForAccessibility` | ✓ `Announce` |
-| Custom actions, adjustable | `.accessibilityAction`, `.accessibilityAdjustableAction` | `accessibilityActions` | ◐ swipe actions are actions on Android; no custom actions or adjustable views of your own |
+| Custom actions, adjustable | `.accessibilityAction`, `.accessibilityAdjustableAction` | `accessibilityActions` | ✓ `ViewProps.Actions`, `OnAdjust` (and List swipe actions are TalkBack actions) |
 
 ## Tooling
 
@@ -105,6 +105,5 @@
 ## Not yet
 
 In order of what apps miss most: push notifications; camera; maps; audio; shared-element
-transitions; wheel pickers and steppers; rotation gestures; custom
-accessibility actions. Maps and the camera can be an app's own native
+transitions; wheel pickers and steppers; rotation gestures. Maps and the camera can be an app's own native
 view through `ui.Native` until then.

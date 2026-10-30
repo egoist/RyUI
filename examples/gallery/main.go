@@ -302,8 +302,13 @@ func inbox() ui.Node {
 				items.Set(append(append([]message(nil), l...), messages(len(l), 30)...))
 			}
 		},
-	}, items, func(m message) int { return m.id }, func(m signal.Accessor[message], _ signal.Accessor[int]) ui.Node {
-		return ui.Row(ui.Style{Padding: ui.Symmetric(12, 20), Gap: 12, Align: ui.AlignCenter},
+	}, items, func(m message) int { return m.id }, func(m signal.Accessor[message], i signal.Accessor[int]) ui.Node {
+		// What swiping does, for a screen reader's user.
+		act := func() { remove(signal.Untrack(i.Get)) }
+		return ui.View(ui.ViewProps{
+			Actions: []ui.A11yAction{{Name: "Archive", Do: act}, {Name: "Delete", Do: act}},
+			Style:   ui.Style{Direction: ui.RowDir, Padding: ui.Symmetric(12, 20), Gap: 12, Align: ui.AlignCenter},
+		},
 			ui.Symbol(ui.IconPerson.Filled(), ui.Style{Color: ui.SecondaryLabel, Font: ui.Title2}),
 			ui.Column(ui.Style{Grow: 1, Gap: 2},
 				ui.Text(signal.Func(func() string { return m.Get().from }), ui.Style{Font: ui.Headline}),

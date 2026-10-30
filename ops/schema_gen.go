@@ -73,34 +73,38 @@ const (
 	PropA11yLabel    PropID = 8
 	PropA11yHint     PropID = 9
 	PropA11yRole     PropID = 10
+	// PropA11yActions: a screen reader's actions on the view: u32 count, then each name (u32-length string); taking one sends A11yAction with its index.
+	PropA11yActions PropID = 11
+	// PropA11yAdjustable: the view is adjustable (a screen reader's swipe up and down, TalkBack's volume keys): Adjust reports each step.
+	PropA11yAdjustable PropID = 12
 	// PropA11yHidden: hidden from screen readers, with everything in it: a decoration.
-	PropA11yHidden PropID = 11
+	PropA11yHidden PropID = 13
 	// PropColor: text color, or tint for controls.
-	PropColor      PropID = 12
-	PropTextStyle  PropID = 13
-	PropFontSize   PropID = 14
-	PropFontWeight PropID = 15
-	PropTextAlign  PropID = 16
+	PropColor      PropID = 14
+	PropTextStyle  PropID = 15
+	PropFontSize   PropID = 16
+	PropFontWeight PropID = 17
+	PropTextAlign  PropID = 18
 	// PropLineLimit: 0: no limit.
-	PropLineLimit PropID = 17
-	PropDisabled  PropID = 18
+	PropLineLimit PropID = 19
+	PropDisabled  PropID = 20
 	// PropMenu: a menu: u32 count, then per item u8 role (AlertButtonRole), a u32-length title and a u32-length icon (Symbol.Name; empty: none); Action events carry the item's index.
-	PropMenu        PropID = 19
-	PropMenuTrigger PropID = 20
+	PropMenu        PropID = 21
+	PropMenuTrigger PropID = 22
 	// PropTransform: f32 translate x, y (points), scale x, y, rotation (degrees, clockwise), around the view's center; layout doesn't see it.
-	PropTransform PropID = 21
+	PropTransform PropID = 23
 	// PropShadow: u64 color (0: none), f32 blur radius, offset x, y (points), from the view's shape.
-	PropShadow PropID = 22
+	PropShadow PropID = 24
 	// PropGradient: a linear background gradient: u32 count, per stop u64 color and f32 location (0 to 1); f32 start x, y, end x, y (unit points of the view).
-	PropGradient PropID = 23
+	PropGradient PropID = 25
 	// PropTransition: u8 fade, f32 scale (0: none), offset x, y (points): the state a view comes in from when it's inserted during an animation, and goes out to when it's destroyed during one (the host keeps it until it has).
-	PropTransition PropID = 24
+	PropTransition PropID = 26
 	// PropMaterial: a translucent background that blurs what's behind (iOS's materials); Android, which can't, shows its surface color, translucent.
-	PropMaterial PropID = 25
+	PropMaterial PropID = 27
 	// PropFontFamily: a font file's name in the app's assets/fonts (Inter-Bold.ttf: Inter-Bold), a family of them (Inter: Inter-Regular, Inter-Bold...), a generic family (serif, monospace, rounded) or a system family; scaled as the text style is. Under nui dev, a font file's URL, which the host loads, then sends FontLoaded.
-	PropFontFamily PropID = 26
+	PropFontFamily PropID = 28
 	// PropSwipeActions: a List cell's swipe actions, encoded as Menu (iOS: its trailing actions; Android: a full swipe runs the first); Action events on the cell carry the index.
-	PropSwipeActions PropID = 27
+	PropSwipeActions PropID = 29
 )
 
 // Text props.
@@ -295,7 +299,7 @@ const (
 	PropDatePickerMax PropID = 67
 )
 
-var commonProps = [...]propInfo{{}, {"Background", TColor}, {"CornerRadius", TFloat}, {"BorderWidth", TFloat}, {"BorderColor", TColor}, {"Opacity", TFloat}, {"Hidden", TBool}, {"Clip", TBool}, {"A11yLabel", TString}, {"A11yHint", TString}, {"A11yRole", TEnum}, {"A11yHidden", TBool}, {"Color", TColor}, {"TextStyle", TEnum}, {"FontSize", TFloat}, {"FontWeight", TEnum}, {"TextAlign", TEnum}, {"LineLimit", TInt}, {"Disabled", TBool}, {"Menu", TBytes}, {"MenuTrigger", TEnum}, {"Transform", TBytes}, {"Shadow", TBytes}, {"Gradient", TBytes}, {"Transition", TBytes}, {"Material", TEnum}, {"FontFamily", TString}, {"SwipeActions", TBytes}}
+var commonProps = [...]propInfo{{}, {"Background", TColor}, {"CornerRadius", TFloat}, {"BorderWidth", TFloat}, {"BorderColor", TColor}, {"Opacity", TFloat}, {"Hidden", TBool}, {"Clip", TBool}, {"A11yLabel", TString}, {"A11yHint", TString}, {"A11yRole", TEnum}, {"A11yActions", TBytes}, {"A11yAdjustable", TBool}, {"A11yHidden", TBool}, {"Color", TColor}, {"TextStyle", TEnum}, {"FontSize", TFloat}, {"FontWeight", TEnum}, {"TextAlign", TEnum}, {"LineLimit", TInt}, {"Disabled", TBool}, {"Menu", TBytes}, {"MenuTrigger", TEnum}, {"Transform", TBytes}, {"Shadow", TBytes}, {"Gradient", TBytes}, {"Transition", TBytes}, {"Material", TEnum}, {"FontFamily", TString}, {"SwipeActions", TBytes}}
 
 var kindProps = [...][]propInfo{nil, {}, {{"Text", TString}}, {{"Title", TString}, {"Variant", TEnum}, {"Icon", TString}}, {{"Value", TString}, {"Placeholder", TString}, {"Keyboard", TEnum}, {"ReturnKey", TEnum}, {"Secure", TBool}, {"Autocapitalize", TEnum}, {"Autocorrect", TEnum}, {"ContentType", TString}, {"Multiline", TBool}}, {{"On", TBool}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}}, {{"Horizontal", TBool}, {"Refreshable", TBool}, {"Refreshing", TBool}}, {{"Refreshable", TBool}, {"Refreshing", TBool}, {"Columns", TInt}, {"Gap", TFloat}}, {{"Animating", TBool}}, {}, {{"Title", TString}, {"Actions", TBytes}, {"BackGesture", TBool}, {"Icon", TString}, {"Search", TString}, {"SearchText", TString}}, {{"Selected", TInt}}, {{"Detents", TInt}, {"Grabber", TBool}}, {{"Title", TString}, {"Message", TString}, {"Buttons", TBytes}, {"Style", TEnum}}, {{"Source", TString}, {"Mode", TEnum}, {"Placeholder", TString}}, {{"Type", TString}, {"Prop", TBytes}}, {{"Content", TBytes}, {"Inlines", TBytes}}, {}, {{"Name", TString}}, {{"Segments", TBytes}, {"Selected", TInt}}, {{"Value", TFloat}, {"Indeterminate", TBool}}, {{"Path", TBytes}, {"Fill", TColor}, {"Stroke", TColor}, {"LineWidth", TFloat}, {"LineCap", TEnum}, {"LineJoin", TEnum}, {"TrimStart", TFloat}, {"TrimEnd", TFloat}}, {{"Source", TString}, {"Mode", TEnum}, {"HideControls", TBool}, {"AutoPlay", TBool}, {"Loop", TBool}, {"Muted", TBool}}, {{"URL", TString}, {"HTML", TString}}, {{"Value", TInt}, {"Mode", TEnum}, {"Min", TInt}, {"Max", TInt}}}
 
@@ -335,25 +339,29 @@ const (
 	EventNative EventKind = 22
 	// EventLink: a rich text's link was tapped (its URL).
 	EventLink EventKind = 23
+	// EventA11yAction: a screen reader took one of the view's A11yActions (its index).
+	EventA11yAction EventKind = 24
+	// EventAdjust: a screen reader adjusted the view: 1 up, -1 down.
+	EventAdjust EventKind = 25
 	// EventEnded: a Video played to its end.
-	EventEnded EventKind = 24
+	EventEnded EventKind = 26
 	// EventNavigated: a WebView loaded a page (its URL).
-	EventNavigated EventKind = 25
+	EventNavigated EventKind = 27
 	// EventMessage: a WebView's page posted a message: window.nui.postMessage(text).
-	EventMessage EventKind = 26
+	EventMessage EventKind = 28
 	// EventIncomingURL: the app was opened with a URL (its scheme, or a universal or app link), at launch or since; to the root.
-	EventIncomingURL EventKind = 27
+	EventIncomingURL EventKind = 29
 	// EventFontLoaded: a font a FontFamily named by URL (under nui dev) loaded, to the root: text in it is measured again.
-	EventFontLoaded EventKind = 28
+	EventFontLoaded EventKind = 30
 	// EventFrame: a frame the display draws (vsync), while Frames is on: its time in seconds (monotonic); to the root.
-	EventFrame EventKind = 29
+	EventFrame EventKind = 31
 	// EventResult: a Call's answer, to the root: u32 call id, u8 ok, then the result's bytes (an error's message when not ok).
-	EventResult EventKind = 30
+	EventResult EventKind = 32
 )
 
-var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh", "Pan", "Pinch", "Swipe", "Loaded", "Failed", "Native", "Link", "Ended", "Navigated", "Message", "IncomingURL", "FontLoaded", "Frame", "Result"}
+var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh", "Pan", "Pinch", "Swipe", "Loaded", "Failed", "Native", "Link", "A11yAction", "Adjust", "Ended", "Navigated", "Message", "IncomingURL", "FontLoaded", "Frame", "Result"}
 
-var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone, PGesture, PGesture, PInt, PPoint, PString, PBytes, PString, PNone, PString, PString, PString, PString, PFloat, PBytes}
+var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone, PGesture, PGesture, PInt, PPoint, PString, PBytes, PString, PInt, PInt, PNone, PString, PString, PString, PString, PFloat, PBytes}
 
 func (e EventKind) String() string {
 	if int(e) < len(eventNames) && e > 0 {

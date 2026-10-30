@@ -308,6 +308,7 @@ fun NuiRuntime.propBool(id: Int, prop: Int, v: Boolean) {
         NuiProp.HIDDEN -> view.visibility = if (v) View.INVISIBLE else View.VISIBLE
         NuiProp.CLIP -> { view.clipToOutline = v; (view as? android.view.ViewGroup)?.clipChildren = v }
         NuiProp.DISABLED -> view.isEnabled = !v
+        NuiProp.A11Y_ADJUSTABLE -> if (v) setAdjustable(n)
         NuiProp.A11Y_HIDDEN -> view.importantForAccessibility =
             if (v) View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS else View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
         else -> if (!setNavProp(n, prop, v)) when (n.kind) {
@@ -563,4 +564,46 @@ fun NuiRuntime.measureNode(n: NuiNode, w: Float, h: Float, aw: Float, ah: Float)
     if (!w.isNaN()) mw = w
     if (!h.isNaN()) mh = h
     return mw to mh
+}
+
+/** A screen reader's actions on the view (TalkBack's actions menu): u32 count, then each name. */
+fun NuiRuntime.setA11yActions(n: NuiNode, b: java.nio.ByteBuffer) {
+    val r = b.duplicate().order(java.nio.ByteOrder.LITTLE_ENDIAN)
+    n.a11yActions.forEach { ViewCompat.removeAccessibilityAction(n.view, it) }
+    n.a11yActions.clear()
+    if (r.remaining() < 4) return
+    val id = n.id
+    // One item to TalkBack, which reads its texts, with the actions.
+    ViewCompat.setScreenReaderFocusable(n.view, true)
+    for (i in 0 until r.int) {
+        val name = ByteArray(r.int).also { r.get(it) }.toString(Charsets.UTF_8)
+        n.a11yActions.add(ViewCompat.addAccessibilityAction(n.view, name) { _, _ ->
+            emit(id, NuiEventKind.A11Y_ACTION) { NuiEvents.a11yAction(id, i.toLong()) }
+            true
+        })
+    }
+}
+
+/** OnAdjust: a seek bar to TalkBack, whose swipe up and down (and the volume keys) step it. */
+fun NuiRuntime.setAdjustable(n: NuiNode) {
+    val id = n.id
+    ViewCompat.setAccessibilityDelegate(n.view, object : AccessibilityDelegateCompat() {
+        override fun onInitializeAccessibilityNodeInfo(host: View, info: AccessibilityNodeInfoCompat) {
+            super.onInitializeAccessibilityNodeInfo(host, info)
+            info.className = "android.widget.SeekBar"
+            info.addAction(AccessibilityNodeInfoCompat.AccessibilityActionCompat.ACTION_SCROLL_FORWARD)
+            info.addAction(AccessibilityNodeInfoCompat.AccessibilityActionCompat.ACTION_SCROLL_BACKWARD)
+        }
+
+        override fun performAccessibilityAction(host: View, action: Int, args: android.os.Bundle?): Boolean {
+            val by = when (action) {
+                android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD -> 1L
+                android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD -> -1L
+                else -> return super.performAccessibilityAction(host, action, args)
+            }
+            emit(id, NuiEventKind.ADJUST) { NuiEvents.adjust(id, by) }
+            return true
+        }
+    })
+    n.view.isFocusable = true
 }

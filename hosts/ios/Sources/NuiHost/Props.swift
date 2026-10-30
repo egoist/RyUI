@@ -168,6 +168,20 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             n.opacity = a
             animated(view) { view.alpha = a }
         case NuiProp.hidden: view.isHidden = v.bool
+        case NuiProp.a11yActions:
+            guard case .bytes(let b) = v, b.count >= 4 else { return }
+            var r = NuiReader(b)
+            let count = Int(r.u32())
+            let id = n.id
+            view.accessibilityCustomActions = (0..<count).map { i in
+                UIAccessibilityCustomAction(name: r.string()) { [weak self] _ in
+                    self?.emit(id, .a11yAction) { NuiEvents.a11yAction(id, Int64(i)) }
+                    return true
+                }
+            }
+            if !view.isAccessibilityElement, view is NuiContainerView { view.isAccessibilityElement = true }
+        case NuiProp.a11yAdjustable:
+            (view as? NuiContainerView)?.adjustable = v.bool
         case NuiProp.a11yHidden:
             view.accessibilityElementsHidden = v.bool
             if v.bool { view.isAccessibilityElement = false }

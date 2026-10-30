@@ -73,23 +73,25 @@ public enum NuiProp {
     public static let a11yLabel: UInt16 = 8
     public static let a11yHint: UInt16 = 9
     public static let a11yRole: UInt16 = 10
-    public static let a11yHidden: UInt16 = 11
-    public static let color: UInt16 = 12
-    public static let textStyle: UInt16 = 13
-    public static let fontSize: UInt16 = 14
-    public static let fontWeight: UInt16 = 15
-    public static let textAlign: UInt16 = 16
-    public static let lineLimit: UInt16 = 17
-    public static let disabled: UInt16 = 18
-    public static let menu: UInt16 = 19
-    public static let menuTrigger: UInt16 = 20
-    public static let transform: UInt16 = 21
-    public static let shadow: UInt16 = 22
-    public static let gradient: UInt16 = 23
-    public static let transition: UInt16 = 24
-    public static let material: UInt16 = 25
-    public static let fontFamily: UInt16 = 26
-    public static let swipeActions: UInt16 = 27
+    public static let a11yActions: UInt16 = 11
+    public static let a11yAdjustable: UInt16 = 12
+    public static let a11yHidden: UInt16 = 13
+    public static let color: UInt16 = 14
+    public static let textStyle: UInt16 = 15
+    public static let fontSize: UInt16 = 16
+    public static let fontWeight: UInt16 = 17
+    public static let textAlign: UInt16 = 18
+    public static let lineLimit: UInt16 = 19
+    public static let disabled: UInt16 = 20
+    public static let menu: UInt16 = 21
+    public static let menuTrigger: UInt16 = 22
+    public static let transform: UInt16 = 23
+    public static let shadow: UInt16 = 24
+    public static let gradient: UInt16 = 25
+    public static let transition: UInt16 = 26
+    public static let material: UInt16 = 27
+    public static let fontFamily: UInt16 = 28
+    public static let swipeActions: UInt16 = 29
 
     public enum Text {
         public static let text: UInt16 = 64
@@ -252,13 +254,15 @@ public enum NuiEventKind: UInt16 {
     case failed = 21
     case native = 22
     case link = 23
-    case ended = 24
-    case navigated = 25
-    case message = 26
-    case incomingURL = 27
-    case fontLoaded = 28
-    case frame = 29
-    case result = 30
+    case a11yAction = 24
+    case adjust = 25
+    case ended = 26
+    case navigated = 27
+    case message = 28
+    case incomingURL = 29
+    case fontLoaded = 30
+    case frame = 31
+    case result = 32
 }
 
 public enum NuiCommand: UInt16 {
@@ -699,25 +703,31 @@ public enum NuiEvents {
     public static func link(_ id: UInt32, _ v: String) -> [UInt8] {
         var w = NuiWriter(); w.header(id, 23); w.string(v); return w.bytes
     }
+    public static func a11yAction(_ id: UInt32, _ v: Int64) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 24); w.u64(UInt64(bitPattern: v)); return w.bytes
+    }
+    public static func adjust(_ id: UInt32, _ v: Int64) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 25); w.u64(UInt64(bitPattern: v)); return w.bytes
+    }
     public static func ended(_ id: UInt32) -> [UInt8] {
-        var w = NuiWriter(); w.header(id, 24); return w.bytes
+        var w = NuiWriter(); w.header(id, 26); return w.bytes
     }
     public static func navigated(_ id: UInt32, _ v: String) -> [UInt8] {
-        var w = NuiWriter(); w.header(id, 25); w.string(v); return w.bytes
-    }
-    public static func message(_ id: UInt32, _ v: String) -> [UInt8] {
-        var w = NuiWriter(); w.header(id, 26); w.string(v); return w.bytes
-    }
-    public static func incomingURL(_ id: UInt32, _ v: String) -> [UInt8] {
         var w = NuiWriter(); w.header(id, 27); w.string(v); return w.bytes
     }
-    public static func fontLoaded(_ id: UInt32, _ v: String) -> [UInt8] {
+    public static func message(_ id: UInt32, _ v: String) -> [UInt8] {
         var w = NuiWriter(); w.header(id, 28); w.string(v); return w.bytes
     }
+    public static func incomingURL(_ id: UInt32, _ v: String) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 29); w.string(v); return w.bytes
+    }
+    public static func fontLoaded(_ id: UInt32, _ v: String) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 30); w.string(v); return w.bytes
+    }
     public static func frame(_ id: UInt32, _ v: Double) -> [UInt8] {
-        var w = NuiWriter(); w.header(id, 29); w.f64(v); return w.bytes
+        var w = NuiWriter(); w.header(id, 31); w.f64(v); return w.bytes
     }
     public static func result(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
-        var w = NuiWriter(); w.header(id, 30); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
+        var w = NuiWriter(); w.header(id, 32); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
     }
 }

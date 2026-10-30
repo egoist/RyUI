@@ -109,12 +109,13 @@ final class NuiContainerView: UIView {
     }
     required init?(coder: NSCoder) { fatalError() }
 
-    /// The app's label, or a pressable view's content, as VoiceOver reads
-    /// a row: its texts and labeled images, in order.
+    /// The app's label, or a pressable (adjustable, actionable) view's
+    /// content, as VoiceOver reads a row: its texts and labeled images, in
+    /// order.
     override var accessibilityLabel: String? {
         get {
             if let l = super.accessibilityLabel { return l }
-            guard pressable else { return nil }
+            guard pressable || adjustable || accessibilityCustomActions?.isEmpty == false else { return nil }
             var parts: [String] = []
             func walk(_ v: UIView) {
                 for s in v.subviews where !s.isHidden && s.alpha > 0 {
@@ -140,6 +141,22 @@ final class NuiContainerView: UIView {
         let id = UInt32(tag)
         NuiRuntime.shared.emit(id, .press) { NuiEvents.press(id) }
         return true
+    }
+
+    /// OnAdjust: VoiceOver's swipe up and down step it.
+    var adjustable = false {
+        didSet {
+            if adjustable { accessibilityTraits.insert(.adjustable); isAccessibilityElement = true } else { accessibilityTraits.remove(.adjustable) }
+        }
+    }
+
+    override func accessibilityIncrement() { adjust(1) }
+    override func accessibilityDecrement() { adjust(-1) }
+
+    private func adjust(_ by: Int64) {
+        guard adjustable, tag > 0 else { return }
+        let id = UInt32(tag)
+        NuiRuntime.shared.emit(id, .adjust) { NuiEvents.adjust(id, by) }
     }
 }
 

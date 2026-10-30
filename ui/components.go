@@ -47,6 +47,21 @@ type ViewProps struct {
 	// it is. It runs after the frame is applied; what it writes is laid
 	// out in turn.
 	OnLayout func(Frame)
+	// Actions are what a screen reader offers to do with the view
+	// (VoiceOver's rotor, TalkBack's actions menu): what a swipe or a
+	// long press does for a sighted user, say ("Delete", "Reply").
+	Actions []A11yAction
+	// OnAdjust makes the view adjustable, as a slider is: a screen
+	// reader's swipe up or down (TalkBack's volume keys) steps it, by 1
+	// or -1. Give it a Label, and a Hint or value text that says where
+	// it is.
+	OnAdjust func(by int)
+}
+
+// A11yAction is a screen reader's action on a view.
+type A11yAction struct {
+	Name string
+	Do   func()
 }
 
 // Frame is a view's place in its parent and its size, in points.
@@ -110,6 +125,7 @@ func addKids(e *element, kids []Node) {
 // ancestor that has one.
 func View(p ViewProps, children ...Node) Node {
 	real := p.OnPress != nil || p.OnLongPress != nil || p.Label != "" || p.Hint != "" || p.Role != RoleNone || p.Decorative || p.OnLayout != nil ||
+		len(p.Actions) > 0 || p.OnAdjust != nil ||
 		p.OnPan != nil || p.OnPinch != nil || p.OnSwipe != nil
 	if s, ok := p.Style.(Style); ok && s.visual() {
 		real = true
@@ -137,6 +153,22 @@ func View(p ViewProps, children ...Node) Node {
 			e.r.batch.SetBool(e.id, ops.PropA11yHidden, true)
 		}
 		h.layout = p.OnLayout
+		if len(p.Actions) > 0 {
+			var b []byte
+			b = binary.LittleEndian.AppendUint32(b, uint32(len(p.Actions)))
+			for _, a := range p.Actions {
+				b = binary.LittleEndian.AppendUint32(b, uint32(len(a.Name)))
+				b = append(b, a.Name...)
+				h.a11yActions = append(h.a11yActions, a.Do)
+			}
+			e.r.batch.SetBytes(e.id, ops.PropA11yActions, b)
+			e.listen(ops.EventA11yAction)
+		}
+		if p.OnAdjust != nil {
+			h.adjust = p.OnAdjust
+			e.r.batch.SetBool(e.id, ops.PropA11yAdjustable, true)
+			e.listen(ops.EventAdjust)
+		}
 		e.listenGestures(&p)
 	}
 	e.setStyle(p.Style, false)

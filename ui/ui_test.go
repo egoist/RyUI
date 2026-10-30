@@ -984,3 +984,30 @@ func TestOnLayout(t *testing.T) {
 		t.Fatalf("after the change: %v", frames)
 	}
 }
+
+// A view's screen-reader actions and adjustment reach the app.
+func TestA11yActions(t *testing.T) {
+	var did []string
+	n := 0
+	h, _ := mount(t, func() ui.Node {
+		return ui.View(ui.ViewProps{Label: "Message",
+			Actions:  []ui.A11yAction{{Name: "Reply", Do: func() { did = append(did, "reply") }}, {Name: "Delete", Do: func() { did = append(did, "delete") }}},
+			OnAdjust: func(by int) { n += by }})
+	})
+	var v *fake.View
+	for _, x := range h.OfKind(ops.KindView) {
+		if x.String(ops.PropA11yLabel) == "Message" {
+			v = x
+		}
+	}
+	if b := v.Props[ops.PropA11yActions].Bytes; len(b) != 4+4+5+4+6 || !v.Bool(ops.PropA11yAdjustable) {
+		t.Fatalf("props %v", v.Props)
+	}
+	h.Dispatch(ops.Event{ID: v.ID, Kind: ops.EventA11yAction, Int: 1})
+	h.Dispatch(ops.Event{ID: v.ID, Kind: ops.EventAdjust, Int: 1})
+	h.Dispatch(ops.Event{ID: v.ID, Kind: ops.EventAdjust, Int: 1})
+	h.Dispatch(ops.Event{ID: v.ID, Kind: ops.EventAdjust, Int: -1})
+	if len(did) != 1 || did[0] != "delete" || n != 1 {
+		t.Fatalf("did %v, n %d", did, n)
+	}
+}

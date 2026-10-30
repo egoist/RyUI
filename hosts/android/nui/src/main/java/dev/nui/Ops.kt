@@ -76,23 +76,25 @@ object NuiProp {
     const val A11Y_LABEL = 8
     const val A11Y_HINT = 9
     const val A11Y_ROLE = 10
-    const val A11Y_HIDDEN = 11
-    const val COLOR = 12
-    const val TEXT_STYLE = 13
-    const val FONT_SIZE = 14
-    const val FONT_WEIGHT = 15
-    const val TEXT_ALIGN = 16
-    const val LINE_LIMIT = 17
-    const val DISABLED = 18
-    const val MENU = 19
-    const val MENU_TRIGGER = 20
-    const val TRANSFORM = 21
-    const val SHADOW = 22
-    const val GRADIENT = 23
-    const val TRANSITION = 24
-    const val MATERIAL = 25
-    const val FONT_FAMILY = 26
-    const val SWIPE_ACTIONS = 27
+    const val A11Y_ACTIONS = 11
+    const val A11Y_ADJUSTABLE = 12
+    const val A11Y_HIDDEN = 13
+    const val COLOR = 14
+    const val TEXT_STYLE = 15
+    const val FONT_SIZE = 16
+    const val FONT_WEIGHT = 17
+    const val TEXT_ALIGN = 18
+    const val LINE_LIMIT = 19
+    const val DISABLED = 20
+    const val MENU = 21
+    const val MENU_TRIGGER = 22
+    const val TRANSFORM = 23
+    const val SHADOW = 24
+    const val GRADIENT = 25
+    const val TRANSITION = 26
+    const val MATERIAL = 27
+    const val FONT_FAMILY = 28
+    const val SWIPE_ACTIONS = 29
 
     object Text {
         const val TEXT = 64
@@ -255,13 +257,15 @@ object NuiEventKind {
     const val FAILED = 21
     const val NATIVE = 22
     const val LINK = 23
-    const val ENDED = 24
-    const val NAVIGATED = 25
-    const val MESSAGE = 26
-    const val INCOMING_URL = 27
-    const val FONT_LOADED = 28
-    const val FRAME = 29
-    const val RESULT = 30
+    const val A11Y_ACTION = 24
+    const val ADJUST = 25
+    const val ENDED = 26
+    const val NAVIGATED = 27
+    const val MESSAGE = 28
+    const val INCOMING_URL = 29
+    const val FONT_LOADED = 30
+    const val FRAME = 31
+    const val RESULT = 32
 }
 
 object NuiCommand {
@@ -639,11 +643,13 @@ object NuiEvents {
     fun failed(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 21); string(v) }.bytes()
     fun native(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 22); u32(v.size); raw(v) }.bytes()
     fun link(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 23); string(v) }.bytes()
-    fun ended(id: Int): ByteArray = NuiWriter().apply { header(id, 24) }.bytes()
-    fun navigated(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 25); string(v) }.bytes()
-    fun message(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 26); string(v) }.bytes()
-    fun incomingURL(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 27); string(v) }.bytes()
-    fun fontLoaded(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 28); string(v) }.bytes()
-    fun frame(id: Int, v: Double): ByteArray = NuiWriter().apply { header(id, 29); f64(v) }.bytes()
-    fun result(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 30); u32(v.size); raw(v) }.bytes()
+    fun a11yAction(id: Int, v: Long): ByteArray = NuiWriter().apply { header(id, 24); u64(v) }.bytes()
+    fun adjust(id: Int, v: Long): ByteArray = NuiWriter().apply { header(id, 25); u64(v) }.bytes()
+    fun ended(id: Int): ByteArray = NuiWriter().apply { header(id, 26) }.bytes()
+    fun navigated(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 27); string(v) }.bytes()
+    fun message(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 28); string(v) }.bytes()
+    fun incomingURL(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 29); string(v) }.bytes()
+    fun fontLoaded(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 30); string(v) }.bytes()
+    fun frame(id: Int, v: Double): ByteArray = NuiWriter().apply { header(id, 31); f64(v) }.bytes()
+    fun result(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 32); u32(v.size); raw(v) }.bytes()
 }

@@ -440,6 +440,14 @@ func dispatch(ev ops.Event) {
 		if h.swipe != nil {
 			h.swipe(SwipeDirection(ev.Int))
 		}
+	case ops.EventA11yAction:
+		if i := int(ev.Int); i >= 0 && i < len(h.a11yActions) {
+			h.a11yActions[i]()
+		}
+	case ops.EventAdjust:
+		if h.adjust != nil {
+			h.adjust(int(ev.Int))
+		}
 	case ops.EventEnded:
 		if h.ended != nil {
 			h.ended()

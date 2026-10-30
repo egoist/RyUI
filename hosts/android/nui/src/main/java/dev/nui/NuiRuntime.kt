@@ -540,6 +540,10 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
             wirePresses(n)
             return
         }
+        if (prop == NuiProp.A11Y_ACTIONS) {
+            setA11yActions(n, v)
+            return
+        }
         if (prop == NuiProp.SWIPE_ACTIONS) {
             n.swipeActions = decodeActions(v)
             swipeAccessibility(n)
