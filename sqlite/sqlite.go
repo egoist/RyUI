@@ -292,11 +292,37 @@ type Result[T any] struct {
 // thread now and again each time the database changes through Exec or
 // Tx. Make it in a component: it stops with the component's owner.
 func Watch[T any](d *DB, query string, args ...any) signal.Accessor[Result[T]] {
+	return WatchWith[T](d, query, func() []any { return args })
+}
+
+// WatchWith is Watch with arguments that change: args reads signals (a
+// search field's text, a page's size), and the query runs again when
+// they do, as when the database changes (expo-sqlite's useLiveQuery
+// with its dependencies). Until the new rows come, the old ones stay;
+// rows for arguments that have since changed are dropped.
+//
+//	q := signal.New("")
+//	notes := sqlite.WatchWith[Note](db, `select * from notes where text like ? order by id`,
+//		func() []any { return []any{"%" + q.Get() + "%"} })
+func WatchWith[T any](d *DB, query string, args func() []any) signal.Accessor[Result[T]] {
 	s := signal.NewFunc(Result[T]{Loading: true}, nil)
 	w := &watch{}
+	var mu sync.Mutex
+	var cur []any // the arguments to fetch with
+	gen := 0      // which arguments they are; main thread
 	w.fetch = func() {
-		rows, err := Query[T](d, query, args...)
-		ui.Post(func() { s.Set(Result[T]{Rows: rows, Err: err}) })
+		mu.Lock()
+		a, g := cur, gen
+		mu.Unlock()
+		rows, err := Query[T](d, query, a...)
+		ui.Post(func() {
+			mu.Lock()
+			stale := g != gen
+			mu.Unlock()
+			if !stale {
+				s.Set(Result[T]{Rows: rows, Err: err})
+			}
+		})
 	}
 	d.mu.Lock()
 	d.watches[w] = true
@@ -306,6 +332,13 @@ func Watch[T any](d *DB, query string, args ...any) signal.Accessor[Result[T]] {
 		delete(d.watches, w)
 		d.mu.Unlock()
 	})
-	w.run()
+	// Runs now, and again as what args reads changes.
+	signal.RenderEffect(func() {
+		a := args()
+		mu.Lock()
+		cur, gen = a, gen+1
+		mu.Unlock()
+		w.run()
+	})
 	return s
 }

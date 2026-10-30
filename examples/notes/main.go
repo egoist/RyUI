@@ -7,7 +7,6 @@ package main
 
 import (
 	"net/url"
-	"strings"
 
 	"github.com/egoist/nui/app"
 	"github.com/egoist/nui/signal"
@@ -55,7 +54,11 @@ func App() ui.Node {
 		}
 	})
 	return ui.Stack(func() ui.Node {
-		notes := sqlite.Watch[note](db, `select * from notes order by done, id desc`)
+		// The search is the query's: SQLite filters, and the rows follow
+		// what's typed (WatchWith runs the query again as it changes).
+		notes := sqlite.WatchWith[note](db,
+			`select * from notes where ?1 = '' or instr(lower(text), lower(?1)) > 0 order by done, id desc`,
+			func() []any { return []any{query.Get()} })
 		draft := signal.New("")
 		add := func() {
 			if t := draft.Peek(); t != "" {
@@ -63,16 +66,7 @@ func App() ui.Node {
 				draft.Set("")
 			}
 		}
-		rows := signal.Func(func() []note {
-			q := strings.ToLower(query.Get())
-			var out []note
-			for _, n := range notes.Get().Rows {
-				if q == "" || strings.Contains(strings.ToLower(n.Text), q) {
-					out = append(out, n)
-				}
-			}
-			return out
-		})
+		rows := signal.Func(func() []note { return notes.Get().Rows })
 		return ui.SafeArea(ui.Style{Grow: 1},
 			ui.Row(ui.Style{Gap: 8, Padding: ui.Symmetric(8, 16), Align: ui.AlignEnd},
 				ui.TextField(ui.TextFieldProps{Value: draft, Placeholder: ui.Val("New note"), ReturnKey: ui.ReturnDone,
@@ -83,7 +77,12 @@ func App() ui.Node {
 			ui.Show(signal.Func(func() bool { r := notes.Get(); return !r.Loading && len(r.Rows) == 0 }), func() ui.Node {
 				return ui.Column(ui.Style{Grow: 1, Justify: ui.JustifyCenter, Align: ui.AlignCenter, Gap: 8},
 					ui.Symbol(ui.IconDocument, ui.Style{Font: ui.LargeTitle, Color: ui.TertiaryLabel}),
-					ui.StaticText("No notes yet", ui.Style{Color: ui.SecondaryLabel}))
+					ui.Text(signal.Func(func() string {
+						if query.Get() != "" {
+							return "No notes match"
+						}
+						return "No notes yet"
+					}), ui.Style{Color: ui.SecondaryLabel}))
 			}),
 			ui.List(ui.ListProps{SwipeActions: func(i int) []ui.Action {
 				return []ui.Action{{Title: "Delete", Icon: ui.IconTrash, Role: ui.ActionDestructive, OnPress: func() {

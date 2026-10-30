@@ -68,7 +68,7 @@
 |---|---|---|---|
 | State | `@State`, `@Observable` | hooks | ✓ signals (fine-grained: a write updates only what reads it) |
 | Small persisted values | `@AppStorage` | AsyncStorage | ✓ `nui/store` |
-| SQLite | SwiftData / GRDB | `expo-sqlite` | ✓ `nui/sqlite` (migrations, typed queries, transactions, live queries) |
+| SQLite | SwiftData / GRDB | `expo-sqlite` | ✓ `nui/sqlite` (migrations, typed queries, transactions, live queries, also with arguments that change: `WatchWith`) |
 | Secure storage | Keychain | `expo-secure-store` | ✓ `nui/secure` |
 | Files, network | Foundation | `expo-file-system`, fetch | ✓ Go's `os`, `net/http` |
 | Photos | `PhotosPicker` | `expo-image-picker` | ✓ `device.PickPhotos` |

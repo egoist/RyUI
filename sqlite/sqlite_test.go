@@ -93,3 +93,50 @@ func TestWatch(t *testing.T) {
 	db.Exec(`insert into notes (text) values ('milk')`)
 	wait(1)
 }
+
+// A live query's arguments can change: it runs again with them, and rows
+// for arguments since changed don't show.
+func TestWatchWith(t *testing.T) {
+	db := open(t)
+	for _, text := range []string{"milk", "bread", "butter"} {
+		db.Exec(`insert into notes (text) values (?)`, text)
+	}
+	h := fake.New()
+	q := signal.New("b")
+	var live signal.Accessor[sqlite.Result[note]]
+	r := ui.Mount(h, func() ui.Node {
+		live = sqlite.WatchWith[note](db, `select * from notes where text like ? order by id`,
+			func() []any { return []any{q.Get() + "%"} })
+		return ui.StaticText("x")
+	})
+	t.Cleanup(r.Dispose)
+	wait := func(want ...string) {
+		t.Helper()
+		for range 5000 { // a safety net, not what passes
+			h.RunPosted()
+			res := signal.Untrack(live.Get)
+			if !res.Loading && len(res.Rows) == len(want) {
+				ok := true
+				for i, n := range res.Rows {
+					ok = ok && n.Text == want[i]
+				}
+				if ok {
+					return
+				}
+			}
+			time.Sleep(time.Millisecond)
+		}
+		t.Fatalf("rows %+v, want %v", signal.Untrack(live.Get), want)
+	}
+	wait("bread", "butter")
+	q.Set("m")
+	r.Flush()
+	wait("milk")
+	// Several changes before the rows come: the last one's show.
+	q.Set("b")
+	q.Set("bu")
+	r.Flush()
+	wait("butter")
+	db.Exec(`insert into notes (text) values ('bun')`)
+	wait("butter", "bun")
+}
