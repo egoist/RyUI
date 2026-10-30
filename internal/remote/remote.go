@@ -48,6 +48,10 @@ var le = binary.LittleEndian
 
 var errClosed = errors.New("remote: connection closed")
 
+// errNotSent is a call's error when its request never left: the other
+// side can't have acted on it.
+var errNotSent = errors.New("remote: not sent")
+
 // callTimeout is how long a call waits for its reply; asleepTimeout,
 // while the player's app is in the background, where the system may
 // freeze it (Android does, after a few seconds) until it's back: a photo
@@ -172,7 +176,7 @@ func (p *peer) call(method byte, payload []byte) ([]byte, error) {
 	p.nextID++
 	id := p.nextID
 	if err := p.send(kRequest, id, method, payload); err != nil {
-		return nil, err
+		return nil, errNotSent
 	}
 	p.calls = append(p.calls, id)
 	defer func() {

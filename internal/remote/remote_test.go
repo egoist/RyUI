@@ -246,3 +246,41 @@ func TestACutSessionResumes(t *testing.T) {
 		t.Fatalf("mounted %d times; root %d (was %d); ops:\n%s", mounts, s.h.Root().ID, root, s.h.Log())
 	}
 }
+
+// What the core changes while its player is cut off waits, batch by
+// batch, and reaches the player as it comes back: a large batch, then
+// small ones (which mustn't write over it).
+func TestChangesWhileCutOffArrive(t *testing.T) {
+	var count *signal.Signal[int]
+	var many *signal.Signal[bool]
+	app := func() ui.Node {
+		count = signal.New(0)
+		many = signal.New(false)
+		return ui.Column(ui.Style{},
+			ui.Text(signal.Func(func() string { return fmt.Sprint("Count: ", count.Get()) })),
+			ui.Show(many, func() ui.Node {
+				var rows []ui.Node
+				for i := range 20 {
+					rows = append(rows, ui.StaticText(fmt.Sprint("row ", i)))
+				}
+				return ui.Column(ui.Style{}, rows...)
+			}))
+	}
+	s := start(t, app)
+	s.until("Count: 0", func() bool { return hasText(s.h, "Count: 0") })
+	s.conn.Close()
+	s.until("the proxy to notice", func() bool { return s.x.peer() == nil })
+	// Changes on the core's loop, each flushed: a batch of its own.
+	post := func(f func()) {
+		ui.Post(f)
+		done := make(chan struct{})
+		s.posts <- func() { close(done) } // after the flush
+		<-done
+	}
+	post(func() { many.Set(true) })
+	for i := 1; i <= 3; i++ {
+		post(func() { count.Set(i) })
+	}
+	s.connect()
+	s.until("Count: 3 and the rows", func() bool { return hasText(s.h, "Count: 3") && hasText(s.h, "row 19") })
+}

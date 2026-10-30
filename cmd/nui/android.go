@@ -310,12 +310,8 @@ func devAndroid(dir string, o *devOptions, stop <-chan os.Signal) error {
 		if err != nil {
 			return err
 		}
-		marker := filepath.Join(work, "installed-"+serial)
-		if prev, _ := os.ReadFile(marker); string(prev) != hash {
-			if err := tc.install(serial, pkg, apk); err != nil {
-				return err
-			}
-			os.WriteFile(marker, []byte(hash), 0o644)
+		if err := tc.installOnce(serial, pkg, apk, hash, filepath.Join(work, "installed-"+serial)); err != nil {
+			return err
 		}
 		lib, err := tc.buildGo(app, work, serial)
 		if err != nil {
@@ -435,6 +431,45 @@ func (t *androidToolchain) pushAssets(app *goApp, work, serial, pkg string) erro
 
 // install installs a debug build, replacing a build signed with another
 // key (a release build) on the way, which adb can't update.
+// installOnce installs apk (whose sources hash is hash) unless it's what's
+// installed: marker notes the hash and the device's install time, which
+// a reinstall, a wiped emulator or one restored from an older snapshot
+// changes (then the device doesn't have what the marker says).
+func (t *androidToolchain) installOnce(serial, pkg, apk, hash, marker string) error {
+	if prev, _ := os.ReadFile(marker); string(prev) == hash+"\n"+t.installStamp(serial, pkg) {
+		return nil
+	}
+	if err := t.install(serial, pkg, apk); err != nil {
+		return err
+	}
+	return os.WriteFile(marker, []byte(hash+"\n"+t.installStamp(serial, pkg)), 0o644)
+}
+
+// installStamp is what changes each time pkg is installed on serial: its
+// last update time; "" if it isn't installed.
+func (t *androidToolchain) installStamp(serial, pkg string) string {
+	out, err := exec.Command(t.adb, "-s", serial, "shell", "dumpsys", "package", pkg).Output()
+	if err != nil {
+		return ""
+	}
+	for _, l := range strings.Split(string(out), "\n") {
+		if l = strings.TrimSpace(l); strings.HasPrefix(l, "lastUpdateTime=") {
+			return l
+		}
+	}
+	return ""
+}
+
+// deviceHash is the file's hash on serial, read as pkg (as fileHash
+// makes it); "" if it isn't there.
+func (t *androidToolchain) deviceHash(serial, pkg, path string) string {
+	out, err := exec.Command(t.adb, "-s", serial, "shell", "run-as", pkg, "sha256sum", path).Output()
+	if err != nil || len(out) < 16 {
+		return ""
+	}
+	return string(out[:16])
+}
+
 func (t *androidToolchain) install(serial, pkg, apk string) error {
 	err := t.run("", nil, t.adb, "-s", serial, "install", "-r", "-d", apk)
 	if err != nil && strings.Contains(err.Error(), "INSTALL_FAILED_UPDATE_INCOMPATIBLE") {

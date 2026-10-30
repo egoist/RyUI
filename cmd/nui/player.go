@@ -181,13 +181,21 @@ func devIOSPlayer(app *goApp, tc *iosToolchain, work string, sim *simDevice, sto
 	}
 	lib := filepath.Join(dir, "libplayer.a")
 	flags := "-isysroot " + tc.sdk + " -target " + tc.target
-	env := []string{"GOOS=ios", "GOARCH=" + tc.goarch, "CGO_ENABLED=1", "CC=" + tc.clang, "CGO_CFLAGS=" + flags, "CGO_LDFLAGS=" + flags}
-	if err := tc.run(app.dir, env, "go", "build", "-tags", "ios", "-buildmode=c-archive", "-o", lib, playerPkg); err != nil {
+	// The same source makes the same archive (no paths, build ID or
+	// dates in it), so an unchanged player isn't installed again.
+	env := []string{"GOOS=ios", "GOARCH=" + tc.goarch, "CGO_ENABLED=1", "CC=" + tc.clang, "CGO_CFLAGS=" + flags, "CGO_LDFLAGS=" + flags, "ZERO_AR_DATE=1"}
+	if err := tc.run(app.dir, env, "go", "build", "-tags", "ios", "-buildmode=c-archive", "-trimpath", "-ldflags=-buildid=", "-o", lib, playerPkg); err != nil {
 		return err
 	}
 	sum := fileHash(hostObj, lib)
 	marker := filepath.Join(dir, "installed-"+sim.UDID)
-	if prev, _ := os.ReadFile(marker); string(prev) != sum {
+	// The app's container changes with each install, and is gone from an
+	// erased simulator: the marker holds both.
+	container := func() string {
+		out, _ := exec.Command("xcrun", "simctl", "get_app_container", sim.UDID, playerID).Output()
+		return strings.TrimSpace(string(out))
+	}
+	if prev, _ := os.ReadFile(marker); string(prev) != sum+"\n"+container() {
 		player := &goApp{dir: dir, name: playerName, bundleID: playerID, cfg: playerConfig()}
 		bundle, err := tc.link(player, dir, hostObj, lib)
 		if err != nil {
@@ -196,7 +204,7 @@ func devIOSPlayer(app *goApp, tc *iosToolchain, work string, sim *simDevice, sto
 		if err := tc.run(dir, nil, "xcrun", "simctl", "install", sim.UDID, bundle); err != nil {
 			return err
 		}
-		os.WriteFile(marker, []byte(sum), 0o644)
+		os.WriteFile(marker, []byte(sum+"\n"+container()), 0o644)
 	}
 	if err := proc.restart(); err != nil {
 		return err
@@ -239,12 +247,8 @@ func devAndroidPlayer(app *goApp, tc *androidToolchain, work, serial string, sto
 	if err != nil {
 		return err
 	}
-	marker := filepath.Join(dir, "installed-"+serial)
-	if prev, _ := os.ReadFile(marker); string(prev) != hash {
-		if err := tc.install(serial, androidPackage(playerID), apk); err != nil {
-			return err
-		}
-		os.WriteFile(marker, []byte(hash), 0o644)
+	if err := tc.installOnce(serial, androidPackage(playerID), apk, hash, filepath.Join(dir, "installed-"+serial)); err != nil {
+		return err
 	}
 	goarch, clang, err := tc.goArch(serial)
 	if err != nil {
@@ -253,12 +257,13 @@ func devAndroidPlayer(app *goApp, tc *androidToolchain, work, serial string, sto
 	lib := filepath.Join(dir, "libnui-"+goarch+".so")
 	env := []string{"GOOS=android", "GOARCH=" + goarch, "CGO_ENABLED=1", "CC=" + filepath.Join(tc.ndkBin, clang),
 		"CGO_LDFLAGS=-Wl,-z,max-page-size=16384"}
-	if err := tc.run(app.dir, env, "go", "build", "-buildmode=c-shared", "-o", lib, playerPkg); err != nil {
+	if err := tc.run(app.dir, env, "go", "build", "-buildmode=c-shared", "-trimpath", "-ldflags=-buildid=", "-o", lib, playerPkg); err != nil {
 		return err
 	}
 	pkg := androidPackage(playerID)
-	libMarker := filepath.Join(dir, "lib-"+serial)
-	if sum := fileHash(lib); func() bool { prev, _ := os.ReadFile(libMarker); return string(prev) != sum }() {
+	// Pushed unless the device has it (asked: an app reinstalled, or an
+	// emulator restored, has another or none).
+	if sum := fileHash(lib); tc.deviceHash(serial, pkg, "files/nui/libnui.so") != sum {
 		tmp := "/data/local/tmp/nui-player.so"
 		if err := tc.run(dir, nil, tc.adb, "-s", serial, "push", lib, tmp); err != nil {
 			return err
@@ -268,7 +273,6 @@ func devAndroidPlayer(app *goApp, tc *androidToolchain, work, serial string, sto
 			"'mkdir -p files/nui && rm -f files/nui/libnui.so && cp "+tmp+" files/nui/libnui.so && chmod 444 files/nui/libnui.so'"); err != nil {
 			return err
 		}
-		os.WriteFile(libMarker, []byte(sum), 0o644)
 	}
 	// Tell the player where to connect.
 	if err := tc.run(dir, nil, tc.adb, "-s", serial, "shell", "run-as", pkg, "sh", "-c",

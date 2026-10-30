@@ -41,10 +41,15 @@ func (h *Host) Apply(b *ops.Batch) {
 		return
 	}
 	if h.cut {
-		h.backlog = append(h.backlog, b.Encode())
+		// A copy: Encode's bytes are the batch's, written over by the next.
+		h.backlog = append(h.backlog, slices.Clone(b.Encode()))
 		return
 	}
-	if _, err := h.p.call(mApply, b.Encode()); err != nil {
+	enc := b.Encode()
+	if _, err := h.p.call(mApply, enc); err != nil {
+		if err == errNotSent { // the player never saw it: it waits with the rest
+			h.backlog = append(h.backlog, slices.Clone(enc))
+		}
 		h.cutOff()
 	}
 }
