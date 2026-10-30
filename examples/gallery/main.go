@@ -149,7 +149,7 @@ func video() ui.Node {
 func shapes() ui.Node {
 	done := signal.New(float32(0.3))
 	return section("Shapes",
-		ui.Row(ui.Style{Gap: 24, Align: ui.AlignCenter},
+		ui.Row(ui.Style{Gap: 24, Align: ui.AlignCenter, Wrap: true}, // on a narrow phone, the button goes under
 			ui.View(ui.ViewProps{Label: "Progress", Style: ui.Style{Width: ui.Pt(72), Height: ui.Pt(72)}},
 				ui.Shape(ui.ShapeProps{Path: ring, Stroke: ui.SecondaryBackground, LineWidth: 8,
 					Style: ui.Style{Absolute: true, Left: ui.Pt(0), Top: ui.Pt(0), Width: ui.Pt(72), Height: ui.Pt(72)}}),

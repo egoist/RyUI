@@ -71,6 +71,9 @@ class NuiScreen(context: Context, val nodeID: Int, private val rt: NuiRuntime) :
     var search = ""
     var searchText = ""
     private var searching = false // the text is being set from code
+
+    // A screen keeps its content to itself (over the bar, in a transition).
+    init { clipChildren = true }
     private var searchView: androidx.appcompat.widget.SearchView? = null
 
     /** The toolbar's search field, made once: typing and submits go to the screen's node. */
@@ -290,8 +293,16 @@ class NuiStack(context: Context, val nodeID: Int, private val rt: NuiRuntime) : 
         val from = android.graphics.RectF((at[0] - me[0]).toFloat(), (at[1] - me[1]).toFloat(), 0f, 0f)
         from.right = from.left + src.width
         from.bottom = from.top + src.height
-        val to = android.graphics.RectF(v.left.toFloat(), v.top.toFloat(), v.right.toFloat(), v.bottom.toFloat())
+        // Popping, it starts where the screen is: a predictive back gesture
+        // has shrunk and moved it (around its center).
+        val s0 = if (push) 1f else v.scaleX
+        val to = android.graphics.RectF(
+            v.left + v.translationX + (1 - s0) * v.pivotX, v.top + v.translationY + (1 - s0) * v.pivotY, 0f, 0f)
+        to.right = to.left + v.width * s0
+        to.bottom = to.top + v.height * s0
+        val full = v.width.toFloat()
         val radius = 16 * rt.density
+        val shown = src.alpha
         var clip = android.graphics.RectF()
         var corner = 0f
         v.outlineProvider = object : android.view.ViewOutlineProvider() {
@@ -300,27 +311,26 @@ class NuiStack(context: Context, val nodeID: Int, private val rt: NuiRuntime) : 
             }
         }
         v.clipToOutline = true
-        v.pivotX = 0f
-        v.pivotY = 0f
         fun frame(p: Float) {
             fun lerp(a: Float, b: Float) = a + (b - a) * p
             val l = lerp(from.left, to.left)
             val t = lerp(from.top, to.top)
             val w = lerp(from.width(), to.width())
             val h = lerp(from.height(), to.height())
-            val s = w / to.width() // the content fits the container's width
+            val s = w / full // the content fits the container's width
             v.scaleX = s
             v.scaleY = s
             v.translationX = l - v.left
             v.translationY = t - v.top
-            clip = android.graphics.RectF(0f, 0f, to.width(), h / s)
+            clip = android.graphics.RectF(0f, 0f, full, h / s)
             corner = lerp(radius, 0f) / s
             v.invalidateOutline()
-            // The screen fades in over the first part, out over the last.
+            // Near the view, the screen and the view cross-fade.
             v.alpha = (p / 0.3f).coerceIn(0f, 1f)
+            src.alpha = shown * (1 - v.alpha)
         }
-        val shown = src.alpha
-        src.alpha = 0f
+        v.pivotX = 0f // after reading where the gesture left it
+        v.pivotY = 0f
         below.view.visibility = VISIBLE
         below.view.alpha = 1f
         below.view.translationX = 0f

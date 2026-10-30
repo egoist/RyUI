@@ -111,6 +111,10 @@ open class NuiContainer(context: Context) : ViewGroup(context) {
     var frameWidth = -1
     var frameHeight = -1
 
+    // What overflows shows, as on iOS (and React Native's views): only
+    // Style.Clip clips.
+    init { clipChildren = false }
+
     override fun generateDefaultLayoutParams(): LayoutParams = NuiParams()
     override fun checkLayoutParams(p: LayoutParams?) = p is NuiParams
     override fun shouldDelayChildPressedState() = false
