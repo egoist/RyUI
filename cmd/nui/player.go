@@ -188,7 +188,7 @@ func devIOSPlayer(app *goApp, tc *iosToolchain, work string, sim *simDevice, sto
 	sum := fileHash(hostObj, lib)
 	marker := filepath.Join(dir, "installed-"+sim.UDID)
 	if prev, _ := os.ReadFile(marker); string(prev) != sum {
-		player := &goApp{dir: dir, name: playerName, bundleID: playerID, cfg: &appConfig{ID: playerID}}
+		player := &goApp{dir: dir, name: playerName, bundleID: playerID, cfg: playerConfig()}
 		bundle, err := tc.link(player, dir, hostObj, lib)
 		if err != nil {
 			return err
@@ -234,7 +234,7 @@ func devAndroidPlayer(app *goApp, tc *androidToolchain, work, serial string, sto
 		return err
 	}
 	dir := playerDir(work, "android")
-	player := &goApp{dir: dir, name: playerName, bundleID: playerID, cfg: &appConfig{ID: playerID}}
+	player := &goApp{dir: dir, name: playerName, bundleID: playerID, cfg: playerConfig()}
 	apk, hash, err := tc.buildAPK(player, dir)
 	if err != nil {
 		return err
@@ -293,4 +293,11 @@ func devAndroidPlayer(app *goApp, tc *androidToolchain, work, serial string, sto
 	}
 	fmt.Printf("nui: running in the player in %.1fs; changes reload without reinstalling\n", time.Since(start).Seconds())
 	return watchHost(proc, stop, func() { exec.Command(tc.adb, "-s", serial, "shell", "am", "force-stop", pkg).Run() })
+}
+
+// playerConfig is the player's: every permission an app might need.
+func playerConfig() *appConfig {
+	c := &appConfig{ID: playerID}
+	c.permissionsFor(nil)
+	return c
 }

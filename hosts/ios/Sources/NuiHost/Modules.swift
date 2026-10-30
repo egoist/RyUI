@@ -138,6 +138,12 @@ struct NuiModuleError: LocalizedError {
             },
         ]
         #endif
+        #if NUI_LOCATION
+        modules["location"] = NuiLocation.shared.methods()
+        #endif
+        #if NUI_NOTIFY
+        modules["notify"] = NuiNotify.shared.methods()
+        #endif
         modules["device"] = [
             // result: JSON: model, system, systemVersion, appVersion, build.
             "info": { args, reply in
@@ -150,6 +156,17 @@ struct NuiModuleError: LocalizedError {
                     "build": info["CFBundleVersion"] as? String ?? "",
                 ]
                 reply(.success((try? JSONSerialization.data(withJSONObject: d)) ?? Data("{}".utf8)))
+            },
+            // result: u8 has, then the clipboard's text (iOS asks the user
+            // the first time an app reads what another put there).
+            "clipboard": { _, reply in
+                guard let s = UIPasteboard.general.string else { reply(.success(Data([0]))); return }
+                reply(.success(Data([1]) + Data(s.utf8)))
+            },
+            // args: u8 on: the screen stays on (the idle timer off) while on.
+            "keepAwake": { args, reply in
+                UIApplication.shared.isIdleTimerDisabled = args.first == 1
+                reply(.success(Data()))
             },
         ]
     }

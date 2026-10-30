@@ -134,6 +134,8 @@ private fun NuiRuntime.registerBuiltinModules() {
             else pickPhotos(act, maxOf(args.firstOrNull()?.toInt() ?: 1, 1), reply)
         },
     )
+    modules["location"] = NuiLocation(this).methods()
+    modules["notify"] = notifyMethods()
     modules["device"] = mapOf(
         // result: JSON: model, system, systemVersion, appVersion, build.
         "info" to { _, reply ->
@@ -144,6 +146,19 @@ private fun NuiRuntime.registerBuiltinModules() {
                 "appVersion" to (p.versionName ?: ""), "build" to build.toString(),
             ))
             reply(Result.success(json.toString().toByteArray()))
+        },
+        // result: u8 has, then the clipboard's text.
+        "clipboard" to { _, reply ->
+            val cm = app.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            val t = cm.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(app)?.toString()
+            reply(Result.success(if (t == null) byteArrayOf(0) else byteArrayOf(1) + t.toByteArray()))
+        },
+        // args: u8 on: the screen stays on while on.
+        "keepAwake" to { args, reply ->
+            val w = activity?.window
+            if (args.firstOrNull()?.toInt() == 1) w?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            else w?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            reply(Result.success(ByteArray(0)))
         },
     )
 }

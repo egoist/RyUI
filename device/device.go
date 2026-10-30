@@ -1,5 +1,6 @@
 // Package device is what the platform offers apps beyond views: what
-// device it is, its in-app browser, its photo picker.
+// device it is, its in-app browser, its photo picker, the clipboard's
+// text, keeping the screen on.
 package device
 
 import (
@@ -60,4 +61,25 @@ func PickPhotos(limit int, done func(paths []string, err error)) {
 		}
 		done(paths, err)
 	})
+}
+
+// Clipboard reads the clipboard's text (ok false: it has none); ui.Copy
+// writes it. iOS asks the user the first time an app reads what another
+// app put there. Not on the main thread.
+func Clipboard() (text string, ok bool, err error) {
+	b, err := ui.CallWait("device", "clipboard", nil)
+	if err != nil || len(b) == 0 || b[0] == 0 {
+		return "", false, err
+	}
+	return string(b[1:]), true, nil
+}
+
+// KeepAwake keeps the screen on (the system's idle timer off) while on is
+// true: a video, a recipe, a navigation screen. Main thread.
+func KeepAwake(on bool) {
+	arg := []byte{0}
+	if on {
+		arg[0] = 1
+	}
+	ui.Call("device", "keepAwake", arg, nil)
 }

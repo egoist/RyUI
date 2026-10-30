@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -59,6 +60,8 @@ func loadApp(dir string) (*goApp, error) {
 	if err != nil {
 		return nil, err
 	}
+	deps, _ := exec.Command("go", "-C", abs, "list", "-deps", ".").Output()
+	cfg.permissionsFor(strings.Fields(string(deps)))
 	return &goApp{dir: f[2], name: filepath.Base(abs), moduleDir: f[1], bundleID: cfg.ID, cfg: cfg}, nil
 }
 
@@ -202,13 +205,19 @@ var iosFeatures = []struct{ flag, symbol string }{
 	{"NUI_VIDEO", "github.com/egoist/nui/ui.Video"},
 	{"NUI_PHOTOS", "github.com/egoist/nui/device.PickPhotos"},
 	{"NUI_BROWSER", "github.com/egoist/nui/device.Browse"},
+	{"NUI_LOCATION", "github.com/egoist/nui/location.Current"},
+	{"NUI_LOCATION", "github.com/egoist/nui/location.Watch"},
+	{"NUI_NOTIFY", "github.com/egoist/nui/notify.Request"},
+	{"NUI_NOTIFY", "github.com/egoist/nui/notify.Schedule"},
 }
 
 // allFeatures is every feature: the player runs any app.
 func allFeatures() []string {
 	var out []string
 	for _, f := range iosFeatures {
-		out = append(out, f.flag)
+		if !slices.Contains(out, f.flag) {
+			out = append(out, f.flag)
+		}
 	}
 	return out
 }
@@ -228,7 +237,7 @@ func usedFeatures(lib string) []string {
 	}
 	var used []string
 	for _, f := range iosFeatures {
-		if defined[f.symbol] {
+		if defined[f.symbol] && !slices.Contains(used, f.flag) {
 			used = append(used, f.flag)
 		}
 	}
@@ -289,6 +298,15 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 		urls = fmt.Sprintf("<key>CFBundleURLTypes</key><array><dict><key>CFBundleURLName</key><string>%s</string>"+
 			"<key>CFBundleURLSchemes</key><array><string>%s</string></array></dict></array>\n",
 			html.EscapeString(app.bundleID), html.EscapeString(app.cfg.Scheme))
+	}
+	// The purpose strings: without one, iOS ends an app that asks for what it protects.
+	keys := make([]string, 0, len(app.cfg.IOS.Usage))
+	for k := range app.cfg.IOS.Usage {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		urls += fmt.Sprintf("<key>%s</key><string>%s</string>\n", html.EscapeString(k), html.EscapeString(app.cfg.IOS.Usage[k]))
 	}
 	plist := fmt.Sprintf(infoPlist, app.bundleID, app.displayName(), app.displayName(), iosMin, urls)
 	if err := os.WriteFile(filepath.Join(bundle, "Info.plist"), []byte(plist), 0o644); err != nil {

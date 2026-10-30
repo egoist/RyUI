@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -183,6 +184,43 @@ func (c *appConfig) associatedDomains(simulator bool) []string {
 // androidManifest is the app's manifest, merged over the host's: its
 // permissions, and the intent filters for its scheme and links. A debug
 // build's also lets nui dev serve over plain HTTP.
+// featurePermissions are what nui's packages need of the platform: an
+// app that imports one is given them (and, on iOS, a purpose string,
+// which nui.json's ios.usage can say better).
+var featurePermissions = []struct {
+	pkg     string
+	android []string
+	usage   map[string]string
+}{
+	{"github.com/egoist/nui/location", []string{"android.permission.ACCESS_COARSE_LOCATION", "android.permission.ACCESS_FINE_LOCATION"},
+		map[string]string{"NSLocationWhenInUseUsageDescription": "To show where you are."}},
+	{"github.com/egoist/nui/notify", []string{"android.permission.POST_NOTIFICATIONS"}, nil},
+}
+
+// permissionsFor adds the permissions the packages deps (an app's
+// imports, all the way down) need. nil deps: every package's (the player
+// runs any app).
+func (c *appConfig) permissionsFor(deps []string) {
+	for _, f := range featurePermissions {
+		if deps != nil && !slices.Contains(deps, f.pkg) {
+			continue
+		}
+		for _, p := range f.android {
+			if !slices.Contains(c.Android.Permissions, p) {
+				c.Android.Permissions = append(c.Android.Permissions, p)
+			}
+		}
+		for k, v := range f.usage {
+			if c.IOS.Usage == nil {
+				c.IOS.Usage = map[string]string{}
+			}
+			if c.IOS.Usage[k] == "" {
+				c.IOS.Usage[k] = v
+			}
+		}
+	}
+}
+
 func (c *appConfig) androidManifest(debug bool) string {
 	var b strings.Builder
 	b.WriteString("<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n")

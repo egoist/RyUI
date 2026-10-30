@@ -223,6 +223,9 @@ final class NuiTextField: UITextField {
         guard !started else { return }
         started = true
         NotificationCenter.default.addObserver(self, selector: #selector(voiceOverChanged), name: UIAccessibility.voiceOverStatusDidChangeNotification, object: nil)
+        #if NUI_NOTIFY
+        NuiNotify.shared.install()
+        #endif
         #if DEBUG
         NuiAutomation.start()
         #endif

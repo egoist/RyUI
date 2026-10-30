@@ -10,6 +10,8 @@ import (
 
 	"github.com/egoist/nui/app"
 	"github.com/egoist/nui/device"
+	"github.com/egoist/nui/location"
+	"github.com/egoist/nui/notify"
 	"github.com/egoist/nui/secure"
 	"github.com/egoist/nui/signal"
 	"github.com/egoist/nui/store"
@@ -393,6 +395,7 @@ func pulse() ui.Node {
 // in-app browser and the photo picker.
 func platform() ui.Node {
 	secret := signal.New("")
+	where := signal.New("") // location's, notify's
 	info := signal.New("")
 	photos := signal.NewFunc([]string(nil), nil)
 	go func() {
@@ -417,8 +420,36 @@ func platform() ui.Node {
 			ui.Button(ui.ButtonProps{Title: ui.Val("Pick photos"), Icon: ui.IconPhoto, Variant: ui.ButtonGray, OnPress: func() {
 				device.PickPhotos(3, func(paths []string, err error) { photos.Set(paths) })
 			}}),
+			ui.Button(ui.ButtonProps{Title: ui.Val("Where am I?"), Icon: ui.IconLocation, Variant: ui.ButtonGray, OnPress: func() {
+				where.Set("Finding you…")
+				go func() {
+					p, err := location.Current()
+					ui.Post(func() {
+						if err != nil {
+							where.Set("Couldn't: " + err.Error())
+							return
+						}
+						where.Set(fmt.Sprintf("%.4f, %.4f (within %.0f m)", p.Latitude, p.Longitude, p.Accuracy))
+					})
+				}()
+			}}),
+			ui.Button(ui.ButtonProps{Title: ui.Val("Remind me in 5 s"), Icon: ui.IconBell, Variant: ui.ButtonGray, OnPress: func() {
+				go func() {
+					ok, err := notify.Request()
+					msg := "Allow notifications in Settings"
+					if err == nil && ok {
+						err = notify.Schedule(notify.Notification{ID: "remind", Title: "Gallery", Body: "Five seconds have passed.", After: 5 * time.Second})
+						msg = "Set: in 5 s, even if you leave the app"
+					}
+					if err != nil {
+						msg = err.Error()
+					}
+					ui.Post(func() { where.Set(msg) })
+				}()
+			}}),
 		),
 		ui.Text(secret, ui.Style{Color: ui.SecondaryLabel, Font: ui.Footnote}),
+		ui.Text(where, ui.Style{Color: ui.SecondaryLabel, Font: ui.Footnote}),
 		ui.Row(ui.Style{Gap: 8}, ui.For(photos, func(p string) string { return p }, func(p signal.Accessor[string], _ signal.Accessor[int]) ui.Node {
 			return ui.Image(ui.ImageProps{Source: p, Mode: ui.ImageFill, Style: ui.Style{Width: ui.Pt(96), Height: ui.Pt(96), CornerRadius: 12, Clip: true}})
 		})),

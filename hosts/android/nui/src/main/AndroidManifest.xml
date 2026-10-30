@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- ui.Image loads http(s) URLs. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <application>
+        <!-- nui/notify: posts a notification when its alarm goes off. -->
+        <receiver android:name="dev.nui.NuiNotifyReceiver" android:exported="false" />
+    </application>
 </manifest>
