@@ -47,11 +47,11 @@ func buildIOS(app *goApp, o *buildOptions) error {
 		fmt.Printf("nui: signing with %q (%s, team %s) as %s\n", prof.name, prof.kind, prof.team, prof.identityName)
 	}
 	fmt.Printf("nui: building %s %s (%d) for %s\n", cfg.Name, cfg.Version, cfg.Build, map[bool]string{true: "the simulator", false: "devices"}[o.simulator])
-	hostObj, err := tc.buildHost(work, app)
+	lib, err := tc.buildGo(app, work)
 	if err != nil {
 		return err
 	}
-	lib, err := tc.buildGo(app, work)
+	hostObj, err := tc.buildHost(work, app, usedFeatures(lib))
 	if err != nil {
 		return err
 	}

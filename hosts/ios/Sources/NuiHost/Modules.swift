@@ -1,9 +1,15 @@
 #if canImport(UIKit)
 import UIKit
-import PhotosUI
-import SafariServices
 import Security
+// Each its own framework, loaded at launch if linked: only in an app that
+// calls them (see the CLI's iosFeatures).
+#if NUI_PHOTOS
+import PhotosUI
 import UniformTypeIdentifiers
+#endif
+#if NUI_BROWSER
+import SafariServices
+#endif
 #if canImport(NuiOps)
 import NuiOps
 #endif
@@ -102,6 +108,7 @@ struct NuiModuleError: LocalizedError {
                 reply(st == errSecSuccess || st == errSecItemNotFound ? .success(Data()) : .failure(NuiModuleError("keychain: \(st)")))
             },
         ]
+        #if NUI_BROWSER
         modules["browser"] = [
             // args: the URL: shown in the app (SFSafariViewController).
             "open": { [weak self] args, reply in
@@ -113,6 +120,8 @@ struct NuiModuleError: LocalizedError {
                 reply(.success(Data()))
             },
         ]
+        #endif
+        #if NUI_PHOTOS
         modules["photos"] = [
             // args: u8 limit (0: one); result: the picked images' files, a
             // line each (none: cancelled).
@@ -128,6 +137,7 @@ struct NuiModuleError: LocalizedError {
                 top.present(p, animated: true)
             },
         ]
+        #endif
         modules["device"] = [
             // result: JSON: model, system, systemVersion, appVersion, build.
             "info": { args, reply in
@@ -145,6 +155,7 @@ struct NuiModuleError: LocalizedError {
     }
 }
 
+#if NUI_PHOTOS
 /// Copies the picked images to files (the picker's are temporary).
 final class NuiPhotoPicker: NSObject, PHPickerViewControllerDelegate {
     nonisolated(unsafe) static var key = 0
@@ -172,4 +183,5 @@ final class NuiPhotoPicker: NSObject, PHPickerViewControllerDelegate {
         }
     }
 }
+#endif
 #endif

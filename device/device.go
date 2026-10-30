@@ -30,6 +30,10 @@ func GetInfo() (Info, error) {
 
 // Browse shows a web page in the app: SFSafariViewController, a Custom
 // Tab. (ui.OpenURL leaves the app for the browser.) Main thread.
+//
+// Never inlined: nui build looks for its symbol (cmd/nui iosFeatures).
+//
+//go:noinline
 func Browse(url string) {
 	ui.Call("browser", "open", []byte(url), nil)
 }
@@ -38,6 +42,10 @@ func Browse(url string) {
 // Picker: no permission asked), for up to limit images; done gets their
 // files, which ui.Image shows, or none if the user cancelled. Main
 // thread.
+//
+// Never inlined: nui build looks for its symbol (cmd/nui iosFeatures).
+//
+//go:noinline
 func PickPhotos(limit int, done func(paths []string, err error)) {
 	if limit < 1 {
 		limit = 1

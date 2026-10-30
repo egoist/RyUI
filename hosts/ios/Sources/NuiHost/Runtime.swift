@@ -335,10 +335,14 @@ final class NuiTextField: UITextField {
             s.alwaysBounceVertical = true
             s.contentInsetAdjustmentBehavior = .never
             view = s
+        #if NUI_WEBVIEW
         case .webView:
             view = NuiWebView(id, self)
+        #endif
+        #if NUI_VIDEO
         case .video:
             view = NuiVideoView(id, self)
+        #endif
         case .list:
             let l = NuiList(id: id, runtime: self)
             list = l
@@ -515,6 +519,7 @@ final class NuiTextField: UITextField {
             UIPasteboard.general.string = String(decoding: args, as: UTF8.self)
         case .frames:
             setFrames(args.first == 1)
+        #if NUI_VIDEO
         case .play:
             (n.view as? NuiVideoView)?.play()
         case .pause:
@@ -523,8 +528,15 @@ final class NuiTextField: UITextField {
             guard args.count >= 8, let v = n.view as? NuiVideoView else { return }
             var r = NuiReader(args)
             v.seek(r.f64())
+        #else
+        case .play, .pause, .seek: break
+        #endif
+        #if NUI_WEBVIEW
         case .eval:
             (n.view as? NuiWebView)?.evaluateJavaScript(String(decoding: args, as: UTF8.self))
+        #else
+        case .eval: break
+        #endif
         case .announce:
             UIAccessibility.post(notification: .announcement, argument: String(decoding: args, as: UTF8.self))
         case .share:

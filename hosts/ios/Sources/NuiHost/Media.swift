@@ -1,6 +1,6 @@
 #if canImport(UIKit)
 import UIKit
-import CryptoKit
+import CommonCrypto
 #if canImport(NuiOps)
 import NuiOps
 #endif
@@ -90,7 +90,10 @@ final class NuiDiskCache: @unchecked Sendable {
     }
 
     private func file(_ key: String) -> URL {
-        dir.appendingPathComponent(SHA256.hash(data: Data(key.utf8)).map { String(format: "%02x", $0) }.joined())
+        var h = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
+        let k = Array(key.utf8)
+        CC_SHA256(k, CC_LONG(k.count), &h)
+        return dir.appendingPathComponent(h.map { String(format: "%02x", $0) }.joined())
     }
 
     func read(_ key: String) -> Data? {
@@ -263,6 +266,7 @@ final class NuiGestureDelegate: NSObject, UIGestureRecognizerDelegate {
             guard let s = n.view as? NuiSymbolView else { return true }
             s.node = n
             s.name = v.string
+        #if NUI_VIDEO
         case (.video, NuiProp.Video.source):
             (n.view as? NuiVideoView)?.load(source: v.string)
         case (.video, NuiProp.Video.mode):
@@ -275,10 +279,13 @@ final class NuiGestureDelegate: NSObject, UIGestureRecognizerDelegate {
             (n.view as? NuiVideoView)?.loop = v.bool
         case (.video, NuiProp.Video.muted):
             (n.view as? NuiVideoView)?.player.isMuted = v.bool
+        #endif
+        #if NUI_WEBVIEW
         case (.webView, NuiProp.WebView.url):
             (n.view as? NuiWebView)?.load(source: v.string)
         case (.webView, NuiProp.WebView.html):
             if !v.string.isEmpty { (n.view as? NuiWebView)?.loadHTMLString(v.string, baseURL: nil) }
+        #endif
         case (.image, NuiProp.Image.source):
             loadImage(n, v.string)
         case (.image, NuiProp.Image.placeholder):

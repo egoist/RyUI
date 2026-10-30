@@ -1,4 +1,4 @@
-#if canImport(UIKit)
+#if canImport(UIKit) && NUI_VIDEO // an app that has a Video (see the CLI's iosFeatures)
 import UIKit
 import AVKit
 #if canImport(NuiOps)

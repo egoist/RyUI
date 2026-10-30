@@ -124,9 +124,9 @@ func filterLinker(out []byte) string {
 // buildHost compiles the embedded Swift host, with the app's own Swift
 // (its ios/*.swift: native views for ui.Native), into one object file,
 // cached by the hash of its sources and the SDK.
-func (t *iosToolchain) buildHost(work string, app *goApp) (string, error) {
+func (t *iosToolchain) buildHost(work string, app *goApp, features []string) (string, error) {
 	h := sha256.New()
-	fmt.Fprintln(h, t.sdk, t.target, t.release)
+	fmt.Fprintln(h, t.sdk, t.target, t.release, features)
 	var files []string
 	err := fs.WalkDir(iosHost.Files, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
@@ -180,11 +180,59 @@ func (t *iosToolchain) buildHost(work string, app *goApp) (string, error) {
 	}
 	args := append([]string{"swiftc", "-target", t.target, "-sdk", t.sdk, "-swift-version", "5",
 		"-module-name", "NuiApp", "-parse-as-library", "-wmo"}, opt...)
+	for _, f := range features {
+		args = append(args, "-D", f)
+	}
 	args = append(args, "-I", filepath.Join(src, "Sources", "CNui", "include"), "-c", "-o", obj)
 	if err := t.run(shared, nil, "xcrun", append(args, swift...)...); err != nil {
 		return "", err
 	}
 	return obj, nil
+}
+
+// iosFeatures are the parts of the host that link a framework of their
+// own (WebKit, AVKit...), and the Go function an app calls to use each.
+// Loading a framework costs at launch whether or not it's used (WebKit
+// and AVKit's together, about a second on the simulator), so a host is
+// built with only those its app's Go code calls: the Go linker drops
+// what isn't called, which leaves its symbol out of the archive (each is
+// go:noinline, so a call keeps it).
+var iosFeatures = []struct{ flag, symbol string }{
+	{"NUI_WEBVIEW", "github.com/egoist/nui/ui.WebView"},
+	{"NUI_VIDEO", "github.com/egoist/nui/ui.Video"},
+	{"NUI_PHOTOS", "github.com/egoist/nui/device.PickPhotos"},
+	{"NUI_BROWSER", "github.com/egoist/nui/device.Browse"},
+}
+
+// allFeatures is every feature: the player runs any app.
+func allFeatures() []string {
+	var out []string
+	for _, f := range iosFeatures {
+		out = append(out, f.flag)
+	}
+	return out
+}
+
+// usedFeatures are the features the Go archive lib calls (all of them if
+// it can't be read).
+func usedFeatures(lib string) []string {
+	out, err := exec.Command("xcrun", "nm", lib).Output()
+	if err != nil {
+		return allFeatures()
+	}
+	defined := map[string]bool{}
+	for _, l := range strings.Split(string(out), "\n") {
+		if f := strings.Fields(l); len(f) >= 3 && (f[1] == "t" || f[1] == "T") {
+			defined[strings.TrimPrefix(f[2], "_")] = true
+		}
+	}
+	var used []string
+	for _, f := range iosFeatures {
+		if defined[f.symbol] {
+			used = append(used, f.flag)
+		}
+	}
+	return used
 }
 
 // writeOverlay writes a go build overlay that adds a file to the app's
@@ -407,11 +455,11 @@ func devIOS(dir string, o *devOptions, stop <-chan os.Signal) error {
 	var logs *exec.Cmd
 	build := func() error {
 		start := time.Now()
-		hostObj, err := tc.buildHost(work, app)
+		lib, err := tc.buildGo(app, work)
 		if err != nil {
 			return err
 		}
-		lib, err := tc.buildGo(app, work)
+		hostObj, err := tc.buildHost(work, app, usedFeatures(lib))
 		if err != nil {
 			return err
 		}

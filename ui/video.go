@@ -33,6 +33,10 @@ type VideoProps struct {
 // size is known it's empty unless given a size (an AspectRatio, a Height),
 // then it keeps the video's aspect ratio. Drive it with Play, Pause and
 // Seek.
+//
+// Never inlined: nui build looks for its symbol (cmd/nui iosFeatures).
+//
+//go:noinline
 func Video(p VideoProps) Node {
 	e := newElement(ops.KindVideo, true)
 	var natural layout.Size

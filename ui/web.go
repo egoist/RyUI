@@ -27,6 +27,10 @@ type WebViewProps struct {
 // WebView), with its scrolling, zooming and text selection. With no Height
 // and no Grow, it grows, as a List does. Talk to the page with OnMessage
 // and EvalJS.
+//
+// Never inlined: nui build looks for its symbol (cmd/nui iosFeatures).
+//
+//go:noinline
 func WebView(p WebViewProps) Node {
 	e := newElement(ops.KindWebView, true)
 	e.setStyle(p.Style, false)

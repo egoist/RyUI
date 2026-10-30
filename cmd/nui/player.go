@@ -175,7 +175,7 @@ func devIOSPlayer(app *goApp, tc *iosToolchain, work string, sim *simDevice, sto
 	}
 	// The player: the host, and the player library instead of an app.
 	dir := playerDir(work, "ios")
-	hostObj, err := tc.buildHost(dir, nil)
+	hostObj, err := tc.buildHost(dir, nil, allFeatures())
 	if err != nil {
 		return err
 	}

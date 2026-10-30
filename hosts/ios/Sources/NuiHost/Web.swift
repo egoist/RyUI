@@ -1,4 +1,4 @@
-#if canImport(UIKit)
+#if canImport(UIKit) && NUI_WEBVIEW // an app that has a WebView (see the CLI's iosFeatures)
 import UIKit
 import WebKit
 #if canImport(NuiOps)
