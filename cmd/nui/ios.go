@@ -48,9 +48,14 @@ func loadApp(dir string) (*goApp, error) {
 	if err != nil {
 		return nil, err
 	}
-	out, err := exec.Command("go", "-C", abs, "list", "-f", "{{.Name}}\t{{.Module.Dir}}\t{{.Dir}}", ".").CombinedOutput()
+	// Its stdout only: with modules to download first, go list says so on
+	// stderr ("go: downloading ..."), which isn't the answer.
+	var stderr bytes.Buffer
+	c := exec.Command("go", "-C", abs, "list", "-f", "{{.Name}}\t{{.Module.Dir}}\t{{.Dir}}", ".")
+	c.Stderr = &stderr
+	out, err := c.Output()
 	if err != nil {
-		return nil, fmt.Errorf("%s: %s", dir, bytes.TrimSpace(out))
+		return nil, fmt.Errorf("%s: %s", dir, bytes.TrimSpace(stderr.Bytes()))
 	}
 	f := strings.Split(strings.TrimSpace(string(out)), "\t")
 	if len(f) != 3 || f[0] != "main" {
