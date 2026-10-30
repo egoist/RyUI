@@ -95,6 +95,12 @@ func writePlist(b *strings.Builder, v any, depth int) {
 			fmt.Fprintf(b, "%s\t<string>%s</string>\n", ind, html.EscapeString(s))
 		}
 		b.WriteString(ind + "</array>\n")
+	case []any:
+		b.WriteString(ind + "<array>\n")
+		for _, e := range x {
+			writePlist(b, e, depth+1)
+		}
+		b.WriteString(ind + "</array>\n")
 	case []int:
 		b.WriteString(ind + "<array>\n")
 		for _, n := range x {

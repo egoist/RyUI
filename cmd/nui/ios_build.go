@@ -76,6 +76,14 @@ func buildIOS(app *goApp, o *buildOptions) error {
 	if err := copyDir(filepath.Join(app.dir, "assets"), filepath.Join(bundle, "assets")); err != nil {
 		return err
 	}
+	// The privacy manifest, which App Store Connect requires.
+	manifest, err := privacyManifest(app.dir, filepath.Join(bundle, "NuiApp"))
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(bundle, "PrivacyInfo.xcprivacy"), manifest, 0o644); err != nil {
+		return err
+	}
 	info, err := tc.infoPlist(cfg, o.simulator)
 	if err != nil {
 		return err

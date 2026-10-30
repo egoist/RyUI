@@ -5,6 +5,7 @@ import (
 	"image/color"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -79,5 +80,33 @@ func TestResize(t *testing.T) {
 	e := resize(src, 3)
 	if c := e.NRGBAAt(1, 1); c.R != 200 || c.A < 120 || c.A > 135 {
 		t.Fatal(c)
+	}
+}
+
+// The privacy manifest declares the categories of the APIs the binary
+// imports or names, each with nui's reason, and no others.
+func TestPrivacyAccessed(t *testing.T) {
+	types := func(imported map[string]bool, data string) []string {
+		var out []string
+		for _, e := range privacyAccessed(imported, []byte(data)) {
+			m := e.(map[string]any)
+			out = append(out, m["NSPrivacyAccessedAPIType"].(string)+" "+m["NSPrivacyAccessedAPITypeReasons"].([]string)[0])
+		}
+		return out
+	}
+	// Go's runtime: its clock and stat.
+	got := types(map[string]bool{"mach_absolute_time": true, "fstat64": true, "write": true}, "")
+	want := []string{"NSPrivacyAccessedAPICategoryFileTimestamp C617.1", "NSPrivacyAccessedAPICategorySystemBootTime 35F9.1"}
+	if !slices.Equal(got, want) {
+		t.Errorf("Go's runtime: %v", got)
+	}
+	// SQLite's statfs, a class, a method's name (whole, not inside another).
+	got = types(map[string]bool{"statfs": true, "OBJC_CLASS_$_NSUserDefaults": true}, "x\x00activeInputModes\x00y\x00notsystemUptime\x00")
+	want = []string{"NSPrivacyAccessedAPICategoryDiskSpace E174.1", "NSPrivacyAccessedAPICategoryUserDefaults CA92.1", "NSPrivacyAccessedAPICategoryActiveKeyboards 54BD.1"}
+	if !slices.Equal(got, want) {
+		t.Errorf("the rest: %v", got)
+	}
+	if got := types(map[string]bool{"write": true}, ""); len(got) != 0 {
+		t.Errorf("none: %v", got)
 	}
 }
