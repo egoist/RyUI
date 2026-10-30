@@ -107,5 +107,5 @@
 
 In order of what apps miss most: push notifications and maps (both set
 aside for now: push needs an APNs key and a Firebase project, Android's
-maps a provider's choice)). Maps can be an app's own native view through
+maps a provider's choice). Maps can be an app's own native view through
 `ui.Native` until then.
