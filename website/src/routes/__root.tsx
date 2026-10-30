@@ -25,18 +25,8 @@ export const Route = createRootRoute({
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
     ],
-    scripts: [
-      { children: themeScript },
-      ...(import.meta.env.PROD
-        ? [
-            {
-              src: "https://u.egoist.dev/script.js",
-              defer: true,
-              "data-website-id": "60fbda78-1368-4d06-9a33-83d14133acd6",
-            },
-          ]
-        : []),
-    ],
+    // An analytics script, if the site has one, goes here (in production only).
+    scripts: [{ children: themeScript }],
   }),
   shellComponent: RootDocument,
   component: RootLayout,
