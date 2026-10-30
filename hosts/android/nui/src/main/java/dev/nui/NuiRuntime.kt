@@ -150,8 +150,12 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
         if (draining) return
         draining = true
         try {
-            while (pendingLists.isNotEmpty() || pendingEvents.isNotEmpty()) {
-                if (pendingLists.isNotEmpty()) {
+            while (pendingLists.isNotEmpty() || pendingEvents.isNotEmpty() || pendingCulls.isNotEmpty()) {
+                if (pendingCulls.isNotEmpty()) {
+                    val ss = ArrayList(pendingCulls)
+                    pendingCulls.clear()
+                    for (s in ss) if (nodes[s.id] === s) cull(s)
+                } else if (pendingLists.isNotEmpty()) {
                     val lists = ArrayList(pendingLists)
                     pendingLists.clear()
                     for (l in lists) l.applyPending()
@@ -199,7 +203,43 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
     /** Reports a Scroll's offset, in points, as Scrolled (when the core listens). */
     private fun reportScrolls(v: View, id: Int) {
         val r = NuiScrollReporter(this, id, v)
-        v.setOnScrollChangeListener { _, x, y, _, _ -> r.scrolled(x, y) }
+        v.setOnScrollChangeListener { _, x, y, _, _ ->
+            r.scrolled(x, y)
+            nodes[id]?.let { cull(it) }
+        }
+    }
+
+    private val pendingCulls = LinkedHashSet<NuiNode>()
+
+    /**
+     * Takes the rows of a Scroll's content more than a screen outside what
+     * it shows out of the view tree, as RecyclerView does its items, and
+     * puts them back as they come near: each one drawn (recorded) and
+     * measured is work for every frame it changes in, on screen or not. A
+     * row out of the tree keeps its frame and props. While TalkBack
+     * explores by touch it takes nothing out: TalkBack moves through every
+     * row.
+     */
+    fun cull(scroll: NuiNode) {
+        val sv = scroll.view
+        val content = scroll.children.firstOrNull() ?: return
+        val c = content.view as? NuiContainer ?: return
+        val w = sv.width
+        val h = sv.height
+        if (w == 0 || h == 0) return
+        val all = (app.getSystemService(Context.ACCESSIBILITY_SERVICE) as android.view.accessibility.AccessibilityManager).isTouchExplorationEnabled
+        val l = sv.scrollX - w
+        val t = sv.scrollY - h
+        val r = sv.scrollX + 2 * w
+        val b = sv.scrollY + 2 * h
+        var before = 0 // rows there before this one
+        for (row in content.children) {
+            val v = row.outer
+            val near = all || (v.right > l && v.left < r && v.bottom > t && v.top < b)
+            if (near && v.parent == null) c.putBack(v, before)
+            else if (!near && v.parent === c) c.takeOut(v)
+            if (v.parent === c) before++
+        }
     }
 
     fun emit(id: Int, event: Int, make: () -> ByteArray) {
@@ -544,6 +584,9 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
 
     override fun setFrame(id: Int, x: Float, y: Float, width: Float, height: Float) {
         val n = nodes[id] ?: return
+        // A Scroll, or a row of its content, moved: what it takes out is redone.
+        if (n.kind == NuiKind.SCROLL) pendingCulls.add(n)
+        n.parent?.parent?.let { if (it.kind == NuiKind.SCROLL) pendingCulls.add(it) }
         val d = density
         val l = Math.round(x * d)
         val t = Math.round(y * d)

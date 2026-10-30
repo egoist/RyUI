@@ -76,7 +76,8 @@ class NuiNode(val id: Int, val kind: Int, var view: View) {
         val lp = if (c is NuiContainer) NuiParams() else FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         val v = child.outer
         (v.parent as? ViewGroup)?.removeView(v)
-        c.addView(v, if (c is NuiContainer) i else -1, lp)
+        // Among the views there: a Scroll takes rows out of sight out.
+        c.addView(v, if (c is NuiContainer) children.subList(0, i).count { it.outer.parent === c } else -1, lp)
     }
 
     fun remove(child: NuiNode) {
@@ -131,6 +132,15 @@ open class NuiContainer(context: Context) : ViewGroup(context) {
             val lp = c.layoutParams as? NuiParams ?: continue
             c.layout(lp.x, lp.y, lp.x + lp.w, lp.y + lp.h)
         }
+    }
+
+    /** Takes v out (a Scroll's row out of sight), without asking for a layout: its frame is the core's. */
+    fun takeOut(v: View) = removeViewInLayout(v)
+
+    /** Puts v back at index, as it was. */
+    fun putBack(v: View, index: Int) {
+        addViewInLayout(v, index, v.layoutParams ?: NuiParams(), true)
+        invalidate()
     }
 }
 
