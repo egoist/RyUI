@@ -1,5 +1,8 @@
 # What nui has, against SwiftUI and Expo
 
+Each row is something apps often need: how SwiftUI and Expo do it, and
+what nui has for it.
+
 ✓ has it · ◐ in part (what's missing is said) · ✗ not yet
 
 ## Layout

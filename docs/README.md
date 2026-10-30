@@ -8,10 +8,16 @@ updates only the views that read a signal when it changes.
 ```go
 func Counter() ui.Node {
 	count := signal.New(0)
-	return ui.SafeArea(ui.Style{Justify: ui.JustifyCenter, Align: ui.AlignCenter, Gap: 16},
-		ui.Text(signal.Func(func() string { return fmt.Sprintf("Count: %d", count.Get()) })),
-		ui.Button(ui.ButtonProps{Title: ui.Val("Add"), Variant: ui.ButtonFilled,
-			OnPress: func() { count.Set(count.Peek() + 1) }}),
+	label := signal.Func(func() string {
+		return fmt.Sprintf("Count: %d", count.Get())
+	})
+	return ui.SafeArea(ui.Style{Align: ui.AlignCenter, Justify: ui.JustifyCenter},
+		ui.Text(label),
+		ui.Button(ui.ButtonProps{
+			Title:   ui.Val("Add"),
+			Variant: ui.ButtonFilled,
+			OnPress: func() { count.Set(count.Peek() + 1) },
+		}),
 	)
 }
 
@@ -22,8 +28,8 @@ func main() { app.Run(Counter) }
 
 - [Getting started](getting-started.md): install the CLI, make an app and
   run it on the simulator or a phone.
-- [Shipping](shipping.md): `nui.json`, and builds for the App Store and
-  Google Play.
+- [Shipping](shipping.md): builds for the App Store and Google Play, and
+  what `nui.json` says of the app.
 
 ## Reference
 

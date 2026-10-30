@@ -1,0 +1,12 @@
+{
+  "name": "nui-dev",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "website"
+  ],
+  "scripts": {
+    "dev": "bun run --cwd website dev",
+    "build": "bun run --cwd website build"
+  }
+}

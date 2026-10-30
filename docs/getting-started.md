@@ -1,5 +1,8 @@
 # Getting started
 
+nui needs Go and each platform's own tools. Then one command makes an
+app, and another runs it, reloading as you save.
+
 ## What you need
 
 - **Go 1.26** or later.

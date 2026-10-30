@@ -8,10 +8,16 @@ that read it.
 ```go
 func Counter() ui.Node {
 	count := signal.New(0)
-	return ui.SafeArea(ui.Style{Justify: ui.JustifyCenter, Align: ui.AlignCenter, Gap: 16},
-		ui.Text(signal.Func(func() string { return fmt.Sprintf("Count: %d", count.Get()) })),
-		ui.Button(ui.ButtonProps{Title: ui.Val("Add"), Variant: ui.ButtonFilled,
-			OnPress: func() { count.Set(count.Peek() + 1) }}),
+	label := signal.Func(func() string {
+		return fmt.Sprintf("Count: %d", count.Get())
+	})
+	return ui.SafeArea(ui.Style{Align: ui.AlignCenter, Justify: ui.JustifyCenter},
+		ui.Text(label),
+		ui.Button(ui.ButtonProps{
+			Title:   ui.Val("Add"),
+			Variant: ui.ButtonFilled,
+			OnPress: func() { count.Set(count.Peek() + 1) },
+		}),
 	)
 }
 
