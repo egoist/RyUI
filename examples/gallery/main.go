@@ -220,6 +220,7 @@ func controls() ui.Node {
 	sizes := []string{"Extra small", "Small", "Medium", "Large", "Extra large"}
 	size := signal.New(2)
 	cups := signal.New(2.0)
+	tint := signal.New(ui.Hex(0x039be5))
 	return section("Controls",
 		ui.Segmented(ui.SegmentedProps{Segments: []string{"Day", "Week", "Month"}, Selected: period}),
 		ui.Text(signal.Func(func() string {
@@ -242,6 +243,11 @@ func controls() ui.Node {
 		ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
 			ui.Text(signal.Func(func() string { return fmt.Sprintf("%.0f cups", cups.Get()) }), ui.Style{Grow: 1}),
 			ui.Stepper(ui.StepperProps{Value: cups, Min: 1, Max: 8}),
+		),
+		ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
+			ui.Symbol(ui.Icon("heart.fill"), ui.StyleFunc(func() ui.Style { return ui.Style{Color: tint.Get(), Font: ui.Title2} })),
+			ui.StaticText("Tint", ui.Style{Grow: 1}),
+			ui.ColorPicker(ui.ColorPickerProps{Value: tint, Alpha: true, Title: "Tint"}),
 		),
 		ui.Wheel(ui.WheelProps{Items: sizes, Selected: size}),
 		ui.Text(signal.Func(func() string { return "Size: " + sizes[size.Get()] }), ui.Style{Color: ui.SecondaryLabel}),

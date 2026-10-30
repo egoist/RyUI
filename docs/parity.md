@@ -27,7 +27,7 @@
 | Date and time | `DatePicker` | community | ✓ `DatePicker` (date, time, both) |
 | Progress, spinner | `ProgressView` | `ActivityIndicator` | ✓ `Progress`, `Activity` |
 | Wheel and menu pickers, stepper | `Picker`, `Stepper` | community | ✓ `Wheel`, `Stepper`, a menu from `Button.Menu` |
-| Color picker | `ColorPicker` | community | ✗ |
+| Color picker | `ColorPicker` | community | ✓ `ColorPicker` (iOS's system picker; on Android, which has none, a Material dialog of Google's palette, with opacity) |
 | Icons | SF Symbols | `@expo/vector-icons` | ✓ `Symbol` (SF Symbols; Material Symbols on Android, a curated set) |
 | Images (remote, cached, placeholders) | `AsyncImage` | `expo-image` | ✓ `Image` (memory and disk cache, `Placeholder`) |
 | Video | `VideoPlayer` | `expo-video` | ✓ `Video` |

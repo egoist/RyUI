@@ -111,7 +111,7 @@ class NuiStepper(private val rt: NuiRuntime, private val nuiID: Int) : android.v
     }
 }
 
-/** Sets a Wheel's or Stepper's prop; false if prop isn't one. */
+/** Sets a Wheel's, Stepper's or ColorPicker's prop; false if prop isn't one. */
 fun NuiRuntime.setWheelProp(n: NuiNode, prop: Int, v: Any): Boolean {
     when (val view = n.view) {
         is NuiWheel -> when (prop) {
@@ -124,6 +124,12 @@ fun NuiRuntime.setWheelProp(n: NuiNode, prop: Int, v: Any): Boolean {
             NuiProp.Stepper.MIN -> view.min = v as Double
             NuiProp.Stepper.MAX -> view.max = v as Double
             NuiProp.Stepper.STEP -> view.step = v as Double
+            else -> return false
+        }
+        is NuiColorPicker -> when (prop) {
+            NuiProp.ColorPicker.VALUE -> view.color = color(v as Long)
+            NuiProp.ColorPicker.ALPHA -> view.withAlpha = v as Boolean
+            NuiProp.ColorPicker.TITLE -> view.title = v as String
             else -> return false
         }
         else -> return false

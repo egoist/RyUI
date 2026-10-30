@@ -378,6 +378,8 @@ final class NuiTextField: UITextField {
             view = makeWheel(id)
         case .stepper:
             view = makeStepper(id)
+        case .colorPicker:
+            view = makeColorPicker(id)
         case .segmented:
             let s = UISegmentedControl()
             s.addAction(UIAction { [weak self, weak s] _ in

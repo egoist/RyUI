@@ -30,11 +30,12 @@ object NuiKind {
     const val SEGMENTED = 20
     const val WHEEL = 21
     const val STEPPER = 22
-    const val PROGRESS = 23
-    const val SHAPE = 24
-    const val VIDEO = 25
-    const val WEB_VIEW = 26
-    const val DATE_PICKER = 27
+    const val COLOR_PICKER = 23
+    const val PROGRESS = 24
+    const val SHAPE = 25
+    const val VIDEO = 26
+    const val WEB_VIEW = 27
+    const val DATE_PICKER = 28
 
     fun name(kind: Int): String = when (kind) {
         1 -> "View"
@@ -59,11 +60,12 @@ object NuiKind {
         20 -> "Segmented"
         21 -> "Wheel"
         22 -> "Stepper"
-        23 -> "Progress"
-        24 -> "Shape"
-        25 -> "Video"
-        26 -> "WebView"
-        27 -> "DatePicker"
+        23 -> "ColorPicker"
+        24 -> "Progress"
+        25 -> "Shape"
+        26 -> "Video"
+        27 -> "WebView"
+        28 -> "DatePicker"
         else -> "Kind($kind)"
     }
 }
@@ -211,6 +213,12 @@ object NuiProp {
         const val STEP = 67
     }
 
+    object ColorPicker {
+        const val VALUE = 64
+        const val ALPHA = 65
+        const val TITLE = 66
+    }
+
     object Progress {
         const val VALUE = 64
         const val INDETERMINATE = 65
@@ -283,6 +291,7 @@ object NuiEventKind {
     const val FONT_LOADED = 31
     const val FRAME = 32
     const val RESULT = 33
+    const val COLOR_CHANGED = 34
 }
 
 object NuiCommand {
@@ -671,4 +680,5 @@ object NuiEvents {
     fun fontLoaded(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 31); string(v) }.bytes()
     fun frame(id: Int, v: Double): ByteArray = NuiWriter().apply { header(id, 32); f64(v) }.bytes()
     fun result(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 33); u32(v.size); raw(v) }.bytes()
+    fun colorChanged(id: Int, v: Long): ByteArray = NuiWriter().apply { header(id, 34); u64(v) }.bytes()
 }

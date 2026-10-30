@@ -429,6 +429,10 @@ func dispatch(ev ops.Event) {
 		if h.selected != nil {
 			h.selected(ev.Int)
 		}
+	case ops.EventColorChanged:
+		if h.color != nil {
+			h.color(Color(ev.Int))
+		}
 	case ops.EventAction:
 		if h.action != nil {
 			h.action(ev.Int)

@@ -40,6 +40,17 @@ final class NuiWheelView: UIPickerView, UIPickerViewDataSource, UIPickerViewDele
         return s
     }
 
+    func makeColorPicker(_ id: UInt32) -> UIView {
+        let w = UIColorWell()
+        w.supportsAlpha = false
+        w.addAction(UIAction { [weak self, weak w] _ in
+            guard let w, let c = w.selectedColor else { return }
+            let v = nuiRGBA(c.resolvedColor(with: w.traitCollection))
+            self?.emit(id, .colorChanged) { NuiEvents.colorChanged(id, v) }
+        }, for: .valueChanged)
+        return w
+    }
+
     func setWheelProp(_ n: NuiNode, _ prop: UInt16, _ v: NuiValue) -> Bool {
         switch (n.view, prop) {
         case (let w as NuiWheelView, NuiProp.Wheel.items):
@@ -55,9 +66,20 @@ final class NuiWheelView: UIPickerView, UIPickerViewDataSource, UIPickerViewDele
         case (let s as UIStepper, NuiProp.Stepper.min): s.minimumValue = v.float
         case (let s as UIStepper, NuiProp.Stepper.max): s.maximumValue = v.float
         case (let s as UIStepper, NuiProp.Stepper.step): s.stepValue = v.float
+        case (let w as UIColorWell, NuiProp.ColorPicker.value): w.selectedColor = nuiColor(v.color)
+        case (let w as UIColorWell, NuiProp.ColorPicker.alpha): w.supportsAlpha = v.bool
+        case (let w as UIColorWell, NuiProp.ColorPicker.title): w.title = v.string
         default: return false
         }
         return true
     }
+}
+/// A color as nui's RGBA Color (ops.RGBA): sRGB, each channel clamped
+/// (the picker's wide-gamut colors fall back to their nearest).
+func nuiRGBA(_ c: UIColor) -> Int64 {
+    var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+    c.getRed(&r, green: &g, blue: &b, alpha: &a)
+    func u8(_ x: CGFloat) -> Int64 { Int64((min(max(x, 0), 1) * 255).rounded()) }
+    return 2 << 32 | u8(r) << 24 | u8(g) << 16 | u8(b) << 8 | u8(a)
 }
 #endif

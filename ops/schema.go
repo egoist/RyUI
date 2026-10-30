@@ -209,6 +209,11 @@ var Schema = SchemaDef{
 			{Name: "Max", Type: TFloat},
 			{Name: "Step", Type: TFloat},
 		}, Doc: "minus and plus buttons that step a value (UIStepper; on Android, which has none, two Material icon buttons). The user's steps are reported with ValueChanged"},
+		{Name: "ColorPicker", Props: []PropDef{
+			{Name: "Value", Type: TColor},
+			{Name: "Alpha", Type: TBool, Doc: "the user can choose an opacity too"},
+			{Name: "Title", Type: TString, Doc: "the picker's title"},
+		}, Doc: "a swatch of a color that opens the platform's picker (UIColorWell and UIColorPickerViewController; on Android, which has none, a Material dialog of the palette Google's apps offer). The user's choice is reported with ColorChanged"},
 		{Name: "Progress", Props: []PropDef{
 			{Name: "Value", Type: TFloat, Doc: "done, from 0 to 1"},
 			{Name: "Indeterminate", Type: TBool, Doc: "under way, how far unknown (Android animates; iOS shows the track)"},
@@ -276,6 +281,7 @@ var Schema = SchemaDef{
 		{Name: "FontLoaded", Payload: PString, Doc: "a font a FontFamily named by URL (under nui dev) loaded, to the root: text in it is measured again"},
 		{Name: "Frame", Payload: PFloat, Doc: "a frame the display draws (vsync), while Frames is on: its time in seconds (monotonic); to the root"},
 		{Name: "Result", Payload: PBytes, Doc: "a Call's answer, to the root: u32 call id, u8 ok, then the result's bytes (an error's message when not ok)"},
+		{Name: "ColorChanged", Payload: PInt, Doc: "the user chose a ColorPicker's color: a Color (RGBA)"},
 	},
 	Commands: []CommandDef{
 		{Name: "Focus"},

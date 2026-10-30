@@ -1037,3 +1037,27 @@ func TestWheelStepper(t *testing.T) {
 		t.Fatalf("after the app's write: %v\n%s", s.Float(ops.PropStepperValue), h.Log())
 	}
 }
+
+func TestColorPicker(t *testing.T) {
+	c := signal.New(ui.Hex(0x3366cc))
+	h, r := mount(t, func() ui.Node {
+		return ui.Row(ui.Style{Align: ui.AlignStart}, ui.ColorPicker(ui.ColorPickerProps{Value: c, Alpha: true, Title: "Tint"}))
+	})
+	p := h.OfKind(ops.KindColorPicker)[0]
+	if ops.Color(p.Int(ops.PropColorPickerValue)) != ui.Hex(0x3366cc) || !p.Bool(ops.PropColorPickerAlpha) || p.String(ops.PropColorPickerTitle) != "Tint" || p.Frame[2] != 28 || p.Frame[3] != 28 {
+		t.Fatalf("props %v frame %v", p.Props, p.Frame)
+	}
+	// The user's choice is the signal's, and isn't sent back.
+	h.Reset()
+	h.PickColor(p, ui.RGBA(255, 0, 0, 128))
+	r.Flush()
+	if c.Peek() != ui.RGBA(255, 0, 0, 128) || h.Count(ops.OpSetProp) != 0 {
+		t.Fatalf("picked %x\n%s", uint64(c.Peek()), h.Log())
+	}
+	c.Set(ui.Hex(0x00ff00))
+	r.Flush()
+	if ops.Color(p.Int(ops.PropColorPickerValue)) != ui.Hex(0x00ff00) || h.Count(ops.OpSetProp) != 1 {
+		t.Fatalf("after the app's write\n%s", h.Log())
+	}
+	r.Dispose()
+}

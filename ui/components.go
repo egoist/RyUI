@@ -772,6 +772,54 @@ func Wheel(p WheelProps) Node {
 	return Node{e}
 }
 
+// ColorPickerProps configures a ColorPicker.
+type ColorPickerProps struct {
+	// Value is the color: the user's choice writes it (an RGBA color).
+	Value *signal.Signal[Color]
+	// Alpha lets the user choose an opacity too.
+	Alpha bool
+	// Title is the picker's (default: the platform's).
+	Title    string
+	Disabled signal.Accessor[bool]
+	Style    Styler
+}
+
+// ColorPicker is a swatch of a color that opens the platform's picker
+// (SwiftUI's ColorPicker: UIColorWell and the system's color picker;
+// Android has none, so a Material dialog of the palette Google's apps
+// offer, with an opacity slider for Alpha). Show its label beside it.
+func ColorPicker(p ColorPickerProps) Node {
+	e := newElement(ops.KindColorPicker, true)
+	e.measure()
+	e.setStyle(p.Style, false)
+	b := e.r.batch
+	if p.Alpha {
+		b.SetBool(e.id, ops.PropColorPickerAlpha, true)
+	}
+	if p.Title != "" {
+		b.SetString(e.id, ops.PropColorPickerTitle, p.Title)
+	}
+	bind(p.Disabled, func(v bool) { e.r.batch.SetBool(e.id, ops.PropDisabled, v) })
+	if p.Value != nil {
+		var reported Color
+		known := false
+		signal.RenderEffect(func() {
+			v := p.Value.Get()
+			if known && v == reported {
+				return
+			}
+			reported, known = v, true
+			e.r.batch.SetColor(e.id, ops.PropColorPickerValue, v)
+		})
+		e.handlers().color = func(c Color) {
+			reported, known = c, true
+			p.Value.Set(c)
+		}
+		e.listen(ops.EventColorChanged)
+	}
+	return Node{e}
+}
+
 // StepperProps configures a Stepper.
 type StepperProps struct {
 	// Value is the value: the user's steps write it.

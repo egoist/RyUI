@@ -25,11 +25,12 @@ public enum NuiKind: UInt16 {
     case segmented = 20
     case wheel = 21
     case stepper = 22
-    case progress = 23
-    case shape = 24
-    case video = 25
-    case webView = 26
-    case datePicker = 27
+    case colorPicker = 23
+    case progress = 24
+    case shape = 25
+    case video = 26
+    case webView = 27
+    case datePicker = 28
 
     public var name: String {
         switch self {
@@ -55,6 +56,7 @@ public enum NuiKind: UInt16 {
         case .segmented: return "Segmented"
         case .wheel: return "Wheel"
         case .stepper: return "Stepper"
+        case .colorPicker: return "ColorPicker"
         case .progress: return "Progress"
         case .shape: return "Shape"
         case .video: return "Video"
@@ -208,6 +210,12 @@ public enum NuiProp {
         public static let step: UInt16 = 67
     }
 
+    public enum ColorPicker {
+        public static let value: UInt16 = 64
+        public static let alpha: UInt16 = 65
+        public static let title: UInt16 = 66
+    }
+
     public enum Progress {
         public static let value: UInt16 = 64
         public static let indeterminate: UInt16 = 65
@@ -280,6 +288,7 @@ public enum NuiEventKind: UInt16 {
     case fontLoaded = 31
     case frame = 32
     case result = 33
+    case colorChanged = 34
 }
 
 public enum NuiCommand: UInt16 {
@@ -750,5 +759,8 @@ public enum NuiEvents {
     }
     public static func result(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
         var w = NuiWriter(); w.header(id, 33); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
+    }
+    public static func colorChanged(_ id: UInt32, _ v: Int64) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 34); w.u64(UInt64(bitPattern: v)); return w.bytes
     }
 }

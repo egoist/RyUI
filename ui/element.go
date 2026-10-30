@@ -34,6 +34,7 @@ type handlers struct {
 	layout              func(Frame)
 	a11yActions         []func()
 	adjust              func(by int)
+	color               func(Color)
 }
 
 // element is a node of the UI tree. Real elements have a native view;

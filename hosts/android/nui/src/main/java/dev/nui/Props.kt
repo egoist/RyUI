@@ -302,6 +302,7 @@ private fun NuiRuntime.node(id: Int) = nodes[id]
 
 fun NuiRuntime.propBool(id: Int, prop: Int, v: Boolean) {
     val n = node(id) ?: return
+    if (n.kind == NuiKind.COLOR_PICKER && setWheelProp(n, prop, v)) return
     n.props[prop] = v
     val view = n.view
     when (prop) {
@@ -401,6 +402,7 @@ fun NuiRuntime.propFloat(id: Int, prop: Int, v: Double) {
 
 fun NuiRuntime.propString(id: Int, prop: Int, v: String) {
     val n = node(id) ?: return
+    if (n.kind == NuiKind.COLOR_PICKER && setWheelProp(n, prop, v)) return
     n.props[prop] = v
     val view = n.view
     when (prop) {
@@ -445,6 +447,7 @@ fun NuiRuntime.propString(id: Int, prop: Int, v: String) {
 
 fun NuiRuntime.propColor(id: Int, prop: Int, v: Long) {
     val n = node(id) ?: return
+    if (n.kind == NuiKind.COLOR_PICKER && setWheelProp(n, prop, v)) return
     n.props[prop] = v
     if (n.kind == NuiKind.SHAPE && setShapeProp(n, prop, v)) return
     when (prop) {

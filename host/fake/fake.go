@@ -300,6 +300,8 @@ func (h *Host) Measure(id ops.NodeID, c layout.Constraints) layout.Size {
 		s = layout.Size{W: 320, H: 216} // UIPickerView's
 	case ops.KindStepper:
 		s = layout.Size{W: 94, H: 32} // UIStepper's
+	case ops.KindColorPicker:
+		s = layout.Size{W: 28, H: 28} // UIColorWell's
 	case ops.KindSegmented:
 		b := v.Props[ops.PropSegmentedSegments].Bytes
 		n := 0
@@ -491,6 +493,13 @@ func (h *Host) Flip(v *View) {
 	v.Props[ops.PropToggleOn] = ops.Value{Type: ops.TBool, Int: b2i(on)}
 	h.listening(v, ops.EventToggled)
 	h.dispatch(ops.Event{ID: v.ID, Kind: ops.EventToggled, Bool: on})
+}
+
+// PickColor chooses a ColorPicker's color, as the user does.
+func (h *Host) PickColor(v *View, c ops.Color) {
+	v.Props[ops.PropColorPickerValue] = ops.Value{Type: ops.TColor, Int: int64(c)}
+	h.listening(v, ops.EventColorChanged)
+	h.dispatch(ops.Event{ID: v.ID, Kind: ops.EventColorChanged, Int: int64(c)})
 }
 
 // Slide moves a slider.
