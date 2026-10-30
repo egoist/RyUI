@@ -1,6 +1,7 @@
 package ui_test
 
 import (
+	"runtime"
 	"strconv"
 	"testing"
 
@@ -19,7 +20,7 @@ type rowsApp struct {
 	show   *signal.Signal[bool]
 }
 
-func mountRows(b *testing.B, n int, shown bool) (*fake.Host, *ui.Root, *rowsApp) {
+func mountRows(b testing.TB, n int, shown bool) (*fake.Host, *ui.Root, *rowsApp) {
 	a := &rowsApp{tick: signal.New(0), show: signal.New(shown)}
 	for range n {
 		a.values = append(a.values, signal.New(0))
@@ -78,5 +79,35 @@ func BenchmarkUpdateAll1000(b *testing.B) {
 	for b.Loop() {
 		a.tick.Set(a.tick.Peek() + 1)
 		r.Flush()
+	}
+}
+
+// Mounting and unmounting 1,000 rows over and over keeps nothing: the
+// live heap (after a collection) after 20 cycles is what it was after 5.
+func TestMountUnmountKeepsNothing(t *testing.T) {
+	h, r, a := mountRows(t, 1000, false)
+	cycle := func(n int) {
+		for range n {
+			a.show.Set(true)
+			r.Flush()
+			a.show.Set(false)
+			r.Flush()
+			h.Reset() // the fake host's own record of the ops
+		}
+	}
+	live := func() uint64 {
+		runtime.GC()
+		runtime.GC()
+		var m runtime.MemStats
+		runtime.ReadMemStats(&m)
+		return m.HeapAlloc
+	}
+	cycle(5)
+	before := live()
+	cycle(15)
+	after := live()
+	t.Logf("live heap after 5 cycles: %d KB; after 20: %d KB", before>>10, after>>10)
+	if after > before+64<<10 {
+		t.Fatalf("the live heap grew %d KB over 15 mounts and unmounts", (after-before)>>10)
 	}
 }
