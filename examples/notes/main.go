@@ -6,6 +6,7 @@
 package main
 
 import (
+	"database/sql"
 	"net/url"
 
 	"github.com/egoist/nui/app"
@@ -34,13 +35,13 @@ func openDB() {
 	}
 }
 
-// write runs a statement off the main thread.
+// write runs a statement off the main thread; a failure shows.
 func write(query string, args ...any) {
-	go func() {
-		if _, err := db.Exec(query, args...); err != nil {
-			ui.Post(func() { ui.Alert(ui.AlertProps{Title: "Couldn't save", Message: err.Error()}) })
+	db.ExecAsync(query, args, func(_ sql.Result, err error) {
+		if err != nil {
+			ui.Alert(ui.AlertProps{Title: "Couldn't save", Message: err.Error()})
 		}
-	}()
+	})
 }
 
 func App() ui.Node {

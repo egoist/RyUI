@@ -1,9 +1,9 @@
 // Package sqlite is an app's SQLite database: a file in its data
 // directory, opened with the settings an app wants (write-ahead logging,
 // foreign keys, a busy timeout), queries that scan into structs, a
-// transaction helper, versioned migrations, and live queries: signals
-// that run their query again, off the main thread, when the database is
-// written.
+// transaction helper, versioned migrations, writes off the main thread
+// (ExecAsync, TxAsync), and live queries: signals that run their query
+// again, off the main thread, when a table it reads is written.
 //
 // SQLite is modernc.org/sqlite, a translation of its C to Go: it needs no
 // cgo, so the same code runs on iOS, Android and, under nui dev, the Mac.
@@ -12,11 +12,14 @@
 //	db.Migrate(
 //		`create table notes (id integer primary key, text text not null, done bool not null default 0)`,
 //	)
-//	db.Exec(`insert into notes (text) values (?)`, "Buy milk")
+//	db.ExecAsync(`insert into notes (text) values (?)`, []any{"Buy milk"}, nil)
 //	notes := sqlite.Watch[Note](db, `select * from notes order by id`)
 //
-// Queries block: run them off the main thread (a goroutine, then
-// ui.Post), or use Watch, which does.
+// Exec, Tx and Query block: on the main thread, use ExecAsync and
+// TxAsync, and Watch, which fetch off it (or a goroutine, then ui.Post).
+// A live query learns the tables it reads (views' too) as SQLite prepares
+// it, and runs again when a write to one of them commits, including the
+// rows triggers and foreign keys' actions write.
 package sqlite
 
 import (
@@ -27,14 +30,16 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/egoist/nui/signal"
 	"github.com/egoist/nui/store"
 	"github.com/egoist/nui/ui"
 
-	_ "modernc.org/sqlite" // the "sqlite" driver
+	msqlite "modernc.org/sqlite"
 )
 
 // DB is an open database.
@@ -42,6 +47,66 @@ type DB struct {
 	db      *sql.DB
 	mu      sync.Mutex
 	watches map[*watch]bool
+	dirty   map[string]bool // the tables written since the live queries last heard
+}
+
+// The driver nui's databases use: modernc.org/sqlite's, with hooks on
+// each connection that note the tables it reads and writes (its own, so
+// they're on no one else's connections).
+var (
+	driver   = &msqlite.Driver{}
+	opened   sync.Map // DSN → *DB, for the connection hook
+	nextDB   atomic.Int64
+	conns    sync.Map // driver connection → *connState
+	register sync.Once
+)
+
+// connState is a connection's: the tables its transaction has written,
+// and, while a live query runs on it, those read.
+type connState struct {
+	d       *DB
+	written map[string]bool
+	reads   map[string]bool // nil: not recording
+}
+
+func registerDriver() {
+	sql.Register("nui-sqlite", driver)
+	driver.RegisterConnectionHook(func(c msqlite.ExecQuerierContext, dsn string) error {
+		v, ok := opened.Load(dsn)
+		if !ok {
+			return nil
+		}
+		st := &connState{d: v.(*DB), written: map[string]bool{}}
+		conns.Store(c, st)
+		if h, ok := c.(msqlite.HookRegisterer); ok {
+			// Every row written (by triggers and foreign keys' actions too).
+			h.RegisterPreUpdateHook(func(u msqlite.SQLitePreUpdateData) { st.written[u.TableName] = true })
+			h.RegisterCommitHook(func() int32 {
+				st.d.wrote(st.written)
+				clear(st.written)
+				return 0
+			})
+			h.RegisterRollbackHook(func() { clear(st.written) })
+		}
+		if a, ok := c.(msqlite.AuthorizerRegisterer); ok {
+			return a.RegisterAuthorizer(func(action msqlite.AuthorizerActionCode, arg1, _, _, _ string) msqlite.AuthorizerReturnCode {
+				switch action {
+				case msqlite.AuthRead:
+					if st.reads != nil && !strings.HasPrefix(arg1, "sqlite_") {
+						st.reads[arg1] = true
+					}
+				case msqlite.AuthInsert, msqlite.AuthUpdate, msqlite.AuthDelete:
+					// Also a delete of every row, which SQLite may do without
+					// visiting them (its truncate optimization).
+					if !strings.HasPrefix(arg1, "sqlite_") {
+						st.written[arg1] = true
+					}
+				}
+				return msqlite.AuthorizerOK
+			})
+		}
+		return nil
+	})
 }
 
 // Open opens (creating it if need be) the database name: a file in the
@@ -59,27 +124,52 @@ func Open(name string) (*DB, error) {
 	for _, p := range []string{"journal_mode(WAL)", "foreign_keys(1)", "busy_timeout(5000)", "synchronous(NORMAL)"} {
 		q.Add("_pragma", p)
 	}
+	// Which DB a connection is: its hook is given the DSN (SQLite and the
+	// driver ignore a parameter they don't know).
+	q.Set("_nui", strconv.FormatInt(nextDB.Add(1), 10))
 	dsn := "file:" + path + "?" + q.Encode()
 	if name == ":memory:" {
-		// One connection: each would have its own memory database.
 		dsn = "file::memory:?" + q.Encode()
 	}
-	db, err := sql.Open("sqlite", dsn)
+	register.Do(registerDriver)
+	d := &DB{watches: map[*watch]bool{}, dirty: map[string]bool{}}
+	opened.Store(dsn, d)
+	db, err := sql.Open("nui-sqlite", dsn)
 	if err != nil {
+		opened.Delete(dsn)
 		return nil, err
 	}
 	if name == ":memory:" {
+		// One connection: each would have its own memory database.
 		db.SetMaxOpenConns(1)
+	} else {
+		// A few connections, kept: a closed one's hooks state would linger.
+		db.SetMaxOpenConns(4)
+		db.SetMaxIdleConns(4)
 	}
 	if err := db.Ping(); err != nil {
 		db.Close()
+		opened.Delete(dsn)
 		return nil, err
 	}
-	return &DB{db: db, watches: map[*watch]bool{}}, nil
+	d.db = db
+	return d, nil
+}
+
+// wrote notes tables a commit wrote; the live queries hear of them when
+// the write returns (the commit is done then: a query run at once from
+// the hook might not see it).
+func (d *DB) wrote(tables map[string]bool) {
+	d.mu.Lock()
+	for t := range tables {
+		d.dirty[t] = true
+	}
+	d.mu.Unlock()
 }
 
 // SQL is the database/sql handle, for what this package doesn't cover.
-// Writes made through it don't update Watch's queries; call Changed.
+// Its writes are noted, and the live queries that read their tables run
+// again at the next Exec or Tx, or Changed.
 func (d *DB) SQL() *sql.DB { return d.db }
 
 // Close closes the database.
@@ -89,10 +179,34 @@ func (d *DB) Close() error { return d.db.Close() }
 // the live queries.
 func (d *DB) Exec(query string, args ...any) (sql.Result, error) {
 	r, err := d.db.Exec(query, args...)
-	if err == nil {
-		d.Changed()
-	}
+	d.notify()
 	return r, err
+}
+
+// ExecAsync runs a statement off the main thread, then calls done (if
+// it isn't nil) on the main thread; with no done, an error is logged.
+func (d *DB) ExecAsync(query string, args []any, done func(sql.Result, error)) {
+	go func() {
+		r, err := d.Exec(query, args...)
+		if done != nil {
+			ui.Post(func() { done(r, err) })
+		} else if err != nil {
+			fmt.Fprintln(os.Stderr, "sqlite:", err)
+		}
+	}()
+}
+
+// TxAsync runs Tx off the main thread, then calls done (if it isn't nil)
+// on the main thread with its error; with no done, an error is logged.
+func (d *DB) TxAsync(f func(tx *Tx) error, done func(error)) {
+	go func() {
+		err := d.Tx(f)
+		if done != nil {
+			ui.Post(func() { done(err) })
+		} else if err != nil {
+			fmt.Fprintln(os.Stderr, "sqlite:", err)
+		}
+	}()
 }
 
 // Tx runs f in a transaction: committed if f returns nil, rolled back if
@@ -111,9 +225,8 @@ func (d *DB) Tx(f func(tx *Tx) error) (err error) {
 			t.Rollback()
 			return
 		}
-		if err = t.Commit(); err == nil {
-			d.Changed()
-		}
+		err = t.Commit()
+		d.notify()
 	}()
 	return f(&Tx{t})
 }
@@ -234,13 +347,36 @@ func QueryOne[T any](from querier, query string, args ...any) (v T, ok bool, err
 	return rows[0], true, nil
 }
 
-// Changed tells the live queries the database changed (Exec and Tx do).
+// Changed runs every live query again: for a change the database's
+// hooks can't see (another process's, a file replaced).
 func (d *DB) Changed() {
 	d.mu.Lock()
+	clear(d.dirty)
 	ws := make([]*watch, 0, len(d.watches))
 	for w := range d.watches {
 		ws = append(ws, w)
 	}
+	d.mu.Unlock()
+	for _, w := range ws {
+		w.run()
+	}
+}
+
+// notify runs the live queries that read a table written since they
+// last heard (and those whose tables aren't known yet) again.
+func (d *DB) notify() {
+	d.mu.Lock()
+	if len(d.dirty) == 0 {
+		d.mu.Unlock()
+		return
+	}
+	var ws []*watch
+	for w := range d.watches {
+		if w.reads(d.dirty) {
+			ws = append(ws, w)
+		}
+	}
+	clear(d.dirty)
 	d.mu.Unlock()
 	for _, w := range ws {
 		w.run()
@@ -253,6 +389,57 @@ type watch struct {
 	running bool
 	again   bool
 	fetch   func()
+	query   string
+	tables  map[string]bool // what its query read last; nil: not known
+	fetches int             // how many times it fetched (for tests)
+}
+
+// reads reports whether w's query reads one of tables (or may: its
+// tables aren't known).
+func (w *watch) reads(tables map[string]bool) bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if len(w.tables) == 0 {
+		return true
+	}
+	for t := range tables {
+		if w.tables[t] {
+			return true
+		}
+	}
+	return false
+}
+
+// queryReading runs Query on a connection of its own, noting the tables
+// it reads (SQLite's authorizer sees them as the query is prepared: a
+// view's tables too).
+func queryReading[T any](d *DB, query string, args []any) ([]T, map[string]bool, error) {
+	ctx := context.Background()
+	c, err := d.db.Conn(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer c.Close()
+	var st *connState
+	c.Raw(func(dc any) error {
+		if v, ok := conns.Load(dc); ok {
+			st = v.(*connState)
+			st.reads = map[string]bool{}
+		}
+		return nil
+	})
+	rows, err := Query[T](connQuerier{c}, query, args...)
+	var tables map[string]bool
+	if st != nil {
+		c.Raw(func(any) error { tables, st.reads = st.reads, nil; return nil })
+	}
+	return rows, tables, err
+}
+
+type connQuerier struct{ c *sql.Conn }
+
+func (q connQuerier) query(s string, args ...any) (*sql.Rows, error) {
+	return q.c.QueryContext(context.Background(), s, args...)
 }
 
 // run fetches again, off the main thread: once more after one in flight,
@@ -289,8 +476,8 @@ type Result[T any] struct {
 }
 
 // Watch is a live query: a signal of its rows, fetched off the main
-// thread now and again each time the database changes through Exec or
-// Tx. Make it in a component: it stops with the component's owner.
+// thread now and again each time a write to a table it reads commits.
+// Make it in a component: it stops with the component's owner.
 func Watch[T any](d *DB, query string, args ...any) signal.Accessor[Result[T]] {
 	return WatchWith[T](d, query, func() []any { return args })
 }
@@ -306,7 +493,7 @@ func Watch[T any](d *DB, query string, args ...any) signal.Accessor[Result[T]] {
 //		func() []any { return []any{"%" + q.Get() + "%"} })
 func WatchWith[T any](d *DB, query string, args func() []any) signal.Accessor[Result[T]] {
 	s := signal.NewFunc(Result[T]{Loading: true}, nil)
-	w := &watch{}
+	w := &watch{query: query}
 	var mu sync.Mutex
 	var cur []any // the arguments to fetch with
 	gen := 0      // which arguments they are; main thread
@@ -314,7 +501,13 @@ func WatchWith[T any](d *DB, query string, args func() []any) signal.Accessor[Re
 		mu.Lock()
 		a, g := cur, gen
 		mu.Unlock()
-		rows, err := Query[T](d, query, a...)
+		rows, tables, err := queryReading[T](d, query, a)
+		w.mu.Lock()
+		if err == nil {
+			w.tables = tables
+		}
+		w.fetches++
+		w.mu.Unlock()
 		ui.Post(func() {
 			mu.Lock()
 			stale := g != gen

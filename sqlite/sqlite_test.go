@@ -1,7 +1,9 @@
 package sqlite_test
 
 import (
+	"database/sql"
 	"errors"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -18,8 +20,10 @@ type note struct {
 	Due  string `db:"due_on"`
 }
 
-func open(t *testing.T) *sqlite.DB {
-	db, err := sqlite.Open(":memory:")
+func open(t *testing.T) *sqlite.DB { return openNamed(t, ":memory:") }
+
+func openNamed(t *testing.T, name string) *sqlite.DB {
+	db, err := sqlite.Open(name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,3 +144,119 @@ func TestWatchWith(t *testing.T) {
 	db.Exec(`insert into notes (text) values ('bun')`)
 	wait("butter", "bun")
 }
+
+// A write runs again only the live queries that read a table it wrote:
+// directly, through a view, a trigger, or a delete of every row; not a
+// rolled back one. A query whose tables aren't known (it reads none)
+// runs on every write.
+func TestWatchRunsOnItsTables(t *testing.T) {
+	t.Run("memory", func(t *testing.T) { watchTables(t, open(t)) })
+	// A file's pool has several connections, each with its hooks.
+	t.Run("file", func(t *testing.T) { watchTables(t, openNamed(t, filepath.Join(t.TempDir(), "t.db"))) })
+}
+
+func watchTables(t *testing.T, db *sqlite.DB) {
+	if err := db.Migrate("", "", // open's two
+		`create table tags (note integer, tag text);
+		 create table log (what text);
+		 create view open_notes as select * from notes where done = 0;
+		 create trigger tagged after insert on tags begin insert into log values ('tagged'); end`,
+	); err != nil {
+		t.Fatal(err)
+	}
+	queries := map[string]string{
+		"notes": `select * from notes`,
+		"tags":  `select note from tags`,
+		"view":  `select * from open_notes`,
+		"log":   `select what from log`,
+		"count": `select count(*) from notes`,
+		"none":  `select 42`, // reads no table: what it reads isn't known
+	}
+	h := fake.New()
+	r := ui.Mount(h, func() ui.Node {
+		sqlite.Watch[note](db, queries["notes"])
+		sqlite.Watch[int64](db, queries["tags"])
+		sqlite.Watch[note](db, queries["view"])
+		sqlite.Watch[string](db, queries["log"])
+		sqlite.Watch[int](db, queries["count"])
+		sqlite.Watch[int](db, queries["none"])
+		return ui.StaticText("x")
+	})
+	t.Cleanup(r.Dispose)
+	prev := map[string]int{}
+	// expect waits for the fetches to settle and checks which ran again.
+	expect := func(what string, ran ...string) {
+		t.Helper()
+		for range 5000 { // a safety net, not what passes
+			h.RunPosted()
+			if !sqlite.Running(db) {
+				break
+			}
+			time.Sleep(time.Millisecond)
+		}
+		h.RunPosted()
+		now := sqlite.Fetches(db)
+		want := map[string]bool{}
+		for _, k := range ran {
+			want[k] = true
+		}
+		for k, q := range queries {
+			if again := now[q] > prev[q]; again != want[k] {
+				t.Errorf("%s: %s ran again: %v (%d → %d)", what, k, again, prev[q], now[q])
+			}
+		}
+		prev = now
+	}
+	expect("first", "notes", "tags", "view", "log", "count", "none")
+	db.Exec(`insert into tags values (1, 'home')`)
+	expect("a tag (its trigger logs)", "tags", "log", "none")
+	db.Exec(`insert into notes (text) values ('milk')`)
+	expect("a note", "notes", "view", "count", "none")
+	db.Tx(func(tx *sqlite.Tx) error {
+		tx.Exec(`insert into notes (text) values ('bread')`)
+		return errors.New("no")
+	})
+	expect("rolled back")
+	db.Exec(`delete from tags`)
+	expect("every tag", "tags", "none")
+	// A write through the raw handle is noted, and heard at the next.
+	db.SQL().Exec(`insert into log values ('raw')`)
+	db.Exec(`insert into tags values (2, 'work')`)
+	expect("raw, then a tag", "tags", "log", "none")
+	db.Changed()
+	expect("Changed", "notes", "tags", "view", "log", "count", "none")
+}
+
+// ExecAsync and TxAsync write off the main thread and report on it.
+func TestAsyncWrites(t *testing.T) {
+	db := open(t)
+	h := fake.New()
+	r := ui.Mount(h, func() ui.Node { return ui.StaticText("x") })
+	t.Cleanup(r.Dispose)
+	var id int64 = -1
+	var txErr error = errors.New("pending")
+	db.ExecAsync(`insert into notes (text) values (?)`, []any{"milk"}, func(res sqlResult, err error) {
+		if err == nil {
+			id, _ = res.LastInsertId()
+		}
+	})
+	db.TxAsync(func(tx *sqlite.Tx) error {
+		_, err := tx.Exec(`insert into notes (text) values ('bread')`)
+		return err
+	}, func(err error) { txErr = err })
+	for range 5000 { // a safety net
+		h.RunPosted()
+		if id >= 0 && txErr == nil {
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+	if id < 1 || txErr != nil { // 1 or 2: the two run at once
+		t.Fatalf("id %d, tx %v", id, txErr)
+	}
+	if n, _, _ := sqlite.QueryOne[int](db, `select count(*) from notes`); n != 2 {
+		t.Fatalf("%d notes", n)
+	}
+}
+
+type sqlResult = sql.Result
