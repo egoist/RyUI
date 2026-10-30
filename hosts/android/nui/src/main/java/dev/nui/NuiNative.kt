@@ -16,15 +16,33 @@ object NuiNative {
     @JvmStatic external fun setenv(key: String, value: String)
 
     private var loaded = false
+    private var loader: Thread? = null
 
     /**
-     * Loads the core. In development `nui dev` pushes the app's library to
-     * files/nui/libnui.so, so a change needs no reinstall; otherwise (and
-     * always in a release build) it's packaged with the app.
+     * Starts loading the core on a thread of its own, as the app starts:
+     * mapping the library and starting Go's runtime then overlap with the
+     * Activity's own start, rather than waiting for its first frame.
      */
+    fun preload(context: Context) {
+        if (loader != null || loaded) return
+        val app = context.applicationContext
+        loader = Thread({ open(app) }, "nui-load").apply { start() }
+    }
+
+    /** Loads the core, or waits for preload to have. */
     fun load(context: Context) {
         if (loaded) return
         loaded = true
+        loader?.let { it.join(); return }
+        open(context)
+    }
+
+    /**
+     * In development `nui dev` pushes the app's library to
+     * files/nui/libnui.so, so a change needs no reinstall; otherwise (and
+     * always in a release build) it's packaged with the app.
+     */
+    private fun open(context: Context) {
         val debuggable = context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0
         val dev = File(context.filesDir, "nui/libnui.so")
         if (debuggable && dev.exists()) {

@@ -48,11 +48,13 @@ The same file in every app on a platform (`nui/ios/Meter.swift`,
   included). The render server's work isn't counted. A dropped frame is
   a vsync the display link missed. Memory is `phys_footprint`, what iOS
   counts against an app and kills it for, and its peak since launch.
-- **Android**: a frame's cost is what `FrameMetrics` count on the main
-  thread: input, animation (where nui's frame events and Compose's
-  recomposition run), measure and layout, recording the drawing, and
-  the sync with the render thread. Each frame's whole time (with the
-  render thread and the GPU) is reported too. A dropped frame missed its
+- **Android**: the same: the main thread's busy time between two
+  vsyncs, from the looper's message logging, which holds the
+  Choreographer's frame (input, animation, where nui's frame events and
+  Compose's recomposition run, measure and layout, recording the
+  drawing) and whatever else runs; a frame that draws nothing (an update
+  out of sight) counts too. `FrameMetrics` give each drawn frame's whole
+  time (with the render thread and the GPU) and whether it missed its
   deadline. Memory is the proportional set size, and the resident set's
   high-water mark (`VmHWM`) for the peak.
 
@@ -81,33 +83,37 @@ frame, as an animation would.
 
 ## Results
 
-The latest are in `results/`. The first runs, before nui was optimized
-for them (iPhone 17 Pro simulator; Pixel emulator, Android 17; Apple
-M5):
+The latest are in `results/` (iPhone 17 Pro simulator; Pixel emulator,
+Android 17; an Apple M5). Main thread ms; memory MB, its peak in
+parentheses.
 
-iOS (main thread, ms; memory, MB):
+| | nui, iOS | SwiftUI | nui, Android | Compose |
+|---|---:|---:|---:|---:|
+| startup | 307 | 356 | 319 | 327 |
+| mount, 1,000 rows | 88 | 163 | 539 | 444 |
+| update-one, a frame | 2.15 | 4.91 | 2.74 | 26.8 |
+| update-all, a frame | 6.39 | 62.4 | 14.6 | 125 |
+| scroll, a frame | 1.02 | 1.14 | 4.03 | 4.19 |
+| memory, idle | 14.8 | 15.1 | 43.3 | 32.3 |
+| memory, the rows | 36.1 (36.7) | 93.2 (99.1) | 72.8 (162) | 66.7 (156) |
+| memory, after the list | 35.0 (45.2) | 21.4 (125) | 74.9 (169) | 74.5 (182) |
 
-| | nui | SwiftUI |
-|---|---:|---:|
-| startup | 315 | 337 |
-| mount | 124 | 164 |
-| update-one, a frame | 3.43 | 4.80 |
-| update-all, a frame | 33.7 | 64.9 |
-| scroll, a frame | 1.05 | 1.23 |
-| memory with 1,000 rows (peak) | 113 (119) | 92.9 (98.8) |
-| memory after the list (peak) | 35.7 (242) | 21.8 (125) |
+What changed nui, from the first runs:
 
-Android:
+| | first | now |
+|---|---|---|
+| iOS startup | 1,269 ms: every host linked WebKit, AVKit, PhotosUI... | 307 ms: the CLI links what the app's Go code calls |
+| iOS update-all, a frame | 33.7 ms | 6.39 ms: a Scroll takes rows out of sight out of the view tree (Core Animation drew every label, on screen or not) |
+| iOS memory with the rows (peak) | 113 (242) MB | 36.1 (36.7) MB: the same |
+| Android mount | 595 ms | about 270 ms on the first meter (539 on this one, which counts every message): texts without AppCompat's font loading, appearances resolved once |
+| Android update-all, a frame | 32 ms | 14.6 ms: a Scroll takes rows out of sight out of the tree |
+| Android startup | 367 ms | 319 ms: the Go library loads on a thread of its own as the app starts |
 
-| | nui | Compose |
-|---|---:|---:|
-| startup | 367 | 405 |
-| mount | 595 | 201 |
-| update-one, a frame | 7.85 | 24.6 |
-| update-all, a frame | 32.1 | 121 |
-| scroll, a frame | 1.27 | 1.18 |
-| memory with 1,000 rows (peak) | 84.5 (174) | 66.5 (155) |
-| memory after the list (peak) | 86.6 (188) | 74.2 (179) |
+Where nui still trails: Android's mount (making Views costs more than
+Compose's layout nodes) and idle memory there (the Go runtime and its
+library, about 11 MB), and iOS's memory after the list (the Go heap's
+pages, which the runtime gives back slowly; nui frees them when the app
+goes to the background or gets a memory warning).
 
 `go test ./ui -bench .` runs the same mount and update scenarios against
 the fake host: the core's share alone (signals, effects, ops, layout).

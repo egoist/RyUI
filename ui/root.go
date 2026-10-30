@@ -10,6 +10,7 @@ package ui
 
 import (
 	"encoding/binary"
+	"runtime/debug"
 	"sync/atomic"
 	"time"
 
@@ -290,6 +291,11 @@ func (r *Root) remeasureText() {
 	walk(r.el)
 }
 
+// freeMemory collects garbage and gives the Go heap's free pages back to
+// the system now: the runtime otherwise keeps them a while after a big
+// screen goes, and iOS counts them against the app.
+func freeMemory() { debug.FreeOSMemory() }
+
 func flushAll() {
 	for _, r := range roots {
 		r.Flush()
@@ -339,6 +345,16 @@ func dispatch(ev ops.Event) {
 	case ops.EventLifecycle:
 		for _, f := range boot.Lifecycle {
 			f(int(ev.Int))
+		}
+		switch ops.Lifecycle(ev.Int) {
+		case ops.LifecycleMemoryWarning:
+			for _, r := range roots {
+				r.measures = measureCache{}
+			}
+			freeMemory()
+		case ops.LifecycleBackground:
+			// A backgrounded app is the first the system ends for memory.
+			freeMemory()
 		}
 		return
 	}

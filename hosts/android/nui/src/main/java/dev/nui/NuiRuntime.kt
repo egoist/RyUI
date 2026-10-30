@@ -38,7 +38,10 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
         private var instance: NuiRuntime? = null
 
         fun get(context: Context): NuiRuntime =
-            instance ?: NuiRuntime(context.applicationContext as Application).also { instance = it }
+            instance ?: NuiRuntime(context.applicationContext as Application).also {
+                instance = it
+                NuiNative.preload(context)
+            }
     }
 
     /** Views are made with the app's Material theme, not an Activity's. */
