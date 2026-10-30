@@ -910,3 +910,47 @@ func TestListGrid(t *testing.T) {
 		t.Fatalf("cell %v, want %v square", c.Frame, w)
 	}
 }
+
+// OnFrame asks the host for frames while it has callbacks; what they
+// write shows in the frame, and disposing the owner stops them.
+func TestOnFrame(t *testing.T) {
+	var frames []time.Duration
+	show := signal.New(true)
+	n := signal.New(0)
+	h, r := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{},
+			ui.Text(signal.Func(func() string { return fmt.Sprint(n.Get()) })),
+			ui.Show(show, func() ui.Node {
+				ui.OnFrame(func(at time.Duration) {
+					frames = append(frames, at)
+					n.Update(func(v int) int { return v + 1 })
+				})
+				return ui.StaticText("animating")
+			}))
+	})
+	if c := h.Commands(ops.CmdFrames); len(c) != 1 || c[0].Value.Bytes[0] != 1 {
+		t.Fatalf("frames commands %v", c)
+	}
+	root := h.Root().ID
+	_ = r
+	h.Reset()
+	h.Dispatch(ops.Event{ID: root, Kind: ops.EventFrame, Float: 1.5})
+	h.Dispatch(ops.Event{ID: root, Kind: ops.EventFrame, Float: 1.5 + 1.0/60})
+	if len(frames) != 2 || frames[0] != 1500*time.Millisecond || h.One(ops.KindText, "2") == nil {
+		t.Fatalf("frames %v", frames)
+	}
+	show.Set(false)
+	r.Flush()
+	if c := h.Commands(ops.CmdFrames); len(c) != 1 || c[0].Value.Bytes[0] != 0 {
+		t.Fatalf("frames off: %v", c)
+	}
+	h.Dispatch(ops.Event{ID: root, Kind: ops.EventFrame, Float: 2})
+	if len(frames) != 2 {
+		t.Fatalf("a disposed callback ran: %v", frames)
+	}
+	// A steady-state frame allocates nothing in the core.
+	ui.OnFrame(func(time.Duration) { n.Update(func(v int) int { return v + 1 }) })
+	if a := testing.AllocsPerRun(100, func() { h.Dispatch(ops.Event{ID: root, Kind: ops.EventFrame, Float: 3}) }); a > 2 {
+		t.Fatalf("%v allocations a frame", a)
+	}
+}

@@ -247,7 +247,8 @@ object NuiEventKind {
     const val MESSAGE = 26
     const val INCOMING_URL = 27
     const val FONT_LOADED = 28
-    const val RESULT = 29
+    const val FRAME = 29
+    const val RESULT = 30
 }
 
 object NuiCommand {
@@ -265,11 +266,12 @@ object NuiCommand {
     const val PAUSE = 12
     const val SEEK = 13
     const val EVAL = 14
-    const val ANNOUNCE = 15
-    const val SHARE = 16
-    const val SCROLL_TO = 17
-    const val SCROLL_TO_OFFSET = 18
-    const val ACCENT = 19
+    const val FRAMES = 15
+    const val ANNOUNCE = 16
+    const val SHARE = 17
+    const val SCROLL_TO = 18
+    const val SCROLL_TO_OFFSET = 19
+    const val ACCENT = 20
 }
 
 object NuiRole {
@@ -604,5 +606,6 @@ object NuiEvents {
     fun message(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 26); string(v) }.bytes()
     fun incomingURL(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 27); string(v) }.bytes()
     fun fontLoaded(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 28); string(v) }.bytes()
-    fun result(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 29); u32(v.size); raw(v) }.bytes()
+    fun frame(id: Int, v: Double): ByteArray = NuiWriter().apply { header(id, 29); f64(v) }.bytes()
+    fun result(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 30); u32(v.size); raw(v) }.bytes()
 }

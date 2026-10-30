@@ -23,6 +23,8 @@ import (
 // Root is a mounted tree: on mobile, the app's screen; on desktop
 // (later), a window.
 type Root struct {
+	frames    []*frameFn // OnFrame's
+	framesOn  bool
 	host      host.Host
 	batch     *ops.Batch   // where ops go
 	spare     []*ops.Batch // batches for ops written while one is applied
@@ -320,6 +322,13 @@ func dispatch(ev ops.Event) {
 		return
 	case ops.EventIncomingURL:
 		incoming(ev.Str)
+		return
+	case ops.EventFrame:
+		for _, r := range roots {
+			if r.el.id == ev.ID {
+				r.frame(time.Duration(ev.Float * float64(time.Second)))
+			}
+		}
 		return
 	case ops.EventFontLoaded:
 		for _, r := range roots {

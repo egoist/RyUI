@@ -244,7 +244,8 @@ public enum NuiEventKind: UInt16 {
     case message = 26
     case incomingURL = 27
     case fontLoaded = 28
-    case result = 29
+    case frame = 29
+    case result = 30
 }
 
 public enum NuiCommand: UInt16 {
@@ -262,11 +263,12 @@ public enum NuiCommand: UInt16 {
     case pause = 12
     case seek = 13
     case eval = 14
-    case announce = 15
-    case share = 16
-    case scrollTo = 17
-    case scrollToOffset = 18
-    case accent = 19
+    case frames = 15
+    case announce = 16
+    case share = 17
+    case scrollTo = 18
+    case scrollToOffset = 19
+    case accent = 20
 }
 
 public enum NuiRole: Int32 {
@@ -674,7 +676,10 @@ public enum NuiEvents {
     public static func fontLoaded(_ id: UInt32, _ v: String) -> [UInt8] {
         var w = NuiWriter(); w.header(id, 28); w.string(v); return w.bytes
     }
+    public static func frame(_ id: UInt32, _ v: Double) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 29); w.f64(v); return w.bytes
+    }
     public static func result(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
-        var w = NuiWriter(); w.header(id, 29); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
+        var w = NuiWriter(); w.header(id, 30); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
     }
 }

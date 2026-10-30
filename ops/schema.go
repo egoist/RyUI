@@ -249,6 +249,7 @@ var Schema = SchemaDef{
 		{Name: "Message", Payload: PString, Doc: "a WebView's page posted a message: window.nui.postMessage(text)"},
 		{Name: "IncomingURL", Payload: PString, Doc: "the app was opened with a URL (its scheme, or a universal or app link), at launch or since; to the root"},
 		{Name: "FontLoaded", Payload: PString, Doc: "a font a FontFamily named by URL (under nui dev) loaded, to the root: text in it is measured again"},
+		{Name: "Frame", Payload: PFloat, Doc: "a frame the display draws (vsync), while Frames is on: its time in seconds (monotonic); to the root"},
 		{Name: "Result", Payload: PBytes, Doc: "a Call's answer, to the root: u32 call id, u8 ok, then the result's bytes (an error's message when not ok)"},
 	},
 	Commands: []CommandDef{
@@ -266,6 +267,7 @@ var Schema = SchemaDef{
 		{Name: "Pause", Doc: "sent to a Video"},
 		{Name: "Seek", Doc: "args: f64 seconds from the start; sent to a Video"},
 		{Name: "Eval", Doc: "args: JavaScript; sent to a WebView: run in its page"},
+		{Name: "Frames", Doc: "args: u8 on; sent to the root: the host sends Frame at each vsync (CADisplayLink, Choreographer) while it's on"},
 		{Name: "Announce", Doc: "args: the text; sent to the root: a screen reader, if one is on, reads it out"},
 		{Name: "Share", Doc: "args: the text (a URL is shared as one); sent to the root: the system's share sheet"},
 		{Name: "ScrollTo", Doc: "args: u32 item index, u8 animated; sent to a List: it scrolls the item into view"},

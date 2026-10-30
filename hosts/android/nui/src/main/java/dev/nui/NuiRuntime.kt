@@ -178,6 +178,23 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
         back.isEnabled = activeStack() != null
     }
 
+    private var framesOn = false
+    private val frame = object : android.view.Choreographer.FrameCallback {
+        override fun doFrame(nanos: Long) {
+            if (!framesOn) return
+            android.view.Choreographer.getInstance().postFrameCallback(this)
+            send(NuiEvents.frame(rootID, nanos / 1e9))
+        }
+    }
+
+    /** Sends Frame at each vsync, while the core has OnFrame callbacks. */
+    fun setFrames(on: Boolean) {
+        if (on == framesOn) return
+        framesOn = on
+        if (on) android.view.Choreographer.getInstance().postFrameCallback(frame)
+        else android.view.Choreographer.getInstance().removeFrameCallback(frame)
+    }
+
     /** Reports a Scroll's offset, in points, as Scrolled (when the core listens). */
     private fun reportScrolls(v: View, id: Int) {
         val r = NuiScrollReporter(this, id, v)
@@ -608,6 +625,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
                 setAccent(if (c != 0L) color(c) else null, flags and 1 != 0)
             }
             NuiCommand.CALL -> call(id, args)
+            NuiCommand.FRAMES -> setFrames(args.remaining() > 0 && args.get().toInt() == 1)
             NuiCommand.PLAY -> (n.view as? NuiVideo)?.player?.play()
             NuiCommand.PAUSE -> (n.view as? NuiVideo)?.player?.pause()
             NuiCommand.SEEK -> if (args.remaining() >= 8) (n.view as? NuiVideo)?.player?.seekTo((args.double * 1000).toLong())

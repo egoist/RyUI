@@ -5,6 +5,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/egoist/nui/app"
@@ -327,6 +328,7 @@ func motion(toast *signal.Signal[bool]) ui.Node {
 			ui.StaticText("Drag the dot; it springs back.", ui.Style{Color: ui.SecondaryLabel, Font: ui.Footnote, Grow: 1}),
 		),
 		pulse(),
+		spinner(),
 		ui.Button(ui.ButtonProps{Title: ui.Val("Show a toast"), Variant: ui.ButtonGray, OnPress: func() {
 			ui.Animate(func() { toast.Set(true) })
 			ui.Announce("Saved") // a screen reader wouldn't notice the toast
@@ -340,6 +342,26 @@ func motion(toast *signal.Signal[bool]) ui.Node {
 
 // pulse is a repeating animation: a dot that breathes until it's
 // stopped (set without an animation).
+// spinner turns a gear frame by frame (ui.OnFrame), at a speed the
+// slider sets: animation the app computes, rather than the platform.
+func spinner() ui.Node {
+	speed := signal.New(0.5) // turns a second
+	angle := signal.New(float32(0))
+	var last time.Duration
+	ui.OnFrame(func(t time.Duration) {
+		if last != 0 {
+			a := angle.Peek() + float32((t-last).Seconds()*speed.Peek()*360)
+			angle.Set(float32(math.Mod(float64(a), 360)))
+		}
+		last = t
+	})
+	return ui.Row(ui.Style{Gap: 16, Align: ui.AlignCenter},
+		ui.View(ui.ViewProps{Decorative: true, Style: ui.StyleFunc(func() ui.Style {
+			return ui.Style{Width: ui.Pt(64), Justify: ui.JustifyCenter, Align: ui.AlignCenter, Transform: ui.Transform{Rotate: angle.Get()}}
+		})}, ui.Symbol(ui.IconSettings, ui.Style{Font: ui.LargeTitle, Color: ui.Accent})),
+		ui.Slider(ui.SliderProps{Value: speed, Min: 0, Max: 2, Style: ui.Style{Grow: 1}}))
+}
+
 func pulse() ui.Node {
 	on := signal.New(false)
 	return ui.Row(ui.Style{Gap: 16, Align: ui.AlignCenter},

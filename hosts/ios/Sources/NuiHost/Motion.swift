@@ -38,7 +38,31 @@ struct NuiTransition {
     }
 }
 
+/// Sends Frame at each vsync, while the core has OnFrame callbacks.
+@MainActor final class NuiFrames: NSObject {
+    static let shared = NuiFrames()
+    var link: CADisplayLink?
+
+    @objc func tick(_ l: CADisplayLink) {
+        let rt = NuiRuntime.shared
+        rt.send(NuiEvents.frame(rt.rootID, l.targetTimestamp))
+    }
+}
+
 @MainActor extension NuiRuntime {
+    func setFrames(_ on: Bool) {
+        let f = NuiFrames.shared
+        if on, f.link == nil {
+            let l = CADisplayLink(target: f, selector: #selector(NuiFrames.tick(_:)))
+            l.preferredFrameRateRange = CAFrameRateRange(minimum: 60, maximum: 120, preferred: 120) // ProMotion's
+            l.add(to: .main, forMode: .common) // while scrolling too
+            f.link = l
+        } else if !on {
+            f.link?.invalidate()
+            f.link = nil
+        }
+    }
+
     /// A view inserted during an animation, with a transition: it starts
     /// in the transition's state, and animates to its own once the batch
     /// is applied (and the rest of the change starts with it).

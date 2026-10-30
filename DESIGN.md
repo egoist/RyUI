@@ -813,6 +813,9 @@ Each one ends with its examples running and its tests in CI.
   - `ui.Segmented`, `ui.Progress` and `ui.DatePicker`, each the
     platform's control (Material's pickers on Android).
   - List swipe actions, `OnEndReached` and `ui.ScrollToItem`.
+  - `ui.OnFrame`: a callback each vsync (CADisplayLink at up to 120 Hz,
+    Choreographer) while one is registered, for animation the app
+    computes, as TimelineView(.animation) and withFrameNanos.
   - `ui.Video` (AVPlayerViewController; Media3's ExoPlayer and
     PlayerView): its natural size, the platform's controls, AutoPlay,
     Loop, Muted, `OnEnd`; `ui.Play`, `ui.Pause`, `ui.Seek`.

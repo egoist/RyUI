@@ -513,6 +513,8 @@ final class NuiTextField: UITextField {
             call(id, args)
         case .copy:
             UIPasteboard.general.string = String(decoding: args, as: UTF8.self)
+        case .frames:
+            setFrames(args.first == 1)
         case .play:
             (n.view as? NuiVideoView)?.play()
         case .pause:

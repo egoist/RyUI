@@ -329,13 +329,15 @@ const (
 	EventIncomingURL EventKind = 27
 	// EventFontLoaded: a font a FontFamily named by URL (under nui dev) loaded, to the root: text in it is measured again.
 	EventFontLoaded EventKind = 28
+	// EventFrame: a frame the display draws (vsync), while Frames is on: its time in seconds (monotonic); to the root.
+	EventFrame EventKind = 29
 	// EventResult: a Call's answer, to the root: u32 call id, u8 ok, then the result's bytes (an error's message when not ok).
-	EventResult EventKind = 29
+	EventResult EventKind = 30
 )
 
-var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh", "Pan", "Pinch", "Swipe", "Loaded", "Failed", "Native", "Link", "Ended", "Navigated", "Message", "IncomingURL", "FontLoaded", "Result"}
+var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh", "Pan", "Pinch", "Swipe", "Loaded", "Failed", "Native", "Link", "Ended", "Navigated", "Message", "IncomingURL", "FontLoaded", "Frame", "Result"}
 
-var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone, PGesture, PGesture, PInt, PPoint, PString, PBytes, PString, PNone, PString, PString, PString, PString, PBytes}
+var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone, PGesture, PGesture, PInt, PPoint, PString, PBytes, PString, PNone, PString, PString, PString, PString, PFloat, PBytes}
 
 func (e EventKind) String() string {
 	if int(e) < len(eventNames) && e > 0 {
@@ -379,19 +381,21 @@ const (
 	CmdSeek CommandID = 13
 	// CmdEval: args: JavaScript; sent to a WebView: run in its page.
 	CmdEval CommandID = 14
+	// CmdFrames: args: u8 on; sent to the root: the host sends Frame at each vsync (CADisplayLink, Choreographer) while it's on.
+	CmdFrames CommandID = 15
 	// CmdAnnounce: args: the text; sent to the root: a screen reader, if one is on, reads it out.
-	CmdAnnounce CommandID = 15
+	CmdAnnounce CommandID = 16
 	// CmdShare: args: the text (a URL is shared as one); sent to the root: the system's share sheet.
-	CmdShare CommandID = 16
+	CmdShare CommandID = 17
 	// CmdScrollTo: args: u32 item index, u8 animated; sent to a List: it scrolls the item into view.
-	CmdScrollTo CommandID = 17
+	CmdScrollTo CommandID = 18
 	// CmdScrollToOffset: args: f32 x, f32 y (points from the content's top left; clamped, so a large one is the end), u8 animated; sent to a Scroll.
-	CmdScrollToOffset CommandID = 18
+	CmdScrollToOffset CommandID = 19
 	// CmdAccent: args: u64 Color (0: the platform's), u8 flags (1: on Android, the wallpaper's colors where the system has them); sent to the root when it mounts: the app's accent color, which the platform's controls and Accent take (iOS: the tint color; Android: a Material 3 color scheme made from it).
-	CmdAccent CommandID = 19
+	CmdAccent CommandID = 20
 )
 
-var commandNames = [...]string{"", "Focus", "Blur", "ListUpdate", "Present", "Haptic", "AnimateBegin", "AnimateEnd", "OpenURL", "Call", "Copy", "Play", "Pause", "Seek", "Eval", "Announce", "Share", "ScrollTo", "ScrollToOffset", "Accent"}
+var commandNames = [...]string{"", "Focus", "Blur", "ListUpdate", "Present", "Haptic", "AnimateBegin", "AnimateEnd", "OpenURL", "Call", "Copy", "Play", "Pause", "Seek", "Eval", "Frames", "Announce", "Share", "ScrollTo", "ScrollToOffset", "Accent"}
 
 func (c CommandID) String() string {
 	if int(c) < len(commandNames) && c > 0 {
