@@ -135,6 +135,11 @@ private fun NuiRuntime.registerBuiltinModules() {
         },
     )
     modules["location"] = NuiLocation(this).methods()
+    modules["network"] = NuiNetwork(this).methods()
+    modules["js"] = scriptMethods()
+    modules["web"] = webMethods()
+    modules["library"] = libraryMethods()
+    modules["background"] = NuiBackground(this).methods()
     modules["notify"] = notifyMethods()
     modules["audio"] = audioMethods()
     modules["camera"] = cameraMethods()

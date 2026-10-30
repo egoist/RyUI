@@ -364,6 +364,9 @@ func dispatch(ev ops.Event) {
 	case ops.EventIncomingURL:
 		incoming(ev.Str)
 		return
+	case ops.EventShared:
+		sharedText(ev.Str)
+		return
 	case ops.EventFrame:
 		for _, r := range roots {
 			if r.el.id == ev.ID {
@@ -432,6 +435,10 @@ func dispatch(ev ops.Event) {
 	case ops.EventColorChanged:
 		if h.color != nil {
 			h.color(Color(ev.Int))
+		}
+	case ops.EventWebState, ops.EventRequest, ops.EventDownload, ops.EventNewWindow:
+		if h.web != nil {
+			webEvent(h.web, ev)
 		}
 	case ops.EventAction:
 		if h.action != nil {

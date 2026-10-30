@@ -301,7 +301,7 @@ func devAndroidPlayer(app *goApp, tc *androidToolchain, work, serial string, sto
 
 // playerConfig is the player's: every permission an app might need.
 func playerConfig() *appConfig {
-	c := &appConfig{ID: playerID}
+	c := &appConfig{ID: playerID, ShareTarget: true}
 	c.permissionsFor(nil)
 	return c
 }

@@ -34,9 +34,9 @@ what nui has for it.
 | Icons | SF Symbols | `@expo/vector-icons` | ✓ `Symbol` (SF Symbols; Material Symbols on Android, a curated set) |
 | Images (remote, cached, placeholders) | `AsyncImage` | `expo-image` | ✓ `Image` (memory and disk cache, `Placeholder`) |
 | Video | `VideoPlayer` | `expo-video` | ✓ `Video` |
-| Web content | `WKWebView` | `react-native-webview` | ✓ `WebView` (URL, HTML, messages both ways) |
+| Web content | `WKWebView` | `react-native-webview` | ✓ `WebView` (URL, HTML, messages both ways, scripts before the page's, blocked requests, its state and history, downloads, new windows, cookies, a script's value; each request on Android); `nui/js` runs JavaScript off screen |
 | Maps | `Map` | `react-native-maps` | ✗ (a native view through `ui.Native` meanwhile) |
-| Custom drawing | `Shape`, `Path`, `Canvas` | `react-native-svg`, Skia | ◐ `Shape` and `Path` (lines, curves, arcs, rects, ellipses; fill, stroke, caps, joins; an animatable trim); no immediate-mode canvas, no gradient fills |
+| Custom drawing | `Shape`, `Path`, `Canvas` | `react-native-svg`, Skia | ◐ `Shape` and `Path` (lines, curves, arcs, rects, ellipses; fill, stroke, caps, joins; an animatable trim); SVG icons drawn natively (`nui/svg`); no immediate-mode canvas, no gradient fills |
 | Native escape hatch | `UIViewRepresentable` | native modules | ✓ `ui.Native` views, `ui.Call` modules |
 
 ## Navigation and presentation
@@ -82,6 +82,10 @@ what nui has for it.
 | Push notifications | APNs | `expo-notifications` | ✗ |
 | Clipboard, share sheet, browser | `UIPasteboard`, `ShareLink`, `SFSafariViewController` | `expo-clipboard`, `expo-sharing`, `expo-web-browser` | ✓ `Copy`, `device.Clipboard`, `Share`, `device.Browse` |
 | Keep awake, device info | `isIdleTimerDisabled`, `UIDevice` | `expo-keep-awake`, `expo-device` | ✓ `device.KeepAwake`, `device.GetInfo` |
+| Network state | `NWPathMonitor` | `expo-network` | ✓ `nui/network` (online, Wi-Fi or cellular, metered, Data Saver / Low Data Mode) |
+| Saving to the gallery, Downloads | `PHPhotoLibrary` | `expo-media-library` | ✓ `nui/library` (MediaStore's collections; Photos, or Documents in Files) |
+| Work in the background | `beginBackgroundTask`, `BGTaskScheduler` | `expo-task-manager` | ◐ `nui/background`: Android keeps the app running, its progress and buttons in a notification; iOS gives about 30 seconds; no scheduled tasks |
+| Receiving shares from other apps | Share extension | share intent (community) | ◐ `ui.OnShare` (text and links, `nui.json`'s `shareTarget`): Android only |
 | Audio | AVAudioPlayer | `expo-audio` | ✓ `nui/audio` (load, play, pause, seek, volume, loop); no recording |
 | Custom fonts | `.font(.custom)` | `expo-font` | ✓ `Font.Family` |
 | Lifecycle | `scenePhase` | AppState | ✓ `app.OnLifecycle` |

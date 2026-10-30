@@ -241,7 +241,11 @@ var Schema = SchemaDef{
 		{Name: "WebView", Props: []PropDef{
 			{Name: "URL", Type: TString, Doc: "the page: an http(s) URL, or a file in the app's assets"},
 			{Name: "HTML", Type: TString, Doc: "markup to show instead of URL"},
-		}, Doc: "a web page (WKWebView, android.webkit.WebView). Navigated reports each page loaded (its URL), Failed a page that couldn't load, Message what the page posts with window.nui.postMessage(text); the Eval command runs script in it"},
+			{Name: "Preload", Type: TString, Doc: "a script run before each page's own, in every frame (WKUserScript at document start; WebViewCompat.addDocumentStartJavaScript); set before URL"},
+			{Name: "UserAgent", Type: TString, Doc: "the User-Agent the page is fetched with, and navigator.userAgent (empty: the platform's)"},
+			{Name: "Block", Type: TBytes, Doc: "requests to block: u32 count, then u32-length patterns, each a host (which matches its subdomains too) or, with a /, a part of the URL (iOS: a content rule list; Android: shouldInterceptRequest)"},
+			{Name: "Requests", Type: TBool, Doc: "report each request the page makes with Request (Android; iOS can't see them)"},
+		}, Doc: "a web page (WKWebView, android.webkit.WebView). Navigated reports each page loaded (its URL), Failed a page that couldn't load, Message what the page posts with window.nui.postMessage(text), WebState its URL, title, progress and history, Download a response the page can't show (a file to save), NewWindow a page it would open in a new window (window.open, target=_blank: without a listener, it loads in this view), Request each request (with Requests); the Eval command runs script in it, WebNavigate goes back, forward, reloads or stops"},
 		{Name: "DatePicker", Props: []PropDef{
 			{Name: "Value", Type: TInt, Doc: "the instant, in Unix milliseconds"},
 			{Name: "Mode", Type: TEnum, Enum: "DateMode"},
@@ -284,6 +288,11 @@ var Schema = SchemaDef{
 		{Name: "Frame", Payload: PFloat, Doc: "a frame the display draws (vsync), while Frames is on: its time in seconds (monotonic); to the root"},
 		{Name: "Result", Payload: PBytes, Doc: "a Call's answer, to the root: u32 call id, u8 ok, then the result's bytes (an error's message when not ok)"},
 		{Name: "ColorChanged", Payload: PInt, Doc: "the user chose a ColorPicker's color: a Color (RGBA)"},
+		{Name: "WebState", Payload: PBytes, Doc: "a WebView's page changed: string URL, string title, u8 flags (1 loading, 2 can go back, 4 can go forward), f32 progress (0 to 1)"},
+		{Name: "Request", Payload: PString, Doc: "a WebView's page made a request (its URL), with Requests"},
+		{Name: "Download", Payload: PBytes, Doc: "a WebView's page led to a file it can't show: string URL, string MIME type, string file name, i64 size (-1: unknown)"},
+		{Name: "NewWindow", Payload: PString, Doc: "a WebView's page would open a page in a new window (its URL)"},
+		{Name: "Shared", Payload: PString, Doc: "another app shared text with the app (a link from its share sheet: Android's ACTION_SEND, with nui.json's shareTarget), at launch or since; to the root"},
 	},
 	Commands: []CommandDef{
 		{Name: "Focus"},
@@ -306,6 +315,7 @@ var Schema = SchemaDef{
 		{Name: "ScrollTo", Doc: "args: u32 item index, u8 animated; sent to a List: it scrolls the item into view"},
 		{Name: "ScrollToOffset", Doc: "args: f32 x, f32 y (points from the content's top left; clamped, so a large one is the end), u8 animated; sent to a Scroll or List"},
 		{Name: "Accent", Doc: "args: u64 Color (0: the platform's), u8 flags (1: on Android, the wallpaper's colors where the system has them); sent to the root when it mounts: the app's accent color, which the platform's controls and Accent take (iOS: the tint color; Android: a Material 3 color scheme made from it)"},
+		{Name: "WebNavigate", Doc: "args: u8 0 back, 1 forward, 2 reload, 3 stop; sent to a WebView"},
 	},
 	Enums: []EnumDef{
 		{Name: "Role", Values: []string{"None", "Button", "Header", "Image", "Link", "Text", "Search"}},

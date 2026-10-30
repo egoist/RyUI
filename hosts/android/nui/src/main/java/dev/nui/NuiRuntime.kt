@@ -270,6 +270,9 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
             val urls = ArrayList(pendingURLs)
             pendingURLs.clear()
             for (u in urls) openURL(u)
+            val shares = ArrayList(pendingShares)
+            pendingShares.clear()
+            for (s in shares) shared(s)
         } else {
             activity.sendEnvironment(force = true)
             enter { NuiNative.attach() }
@@ -277,6 +280,13 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
     }
 
     private val pendingURLs = ArrayList<String>()
+    private val pendingShares = ArrayList<String>()
+
+    /** Another app shared text with this one (ACTION_SEND): ui.OnShare gets it, once the core started. */
+    fun shared(text: String) {
+        if (!started) { pendingShares.add(text); return }
+        send(NuiEvents.shared(rootID, text))
+    }
 
     /** The app was opened with url (its scheme, an app link): ui.OnOpenURL gets it, once the core started. */
     fun openURL(url: String) {
@@ -565,6 +575,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
         val n = nodes[id] ?: return
         if (n.kind == NuiKind.SHAPE && setShapeProp(n, prop, v)) return
         if (n.kind == NuiKind.WHEEL && setWheelProp(n, prop, v)) return
+        if (n.kind == NuiKind.WEB_VIEW && prop == NuiProp.WebView.BLOCK) { (n.view as NuiWebView).setBlock(v); return }
         if (prop == NuiProp.MENU) {
             n.actions = decodeActions(v)
             wirePresses(n)
@@ -727,6 +738,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
             NuiCommand.PLAY -> (n.view as? NuiVideo)?.player?.play()
             NuiCommand.PAUSE -> (n.view as? NuiVideo)?.player?.pause()
             NuiCommand.SEEK -> if (args.remaining() >= 8) (n.view as? NuiVideo)?.player?.seekTo((args.double * 1000).toLong())
+            NuiCommand.WEB_NAVIGATE -> if (args.remaining() > 0) (n.view as? NuiWebView)?.navigate(args.get().toInt())
             NuiCommand.EVAL -> {
                 val b = ByteArray(args.remaining())
                 args.get(b)

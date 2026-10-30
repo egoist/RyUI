@@ -249,6 +249,10 @@ object NuiProp {
     object WebView {
         const val URL = 64
         const val HTML = 65
+        const val PRELOAD = 66
+        const val USER_AGENT = 67
+        const val BLOCK = 68
+        const val REQUESTS = 69
     }
 
     object DatePicker {
@@ -294,6 +298,11 @@ object NuiEventKind {
     const val FRAME = 32
     const val RESULT = 33
     const val COLOR_CHANGED = 34
+    const val WEB_STATE = 35
+    const val REQUEST = 36
+    const val DOWNLOAD = 37
+    const val NEW_WINDOW = 38
+    const val SHARED = 39
 }
 
 object NuiCommand {
@@ -317,6 +326,7 @@ object NuiCommand {
     const val SCROLL_TO = 18
     const val SCROLL_TO_OFFSET = 19
     const val ACCENT = 20
+    const val WEB_NAVIGATE = 21
 }
 
 object NuiRole {
@@ -683,4 +693,9 @@ object NuiEvents {
     fun frame(id: Int, v: Double): ByteArray = NuiWriter().apply { header(id, 32); f64(v) }.bytes()
     fun result(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 33); u32(v.size); raw(v) }.bytes()
     fun colorChanged(id: Int, v: Long): ByteArray = NuiWriter().apply { header(id, 34); u64(v) }.bytes()
+    fun webState(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 35); u32(v.size); raw(v) }.bytes()
+    fun request(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 36); string(v) }.bytes()
+    fun download(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, 37); u32(v.size); raw(v) }.bytes()
+    fun newWindow(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 38); string(v) }.bytes()
+    fun shared(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, 39); string(v) }.bytes()
 }

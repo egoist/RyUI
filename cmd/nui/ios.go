@@ -217,6 +217,10 @@ var iosFeatures = []struct{ flag, symbol string }{
 	{"NUI_AUDIO", "github.com/egoist/nui/audio.Load"},
 	{"NUI_CAMERAVIEW", "github.com/egoist/nui/camera.View"},
 	{"NUI_SCAN", "github.com/egoist/nui/scan.File"},
+	{"NUI_WEBVIEW", "github.com/egoist/nui/js.Eval"},
+	{"NUI_LIBRARY", "github.com/egoist/nui/library.Save"},
+	{"NUI_NETWORK", "github.com/egoist/nui/network.Current"},
+	{"NUI_NETWORK", "github.com/egoist/nui/network.Watch"},
 	{"NUI_RECORD", "github.com/egoist/nui/camera/record.Start"},
 }
 
@@ -316,6 +320,9 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 	sort.Strings(keys)
 	for _, k := range keys {
 		urls += fmt.Sprintf("<key>%s</key><string>%s</string>\n", html.EscapeString(k), html.EscapeString(app.cfg.IOS.Usage[k]))
+	}
+	for _, k := range app.cfg.iosTrue {
+		urls += fmt.Sprintf("<key>%s</key><true/>\n", html.EscapeString(k))
 	}
 	plist := fmt.Sprintf(infoPlist, app.bundleID, app.displayName(), app.displayName(), iosMin, urls)
 	if err := os.WriteFile(filepath.Join(bundle, "Info.plist"), []byte(plist), 0o644); err != nil {

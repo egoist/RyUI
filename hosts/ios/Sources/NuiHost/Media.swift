@@ -288,6 +288,14 @@ final class NuiGestureDelegate: NSObject, UIGestureRecognizerDelegate {
             (n.view as? NuiWebView)?.load(source: v.string)
         case (.webView, NuiProp.WebView.html):
             if !v.string.isEmpty { (n.view as? NuiWebView)?.loadHTMLString(v.string, baseURL: nil) }
+        case (.webView, NuiProp.WebView.preload):
+            (n.view as? NuiWebView)?.setPreload(v.string)
+        case (.webView, NuiProp.WebView.userAgent):
+            (n.view as? NuiWebView)?.customUserAgent = v.string.isEmpty ? nil : v.string
+        case (.webView, NuiProp.WebView.block):
+            if case .bytes(let b) = v { (n.view as? NuiWebView)?.setBlock(b) }
+        case (.webView, NuiProp.WebView.requests):
+            break // iOS can't see a page's requests
         #endif
         case (.image, NuiProp.Image.source):
             loadImage(n, v.string)

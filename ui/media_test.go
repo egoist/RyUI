@@ -2,6 +2,7 @@ package ui_test
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"math"
 	"os"
 	"path/filepath"
@@ -294,5 +295,84 @@ func TestShape(t *testing.T) {
 	r.Flush()
 	if s.Float(ops.PropShapeTrimEnd) != 1 || len(h.Commands(ops.CmdAnimateBegin)) != 1 {
 		t.Fatalf("trim %v, %s", s.Float(ops.PropShapeTrimEnd), h.Log())
+	}
+}
+
+// A WebView's preload, user agent and blocking go before its page; its
+// state, downloads, new windows and requests come back decoded; it's
+// driven through its history; a script's value and the cookies are Calls.
+func TestWebViewExtras(t *testing.T) {
+	var state ui.WebState
+	var dl ui.WebDownload
+	var opened, requested string
+	var web ui.Node
+	h, r := mount(t, func() ui.Node {
+		web = ui.WebView(ui.WebViewProps{URL: ui.Val("https://example.com"), Preload: "window.x = 1", UserAgent: "UA/1",
+			Block:       []string{"ads.example", "/track/"},
+			OnState:     func(s ui.WebState) { state = s },
+			OnDownload:  func(d ui.WebDownload) { dl = d },
+			OnNewWindow: func(u string) { opened = u },
+			OnRequest:   func(u string) { requested = u }})
+		return web
+	})
+	v := h.OfKind(ops.KindWebView)[0]
+	le := binary.LittleEndian
+	str := func(b []byte, s string) []byte { return append(le.AppendUint32(b, uint32(len(s))), s...) }
+	block := str(str(le.AppendUint32(nil, 2), "ads.example"), "/track/")
+	if v.String(ops.PropWebViewPreload) != "window.x = 1" || v.String(ops.PropWebViewUserAgent) != "UA/1" ||
+		string(v.Props[ops.PropWebViewBlock].Bytes) != string(block) || !v.Bool(ops.PropWebViewRequests) {
+		t.Fatalf("props %v", v.Props)
+	}
+	// The props that apply to a page are set before its URL.
+	var order []ops.PropID
+	for _, op := range h.Ops {
+		if op.Code == ops.OpSetProp && op.ID == v.ID {
+			order = append(order, op.Prop)
+		}
+	}
+	if len(order) == 0 || order[len(order)-1] != ops.PropWebViewURL {
+		t.Fatalf("prop order %v", order)
+	}
+	sb := str(str(nil, "https://example.com/a"), "A page")
+	sb = append(sb, 1|2)
+	sb = le.AppendUint32(sb, math.Float32bits(0.5))
+	h.Dispatch(ops.Event{ID: v.ID, Kind: ops.EventWebState, Bytes: sb})
+	db := le.AppendUint64(str(str(str(nil, "https://example.com/f.zip"), "application/zip"), "f.zip"), 1234)
+	h.Dispatch(ops.Event{ID: v.ID, Kind: ops.EventDownload, Bytes: db})
+	h.Dispatch(ops.Event{ID: v.ID, Kind: ops.EventNewWindow, Str: "https://example.com/new"})
+	h.Dispatch(ops.Event{ID: v.ID, Kind: ops.EventRequest, Str: "https://cdn.example/v.m3u8"})
+	if state != (ui.WebState{URL: "https://example.com/a", Title: "A page", Loading: true, CanGoBack: true, Progress: 0.5}) ||
+		dl != (ui.WebDownload{URL: "https://example.com/f.zip", MIME: "application/zip", Filename: "f.zip", Size: 1234}) ||
+		opened != "https://example.com/new" || requested != "https://cdn.example/v.m3u8" {
+		t.Fatalf("state %+v download %+v opened %q requested %q", state, dl, opened, requested)
+	}
+	// A short state is dropped, not half read.
+	h.Dispatch(ops.Event{ID: v.ID, Kind: ops.EventWebState, Bytes: sb[:5]})
+	if state.Title != "A page" {
+		t.Fatalf("short state read: %+v", state)
+	}
+	ui.WebBack(web)
+	ui.WebReload(web)
+	var calls []string
+	h.Modules = map[string]func(string, []byte) ([]byte, error){"web": func(m string, args []byte) ([]byte, error) {
+		calls = append(calls, m)
+		if m == "eval" {
+			if le.Uint32(args) != uint32(v.ID) || string(args[4:]) != "document.title" {
+				t.Errorf("eval args %q", args)
+			}
+			return []byte(`"A page"`), nil
+		}
+		return []byte("sid=1; theme=dark"), nil
+	}}
+	var title, cookies string
+	ui.EvalJSResult(web, "document.title", func(v json.RawMessage, err error) { title = string(v) })
+	ui.WebCookies("https://example.com", func(c string, err error) { cookies = c })
+	r.Flush()
+	h.RunPosted()
+	if c := h.Commands(ops.CmdWebNavigate); len(c) != 2 || c[0].Value.Bytes[0] != 0 || c[1].Value.Bytes[0] != 2 {
+		t.Fatalf("navigate %v", c)
+	}
+	if title != `"A page"` || cookies != "sid=1; theme=dark" || len(calls) != 2 {
+		t.Fatalf("title %q cookies %q calls %v", title, cookies, calls)
 	}
 }

@@ -68,11 +68,18 @@ type appConfig struct {
 	// Links are the web domains whose https links open the app: iOS's
 	// universal links (the domain serves apple-app-site-association) and
 	// Android's App Links (assetlinks.json).
-	Links   []string `json:"links"`
+	Links []string `json:"links"`
+	// ShareTarget offers the app in other apps' share sheets, for text
+	// and links (Android); ui.OnShare gets what's shared.
+	ShareTarget bool `json:"shareTarget"`
 	// androidModules are the host's optional Gradle modules the app's
 	// packages need (featurePermissions).
 	androidModules []string
-	Android struct {
+	// iosTrue and androidApp: featurePermissions' Info.plist keys set to
+	// true, and application elements of the Android manifest.
+	iosTrue    []string
+	androidApp []string
+	Android    struct {
 		// DynamicColor takes the colors from the user's wallpaper where
 		// the system has them (Android 12 and later), as Material apps do;
 		// the accent is the seed elsewhere.
@@ -193,19 +200,34 @@ func (c *appConfig) associatedDomains(simulator bool) []string {
 // optional Gradle modules (hosts/android/nui-<name>) it needs.
 var featurePermissions = []struct {
 	pkg     string
-	android []string
+	android []string // permissions; "name:28": up to Android 9 (API 28) only
 	usage   map[string]string
 	modules []string
+	// iosTrue are Info.plist keys set to true; androidApp, elements of the
+	// Android manifest's application (a service, a receiver).
+	iosTrue    []string
+	androidApp []string
 }{
 	{"github.com/egoist/nui/location", []string{"android.permission.ACCESS_COARSE_LOCATION", "android.permission.ACCESS_FINE_LOCATION"},
-		map[string]string{"NSLocationWhenInUseUsageDescription": "To show where you are."}, nil},
-	{"github.com/egoist/nui/notify", []string{"android.permission.POST_NOTIFICATIONS"}, nil, nil},
+		map[string]string{"NSLocationWhenInUseUsageDescription": "To show where you are."}, nil, nil, nil},
+	{"github.com/egoist/nui/notify", []string{"android.permission.POST_NOTIFICATIONS"}, nil, nil, nil, nil},
 	// camera.View's preview is the app's own: the camera permission (and
 	// with it declared, the system's camera app needs it granted too).
-	{"github.com/egoist/nui/camera", []string{"android.permission.CAMERA"}, map[string]string{"NSCameraUsageDescription": "To take a photo."}, nil},
-	{"github.com/egoist/nui/camera/record", []string{"android.permission.RECORD_AUDIO"}, map[string]string{"NSMicrophoneUsageDescription": "To record a video's sound."}, nil},
+	{"github.com/egoist/nui/camera", []string{"android.permission.CAMERA"}, map[string]string{"NSCameraUsageDescription": "To take a photo."}, nil, nil, nil},
+	{"github.com/egoist/nui/camera/record", []string{"android.permission.RECORD_AUDIO"}, map[string]string{"NSMicrophoneUsageDescription": "To record a video's sound."}, nil, nil, nil},
+	{"github.com/egoist/nui/network", []string{"android.permission.ACCESS_NETWORK_STATE"}, nil, nil, nil, nil},
+	// MediaStore needs no permission from Android 10; before, writing to
+	// the shared folders does. Files in Documents show in iOS's Files.
+	{"github.com/egoist/nui/library", []string{"android.permission.WRITE_EXTERNAL_STORAGE:28"},
+		map[string]string{"NSPhotoLibraryAddUsageDescription": "To save videos and photos to your library."}, nil,
+		[]string{"UIFileSharingEnabled", "LSSupportsOpeningDocumentsInPlace"}, nil},
+	// A foreground service of the data sync type, its notification, the
+	// CPU kept awake.
+	{"github.com/egoist/nui/background", []string{"android.permission.FOREGROUND_SERVICE", "android.permission.FOREGROUND_SERVICE_DATA_SYNC",
+		"android.permission.POST_NOTIFICATIONS", "android.permission.WAKE_LOCK"}, nil, nil, nil,
+		[]string{`<service android:name="dev.nui.NuiWorkService" android:exported="false" android:foregroundServiceType="dataSync" />`}},
 	// ML Kit's barcode model: about 2 MB, only in the apps that scan.
-	{"github.com/egoist/nui/scan", nil, nil, []string{"scan"}},
+	{"github.com/egoist/nui/scan", nil, nil, []string{"scan"}, nil, nil},
 }
 
 // permissionsFor adds the permissions the packages deps (an app's
@@ -224,6 +246,16 @@ func (c *appConfig) permissionsFor(deps []string) {
 		for _, m := range f.modules {
 			if !slices.Contains(c.androidModules, m) {
 				c.androidModules = append(c.androidModules, m)
+			}
+		}
+		for _, k := range f.iosTrue {
+			if !slices.Contains(c.iosTrue, k) {
+				c.iosTrue = append(c.iosTrue, k)
+			}
+		}
+		for _, x := range f.androidApp {
+			if !slices.Contains(c.androidApp, x) {
+				c.androidApp = append(c.androidApp, x)
 			}
 		}
 		for k, v := range f.usage {
@@ -246,7 +278,11 @@ func (c *appConfig) androidManifest(debug bool) string {
 	var b strings.Builder
 	b.WriteString("<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n")
 	for _, p := range c.Android.Permissions {
-		fmt.Fprintf(&b, "    <uses-permission android:name=\"%s\" />\n", html.EscapeString(p))
+		name, max, _ := strings.Cut(p, ":")
+		if max != "" {
+			max = fmt.Sprintf(` android:maxSdkVersion="%s"`, html.EscapeString(max))
+		}
+		fmt.Fprintf(&b, "    <uses-permission android:name=\"%s\"%s />\n", html.EscapeString(name), max)
 	}
 	b.WriteString("    <application")
 	if debug {
@@ -272,7 +308,19 @@ func (c *appConfig) androidManifest(debug bool) string {
 	for _, l := range c.Links {
 		filter(true, fmt.Sprintf(`<data android:scheme="https" android:host="%s" />`, html.EscapeString(l)))
 	}
-	b.WriteString("        </activity>\n    </application>\n</manifest>\n")
+	if c.ShareTarget {
+		b.WriteString(`            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+`)
+	}
+	b.WriteString("        </activity>\n")
+	for _, x := range c.androidApp {
+		b.WriteString("        " + x + "\n")
+	}
+	b.WriteString("    </application>\n</manifest>\n")
 	return b.String()
 }
 

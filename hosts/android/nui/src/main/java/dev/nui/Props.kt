@@ -302,6 +302,7 @@ private fun NuiRuntime.node(id: Int) = nodes[id]
 
 fun NuiRuntime.propBool(id: Int, prop: Int, v: Boolean) {
     val n = node(id) ?: return
+    if (n.kind == NuiKind.WEB_VIEW && prop == NuiProp.WebView.REQUESTS) { (n.view as NuiWebView).reportRequests = v; return }
     if (n.kind == NuiKind.COLOR_PICKER && setWheelProp(n, prop, v)) return
     n.props[prop] = v
     val view = n.view
@@ -432,6 +433,8 @@ fun NuiRuntime.propString(id: Int, prop: Int, v: String) {
             NuiKind.WEB_VIEW -> when (prop) {
                 NuiProp.WebView.URL -> (view as NuiWebView).load(v)
                 NuiProp.WebView.HTML -> if (v.isNotEmpty()) (view as NuiWebView).loadDataWithBaseURL(null, v, "text/html", "utf-8", null)
+                NuiProp.WebView.PRELOAD -> (view as NuiWebView).setPreload(v)
+                NuiProp.WebView.USER_AGENT -> (view as NuiWebView).setUserAgent(v)
             }
             NuiKind.SYMBOL -> if (prop == NuiProp.Symbol.NAME) (view as NuiSymbol).apply { name = v; refresh() }
             NuiKind.TEXT_FIELD -> {

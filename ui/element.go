@@ -35,6 +35,15 @@ type handlers struct {
 	a11yActions         []func()
 	adjust              func(by int)
 	color               func(Color)
+	web                 *webHandlers // a WebView's
+}
+
+// webHandlers are a WebView's own events'.
+type webHandlers struct {
+	state     func(WebState)
+	request   func(string)
+	download  func(WebDownload)
+	newWindow func(string)
 }
 
 // element is a node of the UI tree. Real elements have a native view;

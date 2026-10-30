@@ -120,3 +120,47 @@ func incoming(url string) {
 		(*h)(url)
 	}
 }
+
+// shareHandlers get the text other apps share with this one; pendingShare
+// is what came before any handler (the share that launched the app).
+var (
+	shareHandlers []*func(string)
+	pendingShare  []string
+)
+
+// OnShare calls f with what another app shares with this one: a link or
+// text sent from its share sheet ("Share" in YouTube, a browser), which
+// offers this app with nui.json's "shareTarget". What came before any
+// handler (the share that launched the app) goes to the first. It stops
+// with the component's owner. Main thread.
+//
+// Android only, for now: iOS needs a share extension.
+func OnShare(f func(text string)) {
+	p := &f
+	shareHandlers = append(shareHandlers, p)
+	signal.OnCleanup(func() {
+		for i, h := range shareHandlers {
+			if h == p {
+				shareHandlers = append(shareHandlers[:i], shareHandlers[i+1:]...)
+				return
+			}
+		}
+	})
+	pending := pendingShare
+	pendingShare = nil
+	for _, t := range pending {
+		f(t)
+	}
+}
+
+func sharedText(text string) {
+	if len(shareHandlers) == 0 {
+		pendingShare = append(pendingShare, text)
+		return
+	}
+	hs := make([]*func(string), len(shareHandlers))
+	copy(hs, shareHandlers)
+	for _, h := range hs {
+		(*h)(text)
+	}
+}

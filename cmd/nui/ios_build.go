@@ -203,6 +203,9 @@ func (t *iosToolchain) infoPlist(cfg *appConfig, simulator bool) (map[string]any
 	for k, v := range cfg.IOS.Usage {
 		m[k] = v
 	}
+	for _, k := range cfg.iosTrue {
+		m[k] = true
+	}
 	for k, v := range cfg.IOS.InfoPlist {
 		m[k] = v
 	}

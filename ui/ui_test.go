@@ -1097,3 +1097,24 @@ func TestMatch(t *testing.T) {
 	}
 	r.Dispose()
 }
+
+// What another app shares goes to OnShare's handlers; a share before any
+// handler (the one that launched the app) waits for the first.
+func TestShared(t *testing.T) {
+	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })
+	h.Dispatch(ops.Event{ID: 0, Kind: ops.EventShared, Str: "https://youtu.be/a"})
+	var got []string
+	r := ui.Mount(h, func() ui.Node {
+		ui.OnShare(func(text string) { got = append(got, text) })
+		return ui.StaticText("y")
+	})
+	h.Dispatch(ops.Event{ID: 0, Kind: ops.EventShared, Str: "Title https://youtu.be/b"})
+	if len(got) != 2 || got[0] != "https://youtu.be/a" || got[1] != "Title https://youtu.be/b" {
+		t.Fatalf("got %q", got)
+	}
+	r.Dispose()
+	h.Dispatch(ops.Event{ID: 0, Kind: ops.EventShared, Str: "after"})
+	if len(got) != 2 {
+		t.Fatalf("after dispose: %q", got)
+	}
+}

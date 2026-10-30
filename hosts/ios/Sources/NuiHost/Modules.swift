@@ -141,6 +141,16 @@ struct NuiModuleError: LocalizedError {
         #if NUI_LOCATION
         modules["location"] = NuiLocation.shared.methods()
         #endif
+        #if NUI_NETWORK
+        modules["network"] = NuiNetwork.shared.methods()
+        #endif
+        #if NUI_LIBRARY
+        modules["library"] = NuiLibrary.methods()
+        #endif
+        #if NUI_WEBVIEW
+        modules["js"] = NuiScript.methods()
+        modules["web"] = NuiWebView.methods()
+        #endif
         #if NUI_NOTIFY
         modules["notify"] = NuiNotify.shared.methods()
         #endif
@@ -148,6 +158,7 @@ struct NuiModuleError: LocalizedError {
         modules["audio"] = NuiAudio.shared.methods()
         #endif
         modules["camera"] = NuiCamera.shared.methods()
+        modules["background"] = NuiBackground.shared.methods()
         #if NUI_SCAN
         modules["scan"] = NuiScan.methods()
         #endif

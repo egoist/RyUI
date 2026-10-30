@@ -60,7 +60,16 @@ open class NuiActivity : AppCompatActivity() {
         contentResolver.registerContentObserver(
             android.provider.Settings.Global.getUriFor(android.provider.Settings.Global.ANIMATOR_DURATION_SCALE), false, motion)
         // Opened with a URL (a scheme's, an app link).
-        if (savedInstanceState == null) intent?.data?.let { runtime.openURL(it.toString()) }
+        if (savedInstanceState == null) intent?.let { incoming(it) }
+    }
+
+    /** What the app was opened with: a URL (a scheme's, an app link), or text another app shared (ACTION_SEND). */
+    private fun incoming(intent: android.content.Intent) {
+        if (intent.action == android.content.Intent.ACTION_SEND) {
+            intent.getStringExtra(android.content.Intent.EXTRA_TEXT)?.let { runtime.shared(it) }
+            return
+        }
+        intent.data?.let { runtime.openURL(it.toString()) }
     }
 
     fun mount(root: View) {
@@ -100,7 +109,7 @@ open class NuiActivity : AppCompatActivity() {
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        intent.data?.let { runtime.openURL(it.toString()) }
+        incoming(intent)
     }
 
     override fun onStart() {

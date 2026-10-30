@@ -582,8 +582,10 @@ final class NuiTextField: UITextField {
         #if NUI_WEBVIEW
         case .eval:
             (n.view as? NuiWebView)?.evaluateJavaScript(String(decoding: args, as: UTF8.self))
+        case .webNavigate:
+            if let to = args.first { (n.view as? NuiWebView)?.navigate(to) }
         #else
-        case .eval: break
+        case .eval, .webNavigate: break
         #endif
         case .announce:
             UIAccessibility.post(notification: .announcement, argument: String(decoding: args, as: UTF8.self))

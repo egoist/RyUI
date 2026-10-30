@@ -5,11 +5,15 @@ import WebKit
 import NuiOps
 #endif
 
-/// A WebView: a WKWebView that reports the pages it loads and what its
-/// pages post (window.nui.postMessage), and runs the core's script.
-@MainActor final class NuiWebView: WKWebView, WKNavigationDelegate {
+/// A WebView: a WKWebView that reports the pages it loads, what its pages
+/// post (window.nui.postMessage), its state (URL, title, progress,
+/// history), the files it leads to and the windows it would open, blocks
+/// the requests its Block names, and runs the core's script.
+@MainActor final class NuiWebView: WKWebView, WKNavigationDelegate, WKUIDelegate {
     let nuiID: UInt32
     weak var runtime: NuiRuntime?
+    private var observations: [NSKeyValueObservation] = []
+    private var stateQueued = false
 
     init(_ id: UInt32, _ rt: NuiRuntime) {
         nuiID = id
@@ -27,6 +31,15 @@ import NuiOps
         super.init(frame: .zero, configuration: config)
         handler.view = self
         navigationDelegate = self
+        uiDelegate = self
+        observations = [
+            observe(\.url) { w, _ in MainActor.assumeIsolated { w.state() } },
+            observe(\.title) { w, _ in MainActor.assumeIsolated { w.state() } },
+            observe(\.isLoading) { w, _ in MainActor.assumeIsolated { w.state() } },
+            observe(\.estimatedProgress) { w, _ in MainActor.assumeIsolated { w.state() } },
+            observe(\.canGoBack) { w, _ in MainActor.assumeIsolated { w.state() } },
+            observe(\.canGoForward) { w, _ in MainActor.assumeIsolated { w.state() } },
+        ]
         allowsBackForwardNavigationGestures = true
         isOpaque = false // no white flash before a dark page draws
         backgroundColor = .systemBackground
@@ -66,6 +79,133 @@ import NuiOps
         runtime?.emit(id, .failed) { NuiEvents.failed(id, m) }
     }
 
+    /// Reports the page's state, once for the changes of a turn of the main loop.
+    func state() {
+        guard let rt = runtime, rt.nodes[nuiID]?.listens.contains(NuiEventKind.webState.rawValue) == true, !stateQueued else { return }
+        stateQueued = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.stateQueued = false
+            var w = NuiWriter()
+            w.string(self.url?.absoluteString ?? "")
+            w.string(self.title ?? "")
+            w.u8((self.isLoading ? 1 : 0) | (self.canGoBack ? 2 : 0) | (self.canGoForward ? 4 : 0))
+            w.f32(Float(self.isLoading ? self.estimatedProgress : 1))
+            let id = self.nuiID, b = w.bytes
+            rt.emit(id, .webState) { NuiEvents.webState(id, b) }
+        }
+    }
+
+    func setPreload(_ script: String) {
+        guard !script.isEmpty else { return }
+        configuration.userContentController.addUserScript(WKUserScript(source: script, injectionTime: .atDocumentStart, forMainFrameOnly: false))
+    }
+
+    /// Block's patterns (u32 count, then u32-length strings), as a content
+    /// rule list: a host blocks it and its subdomains, a part of a URL any
+    /// URL with it.
+    func setBlock(_ b: UnsafeRawBufferPointer) {
+        var r = NuiReader(b)
+        guard b.count >= 4 else { return }
+        var rules: [[String: Any]] = []
+        for _ in 0..<Int(r.u32()) {
+            let p = r.string()
+            let esc = NSRegularExpression.escapedPattern(for: p)
+            let filter = p.contains("/") ? esc : "^[a-z]+://([^/:]+\\.)?" + esc + "[:/]"
+            rules.append(["trigger": ["url-filter": filter], "action": ["type": "block"]])
+        }
+        guard let data = try? JSONSerialization.data(withJSONObject: rules), let json = String(data: data, encoding: .utf8) else { return }
+        let id = "nui-block-\(nuiID)"
+        WKContentRuleListStore.default().compileContentRuleList(forIdentifier: id, encodedContentRuleList: json) { [weak self] list, _ in
+            guard let list else { return }
+            MainActor.assumeIsolated { self?.configuration.userContentController.add(list) }
+        }
+    }
+
+    /// WebNavigate: 0 back, 1 forward, 2 reload, 3 stop.
+    func navigate(_ to: UInt8) {
+        switch to {
+        case 0: if canGoBack { goBack() }
+        case 1: if canGoForward { goForward() }
+        case 2: reload()
+        default: stopLoading()
+        }
+    }
+
+    // A page opening a window: reported, or loaded here.
+    func webView(_ w: WKWebView, createWebViewWith c: WKWebViewConfiguration, for action: WKNavigationAction, windowFeatures f: WKWindowFeatures) -> WKWebView? {
+        guard let url = action.request.url else { return nil }
+        if let rt = runtime, rt.nodes[nuiID]?.listens.contains(NuiEventKind.newWindow.rawValue) == true {
+            let id = nuiID, u = url.absoluteString
+            rt.emit(id, .newWindow) { NuiEvents.newWindow(id, u) }
+        } else {
+            w.load(action.request)
+        }
+        return nil
+    }
+
+    // A response the page can't show, or an attachment: a download.
+    func webView(_ w: WKWebView, decidePolicyFor response: WKNavigationResponse, decisionHandler: @escaping @MainActor (WKNavigationResponsePolicy) -> Void) {
+        let r = response.response
+        let disposition = (r as? HTTPURLResponse)?.value(forHTTPHeaderField: "Content-Disposition") ?? ""
+        guard response.isForMainFrame, !response.canShowMIMEType || disposition.lowercased().hasPrefix("attachment") else {
+            decisionHandler(.allow)
+            return
+        }
+        decisionHandler(.cancel)
+        let id = nuiID
+        var b = NuiWriter()
+        b.string(r.url?.absoluteString ?? "")
+        b.string(r.mimeType ?? "")
+        b.string(r.suggestedFilename ?? "")
+        b.u64(UInt64(bitPattern: r.expectedContentLength))
+        let bytes = b.bytes
+        runtime?.emit(id, .download) { NuiEvents.download(id, bytes) }
+    }
+
+    /// Runs script, answering with its value as JSON (a promise's, awaited), or what it threw.
+    func evalResult(_ script: String, _ reply: @escaping (Result<Data, Error>) -> Void) {
+        let body = "const v = await (0, eval)(s); return JSON.stringify(v === undefined ? null : v)"
+        callAsyncJavaScript(body, arguments: ["s": script], in: nil, in: .page) { r in
+            switch r {
+            case .success(let v): reply(.success(Data(((v as? String) ?? "null").utf8)))
+            case .failure(let e):
+                let m = (e as NSError).userInfo["WKJavaScriptExceptionMessage"] as? String ?? e.localizedDescription
+                reply(.failure(NuiModuleError(m)))
+            }
+        }
+    }
+
+    /// The "web" module: "eval" (args: u32 a WebView's node id, then the
+    /// script) answers with the script's value as JSON; "cookies" (args:
+    /// a URL) with the cookies the WebViews have for it, as a Cookie header.
+    static func methods() -> [String: NuiModuleMethod] {
+        [
+            "eval": { args, reply in
+                let a = [UInt8](args)
+                guard a.count >= 4 else { reply(.failure(NuiModuleError("bad arguments"))); return }
+                let id = UInt32(a[0]) | UInt32(a[1]) << 8 | UInt32(a[2]) << 16 | UInt32(a[3]) << 24
+                guard let web = NuiRuntime.shared.nodes[id]?.view as? NuiWebView else { reply(.failure(NuiModuleError("not a WebView"))); return }
+                web.evalResult(String(decoding: a[4...], as: UTF8.self), reply)
+            },
+            "cookies": { args, reply in
+                guard let url = URL(string: String(decoding: args, as: UTF8.self)), let host = url.host?.lowercased() else {
+                    reply(.success(Data())); return
+                }
+                WKWebsiteDataStore.default().httpCookieStore.getAllCookies { cookies in
+                    let now = Date()
+                    let path = url.path.isEmpty ? "/" : url.path
+                    let header = cookies.filter { c in
+                        let d = c.domain.lowercased()
+                        let domainOK = d.hasPrefix(".") ? (host == String(d.dropFirst()) || host.hasSuffix(d)) : host == d
+                        return domainOK && path.hasPrefix(c.path) && (!c.isSecure || url.scheme == "https") && (c.expiresDate.map { $0 > now } ?? true)
+                    }.map { "\($0.name)=\($0.value)" }.joined(separator: "; ")
+                    reply(.success(Data(header.utf8)))
+                }
+            },
+        ]
+    }
+
     func posted(_ m: String) {
         let id = nuiID
         runtime?.emit(id, .message) { NuiEvents.message(id, m) }
@@ -80,6 +220,59 @@ final class NuiWebMessages: NSObject, WKScriptMessageHandler {
     func userContentController(_ c: WKUserContentController, didReceive message: WKScriptMessage) {
         let m = message.body as? String ?? "\(message.body)"
         MainActor.assumeIsolated { view?.posted(m) }
+    }
+}
+/// nui/js's module: "eval" runs a script (args: u32 timeout ms, then the
+/// script) in a WKWebView that's never shown, made for it and let go
+/// after, and answers with its value as JSON: the last statement's, or
+/// what its promise resolves to. A thrown error fails with its message.
+@MainActor final class NuiScript: NSObject, WKNavigationDelegate {
+    private static var running = Set<NuiScript>()
+    private let web = WKWebView(frame: .zero, configuration: WKWebViewConfiguration())
+    private let script: String
+    private var reply: ((Result<Data, Error>) -> Void)?
+
+    private init(_ script: String, _ reply: @escaping (Result<Data, Error>) -> Void) {
+        self.script = script
+        self.reply = reply
+    }
+
+    static func methods() -> [String: NuiModuleMethod] {
+        ["eval": { args, reply in
+            let a = [UInt8](args)
+            guard a.count >= 4 else { reply(.failure(NuiModuleError("bad arguments"))); return }
+            let ms = UInt32(a[0]) | UInt32(a[1]) << 8 | UInt32(a[2]) << 16 | UInt32(a[3]) << 24
+            let s = NuiScript(String(decoding: a[4...], as: UTF8.self), reply)
+            running.insert(s)
+            s.web.navigationDelegate = s
+            s.web.loadHTMLString("<!doctype html><html></html>", baseURL: nil)
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(ms) / 1000) { [weak s] in
+                s?.finish(.failure(NuiModuleError("timeout")))
+            }
+        }]
+    }
+
+    func webView(_ w: WKWebView, didFinish navigation: WKNavigation!) {
+        // Indirect eval: the global scope, and the last statement's value;
+        // callAsyncJavaScript awaits a promise.
+        let body = "const v = await (0, eval)(s); return JSON.stringify(v === undefined ? null : v)"
+        w.callAsyncJavaScript(body, arguments: ["s": script], in: nil, in: .page) { [weak self] r in
+            switch r {
+            case .success(let v): self?.finish(.success(Data(((v as? String) ?? "null").utf8)))
+            case .failure(let e):
+                let info = (e as NSError).userInfo
+                let m = info["WKJavaScriptExceptionMessage"] as? String ?? e.localizedDescription
+                self?.finish(.failure(NuiModuleError(m)))
+            }
+        }
+    }
+
+    private func finish(_ r: Result<Data, Error>) {
+        guard let reply else { return }
+        self.reply = nil
+        reply(r)
+        web.stopLoading()
+        Self.running.remove(self)
     }
 }
 #endif

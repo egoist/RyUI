@@ -246,6 +246,10 @@ public enum NuiProp {
     public enum WebView {
         public static let url: UInt16 = 64
         public static let html: UInt16 = 65
+        public static let preload: UInt16 = 66
+        public static let userAgent: UInt16 = 67
+        public static let block: UInt16 = 68
+        public static let requests: UInt16 = 69
     }
 
     public enum DatePicker {
@@ -291,6 +295,11 @@ public enum NuiEventKind: UInt16 {
     case frame = 32
     case result = 33
     case colorChanged = 34
+    case webState = 35
+    case request = 36
+    case download = 37
+    case newWindow = 38
+    case shared = 39
 }
 
 public enum NuiCommand: UInt16 {
@@ -314,6 +323,7 @@ public enum NuiCommand: UInt16 {
     case scrollTo = 18
     case scrollToOffset = 19
     case accent = 20
+    case webNavigate = 21
 }
 
 public enum NuiRole: Int32 {
@@ -764,5 +774,20 @@ public enum NuiEvents {
     }
     public static func colorChanged(_ id: UInt32, _ v: Int64) -> [UInt8] {
         var w = NuiWriter(); w.header(id, 34); w.u64(UInt64(bitPattern: v)); return w.bytes
+    }
+    public static func webState(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 35); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
+    }
+    public static func request(_ id: UInt32, _ v: String) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 36); w.string(v); return w.bytes
+    }
+    public static func download(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 37); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
+    }
+    public static func newWindow(_ id: UInt32, _ v: String) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 38); w.string(v); return w.bytes
+    }
+    public static func shared(_ id: UInt32, _ v: String) -> [UInt8] {
+        var w = NuiWriter(); w.header(id, 39); w.string(v); return w.bytes
     }
 }
