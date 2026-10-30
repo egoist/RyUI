@@ -175,6 +175,10 @@ class NuiList(val id: Int, val runtime: NuiRuntime) {
             adapter.notifyDataSetChanged()
             return
         }
+        // At the top, a list stays at the top: rows inserted above the first
+        // show, as on iOS (RecyclerView keeps its first row where it is,
+        // and the new ones go above, out of sight).
+        val atTop = !recycler.canScrollVertically(-1)
         DiffUtil.calculateDiff(object : DiffUtil.Callback() {
             override fun getOldListSize() = old.size
             override fun getNewListSize() = next.size
@@ -182,6 +186,7 @@ class NuiList(val id: Int, val runtime: NuiRuntime) {
             // The core updates bound rows itself.
             override fun areContentsTheSame(o: Int, n: Int) = true
         }, false).dispatchUpdatesTo(adapter)
+        if (atTop && next.isNotEmpty()) recycler.scrollToPosition(0)
     }
 
     class Holder(val cell: NuiCell) : RecyclerView.ViewHolder(cell)
