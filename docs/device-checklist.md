@@ -51,6 +51,9 @@ Turn the screen reader on (Settings → Accessibility), open the gallery.
       permission prompt the camera shows live, filling the screen; the
       shutter puts the photo, upright, at the bottom left. Going back
       turns the camera off (iPhone: the green dot goes).
+- [ ] **Video** (both): on that screen, "Record", speak, "Stop": the
+      microphone's asked for once, then the video plays on its own screen,
+      with your voice.
 - [ ] **Scanning** (both): on that screen, point it at a QR code (any on
       a screen) and a product's barcode: the status says `qr: …` or
       `ean13: …` (a UPC-A in the US: `upca: …`) once, with a haptic, while

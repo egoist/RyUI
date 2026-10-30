@@ -17,6 +17,23 @@ import UIKit
             reply(.failure(NuiModuleError("no camera view")))
             #endif
         },
+         "record": { args, reply in
+            #if NUI_CAMERAVIEW && NUI_RECORD
+            guard let v = NuiCameraView.current else { reply(.failure(NuiModuleError("no camera view"))); return }
+            let a = [UInt8](args)
+            guard a.count >= 5 else { reply(.failure(NuiModuleError("bad arguments"))); return }
+            let ms = UInt32(a[1]) | UInt32(a[2]) << 8 | UInt32(a[3]) << 16 | UInt32(a[4]) << 24
+            v.record(mute: a[0] == 1, max: Double(ms) / 1000, reply)
+            #else
+            reply(.failure(NuiModuleError("no camera view")))
+            #endif
+        },
+         "stopRecording": { _, reply in
+            #if NUI_CAMERAVIEW && NUI_RECORD
+            NuiCameraView.current?.stopRecording()
+            #endif
+            reply(.success(Data()))
+        },
          "take": { [unowned self] _, reply in
             guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
                 reply(.failure(NuiModuleError("no camera"))); return

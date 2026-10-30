@@ -11,6 +11,7 @@ import (
 	"github.com/egoist/nui/app"
 	"github.com/egoist/nui/audio"
 	"github.com/egoist/nui/camera"
+	"github.com/egoist/nui/camera/record"
 	"github.com/egoist/nui/device"
 	"github.com/egoist/nui/location"
 	"github.com/egoist/nui/notify"
@@ -612,13 +613,16 @@ func topButton(shown signal.Accessor[bool], top func()) ui.Node {
 }
 
 // cameraScreen shows the camera live (camera.View) with a shutter
-// (camera.Capture), and the last photo taken; it reads the codes it sees
-// (nui/scan).
+// (camera.Capture), and the last photo taken; it records videos
+// (nui/camera/record), played on a screen of their own, and reads the
+// codes it sees (nui/scan).
 func cameraScreen() ui.Node {
+	nav := ui.UseNavigator()
 	last := signal.New("")
 	status := signal.New("")
+	recording := signal.New(false)
 	return ui.Column(ui.Style{Grow: 1},
-		camera.View(camera.ViewProps{Style: ui.Style{Grow: 1}, OnError: func(m string) { status.Set(m) },
+		camera.View(camera.ViewProps{Mode: camera.Video, Style: ui.Style{Grow: 1}, OnError: func(m string) { status.Set(m) },
 			Scan: scan.Codes(func(c scan.Code) {
 				status.Set(fmt.Sprintf("%s: %s", c.Kind, c.Value))
 				ui.Haptic(ui.HapticSuccess)
@@ -629,6 +633,32 @@ func cameraScreen() ui.Node {
 					Style: ui.Style{Width: ui.Pt(56), Height: ui.Pt(56), CornerRadius: 8, Clip: true}})
 			}),
 			ui.Text(status, ui.Style{Grow: 1, Color: ui.SecondaryLabel, Font: ui.Footnote}),
+			ui.Button(ui.ButtonProps{Icon: ui.IconVideo, Variant: ui.ButtonTinted,
+				Title: signal.Func(func() string {
+					if recording.Get() {
+						return "Stop"
+					}
+					return "Record"
+				}),
+				OnPress: func() {
+					if recording.Get() {
+						record.Stop()
+						return
+					}
+					recording.Set(true)
+					status.Set("Recording…")
+					record.Start(record.Options{MaxDuration: time.Minute}, func(path string, err error) {
+						recording.Set(false)
+						if err != nil {
+							status.Set(err.Error())
+							return
+						}
+						status.Set("Recorded")
+						nav.Push(func() ui.Node {
+							return ui.Video(ui.VideoProps{Source: ui.Val(path), AutoPlay: true, Loop: true, Style: ui.Style{Grow: 1}})
+						}, ui.ScreenOptions{Title: ui.Val("The video")})
+					})
+				}}),
 			ui.Button(ui.ButtonProps{Icon: ui.IconCamera, Label: "Take a photo", Variant: ui.ButtonFilled, OnPress: func() {
 				camera.Capture(func(path string, err error) {
 					if err != nil {

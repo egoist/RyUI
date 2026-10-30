@@ -33,9 +33,18 @@ const (
 	Front
 )
 
+// Mode is what a View is set up for.
+type Mode int
+
+const (
+	Photo Mode = iota // photos (Capture)
+	Video             // videos (nui/camera/record), and photos
+)
+
 // ViewProps configures a View.
 type ViewProps struct {
 	Facing Facing
+	Mode   Mode
 	Style  ui.Styler
 	// OnError is called if the camera can't show (not allowed, none).
 	OnError func(message string)
@@ -63,7 +72,7 @@ func View(p ViewProps) ui.Node {
 	if p.Facing == Front {
 		facing = "front"
 	}
-	np := ui.NativeProps{Style: p.Style, Props: map[string]any{"facing": facing}, On: map[string]func(ui.NativeEvent){}}
+	np := ui.NativeProps{Style: p.Style, Props: map[string]any{"facing": facing, "video": p.Mode == Video}, On: map[string]func(ui.NativeEvent){}}
 	if p.OnError != nil {
 		np.On["error"] = func(e ui.NativeEvent) { p.OnError(e.String("message")) }
 	}

@@ -203,6 +203,7 @@ var featurePermissions = []struct {
 	// camera.View's preview is the app's own: the camera permission (and
 	// with it declared, the system's camera app needs it granted too).
 	{"github.com/egoist/nui/camera", []string{"android.permission.CAMERA"}, map[string]string{"NSCameraUsageDescription": "To take a photo."}, nil},
+	{"github.com/egoist/nui/camera/record", []string{"android.permission.RECORD_AUDIO"}, map[string]string{"NSMicrophoneUsageDescription": "To record a video's sound."}, nil},
 	// ML Kit's barcode model: about 2 MB, only in the apps that scan.
 	{"github.com/egoist/nui/scan", nil, nil, []string{"scan"}},
 }

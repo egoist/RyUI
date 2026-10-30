@@ -19,6 +19,11 @@ import AVFoundation
     private var kinds = NuiCodeKinds("")
     private var seen = NuiCodeSeen()
     private var configuring = false
+    private var video = false
+    #if NUI_RECORD
+    private let movie = AVCaptureMovieFileOutput()
+    private var recording: ((Result<Data, Error>) -> Void)?
+    #endif
     private var capturing: ((Result<Data, Error>) -> Void)?
     private let queue = DispatchQueue(label: "nui.camera")
 
@@ -39,6 +44,7 @@ import AVFoundation
         case "facing": facing = value.string == "front" ? .front : .back
         case "scan": scan = value.bool
         case "codes": kinds = NuiCodeKinds(value.string)
+        case "video": video = value.bool
         default: return
         }
         // Once for the props set together.
@@ -67,9 +73,18 @@ import AVFoundation
                     self.ctx.emit("error", ["message": .string("no camera")]); return
                 }
                 self.session.beginConfiguration()
-                self.session.sessionPreset = .photo
-                for i in self.session.inputs { self.session.removeInput(i) }
+                self.session.sessionPreset = self.video ? .high : .photo
+                for i in self.session.inputs where (i as? AVCaptureDeviceInput)?.device.hasMediaType(.video) ?? true {
+                    self.session.removeInput(i)
+                }
                 if self.session.canAddInput(input) { self.session.addInput(input) }
+                #if NUI_RECORD
+                if self.video {
+                    if !self.session.outputs.contains(self.movie), self.session.canAddOutput(self.movie) { self.session.addOutput(self.movie) }
+                } else if self.session.outputs.contains(self.movie) {
+                    self.session.removeOutput(self.movie)
+                }
+                #endif
                 if !self.session.outputs.contains(self.output), self.session.canAddOutput(self.output) { self.session.addOutput(self.output) }
                 if self.scan {
                     if !self.session.outputs.contains(self.metadata), self.session.canAddOutput(self.metadata) {
@@ -105,6 +120,36 @@ import AVFoundation
         capturing = reply
         output.capturePhoto(with: AVCapturePhotoSettings(), delegate: self)
     }
+
+    #if NUI_RECORD
+    /// Records to a file until stopRecording (or max seconds, if not 0),
+    /// with the microphone unless mute (or not allowed).
+    func record(mute: Bool, max: Double, _ reply: @escaping (Result<Data, Error>) -> Void) {
+        guard session.isRunning else { reply(.failure(NuiModuleError("the camera isn't showing"))); return }
+        guard video, session.outputs.contains(movie) else { reply(.failure(NuiModuleError("the camera view isn't in video mode"))); return }
+        guard !movie.isRecording else { reply(.failure(NuiModuleError("already recording"))); return }
+        let start = { [weak self] (sound: Bool) in
+            guard let self else { return }
+            self.session.beginConfiguration()
+            let mic = self.session.inputs.first { ($0 as? AVCaptureDeviceInput)?.device.hasMediaType(.audio) ?? false }
+            if sound, mic == nil, let d = AVCaptureDevice.default(for: .audio), let i = try? AVCaptureDeviceInput(device: d), self.session.canAddInput(i) {
+                self.session.addInput(i)
+            } else if !sound, let mic {
+                self.session.removeInput(mic)
+            }
+            self.session.commitConfiguration()
+            self.movie.maxRecordedDuration = max > 0 ? CMTime(seconds: max, preferredTimescale: 600) : .invalid
+            let dir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("nui-camera", isDirectory: true)
+            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            self.recording = reply
+            self.movie.startRecording(to: dir.appendingPathComponent(UUID().uuidString + ".mov"), recordingDelegate: self)
+        }
+        if mute { start(false); return }
+        AVCaptureDevice.requestAccess(for: .audio) { ok in DispatchQueue.main.async { start(ok) } }
+    }
+
+    func stopRecording() { if movie.isRecording { movie.stopRecording() } }
+    #endif
 
     nonisolated func metadataOutput(_ o: AVCaptureMetadataOutput, didOutput objects: [AVMetadataObject], from c: AVCaptureConnection) {
         let found = objects.compactMap { o -> (AVMetadataObject.ObjectType, String)? in
@@ -147,4 +192,18 @@ final class NuiCameraPreview: UIView {
         attached?(window != nil)
     }
 }
+#if NUI_RECORD
+extension NuiCameraView: AVCaptureFileOutputRecordingDelegate {
+    nonisolated func fileOutput(_ o: AVCaptureFileOutput, didFinishRecordingTo url: URL, from c: [AVCaptureConnection], error: Error?) {
+        MainActor.assumeIsolated {
+            let reply = recording
+            recording = nil
+            // Stopped by its maximum duration (or the disk filling) the
+            // file is still whole: AVErrorRecordingSuccessfullyFinishedKey.
+            let ok = error == nil || ((error as NSError?)?.userInfo[AVErrorRecordingSuccessfullyFinishedKey] as? Bool ?? false)
+            reply?(ok ? .success(Data(url.path.utf8)) : .failure(error!))
+        }
+    }
+}
+#endif
 #endif
