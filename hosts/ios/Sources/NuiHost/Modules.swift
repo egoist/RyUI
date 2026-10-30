@@ -148,6 +148,9 @@ struct NuiModuleError: LocalizedError {
         modules["audio"] = NuiAudio.shared.methods()
         #endif
         modules["camera"] = NuiCamera.shared.methods()
+        #if NUI_SCAN
+        modules["scan"] = NuiScan.methods()
+        #endif
         modules["device"] = [
             // result: JSON: model, system, systemVersion, appVersion, build.
             "info": { args, reply in

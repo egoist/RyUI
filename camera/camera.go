@@ -39,6 +39,15 @@ type ViewProps struct {
 	Style  ui.Styler
 	// OnError is called if the camera can't show (not allowed, none).
 	OnError func(message string)
+	// Scan, if set, reads codes in what the camera sees: scan.Codes.
+	Scan Scanner
+}
+
+// Scanner reads codes in a View: nui/scan's Codes.
+type Scanner interface {
+	// CameraScan is the kinds of code, comma-separated (every kind, if
+	// none), and the function to call with each code read.
+	CameraScan() (kinds string, found func(kind, value string))
 }
 
 // View shows what the camera sees, live, filling its box (AVFoundation's
@@ -54,9 +63,15 @@ func View(p ViewProps) ui.Node {
 	if p.Facing == Front {
 		facing = "front"
 	}
-	np := ui.NativeProps{Style: p.Style, Props: map[string]any{"facing": facing}}
+	np := ui.NativeProps{Style: p.Style, Props: map[string]any{"facing": facing}, On: map[string]func(ui.NativeEvent){}}
 	if p.OnError != nil {
-		np.On = map[string]func(ui.NativeEvent){"error": func(e ui.NativeEvent) { p.OnError(e.String("message")) }}
+		np.On["error"] = func(e ui.NativeEvent) { p.OnError(e.String("message")) }
+	}
+	if p.Scan != nil {
+		kinds, found := p.Scan.CameraScan()
+		np.Props["scan"] = true
+		np.Props["codes"] = kinds
+		np.On["code"] = func(e ui.NativeEvent) { found(e.String("kind"), e.String("value")) }
 	}
 	return ui.Native("nui.camera", np)
 }

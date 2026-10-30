@@ -91,7 +91,7 @@ and give its password in NUI_KEYSTORE_PASSWORD (and NUI_KEY_PASSWORD if the key'
 		"-PnuiApplicationId=" + androidPackage(cfg.ID), "-PnuiAppName=" + cfg.Name,
 		"-PnuiVersionCode=" + strconv.Itoa(cfg.Build), "-PnuiVersionName=" + cfg.Version,
 		"-PnuiIcon=" + icon, "-PnuiJniLibs=" + jni, "-PnuiRes=" + res, "-PnuiManifest=" + manifest,
-		"-PnuiKeystore=" + keystore, "-PnuiKeyAlias=" + alias}
+		"-PnuiKeystore=" + keystore, "-PnuiKeyAlias=" + alias, cfg.gradleModules()}
 	// Passwords go in the environment, not on a command line.
 	secrets := []string{"ORG_GRADLE_PROJECT_nuiKeystorePassword=" + storePass}
 	if kp := os.Getenv("NUI_KEY_PASSWORD"); kp != "" {

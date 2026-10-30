@@ -76,19 +76,34 @@ class NuiCameraView(private val rt: NuiRuntime, private val ctx: NuiNativeContex
     private var capture: androidx.camera.core.ImageCapture? = null
     private var provider: androidx.camera.lifecycle.ProcessCameraProvider? = null
     private var front = false
+    private var scan = false
+    private var kinds = emptySet<String>()
+    private var analyzer: NuiCodeAnalyzer? = null
+    private var analysis: java.util.concurrent.ExecutorService? = null
+    private val seen = NuiCodeSeen()
+    private var binding = false
 
     init {
         // The camera is open while the view is in a window: leaving the
         // screen closes it.
         preview.addOnAttachStateChangeListener(object : android.view.View.OnAttachStateChangeListener {
-            override fun onViewAttachedToWindow(v: android.view.View) { current = this@NuiCameraView; bind() }
+            override fun onViewAttachedToWindow(v: android.view.View) { current = this@NuiCameraView; if (!binding) bind() }
             override fun onViewDetachedFromWindow(v: android.view.View) { unbind() }
         })
     }
 
     override fun set(name: String, value: Any) {
-        if (name == "facing") {
-            front = value == "front"
+        when (name) {
+            "facing" -> front = value == "front"
+            "scan" -> scan = value == true
+            "codes" -> kinds = NuiScan.kinds(value as? String ?: "")
+            else -> return
+        }
+        // Once for the props set together.
+        if (binding) return
+        binding = true
+        preview.post {
+            binding = false
             if (preview.isAttachedToWindow) bind()
         }
     }
@@ -98,6 +113,10 @@ class NuiCameraView(private val rt: NuiRuntime, private val ctx: NuiNativeContex
         provider?.unbindAll()
         provider = null
         capture = null
+        analyzer?.close()
+        analyzer = null
+        analysis?.shutdown()
+        analysis = null
     }
 
     private fun bind() {
@@ -114,7 +133,21 @@ class NuiCameraView(private val rt: NuiRuntime, private val ctx: NuiNativeContex
                     val c = androidx.camera.core.ImageCapture.Builder().build()
                     val selector = if (front) androidx.camera.core.CameraSelector.DEFAULT_FRONT_CAMERA else androidx.camera.core.CameraSelector.DEFAULT_BACK_CAMERA
                     provider.unbindAll()
-                    provider.bindToLifecycle(act, selector, p, c)
+                    analyzer?.close()
+                    analyzer = null
+                    val reader = NuiScan.reader
+                    if (scan && reader == null) ctx.emit("error", mapOf("message" to "nui/scan isn't in this build"))
+                    if (scan && reader != null) {
+                        val a = reader.analyzer(kinds) { k, v -> if (seen.isNew(k, v)) ctx.emit("code", mapOf("kind" to k, "value" to v)) }
+                        val ex = analysis ?: java.util.concurrent.Executors.newSingleThreadExecutor().also { analysis = it }
+                        val ia = androidx.camera.core.ImageAnalysis.Builder()
+                            .setBackpressureStrategy(androidx.camera.core.ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).build()
+                        ia.setAnalyzer(ex, a)
+                        analyzer = a
+                        provider.bindToLifecycle(act, selector, p, c, ia)
+                    } else {
+                        provider.bindToLifecycle(act, selector, p, c)
+                    }
                     capture = c
                 } catch (e: Exception) {
                     ctx.emit("error", mapOf("message" to (e.message ?: "no camera")))

@@ -15,4 +15,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "nui-android"
-include(":nui", ":app")
+include(":nui", ":app", ":nui-scan")

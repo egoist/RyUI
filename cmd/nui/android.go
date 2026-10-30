@@ -202,14 +202,15 @@ func (t *androidToolchain) buildAPK(app *goApp, work string) (apk, hash string, 
 	if err := os.WriteFile(manifest, []byte(man), 0o644); err != nil {
 		return "", "", err
 	}
-	hash = fmt.Sprintf("%s-%08x", hash, crc32.ChecksumIEEE([]byte(man))) // a manifest change rebuilds
+	mods := app.cfg.gradleModules()
+	hash = fmt.Sprintf("%s-%08x", hash, crc32.ChecksumIEEE([]byte(man+mods))) // a manifest or modules change rebuilds
 	apk = filepath.Join(work, "app-"+hash+".apk")
 	if exists(apk) {
 		return apk, hash, nil
 	}
 	fmt.Println("nui: building the Android app with Gradle (once; the first time downloads Gradle and Android libraries)")
 	if err := t.gradle(src, ":app:assembleDebug", "-PnuiApplicationId="+androidPackage(app.bundleID), "-PnuiAppName="+app.displayName(),
-		"-PnuiManifest="+manifest); err != nil {
+		"-PnuiManifest="+manifest, mods); err != nil {
 		return "", "", err
 	}
 	data, err := os.ReadFile(filepath.Join(src, "app", "build", "outputs", "apk", "debug", "app-debug.apk"))

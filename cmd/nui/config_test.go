@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -56,5 +57,24 @@ func TestLinks(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "nui.json"), []byte(`{"scheme": "my app"}`), 0o644)
 	if _, err := loadConfig(dir); err == nil {
 		t.Error("a bad scheme was taken")
+	}
+}
+
+func TestFeaturesFromImports(t *testing.T) {
+	var c appConfig
+	c.permissionsFor([]string{"github.com/egoist/nui/ui", "github.com/egoist/nui/scan", "github.com/egoist/nui/camera"})
+	if got := c.gradleModules(); got != "-PnuiModules=scan" {
+		t.Errorf("modules: %s", got)
+	}
+	if !slices.Contains(c.Android.Permissions, "android.permission.CAMERA") || slices.Contains(c.Android.Permissions, "android.permission.POST_NOTIFICATIONS") {
+		t.Errorf("permissions: %v", c.Android.Permissions)
+	}
+	var none appConfig
+	none.permissionsFor([]string{"github.com/egoist/nui/ui"})
+	if got := none.gradleModules(); got != "-PnuiModules=" {
+		t.Errorf("no modules: %s", got)
+	}
+	if p := playerConfig(); !slices.Contains(p.androidModules, "scan") {
+		t.Errorf("the player's modules: %v", p.androidModules)
 	}
 }

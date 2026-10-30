@@ -3,16 +3,22 @@ import UIKit
 import AVFoundation
 
 /// nui/camera's View: an AVCaptureSession's preview, filling the view,
-/// and a photo output for camera.Capture. The session runs while the view
-/// is in a window.
-@MainActor final class NuiCameraView: NSObject, NuiNativeView, AVCapturePhotoCaptureDelegate {
+/// a photo output for camera.Capture and, with scan on, a metadata output
+/// that reads codes (nui/scan's Codes). The session runs while the view is
+/// in a window.
+@MainActor final class NuiCameraView: NSObject, NuiNativeView, AVCapturePhotoCaptureDelegate, AVCaptureMetadataOutputObjectsDelegate {
     static weak var current: NuiCameraView?
     let ctx: NuiNativeContext
     let preview = NuiCameraPreview()
     var view: UIView { preview }
     private let session = AVCaptureSession()
     private let output = AVCapturePhotoOutput()
+    private let metadata = AVCaptureMetadataOutput()
     private var facing: AVCaptureDevice.Position = .back
+    private var scan = false
+    private var kinds = NuiCodeKinds("")
+    private var seen = NuiCodeSeen()
+    private var configuring = false
     private var capturing: ((Result<Data, Error>) -> Void)?
     private let queue = DispatchQueue(label: "nui.camera")
 
@@ -29,10 +35,27 @@ import AVFoundation
     }
 
     func set(_ name: String, _ value: NuiNativeValue) {
-        guard name == "facing" else { return }
-        facing = value.string == "front" ? .front : .back
-        configure()
+        switch name {
+        case "facing": facing = value.string == "front" ? .front : .back
+        case "scan": scan = value.bool
+        case "codes": kinds = NuiCodeKinds(value.string)
+        default: return
+        }
+        // Once for the props set together.
+        guard !configuring else { return }
+        configuring = true
+        DispatchQueue.main.async { [weak self] in
+            self?.configuring = false
+            self?.configure()
+        }
     }
+
+    static let metadataTypes: [(String, [AVMetadataObject.ObjectType])] = [
+        ("qr", [.qr]), ("aztec", [.aztec]), ("datamatrix", [.dataMatrix]), ("pdf417", [.pdf417]),
+        ("ean13", [.ean13]), ("ean8", [.ean8]), ("upca", [.ean13]), ("upce", [.upce]),
+        ("code128", [.code128]), ("code39", [.code39]), ("code93", [.code93]), ("codabar", [.codabar]),
+        ("itf", [.itf14, .interleaved2of5]),
+    ]
 
     private func configure() {
         AVCaptureDevice.requestAccess(for: .video) { ok in
@@ -47,7 +70,22 @@ import AVFoundation
                 self.session.sessionPreset = .photo
                 for i in self.session.inputs { self.session.removeInput(i) }
                 if self.session.canAddInput(input) { self.session.addInput(input) }
-                if self.session.outputs.isEmpty, self.session.canAddOutput(self.output) { self.session.addOutput(self.output) }
+                if !self.session.outputs.contains(self.output), self.session.canAddOutput(self.output) { self.session.addOutput(self.output) }
+                if self.scan {
+                    if !self.session.outputs.contains(self.metadata), self.session.canAddOutput(self.metadata) {
+                        self.session.addOutput(self.metadata)
+                        self.metadata.setMetadataObjectsDelegate(self, queue: .main)
+                    }
+                    // What it can read is known once it's in the session.
+                    let available = self.metadata.availableMetadataObjectTypes
+                    var types: [AVMetadataObject.ObjectType] = []
+                    for (k, ts) in Self.metadataTypes where self.kinds.wants(k) {
+                        for t in ts where available.contains(t) && !types.contains(t) { types.append(t) }
+                    }
+                    self.metadata.metadataObjectTypes = types
+                } else if self.session.outputs.contains(self.metadata) {
+                    self.session.removeOutput(self.metadata)
+                }
                 self.session.commitConfiguration()
                 self.run(self.preview.window != nil)
             }
@@ -66,6 +104,22 @@ import AVFoundation
         capturing?(.failure(NuiModuleError("another photo was taken")))
         capturing = reply
         output.capturePhoto(with: AVCapturePhotoSettings(), delegate: self)
+    }
+
+    nonisolated func metadataOutput(_ o: AVCaptureMetadataOutput, didOutput objects: [AVMetadataObject], from c: AVCaptureConnection) {
+        let found = objects.compactMap { o -> (AVMetadataObject.ObjectType, String)? in
+            guard let m = o as? AVMetadataMachineReadableCodeObject, let v = m.stringValue else { return nil }
+            return (m.type, v)
+        }
+        MainActor.assumeIsolated { // its queue is the main one
+            let now = CACurrentMediaTime()
+            for (t, v) in found {
+                guard let k = Self.metadataTypes.first(where: { $0.0 != "upca" && $0.1.contains(t) })?.0 else { continue }
+                let (kind, value) = kinds.named(k, v)
+                guard kinds.wants(kind), seen.isNew(kind, value, now: now) else { continue }
+                ctx.emit("code", ["kind": .string(kind), "value": .string(value)])
+            }
+        }
     }
 
     nonisolated func photoOutput(_ o: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {

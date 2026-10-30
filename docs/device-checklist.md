@@ -51,6 +51,10 @@ Turn the screen reader on (Settings → Accessibility), open the gallery.
       permission prompt the camera shows live, filling the screen; the
       shutter puts the photo, upright, at the bottom left. Going back
       turns the camera off (iPhone: the green dot goes).
+- [ ] **Scanning** (both): on that screen, point it at a QR code (any on
+      a screen) and a product's barcode: the status says `qr: …` or
+      `ean13: …` (a UPC-A in the US: `upca: …`) once, with a haptic, while
+      the code stays in view.
 - [ ] **Two-finger rotation** (iPhone): Motion → the purple square turns
       with two fingers and the label follows ("Turned 30°").
 - [ ] **Sound**: Platform → "Play a chime": you hear it, with the

@@ -66,4 +66,6 @@ kotlin { jvmToolchain(17) }
 
 dependencies {
     implementation(project(":nui"))
+    // The optional modules the app's packages need (the CLI's nuiModules).
+    prop("nuiModules")?.split(',')?.filter { it.isNotEmpty() }?.forEach { implementation(project(":nui-$it")) }
 }

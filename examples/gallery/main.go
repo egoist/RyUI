@@ -14,6 +14,7 @@ import (
 	"github.com/egoist/nui/device"
 	"github.com/egoist/nui/location"
 	"github.com/egoist/nui/notify"
+	"github.com/egoist/nui/scan"
 	"github.com/egoist/nui/secure"
 	"github.com/egoist/nui/signal"
 	"github.com/egoist/nui/store"
@@ -516,6 +517,23 @@ func platform() ui.Node {
 			ui.Button(ui.ButtonProps{Title: ui.Val("Pick photos"), Icon: ui.IconPhoto, Variant: ui.ButtonGray, OnPress: func() {
 				device.PickPhotos(3, func(paths []string, err error) { photos.Set(paths) })
 			}}),
+			ui.Button(ui.ButtonProps{Title: ui.Val("Read a code in a photo"), Icon: ui.IconQRCode, Variant: ui.ButtonGray, OnPress: func() {
+				device.PickPhotos(1, func(paths []string, err error) {
+					if len(paths) == 0 {
+						return
+					}
+					scan.File(paths[0], func(codes []scan.Code, err error) {
+						switch {
+						case err != nil:
+							where.Set("Couldn't: " + err.Error())
+						case len(codes) == 0:
+							where.Set("No code in it")
+						default:
+							where.Set(fmt.Sprintf("%s: %s", codes[0].Kind, codes[0].Value))
+						}
+					})
+				})
+			}}),
 			ui.Button(ui.ButtonProps{Title: ui.Val("Where am I?"), Icon: ui.IconLocation, Variant: ui.ButtonGray, OnPress: func() {
 				where.Set("Finding you…")
 				go func() {
@@ -594,12 +612,17 @@ func topButton(shown signal.Accessor[bool], top func()) ui.Node {
 }
 
 // cameraScreen shows the camera live (camera.View) with a shutter
-// (camera.Capture), and the last photo taken.
+// (camera.Capture), and the last photo taken; it reads the codes it sees
+// (nui/scan).
 func cameraScreen() ui.Node {
 	last := signal.New("")
 	status := signal.New("")
 	return ui.Column(ui.Style{Grow: 1},
-		camera.View(camera.ViewProps{Style: ui.Style{Grow: 1}, OnError: func(m string) { status.Set(m) }}),
+		camera.View(camera.ViewProps{Style: ui.Style{Grow: 1}, OnError: func(m string) { status.Set(m) },
+			Scan: scan.Codes(func(c scan.Code) {
+				status.Set(fmt.Sprintf("%s: %s", c.Kind, c.Value))
+				ui.Haptic(ui.HapticSuccess)
+			})}),
 		ui.SafeArea(nil, ui.Row(ui.Style{Padding: ui.All(16), Gap: 16, Align: ui.AlignCenter},
 			ui.Show(signal.Func(func() bool { return last.Get() != "" }), func() ui.Node {
 				return ui.Image(ui.ImageProps{Source: last, Mode: ui.ImageFill, Label: "The last photo",

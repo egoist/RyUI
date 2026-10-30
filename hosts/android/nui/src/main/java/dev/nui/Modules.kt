@@ -138,6 +138,7 @@ private fun NuiRuntime.registerBuiltinModules() {
     modules["notify"] = notifyMethods()
     modules["audio"] = audioMethods()
     modules["camera"] = cameraMethods()
+    modules["scan"] = scanMethods()
     modules["device"] = mapOf(
         // result: JSON: model, system, systemVersion, appVersion, build.
         "info" to { _, reply ->

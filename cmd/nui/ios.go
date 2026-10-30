@@ -216,6 +216,7 @@ var iosFeatures = []struct{ flag, symbol string }{
 	{"NUI_NOTIFY", "github.com/egoist/nui/notify.Schedule"},
 	{"NUI_AUDIO", "github.com/egoist/nui/audio.Load"},
 	{"NUI_CAMERAVIEW", "github.com/egoist/nui/camera.View"},
+	{"NUI_SCAN", "github.com/egoist/nui/scan.File"},
 }
 
 // allFeatures is every feature: the player runs any app.

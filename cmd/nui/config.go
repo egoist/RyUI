@@ -69,6 +69,9 @@ type appConfig struct {
 	// universal links (the domain serves apple-app-site-association) and
 	// Android's App Links (assetlinks.json).
 	Links   []string `json:"links"`
+	// androidModules are the host's optional Gradle modules the app's
+	// packages need (featurePermissions).
+	androidModules []string
 	Android struct {
 		// DynamicColor takes the colors from the user's wallpaper where
 		// the system has them (Android 12 and later), as Material apps do;
@@ -186,18 +189,22 @@ func (c *appConfig) associatedDomains(simulator bool) []string {
 // build's also lets nui dev serve over plain HTTP.
 // featurePermissions are what nui's packages need of the platform: an
 // app that imports one is given them (and, on iOS, a purpose string,
-// which nui.json's ios.usage can say better).
+// which nui.json's ios.usage can say better), and the Android host's
+// optional Gradle modules (hosts/android/nui-<name>) it needs.
 var featurePermissions = []struct {
 	pkg     string
 	android []string
 	usage   map[string]string
+	modules []string
 }{
 	{"github.com/egoist/nui/location", []string{"android.permission.ACCESS_COARSE_LOCATION", "android.permission.ACCESS_FINE_LOCATION"},
-		map[string]string{"NSLocationWhenInUseUsageDescription": "To show where you are."}},
-	{"github.com/egoist/nui/notify", []string{"android.permission.POST_NOTIFICATIONS"}, nil},
+		map[string]string{"NSLocationWhenInUseUsageDescription": "To show where you are."}, nil},
+	{"github.com/egoist/nui/notify", []string{"android.permission.POST_NOTIFICATIONS"}, nil, nil},
 	// camera.View's preview is the app's own: the camera permission (and
 	// with it declared, the system's camera app needs it granted too).
-	{"github.com/egoist/nui/camera", []string{"android.permission.CAMERA"}, map[string]string{"NSCameraUsageDescription": "To take a photo."}},
+	{"github.com/egoist/nui/camera", []string{"android.permission.CAMERA"}, map[string]string{"NSCameraUsageDescription": "To take a photo."}, nil},
+	// ML Kit's barcode model: about 2 MB, only in the apps that scan.
+	{"github.com/egoist/nui/scan", nil, nil, []string{"scan"}},
 }
 
 // permissionsFor adds the permissions the packages deps (an app's
@@ -213,6 +220,11 @@ func (c *appConfig) permissionsFor(deps []string) {
 				c.Android.Permissions = append(c.Android.Permissions, p)
 			}
 		}
+		for _, m := range f.modules {
+			if !slices.Contains(c.androidModules, m) {
+				c.androidModules = append(c.androidModules, m)
+			}
+		}
 		for k, v := range f.usage {
 			if c.IOS.Usage == nil {
 				c.IOS.Usage = map[string]string{}
@@ -222,6 +234,11 @@ func (c *appConfig) permissionsFor(deps []string) {
 			}
 		}
 	}
+}
+
+// gradleModules is the Gradle property naming the app's optional modules.
+func (c *appConfig) gradleModules() string {
+	return "-PnuiModules=" + strings.Join(c.androidModules, ",")
 }
 
 func (c *appConfig) androidManifest(debug bool) string {
