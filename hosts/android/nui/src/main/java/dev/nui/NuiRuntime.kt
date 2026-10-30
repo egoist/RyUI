@@ -13,6 +13,7 @@ import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
+import android.widget.TextView
 import androidx.annotation.Keep
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.appcompat.widget.AppCompatEditText
@@ -357,7 +358,10 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
         val ctx = themed
         return when (kind) {
             NuiKind.VIEW -> NuiContainer(ctx)
-            NuiKind.TEXT -> MaterialTextView(ctx).apply { applyTextStyle(this, 0) }
+            // The platform's TextView: AppCompat's (Material's) posts a message
+            // to load the theme's font for each one made, and needs nothing
+            // else here; the Material text appearance is applied all the same.
+            NuiKind.TEXT -> TextView(ctx).apply { applyTextStyle(this, 0) }
             NuiKind.BUTTON -> makeButton(id, NuiButtonVariant.PLAIN)
             NuiKind.TEXT_FIELD -> makeTextField(id)
             NuiKind.TOGGLE -> MaterialSwitch(ctx).apply {

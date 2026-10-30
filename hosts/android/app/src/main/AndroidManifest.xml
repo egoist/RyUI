@@ -8,6 +8,9 @@
         <!-- Rotation, dark mode, font scale and the keyboard are handled
              live; other configuration changes recreate the Activity, which
              takes over the existing views (nui_attach). -->
+        <!-- Profilers (simpleperf, Android Studio's) can attach to a release
+             build from adb, as Google recommends; it isn't debuggable. -->
+        <profileable android:shell="true" />
         <activity
             android:name="dev.nui.NuiActivity"
             android:exported="true"

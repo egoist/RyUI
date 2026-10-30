@@ -110,10 +110,54 @@ fun NuiRuntime.applyText(n: NuiNode) {
     applyColor(n)
 }
 
+/**
+ * A Material text appearance's values, resolved once for each theme, font
+ * scale and density. Setting them is setting a view's fields, where
+ * setTextAppearance reads the theme again for every view: a third of
+ * making a thousand texts.
+ */
+private class NuiAppearance(
+    val size: Float, // px
+    val typeface: Typeface?,
+    val letterSpacing: Float,
+    val spacingExtra: Float,
+    val spacingMult: Float,
+    val colors: ColorStateList?,
+    val hints: ColorStateList?,
+    val features: String?,
+)
+
+private val appearances = HashMap<Int, NuiAppearance>()
+private var appearancesFor = ""
+
+private fun NuiRuntime.appearance(style: Int): NuiAppearance {
+    val cfg = themed.resources.configuration
+    val key = "$themeVersion|${cfg.fontScale}|${cfg.densityDpi}|${cfg.uiMode}"
+    if (key != appearancesFor) {
+        appearances.clear()
+        appearancesFor = key
+    }
+    return appearances.getOrPut(style) {
+        // Material's view, which reads lineHeight from an appearance too.
+        val tv = com.google.android.material.textview.MaterialTextView(themed)
+        TextViewCompat.setTextAppearance(tv, textAppearances[style] ?: com.google.android.material.R.style.TextAppearance_Material3_BodyLarge)
+        NuiAppearance(tv.textSize, tv.typeface, tv.letterSpacing, tv.lineSpacingExtra, tv.lineSpacingMultiplier,
+            tv.textColors, tv.hintTextColors, tv.fontFeatureSettings)
+    }
+}
+
 /** Applies a text style, size, weight and font family (an app's font, or the system's). */
 fun NuiRuntime.applyTextStyle(tv: TextView, style: Int, size: Float = 0f, weight: Int = 0, family: String = "") {
-    val res = textAppearances[style] ?: com.google.android.material.R.style.TextAppearance_Material3_BodyLarge
-    if (tv !is MaterialButton) TextViewCompat.setTextAppearance(tv, res)
+    if (tv !is MaterialButton) {
+        val a = appearance(style)
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, a.size)
+        tv.typeface = a.typeface
+        tv.letterSpacing = a.letterSpacing
+        tv.setLineSpacing(a.spacingExtra, a.spacingMult)
+        a.colors?.let { tv.setTextColor(it) }
+        a.hints?.let { tv.setHintTextColor(it) }
+        tv.fontFeatureSettings = a.features
+    }
     if (size > 0) tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, size)
     val w = weightOf(weight)
     val custom = if (family.isNotEmpty()) NuiFonts.typeface(app, family, w) else null
