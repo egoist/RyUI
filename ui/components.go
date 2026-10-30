@@ -210,6 +210,17 @@ func Row(style Styler, children ...Node) Node {
 // size, the locale and time zone.
 type Environment = host.Environment
 
+// Platform is the system the app runs on, the environment's Platform:
+// for the few places an app follows each platform's own design (an
+// inset grouped list on iOS, Material's on Android) where nui has no
+// view that does it for it.
+type Platform = ops.Platform
+
+const (
+	PlatformIOS     = ops.PlatformIOS
+	PlatformAndroid = ops.PlatformAndroid
+)
+
 // UseEnvironment is the environment of the screen (sheet, tab, or root)
 // the component is in, as a signal: read it in an effect or a
 // StyleFunc, and it follows rotation, the keyboard, dark mode.

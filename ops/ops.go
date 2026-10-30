@@ -77,6 +77,9 @@ func (c Code) String() string {
 }
 
 // Color is 0 (the platform's default), a semantic color or RGBA.
+//
+// A semantic color's low 32 bits are the SemanticColor (bits 0-15) and
+// its transparency, 255 minus its alpha (bits 24-31): 0, opaque.
 type Color uint64
 
 const (
@@ -96,9 +99,41 @@ func RGBA(r, g, b, a uint8) Color {
 // Semantic returns the semantic color, if c is one.
 func (c Color) Semantic() (SemanticColor, bool) {
 	if c>>32 == 1 {
-		return SemanticColor(uint32(c)), true
+		return SemanticColor(uint16(c)), true
 	}
 	return 0, false
+}
+
+// Alpha is c's opacity, from 0 to 255: an RGBA color's alpha, or the
+// opacity a semantic color is drawn with (Opacity's); 255 for the
+// platform's default.
+func (c Color) Alpha() uint8 {
+	switch c >> 32 {
+	case 1:
+		return 255 - uint8(c>>24)
+	case 2:
+		return uint8(c)
+	}
+	return 255
+}
+
+// Opacity returns c drawn at opacity (0 to 1) times its own, as
+// SwiftUI's Color.opacity and Compose's Color.copy(alpha) do. A semantic
+// color stays one, so it still follows dark mode and the theme: a tint
+// of the accent, a faint separator. The platform's default (0) has none
+// to change, and stays the default.
+func (c Color) Opacity(opacity float32) Color {
+	if c == 0 {
+		return 0
+	}
+	a := uint8(float32(c.Alpha())*min(max(opacity, 0), 1) + 0.5)
+	switch c >> 32 {
+	case 1:
+		return Color(colorSemantic | uint64(255-a)<<24 | uint64(uint16(c)))
+	case 2:
+		return c&^0xff | Color(a)
+	}
+	return c
 }
 
 // RGBA returns the channels, if c is an RGBA color.

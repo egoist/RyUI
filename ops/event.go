@@ -10,7 +10,8 @@ import (
 // points.
 //
 // Wire format: f32 width, height, safe top, right, bottom, left,
-// keyboard, scale, font scale; u8 dark; string locale; string time zone.
+// keyboard, scale, font scale; u8 flags (1 dark, 2 reduce motion, bits
+// 2-3 the Platform); string locale; string time zone.
 type Environment struct {
 	Width, Height                            float32
 	SafeTop, SafeRight, SafeBottom, SafeLeft float32
@@ -19,8 +20,28 @@ type Environment struct {
 	FontScale                                float32 // Dynamic Type / Android font scale; 1 is the default
 	Dark                                     bool
 	ReduceMotion                             bool // the user asked for less motion (iOS's Reduce Motion; Android's animations off)
+	Platform                                 Platform
 	Locale                                   string
 	TimeZone                                 string // IANA, e.g. Asia/Shanghai: the core's time.Local
+}
+
+// Platform is the system a host runs on.
+type Platform uint8
+
+const (
+	PlatformUnknown Platform = iota
+	PlatformIOS
+	PlatformAndroid
+)
+
+func (p Platform) String() string {
+	switch p {
+	case PlatformIOS:
+		return "iOS"
+	case PlatformAndroid:
+		return "Android"
+	}
+	return "unknown"
 }
 
 // Gesture is a continuous gesture's state, in points relative to the
@@ -82,7 +103,7 @@ func AppendEvent(buf []byte, e *Event) []byte {
 		for _, f := range [...]float32{v.Width, v.Height, v.SafeTop, v.SafeRight, v.SafeBottom, v.SafeLeft, v.Keyboard, v.Scale, v.FontScale} {
 			buf = le.AppendUint32(buf, math.Float32bits(f))
 		}
-		d := byte(0) // flags: 1 dark, 2 reduce motion
+		d := byte(v.Platform&3) << 2 // flags: 1 dark, 2 reduce motion, bits 2-3 the platform
 		if v.Dark {
 			d |= 1
 		}
@@ -129,7 +150,7 @@ func DecodeEvent(data []byte) (Event, error) {
 			*f = r.f32()
 		}
 		f := r.u8()
-		v.Dark, v.ReduceMotion = f&1 != 0, f&2 != 0
+		v.Dark, v.ReduceMotion, v.Platform = f&1 != 0, f&2 != 0, Platform(f>>2&3)
 		v.Locale = string(r.bytes())
 		v.TimeZone = string(r.bytes())
 	case PGesture:

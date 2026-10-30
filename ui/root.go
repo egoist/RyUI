@@ -83,6 +83,9 @@ func Mount(h host.Host, root func() Node) *Root {
 			r.dispose = dispose
 			r.el = newElement(ops.KindView, true)
 			r.sendAccent()
+			if colorScheme != ColorSchemeSystem {
+				r.batch.Command(r.el.id, ops.CmdColorScheme, []byte{byte(colorScheme)})
+			}
 			st := layout.DefaultStyle
 			st.FlexDirection = layout.Column
 			st.Width, st.Height = layout.Pct(100), layout.Pct(100)
@@ -259,6 +262,34 @@ func (r *Root) sendAccent() {
 		args[8] = 1
 	}
 	r.batch.Command(r.el.id, ops.CmdAccent, args[:])
+}
+
+// ColorScheme is light or dark.
+type ColorScheme = ops.ColorScheme
+
+const (
+	ColorSchemeSystem = ops.ColorSchemeSystem // the system's setting
+	ColorSchemeLight  = ops.ColorSchemeLight
+	ColorSchemeDark   = ops.ColorSchemeDark
+)
+
+var colorScheme ColorScheme
+
+// SetColorScheme shows the app light or dark whatever the system's
+// setting, as an app's own appearance setting does (SwiftUI's
+// preferredColorScheme; AppCompat's night mode on Android);
+// ColorSchemeSystem follows the system again. Semantic colors, the
+// platform's controls and the system bars follow, and the environment's
+// Dark says which it is. It holds for every root, those mounted later
+// too. Main thread.
+func SetColorScheme(s ColorScheme) {
+	if s == colorScheme {
+		return
+	}
+	colorScheme = s
+	for _, r := range roots {
+		r.batch.Command(r.el.id, ops.CmdColorScheme, []byte{byte(s)})
+	}
 }
 
 // layoutInlines lays out the RichTexts' inline components before what

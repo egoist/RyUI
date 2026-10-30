@@ -108,17 +108,21 @@ var (
 	SystemBackground    = semantic(ops.SemanticColorBackground)
 	SecondaryBackground = semantic(ops.SemanticColorSecondaryBackground)
 	GroupedBackground   = semantic(ops.SemanticColorGroupedBackground)
-	Separator           = semantic(ops.SemanticColorSeparator)
-	Accent              = semantic(ops.SemanticColorAccent)
-	Red                 = semantic(ops.SemanticColorRed)
-	Orange              = semantic(ops.SemanticColorOrange)
-	Yellow              = semantic(ops.SemanticColorYellow)
-	Green               = semantic(ops.SemanticColorGreen)
-	Blue                = semantic(ops.SemanticColorBlue)
-	Purple              = semantic(ops.SemanticColorPurple)
-	Pink                = semantic(ops.SemanticColorPink)
-	Gray                = semantic(ops.SemanticColorGray)
-	Clear               = semantic(ops.SemanticColorClear)
+	// SecondaryGroupedBackground is a grouped list's rows, on
+	// GroupedBackground (iOS's inset grouped cells; Material's surface
+	// container).
+	SecondaryGroupedBackground = semantic(ops.SemanticColorSecondaryGroupedBackground)
+	Separator                  = semantic(ops.SemanticColorSeparator)
+	Accent                     = semantic(ops.SemanticColorAccent)
+	Red                        = semantic(ops.SemanticColorRed)
+	Orange                     = semantic(ops.SemanticColorOrange)
+	Yellow                     = semantic(ops.SemanticColorYellow)
+	Green                      = semantic(ops.SemanticColorGreen)
+	Blue                       = semantic(ops.SemanticColorBlue)
+	Purple                     = semantic(ops.SemanticColorPurple)
+	Pink                       = semantic(ops.SemanticColorPink)
+	Gray                       = semantic(ops.SemanticColorGray)
+	Clear                      = semantic(ops.SemanticColorClear)
 )
 
 // Weight is a font weight.

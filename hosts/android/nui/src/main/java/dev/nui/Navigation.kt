@@ -593,7 +593,7 @@ fun NuiRuntime.environment(v: View, keyboardPx: Int? = null): NuiEnvironment {
         keyboard = maxOf(0, kb - below) / d,
         scale = d,
         fontScale = c.fontScale,
-        dark = (c.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES,
+        dark = isNight(c),
         reduceMotion = !android.animation.ValueAnimator.areAnimatorsEnabled(),
         locale = c.locales[0].toLanguageTag(),
     )

@@ -107,8 +107,16 @@ final class NuiDatePickerView: UIView {
     }
 
     /// Fits the shadow's path and the gradient to the view's bounds.
+    /// The corner radius drawn: no more than half the shorter side.
+    var clampedRadius: CGFloat {
+        let b = view.bounds
+        return b.width > 0 && b.height > 0 ? min(cornerRadius, min(b.width, b.height) / 2) : cornerRadius
+    }
+
     func updateLayers() {
         let b = view.bounds
+        // A new size may change how far a large radius is clamped.
+        if cornerRadius > 0, view.layer.cornerRadius != clampedRadius { view.layer.cornerRadius = clampedRadius }
         if let g = gradient {
             CATransaction.begin()
             CATransaction.setDisableActions(true)

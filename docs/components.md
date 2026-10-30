@@ -534,6 +534,11 @@ figures, `Rect`, `RoundedRect` and `Ellipse`.
 `JoinRound`, `JoinBevel`). `TrimStart` and `TrimEnd` draw part of it,
 from 0 to 1: a progress ring, a line that draws itself. Changing them in
 `ui.Animate` animates them (see [Motion](motion.md)).
+`Dash` dashes the stroke: lengths in points, drawn and skipped in turn
+(`[]float32{6, 4}`; an odd count repeats), as SwiftUI's
+`StrokeStyle(dash:)` does. `DashPhase` is how far into the pattern it
+starts. [`examples/usage`](../examples/usage) draws a forecast with
+one.
 
 ```go
 func ring(w, h float32) *ui.Path {

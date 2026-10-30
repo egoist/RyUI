@@ -28,20 +28,34 @@ class NuiSegmented(private val rt: NuiRuntime, private val id: Int) : MaterialBu
         }
     }
 
+    private var titles = emptyList<String>()
+
     fun setSegments(b: ByteBuffer) {
-        val selected = checkedButtonId.let { if (it == View.NO_ID) -1 else indexOfChild(findViewById(it)) }
-        setting = true
-        removeAllViews()
+        val list = ArrayList<String>()
         if (b.remaining() >= 4) {
             repeat(b.int) {
                 val a = ByteArray(b.int)
                 b.get(a)
-                addView(MaterialButton(ContextThemeWrapper(rt.themed, R.style.ThemeOverlay_Nui_OutlinedButton)).apply {
-                    id = View.generateViewId()
-                    text = String(a, Charsets.UTF_8)
-                    isAllCaps = false
-                })
+                list.add(String(a, Charsets.UTF_8))
             }
+        }
+        titles = list
+        makeButtons()
+    }
+
+    /** Makes the buttons again with the current theme (dark mode, the accent), keeping the selection. */
+    fun restyle() = makeButtons()
+
+    private fun makeButtons() {
+        val selected = checkedButtonId.let { if (it == View.NO_ID) -1 else indexOfChild(findViewById(it)) }
+        setting = true
+        removeAllViews()
+        for (t in titles) {
+            addView(MaterialButton(ContextThemeWrapper(rt.themed, R.style.ThemeOverlay_Nui_OutlinedButton)).apply {
+                id = View.generateViewId()
+                text = t
+                isAllCaps = false
+            })
         }
         setting = false
         if (selected >= 0) select(selected)

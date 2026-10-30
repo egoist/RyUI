@@ -12,8 +12,11 @@ package store
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -49,6 +52,19 @@ var (
 func Dir() string {
 	if d := os.Getenv("NUI_DATA"); d != "" {
 		return d
+	}
+	// Android sets NUI_DATA once the library is loaded, after the
+	// packages' init: a store.Signal in a package variable reads the
+	// store before it. The files directory is the package's, for the
+	// process's user: what Context.getFilesDir returns.
+	if runtime.GOOS == "android" {
+		if b, err := os.ReadFile("/proc/self/cmdline"); err == nil {
+			pkg, _, _ := strings.Cut(string(b), "\x00")
+			pkg, _, _ = strings.Cut(pkg, ":") // a process of the app's, "pkg:sync"
+			if pkg != "" && !strings.Contains(pkg, "/") {
+				return fmt.Sprintf("/data/user/%d/%s/files", os.Getuid()/100000, pkg)
+			}
+		}
 	}
 	d, err := os.UserConfigDir()
 	if err != nil {

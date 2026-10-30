@@ -62,6 +62,12 @@ fun NuiRuntime.call(root: Int, args: ByteBuffer) {
     }
 }
 
+/** A webAuth sign-in under way: its session, callback scheme, and start's reply. */
+class NuiAuth(val id: Int, val scheme: String, val reply: (Result<ByteArray>) -> Unit) {
+    /** The app went behind the tab: coming back without a callback is closing it. */
+    var away = false
+}
+
 /** A u32-length string, then the rest. */
 private fun split(b: ByteArray): Pair<String, ByteArray> {
     val buf = ByteBuffer.wrap(b).order(ByteOrder.LITTLE_ENDIAN)
@@ -123,6 +129,41 @@ private fun NuiRuntime.registerBuiltinModules() {
                 androidx.browser.customtabs.CustomTabsIntent.Builder().build().launchUrl(act, url)
                 reply(Result.success(ByteArray(0)))
             }
+        },
+    )
+    modules["webAuth"] = mapOf(
+        // args: u32 session, u8 flags (1 ephemeral), string URL, string
+        // callback scheme (empty: none); result: the callback URL, or the
+        // error "canceled". A Custom Tab: it ends with a link of the
+        // scheme (the app's), with cancel, or when the user comes back.
+        "start" to { args, reply ->
+            val b = ByteBuffer.wrap(args).order(ByteOrder.LITTLE_ENDIAN)
+            val id = b.int
+            b.get() // flags: Custom Tabs keep the browser's cookies
+            fun str(): String { val a = ByteArray(b.int); b.get(a); return String(a, Charsets.UTF_8) }
+            val url = Uri.parse(str())
+            val scheme = str()
+            val act = activity
+            if (act == null || (url.scheme != "https" && url.scheme != "http")) reply(Result.failure(Exception("not a web URL")))
+            else {
+                auth?.reply?.invoke(Result.failure(Exception("canceled"))) // one at a time
+                auth = NuiAuth(id, scheme, reply)
+                androidx.browser.customtabs.CustomTabsIntent.Builder().build().launchUrl(act, url)
+            }
+        },
+        "cancel" to { args, reply ->
+            val id = ByteBuffer.wrap(args).order(ByteOrder.LITTLE_ENDIAN).int
+            val a = auth
+            if (a != null && a.id == id) {
+                auth = null
+                a.reply(Result.failure(Exception("canceled")))
+                // The app again, over the tab (in its task): it closes.
+                activity?.let { act ->
+                    act.startActivity(android.content.Intent(act, act.javaClass)
+                        .addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP))
+                }
+            }
+            reply(Result.success(ByteArray(0)))
         },
     )
     modules["photos"] = mapOf(

@@ -10,6 +10,9 @@ import UniformTypeIdentifiers
 #if NUI_BROWSER
 import SafariServices
 #endif
+#if NUI_WEBAUTH
+import AuthenticationServices
+#endif
 #if canImport(NuiOps)
 import NuiOps
 #endif
@@ -121,6 +124,51 @@ struct NuiModuleError: LocalizedError {
             },
         ]
         #endif
+        #if NUI_WEBAUTH
+        modules["webAuth"] = [
+            // args: u32 session, u8 flags (1 ephemeral), string URL, string
+            // callback scheme (empty: none); result: the callback URL, or
+            // the error "canceled".
+            "start": { [weak self] args, reply in
+                guard args.count >= 13 else { reply(.failure(NuiModuleError("bad args"))); return }
+                let (id, flags, link, scheme) = args.withUnsafeBytes { b -> (UInt32, UInt8, String, String) in
+                    var r = NuiReader(b)
+                    return (r.u32(), r.u8(), r.string(), r.string())
+                }
+                let url = URL(string: link)
+                guard let url, url.scheme == "https" || url.scheme == "http" else { reply(.failure(NuiModuleError("not a web URL"))); return }
+                guard let self, let window = self.topController?.view.window else { reply(.failure(NuiModuleError("no screen"))); return }
+                let s = ASWebAuthenticationSession(url: url, callbackURLScheme: scheme.isEmpty ? nil : scheme) { [weak self] callback, error in
+                    DispatchQueue.main.async {
+                        self?.authSessions[id] = nil
+                        if let callback { reply(.success(Data(callback.absoluteString.utf8))); return }
+                        if let e = error as? ASWebAuthenticationSessionError, e.code == .canceledLogin {
+                            reply(.failure(NuiModuleError("canceled"))); return
+                        }
+                        reply(.failure(error ?? NuiModuleError("canceled")))
+                    }
+                }
+                let anchor = NuiAuthAnchor(window)
+                s.presentationContextProvider = anchor
+                s.prefersEphemeralWebBrowserSession = flags & 1 != 0
+                self.authSessions[id] = (s, anchor, reply)
+                if !s.start() {
+                    self.authSessions[id] = nil
+                    reply(.failure(NuiModuleError("couldn't start the sign-in")))
+                }
+            },
+            // args: u32 session: closes it; its start answers "canceled".
+            "cancel": { [weak self] args, reply in
+                guard args.count >= 4 else { reply(.success(Data())); return }
+                let id = args.withUnsafeBytes { b -> UInt32 in var r = NuiReader(b); return r.u32() }
+                if let (s, _, start) = self?.authSessions.removeValue(forKey: id) {
+                    s.cancel()
+                    start(.failure(NuiModuleError("canceled")))
+                }
+                reply(.success(Data()))
+            },
+        ]
+        #endif
         #if NUI_PHOTOS
         modules["photos"] = [
             // args: u8 limit (0: one); result: the picked images' files, a
@@ -189,6 +237,15 @@ struct NuiModuleError: LocalizedError {
         ]
     }
 }
+
+#if NUI_WEBAUTH
+/// Where a sign-in's sheet is shown: the app's window.
+final class NuiAuthAnchor: NSObject, ASWebAuthenticationPresentationContextProviding {
+    let window: UIWindow
+    init(_ w: UIWindow) { window = w }
+    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor { window }
+}
+#endif
 
 #if NUI_PHOTOS
 /// Copies the picked images to files (the picker's are temporary).

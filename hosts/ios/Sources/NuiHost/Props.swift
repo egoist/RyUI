@@ -7,25 +7,17 @@ import NuiOps
 func nuiColor(_ v: UInt64) -> UIColor? {
     switch v >> 32 {
     case 1:
-        switch NuiSemanticColor(rawValue: Int32(truncatingIfNeeded: v & 0xffff_ffff)) {
-        case .label: return .label
-        case .secondaryLabel: return .secondaryLabel
-        case .tertiaryLabel: return .tertiaryLabel
-        case .background: return .systemBackground
-        case .secondaryBackground: return .secondarySystemBackground
-        case .groupedBackground: return .systemGroupedBackground
-        case .separator: return .separator
-        case .accent: return .tintColor
-        case .red: return .systemRed
-        case .orange: return .systemOrange
-        case .yellow: return .systemYellow
-        case .green: return .systemGreen
-        case .blue: return .systemBlue
-        case .purple: return .systemPurple
-        case .pink: return .systemPink
-        case .gray: return .systemGray
-        case .clear: return .clear
-        default: return nil
+        // Its opacity (Color.Opacity) is in bits 24-31, as transparency.
+        let a = 255 - CGFloat((v >> 24) & 0xff)
+        let semantic = NuiSemanticColor(rawValue: Int32(truncatingIfNeeded: v & 0xffff))
+        if a == 255 { return semanticColor(semantic) }
+        // The tint color resolves against a view's tint, which a color
+        // made from it can't: the app's accent, or UIKit's default tint.
+        guard let c = semantic == .accent ? (nuiAccent ?? .systemBlue) : semanticColor(semantic) else { return nil }
+        // Each appearance's color, its alpha times a.
+        return UIColor { t in
+            let r = c.resolvedColor(with: t)
+            return r.withAlphaComponent(r.cgColor.alpha * a / 255)
         }
     case 2:
         let c = UInt32(truncatingIfNeeded: v)
@@ -33,6 +25,33 @@ func nuiColor(_ v: UInt64) -> UIColor? {
                        blue: CGFloat((c >> 8) & 0xff) / 255, alpha: CGFloat(c & 0xff) / 255)
     default:
         return nil
+    }
+}
+
+/// The app's accent (the Accent command's), for colors made from it.
+var nuiAccent: UIColor?
+
+func semanticColor(_ c: NuiSemanticColor?) -> UIColor? {
+    switch c {
+    case .label: return .label
+    case .secondaryLabel: return .secondaryLabel
+    case .tertiaryLabel: return .tertiaryLabel
+    case .background: return .systemBackground
+    case .secondaryBackground: return .secondarySystemBackground
+    case .groupedBackground: return .systemGroupedBackground
+    case .separator: return .separator
+    case .accent: return .tintColor
+    case .red: return .systemRed
+    case .orange: return .systemOrange
+    case .yellow: return .systemYellow
+    case .green: return .systemGreen
+    case .blue: return .systemBlue
+    case .purple: return .systemPurple
+    case .pink: return .systemPink
+    case .gray: return .systemGray
+    case .clear: return .clear
+    case .secondaryGroupedBackground: return .secondarySystemGroupedBackground
+    default: return nil
     }
 }
 
@@ -156,7 +175,8 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             animated(view) { view.backgroundColor = c }
         case NuiProp.cornerRadius:
             view.layer.cornerCurve = .continuous
-            let r = CGFloat(v.float)
+            n.cornerRadius = CGFloat(v.float)
+            let r = n.clampedRadius
             animated(view) { view.layer.cornerRadius = r }
             n.updateLayers()
         case NuiProp.borderWidth: view.layer.borderWidth = CGFloat(v.float)

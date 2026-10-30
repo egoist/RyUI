@@ -3,6 +3,7 @@ package dev.nui
 import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Context
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.text.Editable
@@ -49,6 +50,8 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
         private set
     /** The context the theme is made on: the app's, in the current configuration. */
     private var themeBase: Context = app.createConfigurationContext(app.resources.configuration)
+    /** The app's appearance (the ColorScheme command's), over the system's. */
+    private var colorScheme = NuiColorScheme.SYSTEM
     /** The app's accent color (nui.json's), the seed of its color scheme; null: Material's. */
     var accent: Int? = null
         private set
@@ -92,10 +95,47 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
         if (c == accent && wallpaper == wallpaperColors) return
         accent = c
         wallpaperColors = wallpaper
-        themeBase = app.createConfigurationContext(app.resources.configuration)
+        themeBase = app.createConfigurationContext(schemed(activity?.resources?.configuration ?: app.resources.configuration))
         themed = theme(themeBase)
         themeVersion++
         restyleAll(true)
+    }
+
+    /** config in the app's color scheme: night or not, as the app asked, or as the system is. */
+    fun schemed(config: android.content.res.Configuration): android.content.res.Configuration {
+        val night = when (colorScheme) {
+            NuiColorScheme.LIGHT -> android.content.res.Configuration.UI_MODE_NIGHT_NO
+            NuiColorScheme.DARK -> android.content.res.Configuration.UI_MODE_NIGHT_YES
+            else -> return config
+        }
+        return android.content.res.Configuration(config).apply {
+            uiMode = (uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK.inv()) or night
+        }
+    }
+
+    /** Whether config, in the app's color scheme, is dark. */
+    fun isNight(config: android.content.res.Configuration) =
+        (schemed(config).uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+
+    /**
+     * Shows the app light or dark, or as the system is (the ColorScheme
+     * command): AppCompat's night mode, which the Activity (its
+     * resources, system bars) follows, and the theme the views are made
+     * with, which is the process's.
+     */
+    private fun setColorScheme(s: Int) {
+        if (s == colorScheme) return
+        colorScheme = s
+        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(when (s) {
+            NuiColorScheme.LIGHT -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
+            NuiColorScheme.DARK -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
+            else -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+        })
+        // AppCompat tells the Activity (it handles uiMode) when it's
+        // shown; the views follow now either way.
+        val a = activity
+        if (a != null) a.schemeChanged() else configurationChanged(app.resources.configuration)
     }
     val nodes = HashMap<Int, NuiNode>()
     var rootID = 0
@@ -290,6 +330,13 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
 
     /** The app was opened with url (its scheme, an app link): ui.OnOpenURL gets it, once the core started. */
     fun openURL(url: String) {
+        // A sign-in's callback (webAuth): its answer, not the app's link.
+        val a = auth
+        if (a != null && a.scheme.isNotEmpty() && Uri.parse(url).scheme.equals(a.scheme, ignoreCase = true)) {
+            auth = null
+            a.reply(Result.success(url.toByteArray()))
+            return
+        }
         if (!started) { pendingURLs.add(url); return }
         send(NuiEvents.incomingURL(rootID, url))
     }
@@ -305,10 +352,24 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
         if (started) send(NuiEvents.lifecycle(rootID, state.toLong()))
     }
 
+    /** The webAuth module's sign-in under way. */
+    var auth: NuiAuth? = null
+
+    /** The Activity was paused: a sign-in's tab may be over it. */
+    fun paused() { auth?.away = true }
+
+    /** The Activity is back: a sign-in's tab closed without a callback is canceled. */
+    fun resumed() {
+        val a = auth ?: return
+        if (!a.away) return
+        auth = null
+        a.reply(Result.failure(Exception("canceled")))
+    }
+
     /** The configuration changed (dark mode, font scale): restyle what the theme decided. */
-    fun configurationChanged(config: android.content.res.Configuration) {
-        val night = (config.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-            android.content.res.Configuration.UI_MODE_NIGHT_YES
+    fun configurationChanged(system: android.content.res.Configuration) {
+        val config = schemed(system)
+        val night = isNight(config)
         themeBase = app.createConfigurationContext(config)
         themed = theme(themeBase)
         density = config.densityDpi / 160f
@@ -351,6 +412,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
                 n.list?.restyle()
                 (n.view as? NuiStack)?.restyle()
                 (n.view as? NuiTabs)?.restyle()
+                (n.view as? NuiSegmented)?.restyle()
             }
         }
     }
@@ -733,6 +795,7 @@ class NuiRuntime private constructor(val app: Application) : NuiOpHandler {
                 val flags = args.get().toInt()
                 setAccent(if (c != 0L) color(c) else null, flags and 1 != 0)
             }
+            NuiCommand.COLOR_SCHEME -> if (args.remaining() > 0) setColorScheme(args.get().toInt())
             NuiCommand.CALL -> call(id, args)
             NuiCommand.FRAMES -> setFrames(args.remaining() > 0 && args.get().toInt() == 1)
             NuiCommand.PLAY -> (n.view as? NuiVideo)?.player?.play()

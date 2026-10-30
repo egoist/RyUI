@@ -28,11 +28,11 @@ open class NuiActivity : AppCompatActivity() {
     private var last: NuiEnvironment? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
+        runtime = NuiRuntime.get(this)
+        edgeToEdge()
         super.onCreate(savedInstanceState)
         frame = FrameLayout(this)
         setContentView(frame)
-        runtime = NuiRuntime.get(this)
         onBackPressedDispatcher.addCallback(this, runtime.back)
 
         ViewCompat.setOnApplyWindowInsetsListener(frame) { _, insets ->
@@ -87,7 +87,7 @@ open class NuiActivity : AppCompatActivity() {
             keyboard = keyboard / d,
             scale = d,
             fontScale = c.fontScale,
-            dark = (c.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES,
+            dark = runtime.isNight(c),
             reduceMotion = !android.animation.ValueAnimator.areAnimatorsEnabled(),
             locale = c.locales[0].toLanguageTag(),
         )
@@ -98,11 +98,29 @@ open class NuiActivity : AppCompatActivity() {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        enableEdgeToEdge() // status bar icons follow dark mode
-        runtime.configurationChanged(newConfig)
+        configured(newConfig)
+    }
+
+    /** The app's color scheme changed (ui.SetColorScheme). */
+    fun schemeChanged() = configured(resources.configuration)
+
+    private fun configured(config: Configuration) {
+        edgeToEdge() // status bar icons follow dark mode
+        runtime.configurationChanged(config)
         window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(
             com.google.android.material.color.MaterialColors.getColor(runtime.themed, com.google.android.material.R.attr.colorSurface, 0)))
         frame.post { sendEnvironment() }
+    }
+
+    /** Edge to edge, the system bars' icons light or dark as the app is (its color scheme, or the system's). */
+    private fun edgeToEdge() {
+        val dark = { r: android.content.res.Resources -> runtime.isNight(r.configuration) }
+        val clear = android.graphics.Color.TRANSPARENT
+        // androidx.activity's default scrims, for the navigation bar's buttons.
+        enableEdgeToEdge(
+            androidx.activity.SystemBarStyle.auto(clear, clear, dark),
+            androidx.activity.SystemBarStyle.auto(android.graphics.Color.argb(0xe6, 0xff, 0xff, 0xff), android.graphics.Color.argb(0x80, 0x1b, 0x1b, 0x1b), dark),
+        )
     }
 
     // singleTask: a URL that opens the running app comes here.
@@ -118,6 +136,16 @@ open class NuiActivity : AppCompatActivity() {
         // one, then closed): take them back.
         if (runtime.activity != null && runtime.activity !== this) frame.post { runtime.attach(this) }
         runtime.lifecycle(NuiLifecycle.FOREGROUND)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        runtime.paused()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        runtime.resumed()
     }
 
     override fun onStop() {

@@ -229,6 +229,7 @@ var Schema = SchemaDef{
 			{Name: "LineJoin", Type: TEnum, Enum: "LineJoin"},
 			{Name: "TrimStart", Type: TFloat, Doc: "the part of the outline drawn: from 0 (its start) to 1 (its end); animatable"},
 			{Name: "TrimEnd", Type: TFloat},
+			{Name: "Dash", Type: TBytes, Doc: "a dashed stroke: f32 phase, then f32 lengths, drawn and skipped in turn (points); empty: solid"},
 		}, Doc: "a drawn outline (CAShapeLayer; a Path on Android's canvas), filled and/or stroked"},
 		{Name: "Video", Props: []PropDef{
 			{Name: "Source", Type: TString, Doc: "an http(s) URL (a file, an HLS stream), or a file in the app's assets"},
@@ -316,6 +317,7 @@ var Schema = SchemaDef{
 		{Name: "ScrollToOffset", Doc: "args: f32 x, f32 y (points from the content's top left; clamped, so a large one is the end), u8 animated; sent to a Scroll or List"},
 		{Name: "Accent", Doc: "args: u64 Color (0: the platform's), u8 flags (1: on Android, the wallpaper's colors where the system has them); sent to the root when it mounts: the app's accent color, which the platform's controls and Accent take (iOS: the tint color; Android: a Material 3 color scheme made from it)"},
 		{Name: "WebNavigate", Doc: "args: u8 0 back, 1 forward, 2 reload, 3 stop; sent to a WebView"},
+		{Name: "ColorScheme", Doc: "args: u8 ColorScheme; sent to the root: the app shows light or dark whatever the system's setting, or follows it again (iOS: the windows' overrideUserInterfaceStyle; Android: AppCompat's night mode)"},
 	},
 	Enums: []EnumDef{
 		{Name: "Role", Values: []string{"None", "Button", "Header", "Image", "Link", "Text", "Search"}},
@@ -340,6 +342,7 @@ var Schema = SchemaDef{
 		{Name: "LineCap", Values: []string{"Butt", "Round", "Square"}},
 		{Name: "LineJoin", Values: []string{"Miter", "Round", "Bevel"}},
 		{Name: "AnimationCurve", Values: []string{"EaseInOut", "Linear", "EaseIn", "EaseOut", "Spring"}},
-		{Name: "SemanticColor", Values: []string{"None", "Label", "SecondaryLabel", "TertiaryLabel", "Background", "SecondaryBackground", "GroupedBackground", "Separator", "Accent", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink", "Gray", "Clear"}},
+		{Name: "ColorScheme", Values: []string{"System", "Light", "Dark"}},
+		{Name: "SemanticColor", Values: []string{"None", "Label", "SecondaryLabel", "TertiaryLabel", "Background", "SecondaryBackground", "GroupedBackground", "Separator", "Accent", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink", "Gray", "Clear", "SecondaryGroupedBackground"}},
 	},
 }

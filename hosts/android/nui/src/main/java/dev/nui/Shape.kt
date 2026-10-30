@@ -34,6 +34,20 @@ class NuiShape(private val rt: NuiRuntime) : View(rt.themed) {
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
     }
 
+    /** Dashes the stroke: f32 phase, then the lengths, in points; empty: solid. */
+    fun setDash(b: ByteBuffer) {
+        val r = b.duplicate().order(ByteOrder.LITTLE_ENDIAN)
+        val d = rt.density
+        if (r.remaining() < 8) { strokePaint.pathEffect = null; invalidate(); return }
+        val phase = r.float * d
+        var lengths = FloatArray(r.remaining() / 4) { r.float * d }
+        // DashPathEffect needs an even count; SwiftUI and Core Graphics
+        // repeat an odd one, as SVG does.
+        if (lengths.size % 2 == 1) lengths += lengths
+        strokePaint.pathEffect = android.graphics.DashPathEffect(lengths, phase)
+        invalidate()
+    }
+
     fun setLineWidth(points: Float) { strokePaint.strokeWidth = points * rt.density; invalidate() }
 
     fun setCap(cap: Int) {
@@ -151,6 +165,7 @@ fun NuiRuntime.setShapeProp(n: NuiNode, prop: Int, v: Any): Boolean {
         NuiProp.Shape.LINE_JOIN -> s.setJoin(v as Int)
         NuiProp.Shape.TRIM_START -> s.setTrim(0, (v as Double).toFloat())
         NuiProp.Shape.TRIM_END -> s.setTrim(1, (v as Double).toFloat())
+        NuiProp.Shape.DASH -> s.setDash(v as ByteBuffer)
         else -> return false
     }
     return true

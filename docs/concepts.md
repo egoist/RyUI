@@ -372,6 +372,12 @@ Its fields:
 - `Dark`: dark mode is on.
 - `ReduceMotion`: the user asked for less motion (iOS's Reduce Motion,
   Android's animations off). See [Motion](motion.md).
+- `Platform`: `ui.PlatformIOS` or `ui.PlatformAndroid`, the system the
+  app runs on (the device's, also in `nui dev`, where the Go code runs
+  on the Mac). The platform's views look as they should by themselves;
+  use it for what an app draws itself, to follow each platform's
+  design, as [`examples/usage`](../examples/usage) draws UIKit's inset
+  grouped lists on iOS and Material 3's on Android.
 - `Locale`: the user's locale.
 - `TimeZone`: the device's time zone, by its IANA name. nui makes it
   Go's `time.Local`, so `time.Now().Format` shows the device's time.

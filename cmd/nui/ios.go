@@ -210,6 +210,7 @@ var iosFeatures = []struct{ flag, symbol string }{
 	{"NUI_VIDEO", "github.com/egoist/nui/ui.Video"},
 	{"NUI_PHOTOS", "github.com/egoist/nui/device.PickPhotos"},
 	{"NUI_BROWSER", "github.com/egoist/nui/device.Browse"},
+	{"NUI_WEBAUTH", "github.com/egoist/nui/webauth.Start"},
 	{"NUI_LOCATION", "github.com/egoist/nui/location.Current"},
 	{"NUI_LOCATION", "github.com/egoist/nui/location.Watch"},
 	{"NUI_NOTIFY", "github.com/egoist/nui/notify.Request"},

@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/egoist/nui/internal/boot"
@@ -295,6 +296,57 @@ func TestShape(t *testing.T) {
 	r.Flush()
 	if s.Float(ops.PropShapeTrimEnd) != 1 || len(h.Commands(ops.CmdAnimateBegin)) != 1 {
 		t.Fatalf("trim %v, %s", s.Float(ops.PropShapeTrimEnd), h.Log())
+	}
+	if _, ok := s.Props[ops.PropShapeDash]; ok {
+		t.Fatal("a solid stroke sent a dash")
+	}
+}
+
+func TestShapeDash(t *testing.T) {
+	h, _ := mount(t, func() ui.Node {
+		return ui.Shape(ui.ShapeProps{
+			Path:   func(w, h float32) *ui.Path { return new(ui.Path).MoveTo(0, h/2).LineTo(w, h/2) },
+			Stroke: ui.Accent, Dash: []float32{6, 4}, DashPhase: 2,
+			Style: ui.Style{Width: ui.Pt(100), Height: ui.Pt(10)},
+		})
+	})
+	b := h.OfKind(ops.KindShape)[0].Props[ops.PropShapeDash].Bytes
+	var got []float32
+	for i := 0; i+4 <= len(b); i += 4 {
+		got = append(got, math.Float32frombits(binary.LittleEndian.Uint32(b[i:])))
+	}
+	if !slices.Equal(got, []float32{2, 6, 4}) {
+		t.Fatalf("dash %v", got)
+	}
+}
+
+func TestColorScheme(t *testing.T) {
+	h, r := mount(t, func() ui.Node { return ui.StaticText("hi") })
+	scheme := func() []byte {
+		c := h.Commands(ops.CmdColorScheme)
+		if len(c) == 0 {
+			return nil
+		}
+		return c[len(c)-1].Value.Bytes
+	}
+	if scheme() != nil {
+		t.Fatal("following the system sent a command")
+	}
+	ui.SetColorScheme(ui.ColorSchemeDark)
+	ui.SetColorScheme(ui.ColorSchemeDark)
+	r.Flush()
+	if c := h.Commands(ops.CmdColorScheme); len(c) != 1 || c[0].Value.Bytes[0] != byte(ops.ColorSchemeDark) {
+		t.Fatalf("dark: %s", h.Log())
+	}
+	// A root mounted later is told too.
+	h2, _ := mount(t, func() ui.Node { return ui.StaticText("later") })
+	if c := h2.Commands(ops.CmdColorScheme); len(c) != 1 || c[0].Value.Bytes[0] != byte(ops.ColorSchemeDark) {
+		t.Fatalf("a later root: %s", h2.Log())
+	}
+	ui.SetColorScheme(ui.ColorSchemeSystem)
+	r.Flush()
+	if s := scheme(); len(s) != 1 || s[0] != byte(ops.ColorSchemeSystem) {
+		t.Fatalf("back to the system's: %v", s)
 	}
 }
 

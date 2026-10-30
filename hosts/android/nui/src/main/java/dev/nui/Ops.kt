@@ -235,6 +235,7 @@ object NuiProp {
         const val LINE_JOIN = 69
         const val TRIM_START = 70
         const val TRIM_END = 71
+        const val DASH = 72
     }
 
     object Video {
@@ -327,6 +328,7 @@ object NuiCommand {
     const val SCROLL_TO_OFFSET = 19
     const val ACCENT = 20
     const val WEB_NAVIGATE = 21
+    const val COLOR_SCHEME = 22
 }
 
 object NuiRole {
@@ -507,6 +509,12 @@ object NuiAnimationCurve {
     const val SPRING = 4
 }
 
+object NuiColorScheme {
+    const val SYSTEM = 0
+    const val LIGHT = 1
+    const val DARK = 2
+}
+
 object NuiSemanticColor {
     const val NONE = 0
     const val LABEL = 1
@@ -526,6 +534,7 @@ object NuiSemanticColor {
     const val PINK = 15
     const val GRAY = 16
     const val CLEAR = 17
+    const val SECONDARY_GROUPED_BACKGROUND = 18
 }
 
 /** Receives decoded ops, in order, on the main thread. */
@@ -610,6 +619,8 @@ data class NuiEnvironment(
     val fontScale: Float = 1f,
     val dark: Boolean = false,
     val reduceMotion: Boolean = false,
+    /** ops.Platform: this host's, Android. */
+    val platform: Int = 2,
     val locale: String = "",
     val timeZone: String = java.util.TimeZone.getDefault().id,
 )
@@ -635,7 +646,7 @@ class NuiWriter {
     fun header(id: Int, kind: Int) { u32(id); u16(kind) }
     fun environment(e: NuiEnvironment) {
         for (f in floatArrayOf(e.width, e.height, e.safeTop, e.safeRight, e.safeBottom, e.safeLeft, e.keyboard, e.scale, e.fontScale)) f32(f)
-        u8((if (e.dark) 1 else 0) or (if (e.reduceMotion) 2 else 0))
+        u8((if (e.dark) 1 else 0) or (if (e.reduceMotion) 2 else 0) or ((e.platform and 3) shl 2))
         string(e.locale)
         string(e.timeZone)
     }

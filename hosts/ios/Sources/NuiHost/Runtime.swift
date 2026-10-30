@@ -1,5 +1,8 @@
 #if canImport(UIKit)
 import UIKit
+#if NUI_WEBAUTH
+import AuthenticationServices
+#endif
 #if canImport(NuiOps)
 import NuiOps
 #endif
@@ -22,6 +25,9 @@ import CNui
     var fontFamily = ""
     var color: UInt64 = 0
     var borderColor: UInt64 = 0
+    /// Style.CornerRadius as set; the layer's is at most half the view's
+    /// shorter side, as CSS and Android clamp it (999: a capsule).
+    var cornerRadius: CGFloat = 0
     var list: NuiList?
     weak var cell: NuiListCell?
 
@@ -183,6 +189,13 @@ final class NuiTextField: UITextField {
     var pendingURLs: [URL] = []
     /// The app's accent color (nui.json's), nil for the system's: the tint color.
     var accent: UIColor?
+    /// The app's appearance (the ColorScheme command's): the windows' override.
+    var colorScheme = UIUserInterfaceStyle.unspecified
+    #if NUI_WEBAUTH
+    /// The webAuth module's sign-ins under way: each session, what presents
+    /// it, and its start's reply.
+    var authSessions: [UInt32: (ASWebAuthenticationSession, NuiAuthAnchor, (Result<Data, Error>) -> Void)] = [:]
+    #endif
     /// Views coming in with a transition in the batch being applied.
     var entering: [(NuiNode, (Double, Int32))] = []
     /// Views going out with a transition, still shown.
@@ -497,11 +510,21 @@ final class NuiTextField: UITextField {
     /// accent color take; rich texts typeset their links again.
     func setAccent(_ c: UIColor?) {
         accent = c
+        nuiAccent = c
         for case let s as UIWindowScene in UIApplication.shared.connectedScenes {
             for w in s.windows { w.tintColor = c }
         }
         NuiLayoutCache.shared.clear()
         for n in nodes.values { (n.view as? NuiRichTextView)?.invalidate() }
+    }
+
+    /// Shows the windows light or dark, or as the system is (.system):
+    /// the trait change restyles the views and reports the environment.
+    func setColorScheme(_ s: NuiColorScheme) {
+        colorScheme = s == .dark ? .dark : s == .light ? .light : .unspecified
+        for case let scene as UIWindowScene in UIApplication.shared.connectedScenes {
+            for w in scene.windows { w.overrideUserInterfaceStyle = colorScheme }
+        }
     }
 
     public func listen(_ id: UInt32, event: UInt16) {
@@ -624,6 +647,9 @@ final class NuiTextField: UITextField {
             guard args.count >= 8 else { return }
             var r = NuiReader(args)
             setAccent(nuiColor(r.u64()))
+        case .colorScheme:
+            guard let v = args.first else { return }
+            setColorScheme(NuiColorScheme(rawValue: Int32(v)) ?? .system)
         case .listUpdate:
             var r = NuiReader(args)
             let count = Int(r.u32())

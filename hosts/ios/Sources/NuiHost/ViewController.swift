@@ -42,6 +42,7 @@ public final class NuiViewController: UIViewController {
         super.viewWillAppear(animated)
         NuiRuntime.shared.adoptControllers(in: self)
         if let c = NuiRuntime.shared.accent { view.window?.tintColor = c }
+        if NuiRuntime.shared.colorScheme != .unspecified { view.window?.overrideUserInterfaceStyle = NuiRuntime.shared.colorScheme }
     }
 
     public override func viewDidLayoutSubviews() {

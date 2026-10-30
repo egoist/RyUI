@@ -232,6 +232,7 @@ public enum NuiProp {
         public static let lineJoin: UInt16 = 69
         public static let trimStart: UInt16 = 70
         public static let trimEnd: UInt16 = 71
+        public static let dash: UInt16 = 72
     }
 
     public enum Video {
@@ -324,6 +325,7 @@ public enum NuiCommand: UInt16 {
     case scrollToOffset = 19
     case accent = 20
     case webNavigate = 21
+    case colorScheme = 22
 }
 
 public enum NuiRole: Int32 {
@@ -504,6 +506,12 @@ public enum NuiAnimationCurve: Int32 {
     case spring = 4
 }
 
+public enum NuiColorScheme: Int32 {
+    case system = 0
+    case light = 1
+    case dark = 2
+}
+
 public enum NuiSemanticColor: Int32 {
     case none = 0
     case label = 1
@@ -523,6 +531,7 @@ public enum NuiSemanticColor: Int32 {
     case pink = 15
     case gray = 16
     case clear = 17
+    case secondaryGroupedBackground = 18
 }
 
 /// A prop value. Bytes are valid only during the handler call.
@@ -631,6 +640,8 @@ public struct NuiEnvironment: Equatable {
     public var fontScale: Float = 1
     public var dark = false
     public var reduceMotion = false
+    /// ops.Platform: this host's, iOS.
+    public var platform: UInt8 = 1
     public var locale = ""
     public var timeZone = TimeZone.current.identifier
     public init() {}
@@ -650,7 +661,7 @@ public struct NuiWriter {
     public mutating func header(_ id: UInt32, _ kind: UInt16) { u32(id); u16(kind) }
     public mutating func environment(_ e: NuiEnvironment) {
         for f in [e.width, e.height, e.safeTop, e.safeRight, e.safeBottom, e.safeLeft, e.keyboard, e.scale, e.fontScale] { f32(f) }
-        u8((e.dark ? 1 : 0) | (e.reduceMotion ? 2 : 0))
+        u8((e.dark ? 1 : 0) | (e.reduceMotion ? 2 : 0) | (e.platform & 3) << 2)
         string(e.locale)
         string(e.timeZone)
     }

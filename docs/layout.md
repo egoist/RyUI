@@ -220,7 +220,8 @@ A `ui.Color` is one of:
   colors, Material 3's color roles), so it follows dark mode:
   - text: `ui.Label`, `ui.SecondaryLabel`, `ui.TertiaryLabel`;
   - backgrounds: `ui.SystemBackground`, `ui.SecondaryBackground`,
-    `ui.GroupedBackground`;
+    `ui.GroupedBackground`, and `ui.SecondaryGroupedBackground` for
+    a grouped list's rows on it (iOS's inset grouped cells);
   - `ui.Separator`, `ui.Accent` (the app's accent), `ui.Clear`
     (transparent);
   - the system's hues: `ui.Red`, `ui.Orange`, `ui.Yellow`, `ui.Green`,
@@ -235,6 +236,11 @@ ui.Column(ui.Style{Padding: ui.All(16), Gap: 4, Background: ui.SystemBackground,
 	ui.StaticText("Details", ui.Style{Font: ui.Subheadline, Color: ui.SecondaryLabel}),
 )
 ```
+
+`c.Opacity(a)` is a color drawn at an opacity from 0 to 1 (SwiftUI's
+`.opacity`, Compose's `copy(alpha =)`). A semantic color stays one, so
+`ui.Accent.Opacity(0.15)` is a tint of the accent in light and dark
+alike: a chip's background, a chart's fill, a track.
 
 `Color` is the text's color, or a control's tint.
 
@@ -398,3 +404,23 @@ Android (Android 12 and later). With `"android": {"dynamicColor": true}`,
 Android takes the colors from the user's wallpaper where the system has
 them, as Material apps do. Without an accent, the platform's is used.
 See [Shipping](shipping.md#nuijson).
+
+## Light and dark
+
+The app follows the system's appearance. `ui.SetColorScheme` shows it
+light or dark whatever the system's is, as an app's own appearance
+setting does (SwiftUI's `preferredColorScheme`; on Android, AppCompat's
+night mode), and `ui.ColorSchemeSystem` follows the system again. The
+semantic colors, the platform's controls and the system bars follow,
+without remaking the app, and `ui.UseEnvironment()`'s `Dark` says which
+it is. Keep the choice with [`store`](data.md) and set it as the app
+starts:
+
+```go
+var scheme = store.Signal("colorScheme", int(ui.ColorSchemeSystem))
+
+func App() ui.Node {
+	ui.SetColorScheme(ui.ColorScheme(scheme.Peek()))
+	// ...
+}
+```

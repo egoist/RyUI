@@ -115,6 +115,14 @@ final class NuiShapeView: UIView {
             s.shape.lineJoin = NuiLineJoin(rawValue: v.enumValue) == .round ? .round : NuiLineJoin(rawValue: v.enumValue) == .bevel ? .bevel : .miter
         case NuiProp.Shape.trimStart: s.set("strokeStart", CGFloat(v.float), animation)
         case NuiProp.Shape.trimEnd: s.set("strokeEnd", CGFloat(v.float), animation)
+        case NuiProp.Shape.dash:
+            // f32 phase, then the lengths.
+            guard case .bytes(let b) = v, b.count >= 8 else { s.shape.lineDashPattern = nil; return true }
+            var r = NuiReader(b)
+            s.shape.lineDashPhase = CGFloat(r.f32())
+            var lengths = [NSNumber]()
+            while r.p + 4 <= r.end { lengths.append(NSNumber(value: r.f32())) }
+            s.shape.lineDashPattern = lengths
         default: return false
         }
         return true

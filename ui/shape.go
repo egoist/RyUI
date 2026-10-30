@@ -95,7 +95,12 @@ type ShapeProps struct {
 	// to 1; nil: all of it): a progress ring, a line that draws itself.
 	// Changing it in Animate animates it.
 	TrimStart, TrimEnd signal.Accessor[float32]
-	Style              Styler
+	// Dash dashes the stroke: lengths in points, drawn and skipped in
+	// turn (SwiftUI's StrokeStyle.dash, Compose's dashPathEffect); nil:
+	// solid. DashPhase is how far into the pattern it starts.
+	Dash      []float32
+	DashPhase float32
+	Style     Styler
 }
 
 // Shape draws an outline: filled, stroked or both (SwiftUI's Shape and
@@ -121,6 +126,13 @@ func Shape(p ShapeProps) Node {
 	}
 	if p.LineJoin != JoinMiter {
 		b.SetEnum(e.id, ops.PropShapeLineJoin, int32(p.LineJoin))
+	}
+	if len(p.Dash) > 0 {
+		d := binary.LittleEndian.AppendUint32(make([]byte, 0, 4*(len(p.Dash)+1)), math.Float32bits(p.DashPhase))
+		for _, l := range p.Dash {
+			d = binary.LittleEndian.AppendUint32(d, math.Float32bits(l))
+		}
+		b.SetBytes(e.id, ops.PropShapeDash, d)
 	}
 	bind(p.TrimStart, func(v float32) { e.r.batch.SetFloat(e.id, ops.PropShapeTrimStart, float64(v)) })
 	bind(p.TrimEnd, func(v float32) { e.r.batch.SetFloat(e.id, ops.PropShapeTrimEnd, float64(v)) })

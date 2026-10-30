@@ -248,6 +248,44 @@ func Player() ui.Node {
 }
 ```
 
+## Signing in on the web: nui/webauth
+
+`webauth.Start` shows a sign-in page in the system's own sign-in sheet:
+`ASWebAuthenticationSession` on iOS (SwiftUI's
+`webAuthenticationSession`), a Custom Tab on Android. It's the
+browser's, so the user's sessions, passkeys and password autofill work
+in it, and providers that refuse an app's own `WebView` (Google's
+sign-in) don't refuse it. Use it for OAuth rather than a `ui.WebView`.
+
+```go
+s := webauth.Start(webauth.Options{URL: authorizeURL, CallbackScheme: "myapp"},
+	func(callback string, err error) {
+		if errors.Is(err, webauth.ErrCanceled) {
+			return // the user closed it
+		}
+		// callback is myapp://…?code=…: exchange the code.
+	})
+```
+
+It ends in one of two ways:
+
+- **A callback scheme.** When the page goes to a URL of
+  `CallbackScheme` (the app's own), the sheet closes and `done` gets the
+  URL. On Android the scheme must be the app's, nui.json's `scheme`; it
+  goes to `done` rather than `ui.OnOpenURL`.
+- **The app ends it.** Without a scheme, the page redirects somewhere
+  the app hears from: an OAuth server that allows a redirect to the
+  loopback interface (`http://localhost:port/callback`, RFC 8252) sends
+  the code to a server the app runs on that port, which calls
+  `s.Cancel()` to close the sheet. On Android, cancelling brings the app
+  back over the tab.
+
+`done` gets `webauth.ErrCanceled` when the user closes the sheet, or
+`Cancel` does. `Ephemeral` asks for a private session, without the
+browser's cookies (iOS's `prefersEphemeralWebBrowserSession`; Android's
+Custom Tabs keep them). [`examples/usage`](../examples/usage) signs in
+with Claude this way, with a loopback server.
+
 ## Copy, share and open: ui.Copy, ui.Share, ui.OpenURL
 
 Three calls in `ui` hand text to the system. All run on the main thread.

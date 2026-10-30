@@ -60,7 +60,9 @@ fun NuiRuntime.color(v: Long, fallback: Int = Color.TRANSPARENT): Int {
     return when (kind) {
         1 -> {
             fun attr(a: Int) = MaterialColors.getColor(themed, a, fallback)
-            when (c) {
+            // Its opacity (Color.Opacity) is in bits 24-31, as transparency.
+            val alpha = 255 - ((c ushr 24) and 0xff)
+            val resolved = when (c and 0xffff) {
                 NuiSemanticColor.LABEL -> attr(com.google.android.material.R.attr.colorOnSurface)
                 NuiSemanticColor.SECONDARY_LABEL -> attr(com.google.android.material.R.attr.colorOnSurfaceVariant)
                 NuiSemanticColor.TERTIARY_LABEL -> attr(com.google.android.material.R.attr.colorOutline)
@@ -78,8 +80,11 @@ fun NuiRuntime.color(v: Long, fallback: Int = Color.TRANSPARENT): Int {
                 NuiSemanticColor.PINK -> 0xFFC2185B.toInt()
                 NuiSemanticColor.GRAY -> 0xFF757575.toInt()
                 NuiSemanticColor.CLEAR -> Color.TRANSPARENT
+                NuiSemanticColor.SECONDARY_GROUPED_BACKGROUND -> attr(com.google.android.material.R.attr.colorSurfaceContainer)
                 else -> fallback
             }
+            if (alpha == 255) resolved
+            else androidx.core.graphics.ColorUtils.setAlphaComponent(resolved, Color.alpha(resolved) * alpha / 255)
         }
         2 -> Color.argb(c and 0xff, (c ushr 24) and 0xff, (c ushr 16) and 0xff, (c ushr 8) and 0xff)
         else -> fallback
