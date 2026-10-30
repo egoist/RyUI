@@ -26,6 +26,8 @@
   seed of the Material 3 color scheme on Android.
 - `scheme` opens the app for `myapp://` URLs, and `links` for https links
   to your domains (universal links, App Links); `ui.OnOpenURL` gets them.
+- `shareTarget` offers the app in other apps' share sheets, for text and
+  links; `ui.OnShare` gets them. Android only, for now.
 - `ios.usage` gives the purpose strings of protected resources
   (`NSCameraUsageDescription`...), and `ios.infoPlist` adds keys to
   Info.plist; `android.permissions` adds permissions.

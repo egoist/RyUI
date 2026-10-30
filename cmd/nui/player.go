@@ -167,6 +167,7 @@ func devIOSPlayer(app *goApp, tc *iosToolchain, work string, sim *simDevice, sto
 	proc := &hostProcess{app: app, work: work, env: []string{
 		fmt.Sprintf("NUI_REMOTE=127.0.0.1:%d", port),
 		"NUI_STATE=" + filepath.Join(work, "state.json"),
+		"NUI_DATA=" + filepath.Join(work, "data"), // the app's own: store.Dir, sqlite files
 		fmt.Sprintf("NUI_ASSETS_URL=http://127.0.0.1:%d/", port+1),
 		fmt.Sprintf("NUI_ASSETS_ADDR=127.0.0.1:%d", port+1),
 	}}
@@ -235,6 +236,7 @@ func devAndroidPlayer(app *goApp, tc *androidToolchain, work, serial string, sto
 	proc := &hostProcess{app: app, work: work, env: []string{
 		fmt.Sprintf("NUI_REMOTE=127.0.0.1:%d", port),
 		"NUI_STATE=" + filepath.Join(work, "state.json"),
+		"NUI_DATA=" + filepath.Join(work, "data"), // the app's own: store.Dir, sqlite files
 		"NUI_ASSETS_URL=" + assets,
 		fmt.Sprintf("NUI_ASSETS_ADDR=127.0.0.1:%d", port+1),
 	}}

@@ -552,8 +552,9 @@ const (
 // Haptic plays haptic feedback (UIFeedbackGenerator; Android's
 // performHapticFeedback).
 func Haptic(kind HapticKind) {
-	r := activeRoot()
-	r.batch.Command(r.el.id, ops.CmdHaptic, []byte{byte(kind)})
+	if r := activeRoot(); r != nil {
+		r.batch.Command(r.el.id, ops.CmdHaptic, []byte{byte(kind)})
+	}
 }
 
 // refreshable wires pull to refresh on a Scroll or List.
