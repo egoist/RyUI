@@ -852,6 +852,8 @@ Each one ends with its examples running and its tests in CI.
     assets from this machine), and `ImageProps.Placeholder`.
   - `examples/gallery` shows each; `examples/notes` is SQLite's.
 
+  docs/parity.md has what nui has against SwiftUI and Expo.
+
   Next:
   - More accessibility: adjustable custom controls, and checking every component with VoiceOver and
     TalkBack on a device.
