@@ -220,6 +220,7 @@ const (
 	PlatformIOS     = ops.PlatformIOS
 	PlatformAndroid = ops.PlatformAndroid
 	PlatformMacOS   = ops.PlatformMacOS
+	PlatformWindows = ops.PlatformWindows
 )
 
 // UseEnvironment is the environment of the screen (sheet, tab, or root)

@@ -10,6 +10,7 @@ import (
 func TestSearchQuery(t *testing.T) {
 	t.Setenv("NUI_DATA", t.TempDir()) // not the test binary's own data
 	openDB()
+	t.Cleanup(func() { db.Close() }) // Windows can't remove an open file
 	for _, s := range []string{"Buy milk", "Call Ada", "100% done", "a_b"} {
 		db.Exec(`insert into notes (text) values (?)`, s)
 	}

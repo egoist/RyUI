@@ -11,7 +11,7 @@ import (
 //
 // Wire format: f32 width, height, safe top, right, bottom, left,
 // keyboard, scale, font scale; u8 flags (1 dark, 2 reduce motion, bits
-// 2-3 the Platform); string locale; string time zone.
+// 2-4 the Platform); string locale; string time zone.
 type Environment struct {
 	Width, Height                            float32
 	SafeTop, SafeRight, SafeBottom, SafeLeft float32
@@ -33,6 +33,7 @@ const (
 	PlatformIOS
 	PlatformAndroid
 	PlatformMacOS
+	PlatformWindows
 )
 
 func (p Platform) String() string {
@@ -43,6 +44,8 @@ func (p Platform) String() string {
 		return "Android"
 	case PlatformMacOS:
 		return "macOS"
+	case PlatformWindows:
+		return "Windows"
 	}
 	return "unknown"
 }
@@ -106,7 +109,7 @@ func AppendEvent(buf []byte, e *Event) []byte {
 		for _, f := range [...]float32{v.Width, v.Height, v.SafeTop, v.SafeRight, v.SafeBottom, v.SafeLeft, v.Keyboard, v.Scale, v.FontScale} {
 			buf = le.AppendUint32(buf, math.Float32bits(f))
 		}
-		d := byte(v.Platform&3) << 2 // flags: 1 dark, 2 reduce motion, bits 2-3 the platform
+		d := byte(v.Platform&7) << 2 // flags: 1 dark, 2 reduce motion, bits 2-4 the platform
 		if v.Dark {
 			d |= 1
 		}
@@ -153,7 +156,7 @@ func DecodeEvent(data []byte) (Event, error) {
 			*f = r.f32()
 		}
 		f := r.u8()
-		v.Dark, v.ReduceMotion, v.Platform = f&1 != 0, f&2 != 0, Platform(f>>2&3)
+		v.Dark, v.ReduceMotion, v.Platform = f&1 != 0, f&2 != 0, Platform(f>>2&7)
 		v.Locale = string(r.bytes())
 		v.TimeZone = string(r.bytes())
 	case PGesture:
