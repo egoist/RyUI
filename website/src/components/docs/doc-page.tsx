@@ -22,7 +22,7 @@ export async function loadDocPage(slug: string, parent: Promise<{ loaderData?: N
 
 export function docHead(doc: Doc | null | undefined) {
   if (!doc) return {}
-  const title = doc.slug ? `${doc.title} · nui` : doc.title
+  const title = doc.slug ? `${doc.title} · RyUI` : doc.title
   return {
     meta: [
       { title },

@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/egoist/nui/markdown/parser"
-	"github.com/egoist/nui/signal"
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/markdown/parser"
+	"github.com/egoist/ryui/signal"
+	"github.com/egoist/ryui/ui"
 )
 
 // Props configures a View.

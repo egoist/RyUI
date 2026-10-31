@@ -5,8 +5,8 @@ package windows
 import (
 	"encoding/binary"
 
-	. "github.com/egoist/nui/internal/windows"
-	"github.com/egoist/nui/ops"
+	. "github.com/egoist/ryui/internal/windows"
+	"github.com/egoist/ryui/ops"
 )
 
 var le = binary.LittleEndian

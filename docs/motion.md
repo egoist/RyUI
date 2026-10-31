@@ -1,6 +1,6 @@
 # Motion and gestures
 
-nui animates with each platform's own machinery: UIView animations on
+RyUI animates with each platform's own machinery: UIView animations on
 iOS, animators on Android. You change state inside `ui.Animate`, and
 what that change moves on screen animates. This page covers animating
 changes, transitions in and out, shared elements, frame-driven
@@ -399,7 +399,7 @@ OnLongPress: func() { ui.Haptic(ui.HapticMedium) },
 ```
 
 On iOS these are `UIFeedbackGenerator`'s. Android has no exact
-equivalents: nui plays the closest of `performHapticFeedback`'s
+equivalents: RyUI plays the closest of `performHapticFeedback`'s
 constants, and success, warning and error are confirm and reject from
 Android 11; before that, a key press or a long press.
 
@@ -410,14 +410,14 @@ less motion: iOS's Reduce Motion, or Android's animations turned off
 (Developer options, or Accessibility, Remove animations). It changes as
 the user changes the setting.
 
-What nui does about it on its own:
+What RyUI does about it on its own:
 
 - **iOS**: transitions dissolve in place instead of moving or scaling,
   as UIKit's own do then, and shared elements (`Match`) don't fly: the
   views come and go with their transitions. Other animations run.
 - **Android**: the system's animator scale is 0, so every animation,
-  nui's and the platform's, ends at once.
+  RyUI's and the platform's, ends at once.
 
-What's left to you is motion nui can't tell is decorative: an `OnFrame`
+What's left to you is motion RyUI can't tell is decorative: an `OnFrame`
 loop (as the spinner above stops), a repeating pulse, an animation that
 moves something far. Read `ReduceMotion` and do less.

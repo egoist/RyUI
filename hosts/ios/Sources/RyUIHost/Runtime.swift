@@ -1,0 +1,720 @@
+#if canImport(UIKit)
+import UIKit
+#if RYUI_WEBAUTH
+import AuthenticationServices
+#endif
+#if canImport(RyUIOps)
+import RyUIOps
+#endif
+#if canImport(CRyUI)
+import CRyUI
+#endif
+
+/// A native view the core made, or a list cell the host made.
+@MainActor final class RyUINode {
+    let id: UInt32
+    let kind: RyUIKind?
+    var view: UIView // replaced only by a TextField made multiline
+    var children: [RyUINode] = []
+    weak var parent: RyUINode?
+    var listens = Set<UInt16>()
+
+    var textStyle: Int32 = 0
+    var fontSize: Float = 0
+    var fontWeight: Int32 = 0
+    var fontFamily = ""
+    var color: UInt64 = 0
+    var borderColor: UInt64 = 0
+    /// Style.CornerRadius as set; the layer's is at most half the view's
+    /// shorter side, as CSS and Android clamp it (999: a capsule).
+    var cornerRadius: CGFloat = 0
+    var list: RyUIList?
+    weak var cell: RyUIListCell?
+
+    // Navigation and presentation.
+    var vc: UIViewController?
+    var dying = false // being popped or dismissed: its views leave with it
+    var selected: Int?
+    var actions: [RyUIAction] = []
+    var swipeActions: [RyUIAction] = [] // a list cell's
+    var shadowColor: UIColor?
+    var transition: RyUITransition?
+    var match: String? // Style.Match's key
+    var zoomFrom: String? // a screen's ZoomFrom
+    var opacity: CGFloat = 1 // its own, as Style.Opacity sets it
+    var baseTransform: CGAffineTransform = .identity // Style.Transform's
+    var gradient: CAGradientLayer?
+    var material: UIVisualEffectView?
+    var search: RyUISearch? // a screen's search field
+    var gradientColors: [UIColor?] = []
+    var scrolls: RyUIScrollReporter? // a Scroll's or List's, when the core listens for Scrolled
+    var menuTrigger: Int32 = 0
+    var menuOverlay: UIButton?
+    var contextMenu: UIContextMenuInteraction?
+    var contextMenuDelegate: RyUIContextMenu?
+    var alertTitle: String?
+    var alertMessage: String?
+    var alertStyle: Int32 = 0
+    var imageSource: String?
+    var imageLoaded = false
+    var imagePlaceholder = ""
+    var native: RyUINativeView?
+
+    /// Whether an ancestor is being popped or dismissed.
+    var underDying: Bool {
+        var p = parent
+        while let n = p {
+            if n.dying { return true }
+            p = n.parent
+        }
+        return false
+    }
+
+    init(id: UInt32, kind: RyUIKind?, view: UIView) {
+        self.id = id
+        self.kind = kind
+        self.view = view
+    }
+
+    /// Where children's views go.
+    var container: UIView { cell?.contentView ?? view }
+
+    func insert(_ child: RyUINode, at index: Int) {
+        let i = min(index, children.count)
+        children.insert(child, at: i)
+        child.parent = self
+        let c = container
+        if i + 1 < children.count, children[i + 1].view.superview === c {
+            c.insertSubview(child.view, belowSubview: children[i + 1].view)
+        } else {
+            c.addSubview(child.view)
+        }
+        if let o = menuOverlay { c.bringSubviewToFront(o) }
+    }
+
+    func remove(_ child: RyUINode) {
+        if let i = children.firstIndex(where: { $0 === child }) {
+            children.remove(at: i)
+        }
+        child.parent = nil
+        child.view.removeFromSuperview()
+    }
+}
+
+/// A container: RyUI positions its subviews itself.
+final class RyUIContainerView: UIView {
+    /// It presses (OnPress): one element for VoiceOver, a button.
+    var pressable = false {
+        didSet {
+            isAccessibilityElement = pressable || super.accessibilityLabel != nil
+            if pressable { accessibilityTraits.insert(.button) }
+        }
+    }
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isAccessibilityElement = false
+    }
+    required init?(coder: NSCoder) { fatalError() }
+
+    /// The app's label, or a pressable (adjustable, actionable) view's
+    /// content, as VoiceOver reads a row: its texts and labeled images, in
+    /// order.
+    override var accessibilityLabel: String? {
+        get {
+            if let l = super.accessibilityLabel { return l }
+            guard pressable || adjustable || accessibilityCustomActions?.isEmpty == false else { return nil }
+            var parts: [String] = []
+            func walk(_ v: UIView) {
+                for s in v.subviews where !s.isHidden && s.alpha > 0 {
+                    if s.isAccessibilityElement, let l = s.accessibilityLabel, !l.isEmpty {
+                        parts.append(l)
+                    } else if let l = s as? UILabel, let t = l.text, !t.isEmpty {
+                        parts.append(t)
+                    } else {
+                        walk(s)
+                    }
+                }
+            }
+            walk(self)
+            return parts.isEmpty ? nil : parts.joined(separator: ", ")
+        }
+        set { super.accessibilityLabel = newValue }
+    }
+
+    /// VoiceOver's double tap: the press, not a tap at the center (which a
+    /// subview could take).
+    override func accessibilityActivate() -> Bool {
+        guard pressable, tag > 0 else { return false }
+        let id = UInt32(tag)
+        RyUIRuntime.shared.emit(id, .press) { RyUIEvents.press(id) }
+        return true
+    }
+
+    /// OnAdjust: VoiceOver's swipe up and down step it.
+    var adjustable = false {
+        didSet {
+            if adjustable { accessibilityTraits.insert(.adjustable); isAccessibilityElement = true } else { accessibilityTraits.remove(.adjustable) }
+        }
+    }
+
+    override func accessibilityIncrement() { adjust(1) }
+    override func accessibilityDecrement() { adjust(-1) }
+
+    private func adjust(_ by: Int64) {
+        guard adjustable, tag > 0 else { return }
+        let id = UInt32(tag)
+        RyUIRuntime.shared.emit(id, .adjust) { RyUIEvents.adjust(id, by) }
+    }
+}
+
+final class RyUITextField: UITextField {
+    var ryuiID: UInt32 = 0
+}
+
+/// The iOS host: applies the core's ops to UIKit views and reports
+/// events back. Everything runs on the main thread.
+@MainActor public final class RyUIRuntime: NSObject, RyUIOpHandler {
+    var nativeFactories: [String: (RyUINativeContext) -> RyUINativeView] = [:]
+    let gestureDelegate = RyUIGestureDelegate()
+    /// Between AnimateBegin and AnimateEnd: the duration and curve.
+    var animation: (Double, Int32)?
+    /// The animation's repeat: times more (-1 forever), and autoreverses.
+    var repeating: (Int32, Bool)?
+    /// Views with a repeating animation, which a plain change stops.
+    var repeatingViews = Set<ObjectIdentifier>()
+    /// Native modules' methods, by module and method name (ui.Call).
+    var modules: [String: [String: RyUIModuleMethod]] = [:]
+    var builtinModules = false
+    var pendingURLs: [URL] = []
+    /// The app's accent color (ryui.json's), nil for the system's: the tint color.
+    var accent: UIColor?
+    /// The app's appearance (the ColorScheme command's): the windows' override.
+    var colorScheme = UIUserInterfaceStyle.unspecified
+    #if RYUI_WEBAUTH
+    /// The webAuth module's sign-ins under way: each session, what presents
+    /// it, and its start's reply.
+    var authSessions: [UInt32: (ASWebAuthenticationSession, RyUIAuthAnchor, (Result<Data, Error>) -> Void)] = [:]
+    #endif
+    /// Views coming in with a transition in the batch being applied.
+    var entering: [(RyUINode, (Double, Int32))] = []
+    /// Views going out with a transition, still shown.
+    var exiting = Set<ObjectIdentifier>()
+    /// Style.Match: the views with keys, where they were as an animated
+    /// batch began destroying, and those going and coming in it.
+    var matchViews: [String: RyUINode] = [:]
+    var matchFrames: [String: CGRect]?
+    var matchOut: [String: (view: UIView, frame: CGRect)] = [:]
+    var matchIn: [RyUINode] = []
+    var matchAnimation: (Double, Int32)?
+    var framesApplied = false
+    weak var matchWindow: UIWindow?
+    public static let shared = RyUIRuntime()
+
+    var nodes: [UInt32: RyUINode] = [:]
+    weak var controller: RyUIViewController?
+    var rootID: UInt32 = 0
+    var started = false
+    var depth = 0
+    var pendingLists: [RyUIList] = []
+    var pendingEvents: [[UInt8]] = []
+    var nextCellID: UInt32 = 0
+    var scale: CGFloat = UIScreen.main.scale
+
+    // MARK: Calling into Go
+
+    /// Every call into Go goes through here, so that work UIKit might do
+    /// re-entrantly (list snapshots binding cells) happens once Go has
+    /// returned.
+    func enter(_ f: () -> Void) {
+        depth += 1
+        f()
+        depth -= 1
+        while depth == 0 && (!pendingLists.isEmpty || !pendingEvents.isEmpty) {
+            let lists = pendingLists
+            pendingLists = []
+            for l in lists { l.applyPending() }
+            if !pendingEvents.isEmpty {
+                let e = pendingEvents.removeFirst()
+                send(e)
+            }
+        }
+    }
+
+    /// Sends an event to the core. Inside a call into Go (UIKit laying
+    /// out or calling a delegate while a batch is applied), it waits until
+    /// that call returns.
+    func send(_ bytes: [UInt8]) {
+        if depth > 0 {
+            pendingEvents.append(bytes)
+            return
+        }
+        enter {
+            bytes.withUnsafeBufferPointer { ryui_event($0.baseAddress, $0.count) }
+        }
+    }
+
+    func emit(_ id: UInt32, _ event: RyUIEventKind, _ make: () -> [UInt8]) {
+        guard let n = nodes[id], n.listens.contains(event.rawValue) else { return }
+        send(make())
+    }
+
+    func start(_ controller: RyUIViewController) {
+        self.controller = controller
+        guard !started else { return }
+        started = true
+        NotificationCenter.default.addObserver(self, selector: #selector(voiceOverChanged), name: UIAccessibility.voiceOverStatusDidChangeNotification, object: nil)
+        #if RYUI_NOTIFY
+        RyUINotify.shared.install()
+        #endif
+        #if DEBUG
+        RyUIAutomation.start()
+        #endif
+        registerNatives()
+        var cb = ryui_host_callbacks(
+            apply: { buf, len in
+                MainActor.assumeIsolated {
+                    RyUIRuntime.shared.apply(UnsafeRawBufferPointer(start: buf, count: len))
+                }
+            },
+            measure: { id, w, h, aw, ah, ow, oh in
+                MainActor.assumeIsolated {
+                    let s = RyUIRuntime.shared.measure(id, w, h, aw, ah)
+                    ow?.pointee = Float(s.width)
+                    oh?.pointee = Float(s.height)
+                }
+            },
+            post: {
+                DispatchQueue.main.async {
+                    MainActor.assumeIsolated { RyUIRuntime.shared.enter { ryui_run_posted() } }
+                }
+            }
+        )
+        enter { ryui_start(&cb) }
+        let urls = pendingURLs
+        pendingURLs = []
+        for u in urls { openURL(u) }
+    }
+
+    /// The app was opened with url (its scheme, a universal link): the
+    /// core's ui.OnOpenURL handlers get it, once it has started.
+    public func openURL(_ url: URL) {
+        guard started else { pendingURLs.append(url); return }
+        // From the share extension (ryui.json's shareTarget): what another
+        // app shared, for ui.OnShare.
+        if url.scheme?.lowercased() == "ryuishare." + (Bundle.main.bundleIdentifier ?? "").lowercased() {
+            let text = URLComponents(url: url, resolvingAgainstBaseURL: false)?.percentEncodedQuery?.removingPercentEncoding ?? ""
+            if !text.isEmpty { send(RyUIEvents.shared(rootID, text)) }
+            return
+        }
+        send(RyUIEvents.incomingURL(rootID, url.absoluteString))
+    }
+
+    public func lifecycle(_ state: RyUILifecycle) {
+        guard started else { return }
+        send(RyUIEvents.lifecycle(rootID, Int64(state.rawValue)))
+    }
+
+    // MARK: Applying ops
+
+    func apply(_ buf: UnsafeRawBufferPointer) {
+        ryuiDecode(buf, self)
+        runEnters()
+        runMatches()
+    }
+
+    public func create(_ id: UInt32, kind raw: UInt16) {
+        guard let kind = RyUIKind(rawValue: raw) else {
+            fatalError("ryui: the iOS host can't show kind \(raw) yet")
+        }
+        if let (v, vc) = makeController(id, kind) {
+            v.tag = Int(id)
+            // The core sizes stacks and tabs; screens are sized by their
+            // container controller. Never by autoresizing.
+            if kind == .stack || kind == .tabs { v.autoresizingMask = [] }
+            let node = RyUINode(id: id, kind: kind, view: v)
+            node.vc = vc
+            nodes[id] = node
+            return
+        }
+        let view: UIView
+        var list: RyUIList?
+        switch kind {
+        case .view:
+            view = RyUIContainerView()
+        case .text:
+            let l = UILabel()
+            l.numberOfLines = 0
+            l.font = .preferredFont(forTextStyle: .body)
+            l.adjustsFontForContentSizeCategory = true
+            l.textColor = .label
+            view = l
+        case .button:
+            let b = UIButton(configuration: .plain())
+            b.addAction(UIAction { [weak self] _ in self?.emit(id, .press) { RyUIEvents.press(id) } }, for: .primaryActionTriggered)
+            view = b
+        case .textField:
+            let t = RyUITextField()
+            t.ryuiID = id
+            t.borderStyle = .roundedRect
+            t.font = .preferredFont(forTextStyle: .body)
+            t.adjustsFontForContentSizeCategory = true
+            t.delegate = self
+            t.addAction(UIAction { [weak self, weak t] _ in
+                guard let t else { return }
+                let s = t.text ?? ""
+                self?.emit(id, .textChanged) { RyUIEvents.textChanged(id, s) }
+            }, for: .editingChanged)
+            view = t
+        case .toggle:
+            let s = UISwitch()
+            s.addAction(UIAction { [weak self, weak s] _ in
+                guard let s else { return }
+                let on = s.isOn
+                self?.emit(id, .toggled) { RyUIEvents.toggled(id, on) }
+            }, for: .valueChanged)
+            view = s
+        case .slider:
+            let s = UISlider()
+            s.addAction(UIAction { [weak self, weak s] _ in
+                guard let s else { return }
+                let v = Double(s.value)
+                self?.emit(id, .valueChanged) { RyUIEvents.valueChanged(id, v) }
+            }, for: .valueChanged)
+            view = s
+        case .shape:
+            view = RyUIShapeView()
+        case .scroll:
+            let s = RyUIScrollView()
+            s.keyboardDismissMode = .interactive
+            s.alwaysBounceVertical = true
+            s.contentInsetAdjustmentBehavior = .never
+            view = s
+        #if RYUI_WEBVIEW
+        case .webView:
+            view = RyUIWebView(id, self)
+        #endif
+        #if RYUI_VIDEO
+        case .video:
+            view = RyUIVideoView(id, self)
+        #endif
+        case .list:
+            let l = RyUIList(id: id, runtime: self)
+            list = l
+            view = l.collection
+        case .activity:
+            view = UIActivityIndicatorView(style: .medium)
+        case .symbol:
+            view = RyUISymbolView(frame: .zero)
+        case .wheel:
+            view = makeWheel(id)
+        case .stepper:
+            view = makeStepper(id)
+        case .colorPicker:
+            view = makeColorPicker(id)
+        case .segmented:
+            let s = UISegmentedControl()
+            s.addAction(UIAction { [weak self, weak s] _ in
+                guard let s else { return }
+                let i = Int64(s.selectedSegmentIndex)
+                self?.emit(id, .selected) { RyUIEvents.selected(id, i) }
+            }, for: .valueChanged)
+            view = s
+        case .progress:
+            view = UIProgressView(progressViewStyle: .default)
+        case .datePicker:
+            let h = RyUIDatePickerView()
+            let d = h.picker
+            d.addAction(UIAction { [weak self, weak d] _ in
+                guard let d else { return }
+                let ms = (d.date.timeIntervalSince1970 * 1000).rounded()
+                self?.emit(id, .valueChanged) { RyUIEvents.valueChanged(id, ms) }
+            }, for: .valueChanged)
+            view = h
+        case .image:
+            let iv = UIImageView()
+            iv.contentMode = .scaleAspectFit
+            view = iv
+        case .native:
+            view = RyUINativeHostView()
+        case .selectable:
+            view = RyUISelectionArea()
+        case .richText:
+            let r = RyUIRichTextView()
+            r.onLink = { [weak self] url in self?.emit(id, .link) { RyUIEvents.link(id, url) } }
+            view = r
+        default:
+            fatalError("ryui: the iOS host can't show \(kind.name) yet")
+        }
+        view.tag = Int(id)
+        view.translatesAutoresizingMaskIntoConstraints = true
+        view.autoresizingMask = []
+        let node = RyUINode(id: id, kind: kind, view: view)
+        node.list = list
+        (view as? RyUIScrollView)?.node = node
+        (view as? RyUISelectionArea)?.node = node
+        nodes[id] = node
+    }
+
+    public func destroy(_ id: UInt32) {
+        guard let n = nodes.removeValue(forKey: id) else { return }
+        if destroyController(n) { return }
+        for c in n.children { c.parent = nil }
+        if matchOut(n) { return }
+        // Going out with a transition, or inside a view that is: shown
+        // until it's gone.
+        if leaving(n.view) || exit(n) {
+            if let p = n.parent, let i = p.children.firstIndex(where: { $0 === n }) { p.children.remove(at: i) }
+            n.parent = nil
+            return
+        }
+        n.parent?.remove(n)
+        n.view.removeFromSuperview()
+    }
+
+    public func insert(_ parent: UInt32, child: UInt32, index: Int) {
+        guard let p = nodes[parent], let c = nodes[child] else { return }
+        if insertController(p, c, index) { return }
+        p.insert(c, at: index)
+        enter(c)
+        matchIn(c)
+    }
+
+    public func remove(_ parent: UInt32, child: UInt32) {
+        guard let p = nodes[parent], let c = nodes[child] else { return }
+        p.remove(c)
+    }
+
+    public func setFrame(_ id: UInt32, x: Float, y: Float, width: Float, height: Float) {
+        guard let n = nodes[id] else { return }
+        framesApplied = true
+        if let cell = n.cell {
+            cell.setRowHeight(CGFloat(height))
+            return
+        }
+        let f = CGRect(x: CGFloat(x), y: CGFloat(y), width: CGFloat(width), height: CGFloat(height))
+        let v = n.view
+        let scroll = n.parent?.view as? UIScrollView
+        if let r = v.superview as? RyUIRichTextView {
+            // An inline component: its size is the core's, its place the text's.
+            v.frame.size = f.size
+            r.setNeedsLayout()
+            return
+        }
+        animated(v) {
+            // Through bounds and center: a transformed view's frame isn't its
+            // layout's (and a scroll view's bounds origin is its offset).
+            v.bounds = CGRect(origin: v.bounds.origin, size: f.size)
+            v.center = CGPoint(x: f.midX, y: f.midY)
+            scroll?.contentSize = f.size
+        }
+        // A row of a Scroll's content moved: what it takes out is redone.
+        (n.parent?.parent?.view as? RyUIScrollView)?.setNeedsLayout()
+        n.updateLayers()
+    }
+
+    /// Makes c the windows' tint color, which UIKit's controls and the
+    /// accent color take; rich texts typeset their links again.
+    func setAccent(_ c: UIColor?) {
+        accent = c
+        ryuiAccent = c
+        for case let s as UIWindowScene in UIApplication.shared.connectedScenes {
+            for w in s.windows { w.tintColor = c }
+        }
+        RyUILayoutCache.shared.clear()
+        for n in nodes.values { (n.view as? RyUIRichTextView)?.invalidate() }
+    }
+
+    /// Shows the windows light or dark, or as the system is (.system):
+    /// the trait change restyles the views and reports the environment.
+    func setColorScheme(_ s: RyUIColorScheme) {
+        colorScheme = s == .dark ? .dark : s == .light ? .light : .unspecified
+        for case let scene as UIWindowScene in UIApplication.shared.connectedScenes {
+            for w in scene.windows { w.overrideUserInterfaceStyle = colorScheme }
+        }
+    }
+
+    public func listen(_ id: UInt32, event: UInt16) {
+        guard let n = nodes[id] else { return }
+        n.listens.insert(event)
+        if event == RyUIEventKind.scrolled.rawValue, let s = n.view as? UIScrollView, n.scrolls == nil {
+            n.scrolls = RyUIScrollReporter(id, self)
+            s.delegate = n.scrolls
+        }
+        guard n.kind == .view, let e = RyUIEventKind(rawValue: event) else { return }
+        switch e {
+        case .pan, .pinch, .swipe, .rotate:
+            listenGesture(n, e)
+        case .press:
+            let tap = UITapGestureRecognizer(target: self, action: #selector(tapped(_:)))
+            n.view.addGestureRecognizer(tap)
+            if let c = n.view as? RyUIContainerView { c.pressable = true } else { n.view.accessibilityTraits.insert(.button) }
+        case .longPress:
+            n.view.addGestureRecognizer(UILongPressGestureRecognizer(target: self, action: #selector(longPressed(_:))))
+        default:
+            break
+        }
+    }
+
+    public func unlisten(_ id: UInt32, event: UInt16) {
+        nodes[id]?.listens.remove(event)
+    }
+
+    @objc func tapped(_ g: UITapGestureRecognizer) {
+        guard let id = nodeID(of: g.view) else { return }
+        emit(id, .press) { RyUIEvents.press(id) }
+    }
+
+    @objc func longPressed(_ g: UILongPressGestureRecognizer) {
+        guard g.state == .began, let id = nodeID(of: g.view) else { return }
+        emit(id, .longPress) { RyUIEvents.longPress(id) }
+    }
+
+    func nodeID(of view: UIView?) -> UInt32? {
+        guard let view else { return nil }
+        return view.tag > 0 ? UInt32(view.tag) : nil
+    }
+
+    public func command(_ id: UInt32, command: UInt16, args: UnsafeRawBufferPointer) {
+        guard let n = nodes[id], let c = RyUICommand(rawValue: command) else { return }
+        switch c {
+        case .focus:
+            n.view.becomeFirstResponder()
+        case .blur:
+            n.view.resignFirstResponder()
+        case .present:
+            present(n)
+        case .haptic:
+            if args.count > 0 { haptic(Int32(args[0])) }
+        case .animateBegin:
+            beginAnimation(args)
+        case .animateEnd:
+            animation = nil
+            repeating = nil
+        case .call:
+            call(id, args)
+        case .copy:
+            UIPasteboard.general.string = String(decoding: args, as: UTF8.self)
+        case .frames:
+            setFrames(args.first == 1)
+        #if RYUI_VIDEO
+        case .play:
+            (n.view as? RyUIVideoView)?.play()
+        case .pause:
+            (n.view as? RyUIVideoView)?.player.pause()
+        case .seek:
+            guard args.count >= 8, let v = n.view as? RyUIVideoView else { return }
+            var r = RyUIReader(args)
+            v.seek(r.f64())
+        #else
+        case .play, .pause, .seek: break
+        #endif
+        #if RYUI_WEBVIEW
+        case .eval:
+            (n.view as? RyUIWebView)?.evaluateJavaScript(String(decoding: args, as: UTF8.self))
+        case .webNavigate:
+            if let to = args.first { (n.view as? RyUIWebView)?.navigate(to) }
+        #else
+        case .eval, .webNavigate: break
+        #endif
+        case .announce:
+            UIAccessibility.post(notification: .announcement, argument: String(decoding: args, as: UTF8.self))
+        case .share:
+            let s = String(decoding: args, as: UTF8.self)
+            // A URL is shared as one (a link preview, Safari's actions).
+            let item: Any = URL(string: s).flatMap { $0.scheme != nil && $0.host != nil ? $0 : nil } ?? s
+            let vc = UIActivityViewController(activityItems: [item], applicationActivities: nil)
+            guard let top = topController else { return }
+            if let pop = vc.popoverPresentationController { // iPad
+                pop.sourceView = top.view
+                pop.sourceRect = CGRect(x: top.view.bounds.midX, y: top.view.bounds.midY, width: 0, height: 0)
+                pop.permittedArrowDirections = []
+            }
+            top.present(vc, animated: true)
+        case .scrollTo:
+            guard args.count >= 5 else { return }
+            var r = RyUIReader(args)
+            let i = Int(r.u32())
+            n.list?.scroll(to: i, animated: r.u8() != 0)
+        case .scrollToOffset:
+            guard args.count >= 9, let s = n.view as? UIScrollView else { return }
+            var r = RyUIReader(args)
+            let x = CGFloat(r.f32()), y = CGFloat(r.f32())
+            n.list?.applyPending()
+            s.layoutIfNeeded()
+            // From the content's start, clamped to what it can scroll.
+            let i = s.adjustedContentInset
+            let maxX = max(-i.left, s.contentSize.width - s.bounds.width + i.right)
+            let maxY = max(-i.top, s.contentSize.height - s.bounds.height + i.bottom)
+            let to = CGPoint(x: min(max(x - i.left, -i.left), maxX), y: min(max(y - i.top, -i.top), maxY))
+            s.setContentOffset(to, animated: r.u8() != 0)
+        case .openURL:
+            if let url = URL(string: String(decoding: args, as: UTF8.self)) { UIApplication.shared.open(url) }
+        case .accent:
+            guard args.count >= 8 else { return }
+            var r = RyUIReader(args)
+            setAccent(ryuiColor(r.u64()))
+        case .menuBar, .windowOptions:
+            break // desktop hosts' (a phone has no menu bar or windows)
+        case .colorScheme:
+            guard let v = args.first else { return }
+            setColorScheme(RyUIColorScheme(rawValue: Int32(v)) ?? .system)
+        case .listUpdate:
+            var r = RyUIReader(args)
+            let count = Int(r.u32())
+            var ids = [Int64]()
+            ids.reserveCapacity(count)
+            for _ in 0..<count { ids.append(Int64(bitPattern: r.u64())) }
+            n.list?.update(ids)
+            if let l = n.list, !pendingLists.contains(where: { $0 === l }) { pendingLists.append(l) }
+        }
+    }
+
+    public func setRoot(_ id: UInt32) {
+        guard let n = nodes[id] else { return }
+        rootID = id
+        controller?.mount(n.view)
+    }
+
+    public func setProp(_ id: UInt32, prop: UInt16, value: RyUIValue) {
+        guard let n = nodes[id] else { return }
+        if prop < 64 {
+            setCommon(n, prop, value)
+        } else {
+            setOwn(n, prop, value)
+        }
+    }
+
+    // MARK: Cells
+
+    func makeCell(_ cell: RyUIListCell) -> UInt32 {
+        nextCellID += 1
+        let id = 0x8000_0000 | nextCellID
+        let n = RyUINode(id: id, kind: nil, view: cell)
+        n.cell = cell
+        nodes[id] = n
+        return id
+    }
+}
+
+extension RyUIRuntime: UITextFieldDelegate {
+    public func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        guard let t = textField as? RyUITextField else { return true }
+        let id = t.ryuiID
+        emit(id, .submit) { RyUIEvents.submit(id) }
+        return false
+    }
+
+    public func textFieldDidBeginEditing(_ textField: UITextField) {
+        guard let t = textField as? RyUITextField else { return }
+        let id = t.ryuiID
+        emit(id, .focus) { RyUIEvents.focus(id) }
+    }
+
+    public func textFieldDidEndEditing(_ textField: UITextField) {
+        guard let t = textField as? RyUITextField else { return }
+        let id = t.ryuiID
+        emit(id, .blur) { RyUIEvents.blur(id) }
+    }
+}
+#endif

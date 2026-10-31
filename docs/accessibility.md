@@ -1,6 +1,6 @@
 # Accessibility
 
-nui shows the platform's own widgets, so most of what VoiceOver,
+RyUI shows the platform's own widgets, so most of what VoiceOver,
 TalkBack and the text size settings need is there without code. This
 page covers what you get for free, and the props for the rest: labels,
 roles, grouping, custom actions, adjustable views, announcements, text
@@ -18,7 +18,7 @@ size and Reduce Motion, and how to test it.
 - **Text scales.** `Text` is `UILabel` and `TextView`, and every font
   follows Dynamic Type and Android's font scale: the semantic ones
   (`ui.Body`, `ui.Headline`...), a fixed size (`ui.System(15)`) and your
-  own fonts too. When the user changes the size, nui measures the text
+  own fonts too. When the user changes the size, RyUI measures the text
   again and lays out what it moves.
 - **Colors adapt.** Semantic colors (`ui.Label`, `ui.SecondaryLabel`,
   `ui.SystemBackground`, `ui.Accent`...) are UIKit's semantic colors and
@@ -49,7 +49,7 @@ ui.Row(ui.Style{Gap: 12},
   platforms name only a few symbols themselves, and Android only in
   English.
 - An `Image`'s `Label` describes it; without one it's decorative. An
-  icon from [`nui/svg`](../svg) takes a `Label` the same way.
+  icon from [`ryui/svg`](../svg) takes a `Label` the same way.
 - A `Symbol` has no label of its own: wrap it in a `View` with a
   `Label` and `ui.RoleImage` when it means something.
 - `Hint` is iOS's accessibility hint, read after a pause (users can turn
@@ -132,7 +132,7 @@ ui.View(ui.ViewProps{Decorative: true}, ui.Symbol(ui.IconCheck, ui.Style{Color: 
 Screen reader users jump between headings (VoiceOver's rotor, TalkBack's
 navigation by headings). Mark a section's title as one: a `RichText`
 with `Role: ui.RoleHeader`, or a `View` with a `Label` and the role.
-`Text` takes no role. [`nui/markdown`](../markdown) marks its headings
+`Text` takes no role. [`ryui/markdown`](../markdown) marks its headings
 already.
 
 ```go
@@ -163,7 +163,7 @@ A view with actions is one element, read as its texts.
 
 A `List`'s `SwipeActions` are offered to screen readers for you:
 UIKit's list offers its swipe actions to VoiceOver itself, and on
-Android nui adds them to the row as TalkBack actions. Don't list them
+Android RyUI adds them to the row as TalkBack actions. Don't list them
 again in `Actions`.
 
 ```go
@@ -257,7 +257,7 @@ func Adaptive() ui.Node {
 ## Reduce Motion
 
 `ui.UseEnvironment()`'s `ReduceMotion` is iOS's Reduce Motion, or
-Android's animations turned off. On iOS nui makes transitions dissolve
+Android's animations turned off. On iOS RyUI makes transitions dissolve
 instead of moving; on Android every animation already ends at once. See
 [Motion](motion.md#reduce-motion) for what's left to you.
 
@@ -281,5 +281,5 @@ every swipe and drag have an action?
 - **Reduce Motion**: iOS's Settings, Accessibility, Motion; Android's
   Settings, Accessibility, Remove animations.
 
-`nui dev` keeps running as you change these: the app follows each
+`ryui dev` keeps running as you change these: the app follows each
 setting as it changes.

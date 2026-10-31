@@ -1,6 +1,6 @@
-// Gallery shows nui's components, one section each.
+// Gallery shows RyUI's components, one section each.
 //
-//	go run ./cmd/nui dev -ios examples/gallery
+//	go run ./cmd/ryui dev -ios examples/gallery
 package main
 
 import (
@@ -8,18 +8,18 @@ import (
 	"math"
 	"time"
 
-	"github.com/egoist/nui/app"
-	"github.com/egoist/nui/audio"
-	"github.com/egoist/nui/camera"
-	"github.com/egoist/nui/camera/record"
-	"github.com/egoist/nui/device"
-	"github.com/egoist/nui/location"
-	"github.com/egoist/nui/notify"
-	"github.com/egoist/nui/scan"
-	"github.com/egoist/nui/secure"
-	"github.com/egoist/nui/signal"
-	"github.com/egoist/nui/store"
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/app"
+	"github.com/egoist/ryui/audio"
+	"github.com/egoist/ryui/camera"
+	"github.com/egoist/ryui/camera/record"
+	"github.com/egoist/ryui/device"
+	"github.com/egoist/ryui/location"
+	"github.com/egoist/ryui/notify"
+	"github.com/egoist/ryui/scan"
+	"github.com/egoist/ryui/secure"
+	"github.com/egoist/ryui/signal"
+	"github.com/egoist/ryui/store"
+	"github.com/egoist/ryui/ui"
 )
 
 func App() ui.Node {
@@ -664,8 +664,8 @@ func topButton(shown signal.Accessor[bool], top func()) ui.Node {
 
 // cameraScreen shows the camera live (camera.View) with a shutter
 // (camera.Capture), and the last photo taken; it records videos
-// (nui/camera/record), played on a screen of their own, and reads the
-// codes it sees (nui/scan).
+// (ryui/camera/record), played on a screen of their own, and reads the
+// codes it sees (ryui/scan).
 func cameraScreen() ui.Node {
 	nav := ui.UseNavigator()
 	last := signal.New("")
@@ -725,7 +725,7 @@ func cameraScreen() ui.Node {
 var webView ui.Node
 
 // webPage is a web page from markup: its button posts a message to Go
-// (window.nui.postMessage); the bar's button runs script in it.
+// (window.ryui.postMessage); the bar's button runs script in it.
 func webPage() ui.Node {
 	webView = ui.WebView(ui.WebViewProps{
 		HTML: ui.Val(`<!doctype html><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -733,7 +733,7 @@ func webPage() ui.Node {
 button { font: inherit; padding: 10px 16px; border-radius: 10px; border: 0; background: #0a84ff; color: white; }</style>
 <h2>A web page</h2>
 <p>Its button talks to Go; the bar's button runs script here.</p>
-<button onclick="nui.postMessage('Hello from the page')">Post a message</button>
+<button onclick="ryui.postMessage('Hello from the page')">Post a message</button>
 <p id="out"></p>`),
 		OnMessage: func(m string) { ui.Alert(ui.AlertProps{Title: "The page says", Message: m}) },
 	})

@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/egoist/nui/internal/boot"
-	"github.com/egoist/nui/layout"
-	"github.com/egoist/nui/ops"
-	"github.com/egoist/nui/signal"
+	"github.com/egoist/ryui/internal/boot"
+	"github.com/egoist/ryui/layout"
+	"github.com/egoist/ryui/ops"
+	"github.com/egoist/ryui/signal"
 )
 
 // ImageMode is how an image fills its box.
@@ -83,7 +83,7 @@ func Image(p ImageProps) Node {
 	return Node{e}
 }
 
-// AssetURL is where the host gets source from: under nui dev, which runs
+// AssetURL is where the host gets source from: under ryui dev, which runs
 // the app's Go code on the computer, an asset's URL there; otherwise
 // source as it is (an asset's path, a URL, a file). For a package of an
 // app's own that hands the host a source, as Image does.
@@ -185,7 +185,7 @@ func (e *element) listenGestures(p *ViewProps) {
 }
 
 // fonts maps a font family to what a player gets it as: its file's URL
-// when the app has one in assets/fonts (nui dev runs the app in its
+// when the app has one in assets/fonts (ryui dev runs the app in its
 // directory), or the family as it is.
 var fonts = map[string]string{}
 

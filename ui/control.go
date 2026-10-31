@@ -3,7 +3,7 @@ package ui
 import (
 	"reflect"
 
-	"github.com/egoist/nui/signal"
+	"github.com/egoist/ryui/signal"
 )
 
 // Show shows then() while when is true, else the first of otherwise if

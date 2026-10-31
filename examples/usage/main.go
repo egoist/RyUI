@@ -1,15 +1,15 @@
 // Usage follows a subscription's quotas: Claude's 5-hour window and its
 // week, how much is left of each, and, at the rate the week has gone so
 // far, how much will be left when it resets. You sign in with Claude
-// (OAuth in the system's sign-in sheet, nui/webauth; see auth.go).
-// Accounts are kept with nui/store, their tokens in the keychain
-// (nui/secure). A demo account shows it without one.
+// (OAuth in the system's sign-in sheet, ryui/webauth; see auth.go).
+// Accounts are kept with ryui/store, their tokens in the keychain
+// (ryui/secure). A demo account shows it without one.
 //
 // It draws its own meters and a forecast chart (ui.Shape, dashed), tints
 // with semantic colors at an opacity (Color.Opacity), and has an
 // appearance setting (ui.SetColorScheme).
 //
-//	go run ./cmd/nui dev -android examples/usage
+//	go run ./cmd/ryui dev -android examples/usage
 package main
 
 import (
@@ -18,11 +18,11 @@ import (
 	"slices"
 	"time"
 
-	"github.com/egoist/nui/app"
-	"github.com/egoist/nui/secure"
-	"github.com/egoist/nui/signal"
-	"github.com/egoist/nui/store"
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/app"
+	"github.com/egoist/ryui/secure"
+	"github.com/egoist/ryui/signal"
+	"github.com/egoist/ryui/store"
+	"github.com/egoist/ryui/ui"
 )
 
 var (

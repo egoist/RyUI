@@ -5,8 +5,8 @@ package darwin
 import (
 	"math"
 
-	. "github.com/egoist/nui/internal/darwin"
-	"github.com/egoist/nui/ops"
+	. "github.com/egoist/ryui/internal/darwin"
+	"github.com/egoist/ryui/ops"
 )
 
 func initView(cls string) ID {
@@ -23,9 +23,9 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 	var v ID
 	switch kind {
 	case ops.KindView, ops.KindSelectable:
-		v = initView("NuiView")
+		v = initView("RyUIView")
 	case ops.KindText:
-		v = initView("NuiLabel")
+		v = initView("RyUILabel")
 		Send(v, "setEditable:", 0)
 		Send(v, "setSelectable:", 0)
 		Send(v, "setBezeled:", 0)
@@ -85,13 +85,13 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 		MsgSetFloat(v, Sel("setMinValue:"), 0)
 		MsgSetFloat(v, Sel("setMaxValue:"), 1)
 	case ops.KindImage:
-		v = initView("NuiImageView")
+		v = initView("RyUIImageView")
 		Send(v, "setImageScaling:", 3) // proportionally up or down
 		Send(v, "setImageFrameStyle:", 0)
 		Send(v, "setEditable:", 0)
 		Send(v, "setAnimates:", 1)
 	case ops.KindSymbol:
-		v = initView("NuiImageView")
+		v = initView("RyUIImageView")
 		Send(v, "setImageScaling:", 0)
 		Send(v, "setContentTintColor:", uintptr(Send(Class("NSColor"), "labelColor")))
 	case ops.KindSegmented:
@@ -125,7 +125,7 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 		v = n.rich.makeView()
 	case ops.KindShape:
 		n.shape = &shape{lineWidth: 1}
-		v = initView("NuiShapeView")
+		v = initView("RyUIShapeView")
 	case ops.KindWebView:
 		v = h.makeWeb(n)
 	case ops.KindVideo:
@@ -147,9 +147,9 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 // makeField makes a TextField's view: a field, a secure field, or (made
 // multiline) a text view in a scroll view.
 func (h *Host) makeField(n *node, secure bool) ID {
-	cls := "NuiTextField"
+	cls := "RyUITextField"
 	if secure {
-		cls = "NuiSecureField"
+		cls = "RyUISecureField"
 	}
 	v := initView(cls)
 	Send(v, "setBezeled:", 1)
@@ -652,7 +652,7 @@ func (h *Host) gesture(g ID, e ops.EventKind) {
 	case ops.EventPinch:
 		gs.Scale = float32(1 + MsgFloat(g, Sel("magnification")))
 	case ops.EventRotate:
-		// AppKit's is counterclockwise; nui's clockwise.
+		// AppKit's is counterclockwise; RyUI's clockwise.
 		gs.Rotation = -float32(MsgFloat(g, Sel("rotation")))
 	}
 	h.emit(n, ops.Event{Kind: e, G: gs})

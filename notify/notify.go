@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/ui"
 )
 
 // Notification is what to show, and when.
@@ -19,7 +19,7 @@ type Notification struct {
 	Title string
 	Body  string
 	// URL is what the app is opened with when the user taps it (one of
-	// its scheme's, nui.json's scheme): ui.OnOpenURL gets it.
+	// its scheme's, ryui.json's scheme): ui.OnOpenURL gets it.
 	URL string
 	// After is how long from now it shows (at least a second).
 	After time.Duration
@@ -29,7 +29,7 @@ type Notification struct {
 // it's their answer then, or what they've set in Settings since), and
 // reports whether they're allowed. Not on the main thread.
 //
-// Never inlined: nui build looks for its symbol (cmd/nui iosFeatures).
+// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
 //
 //go:noinline
 func Request() (allowed bool, err error) {
@@ -39,7 +39,7 @@ func Request() (allowed bool, err error) {
 
 // Schedule sets n to show after n.After. Not on the main thread.
 //
-// Never inlined: nui build looks for its symbol (cmd/nui iosFeatures).
+// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
 //
 //go:noinline
 func Schedule(n Notification) error {

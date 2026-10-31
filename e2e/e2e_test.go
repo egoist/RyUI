@@ -2,10 +2,10 @@
 
 // Package e2e drives the example apps on a simulator and an emulator,
 // through the platform's widgets, not the core. The tests build each app
-// with `nui dev -once` (its Go code embedded, a debug build), then tap
+// with `ryui dev -once` (its Go code embedded, a debug build), then tap
 // and read the screen through the debug hosts' automation
-// (hosts/ios/Sources/NuiHost/Automation.swift, a notification;
-// hosts/android/nui/src/main/java/dev/nui/Automation.kt, a broadcast).
+// (hosts/ios/Sources/RyUIHost/Automation.swift, a notification;
+// hosts/android/ryui/src/main/java/dev/ryui/Automation.kt, a broadcast).
 //
 //	go test -tags e2e ./e2e -run IOS      # a booted simulator, else the newest iPhone
 //	go test -tags e2e ./e2e -run Android  # a running emulator or a device
@@ -37,15 +37,15 @@ func root(t *testing.T) string {
 	return dir
 }
 
-// launch builds and launches example on the platform with nui dev -once,
+// launch builds and launches example on the platform with ryui dev -once,
 // and returns what it printed.
 func launch(t *testing.T, platform, example string) string {
 	t.Helper()
-	c := exec.Command("go", "run", "./cmd/nui", "dev", "-"+platform, "-once", "examples/"+example)
+	c := exec.Command("go", "run", "./cmd/ryui", "dev", "-"+platform, "-once", "examples/"+example)
 	c.Dir = root(t)
 	out, err := c.CombinedOutput()
 	if err != nil {
-		t.Fatalf("nui dev -%s -once examples/%s: %v\n%s", platform, example, err, out)
+		t.Fatalf("ryui dev -%s -once examples/%s: %v\n%s", platform, example, err, out)
 	}
 	return string(out)
 }
@@ -163,14 +163,14 @@ type iosScreen struct {
 }
 
 func (s *iosScreen) command(cmds string) {
-	if err := os.WriteFile(filepath.Join(s.tmp, "nui-commands.txt"), []byte(cmds+"\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(s.tmp, "ryui-commands.txt"), []byte(cmds+"\n"), 0o644); err != nil {
 		s.t.Fatal(err)
 	}
-	run(s.t, "xcrun", "simctl", "spawn", s.udid, "notifyutil", "-p", "dev.nui.automation")
+	run(s.t, "xcrun", "simctl", "spawn", s.udid, "notifyutil", "-p", "dev.ryui.automation")
 }
 
 func (s *iosScreen) texts() []string {
-	dump := filepath.Join(s.tmp, "nui-dump.txt")
+	dump := filepath.Join(s.tmp, "ryui-dump.txt")
 	os.Remove(dump)
 	s.command("dump")
 	for range 50 {
@@ -201,10 +201,10 @@ func iosApp(t *testing.T, example, bundle string) *iosScreen {
 	return &iosScreen{t: t, udid: m[1], bundle: bundle, tmp: filepath.Join(data, "tmp")}
 }
 
-func TestCounterIOS(t *testing.T) { counter(t, iosApp(t, "counter", "dev.nui.counter")) }
-func TestNotesIOS(t *testing.T)   { notes(t, iosApp(t, "notes", "dev.nui.notes")) }
+func TestCounterIOS(t *testing.T) { counter(t, iosApp(t, "counter", "dev.ryui.counter")) }
+func TestNotesIOS(t *testing.T)   { notes(t, iosApp(t, "notes", "dev.ryui.notes")) }
 func TestNavigationIOS(t *testing.T) {
-	navigation(t, iosApp(t, "navigation", "dev.nui.navigation"))
+	navigation(t, iosApp(t, "navigation", "dev.ryui.navigation"))
 }
 
 // Android
@@ -227,7 +227,7 @@ func (s *androidScreen) command(cmds string) {
 	var out string
 	var err error
 	for range 5 {
-		if out, err = s.adb("shell", "am", "broadcast", "-a", "dev.nui.automation", "-p", s.pkg, "--es", "commands", q); err == nil {
+		if out, err = s.adb("shell", "am", "broadcast", "-a", "dev.ryui.automation", "-p", s.pkg, "--es", "commands", q); err == nil {
 			return
 		}
 		time.Sleep(500 * time.Millisecond)
@@ -236,10 +236,10 @@ func (s *androidScreen) command(cmds string) {
 }
 
 func (s *androidScreen) texts() []string {
-	s.adb("shell", "run-as", s.pkg, "rm", "-f", "files/nui-dump.txt")
+	s.adb("shell", "run-as", s.pkg, "rm", "-f", "files/ryui-dump.txt")
 	s.command("dump")
 	for range 50 {
-		if out, err := s.adb("exec-out", "run-as", s.pkg, "cat", "files/nui-dump.txt"); err == nil && strings.HasSuffix(out, "\n") {
+		if out, err := s.adb("exec-out", "run-as", s.pkg, "cat", "files/ryui-dump.txt"); err == nil && strings.HasSuffix(out, "\n") {
 			return strings.Split(strings.TrimSpace(out), "\n")
 		}
 		time.Sleep(100 * time.Millisecond)
@@ -261,15 +261,15 @@ func androidApp(t *testing.T, example, pkg string) *androidScreen {
 		t.Skip("no adb")
 	}
 	out := launch(t, "android", example)
-	m := regexp.MustCompile(`(?m)^nui: \S+ on (\S+)$`).FindStringSubmatch(out)
+	m := regexp.MustCompile(`(?m)^ryui: \S+ on (\S+)$`).FindStringSubmatch(out)
 	if m == nil {
 		t.Fatalf("no device in:\n%s", out)
 	}
 	return &androidScreen{t: t, serial: m[1], pkg: pkg}
 }
 
-func TestCounterAndroid(t *testing.T) { counter(t, androidApp(t, "counter", "dev.nui.counter")) }
-func TestNotesAndroid(t *testing.T)   { notes(t, androidApp(t, "notes", "dev.nui.notes")) }
+func TestCounterAndroid(t *testing.T) { counter(t, androidApp(t, "counter", "dev.ryui.counter")) }
+func TestNotesAndroid(t *testing.T)   { notes(t, androidApp(t, "notes", "dev.ryui.notes")) }
 func TestNavigationAndroid(t *testing.T) {
-	navigation(t, androidApp(t, "navigation", "dev.nui.navigation"))
+	navigation(t, androidApp(t, "navigation", "dev.ryui.navigation"))
 }

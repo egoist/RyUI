@@ -1,6 +1,6 @@
-// JNI entry points for the Android host (hosts/android, dev.nui.NuiNative).
+// JNI entry points for the Android host (hosts/android, dev.ryui.RyUINative).
 // Kotlin calls in on the main thread; the core calls back into
-// dev.nui.NuiRuntime: apply(ByteBuffer) once per batch, measure(...) and
+// dev.ryui.RyUIRuntime: apply(ByteBuffer) once per batch, measure(...) and
 // post() (from any thread).
 
 #include <jni.h>
@@ -30,7 +30,7 @@ static JNIEnv *env(int *attached) {
 static void check(JNIEnv *e) {
 	if ((*e)->ExceptionCheck(e)) {
 		(*e)->ExceptionDescribe(e);
-		(*e)->FatalError(e, "nui: the Android host threw");
+		(*e)->FatalError(e, "ryui: the Android host threw");
 	}
 }
 
@@ -63,44 +63,44 @@ static void cb_post(void) {
 	}
 }
 
-static nui_host_callbacks callbacks = {cb_apply, cb_measure, cb_post};
+static ryui_host_callbacks callbacks = {cb_apply, cb_measure, cb_post};
 
-JNIEXPORT void JNICALL Java_dev_nui_NuiNative_start(JNIEnv *e, jclass cls, jobject rt) {
+JNIEXPORT void JNICALL Java_dev_ryui_RyUINative_start(JNIEnv *e, jclass cls, jobject rt) {
 	runtime = (*e)->NewGlobalRef(e, rt);
 	jclass k = (*e)->GetObjectClass(e, rt);
 	mApply = (*e)->GetMethodID(e, k, "apply", "(Ljava/nio/ByteBuffer;)V");
 	mMeasure = (*e)->GetMethodID(e, k, "measure", "(IFFFF)J");
 	mPost = (*e)->GetMethodID(e, k, "post", "()V");
-	nui_start(&callbacks);
+	ryui_start(&callbacks);
 }
 
-JNIEXPORT void JNICALL Java_dev_nui_NuiNative_attach(JNIEnv *e, jclass cls) { nui_attach(); }
+JNIEXPORT void JNICALL Java_dev_ryui_RyUINative_attach(JNIEnv *e, jclass cls) { ryui_attach(); }
 
-JNIEXPORT void JNICALL Java_dev_nui_NuiNative_event(JNIEnv *e, jclass cls, jbyteArray a) {
+JNIEXPORT void JNICALL Java_dev_ryui_RyUINative_event(JNIEnv *e, jclass cls, jbyteArray a) {
 	jsize n = (*e)->GetArrayLength(e, a);
 	jbyte *p = (*e)->GetByteArrayElements(e, a, NULL);
-	nui_event((uint8_t *)p, (size_t)n);
+	ryui_event((uint8_t *)p, (size_t)n);
 	(*e)->ReleaseByteArrayElements(e, a, p, JNI_ABORT);
 }
 
-JNIEXPORT jlong JNICALL Java_dev_nui_NuiNative_listCount(JNIEnv *e, jclass cls, jint list) {
-	return nui_list_count((uint32_t)list);
+JNIEXPORT jlong JNICALL Java_dev_ryui_RyUINative_listCount(JNIEnv *e, jclass cls, jint list) {
+	return ryui_list_count((uint32_t)list);
 }
 
-JNIEXPORT void JNICALL Java_dev_nui_NuiNative_listBind(JNIEnv *e, jclass cls, jint list, jlong index, jint cell) {
-	nui_list_bind((uint32_t)list, index, (uint32_t)cell);
+JNIEXPORT void JNICALL Java_dev_ryui_RyUINative_listBind(JNIEnv *e, jclass cls, jint list, jlong index, jint cell) {
+	ryui_list_bind((uint32_t)list, index, (uint32_t)cell);
 }
 
-JNIEXPORT void JNICALL Java_dev_nui_NuiNative_listUnbind(JNIEnv *e, jclass cls, jint list, jint cell) {
-	nui_list_unbind((uint32_t)list, (uint32_t)cell);
+JNIEXPORT void JNICALL Java_dev_ryui_RyUINative_listUnbind(JNIEnv *e, jclass cls, jint list, jint cell) {
+	ryui_list_unbind((uint32_t)list, (uint32_t)cell);
 }
 
-JNIEXPORT void JNICALL Java_dev_nui_NuiNative_runPosted(JNIEnv *e, jclass cls) { nui_run_posted(); }
+JNIEXPORT void JNICALL Java_dev_ryui_RyUINative_runPosted(JNIEnv *e, jclass cls) { ryui_run_posted(); }
 
-JNIEXPORT void JNICALL Java_dev_nui_NuiNative_setenv(JNIEnv *e, jclass cls, jstring key, jstring value) {
+JNIEXPORT void JNICALL Java_dev_ryui_RyUINative_setenv(JNIEnv *e, jclass cls, jstring key, jstring value) {
 	const char *k = (*e)->GetStringUTFChars(e, key, NULL);
 	const char *v = (*e)->GetStringUTFChars(e, value, NULL);
-	nui_setenv((char *)k, (char *)v);
+	ryui_setenv((char *)k, (char *)v);
 	(*e)->ReleaseStringUTFChars(e, key, k);
 	(*e)->ReleaseStringUTFChars(e, value, v);
 }

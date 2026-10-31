@@ -4,16 +4,16 @@ package mobile
 
 /*
 #cgo android LDFLAGS: -landroid -llog
-#include "nui_host.h"
+#include "ryui_host.h"
 
-static nui_host_callbacks nui_cb;
+static ryui_host_callbacks ryui_cb;
 
-static void nui_set_callbacks(nui_host_callbacks *cb) { nui_cb = *cb; }
-static void nui_call_apply(const uint8_t *buf, size_t len) { nui_cb.apply(buf, len); }
-static void nui_call_measure(uint32_t id, float w, float h, float aw, float ah, float *ow, float *oh) {
-	nui_cb.measure(id, w, h, aw, ah, ow, oh);
+static void ryui_set_callbacks(ryui_host_callbacks *cb) { ryui_cb = *cb; }
+static void ryui_call_apply(const uint8_t *buf, size_t len) { ryui_cb.apply(buf, len); }
+static void ryui_call_measure(uint32_t id, float w, float h, float aw, float ah, float *ow, float *oh) {
+	ryui_cb.measure(id, w, h, aw, ah, ow, oh);
 }
-static void nui_call_post(void) { nui_cb.post(); }
+static void ryui_call_post(void) { ryui_cb.post(); }
 */
 import "C"
 
@@ -23,11 +23,11 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/egoist/nui/host"
-	"github.com/egoist/nui/internal/boot"
-	"github.com/egoist/nui/layout"
-	"github.com/egoist/nui/ops"
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/host"
+	"github.com/egoist/ryui/internal/boot"
+	"github.com/egoist/ryui/layout"
+	"github.com/egoist/ryui/ops"
+	"github.com/egoist/ryui/ui"
 )
 
 type mobileHost struct {
@@ -53,12 +53,12 @@ func SetCore(c host.Core) { core = c }
 
 func (h *mobileHost) Apply(b *ops.Batch) {
 	buf := b.Encode()
-	C.nui_call_apply((*C.uint8_t)(unsafe.Pointer(&buf[0])), C.size_t(len(buf)))
+	C.ryui_call_apply((*C.uint8_t)(unsafe.Pointer(&buf[0])), C.size_t(len(buf)))
 }
 
 func (h *mobileHost) Measure(id ops.NodeID, c layout.Constraints) layout.Size {
 	var w, hh C.float
-	C.nui_call_measure(C.uint32_t(id), C.float(c.Width), C.float(c.Height), C.float(c.AvailW), C.float(c.AvailH), &w, &hh)
+	C.ryui_call_measure(C.uint32_t(id), C.float(c.Width), C.float(c.Height), C.float(c.AvailW), C.float(c.AvailH), &w, &hh)
 	return layout.Size{W: float32(w), H: float32(hh)}
 }
 
@@ -66,34 +66,34 @@ func (h *mobileHost) Post(f func()) {
 	h.mu.Lock()
 	h.posted = append(h.posted, f)
 	h.mu.Unlock()
-	C.nui_call_post()
+	C.ryui_call_post()
 }
 
 func (h *mobileHost) Environment() host.Environment { return h.env }
 
-//export nui_start
-func nui_start(cb *C.nui_host_callbacks) {
+//export ryui_start
+func ryui_start(cb *C.ryui_host_callbacks) {
 	if started {
 		return
 	}
 	started = true
-	C.nui_set_callbacks(cb)
+	C.ryui_set_callbacks(cb)
 	boot.Runner = func(root any) {
 		f, ok := root.(func() ui.Node)
 		if !ok {
-			panic(fmt.Sprintf("nui: app.Run wants a func() ui.Node, got %T", root))
+			panic(fmt.Sprintf("ryui: app.Run wants a func() ui.Node, got %T", root))
 		}
 		ui.Mount(theHost, f)
 	}
 	if Main == nil {
-		fmt.Fprintln(os.Stderr, "nui: no main function; build the app with the nui CLI")
+		fmt.Fprintln(os.Stderr, "ryui: no main function; build the app with the ryui CLI")
 		return
 	}
 	Main()
 }
 
-//export nui_attach
-func nui_attach() {
+//export ryui_attach
+func ryui_attach() {
 	// A new Activity took over the existing views (Android): tell it
 	// which view is the root again.
 	if !started {
@@ -106,12 +106,12 @@ func nui_attach() {
 	}
 }
 
-//export nui_event
-func nui_event(buf *C.uint8_t, n C.size_t) {
+//export ryui_event
+func ryui_event(buf *C.uint8_t, n C.size_t) {
 	data := unsafe.Slice((*byte)(unsafe.Pointer(buf)), int(n))
 	ev, err := ops.DecodeEvent(data)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "nui:", err)
+		fmt.Fprintln(os.Stderr, "ryui:", err)
 		return
 	}
 	if ev.Kind == ops.EventEnvironment {
@@ -122,33 +122,33 @@ func nui_event(buf *C.uint8_t, n C.size_t) {
 	}
 }
 
-//export nui_list_count
-func nui_list_count(list C.uint32_t) C.int64_t {
+//export ryui_list_count
+func ryui_list_count(list C.uint32_t) C.int64_t {
 	return C.int64_t(core.ListCount(ops.NodeID(list)))
 }
 
-//export nui_list_bind
-func nui_list_bind(list C.uint32_t, index C.int64_t, cell C.uint32_t) {
+//export ryui_list_bind
+func ryui_list_bind(list C.uint32_t, index C.int64_t, cell C.uint32_t) {
 	core.ListBind(ops.NodeID(list), int(index), ops.NodeID(cell))
 }
 
-//export nui_list_unbind
-func nui_list_unbind(list C.uint32_t, cell C.uint32_t) {
+//export ryui_list_unbind
+func ryui_list_unbind(list C.uint32_t, cell C.uint32_t) {
 	core.ListUnbind(ops.NodeID(list), ops.NodeID(cell))
 }
 
-// nui_setenv sets an environment variable for the Go code: Android
+// ryui_setenv sets an environment variable for the Go code: Android
 // hands a library the environment the process started with, so a
-// variable the host sets later (NUI_DATA, the app's files directory) is
+// variable the host sets later (RYUI_DATA, the app's files directory) is
 // given here.
 //
-//export nui_setenv
-func nui_setenv(key, value *C.char) {
+//export ryui_setenv
+func ryui_setenv(key, value *C.char) {
 	os.Setenv(C.GoString(key), C.GoString(value))
 }
 
-//export nui_run_posted
-func nui_run_posted() {
+//export ryui_run_posted
+func ryui_run_posted() {
 	h := theHost
 	h.mu.Lock()
 	fs := h.posted

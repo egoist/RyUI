@@ -1,25 +1,25 @@
 # Data
 
-An app keeps its data in a few places: small values in `nui/store`, records
-in SQLite with `nui/sqlite`, secrets in the platform's keychain with
-`nui/secure`, and files of its own with Go's `os`. This page covers each,
+An app keeps its data in a few places: small values in `ryui/store`, records
+in SQLite with `ryui/sqlite`, secrets in the platform's keychain with
+`ryui/secure`, and files of its own with Go's `os`. This page covers each,
 the network through `net/http`, and which calls may block the main thread.
 
 ## Where data lives
 
 `store.Dir()` is the app's data directory: on iOS, Application Support in
-the app's container; on Android, the app's files directory. `nui/store`'s
+the app's container; on Android, the app's files directory. `ryui/store`'s
 file is there, and so are the databases `sqlite.Open` makes from a plain
 name. Put your own files there too.
 
-Under `nui dev`, your Go code runs on your Mac, so `store.Dir()` is a
-directory on the Mac (in the user's config directory, under `nui/`), and
-the store, the databases and your files are there. `nui/secure` is the
+Under `ryui dev`, your Go code runs on your Mac, so `store.Dir()` is a
+directory on the Mac (in the user's config directory, under `ryui/`), and
+the store, the databases and your files are there. `ryui/secure` is the
 exception: it is the device's keychain, as in a release build.
 
-## Small values: nui/store
+## Small values: ryui/store
 
-`nui/store` keeps small values across launches: settings, a signed-in
+`ryui/store` keeps small values across launches: settings, a signed-in
 user's name, the tab last open. Values are JSON, in one file
 (`store.json` in `store.Dir()`), written off the main thread a moment
 after they change, and when the app goes to the background. It's not a
@@ -60,15 +60,15 @@ if !store.Get("prefs", &p) {
 store.Delete("prefs")
 ```
 
-`store.Flush()` waits until what's pending is written. nui calls it when
+`store.Flush()` waits until what's pending is written. RyUI calls it when
 the app goes to the background; you need it only in tests.
 
-## Records: nui/sqlite
+## Records: ryui/sqlite
 
-`nui/sqlite` is an app's SQLite database. SQLite is
+`ryui/sqlite` is an app's SQLite database. SQLite is
 [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite), a translation
 of SQLite's C to Go: it needs no cgo, so the same code runs on iOS,
-Android and, under `nui dev`, the Mac. [`examples/notes`](../examples/notes)
+Android and, under `ryui dev`, the Mac. [`examples/notes`](../examples/notes)
 uses it.
 
 ### Open and migrate
@@ -240,7 +240,7 @@ func Search() ui.Node {
 
 ### Beyond this package
 
-`db.SQL()` is the `*sql.DB` underneath, for what `nui/sqlite` doesn't
+`db.SQL()` is the `*sql.DB` underneath, for what `ryui/sqlite` doesn't
 cover. Writes made through it are noted too, but the live queries hear of
 them at the next `Exec` or `Tx`, or at `db.Changed()`.
 
@@ -248,9 +248,9 @@ them at the next `Exec` or `Tx`, or at `db.Changed()`.
 database can't see: another process's, or the file replaced (a backup
 restored).
 
-## Secrets: nui/secure
+## Secrets: ryui/secure
 
-`nui/secure` keeps small secrets, tokens and passwords, encrypted by the
+`ryui/secure` keeps small secrets, tokens and passwords, encrypted by the
 platform. It's for secrets, not data: keep everything else in the store
 or a database.
 
@@ -304,8 +304,8 @@ go func() {
 
 ## Files and the network
 
-Files are Go's `os`, and the network is Go's `net/http`: nui adds nothing
-of its own. Keep the files in `store.Dir()`. Files nui's packages give you
+Files are Go's `os`, and the network is Go's `net/http`: RyUI adds nothing
+of its own. Keep the files in `store.Dir()`. Files RyUI's packages give you
 (a photo taken, a video recorded, photos picked) are in the app's caches
 or temporary directory, which the system may clear: move one into
 `store.Dir()` to keep it.
@@ -358,9 +358,9 @@ func download(url, file string) error {
 ```
 
 To keep a long download going while the app is out of sight, see
-[`nui/background`](device.md#background-work-nuibackground); to know
+[`ryui/background`](device.md#background-work-ryuibackground); to know
 whether the connection is Wi-Fi or metered, see
-[`nui/network`](device.md#network-state-nuinetwork).
+[`ryui/network`](device.md#network-state-ryuinetwork).
 [`examples/downloader`](../examples/downloader) does both.
 
 ## The main thread

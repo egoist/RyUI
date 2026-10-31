@@ -3,8 +3,8 @@ package ui
 import (
 	"time"
 
-	"github.com/egoist/nui/ops"
-	"github.com/egoist/nui/signal"
+	"github.com/egoist/ryui/ops"
+	"github.com/egoist/ryui/signal"
 )
 
 type frameFn struct{ f func(time.Duration) }

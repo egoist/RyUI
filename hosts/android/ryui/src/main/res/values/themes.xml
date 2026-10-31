@@ -1,0 +1,27 @@
+<resources>
+    <!-- Material 3, light and dark. Apps that set no style look like this. -->
+    <style name="Theme.RyUI" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowBackground">?attr/colorSurface</item>
+        <!-- Material 3 labels aren't all caps. -->
+        <item name="actionMenuTextAppearance">@style/TextAppearance.RyUI.ActionMenu</item>
+    </style>
+
+    <!-- Button variants (ui.ButtonVariant): plain is a text button. -->
+    <style name="ThemeOverlay.RyUI.TextButton" parent="">
+        <item name="materialButtonStyle">@style/Widget.Material3.Button.TextButton</item>
+    </style>
+    <style name="ThemeOverlay.RyUI.FilledButton" parent="">
+        <item name="materialButtonStyle">@style/Widget.Material3.Button</item>
+    </style>
+    <style name="ThemeOverlay.RyUI.TonalButton" parent="">
+        <item name="materialButtonStyle">@style/Widget.Material3.Button.TonalButton</item>
+    </style>
+    <style name="ThemeOverlay.RyUI.OutlinedButton" parent="">
+        <item name="materialButtonStyle">@style/Widget.Material3.Button.OutlinedButton</item>
+    </style>
+
+    <style name="TextAppearance.RyUI.ActionMenu" parent="TextAppearance.Material3.LabelLarge">
+        <item name="textAllCaps">false</item>
+        <item name="android:textAllCaps">false</item>
+    </style>
+</resources>

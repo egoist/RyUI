@@ -6,7 +6,7 @@
 // again, off the main thread, when a table it reads is written.
 //
 // SQLite is modernc.org/sqlite, a translation of its C to Go: it needs no
-// cgo, so the same code runs on iOS, Android and, under nui dev, the Mac.
+// cgo, so the same code runs on iOS, Android and, under ryui dev, the Mac.
 //
 //	db, err := sqlite.Open("notes.db")
 //	db.Migrate(
@@ -35,9 +35,9 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/egoist/nui/signal"
-	"github.com/egoist/nui/store"
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/signal"
+	"github.com/egoist/ryui/store"
+	"github.com/egoist/ryui/ui"
 
 	msqlite "modernc.org/sqlite"
 )
@@ -50,7 +50,7 @@ type DB struct {
 	dirty   map[string]bool // the tables written since the live queries last heard
 }
 
-// The driver nui's databases use: modernc.org/sqlite's, with hooks on
+// The driver RyUI's databases use: modernc.org/sqlite's, with hooks on
 // each connection that note the tables it reads and writes (its own, so
 // they're on no one else's connections).
 var (
@@ -70,7 +70,7 @@ type connState struct {
 }
 
 func registerDriver() {
-	sql.Register("nui-sqlite", driver)
+	sql.Register("ryui-sqlite", driver)
 	driver.RegisterConnectionHook(func(c msqlite.ExecQuerierContext, dsn string) error {
 		v, ok := opened.Load(dsn)
 		if !ok {
@@ -126,7 +126,7 @@ func Open(name string) (*DB, error) {
 	}
 	// Which DB a connection is: its hook is given the DSN (SQLite and the
 	// driver ignore a parameter they don't know).
-	q.Set("_nui", strconv.FormatInt(nextDB.Add(1), 10))
+	q.Set("_ryui", strconv.FormatInt(nextDB.Add(1), 10))
 	dsn := "file:" + path + "?" + q.Encode()
 	if name == ":memory:" {
 		dsn = "file::memory:?" + q.Encode()
@@ -134,7 +134,7 @@ func Open(name string) (*DB, error) {
 	register.Do(registerDriver)
 	d := &DB{watches: map[*watch]bool{}, dirty: map[string]bool{}}
 	opened.Store(dsn, d)
-	db, err := sql.Open("nui-sqlite", dsn)
+	db, err := sql.Open("ryui-sqlite", dsn)
 	if err != nil {
 		opened.Delete(dsn)
 		return nil, err

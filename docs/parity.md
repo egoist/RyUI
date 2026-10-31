@@ -1,13 +1,13 @@
-# What nui has, against SwiftUI and Expo
+# What RyUI has, against SwiftUI and Expo
 
 Each row is something apps often need: how SwiftUI and Expo do it, and
-what nui has for it.
+what RyUI has for it.
 
 ✓ has it · ◐ in part (what's missing is said) · ✗ not yet
 
 ## Layout
 
-| | SwiftUI | Expo (React Native) | nui |
+| | SwiftUI | Expo (React Native) | RyUI |
 |---|---|---|---|
 | Stacks, spacing, padding, alignment | `HStack`, `VStack`, `Spacer` | flexbox | ✓ `Row`, `Column`, `Style` (flexbox: `Grow`, `Gap`, `Align`, `Justify`, `Wrap`) |
 | Overlays, absolute placement | `ZStack`, `.overlay` | `position: absolute` | ✓ `Style.Absolute`, `Top`/`Left`/... |
@@ -20,9 +20,9 @@ what nui has for it.
 
 ## Controls
 
-| | SwiftUI | Expo | nui |
+| | SwiftUI | Expo | RyUI |
 |---|---|---|---|
-| Text, styled text, links | `Text`, `AttributedString` | `Text` | ✓ `Text`, `RichText` (spans, links, inline views, selection), `nui/markdown` |
+| Text, styled text, links | `Text`, `AttributedString` | `Text` | ✓ `Text`, `RichText` (spans, links, inline views, selection), `ryui/markdown` |
 | Buttons (variants, icons, menus) | `Button`, `Menu` | `Pressable` | ✓ `Button` (filled, tinted, gray, bordered; icon; menu), `Menu`, context menus |
 | Text fields | `TextField`, `SecureField`, `TextEditor` | `TextInput` | ✓ `TextField` (secure, keyboards, return keys, multiline) |
 | Toggle, slider | `Toggle`, `Slider` | community | ✓ `Toggle`, `Slider` |
@@ -34,26 +34,26 @@ what nui has for it.
 | Icons | SF Symbols | `@expo/vector-icons` | ✓ `Symbol` (SF Symbols; Material Symbols on Android, a curated set) |
 | Images (remote, cached, placeholders) | `AsyncImage` | `expo-image` | ✓ `Image` (memory and disk cache, `Placeholder`) |
 | Video | `VideoPlayer` | `expo-video` | ✓ `Video` |
-| Web content | `WKWebView` | `react-native-webview` | ✓ `WebView` (URL, HTML, messages both ways, scripts before the page's, blocked requests, its state and history, downloads, new windows, cookies, a script's value; each request on Android); `nui/js` runs JavaScript off screen |
+| Web content | `WKWebView` | `react-native-webview` | ✓ `WebView` (URL, HTML, messages both ways, scripts before the page's, blocked requests, its state and history, downloads, new windows, cookies, a script's value; each request on Android); `ryui/js` runs JavaScript off screen |
 | Maps | `Map` | `react-native-maps` | ✗ (a native view through `ui.Native` meanwhile) |
-| Custom drawing | `Shape`, `Path`, `Canvas` | `react-native-svg`, Skia | ◐ `Shape` and `Path` (lines, curves, arcs, rects, ellipses; fill, stroke, caps, joins; an animatable trim); SVG icons drawn natively (`nui/svg`); no immediate-mode canvas, no gradient fills |
+| Custom drawing | `Shape`, `Path`, `Canvas` | `react-native-svg`, Skia | ◐ `Shape` and `Path` (lines, curves, arcs, rects, ellipses; fill, stroke, caps, joins; an animatable trim); SVG icons drawn natively (`ryui/svg`); no immediate-mode canvas, no gradient fills |
 | Native escape hatch | `UIViewRepresentable` | native modules | ✓ `ui.Native` views, `ui.Call` modules |
 
 ## Navigation and presentation
 
-| | SwiftUI | Expo (expo-router) | nui |
+| | SwiftUI | Expo (expo-router) | RyUI |
 |---|---|---|---|
 | Stacks with native push, pop, back gestures | `NavigationStack` | Stack | ✓ `Stack`, `UseNavigator` |
 | Tabs | `TabView` | Tabs | ✓ `Tabs` |
 | Bar buttons, titles, search | `.toolbar`, `.searchable` | header options | ✓ `ScreenOptions` (`Actions`, `Search`) |
 | Sheets with detents | `.sheet`, `.presentationDetents` | modal | ✓ `Sheet` (`Detents`, `Grabber`) |
 | Alerts, action sheets | `.alert`, `.confirmationDialog` | `Alert` | ✓ `Alert` (both styles) |
-| Deep links, universal and app links | `.onOpenURL` | Linking | ✓ `OnOpenURL`, `nui.json` scheme and links |
+| Deep links, universal and app links | `.onOpenURL` | Linking | ✓ `OnOpenURL`, `ryui.json` scheme and links |
 | Pull to refresh, swipe actions | `.refreshable`, `.swipeActions` | `RefreshControl` | ✓ |
 
 ## Motion
 
-| | SwiftUI | Expo (Reanimated) | nui |
+| | SwiftUI | Expo (Reanimated) | RyUI |
 |---|---|---|---|
 | Animating changes | `withAnimation` | `withTiming`, `withSpring` | ✓ `Animate`, `AnimateWith` (ease, linear, spring; repeat, autoreverse) |
 | Transforms | `.rotationEffect`, `.scaleEffect`, `.offset` | `transform` | ✓ `Style.Transform` |
@@ -67,34 +67,34 @@ what nui has for it.
 
 ## Data and services
 
-| | SwiftUI / Apple | Expo | nui |
+| | SwiftUI / Apple | Expo | RyUI |
 |---|---|---|---|
 | State | `@State`, `@Observable` | hooks | ✓ signals (fine-grained: a write updates only what reads it) |
-| Small persisted values | `@AppStorage` | AsyncStorage | ✓ `nui/store` |
-| SQLite | SwiftData / GRDB | `expo-sqlite` | ✓ `nui/sqlite` (migrations, typed queries, transactions, writes off the main thread, live queries that run again when a table they read is written, also with arguments that change: `WatchWith`) |
-| Secure storage | Keychain | `expo-secure-store` | ✓ `nui/secure` |
+| Small persisted values | `@AppStorage` | AsyncStorage | ✓ `ryui/store` |
+| SQLite | SwiftData / GRDB | `expo-sqlite` | ✓ `ryui/sqlite` (migrations, typed queries, transactions, writes off the main thread, live queries that run again when a table they read is written, also with arguments that change: `WatchWith`) |
+| Secure storage | Keychain | `expo-secure-store` | ✓ `ryui/secure` |
 | Files, network | Foundation | `expo-file-system`, fetch | ✓ Go's `os`, `net/http` |
 | Photos | `PhotosPicker` | `expo-image-picker` | ✓ `device.PickPhotos` |
-| Camera | AVFoundation | `expo-camera` | ✓ `nui/camera`: `Take` (the system's camera), `View` (a live preview, front or back), `Capture`; `nui/camera/record` records video with sound |
-| Barcodes, QR codes | AVFoundation, Vision | `expo-camera` scanning | ✓ `nui/scan`: live in `camera.View` (`Scan: scan.Codes(...)`) and in image files (`scan.File`); ML Kit on Android, only in the apps that import it |
-| Location | Core Location | `expo-location` | ✓ `nui/location` |
-| Local notifications | UserNotifications | `expo-notifications` | ✓ `nui/notify` (local; no push yet) |
+| Camera | AVFoundation | `expo-camera` | ✓ `ryui/camera`: `Take` (the system's camera), `View` (a live preview, front or back), `Capture`; `ryui/camera/record` records video with sound |
+| Barcodes, QR codes | AVFoundation, Vision | `expo-camera` scanning | ✓ `ryui/scan`: live in `camera.View` (`Scan: scan.Codes(...)`) and in image files (`scan.File`); ML Kit on Android, only in the apps that import it |
+| Location | Core Location | `expo-location` | ✓ `ryui/location` |
+| Local notifications | UserNotifications | `expo-notifications` | ✓ `ryui/notify` (local; no push yet) |
 | Push notifications | APNs | `expo-notifications` | ✗ |
 | Clipboard, share sheet, browser | `UIPasteboard`, `ShareLink`, `SFSafariViewController` | `expo-clipboard`, `expo-sharing`, `expo-web-browser` | ✓ `Copy`, `device.Clipboard`, `Share`, `device.Browse` |
 | Keep awake, device info | `isIdleTimerDisabled`, `UIDevice` | `expo-keep-awake`, `expo-device` | ✓ `device.KeepAwake`, `device.GetInfo` |
-| Network state | `NWPathMonitor` | `expo-network` | ✓ `nui/network` (online, Wi-Fi or cellular, metered, Data Saver / Low Data Mode) |
-| Saving to the gallery, Downloads | `PHPhotoLibrary` | `expo-media-library` | ✓ `nui/library` (MediaStore's collections; Photos, or Documents in Files) |
-| Work in the background | `beginBackgroundTask`, `BGTaskScheduler` | `expo-task-manager` | ◐ `nui/background`: Android keeps the app running, its progress and buttons in a notification; iOS gives about 30 seconds; no scheduled tasks |
-| Receiving shares from other apps | Share extension | share intent (community) | ✓ `ui.OnShare` (text and links, `nui.json`'s `shareTarget`; on iOS a share extension that opens the app) |
-| Audio | AVAudioPlayer | `expo-audio` | ✓ `nui/audio` (load, play, pause, seek, volume, loop); no recording |
+| Network state | `NWPathMonitor` | `expo-network` | ✓ `ryui/network` (online, Wi-Fi or cellular, metered, Data Saver / Low Data Mode) |
+| Saving to the gallery, Downloads | `PHPhotoLibrary` | `expo-media-library` | ✓ `ryui/library` (MediaStore's collections; Photos, or Documents in Files) |
+| Work in the background | `beginBackgroundTask`, `BGTaskScheduler` | `expo-task-manager` | ◐ `ryui/background`: Android keeps the app running, its progress and buttons in a notification; iOS gives about 30 seconds; no scheduled tasks |
+| Receiving shares from other apps | Share extension | share intent (community) | ✓ `ui.OnShare` (text and links, `ryui.json`'s `shareTarget`; on iOS a share extension that opens the app) |
+| Audio | AVAudioPlayer | `expo-audio` | ✓ `ryui/audio` (load, play, pause, seek, volume, loop); no recording |
 | Custom fonts | `.font(.custom)` | `expo-font` | ✓ `Font.Family` |
 | Lifecycle | `scenePhase` | AppState | ✓ `app.OnLifecycle` |
 
 ## Appearance and accessibility
 
-| | SwiftUI | Expo | nui |
+| | SwiftUI | Expo | RyUI |
 |---|---|---|---|
-| Dark mode, semantic colors, accent | automatic | `useColorScheme` | ✓ semantic colors, `nui.json` accent (Material 3 dynamic color) |
+| Dark mode, semantic colors, accent | automatic | `useColorScheme` | ✓ semantic colors, `ryui.json` accent (Material 3 dynamic color) |
 | Dynamic Type, font scale | automatic | `allowFontScaling` | ✓ text styles and custom fonts scale |
 | Screen reader labels, roles, hiding | `.accessibilityLabel`... | `accessibilityLabel`... | ✓ `Label`, `Hint`, `Role`, `Decorative`; pressable views are buttons |
 | Announcements | `AccessibilityNotification.Announcement` | `announceForAccessibility` | ✓ `Announce` |
@@ -102,10 +102,10 @@ what nui has for it.
 
 ## Tooling
 
-| | Xcode / Expo | nui |
+| | Xcode / Expo | RyUI |
 |---|---|---|
-| Live reload, keeping state | previews, Fast Refresh | ✓ `nui dev`: the Go code runs on the Mac, reloads on save, keeps signals' values |
-| Release builds and signing | Xcode, EAS Build | ✓ `nui build -ios` (.ipa), `nui build -android` (.aab, .apk) |
+| Live reload, keeping state | previews, Fast Refresh | ✓ `ryui dev`: the Go code runs on the Mac, reloads on save, keeps signals' values |
+| Release builds and signing | Xcode, EAS Build | ✓ `ryui build -ios` (.ipa), `ryui build -android` (.aab, .apk) |
 | GUI tests | XCUITest, Detox, Maestro | ✓ `e2e/` (both platforms; a CI job for each, not yet run on GitHub) |
 | Benchmarks | Instruments | ✓ `bench/` (against SwiftUI and Compose) |
 | Over-the-air updates | — | EAS Update: ✗ |

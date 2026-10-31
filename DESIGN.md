@@ -1,6 +1,6 @@
-# nui — design
+# RyUI — design
 
-nui (working name) is a UI framework in Go that renders with each
+RyUI (working name) is a UI framework in Go that renders with each
 platform's own widgets. **Mobile comes first: iOS and Android.** Desktop
 (macOS, Windows, Linux) comes after mobile's v0 is done, on the same core
 (see "Desktop, later"). Apps are written in Go. The goals, in order:
@@ -25,7 +25,7 @@ and an implementation later.
 | Language | Go | Fast compiles; GC and closures make UI code quick to write; MyGo's purego/Objective-C experience carries over. The cost per frame is in the platform toolkits, so a faster core language would not show. |
 | Retained or immediate | Retained | Native widgets are retained objects that own focus, selection, IME, scroll and accessibility state. Rebuilding a description every frame would mean diffing it against them. |
 | Reactivity | Fine-grained signals (Solid-like), no virtual tree | A signal write re-runs only the effects that read it, and each effect emits exactly the property change it causes. |
-| Threads | Core runs on the platform's main thread | Native callbacks that need answers synchronously (list data sources, text field delegates, measurement, layout inside the keyboard's animation) call straight into the core. Frameworks that run logic and layout off the main thread (React Native, Texture, Litho, NSH) do it so slow or garbage-collected app logic can't drop frames, and pay with asynchronous interop: blank cells, input races, layout a frame late. Fabric added synchronous layout and Flutter merged its UI and platform threads (3.29) for that reason; SwiftUI and Compose stay on main. nui's logic is compiled Go with fine-grained updates, so the main thread suffices; slow work runs on goroutines that post results back. The place off-main work does pay, preparing long, rich or streaming text, is handled without moving the core (see "Rich text"). |
+| Threads | Core runs on the platform's main thread | Native callbacks that need answers synchronously (list data sources, text field delegates, measurement, layout inside the keyboard's animation) call straight into the core. Frameworks that run logic and layout off the main thread (React Native, Texture, Litho, NSH) do it so slow or garbage-collected app logic can't drop frames, and pay with asynchronous interop: blank cells, input races, layout a frame late. Fabric added synchronous layout and Flutter merged its UI and platform threads (3.29) for that reason; SwiftUI and Compose stay on main. RyUI's logic is compiled Go with fine-grained updates, so the main thread suffices; slow work runs on goroutines that post results back. The place off-main work does pay, preparing long, rich or streaming text, is handled without moving the core (see "Rich text"). |
 | Core ↔ native contract | Batched mount operations (`ops`) | One crossing per batch. The same stream works in process and over a socket. |
 | Layout | Our own engine in Go: CSS block, flexbox and grid (Taffy-like, checked against Chrome), measured by the host | One layout engine for every platform, with the semantics web and React Native developers know; native widgets report their own sizes. Designed for our tree and for zero allocation, not ported from Yoga or Taffy. |
 | iOS host | Swift + UIKit, with Go linked as a `c-archive` | UIKit subclasses and delegates are trivial in Swift. Not SwiftUI: it is a second reconciler. |
@@ -37,7 +37,7 @@ Open decisions, with the default to use until they are settled:
 
 - Minimum versions: **iOS 16, Android API 26 (8.0)**.
 - Android widgets: Material Components 3 (decided in M2).
-- Module path: `github.com/egoist/nui`.
+- Module path: `github.com/egoist/ryui`.
 
 ## Architecture
 
@@ -117,7 +117,7 @@ func Effect(f func())               // runs at flush, after memos
 func RenderEffect(f func())         // runs now; ui's prop effects
 func NewOwner() *Owner              // disposed with the current owner
 func RunWithOwner(o *Owner, f func())
-func BindThread()                   // nui_debug: the main thread
+func BindThread()                   // ryui_debug: the main thread
 func Untrack[T any](f func() T) T
 func Batch(f func())                // one flush for all writes in f
 
@@ -138,7 +138,7 @@ Rules:
   subscribed effect: disposal is explicit and must be tested.
 - Writes during an event handler are batched until the handler returns.
   `Set` is legal only on the main thread; goroutines use `ui.Post`.
-  Builds with the `nui_debug` tag check this and panic.
+  Builds with the `ryui_debug` tag check this and panic.
 - Effects run in creation order within a flush: render effects (those
   `ui` makes for props) before user effects (`signal.Effect`).
 - Writing a signal inside a memo is a panic. Writing inside an effect
@@ -315,7 +315,7 @@ scale), so dark mode and Dynamic Type / font scale need no app code.
 of the app's, by its name in `assets/fonts`; a family of them (`Inter`:
 `Inter-Regular`, `Inter-Bold`..., picked by `Weight`); a generic family
 (`serif`, `monospace`, `rounded`: on iOS the system font's designs); or
-a system family. It scales as its text style does. Under `nui dev` the
+a system family. It scales as its text style does. Under `ryui dev` the
 core sends a font file's URL instead, since the player hasn't the app's
 assets: the host loads it, then sends `FontLoaded`, and the core
 measures text again (its measure cache cleared).
@@ -331,9 +331,9 @@ controls go through this.
 An app's native code lives beside its Go: `ios/*.swift` is compiled
 with the iOS host (same module), `android/*.kt` is built into the
 Android app. Each registers its kinds from a well-known class the host
-looks up at start: `@objc(NuiAppNatives)` conforming to
-`NuiNativeModule` in Swift, `object dev.nui.app.NuiAppNatives :
-NuiNativeModule` in Kotlin, calling `registerNative(kind) { ctx -> view }`.
+looks up at start: `@objc(RyUIAppNatives)` conforming to
+`RyUINativeModule` in Swift, `object dev.ryui.app.RyUIAppNatives :
+RyUINativeModule` in Kotlin, calling `registerNative(kind) { ctx -> view }`.
 A native view implements `set(name, value)` and sends events with
 `ctx.emit(name, values)`; the host measures it as it measures any view.
 On the wire it's one kind (`Native`) whose `Type` prop, sent right
@@ -552,7 +552,7 @@ Activity: views are made with the app's Material theme
 (`ContextThemeWrapper` over the application). The Activity handles
 rotation, size, dark mode, font scale and density itself
 (`configChanges`); any other configuration change remakes it, and the
-new Activity takes over the existing tree: `nui_attach` resends the
+new Activity takes over the existing tree: `ryui_attach` resends the
 root (`ui.Reattach`) and every frame, with no app state lost. Android
 views resolve theme colors and text sizes when they're made, so after a
 dark mode, font scale or density change the host makes its text and
@@ -562,7 +562,7 @@ user's state (text, selection, checked, value). There's one Activity
 views. Process death loses state, as in any native app; saving state to
 the device for that is later, under a name that says storage (say
 `signal.Saved(key, initial)` over `UserDefaults` / `SharedPreferences`),
-not to be confused with keeping state across `nui dev` reloads (below),
+not to be confused with keeping state across `ryui dev` reloads (below),
 which needs no code.
 
 ## mobile
@@ -570,67 +570,67 @@ which needs no code.
 `mobile/` (build tags `ios || android`, cgo) exports a C ABI:
 
 ```c
-void      nui_start(nui_host_callbacks*);   // apply, measure, post; calls main
-void      nui_attach(void);                 // mount the tree again (new Activity)
-void      nui_event(const uint8_t*, size_t);
-int64_t   nui_list_count(uint32_t list);
-void      nui_list_bind(uint32_t list, int64_t index, uint32_t cell);
-void      nui_list_unbind(uint32_t list, uint32_t cell);
-void      nui_run_posted(void);             // the host's main-thread hop
+void      ryui_start(ryui_host_callbacks*);   // apply, measure, post; calls main
+void      ryui_attach(void);                 // mount the tree again (new Activity)
+void      ryui_event(const uint8_t*, size_t);
+int64_t   ryui_list_count(uint32_t list);
+void      ryui_list_bind(uint32_t list, int64_t index, uint32_t cell);
+void      ryui_list_unbind(uint32_t list, uint32_t cell);
+void      ryui_run_posted(void);             // the host's main-thread hop
 ```
 
 All calls come on the main thread. `post` from Go calls the host's
 callback, which hops with `DispatchQueue.main.async` / `Handler.post`
-and calls `nui_run_posted`. The header Swift and Kotlin compile against
-is `hosts/ios/Sources/CNui/include/nui.h`.
+and calls `ryui_run_posted`. The header Swift and Kotlin compile against
+is `hosts/ios/Sources/CRyUI/include/ryui.h`.
 
 An app is a `main` package whose `main` calls `app.Run(root)`. The CLI
 adds a file to it with `go build -overlay` that imports `mobile` and
-sets `mobile.Main = main`; `nui_start` calls it, and `app.Run` mounts the
+sets `mobile.Main = main`; `ryui_start` calls it, and `app.Run` mounts the
 root on the mobile host.
 
 - iOS: `GOOS=ios GOARCH=arm64 CGO_ENABLED=1 go build
   -buildmode=c-archive`, with the SDK's clang (iphonesimulator for the
   simulator, arm64 and x86_64; iphoneos and an XCFramework for devices
-  in M6). `hosts/ios` is a Swift package with the decoder (`NuiOps`),
-  the UIKit host (`NuiHost`) and the C header (`CNui`); `App/` holds the
+  in M6). `hosts/ios` is a Swift package with the decoder (`RyUIOps`),
+  the UIKit host (`RyUIHost`) and the C header (`CRyUI`); `App/` holds the
   `@main` app delegate. The CLI embeds them.
 - Android: `GOOS=android CGO_ENABLED=1 go build -buildmode=c-shared` per
   ABI (arm64-v8a, x86_64; armeabi-v7a optional) with the NDK's clang,
   linked with 16 KB pages (`-z max-page-size=16384`) as new devices
   require. `mobile/jni_android.c` is the JNI side of the same C ABI:
-  Kotlin's `dev.nui.NuiNative` calls in; the core calls
-  `NuiRuntime.apply(ByteBuffer)` (a direct buffer over the encoded
+  Kotlin's `dev.ryui.RyUINative` calls in; the core calls
+  `RyUIRuntime.apply(ByteBuffer)` (a direct buffer over the encoded
   batch, one call per batch), `measure` and `post` back.
-  `hosts/android` is a Gradle project: the `nui` library (decoder,
+  `hosts/android` is a Gradle project: the `ryui` library (decoder,
   Views host, JNI bindings) and `app`, the shell app the CLI builds per
   app (application ID and name passed as Gradle properties).
 
 The CLI does these builds itself (no gomobile).
 
-## CLI (`cmd/nui`)
+## CLI (`cmd/ryui`)
 
 ```
-nui new <dir>                     a project from the template
-nui dev -ios|-android <dir>       build, run, rebuild and restart on save
-nui build -ios|-android <dir>     a release build for the stores
-nui dev -mac <dir>                build and run on this Mac, rerun on save
-nui build -mac <dir>              a universal .app, signed (-sign; default ad hoc)
-nui dev -windows <dir>            build and run on this PC, rerun on save
-nui build -windows <dir>          a folder: the .exe (icon, manifest, version) and its assets
+ryui new <dir>                     a project from the template
+ryui dev -ios|-android <dir>       build, run, rebuild and restart on save
+ryui build -ios|-android <dir>     a release build for the stores
+ryui dev -mac <dir>                build and run on this Mac, rerun on save
+ryui build -mac <dir>              a universal .app, signed (-sign; default ad hoc)
+ryui dev -windows <dir>            build and run on this PC, rerun on save
+ryui build -windows <dir>          a folder: the .exe (icon, manifest, version) and its assets
 ```
 
-**An app's metadata** is `nui.json` beside its Go code, all optional:
+**An app's metadata** is `ryui.json` beside its Go code, all optional:
 name, ID (bundle ID and application ID), version and build number, a
 1024×1024 icon, orientations (the phone's: an iPad or a large Android
 screen turns the app any way, for split screen), the iOS team (and
 whether it's iPhone only), provisioning profile, usage
 descriptions and extra Info.plist keys, the Android permissions and
-upload key. `nui dev` and `nui build` read it alike.
+upload key. `ryui dev` and `ryui build` read it alike.
 
 **The accent color** (`"accent": "#7c3aed"`) is the one color an app's
 brand sets on native controls; the controls are the platform's, so
-nui has no theme of its own over them (`Style` changes one view). It
+RyUI has no theme of its own over them (`Style` changes one view). It
 travels with the Go code, not the shell: the CLI builds it in
 (`-ldflags -X`, `internal/boot`), and each root, as it mounts, sends
 the `Accent` command before any view is made. That way the dev player,
@@ -639,13 +639,13 @@ it's the windows' tint color, which UIKit's controls and `ui.Accent`
 take. On Android it's the seed of a Material 3 color scheme
 (`SchemeContent`, light and dark, as Material's `DynamicColors` makes
 it) on Android 12 and later; before that, Material's baseline colors,
-with nui's own uses of the accent (links, `ui.Accent`) taking the color
+with RyUI's own uses of the accent (links, `ui.Accent`) taking the color
 itself. `"android": {"dynamicColor": true}` takes the wallpaper's colors
 instead, where the system has them. The theme context is made again
 and the views that resolved theme colors are rebuilt, as on a dark mode
 change.
 
-**`nui build -ios`** makes an `.ipa`, still without an Xcode project:
+**`ryui build -ios`** makes an `.ipa`, still without an Xcode project:
 the host compiled optimized (no debug automation), the Go archive for
 `arm64` devices, linked with dead stripping; an Info.plist with the
 keys App Store validation checks (`DT*` from the SDK and Xcode,
@@ -658,18 +658,18 @@ entitlements, with a wildcard app ID made the app's; `codesign` with
 the identity's SHA-1, verified. Uploading is Transporter's or `altool`'s.
 `-simulator` makes the same release build for the simulator.
 
-**`nui build -android`** makes an `.aab` for Google Play and an `.apk`:
+**`ryui build -android`** makes an `.aab` for Google Play and an `.apk`:
 the Go code as a stripped `.so` for arm64-v8a, armeabi-v7a and x86_64,
 the assets, launcher icons (legacy per density, and adaptive: the icon
 inside the safe zone over its corner color), the permissions, the
 version; Kotlin shrunk by R8 (the classes JNI and reflection reach are
-kept); signed with the upload key named in `nui.json` or `NUI_KEYSTORE`,
+kept); signed with the upload key named in `ryui.json` or `RYUI_KEYSTORE`,
 its passwords from the environment (never on a command line). A
 release build never loads a library from the app's files, as debug
 builds do in development; cleartext HTTP (the player's assets) is
 debug-only, as is iOS's local networking exception.
 
-**`nui dev` runs the app's Go code on the Mac, and its views in a
+**`ryui dev` runs the app's Go code on the Mac, and its views in a
 player** (`internal/remote`): the platform host with a small Go library
 (`mobile/player`) in place of an app, built and installed once and
 shared by every app. A change rebuilds the Go code for the Mac and
@@ -693,7 +693,7 @@ the new code, with no install. The app's logs are the process's output.
   keeps hooks' state: the process saves every app signal's value as it
   stops, and the next run gives it back to the signal made at the same
   place: the same call path (function names), type and position among
-  the live signals of that type there. A signal made by nui itself
+  the live signals of that type there. A signal made by RyUI itself
   isn't kept, nor a value JSON would change (funcs, unexported fields).
   Adding a signal before others of its type made at the same place, or
   changing its type, resets those. Navigation isn't kept (screens are
@@ -706,7 +706,7 @@ the new code, with no install. The app's logs are the process's output.
   (`boot.AssetBase`).
 - **Not in the player**: an app's own native code (`ios/`, `android/`),
   which only an app built with it can show. Such apps, `-once` and
-  `-embed` build the app with its Go code, as before: `nui dev`
+  `-embed` build the app with its Go code, as before: `ryui dev`
   rebuilds the library and relaunches on the iOS simulator (no Xcode
   project: `swiftc` compiles the embedded host, with the app's Swift,
   into one object, cached; each change rebuilds the archive, links,
@@ -720,7 +720,7 @@ the new code, with no install. The app's logs are the process's output.
 ## Repository layout
 
 ```
-nui/
+ryui/
   signal/            reactivity
   ui/                components, nodes, flush, flattening, navigation
   layout/            flexbox
@@ -731,8 +731,8 @@ nui/
   hosts/ios/         Swift package
   hosts/android/     Kotlin/Gradle library
   app/               app.Root, lifecycle
-  cmd/nui/           CLI
-  template/          what `nui new` copies
+  cmd/ryui/           CLI
+  template/          what `ryui new` copies
   examples/counter/  examples/todo/  examples/list10k/  examples/navigation/
 ```
 
@@ -766,14 +766,14 @@ Desktop adds `host/darwin` and `internal/darwin` (macOS),
   screen, and disposal destroying every window.
 - `ops`: the Go encoder and the generated Swift and Kotlin decoders
   round-trip the same golden batches (`swift test --package-path
-  hosts/ios`; `./gradlew :nui:testDebugUnitTest` in `hosts/android`).
+  hosts/ios`; `./gradlew :ryui:testDebugUnitTest` in `hosts/android`).
 - Hosts: GUI tests (`e2e/`, build tag `e2e`, in CI on a simulator and
-  an emulator) build `examples/` with `nui dev -once` and drive them
+  an emulator) build `examples/` with `ryui dev -once` and drive them
   through the native views. Debug builds take automation commands (tap,
   type, submit, back, tab, rotate, dump: what the screen shows), on iOS from a file in the
-  app's container on the `dev.nui.automation` Darwin notification
-  (`hosts/ios/Sources/NuiHost/Automation.swift`), on Android from a
-  `dev.nui.automation` broadcast (`Automation.kt`; the dump read with
+  app's container on the `dev.ryui.automation` Darwin notification
+  (`hosts/ios/Sources/RyUIHost/Automation.swift`), on Android from a
+  `dev.ryui.automation` broadcast (`Automation.kt`; the dump read with
   `run-as`). So both platforms run the same test, and neither needs
   UI Automator's single connection, which device tools hold. Each test
   waits for the screen to show what it expects, bounded so a broken app
@@ -788,12 +788,12 @@ Each one ends with its examples running and its tests in CI.
 - **M0, core without UI** (done): `signal`, `ui` with `host/fake`,
   `layout`, `ops` with the Go encoder. Everything above under `go test`.
 - **M1, iOS** (done): Swift codegen for `ops`, `mobile/`, `hosts/ios`,
-  `nui new`, `nui dev -ios` on the simulator. Counter, todo (`For`,
+  `ryui new`, `ryui dev -ios` on the simulator. Counter, todo (`For`,
   `TextField`, `Toggle`, `SafeArea` with the keyboard) and list10k
   (`List`) run. Not yet: XCUITest GUI tests and CI on macOS runners.
 - **M2, Android** (done): Kotlin codegen, `hosts/android`,
-  `nui dev -android` on the emulator, Activity recreation
-  (`nui_attach`). The same examples run unchanged; live rotation, dark
+  `ryui dev -android` on the emulator, Activity recreation
+  (`ryui_attach`). The same examples run unchanged; live rotation, dark
   mode, font scale and the keyboard (insets, animated) work. Not yet:
   Espresso GUI tests.
 - **M3, mobile app structure** (done): `Stack` with native back
@@ -811,8 +811,8 @@ Each one ends with its examples running and its tests in CI.
   player apps (iOS simulator, Android emulator and devices); app state
   survives a reload with no code. Not yet: physical iOS devices (the
   player would need signing and the Mac's address).
-- **M6, shipping** (done): `nui.json`, `nui build -ios` (signed `.ipa`;
-  `-simulator`), `nui build -android` (`.aab` and `.apk`). Not yet:
+- **M6, shipping** (done): `ryui.json`, `ryui build -ios` (signed `.ipa`;
+  `-simulator`), `ryui build -android` (`.aab` and `.apk`). Not yet:
   uploading, screenshots and store listings (Transporter and the Play
   Console do those).
 - **Split screen** (done): an iOS build is an iPad app too
@@ -848,28 +848,28 @@ Each one ends with its examples running and its tests in CI.
     Loop, Muted, `OnEnd`; `ui.Play`, `ui.Pause`, `ui.Seek`.
   - `ui.WebView` (WKWebView, Android's WebView): a URL, an asset or
     markup; `OnLoad`, `OnError`; the page posts to Go with
-    `window.nui.postMessage`, the same on both, and `ui.EvalJS` runs
+    `window.ryui.postMessage`, the same on both, and `ui.EvalJS` runs
     script in it.
   - Grids: `ListProps.Columns` and `Gap` (a compositional grid on iOS,
     a GridLayoutManager on Android); the core lays each cell out at
     exactly the column width the host gives it.
-  - `nui/store` (small values kept across launches, `store.Signal`),
+  - `ryui/store` (small values kept across launches, `store.Signal`),
     `ui.Copy`, `ui.Share`.
-  - The app's accent color (`nui.json`).
+  - The app's accent color (`ryui.json`).
   - The device's time zone as Go's `time.Local`.
   - Motion: `Style.Transform`, shadows, gradients, `Style.Material`
     (blur), repeating animations, enter and exit `Transition`s.
-  - `nui/sqlite` (pure Go, live queries with `sqlite.Watch`), native
-    modules (`ui.Call`: `nui/secure`, the keychain and Keystore;
-    `nui/device`: info, an in-app browser, the photo picker).
+  - `ryui/sqlite` (pure Go, live queries with `sqlite.Watch`), native
+    modules (`ui.Call`: `ryui/secure`, the keychain and Keystore;
+    `ryui/device`: info, an in-app browser, the photo picker).
   - A search field in the navigation bar (`ScreenOptions.Search`).
-  - Incoming links: `nui.json`'s `scheme` and `links`, `ui.OnOpenURL`.
-  - Shares from other apps: `nui.json`'s `shareTarget`, `ui.OnShare`.
+  - Incoming links: `ryui.json`'s `scheme` and `links`, `ui.OnOpenURL`.
+  - Shares from other apps: `ryui.json`'s `shareTarget`, `ui.OnShare`.
     Android takes `ACTION_SEND` text in the app's Activity. iOS has a
     share extension (`hosts/ios/Share`, a `.appex` in the app's
     PlugIns, built by the CLI with no Go in it): it takes text and web
     links, then opens the app with them in a URL of a scheme of the
-    app's (`nuishare.<app ID>`), through the application at the end of
+    app's (`ryuishare.<app ID>`), through the application at the end of
     its responder chain, as an extension has no `UIApplication.shared`.
     The host turns that URL into the `Shared` event, so both platforms
     open the app, as the user expects of a "Download" or "Save" target.
@@ -886,11 +886,11 @@ Each one ends with its examples running and its tests in CI.
     SQLite, a List, a relaunch); navigation (a push, a sheet with a
     field, back, tabs), on both platforms.
   - Images fetched over http(s) kept on disk across launches (256 MB,
-    least recently used first; not a `no-store` response, nor nui dev's
+    least recently used first; not a `no-store` response, nor ryui dev's
     assets from this machine), and `ImageProps.Placeholder`.
   - `examples/gallery` shows each; `examples/notes` is SQLite's.
 
-  docs/parity.md has what nui has against SwiftUI and Expo;
+  docs/parity.md has what RyUI has against SwiftUI and Expo;
   docs/device-checklist.md, what's left to check on real devices.
 
   Next:
@@ -901,8 +901,8 @@ Each one ends with its examples running and its tests in CI.
   work is maturing iOS and Android.
 - **macOS** (in progress): `host/darwin`, AppKit in the app's process
   through purego (`internal/darwin`, MyGo's Objective-C runtime layer),
-  no cgo; `app.Run` runs it on macOS. `nui dev -mac` (rebuild and rerun
-  on save, signals' state kept) and `nui build -mac` (a universal,
+  no cgo; `app.Run` runs it on macOS. `ryui dev -mac` (rebuild and rerun
+  on save, signals' state kept) and `ryui build -mac` (a universal,
   signed `.app` with its icon and assets). The examples run. Done: the
   v0 components, navigation (below), rich text (an `NSTextView`), shapes,
   images, symbols, gestures, menus, animation, `WebView`, `Video`; tests
@@ -924,8 +924,8 @@ Each one ends with its examples running and its tests in CI.
 - **Windows** (in progress): `host/windows`, Win32 and the common
   controls (version 6) in the app's process through `syscall`
   (`internal/windows`, much of it MyGo's), no cgo, no WinUI; `app.Run`
-  runs it on Windows (amd64). `nui dev -windows` (rebuild and rerun on
-  save, signals' state kept) and `nui build -windows` (a folder of the
+  runs it on Windows (amd64). `ryui dev -windows` (rebuild and rerun on
+  save, signals' state kept) and `ryui build -windows` (a folder of the
   `.exe`, with its icon, manifest and version built in, and its
   assets; from any system). The examples run (counter, todo, list10k,
   navigation, gallery, richtext, markdown, notes, media but its native
@@ -969,7 +969,7 @@ platform label, with native accessibility, Dynamic Type and behavior.
   paragraphs' runs, each a style index and text. The core sends it only
   when the encoding changed.
 - Each host typesets with its platform's engine (CoreText's typesetter
-  on iOS, `StaticLayout` on Android) and draws in a view of nui's own
+  on iOS, `StaticLayout` on Android) and draws in a view of RyUI's own
   exactly the layout it measured: backgrounds per line fragment with
   rounded corners (fitted to the text, not past a line's end), then the
   text, then underlines and strikethroughs (CoreText draws neither).
@@ -1063,13 +1063,13 @@ runs the platform's event loop there, and reads the batch's Go structs
 without encoding. purego callbacks are made once per signature and
 routed by user data, never per view.
 
-How the macOS host maps nui (`host/darwin`):
+How the macOS host maps RyUI (`host/darwin`):
 
 - One window holds the root, its content a flipped view; the
   environment is the content's size, the display's scale, dark mode,
   Reduce Motion, locale and time zone (no safe area, keyboard or text
   size). Frames are set directly: AppKit's coordinates are flipped to
-  nui's (top left) by flipped container views.
+  RyUI's (top left) by flipped container views.
 - Controls are AppKit's: `NSTextField` (labels and fields; secure ones
   swap to `NSSecureTextField`, multiline ones to an `NSTextView`),
   `NSButton` (Plain is borderless text in the accent color, Filled the
@@ -1096,11 +1096,11 @@ How the macOS host maps nui (`host/darwin`):
 - Messages with float or struct arguments go through purego's typed
   functions (`internal/darwin`'s `Msg*`), which use reflection: setting a
   frame allocates. The rest go through `SyscallN`.
-- Debug automation: `NUI_SNAPSHOT=file.png` renders the window to a PNG
-  once it has shown, without taking focus (`NUI_DUMP=1` writes the view
+- Debug automation: `RYUI_SNAPSHOT=file.png` renders the window to a PNG
+  once it has shown, without taking focus (`RYUI_DUMP=1` writes the view
   tree beside it), then quits.
 
-How the Windows host maps nui (`host/windows`):
+How the Windows host maps RyUI (`host/windows`):
 
 - One thread: the main goroutine is locked to the main thread (the
   package's `init`), which runs the message loop; `Post` queues work and
@@ -1243,9 +1243,9 @@ How the Windows host maps nui (`host/windows`):
   the app gives none).
 - The main window comes back where the user left it, as macOS's frame
   autosave has it: its normal rectangle (screen pixels, and the DPI it
-  was at) and whether it was maximized, in `nui-window.json` in the
-  app's data directory (`NUI_DATA`, Local AppData\<name>; a file rather
-  than the registry, so it goes with the app's other data, and `nui
+  was at) and whether it was maximized, in `ryui-window.json` in the
+  app's data directory (`RYUI_DATA`, Local AppData\<name>; a file rather
+  than the registry, so it goes with the app's other data, and `ryui
   dev` keeps it in its work directory). It's saved when a move or
   resize ends (`WM_EXITSIZEMOVE`), on maximize and restore and keyboard
   snaps (`WM_SIZE`, `WM_MOVE` outside a drag), and on close, not on
@@ -1256,7 +1256,7 @@ How the Windows host maps nui (`host/windows`):
   monitor's work area (`MonitorFromRect`) if it's off the monitors or
   mostly off one. The host keeps the normal rectangle itself, in screen
   coordinates (`GetWindowPlacement`'s are workspace coordinates). Tests
-  (`go test`) and automation runs (`NUI_SNAPSHOT`, `NUI_SCRIPT`) keep
+  (`go test`) and automation runs (`RYUI_SNAPSHOT`, `RYUI_SCRIPT`) keep
   none, and the data directory is made by what writes there.
 - `List` is core-virtualized, as on macOS: rows the host places at
   their offsets in the list's window (one `DeferWindowPos`), binds
@@ -1274,7 +1274,7 @@ How the Windows host maps nui (`host/windows`):
   in a `Selectable` isn't one selection yet: each text selects its own.
 - `WebView` is WebView2 (the runtime found in EdgeUpdate's registry
   keys, as its loader finds it, so no loader DLL ships); the app's
-  assets are served from `https://nui.assets/`; pages follow the app's
+  assets are served from `https://ryui.assets/`; pages follow the app's
   dark mode. `Video` is a WebView2 page of a `<video>`, with Edge's
   controls: Win32 has no video view with controls.
 - Frames are set with `SetWindowPos`, without copying the old pixels
@@ -1285,12 +1285,12 @@ How the Windows host maps nui (`host/windows`):
 - The host builds for amd64 only: GDI+ takes floats, which Go's Windows
   calls pass in the registers on amd64 but not arm64 (an amd64 build
   runs on Windows on Arm, emulated).
-- Debug automation: `NUI_SNAPSHOT=file.png` writes the window (and the
+- Debug automation: `RYUI_SNAPSHOT=file.png` writes the window (and the
   top sheet's, `file.sheet.png`, and each `Window`'s, `file.window.png`,
   `file.window2.png`…) with `PrintWindow`, and a menu open, `file.menu.png`,
   from the screen, once it has shown, without
-  taking focus, then quits (`NUI_DUMP=1`: the view tree and the menu
-  bar beside it); `NUI_SCRIPT` runs steps first (`tap:<text>`,
+  taking focus, then quits (`RYUI_DUMP=1`: the view tree and the menu
+  bar beside it); `RYUI_SCRIPT` runs steps first (`tap:<text>`,
   `type:<text>`, `submit`, `back`, `escape`, `scroll:<y>`,
   `resize:<w>,<h>`, `key:<shortcut>` such as `key:ctrl+shift+k`,
   `key:` also goes to a menu open (`key:down`, `key:d`), `menu:<item
@@ -1300,7 +1300,7 @@ How the Windows host maps nui (`host/windows`):
   DPI: `WM_DPICHANGED`, the title bar Windows draws keeping its own),
   `wait:<duration>`, `snap:<file>`), through the controls'
   own messages and the message loop's key handling;
-  `NUI_COLOR_SCHEME` is light or dark whatever the system's.
+  `RYUI_COLOR_SCHEME` is light or dark whatever the system's.
 
 Desktop needs what mobile doesn't: several windows, the app's menu bar
 and keyboard shortcuts, hover and right-click, resizable layouts. To

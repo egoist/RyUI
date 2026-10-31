@@ -8,8 +8,8 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/egoist/nui/signal"
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/signal"
+	"github.com/egoist/ryui/ui"
 )
 
 // Type is the kind of connection.
@@ -65,7 +65,7 @@ func encode(s State) []byte {
 
 // Current is the network now. Not on the main thread.
 //
-// Never inlined: nui build looks for its symbol (cmd/nui iosFeatures).
+// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
 //
 //go:noinline
 func Current() (State, error) {
@@ -81,7 +81,7 @@ var (
 // Watch calls f, on the main thread, with the network now and each time
 // it changes, until stop.
 //
-// Never inlined: nui build looks for its symbol (cmd/nui iosFeatures).
+// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
 //
 //go:noinline
 func Watch(f func(State)) (stop func()) {

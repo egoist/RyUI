@@ -1,7 +1,7 @@
 // Command gen writes the code generated from ops.Schema: the Go
 // constants (ops/schema_gen.go) and the Swift decoder and event encoder
-// (hosts/ios/Sources/NuiOps/Ops.swift) and the Kotlin decoder and event
-// encoder (hosts/android/nui/src/main/java/dev/nui/Ops.kt). Run it with
+// (hosts/ios/Sources/RyUIOps/Ops.swift) and the Kotlin decoder and event
+// encoder (hosts/android/ryui/src/main/java/dev/ryui/Ops.kt). Run it with
 // go generate ./ops.
 package main
 
@@ -15,7 +15,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/egoist/nui/ops"
+	"github.com/egoist/ryui/ops"
 )
 
 func main() {
@@ -27,8 +27,8 @@ func main() {
 	}
 	s := ops.Schema
 	write(filepath.Join(".", "schema_gen.go"), goFile(s), true)
-	write(filepath.Join(root, "hosts", "ios", "Sources", "NuiOps", "Ops.swift"), swiftFile(s), false)
-	write(filepath.Join(root, "hosts", "android", "nui", "src", "main", "java", "dev", "nui", "Ops.kt"), kotlinFile(s), false)
+	write(filepath.Join(root, "hosts", "ios", "Sources", "RyUIOps", "Ops.swift"), swiftFile(s), false)
+	write(filepath.Join(root, "hosts", "android", "ryui", "src", "main", "java", "dev", "ryui", "Ops.kt"), kotlinFile(s), false)
 }
 
 func write(path string, src []byte, gofmt bool) {
@@ -212,7 +212,7 @@ func swiftFile(s ops.SchemaDef) []byte {
 	p := func(format string, args ...any) { fmt.Fprintf(&b, format, args...) }
 	p("// %s\n\nimport Foundation\n\n", header)
 
-	p("public enum NuiKind: UInt16 {\n")
+	p("public enum RyUIKind: UInt16 {\n")
 	for i, k := range s.Kinds {
 		p("    case %s = %d\n", lowerCamel(k.Name), i+1)
 	}
@@ -222,7 +222,7 @@ func swiftFile(s ops.SchemaDef) []byte {
 	}
 	p("        }\n    }\n}\n\n")
 
-	p("/// Prop IDs. Common props apply to every kind; each kind's own props\n/// start at %d.\npublic enum NuiProp {\n", ops.FirstKindProp)
+	p("/// Prop IDs. Common props apply to every kind; each kind's own props\n/// start at %d.\npublic enum RyUIProp {\n", ops.FirstKindProp)
 	for i, pr := range s.Common {
 		p("    public static let %s: UInt16 = %d\n", lowerCamel(pr.Name), i+1)
 	}
@@ -238,20 +238,20 @@ func swiftFile(s ops.SchemaDef) []byte {
 	}
 	p("}\n\n")
 
-	p("public enum NuiEventKind: UInt16 {\n")
+	p("public enum RyUIEventKind: UInt16 {\n")
 	for i, e := range s.Events {
 		p("    case %s = %d\n", lowerCamel(e.Name), i+1)
 	}
 	p("}\n\n")
 
-	p("public enum NuiCommand: UInt16 {\n")
+	p("public enum RyUICommand: UInt16 {\n")
 	for i, c := range s.Commands {
 		p("    case %s = %d\n", lowerCamel(c.Name), i+1)
 	}
 	p("}\n\n")
 
 	for _, e := range s.Enums {
-		p("public enum Nui%s: Int32 {\n", e.Name)
+		p("public enum RyUI%s: Int32 {\n", e.Name)
 		for i, v := range e.Values {
 			p("    case %s = %d\n", lowerCamel(v), i)
 		}
@@ -260,28 +260,28 @@ func swiftFile(s ops.SchemaDef) []byte {
 
 	b.WriteString(swiftRuntime)
 
-	p("\n/// Encoders for the events hosts send, one per event kind.\npublic enum NuiEvents {\n")
+	p("\n/// Encoders for the events hosts send, one per event kind.\npublic enum RyUIEvents {\n")
 	for i, e := range s.Events {
 		name := lowerCamel(e.Name)
 		switch e.Payload {
 		case ops.PNone:
-			p("    public static func %s(_ id: UInt32) -> [UInt8] {\n        var w = NuiWriter(); w.header(id, %d); return w.bytes\n    }\n", name, i+1)
+			p("    public static func %s(_ id: UInt32) -> [UInt8] {\n        var w = RyUIWriter(); w.header(id, %d); return w.bytes\n    }\n", name, i+1)
 		case ops.PBool:
-			p("    public static func %s(_ id: UInt32, _ v: Bool) -> [UInt8] {\n        var w = NuiWriter(); w.header(id, %d); w.u8(v ? 1 : 0); return w.bytes\n    }\n", name, i+1)
+			p("    public static func %s(_ id: UInt32, _ v: Bool) -> [UInt8] {\n        var w = RyUIWriter(); w.header(id, %d); w.u8(v ? 1 : 0); return w.bytes\n    }\n", name, i+1)
 		case ops.PInt:
-			p("    public static func %s(_ id: UInt32, _ v: Int64) -> [UInt8] {\n        var w = NuiWriter(); w.header(id, %d); w.u64(UInt64(bitPattern: v)); return w.bytes\n    }\n", name, i+1)
+			p("    public static func %s(_ id: UInt32, _ v: Int64) -> [UInt8] {\n        var w = RyUIWriter(); w.header(id, %d); w.u64(UInt64(bitPattern: v)); return w.bytes\n    }\n", name, i+1)
 		case ops.PFloat:
-			p("    public static func %s(_ id: UInt32, _ v: Double) -> [UInt8] {\n        var w = NuiWriter(); w.header(id, %d); w.f64(v); return w.bytes\n    }\n", name, i+1)
+			p("    public static func %s(_ id: UInt32, _ v: Double) -> [UInt8] {\n        var w = RyUIWriter(); w.header(id, %d); w.f64(v); return w.bytes\n    }\n", name, i+1)
 		case ops.PString:
-			p("    public static func %s(_ id: UInt32, _ v: String) -> [UInt8] {\n        var w = NuiWriter(); w.header(id, %d); w.string(v); return w.bytes\n    }\n", name, i+1)
+			p("    public static func %s(_ id: UInt32, _ v: String) -> [UInt8] {\n        var w = RyUIWriter(); w.header(id, %d); w.string(v); return w.bytes\n    }\n", name, i+1)
 		case ops.PPoint:
-			p("    public static func %s(_ id: UInt32, x: Double, y: Double) -> [UInt8] {\n        var w = NuiWriter(); w.header(id, %d); w.f64(x); w.f64(y); return w.bytes\n    }\n", name, i+1)
+			p("    public static func %s(_ id: UInt32, x: Double, y: Double) -> [UInt8] {\n        var w = RyUIWriter(); w.header(id, %d); w.f64(x); w.f64(y); return w.bytes\n    }\n", name, i+1)
 		case ops.PEnvironment:
-			p("    public static func %s(_ id: UInt32, _ e: NuiEnvironment) -> [UInt8] {\n        var w = NuiWriter(); w.header(id, %d); w.environment(e); return w.bytes\n    }\n", name, i+1)
+			p("    public static func %s(_ id: UInt32, _ e: RyUIEnvironment) -> [UInt8] {\n        var w = RyUIWriter(); w.header(id, %d); w.environment(e); return w.bytes\n    }\n", name, i+1)
 		case ops.PGesture:
-			p("    public static func %s(_ id: UInt32, _ g: NuiGesture) -> [UInt8] {\n        var w = NuiWriter(); w.header(id, %d); w.gesture(g); return w.bytes\n    }\n", name, i+1)
+			p("    public static func %s(_ id: UInt32, _ g: RyUIGesture) -> [UInt8] {\n        var w = RyUIWriter(); w.header(id, %d); w.gesture(g); return w.bytes\n    }\n", name, i+1)
 		case ops.PBytes:
-			p("    public static func %s(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {\n        var w = NuiWriter(); w.header(id, %d); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes\n    }\n", name, i+1)
+			p("    public static func %s(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {\n        var w = RyUIWriter(); w.header(id, %d); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes\n    }\n", name, i+1)
 		}
 	}
 	p("}\n")
@@ -290,7 +290,7 @@ func swiftFile(s ops.SchemaDef) []byte {
 
 // swiftRuntime is the fixed part of the Swift side: the wire format.
 const swiftRuntime = `/// A prop value. Bytes are valid only during the handler call.
-public enum NuiValue {
+public enum RyUIValue {
     case bool(Bool)
     case int(Int64)
     case float(Double)
@@ -309,12 +309,12 @@ public enum NuiValue {
 }
 
 /// Receives decoded ops, in order, on the main thread.
-@MainActor public protocol NuiOpHandler: AnyObject {
+@MainActor public protocol RyUIOpHandler: AnyObject {
     func create(_ id: UInt32, kind: UInt16)
     func destroy(_ id: UInt32)
     func insert(_ parent: UInt32, child: UInt32, index: Int)
     func remove(_ parent: UInt32, child: UInt32)
-    func setProp(_ id: UInt32, prop: UInt16, value: NuiValue)
+    func setProp(_ id: UInt32, prop: UInt16, value: RyUIValue)
     func setFrame(_ id: UInt32, x: Float, y: Float, width: Float, height: Float)
     func listen(_ id: UInt32, event: UInt16)
     func unlisten(_ id: UInt32, event: UInt16)
@@ -323,7 +323,7 @@ public enum NuiValue {
 }
 
 /// Reads the little-endian wire format.
-public struct NuiReader {
+public struct RyUIReader {
     public var p: UnsafeRawPointer
     public let end: UnsafeRawPointer
 
@@ -348,7 +348,7 @@ public struct NuiReader {
     }
     public mutating func string() -> String { String(decoding: bytes(), as: UTF8.self) }
 
-    mutating func value(_ type: UInt8) -> NuiValue {
+    mutating func value(_ type: UInt8) -> RyUIValue {
         switch type {
         case 1: return .bool(u8() != 0)
         case 2: return .int(Int64(bitPattern: u64()))
@@ -358,14 +358,14 @@ public struct NuiReader {
         case 6: return .edges(top: f32(), right: f32(), bottom: f32(), left: f32())
         case 7: return .enumValue(Int32(bitPattern: u32()))
         case 8: return .bytes(bytes())
-        default: fatalError("nui: bad value type \(type)")
+        default: fatalError("ryui: bad value type \(type)")
         }
     }
 }
 
 /// Decodes a batch of ops into h.
-@MainActor public func nuiDecode(_ data: UnsafeRawBufferPointer, _ h: NuiOpHandler) {
-    var r = NuiReader(data)
+@MainActor public func ryuiDecode(_ data: UnsafeRawBufferPointer, _ h: RyUIOpHandler) {
+    var r = RyUIReader(data)
     let n = r.u32()
     for _ in 0..<n {
         let code = r.u8()
@@ -381,13 +381,13 @@ public struct NuiReader {
         case 8: h.unlisten(id, event: r.u16())
         case 9: let cmd = r.u16(); h.command(id, command: cmd, args: r.bytes())
         case 10: h.setRoot(id)
-        default: fatalError("nui: bad op code \(code)")
+        default: fatalError("ryui: bad op code \(code)")
         }
     }
 }
 
 /// What a host reports about its root view (see ops.Environment).
-public struct NuiEnvironment: Equatable {
+public struct RyUIEnvironment: Equatable {
     public var width: Float = 0, height: Float = 0
     public var safeTop: Float = 0, safeRight: Float = 0, safeBottom: Float = 0, safeLeft: Float = 0
     public var keyboard: Float = 0
@@ -405,7 +405,7 @@ public struct NuiEnvironment: Equatable {
 }
 
 /// Writes the little-endian wire format.
-public struct NuiWriter {
+public struct RyUIWriter {
     public var bytes: [UInt8] = []
     public init() {}
     public mutating func u8(_ v: UInt8) { bytes.append(v) }
@@ -416,21 +416,21 @@ public struct NuiWriter {
     public mutating func f64(_ v: Double) { u64(v.bitPattern) }
     public mutating func string(_ v: String) { let u = Array(v.utf8); u32(UInt32(u.count)); bytes.append(contentsOf: u) }
     public mutating func header(_ id: UInt32, _ kind: UInt16) { u32(id); u16(kind) }
-    public mutating func environment(_ e: NuiEnvironment) {
+    public mutating func environment(_ e: RyUIEnvironment) {
         for f in [e.width, e.height, e.safeTop, e.safeRight, e.safeBottom, e.safeLeft, e.keyboard, e.scale, e.fontScale] { f32(f) }
         u8((e.dark ? 1 : 0) | (e.reduceMotion ? 2 : 0) | (e.platform & 3) << 2)
         u8((e.widthClass & 3) | (e.heightClass & 3) << 2)
         string(e.locale)
         string(e.timeZone)
     }
-    public mutating func gesture(_ g: NuiGesture) {
+    public mutating func gesture(_ g: RyUIGesture) {
         u8(UInt8(g.state))
         for f in [g.x, g.y, g.translationX, g.translationY, g.velocityX, g.velocityY, g.scale, g.rotation] { f32(f) }
     }
 }
 
 /// A pan or pinch (see ops.Gesture), in points relative to the view.
-public struct NuiGesture {
+public struct RyUIGesture {
     public var state: Int32 = 0
     public var x: Float = 0, y: Float = 0
     public var translationX: Float = 0, translationY: Float = 0
@@ -457,9 +457,9 @@ func upperSnake(s string) string {
 func kotlinFile(s ops.SchemaDef) []byte {
 	var b bytes.Buffer
 	p := func(format string, args ...any) { fmt.Fprintf(&b, format, args...) }
-	p("// %s\n\n@file:Suppress(\"unused\")\n\npackage dev.nui\n\nimport java.nio.ByteBuffer\nimport java.nio.ByteOrder\n\n", header)
+	p("// %s\n\n@file:Suppress(\"unused\")\n\npackage dev.ryui\n\nimport java.nio.ByteBuffer\nimport java.nio.ByteOrder\n\n", header)
 
-	p("object NuiKind {\n")
+	p("object RyUIKind {\n")
 	for i, k := range s.Kinds {
 		p("    const val %s = %d\n", upperSnake(k.Name), i+1)
 	}
@@ -469,7 +469,7 @@ func kotlinFile(s ops.SchemaDef) []byte {
 	}
 	p("        else -> \"Kind($kind)\"\n    }\n}\n\n")
 
-	p("/** Prop IDs. Common props apply to every kind; each kind's own props start at %d. */\nobject NuiProp {\n", ops.FirstKindProp)
+	p("/** Prop IDs. Common props apply to every kind; each kind's own props start at %d. */\nobject RyUIProp {\n", ops.FirstKindProp)
 	for i, pr := range s.Common {
 		p("    const val %s = %d\n", upperSnake(pr.Name), i+1)
 	}
@@ -485,47 +485,47 @@ func kotlinFile(s ops.SchemaDef) []byte {
 	}
 	p("}\n\n")
 
-	p("object NuiEventKind {\n")
+	p("object RyUIEventKind {\n")
 	for i, e := range s.Events {
 		p("    const val %s = %d\n", upperSnake(e.Name), i+1)
 	}
 	p("}\n\n")
-	p("object NuiCommand {\n")
+	p("object RyUICommand {\n")
 	for i, c := range s.Commands {
 		p("    const val %s = %d\n", upperSnake(c.Name), i+1)
 	}
 	p("}\n\n")
 	for _, e := range s.Enums {
-		p("object Nui%s {\n", e.Name)
+		p("object RyUI%s {\n", e.Name)
 		for i, v := range e.Values {
 			p("    const val %s = %d\n", upperSnake(v), i)
 		}
 		p("}\n\n")
 	}
 	b.WriteString(kotlinRuntime)
-	p("\n/** Encoders for the events hosts send, one per event kind. */\nobject NuiEvents {\n")
+	p("\n/** Encoders for the events hosts send, one per event kind. */\nobject RyUIEvents {\n")
 	for i, e := range s.Events {
 		name := lowerCamel(e.Name)
 		name = strings.Trim(name, "`")
 		switch e.Payload {
 		case ops.PNone:
-			p("    fun %s(id: Int): ByteArray = NuiWriter().apply { header(id, %d) }.bytes()\n", name, i+1)
+			p("    fun %s(id: Int): ByteArray = RyUIWriter().apply { header(id, %d) }.bytes()\n", name, i+1)
 		case ops.PBool:
-			p("    fun %s(id: Int, v: Boolean): ByteArray = NuiWriter().apply { header(id, %d); u8(if (v) 1 else 0) }.bytes()\n", name, i+1)
+			p("    fun %s(id: Int, v: Boolean): ByteArray = RyUIWriter().apply { header(id, %d); u8(if (v) 1 else 0) }.bytes()\n", name, i+1)
 		case ops.PInt:
-			p("    fun %s(id: Int, v: Long): ByteArray = NuiWriter().apply { header(id, %d); u64(v) }.bytes()\n", name, i+1)
+			p("    fun %s(id: Int, v: Long): ByteArray = RyUIWriter().apply { header(id, %d); u64(v) }.bytes()\n", name, i+1)
 		case ops.PFloat:
-			p("    fun %s(id: Int, v: Double): ByteArray = NuiWriter().apply { header(id, %d); f64(v) }.bytes()\n", name, i+1)
+			p("    fun %s(id: Int, v: Double): ByteArray = RyUIWriter().apply { header(id, %d); f64(v) }.bytes()\n", name, i+1)
 		case ops.PString:
-			p("    fun %s(id: Int, v: String): ByteArray = NuiWriter().apply { header(id, %d); string(v) }.bytes()\n", name, i+1)
+			p("    fun %s(id: Int, v: String): ByteArray = RyUIWriter().apply { header(id, %d); string(v) }.bytes()\n", name, i+1)
 		case ops.PPoint:
-			p("    fun %s(id: Int, x: Double, y: Double): ByteArray = NuiWriter().apply { header(id, %d); f64(x); f64(y) }.bytes()\n", name, i+1)
+			p("    fun %s(id: Int, x: Double, y: Double): ByteArray = RyUIWriter().apply { header(id, %d); f64(x); f64(y) }.bytes()\n", name, i+1)
 		case ops.PEnvironment:
-			p("    fun %s(id: Int, e: NuiEnvironment): ByteArray = NuiWriter().apply { header(id, %d); environment(e) }.bytes()\n", name, i+1)
+			p("    fun %s(id: Int, e: RyUIEnvironment): ByteArray = RyUIWriter().apply { header(id, %d); environment(e) }.bytes()\n", name, i+1)
 		case ops.PGesture:
-			p("    fun %s(id: Int, g: NuiGesture): ByteArray = NuiWriter().apply { header(id, %d); gesture(g) }.bytes()\n", name, i+1)
+			p("    fun %s(id: Int, g: RyUIGesture): ByteArray = RyUIWriter().apply { header(id, %d); gesture(g) }.bytes()\n", name, i+1)
 		case ops.PBytes:
-			p("    fun %s(id: Int, v: ByteArray): ByteArray = NuiWriter().apply { header(id, %d); u32(v.size); raw(v) }.bytes()\n", name, i+1)
+			p("    fun %s(id: Int, v: ByteArray): ByteArray = RyUIWriter().apply { header(id, %d); u32(v.size); raw(v) }.bytes()\n", name, i+1)
 		}
 	}
 	p("}\n")
@@ -534,7 +534,7 @@ func kotlinFile(s ops.SchemaDef) []byte {
 
 // kotlinRuntime is the fixed part of the Kotlin side: the wire format.
 const kotlinRuntime = `/** Receives decoded ops, in order, on the main thread. */
-interface NuiOpHandler {
+interface RyUIOpHandler {
     fun create(id: Int, kind: Int)
     fun destroy(id: Int)
     fun insert(parent: Int, child: Int, index: Int)
@@ -571,7 +571,7 @@ private fun ByteBuffer.string(): String {
 }
 
 /** Decodes a batch of ops (see ops/ops.go) into [h]. */
-fun nuiDecode(data: ByteBuffer, h: NuiOpHandler) {
+fun ryuiDecode(data: ByteBuffer, h: RyUIOpHandler) {
     val r = data.order(ByteOrder.LITTLE_ENDIAN)
     val n = r.int
     repeat(n) {
@@ -593,7 +593,7 @@ fun nuiDecode(data: ByteBuffer, h: NuiOpHandler) {
                     6 -> h.setEdges(id, prop, r.float, r.float, r.float, r.float)
                     7 -> h.setEnum(id, prop, r.int)
                     8 -> h.setBytes(id, prop, r.take(r.int))
-                    else -> error("nui: bad value type $t")
+                    else -> error("ryui: bad value type $t")
                 }
             }
             6 -> h.setFrame(id, r.float, r.float, r.float, r.float)
@@ -601,13 +601,13 @@ fun nuiDecode(data: ByteBuffer, h: NuiOpHandler) {
             8 -> h.unlisten(id, r.short.toInt() and 0xffff)
             9 -> { val cmd = r.short.toInt() and 0xffff; h.command(id, cmd, r.take(r.int)) }
             10 -> h.setRoot(id)
-            else -> error("nui: bad op code $code")
+            else -> error("ryui: bad op code $code")
         }
     }
 }
 
 /** What a host reports about its root view (see ops.Environment). */
-data class NuiEnvironment(
+data class RyUIEnvironment(
     val width: Float = 0f, val height: Float = 0f,
     val safeTop: Float = 0f, val safeRight: Float = 0f, val safeBottom: Float = 0f, val safeLeft: Float = 0f,
     val keyboard: Float = 0f,
@@ -624,7 +624,7 @@ data class NuiEnvironment(
 )
 
 /** Writes the little-endian wire format. */
-class NuiWriter {
+class RyUIWriter {
     private var buf = ByteBuffer.allocate(64).order(ByteOrder.LITTLE_ENDIAN)
     private fun room(n: Int) {
         if (buf.remaining() < n) {
@@ -642,14 +642,14 @@ class NuiWriter {
     fun f64(v: Double) { room(8); buf.putDouble(v) }
     fun string(v: String) { val a = v.toByteArray(Charsets.UTF_8); u32(a.size); room(a.size); buf.put(a) }
     fun header(id: Int, kind: Int) { u32(id); u16(kind) }
-    fun environment(e: NuiEnvironment) {
+    fun environment(e: RyUIEnvironment) {
         for (f in floatArrayOf(e.width, e.height, e.safeTop, e.safeRight, e.safeBottom, e.safeLeft, e.keyboard, e.scale, e.fontScale)) f32(f)
         u8((if (e.dark) 1 else 0) or (if (e.reduceMotion) 2 else 0) or ((e.platform and 3) shl 2))
         u8((e.widthClass and 3) or ((e.heightClass and 3) shl 2))
         string(e.locale)
         string(e.timeZone)
     }
-    fun gesture(g: NuiGesture) {
+    fun gesture(g: RyUIGesture) {
         u8(g.state)
         for (f in floatArrayOf(g.x, g.y, g.translationX, g.translationY, g.velocityX, g.velocityY, g.scale, g.rotation)) f32(f)
     }
@@ -658,7 +658,7 @@ class NuiWriter {
 }
 
 /** A pan or pinch (see ops.Gesture), in points relative to the view. */
-data class NuiGesture(
+data class RyUIGesture(
     val state: Int = 0,
     val x: Float = 0f, val y: Float = 0f,
     val translationX: Float = 0f, val translationY: Float = 0f,

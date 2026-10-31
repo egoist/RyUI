@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/egoist/nui/layout"
-	"github.com/egoist/nui/ops"
+	"github.com/egoist/ryui/layout"
+	"github.com/egoist/ryui/ops"
 )
 
 // Dim is a length: Auto (the zero value), points or a percentage.

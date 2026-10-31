@@ -4,7 +4,7 @@ sdk_gphone16k_arm64 emulator, 2026-10-30; release builds; the median of 5 runs (
 
 Memory is the proportional set size (PSS); its peak, the resident set's high-water mark (VmHWM).
 
-| scenario | | nui | Compose |
+| scenario | | RyUI | Compose |
 |---|---|---:|---:|
 | **startup** | from the process's start to the first frame, ms | 319 | 327 |
 | **memory-idle** | at the first frame, MB | 43.3 | 32.3 |

@@ -5,10 +5,10 @@ plugins {
 }
 
 android {
-    namespace = "dev.nui.bench.compose"
+    namespace = "dev.ryui.bench.compose"
     compileSdk = 36
     defaultConfig {
-        applicationId = "dev.nui.bench.compose"
+        applicationId = "dev.ryui.bench.compose"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

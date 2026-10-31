@@ -9,10 +9,10 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/egoist/nui/internal/boot"
-	"github.com/egoist/nui/ops"
-	"github.com/egoist/nui/signal"
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/internal/boot"
+	"github.com/egoist/ryui/ops"
+	"github.com/egoist/ryui/signal"
+	"github.com/egoist/ryui/ui"
 )
 
 func TestImageTakesItsNaturalSize(t *testing.T) {
@@ -159,7 +159,7 @@ func TestImageAspectRatioOverridesItsOwn(t *testing.T) {
 }
 
 func TestFontFamily(t *testing.T) {
-	// Under nui dev, an app's font file goes to the player by URL; when
+	// Under ryui dev, an app's font file goes to the player by URL; when
 	// it has loaded, text is measured again.
 	dir := t.TempDir()
 	os.MkdirAll(filepath.Join(dir, "assets", "fonts"), 0o755)
@@ -186,7 +186,7 @@ func TestFontFamily(t *testing.T) {
 	}
 }
 
-// An image's placeholder goes to the host (an asset, by URL under nui dev).
+// An image's placeholder goes to the host (an asset, by URL under ryui dev).
 func TestImagePlaceholder(t *testing.T) {
 	h, _ := mount(t, func() ui.Node {
 		return ui.Image(ui.ImageProps{Source: ui.Val("https://example.com/a.png"), Placeholder: "gray.png"})
@@ -200,7 +200,7 @@ func TestImagePlaceholder(t *testing.T) {
 		return ui.Image(ui.ImageProps{Source: ui.Val("https://example.com/a.png"), Placeholder: "gray.png"})
 	})
 	if v := h2.OfKind(ops.KindImage)[0].String(ops.PropImagePlaceholder); v != "http://127.0.0.1:7462/gray.png" {
-		t.Fatalf("placeholder under nui dev %q", v)
+		t.Fatalf("placeholder under ryui dev %q", v)
 	}
 }
 

@@ -1,4 +1,4 @@
-// Package template is what `nui new` copies.
+// Package template is what `ryui new` copies.
 package template
 
 import "embed"

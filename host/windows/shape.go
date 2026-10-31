@@ -5,8 +5,8 @@ package windows
 import (
 	"math"
 
-	. "github.com/egoist/nui/internal/windows"
-	"github.com/egoist/nui/ops"
+	. "github.com/egoist/ryui/internal/windows"
+	"github.com/egoist/ryui/ops"
 )
 
 // A Shape is a view of the host's that draws its outline with GDI+,

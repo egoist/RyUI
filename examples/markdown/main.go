@@ -7,10 +7,10 @@ import (
 	_ "embed"
 	"time"
 
-	"github.com/egoist/nui/app"
-	"github.com/egoist/nui/markdown"
-	"github.com/egoist/nui/signal"
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/app"
+	"github.com/egoist/ryui/markdown"
+	"github.com/egoist/ryui/signal"
+	"github.com/egoist/ryui/ui"
 )
 
 //go:embed reply.md

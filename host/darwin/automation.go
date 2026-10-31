@@ -8,26 +8,26 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/egoist/nui/internal/darwin"
+	. "github.com/egoist/ryui/internal/darwin"
 )
 
-// automation starts the debug automation (NUI_SNAPSHOT: write the
+// automation starts the debug automation (RYUI_SNAPSHOT: write the
 // window as a PNG once it has shown, then quit).
 func (h *Host) automation() {
-	if os.Getenv("NUI_PRINT_WINDOW") != "" {
-		println("nui: window", SendInt(h.window, "windowNumber"))
+	if os.Getenv("RYUI_PRINT_WINDOW") != "" {
+		println("ryui: window", SendInt(h.window, "windowNumber"))
 	}
-	if path := os.Getenv("NUI_SNAPSHOT"); path != "" {
+	if path := os.Getenv("RYUI_SNAPSHOT"); path != "" {
 		go func() {
 			time.Sleep(1500 * time.Millisecond) // images and fonts load
 			h.Post(func() {
 				WithPool(func() {
 					h.snapshot(path)
-					if os.Getenv("NUI_DUMP") != "" {
+					if os.Getenv("RYUI_DUMP") != "" {
 						os.WriteFile(path+".txt", []byte(h.dump()), 0o644)
 					}
 				})
-				if os.Getenv("NUI_SNAPSHOT_STAY") == "" {
+				if os.Getenv("RYUI_SNAPSHOT_STAY") == "" {
 					os.Exit(0)
 				}
 			})

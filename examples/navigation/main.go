@@ -2,8 +2,8 @@
 // (native push, pop and back gestures), a refreshable List, bar buttons,
 // a Sheet with detents, an Alert, menus and haptics.
 //
-//	go run ./cmd/nui dev -ios examples/navigation
-//	go run ./cmd/nui dev -android examples/navigation
+//	go run ./cmd/ryui dev -ios examples/navigation
+//	go run ./cmd/ryui dev -android examples/navigation
 package main
 
 import (
@@ -11,9 +11,9 @@ import (
 	"slices"
 	"time"
 
-	"github.com/egoist/nui/app"
-	"github.com/egoist/nui/signal"
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/app"
+	"github.com/egoist/ryui/signal"
+	"github.com/egoist/ryui/ui"
 )
 
 type message struct {
@@ -193,7 +193,7 @@ func settings() ui.Node {
 			ui.Button(ui.ButtonProps{Title: ui.Val("About"), OnPress: func() {
 				nav.Push(func() ui.Node {
 					return ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 8},
-						ui.StaticText("nui", ui.Style{Font: ui.LargeTitle.Weighted(ui.Bold)}),
+						ui.StaticText("ryui", ui.Style{Font: ui.LargeTitle.Weighted(ui.Bold)}),
 						ui.StaticText("Native widgets, driven by Go and fine-grained signals.", ui.Style{Color: ui.SecondaryLabel}),
 					)
 				}, ui.ScreenOptions{Title: ui.Val("About")})

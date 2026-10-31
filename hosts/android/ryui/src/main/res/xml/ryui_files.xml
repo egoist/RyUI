@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What the app shares through its FileProvider: the camera's photos. -->
+<paths>
+    <cache-path name="camera" path="ryui-camera/" />
+</paths>

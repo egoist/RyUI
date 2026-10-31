@@ -5,9 +5,9 @@ import (
 	"math"
 	"time"
 
-	"github.com/egoist/nui/signal"
-	"github.com/egoist/nui/svg"
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/signal"
+	"github.com/egoist/ryui/svg"
+	"github.com/egoist/ryui/ui"
 )
 
 // The icons: Lucide's, and Claude's mark.

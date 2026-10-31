@@ -1,6 +1,6 @@
 # Concepts
 
-A nui app is Go functions that build its views once, and signals that
+A RyUI app is Go functions that build its views once, and signals that
 hold its state. This page covers how they fit: the root component,
 signals and what they update, showing and repeating views, owners and
 cleanup, the main thread, and the environment.
@@ -376,7 +376,7 @@ Its fields:
 - `ReduceMotion`: the user asked for less motion (iOS's Reduce Motion,
   Android's animations off). See [Motion](motion.md).
 - `Platform`: `ui.PlatformIOS` or `ui.PlatformAndroid`, the system the
-  app runs on (the device's, also in `nui dev`, where the Go code runs
+  app runs on (the device's, also in `ryui dev`, where the Go code runs
   on the Mac). The platform's views look as they should by themselves;
   use it for what an app draws itself, to follow each platform's
   design, as [`examples/usage`](../examples/usage) draws UIKit's inset
@@ -394,7 +394,7 @@ Its fields:
   follows its platform. macOS and Windows have none of their own, and
   take Material's.
 - `Locale`: the user's locale.
-- `TimeZone`: the device's time zone, by its IANA name. nui makes it
+- `TimeZone`: the device's time zone, by its IANA name. RyUI makes it
   Go's `time.Local`, so `time.Now().Format` shows the device's time.
 
 Semantic colors and fonts follow dark mode and the text size on their
@@ -418,6 +418,6 @@ units := store.Signal("units", "metric")
 ```
 
 It's for small values, such as settings; see [Data](data.md) for the
-store and for databases. Under `nui dev`, every signal's value is also
+store and for databases. Under `ryui dev`, every signal's value is also
 kept across reloads, with no code (see
 [Getting started](getting-started.md#run-it)).

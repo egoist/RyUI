@@ -14,8 +14,8 @@ import (
 
 	"github.com/ebitengine/purego"
 
-	. "github.com/egoist/nui/internal/darwin"
-	"github.com/egoist/nui/ops"
+	. "github.com/egoist/ryui/internal/darwin"
+	"github.com/egoist/ryui/ops"
 )
 
 // symbolImage is an SF Symbol's image (0: none, or no such symbol).
@@ -53,7 +53,7 @@ func (h *Host) applySymbol(n *node) {
 	}
 }
 
-// Images: the view is a layer-backed NuiView with a sublayer showing the
+// Images: the view is a layer-backed RyUIView with a sublayer showing the
 // image at its mode's gravity; a tint is the color, masked by the image.
 
 func (h *Host) setImageProp(n *node, p ops.PropID, v *ops.Value) {

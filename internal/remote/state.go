@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/egoist/nui/signal"
+	"github.com/egoist/ryui/signal"
 )
 
 // keepState turns on keeping signals' values across reloads, with the
@@ -57,7 +57,7 @@ func serveAssets(addr, dir string) {
 }
 
 // KeepState turns on keeping signals' values across reloads, for a host
-// that runs the app in its own process under nui dev (desktop), with the
+// that runs the app in its own process under ryui dev (desktop), with the
 // values the last run saved in path.
 func KeepState(path string) error { return keepState(path) }
 

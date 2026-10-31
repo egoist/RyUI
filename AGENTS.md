@@ -1,6 +1,6 @@
 # AGENTS.md
 
-nui is a UI framework in Go that renders with each platform's own
+RyUI is a UI framework in Go that renders with each platform's own
 widgets, driven by fine-grained signals. **Mobile first: iOS and
 Android.** Desktop comes later on the same core; the macOS host (`host/darwin`,
 AppKit through purego) and the Windows host (`host/windows`, Win32
@@ -46,23 +46,23 @@ go test ./...                       # signal, layout, ui with host/fake, ops, CL
 go test ./layout -run CSS -update-known  # after fixing layout: refresh known_failures.txt
 go test ./ops -update               # after changing the wire format: refresh golden files
 swift test --package-path hosts/ios # the Swift decoder against the golden files (macOS)
-(cd hosts/android && ./gradlew :nui:testDebugUnitTest)  # the Kotlin decoder, likewise (ANDROID_HOME set)
+(cd hosts/android && ./gradlew :ryui:testDebugUnitTest)  # the Kotlin decoder, likewise (ANDROID_HOME set)
 go generate ./ops                   # Go constants, Swift and Kotlin decoders
-go run ./cmd/nui dev -ios examples/counter       # iOS simulator (Xcode): the Go code runs here, in the player
-go run ./cmd/nui dev -android examples/counter   # Android emulator (SDK + NDK), likewise
-go run ./cmd/nui dev -ios -once examples/counter # build the app with its Go code, launch once (-embed: and watch)
+go run ./cmd/ryui dev -ios examples/counter       # iOS simulator (Xcode): the Go code runs here, in the player
+go run ./cmd/ryui dev -android examples/counter   # Android emulator (SDK + NDK), likewise
+go run ./cmd/ryui dev -ios -once examples/counter # build the app with its Go code, launch once (-embed: and watch)
 go test ./internal/remote                        # the dev transport, against the fake host
 go test -tags e2e ./e2e -run IOS                 # GUI tests: the examples on the simulator (Android: -run Android, an emulator running)
-go run ./cmd/nui build -ios -simulator examples/counter    # a release build (-ios alone: a signed .ipa)
-go run ./cmd/nui build -android examples/counter           # .aab and .apk (NUI_KEYSTORE, NUI_KEY_ALIAS, NUI_KEYSTORE_PASSWORD)
-go run ./cmd/nui dev -mac examples/counter       # macOS: the app and its AppKit host in one process, rerun on save
-go run ./cmd/nui build -mac examples/counter     # a universal .app (-sign "Developer ID Application: ..."; default ad hoc)
+go run ./cmd/ryui build -ios -simulator examples/counter    # a release build (-ios alone: a signed .ipa)
+go run ./cmd/ryui build -android examples/counter           # .aab and .apk (RYUI_KEYSTORE, RYUI_KEY_ALIAS, RYUI_KEYSTORE_PASSWORD)
+go run ./cmd/ryui dev -mac examples/counter       # macOS: the app and its AppKit host in one process, rerun on save
+go run ./cmd/ryui build -mac examples/counter     # a universal .app (-sign "Developer ID Application: ..."; default ad hoc)
 go test ./host/darwin                            # the macOS host, driving real AppKit views (macOS)
-(cd examples/counter && NUI_SNAPSHOT=/tmp/c.png NUI_DUMP=1 go run .)  # macOS: the window as a PNG and its view tree, then quit
-go run ./cmd/nui dev -windows examples/counter   # Windows: the app and its Win32 host in one process, rerun on save
-go run ./cmd/nui build -windows examples/counter # a folder: the .exe (icon, manifest, version) and its assets; from any system
+(cd examples/counter && RYUI_SNAPSHOT=/tmp/c.png RYUI_DUMP=1 go run .)  # macOS: the window as a PNG and its view tree, then quit
+go run ./cmd/ryui dev -windows examples/counter   # Windows: the app and its Win32 host in one process, rerun on save
+go run ./cmd/ryui build -windows examples/counter # a folder: the .exe (icon, manifest, version) and its assets; from any system
 go test ./host/windows                           # the Windows host, driving real Win32 windows (Windows)
-(cd examples/counter && NUI_SNAPSHOT=c.png NUI_DUMP=1 NUI_SCRIPT="tap:Add" go run .)  # Windows: steps, then the window as a PNG and its view tree
+(cd examples/counter && RYUI_SNAPSHOT=c.png RYUI_DUMP=1 RYUI_SCRIPT="tap:Add" go run .)  # Windows: steps, then the window as a PNG and its view tree
 ```
 
 ## Conventions

@@ -6,11 +6,11 @@ import (
 	"github.com/ebitengine/purego"
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/nui/internal/darwin"
-	"github.com/egoist/nui/ops"
+	. "github.com/egoist/ryui/internal/darwin"
+	"github.com/egoist/ryui/ops"
 )
 
-// A Shape is a NuiShapeView whose layer has a CAShapeLayer filling it,
+// A Shape is a RyUIShapeView whose layer has a CAShapeLayer filling it,
 // its path in the view's (flipped) points.
 type shape struct {
 	layer        ID
@@ -19,7 +19,7 @@ type shape struct {
 }
 
 func registerShapeClass(flipped objc.MethodDef) {
-	DefineClass("NuiShapeView", "NSView", nil, []objc.MethodDef{
+	DefineClass("RyUIShapeView", "NSView", nil, []objc.MethodDef{
 		flipped,
 		Method("hitTest:", func(self ID, _ SEL, p Point) ID { return 0 }),
 	})

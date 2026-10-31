@@ -15,7 +15,7 @@ import (
 	"encoding/json"
 	"sync"
 
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/ui"
 )
 
 // Options are what a Task's notification shows.
@@ -50,7 +50,7 @@ var (
 // screen, as the user asks for the work: Android doesn't let a
 // background app start one. Main thread.
 //
-// Never inlined: nui build looks for its symbol (cmd/nui iosFeatures).
+// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
 //
 //go:noinline
 func Start(o Options, onAction func(action string)) *Task {

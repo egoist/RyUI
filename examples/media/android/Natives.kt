@@ -1,18 +1,18 @@
-// The app's native views for ui.Native. The nui CLI builds this file into
+// The app's native views for ui.Native. The RyUI CLI builds this file into
 // the Android app.
-package dev.nui.app
+package dev.ryui.app
 
 import android.view.View
 import androidx.appcompat.view.ContextThemeWrapper
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
-import dev.nui.NuiNativeContext
-import dev.nui.NuiNativeModule
-import dev.nui.NuiNativeView
-import dev.nui.NuiRuntime
+import dev.ryui.RyUINativeContext
+import dev.ryui.RyUINativeModule
+import dev.ryui.RyUINativeView
+import dev.ryui.RyUIRuntime
 
-object NuiAppNatives : NuiNativeModule {
-    override fun register(runtime: NuiRuntime) {
+object RyUIAppNatives : RyUINativeModule {
+    override fun register(runtime: RyUIRuntime) {
         runtime.registerNative("Segmented") { ctx -> Segmented(ctx) }
     }
 }
@@ -21,7 +21,7 @@ object NuiAppNatives : NuiNativeModule {
  * Material's segmented buttons: props "items" (comma-separated) and
  * "selected"; event "changed" with "index".
  */
-class Segmented(private val ctx: NuiNativeContext) : NuiNativeView {
+class Segmented(private val ctx: RyUINativeContext) : RyUINativeView {
     private val group = MaterialButtonToggleGroup(ctx.context).apply {
         isSingleSelection = true
         isSelectionRequired = true
@@ -42,7 +42,7 @@ class Segmented(private val ctx: NuiNativeContext) : NuiNativeView {
                 val sel = group.indexOfChild(group.findViewById(group.checkedButtonId))
                 group.removeAllViews()
                 for (t in (value as String).split(",")) {
-                    val b = MaterialButton(ContextThemeWrapper(ctx.context, dev.nui.R.style.ThemeOverlay_Nui_OutlinedButton))
+                    val b = MaterialButton(ContextThemeWrapper(ctx.context, dev.ryui.R.style.ThemeOverlay_RyUI_OutlinedButton))
                     b.id = View.generateViewId()
                     b.text = t
                     b.isAllCaps = false

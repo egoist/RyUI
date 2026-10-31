@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/egoist/nui/ops"
-	"github.com/egoist/nui/signal"
+	"github.com/egoist/ryui/ops"
+	"github.com/egoist/ryui/signal"
 )
 
 // NativeProps configures a native view.
@@ -35,7 +35,7 @@ func (e NativeEvent) GoString() string             { return fmt.Sprintf("%s%v", 
 func (e NativeEvent) Value(key string) (any, bool) { v, ok := e.values[key]; return v, ok }
 
 // Native shows a view of a kind the app registers with each host: in
-// Swift, NuiRuntime.registerNative; in Kotlin, NuiRuntime.registerNative
+// Swift, RyUIRuntime.registerNative; in Kotlin, RyUIRuntime.registerNative
 // (see the native example). The host measures it.
 //
 //	ui.Native("Segmented", ui.NativeProps{

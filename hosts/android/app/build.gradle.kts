@@ -1,8 +1,8 @@
-// The shell app around a nui app. The nui CLI passes the app's ID, name,
+// The shell app around a RyUI app. The RyUI CLI passes the app's ID, name,
 // version, signing key and (for release builds) the Go library for each
 // ABI, the assets and the icons; in development the Go library is pushed
 // to the app's files directory instead of being packaged (see
-// NuiNative.load).
+// RyUINative.load).
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -11,24 +11,24 @@ plugins {
 fun prop(name: String) = providers.gradleProperty(name).orNull
 
 android {
-    namespace = "dev.nui.app"
+    namespace = "dev.ryui.app"
     compileSdk = 36
     defaultConfig {
-        applicationId = prop("nuiApplicationId") ?: "dev.nui.app"
+        applicationId = prop("ryuiApplicationId") ?: "dev.ryui.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = (prop("nuiVersionCode") ?: "1").toInt()
-        versionName = prop("nuiVersionName") ?: "1.0"
-        manifestPlaceholders["nuiAppName"] = prop("nuiAppName") ?: "nui"
-        manifestPlaceholders["nuiIcon"] = prop("nuiIcon") ?: "@android:drawable/sym_def_app_icon"
+        versionCode = (prop("ryuiVersionCode") ?: "1").toInt()
+        versionName = prop("ryuiVersionName") ?: "1.0"
+        manifestPlaceholders["ryuiAppName"] = prop("ryuiAppName") ?: "ryui"
+        manifestPlaceholders["ryuiIcon"] = prop("ryuiIcon") ?: "@android:drawable/sym_def_app_icon"
     }
     signingConfigs {
         create("release") {
-            prop("nuiKeystore")?.let {
+            prop("ryuiKeystore")?.let {
                 storeFile = file(it)
-                storePassword = prop("nuiKeystorePassword")
-                keyAlias = prop("nuiKeyAlias")
-                keyPassword = prop("nuiKeyPassword") ?: prop("nuiKeystorePassword")
+                storePassword = prop("ryuiKeystorePassword")
+                keyAlias = prop("ryuiKeyAlias")
+                keyPassword = prop("ryuiKeyPassword") ?: prop("ryuiKeystorePassword")
             }
         }
     }
@@ -40,20 +40,20 @@ android {
             // The Go libraries are stripped; Go's stack traces don't need
             // the symbols (they're in its own tables).
             ndk { debugSymbolLevel = "NONE" }
-            if (prop("nuiKeystore") != null) signingConfig = signingConfigs.getByName("release")
+            if (prop("ryuiKeystore") != null) signingConfig = signingConfigs.getByName("release")
         }
     }
     sourceSets {
-        // The app's manifest (nui.json's permissions, scheme and links),
+        // The app's manifest (ryui.json's permissions, scheme and links),
         // over the debug one in development.
         getByName("debug") {
-            prop("nuiManifest")?.let { manifest.srcFile(it) }
+            prop("ryuiManifest")?.let { manifest.srcFile(it) }
         }
         getByName("release") {
-            prop("nuiJniLibs")?.let { jniLibs.srcDir(it) }
-            prop("nuiAssets")?.let { assets.srcDir(it) }
-            prop("nuiRes")?.let { res.srcDir(it) }
-            prop("nuiManifest")?.let { manifest.srcFile(it) }
+            prop("ryuiJniLibs")?.let { jniLibs.srcDir(it) }
+            prop("ryuiAssets")?.let { assets.srcDir(it) }
+            prop("ryuiRes")?.let { res.srcDir(it) }
+            prop("ryuiManifest")?.let { manifest.srcFile(it) }
         }
     }
     compileOptions {
@@ -65,7 +65,7 @@ android {
 kotlin { jvmToolchain(17) }
 
 dependencies {
-    implementation(project(":nui"))
-    // The optional modules the app's packages need (the CLI's nuiModules).
-    prop("nuiModules")?.split(',')?.filter { it.isNotEmpty() }?.forEach { implementation(project(":nui-$it")) }
+    implementation(project(":ryui"))
+    // The optional modules the app's packages need (the CLI's ryuiModules).
+    prop("ryuiModules")?.split(',')?.filter { it.isNotEmpty() }?.forEach { implementation(project(":ryui-$it")) }
 }

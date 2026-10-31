@@ -1,4 +1,4 @@
-// Package ops is the contract between nui's core and its hosts: batched
+// Package ops is the contract between RyUI's core and its hosts: batched
 // mount operations going down, events coming up.
 //
 // The core appends ops to a Batch; a host applies a whole batch at once.

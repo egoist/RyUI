@@ -1,4 +1,4 @@
-// Package app starts a nui app.
+// Package app starts a RyUI app.
 //
 //	func main() { app.Run(Counter) }
 //
@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/egoist/nui/internal/boot"
-	"github.com/egoist/nui/internal/remote"
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/internal/boot"
+	"github.com/egoist/ryui/internal/remote"
+	"github.com/egoist/ryui/ui"
 )
 
 // Run mounts root as the app's screen. The root fills the screen; use
@@ -23,10 +23,10 @@ func Run(root func() ui.Node) {
 		boot.Runner(root)
 		return
 	}
-	// `nui dev` runs the app here and its views in a player app.
-	if addr := os.Getenv("NUI_REMOTE"); addr != "" {
+	// `ryui dev` runs the app here and its views in a player app.
+	if addr := os.Getenv("RYUI_REMOTE"); addr != "" {
 		if err := remote.Run(addr, root); err != nil {
-			fmt.Fprintln(os.Stderr, "nui:", err)
+			fmt.Fprintln(os.Stderr, "ryui:", err)
 			os.Exit(1)
 		}
 		return
@@ -36,7 +36,7 @@ func Run(root func() ui.Node) {
 		desktop(root)
 		return
 	}
-	panic("nui: no host on this platform yet; run the app with `nui dev -ios` (or -android)")
+	panic("ryui: no host on this platform yet; run the app with `ryui dev -ios` (or -android)")
 }
 
 // desktop runs the app on a desktop's own host (macOS, Windows).

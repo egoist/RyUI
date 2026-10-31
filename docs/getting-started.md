@@ -1,6 +1,6 @@
 # Getting started
 
-nui needs Go and each platform's own tools. Then one command makes an
+RyUI needs Go and each platform's own tools. Then one command makes an
 app, and another runs it, reloading as you save.
 
 ## What you need
@@ -9,19 +9,19 @@ app, and another runs it, reloading as you save.
 - **For iOS**: a Mac with Xcode, and its iOS simulator.
 - **For Android**: Android Studio, with, from its SDK Manager, an NDK
   (SDK Tools → NDK), and an emulator from its Device Manager, or a phone
-  with USB debugging on. nui finds the SDK in its usual place, or at
+  with USB debugging on. RyUI finds the SDK in its usual place, or at
   `ANDROID_HOME`, and Android Studio's Java.
 
 ## Install the CLI
 
 ```sh
-go install github.com/egoist/nui/cmd/nui@latest
+go install github.com/egoist/ryui/cmd/ryui@latest
 ```
 
 ## Make an app
 
 ```sh
-nui new hello
+ryui new hello
 cd hello
 ```
 
@@ -29,18 +29,18 @@ cd hello
 
 - `main.go`, the app: a function that returns its interface, given to
   `app.Run`.
-- `nui.json`, its name, its ID (the bundle ID and application ID) and
+- `ryui.json`, its name, its ID (the bundle ID and application ID) and
   version, and what [the stores](shipping.md) need.
 - `go.mod`.
 
 ## Run it
 
 ```sh
-nui dev -ios        # the iOS simulator
-nui dev -android    # an Android emulator or phone
+ryui dev -ios        # the iOS simulator
+ryui dev -android    # an Android emulator or phone
 ```
 
-The first run builds and installs nui's player app, which shows your
+The first run builds and installs RyUI's player app, which shows your
 app's views; your Go code runs on your Mac, and talks to the player. Save
 a Go file and the app reloads in a moment, without reinstalling, the
 values of its signals kept. Its output (`fmt.Println`, panics) is in the
@@ -51,13 +51,13 @@ terminal.
 - `-embed` builds your Go code into the app instead, as a release build
   has it; `-once` builds it in and launches it once.
 
-To run on an iPhone, make a build signed for it: `nui build -ios
+To run on an iPhone, make a build signed for it: `ryui build -ios
 -distribution development`, then install the `.ipa` with Xcode's Devices
 window.
 
 ## Change it
 
-`main.go` from `nui new` is a counter:
+`main.go` from `ryui new` is a counter:
 
 ```go
 func App() ui.Node {

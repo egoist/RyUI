@@ -1,5 +1,5 @@
-// nui's Android host: the `nui` library (decoder, Views host, JNI
-// bindings) and `app`, the shell app the nui CLI builds for each nui app.
+// RyUI's Android host: the `ryui` library (decoder, Views host, JNI
+// bindings) and `app`, the shell app the RyUI CLI builds for each RyUI app.
 pluginManagement {
     repositories {
         google()
@@ -14,5 +14,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "nui-android"
-include(":nui", ":app", ":nui-scan")
+rootProject.name = "ryui-android"
+include(":ryui", ":app", ":ryui-scan")

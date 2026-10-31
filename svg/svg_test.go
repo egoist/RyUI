@@ -7,11 +7,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/egoist/nui/host/fake"
-	"github.com/egoist/nui/ops"
-	"github.com/egoist/nui/signal"
-	"github.com/egoist/nui/svg"
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/host/fake"
+	"github.com/egoist/ryui/ops"
+	"github.com/egoist/ryui/signal"
+	"github.com/egoist/ryui/svg"
+	"github.com/egoist/ryui/ui"
 )
 
 // Lucide's "download" and "circle-check", verbatim.

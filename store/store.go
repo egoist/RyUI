@@ -20,9 +20,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/egoist/nui/internal/boot"
-	"github.com/egoist/nui/ops"
-	"github.com/egoist/nui/signal"
+	"github.com/egoist/ryui/internal/boot"
+	"github.com/egoist/ryui/ops"
+	"github.com/egoist/ryui/signal"
 )
 
 // An app going to the background may be ended without a word: what's
@@ -46,14 +46,14 @@ var (
 )
 
 // Dir is the directory the store's file is in: the app's data directory
-// (on Android its files directory, as NUI_DATA says; on iOS Application
-// Support in its container), or, running elsewhere (the nui dev player's
+// (on Android its files directory, as RYUI_DATA says; on iOS Application
+// Support in its container), or, running elsewhere (the ryui dev player's
 // Mac), the user's config directory.
 func Dir() string {
-	if d := os.Getenv("NUI_DATA"); d != "" {
+	if d := os.Getenv("RYUI_DATA"); d != "" {
 		return d
 	}
-	// Android sets NUI_DATA once the library is loaded, after the
+	// Android sets RYUI_DATA once the library is loaded, after the
 	// packages' init: a store.Signal in a package variable reads the
 	// store before it. The files directory is the package's, for the
 	// process's user: what Context.getFilesDir returns.
@@ -70,7 +70,7 @@ func Dir() string {
 	if err != nil {
 		d = os.TempDir()
 	}
-	return filepath.Join(d, "nui", filepath.Base(os.Args[0]))
+	return filepath.Join(d, "ryui", filepath.Base(os.Args[0]))
 }
 
 func load() {

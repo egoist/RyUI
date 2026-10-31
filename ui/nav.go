@@ -3,9 +3,9 @@ package ui
 import (
 	"encoding/binary"
 
-	"github.com/egoist/nui/layout"
-	"github.com/egoist/nui/ops"
-	"github.com/egoist/nui/signal"
+	"github.com/egoist/ryui/layout"
+	"github.com/egoist/ryui/ops"
+	"github.com/egoist/ryui/signal"
 )
 
 // ActionRole is how a button of an alert, a menu item or a bar button

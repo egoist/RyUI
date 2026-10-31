@@ -7,8 +7,8 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/nui/internal/darwin"
-	"github.com/egoist/nui/ops"
+	. "github.com/egoist/ryui/internal/darwin"
+	"github.com/egoist/ryui/ops"
 )
 
 var classesDone bool
@@ -26,8 +26,8 @@ func registerClasses() {
 	flipped := Method("isFlipped", func(self ID, _ SEL) bool { return true })
 	firstMouse := Method("acceptsFirstMouse:", func(self ID, _ SEL, ev ID) bool { return true })
 
-	// A container: nui places its subviews itself.
-	DefineClass("NuiView", "NSView", nil, []objc.MethodDef{
+	// A container: RyUI places its subviews itself.
+	DefineClass("RyUIView", "NSView", nil, []objc.MethodDef{
 		flipped, firstMouse,
 		Method("accessibilityPerformPress", func(self ID, _ SEL) bool {
 			n := theHost.byView[self]
@@ -82,13 +82,13 @@ func registerClasses() {
 			return ok
 		})
 	}
-	DefineClass("NuiTextField", "NSTextField", nil, []objc.MethodDef{focus("NuiTextField")})
-	DefineClass("NuiSecureField", "NSSecureTextField", nil, []objc.MethodDef{focus("NuiSecureField")})
-	DefineClass("NuiLabel", "NSTextField", nil, []objc.MethodDef{
+	DefineClass("RyUITextField", "NSTextField", nil, []objc.MethodDef{focus("RyUITextField")})
+	DefineClass("RyUISecureField", "NSSecureTextField", nil, []objc.MethodDef{focus("RyUISecureField")})
+	DefineClass("RyUILabel", "NSTextField", nil, []objc.MethodDef{
 		// Clicks go to the view under the label (a pressable row).
 		Method("hitTest:", func(self ID, _ SEL, p Point) ID { return 0 }),
 	})
-	DefineClass("NuiImageView", "NSImageView", nil, []objc.MethodDef{
+	DefineClass("RyUIImageView", "NSImageView", nil, []objc.MethodDef{
 		Method("hitTest:", func(self ID, _ SEL, p Point) ID { return 0 }),
 	})
 	registerRichClass(flipped)
@@ -96,7 +96,7 @@ func registerClasses() {
 	registerTarget()
 }
 
-// registerTarget makes NuiTarget, the one object that takes the views'
+// registerTarget makes RyUITarget, the one object that takes the views'
 // actions, delegate calls and notifications.
 func registerTarget() {
 	h := func() *Host { return theHost }
@@ -185,7 +185,7 @@ func registerTarget() {
 	}
 	methods = append(methods, webMethods()...)
 	methods = append(methods, navMethods()...)
-	DefineClass("NuiTarget", "NSObject", []string{
+	DefineClass("RyUITarget", "NSObject", []string{
 		"NSApplicationDelegate", "NSWindowDelegate", "NSTextFieldDelegate", "NSTextViewDelegate",
 		"NSTabViewDelegate", "NSMenuDelegate",
 		"WKNavigationDelegate", "WKScriptMessageHandler", "WKUIDelegate", "NSToolbarDelegate", "NSSearchFieldDelegate",

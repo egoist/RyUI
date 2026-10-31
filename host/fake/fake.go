@@ -17,9 +17,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/egoist/nui/host"
-	"github.com/egoist/nui/layout"
-	"github.com/egoist/nui/ops"
+	"github.com/egoist/ryui/host"
+	"github.com/egoist/ryui/layout"
+	"github.com/egoist/ryui/ops"
 )
 
 // KindCell is the kind the fake host gives the list cells it makes.

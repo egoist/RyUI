@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/egoist/nui/signal"
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/signal"
+	"github.com/egoist/ryui/ui"
 )
 
 var schemes = []string{"System", "Light", "Dark"}

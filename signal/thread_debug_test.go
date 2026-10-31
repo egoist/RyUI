@@ -1,4 +1,4 @@
-//go:build nui_debug
+//go:build ryui_debug
 
 package signal
 

@@ -140,7 +140,7 @@ popping with the predictive back gesture goes back into the view.
 
 ## Back
 
-Each platform goes back its own way, and nui leaves it so:
+Each platform goes back its own way, and RyUI leaves it so:
 
 - **iOS**: the bar's back button, and a swipe from the screen's leading
   edge. `NoBackGesture` turns the swipe off. The back button still pops.
@@ -290,7 +290,7 @@ too: see [Lists](components.md#lists).
 
 ## Toasts
 
-nui has no toast component, since neither platform has a standard one
+RyUI has no toast component, since neither platform has a standard one
 that apps share. Make one from a view placed over the screen,
 shown with `ui.Show` and brought in with a
 [transition](motion.md#enter-and-exit). The gallery's toast does this, and
@@ -300,7 +300,7 @@ calls `ui.Announce` so that screen readers say it too. See
 ## Deep links
 
 An app opens for URLs of its own scheme, and for https links to its own
-domains, when `nui.json` lists them:
+domains, when `ryui.json` lists them:
 
 ```json
 {
@@ -335,12 +335,12 @@ ui.OnOpenURL(func(raw string) {
 ```
 
 [`examples/notes`](../examples/notes) adds a note for
-`nuinotes://add?text=...`. A notification's URL arrives the same way
+`ryuinotes://add?text=...`. A notification's URL arrives the same way
 (see [Device](device.md)).
 
 ## Shares from other apps
 
-With `"shareTarget": true` in `nui.json`, the app shows in other apps'
+With `"shareTarget": true` in `ryui.json`, the app shows in other apps'
 share sheets, for text and links, such as "Share" in a browser or in
 YouTube. `ui.OnShare` gets what's shared. A share that launched the app
 goes to the first handler, as with `OnOpenURL`.

@@ -2,7 +2,7 @@
 
 ## 1. Designing the cache layer
 
-Great question ![nui](nui.png) Let's break this down step by step. The **short answer** is that you want a *write-through* cache with a bounded size, but there are a few subtleties worth covering — especially around `invalidation` and **concurrent _readers_**.
+Great question ![RyUI](ryui.png) Let's break this down step by step. The **short answer** is that you want a *write-through* cache with a bounded size, but there are a few subtleties worth covering — especially around `invalidation` and **concurrent _readers_**.
 
 ### Why a cache at all?
 

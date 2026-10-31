@@ -6,14 +6,14 @@ import (
 	"strings"
 	"syscall"
 
-	. "github.com/egoist/nui/internal/windows"
-	"github.com/egoist/nui/ops"
+	. "github.com/egoist/ryui/internal/windows"
+	"github.com/egoist/ryui/ops"
 )
 
 const (
-	classWindow  = "NuiWindow"  // the app's window, sheets
-	classView    = "NuiView"    // the views the host draws
-	classMessage = "NuiMessage" // Post's wake-ups
+	classWindow  = "RyUIWindow"  // the app's window, sheets
+	classView    = "RyUIView"    // the views the host draws
+	classMessage = "RyUIMessage" // Post's wake-ups
 
 	wmRunPosted = WM_APP + 1
 	wmFrame     = WM_APP + 2

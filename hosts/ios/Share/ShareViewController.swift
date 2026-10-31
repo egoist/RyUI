@@ -1,14 +1,14 @@
 import UIKit
 import UniformTypeIdentifiers
 
-// The share extension (nui.json's shareTarget): what another app shares
+// The share extension (ryui.json's shareTarget): what another app shares
 // from its share sheet, text and links, goes to the app, which it opens,
 // as Android's ACTION_SEND opens the app; ui.OnShare gets it. It runs no
 // Go: it hands the text over in a URL of the app's share scheme
-// (Info.plist's NuiShareScheme, nuishare.<app ID>), which the app's host
+// (Info.plist's RyUIShareScheme, ryuishare.<app ID>), which the app's host
 // turns into the Shared event.
 
-@objc(NuiShareViewController)
+@objc(RyUIShareViewController)
 final class ShareViewController: UIViewController {
     private var started = false
 
@@ -88,9 +88,9 @@ final class ShareViewController: UIViewController {
         }
     }
 
-    /// nuishare.<app ID>:?<text, percent-encoded>
+    /// ryuishare.<app ID>:?<text, percent-encoded>
     private func shareURL(_ text: String) -> URL? {
-        guard let scheme = Bundle.main.object(forInfoDictionaryKey: "NuiShareScheme") as? String,
+        guard let scheme = Bundle.main.object(forInfoDictionaryKey: "RyUIShareScheme") as? String,
               let q = text.addingPercentEncoding(withAllowedCharacters: .alphanumerics) else { return nil }
         return URL(string: scheme + ":?" + q)
     }

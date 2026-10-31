@@ -3,8 +3,8 @@ package ui
 import (
 	"math"
 
-	"github.com/egoist/nui/layout"
-	"github.com/egoist/nui/ops"
+	"github.com/egoist/ryui/layout"
+	"github.com/egoist/ryui/ops"
 )
 
 // measureKey is what a measurement depends on, for the kinds whose size

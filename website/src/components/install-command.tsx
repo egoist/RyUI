@@ -3,7 +3,7 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-export function InstallCommand({ command = "go install github.com/egoist/nui/cmd/nui@latest", className }: { command?: string; className?: string }) {
+export function InstallCommand({ command = "go install github.com/egoist/ryui/cmd/ryui@latest", className }: { command?: string; className?: string }) {
   const [copied, setCopied] = React.useState(false)
   return (
     <button

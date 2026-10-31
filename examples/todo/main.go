@@ -1,16 +1,16 @@
 // Todo shows For (keyed rows), TextField, Toggle and SafeArea moving
 // content above the keyboard.
 //
-//	go run ./cmd/nui dev -ios examples/todo
+//	go run ./cmd/ryui dev -ios examples/todo
 package main
 
 import (
 	"fmt"
 	"strings"
 
-	"github.com/egoist/nui/app"
-	"github.com/egoist/nui/signal"
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/app"
+	"github.com/egoist/ryui/signal"
+	"github.com/egoist/ryui/ui"
 )
 
 type todo struct {

@@ -9,35 +9,35 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/egoist/nui/internal/boot"
-	. "github.com/egoist/nui/internal/darwin"
-	"github.com/egoist/nui/internal/remote"
+	"github.com/egoist/ryui/internal/boot"
+	. "github.com/egoist/ryui/internal/darwin"
+	"github.com/egoist/ryui/internal/remote"
 )
 
 func init() {
-	// The app's data (nui/store, files it keeps): Application Support.
-	if os.Getenv("NUI_DATA") == "" {
+	// The app's data (ryui/store, files it keeps): Application Support.
+	if os.Getenv("RYUI_DATA") == "" {
 		if home, err := os.UserHomeDir(); err == nil {
 			name := boot.Name
 			if name == "" {
 				name = filepath.Base(os.Args[0])
 			}
-			// Made by what writes there (nui/store, nui/sqlite), not here.
-			os.Setenv("NUI_DATA", filepath.Join(home, "Library", "Application Support", name))
+			// Made by what writes there (ryui/store, ryui/sqlite), not here.
+			os.Setenv("RYUI_DATA", filepath.Join(home, "Library", "Application Support", name))
 		}
 	}
 }
 
 // restoreState gives the app's signals the values the last run saved,
-// under nui dev (NUI_STATE), and saves them when nui dev stops the app
+// under ryui dev (RYUI_STATE), and saves them when ryui dev stops the app
 // to run the new code.
 func restoreState() {
-	path := os.Getenv("NUI_STATE")
+	path := os.Getenv("RYUI_STATE")
 	if path == "" {
 		return
 	}
 	if err := remote.KeepState(path); err != nil {
-		fmt.Fprintln(os.Stderr, "nui: restoring state:", err)
+		fmt.Fprintln(os.Stderr, "ryui: restoring state:", err)
 	}
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
@@ -51,12 +51,12 @@ func restoreState() {
 }
 
 func saveState() {
-	path := os.Getenv("NUI_STATE")
+	path := os.Getenv("RYUI_STATE")
 	if path == "" {
 		return
 	}
 	if err := remote.SaveState(path); err != nil {
-		fmt.Fprintln(os.Stderr, "nui: saving state:", err)
+		fmt.Fprintln(os.Stderr, "ryui: saving state:", err)
 	}
 }
 

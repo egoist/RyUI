@@ -8,8 +8,8 @@ import (
 	"math"
 	"time"
 
-	. "github.com/egoist/nui/internal/windows"
-	"github.com/egoist/nui/ops"
+	. "github.com/egoist/ryui/internal/windows"
+	"github.com/egoist/ryui/ops"
 )
 
 func (h *Host) command(n *node, c ops.CommandID, args []byte) {
@@ -291,7 +291,7 @@ func (h *Host) call(root *node, args []byte) {
 	if f := h.module(module); f != nil {
 		res, err = f(method, rest)
 	} else {
-		err = errors.New("nui: " + module + " isn't on Windows yet")
+		err = errors.New("ryui: " + module + " isn't on Windows yet")
 	}
 	out := binary.LittleEndian.AppendUint32(nil, callID)
 	if err != nil {

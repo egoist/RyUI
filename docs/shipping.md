@@ -1,9 +1,9 @@
 # Shipping
 
-`nui build` makes the builds the stores take, from the app's directory
+`ryui build` makes the builds the stores take, from the app's directory
 (or the one given), into its `dist`.
 
-## nui.json
+## ryui.json
 
 ```json
 {
@@ -42,13 +42,13 @@
   Info.plist; `android.permissions` adds permissions.
 
 The packages an app imports give it the permissions and purpose strings
-they need: `nui/camera` the camera's, `nui/location` the location's.
+they need: `ryui/camera` the camera's, `ryui/location` the location's.
 Write your own in `ios.usage`: the default is generic.
 
 ## iOS
 
 ```sh
-nui build -ios
+ryui build -ios
 ```
 
 makes a `.ipa` signed for the App Store, with the team's distribution
@@ -71,11 +71,11 @@ xcrun altool --upload-app -f dist/Notes.ipa -t ios --apiKey KEY --apiIssuer ISSU
 ```
 
 **Privacy manifest.** The App Store requires one, giving a reason for
-each API of Apple's list the app uses. nui writes it, from what the
+each API of Apple's list the app uses. RyUI writes it, from what the
 binary uses: Go's runtime reads the clock and file times, SQLite the disk
 space; it declares no tracking and no data collected. If your app
 collects data or tracks, write your own as `ios/PrivacyInfo.xcprivacy`,
-with those reasons in it too; nui uses it instead.
+with those reasons in it too; RyUI uses it instead.
 
 ## Android
 
@@ -86,21 +86,21 @@ safe:
 keytool -genkeypair -v -keystore upload.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000
 ```
 
-Name it in `nui.json` (`android.keystore`, `android.keyAlias`), and give
+Name it in `ryui.json` (`android.keystore`, `android.keyAlias`), and give
 its password in the environment:
 
 ```sh
-NUI_KEYSTORE_PASSWORD=... nui build -android
+RYUI_KEYSTORE_PASSWORD=... ryui build -android
 ```
 
-(`NUI_KEY_PASSWORD` too if the key's differs; `NUI_KEYSTORE` and
-`NUI_KEY_ALIAS` name them in CI.) It makes an `.aab` for Google Play and
+(`RYUI_KEY_PASSWORD` too if the key's differs; `RYUI_KEYSTORE` and
+`RYUI_KEY_ALIAS` name them in CI.) It makes an `.aab` for Google Play and
 an `.apk` to install yourself, for 64-bit and 32-bit ARM phones and
 x86_64 (emulators, Chromebooks), Android 8 and later.
 
 ## What the stores check
 
-Run the release build on a phone before you upload it: `nui build
+Run the release build on a phone before you upload it: `ryui build
 -android`'s `.apk` with `adb install`, and an iOS build with
 `-distribution development`. Then a first upload through TestFlight and a
 Play internal test, which check what a simulator can't.
@@ -144,8 +144,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with: { go-version-file: go.mod }
-      - name: the nui CLI, at the app's version of nui
-        run: go install github.com/egoist/nui/cmd/nui@$(go list -m -f '{{.Version}}' github.com/egoist/nui)
+      - name: the ryui CLI, at the app's version of ryui
+        run: go install github.com/egoist/ryui/cmd/ryui@$(go list -m -f '{{.Version}}' github.com/egoist/ryui)
       - name: the distribution certificate and the profile
         env:
           CERTIFICATE: ${{ secrets.IOS_CERTIFICATE }}
@@ -162,10 +162,10 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -k "$PW" "$KC"
           security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
           echo "$PROFILE" | base64 --decode > $RUNNER_TEMP/app.mobileprovision
-          # With shareTarget, the extension's profile, installed where nui looks:
+          # With shareTarget, the extension's profile, installed where ryui looks:
           # mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           # echo "$SHARE_PROFILE" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/share.mobileprovision
-      - run: nui build -ios -profile $RUNNER_TEMP/app.mobileprovision
+      - run: ryui build -ios -profile $RUNNER_TEMP/app.mobileprovision
       - uses: actions/upload-artifact@v4
         with: { name: ios, path: dist/*.ipa }
       - name: attach to the tag's release
@@ -198,16 +198,16 @@ jobs:
         with: { packages: platform-tools }
       - name: an NDK
         run: sdkmanager "ndk;27.1.12297006"
-      - name: the nui CLI, at the app's version of nui
-        run: go install github.com/egoist/nui/cmd/nui@$(go list -m -f '{{.Version}}' github.com/egoist/nui)
+      - name: the ryui CLI, at the app's version of ryui
+        run: go install github.com/egoist/ryui/cmd/ryui@$(go list -m -f '{{.Version}}' github.com/egoist/ryui)
       - name: the upload key
         env:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
         run: echo "$KEYSTORE" | base64 --decode > $RUNNER_TEMP/upload.jks
-      - run: nui build -android
+      - run: ryui build -android
         env:
-          NUI_KEYSTORE: ${{ runner.temp }}/upload.jks
-          NUI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          RYUI_KEYSTORE: ${{ runner.temp }}/upload.jks
+          RYUI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       - uses: actions/upload-artifact@v4
         with:
           name: android
@@ -241,13 +241,13 @@ base64 (`base64 -i file | pbcopy`):
   Store Connect API key with the App Manager role, from Users and Access
   › Integrations.
 - `ANDROID_KEYSTORE`: the upload key's `.jks`; `ANDROID_KEYSTORE_PASSWORD`
-  its password (add `NUI_KEY_PASSWORD` if the key's differs).
+  its password (add `RYUI_KEY_PASSWORD` if the key's differs).
 - `PLAY_SERVICE_ACCOUNT`: a Google Cloud service account's JSON key,
   invited in the Play Console's Users and permissions with the right to
   release to testing tracks.
 
 The CLI carries the iOS and Android hosts, so it's installed at the
-version of nui in the app's `go.mod`. `build` in `nui.json` must still
+version of RyUI in the app's `go.mod`. `build` in `ryui.json` must still
 grow with each upload: bump it before you tag. The App Store takes builds
 made with a recent Xcode only; if the runner's default is older, pick
 one with `sudo xcode-select -s /Applications/Xcode_<version>.app`.

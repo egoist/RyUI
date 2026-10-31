@@ -4,7 +4,7 @@ iPhone 17 Pro simulator, 2026-10-30; release builds; the median of 5 runs (after
 
 Memory is the footprint iOS counts against the app (phys_footprint).
 
-| scenario | | nui | SwiftUI |
+| scenario | | RyUI | SwiftUI |
 |---|---|---:|---:|
 | **startup** | from the process's start to the first frame, ms | 307 | 356 |
 | **memory-idle** | at the first frame, MB | 14.8 | 15.1 |

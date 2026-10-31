@@ -7,20 +7,20 @@ example.
 
 ## When you need it
 
-nui's components and packages cover what most apps show and use. Write
-native code when you need a platform view nui doesn't have (a map, a
+RyUI's components and packages cover what most apps show and use. Write
+native code when you need a platform view RyUI doesn't have (a map, a
 vendor's SDK view, a control only one platform has), or a platform API
-no nui package wraps. The [comparison with SwiftUI and Expo](parity.md)
-lists what nui has.
+no RyUI package wraps. The [comparison with SwiftUI and Expo](parity.md)
+lists what RyUI has.
 
 An app's native code lives beside its Go:
 
 - `ios/*.swift`, compiled with the iOS host, in the same Swift module:
-  no import of nui's host is needed.
+  no import of RyUI's host is needed.
 - `android/*.kt`, built into the Android app.
 
 Only the files directly in `ios/` and `android/` are taken, not those in
-directories under them. Release builds (`nui build`) include them too.
+directories under them. Release builds (`ryui build`) include them too.
 
 ## Native views in Go
 
@@ -68,12 +68,12 @@ If no view of the kind is registered, the host logs `no native view
 
 ## The Swift side
 
-A native view is a class that conforms to `NuiNativeView`:
+A native view is a class that conforms to `RyUINativeView`:
 
 ```swift
-@MainActor public protocol NuiNativeView: AnyObject {
+@MainActor public protocol RyUINativeView: AnyObject {
     var view: UIView { get }
-    func set(_ name: String, _ value: NuiNativeValue)
+    func set(_ name: String, _ value: RyUINativeValue)
 }
 ```
 
@@ -81,13 +81,13 @@ A native view is a class that conforms to `NuiNativeView`:
   sizes it to fill.
 - `set` gets each prop, by name, as it's set or changes.
 
-A `NuiNativeValue` is one of `.bool(Bool)`, `.int(Int64)`,
+A `RyUINativeValue` is one of `.bool(Bool)`, `.int(Int64)`,
 `.float(Double)` and `.string(String)`. Its `bool`, `int`, `float` and
 `string` properties read it; `int` and `float` convert from each other,
 and a value of another type reads as `false`, `0` or `""`. Go's integer
 types come as `.int`, its floats as `.float`.
 
-The factory that makes the view gets a `NuiNativeContext`; its `emit`
+The factory that makes the view gets a `RyUINativeContext`; its `emit`
 sends an event to the Go handler of that name:
 
 ```swift
@@ -99,10 +99,10 @@ of its name is dropped.
 
 ## The Kotlin side
 
-A native view implements `NuiNativeView`, in the package `dev.nui`:
+A native view implements `RyUINativeView`, in the package `dev.ryui`:
 
 ```kotlin
-interface NuiNativeView {
+interface RyUINativeView {
     val view: View
     fun set(name: String, value: Any)
 }
@@ -111,9 +111,9 @@ interface NuiNativeView {
 `set`'s value is a `Boolean`, `Long`, `Double` or `String`: Go's
 integer types come as `Long`, its floats as `Double`.
 
-The factory gets a `NuiNativeContext`. Its `context` is the app's
+The factory gets a `RyUINativeContext`. Its `context` is the app's
 themed context (the Material 3 theme): make views with it, so they look
-as nui's do. Its `emit(name, values)` sends an event, with values that
+as RyUI's do. Its `emit(name, values)` sends an event, with values that
 are `Boolean`, `Int` or `Long` (an `Int` in Go), `Float` or `Double` (a
 `Float`); anything else is sent as its `toString()`.
 
@@ -122,40 +122,40 @@ are `Boolean`, `Int` or `Long` (an `Int` in Go), `Float` or `Double` (a
 Each host looks for one class by name as it starts, before your Go code
 runs, and calls it to register the app's views and modules.
 
-On iOS, a class named `NuiAppNatives` in Objective-C, an `NSObject`
-conforming to `NuiNativeModule`, whose `register` calls
-`NuiRuntime.shared.registerNative(kind) { ctx in ... }`:
+On iOS, a class named `RyUIAppNatives` in Objective-C, an `NSObject`
+conforming to `RyUINativeModule`, whose `register` calls
+`RyUIRuntime.shared.registerNative(kind) { ctx in ... }`:
 
 ```swift
-@objc(NuiAppNatives) final class AppNatives: NSObject, NuiNativeModule {
+@objc(RyUIAppNatives) final class AppNatives: NSObject, RyUINativeModule {
     @MainActor static func register() {
-        NuiRuntime.shared.registerNative("Stepper") { ctx in Stepper(ctx) }
+        RyUIRuntime.shared.registerNative("Stepper") { ctx in Stepper(ctx) }
     }
 }
 ```
 
-On Android, an `object NuiAppNatives` in the package `dev.nui.app`,
-implementing `NuiNativeModule`; its `register` gets the `NuiRuntime`:
+On Android, an `object RyUIAppNatives` in the package `dev.ryui.app`,
+implementing `RyUINativeModule`; its `register` gets the `RyUIRuntime`:
 
 ```kotlin
-package dev.nui.app
+package dev.ryui.app
 
-import dev.nui.NuiNativeModule
-import dev.nui.NuiRuntime
+import dev.ryui.RyUINativeModule
+import dev.ryui.RyUIRuntime
 
-object NuiAppNatives : NuiNativeModule {
-    override fun register(runtime: NuiRuntime) {
+object RyUIAppNatives : RyUINativeModule {
+    override fun register(runtime: RyUIRuntime) {
         runtime.registerNative("Stepper") { ctx -> Stepper(ctx) }
     }
 }
 ```
 
-Write the file's `package dev.nui.app` line as shown: the CLI copies
+Write the file's `package dev.ryui.app` line as shown: the CLI copies
 `android/*.kt` into the app's sources, and the host loads
-`dev.nui.app.NuiAppNatives` by that name. Release builds keep it through
+`dev.ryui.app.RyUIAppNatives` by that name. Release builds keep it through
 R8.
 
-There is one `NuiAppNatives` an app: it registers every view and
+There is one `RyUIAppNatives` an app: it registers every view and
 module. The views and modules themselves can be in other files.
 
 ## Native modules
@@ -175,8 +175,8 @@ func CallWait(module, method string, args []byte) ([]byte, error)
   on the main thread, where the result comes.
 
 The arguments and the result are bytes, whatever the module and your Go
-code agree on: JSON is fine. nui's packages wrap the built-in modules
-the same way: `nui/secure` calls the `secureStore` module with
+code agree on: JSON is fine. RyUI's packages wrap the built-in modules
+the same way: `ryui/secure` calls the `secureStore` module with
 `CallWait` and with `Call`.
 
 `Call` fails with an error when the module has no such method (`no
@@ -188,17 +188,17 @@ A method gets the call's bytes and a reply, which it calls once (a
 second reply is ignored):
 
 ```swift
-public typealias NuiModuleMethod = (_ args: Data, _ reply: @escaping (Result<Data, Error>) -> Void) -> Void
+public typealias RyUIModuleMethod = (_ args: Data, _ reply: @escaping (Result<Data, Error>) -> Void) -> Void
 ```
 
 ```kotlin
-typealias NuiModuleMethod = (args: ByteArray, reply: (Result<ByteArray>) -> Unit) -> Unit
+typealias RyUIModuleMethod = (args: ByteArray, reply: (Result<ByteArray>) -> Unit) -> Unit
 ```
 
 Register a module's methods by name with `registerModule`, from
-`NuiAppNatives`: `NuiRuntime.shared.registerModule(name, methods)` in
+`RyUIAppNatives`: `RyUIRuntime.shared.registerModule(name, methods)` in
 Swift, `runtime.registerModule(name, methods)` in Kotlin (an extension
-function: `import dev.nui.registerModule`). A module of the same name
+function: `import dev.ryui.registerModule`). A module of the same name
 as one of the host's (`device`, `secureStore`, `camera`...) replaces
 it, so give yours names of their own.
 
@@ -221,9 +221,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/egoist/nui/app"
-	"github.com/egoist/nui/signal"
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/app"
+	"github.com/egoist/ryui/signal"
+	"github.com/egoist/ryui/ui"
 )
 
 // Battery is what the app's battery module reports.
@@ -295,10 +295,10 @@ go func() {
 ```swift
 import UIKit
 
-@objc(NuiAppNatives) final class AppNatives: NSObject, NuiNativeModule {
+@objc(RyUIAppNatives) final class AppNatives: NSObject, RyUINativeModule {
     @MainActor static func register() {
-        NuiRuntime.shared.registerNative("Stepper") { ctx in Stepper(ctx) }
-        NuiRuntime.shared.registerModule("battery", [
+        RyUIRuntime.shared.registerNative("Stepper") { ctx in Stepper(ctx) }
+        RyUIRuntime.shared.registerModule("battery", [
             "level": { _, reply in
                 let device = UIDevice.current
                 device.isBatteryMonitoringEnabled = true
@@ -321,12 +321,12 @@ struct BatteryError: LocalizedError {
 }
 
 /// A UIStepper: props "value" and "max"; event "changed" with "value".
-@MainActor final class Stepper: NuiNativeView {
+@MainActor final class Stepper: RyUINativeView {
     let stepper = UIStepper()
     var view: UIView { stepper }
     private var wanted = 0.0
 
-    init(_ ctx: NuiNativeContext) {
+    init(_ ctx: RyUINativeContext) {
         stepper.addAction(UIAction { [weak self] _ in
             guard let self else { return }
             wanted = stepper.value
@@ -334,7 +334,7 @@ struct BatteryError: LocalizedError {
         }, for: .valueChanged)
     }
 
-    func set(_ name: String, _ value: NuiNativeValue) {
+    func set(_ name: String, _ value: RyUINativeValue) {
         switch name {
         case "value": wanted = value.float
         case "max": stepper.maximumValue = value.float
@@ -349,24 +349,24 @@ struct BatteryError: LocalizedError {
 `android/Natives.kt`:
 
 ```kotlin
-package dev.nui.app
+package dev.ryui.app
 
 import android.content.Context
 import android.os.BatteryManager
 import android.view.View
 import android.widget.NumberPicker
-import dev.nui.NuiModuleMethod
-import dev.nui.NuiNativeContext
-import dev.nui.NuiNativeModule
-import dev.nui.NuiNativeView
-import dev.nui.NuiRuntime
-import dev.nui.registerModule
+import dev.ryui.RyUIModuleMethod
+import dev.ryui.RyUINativeContext
+import dev.ryui.RyUINativeModule
+import dev.ryui.RyUINativeView
+import dev.ryui.RyUIRuntime
+import dev.ryui.registerModule
 import org.json.JSONObject
 
-object NuiAppNatives : NuiNativeModule {
-    override fun register(runtime: NuiRuntime) {
+object RyUIAppNatives : RyUINativeModule {
+    override fun register(runtime: RyUIRuntime) {
         runtime.registerNative("Stepper") { ctx -> Stepper(ctx) }
-        val level: NuiModuleMethod = { _, reply ->
+        val level: RyUIModuleMethod = { _, reply ->
             val bm = runtime.app.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
             val info = JSONObject()
                 .put("level", bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) / 100.0)
@@ -378,7 +378,7 @@ object NuiAppNatives : NuiNativeModule {
 }
 
 /** A NumberPicker: props "value" and "max"; event "changed" with "value". */
-class Stepper(ctx: NuiNativeContext) : NuiNativeView {
+class Stepper(ctx: RyUINativeContext) : RyUINativeView {
     private val picker = NumberPicker(ctx.context)
     override val view: View get() = picker
     private var wanted = 0
@@ -421,8 +421,8 @@ Android.
 
 ## Developing native code
 
-`nui dev` can't run an app with native code in its player, which holds
-only nui's own: for the platform whose directory the app has (`ios/`,
+`ryui dev` can't run an app with native code in its player, which holds
+only RyUI's own: for the platform whose directory the app has (`ios/`,
 `android/`), it builds the app with its Go code and native code, and
 rebuilds and reinstalls it on each save, Swift and Kotlin included. Its
 signals' values aren't kept across those reloads. See

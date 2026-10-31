@@ -6,9 +6,9 @@ import (
 	"math"
 	"strings"
 
-	. "github.com/egoist/nui/internal/darwin"
-	"github.com/egoist/nui/layout"
-	"github.com/egoist/nui/ops"
+	. "github.com/egoist/ryui/internal/darwin"
+	"github.com/egoist/ryui/layout"
+	"github.com/egoist/ryui/ops"
 )
 
 const big = 1e7

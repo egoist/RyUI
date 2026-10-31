@@ -14,7 +14,7 @@ import (
 	"github.com/ebitengine/purego"
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/nui/internal/darwin"
+	. "github.com/egoist/ryui/internal/darwin"
 )
 
 var msgShowPicker func(obj ID, sel SEL, r Rect, view ID, edge uint)
@@ -133,7 +133,7 @@ func (h *Host) keepAwake(on bool) {
 	if on {
 		const idleDisplaySleepDisabled = 1 << 40
 		const userInitiated = 0x00FFFFFF
-		activity = Retain(Send(pi, "beginActivityWithOptions:reason:", idleDisplaySleepDisabled|userInitiated, uintptr(String("nui: KeepAwake"))))
+		activity = Retain(Send(pi, "beginActivityWithOptions:reason:", idleDisplaySleepDisabled|userInitiated, uintptr(String("ryui: KeepAwake"))))
 	}
 }
 

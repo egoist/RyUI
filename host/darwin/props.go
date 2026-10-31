@@ -8,8 +8,8 @@ import (
 
 	"github.com/ebitengine/purego"
 
-	. "github.com/egoist/nui/internal/darwin"
-	"github.com/egoist/nui/ops"
+	. "github.com/egoist/ryui/internal/darwin"
+	"github.com/egoist/ryui/ops"
 )
 
 var le = binary.LittleEndian
@@ -33,7 +33,7 @@ func (h *Host) nsColor(c ops.Color) ID {
 	return 0
 }
 
-// semantic maps nui's semantic colors to AppKit's.
+// semantic maps RyUI's semantic colors to AppKit's.
 func (h *Host) semantic(s ops.SemanticColor) ID {
 	var name string
 	switch s {

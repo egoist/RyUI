@@ -5,8 +5,8 @@ package darwin
 import (
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/nui/internal/darwin"
-	"github.com/egoist/nui/ops"
+	. "github.com/egoist/ryui/internal/darwin"
+	"github.com/egoist/ryui/ops"
 )
 
 // Navigation on a Mac:
@@ -46,11 +46,11 @@ type nav struct {
 func (h *Host) createNav(n *node) bool {
 	switch n.kind {
 	case ops.KindStack:
-		n.view = initView("NuiView")
+		n.view = initView("RyUIView")
 		h.layer(n)
 		Send(Send(n.view, "layer"), "setMasksToBounds:", 1)
 	case ops.KindScreen:
-		n.view = initView("NuiView")
+		n.view = initView("RyUIView")
 		n.nav = &nav{backGesture: true}
 		return true
 	case ops.KindTabs:
@@ -59,7 +59,7 @@ func (h *Host) createNav(n *node) bool {
 		Send(v, "setTabViewType:", 0) // top tabs, bezeled
 		n.view = v
 	case ops.KindSheet, ops.KindWindow:
-		n.view = initView("NuiView")
+		n.view = initView("RyUIView")
 	case ops.KindAlert:
 	default:
 		return false
@@ -456,7 +456,7 @@ func (h *Host) present(n *node) {
 		w := MsgInitWindow(Send(Class("NSWindow"), "alloc"), Sel("initWithContentRect:styleMask:backing:defer:"),
 			Rect{Size: size}, styleTitled|styleResizable, backingBuffered, false)
 		Send(w, "setReleasedWhenClosed:", 0)
-		content := initView("NuiView")
+		content := initView("RyUIView")
 		Send(content, "setAutoresizesSubviews:", 0)
 		Send(w, "setContentView:", uintptr(content))
 		Release(content)
@@ -656,7 +656,7 @@ func (h *Host) updateChrome(w *win) {
 	if stack != nil {
 		c.back = h.liveScreens(stack) > 1
 		if c.back {
-			ids = append(ids, "nui.back")
+			ids = append(ids, "ryui.back")
 		}
 		ids = append(ids, "NSToolbarFlexibleSpaceItem")
 		c.actions, c.search = nil, ""
@@ -664,10 +664,10 @@ func (h *Host) updateChrome(w *win) {
 			c.actions, c.search = screen.actions, screen.nav.search
 		}
 		if c.search != "" {
-			ids = append(ids, "nui.search")
+			ids = append(ids, "ryui.search")
 		}
 		for i := range c.actions {
-			ids = append(ids, "nui.action."+itoa(i))
+			ids = append(ids, "ryui.action."+itoa(i))
 		}
 	}
 	if stack == nil {
@@ -680,7 +680,7 @@ func (h *Host) updateChrome(w *win) {
 		return
 	}
 	if c.toolbar == 0 {
-		t := Send(Send(Class("NSToolbar"), "alloc"), "initWithIdentifier:", uintptr(String("nui")))
+		t := Send(Send(Class("NSToolbar"), "alloc"), "initWithIdentifier:", uintptr(String("ryui")))
 		Send(t, "setDelegate:", uintptr(h.target))
 		Send(t, "setDisplayMode:", 2) // icons
 		Send(t, "setAllowsUserCustomization:", 0)
@@ -753,7 +753,7 @@ func (h *Host) toolbarItem(w *win, ident string) ID {
 		return Autorelease(it)
 	}
 	switch {
-	case ident == "nui.back":
+	case ident == "ryui.back":
 		it := item()
 		Send(it, "setImage:", uintptr(symbolImage("chevron.left")))
 		Send(it, "setLabel:", uintptr(String("Back")))
@@ -767,7 +767,7 @@ func (h *Host) toolbarItem(w *win, ident string) ID {
 			Send(it, "setBordered:", 1)
 		}
 		return it
-	case ident == "nui.search":
+	case ident == "ryui.search":
 		var it ID
 		if HasClass("NSSearchToolbarItem") {
 			it = Autorelease(Send(Send(Class("NSSearchToolbarItem"), "alloc"), "initWithItemIdentifier:", uintptr(String(ident))))
@@ -787,8 +787,8 @@ func (h *Host) toolbarItem(w *win, ident string) ID {
 			Send(f, "setStringValue:", uintptr(String(c.screen.nav.searchText)))
 		}
 		return it
-	case len(ident) > len("nui.action.") && ident[:len("nui.action.")] == "nui.action.":
-		i := atoi(ident[len("nui.action."):])
+	case len(ident) > len("ryui.action.") && ident[:len("ryui.action.")] == "ryui.action.":
+		i := atoi(ident[len("ryui.action."):])
 		if i < 0 || i >= len(c.actions) {
 			return 0
 		}
@@ -901,7 +901,7 @@ func (h *Host) searchCommand(control ID, cmd SEL) bool {
 	return false
 }
 
-// navMethods are NuiTarget's toolbar delegate methods, Escape and the
+// navMethods are RyUITarget's toolbar delegate methods, Escape and the
 // windows' closing.
 func navMethods() []objc.MethodDef {
 	return []objc.MethodDef{

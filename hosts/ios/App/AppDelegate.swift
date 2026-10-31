@@ -1,6 +1,6 @@
 import UIKit
 
-// The app around the nui host: one window scene showing the core's root.
+// The app around the RyUI host: one window scene showing the core's root.
 
 @main
 final class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -12,7 +12,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationDidReceiveMemoryWarning(_ application: UIApplication) {
-        NuiRuntime.shared.lifecycle(.memoryWarning)
+        RyUIRuntime.shared.lifecycle(.memoryWarning)
     }
 }
 
@@ -22,26 +22,26 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options: UIScene.ConnectionOptions) {
         guard let ws = scene as? UIWindowScene else { return }
         let w = UIWindow(windowScene: ws)
-        w.rootViewController = NuiViewController()
+        w.rootViewController = RyUIViewController()
         w.makeKeyAndVisible()
         window = w
         // Opened with a URL, or a universal link.
-        for c in options.urlContexts { NuiRuntime.shared.openURL(c.url) }
+        for c in options.urlContexts { RyUIRuntime.shared.openURL(c.url) }
         for a in options.userActivities where a.activityType == NSUserActivityTypeBrowsingWeb {
-            if let u = a.webpageURL { NuiRuntime.shared.openURL(u) }
+            if let u = a.webpageURL { RyUIRuntime.shared.openURL(u) }
         }
     }
 
     func scene(_ scene: UIScene, openURLContexts contexts: Set<UIOpenURLContext>) {
-        for c in contexts { NuiRuntime.shared.openURL(c.url) }
+        for c in contexts { RyUIRuntime.shared.openURL(c.url) }
     }
 
     func scene(_ scene: UIScene, continue activity: NSUserActivity) {
         if activity.activityType == NSUserActivityTypeBrowsingWeb, let u = activity.webpageURL {
-            NuiRuntime.shared.openURL(u)
+            RyUIRuntime.shared.openURL(u)
         }
     }
 
-    func sceneWillEnterForeground(_ scene: UIScene) { NuiRuntime.shared.lifecycle(.foreground) }
-    func sceneDidEnterBackground(_ scene: UIScene) { NuiRuntime.shared.lifecycle(.background) }
+    func sceneWillEnterForeground(_ scene: UIScene) { RyUIRuntime.shared.lifecycle(.foreground) }
+    func sceneDidEnterBackground(_ scene: UIScene) { RyUIRuntime.shared.lifecycle(.background) }
 }

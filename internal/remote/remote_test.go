@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/egoist/nui/host"
-	"github.com/egoist/nui/host/fake"
-	"github.com/egoist/nui/internal/remote/testapp"
-	"github.com/egoist/nui/ops"
-	"github.com/egoist/nui/signal"
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/host"
+	"github.com/egoist/ryui/host/fake"
+	"github.com/egoist/ryui/internal/remote/testapp"
+	"github.com/egoist/ryui/ops"
+	"github.com/egoist/ryui/signal"
+	"github.com/egoist/ryui/ui"
 )
 
 // player is a core serving app over a pipe, and a player (the fake

@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/egoist/nui/internal/darwin"
-	"github.com/egoist/nui/ops"
-	"github.com/egoist/nui/signal"
-	"github.com/egoist/nui/ui"
+	. "github.com/egoist/ryui/internal/darwin"
+	"github.com/egoist/ryui/ops"
+	"github.com/egoist/ryui/signal"
+	"github.com/egoist/ryui/ui"
 )
 
 // AppKit runs on the main thread: TestMain keeps it, and the tests send
@@ -294,7 +294,7 @@ func TestModules(t *testing.T) {
 		if err != nil || !strings.Contains(string(b), `"system":"macOS"`) {
 			fatalf(t, "device.info: %s, %v", b, err)
 		}
-		key := fmt.Sprintf("nui-test-%d", time.Now().UnixNano())
+		key := fmt.Sprintf("ryui-test-%d", time.Now().UnixNano())
 		if b, err := call("secureStore", "get", []byte(key)); err != nil || len(b) != 1 || b[0] != 0 {
 			fatalf(t, "a missing key: %v, %v", b, err)
 		}

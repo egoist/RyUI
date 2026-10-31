@@ -2,7 +2,7 @@ module {{.Module}}
 
 go 1.26
 
-{{if .Version}}require github.com/egoist/nui {{.Version}}
+{{if .Version}}require github.com/egoist/ryui {{.Version}}
 {{end}}{{if .Replace}}
-replace github.com/egoist/nui => {{.Replace}}
+replace github.com/egoist/ryui => {{.Replace}}
 {{end}}

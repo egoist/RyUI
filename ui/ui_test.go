@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/egoist/nui/host/fake"
-	"github.com/egoist/nui/internal/boot"
-	"github.com/egoist/nui/layout"
-	"github.com/egoist/nui/ops"
-	"github.com/egoist/nui/signal"
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/host/fake"
+	"github.com/egoist/ryui/internal/boot"
+	"github.com/egoist/ryui/layout"
+	"github.com/egoist/ryui/ops"
+	"github.com/egoist/ryui/signal"
+	"github.com/egoist/ryui/ui"
 )
 
 func mount(t *testing.T, root func() ui.Node) (*fake.Host, *ui.Root) {
@@ -380,7 +380,7 @@ func TestListBindsOnlyWhatTheHostAsks(t *testing.T) {
 
 func TestSteadyStateFlushAllocatesNothing(t *testing.T) {
 	if signal.Debug {
-		t.Skip("nui_debug's main-thread checks allocate")
+		t.Skip("ryui_debug's main-thread checks allocate")
 	}
 	labels := []string{"one", "two"}
 	sel := signal.New(0)
@@ -518,7 +518,7 @@ func TestNilPropsAreZeroValues(t *testing.T) {
 	}
 }
 
-// The app's accent color (nui.json's) goes to the host when a root
+// The app's accent color (ryui.json's) goes to the host when a root
 // mounts, before its views.
 func TestAccent(t *testing.T) {
 	boot.Accent, boot.DynamicColor = "#7c3aed", "1"

@@ -1,6 +1,6 @@
 // Package record records video from the camera.View on screen (its Mode
 // camera.Video), with sound unless muted. An app that imports it is given
-// the microphone's permission and purpose string (nui.json's
+// the microphone's permission and purpose string (ryui.json's
 // ios.usage.NSMicrophoneUsageDescription says it better); apps that only
 // take photos go without.
 package record
@@ -9,7 +9,7 @@ import (
 	"encoding/binary"
 	"time"
 
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/ui"
 )
 
 // Options configures a recording.
@@ -26,7 +26,7 @@ type Options struct {
 // unless muted; refused, the video has no sound. One at a time. Main
 // thread.
 //
-// Never inlined: nui build looks for its symbol (cmd/nui iosFeatures).
+// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
 //
 //go:noinline
 func Start(o Options, done func(path string, err error)) {

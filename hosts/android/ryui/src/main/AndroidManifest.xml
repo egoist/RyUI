@@ -1,0 +1,16 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- ui.Image loads http(s) URLs. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <application>
+        <!-- ryui/notify: posts a notification when its alarm goes off. -->
+        <receiver android:name="dev.ryui.RyUINotifyReceiver" android:exported="false" />
+        <!-- ryui/camera: the camera app writes the photo to a file of the app's. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.ryui.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/ryui_files" />
+        </provider>
+    </application>
+</manifest>

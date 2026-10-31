@@ -32,7 +32,7 @@ const (
 	KindImage Kind = 15
 	// KindNative: a view the app registers with each host; its events are Native.
 	KindNative Kind = 16
-	// KindRichText: styled paragraphs typeset and drawn by nui's own view (CoreText, StaticLayout); the common text props are its defaults. A tapped link reports Link. Its children are its inline components.
+	// KindRichText: styled paragraphs typeset and drawn by ryui's own view (CoreText, StaticLayout); the common text props are its defaults. A tapped link reports Link. Its children are its inline components.
 	KindRichText Kind = 17
 	// KindSelectable: a container whose RichText descendants share one selection, across texts: the platform's handles, loupe and edit menu; Copy copies the selected text.
 	KindSelectable Kind = 18
@@ -52,7 +52,7 @@ const (
 	KindShape Kind = 25
 	// KindVideo: a video (AVPlayerViewController, Media3's PlayerView). Loaded reports its natural size once known, Ended its end (each time, looping), Failed an error; the Play, Pause and Seek commands drive it.
 	KindVideo Kind = 26
-	// KindWebView: a web page (WKWebView, android.webkit.WebView). Navigated reports each page loaded (its URL), Failed a page that couldn't load, Message what the page posts with window.nui.postMessage(text), WebState its URL, title, progress and history, Download a response the page can't show (a file to save), NewWindow a page it would open in a new window (window.open, target=_blank: without a listener, it loads in this view), Request each request (with Requests); the Eval command runs script in it, WebNavigate goes back, forward, reloads or stops.
+	// KindWebView: a web page (WKWebView, android.webkit.WebView). Navigated reports each page loaded (its URL), Failed a page that couldn't load, Message what the page posts with window.ryui.postMessage(text), WebState its URL, title, progress and history, Download a response the page can't show (a file to save), NewWindow a page it would open in a new window (window.open, target=_blank: without a listener, it loads in this view), Request each request (with Requests); the Eval command runs script in it, WebNavigate goes back, forward, reloads or stops.
 	KindWebView Kind = 27
 	// KindDatePicker: a date or a time, chosen the platform's way (a compact UIDatePicker; Material's date and time pickers from buttons that show it), in the device's time zone and format. The user's choice is reported with ValueChanged, in Unix milliseconds.
 	KindDatePicker Kind = 28
@@ -109,7 +109,7 @@ const (
 	PropTransition PropID = 26
 	// PropMaterial: a translucent background that blurs what's behind (iOS's materials); Android, which can't, shows its surface color, translucent.
 	PropMaterial PropID = 27
-	// PropFontFamily: a font file's name in the app's assets/fonts (Inter-Bold.ttf: Inter-Bold), a family of them (Inter: Inter-Regular, Inter-Bold...), a generic family (serif, monospace, rounded) or a system family; scaled as the text style is. Under nui dev, a font file's URL, which the host loads, then sends FontLoaded.
+	// PropFontFamily: a font file's name in the app's assets/fonts (Inter-Bold.ttf: Inter-Bold), a family of them (Inter: Inter-Regular, Inter-Bold...), a generic family (serif, monospace, rounded) or a system family; scaled as the text style is. Under ryui dev, a font file's URL, which the host loads, then sends FontLoaded.
 	PropFontFamily PropID = 28
 	// PropSwipeActions: a List cell's swipe actions, encoded as Menu (iOS: its trailing actions; Android: a full swipe runs the first); Action events on the cell carry the index.
 	PropSwipeActions PropID = 29
@@ -407,11 +407,11 @@ const (
 	EventEnded EventKind = 27
 	// EventNavigated: a WebView loaded a page (its URL).
 	EventNavigated EventKind = 28
-	// EventMessage: a WebView's page posted a message: window.nui.postMessage(text).
+	// EventMessage: a WebView's page posted a message: window.ryui.postMessage(text).
 	EventMessage EventKind = 29
 	// EventIncomingURL: the app was opened with a URL (its scheme, or a universal or app link), at launch or since; to the root.
 	EventIncomingURL EventKind = 30
-	// EventFontLoaded: a font a FontFamily named by URL (under nui dev) loaded, to the root: text in it is measured again.
+	// EventFontLoaded: a font a FontFamily named by URL (under ryui dev) loaded, to the root: text in it is measured again.
 	EventFontLoaded EventKind = 31
 	// EventFrame: a frame the display draws (vsync), while Frames is on: its time in seconds (monotonic); to the root.
 	EventFrame EventKind = 32
@@ -427,7 +427,7 @@ const (
 	EventDownload EventKind = 37
 	// EventNewWindow: a WebView's page would open a page in a new window (its URL).
 	EventNewWindow EventKind = 38
-	// EventShared: another app shared text with the app (a link from its share sheet: iOS's share extension, Android's ACTION_SEND, with nui.json's shareTarget), at launch or since; to the root.
+	// EventShared: another app shared text with the app (a link from its share sheet: iOS's share extension, Android's ACTION_SEND, with ryui.json's shareTarget), at launch or since; to the root.
 	EventShared EventKind = 39
 )
 

@@ -11,7 +11,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/ui"
 )
 
 // DefaultTimeout is how long a script may run when ctx has no deadline.
@@ -24,7 +24,7 @@ const DefaultTimeout = time.Minute
 // promise, is the error. The page is gone after: what the script set
 // isn't there for the next. Not on the main thread.
 //
-// Never inlined: nui build looks for its symbol (cmd/nui iosFeatures).
+// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
 //
 //go:noinline
 func Eval(ctx context.Context, script string) (json.RawMessage, error) {

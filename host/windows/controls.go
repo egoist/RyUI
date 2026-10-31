@@ -3,8 +3,8 @@
 package windows
 
 import (
-	. "github.com/egoist/nui/internal/windows"
-	"github.com/egoist/nui/ops"
+	. "github.com/egoist/ryui/internal/windows"
+	"github.com/egoist/ryui/ops"
 )
 
 // The controls are the common controls, drawn as Windows 11 draws its

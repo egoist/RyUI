@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 export function Wordmark({ className, ...props }: React.ComponentProps<"span">) {
   return (
     <span className={cn("font-semibold tracking-tight", className)} {...props}>
-      nui
+      RyUI
     </span>
   )
 }

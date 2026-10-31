@@ -1,4 +1,4 @@
-module github.com/egoist/nui
+module github.com/egoist/ryui
 
 go 1.26.0
 

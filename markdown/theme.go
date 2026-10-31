@@ -1,6 +1,6 @@
 package markdown
 
-import "github.com/egoist/nui/ui"
+import "github.com/egoist/ryui/ui"
 
 // Theme is how Markdown looks: fonts, colors and spacing for each kind
 // of block and inline. What it leaves zero takes DefaultTheme's value, so

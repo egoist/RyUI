@@ -7,7 +7,7 @@
 //
 // An app that imports it is given what it needs: Android's storage
 // permission before Android 10, iOS's purpose string for adding to
-// Photos (nui.json's ios.usage.NSPhotoLibraryAddUsageDescription says
+// Photos (ryui.json's ios.usage.NSPhotoLibraryAddUsageDescription says
 // it better), and its Documents in Files.
 package library
 
@@ -16,7 +16,7 @@ import (
 	"mime"
 	"path/filepath"
 
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/ui"
 )
 
 // Collection is where a file goes.
@@ -51,7 +51,7 @@ type Options struct {
 // or the file in Documents (iOS). It asks for what it needs the first
 // time. Main thread.
 //
-// Never inlined: nui build looks for its symbol (cmd/nui iosFeatures).
+// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
 //
 //go:noinline
 func Save(path string, o Options, done func(location string, err error)) {

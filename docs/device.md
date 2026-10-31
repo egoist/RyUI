@@ -1,6 +1,6 @@
 # Device and services
 
-nui's packages reach what the phone has beyond views: the camera, codes,
+RyUI's packages reach what the phone has beyond views: the camera, codes,
 photos, location, notifications, sound, the network's state, the shared
 library, work in the background, shares from other apps and JavaScript.
 This page covers each package: what it does, its API, the permissions it
@@ -15,19 +15,19 @@ photo app doesn't ask for the microphone.
 
 | Package | Android | iOS |
 | --- | --- | --- |
-| `nui/camera` | `CAMERA` | `NSCameraUsageDescription` |
-| `nui/camera/record` | `RECORD_AUDIO` | `NSMicrophoneUsageDescription` |
-| `nui/location` | `ACCESS_COARSE_LOCATION`, `ACCESS_FINE_LOCATION` | `NSLocationWhenInUseUsageDescription` |
-| `nui/notify` | `POST_NOTIFICATIONS` | |
-| `nui/network` | `ACCESS_NETWORK_STATE` | |
-| `nui/library` | `WRITE_EXTERNAL_STORAGE` (Android 9 and earlier) | `NSPhotoLibraryAddUsageDescription`; the app's Documents shown in Files |
-| `nui/background` | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC`, `POST_NOTIFICATIONS`, `WAKE_LOCK`; a foreground service | |
-| `nui/scan` | ML Kit's barcode model (about 2 MB) | |
+| `ryui/camera` | `CAMERA` | `NSCameraUsageDescription` |
+| `ryui/camera/record` | `RECORD_AUDIO` | `NSMicrophoneUsageDescription` |
+| `ryui/location` | `ACCESS_COARSE_LOCATION`, `ACCESS_FINE_LOCATION` | `NSLocationWhenInUseUsageDescription` |
+| `ryui/notify` | `POST_NOTIFICATIONS` | |
+| `ryui/network` | `ACCESS_NETWORK_STATE` | |
+| `ryui/library` | `WRITE_EXTERNAL_STORAGE` (Android 9 and earlier) | `NSPhotoLibraryAddUsageDescription`; the app's Documents shown in Files |
+| `ryui/background` | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC`, `POST_NOTIFICATIONS`, `WAKE_LOCK`; a foreground service | |
+| `ryui/scan` | ML Kit's barcode model (about 2 MB) | |
 
-`nui/device`, `nui/audio`, `nui/js` and `nui/secure` need none.
+`ryui/device`, `ryui/audio`, `ryui/js` and `ryui/secure` need none.
 
-The purpose strings nui writes are generic ("To take a photo."). iOS
-shows them when it asks the user, so write your own in `nui.json`'s
+The purpose strings RyUI writes are generic ("To take a photo."). iOS
+shows them when it asks the user, so write your own in `ryui.json`'s
 `ios.usage`:
 
 ```json
@@ -47,7 +47,7 @@ Calls that wait (for the user, a location fix, the platform) are marked
 `ui.Post` the result back (see [the main thread](concepts.md#the-main-thread)).
 The others take a callback, called on the main thread.
 
-## The camera: nui/camera
+## The camera: ryui/camera
 
 `camera.Take` shows the system's camera (iOS's camera screen, Android's
 camera app) and calls `done` with the photo's file, a JPEG, or `""` if the
@@ -95,11 +95,11 @@ ui.Button(ui.ButtonProps{Title: ui.Val("Photo"), OnPress: func() {
 
 - `Facing`: `camera.Back` (the default) or `camera.Front`.
 - `Mode`: `camera.Photo` (the default), or `camera.Video` for recording
-  with `nui/camera/record`, which takes photos too.
+  with `ryui/camera/record`, which takes photos too.
 - `Style`: its box.
 - `OnError`: called when the camera can't show: `"not allowed"` if the
   user refused it, `"no camera"` if there's none.
-- `Scan`: reads codes in what it sees; see `nui/scan`.
+- `Scan`: reads codes in what it sees; see `ryui/scan`.
 
 The view asks for the camera the first time it shows, and the camera is
 on while the view is on screen. Show one at a time: `Capture` and
@@ -108,15 +108,15 @@ there's none.
 
 The files from `Take` and `Capture` are in the app's caches, which the
 system may clear: move one into `store.Dir()` to keep it, or save it to
-the photo library with [`nui/library`](#saving-to-the-library-nuilibrary).
+the photo library with [`ryui/library`](#saving-to-the-library-ryuilibrary).
 
-**Android**: as `nui/camera` declares the camera permission (the view
+**Android**: as `ryui/camera` declares the camera permission (the view
 needs it), Android requires it of the camera app too: `Take` asks for it
 first, and fails with `"not allowed"` if the user refuses.
 
-## Recording video: nui/camera/record
+## Recording video: ryui/camera/record
 
-`nui/camera/record` records video from the `camera.View` on screen, whose
+`ryui/camera/record` records video from the `camera.View` on screen, whose
 `Mode` is `camera.Video`. `record.Start` records until `record.Stop`, or
 until `MaxDuration` if set, then calls `done` with the video's file (in
 the app's caches: `.mov` on iOS, `.mp4` on Android).
@@ -152,13 +152,13 @@ user refuses, the video has no sound. `record.Options{Mute: true}`
 records without sound and without asking. One recording at a time.
 
 The microphone's permission and purpose string come with this package,
-not with `nui/camera`: an app that only takes photos goes without them.
+not with `ryui/camera`: an app that only takes photos goes without them.
 
-## Barcodes and QR codes: nui/scan
+## Barcodes and QR codes: ryui/scan
 
-`nui/scan` reads barcodes and QR codes, live in what a `camera.View`
+`ryui/scan` reads barcodes and QR codes, live in what a `camera.View`
 sees, or in an image file. iOS reads them with AVFoundation and Vision;
-Android with ML Kit, which only the apps that import `nui/scan` are built
+Android with ML Kit, which only the apps that import `ryui/scan` are built
 with.
 
 `scan.Codes` makes the view's `Scan`. It reads the kinds given (every
@@ -197,11 +197,11 @@ kinds: `QR`, `Aztec`, `DataMatrix`, `PDF417`, `EAN13`, `EAN8`, `UPCA`,
 `UPCE`, `Code128`, `Code39`, `Code93`, `Codabar`, `ITF`.
 
 **iOS** reads a UPC-A as an EAN-13 with a leading 0; asked for `UPCA`,
-nui gives it as a UPC-A again.
+RyUI gives it as a UPC-A again.
 
-## Photos, the browser, the clipboard: nui/device
+## Photos, the browser, the clipboard: ryui/device
 
-`nui/device` is what the platform offers beyond views.
+`ryui/device` is what the platform offers beyond views.
 
 ```go
 ui.Button(ui.ButtonProps{Title: ui.Val("Pick photos"), OnPress: func() {
@@ -232,7 +232,7 @@ ui.Button(ui.ButtonProps{Title: ui.Val("Help"), OnPress: func() {
   a recipe, a map. Turn it off when the screen that wants it goes.
 - `device.GetInfo()` is the device and the app: `Model` ("iPhone", "Pixel
   9"), `System` ("iOS", "Android"), `SystemVersion`, and `AppVersion` and
-  `Build`, `nui.json`'s `version` and `build`. Not on the main thread.
+  `Build`, `ryui.json`'s `version` and `build`. Not on the main thread.
 
 ```go
 func Player() ui.Node {
@@ -248,7 +248,7 @@ func Player() ui.Node {
 }
 ```
 
-## Signing in on the web: nui/webauth
+## Signing in on the web: ryui/webauth
 
 `webauth.Start` shows a sign-in page in the system's own sign-in sheet:
 `ASWebAuthenticationSession` on iOS (SwiftUI's
@@ -271,7 +271,7 @@ It ends in one of two ways:
 
 - **A callback scheme.** When the page goes to a URL of
   `CallbackScheme` (the app's own), the sheet closes and `done` gets the
-  URL. On Android the scheme must be the app's, nui.json's `scheme`; it
+  URL. On Android the scheme must be the app's, ryui.json's `scheme`; it
   goes to `done` rather than `ui.OnOpenURL`.
 - **The app ends it.** Without a scheme, the page redirects somewhere
   the app hears from: an OAuth server that allows a redirect to the
@@ -304,12 +304,12 @@ ui.Button(ui.ButtonProps{Title: ui.Val("Call"), OnPress: func() { ui.OpenURL("te
   browser, another scheme (`tel:`, `mailto:`, another app's) in the app
   that handles it.
 
-To be opened with URLs yourself, see `nui.json`'s `scheme` and `links` in
-[Shipping](shipping.md#nuijson), and `ui.OnOpenURL`.
+To be opened with URLs yourself, see `ryui.json`'s `scheme` and `links` in
+[Shipping](shipping.md#ryuijson), and `ui.OnOpenURL`.
 
-## Location: nui/location
+## Location: ryui/location
 
-`nui/location` is where the device is, now and as it moves, with the
+`ryui/location` is where the device is, now and as it moves, with the
 user's permission, which it asks for the first time. It's Core Location
 on iOS, and Android's location manager, which needs no Google Play
 services. It asks for the location while the app is in use, not in the
@@ -362,9 +362,9 @@ not known) and `Time`.
 otherwise it waits up to 10 seconds for a new one, then gives the last
 known, or fails with `"no location"`.
 
-## Notifications: nui/notify
+## Notifications: ryui/notify
 
-`nui/notify` shows local notifications at a time the app sets, whether or
+`ryui/notify` shows local notifications at a time the app sets, whether or
 not the app is running then. Tapping one opens the app with its URL.
 
 ```go
@@ -395,7 +395,7 @@ go func() {
 - `notify.Cancel(id)` takes the notification away, waiting or shown. On
   the main thread.
 
-A `Notification`'s `URL` should be one of the app's scheme (`nui.json`'s
+A `Notification`'s `URL` should be one of the app's scheme (`ryui.json`'s
 `scheme`): `ui.OnOpenURL` gets it when the user taps the notification.
 
 ```go
@@ -410,9 +410,9 @@ ui.OnOpenURL(func(url string) {
 **Android** posts it from an inexact alarm (no exact-alarm permission
 needed), so it may come a little after its time.
 
-## Sound: nui/audio
+## Sound: ryui/audio
 
-`nui/audio` plays sounds and music with the platform's player (AVPlayer;
+`ryui/audio` plays sounds and music with the platform's player (AVPlayer;
 Media3's ExoPlayer on Android). A source is a file in the app's
 `assets/`, a file the app wrote, or an http(s) URL, a file or a stream.
 
@@ -443,9 +443,9 @@ when it's no longer needed.
 The sound plays with iOS's silent switch on, as a music or game app's
 does, and doesn't mix with other apps' audio.
 
-## Network state: nui/network
+## Network state: ryui/network
 
-`nui/network` is the device's network: whether it's online, over Wi-Fi or
+`ryui/network` is the device's network: whether it's online, over Wi-Fi or
 cellular, and whether the connection costs. Use it to download large
 files on Wi-Fi only, or to say the app is offline. It's NWPathMonitor on
 iOS and ConnectivityManager on Android.
@@ -487,9 +487,9 @@ Until the platform first answers, `Use`'s value is `Connected` with
 `network.Watch(f)` calls `f` on the main thread with the network now and
 each time it changes, until `stop` is called.
 
-## Saving to the library: nui/library
+## Saving to the library: ryui/library
 
-`nui/library` saves files where the user and other apps find them: a
+`ryui/library` saves files where the user and other apps find them: a
 video to the gallery, a song to the music, anything to Downloads.
 
 ```go
@@ -536,11 +536,11 @@ writes to the shared folders after asking for the storage permission.
 **iOS** asks to add to Photos (add only: the app can't read the library)
 and answers with the asset's identifier; `Folder` doesn't apply there.
 Other collections go to the app's Documents, under `Folder`, answering
-with the file's path; nui makes Documents visible in the Files app.
+with the file's path; RyUI makes Documents visible in the Files app.
 
-## Background work: nui/background
+## Background work: ryui/background
 
-`nui/background` keeps the app working while it's out of sight: a
+`ryui/background` keeps the app working while it's out of sight: a
 download, an upload, an export the user started, which takes minutes.
 
 `background.Start` starts a task: the app keeps running, with a
@@ -608,7 +608,7 @@ may stop.
 
 `ui.OnShare(f)` calls `f` with what another app shares with this one: a
 link or text sent from its share sheet ("Share" in YouTube, in a
-browser). Set `"shareTarget": true` in `nui.json` and the app is offered
+browser). Set `"shareTarget": true` in `ryui.json` and the app is offered
 there.
 
 ```go
@@ -630,9 +630,9 @@ on Android the share opens the app itself. A page shared from Safari
 comes as its title and its link, a line each. To show a screen for
 what's shared, see [Navigation](navigation.md).
 
-## JavaScript: nui/js
+## JavaScript: ryui/js
 
-`nui/js` runs JavaScript off screen, in the platform's own engine: a web
+`ryui/js` runs JavaScript off screen, in the platform's own engine: a web
 view that's never shown (WKWebView, Android's WebView). It's for code
 that only has a JavaScript form, as a site's player whose functions sign
 its video URLs.

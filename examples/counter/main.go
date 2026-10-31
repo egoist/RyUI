@@ -1,15 +1,15 @@
-// Counter is the smallest nui app: a signal, a Text that reads it and a
+// Counter is the smallest RyUI app: a signal, a Text that reads it and a
 // Button that writes it.
 //
-//	go run ./cmd/nui dev -ios examples/counter
+//	go run ./cmd/ryui dev -ios examples/counter
 package main
 
 import (
 	"fmt"
 
-	"github.com/egoist/nui/app"
-	"github.com/egoist/nui/signal"
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/app"
+	"github.com/egoist/ryui/signal"
+	"github.com/egoist/ryui/ui"
 )
 
 func Counter() ui.Node {

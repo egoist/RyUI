@@ -1,4 +1,4 @@
-//go:build nui_debug
+//go:build ryui_debug
 
 package signal
 
@@ -33,5 +33,5 @@ func goroutineID() uint64 {
 	return id
 }
 
-// Debug reports whether this is a nui_debug build (with main-thread checks).
+// Debug reports whether this is a ryui_debug build (with main-thread checks).
 const Debug = true

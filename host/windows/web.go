@@ -13,14 +13,14 @@ import (
 	"strings"
 	"unsafe"
 
-	. "github.com/egoist/nui/internal/windows"
-	"github.com/egoist/nui/ops"
+	. "github.com/egoist/ryui/internal/windows"
+	"github.com/egoist/ryui/ops"
 )
 
 // A WebView is WebView2 (Edge's runtime) in a view of the host's: a
 // windowed controller in the view's window. The page posts to Go with
-// window.nui.postMessage(text), as on iOS and Android; the app's assets
-// are served from https://nui.assets/. The environment is made once, for
+// window.ryui.postMessage(text), as on iOS and Android; the app's assets
+// are served from https://ryui.assets/. The environment is made once, for
 // the app, the first time a web view shows; until it and the view's
 // controller exist, what the core asks for waits.
 //
@@ -52,8 +52,8 @@ type video struct {
 }
 
 const (
-	webAssetsHost = "nui.assets"
-	bridgeJS      = `window.nui = { postMessage: function (m) { window.chrome.webview.postMessage(String(m)); } };`
+	webAssetsHost = "ryui.assets"
+	bridgeJS      = `window.ryui = { postMessage: function (m) { window.chrome.webview.postMessage(String(m)); } };`
 )
 
 // The vtable indices of the WebView2 interfaces used, from WebView2.h.
@@ -145,7 +145,7 @@ func (h *Host) whenWebEnvironment(f func()) {
 	err := CreateWebView2Environment(dir, func(env uintptr, err error) {
 		webEnv, webEnvErr = env, err
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "nui:", err)
+			fmt.Fprintln(os.Stderr, "ryui:", err)
 		}
 		fs := webEnvWait
 		webEnvWait = nil
@@ -155,7 +155,7 @@ func (h *Host) whenWebEnvironment(f func()) {
 	})
 	if err != nil {
 		webEnvErr = err
-		fmt.Fprintln(os.Stderr, "nui:", err)
+		fmt.Fprintln(os.Stderr, "ryui:", err)
 		fs := webEnvWait
 		webEnvWait = nil
 		for _, f := range fs {

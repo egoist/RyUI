@@ -1,0 +1,9 @@
+{
+  "name": "Usage",
+  "id": "dev.ryui.usage",
+  "version": "1.0.0",
+  "build": 1,
+  "icon": "icon.png",
+  "accent": "#4A63B5",
+  "orientations": ["portrait"]
+}

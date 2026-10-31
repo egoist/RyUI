@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "nui",
+  "name": "ryui",
   "compatibility_date": "2026-09-01",
   // A static site: no Worker script, only the pages that `bun run build` prerenders.
   "assets": {

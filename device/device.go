@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/ui"
 )
 
 // Info is the device and the app.
@@ -15,8 +15,8 @@ type Info struct {
 	Model         string `json:"model"`         // "iPhone", "Pixel 9"
 	System        string `json:"system"`        // "iOS", "Android"
 	SystemVersion string `json:"systemVersion"` // "26.0", "16"
-	AppVersion    string `json:"appVersion"`    // nui.json's version
-	Build         string `json:"build"`         // nui.json's build
+	AppVersion    string `json:"appVersion"`    // ryui.json's version
+	Build         string `json:"build"`         // ryui.json's build
 }
 
 // GetInfo is the device and the app. Not on the main thread.
@@ -32,7 +32,7 @@ func GetInfo() (Info, error) {
 // Browse shows a web page in the app: SFSafariViewController, a Custom
 // Tab. (ui.OpenURL leaves the app for the browser.) Main thread.
 //
-// Never inlined: nui build looks for its symbol (cmd/nui iosFeatures).
+// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
 //
 //go:noinline
 func Browse(url string) {
@@ -44,7 +44,7 @@ func Browse(url string) {
 // files, which ui.Image shows, or none if the user cancelled. Main
 // thread.
 //
-// Never inlined: nui build looks for its symbol (cmd/nui iosFeatures).
+// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
 //
 //go:noinline
 func PickPhotos(limit int, done func(paths []string, err error)) {

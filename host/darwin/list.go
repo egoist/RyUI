@@ -6,8 +6,8 @@ import (
 	"encoding/binary"
 	"sort"
 
-	. "github.com/egoist/nui/internal/darwin"
-	"github.com/egoist/nui/ops"
+	. "github.com/egoist/ryui/internal/darwin"
+	"github.com/egoist/ryui/ops"
 )
 
 // A List is a scroll view whose rows the host places itself: as it
@@ -63,7 +63,7 @@ func newList(h *Host, n *node) *list {
 	Send(l.scroll, "setAutohidesScrollers:", 1)
 	Send(l.scroll, "setAutomaticallyAdjustsContentInsets:", 0)
 	Send(l.scroll, "setDrawsBackground:", 0)
-	l.doc = initView("NuiView")
+	l.doc = initView("RyUIView")
 	Send(l.scroll, "setDocumentView:", uintptr(l.doc))
 	Release(l.doc)
 	clip := Send(l.scroll, "contentView")
@@ -246,7 +246,7 @@ func (l *list) take(h *Host) *rowView {
 		Send(rv.view, "setHidden:", 0)
 		return rv
 	}
-	v := initView("NuiView")
+	v := initView("RyUIView")
 	Send(l.doc, "addSubview:", uintptr(v))
 	Release(v)
 	return &rowView{view: v, row: -1}
@@ -276,7 +276,7 @@ func (l *list) bind(h *Host, rv *rowView, r int) {
 func (h *Host) newCell(l *list, rv *rowView) *cell {
 	h.nextCell++
 	id := ops.HostIDBit | h.nextCell
-	v := initView("NuiView")
+	v := initView("RyUIView")
 	n := &node{id: id, kind: ops.KindView, view: v}
 	c := &cell{n: n, l: l, rv: rv}
 	n.cell = c

@@ -1,12 +1,12 @@
 // Downloader saves videos from links: a link pasted or shared from
 // another app (ui.OnShare), downloaded while the app is out of sight
-// (nui/background, its progress and Pause and Cancel in a notification),
-// on Wi-Fi only if asked (nui/network), into the gallery (nui/library).
+// (ryui/background, its progress and Pause and Cancel in a notification),
+// on Wi-Fi only if asked (ryui/network), into the gallery (ryui/library).
 // Its browser finds the videos a page plays, from a script that runs
 // before the page's own (WebViewProps.Preload), and blocks ads; its icons
-// are SVG (nui/svg); nui/js runs a script off screen.
+// are SVG (ryui/svg); ryui/js runs a script off screen.
 //
-//	go run ./cmd/nui dev -android -once examples/downloader
+//	go run ./cmd/ryui dev -android -once examples/downloader
 package main
 
 import (
@@ -23,15 +23,15 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/egoist/nui/app"
-	"github.com/egoist/nui/background"
-	"github.com/egoist/nui/js"
-	"github.com/egoist/nui/library"
-	"github.com/egoist/nui/network"
-	"github.com/egoist/nui/signal"
-	"github.com/egoist/nui/store"
-	"github.com/egoist/nui/svg"
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/app"
+	"github.com/egoist/ryui/background"
+	"github.com/egoist/ryui/js"
+	"github.com/egoist/ryui/library"
+	"github.com/egoist/ryui/network"
+	"github.com/egoist/ryui/signal"
+	"github.com/egoist/ryui/store"
+	"github.com/egoist/ryui/svg"
+	"github.com/egoist/ryui/ui"
 )
 
 // Lucide's icons.

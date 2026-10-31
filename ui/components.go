@@ -4,10 +4,10 @@ import (
 	"encoding/binary"
 	"time"
 
-	"github.com/egoist/nui/host"
-	"github.com/egoist/nui/layout"
-	"github.com/egoist/nui/ops"
-	"github.com/egoist/nui/signal"
+	"github.com/egoist/ryui/host"
+	"github.com/egoist/ryui/layout"
+	"github.com/egoist/ryui/ops"
+	"github.com/egoist/ryui/signal"
 )
 
 // Role is what a view is to assistive technologies.
@@ -212,7 +212,7 @@ type Environment = host.Environment
 
 // Platform is the system the app runs on, the environment's Platform:
 // for the few places an app follows each platform's own design (an
-// inset grouped list on iOS, Material's on Android) where nui has no
+// inset grouped list on iOS, Material's on Android) where RyUI has no
 // view that does it for it.
 type Platform = ops.Platform
 

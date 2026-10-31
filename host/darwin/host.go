@@ -1,6 +1,6 @@
 //go:build darwin && !ios
 
-// Package darwin is nui's macOS host: AppKit views made and driven from
+// Package darwin is RyUI's macOS host: AppKit views made and driven from
 // Go through the Objective-C runtime (purego, no cgo), in the app's
 // process. It reads the core's batches as Go structs, without encoding
 // them.
@@ -18,12 +18,12 @@ import (
 
 	"github.com/ebitengine/purego"
 
-	"github.com/egoist/nui/host"
-	"github.com/egoist/nui/internal/boot"
-	. "github.com/egoist/nui/internal/darwin"
-	"github.com/egoist/nui/layout"
-	"github.com/egoist/nui/ops"
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/host"
+	"github.com/egoist/ryui/internal/boot"
+	. "github.com/egoist/ryui/internal/darwin"
+	"github.com/egoist/ryui/layout"
+	"github.com/egoist/ryui/ops"
+	"github.com/egoist/ryui/ui"
 )
 
 // AppKit calls come on the main thread, where main starts.
@@ -125,7 +125,7 @@ type Host struct {
 	root    *node
 	window  ID
 	content ID // the window's content view
-	target  ID // NuiTarget: actions, delegates and notifications
+	target  ID // RyUITarget: actions, delegates and notifications
 	env     host.Environment
 
 	depth   int // calls into the core in progress
@@ -170,7 +170,7 @@ func newHost() *Host {
 		a11yActions: map[ID]a11yAction{},
 		exiting:     map[ID]bool{},
 		wins:        map[ID]*win{},
-		target:      New("NuiTarget"),
+		target:      New("RyUITarget"),
 	}
 	purego.RegisterFunc(&msgShowPicker, MsgSendAddr())
 	theHost = h
@@ -192,18 +192,18 @@ func newHost() *Host {
 // call it from main.
 func Run(root func() ui.Node) {
 	if !IsMainThread() {
-		panic("nui: darwin.Run must be called from main, on the main thread")
+		panic("ryui: darwin.Run must be called from main, on the main thread")
 	}
 	WithPool(func() {
 		h := newHost()
 		restoreState()
 		h.enter(func() { ui.Mount(h, root) })
-		if os.Getenv("NUI_SNAPSHOT") != "" {
+		if os.Getenv("RYUI_SNAPSHOT") != "" {
 			// Automation: shown, without taking the user's focus.
 			Send(h.window, "orderFront:", 0)
 		} else {
 			Send(h.window, "makeKeyAndOrderFront:", 0)
-			// A plain executable (go run, nui dev) doesn't come to the
+			// A plain executable (go run, ryui dev) doesn't come to the
 			// front on its own.
 			Send(Send(Class("NSApplication"), "sharedApplication"), "activateIgnoringOtherApps:", 1)
 		}
@@ -595,7 +595,7 @@ func appName() string {
 }
 
 // assetsDir is where the app's assets are: the bundle's Resources/assets,
-// or assets beside the working directory (nui dev, go run).
+// or assets beside the working directory (ryui dev, go run).
 func assetsDir() string {
 	b := Send(Class("NSBundle"), "mainBundle")
 	if r := GoString(Send(b, "resourcePath")); r != "" {
@@ -603,12 +603,12 @@ func assetsDir() string {
 			return r + "/assets"
 		}
 	}
-	if d := os.Getenv("NUI_ASSETS"); d != "" {
+	if d := os.Getenv("RYUI_ASSETS"); d != "" {
 		return d
 	}
 	return "assets"
 }
 
 func fail(format string, args ...any) {
-	panic(fmt.Sprintf("nui: the macOS host "+format, args...))
+	panic(fmt.Sprintf("ryui: the macOS host "+format, args...))
 }

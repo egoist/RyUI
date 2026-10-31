@@ -1,7 +1,7 @@
-# nui documentation
+# RyUI documentation
 
-nui makes native iOS and Android apps in Go. An app's interface is Go
-functions that return views; nui shows them with each platform's own
+RyUI makes native iOS and Android apps in Go. An app's interface is Go
+functions that return views; RyUI shows them with each platform's own
 widgets (UIKit on iOS, Android Views and Material 3 on Android), and
 updates only the views that read a signal when it changes.
 
@@ -27,7 +27,7 @@ func main() { app.Run(Counter) }
 ## How it works
 
 Your app is Go: its components, its state and the rest of its code, in
-one library built into the app. nui's core runs the components, lays the
+one library built into the app. RyUI's core runs the components, lays the
 views out (flexbox, in Go), and sends the platform what changed, in a
 batch for each frame; the app's host, in Swift on iOS and Kotlin on
 Android, makes and updates the platform's own views. A text field is a
@@ -40,8 +40,8 @@ input and scrolling as they have them.
 Signals hold the state. A component runs once; when a signal changes,
 only the props that read it are sent again, without diffing a tree.
 
-nui needs Go 1.26 or later, and runs on iOS 16 and Android 8 (API 26)
-and later. `nui dev` runs your Go code on your Mac while you work, and
+RyUI needs Go 1.26 or later, and runs on iOS 16 and Android 8 (API 26)
+and later. `ryui dev` runs your Go code on your Mac while you work, and
 reloads it as you save, on the simulator, an emulator or a phone.
 
 ## Guides
@@ -67,14 +67,14 @@ reloads it as you save, on the simulator, an emulator or a phone.
   in the background.
 - [Native code](native.md): views and modules of your own, in Swift and
   Kotlin.
-- [Development](development.md): `nui dev` in depth, devices, tests and
+- [Development](development.md): `ryui dev` in depth, devices, tests and
   common problems.
 - [Shipping](shipping.md): builds for the App Store and Google Play, and
-  what `nui.json` says of the app.
+  what `ryui.json` says of the app.
 
 ## Reference
 
-- [Compared to SwiftUI and Expo](parity.md): what nui has, and what it
+- [Compared to SwiftUI and Expo](parity.md): what RyUI has, and what it
   doesn't yet.
-- The Go API: `go doc -all github.com/egoist/nui/ui`, and the other
+- The Go API: `go doc -all github.com/egoist/ryui/ui`, and the other
   packages of the module.

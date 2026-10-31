@@ -1,4 +1,0 @@
-<resources>
-    <!-- A view's repeating animation (ui.Animation Repeat), to stop it. -->
-    <item name="nui_repeating" type="id" />
-</resources>

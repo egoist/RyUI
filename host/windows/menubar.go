@@ -7,8 +7,8 @@ import (
 	"strings"
 	"unicode"
 
-	. "github.com/egoist/nui/internal/windows"
-	"github.com/egoist/nui/ops"
+	. "github.com/egoist/ryui/internal/windows"
+	"github.com/egoist/ryui/ops"
 )
 
 // The app's menus (ui.MenuBar): a menu bar (an HMENU) on the main window,

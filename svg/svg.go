@@ -18,9 +18,9 @@
 package svg
 
 import (
-	"github.com/egoist/nui/layout"
-	"github.com/egoist/nui/signal"
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/layout"
+	"github.com/egoist/ryui/signal"
+	"github.com/egoist/ryui/ui"
 )
 
 // Icon is parsed SVG: its viewBox and what it draws.

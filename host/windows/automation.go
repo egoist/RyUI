@@ -11,19 +11,19 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/egoist/nui/internal/windows"
-	"github.com/egoist/nui/ops"
+	. "github.com/egoist/ryui/internal/windows"
+	"github.com/egoist/ryui/ops"
 )
 
-func snapshotting() bool { return os.Getenv("NUI_SNAPSHOT") != "" }
+func snapshotting() bool { return os.Getenv("RYUI_SNAPSHOT") != "" }
 
-// automation starts the debug automation: NUI_SCRIPT's steps (tap a
-// view by its text, back, wait, snap), then NUI_SNAPSHOT (write the
-// window as a PNG once it has shown, NUI_DUMP the view tree beside it)
+// automation starts the debug automation: RYUI_SCRIPT's steps (tap a
+// view by its text, back, wait, snap), then RYUI_SNAPSHOT (write the
+// window as a PNG once it has shown, RYUI_DUMP the view tree beside it)
 // and quit.
 func (h *Host) automation() {
-	script := os.Getenv("NUI_SCRIPT")
-	path := os.Getenv("NUI_SNAPSHOT")
+	script := os.Getenv("RYUI_SCRIPT")
+	path := os.Getenv("RYUI_SNAPSHOT")
 	if script == "" && path == "" {
 		return
 	}
@@ -53,10 +53,10 @@ func (h *Host) automation() {
 		}
 		h.Post(func() {
 			h.snapshot(path)
-			if os.Getenv("NUI_DUMP") != "" {
+			if os.Getenv("RYUI_DUMP") != "" {
 				os.WriteFile(path+".txt", []byte(h.dump()), 0o644)
 			}
-			if os.Getenv("NUI_SNAPSHOT_STAY") == "" {
+			if os.Getenv("RYUI_SNAPSHOT_STAY") == "" {
 				saveState()
 				for _, n := range h.nodes {
 					if n.web != nil {
@@ -81,7 +81,7 @@ func (h *Host) step(verb, arg string) {
 	switch verb {
 	case "tap":
 		if !h.tap(arg) {
-			fmt.Fprintf(os.Stderr, "nui: automation: nothing shows %q\n", arg)
+			fmt.Fprintf(os.Stderr, "ryui: automation: nothing shows %q\n", arg)
 		}
 	case "type":
 		if f := Focus(); f != 0 {
@@ -120,7 +120,7 @@ func (h *Host) step(verb, arg string) {
 			})
 			return
 		}
-		fmt.Fprintf(os.Stderr, "nui: automation: no menu %q\n", arg)
+		fmt.Fprintf(os.Stderr, "ryui: automation: no menu %q\n", arg)
 	case "menu":
 		for _, it := range h.appItems {
 			if it.title == arg {
@@ -128,7 +128,7 @@ func (h *Host) step(verb, arg string) {
 				return
 			}
 		}
-		fmt.Fprintf(os.Stderr, "nui: automation: no menu item %q\n", arg)
+		fmt.Fprintf(os.Stderr, "ryui: automation: no menu item %q\n", arg)
 	case "close":
 		w := h.windowInUse()
 		if len(h.wins) > 0 && w == h.window {
@@ -190,7 +190,7 @@ func (h *Host) step(verb, arg string) {
 		}
 	case "snap":
 		h.snapshot(arg)
-		if os.Getenv("NUI_DUMP") != "" {
+		if os.Getenv("RYUI_DUMP") != "" {
 			os.WriteFile(arg+".txt", []byte(h.dump()), 0o644)
 		}
 	}
@@ -324,7 +324,7 @@ func (h *Host) pressKeys(spec string) {
 	}
 	a, ok := accelerator(parts[len(parts)-1], mods)
 	if !ok {
-		fmt.Fprintf(os.Stderr, "nui: automation: no key %q\n", spec)
+		fmt.Fprintf(os.Stderr, "ryui: automation: no key %q\n", spec)
 		return
 	}
 	if w := OpenMenuWindow(); w != 0 {

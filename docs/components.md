@@ -44,8 +44,8 @@ the `RichText`'s style.
 ```go
 ui.RichText(ui.RichTextProps{
 	Text: ui.Val(ui.Rich{
-		ui.Strong("nui"), ui.Plain(" draws "), ui.Em("native"), ui.Plain(" views. Run "),
-		ui.Code("nui dev"), ui.Plain(", or read "), ui.Link("the docs", "https://example.com/docs"),
+		ui.Strong("ryui"), ui.Plain(" draws "), ui.Em("native"), ui.Plain(" views. Run "),
+		ui.Code("ryui dev"), ui.Plain(", or read "), ui.Link("the docs", "https://example.com/docs"),
 		ui.Plain(".\nA second paragraph, "), ui.Plain("in red").Colored(ui.Red), ui.Plain("."),
 	}),
 	OnLink: ui.OpenURL,
@@ -103,7 +103,7 @@ something without a selection, `ui.Copy(text)` puts it on the clipboard.
 
 ### Markdown
 
-Package `nui/markdown` shows Markdown as native views, built from
+Package `ryui/markdown` shows Markdown as native views, built from
 `RichText`. It parses as text is appended: only the block being written
 parses again, and only its views update.
 
@@ -357,7 +357,7 @@ check a name you write as a string, like `"archivebox"`, on both.
 
 ### SVG icons
 
-For icons of your own, package `nui/svg` draws SVG with the platform's
+For icons of your own, package `ryui/svg` draws SVG with the platform's
 vector drawing; nothing is rasterized. `svg.MustParse` reads the markup
 (`svg.Parse` returns an error instead), and `svg.View` draws it.
 
@@ -482,7 +482,7 @@ through its history, load the page again, or stop it loading.
 
 ### Talking to the page
 
-The page posts to Go with `window.nui.postMessage(text)`, which calls
+The page posts to Go with `window.ryui.postMessage(text)`, which calls
 `OnMessage`. Go runs script in the page with `ui.EvalJS`, which returns
 nothing, or `ui.EvalJSResult`, which calls back with the value as JSON:
 the last statement's, or what a returned promise resolves to (`null` for
@@ -491,7 +491,7 @@ the last statement's, or what a returned promise resolves to (`null` for
 ```go
 var web ui.Node
 web = ui.WebView(ui.WebViewProps{
-	HTML: ui.Val(`<button onclick="nui.postMessage('tapped')">Tap</button>`),
+	HTML: ui.Val(`<button onclick="ryui.postMessage('tapped')">Tap</button>`),
 	OnMessage: func(m string) {
 		ui.EvalJSResult(web, "document.title", func(v json.RawMessage, err error) {
 			fmt.Println(m, string(v), err)
@@ -751,5 +751,5 @@ a `Scroll`.
 
 ## Your own views
 
-When a platform has a widget nui doesn't, write it in Swift and Kotlin
+When a platform has a widget RyUI doesn't, write it in Swift and Kotlin
 and show it with `ui.Native`. See [Native code](native.md).

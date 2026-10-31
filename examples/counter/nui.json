@@ -1,8 +1,0 @@
-{
-  "name": "Counter",
-  "id": "dev.nui.counter",
-  "version": "1.0.0",
-  "build": 1,
-  "icon": "icon.png",
-  "orientations": ["portrait"]
-}

@@ -11,12 +11,12 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/nui/internal/darwin"
-	"github.com/egoist/nui/ops"
+	. "github.com/egoist/ryui/internal/darwin"
+	"github.com/egoist/ryui/ops"
 )
 
 // A WebView is a WKWebView. The page posts to Go with
-// window.nui.postMessage(text), as on iOS and Android.
+// window.ryui.postMessage(text), as on iOS and Android.
 type web struct {
 	view    ID
 	ucc     ID // its user content controller
@@ -24,7 +24,7 @@ type web struct {
 	url     string
 }
 
-const bridgeJS = `window.nui = { postMessage: function (m) { window.webkit.messageHandlers.nui.postMessage(String(m)); } };`
+const bridgeJS = `window.ryui = { postMessage: function (m) { window.webkit.messageHandlers.ryui.postMessage(String(m)); } };`
 
 var webKitLoaded bool
 
@@ -36,7 +36,7 @@ func (h *Host) makeWeb(n *node) ID {
 	conf := New("WKWebViewConfiguration")
 	defer Release(conf)
 	ucc := Send(conf, "userContentController")
-	Send(ucc, "addScriptMessageHandler:name:", uintptr(h.target), uintptr(String("nui")))
+	Send(ucc, "addScriptMessageHandler:name:", uintptr(h.target), uintptr(String("ryui")))
 	w := &web{ucc: Retain(ucc)}
 	w.addScript(bridgeJS)
 	v := MsgInitRectID(Send(Class("WKWebView"), "alloc"), Sel("initWithFrame:configuration:"), Rect{}, conf)
@@ -118,7 +118,7 @@ func (w *web) navigate(to byte) {
 }
 
 func (w *web) close() {
-	Send(w.ucc, "removeScriptMessageHandlerForName:", uintptr(String("nui")))
+	Send(w.ucc, "removeScriptMessageHandlerForName:", uintptr(String("ryui")))
 	Send(w.view, "setNavigationDelegate:", 0)
 	Send(w.view, "setUIDelegate:", 0)
 	Release(w.ucc)
@@ -151,7 +151,7 @@ func (h *Host) webState(v ID) {
 	h.emit(n, ops.Event{Kind: ops.EventWebState, Bytes: b})
 }
 
-// webMethods are NuiTarget's WebKit delegate methods.
+// webMethods are RyUITarget's WebKit delegate methods.
 func webMethods() []objc.MethodDef {
 	return []objc.MethodDef{
 		Method("userContentController:didReceiveScriptMessage:", func(self ID, _ SEL, ucc, msg ID) {

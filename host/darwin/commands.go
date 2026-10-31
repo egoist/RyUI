@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/egoist/nui/internal/darwin"
-	"github.com/egoist/nui/ops"
+	. "github.com/egoist/ryui/internal/darwin"
+	"github.com/egoist/ryui/ops"
 )
 
 func (h *Host) command(n *node, c ops.CommandID, args []byte) {
@@ -361,7 +361,7 @@ func (h *Host) call(root *node, args []byte) {
 	}
 	m := h.module(module)[method]
 	if m == nil {
-		answer(nil, errors.New("nui: "+module+"."+method+" isn't on macOS yet"))
+		answer(nil, errors.New("ryui: "+module+"."+method+" isn't on macOS yet"))
 		return
 	}
 	m(rest, answer)

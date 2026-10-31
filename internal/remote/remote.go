@@ -1,6 +1,6 @@
-// Package remote runs a nui app's Go code on a development machine and
+// Package remote runs a RyUI app's Go code on a development machine and
 // its views in a player app on a simulator, emulator or device, over a
-// socket (`nui dev`). The core's side is a host.Host whose calls cross
+// socket (`ryui dev`). The core's side is a host.Host whose calls cross
 // the socket; the player's side is a host.Core that does the same the
 // other way. Both ends are in Go: the player links this package into its
 // mobile library, in place of the app.
@@ -130,7 +130,7 @@ func (p *peer) read(notify func()) {
 		}
 		f.payload = rest
 		if debug {
-			fmt.Fprintf(os.Stderr, "NUIDBG recv kind=%d id=%d m=%d n=%d\n", f.kind, f.id, f.method, len(f.payload))
+			fmt.Fprintf(os.Stderr, "RYUIDBG recv kind=%d id=%d m=%d n=%d\n", f.kind, f.id, f.method, len(f.payload))
 		}
 		p.in <- f
 		if notify != nil {
@@ -139,11 +139,11 @@ func (p *peer) read(notify func()) {
 	}
 }
 
-var debug = os.Getenv("NUI_DEBUG_REMOTE") != ""
+var debug = os.Getenv("RYUI_DEBUG_REMOTE") != ""
 
 func (p *peer) send(kind byte, id uint32, method byte, payload []byte) error {
 	if debug {
-		fmt.Fprintf(os.Stderr, "NUIDBG send kind=%d id=%d m=%d n=%d calls=%v\n", kind, id, method, len(payload), p.calls)
+		fmt.Fprintf(os.Stderr, "RYUIDBG send kind=%d id=%d m=%d n=%d calls=%v\n", kind, id, method, len(payload), p.calls)
 	}
 	p.wmu.Lock()
 	defer p.wmu.Unlock()

@@ -8,8 +8,8 @@ import (
 
 	"github.com/ebitengine/purego"
 
-	. "github.com/egoist/nui/internal/darwin"
-	"github.com/egoist/nui/ops"
+	. "github.com/egoist/ryui/internal/darwin"
+	"github.com/egoist/ryui/ops"
 )
 
 // A Video is an AVPlayerView (AVKit's controls) playing an AVPlayer.

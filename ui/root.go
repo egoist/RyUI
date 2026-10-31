@@ -1,4 +1,4 @@
-// Package ui is nui's component layer: a tree of native views built once
+// Package ui is RyUI's component layer: a tree of native views built once
 // by components and updated by fine-grained signals.
 //
 // Components are Go functions that run once and return a Node. Props
@@ -15,11 +15,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/egoist/nui/host"
-	"github.com/egoist/nui/internal/boot"
-	"github.com/egoist/nui/layout"
-	"github.com/egoist/nui/ops"
-	"github.com/egoist/nui/signal"
+	"github.com/egoist/ryui/host"
+	"github.com/egoist/ryui/internal/boot"
+	"github.com/egoist/ryui/layout"
+	"github.com/egoist/ryui/ops"
+	"github.com/egoist/ryui/signal"
 )
 
 // Root is a mounted tree: on mobile, the app's screen; on desktop
@@ -256,7 +256,7 @@ func (r *Root) layout() {
 	p.Changed = p.Changed[:0]
 }
 
-// sendAccent tells the host the app's accent color (nui.json's), before
+// sendAccent tells the host the app's accent color (ryui.json's), before
 // any view is made with the theme.
 func (r *Root) sendAccent() {
 	c, ok := ParseHex(boot.Accent)

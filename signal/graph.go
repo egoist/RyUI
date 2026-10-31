@@ -1,4 +1,4 @@
-// Package signal is nui's fine-grained reactivity: signals, memos and
+// Package signal is RyUI's fine-grained reactivity: signals, memos and
 // effects, with Solid's ownership model.
 //
 // Writes push dirty flags through the graph; reads pull values. A memo

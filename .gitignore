@@ -3,14 +3,14 @@ hosts/ios/.build/
 hosts/ios/.swiftpm/
 .DS_Store
 
-# go build in cmd/nui
-cmd/nui/nui
+# go build in cmd/ryui
+cmd/ryui/ryui
 
-# nui build output
+# ryui build output
 examples/*/dist/
 
-# go build ./cmd/nui at the root
-/nui
+# go build ./cmd/ryui at the root
+/ryui
 
 # The benchmarks' builds
 bench/*/dist/

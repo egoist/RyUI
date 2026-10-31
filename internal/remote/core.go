@@ -10,12 +10,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/egoist/nui/host"
-	"github.com/egoist/nui/internal/boot"
-	"github.com/egoist/nui/layout"
-	"github.com/egoist/nui/ops"
-	sig "github.com/egoist/nui/signal"
-	"github.com/egoist/nui/ui"
+	"github.com/egoist/ryui/host"
+	"github.com/egoist/ryui/internal/boot"
+	"github.com/egoist/ryui/layout"
+	"github.com/egoist/ryui/ops"
+	sig "github.com/egoist/ryui/signal"
+	"github.com/egoist/ryui/ui"
 )
 
 // Host is the core's side of a connection: a host.Host whose calls go
@@ -91,7 +91,7 @@ func (h *Host) serve(method byte, b []byte) []byte {
 	case mEvent:
 		ev, err := ops.DecodeEvent(b)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "nui:", err)
+			fmt.Fprintln(os.Stderr, "ryui:", err)
 			return nil
 		}
 		if ev.Kind == ops.EventEnvironment && (ev.ID == 0 || h.core == nil) {
@@ -333,7 +333,7 @@ func (s *Server) Loop(conns <-chan net.Conn) {
 }
 
 // Run listens on addr and serves root to the players that connect,
-// keeping its signals' values across reloads (in the file NUI_STATE
+// keeping its signals' values across reloads (in the file RYUI_STATE
 // names): saved when a player disconnects and when the process is
 // stopped, restored by the next run. It returns if listening fails.
 func Run(addr string, root func() ui.Node) error {
@@ -341,13 +341,13 @@ func Run(addr string, root func() ui.Node) error {
 	if err != nil {
 		return err
 	}
-	store := os.Getenv("NUI_STATE")
+	store := os.Getenv("RYUI_STATE")
 	if err := keepState(store); err != nil {
-		fmt.Fprintln(os.Stderr, "nui: restoring state:", err)
+		fmt.Fprintln(os.Stderr, "ryui: restoring state:", err)
 	}
-	if base := os.Getenv("NUI_ASSETS_URL"); base != "" {
+	if base := os.Getenv("RYUI_ASSETS_URL"); base != "" {
 		boot.AssetBase = base
-		if a := os.Getenv("NUI_ASSETS_ADDR"); a != "" {
+		if a := os.Getenv("RYUI_ASSETS_ADDR"); a != "" {
 			go serveAssets(a, "assets")
 		}
 	}
@@ -355,14 +355,14 @@ func Run(addr string, root func() ui.Node) error {
 		sig.KeptState() // also for a player reconnecting to this run
 		if store != "" {
 			if err := saveState(store); err != nil {
-				fmt.Fprintln(os.Stderr, "nui: saving state:", err)
+				fmt.Fprintln(os.Stderr, "ryui: saving state:", err)
 			}
 		}
 	}
 	posts := make(chan func(), 64)
 	srv := NewServer(root, posts)
 	srv.Closed = save
-	// Stopped (nui dev reloading): save on the loop, then exit.
+	// Stopped (ryui dev reloading): save on the loop, then exit.
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	go func() {

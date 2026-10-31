@@ -1,17 +1,17 @@
 // swift-tools-version:5.9
-// nui's iOS host. The nui CLI compiles these sources straight into the
+// RyUI's iOS host. The RyUI CLI compiles these sources straight into the
 // app (with App/); this package is for editing them in Xcode and for the
 // decoder's tests (`swift test`, on macOS).
 import PackageDescription
 
 let package = Package(
-    name: "NuiHost",
+    name: "RyUIHost",
     platforms: [.iOS(.v16), .macOS(.v13)],
-    products: [.library(name: "NuiHost", targets: ["NuiHost"])],
+    products: [.library(name: "RyUIHost", targets: ["RyUIHost"])],
     targets: [
-        .target(name: "CNui"),
-        .target(name: "NuiOps"),
-        .target(name: "NuiHost", dependencies: ["NuiOps", "CNui"]),
-        .testTarget(name: "NuiOpsTests", dependencies: ["NuiOps"]),
+        .target(name: "CRyUI"),
+        .target(name: "RyUIOps"),
+        .target(name: "RyUIHost", dependencies: ["RyUIOps", "CRyUI"]),
+        .testTarget(name: "RyUIOpsTests", dependencies: ["RyUIOps"]),
     ]
 )

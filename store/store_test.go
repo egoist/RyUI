@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/egoist/nui/signal"
+	"github.com/egoist/ryui/signal"
 )
 
 func TestStore(t *testing.T) {

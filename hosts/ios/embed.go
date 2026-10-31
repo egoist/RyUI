@@ -1,4 +1,4 @@
-// Package ios embeds the iOS host's sources for the nui CLI, which
+// Package ios embeds the iOS host's sources for the RyUI CLI, which
 // compiles them into apps. The Swift package around them (Package.swift)
 // is for editing and testing them.
 package ios

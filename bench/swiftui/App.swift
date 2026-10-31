@@ -1,7 +1,7 @@
 // The SwiftUI side of the benchmarks (bench/README.md): the same
-// scenarios, frame by frame, as bench/nui and bench/compose, written as
+// scenarios, frame by frame, as bench/ryui and bench/compose, written as
 // a SwiftUI app would be (Observation, a row's value observed by its row
-// alone). The meter is bench/nui/ios/Meter.swift, compiled in.
+// alone). The meter is bench/ryui/ios/Meter.swift, compiled in.
 import SwiftUI
 import Observation
 import UIKit
@@ -51,7 +51,7 @@ final class Driver: NSObject {
         case 480: model.phase = 2
         case 500: m.begin("scroll")
         case 501...800:
-            // A List is a UICollectionView: scrolled as nui's is.
+            // A List is a UICollectionView: scrolled as RyUI's is.
             scrollView()?.contentOffset.y = CGFloat(f - 500) * 8 - (scrollView()?.adjustedContentInset.top ?? 0)
         case 801: m.end(); m.memory("memory-list")
         case 830: m.done()

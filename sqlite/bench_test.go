@@ -5,11 +5,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/egoist/nui/sqlite"
+	"github.com/egoist/ryui/sqlite"
 	_ "modernc.org/sqlite"
 )
 
-// Inserting 1000 rows in a transaction: nui's driver, whose hooks note
+// Inserting 1000 rows in a transaction: RyUI's driver, whose hooks note
 // each row's table, against the plain one.
 func BenchmarkInsert(b *testing.B) {
 	run := func(b *testing.B, db *sql.DB, tx func(func(exec func(string, ...any) error) error) error) {
@@ -29,7 +29,7 @@ func BenchmarkInsert(b *testing.B) {
 			}
 		}
 	}
-	b.Run("nui", func(b *testing.B) {
+	b.Run("ryui", func(b *testing.B) {
 		d, err := sqlite.Open(filepath.Join(b.TempDir(), "n.db"))
 		if err != nil {
 			b.Fatal(err)
