@@ -200,6 +200,7 @@ struct RyUIModuleError: LocalizedError {
         modules["share"] = RyUIShare.methods(self)
         modules["screen"] = RyUIScreen.shared.methods(self)
         modules["splash"] = RyUISplash.shared.methods()
+        modules["clipboard"] = RyUIClipboard.shared.methods()
         #if RYUI_REVIEW
         modules["review"] = RyUIReview.methods(self)
         #endif
@@ -208,6 +209,24 @@ struct RyUIModuleError: LocalizedError {
         #endif
         #if RYUI_BIOMETRIC
         modules["biometric"] = RyUIBiometric.methods()
+        #endif
+        #if RYUI_WIDGET
+        modules["widget"] = RyUIWidgetData.methods()
+        #endif
+        #if RYUI_CONTACTS
+        modules["contacts"] = RyUIContacts.shared.methods(self)
+        #endif
+        #if RYUI_CALENDAR
+        modules["calendar"] = RyUICalendar.shared.methods(self)
+        #endif
+        #if RYUI_SENSORS
+        modules["sensors"] = RyUISensors.shared.methods()
+        #endif
+        #if RYUI_SPEECH
+        modules["speech"] = RyUISpeech.shared.methods()
+        #endif
+        #if RYUI_IMAGEEDIT
+        modules["imageEdit"] = RyUIImageEdit.methods()
         #endif
         #if RYUI_PERIODIC
         modules["periodic"] = RyUIPeriodic.shared.methods()

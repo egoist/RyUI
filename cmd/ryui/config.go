@@ -54,6 +54,9 @@ type appConfig struct {
 		// ShareProfile is the share extension's (shareTarget), whose ID is
 		// the app's plus ".share" (default: the best match installed).
 		ShareProfile string `json:"shareProfile"`
+		// WidgetProfile is the widget extension's (widgets), whose ID is
+		// the app's plus ".widgets" (default: the best match installed).
+		WidgetProfile string `json:"widgetProfile"`
 		// Usage are the purpose strings for protected resources
 		// (NSCameraUsageDescription, ...).
 		Usage map[string]string `json:"usage"`
@@ -95,6 +98,12 @@ type appConfig struct {
 		Background     string `json:"background"`
 		DarkBackground string `json:"darkBackground"`
 	} `json:"splash"`
+	// Widgets are the app's home screen widgets (ryui/widget fills them).
+	Widgets []widgetConfig `json:"widgets"`
+	// Shortcuts are the app's actions for the system: on iOS, App
+	// Shortcuts (Siri, Spotlight, the Shortcuts app, the Action button);
+	// on Android, the launcher's shortcuts. Each opens the app with its URL.
+	Shortcuts []shortcutConfig `json:"shortcuts"`
 	// shareSheet: the app's Go code calls app.ShareSheet (its archive has
 	// it, sheetSymbol): the share target shows the app's sheet.
 	shareSheet bool
@@ -110,6 +119,7 @@ type appConfig struct {
 	// must have them); plistArrays, Info.plist's arrays they add to.
 	entitlements map[string]any
 	plistArrays  map[string][]string
+	androidTop   []string
 	Android      struct {
 		// DynamicColor takes the colors from the user's wallpaper where
 		// the system has them (Android 12 and later), as Material apps do;
@@ -180,6 +190,9 @@ func loadConfig(dir string) (*appConfig, error) {
 		if !domain.MatchString(l) {
 			return nil, fmt.Errorf("ryui.json: link domain %q (want a host name, as example.com)", l)
 		}
+	}
+	if err := c.checkWidgets(); err != nil {
+		return nil, fmt.Errorf("ryui.json: %v", err)
 	}
 	if err := c.ShareTarget.check(); err != nil {
 		return nil, fmt.Errorf("ryui.json: shareTarget: %v", err)
@@ -284,27 +297,29 @@ var featurePermissions = []struct {
 	// entitlements (with a simulator build's values) and Info.plist arrays.
 	entitlements map[string]any
 	plistArrays  map[string][]string
+	// androidTop are elements of the Android manifest itself (queries).
+	androidTop []string
 }{
 	{"github.com/egoist/ryui/location", []string{"android.permission.ACCESS_COARSE_LOCATION", "android.permission.ACCESS_FINE_LOCATION"},
-		map[string]string{"NSLocationWhenInUseUsageDescription": "To show where you are."}, nil, nil, nil, nil, nil},
-	{"github.com/egoist/ryui/notify", []string{"android.permission.POST_NOTIFICATIONS"}, nil, nil, nil, nil, nil, nil},
+		map[string]string{"NSLocationWhenInUseUsageDescription": "To show where you are."}, nil, nil, nil, nil, nil, nil},
+	{"github.com/egoist/ryui/notify", []string{"android.permission.POST_NOTIFICATIONS"}, nil, nil, nil, nil, nil, nil, nil},
 	// camera.View's preview is the app's own: the camera permission (and
 	// with it declared, the system's camera app needs it granted too).
-	{"github.com/egoist/ryui/camera", []string{"android.permission.CAMERA"}, map[string]string{"NSCameraUsageDescription": "To take a photo."}, nil, nil, nil, nil, nil},
-	{"github.com/egoist/ryui/camera/record", []string{"android.permission.RECORD_AUDIO"}, map[string]string{"NSMicrophoneUsageDescription": "To record a video's sound."}, nil, nil, nil, nil, nil},
-	{"github.com/egoist/ryui/network", []string{"android.permission.ACCESS_NETWORK_STATE"}, nil, nil, nil, nil, nil, nil},
+	{"github.com/egoist/ryui/camera", []string{"android.permission.CAMERA"}, map[string]string{"NSCameraUsageDescription": "To take a photo."}, nil, nil, nil, nil, nil, nil},
+	{"github.com/egoist/ryui/camera/record", []string{"android.permission.RECORD_AUDIO"}, map[string]string{"NSMicrophoneUsageDescription": "To record a video's sound."}, nil, nil, nil, nil, nil, nil},
+	{"github.com/egoist/ryui/network", []string{"android.permission.ACCESS_NETWORK_STATE"}, nil, nil, nil, nil, nil, nil, nil},
 	// MediaStore needs no permission from Android 10; before, writing to
 	// the shared folders does. Files in Documents show in iOS's Files.
 	{"github.com/egoist/ryui/library", []string{"android.permission.WRITE_EXTERNAL_STORAGE:28"},
 		map[string]string{"NSPhotoLibraryAddUsageDescription": "To save videos and photos to your library."}, nil,
-		[]string{"UIFileSharingEnabled", "LSSupportsOpeningDocumentsInPlace"}, nil, nil, nil},
+		[]string{"UIFileSharingEnabled", "LSSupportsOpeningDocumentsInPlace"}, nil, nil, nil, nil},
 	// A foreground service of the data sync type, its notification, the
 	// CPU kept awake.
 	{"github.com/egoist/ryui/background", []string{"android.permission.FOREGROUND_SERVICE", "android.permission.FOREGROUND_SERVICE_DATA_SYNC",
 		"android.permission.POST_NOTIFICATIONS", "android.permission.WAKE_LOCK"}, nil, nil, nil,
-		[]string{`<service android:name="dev.ryui.RyUIWorkService" android:exported="false" android:foregroundServiceType="dataSync" />`}, nil, nil},
+		[]string{`<service android:name="dev.ryui.RyUIWorkService" android:exported="false" android:foregroundServiceType="dataSync" />`}, nil, nil, nil},
 	// ML Kit's barcode model: about 2 MB, only in the apps that scan.
-	{"github.com/egoist/ryui/scan", nil, nil, []string{"scan"}, nil, nil, nil, nil},
+	{"github.com/egoist/ryui/scan", nil, nil, []string{"scan"}, nil, nil, nil, nil, nil},
 	{pkg: "github.com/egoist/ryui/screen", android: []string{"android.permission.DETECT_SCREEN_CAPTURE"}},
 	{pkg: "github.com/egoist/ryui/biometric", android: []string{"android.permission.USE_BIOMETRIC"},
 		usage: map[string]string{"NSFaceIDUsageDescription": "To confirm it's you."}},
@@ -329,6 +344,16 @@ var featurePermissions = []struct {
 	{pkg: "github.com/egoist/ryui/periodic", modules: []string{"periodic"},
 		plistArrays: map[string][]string{"UIBackgroundModes": {"fetch", "processing"},
 			"BGTaskSchedulerPermittedIdentifiers": {"dev.ryui.refresh", "dev.ryui.processing"}}},
+	// Binding the text-to-speech engine: Android 11's package visibility.
+	{pkg: "github.com/egoist/ryui/speech", androidTop: []string{`<queries><intent><action android:name="android.intent.action.TTS_SERVICE" /></intent></queries>`}},
+	// The pedometer: iOS's Motion & Fitness; Android's physical activity.
+	{pkg: "github.com/egoist/ryui/sensors", android: []string{"android.permission.ACTIVITY_RECOGNITION"},
+		usage: map[string]string{"NSMotionUsageDescription": "To count your steps."}},
+	{pkg: "github.com/egoist/ryui/contacts", android: []string{"android.permission.READ_CONTACTS"},
+		usage: map[string]string{"NSContactsUsageDescription": "To find people you know."}},
+	// iOS 17's full access, and before it.
+	{pkg: "github.com/egoist/ryui/calendar", android: []string{"android.permission.READ_CALENDAR"},
+		usage: map[string]string{"NSCalendarsFullAccessUsageDescription": "To show your events.", "NSCalendarsUsageDescription": "To show your events."}},
 }
 
 // permissionsFor adds the permissions the packages deps (an app's
@@ -357,6 +382,11 @@ func (c *appConfig) permissionsFor(deps []string) {
 		for _, x := range f.androidApp {
 			if !slices.Contains(c.androidApp, x) {
 				c.androidApp = append(c.androidApp, x)
+			}
+		}
+		for _, x := range f.androidTop {
+			if !slices.Contains(c.androidTop, x) {
+				c.androidTop = append(c.androidTop, x)
 			}
 		}
 		for k, v := range f.entitlements {
@@ -401,6 +431,9 @@ func (c *appConfig) androidManifest(debug bool) string {
 		}
 		fmt.Fprintf(&b, "    <uses-permission android:name=\"%s\"%s />\n", html.EscapeString(name), max)
 	}
+	for _, x := range c.androidTop {
+		b.WriteString("    " + x + "\n")
+	}
 	b.WriteString("    <application")
 	if debug {
 		b.WriteString(" android:usesCleartextTraffic=\"true\"")
@@ -416,6 +449,10 @@ func (c *appConfig) androidManifest(debug bool) string {
 		theme = ` android:theme="@style/Theme.RyUI.Splash"`
 	}
 	fmt.Fprintf(&b, "        <activity android:name=\"dev.ryui.RyUIActivity\" android:exported=\"true\"%s>\n", theme)
+	// ryui.json's shortcuts: the launcher's (androidShortcutRes).
+	if len(c.Shortcuts) > 0 {
+		b.WriteString("            <meta-data android:name=\"android.app.shortcuts\" android:resource=\"@xml/ryui_shortcuts\" />\n")
+	}
 	filter := func(verify bool, data string) {
 		v := ""
 		if verify {
@@ -448,6 +485,7 @@ func (c *appConfig) androidManifest(debug bool) string {
 	for _, x := range c.androidApp {
 		b.WriteString("        " + x + "\n")
 	}
+	b.WriteString(c.androidWidgetReceivers())
 	b.WriteString("    </application>\n</manifest>\n")
 	return b.String()
 }

@@ -90,7 +90,7 @@ func TestShareTarget(t *testing.T) {
 	if len(rule) != 2 || rule["NSExtensionActivationSupportsText"] != true || rule["NSExtensionActivationSupportsWebURLWithMaxCount"] != 1 {
 		t.Errorf("activation rule %v", rule)
 	}
-	if c.shareGroup() != "" || info["RyUIShareGroup"] != nil {
+	if c.appGroup() != "" || info["RyUIAppGroup"] != nil {
 		t.Error("an App Group for texts")
 	}
 }
@@ -128,7 +128,7 @@ func TestShareTargetConfig(t *testing.T) {
 		rule["NSExtensionActivationSupportsText"] != true {
 		t.Errorf("rule %v", rule)
 	}
-	if g := c.shareGroup(); g != "group.com.example.pics" || c.shareInfo(nil)["RyUIShareGroup"] != g {
+	if g := c.appGroup(); g != "group.com.example.pics" || c.shareInfo(nil)["RyUIAppGroup"] != g {
 		t.Errorf("group %q", g)
 	}
 	m := c.androidManifest(false)
@@ -206,14 +206,14 @@ func TestShareSheetConfig(t *testing.T) {
 	}
 	info := c.shareInfo(nil)
 	if info["NSExtension"].(map[string]any)["NSExtensionPrincipalClass"] != "RyUIShareSheetController" ||
-		info["RyUIShareSheet"] != true || info["RyUIAppID"] != "com.example.pins" || info["RyUIShareGroup"] != "group.com.example.pins" {
+		info["RyUIShareSheet"] != true || info["RyUIAppID"] != "com.example.pins" || info["RyUIAppGroup"] != "group.com.example.pins" {
 		t.Errorf("extension's Info.plist: %v", info)
 	}
 	if g := c.keychainGroup("TEAM123456"); g != "TEAM123456.com.example.pins" {
 		t.Errorf("keychain group %q", g)
 	}
 	c.shareSheet = false
-	if c.shareGroup() != "" || c.keychainGroup("T") != "" || c.sharePrincipal() != "RyUIShareViewController" {
+	if c.appGroup() != "" || c.keychainGroup("T") != "" || c.sharePrincipal() != "RyUIShareViewController" {
 		t.Error("no sheet: a group, or the sheet's class")
 	}
 	// The sheet's symbol is found in a library's function names.

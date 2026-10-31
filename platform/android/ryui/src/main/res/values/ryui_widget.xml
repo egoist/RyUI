@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ryui/widget's colors: Material 3's baseline, light (dark in values-night);
+     Android 12's dynamic colors in values-v31. -->
+<resources>
+    <color name="ryui_widget_surface">#FFF7F2FA</color>
+    <color name="ryui_widget_on_surface">#FF1D1B20</color>
+    <color name="ryui_widget_on_surface_variant">#FF49454F</color>
+    <color name="ryui_widget_accent">#FF6750A4</color>
+    <dimen name="ryui_widget_radius">16dp</dimen>
+</resources>

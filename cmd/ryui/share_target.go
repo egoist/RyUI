@@ -74,18 +74,19 @@ func (s *shareTarget) check() error {
 var textShares = shareTarget{on: true, Types: []string{"text"}, Max: 1}
 
 // files reports whether the app takes files, which on iOS come through
-// an App Group (shareGroup).
+// an App Group (appGroup).
 func (s shareTarget) files() bool {
 	return s.on && slices.ContainsFunc(s.Types, func(t string) bool { return t != "text" })
 }
 
-// shareGroup is the App Group the share extension leaves files in for
-// the app, when it takes files, and where an app with a share sheet
-// keeps its data for both ("" if neither). A device build's profiles
-// must have it, the app's and the extension's (the App Groups
-// capability).
-func (c *appConfig) shareGroup() string {
-	if !c.ShareTarget.files() && !(c.ShareTarget.on && c.shareSheet) {
+// appGroup is the App Group the app shares with its extensions: the one
+// the share extension leaves files in for the app, when it takes files;
+// where an app with a share sheet keeps its data for both; where the app
+// leaves its widgets' entries for the widget extension ("" if none). A
+// device build's profiles must have it, the app's and the extensions'
+// (the App Groups capability).
+func (c *appConfig) appGroup() string {
+	if !c.ShareTarget.files() && !(c.ShareTarget.on && c.shareSheet) && len(c.Widgets) == 0 {
 		return ""
 	}
 	return "group." + c.ID

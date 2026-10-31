@@ -8,7 +8,7 @@ import UniformTypeIdentifiers
 /// share sheet (app.ShareSheet: RyUIShareSheetController), which shows
 /// it. Texts and links as they are; files (when the app takes them)
 /// copied into the App Group the app and the extension share (Info.plist's
-/// RyUIShareGroup), under RyUIShare/. Compiled into both.
+/// RyUIAppGroup), under RyUIShare/. Compiled into both.
 final class RyUIShareCollector {
     private weak var context: NSExtensionContext?
 
@@ -32,7 +32,7 @@ final class RyUIShareCollector {
     private(set) var inbox: URL?
 
     private static func makeInbox() -> URL? {
-        guard let group = Bundle.main.object(forInfoDictionaryKey: "RyUIShareGroup") as? String,
+        guard let group = Bundle.main.object(forInfoDictionaryKey: "RyUIAppGroup") as? String,
               let c = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) else { return nil }
         let dir = c.appendingPathComponent("RyUIShare", isDirectory: true)
         // What the app never took (it didn't open): gone after a day.

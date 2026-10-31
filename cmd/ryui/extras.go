@@ -1,17 +1,24 @@
 package main
 
 import (
+	"crypto/sha1"
+	"crypto/x509"
+	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"hash/crc32"
 	"html"
 	"image"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 )
 
 // What the packages an app imports and ryui.json's splash add to a build:
@@ -151,13 +158,22 @@ func rgb(hex string) (r, g, b uint8) {
 }
 
 // androidRes writes the resources the config adds to the Android app into
-// res: the splash's (a theme the manifest gives the Activity) and
-// Firebase's settings (google-services.json's, as Google's Gradle plugin
+// res: the splash's (a theme the manifest gives the Activity), the
+// widgets' and the shortcuts', and Firebase's settings (google-services.json's, as Google's Gradle plugin
 // writes them). It reports whether it wrote any.
 func androidRes(c *appConfig, res string) (bool, error) {
 	wrote := false
 	if c.splashOn() {
 		if err := androidSplash(c, res); err != nil {
+			return false, err
+		}
+		wrote = true
+	}
+	if len(c.androidWidgets()) > 0 || len(c.Shortcuts) > 0 {
+		if err := c.androidWidgetRes(res); err != nil {
+			return false, err
+		}
+		if err := c.androidShortcutRes(res); err != nil {
 			return false, err
 		}
 		wrote = true
@@ -330,3 +346,54 @@ func dirDigest(dir string) string {
 	})
 	return fmt.Sprintf("%08x", h.Sum32())
 }
+
+// simulatorIdentity is what a simulator build is signed with, as Xcode
+// signs one: an Apple Development identity in the keychain (the team's,
+// ryui.json's ios.team, if it has one), so the app has a team identifier,
+// which App Intents (ryui.json's shortcuts) need to run it; or ad hoc
+// ("-") without one.
+func simulatorIdentity(team string) string {
+	simIdentityOnce.Do(func() {
+		out, err := exec.Command("security", "find-certificate", "-a", "-Z", "-p", "-c", "Apple Development").Output()
+		if err != nil {
+			return
+		}
+		valid := identities()
+		rest := out
+		for {
+			var block *pem.Block
+			block, rest = pem.Decode(rest)
+			if block == nil {
+				break
+			}
+			cert, err := x509.ParseCertificate(block.Bytes)
+			if err != nil || time.Now().After(cert.NotAfter) {
+				continue
+			}
+			sum := sha1.Sum(block.Bytes)
+			sha := strings.ToUpper(hex.EncodeToString(sum[:]))
+			if _, ok := valid[sha]; !ok {
+				continue // no private key, or not trusted
+			}
+			ou := ""
+			if len(cert.Subject.OrganizationalUnit) > 0 {
+				ou = cert.Subject.OrganizationalUnit[0]
+			}
+			simIdentities = append(simIdentities, [2]string{sha, ou})
+		}
+	})
+	for _, id := range simIdentities {
+		if team != "" && id[1] == team {
+			return id[0]
+		}
+	}
+	if len(simIdentities) > 0 {
+		return simIdentities[0][0]
+	}
+	return "-"
+}
+
+var (
+	simIdentityOnce sync.Once
+	simIdentities   [][2]string // SHA-1, team
+)

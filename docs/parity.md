@@ -81,7 +81,7 @@ what RyUI has for it.
 | Location | Core Location | `expo-location` | ✓ `ryui/location` |
 | Local notifications | UserNotifications | `expo-notifications` | ✓ `ryui/notify` |
 | Push notifications | APNs | `expo-notifications` | ✓ `ryui/push` (APNs, Firebase Cloud Messaging: the token, messages received and tapped) |
-| Clipboard, share sheet, browser | `UIPasteboard`, `ShareLink`, `SFSafariViewController` | `expo-clipboard`, `expo-sharing`, `expo-web-browser` | ✓ `Copy`, `device.Clipboard`, `Share` (text), `ShareFiles` (files, with expo-sharing's MIME type, UTI, title and iPad anchor; done when the sheet closes), `device.Browse` |
+| Clipboard, share sheet, browser | `UIPasteboard`, `ShareLink`, `SFSafariViewController` | `expo-clipboard`, `expo-sharing`, `expo-web-browser` | ✓ `Copy`, `device.Clipboard` (text; images: `CopyImage`, `ClipboardImage`; `ClipboardHas`, `OnClipboardChange`), `Share` (text), `ShareFiles` (files, with expo-sharing's MIME type, UTI, title and iPad anchor; done when the sheet closes), `device.Browse` |
 | Keep awake, device info | `isIdleTimerDisabled`, `UIDevice` | `expo-keep-awake`, `expo-device` | ✓ `device.KeepAwake`, `device.GetInfo` |
 | Network state | `NWPathMonitor` | `expo-network` | ✓ `ryui/network` (online, Wi-Fi or cellular, metered, Data Saver / Low Data Mode) |
 | Saving to the gallery, Downloads | `PHPhotoLibrary` | `expo-media-library` | ✓ `ryui/library` (MediaStore's collections; Photos, or Documents in Files) |
@@ -94,6 +94,14 @@ what RyUI has for it.
 | Tracking permission | App Tracking Transparency | `expo-tracking-transparency` | ✓ `ryui/tracking` |
 | App integrity | App Attest | `expo-app-integrity` | ✓ `ryui/integrity` (App Attest, Play Integrity) |
 | Age range | Declared Age Range | `expo-age-range` | ✓ `ryui/agerange` (Declared Age Range, Play Age Signals) |
+| Sensors | Core Motion | `expo-sensors` | ✓ `ryui/sensors` (accelerometer, gyroscope, magnetometer, device motion with attitude and heading, barometer, light, pedometer; the same axes and units on both) |
+| Image editing | Core Graphics, ImageIO | `expo-image-manipulator` | ✓ `ryui/imageedit` (resize, crop, rotate, flip; HEIC in, JPEG or PNG out, upright) |
+| Video thumbnails | `AVAssetImageGenerator` | `expo-video-thumbnails` | ✓ `imageedit.VideoFrame` |
+| Text to speech | `AVSpeechSynthesizer` | `expo-speech` | ✓ `ryui/speech` (a queue, voices, pitch, rate, pause at a word) |
+| Contacts | Contacts, ContactsUI | `expo-contacts` | ✓ `ryui/contacts` (the picker and new contact screen without permission; the address book with it) |
+| Calendars | EventKit, EventKitUI | `expo-calendar` | ✓ `ryui/calendar` (the event editor without permission; calendars and events with it) |
+| Home screen widgets | WidgetKit | `expo-widgets` | ✓ `ryui/widget` and `ryui.json`'s `widgets` (a template in every size, the lock screen's on iOS; timelines, countdowns, taps with a URL) |
+| App Intents, shortcuts | App Intents, App Shortcuts | — | ✓ `ryui.json`'s `shortcuts` (iOS: App Shortcuts with Siri phrases, in Spotlight and Shortcuts; Android: launcher shortcuts) |
 | Custom fonts | `.font(.custom)` | `expo-font` | ✓ `Font.Family` |
 | Lifecycle | `scenePhase` | AppState | ✓ `app.OnLifecycle` |
 | Launch screen | `UILaunchScreen` | `expo-splash-screen` | ✓ `ryui.json`'s `splash`; `ryui/splash` holds it while the app loads |
@@ -123,8 +131,8 @@ what RyUI has for it.
 
 ## Not yet
 
-In order of what apps miss most: sensors (motion, the pedometer), image
-editing (resize, crop, HEIC), contacts and calendars, text to speech,
-the mail and message composers and printing, home-screen widgets and App
-Intents, and over-the-air updates (EAS Update's; RyUI apps are compiled
-Go, which the stores don't let an app replace).
+In order of what apps miss most: the mail and message composers and
+printing, App Intents with parameters and entities (shortcuts take none
+yet), widgets of the app's own layout (one template for now), and
+over-the-air updates (EAS Update's; RyUI apps are compiled Go, which the
+stores don't let an app replace).

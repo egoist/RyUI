@@ -7,6 +7,15 @@ import UIKit
 @main
 @objc(RyUIAppDelegate)
 final class AppDelegate: UIResponder, UIApplicationDelegate {
+    override init() {
+        super.init()
+        // ryui.json's shortcuts: their App Intents hand the host their URL.
+        NotificationCenter.default.addObserver(forName: Notification.Name("RyUIOpenURL"), object: nil, queue: .main) { n in
+            guard let s = n.userInfo?["url"] as? String, let u = URL(string: s) else { return }
+            MainActor.assumeIsolated { RyUIRuntime.shared.openURL(u) }
+        }
+    }
+
     #if RYUI_PERIODIC
     // ryui/periodic: its tasks' handlers, which the system wants before launch ends.
     func application(_ application: UIApplication, didFinishLaunchingWithOptions options: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {

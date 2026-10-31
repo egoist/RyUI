@@ -140,8 +140,8 @@ func (t *iosToolchain) buildHost(work string, app *goApp, features []string) (st
 		if err != nil || d.IsDir() {
 			return err
 		}
-		if strings.HasPrefix(path, "Share/") {
-			return nil // the share extension, built on its own (buildShare)
+		if strings.HasPrefix(path, "Share/") || strings.HasPrefix(path, "Widget/") {
+			return nil // the extensions, built on their own (buildShare, buildWidgets)
 		}
 		files = append(files, path)
 		return nil
@@ -241,6 +241,23 @@ var iosFeatures = []struct{ flag, symbol string }{
 	{"RYUI_AGERANGE", "github.com/egoist/ryui/agerange.Request"},
 	{"RYUI_MAPS", "github.com/egoist/ryui/maps.View"},
 	{"RYUI_PERIODIC", "github.com/egoist/ryui/periodic.Schedule"},
+	{"RYUI_WIDGET", "github.com/egoist/ryui/widget.Set"},
+	{"RYUI_CONTACTS", "github.com/egoist/ryui/contacts.Request"},
+	{"RYUI_CONTACTS", "github.com/egoist/ryui/contacts.List"},
+	{"RYUI_CONTACTS", "github.com/egoist/ryui/contacts.Pick"},
+	{"RYUI_CONTACTS", "github.com/egoist/ryui/contacts.Add"},
+	{"RYUI_CALENDAR", "github.com/egoist/ryui/calendar.Request"},
+	{"RYUI_CALENDAR", "github.com/egoist/ryui/calendar.Calendars"},
+	{"RYUI_CALENDAR", "github.com/egoist/ryui/calendar.Events"},
+	{"RYUI_CALENDAR", "github.com/egoist/ryui/calendar.Add"},
+	{"RYUI_SENSORS", "github.com/egoist/ryui/sensors.setRate"},
+	{"RYUI_SENSORS", "github.com/egoist/ryui/sensors.Available"},
+	{"RYUI_SENSORS", "github.com/egoist/ryui/sensors.StepsBetween"},
+	{"RYUI_SPEECH", "github.com/egoist/ryui/speech.Speak"},
+	{"RYUI_SPEECH", "github.com/egoist/ryui/speech.Voices"},
+	{"RYUI_IMAGEEDIT", "github.com/egoist/ryui/imageedit.Edit"},
+	{"RYUI_IMAGEEDIT", "github.com/egoist/ryui/imageedit.Size"},
+	{"RYUI_IMAGEEDIT", "github.com/egoist/ryui/imageedit.VideoFrame"},
 	{"RYUI_APPLEAUTH", "github.com/egoist/ryui/appleauth.SignIn"},
 	{"RYUI_APPLEAUTH", "github.com/egoist/ryui/appleauth.Available"},
 	{"RYUI_APPLEAUTH", "github.com/egoist/ryui/appleauth.CredentialState"},
@@ -361,8 +378,8 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 		urls += fmt.Sprintf("<key>%s</key><true/>\n", html.EscapeString(k))
 	}
 	urls += plistKeys(app.cfg.plistExtras())
-	if g := app.cfg.shareGroup(); g != "" {
-		urls += fmt.Sprintf("<key>RyUIShareGroup</key><string>%s</string>\n", html.EscapeString(g))
+	if g := app.cfg.appGroup(); g != "" {
+		urls += fmt.Sprintf("<key>RyUIAppGroup</key><string>%s</string>\n", html.EscapeString(g))
 	}
 	if app.cfg.ShareTarget.on && app.cfg.shareSheet {
 		urls += "<key>RyUIShareSheet</key><true/>\n"
@@ -383,6 +400,11 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 			return "", err
 		}
 	}
+	// Signed as Xcode signs for the simulator (simulatorIdentity).
+	sign := simulatorIdentity(app.cfg.IOS.Team)
+	if sign == "-" && len(app.cfg.Shortcuts) > 0 {
+		fmt.Println("ryui: no Apple Development identity in the keychain: the app is signed ad hoc, and its shortcuts' App Intents won't run (Xcode › Settings › Accounts makes one)")
+	}
 	if app.cfg.ShareTarget.on {
 		exe, err := t.buildShare(work, app.cfg, code)
 		if err != nil {
@@ -395,14 +417,30 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 		if err != nil {
 			return "", err
 		}
-		if err := t.run(work, nil, "codesign", "--force", "--sign", "-", appex); err != nil {
+		if err := t.run(work, nil, "codesign", "--force", "--sign", sign, appex); err != nil {
 			return "", err
 		}
 	}
-	if err := t.signFrameworks(work, bundle, "-"); err != nil {
+	if len(app.cfg.Widgets) > 0 {
+		exe, err := t.buildWidgets(work, app.cfg)
+		if err != nil {
+			return "", err
+		}
+		appex, err := embedWidgets(bundle, exe, app.cfg.widgetInfo(map[string]any{
+			"CFBundleName": app.displayName(), "CFBundleDisplayName": app.displayName(), "CFBundleShortVersionString": "1.0", "CFBundleVersion": "1", "MinimumOSVersion": iosMin,
+			"CFBundleSupportedPlatforms": []string{"iPhoneSimulator"}, "UIDeviceFamily": app.cfg.iosDevices(),
+		}))
+		if err != nil {
+			return "", err
+		}
+		if err := t.run(work, nil, "codesign", "--force", "--sign", sign, appex); err != nil {
+			return "", err
+		}
+	}
+	if err := t.signFrameworks(work, bundle, sign); err != nil {
 		return "", err
 	}
-	return bundle, t.run(work, nil, "codesign", "--force", "--sign", "-", bundle)
+	return bundle, t.run(work, nil, "codesign", "--force", "--sign", sign, bundle)
 }
 
 // simulatorEntitlements are the linker flags that give a simulator build
@@ -420,7 +458,7 @@ func simulatorEntitlements(work string, cfg *appConfig) ([]string, error) {
 	if ds := cfg.associatedDomains(true); len(ds) > 0 {
 		m["com.apple.developer.associated-domains"] = ds
 	}
-	if g := cfg.shareGroup(); g != "" {
+	if g := cfg.appGroup(); g != "" {
 		m["com.apple.security.application-groups"] = []string{g}
 	}
 	for k, v := range cfg.entitlements {

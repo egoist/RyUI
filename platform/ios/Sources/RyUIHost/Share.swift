@@ -11,7 +11,7 @@ import RyUIOps
 enum RyUIShare {
     /// The Shared event's payload for what the share extension put in
     /// its URL (platform/ios/Share): the items as JSON, whose files are
-    /// in the App Group's container (Info.plist's RyUIShareGroup), moved
+    /// in the App Group's container (Info.plist's RyUIAppGroup), moved
     /// to the app's caches, under ryui-shared/.
     static func received(_ query: String) -> [UInt8] {
         var items: [[String: Any]] = []
@@ -21,7 +21,7 @@ enum RyUIShare {
             items = [["k": 0, "t": query]]
         }
         let fm = FileManager.default
-        let container = (Bundle.main.object(forInfoDictionaryKey: "RyUIShareGroup") as? String)
+        let container = (Bundle.main.object(forInfoDictionaryKey: "RyUIAppGroup") as? String)
             .flatMap { fm.containerURL(forSecurityApplicationGroupIdentifier: $0) }
         let caches = fm.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("ryui-shared", isDirectory: true)
         var w = RyUIWriter(), n: UInt32 = 0

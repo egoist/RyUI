@@ -592,6 +592,17 @@ symbol (`iosFeatures`). On Android, each is an optional Gradle module
 package (`featurePermissions`), whose `RyUIPlugin` registers its methods
 and views by name at start.
 
+What runs outside the app's process is built from `ryui.json`. iOS's
+widget extension is WidgetKit's, so SwiftUI's (the one place the host
+uses it): one template (platform/ios/Widget) with the app's kinds,
+reading the entries the app's Go code sets (`ryui/widget`) from the App
+Group they share; it runs no Go. The shortcuts are App Intents the CLI
+generates and links into the executable, their metadata extracted as
+Xcode does (swiftc's constant values, appintentsmetadataprocessor); each
+opens the app with its URL. On Android, the CLI generates an App Widget
+provider for each kind (over the host's `RyUIWidgetProvider`, with
+RemoteViews) and the launcher's static shortcuts.
+
 ## mobile
 
 `mobile/` (build tags `ios || android`, cgo) exports a C ABI:

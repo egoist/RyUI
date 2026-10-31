@@ -42,6 +42,11 @@
 - `splash` is the launch screen: `{"image": "logo.png", "size": 96,
   "background": "#ffffff", "darkBackground": "#000000"}` (see
   [Device](device.md#the-launch-screen-ryuisplash)).
+- `widgets` are the app's home screen widgets and `shortcuts` its
+  actions for Siri, Spotlight and the launcher (see
+  [Device](device.md#home-screen-widgets-ryuiwidget)). The widget
+  extension has a bundle ID of its own (the app's plus `.widgets`): a
+  release needs a profile for it too, and `ios.widgetProfile` names one.
 - `android.googleServices` is the Firebase project's
   `google-services.json`, for `ryui/push`; `android.mapsKey`, a Google
   Maps Platform API key, for `ryui/maps`.

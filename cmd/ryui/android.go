@@ -288,6 +288,17 @@ func prepareAndroidHost(app *goApp, work string) (src, hash string, err error) {
 			return "", "", err
 		}
 	}
+	// The widgets' providers (ryui.json's widgets).
+	gen := filepath.Join(src, "app", "src", "main", "java", "dev", "ryui", "app", "widgets")
+	os.RemoveAll(gen)
+	if app.cfg != nil && len(app.cfg.androidWidgets()) > 0 {
+		code := app.cfg.androidWidgetKotlin()
+		h.Write([]byte(code))
+		os.MkdirAll(gen, 0o755)
+		if err := os.WriteFile(filepath.Join(gen, "Widgets.kt"), []byte(code), 0o644); err != nil {
+			return "", "", err
+		}
+	}
 	return src, hex.EncodeToString(h.Sum(nil))[:16], nil
 }
 

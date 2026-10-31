@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12: the wallpaper's colors (Material You), and the launcher's widget radius. -->
+<resources>
+    <color name="ryui_widget_surface">@android:color/system_neutral1_50</color>
+    <color name="ryui_widget_on_surface">@android:color/system_neutral1_900</color>
+    <color name="ryui_widget_on_surface_variant">@android:color/system_neutral2_700</color>
+    <color name="ryui_widget_accent">@android:color/system_accent1_600</color>
+    <dimen name="ryui_widget_radius">@android:dimen/system_app_widget_background_radius</dimen>
+</resources>

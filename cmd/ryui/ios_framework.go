@@ -35,15 +35,30 @@ _ = UIApplicationMain(CommandLine.argc, CommandLine.unsafeArgv, nil, "RyUIAppDel
 // the code (for the privacy manifest; the share extension links it).
 // ents are the executable's linker flags for its entitlements (the
 // simulator's).
-func (t *iosToolchain) linkApp(work, bundle string, cfg *appConfig, hostObj, lib string, ents []string) (string, error) {
+func (t *iosToolchain) linkApp(work, bundle string, cfg *appConfig, hostObj, lib string, ents []string) (code string, err error) {
 	strip := []string{}
 	if t.release {
 		strip = []string{"-Xlinker", "-dead_strip"}
 	}
 	exe := filepath.Join(bundle, appExe)
+	// The shortcuts' App Intents: in the executable, their metadata in the bundle.
+	intents, src, consts, err := t.buildShortcuts(work, cfg)
+	if err != nil {
+		return "", err
+	}
+	var extra []string
+	if intents != "" {
+		extra = append(extra, intents)
+		defer func() {
+			if err == nil {
+				err = t.shortcutsMetadata(work, bundle, src, consts)
+			}
+		}()
+	}
 	if !cfg.sharedLayout() {
 		args := append([]string{"swiftc", "-target", t.target, "-sdk", t.sdk, hostObj, lib,
 			"-o", exe, "-framework", "UIKit", "-framework", "Foundation", "-lresolv"}, strip...)
+		args = append(args, extra...)
 		return exe, t.run(work, nil, "xcrun", append(args, ents...)...)
 	}
 	fw := filepath.Join(bundle, "Frameworks", fwName+".framework")
@@ -88,6 +103,7 @@ func (t *iosToolchain) linkApp(work, bundle string, cfg *appConfig, hostObj, lib
 	}
 	args = append([]string{"swiftc", "-target", t.target, "-sdk", t.sdk, main, bin, "-o", exe,
 		"-Xlinker", "-rpath", "-Xlinker", "@executable_path/Frameworks"}, strip...)
+	args = append(args, extra...)
 	return bin, t.run(work, nil, "xcrun", append(args, ents...)...)
 }
 

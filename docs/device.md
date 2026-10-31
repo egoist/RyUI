@@ -36,9 +36,13 @@ photo app doesn't ask for the microphone.
 | `ryui/agerange` | Play Age Signals | the Declared Age Range entitlement |
 | `ryui/maps` | Google's Maps SDK | |
 | `ryui/periodic` | WorkManager | `fetch` and `processing` background modes; the task identifiers |
+| `ryui/sensors` | `ACTIVITY_RECOGNITION` (the pedometer) | `NSMotionUsageDescription` (the pedometer) |
+| `ryui/speech` | the text-to-speech engine's visibility (`<queries>`) | |
+| `ryui/contacts` | `READ_CONTACTS` (for `List`) | `NSContactsUsageDescription` |
+| `ryui/calendar` | `READ_CALENDAR` (for `Calendars`, `Events`) | `NSCalendarsFullAccessUsageDescription`, `NSCalendarsUsageDescription` |
 
-`ryui/device`, `ryui/audio`, `ryui/splash`, `ryui/js` and `ryui/secure`
-need none.
+`ryui/device`, `ryui/audio`, `ryui/splash`, `ryui/imageedit`,
+`ryui/widget`, `ryui/js` and `ryui/secure` need none.
 
 An entitlement needs its capability on the app's App ID
 (developer.apple.com, Identifiers) for a release build: the provisioning
@@ -255,6 +259,12 @@ ui.Button(ui.ButtonProps{Title: ui.Val("Help"), OnPress: func() {
   `Multiple` lets the user pick several. `done` gets a `device.File` for
   each, its `Path` a copy in the app's caches, with its `Name`, `Type` and
   `Size`, or none if the user cancelled.
+- `device.ClipboardHas()` says whether the clipboard holds `Text`, an
+  `Image` or a `URL`, without reading it (iOS doesn't ask the user for
+  this): show a Paste button only when there's something to paste.
+  `device.ClipboardImage()` reads its image into a file, in the format it
+  was copied in; `device.CopyImage(path, done)` puts an image file on it.
+  `device.OnClipboardChange(f)` calls `f` when it changes, until `stop`.
 - `device.GetInfo()` is the device and the app: `Model` ("iPhone", "Pixel
   9"), `System` ("iOS", "Android"), `SystemVersion`, and `AppVersion` and
   `Build`, `ryui.json`'s `version` and `build`. Not on the main thread.
@@ -1099,6 +1109,154 @@ or their parent to share. The `Result` is `Shared` with a `Lower` and
 `Upper` age (0: open), `Declined`, or `VerificationRequired` (Play); its
 `Source` says how it's known. `ErrNotAvailable` where the platform can't
 answer.
+
+## Motion and sensors: ryui/sensors
+
+```go
+stop := sensors.WatchMotion(50*time.Millisecond, func(m sensors.MotionReading) {
+	level.Set(m.Attitude.Roll) // a spirit level
+})
+```
+
+- `WatchAccelerometer`, `WatchGyroscope` and `WatchMagnetometer` give a
+  `Vector` (x, y, z) about every interval: acceleration in g, rotation in
+  radians per second, the magnetic field in microteslas (calibrated).
+- `WatchMotion` is the fused device motion: `Gravity` and the user's
+  `Acceleration` (in g), `Rotation`, and the `Attitude`: a `Matrix` that
+  turns device axes into East-North-Up, the `Heading` (degrees from
+  magnetic north; -1 without a magnetometer), and `Pitch` and `Roll`.
+- `WatchPressure` is the barometer (hectopascals, and the change in
+  altitude), `WatchLight` the ambient light in lux (Android), and
+  `WatchSteps` the steps since watching began. `StepsBetween(from, to)`
+  is iOS's history (a week); Android keeps none.
+- `Available(sensor)` says whether the device has one; the simulator and
+  emulators have few.
+
+The values are the same on both platforms: device axes as Android and the
+W3C define them (x to the right of the screen, y up it, z out of it),
+acceleration as the accelerometer measures it (a device lying face up
+reads z = +1 g; iOS's are turned to match), and the attitude computed
+the same way on both. Up to 200 readings a second; readings come on the
+main thread, in batches as the platform delivers them.
+
+## Editing images and video frames: ryui/imageedit
+
+`imageedit.Edit(source, actions, options)` reads an image (HEIC, JPEG,
+PNG, WebP: what the camera and the photo picker give), turns it upright
+as its orientation says, does the actions in order and writes a JPEG or
+PNG to the app's caches. Not on the main thread.
+
+```go
+go func() {
+	r, err := imageedit.Edit(photo, []imageedit.Action{
+		imageedit.Resize(1080, 0), // 1080 wide; 0 keeps the aspect ratio
+		imageedit.Crop(0, 0, 1080, 1080),
+	}, imageedit.Options{Quality: 0.8})
+	if err == nil {
+		upload(r.Path, r.Width, r.Height)
+	}
+}()
+```
+
+The actions are `Resize`, `Crop`, `Rotate` (clockwise, any angle),
+`FlipHorizontal` and `FlipVertical`. A first `Resize` decodes the image
+near that size, which saves memory on large photos. `imageedit.Size`
+reads an image's size without decoding it. `imageedit.VideoFrame(source,
+at, actions, options)` takes a video's frame at a time (a thumbnail, a
+poster), upright, and edits it the same way; a remote video is read only
+as far as the frame needs. A source is what `ui.Image` takes: a path, a
+`file://` or `http(s)` URL, or an asset.
+
+## Text to speech: ryui/speech
+
+`speech.Speak(text, options, done)` queues text to be read aloud with the
+platform's voices; `done` gets nil once it's spoken, or `ErrStopped`.
+
+```go
+speech.Speak("Turn left in 200 meters", speech.Options{Rate: 1.1}, nil)
+```
+
+`Options` set the `Language` (a BCP 47 tag), a `Voice` (an ID from
+`speech.Voices()`, with its name, language and quality), `Pitch`, `Rate`
+and `Volume`. `Stop` drops the queue, `Pause` and `Resume` pause at a
+word (on Android too, which can't pause: RyUI speaks on from the word).
+On iOS other apps' sound ducks while it speaks, and it speaks with the
+silent switch on; Android ducks them likewise.
+
+## Contacts: ryui/contacts
+
+- `contacts.Pick(done)` shows the system's contact picker: the user picks
+  one, and the app sees only that one, with no permission asked (on
+  Android, without the permission, its name only).
+- `contacts.Add(contact, done)` shows the system's new contact screen,
+  filled in, where the user saves it; no permission asked.
+- `contacts.Request()` asks for access, and `contacts.List(query)` reads
+  the address book (by name, up to a limit): names, organization, phones
+  and emails with their labels, birthdays. iOS 18's limited access lists
+  the contacts the user chose.
+
+## Calendars: ryui/calendar
+
+- `calendar.Add(event, done)` shows the system's event editor, filled in,
+  where the user saves the event; no permission asked (iOS 17 and later).
+  iOS says whether it was saved; Android's calendar apps don't.
+- `calendar.Request()` asks for full access; then `calendar.Calendars()`
+  lists the calendars and `calendar.Events(from, to, ids...)` the events
+  between two times, each occurrence of a repeating one.
+- An all-day event's `Start` and `End` are days: midnight UTC of the
+  first, and of the day after the last.
+
+## Home screen widgets: ryui/widget
+
+`ryui.json`'s `widgets` declares the app's widgets; `widget.Set` fills
+them, from the app's Go code:
+
+```json
+{ "widgets": [{ "kind": "today", "name": "Today", "description": "What's next", "sizes": ["small", "medium", "rectangular"] }] }
+```
+
+```go
+widget.Set("today", widget.Entry{
+	Title: "Next", Symbol: "calendar", Value: "3 tasks", Body: "Call Ana at 4",
+	Progress: 0.4, ShowProgress: true, Until: meeting, URL: "myapp://today",
+})
+```
+
+A widget shows its `Entry` with the platform's template, laid out for
+its size: the `Title` (with its `Symbol`, in the `Tint`), a large `Value`,
+the `Body`, a `Progress` bar, a live countdown to `Until`, a `Caption`.
+It keeps showing it until the app sets another, whether or not the app
+runs; tapping it opens the app with its `URL` (`ui.OnOpenURL`). Several
+entries, each with its `At`, are a timeline: each shows from its time.
+`Clear` empties it.
+
+Sizes: `small`, `medium`, `large`, and iOS's `extraLarge` (iPad) and
+lock screen `circular`, `rectangular` and `inline`. iOS: a WidgetKit
+extension the CLI builds into the app, sharing an App Group with it
+(a release needs the App Groups capability, and a profile for the
+extension's ID, the app's plus `.widgets`). Android: an App Widget for
+each kind, Material You colors, sized to the launcher's cells.
+
+## Shortcuts: Siri, Spotlight, the launcher
+
+`ryui.json`'s `shortcuts` are actions the system offers for the app.
+Each opens the app with its URL, for `ui.OnOpenURL`:
+
+```json
+{ "shortcuts": [{ "id": "newNote", "title": "New Note", "url": "notes://new", "symbol": "square.and.pencil", "phrases": ["New note in ${app}"] }] }
+```
+
+On iOS they're App Shortcuts: Siri hears their phrases (each with
+`${app}`, the app's name), and they're in Spotlight, the Shortcuts app
+and on the Action button, with no setup by the user (up to ten). The CLI
+compiles them as App Intents and extracts their metadata as Xcode does.
+On Android they're the launcher's shortcuts, shown on a long press of
+the app's icon, with the symbol in the accent color.
+
+Simulator builds are signed as Xcode signs them, with the keychain's
+Apple Development identity (`ryui.json`'s team's): App Intents only run
+in an app with a team. Without one, the build is signed ad hoc, and the
+CLI says the shortcuts won't run.
 
 ## Haptics: ui.Haptic
 

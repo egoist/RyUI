@@ -88,7 +88,7 @@ public final class RyUIShareSheetController: UIViewController {
 @_cdecl("ryui_ios_shared_dir")
 public func ryuiIOSSharedDir() -> UnsafeMutablePointer<CChar>? {
     guard Bundle.main.object(forInfoDictionaryKey: "RyUIShareSheet") as? Bool == true,
-          let group = Bundle.main.object(forInfoDictionaryKey: "RyUIShareGroup") as? String,
+          let group = Bundle.main.object(forInfoDictionaryKey: "RyUIAppGroup") as? String,
           let c = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) else { return nil }
     return strdup(c.appendingPathComponent("Library/Application Support", isDirectory: true).path)
 }

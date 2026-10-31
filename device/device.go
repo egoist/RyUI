@@ -6,6 +6,7 @@ package device
 import (
 	"encoding/json"
 	"strings"
+	"sync"
 
 	"github.com/egoist/ryui/ui"
 )
@@ -125,4 +126,104 @@ func encodeFileOptions(o FileOptions) []byte {
 		b[0] = 1
 	}
 	return append(b, strings.Join(o.Types, "\n")...)
+}
+
+// ClipboardKinds says what the clipboard holds, without reading it (iOS
+// doesn't ask the user for this): to show a Paste button only when
+// there's something to paste.
+type ClipboardKinds struct {
+	Text, Image, URL bool
+}
+
+// ClipboardHas says what the clipboard holds. Not on the main thread.
+func ClipboardHas() (ClipboardKinds, error) {
+	b, err := ui.CallWait("clipboard", "has", nil)
+	if err != nil || len(b) < 3 {
+		return ClipboardKinds{}, err
+	}
+	return ClipboardKinds{Text: b[0] == 1, Image: b[1] == 1, URL: b[2] == 1}, nil
+}
+
+// ClipboardImage reads the clipboard's image into a file in the app's
+// caches, in the format the copying app gave it (PNG, JPEG, HEIC...; its
+// extension says), and reports its path (ok false: it has none). iOS asks the user the first time
+// the app reads what another app put there. Not on the main thread.
+func ClipboardImage() (path string, ok bool, err error) {
+	b, err := ui.CallWait("clipboard", "image", nil)
+	if err != nil || len(b) == 0 {
+		return "", false, err
+	}
+	return string(b), true, nil
+}
+
+// CopyImage puts the image file at path (PNG, JPEG, HEIC...) on the
+// clipboard, for pasting in another app; done (if not nil) gets whether
+// it went. Main thread.
+func CopyImage(path string, done func(err error)) {
+	ui.Call("clipboard", "copyImage", []byte(path), func(_ []byte, err error) {
+		if done != nil {
+			done(err)
+		}
+	})
+}
+
+var (
+	clipMu       sync.Mutex
+	clipWatchers = map[*func()]bool{}
+	clipRunning  bool
+)
+
+// OnClipboardChange calls f, on the main thread, each time the clipboard
+// changes while the app is in the foreground (another app's copy is seen
+// when the app comes back, on iOS), until stop. Read it then with
+// Clipboard, ClipboardImage or ClipboardHas.
+func OnClipboardChange(f func()) (stop func()) {
+	fp := &f
+	clipMu.Lock()
+	clipWatchers[fp] = true
+	start := !clipRunning
+	clipRunning = true
+	clipMu.Unlock()
+	if start {
+		go followClipboard()
+	}
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			clipMu.Lock()
+			delete(clipWatchers, fp)
+			last := len(clipWatchers) == 0
+			clipMu.Unlock()
+			if last {
+				ui.Post(func() { ui.Call("clipboard", "stop", nil, nil) })
+			}
+		})
+	}
+}
+
+// followClipboard waits for each change ("next" answers at the next).
+func followClipboard() {
+	for {
+		_, err := ui.CallWait("clipboard", "next", nil)
+		clipMu.Lock()
+		fs := make([]func(), 0, len(clipWatchers))
+		for f := range clipWatchers {
+			fs = append(fs, *f)
+		}
+		// Stopped as another began watching: wait on for that one.
+		if len(fs) == 0 || err != nil && err.Error() != "stopped" {
+			clipRunning = false
+			clipMu.Unlock()
+			return
+		}
+		clipMu.Unlock()
+		if err != nil {
+			continue
+		}
+		ui.Post(func() {
+			for _, f := range fs {
+				f()
+			}
+		})
+	}
 }

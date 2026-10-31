@@ -42,7 +42,7 @@ func buildIOS(app *goApp, o *buildOptions) error {
 	// Sign first: no point building for a profile that isn't there. The
 	// share extension has a bundle ID, and so a profile, of its own (a
 	// wildcard one can serve both), from the app's team.
-	var prof, shareProf *profile
+	var prof, shareProf, widgetProf *profile
 	if !o.simulator {
 		want := o.profile
 		if want == "" {
@@ -57,6 +57,12 @@ func buildIOS(app *goApp, o *buildOptions) error {
 				return fmt.Errorf("the share extension (ryui.json's shareTarget): %v", err)
 			}
 			fmt.Printf("ryui: signing the share extension with %q\n", shareProf.name)
+		}
+		if len(cfg.Widgets) > 0 {
+			if widgetProf, err = pickProfile(prof.team, cfg.widgetID(), cfg.IOS.WidgetProfile, o.distribution); err != nil {
+				return fmt.Errorf("the widget extension (ryui.json's widgets): %v", err)
+			}
+			fmt.Printf("ryui: signing the widget extension with %q\n", widgetProf.name)
 		}
 	}
 	fmt.Printf("ryui: building %s %s (%d) for %s\n", cfg.Name, cfg.Version, cfg.Build, map[bool]string{true: "the simulator", false: "devices"}[o.simulator])
@@ -121,23 +127,44 @@ func buildIOS(app *goApp, o *buildOptions) error {
 			return err
 		}
 		if o.simulator {
-			err = tc.run(work, nil, "codesign", "--force", "--sign", "-", appex)
+			err = tc.run(work, nil, "codesign", "--force", "--sign", simulatorIdentity(cfg.IOS.Team), appex)
 		} else {
-			err = shareProf.sign(tc, work, appex, cfg.shareID(), nil, cfg.shareGroup(), cfg.keychainGroup(prof.team), nil)
+			err = shareProf.sign(tc, work, appex, cfg.shareID(), nil, cfg.appGroup(), cfg.keychainGroup(prof.team), nil)
 		}
 		if err != nil {
 			return err
 		}
 	}
-	identity := "-"
+	// The widget extension, likewise.
+	if len(cfg.Widgets) > 0 {
+		exe, err := tc.buildWidgets(work, cfg)
+		if err != nil {
+			return err
+		}
+		appex, err := embedWidgets(bundle, exe, cfg.widgetInfo(info))
+		if err != nil {
+			return err
+		}
+		if o.simulator {
+			err = tc.run(work, nil, "codesign", "--force", "--sign", simulatorIdentity(cfg.IOS.Team), appex)
+		} else {
+			err = widgetProf.sign(tc, work, appex, cfg.widgetID(), nil, cfg.appGroup(), "", nil)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	identity := simulatorIdentity(cfg.IOS.Team)
 	if !o.simulator {
 		identity = prof.identity
+	} else if identity == "-" && len(cfg.Shortcuts) > 0 {
+		fmt.Println("ryui: no Apple Development identity in the keychain: the app is signed ad hoc, and its shortcuts' App Intents won't run (Xcode › Settings › Accounts makes one)")
 	}
 	if err := tc.signFrameworks(work, bundle, identity); err != nil {
 		return err
 	}
 	if o.simulator {
-		if err := tc.run(work, nil, "codesign", "--force", "--sign", "-", bundle); err != nil {
+		if err := tc.run(work, nil, "codesign", "--force", "--sign", identity, bundle); err != nil {
 			return err
 		}
 		out := filepath.Join(o.out, filepath.Base(bundle))
@@ -148,7 +175,7 @@ func buildIOS(app *goApp, o *buildOptions) error {
 		fmt.Printf("ryui: %s in %.0fs (install: xcrun simctl install booted %s)\n", out, time.Since(start).Seconds(), out)
 		return nil
 	}
-	if err := prof.sign(tc, work, bundle, cfg.ID, cfg.associatedDomains(false), cfg.shareGroup(), cfg.keychainGroup(prof.team), cfg); err != nil {
+	if err := prof.sign(tc, work, bundle, cfg.ID, cfg.associatedDomains(false), cfg.appGroup(), cfg.keychainGroup(prof.team), cfg); err != nil {
 		return err
 	}
 	ipa := filepath.Join(o.out, safeName(cfg.Name)+".ipa")
@@ -249,8 +276,8 @@ func (t *iosToolchain) infoPlist(cfg *appConfig, simulator bool) (map[string]any
 	for k, v := range cfg.plistExtras() {
 		m[k] = v
 	}
-	if g := cfg.shareGroup(); g != "" {
-		m["RyUIShareGroup"] = g
+	if g := cfg.appGroup(); g != "" {
+		m["RyUIAppGroup"] = g
 	}
 	if cfg.ShareTarget.on && cfg.shareSheet {
 		m["RyUIShareSheet"] = true

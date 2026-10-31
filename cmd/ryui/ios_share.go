@@ -18,7 +18,7 @@ import (
 // app with what was shared in a URL of the app's share scheme, which the
 // host turns into the Shared event (ui.OnShare), as Android's
 // ACTION_SEND opens the app. Files go through the App Group the two
-// share (shareGroup): the extension copies them there, the app moves
+// share (appGroup): the extension copies them there, the app moves
 // them to its caches.
 
 const shareExe = "RyUIShare"
@@ -35,7 +35,7 @@ func (c *appConfig) shareScheme() string { return "ryuishare." + c.ID }
 // the App Group it leaves files in, and with a share sheet, the app's
 // keychain group (ryui/secure's items are the app's there).
 func (t *iosToolchain) shareEntitlements(work string, cfg *appConfig) ([]string, string, error) {
-	g := cfg.shareGroup()
+	g := cfg.appGroup()
 	if g == "" || !strings.HasSuffix(t.target, "-simulator") {
 		return nil, "", nil
 	}
@@ -158,8 +158,8 @@ func (c *appConfig) shareInfo(app map[string]any) map[string]any {
 			},
 		},
 	}
-	if g := c.shareGroup(); g != "" {
-		m["RyUIShareGroup"] = g
+	if g := c.appGroup(); g != "" {
+		m["RyUIAppGroup"] = g
 	}
 	if c.shareSheet {
 		m["RyUIShareSheet"] = true

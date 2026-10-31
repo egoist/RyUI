@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ryui_widget_surface">#FF211F26</color>
+    <color name="ryui_widget_on_surface">#FFE6E0E9</color>
+    <color name="ryui_widget_on_surface_variant">#FFCAC4D0</color>
+    <color name="ryui_widget_accent">#FFD0BCFF</color>
+</resources>
