@@ -267,8 +267,8 @@ func (h *Host) minTrackSize(hwnd uintptr, least [2]float32, mi *MinMaxInfo) {
 }
 
 // windowOptions applies WindowOptions to the main window: its title, its
-// least size, and its client size, centered in the work area (the host
-// doesn't remember the user's).
+// least size, and its client size, centered in the work area (a placement
+// the host remembers, restored after, wins over it).
 func (h *Host) windowOptions(args []byte) {
 	if len(args) < 16 {
 		return

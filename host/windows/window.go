@@ -137,6 +137,7 @@ func (h *Host) makeWindow() {
 }
 
 func (h *Host) windowMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
+	h.placementMessage(m, wp)
 	if r, ok := h.menuBarMessage(h.window, m, wp, lp); ok {
 		return r, true
 	}
@@ -153,15 +154,7 @@ func (h *Host) windowMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
 		FillColor(wp, r, h.theme.bg.ref())
 		return 1, true
 	case WM_GETMINMAXINFO:
-		// WindowOptions' least, or 320 points square.
-		least := h.minSize
-		if least[0] <= 0 {
-			least[0] = 320
-		}
-		if least[1] <= 0 {
-			least[1] = 320
-		}
-		h.minTrackSize(h.window, least, Native[MinMaxInfo](lp))
+		h.minTrackSize(h.window, h.leastSize(), Native[MinMaxInfo](lp))
 		return 0, true
 	case WM_DPICHANGED:
 		h.dpiChanged(int(LoWord(wp)), *Native[Rect](lp))
@@ -181,6 +174,7 @@ func (h *Host) windowMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
 		}
 		return 0, false
 	case WM_CLOSE:
+		h.savePlacement()
 		h.quitting = true
 		DestroyWindow(h.window)
 		return 0, true
@@ -390,4 +384,17 @@ func (h *Host) keyMessage(m *Msg) bool {
 		}
 	}
 	return false
+}
+
+// leastSize is the main window's least client size: WindowOptions', or
+// 320 points square.
+func (h *Host) leastSize() [2]float32 {
+	least := h.minSize
+	if least[0] <= 0 {
+		least[0] = 320
+	}
+	if least[1] <= 0 {
+		least[1] = 320
+	}
+	return least
 }

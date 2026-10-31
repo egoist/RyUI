@@ -1188,9 +1188,25 @@ How the Windows host maps nui (`host/windows`):
   rounded backplates). A menu bar set before the window shows keeps
   its client size.
 - `WindowOptions` set the main window's title, its client size
-  (centered in the work area; the host doesn't remember the size the
-  user left it at, so the app's always wins) and its least size (320
-  points square if the app gives none).
+  (centered in the work area) and its least size (320 points square if
+  the app gives none).
+- The main window comes back where the user left it, as macOS's frame
+  autosave has it: its normal rectangle (screen pixels, and the DPI it
+  was at) and whether it was maximized, in `nui-window.json` in the
+  app's data directory (`NUI_DATA`, Local AppData\<name>; a file rather
+  than the registry, so it goes with the app's other data, and `nui
+  dev` keeps it in its work directory). It's saved when a move or
+  resize ends (`WM_EXITSIZEMOVE`), on maximize and restore and keyboard
+  snaps (`WM_SIZE`, `WM_MOVE` outside a drag), and on close, not on
+  every pixel of a drag; and restored before the window shows, over
+  `WindowOptions`' size (their least size still holds): moved to its
+  monitor first, so the window takes that DPI, then sized (scaled if
+  that monitor's DPI is another now), and put whole on the nearest
+  monitor's work area (`MonitorFromRect`) if it's off the monitors or
+  mostly off one. The host keeps the normal rectangle itself, in screen
+  coordinates (`GetWindowPlacement`'s are workspace coordinates). Tests
+  (`go test`) and automation runs (`NUI_SNAPSHOT`, `NUI_SCRIPT`) keep
+  none, and the data directory is made by what writes there.
 - `List` is core-virtualized, as on macOS: rows the host places at
   their offsets in the list's window (one `DeferWindowPos`), binds
   through `ListBind` and recycles. Scroll bars are an indicator over the
@@ -1243,7 +1259,7 @@ and never assumes a single root in its own data structures.
 - The main window holds the root (`app.Run`); `app.RunWindow(opts,
   root)` gives it a title and a size and least size
   (`ui.WindowOptions`, sent to the root as `WindowOptions` when it
-  mounts). A size the user chose, remembered by the host (macOS), wins
+  mounts). A size the user chose, remembered by the host (macOS, Windows), wins
   over it.
 
 - `ui.Window(WindowProps{Open, Title, Width, Height, MinWidth,

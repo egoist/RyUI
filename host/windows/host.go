@@ -185,6 +185,13 @@ type Host struct {
 	appItems []appItem        // their items, in order
 	accel    uintptr          // their shortcuts' accelerator table
 	coreEnv  host.Environment // the environment the core was last told
+
+	// The main window's placement (placement.go).
+	placementPath  string
+	placed         bool // it has shown: what the user does with it is kept
+	sizing         bool // the user moves or sizes it
+	normal         Rect // its rectangle when not maximized or minimized
+	savedPlacement []byte
 }
 
 var theHost *Host
@@ -203,6 +210,7 @@ func newHost() *Host {
 	}
 	theHost = h
 	h.appName = appName()
+	h.placementPath = placementFile()
 	h.assets = assetsDir()
 	h.measureDC = CreateCompatibleDC(0)
 	h.msgWin = CreateWindow(0, classMessage, "", 0, 0, 0, 0, 0, ^uintptr(2), 0) // HWND_MESSAGE: -3
@@ -227,13 +235,23 @@ func Run(root func() ui.Node) {
 	h := newHost()
 	restoreState()
 	h.enter(func() { ui.Mount(h, root) })
+	// Where the user left it, over WindowOptions' size.
+	maximized := h.restorePlacement()
 	if os.Getenv("NUI_SNAPSHOT") != "" {
 		// Automation: shown, without taking the user's focus.
 		ShowWindow(h.window, SW_SHOWNOACTIVATE)
 	} else {
-		ShowWindow(h.window, SW_SHOWNORMAL)
+		if maximized {
+			ShowWindow(h.window, SW_SHOWMAXIMIZED)
+		} else {
+			ShowWindow(h.window, SW_SHOWNORMAL)
+		}
 		SetForegroundWindow(h.window)
 	}
+	if !maximized {
+		h.normal = WindowRect(h.window)
+	}
+	h.placed = true
 	UpdateWindow(h.window)
 	for _, n := range h.wins {
 		h.showWindow(n.nav.window)

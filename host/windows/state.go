@@ -24,10 +24,9 @@ func init() {
 			if name == "" {
 				name = appName()
 			}
-			d := filepath.Join(base, name)
-			if os.MkdirAll(d, 0o755) == nil {
-				os.Setenv("NUI_DATA", d)
-			}
+			// Made by what writes there (nui/store, nui/sqlite, the
+			// window's placement), not here.
+			os.Setenv("NUI_DATA", filepath.Join(base, name))
 		}
 	}
 }

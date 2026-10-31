@@ -3,8 +3,10 @@
 package windows
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 	"unsafe"
 
@@ -608,4 +610,92 @@ func TestWindowDPI(t *testing.T) {
 			fatalf("still open")
 		}
 	})
+}
+
+// The main window comes back where the user left it: its placement is
+// saved (in a temporary file here: a test keeps none of its own) and
+// restored over WindowOptions' size; one off every monitor comes back
+// on the nearest, and the least size holds.
+func TestPlacement(t *testing.T) {
+	if placementFile() != "" {
+		t.Fatal("a test would keep the window's placement")
+	}
+	path := filepath.Join(t.TempDir(), placementName)
+	ui.SetWindowOptions(ui.WindowOptions{Width: 500, Height: 400, MinWidth: 400, MinHeight: 300})
+	defer ui.SetWindowOptions(ui.WindowOptions{})
+	app := func() ui.Node {
+		return ui.StaticText("Hello")
+	}
+	h, _ := mount(t, app)
+	var want Rect
+	onMain(t, func() {
+		h.placementPath = path
+		work := WorkArea(h.window)
+		want = Rect{Left: work.Left + 40, Top: work.Top + 30}
+		want.Right, want.Bottom = want.Left+h.px(nil, 600), want.Top+h.px(nil, 500)
+		// Not before it has shown.
+		h.savePlacement()
+		if _, err := os.Stat(path); err == nil {
+			fatalf("saved before it showed")
+		}
+		h.placed = true
+		// The user moves and sizes it: saved once done.
+		h.placementMessage(WM_ENTERSIZEMOVE, 0)
+		SetWindowPos(h.window, 0, want.Left, want.Top, want.W(), want.H(), SWP_NOZORDER|SWP_NOACTIVATE)
+		if _, err := os.Stat(path); err == nil {
+			fatalf("saved during the drag")
+		}
+		h.placementMessage(WM_EXITSIZEMOVE, 0)
+		if _, err := os.Stat(path); err != nil {
+			fatalf("not saved: %v", err)
+		}
+	})
+
+	// The next launch: where it was, not WindowOptions' size.
+	h2, _ := mount(t, app)
+	onMain(t, func() {
+		h2.placementPath = path
+		if h2.restorePlacement() {
+			fatalf("restored maximized")
+		}
+		if got := WindowRect(h2.window); got != want {
+			fatalf("restored at %v, want %v", got, want)
+		}
+	})
+
+	write := func(p placement) {
+		b, _ := json.Marshal(p)
+		if err := os.WriteFile(path, b, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Left maximized.
+	write(placement{X: want.Left, Y: want.Top, Width: want.W(), Height: want.H(), DPI: h2.dpi, Maximized: true})
+	onMain(t, func() {
+		if !h2.restorePlacement() || h2.normal != want {
+			fatalf("not restored maximized at %v (%v)", want, h2.normal)
+		}
+	})
+	// On a monitor that's gone: on the nearest, whole; and never smaller
+	// than the least size.
+	write(placement{X: -100000, Y: -100000, Width: 20, Height: 20, DPI: h2.dpi})
+	onMain(t, func() {
+		h2.restorePlacement()
+		got := WindowRect(h2.window)
+		work := MonitorWorkArea(got)
+		if got.Left < work.Left || got.Top < work.Top || got.Right > work.Right || got.Bottom > work.Bottom {
+			fatalf("restored at %v, off the work area %v", got, work)
+		}
+		var mi MinMaxInfo
+		SendMessage(h2.window, WM_GETMINMAXINFO, 0, uintptr(unsafe.Pointer(&mi)))
+		if got.W() < mi.MinTrackSize.X || got.H() < mi.MinTrackSize.Y {
+			fatalf("restored %dx%d, under the least %v", got.W(), got.H(), mi.MinTrackSize)
+		}
+	})
+	if c := clampTo(Rect{Left: 900, Top: 100, Right: 1300, Bottom: 400}, Rect{Right: 1000, Bottom: 800}); c != (Rect{Left: 600, Top: 100, Right: 1000, Bottom: 400}) {
+		t.Fatalf("mostly off the work area: clamped to %v", c)
+	}
+	if c := clampTo(Rect{Left: 100, Top: 100, Right: 500, Bottom: 400}, Rect{Right: 1000, Bottom: 800}); c != (Rect{Left: 100, Top: 100, Right: 500, Bottom: 400}) {
+		t.Fatalf("on the work area: moved to %v", c)
+	}
 }

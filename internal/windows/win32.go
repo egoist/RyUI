@@ -340,6 +340,9 @@ var (
 	procFillRect                      = user32.NewProc("FillRect")
 	procDrawTextW                     = user32.NewProc("DrawTextW")
 	procMonitorFromWindow             = user32.NewProc("MonitorFromWindow")
+	procMonitorFromRect               = user32.NewProc("MonitorFromRect")
+	procIsZoomed                      = user32.NewProc("IsZoomed")
+	procIsIconic                      = user32.NewProc("IsIconic")
 	procGetMonitorInfoW               = user32.NewProc("GetMonitorInfoW")
 	procGetKeyState                   = user32.NewProc("GetKeyState")
 	procPrintWindow                   = user32.NewProc("PrintWindow")
@@ -436,6 +439,8 @@ const (
 	WM_SETCURSOR        = 0x0020
 	WM_MOUSEACTIVATE    = 0x0021
 	WM_GETMINMAXINFO    = 0x0024
+	WM_ENTERSIZEMOVE    = 0x0231
+	WM_EXITSIZEMOVE     = 0x0232
 	WM_SETFONT          = 0x0030
 	WM_WINDOWPOSCHANGED = 0x0047
 	WM_NOTIFY           = 0x004E
@@ -507,6 +512,7 @@ const (
 
 	SW_HIDE           = 0
 	SW_SHOWNORMAL     = 1
+	SW_SHOWMAXIMIZED  = 3
 	SW_SHOWNOACTIVATE = 4
 	SW_SHOW           = 5
 	SW_SHOWNA         = 8
@@ -1107,6 +1113,28 @@ func WorkArea(hwnd uintptr) Rect {
 	mi.Size = uint32(unsafe.Sizeof(mi))
 	procGetMonitorInfoW.Call(m, uintptr(unsafe.Pointer(&mi)))
 	return mi.Work
+}
+
+// MonitorWorkArea is the work area of the monitor r (screen coordinates)
+// is most on, or the nearest's if it's on none.
+func MonitorWorkArea(r Rect) Rect {
+	m, _, _ := procMonitorFromRect.Call(uintptr(unsafe.Pointer(&r)), MONITOR_DEFAULTTONEAREST)
+	mi := MonitorInfo{}
+	mi.Size = uint32(unsafe.Sizeof(mi))
+	procGetMonitorInfoW.Call(m, uintptr(unsafe.Pointer(&mi)))
+	return mi.Work
+}
+
+// IsZoomed reports whether a window is maximized.
+func IsZoomed(hwnd uintptr) bool {
+	r, _, _ := procIsZoomed.Call(hwnd)
+	return r != 0
+}
+
+// IsIconic reports whether a window is minimized.
+func IsIconic(hwnd uintptr) bool {
+	r, _, _ := procIsIconic.Call(hwnd)
+	return r != 0
 }
 
 // ActivateCommonControls activates version 6 of the common controls
