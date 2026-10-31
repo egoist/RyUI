@@ -270,6 +270,19 @@ func (h *Host) endAnimation() {
 	h.animating = false
 }
 
+// withoutAnimation runs f with implicit animations off. An animated batch
+// turns them on, and a view made in it would grow out of its zero frame
+// into its first one (a label ellipsizing its text as it does).
+func withoutAnimation(f func()) {
+	ctx := Class("NSAnimationContext")
+	Send(ctx, "beginGrouping")
+	cur := Send(ctx, "currentContext")
+	MsgSetFloat(cur, Sel("setDuration:"), 0)
+	Send(cur, "setAllowsImplicitAnimation:", 0)
+	f()
+	Send(ctx, "endGrouping")
+}
+
 // frameClock sends Frame at each display refresh while it's on.
 type frameClock struct {
 	timer ID
