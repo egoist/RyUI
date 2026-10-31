@@ -56,7 +56,7 @@ func (h *Host) paintOwn(n *node, hwnd, dc uintptr, r Rect) {
 	// draws at the DC's origin while one is open, not at the origin
 	// paintBehind moved it to.
 	g := NewGraphics(dc)
-	k := h.scale
+	k := h.scaleOf(n)
 	radius := min(n.cornerRadius*k, w/2, ht/2)
 	bg, hasBg := h.resolve(n.background)
 	switch {
@@ -142,7 +142,7 @@ func (h *Host) paintOwn(n *node, hwnd, dc uintptr, r Rect) {
 	}
 	if n.focused && (n.pressable() || n.kind == ops.KindSegmented) && h.keyboardCues(hwnd) {
 		g := NewGraphics(dc)
-		h.focusRing(g, w, ht, radius)
+		h.focusRing(n, g, w, ht, radius)
 		g.Close()
 	}
 }
@@ -174,8 +174,8 @@ func (h *Host) keyboardCues(hwnd uintptr) bool {
 
 // focusRing is Fluent's focus visual: a 2-pixel outer stroke in the text
 // color.
-func (h *Host) focusRing(g Graphics, w, ht, radius float32) {
-	k := h.scale
+func (h *Host) focusRing(n *node, g Graphics, w, ht, radius float32) {
+	k := h.scaleOf(n)
 	g.StrokeRoundRect(h.theme.label.argb(), 2*k, 0, 0, w, ht, max(radius, 4*k))
 }
 
@@ -280,7 +280,7 @@ func (h *Host) paintSymbol(n *node, dc uintptr, r Rect) {
 		return
 	}
 	s := h.nodeSpec(n)
-	old := SelectObject(dc, h.iconFont(s.size))
+	old := SelectObject(dc, h.iconFont(n, s.size))
 	SetBkMode(dc, TRANSPARENT)
 	SetTextColor(dc, h.textColor(n, h.theme.label).ref())
 	u := []uint16{glyph}
@@ -292,7 +292,7 @@ func (h *Host) paintSymbol(n *node, dc uintptr, r Rect) {
 // fill in the accent color (Color sets it); indeterminate, a segment
 // that runs along it.
 func (h *Host) paintProgress(n *node, g Graphics, w, ht float32) {
-	k := h.scale
+	k := h.scaleOf(n)
 	fill, ok := h.resolve(n.color)
 	if !ok {
 		fill = h.theme.accent
@@ -324,7 +324,7 @@ func (h *Host) paintActivity(n *node, g Graphics, w, ht float32) {
 	if !n.animating {
 		return
 	}
-	k := h.scale
+	k := h.scaleOf(n)
 	c, ok := h.resolve(n.color)
 	if !ok {
 		c = h.theme.accent

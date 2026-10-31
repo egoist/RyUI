@@ -74,6 +74,7 @@ func (h *Host) automation() {
 // focused field, back pops, key:<shortcut> presses keys (ctrl+shift+k,
 // ctrl+enter, f5) in the window in use, menu:<title> chooses the menu
 // bar's item, close closes the window in use (as its close button),
+// dpi:<dpi> moves that window to a monitor at that DPI (WM_DPICHANGED),
 // snap:<file> writes a snapshot.
 func (h *Host) step(verb, arg string) {
 	switch verb {
@@ -113,12 +114,37 @@ func (h *Host) step(verb, arg string) {
 			w = h.wins[len(h.wins)-1].nav.window
 		}
 		SendMessage(w, WM_CLOSE, 0, 0)
+	case "dpi":
+		// As if the window in use (or the last Window) went to a monitor
+		// at this DPI: Windows' WM_DPICHANGED, with the size it suggests
+		// (its client area's points kept). The frame, drawn by Windows,
+		// keeps its DPI.
+		w := h.windowInUse()
+		if len(h.wins) > 0 && w == h.window {
+			w = h.wins[len(h.wins)-1].nav.window
+		}
+		dpi, _ := strconv.Atoi(arg)
+		if dpi < 48 {
+			return
+		}
+		cr, wr := ClientRect(w), WindowRect(w)
+		k := float32(DPI(w)) / 96
+		if f := h.byHwnd[w]; f != nil && f.k > 0 {
+			k = f.k
+		} else if w == h.window {
+			k = h.scale
+		}
+		nk := dpiScale(dpi)
+		s := Rect{Left: wr.Left, Top: wr.Top}
+		s.Right = s.Left + wr.W() - cr.W() + int32(float32(cr.W())/k*nk+0.5)
+		s.Bottom = s.Top + wr.H() - cr.H() + int32(float32(cr.H())/k*nk+0.5)
+		SendMessage(w, WM_DPICHANGED, MakeLong(uint16(dpi), uint16(dpi)), Ptr(&s))
 	case "resize":
 		// The window's client area to w,h points.
 		ws, hs, _ := strings.Cut(arg, ",")
 		w, _ := strconv.Atoi(ws)
 		ht, _ := strconv.Atoi(hs)
-		r := Rect{Right: h.px(float32(w)), Bottom: h.px(float32(ht))}
+		r := Rect{Right: h.px(nil, float32(w)), Bottom: h.px(nil, float32(ht))}
 		AdjustWindowRect(&r, uint32(WindowLong(h.window, GWL_STYLE)), 0, h.dpi)
 		SetWindowPos(h.window, 0, 0, 0, r.W(), r.H(), SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE)
 	case "scroll":
@@ -346,7 +372,7 @@ func (h *Host) dump() string {
 		if n.hwnd != 0 {
 			p := Parent(n.hwnd)
 			r := WindowRectIn(n.hwnd, p)
-			fmt.Fprintf(&b, " [%.0f,%.0f %.0fx%.0f]", h.pt(r.Left), h.pt(r.Top), h.pt(r.W()), h.pt(r.H()))
+			fmt.Fprintf(&b, " [%.0f,%.0f %.0fx%.0f]", h.pt(n, r.Left), h.pt(n, r.Top), h.pt(n, r.W()), h.pt(n, r.H()))
 			if !IsWindowVisible(n.hwnd) {
 				b.WriteString(" hidden")
 			}

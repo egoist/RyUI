@@ -242,17 +242,20 @@ type richStyle struct {
 }
 
 // twips is a size in points (DIPs) as the rich edit's font size: twips
-// at the window's DPI, as the control converts them at the system's.
-func (h *Host) twips(size float32) int32 {
+// at its window's scale k, as the control converts them at the system's DPI.
+func (h *Host) twips(size, k float32) int32 {
+	if k <= 0 {
+		k = h.scale
+	}
 	sys := float32(DPI(0))
-	return int32(math.Round(float64(size * 15 * float32(h.dpi) / sys)))
+	return int32(math.Round(float64(size * 15 * k * 96 / sys)))
 }
 
 // format is the CHARFORMAT2 of a font spec and colors.
 func (h *Host) format(s fontSpec, color rgba, bg *rgba, link bool) charFormat {
 	cf := charFormat{Mask: cfmSize | cfmFace | cfmWeight | cfmColor | cfmItalic | cfmUnderline | cfmStrikeOut | cfmLink | cfmBackColor | cfmBold}
 	cf.Size = uint32(unsafe.Sizeof(cf))
-	cf.Height = h.twips(s.size)
+	cf.Height = h.twips(s.size, s.k)
 	cf.Weight = uint16(s.weight)
 	if s.weight >= 600 {
 		cf.Effects |= cfmBold
@@ -389,6 +392,7 @@ func (r *rich) build(h *Host, n *node) {
 			weight = n.fontWeight
 		}
 		spec := h.spec(ts, weight, size, n.fontFamily)
+		spec.k = h.scaleOf(n)
 		spec.italic = st.flags&1 != 0
 		spec.mono = st.flags&2 != 0
 		spec.underline = st.flags&4 != 0
@@ -429,7 +433,7 @@ func (r *rich) build(h *Host, n *node) {
 	sel := [2]int32{0, -1}
 	SendMessage(ctl, emExSetSel, 0, Ptr(&sel))
 	SendMessage(ctl, emSetParaFormat, 0, Ptr(&pf))
-	h.insertInlines(r, ctl)
+	h.insertInlines(n, r, ctl)
 	// A line limit ends the last line shown with an ellipsis.
 	ellipsis := uintptr(0)
 	if n.lineLimit > 0 {
@@ -459,7 +463,8 @@ type paraFormat struct {
 
 // insertInlines replaces each inline component's placeholder with a
 // transparent picture of its size, sitting on the baseline.
-func (h *Host) insertInlines(r *rich, ctl uintptr) {
+func (h *Host) insertInlines(n *node, r *rich, ctl uintptr) {
+	dpi := float64(h.dpiOf(n))
 	if len(r.inlineAt) == 0 {
 		return
 	}
@@ -487,8 +492,8 @@ func (h *Host) insertInlines(r *rich, ctl uintptr) {
 			Alt           *uint16
 			Stream        uintptr
 		}{
-			Width:  int32(math.Round(float64(in.w) * 2540 / 96 * float64(h.dpi) / float64(DPI(0)))),
-			Height: int32(math.Round(float64(in.h) * 2540 / 96 * float64(h.dpi) / float64(DPI(0)))),
+			Width:  int32(math.Round(float64(in.w) * 2540 / 96 * dpi / float64(DPI(0)))),
+			Height: int32(math.Round(float64(in.h) * 2540 / 96 * dpi / float64(DPI(0)))),
 			Type:   24, // TA_BASELINE
 			Alt:    UTF16(" "),
 			Stream: stream,
@@ -530,7 +535,7 @@ func (r *rich) measure(h *Host, n *node, c layout.Constraints) (float32, float32
 		return 0, 0
 	}
 	if r.maxWidth < 0 {
-		r.maxWidth = h.pt(r.widest(h, n))
+		r.maxWidth = h.pt(n, r.widest(h, n))
 	}
 	minContent := float32(0)
 	if c.AvailW <= -layout.Inf && c.Width != c.Width {
@@ -541,7 +546,7 @@ func (r *rich) measure(h *Host, n *node, c layout.Constraints) (float32, float32
 	if c.Width == c.Width {
 		w = c.Width
 	}
-	ht := r.layoutAt(h, n, max(h.px(w), 1))
+	ht := r.layoutAt(h, n, max(h.px(n, w), 1))
 	if n.lineLimit > 0 {
 		if lines := int32(SendMessage(n.ctl, emGetLineCount, 0, 0)); lines > int32(n.lineLimit) {
 			first := int32(SendMessage(n.ctl, emLineIndex, uintptr(n.lineLimit), 0))
@@ -552,9 +557,9 @@ func (r *rich) measure(h *Host, n *node, c layout.Constraints) (float32, float32
 	}
 	// Back at the view's width.
 	if f := n.frame[2]; f > 0 {
-		r.layoutAt(h, n, h.px(f))
+		r.layoutAt(h, n, h.px(n, f))
 	}
-	return w, h.pt(ht)
+	return w, h.pt(n, ht)
 }
 
 // minContent is the widest word, in points: the text laid out a pixel
@@ -572,9 +577,9 @@ func (r *rich) minContent(h *Host, n *node) float32 {
 		var a, b Point
 		SendMessage(n.ctl, emPosFromChar, Ptr(&a), uintptr(start))
 		SendMessage(n.ctl, emPosFromChar, Ptr(&b), uintptr(max(end-1, start)))
-		widest = max(widest, b.X-a.X+h.px(10))
+		widest = max(widest, b.X-a.X+h.px(n, 10))
 	}
-	return h.pt(widest)
+	return h.pt(n, widest)
 }
 
 func (r *rich) resized(h *Host, n *node) {
@@ -608,7 +613,7 @@ func (r *rich) placeInlines(h *Host, n *node) {
 		if Parent(c.hwnd) != n.hwnd {
 			SetParent(c.hwnd, n.hwnd)
 		}
-		SetWindowPos(c.hwnd, HWND_TOP, p.X, p.Y, h.px(in.w), h.px(in.h), SWP_NOACTIVATE|SWP_NOCOPYBITS)
+		SetWindowPos(c.hwnd, HWND_TOP, p.X, p.Y, h.px(n, in.w), h.px(n, in.h), SWP_NOACTIVATE|SWP_NOCOPYBITS)
 	}
 }
 

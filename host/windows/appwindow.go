@@ -3,6 +3,8 @@
 package windows
 
 import (
+	"math"
+
 	. "github.com/egoist/nui/internal/windows"
 	"github.com/egoist/nui/ops"
 )
@@ -10,9 +12,10 @@ import (
 // The app's windows (ui.Window): each a top-level window of its own,
 // resizable, with its own title and taskbar button, its content (the
 // Window node's child) laid out at its client size. Closing it asks the
-// core (Dismissed), which destroys it. The app has one scale, the main
-// window's DPI: a Window on a monitor of another DPI takes the size
-// Windows suggests, its content drawn at the app's scale.
+// core (Dismissed), which destroys it. Each has its own scale, its DPI:
+// one opens at the DPI of the monitor it opens on, and one moved to a
+// monitor of another DPI takes the size Windows suggests and draws its
+// views at the new scale (WM_DPICHANGED), its Environment reported again.
 
 // openWindow opens a Window's window: its content's size (480 by 600
 // points if the app gives none), placed down and right of the window in
@@ -29,26 +32,66 @@ func (h *Host) openWindow(n *node) {
 		ht = 600
 	}
 	style := uint32(WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN)
-	r := Rect{Right: h.px(w), Bottom: h.px(ht)}
-	AdjustWindowRect(&r, style, 0, h.dpi)
+	dpi := DPI(h.windowInUse())
+	r := frameRect(w, ht, style, dpi)
 	x, y := h.cascade(r.W(), r.H())
 	win := CreateWindow(0, classWindow, h.windowTitle(n), style, x, y, r.W(), r.H(), 0, 0)
+	if d := DPI(win); d != dpi {
+		// It opened on a monitor of another DPI.
+		dpi = d
+		r = frameRect(w, ht, style, dpi)
+		SetWindowPos(win, 0, 0, 0, r.W(), r.H(), SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE)
+	}
 	fw := newNode(0, kindWindowFrame)
 	fw.hwnd = win
 	fw.nav = &nav{}
 	fw.parent = n
+	fw.k = dpiScale(dpi)
 	h.byHwnd[win] = fw
 	SetDarkTitleBar(win, h.dark)
 	n.nav.window = win
 	n.presented = true
 	SetParent(n.hwnd, win)
+	h.rescale(n.hwnd, fw.k)
 	cr := ClientRect(win)
 	SetWindowPos(n.hwnd, 0, 0, 0, cr.W(), cr.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 	h.wins = append(h.wins, n)
-	h.reportScreen(n, h.pt(cr.W()), h.pt(cr.H()))
+	h.reportScreen(n, h.pt(n, cr.W()), h.pt(n, cr.H()))
 	if IsWindowVisible(h.window) {
 		h.showWindow(win)
 	}
+}
+
+// dpiScale is the pixels per point at a DPI.
+func dpiScale(dpi int) float32 { return float32(dpi) / 96 }
+
+// frameRect is the size of a window of style whose client area is w by
+// ht points at dpi.
+func frameRect(w, ht float32, style uint32, dpi int) Rect {
+	k := float64(dpiScale(dpi))
+	r := Rect{Right: int32(math.Round(float64(w) * k)), Bottom: int32(math.Round(float64(ht) * k))}
+	AdjustWindowRect(&r, style, 0, dpi)
+	return r
+}
+
+// windowDPIChanged follows a Window or a sheet (f, its top-level
+// window's node) to a monitor of another DPI: its views at the new scale
+// (their fonts, their frames in pixels), the size Windows suggests, and
+// its Environment reported again, so the core measures and lays it out
+// again.
+func (h *Host) windowDPIChanged(f *node, dpi int, s Rect) {
+	n := f.parent
+	f.k = dpiScale(dpi)
+	if n != nil && n.hwnd != 0 {
+		h.rescale(n.hwnd, f.k)
+	}
+	SetWindowPos(f.hwnd, 0, s.Left, s.Top, s.W(), s.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
+	if n != nil && n.hwnd != 0 {
+		cr := ClientRect(f.hwnd)
+		SetWindowPos(n.hwnd, 0, 0, 0, cr.W(), cr.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
+		h.reportScreen(n, h.pt(n, cr.W()), h.pt(n, cr.H()))
+	}
+	RedrawWindow(f.hwnd, RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_ERASE)
 }
 
 func (h *Host) showWindow(win uintptr) {
@@ -72,7 +115,7 @@ func (h *Host) cascade(w, ht int32) (x, y int32) {
 	from := h.windowInUse()
 	wr := WindowRect(from)
 	work := WorkArea(from)
-	step := h.px(32)
+	step := int32(32 * DPI(from) / 96)
 	x, y = wr.Left+step, wr.Top+step
 	for range 32 {
 		taken := false
@@ -174,7 +217,7 @@ func (h *Host) windowFrameMessage(fw *node, m uint32, wp, lp uintptr) (uintptr, 
 		if n != nil && n.hwnd != 0 {
 			cr := ClientRect(fw.hwnd)
 			SetWindowPos(n.hwnd, 0, 0, 0, cr.W(), cr.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
-			h.reportScreen(n, h.pt(cr.W()), h.pt(cr.H()))
+			h.reportScreen(n, h.pt(n, cr.W()), h.pt(n, cr.H()))
 		}
 		return 0, true
 	case WM_ERASEBKGND:
@@ -189,8 +232,7 @@ func (h *Host) windowFrameMessage(fw *node, m uint32, wp, lp uintptr) (uintptr, 
 		}
 		return 0, true
 	case WM_DPICHANGED:
-		s := *Native[Rect](lp)
-		SetWindowPos(fw.hwnd, 0, s.Left, s.Top, s.W(), s.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
+		h.windowDPIChanged(fw, int(LoWord(wp)), *Native[Rect](lp))
 		return 0, true
 	case WM_ACTIVATE:
 		if LoWord(wp) != 0 {
@@ -208,12 +250,11 @@ func (h *Host) windowFrameMessage(fw *node, m uint32, wp, lp uintptr) (uintptr, 
 }
 
 // minTrackSize is the least a window can be sized to: its client area
-// least points (a side 0: the system's least), at the app's scale, its
-// frame and menu bar at its own DPI.
+// least points (a side 0: the system's least), its frame and menu bar,
+// at its DPI.
 func (h *Host) minTrackSize(hwnd uintptr, least [2]float32, mi *MinMaxInfo) {
 	dpi := DPI(hwnd)
-	r := Rect{Right: h.px(least[0]), Bottom: h.px(least[1])}
-	AdjustWindowRect(&r, uint32(WindowLong(hwnd, GWL_STYLE)), 0, dpi)
+	r := frameRect(least[0], least[1], uint32(WindowLong(hwnd, GWL_STYLE)), dpi)
 	if GetMenu(hwnd) != 0 {
 		r.Bottom += int32(SystemMetric(SM_CYMENU, dpi))
 	}
@@ -242,16 +283,16 @@ func (h *Host) windowOptions(args []byte) {
 	}
 	cr := ClientRect(h.window)
 	if w <= 0 {
-		w = h.pt(cr.W())
+		w = h.pt(nil, cr.W())
 	}
 	if ht <= 0 {
-		ht = h.pt(cr.H())
+		ht = h.pt(nil, cr.H())
 	}
 	w, ht = max(w, h.minSize[0]), max(ht, h.minSize[1])
 	// The frame as it is (a menu bar too), around the new client area.
 	wr := WindowRect(h.window)
 	fw, fh := wr.W()-cr.W(), wr.H()-cr.H()
-	pw, ph := h.px(w)+fw, h.px(ht)+fh
+	pw, ph := h.px(nil, w)+fw, h.px(nil, ht)+fh
 	work := WorkArea(h.window)
 	ph = min(ph, work.H())
 	pw = min(pw, work.W())

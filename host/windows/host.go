@@ -42,6 +42,7 @@ type node struct {
 	parent   *node
 	listens  [2]uint64  // bits by EventKind
 	frame    [4]float32 // x, y, width, height in points, in its native parent
+	k        float32    // pixels per point of the top-level window it's in; 0: the main window's
 
 	// Text props.
 	textStyle, fontWeight, textAlign int32
@@ -520,6 +521,7 @@ func (h *Host) insert(p, c *node, index int) {
 		return
 	}
 	SetParent(c.hwnd, p.hwnd)
+	h.adopt(p, c)
 	h.placeFrame(c)
 	// Above the windows of the children before it, below those after.
 	after := uintptr(HWND_TOP)
@@ -571,11 +573,31 @@ func (h *Host) setRoot(n *node) {
 	}
 }
 
-// px converts points to pixels.
-func (h *Host) px(v float32) int32 { return int32(math.Round(float64(v * h.scale))) }
+// scaleOf is the pixels per point of the top-level window n is in: a
+// Window's or sheet's own DPI's (k), else the main window's (n nil, or
+// k 0: the main window's views, and those waiting to be inserted).
+func (h *Host) scaleOf(n *node) float32 {
+	if n != nil && n.k > 0 {
+		return n.k
+	}
+	return h.scale
+}
 
-// pt converts pixels to points.
-func (h *Host) pt(v int32) float32 { return float32(v) / h.scale }
+// dpiOf is the DPI of the top-level window n is in.
+func (h *Host) dpiOf(n *node) int {
+	if n != nil && n.k > 0 {
+		return int(math.Round(float64(n.k * 96)))
+	}
+	return h.dpi
+}
+
+// px converts points to pixels in n's window.
+func (h *Host) px(n *node, v float32) int32 {
+	return int32(math.Round(float64(v * h.scaleOf(n))))
+}
+
+// pt converts pixels in n's window to points.
+func (h *Host) pt(n *node, v int32) float32 { return float32(v) / h.scaleOf(n) }
 
 func (h *Host) setFrame(n *node, f [4]float32) {
 	if n.cell != nil {
@@ -618,8 +640,8 @@ func (h *Host) placeAt(n *node, f [4]float32) {
 		x -= p.scrollX
 		y -= p.scrollY
 	}
-	x0, y0 := h.px(x), h.px(y)
-	w, ht := h.px(x+f[2])-x0, h.px(y+f[3])-y0
+	x0, y0 := h.px(n, x), h.px(n, y)
+	w, ht := h.px(n, x+f[2])-x0, h.px(n, y+f[3])-y0
 	SetWindowPos(n.hwnd, 0, x0, y0, w, ht, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOOWNERZORDER|SWP_NOCOPYBITS)
 	h.resized(n)
 }
@@ -713,4 +735,17 @@ func (h *Host) topOfChildren(p *node) uintptr {
 		return p.nav.bar.hwnd
 	}
 	return HWND_TOP
+}
+
+// adopt gives a view inserted into p the scale of p's window, if it was
+// at another's (made in the parking window, or moved from another
+// window).
+func (h *Host) adopt(p, c *node) {
+	switch {
+	case c.k == p.k || c.hwnd == 0:
+	case h.scaleOf(c) == h.scaleOf(p):
+		h.setScale(c.hwnd, p.k)
+	default:
+		h.rescale(c.hwnd, p.k)
+	}
 }

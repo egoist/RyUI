@@ -31,6 +31,7 @@ func (h *Host) barOf(n *node) *scrollBar {
 		h.nextCell++
 		t := newNode(ops.HostIDBit|h.nextCell, kindScrollBar)
 		t.hwnd = h.makeView(0)
+		t.k = n.k
 		SetParent(t.hwnd, n.hwnd)
 		ShowWindow(t.hwnd, SW_HIDE)
 		t.host = scrollBarMessage
@@ -50,12 +51,12 @@ func (h *Host) extent(n *node) (content, view, pos float32, horizontal bool) {
 		if len(l.tops) > 0 {
 			content = l.tops[len(l.tops)-1]
 		}
-		return content, h.pt(r.H()), l.offset, false
+		return content, h.pt(n, r.H()), l.offset, false
 	}
 	if n.horizontal {
-		return n.contentW, h.pt(r.W()), n.scrollX, true
+		return n.contentW, h.pt(n, r.W()), n.scrollX, true
 	}
-	return n.contentH, h.pt(r.H()), n.scrollY, false
+	return n.contentH, h.pt(n, r.H()), n.scrollY, false
 }
 
 // updateBars places a scroll view's thumb at its position, showing it
@@ -78,16 +79,16 @@ func (h *Host) updateBars(n *node) {
 		return
 	}
 	r := ClientRect(n.hwnd)
-	thick := h.px(4)
+	thick := h.px(n, 4)
 	if b.n.hot || b.dragging {
-		thick = h.px(8)
+		thick = h.px(n, 8)
 	}
-	inset := h.px(2)
+	inset := h.px(n, 2)
 	along := r.H()
 	if horizontal {
 		along = r.W()
 	}
-	length := max(int32(float32(along)*view/content), h.px(24))
+	length := max(int32(float32(along)*view/content), h.px(n, 24))
 	at := int32(float32(along-length) * pos / (content - view))
 	var t Rect
 	if horizontal {
@@ -163,7 +164,7 @@ func scrollBarMessage(h *Host, t *node, m uint32, wp, lp uintptr) (uintptr, bool
 			if b.horizontal {
 				along = r.W()
 			}
-			d := h.pt(at-b.dragAt) * content / max(h.pt(along), 1)
+			d := h.pt(n, at-b.dragAt) * content / max(h.pt(n, along), 1)
 			_ = view
 			if b.horizontal {
 				h.scrollToOffset(n, b.dragFrom+d, n.scrollY)

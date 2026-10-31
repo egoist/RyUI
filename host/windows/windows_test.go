@@ -86,7 +86,7 @@ func find(h *Host, k ops.Kind) []*node {
 // frame is a node's window's rectangle in its parent, in points.
 func frame(h *Host, n *node) [4]float32 {
 	r := WindowRectIn(n.hwnd, Parent(n.hwnd))
-	return [4]float32{h.pt(r.Left), h.pt(r.Top), h.pt(r.W()), h.pt(r.H())}
+	return [4]float32{h.pt(n, r.Left), h.pt(n, r.Top), h.pt(n, r.W()), h.pt(n, r.H())}
 }
 
 func TestCounter(t *testing.T) {
@@ -194,7 +194,7 @@ func TestListBindsOnlyWhatShows(t *testing.T) {
 				if s := firstText(rv.cells[0].n).text; s != "Row 5000" {
 					fatalf("row 5000 shows %q", s)
 				}
-				if y := WindowRectIn(rv.n.hwnd, l.n.hwnd).Top; y < 0 || h.pt(y) > l.viewport(h) {
+				if y := WindowRectIn(rv.n.hwnd, l.n.hwnd).Top; y < 0 || h.pt(l.n, y) > l.viewport(h) {
 					fatalf("row 5000 is at %d", y)
 				}
 			}
@@ -323,8 +323,8 @@ func TestWindow(t *testing.T) {
 		if s := WindowText(win); s != "Inspector" {
 			fatalf("title %q", s)
 		}
-		if cr := ClientRect(win); cr.W() != h.px(300) || cr.H() != h.px(200) {
-			fatalf("client %dx%d, want %dx%d", cr.W(), cr.H(), h.px(300), h.px(200))
+		if cr := ClientRect(win); cr.W() != h.px(nil, 300) || cr.H() != h.px(nil, 200) {
+			fatalf("client %dx%d, want %dx%d", cr.W(), cr.H(), h.px(nil, 300), h.px(nil, 200))
 		}
 		// Its content lays out at the window's size.
 		if s := firstText(n).text; s != "width 300" {
@@ -335,14 +335,14 @@ func TestWindow(t *testing.T) {
 		}
 		// Resized by the user: the content follows.
 		wr := WindowRect(win)
-		SetWindowPos(win, 0, 0, 0, wr.W()+h.px(100), wr.H(), SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE)
+		SetWindowPos(win, 0, 0, 0, wr.W()+h.px(nil, 100), wr.H(), SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE)
 		if s := firstText(n).text; s != "width 400" {
 			fatalf("resized, the content says %q", s)
 		}
 		// Its least size.
 		var mi MinMaxInfo
 		SendMessage(win, WM_GETMINMAXINFO, 0, uintptr(unsafe.Pointer(&mi)))
-		least := Rect{Right: h.px(240), Bottom: h.px(120)}
+		least := Rect{Right: h.px(nil, 240), Bottom: h.px(nil, 120)}
 		AdjustWindowRect(&least, uint32(WindowLong(win, GWL_STYLE)), 0, DPI(win))
 		if mi.MinTrackSize.X != least.W() || mi.MinTrackSize.Y != least.H() {
 			fatalf("least %v, want %dx%d", mi.MinTrackSize, least.W(), least.H())
@@ -461,8 +461,8 @@ func TestWindowOptions(t *testing.T) {
 			fatalf("title %q", s)
 		}
 		// The client size asked for, the menu bar besides.
-		if cr := ClientRect(h.window); cr.W() != h.px(500) || cr.H() != h.px(400) {
-			fatalf("client %dx%d, want %dx%d", cr.W(), cr.H(), h.px(500), h.px(400))
+		if cr := ClientRect(h.window); cr.W() != h.px(nil, 500) || cr.H() != h.px(nil, 400) {
+			fatalf("client %dx%d, want %dx%d", cr.W(), cr.H(), h.px(nil, 500), h.px(nil, 400))
 		}
 		if e := h.env; e.Width != 500 || e.Height != 400 {
 			fatalf("environment %vx%v", e.Width, e.Height)
@@ -474,7 +474,7 @@ func TestWindowOptions(t *testing.T) {
 
 		var mi MinMaxInfo
 		SendMessage(h.window, WM_GETMINMAXINFO, 0, uintptr(unsafe.Pointer(&mi)))
-		least := Rect{Right: h.px(400), Bottom: h.px(300)}
+		least := Rect{Right: h.px(nil, 400), Bottom: h.px(nil, 300)}
 		AdjustWindowRect(&least, uint32(WindowLong(h.window, GWL_STYLE)), 0, DPI(h.window))
 		least.Bottom += int32(SystemMetric(SM_CYMENU, DPI(h.window)))
 		if mi.MinTrackSize.X != least.W() || mi.MinTrackSize.Y != least.H() {
@@ -501,5 +501,111 @@ func TestWindowDisposed(t *testing.T) {
 			fatalf("the Window's window outlived its owner")
 		}
 		DestroyWindow(h.window)
+	})
+}
+
+// A Window moved to a monitor of another DPI (WM_DPICHANGED) takes the
+// size Windows suggests and draws at its new scale: its Environment's
+// Scale, its fonts in pixels, its frames; the main window keeps its own.
+func TestWindowDPI(t *testing.T) {
+	open, more := signal.New(true), signal.New(false)
+	h, _ := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{},
+			ui.StaticText("Hello"),
+			ui.Window(ui.WindowProps{Open: open, Width: 300, Height: 200,
+				Content: func() ui.Node {
+					return ui.Column(ui.Style{},
+						ui.Text(signal.Func(func() string { return fmt.Sprint("scale ", ui.UseEnvironment().Get().Scale) })),
+						ui.StaticText("Hello"),
+						ui.Show(more, func() ui.Node { return ui.StaticText("Later") }))
+				}}))
+	})
+	onMain(t, func() {
+		if len(h.wins) != 1 {
+			fatalf("%d windows", len(h.wins))
+		}
+		n := h.wins[0]
+		win := n.nav.window
+		var main, inWin, label *node
+		for _, x := range find(h, ops.KindText) {
+			switch {
+			case x.text == "Hello" && RootWindow(x.hwnd) == win:
+				inWin = x
+			case x.text == "Hello":
+				main = x
+			default:
+				label = x
+			}
+		}
+		if main == nil || inWin == nil || label == nil {
+			fatalf("texts not found")
+		}
+		k0 := h.scale
+		height := func(x *node) int32 {
+			old := SelectObject(h.measureDC, h.nodeFont(x))
+			defer SelectObject(h.measureDC, old)
+			return TextMetrics(h.measureDC).Height
+		}
+		mainHeight := height(main)
+		if label.text != fmt.Sprint("scale ", k0) || height(inWin) != mainHeight {
+			fatalf("before: %q, font %d px (main %d)", label.text, height(inWin), mainHeight)
+		}
+
+		// To a monitor at 1.5 times the DPI.
+		dpi := h.dpi * 3 / 2
+		k := dpiScale(dpi)
+		wr := WindowRect(win)
+		suggested := Rect{Left: wr.Left, Top: wr.Top, Right: wr.Left + wr.W()*3/2, Bottom: wr.Top + wr.H()*3/2}
+		SendMessage(win, WM_DPICHANGED, MakeLong(uint16(dpi), uint16(dpi)), uintptr(unsafe.Pointer(&suggested)))
+		if got := WindowRect(win); got != suggested {
+			fatalf("the window is %v, Windows suggested %v", got, suggested)
+		}
+		if n.k != k || inWin.k != k || label.k != k {
+			fatalf("scales %v %v %v, want %v", n.k, inWin.k, label.k, k)
+		}
+		if n.nav.env.Scale != k || label.text != fmt.Sprint("scale ", k) {
+			fatalf("the environment's scale is %v, the content says %q", n.nav.env.Scale, label.text)
+		}
+		if got, want := float32(height(inWin)), float32(mainHeight)*1.5; got < want-2 || got > want+2 {
+			fatalf("the window's text is %v px high, want about %v", got, want)
+		}
+		r := WindowRectIn(inWin.hwnd, Parent(inWin.hwnd))
+		if got, want := r.W(), h.px(inWin, inWin.frame[0]+inWin.frame[2])-h.px(inWin, inWin.frame[0]); got != want || inWin.frame[2] <= 0 {
+			fatalf("the window's text is %d px wide, its frame %v points: want %d", got, inWin.frame, want)
+		}
+		if got, want := ClientRect(win).W(), ClientRect(n.hwnd).W(); got != want {
+			fatalf("the content is %d px wide in a %d px window", want, got)
+		}
+		if w, want := n.nav.env.Width, float32(ClientRect(win).W())/k; w != want {
+			fatalf("the window is %v points wide, want %v", w, want)
+		}
+
+		// The main window keeps its scale.
+		if h.scale != k0 || h.env.Scale != k0 || main.k != 0 || height(main) != mainHeight {
+			fatalf("main: scale %v env %v k %v font %d px", h.scale, h.env.Scale, main.k, height(main))
+		}
+		mr := WindowRectIn(main.hwnd, Parent(main.hwnd))
+		if got, want := mr.W(), h.px(nil, main.frame[0]+main.frame[2])-h.px(nil, main.frame[0]); got != want {
+			fatalf("the main text is %d px wide, want %d", got, want)
+		}
+
+		// A view the window's content gets later takes its scale.
+		h.enter(func() { ui.Post(func() { more.Set(true) }) })
+		h.runPosted()
+		var later *node
+		for _, x := range find(h, ops.KindText) {
+			if x.text == "Later" {
+				later = x
+			}
+		}
+		if later == nil || later.k != k || height(later) != height(inWin) {
+			fatalf("a text shown later in the window isn't at its scale")
+		}
+
+		h.enter(func() { ui.Post(func() { open.Set(false) }) })
+		h.runPosted()
+		if len(h.wins) != 0 {
+			fatalf("still open")
+		}
 	})
 }

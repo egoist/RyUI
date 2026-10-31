@@ -99,6 +99,7 @@ func (h *Host) insertNav(p, c *node, index int) bool {
 	p.children[i] = c
 	c.parent = p
 	SetParent(c.hwnd, p.hwnd)
+	h.adopt(p, c)
 	SetWindowPos(c.hwnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE)
 	switch p.kind {
 	case ops.KindStack:
@@ -232,7 +233,7 @@ func (h *Host) layoutScreens(n *node) {
 		return
 	}
 	r := ClientRect(n.hwnd)
-	bar := h.px(h.barHeight(n))
+	bar := h.px(n, h.barHeight(n))
 	if b := n.nav.bar; b != nil && b.hwnd != 0 {
 		SetWindowPos(b.hwnd, HWND_TOP, 0, 0, r.W(), bar, SWP_NOACTIVATE|SWP_NOCOPYBITS)
 		if n.kind == ops.KindStack {
@@ -244,7 +245,7 @@ func (h *Host) layoutScreens(n *node) {
 			continue
 		}
 		SetWindowPos(c.hwnd, 0, 0, bar, r.W(), max(r.H()-bar, 0), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
-		h.reportScreen(c, h.pt(r.W()), h.pt(max(r.H()-bar, 0)))
+		h.reportScreen(c, h.pt(n, r.W()), h.pt(n, max(r.H()-bar, 0)))
 	}
 }
 
@@ -257,7 +258,7 @@ func (h *Host) layoutNav() {
 		case ops.KindSheet, ops.KindWindow:
 			if n.nav.window != 0 {
 				r := ClientRect(n.nav.window)
-				h.reportScreen(n, h.pt(r.W()), h.pt(r.H()))
+				h.reportScreen(n, h.pt(n, r.W()), h.pt(n, r.H()))
 			}
 		}
 	}
@@ -270,6 +271,7 @@ func (h *Host) reportScreen(n *node, w, ht float32) {
 	}
 	env := h.env
 	env.Width, env.Height = w, ht
+	env.Scale = h.scaleOf(n)
 	env.SafeTop, env.SafeRight, env.SafeBottom, env.SafeLeft = 0, 0, 0, 0
 	if n.nav.reported && env == n.nav.env {
 		return
@@ -349,6 +351,7 @@ func (h *Host) makeHeader(stack *node) *node {
 	b := newNode(ops.HostIDBit|h.nextCell, kindHeader)
 	b.hwnd = h.makeView(0)
 	b.nav = &nav{stack: stack}
+	b.k = stack.k
 	SetParent(b.hwnd, stack.hwnd)
 	b.nav.back = CreateWindow(0, "BUTTON", "Back", WS_CHILD|WS_TABSTOP|BS_PUSHBUTTON, 0, 0, 0, 0, b.hwnd, 1)
 	SendMessage(b.nav.back, WM_UPDATEUISTATE, MakeLong(UIS_SET, UISF_HIDEFOCUS), 0)
@@ -428,23 +431,23 @@ func (h *Host) updateHeader(stack *node) {
 // on the right, 40 points square, or as wide as their titles.
 func (h *Host) layoutHeader(b *node) {
 	r := ClientRect(b.hwnd)
-	size := h.px(36)
+	size := h.px(b, 36)
 	y := (r.H() - size) / 2
-	SetWindowPos(b.nav.back, 0, h.px(6), y, h.px(40), size, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
-	x := r.W() - h.px(8)
+	SetWindowPos(b.nav.back, 0, h.px(b, 6), y, h.px(b, 40), size, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
+	x := r.W() - h.px(b, 8)
 	screen := b.nav.screen
 	for i := len(b.nav.buttons) - 1; i >= 0; i-- {
-		w := h.px(40)
+		w := h.px(b, 40)
 		if screen != nil && i < len(screen.actions) && symbolGlyph(screen.actions[i].icon) == 0 {
 			dc := h.measureDC
-			old := SelectObject(dc, h.bodyFont())
+			old := SelectObject(dc, h.bodyFont(b))
 			tw, _ := TextExtent(dc, UTF16Units(screen.actions[i].title))
 			SelectObject(dc, old)
-			w = tw + h.px(24)
+			w = tw + h.px(b, 24)
 		}
 		x -= w
 		SetWindowPos(b.nav.buttons[i], 0, x, y, w, size, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
-		x -= h.px(4)
+		x -= h.px(b, 4)
 	}
 }
 
@@ -483,7 +486,7 @@ func (h *Host) headerCommand(b *node, ctl uintptr) {
 func (h *Host) paintHeader(b *node, dc uintptr, g Graphics, r Rect) {
 	stack := b.nav.stack
 	screen := b.nav.screen
-	k := h.scale
+	k := h.scaleOf(b)
 	if g != 0 {
 		br := SolidBrush(h.theme.separator.argb())
 		g.FillRect(br, 0, float32(r.H())-max(k, 1), float32(r.W()), max(k, 1))
@@ -493,16 +496,16 @@ func (h *Host) paintHeader(b *node, dc uintptr, g Graphics, r Rect) {
 	if screen == nil || screen.title == "" {
 		return
 	}
-	x := h.px(16)
+	x := h.px(b, 16)
 	if h.liveScreens(stack) > 1 {
-		x = h.px(52)
+		x = h.px(b, 52)
 	}
-	old := SelectObject(dc, h.font(h.spec(int32(ops.TextStyleTitle2), 0, 0, "")))
+	old := SelectObject(dc, h.font(h.titleSpec(b)))
 	SetBkMode(dc, TRANSPARENT)
 	SetTextColor(dc, h.theme.label.ref())
-	right := r.Right - h.px(16)
+	right := r.Right - h.px(b, 16)
 	for _, btn := range b.nav.buttons {
-		right = min(right, WindowRectIn(btn, b.hwnd).Left-h.px(8))
+		right = min(right, WindowRectIn(btn, b.hwnd).Left-h.px(b, 8))
 	}
 	tr := Rect{Left: x, Top: 0, Right: right, Bottom: r.Bottom}
 	DrawText(dc, UTF16Units(screen.title), &tr, DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX|DT_END_ELLIPSIS)
@@ -572,6 +575,7 @@ func (h *Host) makeTabBar(tabs *node) *node {
 	b := newNode(ops.HostIDBit|h.nextCell, kindTabBar)
 	b.hwnd = h.makeView(WS_TABSTOP)
 	b.nav = &nav{tabs: tabs, hot: -1}
+	b.k = tabs.k
 	b.host = tabBarMessage
 	SetParent(b.hwnd, tabs.hwnd)
 	h.add(b)
@@ -584,18 +588,18 @@ func (h *Host) tabRects(b *node) []Rect {
 	tabs := b.nav.tabs
 	r := ClientRect(b.hwnd)
 	dc := h.measureDC
-	old := SelectObject(dc, h.bodyFont())
+	old := SelectObject(dc, h.bodyFont(b))
 	defer SelectObject(dc, old)
 	var out []Rect
-	x := h.px(8)
+	x := h.px(b, 8)
 	for _, s := range tabs.children {
 		tw, _ := TextExtent(dc, UTF16Units(s.title))
-		w := tw + h.px(24)
+		w := tw + h.px(b, 24)
 		if symbolGlyph(s.icon) != 0 {
-			w += h.px(16 + 8)
+			w += h.px(b, 16+8)
 		}
-		out = append(out, Rect{Left: x, Top: h.px(6), Right: x + w, Bottom: r.H() - h.px(6)})
-		x += w + h.px(4)
+		out = append(out, Rect{Left: x, Top: h.px(b, 6), Right: x + w, Bottom: r.H() - h.px(b, 6)})
+		x += w + h.px(b, 4)
 	}
 	return out
 }
@@ -660,7 +664,7 @@ func (h *Host) selectTab(tabs *node, i int) {
 // bar.
 func (h *Host) paintTabBar(b *node, dc uintptr, g Graphics, r Rect) {
 	tabs := b.nav.tabs
-	k := h.scale
+	k := h.scaleOf(b)
 	p := &h.theme
 	rects := h.tabRects(b)
 	if g != 0 {
@@ -686,7 +690,7 @@ func (h *Host) paintTabBar(b *node, dc uintptr, g Graphics, r Rect) {
 		br.Close()
 		return
 	}
-	font := h.bodyFont()
+	font := h.bodyFont(b)
 	SetBkMode(dc, TRANSPARENT)
 	for i, s := range tabs.children {
 		if i >= len(rects) {
@@ -698,13 +702,13 @@ func (h *Host) paintTabBar(b *node, dc uintptr, g Graphics, r Rect) {
 			color = p.label
 		}
 		SetTextColor(dc, color.over(p.bg).ref())
-		x := tr.Left + h.px(12)
+		x := tr.Left + h.px(b, 12)
 		if glyph := symbolGlyph(s.icon); glyph != 0 {
-			old := SelectObject(dc, h.iconFont(16*h.fontScale()))
-			gr := Rect{Left: x, Top: tr.Top, Right: x + h.px(16), Bottom: tr.Bottom}
+			old := SelectObject(dc, h.iconFont(b, 16*h.fontScale()))
+			gr := Rect{Left: x, Top: tr.Top, Right: x + h.px(b, 16), Bottom: tr.Bottom}
 			DrawText(dc, []uint16{glyph}, &gr, DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX)
 			SelectObject(dc, old)
-			x += h.px(16 + 8)
+			x += h.px(b, 16+8)
 		}
 		old := SelectObject(dc, font)
 		lr := Rect{Left: x, Top: tr.Top, Right: tr.Right, Bottom: tr.Bottom}
@@ -737,33 +741,42 @@ func (h *Host) present(n *node) {
 // sheet.
 func (h *Host) openSheet(n *node) {
 	owner := h.windowInUse()
+	dpi := DPI(owner)
+	k := dpiScale(dpi)
 	cr := ClientRect(owner)
-	cw, ch := h.pt(cr.W()), h.pt(cr.H())
+	cw, ch := float32(cr.W())/k, float32(cr.H())/k
 	w := min(max(cw-80, 320), 560)
 	ht := max(ch-100, 240)
 	if n.detents == 1 { // medium only
 		ht = max(ch/2, 240)
 	}
 	style := uint32(WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_CLIPCHILDREN)
-	r := Rect{Right: h.px(w), Bottom: h.px(ht)}
-	AdjustWindowRect(&r, style, 0, h.dpi)
+	r := frameRect(w, ht, style, dpi)
 	wr := WindowRect(owner)
 	x := wr.Left + (wr.W()-r.W())/2
 	y := wr.Top + (wr.H()-r.H())/2
 	win := CreateWindow(0, classWindow, h.appName, style, x, y, r.W(), r.H(), owner, 0)
+	if d := DPI(win); d != dpi {
+		// It opened on a monitor of another DPI.
+		dpi, k = d, dpiScale(d)
+		r = frameRect(w, ht, style, dpi)
+		SetWindowPos(win, 0, 0, 0, r.W(), r.H(), SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE)
+	}
 	sw := newNode(0, kindSheetWindow)
 	sw.hwnd = win
 	sw.nav = &nav{}
 	sw.parent = n
+	sw.k = k
 	h.byHwnd[win] = sw
 	SetDarkTitleBar(win, h.dark)
 	n.nav.window, n.nav.owner = win, owner
 	n.presented = true
 	SetParent(n.hwnd, win)
+	h.rescale(n.hwnd, k)
 	cr = ClientRect(win)
 	SetWindowPos(n.hwnd, 0, 0, 0, cr.W(), cr.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 	h.sheets = append(h.sheets, n)
-	h.reportScreen(n, h.pt(cr.W()), h.pt(cr.H()))
+	h.reportScreen(n, h.pt(n, cr.W()), h.pt(n, cr.H()))
 	EnableWindow(owner, false)
 	if snapshotting() {
 		ShowWindow(win, SW_SHOWNOACTIVATE)
@@ -779,7 +792,7 @@ func (h *Host) sheetMessage(sw *node, m uint32, wp, lp uintptr) (uintptr, bool) 
 		if n != nil && n.hwnd != 0 {
 			cr := ClientRect(sw.hwnd)
 			SetWindowPos(n.hwnd, 0, 0, 0, cr.W(), cr.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
-			h.reportScreen(n, h.pt(cr.W()), h.pt(cr.H()))
+			h.reportScreen(n, h.pt(n, cr.W()), h.pt(n, cr.H()))
 		}
 		return 0, true
 	case WM_ERASEBKGND:
@@ -790,6 +803,9 @@ func (h *Host) sheetMessage(sw *node, m uint32, wp, lp uintptr) (uintptr, bool) 
 		return 0, true
 	case WM_CLOSE:
 		h.cancelSheet(sw)
+		return 0, true
+	case WM_DPICHANGED:
+		h.windowDPIChanged(sw, int(LoWord(wp)), *Native[Rect](lp))
 		return 0, true
 	case WM_ACTIVATE:
 		if LoWord(wp) != 0 {
@@ -870,4 +886,11 @@ func (h *Host) showAlert(id ops.NodeID) {
 	default:
 		h.emit(n, ops.Event{Kind: ops.EventDismissed})
 	}
+}
+
+// titleSpec is a header's title's font: Title2, in its window.
+func (h *Host) titleSpec(b *node) fontSpec {
+	s := h.spec(int32(ops.TextStyleTitle2), 0, 0, "")
+	s.k = h.scaleOf(b)
+	return s
 }

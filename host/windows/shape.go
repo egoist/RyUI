@@ -129,7 +129,7 @@ func (s *shape) paint(h *Host, n *node, g Graphics) {
 	if len(s.path) == 0 {
 		return
 	}
-	k := h.scale
+	k := h.scaleOf(n)
 	p := s.build(k)
 	defer p.Close()
 	if c, ok := h.resolve(s.fill); ok && c.a > 0 {

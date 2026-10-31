@@ -144,7 +144,7 @@ func (h *Host) popUp(n *node, anchor uintptr, below bool) {
 		flags := uint32(TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RIGHTBUTTON)
 		if below {
 			r := WindowRect(anchor)
-			p = Point{X: r.Left, Y: r.Bottom + h.px(4)}
+			p = Point{X: r.Left, Y: r.Bottom + h.px(n, 4)}
 		}
 		h.modal++
 		got := TrackPopupMenu(m, flags, p.X, p.Y, RootWindow(anchor))

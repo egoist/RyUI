@@ -201,7 +201,7 @@ func (h *Host) paintImage(n *node, g Graphics, w, ht, radius float32) {
 		sw, sh = w/s, ht/s
 		sx, sy = (iw-sw)/2, (ih-sh)/2
 	case ops.ImageModeCenter:
-		k := h.scale
+		k := h.scaleOf(n)
 		dw, dh = iw*k, ih*k
 		x, y = (w-dw)/2, (ht-dh)/2
 	}

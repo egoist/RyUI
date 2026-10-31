@@ -645,7 +645,7 @@ func (h *Host) key(n *node, hwnd uintptr, vk uintptr) bool {
 			return true
 		}
 	case n.list != nil || n.kind == ops.KindScroll:
-		page := float32(ClientRect(hwnd).H()) / h.scale
+		page := float32(ClientRect(hwnd).H()) / h.scaleOf(n)
 		switch vk {
 		case VK_UP:
 			h.scrollBy(n, 0, -40)
@@ -707,7 +707,7 @@ func (h *Host) mouseMove(n *node, hwnd, wp, lp uintptr) {
 	}
 	p := Point{X: XParam(lp), Y: YParam(lp)}
 	if !n.panning && (n.listening(ops.EventPan) || n.listening(ops.EventSwipe)) {
-		drag := int32(SystemMetric(68, h.dpi)) // SM_CXDRAG
+		drag := int32(SystemMetric(68, h.dpiOf(n))) // SM_CXDRAG
 		if abs32(p.X-n.pressAt.X) > drag || abs32(p.Y-n.pressAt.Y) > drag {
 			n.panning = true
 			KillTimer(hwnd, timerLongPress)
@@ -782,10 +782,10 @@ func (h *Host) inside(hwnd uintptr, p Point) bool {
 func (h *Host) pan(n *node, state ops.GestureState, p Point) {
 	now := time.Now().UnixNano()
 	dt := float32(now-n.panTime) / 1e9
-	g := ops.Gesture{State: state, X: h.pt(p.X), Y: h.pt(p.Y), Scale: 1,
-		TranslationX: h.pt(p.X - n.pressAt.X), TranslationY: h.pt(p.Y - n.pressAt.Y)}
+	g := ops.Gesture{State: state, X: h.pt(n, p.X), Y: h.pt(n, p.Y), Scale: 1,
+		TranslationX: h.pt(n, p.X-n.pressAt.X), TranslationY: h.pt(n, p.Y-n.pressAt.Y)}
 	if dt > 0 {
-		g.VelocityX, g.VelocityY = h.pt(p.X-n.panLast.X)/dt, h.pt(p.Y-n.panLast.Y)/dt
+		g.VelocityX, g.VelocityY = h.pt(n, p.X-n.panLast.X)/dt, h.pt(n, p.Y-n.panLast.Y)/dt
 	}
 	n.panLast, n.panTime = p, now
 	h.emit(n, ops.Event{Kind: ops.EventPan, G: g})

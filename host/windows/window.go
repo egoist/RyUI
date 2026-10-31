@@ -125,9 +125,9 @@ func (h *Host) makeWindow() {
 	style := uint32(WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN)
 	h.window = CreateWindow(0, classWindow, h.appName, style, 0, 0, 100, 100, 0, 0)
 	h.dpi = DPI(h.window)
-	h.scale = float32(h.dpi) / 96
+	h.scale = dpiScale(h.dpi)
 	SetDarkTitleBar(h.window, h.dark)
-	r := Rect{Right: h.px(480), Bottom: h.px(760)}
+	r := Rect{Right: h.px(nil, 480), Bottom: h.px(nil, 760)}
 	AdjustWindowRect(&r, style, 0, h.dpi)
 	work := WorkArea(h.window)
 	w, ht := r.W(), min(r.H(), work.H())
@@ -203,7 +203,7 @@ func (h *Host) windowMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
 func (h *Host) environment() ops.Environment {
 	r := ClientRect(h.window)
 	return ops.Environment{
-		Width: h.pt(r.W()), Height: h.pt(r.H()),
+		Width: h.pt(nil, r.W()), Height: h.pt(nil, r.H()),
 		Scale:        h.scale,
 		FontScale:    TextScale(),
 		Dark:         h.dark,
@@ -247,27 +247,55 @@ func (h *Host) environmentChanged() {
 	h.layoutNav()
 }
 
-// dpiChanged follows the window to a monitor of another DPI: new fonts,
-// every window placed again in pixels, the suggested window size.
+// dpiChanged follows the main window to a monitor of another DPI: its
+// views at the new scale (their fonts, their frames in pixels), the
+// window at the size Windows suggests, the environment reported. The
+// Windows and sheets keep theirs.
 func (h *Host) dpiChanged(dpi int, suggested Rect) {
 	h.dpi = dpi
-	h.scale = float32(dpi) / 96
-	h.clearFonts()
-	h.applyFonts()
+	h.scale = dpiScale(dpi)
+	h.rescale(h.window, 0)
+	h.rescale(h.park, 0)
 	SetWindowPos(h.window, 0, suggested.Left, suggested.Top, suggested.W(), suggested.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
-	for _, n := range h.nodes {
-		if n.hwnd != 0 && n != h.root && n.cell == nil && (n.nav == nil || !n.nav.sizedByHost(n)) {
+	h.environmentChanged()
+	RedrawWindow(h.window, RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_ERASE|RDW_FRAME)
+	DrawMenuBar(h.window)
+}
+
+// rescale gives a window and the views in it a new scale, k (0: the
+// main window's): their fonts again, their frames in pixels again, their
+// lists tiled again. Views moving to a window of another scale, and
+// windows moving to a monitor of another DPI, take it.
+func (h *Host) rescale(hwnd uintptr, k float32) {
+	for _, n := range h.setScale(hwnd, k) {
+		h.applyFont(n)
+		if n.id != 0 && n.id&ops.HostIDBit == 0 && n.cell == nil && (n.nav == nil || !n.nav.sizedByHost(n)) {
 			h.placeFrame(n)
 		}
-	}
-	for _, n := range h.nodes {
 		if n.list != nil {
 			n.list.rebind = true
 			n.list.queue(h)
 		}
+		if n.bar != nil {
+			n.bar.thumb = Rect{}
+			h.updateBars(n)
+		}
 	}
-	h.environmentChanged()
-	RedrawWindow(h.window, RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_ERASE)
+}
+
+// setScale sets the scale of a window's views, and returns them.
+func (h *Host) setScale(hwnd uintptr, k float32) []*node {
+	var list []uintptr
+	EnumChildWindows(hwnd, enumChildren, &list)
+	list = append(list, hwnd)
+	ns := make([]*node, 0, len(list))
+	for _, w := range list {
+		if n := h.byHwnd[w]; n != nil && n.hwnd == w && n.kind != kindWindowFrame && n.kind != kindSheetWindow {
+			n.k = k
+			ns = append(ns, n)
+		}
+	}
+	return ns
 }
 
 // settingChanged follows the system's settings: dark mode and the

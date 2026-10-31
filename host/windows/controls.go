@@ -38,7 +38,7 @@ func (h *Host) drawButton(n *node, cd *NMCustomDraw) uintptr {
 	ctl := cd.Hdr.HwndFrom
 	h.paintBehind(ctl, dc)
 	g := NewGraphics(dc)
-	k := h.scale
+	k := h.scaleOf(n)
 	w, ht := float32(r.W()), float32(r.H())
 	hot := cd.ItemState&CDIS_HOT != 0
 	pressed := cd.ItemState&CDIS_SELECTED != 0
@@ -138,7 +138,7 @@ func (h *Host) drawButton(n *node, cd *NMCustomDraw) uintptr {
 		g.StrokeRoundRect(p.controlStroke.argb(), max(k, 1), 0, 0, w, ht, radius)
 	}
 	if focus {
-		h.focusRing(g, w, ht, radius)
+		h.focusRing(n, g, w, ht, radius)
 	}
 	g.Close() // before GDI draws the title
 
@@ -150,7 +150,7 @@ func (h *Host) drawButton(n *node, cd *NMCustomDraw) uintptr {
 	color := text.over(under).ref()
 	SetBkMode(dc, TRANSPARENT)
 	SetTextColor(dc, color)
-	font := h.bodyFont()
+	font := h.bodyFont(n)
 	if n.kind == ops.KindButton {
 		font = h.nodeFont(n)
 	}
@@ -160,13 +160,13 @@ func (h *Host) drawButton(n *node, cd *NMCustomDraw) uintptr {
 	gw := int32(0)
 	var iconFont uintptr
 	if glyph != 0 {
-		iconFont = h.iconFont(16 * h.fontScale())
+		iconFont = h.iconFont(n, 16*h.fontScale())
 		SelectObject(dc, iconFont)
 		gw, _ = TextExtent(dc, []uint16{glyph})
 	}
 	gap := int32(0)
 	if gw > 0 && tw > 0 {
-		gap = h.px(8)
+		gap = h.px(n, 8)
 	}
 	x := r.Left + (r.W()-(gw+gap+tw))/2
 	if glyph != 0 {
@@ -177,9 +177,9 @@ func (h *Host) drawButton(n *node, cd *NMCustomDraw) uintptr {
 	}
 	if tw > 0 {
 		y := r.Top + (r.H()-th)/2
-		tr := Rect{Left: x, Top: y, Right: min(x+tw, r.Right-h.px(4)), Bottom: y + th}
-		if x < r.Left+h.px(4) {
-			tr.Left = r.Left + h.px(4)
+		tr := Rect{Left: x, Top: y, Right: min(x+tw, r.Right-h.px(n, 4)), Bottom: y + th}
+		if x < r.Left+h.px(n, 4) {
+			tr.Left = r.Left + h.px(n, 4)
 		}
 		DrawText(dc, ut, &tr, DT_SINGLELINE|DT_NOPREFIX|DT_END_ELLIPSIS)
 	}
@@ -206,7 +206,7 @@ func (h *Host) drawToggle(n *node, cd *NMCustomDraw) uintptr {
 	g := NewGraphics(dc)
 	defer g.Close()
 	defer freeTmpBrushes()
-	k := h.scale
+	k := h.scaleOf(n)
 	p := &h.theme
 	hot := cd.ItemState&CDIS_HOT != 0
 	pressed := cd.ItemState&CDIS_SELECTED != 0
@@ -266,7 +266,7 @@ func (h *Host) drawSlider(n *node, cd *NMCustomDraw) uintptr {
 	}
 	ctl := cd.Hdr.HwndFrom
 	dc := cd.Hdc
-	k := h.scale
+	k := h.scaleOf(n)
 	p := &h.theme
 	var thumb Rect
 	SendMessage(ctl, TBM_GETTHUMBRECT, 0, Ptr(&thumb))
@@ -492,10 +492,10 @@ func (h *Host) layoutField(n *node) {
 		old := SelectObject(dc, h.nodeFont(n))
 		tm := TextMetrics(dc)
 		SelectObject(dc, old)
-		x := h.px(10)
+		x := h.px(n, 10)
 		if n.multiline {
-			y := h.px(6)
-			SetWindowPos(n.ctl, 0, x, y, max(r.W()-2*x, 1), max(r.H()-y-h.px(6), 1), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
+			y := h.px(n, 6)
+			SetWindowPos(n.ctl, 0, x, y, max(r.W()-2*x, 1), max(r.H()-y-h.px(n, 6), 1), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 		} else {
 			lh := tm.Height
 			y := (r.H() - lh) / 2
@@ -503,10 +503,10 @@ func (h *Host) layoutField(n *node) {
 		}
 	case ops.KindWheel:
 		// The selection field fills the view; the list drops below it.
-		SendMessage(n.ctl, CB_SETITEMHEIGHT, ^uintptr(0), uintptr(max(r.H()-h.px(8), 1)))
-		SetWindowPos(n.ctl, 0, 0, 0, r.W(), r.H()+h.px(300), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
+		SendMessage(n.ctl, CB_SETITEMHEIGHT, ^uintptr(0), uintptr(max(r.H()-h.px(n, 8), 1)))
+		SetWindowPos(n.ctl, 0, 0, 0, r.W(), r.H()+h.px(n, 300), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 	case ops.KindSlider:
-		SendMessage(n.ctl, TBM_SETTHUMBLENGTH, uintptr(h.px(20)), 0)
+		SendMessage(n.ctl, TBM_SETTHUMBLENGTH, uintptr(h.px(n, 20)), 0)
 		SetWindowPos(n.ctl, 0, 0, 0, r.W(), r.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 	default:
 		SetWindowPos(n.ctl, 0, 0, 0, r.W(), r.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
@@ -516,7 +516,7 @@ func (h *Host) layoutField(n *node) {
 // paintField draws Fluent's text box: a rounded, filled frame with a
 // darker bottom edge, the accent's under the focused field.
 func (h *Host) paintField(n *node, g Graphics, w, ht float32) {
-	k := h.scale
+	k := h.scaleOf(n)
 	p := &h.theme
 	bg := p.fieldBg
 	if n.focused {
@@ -546,7 +546,7 @@ func (h *Host) paintField(n *node, g Graphics, w, ht float32) {
 
 func (h *Host) layoutStepper(n *node) {
 	r := ClientRect(n.hwnd)
-	gap := h.px(4)
+	gap := h.px(n, 4)
 	bw := (r.W() - gap) / 2
 	SetWindowPos(n.ctl, 0, 0, 0, bw, r.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 	SetWindowPos(n.ctl2, 0, bw+gap, 0, r.W()-bw-gap, r.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
@@ -576,7 +576,7 @@ func (h *Host) selectSegment(n *node, i int) {
 // paintSegmented draws the track and the raised segment (g), or the
 // titles (dc).
 func (h *Host) paintSegmented(n *node, dc uintptr, g Graphics, r Rect) {
-	k := h.scale
+	k := h.scaleOf(n)
 	p := &h.theme
 	w, ht := float32(r.W()), float32(r.H())
 	count := len(n.items)
@@ -618,7 +618,7 @@ func (h *Host) paintSegmented(n *node, dc uintptr, g Graphics, r Rect) {
 			color = p.disabled
 		}
 		SetTextColor(dc, color.over(h.backdrop(n)).ref())
-		tr := Rect{Left: int32(x) + h.px(6), Top: r.Top, Right: int32(x+sw) - h.px(6), Bottom: r.Bottom - h.px(2)}
+		tr := Rect{Left: int32(x) + h.px(n, 6), Top: r.Top, Right: int32(x+sw) - h.px(n, 6), Bottom: r.Bottom - h.px(n, 2)}
 		DrawText(dc, UTF16Units(s), &tr, DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX|DT_END_ELLIPSIS)
 	}
 	SelectObject(dc, old)

@@ -295,6 +295,7 @@ type fontSpec struct {
 	underline bool
 	strike    bool
 	mono      bool
+	k         float32 // pixels per point: its window's (0: the main window's)
 }
 
 func (h *Host) spec(style, weight int32, size float32, family string) fontSpec {
@@ -315,7 +316,9 @@ func (h *Host) spec(style, weight int32, size float32, family string) fontSpec {
 }
 
 func (h *Host) nodeSpec(n *node) fontSpec {
-	return h.spec(n.textStyle, n.fontWeight, n.fontSize, n.fontFamily)
+	s := h.spec(n.textStyle, n.fontWeight, n.fontSize, n.fontFamily)
+	s.k = h.scaleOf(n)
+	return s
 }
 
 var variable = map[bool]bool{}
@@ -361,9 +364,14 @@ func (h *Host) face(s fontSpec) string {
 	return "Segoe UI Variable Display"
 }
 
-// font is the HFONT for a spec at the window's DPI, cached.
+// font is the HFONT for a spec at its window's DPI, cached (by its size in
+// pixels: windows at two DPIs have fonts of their own).
 func (h *Host) font(s fontSpec) uintptr {
-	k := fontKey{family: h.face(s), px: int32(math.Round(float64(s.size * h.scale))), weight: s.weight, italic: s.italic, underline: s.underline, strike: s.strike}
+	scale := s.k
+	if scale <= 0 {
+		scale = h.scale
+	}
+	k := fontKey{family: h.face(s), px: int32(math.Round(float64(s.size * scale))), weight: s.weight, italic: s.italic, underline: s.underline, strike: s.strike}
 	if f := h.fonts[k]; f != 0 {
 		return f
 	}
@@ -385,8 +393,12 @@ func (h *Host) font(s fontSpec) uintptr {
 
 func (h *Host) nodeFont(n *node) uintptr { return h.font(h.nodeSpec(n)) }
 
-// bodyFont is the controls' font: Body, 14.
-func (h *Host) bodyFont() uintptr { return h.font(h.spec(0, 0, 0, "")) }
+// bodyFont is the controls' font: Body, 14, in n's window.
+func (h *Host) bodyFont(n *node) uintptr {
+	s := h.spec(0, 0, 0, "")
+	s.k = h.scaleOf(n)
+	return h.font(s)
+}
 
 // clearFonts drops the fonts (the DPI or text size changed).
 func (h *Host) clearFonts() {
@@ -404,6 +416,6 @@ func (h *Host) iconFace() string {
 	return "Segoe MDL2 Assets"
 }
 
-func (h *Host) iconFont(size float32) uintptr {
-	return h.font(fontSpec{size: size, weight: 400, family: h.iconFace()})
+func (h *Host) iconFont(n *node, size float32) uintptr {
+	return h.font(fontSpec{size: size, weight: 400, family: h.iconFace(), k: h.scaleOf(n)})
 }

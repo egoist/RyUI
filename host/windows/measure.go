@@ -71,7 +71,7 @@ func (h *Host) measure(n *node, c layout.Constraints) layout.Size {
 		old := SelectObject(dc, h.nodeFont(n))
 		for _, s := range n.items {
 			tw, _ := TextExtent(dc, UTF16Units(s))
-			widest = max(widest, h.pt(tw))
+			widest = max(widest, h.pt(n, tw))
 		}
 		SelectObject(dc, old)
 		w, ht = (widest+28)*float32(len(n.items)), 32
@@ -81,14 +81,14 @@ func (h *Host) measure(n *node, c layout.Constraints) layout.Size {
 		old := SelectObject(dc, h.nodeFont(n))
 		for _, s := range n.items {
 			tw, _ := TextExtent(dc, UTF16Units(s))
-			widest = max(widest, h.pt(tw))
+			widest = max(widest, h.pt(n, tw))
 		}
 		SelectObject(dc, old)
 		w, ht = max(widest+48, 120), 32
 	case ops.KindDatePicker:
 		var sz struct{ Cx, Cy int32 }
 		SendMessage(n.ctl, DTM_GETIDEALSIZE, 0, Ptr(&sz))
-		w, ht = max(h.pt(sz.Cx)+8, 100), max(h.pt(sz.Cy), 32)
+		w, ht = max(h.pt(n, sz.Cx)+8, 100), max(h.pt(n, sz.Cy), 32)
 	case ops.KindColorPicker:
 		w, ht = 44, 32
 	case ops.KindSymbol:
@@ -107,7 +107,7 @@ func (h *Host) measure(n *node, c layout.Constraints) layout.Size {
 	if c.Height == c.Height {
 		ht = c.Height
 	}
-	k := h.scale
+	k := h.scaleOf(n)
 	return layout.Size{W: float32(math.Ceil(float64(w*k-0.01))) / k, H: float32(math.Ceil(float64(ht*k-0.01))) / k}
 }
 
@@ -122,10 +122,10 @@ func (h *Host) measureText(n *node, c layout.Constraints) (w, ht float32) {
 	defer SelectObject(dc, old)
 	widest := float32(0)
 	if c.AvailW <= -layout.Inf && c.Width != c.Width {
-		widest = h.widestWord(dc, n.utext)
+		widest = h.widestWord(n, dc, n.utext)
 	}
 	limit := avail(c.Width, c.AvailW, widest)
-	r := Rect{Right: int32(math.Floor(float64(limit*h.scale) + 0.01))}
+	r := Rect{Right: int32(math.Floor(float64(limit*h.scaleOf(n)) + 0.01))}
 	if limit >= big {
 		r.Right = 1 << 24
 	}
@@ -135,11 +135,11 @@ func (h *Host) measureText(n *node, c layout.Constraints) (w, ht float32) {
 		tm := TextMetrics(dc)
 		r.Bottom = min(r.Bottom, tm.Height*int32(n.lineLimit))
 	}
-	return h.pt(r.Right), h.pt(r.Bottom)
+	return h.pt(n, r.Right), h.pt(n, r.Bottom)
 }
 
 // widestWord is a text's widest word, in points.
-func (h *Host) widestWord(dc uintptr, s []uint16) float32 {
+func (h *Host) widestWord(n *node, dc uintptr, s []uint16) float32 {
 	widest := int32(0)
 	start := 0
 	for i := 0; i <= len(s); i++ {
@@ -151,7 +151,7 @@ func (h *Host) widestWord(dc uintptr, s []uint16) float32 {
 			start = i + 1
 		}
 	}
-	return h.pt(widest)
+	return h.pt(n, widest)
 }
 
 // measureButton is Fluent's button: its title, an icon before it,
@@ -161,14 +161,14 @@ func (h *Host) measureButton(n *node) (w, ht float32) {
 	old := SelectObject(dc, h.nodeFont(n))
 	tw, th := TextExtent(dc, UTF16Units(n.title))
 	SelectObject(dc, old)
-	w = h.pt(tw)
+	w = h.pt(n, tw)
 	if symbolGlyph(n.icon) != 0 {
 		w += 16 * h.fontScale()
 		if tw > 0 {
 			w += 8
 		}
 	}
-	return max(w+24, 32), max(h.pt(th)+12, 32)
+	return max(w+24, 32), max(h.pt(n, th)+12, 32)
 }
 
 // measureMultiline is a multiline field's height: its text's, up to its
@@ -188,11 +188,11 @@ func (h *Host) measureMultiline(n *node, c layout.Constraints) float32 {
 	if len(s) == 0 || s[len(s)-1] == '\n' {
 		s = append(s, ' ')
 	}
-	r := Rect{Right: max(h.px(w-20), 1)}
+	r := Rect{Right: max(h.px(n, w-20), 1)}
 	DrawText(dc, s, &r, DT_CALCRECT|DT_WORDBREAK|DT_EDITCONTROL|DT_NOPREFIX)
 	lines := max(r.Bottom, tm.Height)
 	if n.lineLimit > 0 {
 		lines = min(lines, tm.Height*int32(n.lineLimit))
 	}
-	return h.pt(lines) + 12
+	return h.pt(n, lines) + 12
 }

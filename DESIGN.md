@@ -1087,8 +1087,7 @@ How the Windows host maps nui (`host/windows`):
   dialog, the color dialog) runs it once the core has returned.
 - Every real node is a child window. The app's window holds the root;
   the environment is its client area's size in points (DIPs), its DPI
-  as the scale (per-monitor DPI awareness v2: `WM_DPICHANGED` makes the
-  fonts again and places every window anew), the text size
+  as the scale (per-monitor DPI awareness v2), the text size
   (Accessibility's `TextScaleFactor`, as FontScale), dark mode (the
   app mode in the registry; the title bar through DWM, menus and scroll
   bars through uxtheme's app mode), animations off as Reduce Motion,
@@ -1149,10 +1148,24 @@ How the Windows host maps nui (`host/windows`):
   `WM_GETMINMAXINFO`'s. Closing it sends `Dismissed`, and the core
   destroys it (with the sheets over it); it shows once the main window
   does. Stacks in it have their header bar as anywhere, and Alt+Left
-  pops the innermost stack of the window it's pressed in. The app has
-  one scale, the main window's DPI: a `Window` moved to a monitor of
-  another DPI takes the size Windows suggests and draws its content at
-  the app's scale.
+  pops the innermost stack of the window it's pressed in.
+- Scale is per top-level window: the main one, each `Window` and each
+  sheet has its DPI's (a `Window` or sheet opens at the DPI of the
+  monitor it opens on). Each node knows its window's scale (`k`, 0 for
+  the main window's), which it takes when it's inserted into a view of
+  another window's, as list rows and cells, header and tab bars and
+  scroll thumbs take their view's; points become pixels, fonts are made
+  (cached by their size in pixels), text is measured, controls are
+  sized and custom-drawn controls and scroll bars draw at it, and the
+  window's `Environment.Scale` is it (the root's for the main window, the
+  `Window`'s or `Sheet`'s, and their screens'). On `WM_DPICHANGED` a
+  window takes the size Windows suggests and its views their new scale:
+  fonts set again, frames placed again in pixels, lists tiled again,
+  rich text formatted again; its environment is reported, and the core
+  measures what's in it again (its measure cache is keyed by the scale
+  of the element's nearest provider, so two windows at two scales never
+  share a measurement) and snaps its frames to its pixels. The other
+  windows keep theirs.
 - The app's menus (`MenuBar`) are a menu bar on the main window only,
   as Windows apps' secondary windows (a tool window, an inspector) have
   none; their shortcuts work in every window of the app. The bar is
@@ -1213,7 +1226,9 @@ How the Windows host maps nui (`host/windows`):
   `type:<text>`, `submit`, `back`, `escape`, `scroll:<y>`,
   `resize:<w>,<h>`, `key:<shortcut>` such as `key:ctrl+shift+k`,
   `menu:<item title>`, `close` (the window in use, or the last
-  `Window`), `wait:<duration>`, `snap:<file>`), through the controls'
+  `Window`), `dpi:<dpi>` (that window as if moved to a monitor at that
+  DPI: `WM_DPICHANGED`, the title bar Windows draws keeping its own),
+  `wait:<duration>`, `snap:<file>`), through the controls'
   own messages and the message loop's key handling;
   `NUI_COLOR_SCHEME` is light or dark whatever the system's.
 
@@ -1235,7 +1250,9 @@ and never assumes a single root in its own data structures.
   MinHeight, Content, OnClose})` is a window of its own while `Open` is
   true, built as a `Sheet` is: a `Window` node, a host-sized layout root
   whose `Environment` the host reports (it follows the user resizing
-  it), `Present` opens it, `Destroy` closes it, and the user closing it
+  it; its Scale is the window's, which on desktop can differ from the
+  main window's: the core measures and snaps the frames in it at that
+  scale), `Present` opens it, `Destroy` closes it, and the user closing it
   sends `Dismissed`, which sets `Open` false. Its content's owner lives
   as long as the window is open. Mobile hosts can't show one (it panics
   there, as any kind a host lacks).

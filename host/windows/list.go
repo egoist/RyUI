@@ -170,7 +170,7 @@ func (l *list) measureTops() {
 
 // viewport is the list's visible height, in points.
 func (l *list) viewport(h *Host) float32 {
-	return h.pt(ClientRect(l.n.hwnd).H())
+	return h.pt(l.n, ClientRect(l.n.hwnd).H())
 }
 
 // tile shows the rows in view (and half a screen around them), binds the
@@ -231,8 +231,8 @@ func (l *list) placeRows(h *Host) {
 	for r, rv := range l.shown {
 		y := l.tops[r] - l.offset
 		height := l.rowHeight(r)
-		x0, y0 := int32(0), h.px(y)
-		d = d.Defer(rv.n.hwnd, 0, x0, y0, h.px(l.width), h.px(y+height)-y0, SWP_NOZORDER|SWP_NOACTIVATE|SWP_SHOWWINDOW|SWP_NOCOPYBITS)
+		x0, y0 := int32(0), h.px(l.n, y)
+		d = d.Defer(rv.n.hwnd, 0, x0, y0, h.px(l.n, l.width), h.px(l.n, y+height)-y0, SWP_NOZORDER|SWP_NOACTIVATE|SWP_SHOWWINDOW|SWP_NOCOPYBITS)
 	}
 	d.End()
 	for r, rv := range l.shown {
@@ -251,6 +251,7 @@ func (l *list) take(h *Host) *rowView {
 	rn := newNode(ops.HostIDBit|h.nextCell, kindRow)
 	rn.hwnd = h.makeView(0)
 	rn.row = rv
+	rn.k = l.n.k
 	rv.n = rn
 	SetParent(rn.hwnd, l.n.hwnd)
 	h.add(rn)
@@ -288,6 +289,7 @@ func (h *Host) newCell(l *list, rv *rowView) *cell {
 	n := newNode(ops.HostIDBit|h.nextCell, kindCell)
 	n.hwnd = h.makeView(0)
 	c := &cell{n: n, l: l, rv: rv}
+	n.k = rv.n.k
 	n.cell = c
 	SetParent(n.hwnd, rv.n.hwnd)
 	h.add(n)
@@ -316,7 +318,7 @@ func (c *cell) setHeight(height float32) {
 func (l *list) placeCells(h *Host, rv *rowView, r int) {
 	if l.columns <= 1 {
 		for _, c := range rv.cells {
-			SetWindowPos(c.n.hwnd, 0, 0, 0, h.px(l.width), h.px(c.height), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
+			SetWindowPos(c.n.hwnd, 0, 0, 0, h.px(l.n, l.width), h.px(l.n, c.height), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 		}
 		Invalidate(rv.n.hwnd)
 		return
@@ -324,7 +326,7 @@ func (l *list) placeCells(h *Host, rv *rowView, r int) {
 	cw := (l.width - l.gap*float32(l.columns-1)) / float32(l.columns)
 	for i, c := range rv.cells {
 		x := float32(i) * (cw + l.gap)
-		SetWindowPos(c.n.hwnd, 0, h.px(x), 0, h.px(x+cw)-h.px(x), h.px(c.height), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
+		SetWindowPos(c.n.hwnd, 0, h.px(l.n, x), 0, h.px(l.n, x+cw)-h.px(l.n, x), h.px(l.n, c.height), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 	}
 }
 
@@ -334,7 +336,7 @@ func (rv *rowView) paint(h *Host, g Graphics, w, ht float32) {
 	if !rv.sep {
 		return
 	}
-	k := h.scale
+	k := h.scaleOf(rv.n)
 	b := SolidBrush(h.theme.separator.argb())
 	g.FillRect(b, 16*k, ht-max(k, 1), w-16*k, max(k, 1))
 	b.Close()
@@ -459,8 +461,8 @@ func (h *Host) scrollBar(n *node, horizontal bool, code int) {
 	}
 	si := Scroll(n.hwnd, bar)
 	line := float32(40)
-	page := h.pt(int32(si.Page))
-	pos := h.pt(si.Pos)
+	page := h.pt(n, int32(si.Page))
+	pos := h.pt(n, si.Pos)
 	switch code {
 	case SB_LINEUP:
 		pos -= line
@@ -471,7 +473,7 @@ func (h *Host) scrollBar(n *node, horizontal bool, code int) {
 	case SB_PAGEDOWN:
 		pos += page
 	case SB_THUMBTRACK, SB_THUMBPOSITION:
-		pos = h.pt(si.TrackPos)
+		pos = h.pt(n, si.TrackPos)
 	case SB_TOP:
 		pos = 0
 	case SB_BOTTOM:
@@ -498,7 +500,7 @@ func (h *Host) scrollToOffset(n *node, x, y float32) {
 		return
 	}
 	r := ClientRect(n.hwnd)
-	vw, vh := h.pt(r.W()), h.pt(r.H())
+	vw, vh := h.pt(n, r.W()), h.pt(n, r.H())
 	x = min(max(x, 0), max(n.contentW-vw, 0))
 	y = min(max(y, 0), max(n.contentH-vh, 0))
 	if !n.horizontal {
@@ -528,7 +530,7 @@ func (h *Host) updateScroll(n *node) {
 	}
 	h.updateBars(n)
 	r := ClientRect(n.hwnd)
-	vw, vh := h.pt(r.W()), h.pt(r.H())
+	vw, vh := h.pt(n, r.W()), h.pt(n, r.H())
 	x := min(max(n.scrollX, 0), max(n.contentW-vw, 0))
 	y := min(max(n.scrollY, 0), max(n.contentH-vh, 0))
 	if x != n.scrollX || y != n.scrollY {
