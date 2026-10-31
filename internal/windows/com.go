@@ -3,8 +3,11 @@
 package windows
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"image"
+	"image/png"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -236,4 +239,18 @@ func CreateWebView2Environment(userData string, done func(env uintptr, err error
 		return fmt.Errorf("creating the WebView2 environment failed (HRESULT %#08x)", uint32(hr))
 	}
 	return nil
+}
+
+// transparentPNG is a 1 by 1 transparent PNG.
+var transparentPNG = func() []byte {
+	var b bytes.Buffer
+	png.Encode(&b, image.NewNRGBA(image.Rect(0, 0, 1, 1)))
+	return b.Bytes()
+}()
+
+// TransparentPNGStream is an IStream (a reference the caller releases)
+// of a transparent PNG: a rich edit's placeholder picture.
+func TransparentPNGStream() uintptr {
+	s, _, _ := systemDLL("shlwapi.dll").NewProc("SHCreateMemStream").Call(uintptr(unsafe.Pointer(&transparentPNG[0])), uintptr(len(transparentPNG)))
+	return s
 }

@@ -24,7 +24,7 @@ func (h *Host) makeView(style uint32) uintptr {
 // in).
 func (h *Host) makeControl(n *node, class string, style, exStyle uint32) {
 	n.hwnd = h.makeView(0)
-	n.ctl = CreateWindow(exStyle, class, "", WS_CHILD|WS_VISIBLE|style, 0, 0, 0, 0, n.hwnd, 1)
+	n.ctl = CreateWindow(exStyle, class, "", WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|style, 0, 0, 0, 0, n.hwnd, 1)
 	if n.ctl == 0 {
 		fail("couldn't make a %s (%s)", n.kind, class)
 	}
@@ -450,11 +450,13 @@ func (h *Host) notify(n *node, hdr *NMHdr, lp uintptr) (uintptr, bool) {
 			}
 			return 0, true
 		}
-	case enLink:
-		if n.rich != nil {
-			return n.rich.link(h, n, lp), true
-		}
 	case enRequestResize:
+		if n.rich != nil {
+			n.rich.requested = Native[struct {
+				Hdr NMHdr
+				Rc  Rect
+			}](lp).Rc
+		}
 		return 0, true
 	}
 	return 0, false
@@ -584,6 +586,8 @@ func (h *Host) viewMessage(n *node, hwnd uintptr, m uint32, wp, lp uintptr) (uin
 				h.redraw(n)
 				h.longPress(n, hwnd)
 			}
+		case timerBars:
+			h.hideBars(n)
 		case timerSpin:
 			n.phase += 1.0 / 60 / 1.5
 			Invalidate(hwnd)

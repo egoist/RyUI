@@ -350,19 +350,8 @@ func (l *list) resized(h *Host) {
 	l.queue(h)
 }
 
-// updateBar sets the scroll bar to the content and the position.
-func (l *list) updateBar(h *Host) {
-	if len(l.tops) == 0 {
-		return
-	}
-	total := l.tops[len(l.tops)-1]
-	view := l.viewport(h)
-	if total <= view+0.5 {
-		SetScroll(l.n.hwnd, SB_VERT, 0, 0, 0)
-		return
-	}
-	SetScroll(l.n.hwnd, SB_VERT, h.px(total)-1, h.px(view), h.px(l.offset))
-}
+// updateBar places the scroll bar's thumb.
+func (l *list) updateBar(h *Host) { h.updateBars(l.n) }
 
 // scrollTo moves the list to an offset (clamped) and tiles.
 func (l *list) scrollTo(h *Host, y float32) {
@@ -377,6 +366,7 @@ func (l *list) scrollTo(h *Host, y float32) {
 	}
 	l.offset = y
 	l.tile(h)
+	h.showBars(l.n)
 	h.emit(l.n, ops.Event{Kind: ops.EventScrolled, X: 0, Y: float64(y)})
 }
 
@@ -429,8 +419,16 @@ func (h *Host) wheel(n *node, horizontal bool, delta int32) bool {
 	if horizontal {
 		d = -d
 	}
+	// A vertical wheel scrolls a horizontal view only with Shift (else
+	// the view it's in), and a horizontal one only a horizontal view.
+	if KeyDown(VK_SHIFT) && !horizontal {
+		horizontal = true
+	}
+	if horizontal != n.horizontal {
+		return false
+	}
 	before := h.scrollPos(n)
-	if horizontal || n.horizontal {
+	if horizontal {
 		h.scrollBy(n, d, 0)
 	} else {
 		h.scrollBy(n, 0, d)
@@ -513,6 +511,7 @@ func (h *Host) scrollToOffset(n *node, x, y float32) {
 	for _, c := range n.children {
 		h.placeFrame(c)
 	}
+	h.showBars(n)
 	h.updateBars(n)
 	h.emit(n, ops.Event{Kind: ops.EventScrolled, X: float64(x), Y: float64(y)})
 }
@@ -538,24 +537,5 @@ func (h *Host) updateScroll(n *node) {
 			h.placeFrame(c)
 		}
 		h.updateBars(n)
-	}
-}
-
-func (h *Host) updateBars(n *node) {
-	r := ClientRect(n.hwnd)
-	if n.horizontal {
-		SetScroll(n.hwnd, SB_VERT, 0, 0, 0)
-		if n.contentW > h.pt(r.W())+0.5 {
-			SetScroll(n.hwnd, SB_HORZ, h.px(n.contentW)-1, r.W(), h.px(n.scrollX))
-		} else {
-			SetScroll(n.hwnd, SB_HORZ, 0, 0, 0)
-		}
-		return
-	}
-	SetScroll(n.hwnd, SB_HORZ, 0, 0, 0)
-	if n.contentH > h.pt(r.H())+0.5 {
-		SetScroll(n.hwnd, SB_VERT, h.px(n.contentH)-1, r.H(), h.px(n.scrollY))
-	} else {
-		SetScroll(n.hwnd, SB_VERT, 0, 0, 0)
 	}
 }

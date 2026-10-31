@@ -532,6 +532,7 @@ const (
 	GA_ROOT     = 2
 	GW_HWNDPREV = 3
 	GW_HWNDNEXT = 2
+	GW_CHILD    = 5
 
 	RDW_INVALIDATE  = 0x0001
 	RDW_ERASE       = 0x0004
@@ -1468,3 +1469,8 @@ func FrameBounds(hwnd uintptr) Rect {
 	}
 	return r
 }
+
+func HideCaret(hwnd uintptr) { user32.NewProc("HideCaret").Call(hwnd) }
+
+// SetWindowRgn shapes a window to a region, which it then owns.
+func SetWindowRgn(hwnd, rgn uintptr) { procSetWindowRgn.Call(hwnd, rgn, 1) }

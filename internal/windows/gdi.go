@@ -560,3 +560,10 @@ func FlattenedPoints(p Path) (pts [][2]float32, starts []bool) {
 	}
 	return pts, starts
 }
+
+// CreateRoundRectRgn is a rounded rectangle's region (w, h: the
+// corners' ellipse).
+func CreateRoundRectRgn(x0, y0, x1, y1, w, h int32) uintptr {
+	r, _, _ := gdi32.NewProc("CreateRoundRectRgn").Call(uintptr(x0), uintptr(y0), uintptr(x1), uintptr(y1), uintptr(w), uintptr(h))
+	return r
+}

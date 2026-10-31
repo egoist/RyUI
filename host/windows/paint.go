@@ -46,6 +46,11 @@ func (h *Host) paint(n *node, hwnd, dc uintptr, r Rect) {
 	if !h.opaque(n) {
 		h.paintBehind(hwnd, dc)
 	}
+	h.paintOwn(n, hwnd, dc, r)
+}
+
+// paintOwn draws n itself, over what's behind it.
+func (h *Host) paintOwn(n *node, hwnd, dc uintptr, r Rect) {
 	w, ht := float32(r.W()), float32(r.H())
 	// GDI+ draws first, GDI's text after its Graphics is closed: GDI
 	// draws at the DC's origin while one is open, not at the origin
@@ -156,7 +161,7 @@ func (n *node) interactive() bool {
 	switch n.kind {
 	case ops.KindScroll, ops.KindList, ops.KindSegmented, ops.KindTextField, kindHeader, kindTabBar,
 		ops.KindButton, ops.KindToggle, ops.KindSlider, ops.KindStepper, ops.KindWheel, ops.KindDatePicker,
-		ops.KindColorPicker, ops.KindRichText, ops.KindWebView, ops.KindVideo, ops.KindSelectable:
+		ops.KindColorPicker, ops.KindWebView, ops.KindVideo:
 		return true
 	}
 	return false
@@ -364,5 +369,77 @@ func (h *Host) paintBehind(hwnd, dc uintptr) {
 		b.Close()
 		g.Close()
 	}
+	// The siblings under it that it overlaps (a text over an image, a
+	// table's row background), the lowest first, with what's in them.
+	var below []uintptr
+	for s := NextWindow(hwnd, GW_HWNDNEXT); s != 0; s = NextWindow(s, GW_HWNDNEXT) {
+		if IsWindowVisible(s) && overlaps(WindowRectIn(s, parent), at) {
+			below = append(below, s)
+		}
+	}
+	for i := len(below) - 1; i >= 0; i-- {
+		h.paintTree(below[i], parent, dc)
+	}
 	RestoreDC(dc, saved)
+}
+
+func overlaps(a, b Rect) bool {
+	return a.Left < b.Right && b.Left < a.Right && a.Top < b.Bottom && b.Top < a.Bottom
+}
+
+// paintTree draws a window and its children into dc, whose origin is
+// its parent's: the host's views as they paint, controls through
+// WM_PRINTCLIENT.
+func (h *Host) paintTree(hwnd, parent, dc uintptr) {
+	at := WindowRectIn(hwnd, parent)
+	saved := SaveDC(dc)
+	OffsetViewport(dc, at.Left, at.Top)
+	r := ClientRect(hwnd)
+	IntersectClip(dc, r)
+	if n := h.byHwnd[hwnd]; n != nil && n.hwnd == hwnd {
+		h.paintOwn(n, hwnd, dc, r)
+	} else {
+		SendMessage(hwnd, WM_PRINTCLIENT, dc, 0x4|0x8) // PRF_CLIENT | PRF_ERASEBKGND
+	}
+	var kids []uintptr
+	for c := NextWindow(hwnd, GW_CHILD); c != 0; c = NextWindow(c, GW_HWNDNEXT) {
+		if IsWindowVisible(c) {
+			kids = append(kids, c)
+		}
+	}
+	for i := len(kids) - 1; i >= 0; i-- {
+		h.paintTree(kids[i], hwnd, dc)
+	}
+	RestoreDC(dc, saved)
+}
+
+// colorBehind is the color behind the middle of n's window: what a view
+// that can't be transparent (a rich edit) fills itself with.
+func (h *Host) colorBehind(n *node) rgba {
+	if n.hwnd == 0 || Parent(n.hwnd) == h.park {
+		return h.backdrop(n)
+	}
+	// The middle of the part that shows: what scroll views and parents
+	// clip off isn't painted.
+	vis := WindowRect(n.hwnd)
+	for p := Parent(n.hwnd); p != 0 && p != h.window; p = Parent(p) {
+		c := ClientRect(p)
+		o := ClientToScreen(p, Point{})
+		vis.Left, vis.Top = max(vis.Left, o.X), max(vis.Top, o.Y)
+		vis.Right, vis.Bottom = min(vis.Right, o.X+c.W()), min(vis.Bottom, o.Y+c.H())
+	}
+	if vis.W() <= 0 || vis.H() <= 0 {
+		return h.backdrop(n)
+	}
+	at := ScreenToClient(n.hwnd, Point{X: (vis.Left + vis.Right) / 2, Y: (vis.Top + vis.Bottom) / 2})
+	dc := CreateCompatibleDC(0)
+	bmp, px := DIB(1, 1)
+	old := SelectObject(dc, bmp)
+	OffsetViewport(dc, -at.X, -at.Y)
+	h.paintBehind(n.hwnd, dc)
+	c := rgba{px[2], px[1], px[0], 255}
+	SelectObject(dc, old)
+	DeleteObject(bmp)
+	DeleteDC(dc)
+	return c
 }

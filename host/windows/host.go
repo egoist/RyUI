@@ -103,6 +103,8 @@ type node struct {
 	image          *image
 	symbol         string
 	list           *list
+	bar            *scrollBar // a Scroll's or List's thumb
+	sbar           *scrollBar // the thumb a kindScrollBar view is
 	row            *rowView
 	cell           *cell
 	nav            *nav
@@ -124,6 +126,7 @@ const (
 	kindHeader
 	kindTabBar
 	kindSheetWindow
+	kindScrollBar
 )
 
 func (n *node) listening(e ops.EventKind) bool {
@@ -233,6 +236,9 @@ func Run(root func() ui.Node) {
 func (h *Host) loop() {
 	var m Msg
 	for GetMessage(&m) {
+		if m.Message == WM_MOUSEMOVE {
+			h.mouseOver(m.Hwnd)
+		}
 		if w := h.keyWindow(m.Hwnd); w != 0 && h.keyMessage(&m) {
 			continue
 		} else if w != 0 && IsDialogMessage(w, &m) {
@@ -471,6 +477,7 @@ func (h *Host) forgetTree(hwnd uintptr) {
 			}
 			KillTimer(w, timerLongPress)
 			KillTimer(w, timerSpin)
+			KillTimer(w, timerBars)
 			delete(h.byHwnd, w)
 		}
 	}

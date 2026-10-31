@@ -201,9 +201,9 @@ func TestListBindsOnlyWhatShows(t *testing.T) {
 		if !found {
 			fatalf("row 5000 isn't shown at 200,000pt")
 		}
-		// The scroll bar follows.
-		if si := Scroll(l.n.hwnd, SB_VERT); si.Pos <= 0 {
-			fatalf("the scroll bar is at %d", si.Pos)
+		// The scroll bar's thumb shows, and follows.
+		if b := l.n.bar; b == nil || !b.visible || b.thumb.Top <= 0 {
+			fatalf("no thumb in the middle of the list")
 		}
 	})
 }
