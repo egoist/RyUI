@@ -391,7 +391,8 @@ func TestTransitions(t *testing.T) {
 		return ui.Column(ui.Style{},
 			ui.Show(shown, func() ui.Node {
 				return ui.View(ui.ViewProps{Style: ui.Style{Height: ui.Pt(40), Background: ui.Red, Transition: ui.SlideUp}},
-					ui.StaticText("toast"))
+					ui.StaticText("toast"),
+					ui.View(ui.ViewProps{Style: ui.Style{Height: ui.Pt(20), Material: ui.MaterialThin}}))
 			}))
 	})
 	onMain(func() {
@@ -413,6 +414,23 @@ func TestTransitions(t *testing.T) {
 		defer Release(v)
 		if toast.entering || !toast.placed {
 			fatal(t, "the toast didn't come in")
+		}
+		// Its text is at its first frame at once: the batch's animation
+		// doesn't grow it out of the zero frame a new view has, which a
+		// label would ellipsize its text in.
+		for _, n := range find(h, ops.KindText) {
+			if r, want := MsgRect(n.view, Sel("frame")), n.frame; r.Size != want.Size {
+				fatalf(t, "new text at %vx%v, want %vx%v", r.Size.Width, r.Size.Height, want.Size.Width, want.Size.Height)
+			}
+		}
+		// And so is what a new view lays out itself, its material's view.
+		for _, n := range find(h, ops.KindView) {
+			if n.effect == 0 {
+				continue
+			}
+			if r := MsgRect(n.effect, Sel("frame")); r.Size != n.frame.Size {
+				fatalf(t, "new material at %vx%v, want %vx%v", r.Size.Width, r.Size.Height, n.frame.Size.Width, n.frame.Size.Height)
+			}
 		}
 		toggle(false)
 		// It's gone from the core's tree, and stays on screen while it goes.

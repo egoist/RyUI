@@ -504,6 +504,20 @@ func (h *Host) setRoot(n *node) {
 }
 
 func (h *Host) setFrame(n *node, f [4]float32) {
+	if h.animating && !n.placed && !n.entering {
+		// A view's first frame doesn't animate: it wasn't on screen. The
+		// batch's implicit animations would grow it, its layers and its
+		// subviews out of their zero frames (and a label would ellipsize
+		// its text as it does).
+		withoutAnimation(func() { h.place(n, f) })
+		return
+	}
+	h.place(n, f)
+}
+
+// place sets n's frame, and what follows its size: its transform, its
+// layers and the views it lays out itself.
+func (h *Host) place(n *node, f [4]float32) {
 	r := Rect{Origin: Point{X: float64(f[0]), Y: float64(f[1])}, Size: Size{Width: float64(f[2]), Height: float64(f[3])}}
 	if n.cell != nil {
 		n.cell.setHeight(r.Size.Height)
@@ -516,6 +530,7 @@ func (h *Host) setFrame(n *node, f [4]float32) {
 		// An inline component: its size is the core's, its place the text's.
 		n.frame.Size = r.Size
 		MsgSetSize(n.view, Sel("setFrameSize:"), r.Size)
+		n.placed = true
 		n.parent.rich.placeInlines(h, n.parent)
 		return
 	}
@@ -531,10 +546,9 @@ func (h *Host) setFrame(n *node, f [4]float32) {
 		// Comes in from its transition's state, to its first frame.
 		n.entering = false
 		h.enter_(n, r)
-	case h.animating && n.placed:
+	case h.animating:
 		MsgSetRect(Send(v, "animator"), selSetFrame, r)
 	default:
-		// A view's first frame doesn't animate: it wasn't on screen.
 		MsgSetRect(v, selSetFrame, r)
 	}
 	n.placed = true

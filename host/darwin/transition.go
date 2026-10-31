@@ -31,16 +31,12 @@ func transitionFrame(t []byte, f Rect) Rect {
 // f (in the animation the batch is in).
 func (h *Host) enter_(n *node, f Rect) {
 	alpha := MsgFloat(n.view, Sel("alphaValue"))
-	ctx := Class("NSAnimationContext")
-	Send(ctx, "beginGrouping")
-	cur := Send(ctx, "currentContext")
-	MsgSetFloat(cur, Sel("setDuration:"), 0)
-	Send(cur, "setAllowsImplicitAnimation:", 0)
-	MsgSetRect(n.view, selSetFrame, transitionFrame(n.transition, f))
-	if n.transition[0] != 0 {
-		MsgSetFloat(n.view, Sel("setAlphaValue:"), 0)
-	}
-	Send(ctx, "endGrouping")
+	withoutAnimation(func() {
+		MsgSetRect(n.view, selSetFrame, transitionFrame(n.transition, f))
+		if n.transition[0] != 0 {
+			MsgSetFloat(n.view, Sel("setAlphaValue:"), 0)
+		}
+	})
 	a := Send(n.view, "animator")
 	MsgSetRect(a, selSetFrame, f)
 	if n.transition[0] != 0 {
