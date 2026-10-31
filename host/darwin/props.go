@@ -126,6 +126,9 @@ func (h *Host) applyLayerColors(n *node) {
 	if n.shape != nil {
 		n.shape.colors(h, n)
 	}
+	if n.list != nil {
+		n.list.colors(h)
+	}
 }
 
 func (h *Host) setCommon(n *node, p ops.PropID, v *ops.Value) {

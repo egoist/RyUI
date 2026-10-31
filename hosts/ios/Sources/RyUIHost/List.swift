@@ -42,15 +42,24 @@ final class RyUIWeakList {
     var binding = false
     var columns = 1
     var gap: CGFloat = 0
+    var appearance = RyUIListAppearance.plain
+    var inset: CGFloat = 0
+    private let swipes: UICollectionLayoutListConfiguration.SwipeActionsConfigurationProvider
     private var listLayout: UICollectionViewLayout!
+
+    /// The list layout's configuration, in an appearance.
+    private func config(_ appearance: UICollectionLayoutListConfiguration.Appearance) -> UICollectionLayoutListConfiguration {
+        var config = UICollectionLayoutListConfiguration(appearance: appearance)
+        config.showsSeparators = true
+        config.trailingSwipeActionsConfigurationProvider = swipes
+        return config
+    }
 
     init(id: UInt32, runtime: RyUIRuntime) {
         self.id = id
-        var config = UICollectionLayoutListConfiguration(appearance: .plain)
-        config.showsSeparators = true
         // A row's swipe actions are its cell's (the core sends them as it binds it).
         let box = RyUIWeakList()
-        config.trailingSwipeActionsConfigurationProvider = { [weak runtime] path in
+        swipes = { [weak runtime] path in
             guard let runtime, let list = box.list,
                   let cell = list.collection.cellForItem(at: path) as? RyUIListCell,
                   let n = runtime.nodes[cell.ryuiID], !n.swipeActions.isEmpty else { return nil }
@@ -66,6 +75,9 @@ final class RyUIWeakList {
             }
             return UISwipeActionsConfiguration(actions: actions)
         }
+        var config = UICollectionLayoutListConfiguration(appearance: .plain)
+        config.showsSeparators = true
+        config.trailingSwipeActionsConfigurationProvider = swipes
         let layout = UICollectionViewCompositionalLayout.list(using: config)
         collection = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collection.keyboardDismissMode = .interactive
@@ -117,6 +129,30 @@ final class RyUIWeakList {
             return section
         }
         collection.setCollectionViewLayout(layout, animated: false)
+    }
+
+    /// The list's look: inset grouped, its rows inset from each side by
+    /// exactly the core's inset (the core lays them out at the list's
+    /// width less it), not by the collection view's layout margins.
+    func setAppearance(_ appearance: RyUIListAppearance, inset: CGFloat) {
+        guard appearance != self.appearance || inset != self.inset else { return }
+        self.appearance = appearance
+        self.inset = inset
+        if appearance == .insetGrouped {
+            let config = config(.insetGrouped)
+            listLayout = UICollectionViewCompositionalLayout { _, env in
+                let section = NSCollectionLayoutSection.list(using: config, layoutEnvironment: env)
+                section.contentInsetsReference = .none
+                section.contentInsets.leading = inset
+                section.contentInsets.trailing = inset
+                return section
+            }
+        } else {
+            listLayout = UICollectionViewCompositionalLayout.list(using: config(.plain))
+        }
+        if columns == 1 {
+            collection.setCollectionViewLayout(listLayout, animated: false)
+        }
     }
 
     /// Scrolls item i into view, at the top.

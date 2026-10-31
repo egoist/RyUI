@@ -525,6 +525,16 @@ thread, the data source calls straight in:
   flushes, and returns. Recycling a cell costs the props that differ.
 - Row heights come from the core's layout of the row at the list's
   width (self-sizing cells measure through `ListBind`'s flush).
+- `ListProps.Appearance: ui.ListInsetGrouped` is each platform's grouped
+  list: UIKit's inset grouped list; Material 3 Expressive's segmented
+  list on Android (each row its own container, 2dp apart, the group's
+  ends rounded, on the surface container); a System Settings group on
+  macOS; Windows 11's settings cards. The core owns the inset, from the
+  platform's margins (iOS's layout margins, 16 or 20; Material's window
+  margins, 16 or 24; 20 on macOS, 16 on Windows) and the width class,
+  lays the rows out at the list's width less it on each side, and sends
+  it (`Inset`); the hosts inset the rows by exactly that, not by their
+  own margins, so what's measured is what's shown.
 - Changes to `items` send `Command(list, listUpdate, item IDs)`: a
   stable int64 per key, in order. iOS applies them as an
   `NSDiffableDataSourceSnapshot` (once the call into Go has returned, so

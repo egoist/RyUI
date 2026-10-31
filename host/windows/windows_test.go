@@ -167,6 +167,36 @@ func TestTextField(t *testing.T) {
 	})
 }
 
+// An inset grouped list's rows are cards inset by the core's inset
+// (16pt), 4pt apart; the core lays them out at the cards' width.
+func TestListInsetGrouped(t *testing.T) {
+	h, _ := mount(t, func() ui.Node {
+		return ui.List(ui.ListProps{Appearance: ui.ListInsetGrouped}, signal.Static([]int{1, 2, 3}), func(i int) int { return i },
+			func(item signal.Accessor[int], _ signal.Accessor[int]) ui.Node {
+				return ui.Text(signal.Func(func() string { return fmt.Sprint("Row ", item.Get()) }), ui.Style{Padding: ui.All(10)})
+			})
+	})
+	onMain(t, func() {
+		l := find(h, ops.KindList)[0].list
+		if !l.grouped() || l.inset != 16 || len(l.shown) != 3 {
+			fatalf("grouped %v inset %v, %d rows", l.grouped(), l.inset, len(l.shown))
+		}
+		r := WindowRectIn(l.shown[0].n.hwnd, l.n.hwnd)
+		if r.Left != h.px(l.n, 16) || r.Top != h.px(l.n, 16) || r.W() != h.px(l.n, l.width-16)-h.px(l.n, 16) {
+			fatalf("the first row is at %+v, the list %v wide", r, l.width)
+		}
+		if w := find(h, ops.KindText)[0].frame[2]; w != l.width-32 {
+			fatalf("the row's text is %v wide, its card %v", w, l.width-32)
+		}
+		if c0, c2 := l.shown[0].card, l.shown[2].card; c0 != l.rowHeight(0)-cardGap || c2 != l.rowHeight(2) || l.shown[0].sep {
+			fatalf("cards %v %v, a separator %v", c0, c2, l.shown[0].sep)
+		}
+		if gap := l.tops[1] - l.tops[0] - l.shown[0].card; gap != cardGap {
+			fatalf("the cards are %v apart", gap)
+		}
+	})
+}
+
 func TestListBindsOnlyWhatShows(t *testing.T) {
 	items := make([]int, 10000)
 	for i := range items {

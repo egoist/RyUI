@@ -209,6 +209,36 @@ func TestListBindsOnlyWhatShows(t *testing.T) {
 	})
 }
 
+// An inset grouped list's rows are inset by the core's inset (macOS's
+// 20pt), on a rounded box behind them; the core lays them out at the
+// cells' width.
+func TestListInsetGrouped(t *testing.T) {
+	h, _ := mount(t, func() ui.Node {
+		return ui.List(ui.ListProps{Appearance: ui.ListInsetGrouped}, signal.Static([]int{1, 2, 3}), func(i int) int { return i },
+			func(item signal.Accessor[int], _ signal.Accessor[int]) ui.Node {
+				return ui.Text(signal.Func(func() string { return fmt.Sprint("Row ", item.Get()) }), ui.Style{Padding: ui.All(10)})
+			})
+	})
+	onMain(func() {
+		l := find(h, ops.KindList)[0].list
+		if !l.grouped() || l.inset != 20 || len(l.shown) != 3 {
+			fatalf(t, "grouped %v inset %v, %d rows", l.grouped(), l.inset, len(l.shown))
+		}
+		rv := l.shown[0]
+		f := MsgRect(rv.view, Sel("frame"))
+		if f.Origin.X != 20 || f.Origin.Y != 20 || f.Size.Width != l.width-40 {
+			fatalf(t, "the first row is at %v, the list %v wide", f, l.width)
+		}
+		if w := find(h, ops.KindText)[0].frame.Size.Width; w != l.width-40 {
+			fatalf(t, "the row's text is %v wide, its cell %v", w, l.width-40)
+		}
+		g := MsgRect(l.group, Sel("frame"))
+		if l.group == 0 || SendBool(l.group, "isHidden") || g.Origin.X != 20 || g.Size.Height != l.tops[3]-l.inset-l.tops[0] {
+			fatalf(t, "the group's box is %v", g)
+		}
+	})
+}
+
 func TestStackPushAndBack(t *testing.T) {
 	var nav *ui.Navigator
 	disposed := 0

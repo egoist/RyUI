@@ -5,6 +5,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import android.view.View
+import com.google.android.material.color.MaterialColors
 import com.google.android.material.divider.MaterialDividerItemDecoration
 
 /**
@@ -13,14 +14,35 @@ import com.google.android.material.divider.MaterialDividerItemDecoration
  * core; changes are diffed here and dispatched as item ranges and moves.
  */
 class RyUIList(val id: Int, val runtime: RyUIRuntime) {
-    val recycler = RecyclerView(runtime.themed)
+    val recycler = object : RecyclerView(runtime.themed) {
+        override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+            super.onLayout(changed, l, t, r, b)
+            // Rows inserted or removed change their neighbors' places.
+            if (grouped) segments()
+        }
+    }
     private var ids = LongArray(0)
     private var pending: LongArray? = null
     private val adapter = Adapter()
-    private var divider = makeDivider()
+    var appearance = RyUIListAppearance.PLAIN
+        private set
+    var inset = 0f
+        private set
+    /** Material 3 Expressive's segmented list: an inset grouped list's look. */
+    private val grouped get() = appearance == RyUIListAppearance.INSET_GROUPED && columns == 1
+    private var separators = makeSeparators()
 
-    private fun makeDivider() = MaterialDividerItemDecoration(runtime.themed, LinearLayoutManager.VERTICAL).apply {
-        isLastItemDecorated = false
+    /** A list's dividers; a segmented list's gaps, 2dp (Material's catalog). */
+    private fun makeSeparators(): RecyclerView.ItemDecoration {
+        if (!grouped) return MaterialDividerItemDecoration(runtime.themed, LinearLayoutManager.VERTICAL).apply {
+            isLastItemDecorated = false
+        }
+        val g = Math.round(2 * runtime.density)
+        return object : RecyclerView.ItemDecoration() {
+            override fun getItemOffsets(out: android.graphics.Rect, view: View, parent: RecyclerView, state: RecyclerView.State) {
+                if (parent.getChildAdapterPosition(view) > 0) out.top = g
+            }
+        }
     }
 
     init {
@@ -29,7 +51,7 @@ class RyUIList(val id: Int, val runtime: RyUIRuntime) {
         adapter.setHasStableIds(true)
         recycler.adapter = adapter
         recycler.itemAnimator = null
-        recycler.addItemDecoration(divider)
+        recycler.addItemDecoration(separators)
         val reporter = RyUIScrollReporter(runtime, id, recycler)
         recycler.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
@@ -56,10 +78,12 @@ class RyUIList(val id: Int, val runtime: RyUIRuntime) {
         this.gap = gap
         gapDecoration?.let { recycler.removeItemDecoration(it) }
         gapDecoration = null
-        recycler.removeItemDecoration(divider)
+        recycler.removeItemDecoration(separators)
+        applyAppearance()
         if (c == 1) {
             recycler.layoutManager = LinearLayoutManager(runtime.themed)
-            recycler.addItemDecoration(divider)
+            separators = makeSeparators()
+            recycler.addItemDecoration(separators)
             return
         }
         recycler.layoutManager = androidx.recyclerview.widget.GridLayoutManager(runtime.themed, c)
@@ -96,11 +120,55 @@ class RyUIList(val id: Int, val runtime: RyUIRuntime) {
         lm.startSmoothScroll(s)
     }
 
-    /** Takes the divider color from the current theme (after a dark mode change). */
+    /**
+     * The list's look: inset grouped is Material 3 Expressive's segmented
+     * list, its rows inset points from each side (the core lays them out
+     * at the list's width less that), 8dp from its top and bottom and 2dp
+     * apart (Material's catalog), on the surface container; each row's
+     * container is rounded as its place in the group is.
+     */
+    fun setAppearance(appearance: Int, inset: Float) {
+        if (appearance == this.appearance && inset == this.inset) return
+        this.appearance = appearance
+        this.inset = inset
+        applyAppearance()
+        if (columns == 1) {
+            recycler.removeItemDecoration(separators)
+            separators = makeSeparators()
+            recycler.addItemDecoration(separators)
+        }
+    }
+
+    private fun applyAppearance() {
+        val side = if (grouped) Math.round(inset * runtime.density) else 0
+        val ends = if (grouped) Math.round(8 * runtime.density) else 0
+        recycler.setPaddingRelative(side, ends, side, ends)
+        recycler.clipToPadding = !grouped
+        // The app's background, if it has one.
+        val n = runtime.nodes[id]
+        if (n == null || n.background == 0L && n.gradient == null && n.material == 0) {
+            if (grouped) recycler.setBackgroundColor(MaterialColors.getColor(runtime.themed,
+                com.google.android.material.R.attr.colorSurfaceContainerHigh, 0))
+            else recycler.background = null
+        }
+        segments()
+    }
+
+    /** Rounds each row's container as its place in the group is. */
+    private fun segments() {
+        for (i in 0 until recycler.childCount) {
+            val row = recycler.getChildAt(i) as? RyUISwipeRow ?: continue
+            row.segment(if (grouped) recycler.getChildAdapterPosition(row) else RecyclerView.NO_POSITION, ids.size)
+        }
+    }
+
+    /** Takes the theme's colors again (after a dark mode change). */
     fun restyle() {
-        recycler.removeItemDecoration(divider)
-        divider = makeDivider()
-        recycler.addItemDecoration(divider)
+        recycler.removeItemDecoration(separators)
+        separators = makeSeparators()
+        recycler.addItemDecoration(separators)
+        applyAppearance()
+        if (grouped) for (i in 0 until recycler.childCount) (recycler.getChildAt(i) as? RyUISwipeRow)?.restyle()
     }
 
     fun update(next: LongArray) {
@@ -147,6 +215,7 @@ class RyUIList(val id: Int, val runtime: RyUIRuntime) {
 
         override fun onBindViewHolder(holder: Holder, position: Int) {
             holder.row.close(animated = false)
+            holder.row.segment(if (grouped) position else RecyclerView.NO_POSITION, ids.size)
             holder.cell.binding = true
             runtime.enter { RyUINative.listBind(id, position.toLong(), holder.cell.ryuiID) }
             holder.cell.binding = false

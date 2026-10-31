@@ -153,6 +153,8 @@ var Schema = SchemaDef{
 			{Name: "Refreshing", Type: TBool},
 			{Name: "Columns", Type: TInt, Doc: "a grid of this many columns (0, 1: a list, with separators); each cell (width - gap * (columns - 1)) / columns wide, a row as tall as its tallest"},
 			{Name: "Gap", Type: TFloat, Doc: "a grid's spacing between cells, across and down"},
+			{Name: "Appearance", Type: TEnum, Enum: "ListAppearance", Doc: "a list's look (not a grid's): inset grouped, its rows the list's width less Inset on each side"},
+			{Name: "Inset", Type: TFloat, Doc: "an inset grouped list's rows' inset from each side, in points (the core's, from the platform's margins)"},
 		}, Doc: "rows live in host-made cells, bound through ListBind"},
 		{Name: "Activity", Props: []PropDef{
 			{Name: "Animating", Type: TBool},
@@ -344,6 +346,7 @@ var Schema = SchemaDef{
 		{Name: "MenuTrigger", Values: []string{"Tap", "LongPress"}},
 		{Name: "Haptic", Values: []string{"Selection", "Light", "Medium", "Heavy", "Success", "Warning", "Error"}},
 		{Name: "ImageMode", Values: []string{"Fit", "Fill", "Stretch", "Center"}},
+		{Name: "ListAppearance", Values: []string{"Plain", "InsetGrouped"}},
 		{Name: "DateMode", Values: []string{"Date", "Time", "DateTime"}},
 		{Name: "Material", Values: []string{"None", "UltraThin", "Thin", "Regular", "Thick", "Bar"}},
 		{Name: "GestureState", Values: []string{"Began", "Changed", "Ended", "Cancelled"}},

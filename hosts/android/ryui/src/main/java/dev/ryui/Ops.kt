@@ -148,6 +148,8 @@ object RyUIProp {
         const val REFRESHING = 65
         const val COLUMNS = 66
         const val GAP = 67
+        const val APPEARANCE = 68
+        const val INSET = 69
     }
 
     object Activity {
@@ -464,6 +466,11 @@ object RyUIImageMode {
     const val FILL = 1
     const val STRETCH = 2
     const val CENTER = 3
+}
+
+object RyUIListAppearance {
+    const val PLAIN = 0
+    const val INSET_GROUPED = 1
 }
 
 object RyUIDateMode {

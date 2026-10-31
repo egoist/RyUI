@@ -113,9 +113,39 @@ class RyUISwipeRow(private val rt: RyUIRuntime, val cell: RyUICell) : FrameLayou
         post { if (isAttachedToWindow) close(animated = true) }
     }
 
-    /** The row's content: what slides, over the surface while it's out. */
+    /**
+     * The row's place in a segmented list (position of count; NO_POSITION
+     * in a plain list): its container is rounded as the group's ends are.
+     */
+    fun segment(position: Int, count: Int) {
+        content.place(when {
+            position < 0 || count <= 0 -> NONE
+            count == 1 -> ListItemLayout.POSITION_SINGLE
+            position == 0 -> ListItemLayout.POSITION_FIRST
+            position == count - 1 -> ListItemLayout.POSITION_LAST
+            else -> ListItemLayout.POSITION_MIDDLE
+        })
+    }
+
+    /** Takes the theme's colors again (after a dark mode change). */
+    fun restyle() = content.restyle()
+
+    /**
+     * The row's content: what slides. In a segmented list it's always on
+     * its container; in a plain list, only while it's out.
+     */
     private inner class Content : FrameLayout(rt.themed), SwipeableListItem {
         private var enabled = false
+        private var swiped = false
+        private var place = NONE
+        private var color = 0 // the container's, as drawn
+
+        /** Its place in the group; the container again if that or the theme's color changed. */
+        fun place(p: Int) {
+            if (p == place && (p == NONE || surface() == color)) return
+            place = p
+            restyle()
+        }
 
         override fun getSwipeMaxOvershoot() = Math.round(16 * rt.density)
         override fun isSwipeEnabled() = enabled
@@ -123,19 +153,43 @@ class RyUISwipeRow(private val rt: RyUIRuntime, val cell: RyUICell) : FrameLayou
         override fun onSwipe(swipeOffset: Int) {}
 
         override fun <T> onSwipeStateChanged(newState: Int, revealableListItem: T, revealGravity: Int) where T : View, T : RevealableListItem {
-            background = if (newState == SwipeableListItem.STATE_CLOSED) null else surface()
+            val out = newState != SwipeableListItem.STATE_CLOSED
+            if (out != swiped) {
+                swiped = out
+                restyle()
+            }
             if (newState == SwipeableListItem.STATE_SWIPE_PRIMARY_ACTION) run(0)
         }
 
-        /** A swiped list item's container (Material's list item tokens). */
-        private fun surface(): MaterialShapeDrawable {
+        private fun surface() = MaterialColors.getColor(context, com.google.android.material.R.attr.colorSurface, 0)
+
+        fun restyle() {
+            color = surface()
+            background = when {
+                place != NONE -> container(when (place) {
+                    ListItemLayout.POSITION_SINGLE -> com.google.android.material.R.attr.listItemShapeAppearanceSingle
+                    ListItemLayout.POSITION_FIRST -> com.google.android.material.R.attr.listItemShapeAppearanceFirst
+                    ListItemLayout.POSITION_LAST -> com.google.android.material.R.attr.listItemShapeAppearanceLast
+                    else -> com.google.android.material.R.attr.listItemShapeAppearanceMiddle
+                })
+                swiped -> container(com.google.android.material.R.attr.listItemShapeAppearanceMiddle)
+                else -> null
+            }
+        }
+
+        /** A list item's container, shaped by the theme's attr (Material's list item tokens). */
+        private fun container(shape: Int): MaterialShapeDrawable {
             val tv = android.util.TypedValue()
-            val model = if (context.theme.resolveAttribute(com.google.android.material.R.attr.shapeAppearanceCornerExtraSmall, tv, true))
+            val model = if (context.theme.resolveAttribute(shape, tv, true) && tv.resourceId != 0)
                 ShapeAppearanceModel.builder(context, tv.resourceId, 0).build()
             else ShapeAppearanceModel.builder().setAllCornerSizes(4 * rt.density).build()
             return MaterialShapeDrawable(model).apply {
-                fillColor = ColorStateList.valueOf(MaterialColors.getColor(context, com.google.android.material.R.attr.colorSurface, 0))
+                fillColor = ColorStateList.valueOf(color)
             }
         }
+    }
+
+    private companion object {
+        const val NONE = -1
     }
 }

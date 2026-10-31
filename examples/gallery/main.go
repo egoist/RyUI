@@ -36,6 +36,8 @@ func App() ui.Node {
 							{Title: "Top", Icon: ui.IconUp, OnPress: func() { ui.ScrollToItem(inboxList, 0, true) }},
 						}})
 					}}),
+				ui.Button(ui.ButtonProps{Title: ui.Val("Open the settings (a grouped List)"), Icon: ui.IconSettings, Variant: ui.ButtonBordered,
+					OnPress: func() { nav.Push(settings, ui.ScreenOptions{Title: ui.Val("Settings")}) }}),
 				ui.Button(ui.ButtonProps{Title: ui.Val("Open the photos (a grid)"), Icon: ui.IconPhoto, Variant: ui.ButtonBordered,
 					OnPress: func() { nav.Push(photos, ui.ScreenOptions{Title: ui.Val("Photos")}) }}),
 				ui.Button(ui.ButtonProps{Title: ui.Val("Open the camera"), Icon: ui.IconCamera, Variant: ui.ButtonBordered,
@@ -355,6 +357,49 @@ func inbox() ui.Node {
 		)
 	})
 	return inboxList
+}
+
+// setting is a row of the settings: an icon, a title, and a switch if
+// it has one.
+type setting struct {
+	icon  ui.Icon
+	title string
+	on    *signal.Signal[bool]
+}
+
+// settings is an inset grouped List: UIKit's inset grouped list on iOS,
+// Material 3 Expressive's segmented list on Android. Swipe a row to
+// remove it.
+func settings() ui.Node {
+	items := signal.NewFunc([]setting{
+		{ui.IconBell, "Notifications", signal.New(true)},
+		{ui.IconLock, "Privacy", nil},
+		{ui.IconLocation, "Location", signal.New(false)},
+		{ui.IconSpeaker, "Sounds", nil},
+		{ui.IconEye, "Display", nil},
+		{ui.IconInfo, "About", nil},
+	}, nil)
+	return ui.List(ui.ListProps{
+		Appearance: ui.ListInsetGrouped,
+		SwipeActions: func(i int) []ui.Action {
+			return []ui.Action{{Title: "Remove", Role: ui.ActionDestructive, OnPress: func() {
+				l := append([]setting(nil), items.Peek()...)
+				items.Set(append(l[:i], l[i+1:]...))
+			}}}
+		},
+	}, items, func(s setting) string { return s.title }, func(s signal.Accessor[setting], _ signal.Accessor[int]) ui.Node {
+		it := signal.Untrack(s.Get)
+		kids := []ui.Node{
+			ui.Symbol(it.icon, ui.Style{Color: ui.Accent}),
+			ui.StaticText(it.title, ui.Style{Grow: 1}),
+		}
+		if it.on != nil {
+			kids = append(kids, ui.Toggle(ui.ToggleProps{Value: it.on}))
+		} else {
+			kids = append(kids, ui.Symbol(ui.IconForward, ui.Style{Color: ui.TertiaryLabel}))
+		}
+		return ui.Row(ui.Style{Padding: ui.Symmetric(10, 16), MinHeight: ui.Pt(52), Gap: 16, Align: ui.AlignCenter}, kids...)
+	})
 }
 
 func services() ui.Node {

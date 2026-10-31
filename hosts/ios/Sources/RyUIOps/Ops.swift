@@ -145,6 +145,8 @@ public enum RyUIProp {
         public static let refreshing: UInt16 = 65
         public static let columns: UInt16 = 66
         public static let gap: UInt16 = 67
+        public static let appearance: UInt16 = 68
+        public static let inset: UInt16 = 69
     }
 
     public enum Activity {
@@ -461,6 +463,11 @@ public enum RyUIImageMode: Int32 {
     case fill = 1
     case stretch = 2
     case center = 3
+}
+
+public enum RyUIListAppearance: Int32 {
+    case plain = 0
+    case insetGrouped = 1
 }
 
 public enum RyUIDateMode: Int32 {

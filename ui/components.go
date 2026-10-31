@@ -211,9 +211,9 @@ func Row(style Styler, children ...Node) Node {
 type Environment = host.Environment
 
 // Platform is the system the app runs on, the environment's Platform:
-// for the few places an app follows each platform's own design (an
-// inset grouped list on iOS, Material's on Android) where RyUI has no
-// view that does it for it.
+// for the few places an app follows each platform's own design (a
+// section's heading, a card's corners) where RyUI has no view that does
+// it for it.
 type Platform = ops.Platform
 
 const (

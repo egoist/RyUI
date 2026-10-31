@@ -30,6 +30,10 @@ type list struct {
 	width   float32
 	est     float32
 	offset  float32 // the scroll position, in points
+	// An inset grouped list's: its look and its rows' inset from each
+	// side (and from its top and bottom).
+	appearance ops.ListAppearance
+	inset      float32
 
 	pending []int64
 	updated bool // pending waits for the core to return
@@ -43,6 +47,7 @@ type rowView struct {
 	cells []*cell
 	row   int
 	sep   bool
+	card  float32 // an inset grouped list's row: its card's height, in points
 }
 
 // cell is a host-made view a row is bound into.
@@ -67,6 +72,10 @@ func (l *list) setProp(h *Host, n *node, p ops.PropID, v *ops.Value) {
 		l.columns = max(int(v.Int), 1)
 	case ops.PropListGap:
 		l.gap = float32(v.Float)
+	case ops.PropListAppearance:
+		l.appearance = ops.ListAppearance(v.Int)
+	case ops.PropListInset:
+		l.inset = float32(v.Float)
 	}
 	l.rebind = true
 	l.queue(h)
@@ -128,6 +137,24 @@ func (l *list) queue(h *Host) {
 	})
 }
 
+// cardGap is the space between an inset grouped list's cards, as
+// between Windows 11's settings cards.
+const cardGap = 4
+
+// grouped is whether it's an inset grouped list: each row a card, as
+// Windows 11's settings are.
+func (l *list) grouped() bool {
+	return l.appearance == ops.ListAppearanceInsetGrouped && l.columns <= 1
+}
+
+// pad is the space above the first row and below the last.
+func (l *list) pad() float32 {
+	if l.grouped() {
+		return l.inset
+	}
+	return 0
+}
+
 func (l *list) rowCount() int {
 	if l.columns > 1 {
 		return (len(l.ids) + l.columns - 1) / l.columns
@@ -154,18 +181,21 @@ func (l *list) rowHeight(row int) float32 {
 	if l.columns > 1 && row < l.rowCount()-1 {
 		height += l.gap
 	}
+	if l.grouped() && row < l.rowCount()-1 {
+		height += cardGap
+	}
 	return height
 }
 
 func (l *list) measureTops() {
 	rows := l.rowCount()
 	l.tops = l.tops[:0]
-	y := float32(0)
+	y := l.pad()
 	for r := range rows {
 		l.tops = append(l.tops, y)
 		y += l.rowHeight(r)
 	}
-	l.tops = append(l.tops, y)
+	l.tops = append(l.tops, y+l.pad())
 }
 
 // viewport is the list's visible height, in points.
@@ -231,13 +261,22 @@ func (l *list) placeRows(h *Host) {
 	for r, rv := range l.shown {
 		y := l.tops[r] - l.offset
 		height := l.rowHeight(r)
-		x0, y0 := int32(0), h.px(l.n, y)
-		d = d.Defer(rv.n.hwnd, 0, x0, y0, h.px(l.n, l.width), h.px(l.n, y+height)-y0, SWP_NOZORDER|SWP_NOACTIVATE|SWP_SHOWWINDOW|SWP_NOCOPYBITS)
+		x, w := l.rowX()
+		x0, y0 := h.px(l.n, x), h.px(l.n, y)
+		d = d.Defer(rv.n.hwnd, 0, x0, y0, h.px(l.n, x+w)-x0, h.px(l.n, y+height)-y0, SWP_NOZORDER|SWP_NOACTIVATE|SWP_SHOWWINDOW|SWP_NOCOPYBITS)
 	}
 	d.End()
 	for r, rv := range l.shown {
 		l.placeCells(h, rv, r)
 	}
+}
+
+// rowX is where a row starts across the list and how wide it is.
+func (l *list) rowX() (x, w float32) {
+	if l.grouped() {
+		return l.inset, max(l.width-2*l.inset, 0)
+	}
+	return 0, l.width
 }
 
 func (l *list) take(h *Host) *rowView {
@@ -272,7 +311,7 @@ func (l *list) bind(h *Host, rv *rowView, r int) {
 			ShowWindow(c.n.hwnd, SW_SHOWNA)
 		}
 	}
-	rv.sep = l.columns <= 1 && r < len(l.ids)-1
+	rv.sep = l.columns <= 1 && !l.grouped() && r < len(l.ids)-1
 	for i := range k {
 		c := rv.cells[i]
 		c.item = l.ids[first+i]
@@ -317,8 +356,16 @@ func (c *cell) setHeight(height float32) {
 // - gap × (columns - 1)) / columns wide.
 func (l *list) placeCells(h *Host, rv *rowView, r int) {
 	if l.columns <= 1 {
+		_, w := l.rowX()
+		rv.card = 0
+		if l.grouped() {
+			rv.card = l.rowHeight(r)
+			if r < l.rowCount()-1 {
+				rv.card -= cardGap
+			}
+		}
 		for _, c := range rv.cells {
-			SetWindowPos(c.n.hwnd, 0, 0, 0, h.px(l.n, l.width), h.px(l.n, c.height), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
+			SetWindowPos(c.n.hwnd, 0, 0, 0, h.px(l.n, w), h.px(l.n, c.height), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 		}
 		Invalidate(rv.n.hwnd)
 		return
@@ -331,12 +378,20 @@ func (l *list) placeCells(h *Host, rv *rowView, r int) {
 }
 
 // paint draws a list row's separator: a hairline at its bottom, inset as
-// the content is, but the last row's.
+// the content is, but the last row's; or an inset grouped list's row's
+// card, as Windows 11's settings cards (CardBackgroundFillColorDefault,
+// CardStrokeColorDefault, ControlCornerRadius).
 func (rv *rowView) paint(h *Host, g Graphics, w, ht float32) {
+	k := h.scaleOf(rv.n)
+	if rv.card > 0 {
+		ch := min(rv.card*k, ht)
+		g.FillRoundRect(h.theme.card.argb(), 0, 0, w, ch, 4*k)
+		g.StrokeRoundRect(h.theme.stroke.argb(), max(k, 1), 0, 0, w, ch, 4*k)
+		return
+	}
 	if !rv.sep {
 		return
 	}
-	k := h.scaleOf(rv.n)
 	b := SolidBrush(h.theme.separator.argb())
 	g.FillRect(b, 16*k, ht-max(k, 1), w-16*k, max(k, 1))
 	b.Close()

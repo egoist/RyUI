@@ -461,6 +461,10 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
             n.list?.setGrid(columns: Int(v.int), gap: n.list?.gap ?? 0)
         case (.list, RyUIProp.List.gap):
             n.list?.setGrid(columns: n.list?.columns ?? 1, gap: CGFloat(v.float))
+        case (.list, RyUIProp.List.appearance):
+            n.list?.setAppearance(RyUIListAppearance(rawValue: v.enumValue) ?? .plain, inset: n.list?.inset ?? 0)
+        case (.list, RyUIProp.List.inset):
+            n.list?.setAppearance(n.list?.appearance ?? .plain, inset: CGFloat(v.float))
         default:
             break
         }

@@ -31,6 +31,11 @@ type list struct {
 	gap     float64
 	width   float64
 	est     float64
+	// An inset grouped list's: its look, its rows' inset from each side
+	// (and from its top and bottom), and the box behind them.
+	appearance ops.ListAppearance
+	inset      float64
+	group      ID
 
 	pending []int64
 	updated bool // pending waits for the core to return
@@ -83,9 +88,63 @@ func (l *list) setProp(h *Host, n *node, p ops.PropID, v *ops.Value) {
 		l.columns = max(int(v.Int), 1)
 	case ops.PropListGap:
 		l.gap = v.Float
+	case ops.PropListAppearance:
+		l.appearance = ops.ListAppearance(v.Int)
+	case ops.PropListInset:
+		l.inset = v.Float
 	}
 	l.rebind = true
 	l.queue(h)
+}
+
+// grouped is whether it's an inset grouped list: its rows in one
+// rounded box, as System Settings' grouped forms are.
+func (l *list) grouped() bool {
+	return l.appearance == ops.ListAppearanceInsetGrouped && l.columns <= 1
+}
+
+// pad is the space above the first row and below the last.
+func (l *list) pad() float64 {
+	if l.grouped() {
+		return l.inset
+	}
+	return 0
+}
+
+// placeGroup puts the group's box behind the rows: a faint fill over
+// the window's background, rounded, as System Settings' groups are.
+func (l *list) placeGroup(h *Host) {
+	if !l.grouped() || len(l.ids) == 0 {
+		if l.group != 0 {
+			Send(l.group, "setHidden:", 1)
+		}
+		return
+	}
+	if l.group == 0 {
+		l.group = initView("NSView")
+		Send(l.group, "setWantsLayer:", 1)
+		MsgSetFloat(Send(l.group, "layer"), Sel("setCornerRadius:"), 10)
+		Send(l.doc, "addSubview:positioned:relativeTo:", uintptr(l.group), uintptr(^uint(0)), 0) // below the rows
+		Release(l.group)
+		l.colors(h)
+	}
+	Send(l.group, "setHidden:", 0)
+	pad := l.pad()
+	MsgSetRect(l.group, selSetFrame, Rect{Origin: Point{X: l.inset, Y: pad},
+		Size: Size{Width: max(l.width-2*l.inset, 0), Height: l.tops[len(l.tops)-1] - 2*pad}})
+}
+
+// colors sets the group's color again (a layer's CGColor is fixed).
+func (l *list) colors(h *Host) {
+	if l.group != 0 {
+		fill := "quaternarySystemFillColor" // macOS 14
+		if !SendBool(Class("NSColor"), "respondsToSelector:", uintptr(Sel(fill))) {
+			fill = "quaternaryLabelColor"
+		}
+		h.withAppearance(func() {
+			Send(Send(l.group, "layer"), "setBackgroundColor:", cgColor(Send(Class("NSColor"), fill)))
+		})
+	}
 }
 
 func (l *list) background(h *Host, n *node) {
@@ -178,12 +237,12 @@ func (l *list) rowHeight(row int) float64 {
 func (l *list) measureTops() {
 	rows := l.rowCount()
 	l.tops = l.tops[:0]
-	y := 0.0
+	y := l.pad()
 	for r := range rows {
 		l.tops = append(l.tops, y)
 		y += l.rowHeight(r)
 	}
-	l.tops = append(l.tops, y)
+	l.tops = append(l.tops, y+l.pad())
 }
 
 // tile shows the rows in view (and a screen's worth around them), binds
@@ -233,6 +292,7 @@ func (l *list) tile(h *Host) {
 		for r, rv := range l.shown {
 			l.place(h, rv, r)
 		}
+		l.placeGroup(h)
 		if !changed {
 			break
 		}
@@ -306,12 +366,16 @@ func (c *cell) setHeight(height float64) {
 // grid's side by side, each (width - gap × (columns - 1)) / columns wide.
 func (l *list) place(h *Host, rv *rowView, r int) {
 	height := l.rowHeight(r)
-	MsgSetRect(rv.view, selSetFrame, Rect{Origin: Point{Y: l.tops[r]}, Size: Size{Width: l.width, Height: height}})
+	x, w := 0.0, l.width
+	if l.grouped() {
+		x, w = l.inset, max(l.width-2*l.inset, 0)
+	}
+	MsgSetRect(rv.view, selSetFrame, Rect{Origin: Point{X: x, Y: l.tops[r]}, Size: Size{Width: w, Height: height}})
 	if l.columns <= 1 {
 		for _, c := range rv.cells {
-			MsgSetRect(c.n.view, selSetFrame, Rect{Size: Size{Width: l.width, Height: c.height}})
+			MsgSetRect(c.n.view, selSetFrame, Rect{Size: Size{Width: w, Height: c.height}})
 		}
-		l.separator(rv, r, height)
+		l.separator(rv, r, w, height)
 		return
 	}
 	if rv.sep != 0 {
@@ -323,15 +387,20 @@ func (l *list) place(h *Host, rv *rowView, r int) {
 	}
 }
 
-// separator is a list row's hairline at its bottom, but the last row's.
-func (l *list) separator(rv *rowView, r int, height float64) {
+// separator is a list row's hairline at its bottom, but the last row's;
+// in a group, inset from the box's sides.
+func (l *list) separator(rv *rowView, r int, w, height float64) {
 	if rv.sep == 0 {
 		rv.sep = initView("NSBox")
 		Send(rv.sep, "setBoxType:", 2) // separator
 		Send(rv.view, "addSubview:", uintptr(rv.sep))
 		Release(rv.sep)
 	}
-	MsgSetRect(rv.sep, selSetFrame, Rect{Origin: Point{Y: height - 1}, Size: Size{Width: l.width, Height: 1}})
+	x := 0.0
+	if l.grouped() {
+		x = 10
+	}
+	MsgSetRect(rv.sep, selSetFrame, Rect{Origin: Point{X: x, Y: height - 1}, Size: Size{Width: max(w-2*x, 0), Height: 1}})
 	Send(rv.sep, "setHidden:", Bool(r >= len(l.ids)-1))
 }
 

@@ -392,6 +392,8 @@ fun RyUIRuntime.propFloat(id: Int, prop: Int, v: Double) {
         RyUIProp.FONT_SIZE -> { n.fontSize = v.toFloat(); applyText(n) }
         else -> if (n.kind == RyUIKind.LIST && prop == RyUIProp.List.GAP) {
             n.list?.let { it.setGrid(it.columns, v.toFloat()) }
+        } else if (n.kind == RyUIKind.LIST && prop == RyUIProp.List.INSET) {
+            n.list?.let { it.setAppearance(it.appearance, v.toFloat()) }
         } else if (n.kind == RyUIKind.PROGRESS && prop == RyUIProp.Progress.VALUE) {
             setProgress(n.view as com.google.android.material.progressindicator.LinearProgressIndicator, v)
         } else if (n.kind == RyUIKind.SLIDER) {
@@ -476,6 +478,7 @@ fun RyUIRuntime.propEnum(id: Int, prop: Int, v: Int) {
     n.props[prop] = v
     if (n.kind == RyUIKind.SHAPE && setShapeProp(n, prop, v)) return
     if (prop == RyUIProp.MATERIAL) { n.material = v; applyBackground(n); return }
+    if (n.kind == RyUIKind.LIST && prop == RyUIProp.List.APPEARANCE) { n.list?.let { it.setAppearance(v, it.inset) }; return }
     if (n.kind == RyUIKind.DATE_PICKER && prop == RyUIProp.DatePicker.MODE) { (n.view as RyUIDatePicker).mode = v; return }
     val view = n.view
     when (prop) {

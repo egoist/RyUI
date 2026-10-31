@@ -911,6 +911,55 @@ func TestListGrid(t *testing.T) {
 	}
 }
 
+// An inset grouped list tells the host its look and inset, and lays its
+// rows out at its width less the inset on each side: the platform's
+// margins, which follow the environment. A grid's look is plain.
+func TestListInsetGrouped(t *testing.T) {
+	items := signal.NewFunc([]todo{{ID: 1, Title: "a"}, {ID: 2, Title: "b"}}, nil)
+	columns := 1
+	h, _ := mount(t, func() ui.Node {
+		return ui.List(ui.ListProps{Appearance: ui.ListInsetGrouped, Columns: columns}, items, func(t todo) int { return t.ID },
+			func(it signal.Accessor[todo], _ signal.Accessor[int]) ui.Node {
+				return ui.Text(signal.Func(func() string { return it.Get().Title }), ui.Style{Padding: ui.All(12)})
+			})
+	})
+	list := h.OfKind(ops.KindList)[0]
+	if list.Int(ops.PropListAppearance) != int64(ui.ListInsetGrouped) || list.Float(ops.PropListInset) != 16 {
+		t.Fatalf("appearance %d inset %v", list.Int(ops.PropListAppearance), list.Float(ops.PropListInset))
+	}
+	c := h.NewCell()
+	h.Bind(list, 0, c)
+	if c.Frame[2] != 390-32 {
+		t.Fatalf("row %v, want 358 wide", c.Frame)
+	}
+	env := h.Env
+	env.Platform, env.Width, env.WidthClass = ui.PlatformAndroid, 900, ui.SizeClassExpanded
+	h.SetEnvironment(env)
+	if list.Float(ops.PropListInset) != 24 || c.Frame[2] != 900-48 {
+		t.Fatalf("inset %v row %v", list.Float(ops.PropListInset), c.Frame)
+	}
+	env.Platform = ui.PlatformIOS
+	h.SetEnvironment(env)
+	if list.Float(ops.PropListInset) != 20 || c.Frame[2] != 900-40 {
+		t.Fatalf("inset %v row %v", list.Float(ops.PropListInset), c.Frame)
+	}
+
+	columns = 2
+	h, _ = mount(t, func() ui.Node {
+		return ui.List(ui.ListProps{Appearance: ui.ListInsetGrouped, Columns: columns}, items, func(t todo) int { return t.ID },
+			func(it signal.Accessor[todo], _ signal.Accessor[int]) ui.Node { return ui.View(ui.ViewProps{}) })
+	})
+	list = h.OfKind(ops.KindList)[0]
+	if _, ok := list.Props[ops.PropListAppearance]; ok {
+		t.Fatal("a grid has an appearance")
+	}
+	c = h.NewCell()
+	h.Bind(list, 0, c)
+	if c.Frame[2] != 390/2 {
+		t.Fatalf("grid cell %v", c.Frame)
+	}
+}
+
 // OnFrame asks the host for frames while it has callbacks; what they
 // write shows in the frame, and disposing the owner stops them.
 func TestOnFrame(t *testing.T) {

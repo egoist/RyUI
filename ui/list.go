@@ -41,6 +41,44 @@ type ListProps struct {
 	// separators and no swipe actions.
 	Columns int
 	Gap     float32
+	// Appearance is the list's look; a grid's is plain.
+	Appearance ListAppearance
+}
+
+// ListAppearance is a List's look.
+type ListAppearance = ops.ListAppearance
+
+const (
+	// ListPlain is rows edge to edge, apart by separators.
+	ListPlain = ops.ListAppearancePlain
+	// ListInsetGrouped is the rows as one group, inset from the list's
+	// sides by the platform's margins, on the grouped background: iOS's
+	// inset grouped list (one rounded box, rows apart by separators);
+	// Android's Material 3 Expressive segmented list (rows apart by a
+	// gap, the group's ends rounded); a grouped form on macOS, as System
+	// Settings'; Windows 11's settings cards. Rows are laid out at the
+	// list's width less the insets.
+	ListInsetGrouped = ops.ListAppearanceInsetGrouped
+)
+
+// listInset is an inset grouped list's rows' inset from each side: the
+// platform's margins (UIKit's layout margins, Material's window margins,
+// System Settings' grouped forms, Windows' settings pages).
+func listInset(env Environment) float32 {
+	wide := env.WidthClass != SizeClassCompact
+	switch env.Platform {
+	case PlatformIOS:
+		if wide {
+			return 20
+		}
+	case PlatformAndroid:
+		if wide {
+			return 24
+		}
+	case PlatformMacOS:
+		return 20
+	}
+	return 16
 }
 
 type listCell[T any, K comparable] struct {
@@ -71,6 +109,7 @@ type listState[T any, K comparable] struct {
 	// A grid's.
 	columns int
 	gap     float32
+	inset   float32 // an inset grouped list's, each side
 }
 
 // List is For backed by the platform's recycling list (UICollectionView,
@@ -89,6 +128,7 @@ func List[T any, K comparable](p ListProps, items signal.Accessor[[]T], key func
 			e.r.batch.SetFloat(e.id, ops.PropListGap, float64(p.Gap))
 		}
 		p.SwipeActions = nil
+		p.Appearance = ListPlain
 	}
 	st := &listState[T, K]{
 		e: e, key: key, row: row, eq: equality[T](),
@@ -100,6 +140,17 @@ func List[T any, K comparable](p ListProps, items signal.Accessor[[]T], key func
 	}
 	e.list = st
 	e.r.lists = append(e.r.lists, e)
+	if p.Appearance != ListPlain {
+		e.r.batch.SetEnum(e.id, ops.PropListAppearance, int32(p.Appearance))
+		env := UseEnvironment()
+		signal.RenderEffect(func() {
+			// The rows are laid out again at the new width.
+			if in := listInset(env.Get()); in != st.inset {
+				st.inset = in
+				e.r.batch.SetFloat(e.id, ops.PropListInset, float64(in))
+			}
+		})
+	}
 	signal.RenderEffect(func() {
 		list := items.Get()
 		signal.Untrack(func() struct{} {
@@ -290,11 +341,11 @@ func (st *listState[T, K]) eachCell(f func(*element)) {
 	}
 }
 
-// layoutCells lays out the bound rows at the list's width (a grid's
-// cells at a column's); each cell's frame tells the host the row's
-// height.
+// layoutCells lays out the bound rows at the list's width (an inset
+// grouped list's less its insets, a grid's cells at a column's); each
+// cell's frame tells the host the row's height.
 func (st *listState[T, K]) layoutCells(p *layout.Pass) {
-	w := st.e.box.W
+	w := st.e.box.W - 2*st.inset
 	if st.columns > 1 {
 		w = (w - st.gap*float32(st.columns-1)) / float32(st.columns)
 	}
