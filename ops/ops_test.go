@@ -103,7 +103,8 @@ func goldenEvents() []Event {
 		{ID: 1, Kind: EventLifecycle, Int: int64(LifecycleBackground)},
 		{ID: 1, Kind: EventEnvironment, Env: Environment{
 			Width: 402, Height: 874, SafeTop: 62, SafeBottom: 34, Keyboard: 336,
-			Scale: 3, FontScale: 1.25, Dark: true, ReduceMotion: true, Platform: PlatformIOS, Locale: "en_US", TimeZone: "Asia/Shanghai",
+			Scale: 3, FontScale: 1.25, Dark: true, ReduceMotion: true, Platform: PlatformIOS,
+			WidthClass: SizeClassCompact, HeightClass: SizeClassExpanded, Locale: "en_US", TimeZone: "Asia/Shanghai",
 		}},
 		{ID: 11, Kind: EventPan, G: Gesture{State: GestureStateChanged, X: 10, Y: 20, TranslationX: 5, TranslationY: -3, VelocityX: 100, VelocityY: -50, Scale: 1, Rotation: 0.5}},
 		{ID: 12, Kind: EventNative, Bytes: []byte{1, 2, 3}},
@@ -225,5 +226,25 @@ func TestSchemaNames(t *testing.T) {
 	}
 	if KindList.String() != "List" || EventToggled.String() != "Toggled" || CmdListUpdate.String() != "ListUpdate" {
 		t.Fatal("names")
+	}
+}
+
+func TestSizeClassBreakpoints(t *testing.T) {
+	for _, c := range []struct {
+		dp   float32
+		w, h SizeClass
+	}{
+		{0, SizeClassCompact, SizeClassCompact},
+		{479, SizeClassCompact, SizeClassCompact},
+		{480, SizeClassCompact, SizeClassMedium},
+		{599, SizeClassCompact, SizeClassMedium},
+		{600, SizeClassMedium, SizeClassMedium},
+		{839, SizeClassMedium, SizeClassMedium},
+		{840, SizeClassExpanded, SizeClassMedium},
+		{900, SizeClassExpanded, SizeClassExpanded},
+	} {
+		if w, h := WidthClassOf(c.dp), HeightClassOf(c.dp); w != c.w || h != c.h {
+			t.Errorf("%v dp: width %v height %v, want %v %v", c.dp, w, h, c.w, c.h)
+		}
 	}
 }

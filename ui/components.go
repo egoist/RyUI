@@ -223,6 +223,22 @@ const (
 	PlatformWindows = ops.PlatformWindows
 )
 
+// SizeClass is how much room the window gives the app along one axis, as
+// the platform classes it (the environment's WidthClass and
+// HeightClass): lay out side by side what fits, a sidebar beside the
+// content or a list beside its detail, when the width isn't compact.
+// iOS reports UIKit's size classes, compact or regular (as Expanded);
+// Android, Material's window size classes, which have Medium between
+// (600 to 840 dp wide), where Material still shows one pane. macOS and
+// Windows have none of their own: theirs are Material's, from the size.
+type SizeClass = ops.SizeClass
+
+const (
+	SizeClassCompact  = ops.SizeClassCompact
+	SizeClassMedium   = ops.SizeClassMedium
+	SizeClassExpanded = ops.SizeClassExpanded
+)
+
 // UseEnvironment is the environment of the screen (sheet, tab, or root)
 // the component is in, as a signal: read it in an effect or a
 // StyleFunc, and it follows rotation, the keyboard, dark mode.

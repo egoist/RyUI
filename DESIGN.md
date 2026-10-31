@@ -821,7 +821,12 @@ Each one ends with its examples running and its tests in CI.
   the Android Activity is resizable and handles size changes live
   (`configChanges`). Both report the window's size, not the screen's, as
   the environment, so the root lays out again at any size the user
-  gives the app.
+  gives the app, and its size classes (`Environment.WidthClass`,
+  `HeightClass`): UIKit's on iOS (compact; regular as expanded),
+  Material's window size classes on Android (compact, medium,
+  expanded), each platform's own, so an app that branches on them
+  follows each one's conventions. A host that reports none (macOS,
+  Windows) gets Material's, which the core works out from the size.
 - **Rich text** (done): `ui.RichText` (spans, per-line backgrounds,
   links, per-paragraph layout cache prepared off the main thread, inline
   components), links as accessibility elements, `ui.Selectable`

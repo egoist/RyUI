@@ -89,6 +89,7 @@ open class NuiActivity : AppCompatActivity() {
             fontScale = c.fontScale,
             dark = runtime.isNight(c),
             reduceMotion = !android.animation.ValueAnimator.areAnimatorsEnabled(),
+            widthClass = widthClass(frame.width / d), heightClass = heightClass(frame.height / d),
             locale = c.locales[0].toLanguageTag(),
         )
         if (!force && e == last) return

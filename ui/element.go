@@ -472,6 +472,19 @@ var envCtx = signal.NewContext[*signal.Signal[host.Environment]](nil)
 
 func envEqual(a, b host.Environment) bool { return a == b }
 
+// classify fills in the size classes a host left unspecified (the
+// desktop hosts', which have no platform's to report) with Material's,
+// from the size.
+func classify(env host.Environment) host.Environment {
+	if env.WidthClass == ops.SizeClassUnspecified {
+		env.WidthClass = ops.WidthClassOf(env.Width)
+	}
+	if env.HeightClass == ops.SizeClassUnspecified {
+		env.HeightClass = ops.HeightClassOf(env.Height)
+	}
+	return env
+}
+
 // newProvider makes a host-sized layout root with its own environment,
 // starting from the root's until the host reports.
 func newProvider(kind ops.Kind) *element {

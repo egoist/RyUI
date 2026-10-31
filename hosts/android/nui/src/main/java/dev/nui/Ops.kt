@@ -633,6 +633,8 @@ data class NuiEnvironment(
     val reduceMotion: Boolean = false,
     /** ops.Platform: this host's, Android. */
     val platform: Int = 2,
+    /** ops.SizeClass: 1 compact, 2 medium, 3 expanded; 0 unspecified. */
+    val widthClass: Int = 0, val heightClass: Int = 0,
     val locale: String = "",
     val timeZone: String = java.util.TimeZone.getDefault().id,
 )
@@ -659,6 +661,7 @@ class NuiWriter {
     fun environment(e: NuiEnvironment) {
         for (f in floatArrayOf(e.width, e.height, e.safeTop, e.safeRight, e.safeBottom, e.safeLeft, e.keyboard, e.scale, e.fontScale)) f32(f)
         u8((if (e.dark) 1 else 0) or (if (e.reduceMotion) 2 else 0) or ((e.platform and 3) shl 2))
+        u8((e.widthClass and 3) or ((e.heightClass and 3) shl 2))
         string(e.locale)
         string(e.timeZone)
     }

@@ -587,6 +587,9 @@ fun NuiRuntime.environment(v: View, keyboardPx: Int? = null): NuiEnvironment {
         else ViewCompat.getRootWindowInsets(v)?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0
     val below = maxOf(0, root.height - (offsetInWindow(v)[1] + v.height))
     val c = (act?.resources ?: app.resources).configuration
+    // The size classes are the app window's, as Material's are, for a
+    // screen or a sheet too.
+    val win = act?.window?.decorView ?: root
     return NuiEnvironment(
         width = v.width / d, height = v.height / d,
         safeTop = ins.top / d, safeRight = ins.right / d, safeBottom = ins.bottom / d, safeLeft = ins.left / d,
@@ -595,9 +598,16 @@ fun NuiRuntime.environment(v: View, keyboardPx: Int? = null): NuiEnvironment {
         fontScale = c.fontScale,
         dark = isNight(c),
         reduceMotion = !android.animation.ValueAnimator.areAnimatorsEnabled(),
+        widthClass = widthClass(win.width / d), heightClass = heightClass(win.height / d),
         locale = c.locales[0].toLanguageTag(),
     )
 }
+
+/** Material's window width class (as ops.SizeClass: 1 compact, 2 medium, 3 expanded) of a width in dp. */
+fun widthClass(dp: Float) = if (dp < 600f) 1 else if (dp < 840f) 2 else 3
+
+/** Material's window height class (as ops.SizeClass) of a height in dp. */
+fun heightClass(dp: Float) = if (dp < 480f) 1 else if (dp < 900f) 2 else 3
 
 /** The window's insets changed: bars move, screens report again. */
 fun NuiRuntime.insetsChanged() {

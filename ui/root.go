@@ -72,7 +72,7 @@ type hostBox struct{ h host.Host }
 func Mount(h host.Host, root func() Node) *Root {
 	signal.BindThread()
 	r := &Root{host: h, batch: new(ops.Batch)}
-	r.envV = h.Environment()
+	r.envV = classify(h.Environment())
 	setTimeZone(r.envV.TimeZone)
 	r.scale = r.envV.Scale
 	if r.scale <= 0 {
@@ -375,13 +375,14 @@ func dispatch(ev ops.Event) {
 	switch ev.Kind {
 	case ops.EventEnvironment:
 		setTimeZone(ev.Env.TimeZone)
+		env := classify(ev.Env)
 		if e := elems[ev.ID]; e != nil && e.env != nil && !e.dead {
-			e.setEnv(ev.Env)
+			e.setEnv(env)
 			return
 		}
 		for _, r := range roots {
 			if ev.ID == 0 || r.el.id == ev.ID {
-				r.setEnvironment(ev.Env)
+				r.setEnvironment(env)
 			}
 		}
 		return

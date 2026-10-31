@@ -166,6 +166,8 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [NuiAction] {
         e.fontScale = Float(UIFontMetrics.default.scaledValue(for: 17) / 17)
         e.dark = t.userInterfaceStyle == .dark
         e.reduceMotion = UIAccessibility.isReduceMotionEnabled
+        e.widthClass = t.horizontalSizeClass.nui
+        e.heightClass = t.verticalSizeClass.nui
         e.locale = Locale.current.identifier
         return e
     }

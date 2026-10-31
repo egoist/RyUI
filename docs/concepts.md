@@ -381,12 +381,31 @@ Its fields:
   use it for what an app draws itself, to follow each platform's
   design, as [`examples/usage`](../examples/usage) draws UIKit's inset
   grouped lists on iOS and Material 3's on Android.
+- `WidthClass`, `HeightClass`: how much room the window gives the app
+  along each axis, as the platform classes it: `ui.SizeClassCompact`,
+  `ui.SizeClassMedium` or `ui.SizeClassExpanded`. Branch on them, not
+  on a width of your own, to put a sidebar beside the content or a
+  list beside its detail. iOS reports UIKit's size classes, compact or
+  regular (as Expanded); Android, Material's window size classes
+  (compact under 600 dp wide, medium under 840, expanded; compact under
+  480 dp tall, medium under 900). So an iPad mini in portrait, which
+  UIKit calls regular, is Expanded on iOS, and a tablet the same size
+  is Medium on Android, where Material still shows one pane: each
+  follows its platform. macOS and Windows have none of their own, and
+  take Material's.
 - `Locale`: the user's locale.
 - `TimeZone`: the device's time zone, by its IANA name. nui makes it
   Go's `time.Local`, so `time.Now().Format` shows the device's time.
 
 Semantic colors and fonts follow dark mode and the text size on their
 own; read the environment for what they don't cover.
+
+```go
+env := ui.UseEnvironment()
+ui.Show(signal.Func(func() bool { return env.Get().WidthClass == ui.SizeClassExpanded }),
+	func() ui.Node { return ui.Row(ui.Style{Grow: 1}, sidebar(), detail()) },
+	func() ui.Node { return list() })
+```
 
 ## Values that persist
 

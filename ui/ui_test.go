@@ -1118,3 +1118,38 @@ func TestShared(t *testing.T) {
 		t.Fatalf("after dispose: %q", got)
 	}
 }
+
+// The size classes: a mobile host's are its platform's, kept; a host
+// that reports none (macOS, Windows) gets Material's, from the size, and
+// they follow the window as the user resizes it (split screen).
+func TestSizeClasses(t *testing.T) {
+	h, r := mount(t, func() ui.Node {
+		env := ui.UseEnvironment()
+		return ui.Text(signal.Func(func() string {
+			e := env.Get()
+			return e.WidthClass.String() + " " + e.HeightClass.String()
+		}))
+	})
+	say := func(want string) {
+		t.Helper()
+		r.Flush()
+		if s := h.Root().Text(); s != want {
+			t.Fatalf("says %q, want %q", s, want)
+		}
+	}
+	h.SetEnvironment(ops.Environment{Width: 402, Height: 874, Scale: 3, FontScale: 1})
+	say("compact medium")
+	h.SetEnvironment(ops.Environment{Width: 1194, Height: 834, Scale: 2, FontScale: 1})
+	say("expanded medium")
+	h.SetEnvironment(ops.Environment{Width: 700, Height: 1000, Scale: 2, FontScale: 1})
+	say("medium expanded")
+	// iPad mini in portrait: UIKit says regular, as expanded, where
+	// Material's would be medium; the host's are kept.
+	h.SetEnvironment(ops.Environment{Width: 744, Height: 1133, Scale: 2, FontScale: 1,
+		WidthClass: ui.SizeClassExpanded, HeightClass: ui.SizeClassExpanded})
+	say("expanded expanded")
+	// Slide Over, a third of the screen: compact.
+	h.SetEnvironment(ops.Environment{Width: 320, Height: 1133, Scale: 2, FontScale: 1,
+		WidthClass: ui.SizeClassCompact, HeightClass: ui.SizeClassExpanded})
+	say("compact expanded")
+}

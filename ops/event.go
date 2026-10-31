@@ -11,7 +11,8 @@ import (
 //
 // Wire format: f32 width, height, safe top, right, bottom, left,
 // keyboard, scale, font scale; u8 flags (1 dark, 2 reduce motion, bits
-// 2-4 the Platform); string locale; string time zone.
+// 2-4 the Platform); u8 size classes (bits 0-1 the width's, 2-3 the
+// height's); string locale; string time zone.
 type Environment struct {
 	Width, Height                            float32
 	SafeTop, SafeRight, SafeBottom, SafeLeft float32
@@ -21,8 +22,14 @@ type Environment struct {
 	Dark                                     bool
 	ReduceMotion                             bool // the user asked for less motion (iOS's Reduce Motion; Android's animations off)
 	Platform                                 Platform
-	Locale                                   string
-	TimeZone                                 string // IANA, e.g. Asia/Shanghai: the core's time.Local
+	// WidthClass and HeightClass are the platform's size classes for
+	// the window: UIKit's (compact; regular, reported as SizeClassExpanded)
+	// on iOS, Material's window size classes on Android. A host that
+	// leaves them unspecified gets Material's, from the size
+	// (WidthClassOf, HeightClassOf).
+	WidthClass, HeightClass SizeClass
+	Locale                  string
+	TimeZone                string // IANA, e.g. Asia/Shanghai: the core's time.Local
 }
 
 // Platform is the system a host runs on.
@@ -48,6 +55,54 @@ func (p Platform) String() string {
 		return "Windows"
 	}
 	return "unknown"
+}
+
+// SizeClass is how much room a window gives an app along one axis, as
+// the platform classes it: what to show side by side (a sidebar, a list
+// and its detail) rather than one after the other.
+type SizeClass uint8
+
+const (
+	SizeClassUnspecified SizeClass = iota
+	SizeClassCompact               // a phone (in portrait, for the width); a narrow split screen
+	SizeClassMedium                // a tablet in portrait, a foldable open (Android; iOS has none)
+	SizeClassExpanded              // a tablet in landscape, a desktop window; iOS's regular
+)
+
+func (c SizeClass) String() string {
+	switch c {
+	case SizeClassCompact:
+		return "compact"
+	case SizeClassMedium:
+		return "medium"
+	case SizeClassExpanded:
+		return "expanded"
+	}
+	return "unspecified"
+}
+
+// WidthClassOf is Material 3's window width class for a width in points
+// (dp): compact under 600, medium under 840, else expanded.
+func WidthClassOf(w float32) SizeClass {
+	switch {
+	case w < 600:
+		return SizeClassCompact
+	case w < 840:
+		return SizeClassMedium
+	}
+	return SizeClassExpanded
+}
+
+// HeightClassOf is Material 3's window height class for a height in
+// points (dp): compact under 480, medium under 900, else expanded.
+func HeightClassOf(h float32) SizeClass {
+	switch {
+	case h < 480:
+		return SizeClassCompact
+	case h < 900:
+		return SizeClassMedium
+	}
+	return SizeClassExpanded
 }
 
 // Gesture is a continuous gesture's state, in points relative to the
@@ -116,7 +171,7 @@ func AppendEvent(buf []byte, e *Event) []byte {
 		if v.ReduceMotion {
 			d |= 2
 		}
-		buf = append(buf, d)
+		buf = append(buf, d, byte(v.WidthClass&3)|byte(v.HeightClass&3)<<2)
 		buf = le.AppendUint32(buf, uint32(len(v.Locale)))
 		buf = append(buf, v.Locale...)
 		buf = le.AppendUint32(buf, uint32(len(v.TimeZone)))
@@ -157,6 +212,8 @@ func DecodeEvent(data []byte) (Event, error) {
 		}
 		f := r.u8()
 		v.Dark, v.ReduceMotion, v.Platform = f&1 != 0, f&2 != 0, Platform(f>>2&7)
+		c := r.u8()
+		v.WidthClass, v.HeightClass = SizeClass(c&3), SizeClass(c>>2&3)
 		v.Locale = string(r.bytes())
 		v.TimeZone = string(r.bytes())
 	case PGesture:

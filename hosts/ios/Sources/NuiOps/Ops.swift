@@ -654,6 +654,8 @@ public struct NuiEnvironment: Equatable {
     public var reduceMotion = false
     /// ops.Platform: this host's, iOS.
     public var platform: UInt8 = 1
+    /// ops.SizeClass: 1 compact, 3 expanded (UIKit's regular); 0 unspecified.
+    public var widthClass: UInt8 = 0, heightClass: UInt8 = 0
     public var locale = ""
     public var timeZone = TimeZone.current.identifier
     public init() {}
@@ -674,6 +676,7 @@ public struct NuiWriter {
     public mutating func environment(_ e: NuiEnvironment) {
         for f in [e.width, e.height, e.safeTop, e.safeRight, e.safeBottom, e.safeLeft, e.keyboard, e.scale, e.fontScale] { f32(f) }
         u8((e.dark ? 1 : 0) | (e.reduceMotion ? 2 : 0) | (e.platform & 3) << 2)
+        u8((e.widthClass & 3) | (e.heightClass & 3) << 2)
         string(e.locale)
         string(e.timeZone)
     }

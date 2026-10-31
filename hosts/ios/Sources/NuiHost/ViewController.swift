@@ -25,6 +25,12 @@ public final class NuiViewController: UIViewController {
                 vc.sendEnvironment()
                 NuiRuntime.shared.resolveLayerColors()
             }
+            // Split View, Slide Over, Stage Manager: the size classes
+            // usually change with the size, but not always.
+            registerForTraitChanges([UITraitHorizontalSizeClass.self, UITraitVerticalSizeClass.self]) { (vc: NuiViewController, _: UITraitCollection) in
+                vc.sendEnvironment()
+                NuiRuntime.shared.reportScreens()
+            }
         }
         let rt = NuiRuntime.shared
         rt.scale = traitCollection.displayScale > 0 ? traitCollection.displayScale : UIScreen.main.scale
@@ -110,12 +116,25 @@ public final class NuiViewController: UIViewController {
         e.fontScale = Float(UIFontMetrics.default.scaledValue(for: 17) / 17)
         e.dark = traitCollection.userInterfaceStyle == .dark
         e.reduceMotion = UIAccessibility.isReduceMotionEnabled
+        e.widthClass = traitCollection.horizontalSizeClass.nui
+        e.heightClass = traitCollection.verticalSizeClass.nui
         e.locale = Locale.current.identifier
         guard e != lastEnv, e.width > 0 else { return }
         lastEnv = e
         let rt = NuiRuntime.shared
         rt.scale = CGFloat(e.scale)
         rt.send(NuiEvents.environment(rt.rootID, e))
+    }
+}
+
+extension UIUserInterfaceSizeClass {
+    /// As ops.SizeClass: compact, or regular as expanded.
+    var nui: UInt8 {
+        switch self {
+        case .compact: return 1
+        case .regular: return 3
+        default: return 0
+        }
     }
 }
 #endif
