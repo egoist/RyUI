@@ -89,6 +89,10 @@ type node struct {
 	detents        int64
 	tracking       ID // a TextField's text view (Multiline)
 	a11yLabel      string
+	adjustable     bool
+	placed         bool   // has had a frame
+	transition     []byte // Style.Transition's
+	entering       bool
 }
 
 func (n *node) listening(e ops.EventKind) bool {
@@ -137,7 +141,7 @@ type Host struct {
 	accent       ops.Color
 	nextCell     ops.NodeID
 	frames       *frameClock
-	modules      map[string]func(method string, args []byte) ([]byte, error)
+	modules      map[string]map[string]method
 	assets       string
 	appName      string
 	dark         bool
@@ -145,6 +149,8 @@ type Host struct {
 	videos       map[ID]ops.NodeID // by AVPlayerItem
 	chrome       chrome
 	chromeQueued bool
+	a11yActions  map[ID]a11yAction
+	exiting      map[ID]bool // views going out with a transition
 }
 
 var theHost *Host
@@ -154,12 +160,14 @@ func newHost() *Host {
 	Load()
 	registerClasses()
 	h := &Host{
-		nodes:  map[ops.NodeID]*node{},
-		byView: map[ID]*node{},
-		byMenu: map[ID]*node{},
-		lists:  map[ID]*list{},
-		videos: map[ID]ops.NodeID{},
-		target: New("NuiTarget"),
+		nodes:       map[ops.NodeID]*node{},
+		byView:      map[ID]*node{},
+		byMenu:      map[ID]*node{},
+		lists:       map[ID]*list{},
+		videos:      map[ID]ops.NodeID{},
+		a11yActions: map[ID]a11yAction{},
+		exiting:     map[ID]bool{},
+		target:      New("NuiTarget"),
 	}
 	purego.RegisterFunc(&msgShowPicker, MsgSendAddr())
 	theHost = h
@@ -360,6 +368,21 @@ func (h *Host) destroy(id ops.NodeID) {
 	for _, c := range n.children {
 		c.parent = nil
 	}
+	// Going out with a transition, or inside a view that is: shown until
+	// it's gone.
+	if h.exit(n) || h.inExiting(n.view) {
+		if n.parent != nil {
+			for i, x := range n.parent.children {
+				if x == n {
+					n.parent.children = append(n.parent.children[:i], n.parent.children[i+1:]...)
+					break
+				}
+			}
+			n.parent = nil
+		}
+		h.forget(n)
+		return
+	}
 	if n.parent != nil {
 		h.remove(n.parent, n)
 	}
@@ -368,6 +391,12 @@ func (h *Host) destroy(id ops.NodeID) {
 
 // release lets go of n's native objects.
 func (h *Host) release(n *node) {
+	for a, x := range h.a11yActions {
+		if x.n == n {
+			delete(h.a11yActions, a)
+			Release(a)
+		}
+	}
 	if n.view != 0 {
 		Send(n.view, "removeFromSuperview")
 		delete(h.byView, n.view)
@@ -400,6 +429,9 @@ func (h *Host) insert(p, c *node, index int) {
 	copy(p.children[i+1:], p.children[i:])
 	p.children[i] = c
 	c.parent = p
+	if h.animating && c.transition != nil && !c.placed {
+		c.entering = true
+	}
 	if p.kind == ops.KindScroll {
 		Send(p.view, "setDocumentView:", uintptr(c.view))
 		return
@@ -486,10 +518,18 @@ func (h *Host) setFrame(n *node, f [4]float32) {
 		h.setTransform(n, nil)
 	}
 	v := n.view
-	if h.animating {
-		v = Send(v, "animator")
+	switch {
+	case n.entering:
+		// Comes in from its transition's state, to its first frame.
+		n.entering = false
+		h.enter_(n, r)
+	case h.animating && n.placed:
+		MsgSetRect(Send(v, "animator"), selSetFrame, r)
+	default:
+		// A view's first frame doesn't animate: it wasn't on screen.
+		MsgSetRect(v, selSetFrame, r)
 	}
-	MsgSetRect(v, selSetFrame, r)
+	n.placed = true
 	if n.transform != nil {
 		h.setTransform(n, n.transform)
 	}

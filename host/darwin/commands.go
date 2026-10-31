@@ -341,22 +341,24 @@ func (h *Host) call(root *node, args []byte) {
 	callID := binary.LittleEndian.Uint32(args)
 	module, rest := readString(args[4:])
 	method, rest := readString(rest)
-	var res []byte
-	var err error
-	if f := h.module(module); f != nil {
-		res, err = f(method, rest)
-	} else {
-		err = errors.New("nui: " + module + " isn't on macOS yet")
+	id := root.id
+	answer := func(res []byte, err error) {
+		out := binary.LittleEndian.AppendUint32(nil, callID)
+		if err != nil {
+			out = append(out, 0)
+			out = append(out, err.Error()...)
+		} else {
+			out = append(out, 1)
+			out = append(out, res...)
+		}
+		ev := ops.Event{ID: id, Kind: ops.EventResult, Bytes: out}
+		// Answered after the batch, as a host's modules do.
+		h.Post(func() { h.core.Dispatch(ev) })
 	}
-	out := binary.LittleEndian.AppendUint32(nil, callID)
-	if err != nil {
-		out = append(out, 0)
-		out = append(out, err.Error()...)
-	} else {
-		out = append(out, 1)
-		out = append(out, res...)
+	m := h.module(module)[method]
+	if m == nil {
+		answer(nil, errors.New("nui: "+module+"."+method+" isn't on macOS yet"))
+		return
 	}
-	ev := ops.Event{ID: root.id, Kind: ops.EventResult, Bytes: out}
-	// Answered after the batch, as a host's modules do.
-	h.Post(func() { h.core.Dispatch(ev) })
+	m(rest, answer)
 }

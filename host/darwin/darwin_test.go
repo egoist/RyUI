@@ -3,9 +3,12 @@
 package darwin
 
 import (
+	"encoding/binary"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
+	"time"
 
 	. "github.com/egoist/nui/internal/darwin"
 	"github.com/egoist/nui/ops"
@@ -254,4 +257,118 @@ func firstText(n *node) *node {
 		}
 	}
 	return nil
+}
+
+func TestModules(t *testing.T) {
+	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })
+	onMain(func() {
+		call := func(module, m string, args []byte) ([]byte, error) {
+			var out []byte
+			var err error
+			h.module(module)[m](args, func(b []byte, e error) { out, err = b, e })
+			return out, err
+		}
+		b, err := call("device", "info", nil)
+		if err != nil || !strings.Contains(string(b), `"system":"macOS"`) {
+			t.Fatalf("device.info: %s, %v", b, err)
+		}
+		key := fmt.Sprintf("nui-test-%d", time.Now().UnixNano())
+		if b, err := call("secureStore", "get", []byte(key)); err != nil || len(b) != 1 || b[0] != 0 {
+			t.Fatalf("a missing key: %v, %v", b, err)
+		}
+		args := binary.LittleEndian.AppendUint32(nil, uint32(len(key)))
+		args = append(append(args, key...), "secret"...)
+		if _, err := call("secureStore", "set", args); err != nil {
+			t.Fatal(err)
+		}
+		if b, err := call("secureStore", "get", []byte(key)); err != nil || string(b) != "\x01secret" {
+			t.Fatalf("get after set: %q, %v", b, err)
+		}
+		if _, err := call("secureStore", "delete", []byte(key)); err != nil {
+			t.Fatal(err)
+		}
+		if b, _ := call("secureStore", "get", []byte(key)); len(b) != 1 || b[0] != 0 {
+			t.Fatalf("after delete: %q", b)
+		}
+	})
+}
+
+func TestAccessibility(t *testing.T) {
+	did, by := "", 0
+	h, _ := mount(t, func() ui.Node {
+		return ui.View(ui.ViewProps{
+			Label:    "Volume",
+			Actions:  []ui.A11yAction{{Name: "Mute", Do: func() { did = "Mute" }}},
+			OnAdjust: func(n int) { by += n },
+		}, ui.StaticText("x"))
+	})
+	onMain(func() {
+		var v *node
+		for _, n := range find(h, ops.KindView) {
+			if n.a11yLabel == "Volume" {
+				v = n
+			}
+		}
+		if v == nil {
+			t.Fatal("no labeled view")
+		}
+		if s := GoString(Send(v.view, "accessibilityLabel")); s != "Volume" {
+			t.Fatalf("label %q", s)
+		}
+		actions := ArrayItems(Send(v.view, "accessibilityCustomActions"))
+		if len(actions) != 1 || GoString(Send(actions[0], "name")) != "Mute" {
+			t.Fatalf("%d actions", len(actions))
+		}
+		// VoiceOver takes the action: its target and selector.
+		Send(Send(actions[0], "target"), "a11yAction:", uintptr(actions[0]))
+		if did != "Mute" {
+			t.Fatal("the action didn't run")
+		}
+		Send(v.view, "accessibilityPerformIncrement")
+		Send(v.view, "accessibilityPerformIncrement")
+		Send(v.view, "accessibilityPerformDecrement")
+		if by != 1 {
+			t.Fatalf("adjusted by %d", by)
+		}
+	})
+}
+
+func TestTransitions(t *testing.T) {
+	shown := signal.New(false)
+	h, _ := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{},
+			ui.Show(shown, func() ui.Node {
+				return ui.View(ui.ViewProps{Style: ui.Style{Height: ui.Pt(40), Background: ui.Red, Transition: ui.SlideUp}},
+					ui.StaticText("toast"))
+			}))
+	})
+	onMain(func() {
+		toggle := func(v bool) {
+			h.enter(func() { ui.Post(func() { ui.Animate(func() { shown.Set(v) }) }) })
+			h.runPosted()
+		}
+		toggle(true)
+		var toast *node
+		for _, n := range find(h, ops.KindView) {
+			if n.transition != nil {
+				toast = n
+			}
+		}
+		if toast == nil {
+			t.Fatal("no toast")
+		}
+		v := Retain(toast.view)
+		defer Release(v)
+		if toast.entering || !toast.placed {
+			t.Fatal("the toast didn't come in")
+		}
+		toggle(false)
+		// It's gone from the core's tree, and stays on screen while it goes.
+		if h.nodes[toast.id] != nil {
+			t.Fatal("the toast's node is still there")
+		}
+		if !h.exiting[v] || Send(v, "superview") == 0 {
+			t.Fatal("the toast left at once")
+		}
+	})
 }

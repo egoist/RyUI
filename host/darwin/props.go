@@ -189,8 +189,14 @@ func (h *Host) setCommon(n *node, p ops.PropID, v *ops.Value) {
 		if v.Int != 0 {
 			hideA11y(n.view)
 		}
-	case ops.PropA11yActions, ops.PropA11yAdjustable:
-		// Not yet on macOS.
+	case ops.PropA11yActions:
+		h.setA11yActions(n, decodeStrings(v.Bytes))
+	case ops.PropA11yAdjustable:
+		n.adjustable = v.Int != 0
+		if n.adjustable {
+			Send(n.view, "setAccessibilityElement:", 1)
+			Send(n.view, "setAccessibilityRole:", uintptr(String("AXIncrementor")))
+		}
 	case ops.PropColor:
 		n.color = ops.Color(v.Int)
 		h.applyColor(n)
@@ -248,8 +254,13 @@ func (h *Host) setCommon(n *node, p ops.PropID, v *ops.Value) {
 		if n.cell != nil {
 			n.cell.swipe = decodeActions(v.Bytes)
 		}
-	case ops.PropTransition, ops.PropMatch:
-		// Enter and exit transitions and matched views: not yet on macOS.
+	case ops.PropTransition:
+		n.transition = nil
+		if len(v.Bytes) >= 13 {
+			n.transition = append([]byte(nil), v.Bytes...)
+		}
+	case ops.PropMatch:
+		// Matched views: not yet on macOS.
 	}
 }
 
@@ -645,4 +656,32 @@ func decodeStrings(b []byte) []string {
 		out = append(out, s)
 	}
 	return out
+}
+
+// a11yAction is a screen reader action of a view's (A11yActions).
+type a11yAction struct {
+	n     *node
+	index int
+}
+
+// setA11yActions gives the view VoiceOver's custom actions, which send
+// A11yAction with their index.
+func (h *Host) setA11yActions(n *node, names []string) {
+	for a, x := range h.a11yActions {
+		if x.n == n {
+			delete(h.a11yActions, a)
+			Release(a)
+		}
+	}
+	arr := Send(Class("NSMutableArray"), "array")
+	for i, name := range names {
+		a := Send(Send(Class("NSAccessibilityCustomAction"), "alloc"), "initWithName:target:selector:",
+			uintptr(String(name)), uintptr(h.target), uintptr(Sel("a11yAction:")))
+		h.a11yActions[a] = a11yAction{n, i}
+		Send(arr, "addObject:", uintptr(a))
+	}
+	Send(n.view, "setAccessibilityCustomActions:", uintptr(arr))
+	if len(names) > 0 {
+		Send(n.view, "setAccessibilityElement:", 1)
+	}
 }

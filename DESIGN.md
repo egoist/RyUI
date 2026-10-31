@@ -874,11 +874,16 @@ Each one ends with its examples running and its tests in CI.
   signed `.app` with its icon and assets). The examples run. Done: the
   v0 components, navigation (below), rich text (an `NSTextView`), shapes,
   images, symbols, gestures, menus, animation, `WebView`, `Video`; tests
-  in `host/darwin` drive real AppKit views. Not yet: `ui.Window` (one
-  window per app, holding the root), the app's own menus and keyboard
-  shortcuts, `ui.Native`, the native modules (`ui.Call`: secure storage,
-  device, notifications…), enter/exit transitions and matched views,
-  screen reader actions, notarization.
+  in `host/darwin` drive real AppKit views. Native modules: `secureStore`
+  (the login Keychain, which an app signed ad hoc can use), `device`
+  (info, clipboard, keep awake), `browser` (the user's browser), `photos`
+  (an open panel). Screen reader actions and adjustable views
+  (`NSAccessibilityCustomAction`, increment and decrement); enter and
+  exit transitions (the frame carries the scale and offset). Not yet:
+  `ui.Window` (one window per app, holding the root), the app's own
+  menus and keyboard shortcuts, `ui.Native`, the other modules (network,
+  location, notifications, camera, audio…), matched views (`Match`),
+  notarization.
 
 ## Rich text
 

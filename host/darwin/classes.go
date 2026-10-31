@@ -57,6 +57,9 @@ func registerClasses() {
 			}
 			return String(strings.Join(parts, ", "))
 		}),
+		// OnAdjust: VoiceOver's increment and decrement.
+		Method("accessibilityPerformIncrement", func(self ID, _ SEL) bool { return theHost.adjust(self, 1) }),
+		Method("accessibilityPerformDecrement", func(self ID, _ SEL) bool { return theHost.adjust(self, -1) }),
 		Method("menuForEvent:", func(self ID, _ SEL, ev ID) ID {
 			n := theHost.byView[self]
 			if n == nil || n.menu == 0 || n.menuTrigger != int32(ops.MenuTriggerLongPress) {
@@ -138,6 +141,13 @@ func registerTarget() {
 		Method("magnify:", func(self ID, _ SEL, g ID) { h().gesture(g, ops.EventPinch) }),
 		Method("rotate:", func(self ID, _ SEL, g ID) { h().gesture(g, ops.EventRotate) }),
 		Method("menuItem:", func(self ID, _ SEL, item ID) { h().menuItem(item) }),
+		Method("a11yAction:", func(self ID, _ SEL, a ID) bool {
+			x, ok := h().a11yActions[a]
+			if ok {
+				h().emit(x.n, ops.Event{Kind: ops.EventA11yAction, Int: int64(x.index)})
+			}
+			return ok
+		}),
 		Method("barItem:", func(self ID, _ SEL, item ID) { h().barItem(item) }),
 		Method("back:", func(self ID, _ SEL, sender ID) { h().back() }),
 		Method("boundsChanged:", func(self ID, _ SEL, n ID) { h().scrolled(Send(n, "object")) }),
@@ -198,4 +208,13 @@ func collectLabels(v ID, out *[]string) {
 		}
 		collectLabels(s, out)
 	}
+}
+
+func (h *Host) adjust(v ID, by int64) bool {
+	n := h.byView[v]
+	if n == nil || !n.adjustable {
+		return false
+	}
+	h.emit(n, ops.Event{Kind: ops.EventAdjust, Int: by})
+	return true
 }
