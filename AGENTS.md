@@ -3,7 +3,8 @@
 nui is a UI framework in Go that renders with each platform's own
 widgets, driven by fine-grained signals. **Mobile first: iOS and
 Android.** Desktop comes later on the same core; the macOS host (`host/darwin`,
-AppKit through purego) is under way, Windows and Linux aren't started. **Read
+AppKit through purego) and the Windows host (`host/windows`, Win32
+through syscall) are under way, Linux isn't started. **Read
 [DESIGN.md](DESIGN.md) before changing code**; it is the source of truth
 for the architecture, the APIs and the milestones. Work milestone by
 milestone, in order.
@@ -18,7 +19,8 @@ milestone, in order.
   talk to hosts only through `host.Host` and `ops`. Adding a component
   means: its kind and props in `ops/schema.go`, `go generate ./ops`, the
   component in `ui`, and its view in every host (`fake` first, then iOS
-  and Android, then macOS in `host/darwin`).
+  and Android, then macOS in `host/darwin` and Windows in
+  `host/windows`).
 - **Nothing phone-only in the core's data structures**: no single global
   root, no assumption that the screen size never changes, so desktop
   windows can be added later without rewriting the core.
@@ -57,6 +59,10 @@ go run ./cmd/nui dev -mac examples/counter       # macOS: the app and its AppKit
 go run ./cmd/nui build -mac examples/counter     # a universal .app (-sign "Developer ID Application: ..."; default ad hoc)
 go test ./host/darwin                            # the macOS host, driving real AppKit views (macOS)
 (cd examples/counter && NUI_SNAPSHOT=/tmp/c.png NUI_DUMP=1 go run .)  # macOS: the window as a PNG and its view tree, then quit
+go run ./cmd/nui dev -windows examples/counter   # Windows: the app and its Win32 host in one process, rerun on save
+go run ./cmd/nui build -windows examples/counter # a folder: the .exe (icon, manifest, version) and its assets; from any system
+go test ./host/windows                           # the Windows host, driving real Win32 windows (Windows)
+(cd examples/counter && NUI_SNAPSHOT=c.png NUI_DUMP=1 NUI_SCRIPT="tap:Add" go run .)  # Windows: steps, then the window as a PNG and its view tree
 ```
 
 ## Conventions
@@ -71,5 +77,8 @@ go test ./host/darwin                            # the macOS host, driving real 
   inventing one.
 - Swift host: UIKit only, no SwiftUI. Kotlin host: Android Views and
   Material Components, no Compose. macOS host: AppKit only, from Go
-  through `internal/darwin` (purego), no cgo, no SwiftUI.
+  through `internal/darwin` (purego), no cgo, no SwiftUI. Windows host:
+  Win32 and the common controls, from Go through `internal/windows`
+  (syscall), no cgo, no WinUI; the controls drawn as Fluent's in custom
+  draw, so an app that sets no style looks like Windows 11.
 - Keep generated files (`ops` decoders) committed and up to date.

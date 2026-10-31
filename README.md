@@ -37,6 +37,9 @@ func main() { app.Run(Counter) }
   Google Play.
 - **macOS, early**: the same app on AppKit, in one Go process
   (`nui dev -mac`, `nui build -mac`).
+- **Windows, early**: the same app on Win32 and the common controls,
+  drawn as Windows 11's, in one Go process (`nui dev -windows`,
+  `nui build -windows`).
 
 ## Quick start
 

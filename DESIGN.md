@@ -52,7 +52,8 @@ ops/                     mount operations, binary encoding
 mobile/ (C ABI, cgo) ──► hosts/ios (Swift)   hosts/android (Kotlin)
 host/fake                                  tests: records ops
 host/darwin                                macOS: AppKit in process, Go (purego)
-host/windows, host/linux                   later: desktop, in process, Go
+host/windows                               Windows: Win32 in process, Go (syscall)
+host/linux                                 later: desktop, in process, Go
 ```
 
 The core never imports a host. A mobile app is a Go library: `mobile/`
@@ -615,6 +616,8 @@ nui dev -ios|-android <dir>       build, run, rebuild and restart on save
 nui build -ios|-android <dir>     a release build for the stores
 nui dev -mac <dir>                build and run on this Mac, rerun on save
 nui build -mac <dir>              a universal .app, signed (-sign; default ad hoc)
+nui dev -windows <dir>            build and run on this PC, rerun on save
+nui build -windows <dir>          a folder: the .exe (icon, manifest, version) and its assets
 ```
 
 **An app's metadata** is `nui.json` beside its Go code, all optional:
@@ -731,8 +734,8 @@ nui/
   examples/counter/  examples/todo/  examples/list10k/  examples/navigation/
 ```
 
-Desktop adds `host/darwin`, `host/windows`, `host/linux` and
-`internal/darwin` later.
+Desktop adds `host/darwin` and `internal/darwin` (macOS),
+`host/windows` and `internal/windows` (Windows), and `host/linux` later.
 
 ## Testing
 
@@ -755,6 +758,10 @@ Desktop adds `host/darwin`, `host/windows`, `host/linux` and
 - `host/darwin` (macOS): tests mount components on the real AppKit
   host, on the main thread (`TestMain` keeps it), and check the views
   (their text, frames, clicks, list binding, navigation, disposal).
+- `host/windows` (Windows), likewise on real Win32 windows: a click
+  through the BUTTON's `BM_CLICK`, typing into the EDIT, a 10,000-row
+  list binding only what shows, a stack's back button disposing the
+  screen, and disposal destroying every window.
 - `ops`: the Go encoder and the generated Swift and Kotlin decoders
   round-trip the same golden batches (`swift test --package-path
   hosts/ios`; `./gradlew :nui:testDebugUnitTest` in `hosts/android`).
@@ -884,6 +891,28 @@ Each one ends with its examples running and its tests in CI.
   menus and keyboard shortcuts, `ui.Native`, the other modules (network,
   location, notifications, camera, audio…), matched views (`Match`),
   notarization.
+- **Windows** (in progress): `host/windows`, Win32 and the common
+  controls (version 6) in the app's process through `syscall`
+  (`internal/windows`, much of it MyGo's), no cgo, no WinUI; `app.Run`
+  runs it on Windows (amd64). `nui dev -windows` (rebuild and rerun on
+  save, signals' state kept) and `nui build -windows` (a folder of the
+  `.exe`, with its icon, manifest and version built in, and its
+  assets; from any system). The examples run (counter, todo, list10k,
+  navigation, gallery, richtext, markdown, notes, media but its native
+  view, usage, downloader), light and dark, at any DPI. Done: the v0
+  components, navigation, rich text (RichEdit), shapes, images, symbols
+  (Segoe Fluent Icons), gestures (press, long press and right-click,
+  pan and swipe with the mouse), menus, animation of frames, `WebView`
+  and `Video` (WebView2), the accent and color scheme; tests in
+  `host/windows` drive real windows. Not yet: `ui.Window`, the app's
+  menus and shortcuts, `ui.Native`, the native modules (`ui.Call`),
+  screen reader props beyond the controls' own (labels, roles,
+  actions, announcements: UI Automation), shadows, transforms,
+  materials, opacity between 0 and 1 for a view's children, enter/exit
+  transitions and matched views, pinch and rotate, pull to refresh,
+  `ScreenOptions.Search`, a multiline field's placeholder, a dark date
+  picker, the share sheet (Share copies the text), arm64 builds, code
+  signing.
 
 ## Rich text
 
@@ -993,7 +1022,7 @@ After M6, on the same core, `ops` and app code:
 | Platform | Host | Notes |
 |---|---|---|
 | macOS | Go, AppKit through purego (`host/darwin`) | No cgo. `internal/darwin` is MyGo's Objective-C runtime layer (classes made at runtime, blocks, `WithPool`, a main run loop source for `Post`). In progress (see Milestones). |
-| Windows | Go, Win32 with common controls v6 through `syscall` (`host/windows`) | Open: WinUI 3 instead (needs the Windows App SDK). `List` there is core-virtualized: no Win32 list hosts arbitrary rows. |
+| Windows | Go, Win32 with common controls v6 through `syscall` (`host/windows`) | No cgo; `internal/windows` is the Win32, GDI, GDI+, uxtheme, DWM and WebView2 layer. Not WinUI 3: it needs the Windows App SDK beside the app, and XAML is a second reconciler. `List` is core-virtualized: no Win32 list hosts arbitrary rows. In progress (see Milestones). |
 | Linux | Go, GTK 4 through purego (`host/linux`) | libadwaita optional. |
 
 Desktop hosts run in process: `app.Run` locks the main OS thread and
@@ -1037,6 +1066,105 @@ How the macOS host maps nui (`host/darwin`):
 - Debug automation: `NUI_SNAPSHOT=file.png` renders the window to a PNG
   once it has shown, without taking focus (`NUI_DUMP=1` writes the view
   tree beside it), then quits.
+
+How the Windows host maps nui (`host/windows`):
+
+- One thread: the main goroutine is locked to the main thread (the
+  package's `init`), which runs the message loop; `Post` queues work and
+  posts a message to a message-only window. One window procedure, made
+  once with `syscall.NewCallback`, serves every window class and routes
+  by window to its node; controls are subclassed (`SetWindowSubclass`)
+  through one callback too. `IsDialogMessage` gives Tab and arrow key
+  navigation. A control that would run a modal loop (a menu, a task
+  dialog, the color dialog) runs it once the core has returned.
+- Every real node is a child window. The app's window holds the root;
+  the environment is its client area's size in points (DIPs), its DPI
+  as the scale (per-monitor DPI awareness v2: `WM_DPICHANGED` makes the
+  fonts again and places every window anew), the text size
+  (Accessibility's `TextScaleFactor`, as FontScale), dark mode (the
+  app mode in the registry; the title bar through DWM, menus and scroll
+  bars through uxtheme's app mode), animations off as Reduce Motion,
+  the locale, and the time zone as an IANA name (Windows's ICU).
+  `Environment.Platform` is `PlatformWindows`: the environment's
+  platform bits go from two to three (bits 2-4), which the mobile hosts,
+  sending only two, still decode.
+- Views draw themselves (a window class of the host's) into a buffered
+  DC: first what's behind them where they aren't opaque (the parent and
+  the siblings they overlap, drawn again into the DC, as
+  `DrawThemeParentBackground` would but recursively), then the
+  background, border, corner radius, gradient (GDI+, antialiased,
+  blended in sRGB), then the content; text with GDI (`DrawText`, which
+  also measures it, with the same font: min-content is the widest
+  word). Views that take no mouse events are `HTTRANSPARENT`, so a
+  click on a text reaches the pressable row under it. A pressable view
+  shows Fluent's hover and pressed fills and takes Enter and Space.
+- Controls are the common controls, drawn as Windows 11 draws its own
+  (WinUI's Fluent styles) through custom draw, so they look current in
+  light and dark mode and keep their keyboard, focus and accessibility:
+  `BUTTON` (Filled is the accent button, Plain accent text, Tinted an
+  accent wash, Gray and Bordered the standard button), a check box
+  drawn as Fluent's toggle switch (Win32 has no switch), the trackbar
+  as Fluent's slider, `EDIT` in a frame the host draws (secure with a
+  password character, multiline with return, Number with `ES_NUMBER`),
+  `COMBOBOX` for `Wheel`, the date and time picker, two buttons for
+  `Stepper`, a swatch opening the color dialog for `ColorPicker`. The
+  segmented control, progress bar and ring are the host's own views,
+  drawn as Fluent's. Each control sits in a view of the host's, which
+  the core places: some controls send their notifications to the parent
+  they were made in, so a control never changes parent.
+- Fonts are Segoe UI Variable (Segoe UI before Windows 11), its optical
+  size picked by the size (Small below 12.5, Display from 20); the text
+  styles are the Windows 11 type ramp's nearest: LargeTitle is Title
+  Large (40 semibold), Title is Title (28 semibold), Title2 Subtitle (20
+  semibold), Title3 Body Large (18), Headline Body Strong (14
+  semibold), Body and Callout Body (14), Subheadline 13, Footnote and
+  Caption Caption (12), Caption2 11. Monospace is Cascadia Mono, serif
+  Georgia; the app's fonts are added for the process. Symbols are SF
+  Symbol names drawn as Segoe Fluent Icons glyphs, a curated set (one
+  with no glyph shows nothing and is reported once).
+- A `Stack` shows its top screen under a header bar of its own: a back
+  button (Alt+Left too) while there's a screen to go back to, the
+  screen's title, its bar buttons. `Tabs` are a bar on top, as WinUI's
+  top `NavigationView`. A `Sheet` is a modal window over the app's (the
+  owner disabled meanwhile; closing it or Escape dismisses it), half
+  the window's height for a medium-only sheet. An `Alert` is a task
+  dialog; an action sheet's buttons are command links. A menu is a
+  popup menu: a button's drops below it, a view's `LongPress` menu is
+  its context menu (a right-click, or a long press).
+- `List` is core-virtualized, as on macOS: rows the host places at
+  their offsets in the list's window (one `DeferWindowPos`), binds
+  through `ListBind` and recycles. Scroll bars are an indicator over the
+  content, as WinUI's: a thin thumb (a window shaped by a region) shown
+  while scrolling and under the mouse, which grows and drags; Win32's
+  own scroll bars would take their width from the content the core laid
+  out.
+- `RichText` is a read-only rich edit (msftedit): spans are character
+  formats, links the host's own (colored, hit-tested and clicked by the
+  host, as the control draws its links in a color of its own), inline
+  components transparent pictures of their size (`EM_INSERTIMAGE`) with
+  their views placed on them; its background is sampled from what's
+  behind it (a rich edit can't be transparent). Selection across texts
+  in a `Selectable` isn't one selection yet: each text selects its own.
+- `WebView` is WebView2 (the runtime found in EdgeUpdate's registry
+  keys, as its loader finds it, so no loader DLL ships); the app's
+  assets are served from `https://nui.assets/`; pages follow the app's
+  dark mode. `Video` is a WebView2 page of a `<video>`, with Edge's
+  controls: Win32 has no video view with controls.
+- Frames are set with `SetWindowPos`, without copying the old pixels
+  (a view's pixels depend on what's behind it). `ui.Animate` steps the
+  frames on a timer; opacity between 0 and 1 fades a view's own drawing
+  but not its child windows (a child window can't be translucent without
+  the app's manifest).
+- The host builds for amd64 only: GDI+ takes floats, which Go's Windows
+  calls pass in the registers on amd64 but not arm64 (an amd64 build
+  runs on Windows on Arm, emulated).
+- Debug automation: `NUI_SNAPSHOT=file.png` writes the window (and the
+  top sheet's, `file.sheet.png`) with `PrintWindow` once it has shown,
+  without taking focus, then quits (`NUI_DUMP=1`: the view tree beside
+  it); `NUI_SCRIPT` runs steps first (`tap:<text>`, `type:<text>`,
+  `submit`, `back`, `escape`, `scroll:<y>`, `wait:<duration>`,
+  `snap:<file>`), through the controls' own messages; `NUI_COLOR_SCHEME`
+  is light or dark whatever the system's.
 
 Desktop needs what mobile doesn't: `ui.Window` (several windows, title,
 size, close requests), the app's menu bar and keyboard shortcuts,
