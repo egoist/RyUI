@@ -4,6 +4,7 @@
 //	nui dev -ios <dir>             build, run on the iOS simulator, rebuild on save
 //	nui dev -android <dir>         build, run on an Android emulator or device, rebuild on save
 //	nui dev -mac <dir>             build, run on this Mac, rebuild on save
+//	nui dev -windows <dir>         build, run on this PC, rebuild on save
 package main
 
 import (
@@ -21,7 +22,8 @@ func usage() {
   nui dev -ios [flags] [dir]     run on the iOS simulator, rebuilding on save
   nui dev -android [flags] [dir] run on an Android device or emulator, rebuilding on save
   nui dev -mac [flags] [dir]     run on this Mac, rebuilding on save
-  nui build -ios|-android|-mac [flags] [dir]   a release build
+  nui dev -windows [flags] [dir] run on this PC, rebuilding on save
+  nui build -ios|-android|-mac|-windows [flags] [dir]   a release build
 
 nui dev flags:
 `)
@@ -57,6 +59,7 @@ func main() {
 type devOptions struct {
 	ios, android bool
 	mac          bool
+	windows      bool
 	device       string
 	once         bool
 	embed        bool
@@ -68,6 +71,7 @@ func devFlags(o *devOptions) *flag.FlagSet {
 	fs.BoolVar(&o.ios, "ios", false, "run on the iOS simulator")
 	fs.BoolVar(&o.android, "android", false, "run on an Android device or emulator")
 	fs.BoolVar(&o.mac, "mac", false, "run on this Mac")
+	fs.BoolVar(&o.windows, "windows", false, "run on this PC (Windows)")
 	fs.StringVar(&o.device, "device", "", "iOS: simulator name or UDID (default: the booted one, else the newest iPhone); Android: adb serial or AVD name")
 	fs.BoolVar(&o.once, "once", false, "build the app with its Go code and launch it once, without watching or streaming logs")
 	fs.BoolVar(&o.embed, "embed", false, "build the app with its Go code (the default runs the Go code here, in the player)")
@@ -90,12 +94,16 @@ func cmdDev(args []string) error {
 		stop := make(chan os.Signal, 1)
 		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 		return devMac(dir, &o, stop)
+	case o.windows:
+		stop := make(chan os.Signal, 1)
+		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+		return devWindows(dir, &o, stop)
 	case o.android:
 		stop := make(chan os.Signal, 1)
 		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 		return devAndroid(dir, &o, stop)
 	case !o.ios:
-		return errors.New("pick a platform: nui dev -ios|-android|-mac <dir>")
+		return errors.New("pick a platform: nui dev -ios|-android|-mac|-windows <dir>")
 	}
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)

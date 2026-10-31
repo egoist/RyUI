@@ -4,10 +4,13 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -67,10 +70,18 @@ type hostProcess struct {
 	v    bool
 	// flags is the build's -ldflags (default: nui.json's).
 	flags string
+	// goarch is the build's GOARCH (default: this machine's).
+	goarch string
+	// stdin, when the process is told to stop by closing it (Windows,
+	// which can't send it SIGINT).
+	stdin io.WriteCloser
 }
 
 func (p *hostProcess) build() error {
 	p.bin = filepath.Join(p.work, "app-host")
+	if runtime.GOOS == "windows" {
+		p.bin += ".exe" // CreateProcess runs only a name with its extension
+	}
 	flags := p.flags
 	if flags == "" {
 		flags = p.app.cfg.ldflags(false)
@@ -92,6 +103,14 @@ func (p *hostProcess) restart() error {
 	c.Dir = p.app.dir // assets/ is served from here
 	c.Env = append(os.Environ(), p.env...)
 	c.Stdout, c.Stderr = os.Stdout, os.Stderr
+	p.stdin = nil
+	if slices.Contains(p.env, "NUI_STOP=stdin") {
+		in, err := c.StdinPipe()
+		if err != nil {
+			return err
+		}
+		p.stdin = in
+	}
 	if err := c.Start(); err != nil {
 		return err
 	}
@@ -108,7 +127,11 @@ func (p *hostProcess) stop() {
 	if p.cmd == nil {
 		return
 	}
-	p.cmd.Process.Signal(syscall.SIGINT)
+	if p.stdin != nil {
+		p.stdin.Close() // it saves its state and quits
+	} else {
+		p.cmd.Process.Signal(syscall.SIGINT)
+	}
 	select {
 	case <-p.done:
 	case <-time.After(3 * time.Second):

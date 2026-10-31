@@ -14,6 +14,7 @@ import (
 type buildOptions struct {
 	ios, android bool
 	mac          bool
+	windows      bool
 	sign         string // macOS: a signing identity (default: ad hoc)
 	simulator    bool   // iOS: a release build for the simulator, unsigned
 	distribution string // iOS: app-store, ad-hoc, development
@@ -27,6 +28,7 @@ func buildFlags(o *buildOptions) *flag.FlagSet {
 	fs.BoolVar(&o.ios, "ios", false, "build an .ipa for the App Store (or -distribution)")
 	fs.BoolVar(&o.android, "android", false, "build an .aab for Google Play, and an .apk")
 	fs.BoolVar(&o.mac, "mac", false, "build a macOS .app (universal: arm64 and x86_64)")
+	fs.BoolVar(&o.windows, "windows", false, "build a Windows app: a folder with the .exe (its icon and version built in) and its assets")
 	fs.StringVar(&o.sign, "sign", "", "macOS: a signing identity, e.g. \"Developer ID Application: ...\" (default: ad hoc)")
 	fs.BoolVar(&o.simulator, "simulator", false, "iOS: a release .app for the simulator instead (not signed for devices)")
 	fs.StringVar(&o.distribution, "distribution", "app-store", "iOS: app-store, ad-hoc or development")
@@ -46,8 +48,8 @@ func cmdBuild(args []string) error {
 	if fs.NArg() > 0 {
 		dir = fs.Arg(0)
 	}
-	if n := btoi(o.ios) + btoi(o.android) + btoi(o.mac); n != 1 {
-		return errors.New("usage: nui build -ios|-android|-mac [flags] [dir]")
+	if n := btoi(o.ios) + btoi(o.android) + btoi(o.mac) + btoi(o.windows); n != 1 {
+		return errors.New("usage: nui build -ios|-android|-mac|-windows [flags] [dir]")
 	}
 	app, err := loadApp(dir)
 	if err != nil {
@@ -64,6 +66,9 @@ func cmdBuild(args []string) error {
 	}
 	if o.mac {
 		return buildMac(app, &o)
+	}
+	if o.windows {
+		return buildWindows(app, &o)
 	}
 	return buildAndroid(app, &o)
 }
