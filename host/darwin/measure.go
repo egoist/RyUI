@@ -104,6 +104,13 @@ func (h *Host) measure(n *node, c layout.Constraints) layout.Size {
 		s.Height = float64(c.Height)
 	}
 	k := float64(h.env.Scale)
+	if len(h.wins) > 0 {
+		// Rounded to its own window's pixels: a Window may be on a display
+		// of another scale.
+		if w := Send(v, "window"); w != 0 {
+			k = MsgFloat(w, Sel("backingScaleFactor"))
+		}
+	}
 	if k <= 0 {
 		k = 2
 	}

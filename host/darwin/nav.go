@@ -337,6 +337,13 @@ func (h *Host) reportScreen(n *node, s Size) {
 	env := h.env
 	env.Width, env.Height = float32(s.Width), float32(s.Height)
 	env.SafeTop, env.SafeRight, env.SafeBottom, env.SafeLeft = 0, 0, 0, 0
+	// Its window's display's scale: a Window on another display than the
+	// main window's has its own.
+	if w := Send(n.view, "window"); w != 0 {
+		if k := MsgFloat(w, Sel("backingScaleFactor")); k > 0 {
+			env.Scale = float32(k)
+		}
+	}
 	if n.nav.reported && env == n.nav.env {
 		return
 	}
