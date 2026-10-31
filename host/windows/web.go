@@ -269,6 +269,7 @@ func (w *web) setUp(h *Host, controller uintptr) {
 		Release(wv4)
 	}
 	w.addScript(bridgeJS)
+	w.colorScheme(h.dark)
 	w.resized(h, n)
 	ComCall(controller, ctlPutIsVisible, 1)
 	fs := w.pending
@@ -635,4 +636,30 @@ func (w *web) play()  { w.eval(`document.querySelector('video').play()`) }
 func (w *web) pause() { w.eval(`document.querySelector('video').pause()`) }
 func (w *web) seek(t float64) {
 	w.eval(fmt.Sprintf(`document.querySelector('video').currentTime=%g`, t))
+}
+
+var iidWebView2_13 = NewGUID("f75f09a8-667e-4983-88d6-c8773f315e84")
+
+// colorScheme has the page's prefers-color-scheme follow the app's dark
+// mode (the system's, unless the app sets its own).
+func (w *web) colorScheme(dark bool) {
+	if w.view == 0 {
+		return
+	}
+	wv13 := QueryInterface(w.view, &iidWebView2_13)
+	if wv13 == 0 {
+		return
+	}
+	defer Release(wv13)
+	var profile uintptr
+	ComCall(wv13, 105, uintptr(unsafe.Pointer(&profile))) // get_Profile
+	if profile == 0 {
+		return
+	}
+	scheme := uintptr(1) // LIGHT
+	if dark {
+		scheme = 2 // DARK
+	}
+	ComCall(profile, 9, scheme) // put_PreferredColorScheme
+	Release(profile)
 }

@@ -287,6 +287,9 @@ func (h *Host) setDark(dark bool) {
 	}
 	for _, n := range h.nodes {
 		h.themeControl(n)
+		if n.web != nil {
+			n.web.colorScheme(dark)
+		}
 	}
 	RedrawWindow(h.window, RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_ERASE|RDW_FRAME)
 	for _, s := range h.sheets {
