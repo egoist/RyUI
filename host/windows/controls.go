@@ -424,6 +424,21 @@ func (h *Host) editMessage(hwnd uintptr, m uint32, w, l uintptr) uintptr {
 		if (w == '\r' || w == '\n') && !n.multiline || w == 1 { // Ctrl+A's character beeps
 			return 0
 		}
+	case WM_PAINT:
+		if n.multiline && n.placeholder != "" && n.text == "" {
+			// A multiline EDIT has no cue banner: the placeholder is drawn
+			// over it while it's empty.
+			r := DefSubclass(hwnd, m, w, l)
+			dc := GetDC(hwnd)
+			old := SelectObject(dc, h.nodeFont(n))
+			SetBkMode(dc, TRANSPARENT)
+			SetTextColor(dc, h.theme.secondary.over(h.theme.fieldBg).ref())
+			cr := ClientRect(hwnd)
+			DrawText(dc, UTF16Units(n.placeholder), &cr, DT_NOPREFIX|DT_WORDBREAK)
+			SelectObject(dc, old)
+			ReleaseDC(hwnd, dc)
+			return r
+		}
 	}
 	return DefSubclass(hwnd, m, w, l)
 }

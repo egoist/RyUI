@@ -910,7 +910,7 @@ Each one ends with its examples running and its tests in CI.
   actions, announcements: UI Automation), shadows, transforms,
   materials, opacity between 0 and 1 for a view's children, enter/exit
   transitions and matched views, pinch and rotate, pull to refresh,
-  `ScreenOptions.Search`, a multiline field's placeholder, a dark date
+  `ScreenOptions.Search`, a dark date
   picker, the share sheet (Share copies the text), arm64 builds, code
   signing.
 
@@ -1162,7 +1162,7 @@ How the Windows host maps nui (`host/windows`):
   top sheet's, `file.sheet.png`) with `PrintWindow` once it has shown,
   without taking focus, then quits (`NUI_DUMP=1`: the view tree beside
   it); `NUI_SCRIPT` runs steps first (`tap:<text>`, `type:<text>`,
-  `submit`, `back`, `escape`, `scroll:<y>`, `wait:<duration>`,
+  `submit`, `back`, `escape`, `scroll:<y>`, `resize:<w>,<h>`, `wait:<duration>`,
   `snap:<file>`), through the controls' own messages; `NUI_COLOR_SCHEME`
   is light or dark whatever the system's.
 

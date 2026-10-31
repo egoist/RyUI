@@ -90,6 +90,14 @@ func (h *Host) step(verb, arg string) {
 		}
 	case "back":
 		h.back()
+	case "resize":
+		// The window's client area to w,h points.
+		ws, hs, _ := strings.Cut(arg, ",")
+		w, _ := strconv.Atoi(ws)
+		ht, _ := strconv.Atoi(hs)
+		r := Rect{Right: h.px(float32(w)), Bottom: h.px(float32(ht))}
+		AdjustWindowRect(&r, uint32(WindowLong(h.window, GWL_STYLE)), 0, h.dpi)
+		SetWindowPos(h.window, 0, 0, 0, r.W(), r.H(), SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE)
 	case "scroll":
 		// The innermost scroll view showing, to a y.
 		y, _ := strconv.ParseFloat(arg, 32)
