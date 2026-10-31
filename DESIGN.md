@@ -908,9 +908,12 @@ Each one ends with its examples running and its tests in CI.
   components, navigation, rich text (RichEdit), shapes, images, symbols
   (Segoe Fluent Icons), gestures (press, long press and right-click,
   pan and swipe with the mouse), menus, animation of frames, `WebView`
-  and `Video` (WebView2), the accent and color scheme; tests in
-  `host/windows` drive real windows. Not yet: `ui.Window`, the app's
-  menus and shortcuts, `ui.Native`, the native modules (`ui.Call`),
+  and `Video` (WebView2), the accent and color scheme; windows, the
+  menu bar and shortcuts (below): each `ui.Window` a top-level window of its
+  own, the app's menus an `HMENU` on the main window with an
+  accelerator table that works in all of them, `WindowOptions` the main
+  window's title, client size and least size; tests in `host/windows`
+  drive real windows. Not yet: `ui.Native`, the native modules (`ui.Call`),
   screen reader props beyond the controls' own (labels, roles,
   actions, announcements: UI Automation), shadows, transforms,
   materials, opacity between 0 and 1 for a view's children, enter/exit
@@ -1130,12 +1133,51 @@ How the Windows host maps nui (`host/windows`):
 - A `Stack` shows its top screen under a header bar of its own: a back
   button (Alt+Left too) while there's a screen to go back to, the
   screen's title, its bar buttons. `Tabs` are a bar on top, as WinUI's
-  top `NavigationView`. A `Sheet` is a modal window over the app's (the
+  top `NavigationView`. A `Sheet` is a modal window over the window in
+  use (the one activated last: the main one, a `Window`, a sheet; the
   owner disabled meanwhile; closing it or Escape dismisses it), half
   the window's height for a medium-only sheet. An `Alert` is a task
-  dialog; an action sheet's buttons are command links. A menu is a
+  dialog over the window in use; an action sheet's buttons are command
+  links. A menu is a
   popup menu: a button's drops below it, a view's `LongPress` menu is
   its context menu (a right-click, or a long press).
+- A `Window` is a top-level window of its own (resizable, its own title
+  and taskbar button; 480 by 600 points if the app gives no size),
+  placed cascaded from the window in use. Its content, the node's
+  child, is laid out at its client size, reported as its
+  `Environment` when it opens and as it's resized; its least size is
+  `WM_GETMINMAXINFO`'s. Closing it sends `Dismissed`, and the core
+  destroys it (with the sheets over it); it shows once the main window
+  does. Stacks in it have their header bar as anywhere, and Alt+Left
+  pops the innermost stack of the window it's pressed in. The app has
+  one scale, the main window's DPI: a `Window` moved to a monitor of
+  another DPI takes the size Windows suggests and draws its content at
+  the app's scale.
+- The app's menus (`MenuBar`) are a menu bar on the main window only,
+  as Windows apps' secondary windows (a tool window, an inspector) have
+  none; their shortcuts work in every window of the app. The bar is
+  made again (`CreateMenu`, `SetMenu`) each time the core sends the
+  menus, none while it sends none: each title and item gets an access
+  key (its first letter no other took: Alt+F), an item its shortcut
+  after a tab ("Ctrl+Shift+K", "Ctrl+Enter", "F5"; Primary and Control
+  are both Ctrl), a disabled one grayed, a checked one checked
+  (Destructive has no look in a Win32 menu). The shortcuts are an
+  accelerator table (`CreateAcceleratorTable`), translated in the
+  message loop against the window the key is for: a character is its
+  virtual key on the keyboard's layout (`VkKeyScan`, with Shift if it
+  takes it), the named keys theirs; disabled items have none. A chosen
+  item, clicked or by its shortcut, comes as `WM_COMMAND` (ID 0x100 and
+  up) and goes to the core as `Action` on the root. Popup menus follow
+  the app's dark mode through uxtheme's app mode; the bar, which
+  Windows draws light whatever the theme, the window draws dark while
+  the app is (uxtheme's undocumented `WM_UAHDRAWMENU` and
+  `WM_UAHDRAWMENUITEM`, as Notepad++ and MyGo do, with Windows 11's
+  rounded backplates). A menu bar set before the window shows keeps
+  its client size.
+- `WindowOptions` set the main window's title, its client size
+  (centered in the work area; the host doesn't remember the size the
+  user left it at, so the app's always wins) and its least size (320
+  points square if the app gives none).
 - `List` is core-virtualized, as on macOS: rows the host places at
   their offsets in the list's window (one `DeferWindowPos`), binds
   through `ListBind` and recycles. Scroll bars are an indicator over the
@@ -1164,12 +1206,16 @@ How the Windows host maps nui (`host/windows`):
   calls pass in the registers on amd64 but not arm64 (an amd64 build
   runs on Windows on Arm, emulated).
 - Debug automation: `NUI_SNAPSHOT=file.png` writes the window (and the
-  top sheet's, `file.sheet.png`) with `PrintWindow` once it has shown,
-  without taking focus, then quits (`NUI_DUMP=1`: the view tree beside
-  it); `NUI_SCRIPT` runs steps first (`tap:<text>`, `type:<text>`,
-  `submit`, `back`, `escape`, `scroll:<y>`, `resize:<w>,<h>`, `wait:<duration>`,
-  `snap:<file>`), through the controls' own messages; `NUI_COLOR_SCHEME`
-  is light or dark whatever the system's.
+  top sheet's, `file.sheet.png`, and each `Window`'s, `file.window.png`,
+  `file.window2.png`…) with `PrintWindow` once it has shown, without
+  taking focus, then quits (`NUI_DUMP=1`: the view tree and the menu
+  bar beside it); `NUI_SCRIPT` runs steps first (`tap:<text>`,
+  `type:<text>`, `submit`, `back`, `escape`, `scroll:<y>`,
+  `resize:<w>,<h>`, `key:<shortcut>` such as `key:ctrl+shift+k`,
+  `menu:<item title>`, `close` (the window in use, or the last
+  `Window`), `wait:<duration>`, `snap:<file>`), through the controls'
+  own messages and the message loop's key handling;
+  `NUI_COLOR_SCHEME` is light or dark whatever the system's.
 
 Desktop needs what mobile doesn't: several windows, the app's menu bar
 and keyboard shortcuts, hover and right-click, resizable layouts. To
@@ -1182,7 +1228,9 @@ and never assumes a single root in its own data structures.
 - The main window holds the root (`app.Run`); `app.RunWindow(opts,
   root)` gives it a title and a size and least size
   (`ui.WindowOptions`, sent to the root as `WindowOptions` when it
-  mounts). A size the user chose, remembered by the host, wins over it.
+  mounts). A size the user chose, remembered by the host (macOS), wins
+  over it.
+
 - `ui.Window(WindowProps{Open, Title, Width, Height, MinWidth,
   MinHeight, Content, OnClose})` is a window of its own while `Open` is
   true, built as a `Sheet` is: a `Window` node, a host-sized layout root
