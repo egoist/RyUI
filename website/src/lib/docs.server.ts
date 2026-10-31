@@ -8,7 +8,7 @@ import { toString } from "mdast-util-to-string"
 import remarkParse from "remark-parse"
 import { unified } from "unified"
 
-import type { Doc, Navs, NavItem, NavSection } from "@/lib/docs"
+import type { Doc, Navs, NavItem, NavSection, SearchEntry } from "@/lib/docs"
 import { renderMarkdown, slugOf, type RenderedMarkdown } from "@/lib/markdown.server"
 import { unpublished } from "@/lib/markdown-source"
 import { site } from "@/lib/site"
@@ -123,4 +123,19 @@ export async function loadDoc(slug: string): Promise<Doc | undefined> {
     next: index >= 0 ? link(order[index + 1]) : undefined,
     editUrl: `${site.repo}/edit/main/docs/${file}`,
   }
+}
+
+/** Every heading of every page, with its text, for the search of the site. */
+export async function loadSearchIndex(): Promise<SearchEntry[]> {
+  const nav = await loadNav()
+  const entries: SearchEntry[] = []
+  for (const item of nav.flatMap((s) => s.items)) {
+    if (item.slug === undefined) continue
+    const page = await render(item.slug)
+    if (!page) continue
+    for (const section of page.sections) {
+      entries.push({ slug: item.slug, page: page.title, id: section.id, heading: section.heading, text: section.text })
+    }
+  }
+  return entries
 }

@@ -8,7 +8,7 @@ export function NotFound() {
       <p className="font-mono text-sm text-muted-foreground">404</p>
       <h1 className="mt-3 text-3xl font-semibold tracking-tight">This page does not exist</h1>
       <p className="mt-3 max-w-sm text-muted-foreground">
-        It may have moved. The docs will have what you are looking for.
+        It may have moved. The docs, or their search, will have what you are looking for.
       </p>
       <div className="mt-8 flex gap-3">
         <Link to="/docs" className={buttonVariants({ size: "lg" })}>

@@ -55,3 +55,12 @@ export const getDoc = createServerFn({ method: "GET" })
   .middleware([staticFunctionMiddleware])
   .validator((slug: string) => slug)
   .handler(async ({ data }) => (await loadDoc(data)) ?? null)
+
+export interface SearchEntry {
+  slug: string
+  page: string
+  /** The anchor of the heading, "" for the top of the page. */
+  id: string
+  heading: string
+  text: string
+}

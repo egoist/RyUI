@@ -3,6 +3,7 @@ import { MenuIcon } from "lucide-react"
 
 import { GitHubIcon } from "@/components/icons"
 import { Wordmark } from "@/components/logo"
+import { Search } from "@/components/search"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -26,6 +27,7 @@ export function SiteHeader() {
         </a>
       </nav>
       <div className="ml-auto flex items-center gap-1">
+        <Search />
         <a href={site.repo} aria-label="GitHub" className={buttonVariants({ variant: "ghost", size: "icon" })}>
           <GitHubIcon />
         </a>

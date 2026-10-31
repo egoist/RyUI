@@ -32,6 +32,7 @@ export default defineConfig({
       prerender: { enabled: true, crawlLinks: true, filter: ({ path }) => !path.includes("#") },
       pages: [
         ...docs.map((path) => ({ path })),
+        { path: "/docs/search.json" },
         // Served by Cloudflare for any path that has no page.
         { path: "/404", prerender: { enabled: true, outputPath: "/404.html" } },
       ],
