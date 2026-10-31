@@ -19,9 +19,10 @@ import (
 //     meanwhile); closing it or Escape dismisses it.
 //   - An Alert is a task dialog (TaskDialogIndirect): an action sheet's
 //     buttons are command links.
+//   - A Window is a top-level window of its own (appwindow.go).
 //
-// Screens and sheets are sized by the host, which reports each one's
-// Environment.
+// Sheets and alerts open over the window in use. Screens, sheets and
+// Windows are sized by the host, which reports each one's Environment.
 type nav struct {
 	env      ops.Environment
 	reported bool
@@ -44,9 +45,12 @@ type nav struct {
 	tabs *node
 	hot  int
 
-	// Sheet.
+	// Sheet, Window: its window; a sheet's owner.
 	window uintptr
 	owner  uintptr
+
+	// Window: its content's size when it opens, and its least, in points.
+	size, minSize [2]float32
 }
 
 const (
@@ -67,7 +71,7 @@ func (h *Host) createNav(n *node) bool {
 		n.hwnd = h.makeView(0)
 		n.nav = &nav{}
 		n.nav.bar = h.makeTabBar(n)
-	case ops.KindSheet:
+	case ops.KindSheet, ops.KindWindow:
 		n.hwnd = h.makeView(0)
 		n.nav = &nav{}
 	case ops.KindAlert:
@@ -81,7 +85,7 @@ func (h *Host) createNav(n *node) bool {
 // sizedByHost reports whether the host sizes n (a screen, a sheet's
 // content), not the core.
 func (nv *nav) sizedByHost(n *node) bool {
-	return n.kind == ops.KindScreen || n.kind == ops.KindSheet
+	return n.kind == ops.KindScreen || n.kind == ops.KindSheet || n.kind == ops.KindWindow
 }
 
 func (h *Host) insertNav(p, c *node, index int) bool {
@@ -156,9 +160,13 @@ func (h *Host) destroyNav(n *node) bool {
 			h.updateHeader(p)
 		}
 		return true
-	case ops.KindSheet:
+	case ops.KindSheet, ops.KindWindow:
 		n.dying = true
-		h.closeSheet(n)
+		if n.kind == ops.KindSheet {
+			h.closeSheet(n)
+		} else {
+			h.closeWindow(n)
+		}
 		for _, c := range n.children {
 			c.parent = nil
 		}
@@ -246,7 +254,7 @@ func (h *Host) layoutNav() {
 		switch n.kind {
 		case ops.KindStack, ops.KindTabs:
 			h.layoutScreens(n)
-		case ops.KindSheet:
+		case ops.KindSheet, ops.KindWindow:
 			if n.nav.window != 0 {
 				r := ClientRect(n.nav.window)
 				h.reportScreen(n, h.pt(r.W()), h.pt(r.H()))
@@ -303,6 +311,22 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 	case ops.KindSheet:
 		if p == ops.PropSheetDetents {
 			n.detents = v.Int
+		}
+	case ops.KindWindow:
+		switch p {
+		case ops.PropWindowTitle:
+			n.title = v.Str
+			if n.nav.window != 0 {
+				SetWindowText(n.nav.window, h.windowTitle(n))
+			}
+		case ops.PropWindowWidth:
+			n.nav.size[0] = float32(v.Float)
+		case ops.PropWindowHeight:
+			n.nav.size[1] = float32(v.Float)
+		case ops.PropWindowMinWidth:
+			n.nav.minSize[0] = float32(v.Float)
+		case ops.PropWindowMinHeight:
+			n.nav.minSize[1] = float32(v.Float)
 		}
 	case ops.KindAlert:
 		switch p {
@@ -498,16 +522,17 @@ func (h *Host) popStack(stack *node) {
 	h.emit(stack, ops.Event{Kind: ops.EventPopped, Int: int64(top.id)})
 }
 
-// back pops the innermost shown stack that can pop (Alt+Left).
-func (h *Host) back() {
-	if s := h.activeStack(); s != nil {
+// back pops the innermost shown stack that can pop in a window (Alt+Left):
+// under root, the root or a sheet or Window.
+func (h *Host) back(root *node) {
+	if s := h.activeStack(root); s != nil {
 		h.popStack(s)
 	}
 }
 
-// activeStack finds the innermost stack on screen that can pop: through
-// each stack's top screen and each tabs' selected page.
-func (h *Host) activeStack() *node {
+// activeStack finds the innermost stack on screen under root that can
+// pop: through each stack's top screen and each tabs' selected page.
+func (h *Host) activeStack(root *node) *node {
 	var found *node
 	var walk func(n *node)
 	walk = func(n *node) {
@@ -525,17 +550,17 @@ func (h *Host) activeStack() *node {
 				walk(n.children[n.selected])
 			}
 			return
-		case ops.KindSheet, ops.KindAlert:
-			return
+		case ops.KindSheet, ops.KindAlert, ops.KindWindow:
+			if n != root {
+				return
+			}
 		}
 		for _, c := range n.children {
 			walk(c)
 		}
 	}
-	if len(h.sheets) > 0 {
-		walk(h.sheets[len(h.sheets)-1])
-	} else if h.root != nil {
-		walk(h.root)
+	if root != nil {
+		walk(root)
 	}
 	return found
 }
@@ -698,20 +723,20 @@ func (h *Host) present(n *node) {
 			return
 		}
 		h.openSheet(n)
+	case ops.KindWindow:
+		h.openWindow(n)
 	case ops.KindAlert:
 		id := n.id
 		h.afterCore(func() { h.showAlert(id) })
 	}
 }
 
-// openSheet shows a sheet as a modal window centered over the app's:
-// as wide as fits (320 to 560 points), as tall as the app's less a
-// margin, or half of it for a medium sheet.
+// openSheet shows a sheet as a modal window centered over the window in
+// use (the main one, a Window, a sheet): as wide as fits (320 to 560
+// points), as tall as it less a margin, or half of it for a medium
+// sheet.
 func (h *Host) openSheet(n *node) {
-	owner := h.window
-	if len(h.sheets) > 0 {
-		owner = h.sheets[len(h.sheets)-1].nav.window
-	}
+	owner := h.windowInUse()
 	cr := ClientRect(owner)
 	cw, ch := h.pt(cr.W()), h.pt(cr.H())
 	w := min(max(cw-80, 320), 560)
@@ -766,6 +791,11 @@ func (h *Host) sheetMessage(sw *node, m uint32, wp, lp uintptr) (uintptr, bool) 
 	case WM_CLOSE:
 		h.cancelSheet(sw)
 		return 0, true
+	case WM_ACTIVATE:
+		if LoWord(wp) != 0 {
+			h.inUse = sw.hwnd
+		}
+		return 0, false
 	}
 	return 0, false
 }
@@ -823,10 +853,7 @@ func (h *Host) showAlert(id ops.NodeID) {
 	if len(buttons) == 0 {
 		buttons = []TaskButton{{ID: 100, Title: "OK"}}
 	}
-	owner := h.window
-	if len(h.sheets) > 0 {
-		owner = h.sheets[len(h.sheets)-1].nav.window
-	}
+	owner := h.windowInUse()
 	title, content := n.title, n.message
 	h.modal++
 	got := TaskDialog(owner, h.appName, title, content, buttons, buttons[0].ID, flags)

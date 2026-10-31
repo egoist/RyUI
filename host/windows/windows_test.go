@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"unsafe"
 
 	. "github.com/egoist/nui/internal/windows"
 	"github.com/egoist/nui/ops"
@@ -297,3 +298,208 @@ func firstText(n *node) *node {
 // shown reports whether a window is set visible (the test's top-level
 // window isn't shown, so IsWindowVisible is false for all).
 func shown(hwnd uintptr) bool { return WindowLong(hwnd, GWL_STYLE)&WS_VISIBLE != 0 }
+
+func TestWindow(t *testing.T) {
+	open := signal.New(false)
+	closed := 0
+	h, _ := mount(t, func() ui.Node {
+		return ui.Window(ui.WindowProps{Open: open, Title: ui.Val("Inspector"), Width: 300, Height: 200, MinWidth: 240, MinHeight: 120,
+			OnClose: func() { closed++ },
+			Content: func() ui.Node {
+				return ui.Text(signal.Func(func() string { return fmt.Sprint("width ", ui.UseEnvironment().Get().Width) }))
+			}})
+	})
+	onMain(t, func() {
+		h.enter(func() { ui.Post(func() { open.Set(true) }) })
+		h.runPosted()
+		if len(h.wins) != 1 {
+			fatalf("%d windows", len(h.wins))
+		}
+		n := h.wins[0]
+		win := n.nav.window
+		if Parent(win) != 0 || RootWindow(win) != win || win == h.window {
+			fatalf("not a top-level window of its own")
+		}
+		if s := WindowText(win); s != "Inspector" {
+			fatalf("title %q", s)
+		}
+		if cr := ClientRect(win); cr.W() != h.px(300) || cr.H() != h.px(200) {
+			fatalf("client %dx%d, want %dx%d", cr.W(), cr.H(), h.px(300), h.px(200))
+		}
+		// Its content lays out at the window's size.
+		if s := firstText(n).text; s != "width 300" {
+			fatalf("the content says %q", s)
+		}
+		if RootWindow(firstText(n).hwnd) != win {
+			fatalf("the content isn't in the window")
+		}
+		// Resized by the user: the content follows.
+		wr := WindowRect(win)
+		SetWindowPos(win, 0, 0, 0, wr.W()+h.px(100), wr.H(), SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE)
+		if s := firstText(n).text; s != "width 400" {
+			fatalf("resized, the content says %q", s)
+		}
+		// Its least size.
+		var mi MinMaxInfo
+		SendMessage(win, WM_GETMINMAXINFO, 0, uintptr(unsafe.Pointer(&mi)))
+		least := Rect{Right: h.px(240), Bottom: h.px(120)}
+		AdjustWindowRect(&least, uint32(WindowLong(win, GWL_STYLE)), 0, DPI(win))
+		if mi.MinTrackSize.X != least.W() || mi.MinTrackSize.Y != least.H() {
+			fatalf("least %v, want %dx%d", mi.MinTrackSize, least.W(), least.H())
+		}
+		// The user closes it: the core closes it.
+		SendMessage(win, WM_CLOSE, 0, 0)
+		if open.Peek() || closed != 1 || len(h.wins) != 0 || IsWindow(win) {
+			fatalf("open %v closed %d windows %d", open.Peek(), closed, len(h.wins))
+		}
+	})
+}
+
+func TestMenuBar(t *testing.T) {
+	saved, linted := 0, 0
+	open := signal.New(true)
+	h, _ := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{},
+			ui.MenuBar(signal.Static([]ui.MenuBarMenu{
+				{Title: "File", Items: []ui.MenuItem{
+					{Title: "Save", Shortcut: ui.Cmd("s"), OnPress: func() { saved++ }},
+					ui.MenuSeparator,
+					{Title: "Sort & Filter", Shortcut: ui.Cmd("enter").With(ui.Shift), Checked: true},
+				}},
+				{Title: "Tools", Items: []ui.MenuItem{{Title: "Lint", Shortcut: ui.Cmd("l"), Disabled: true, OnPress: func() { linted++ }}}},
+			})),
+			ui.Window(ui.WindowProps{Open: open, Content: func() ui.Node { return ui.StaticText("w") }}),
+		)
+	})
+	onMain(t, func() {
+		bar := GetMenu(h.window)
+		if bar == 0 || MenuItemCount(bar) != 2 {
+			fatalf("no menu bar of 2 menus")
+		}
+		if s := MenuString(bar, 0); s != "&File" {
+			fatalf("menu %q", s)
+		}
+		file := SubMenu(bar, 0)
+		if s := MenuString(file, 0); s != "&Save\tCtrl+S" {
+			fatalf("item %q", s)
+		}
+		if MenuState(file, 1)&MF_SEPARATOR == 0 {
+			fatalf("no separator")
+		}
+		if s := MenuString(file, 2); s != "S&ort && Filter\tCtrl+Shift+Enter" {
+			fatalf("item %q", s)
+		}
+		if MenuState(file, 2)&MF_CHECKED == 0 {
+			fatalf("not checked")
+		}
+		tools := SubMenu(bar, 1)
+		if MenuState(tools, 0)&MF_GRAYED == 0 {
+			fatalf("Lint isn't grayed")
+		}
+		// Clicked: WM_COMMAND with the item's ID.
+		SendMessage(h.window, WM_COMMAND, menuBase+0, 0)
+		if saved != 1 {
+			fatalf("Save ran %d times", saved)
+		}
+		SendMessage(h.window, WM_COMMAND, menuBase+3, 0)
+		if linted != 0 {
+			fatalf("a disabled item ran")
+		}
+		// Its shortcut, from the main window and from a Window.
+		press := func(hwnd uintptr, vk uintptr) {
+			saved := KeyboardState()
+			st := saved
+			st[VK_CONTROL] = 0x80
+			SetKeyboardState(st)
+			m := Msg{Hwnd: hwnd, Message: WM_KEYDOWN, WParam: vk}
+			h.preTranslate(&m)
+			SetKeyboardState(saved)
+		}
+		press(h.window, 'S')
+		if saved != 2 {
+			fatalf("Ctrl+S in the main window: Save ran %d times", saved)
+		}
+		if len(h.wins) != 1 {
+			fatalf("%d windows", len(h.wins))
+		}
+		press(h.wins[0].nav.window, 'S')
+		if saved != 3 {
+			fatalf("Ctrl+S in a Window: Save ran %d times", saved)
+		}
+		press(h.window, 'L')
+		if linted != 0 {
+			fatalf("a disabled item's shortcut ran")
+		}
+	})
+}
+
+func TestMenuBarFollows(t *testing.T) {
+	menus := signal.NewFunc([]ui.MenuBarMenu{{Title: "File", Items: []ui.MenuItem{{Title: "New"}}}}, func(a, b []ui.MenuBarMenu) bool { return false })
+	h, _ := mount(t, func() ui.Node { return ui.MenuBar(menus) })
+	onMain(t, func() {
+		if GetMenu(h.window) == 0 {
+			fatalf("no menu bar")
+		}
+		h.enter(func() { ui.Post(func() { menus.Set(nil) }) })
+		h.runPosted()
+		if GetMenu(h.window) != 0 || h.accel != 0 {
+			fatalf("a menu bar without menus")
+		}
+	})
+}
+
+func TestWindowOptions(t *testing.T) {
+	ui.SetWindowOptions(ui.WindowOptions{Title: "Notes", Width: 500, Height: 400, MinWidth: 400, MinHeight: 300})
+	defer ui.SetWindowOptions(ui.WindowOptions{})
+	h, _ := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{},
+			ui.MenuBar(signal.Static([]ui.MenuBarMenu{{Title: "File", Items: []ui.MenuItem{{Title: "New"}}}})),
+			ui.StaticText("x"))
+	})
+	onMain(t, func() {
+		if s := WindowText(h.window); s != "Notes" {
+			fatalf("title %q", s)
+		}
+		// The client size asked for, the menu bar besides.
+		if cr := ClientRect(h.window); cr.W() != h.px(500) || cr.H() != h.px(400) {
+			fatalf("client %dx%d, want %dx%d", cr.W(), cr.H(), h.px(500), h.px(400))
+		}
+		if e := h.env; e.Width != 500 || e.Height != 400 {
+			fatalf("environment %vx%v", e.Width, e.Height)
+		}
+		// The core laid out at it.
+		if f := frame(h, find(h, ops.KindText)[0]); f[2] != 500 {
+			fatalf("the root's text is %v wide", f[2])
+		}
+
+		var mi MinMaxInfo
+		SendMessage(h.window, WM_GETMINMAXINFO, 0, uintptr(unsafe.Pointer(&mi)))
+		least := Rect{Right: h.px(400), Bottom: h.px(300)}
+		AdjustWindowRect(&least, uint32(WindowLong(h.window, GWL_STYLE)), 0, DPI(h.window))
+		least.Bottom += int32(SystemMetric(SM_CYMENU, DPI(h.window)))
+		if mi.MinTrackSize.X != least.W() || mi.MinTrackSize.Y != least.H() {
+			fatalf("least %v, want %dx%d", mi.MinTrackSize, least.W(), least.H())
+		}
+	})
+}
+
+func TestWindowDisposed(t *testing.T) {
+	onMain(t, func() {
+		h := newHost()
+		var r *ui.Root
+		h.enter(func() {
+			r = ui.Mount(h, func() ui.Node {
+				return ui.Window(ui.WindowProps{Open: signal.New(true), Content: func() ui.Node { return ui.StaticText("w") }})
+			})
+		})
+		if len(h.wins) != 1 {
+			fatalf("%d windows", len(h.wins))
+		}
+		win := h.wins[0].nav.window
+		h.enter(r.Dispose)
+		if IsWindow(win) || len(h.wins) != 0 || len(h.byHwnd) != 0 {
+			fatalf("the Window's window outlived its owner")
+		}
+		DestroyWindow(h.window)
+	})
+}

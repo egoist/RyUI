@@ -224,7 +224,7 @@ func (h *Host) backdrop(n *node) rgba {
 				break
 			}
 		}
-		if p.kind == ops.KindScreen || p.kind == ops.KindSheet {
+		if p.kind == ops.KindScreen || p.kind == ops.KindSheet || p.kind == ops.KindWindow {
 			if len(chain) == 0 {
 				chain = append(chain, h.theme.bg)
 			}

@@ -71,7 +71,10 @@ func (h *Host) automation() {
 
 // step runs one automation step: tap:<text> clicks the view showing the
 // text (a button's title, a text, a tab), type:<text> types into the
-// focused field, back pops, snap:<file> writes a snapshot.
+// focused field, back pops, key:<shortcut> presses keys (ctrl+shift+k,
+// ctrl+enter, f5) in the window in use, menu:<title> chooses the menu
+// bar's item, close closes the window in use (as its close button),
+// snap:<file> writes a snapshot.
 func (h *Host) step(verb, arg string) {
 	switch verb {
 	case "tap":
@@ -89,7 +92,27 @@ func (h *Host) step(verb, arg string) {
 			SendMessage(f, WM_KEYDOWN, VK_RETURN, 0)
 		}
 	case "back":
-		h.back()
+		if len(h.sheets) > 0 {
+			h.back(h.sheets[len(h.sheets)-1])
+		} else {
+			h.back(h.root)
+		}
+	case "key":
+		h.pressKeys(arg)
+	case "menu":
+		for _, it := range h.appItems {
+			if it.title == arg {
+				SendMessage(h.window, WM_COMMAND, uintptr(menuBase+it.index), 0)
+				return
+			}
+		}
+		fmt.Fprintf(os.Stderr, "nui: automation: no menu item %q\n", arg)
+	case "close":
+		w := h.windowInUse()
+		if len(h.wins) > 0 && w == h.window {
+			w = h.wins[len(h.wins)-1].nav.window
+		}
+		SendMessage(w, WM_CLOSE, 0, 0)
 	case "resize":
 		// The window's client area to w,h points.
 		ws, hs, _ := strings.Cut(arg, ",")
@@ -210,13 +233,70 @@ func (h *Host) onScreen(n *node) bool {
 
 // snapshot writes the window, its title bar too, as a PNG (PrintWindow
 // draws it without bringing it to the front). With sheets open, the top
-// sheet's window is written beside it (file.sheet.png).
+// sheet's window is written beside it (file.sheet.png), and each Window
+// open (file.window.png, file.window2.png…).
 func (h *Host) snapshot(path string) {
 	writeWindowPNG(h.window, path)
+	base := strings.TrimSuffix(path, ".png")
 	if len(h.sheets) > 0 {
 		s := h.sheets[len(h.sheets)-1]
-		writeWindowPNG(s.nav.window, strings.TrimSuffix(path, ".png")+".sheet.png")
+		writeWindowPNG(s.nav.window, base+".sheet.png")
 	}
+	for i, w := range h.wins {
+		name := base + ".window.png"
+		if i > 0 {
+			name = fmt.Sprintf("%s.window%d.png", base, i+1)
+		}
+		writeWindowPNG(w.nav.window, name)
+	}
+}
+
+// pressKeys presses a shortcut (ctrl+shift+k) in the window in use, as
+// the keyboard would: the modifiers held (the thread's key state) while
+// the key's down message goes through the message loop's handling.
+func (h *Host) pressKeys(spec string) {
+	parts := strings.Split(strings.ToLower(spec), "+")
+	var mods byte
+	for _, p := range parts[:len(parts)-1] {
+		switch p {
+		case "ctrl", "control":
+			mods |= modControl
+		case "shift":
+			mods |= modShift
+		case "alt":
+			mods |= modAlt
+		}
+	}
+	a, ok := accelerator(parts[len(parts)-1], mods)
+	if !ok {
+		fmt.Fprintf(os.Stderr, "nui: automation: no key %q\n", spec)
+		return
+	}
+	saved := KeyboardState()
+	st := saved
+	for _, k := range []struct {
+		flag byte
+		vk   int
+	}{{FCONTROL, VK_CONTROL}, {FSHIFT, VK_SHIFT}, {FALT, VK_MENU}} {
+		if a.Virt&k.flag != 0 {
+			st[k.vk] = 0x80
+		}
+	}
+	SetKeyboardState(st)
+	target := Focus()
+	if target == 0 || h.keyWindow(target) == 0 {
+		target = h.windowInUse()
+	}
+	msg := uint32(WM_KEYDOWN)
+	if a.Virt&FALT != 0 {
+		msg = WM_SYSKEYDOWN
+	}
+	m := Msg{Hwnd: target, Message: msg, WParam: uintptr(a.Key)}
+	if !h.preTranslate(&m) {
+		TranslateMessage(&m)
+		DispatchMessage(&m)
+	}
+	SetKeyboardState(saved)
 }
 
 func writeWindowPNG(hwnd uintptr, path string) {
@@ -303,6 +383,26 @@ func (h *Host) dump() string {
 		b.WriteString("sheet:\n")
 		walk(s, 1)
 	}
+	for _, w := range h.wins {
+		fmt.Fprintf(&b, "window %q:\n", WindowText(w.nav.window))
+		walk(w, 1)
+	}
+	if bar := GetMenu(h.window); bar != 0 {
+		b.WriteString("menu bar:\n")
+		for i := range MenuItemCount(bar) {
+			fmt.Fprintf(&b, "  %s\n", MenuString(bar, i))
+			sub := SubMenu(bar, i)
+			for j := range MenuItemCount(sub) {
+				s := MenuString(sub, j)
+				if MenuState(sub, j)&MF_SEPARATOR != 0 {
+					s = "---"
+				} else if MenuState(sub, j)&MF_GRAYED != 0 {
+					s += " (off)"
+				}
+				fmt.Fprintf(&b, "    %q\n", s)
+			}
+		}
+	}
 	return b.String()
 }
 
@@ -316,6 +416,9 @@ func kindName(k ops.Kind) string {
 		return "Header"
 	case kindTabBar:
 		return "TabBar"
+	case kindWindowFrame:
+		return "WindowFrame"
 	}
+
 	return k.String()
 }

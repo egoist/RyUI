@@ -127,6 +127,7 @@ const (
 	kindTabBar
 	kindSheetWindow
 	kindScrollBar
+	kindWindowFrame // a Window's top-level window
 )
 
 func (n *node) listening(e ops.EventKind) bool {
@@ -175,6 +176,14 @@ type Host struct {
 	modal     int // modal loops (menus, dialogs) running
 	sheets    []*node
 	quitting  bool
+
+	wins     []*node          // the Windows open, in the order they opened
+	inUse    uintptr          // the app's window activated last
+	minSize  [2]float32       // the main window's least client size (WindowOptions), in points
+	appMenus []appMenu        // MenuBar's
+	appItems []appItem        // their items, in order
+	accel    uintptr          // their shortcuts' accelerator table
+	coreEnv  host.Environment // the environment the core was last told
 }
 
 var theHost *Host
@@ -225,23 +234,23 @@ func Run(root func() ui.Node) {
 		SetForegroundWindow(h.window)
 	}
 	UpdateWindow(h.window)
+	for _, n := range h.wins {
+		h.showWindow(n.nav.window)
+	}
 	h.automation()
 	h.loop()
 	saveState()
 }
 
 // loop is the message loop: it dispatches the thread's messages until the
-// window is closed. IsDialogMessage gives the controls Tab and arrow key
-// navigation, as in a dialog.
+// window is closed.
 func (h *Host) loop() {
 	var m Msg
 	for GetMessage(&m) {
 		if m.Message == WM_MOUSEMOVE {
 			h.mouseOver(m.Hwnd)
 		}
-		if w := h.keyWindow(m.Hwnd); w != 0 && h.keyMessage(&m) {
-			continue
-		} else if w != 0 && IsDialogMessage(w, &m) {
+		if h.preTranslate(&m) {
 			continue
 		}
 		TranslateMessage(&m)
@@ -249,8 +258,20 @@ func (h *Host) loop() {
 	}
 }
 
+// preTranslate handles a key message for one of the app's windows before
+// it's dispatched: the menus' shortcuts (TranslateAccelerator, against
+// the window it's for), the host's keys, and Tab and arrow key
+// navigation among the controls, as in a dialog (IsDialogMessage).
+func (h *Host) preTranslate(m *Msg) bool {
+	w := h.keyWindow(m.Hwnd)
+	if w == 0 {
+		return false
+	}
+	return h.accelerate(w, m) || h.keyMessage(m) || IsDialogMessage(w, m)
+}
+
 // keyWindow is the top-level window of the app a message is for: the
-// app's or a sheet's.
+// main one, a sheet's or a Window's.
 func (h *Host) keyWindow(hwnd uintptr) uintptr {
 	if hwnd == 0 {
 		return 0
@@ -259,7 +280,7 @@ func (h *Host) keyWindow(hwnd uintptr) uintptr {
 	if w == h.window {
 		return w
 	}
-	if n := h.byHwnd[w]; n != nil && n.kind == kindSheetWindow {
+	if n := h.byHwnd[w]; n != nil && (n.kind == kindSheetWindow || n.kind == kindWindowFrame) {
 		return w
 	}
 	return 0
@@ -269,7 +290,10 @@ func (h *Host) keyWindow(hwnd uintptr) uintptr {
 func (h *Host) Connect(c host.Core) { h.core = c }
 
 // Environment implements host.Host.
-func (h *Host) Environment() host.Environment { return h.env }
+func (h *Host) Environment() host.Environment {
+	h.coreEnv = h.env
+	return h.env
+}
 
 // Post implements host.Host. Safe from any goroutine.
 func (h *Host) Post(f func()) {
@@ -534,6 +558,12 @@ func (h *Host) remove(p, c *node) {
 
 func (h *Host) setRoot(n *node) {
 	h.root = n
+	// The window changed before the root was set (WindowOptions, a menu
+	// bar): the core hears of it now.
+	if h.env != h.coreEnv {
+		h.coreEnv = h.env
+		h.dispatch(ops.Event{ID: n.id, Kind: ops.EventEnvironment, Env: h.env})
+	}
 	if n.hwnd != 0 {
 		SetParent(n.hwnd, h.window)
 		r := ClientRect(h.window)

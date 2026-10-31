@@ -49,6 +49,10 @@ func wndProc(hwnd, m, wp, lp uintptr) uintptr {
 }
 
 func (h *Host) message(hwnd uintptr, m uint32, wp, lp uintptr) (uintptr, bool) {
+	// A menu item chosen, or its accelerator, in one of the app's windows.
+	if m == WM_COMMAND && lp == 0 && HiWord(wp) <= 1 && h.keyWindow(hwnd) == hwnd && h.menuCommand(int(LoWord(wp))) {
+		return 0, true
+	}
 	switch hwnd {
 	case h.msgWin:
 		switch m {
@@ -74,8 +78,11 @@ func (h *Host) message(hwnd uintptr, m uint32, wp, lp uintptr) (uintptr, bool) {
 	if r, ok := h.parentMessage(m, wp, lp); ok {
 		return r, true
 	}
-	if n.kind == kindSheetWindow {
+	switch n.kind {
+	case kindSheetWindow:
 		return h.sheetMessage(n, m, wp, lp)
+	case kindWindowFrame:
+		return h.windowFrameMessage(n, m, wp, lp)
 	}
 	return h.viewMessage(n, hwnd, m, wp, lp)
 }
@@ -130,6 +137,9 @@ func (h *Host) makeWindow() {
 }
 
 func (h *Host) windowMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
+	if r, ok := h.menuBarMessage(h.window, m, wp, lp); ok {
+		return r, true
+	}
 	switch m {
 	case WM_SIZE:
 		if h.root != nil && h.root.hwnd != 0 {
@@ -143,10 +153,15 @@ func (h *Host) windowMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
 		FillColor(wp, r, h.theme.bg.ref())
 		return 1, true
 	case WM_GETMINMAXINFO:
-		mi := Native[MinMaxInfo](lp)
-		r := Rect{Right: h.px(320), Bottom: h.px(320)}
-		AdjustWindowRect(&r, uint32(WindowLong(h.window, GWL_STYLE)), 0, h.dpi)
-		mi.MinTrackSize = Point{X: r.W(), Y: r.H()}
+		// WindowOptions' least, or 320 points square.
+		least := h.minSize
+		if least[0] <= 0 {
+			least[0] = 320
+		}
+		if least[1] <= 0 {
+			least[1] = 320
+		}
+		h.minTrackSize(h.window, least, Native[MinMaxInfo](lp))
 		return 0, true
 	case WM_DPICHANGED:
 		h.dpiChanged(int(LoWord(wp)), *Native[Rect](lp))
@@ -161,6 +176,7 @@ func (h *Host) windowMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
 		if LoWord(wp) == 0 {
 			h.lifecycle(ops.LifecycleBackground)
 		} else {
+			h.inUse = h.window
 			h.lifecycle(ops.LifecycleForeground)
 		}
 		return 0, false
@@ -224,8 +240,10 @@ func (h *Host) environmentChanged() {
 	}
 	h.env = env
 	if h.root != nil {
+		h.coreEnv = env
 		h.dispatch(ops.Event{ID: h.root.id, Kind: ops.EventEnvironment, Env: env})
 	}
+
 	h.layoutNav()
 }
 
@@ -285,6 +303,9 @@ func (h *Host) setDark(dark bool) {
 			SetDarkTitleBar(s.nav.window, dark)
 		}
 	}
+	for _, w := range h.wins {
+		SetDarkTitleBar(w.nav.window, dark)
+	}
 	for _, n := range h.nodes {
 		h.themeControl(n)
 		if n.web != nil {
@@ -292,10 +313,14 @@ func (h *Host) setDark(dark bool) {
 		}
 	}
 	RedrawWindow(h.window, RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_ERASE|RDW_FRAME)
+	DrawMenuBar(h.window)
 	for _, s := range h.sheets {
 		if s.nav != nil && s.nav.window != 0 {
 			RedrawWindow(s.nav.window, RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_ERASE|RDW_FRAME)
 		}
+	}
+	for _, w := range h.wins {
+		RedrawWindow(w.nav.window, RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_ERASE|RDW_FRAME)
 	}
 }
 
@@ -329,9 +354,11 @@ func (h *Host) keyMessage(m *Msg) bool {
 			}
 		}
 	case VK_LEFT:
-		if m.Message == WM_SYSKEYDOWN && RootWindow(m.Hwnd) == h.window {
-			h.back()
-			return true
+		if m.Message == WM_SYSKEYDOWN {
+			if r := h.rootOf(RootWindow(m.Hwnd)); r != nil {
+				h.back(r)
+				return true
+			}
 		}
 	}
 	return false

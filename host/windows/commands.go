@@ -82,6 +82,10 @@ func (h *Host) command(n *node, c ops.CommandID, args []byte) {
 		if len(args) >= 8 {
 			h.setAccent(ops.Color(binary.LittleEndian.Uint64(args)))
 		}
+	case ops.CmdMenuBar:
+		h.setMenuBar(args)
+	case ops.CmdWindowOptions:
+		h.windowOptions(args)
 	case ops.CmdColorScheme:
 		if len(args) > 0 {
 			h.setColorScheme(ops.ColorScheme(args[0]))

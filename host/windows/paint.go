@@ -34,7 +34,7 @@ func (h *Host) paintWindow(n *node, hwnd uintptr) {
 // opaque reports whether n's own drawing covers all of it.
 func (h *Host) opaque(n *node) bool {
 	switch n.kind {
-	case ops.KindScreen, ops.KindSheet, kindHeader, kindTabBar:
+	case ops.KindScreen, ops.KindSheet, ops.KindWindow, kindHeader, kindTabBar:
 		return n.cornerRadius == 0
 	}
 	c, ok := h.resolve(n.background)
@@ -61,7 +61,7 @@ func (h *Host) paintOwn(n *node, hwnd, dc uintptr, r Rect) {
 	bg, hasBg := h.resolve(n.background)
 	switch {
 	case hasBg:
-	case n.kind == ops.KindScreen || n.kind == ops.KindSheet:
+	case n.kind == ops.KindScreen || n.kind == ops.KindSheet || n.kind == ops.KindWindow:
 		bg, hasBg = h.theme.bg, true
 	case n.kind == kindHeader || n.kind == kindTabBar:
 		bg, hasBg = h.theme.bg, true
@@ -358,7 +358,7 @@ func (h *Host) paintBehind(hwnd, dc uintptr) {
 	saved := SaveDC(dc)
 	OffsetViewport(dc, -at.Left, -at.Top)
 	pr := ClientRect(parent)
-	if pn := h.byHwnd[parent]; pn != nil && pn.hwnd == parent && pn.kind != kindSheetWindow {
+	if pn := h.byHwnd[parent]; pn != nil && pn.hwnd == parent && pn.kind != kindSheetWindow && pn.kind != kindWindowFrame {
 		h.paint(pn, parent, dc, pr)
 	} else if pn != nil && pn.ctl == parent {
 		DrawParentBackground(hwnd, dc, nil)
