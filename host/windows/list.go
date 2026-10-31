@@ -386,7 +386,7 @@ func (rv *rowView) paint(h *Host, g Graphics, w, ht float32) {
 	if rv.card > 0 {
 		ch := min(rv.card*k, ht)
 		g.FillRoundRect(h.theme.card.argb(), 0, 0, w, ch, 4*k)
-		g.StrokeRoundRect(h.theme.stroke.argb(), max(k, 1), 0, 0, w, ch, 4*k)
+		g.StrokeRoundRect(h.theme.cardStroke.argb(), max(k, 1), 0, 0, w, ch, 4*k)
 		return
 	}
 	if !rv.sep {

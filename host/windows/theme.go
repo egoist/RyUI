@@ -41,6 +41,7 @@ type palette struct {
 	disabled                   rgba
 	bg, card, layer            rgba
 	separator, stroke          rgba
+	cardStroke                 rgba // CardStrokeColorDefault, over the page
 	control, controlHot        rgba // a standard button's fill
 	controlPressed             rgba
 	controlStroke              rgba
@@ -80,6 +81,7 @@ func newPalette(dark bool, accent ops.Color) palette {
 		p.layer = hex(0x2C2C2C)
 		p.separator = hex(0x383838)
 		p.stroke = hex(0x303030)
+		p.cardStroke = hex(0x1D1D1D) // 10% black
 		p.control = hex(0x2D2D2D)
 		p.controlHot = hex(0x323232)
 		p.controlPressed = hex(0x272727)
@@ -108,6 +110,7 @@ func newPalette(dark bool, accent ops.Color) palette {
 		p.layer = hex(0xF9F9F9)
 		p.separator = hex(0xE5E5E5)
 		p.stroke = hex(0xE5E5E5)
+		p.cardStroke = hex(0xE5E5E5) // 5.78% black
 		p.control = hex(0xFEFEFE)
 		p.controlHot = hex(0xF9F9F9)
 		p.controlPressed = hex(0xF5F5F5)
