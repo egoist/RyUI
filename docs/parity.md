@@ -85,7 +85,7 @@ what nui has for it.
 | Network state | `NWPathMonitor` | `expo-network` | ✓ `nui/network` (online, Wi-Fi or cellular, metered, Data Saver / Low Data Mode) |
 | Saving to the gallery, Downloads | `PHPhotoLibrary` | `expo-media-library` | ✓ `nui/library` (MediaStore's collections; Photos, or Documents in Files) |
 | Work in the background | `beginBackgroundTask`, `BGTaskScheduler` | `expo-task-manager` | ◐ `nui/background`: Android keeps the app running, its progress and buttons in a notification; iOS gives about 30 seconds; no scheduled tasks |
-| Receiving shares from other apps | Share extension | share intent (community) | ◐ `ui.OnShare` (text and links, `nui.json`'s `shareTarget`): Android only |
+| Receiving shares from other apps | Share extension | share intent (community) | ✓ `ui.OnShare` (text and links, `nui.json`'s `shareTarget`; on iOS a share extension that opens the app) |
 | Audio | AVAudioPlayer | `expo-audio` | ✓ `nui/audio` (load, play, pause, seek, volume, loop); no recording |
 | Custom fonts | `.font(.custom)` | `expo-font` | ✓ `Font.Family` |
 | Lifecycle | `scenePhase` | AppState | ✓ `app.OnLifecycle` |

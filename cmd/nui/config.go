@@ -51,6 +51,9 @@ type appConfig struct {
 		// Profile is a provisioning profile's path, name or UUID (default:
 		// the best match installed for the ID and distribution).
 		Profile string `json:"profile"`
+		// ShareProfile is the share extension's (shareTarget), whose ID is
+		// the app's plus ".share" (default: the best match installed).
+		ShareProfile string `json:"shareProfile"`
 		// Usage are the purpose strings for protected resources
 		// (NSCameraUsageDescription, ...).
 		Usage map[string]string `json:"usage"`
@@ -74,7 +77,8 @@ type appConfig struct {
 	// Android's App Links (assetlinks.json).
 	Links []string `json:"links"`
 	// ShareTarget offers the app in other apps' share sheets, for text
-	// and links (Android); ui.OnShare gets what's shared.
+	// and links (iOS: a share extension that opens the app; Android: an
+	// ACTION_SEND intent filter); ui.OnShare gets what's shared.
 	ShareTarget bool `json:"shareTarget"`
 	// androidModules are the host's optional Gradle modules the app's
 	// packages need (featurePermissions).
@@ -173,12 +177,23 @@ func (c *appConfig) ldflags(release bool) string {
 	return "-ldflags=" + strings.Join(f, " ")
 }
 
-// urlTypes is Info.plist's CFBundleURLTypes for the scheme.
-func (c *appConfig) urlTypes() []map[string]any {
-	if c == nil || c.Scheme == "" {
+// urlTypes is Info.plist's CFBundleURLTypes for the scheme, and on iOS
+// the share extension's (shareScheme).
+func (c *appConfig) urlTypes(ios bool) []any {
+	if c == nil {
 		return nil
 	}
-	return []map[string]any{{"CFBundleURLName": c.ID, "CFBundleURLSchemes": []string{c.Scheme}}}
+	var schemes []string
+	if c.Scheme != "" {
+		schemes = append(schemes, c.Scheme)
+	}
+	if ios && c.ShareTarget {
+		schemes = append(schemes, c.shareScheme())
+	}
+	if len(schemes) == 0 {
+		return nil
+	}
+	return []any{map[string]any{"CFBundleURLName": c.ID, "CFBundleURLSchemes": schemes}}
 }
 
 // associatedDomains is the entitlement for the links (simulator: in the

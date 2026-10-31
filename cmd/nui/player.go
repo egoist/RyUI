@@ -217,7 +217,11 @@ func devIOSPlayer(app *goApp, tc *iosToolchain, work string, sim *simDevice, sto
 	if err := tc.run(app.dir, env, "go", "build", "-tags", "ios", "-buildmode=c-archive", "-trimpath", "-ldflags=-buildid=", "-o", lib, playerPkg); err != nil {
 		return err
 	}
-	sum := fileHash(hostObj, lib)
+	share, err := tc.buildShare(dir)
+	if err != nil {
+		return err
+	}
+	sum := fileHash(hostObj, lib, share)
 	marker := filepath.Join(dir, "installed-"+sim.UDID)
 	// The app's container changes with each install, and is gone from an
 	// erased simulator: the marker holds both.

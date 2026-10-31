@@ -37,10 +37,10 @@ type goApp struct {
 
 // displayName is the name under the app's icon.
 func (a *goApp) displayName() string {
-	if a.cfg != nil {
+	if a.cfg != nil && a.cfg.Name != "" {
 		return a.cfg.Name
 	}
-	return a.name
+	return a.name // the player's
 }
 
 func loadApp(dir string) (*goApp, error) {
@@ -139,6 +139,9 @@ func (t *iosToolchain) buildHost(work string, app *goApp, features []string) (st
 	err := fs.WalkDir(iosHost.Files, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
+		}
+		if strings.HasPrefix(path, "Share/") {
+			return nil // the share extension, built on its own (buildShare)
 		}
 		files = append(files, path)
 		return nil
@@ -308,10 +311,14 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 		return "", err
 	}
 	urls := ""
-	if app.cfg.Scheme != "" {
+	if t := app.cfg.urlTypes(true); t != nil {
+		schemes := t[0].(map[string]any)["CFBundleURLSchemes"].([]string)
+		for i := range schemes {
+			schemes[i] = html.EscapeString(schemes[i])
+		}
 		urls = fmt.Sprintf("<key>CFBundleURLTypes</key><array><dict><key>CFBundleURLName</key><string>%s</string>"+
 			"<key>CFBundleURLSchemes</key><array><string>%s</string></array></dict></array>\n",
-			html.EscapeString(app.bundleID), html.EscapeString(app.cfg.Scheme))
+			html.EscapeString(app.bundleID), strings.Join(schemes, "</string><string>"))
 	}
 	// The purpose strings: without one, iOS ends an app that asks for what it protects.
 	keys := make([]string, 0, len(app.cfg.IOS.Usage))
@@ -335,6 +342,22 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 	plist := fmt.Sprintf(infoPlist, app.bundleID, app.displayName(), app.displayName(), iosMin, devices, urls)
 	if err := os.WriteFile(filepath.Join(bundle, "Info.plist"), []byte(plist), 0o644); err != nil {
 		return "", err
+	}
+	if app.cfg.ShareTarget {
+		exe, err := t.buildShare(work)
+		if err != nil {
+			return "", err
+		}
+		appex, err := embedShare(bundle, exe, app.cfg.shareInfo(map[string]any{
+			"CFBundleName": app.displayName(), "CFBundleDisplayName": app.displayName(), "CFBundleShortVersionString": "1.0", "CFBundleVersion": "1", "MinimumOSVersion": iosMin,
+			"CFBundleSupportedPlatforms": []string{"iPhoneSimulator"}, "UIDeviceFamily": app.cfg.iosDevices(),
+		}))
+		if err != nil {
+			return "", err
+		}
+		if err := t.run(work, nil, "codesign", "--force", "--sign", "-", appex); err != nil {
+			return "", err
+		}
 	}
 	return bundle, t.run(work, nil, "codesign", "--force", "--sign", "-", bundle)
 }

@@ -39,13 +39,25 @@ func buildIOS(app *goApp, o *buildOptions) error {
 	if err != nil {
 		return err
 	}
-	// Sign first: no point building for a profile that isn't there.
-	var prof *profile
+	// Sign first: no point building for a profile that isn't there. The
+	// share extension has a bundle ID, and so a profile, of its own (a
+	// wildcard one can serve both), from the app's team.
+	var prof, shareProf *profile
 	if !o.simulator {
-		if prof, err = pickProfile(cfg, o); err != nil {
+		want := o.profile
+		if want == "" {
+			want = cfg.IOS.Profile
+		}
+		if prof, err = pickProfile(cfg.IOS.Team, cfg.ID, want, o.distribution); err != nil {
 			return err
 		}
 		fmt.Printf("nui: signing with %q (%s, team %s) as %s\n", prof.name, prof.kind, prof.team, prof.identityName)
+		if cfg.ShareTarget {
+			if shareProf, err = pickProfile(prof.team, cfg.shareID(), cfg.IOS.ShareProfile, o.distribution); err != nil {
+				return fmt.Errorf("the share extension (nui.json's shareTarget): %v", err)
+			}
+			fmt.Printf("nui: signing the share extension with %q\n", shareProf.name)
+		}
 	}
 	fmt.Printf("nui: building %s %s (%d) for %s\n", cfg.Name, cfg.Version, cfg.Build, map[bool]string{true: "the simulator", false: "devices"}[o.simulator])
 	lib, err := tc.buildGo(app, work)
@@ -100,6 +112,25 @@ func buildIOS(app *goApp, o *buildOptions) error {
 	} else {
 		fmt.Println("nui: no icon in nui.json; the App Store needs one (1024×1024 PNG)")
 	}
+	// The share extension, signed before the app, whose signature seals it.
+	if cfg.ShareTarget {
+		exe, err := tc.buildShare(work)
+		if err != nil {
+			return err
+		}
+		appex, err := embedShare(bundle, exe, cfg.shareInfo(info))
+		if err != nil {
+			return err
+		}
+		if o.simulator {
+			err = tc.run(work, nil, "codesign", "--force", "--sign", "-", appex)
+		} else {
+			err = shareProf.sign(tc, work, appex, cfg.shareID(), nil)
+		}
+		if err != nil {
+			return err
+		}
+	}
 	if o.simulator {
 		if err := tc.run(work, nil, "codesign", "--force", "--sign", "-", bundle); err != nil {
 			return err
@@ -112,7 +143,7 @@ func buildIOS(app *goApp, o *buildOptions) error {
 		fmt.Printf("nui: %s in %.0fs (install: xcrun simctl install booted %s)\n", out, time.Since(start).Seconds(), out)
 		return nil
 	}
-	if err := prof.sign(tc, work, bundle, cfg); err != nil {
+	if err := prof.sign(tc, work, bundle, cfg.ID, cfg.associatedDomains(false)); err != nil {
 		return err
 	}
 	ipa := filepath.Join(o.out, safeName(cfg.Name)+".ipa")
@@ -201,7 +232,7 @@ func (t *iosToolchain) infoPlist(cfg *appConfig, simulator bool) (map[string]any
 	if o := cfg.ipadOrientations(); o != nil {
 		m["UISupportedInterfaceOrientations~ipad"] = o
 	}
-	if t := cfg.urlTypes(); t != nil {
+	if t := cfg.urlTypes(true); t != nil {
 		m["CFBundleURLTypes"] = t
 	}
 	for k, v := range cfg.IOS.Usage {
@@ -371,15 +402,12 @@ func (p *profile) matches(team, id string) int {
 	return 0
 }
 
-// pickProfile finds the provisioning profile to sign with: the one
-// asked for, else the closest unexpired match for the app's ID and the
-// distribution whose certificate is in the keychain.
-func pickProfile(cfg *appConfig, o *buildOptions) (*profile, error) {
+// pickProfile finds the provisioning profile to sign the bundle ID id
+// with: want (a path, name or UUID) if given, else the closest unexpired
+// match for id, the team (if given) and the distribution whose
+// certificate is in the keychain.
+func pickProfile(team, id, want, distribution string) (*profile, error) {
 	ids := identities()
-	want := o.profile
-	if want == "" {
-		want = cfg.IOS.Profile
-	}
 	var all []*profile
 	for _, d := range profileDirs() {
 		files, _ := filepath.Glob(filepath.Join(d, "*.mobileprovision"))
@@ -404,11 +432,11 @@ func pickProfile(cfg *appConfig, o *buildOptions) (*profile, error) {
 		if want != "" && p.name != want && p.uuid != want {
 			continue
 		}
-		score := p.matches(cfg.IOS.Team, cfg.ID)
+		score := p.matches(team, id)
 		if score == 0 {
 			continue
 		}
-		if p.kind != o.distribution && want == "" {
+		if p.kind != distribution && want == "" {
 			near = append(near, fmt.Sprintf("%q (%s)", p.name, p.kind))
 			continue
 		}
@@ -432,7 +460,7 @@ func pickProfile(cfg *appConfig, o *buildOptions) (*profile, error) {
 	if best != nil {
 		return best, nil
 	}
-	msg := fmt.Sprintf("no %s provisioning profile for %s", o.distribution, cfg.ID)
+	msg := fmt.Sprintf("no %s provisioning profile for %s", distribution, id)
 	if len(near) > 0 {
 		sort.Strings(near)
 		msg += "; close ones: " + strings.Join(near, ", ")
@@ -440,10 +468,10 @@ func pickProfile(cfg *appConfig, o *buildOptions) (*profile, error) {
 	return nil, errors.New(msg + ". Make one for the app ID in Xcode (Settings › Accounts) or at developer.apple.com, or pass -profile")
 }
 
-// sign embeds the profile, signs the bundle with its entitlements and
-// checks the signature.
-func (p *profile) sign(t *iosToolchain, work, bundle string, cfg *appConfig) error {
-	id := cfg.ID
+// sign embeds the profile, signs the bundle (the app, or an extension in
+// it), whose ID is id, with the profile's entitlements and the
+// associated domains, and checks the signature.
+func (p *profile) sign(t *iosToolchain, work, bundle, id string, domains []string) error {
 	data, err := os.ReadFile(p.path)
 	if err != nil {
 		return err
@@ -451,13 +479,14 @@ func (p *profile) sign(t *iosToolchain, work, bundle string, cfg *appConfig) err
 	if err := os.WriteFile(filepath.Join(bundle, "embedded.mobileprovision"), data, 0o644); err != nil {
 		return err
 	}
-	decoded := filepath.Join(work, "profile.plist")
+	name := strings.TrimSuffix(filepath.Base(bundle), filepath.Ext(bundle))
+	decoded := filepath.Join(work, name+".profile.plist")
 	raw, err := exec.Command("security", "cms", "-D", "-i", p.path).Output()
 	if err != nil {
 		return err
 	}
 	os.WriteFile(decoded, raw, 0o644)
-	ent := filepath.Join(work, "entitlements.plist")
+	ent := filepath.Join(work, name+".entitlements.plist")
 	if err := t.run(work, nil, "plutil", "-extract", "Entitlements", "xml1", "-o", ent, decoded); err != nil {
 		return err
 	}
@@ -467,8 +496,8 @@ func (p *profile) sign(t *iosToolchain, work, bundle string, cfg *appConfig) err
 	}
 	// Universal links: the domains, which the profile must allow (the
 	// Associated Domains capability of the app ID).
-	if ds := cfg.associatedDomains(false); len(ds) > 0 {
-		js, _ := json.Marshal(ds)
+	if len(domains) > 0 {
+		js, _ := json.Marshal(domains)
 		if err := t.run(work, nil, "plutil", "-replace", "com.apple.developer.associated-domains", "-json", string(js), ent); err != nil {
 			return err
 		}

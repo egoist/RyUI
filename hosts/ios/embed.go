@@ -5,8 +5,9 @@ package ios
 
 import "embed"
 
-// Files holds Sources/ (the decoder, the UIKit host, the C header) and
-// App/ (the app delegate).
+// Files holds Sources/ (the decoder, the UIKit host, the C header),
+// App/ (the app delegate) and Share/ (the share extension, a binary of
+// its own).
 //
-//go:embed Sources App
+//go:embed Sources App Share
 var Files embed.FS

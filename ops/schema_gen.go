@@ -427,7 +427,7 @@ const (
 	EventDownload EventKind = 37
 	// EventNewWindow: a WebView's page would open a page in a new window (its URL).
 	EventNewWindow EventKind = 38
-	// EventShared: another app shared text with the app (a link from its share sheet: Android's ACTION_SEND, with nui.json's shareTarget), at launch or since; to the root.
+	// EventShared: another app shared text with the app (a link from its share sheet: iOS's share extension, Android's ACTION_SEND, with nui.json's shareTarget), at launch or since; to the root.
 	EventShared EventKind = 39
 )
 

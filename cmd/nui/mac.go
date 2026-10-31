@@ -122,12 +122,8 @@ func buildMac(app *goApp, o *buildOptions) error {
 		"NSSupportsAutomaticGraphicsSwitching": true,
 		"LSApplicationCategoryType":            "public.app-category.utilities",
 	}
-	if t := app.cfg.urlTypes(); len(t) > 0 {
-		var a []any
-		for _, m := range t {
-			a = append(a, m)
-		}
-		info["CFBundleURLTypes"] = a
+	if t := app.cfg.urlTypes(false); len(t) > 0 {
+		info["CFBundleURLTypes"] = t
 	}
 	// The purpose strings are the same keys on macOS (camera, location...).
 	for k, v := range app.cfg.IOS.Usage {

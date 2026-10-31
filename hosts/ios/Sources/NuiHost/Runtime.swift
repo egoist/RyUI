@@ -300,6 +300,13 @@ final class NuiTextField: UITextField {
     /// core's ui.OnOpenURL handlers get it, once it has started.
     public func openURL(_ url: URL) {
         guard started else { pendingURLs.append(url); return }
+        // From the share extension (nui.json's shareTarget): what another
+        // app shared, for ui.OnShare.
+        if url.scheme?.lowercased() == "nuishare." + (Bundle.main.bundleIdentifier ?? "").lowercased() {
+            let text = URLComponents(url: url, resolvingAgainstBaseURL: false)?.percentEncodedQuery?.removingPercentEncoding ?? ""
+            if !text.isEmpty { send(NuiEvents.shared(rootID, text)) }
+            return
+        }
         send(NuiEvents.incomingURL(rootID, url.absoluteString))
     }
 

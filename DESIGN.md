@@ -864,6 +864,17 @@ Each one ends with its examples running and its tests in CI.
     `nui/device`: info, an in-app browser, the photo picker).
   - A search field in the navigation bar (`ScreenOptions.Search`).
   - Incoming links: `nui.json`'s `scheme` and `links`, `ui.OnOpenURL`.
+  - Shares from other apps: `nui.json`'s `shareTarget`, `ui.OnShare`.
+    Android takes `ACTION_SEND` text in the app's Activity. iOS has a
+    share extension (`hosts/ios/Share`, a `.appex` in the app's
+    PlugIns, built by the CLI with no Go in it): it takes text and web
+    links, then opens the app with them in a URL of a scheme of the
+    app's (`nuishare.<app ID>`), through the application at the end of
+    its responder chain, as an extension has no `UIApplication.shared`.
+    The host turns that URL into the `Shared` event, so both platforms
+    open the app, as the user expects of a "Download" or "Save" target.
+    The extension has its own bundle ID (`<app ID>.share`) and, on
+    devices, its own provisioning profile.
   - Custom fonts (`Font.Family`).
   - Accessibility: pressable views as buttons, `Decorative`,
     `ui.Announce`, swipe actions for TalkBack, Reduce Motion.

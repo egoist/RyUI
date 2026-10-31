@@ -60,6 +60,33 @@ func TestLinks(t *testing.T) {
 	}
 }
 
+// shareTarget: on iOS, the share extension's scheme beside the app's
+// own, and the extension's Info.plist, which takes the app's name,
+// version and build keys; on Android, the ACTION_SEND filter.
+func TestShareTarget(t *testing.T) {
+	c := &appConfig{ID: "com.example.dl", Scheme: "dl", ShareTarget: true}
+	got := plist(map[string]any{"CFBundleURLTypes": c.urlTypes(true)})
+	if !strings.Contains(got, "<string>dl</string>\n\t\t\t\t<string>nuishare.com.example.dl</string>") {
+		t.Errorf("iOS URL types:\n%s", got)
+	}
+	if t2 := c.urlTypes(false); strings.Contains(plist(map[string]any{"T": t2}), "nuishare") {
+		t.Error("macOS has the share scheme")
+	}
+	if (&appConfig{ID: "x"}).urlTypes(true) != nil {
+		t.Error("URL types with no scheme")
+	}
+	info := c.shareInfo(map[string]any{"CFBundleName": "DL", "CFBundleVersion": "7", "DTSDKName": "iphoneos27.1",
+		"CFBundleIdentifier": "com.example.dl", "UILaunchScreen": map[string]any{}})
+	if info["CFBundleIdentifier"] != "com.example.dl.share" || info["CFBundleName"] != "DL" || info["CFBundleVersion"] != "7" ||
+		info["DTSDKName"] != "iphoneos27.1" || info["NuiShareScheme"] != "nuishare.com.example.dl" || info["UILaunchScreen"] != nil ||
+		info["CFBundlePackageType"] != "XPC!" {
+		t.Errorf("extension's Info.plist: %v", info)
+	}
+	if !strings.Contains(c.androidManifest(false), "android.intent.action.SEND") {
+		t.Error("no ACTION_SEND filter")
+	}
+}
+
 func TestFeaturesFromImports(t *testing.T) {
 	var c appConfig
 	c.permissionsFor([]string{"github.com/egoist/nui/ui", "github.com/egoist/nui/scan", "github.com/egoist/nui/camera"})

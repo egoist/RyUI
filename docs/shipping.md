@@ -35,7 +35,8 @@
 - `scheme` opens the app for `myapp://` URLs, and `links` for https links
   to your domains (universal links, App Links); `ui.OnOpenURL` gets them.
 - `shareTarget` offers the app in other apps' share sheets, for text and
-  links; `ui.OnShare` gets them. Android only, for now.
+  links; `ui.OnShare` gets them. On iOS it's a share extension in the
+  app, with a bundle ID of its own (the app's plus `.share`).
 - `ios.usage` gives the purpose strings of protected resources
   (`NSCameraUsageDescription`...), and `ios.infoPlist` adds keys to
   Info.plist; `android.permissions` adds permissions.
@@ -56,6 +57,12 @@ profile for the app's ID: `ios.profile`, or `-profile`, else the best
 match installed. `-distribution ad-hoc` or `development` signs it for the
 devices of its profile instead, and `-simulator` makes an unsigned `.app`
 for the simulator.
+
+With `shareTarget`, the share extension is signed too, with a profile
+for its own ID (`com.example.notes.share` for `com.example.notes`), from
+the app's team: `ios.shareProfile`, else the best match installed. A
+wildcard profile (`com.example.*`) serves both. Register the extension's
+ID at developer.apple.com and make it a profile as you did the app's.
 
 Upload it with Apple's Transporter, or:
 
@@ -155,6 +162,9 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -k "$PW" "$KC"
           security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
           echo "$PROFILE" | base64 --decode > $RUNNER_TEMP/app.mobileprovision
+          # With shareTarget, the extension's profile, installed where nui looks:
+          # mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          # echo "$SHARE_PROFILE" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/share.mobileprovision
       - run: nui build -ios -profile $RUNNER_TEMP/app.mobileprovision
       - uses: actions/upload-artifact@v4
         with: { name: ios, path: dist/*.ipa }
@@ -225,7 +235,8 @@ base64 (`base64 -i file | pbcopy`):
   private key, a `.p12` exported from Keychain Access;
   `IOS_CERTIFICATE_PASSWORD` the password you exported it with.
 - `IOS_PROFILE`: the app's App Store provisioning profile, from
-  developer.apple.com.
+  developer.apple.com (with `shareTarget`, `SHARE_PROFILE` the share
+  extension's).
 - `ASC_KEY_ID`, `ASC_ISSUER_ID` and `ASC_KEY` (the `.p8`'s text): an App
   Store Connect API key with the App Manager role, from Users and Access
   › Integrations.

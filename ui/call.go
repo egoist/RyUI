@@ -134,7 +134,8 @@ var (
 // handler (the share that launched the app) goes to the first. It stops
 // with the component's owner. Main thread.
 //
-// Android only, for now: iOS needs a share extension.
+// On iOS a share extension takes the share and opens the app with it;
+// on Android the share (ACTION_SEND) opens the app.
 func OnShare(f func(text string)) {
 	p := &f
 	shareHandlers = append(shareHandlers, p)

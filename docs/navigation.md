@@ -351,9 +351,11 @@ ui.OnShare(func(text string) {
 })
 ```
 
-**Android only**, for now. On iOS it would need a share extension.
-What's shared is often a title and a link together, so look for the
-link in the text. [`examples/downloader`](../examples/downloader) does
+On iOS the app comes with a share extension, which opens the app with
+what's shared, as Android opens it: the extension shows no screen of
+its own. What's shared is often a title and a link together (a page's
+title and its URL from Safari, a line each), so look for the link in the
+text. [`examples/downloader`](../examples/downloader) does
 this.
 
 To share from your app instead, `ui.Share(text)` shows the system's

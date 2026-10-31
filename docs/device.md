@@ -624,9 +624,11 @@ func App() ui.Node {
 ```
 
 What came before any handler, the share that launched the app, goes to
-the first one. The handler stops with the component's owner. Android
-only, for now: iOS needs a share extension. To show a screen for what's
-shared, see [Navigation](navigation.md).
+the first one. The handler stops with the component's owner. On iOS a
+share extension in the app takes the share and opens the app with it;
+on Android the share opens the app itself. A page shared from Safari
+comes as its title and its link, a line each. To show a screen for
+what's shared, see [Navigation](navigation.md).
 
 ## JavaScript: nui/js
 

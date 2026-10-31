@@ -300,7 +300,7 @@ var Schema = SchemaDef{
 		{Name: "Request", Payload: PString, Doc: "a WebView's page made a request (its URL), with Requests"},
 		{Name: "Download", Payload: PBytes, Doc: "a WebView's page led to a file it can't show: string URL, string MIME type, string file name, i64 size (-1: unknown)"},
 		{Name: "NewWindow", Payload: PString, Doc: "a WebView's page would open a page in a new window (its URL)"},
-		{Name: "Shared", Payload: PString, Doc: "another app shared text with the app (a link from its share sheet: Android's ACTION_SEND, with nui.json's shareTarget), at launch or since; to the root"},
+		{Name: "Shared", Payload: PString, Doc: "another app shared text with the app (a link from its share sheet: iOS's share extension, Android's ACTION_SEND, with nui.json's shareTarget), at launch or since; to the root"},
 	},
 	Commands: []CommandDef{
 		{Name: "Focus"},
