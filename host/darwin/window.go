@@ -5,6 +5,7 @@ package darwin
 import (
 	"os"
 	"strings"
+	"testing"
 
 	. "github.com/egoist/nui/internal/darwin"
 	"github.com/egoist/nui/ops"
@@ -32,8 +33,11 @@ func (h *Host) makeWindow() {
 	MsgSetSize(w, Sel("setContentMinSize:"), Size{Width: 320, Height: 320})
 	Send(w, "setDelegate:", uintptr(h.target))
 	Send(w, "center")
-	// The window comes back where the user left it.
-	Send(w, "setFrameAutosaveName:", uintptr(String("nui "+h.appName)))
+	// The window comes back where the user left it (not a test's, nor
+	// an automation run's: they'd leave theirs in the user's defaults).
+	if !testing.Testing() && os.Getenv("NUI_SNAPSHOT") == "" {
+		Send(w, "setFrameAutosaveName:", uintptr(String("nui "+h.appName)))
+	}
 	h.window, h.content = w, content
 	h.main = &win{window: w, content: content, base: h.appName}
 	// A toolbar coming or going resizes the content, not the window.

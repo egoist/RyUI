@@ -22,10 +22,8 @@ func init() {
 			if name == "" {
 				name = filepath.Base(os.Args[0])
 			}
-			d := filepath.Join(home, "Library", "Application Support", name)
-			if os.MkdirAll(d, 0o755) == nil {
-				os.Setenv("NUI_DATA", d)
-			}
+			// Made by what writes there (nui/store, nui/sqlite), not here.
+			os.Setenv("NUI_DATA", filepath.Join(home, "Library", "Application Support", name))
 		}
 	}
 }

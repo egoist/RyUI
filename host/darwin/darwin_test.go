@@ -474,10 +474,6 @@ func TestMenuBar(t *testing.T) {
 func TestWindowOptions(t *testing.T) {
 	ui.SetWindowOptions(ui.WindowOptions{Title: "Notes", Width: 420, Height: 500, MinWidth: 400, MinHeight: 300})
 	defer ui.SetWindowOptions(ui.WindowOptions{})
-	// No size the user left the window at: the options' is the window's.
-	onMain(func() {
-		Send(Send(Class("NSUserDefaults"), "standardUserDefaults"), "removeObjectForKey:", uintptr(String("NSWindow Frame nui "+appName())))
-	})
 	h, _ := mount(t, func() ui.Node {
 		return ui.Text(signal.Func(func() string { return fmt.Sprint("width ", ui.UseEnvironment().Get().Width) }))
 	})
