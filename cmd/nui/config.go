@@ -56,6 +56,10 @@ type appConfig struct {
 		Usage map[string]string `json:"usage"`
 		// InfoPlist adds string keys to Info.plist.
 		InfoPlist map[string]string `json:"infoPlist"`
+		// IPhoneOnly leaves iPad out: the app runs there as an iPhone app,
+		// in a phone-sized window. By default it's an iPad app too, in
+		// Split View and Stage Manager, at any size the user gives it.
+		IPhoneOnly bool `json:"iphoneOnly"`
 	} `json:"ios"`
 	// Accent is the app's accent color, "#rrggbb" or "#rrggbbaa": the
 	// tint color on iOS; on Android, the seed of the Material 3 color
@@ -322,6 +326,27 @@ func (c *appConfig) androidManifest(debug bool) string {
 	}
 	b.WriteString("    </application>\n</manifest>\n")
 	return b.String()
+}
+
+// iosDevices are Info.plist's UIDeviceFamily: iPhone, and iPad unless
+// the app is iPhone only.
+func (c *appConfig) iosDevices() []int {
+	if c != nil && c.IOS.IPhoneOnly {
+		return []int{1}
+	}
+	return []int{1, 2}
+}
+
+// ipadOrientations are Info.plist's UISupportedInterfaceOrientations~ipad:
+// all four, whatever the app's orientations, since multitasking (Split
+// View, Slide Over, Stage Manager) needs them; the app's window is any
+// shape there anyway. nil for an iPhone-only app.
+func (c *appConfig) ipadOrientations() []string {
+	if c != nil && c.IOS.IPhoneOnly {
+		return nil
+	}
+	return []string{"UIInterfaceOrientationPortrait", "UIInterfaceOrientationPortraitUpsideDown",
+		"UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"}
 }
 
 func (c *appConfig) allows(o string) bool {

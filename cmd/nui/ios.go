@@ -325,7 +325,14 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 	for _, k := range app.cfg.iosTrue {
 		urls += fmt.Sprintf("<key>%s</key><true/>\n", html.EscapeString(k))
 	}
-	plist := fmt.Sprintf(infoPlist, app.bundleID, app.displayName(), app.displayName(), iosMin, urls)
+	devices := ""
+	for _, d := range app.cfg.iosDevices() {
+		devices += fmt.Sprintf("<integer>%d</integer>", d)
+	}
+	if o := app.cfg.ipadOrientations(); o != nil {
+		urls += "<key>UISupportedInterfaceOrientations~ipad</key><array><string>" + strings.Join(o, "</string><string>") + "</string></array>\n"
+	}
+	plist := fmt.Sprintf(infoPlist, app.bundleID, app.displayName(), app.displayName(), iosMin, devices, urls)
 	if err := os.WriteFile(filepath.Join(bundle, "Info.plist"), []byte(plist), 0o644); err != nil {
 		return "", err
 	}
@@ -366,7 +373,7 @@ const infoPlist = `<?xml version="1.0" encoding="UTF-8"?>
 <key>CFBundleVersion</key><string>1</string>
 <key>MinimumOSVersion</key><string>%s</string>
 <key>CFBundleSupportedPlatforms</key><array><string>iPhoneSimulator</string></array>
-<key>UIDeviceFamily</key><array><integer>1</integer></array>
+<key>UIDeviceFamily</key><array>%s</array>
 <key>UILaunchScreen</key><dict/>
 <key>CADisableMinimumFrameDurationOnPhone</key><true/>
 <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>

@@ -21,7 +21,15 @@
 - `version` is what users see; `build` counts the builds uploaded, and
   must grow with each.
 - `icon` is a square PNG, 1024×1024, without transparency for iOS.
-- `orientations`: `portrait`, `landscape` (both by default).
+- `orientations`: `portrait`, `landscape` (both by default), on phones.
+  On iPad the app takes every orientation, as Split View, Slide Over
+  and Stage Manager need; Android 16 likewise ignores it on tablets and
+  foldables.
+- `ios.iphoneOnly` leaves iPad out. By default the app is an iPad app
+  too, at whatever size the user gives its window; on Android it's
+  resizable for split screen and desktop windows. Lay out from
+  `ui.UseEnvironment()`'s `Width` and `Height`, the window's size, not
+  the device's.
 - `accent` is the app's accent color, `"#rrggbb"`: the tint on iOS, the
   seed of the Material 3 color scheme on Android.
 - `scheme` opens the app for `myapp://` URLs, and `links` for https links

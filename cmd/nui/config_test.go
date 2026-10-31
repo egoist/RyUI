@@ -78,3 +78,27 @@ func TestFeaturesFromImports(t *testing.T) {
 		t.Errorf("the player's modules: %v", p.androidModules)
 	}
 }
+
+func TestIPad(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "nui.json"), []byte(`{"orientations": ["portrait"]}`), 0o644)
+	c, err := loadConfig(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// An iPad app, in every orientation whatever the iPhone's: Split
+	// View and Stage Manager need them.
+	if d := c.iosDevices(); !slices.Equal(d, []int{1, 2}) {
+		t.Errorf("devices %v", d)
+	}
+	if o := c.ipadOrientations(); len(o) != 4 {
+		t.Errorf("iPad orientations %v", o)
+	}
+	os.WriteFile(filepath.Join(dir, "nui.json"), []byte(`{"ios": {"iphoneOnly": true}}`), 0o644)
+	if c, err = loadConfig(dir); err != nil {
+		t.Fatal(err)
+	}
+	if d := c.iosDevices(); !slices.Equal(d, []int{1}) || c.ipadOrientations() != nil {
+		t.Errorf("iPhone only: devices %v, iPad orientations %v", d, c.ipadOrientations())
+	}
+}

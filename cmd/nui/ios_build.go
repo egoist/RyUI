@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -181,7 +182,7 @@ func (t *iosToolchain) infoPlist(cfg *appConfig, simulator bool) (map[string]any
 		"CFBundleSupportedPlatforms":           []string{platform},
 		"MinimumOSVersion":                     iosMin,
 		"LSRequiresIPhoneOS":                   true,
-		"UIDeviceFamily":                       []int{1},
+		"UIDeviceFamily":                       cfg.iosDevices(),
 		"UIRequiredDeviceCapabilities":         []string{"arm64"},
 		"UILaunchScreen":                       map[string]any{},
 		"CADisableMinimumFrameDurationOnPhone": true, // 120 Hz on ProMotion iPhones
@@ -196,6 +197,9 @@ func (t *iosToolchain) infoPlist(cfg *appConfig, simulator bool) (map[string]any
 		"DTXcode":                              xcode,
 		"DTXcodeBuild":                         xcodeBuild,
 		"DTCompiler":                           "com.apple.compilers.llvm.clang.1_0",
+	}
+	if o := cfg.ipadOrientations(); o != nil {
+		m["UISupportedInterfaceOrientations~ipad"] = o
 	}
 	if t := cfg.urlTypes(); t != nil {
 		m["CFBundleURLTypes"] = t
@@ -253,9 +257,13 @@ func (t *iosToolchain) compileIcon(cfg *appConfig, work, bundle, infoPath string
 	}
 	os.WriteFile(filepath.Join(filepath.Dir(set), "Contents.json"), []byte(`{"info":{"author":"nui","version":1}}`), 0o644)
 	partial := filepath.Join(work, "icon-info.plist")
-	if err := t.run(work, nil, "xcrun", "actool", "--compile", bundle, "--platform", t.sdkName,
-		"--minimum-deployment-target", iosMin, "--app-icon", "AppIcon", "--target-device", "iphone",
-		"--output-partial-info-plist", partial, "--output-format", "human-readable-text", filepath.Dir(set)); err != nil {
+	args := []string{"actool", "--compile", bundle, "--platform", t.sdkName,
+		"--minimum-deployment-target", iosMin, "--app-icon", "AppIcon", "--target-device", "iphone"}
+	if slices.Contains(cfg.iosDevices(), 2) {
+		args = append(args, "--target-device", "ipad") // the iPad's icon sizes, CFBundleIcons~ipad
+	}
+	args = append(args, "--output-partial-info-plist", partial, "--output-format", "human-readable-text", filepath.Dir(set))
+	if err := t.run(work, nil, "xcrun", args...); err != nil {
 		return err
 	}
 	return t.run(work, nil, "/usr/libexec/PlistBuddy", "-c", "Merge "+partial, infoPath)

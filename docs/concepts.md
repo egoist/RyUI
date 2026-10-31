@@ -362,7 +362,10 @@ orientation := signal.Func(func() string {
 
 Its fields:
 
-- `Width`, `Height`: the screen's size, in points.
+- `Width`, `Height`: the screen's size, in points. It's the app's
+  window, not the device: in split screen (iPad's Split View, Stage
+  Manager, Android's split screen and desktop windows) it's the app's
+  part, and it changes as the user resizes it.
 - `SafeTop`, `SafeRight`, `SafeBottom`, `SafeLeft`: the safe area's
   insets.
 - `Keyboard`: how much of the bottom the keyboard covers.

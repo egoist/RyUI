@@ -622,7 +622,9 @@ nui build -windows <dir>          a folder: the .exe (icon, manifest, version) a
 
 **An app's metadata** is `nui.json` beside its Go code, all optional:
 name, ID (bundle ID and application ID), version and build number, a
-1024×1024 icon, orientations, the iOS team, provisioning profile, usage
+1024×1024 icon, orientations (the phone's: an iPad or a large Android
+screen turns the app any way, for split screen), the iOS team (and
+whether it's iPhone only), provisioning profile, usage
 descriptions and extra Info.plist keys, the Android permissions and
 upload key. `nui dev` and `nui build` read it alike.
 
@@ -812,7 +814,14 @@ Each one ends with its examples running and its tests in CI.
 - **M6, shipping** (done): `nui.json`, `nui build -ios` (signed `.ipa`;
   `-simulator`), `nui build -android` (`.aab` and `.apk`). Not yet:
   uploading, screenshots and store listings (Transporter and the Play
-  Console do those), iPad builds.
+  Console do those).
+- **Split screen** (done): an iOS build is an iPad app too
+  (`UIDeviceFamily` 1 and 2; `ios.iphoneOnly` leaves iPad out), in every
+  orientation there, as Split View, Slide Over and Stage Manager need;
+  the Android Activity is resizable and handles size changes live
+  (`configChanges`). Both report the window's size, not the screen's, as
+  the environment, so the root lays out again at any size the user
+  gives the app.
 - **Rich text** (done): `ui.RichText` (spans, per-line backgrounds,
   links, per-paragraph layout cache prepared off the main thread, inline
   components), links as accessibility elements, `ui.Selectable`
