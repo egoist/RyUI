@@ -167,7 +167,7 @@ func (h *Host) pickPhotos(args []byte, reply func([]byte, error)) {
 		}
 		reply([]byte(strings.Join(paths, "\n")), nil)
 	})
-	Send(p, "beginSheetModalForWindow:completionHandler:", uintptr(h.window), uintptr(done))
+	Send(p, "beginSheetModalForWindow:completionHandler:", uintptr(h.keyWin().window), uintptr(done))
 }
 
 // The Keychain: generic passwords of the app's service (its bundle ID,

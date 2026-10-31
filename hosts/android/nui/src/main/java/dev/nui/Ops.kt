@@ -36,6 +36,7 @@ object NuiKind {
     const val VIDEO = 26
     const val WEB_VIEW = 27
     const val DATE_PICKER = 28
+    const val WINDOW = 29
 
     fun name(kind: Int): String = when (kind) {
         1 -> "View"
@@ -66,6 +67,7 @@ object NuiKind {
         26 -> "Video"
         27 -> "WebView"
         28 -> "DatePicker"
+        29 -> "Window"
         else -> "Kind($kind)"
     }
 }
@@ -262,6 +264,14 @@ object NuiProp {
         const val MIN = 66
         const val MAX = 67
     }
+
+    object Window {
+        const val TITLE = 64
+        const val WIDTH = 65
+        const val HEIGHT = 66
+        const val MIN_WIDTH = 67
+        const val MIN_HEIGHT = 68
+    }
 }
 
 object NuiEventKind {
@@ -328,7 +338,9 @@ object NuiCommand {
     const val SCROLL_TO_OFFSET = 19
     const val ACCENT = 20
     const val WEB_NAVIGATE = 21
-    const val COLOR_SCHEME = 22
+    const val MENU_BAR = 22
+    const val WINDOW_OPTIONS = 23
+    const val COLOR_SCHEME = 24
 }
 
 object NuiRole {

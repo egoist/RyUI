@@ -31,6 +31,7 @@ public enum NuiKind: UInt16 {
     case video = 26
     case webView = 27
     case datePicker = 28
+    case window = 29
 
     public var name: String {
         switch self {
@@ -62,6 +63,7 @@ public enum NuiKind: UInt16 {
         case .video: return "Video"
         case .webView: return "WebView"
         case .datePicker: return "DatePicker"
+        case .window: return "Window"
         }
     }
 }
@@ -259,6 +261,14 @@ public enum NuiProp {
         public static let min: UInt16 = 66
         public static let max: UInt16 = 67
     }
+
+    public enum Window {
+        public static let title: UInt16 = 64
+        public static let width: UInt16 = 65
+        public static let height: UInt16 = 66
+        public static let minWidth: UInt16 = 67
+        public static let minHeight: UInt16 = 68
+    }
 }
 
 public enum NuiEventKind: UInt16 {
@@ -325,7 +335,9 @@ public enum NuiCommand: UInt16 {
     case scrollToOffset = 19
     case accent = 20
     case webNavigate = 21
-    case colorScheme = 22
+    case menuBar = 22
+    case windowOptions = 23
+    case colorScheme = 24
 }
 
 public enum NuiRole: Int32 {

@@ -52,6 +52,11 @@ type Root struct {
 	anim      Animation // what ui.Animate asked for, for this flush
 	animating bool
 	animArgs  [10]byte
+
+	menuBars   []*menuBar // MenuBar's, mounted; the last shows
+	menuItems  []MenuItem // the menus' items, in order (Action's index)
+	menuSent   []byte
+	menuListen bool
 }
 
 var (
@@ -83,6 +88,7 @@ func Mount(h host.Host, root func() Node) *Root {
 			r.dispose = dispose
 			r.el = newElement(ops.KindView, true)
 			r.sendAccent()
+			r.sendWindowOptions()
 			if colorScheme != ColorSchemeSystem {
 				r.batch.Command(r.el.id, ops.CmdColorScheme, []byte{byte(colorScheme)})
 			}

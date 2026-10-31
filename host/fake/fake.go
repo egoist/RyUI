@@ -203,7 +203,7 @@ func (h *Host) apply(op *ops.Op) {
 		if int(op.Index) > len(p.Children) {
 			panic(fmt.Sprintf("fake: Insert: index %d of %d into %d", op.Index, len(p.Children), p.ID))
 		}
-		if (p.Kind == ops.KindScroll || p.Kind == ops.KindSheet) && len(p.Children) > 0 {
+		if (p.Kind == ops.KindScroll || p.Kind == ops.KindSheet || p.Kind == ops.KindWindow) && len(p.Children) > 0 {
 			panic(fmt.Sprintf("fake: Insert: a %s has one child", p.Kind))
 		}
 		if (p.Kind == ops.KindStack || p.Kind == ops.KindTabs) && c.Kind != ops.KindScreen {
@@ -237,7 +237,7 @@ func (h *Host) apply(op *ops.Op) {
 			return
 		}
 		if op.Cmd == ops.CmdPresent {
-			if v.Kind != ops.KindSheet && v.Kind != ops.KindAlert {
+			if v.Kind != ops.KindSheet && v.Kind != ops.KindAlert && v.Kind != ops.KindWindow {
 				panic(fmt.Sprintf("fake: Present on a %s", v.Kind))
 			}
 			v.presented = true
@@ -811,4 +811,51 @@ func (v *View) Rich() []RichParagraph {
 		paras[i] = runs
 	}
 	return paras
+}
+
+// MenuBarItem is an item of the menus the core last sent (CmdMenuBar).
+type MenuBarItem struct {
+	Menu, Title, Key string
+	Flags, Mods      byte
+}
+
+// MenuBar returns the items of the menus last sent, in order (an item's
+// index is the one ChooseMenuItem takes).
+func (h *Host) MenuBar() []MenuBarItem {
+	cmds := h.Commands(ops.CmdMenuBar)
+	if len(cmds) == 0 {
+		return nil
+	}
+	b := cmds[len(cmds)-1].Value.Bytes
+	str := func() string {
+		n := int(binary.LittleEndian.Uint32(b))
+		s := string(b[4 : 4+n])
+		b = b[4+n:]
+		return s
+	}
+	var out []MenuBarItem
+	menus := int(binary.LittleEndian.Uint32(b))
+	b = b[4:]
+	for range menus {
+		title := str()
+		items := int(binary.LittleEndian.Uint32(b))
+		b = b[4:]
+		for range items {
+			it := MenuBarItem{Menu: title, Flags: b[0]}
+			b = b[1:]
+			it.Title, it.Key = str(), str()
+			it.Mods = b[0]
+			b = b[1:]
+			out = append(out, it)
+		}
+	}
+	return out
+}
+
+// ChooseMenuItem chooses the menu bar's item i, as a click or its
+// shortcut does.
+func (h *Host) ChooseMenuItem(i int) {
+	root := h.Root()
+	h.listening(root, ops.EventAction)
+	h.dispatch(ops.Event{ID: root.ID, Kind: ops.EventAction, Int: int64(i)})
 }

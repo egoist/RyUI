@@ -886,9 +886,14 @@ Each one ends with its examples running and its tests in CI.
   (info, clipboard, keep awake), `browser` (the user's browser), `photos`
   (an open panel). Screen reader actions and adjustable views
   (`NSAccessibilityCustomAction`, increment and decrement); enter and
-  exit transitions (the frame carries the scale and offset). Not yet:
-  `ui.Window` (one window per app, holding the root), the app's own
-  menus and keyboard shortcuts, `ui.Native`, the other modules (network,
+  exit transitions (the frame carries the scale and offset). Windows,
+  the menu bar and shortcuts (below): each `ui.Window` an `NSWindow`
+  with its own toolbar and title (its innermost stack's), cascaded from
+  the window in use; sheets and alerts go over the window in use. The
+  app's menus join the Mac's own: one titled File, Edit, View, Window or
+  Help adds its items to it, the others go between View and Window; a
+  disabled item is off through `validateMenuItem:`, as is Back with no
+  screen to go back from. Not yet: `ui.Native`, the other modules (network,
   location, notifications, camera, audio…), matched views (`Match`),
   notarization.
 - **Windows** (in progress): `host/windows`, Win32 and the common
@@ -1166,12 +1171,37 @@ How the Windows host maps nui (`host/windows`):
   `snap:<file>`), through the controls' own messages; `NUI_COLOR_SCHEME`
   is light or dark whatever the system's.
 
-Desktop needs what mobile doesn't: `ui.Window` (several windows, title,
-size, close requests), the app's menu bar and keyboard shortcuts,
-hover and right-click, resizable layouts. To keep that additive, the
-core already treats the mobile screen as one root with an environment
-(size, insets) that can change at any time, and never assumes a single
-root in its own data structures.
+Desktop needs what mobile doesn't: several windows, the app's menu bar
+and keyboard shortcuts, hover and right-click, resizable layouts. To
+keep that additive, the core already treats the mobile screen as one
+root with an environment (size, insets) that can change at any time,
+and never assumes a single root in its own data structures.
+
+**Windows, the menu bar and shortcuts** (`ui/window.go`):
+
+- The main window holds the root (`app.Run`); `app.RunWindow(opts,
+  root)` gives it a title and a size and least size
+  (`ui.WindowOptions`, sent to the root as `WindowOptions` when it
+  mounts). A size the user chose, remembered by the host, wins over it.
+- `ui.Window(WindowProps{Open, Title, Width, Height, MinWidth,
+  MinHeight, Content, OnClose})` is a window of its own while `Open` is
+  true, built as a `Sheet` is: a `Window` node, a host-sized layout root
+  whose `Environment` the host reports (it follows the user resizing
+  it), `Present` opens it, `Destroy` closes it, and the user closing it
+  sends `Dismissed`, which sets `Open` false. Its content's owner lives
+  as long as the window is open. Mobile hosts can't show one (it panics
+  there, as any kind a host lacks).
+- `ui.MenuBar(menus)` gives the app its menus, with keyboard shortcuts
+  (`ui.Shortcut{Key, Mods}`, `ui.Cmd("s").With(ui.Shift)`; `Primary` is
+  ⌘ on macOS and Ctrl on Windows). It's a fragment that follows its
+  accessor: the core encodes the menus into one `MenuBar` command to
+  the root and sends it only when the encoding changed; the host makes
+  its menu bar again, and a chosen item (a click or its shortcut) comes
+  back as `Action` on the root with the item's index among all the
+  menus' items. The last `MenuBar` mounted shows; disposed, the one
+  before. Shortcuts are menu items' because that's how both platforms
+  route them (key equivalents, accelerators), and how users find them.
+  Mobile hosts ignore it.
 
 ## References
 

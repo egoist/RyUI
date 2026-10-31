@@ -209,11 +209,11 @@ func TestStackPushAndBack(t *testing.T) {
 		if s := GoString(Send(h.window, "title")); s != "Detail" {
 			t.Fatalf("the window's title is %q", s)
 		}
-		if !h.chrome.back || h.chrome.toolbar == 0 {
+		if !h.main.chrome.back || h.main.chrome.toolbar == 0 {
 			t.Fatal("no back button")
 		}
 		// The toolbar's back button: Popped, and the core disposes the screen.
-		h.back()
+		h.back(h.main)
 		if disposed != 1 {
 			t.Fatalf("the popped screen's owner was disposed %d times", disposed)
 		}
@@ -369,6 +369,96 @@ func TestTransitions(t *testing.T) {
 		}
 		if !h.exiting[v] || Send(v, "superview") == 0 {
 			t.Fatal("the toast left at once")
+		}
+	})
+}
+
+func TestWindow(t *testing.T) {
+	open := signal.New(false)
+	closed := 0
+	h, _ := mount(t, func() ui.Node {
+		return ui.Window(ui.WindowProps{Open: open, Title: ui.Val("Inspector"), Width: 300, Height: 200,
+			OnClose: func() { closed++ },
+			Content: func() ui.Node {
+				return ui.Text(signal.Func(func() string { return fmt.Sprint("width ", ui.UseEnvironment().Get().Width) }))
+			}})
+	})
+	onMain(func() {
+		h.enter(func() { ui.Post(func() { open.Set(true) }) })
+		h.runPosted()
+		if len(h.wins) != 1 {
+			t.Fatalf("%d windows", len(h.wins))
+		}
+		var w *win
+		for _, x := range h.wins {
+			w = x
+		}
+		if s := GoString(Send(w.window, "title")); s != "Inspector" {
+			t.Fatalf("title %q", s)
+		}
+		if b := MsgRect(w.content, Sel("bounds")); b.Size.Width != 300 || b.Size.Height != 200 {
+			t.Fatalf("content %+v", b.Size)
+		}
+		// Its content lays out at the window's size.
+		if s := text(firstText(w.root)); s != "width 300" {
+			t.Fatalf("the content says %q", s)
+		}
+		// The user closes it: the core closes it.
+		if SendBool(h.target, "windowShouldClose:", uintptr(w.window)) {
+			t.Fatal("closed without the core")
+		}
+		if open.Peek() || closed != 1 || len(h.wins) != 0 {
+			t.Fatalf("open %v closed %d windows %d", open.Peek(), closed, len(h.wins))
+		}
+	})
+}
+
+func TestMenuBar(t *testing.T) {
+	saved := 0
+	h, _ := mount(t, func() ui.Node {
+		return ui.MenuBar(signal.Static([]ui.MenuBarMenu{
+			{Title: "File", Items: []ui.MenuItem{{Title: "Save", Shortcut: ui.Cmd("s"), OnPress: func() { saved++ }}}},
+			{Title: "Tools", Items: []ui.MenuItem{{Title: "Lint", Disabled: true}}},
+		}))
+	})
+	onMain(func() {
+		bar := Send(Send(Class("NSApplication"), "sharedApplication"), "mainMenu")
+		find := func(menu, title string) ID {
+			m := Send(Send(bar, "itemWithTitle:", uintptr(String(menu))), "submenu")
+			if m == 0 {
+				t.Fatalf("no %s menu", menu)
+			}
+			return Send(m, "itemWithTitle:", uintptr(String(title)))
+		}
+		save := find("File", "Save")
+		if save == 0 || GoString(Send(save, "keyEquivalent")) != "s" || SendInt(save, "keyEquivalentModifierMask") != modCommand {
+			t.Fatal("no Save with ⌘S in File")
+		}
+		if find("File", "Close Window") == 0 {
+			t.Fatal("File lost Close Window")
+		}
+		// Clicked, as AppKit sends it: the item's OnPress runs.
+		Send(Send(save, "target"), "appMenuItem:", uintptr(save))
+		if saved != 1 {
+			t.Fatal("Save didn't run")
+		}
+		lint := find("Tools", "Lint")
+		if lint == 0 || h.validateMenuItem(lint) {
+			t.Fatal("Lint isn't there and off")
+		}
+	})
+}
+
+func TestWindowOptions(t *testing.T) {
+	ui.SetWindowOptions(ui.WindowOptions{Title: "Notes", MinWidth: 400, MinHeight: 300})
+	defer ui.SetWindowOptions(ui.WindowOptions{})
+	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })
+	onMain(func() {
+		if s := GoString(Send(h.window, "title")); s != "Notes" {
+			t.Fatalf("title %q", s)
+		}
+		if m := MsgSize(h.window, Sel("contentMinSize")); m.Width != 400 || m.Height != 300 {
+			t.Fatalf("min %+v", m)
 		}
 	})
 }

@@ -42,6 +42,14 @@ func Run(root func() ui.Node) {
 // desktop runs the app on a desktop's own host (macOS, Windows).
 var desktop func(root func() ui.Node)
 
+// RunWindow is Run with the main window's options: its title and size on
+// a desktop (macOS, Windows). A phone's app fills the screen and ignores
+// them.
+func RunWindow(o ui.WindowOptions, root func() ui.Node) {
+	ui.SetWindowOptions(o)
+	Run(root)
+}
+
 // State is the app's lifecycle state.
 type State int
 

@@ -149,7 +149,9 @@ func registerTarget() {
 			return ok
 		}),
 		Method("barItem:", func(self ID, _ SEL, item ID) { h().barItem(item) }),
-		Method("back:", func(self ID, _ SEL, sender ID) { h().back() }),
+		Method("back:", func(self ID, _ SEL, sender ID) { h().back(h().senderWin(sender)) }),
+		Method("appMenuItem:", func(self ID, _ SEL, item ID) { h().appMenuItem(item) }),
+		Method("validateMenuItem:", func(self ID, _ SEL, item ID) bool { return h().validateMenuItem(item) }),
 		Method("boundsChanged:", func(self ID, _ SEL, n ID) { h().scrolled(Send(n, "object")) }),
 		Method("frameTick:", func(self ID, _ SEL, t ID) { h().tick() }),
 

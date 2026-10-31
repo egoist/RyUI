@@ -38,6 +38,9 @@ type nav struct {
 	window ID
 	alert  ID
 	order  []int // an alert's buttons' indexes, in the alert's order
+
+	// Window: its content's size when it opens, and its least.
+	size, minSize Size
 }
 
 func (h *Host) createNav(n *node) bool {
@@ -55,7 +58,7 @@ func (h *Host) createNav(n *node) bool {
 		Send(v, "setDelegate:", uintptr(h.target))
 		Send(v, "setTabViewType:", 0) // top tabs, bezeled
 		n.view = v
-	case ops.KindSheet:
+	case ops.KindSheet, ops.KindWindow:
 		n.view = initView("NuiView")
 	case ops.KindAlert:
 	default:
@@ -71,7 +74,7 @@ func (h *Host) createNav(n *node) bool {
 // sizedByHost reports whether the host sizes n (a screen, a sheet's
 // content), not the core.
 func (nv *nav) sizedByHost(n *node) bool {
-	return n.kind == ops.KindScreen || n.kind == ops.KindSheet
+	return n.kind == ops.KindScreen || n.kind == ops.KindSheet || n.kind == ops.KindWindow
 }
 
 func (h *Host) insertNav(p, c *node, index int) bool {
@@ -190,9 +193,26 @@ func (h *Host) destroyNav(n *node) bool {
 		n.dying = true
 		if n.nav.window != 0 {
 			w := n.nav.window
-			Send(h.window, "endSheet:", uintptr(w))
+			if p := Send(w, "sheetParent"); p != 0 {
+				Send(p, "endSheet:", uintptr(w))
+			}
 			Send(w, "orderOut:", 0)
 			delete(h.byView, Send(w, "contentView"))
+			Release(w)
+			n.nav.window = 0
+		}
+		for _, c := range n.children {
+			c.parent = nil
+		}
+		h.release(n)
+		return true
+	case ops.KindWindow:
+		n.dying = true
+		if w := n.nav.window; w != 0 {
+			delete(h.wins, w)
+			Send(w, "setDelegate:", 0)
+			Send(w, "orderOut:", 0)
+			Send(w, "close")
 			Release(w)
 			n.nav.window = 0
 		}
@@ -205,7 +225,9 @@ func (h *Host) destroyNav(n *node) bool {
 		n.dying = true
 		if a := n.nav.alert; a != 0 {
 			if w := Send(a, "window"); SendBool(w, "isVisible") {
-				Send(h.window, "endSheet:", uintptr(w))
+				if p := Send(w, "sheetParent"); p != 0 {
+					Send(p, "endSheet:", uintptr(w))
+				}
 			}
 			Release(a)
 			n.nav.alert = 0
@@ -297,9 +319,11 @@ func (h *Host) layoutNav() {
 		switch n.kind {
 		case ops.KindStack, ops.KindTabs:
 			h.layoutScreens(n)
-		case ops.KindSheet:
+		case ops.KindSheet, ops.KindWindow:
 			if n.nav.window != 0 {
-				h.reportScreen(n, MsgRect(Send(n.nav.window, "contentView"), Sel("bounds")).Size)
+				b := MsgRect(Send(n.nav.window, "contentView"), Sel("bounds"))
+				MsgSetRect(n.view, selSetFrame, b)
+				h.reportScreen(n, b.Size)
 			}
 		}
 	}
@@ -344,8 +368,10 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 			n.nav.search = v.Str
 		case ops.PropScreenSearchText:
 			n.nav.searchText = v.Str
-			if f := h.chrome.searchField; f != 0 && h.chrome.screen == n {
-				Send(f, "setStringValue:", uintptr(String(v.Str)))
+			for _, w := range h.allWins() {
+				if f := w.chrome.searchField; f != 0 && w.chrome.screen == n {
+					Send(f, "setStringValue:", uintptr(String(v.Str)))
+				}
 			}
 			return
 		}
@@ -363,6 +389,23 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 	case ops.KindSheet:
 		if p == ops.PropSheetDetents {
 			n.detents = v.Int
+		}
+	case ops.KindWindow:
+		switch p {
+		case ops.PropWindowTitle:
+			n.title = v.Str
+			if w := h.wins[n.nav.window]; w != nil {
+				w.base = v.Str
+				h.updateWindowChrome()
+			}
+		case ops.PropWindowWidth:
+			n.nav.size.Width = v.Float
+		case ops.PropWindowHeight:
+			n.nav.size.Height = v.Float
+		case ops.PropWindowMinWidth:
+			n.nav.minSize.Width = v.Float
+		case ops.PropWindowMinHeight:
+			n.nav.minSize.Height = v.Float
 		}
 	case ops.KindAlert:
 		switch p {
@@ -397,7 +440,8 @@ func (h *Host) present(n *node) {
 		if n.nav.window != 0 {
 			return
 		}
-		cs := MsgRect(h.content, Sel("bounds")).Size
+		over := h.keyWin()
+		cs := MsgRect(over.content, Sel("bounds")).Size
 		size := Size{Width: min(max(cs.Width-80, 320), 640), Height: max(cs.Height-100, 240)}
 		if n.detents == 1 { // medium only
 			size.Height = max(cs.Height/2, 240)
@@ -416,7 +460,9 @@ func (h *Host) present(n *node) {
 		n.nav.window = w
 		n.presented = true
 		h.reportScreen(n, size)
-		Send(h.window, "beginSheet:completionHandler:", uintptr(w), 0)
+		Send(over.window, "beginSheet:completionHandler:", uintptr(w), 0)
+	case ops.KindWindow:
+		h.openWindow(n)
 	case ops.KindAlert:
 		a := New("NSAlert")
 		Send(a, "setMessageText:", uintptr(String(n.title)))
@@ -463,7 +509,7 @@ func (h *Host) present(n *node) {
 				h.emit(n, ops.Event{Kind: ops.EventDismissed})
 			}
 		})
-		Send(a, "beginSheetModalForWindow:completionHandler:", uintptr(h.window), uintptr(done))
+		Send(a, "beginSheetModalForWindow:completionHandler:", uintptr(h.keyWin().window), uintptr(done))
 	}
 }
 
@@ -478,8 +524,18 @@ func (h *Host) cancel(view ID) {
 	}
 }
 
-// chrome is what the window's title and toolbar show: the innermost
-// shown stack's top screen.
+// win is one of the app's windows: the main one, holding the root, or a
+// Window's. Each has its own chrome: its title and toolbar are its
+// innermost shown stack's.
+type win struct {
+	window, content ID
+	root            *node  // what it shows: the root, or the Window node
+	base            string // its title when no screen names it
+	chrome          chrome
+}
+
+// chrome is what a window's title and toolbar show: the innermost shown
+// stack's top screen.
 type chrome struct {
 	stack, screen *node
 	back          bool
@@ -490,9 +546,37 @@ type chrome struct {
 	toolbar       ID
 }
 
-// activeStack finds the innermost stack on screen: through each stack's
-// top screen and each tabs' selected page.
-func (h *Host) activeStack() *node {
+// winOf returns the window w is (nil: not one of the app's).
+func (h *Host) winOf(w ID) *win {
+	if h.main != nil && h.main.window == w {
+		return h.main
+	}
+	return h.wins[w]
+}
+
+// keyWin is the window the user is working in: the key window if it's
+// one of the app's, else the main one.
+func (h *Host) keyWin() *win {
+	if w := h.winOf(Send(Send(Class("NSApplication"), "sharedApplication"), "keyWindow")); w != nil {
+		return w
+	}
+	return h.main
+}
+
+func (h *Host) allWins() []*win {
+	out := make([]*win, 0, len(h.wins)+1)
+	if h.main != nil {
+		out = append(out, h.main)
+	}
+	for _, w := range h.wins {
+		out = append(out, w)
+	}
+	return out
+}
+
+// activeStack finds the innermost stack on screen under root: through
+// each stack's top screen and each tabs' selected page.
+func (h *Host) activeStack(root *node) *node {
 	var found *node
 	var walk func(n *node)
 	walk = func(n *node) {
@@ -508,21 +592,23 @@ func (h *Host) activeStack() *node {
 				walk(n.children[n.selected])
 			}
 			return
-		case ops.KindSheet, ops.KindAlert:
-			return
+		case ops.KindSheet, ops.KindAlert, ops.KindWindow:
+			if n != root {
+				return
+			}
 		}
 		for _, c := range n.children {
 			walk(c)
 		}
 	}
-	if h.root != nil {
-		walk(h.root)
+	if root != nil {
+		walk(root)
 	}
 	return found
 }
 
 func (h *Host) updateWindowChrome() {
-	if h.window == 0 {
+	if h.main == nil {
 		return
 	}
 	if h.depth > 0 {
@@ -530,38 +616,38 @@ func (h *Host) updateWindowChrome() {
 			h.chromeQueued = true
 			h.afterCore(func() {
 				h.chromeQueued = false
-				WithPool(h.updateWindowChromeNow)
+				WithPool(h.updateChromes)
 			})
 		}
 		return
 	}
-	WithPool(h.updateWindowChromeNow)
+	WithPool(h.updateChromes)
 }
 
-func (h *Host) updateWindowChromeNow() {
-	c := &h.chrome
-	stack := h.activeStack()
+func (h *Host) updateChromes() {
+	for _, w := range h.allWins() {
+		h.updateChrome(w)
+	}
+}
+
+func (h *Host) updateChrome(w *win) {
+	c := &w.chrome
+	stack := h.activeStack(w.root)
 	var screen *node
 	if stack != nil {
 		screen = h.topScreen(stack)
 	}
-	title := h.appName
+	title := w.base
 	if screen != nil && screen.title != "" {
 		title = screen.title
-	} else if t := h.selectedTab(); t != nil && t.title != "" {
+	} else if t := h.selectedTab(w.root); t != nil && t.title != "" {
 		title = t.title
 	}
-	Send(h.window, "setTitle:", uintptr(String(title)))
+	Send(w.window, "setTitle:", uintptr(String(title)))
 	c.stack, c.screen = stack, screen
 	var ids []string
 	if stack != nil {
-		live := 0
-		for _, s := range stack.children {
-			if !s.dying {
-				live++
-			}
-		}
-		c.back = live > 1
+		c.back = h.liveScreens(stack) > 1
 		if c.back {
 			ids = append(ids, "nui.back")
 		}
@@ -579,7 +665,7 @@ func (h *Host) updateWindowChromeNow() {
 	}
 	if stack == nil {
 		if c.toolbar != 0 {
-			Send(h.window, "setToolbar:", 0)
+			Send(w.window, "setToolbar:", 0)
 			Release(c.toolbar)
 			c.toolbar = 0
 			h.environmentChanged()
@@ -592,10 +678,10 @@ func (h *Host) updateWindowChromeNow() {
 		Send(t, "setDisplayMode:", 2) // icons
 		Send(t, "setAllowsUserCustomization:", 0)
 		c.toolbar = t
-		if RespondsTo(h.window, "setToolbarStyle:") {
-			Send(h.window, "setToolbarStyle:", 3) // unified: the title beside the back button
+		if RespondsTo(w.window, "setToolbarStyle:") {
+			Send(w.window, "setToolbarStyle:", 3) // unified: the title beside the back button
 		}
-		Send(h.window, "setToolbar:", uintptr(t))
+		Send(w.window, "setToolbar:", uintptr(t))
 		h.environmentChanged()
 	}
 	// The items again: they're the screen's.
@@ -610,7 +696,17 @@ func (h *Host) updateWindowChromeNow() {
 	}
 }
 
-func (h *Host) selectedTab() *node {
+func (h *Host) liveScreens(stack *node) int {
+	live := 0
+	for _, s := range stack.children {
+		if !s.dying {
+			live++
+		}
+	}
+	return live
+}
+
+func (h *Host) selectedTab(root *node) *node {
 	var found *node
 	var walk func(n *node)
 	walk = func(n *node) {
@@ -619,19 +715,32 @@ func (h *Host) selectedTab() *node {
 			walk(found)
 			return
 		}
+		if n != root && (n.kind == ops.KindSheet || n.kind == ops.KindWindow) {
+			return
+		}
 		for _, c := range n.children {
 			walk(c)
 		}
 	}
-	if h.root != nil {
-		walk(h.root)
+	if root != nil {
+		walk(root)
 	}
 	return found
 }
 
-// toolbarItem makes the item for an identifier of the chrome's.
-func (h *Host) toolbarItem(ident string) ID {
-	c := &h.chrome
+// toolbarWin is the window a toolbar is in.
+func (h *Host) toolbarWin(t ID) *win {
+	for _, w := range h.allWins() {
+		if w.chrome.toolbar == t {
+			return w
+		}
+	}
+	return nil
+}
+
+// toolbarItem makes the item for an identifier of a window's chrome.
+func (h *Host) toolbarItem(w *win, ident string) ID {
+	c := &w.chrome
 	item := func() ID {
 		it := Send(Send(Class("NSToolbarItem"), "alloc"), "initWithItemIdentifier:", uintptr(String(ident)))
 		return Autorelease(it)
@@ -655,8 +764,7 @@ func (h *Host) toolbarItem(ident string) ID {
 		var it ID
 		if HasClass("NSSearchToolbarItem") {
 			it = Autorelease(Send(Send(Class("NSSearchToolbarItem"), "alloc"), "initWithItemIdentifier:", uintptr(String(ident))))
-			f := Send(it, "searchField")
-			c.searchField = f
+			c.searchField = Send(it, "searchField")
 		} else {
 			it = item()
 			f := initView("NSSearchField")
@@ -699,27 +807,39 @@ func (h *Host) toolbarItem(ident string) ID {
 
 // barItem is a screen's bar button.
 func (h *Host) barItem(it ID) {
-	s := h.chrome.screen
-	if s == nil || !RespondsTo(it, "tag") {
+	if !RespondsTo(it, "toolbar") {
 		return
 	}
-	h.emit(s, ops.Event{Kind: ops.EventAction, Int: int64(SendInt(it, "tag"))})
+	w := h.toolbarWin(Send(it, "toolbar"))
+	if w == nil || w.chrome.screen == nil {
+		return
+	}
+	h.emit(w.chrome.screen, ops.Event{Kind: ops.EventAction, Int: int64(SendInt(it, "tag"))})
 }
 
-// back pops the innermost shown stack's top screen, as its back button.
-func (h *Host) back() {
-	stack := h.activeStack()
+// senderWin is the window an action came from: a toolbar item's, else
+// the one the user works in (a menu item, a shortcut).
+func (h *Host) senderWin(sender ID) *win {
+	if sender != 0 && RespondsTo(sender, "toolbar") {
+		if w := h.toolbarWin(Send(sender, "toolbar")); w != nil {
+			return w
+		}
+	}
+	return h.keyWin()
+}
+
+// back pops the innermost shown stack's top screen in w, as its back
+// button.
+func (h *Host) back(w *win) {
+	if w == nil {
+		return
+	}
+	stack := h.activeStack(w.root)
 	if stack == nil {
 		return
 	}
 	top := h.topScreen(stack)
-	live := 0
-	for _, s := range stack.children {
-		if !s.dying {
-			live++
-		}
-	}
-	if top == nil || live < 2 {
+	if top == nil || h.liveScreens(stack) < 2 {
 		return
 	}
 	top.dying = true
@@ -733,55 +853,86 @@ func (h *Host) back() {
 	h.emit(stack, ops.Event{Kind: ops.EventPopped, Int: int64(top.id)})
 }
 
+// canGoBack reports whether w's back button would pop (the Back menu
+// item's state).
+func (h *Host) canGoBack(w *win) bool {
+	if w == nil {
+		return false
+	}
+	stack := h.activeStack(w.root)
+	return stack != nil && h.liveScreens(stack) > 1
+}
+
+func (h *Host) searchWin(field ID) *win {
+	for _, w := range h.allWins() {
+		if w.chrome.searchField == field && field != 0 {
+			return w
+		}
+	}
+	return nil
+}
+
 func (h *Host) searchChanged(field ID) {
-	c := &h.chrome
-	if field != c.searchField || c.screen == nil {
+	w := h.searchWin(field)
+	if w == nil || w.chrome.screen == nil {
 		return
 	}
 	s := GoString(Send(field, "stringValue"))
-	c.screen.nav.searchText = s
-	h.emit(c.screen, ops.Event{Kind: ops.EventTextChanged, Str: s})
+	w.chrome.screen.nav.searchText = s
+	h.emit(w.chrome.screen, ops.Event{Kind: ops.EventTextChanged, Str: s})
 }
 
 func (h *Host) searchCommand(control ID, cmd SEL) bool {
-	c := &h.chrome
-	if control != c.searchField || c.screen == nil {
+	w := h.searchWin(control)
+	if w == nil || w.chrome.screen == nil {
 		return false
 	}
 	if cmd == Sel("insertNewline:") {
-		h.emit(c.screen, ops.Event{Kind: ops.EventSubmit})
+		h.emit(w.chrome.screen, ops.Event{Kind: ops.EventSubmit})
 		return true
 	}
 	return false
 }
 
-// navMethods are NuiTarget's toolbar delegate methods and Escape.
+// navMethods are NuiTarget's toolbar delegate methods, Escape and the
+// windows' closing.
 func navMethods() []objc.MethodDef {
 	return []objc.MethodDef{
 		Method("toolbar:itemForItemIdentifier:willBeInsertedIntoToolbar:", func(self ID, _ SEL, t, ident ID, insert bool) ID {
-			return theHost.toolbarItem(GoString(ident))
+			if w := theHost.toolbarWin(t); w != nil {
+				return theHost.toolbarItem(w, GoString(ident))
+			}
+			return 0
 		}),
-		Method("toolbarDefaultItemIdentifiers:", func(self ID, _ SEL, t ID) ID { return theHost.toolbarIDs() }),
-		Method("toolbarAllowedItemIdentifiers:", func(self ID, _ SEL, t ID) ID { return theHost.toolbarIDs() }),
+		Method("toolbarDefaultItemIdentifiers:", func(self ID, _ SEL, t ID) ID { return theHost.toolbarIDs(t) }),
+		Method("toolbarAllowedItemIdentifiers:", func(self ID, _ SEL, t ID) ID { return theHost.toolbarIDs(t) }),
 		Method("cancelOperation:", func(self ID, _ SEL, sender ID) {
 			if w := Send(Send(Class("NSApplication"), "sharedApplication"), "keyWindow"); w != 0 {
 				theHost.cancel(Send(w, "contentView"))
 			}
 		}),
 		Method("windowShouldClose:", func(self ID, _ SEL, w ID) bool {
-			if w == theHost.window {
+			h := theHost
+			if h.main != nil && w == h.main.window {
 				return true
 			}
-			theHost.cancel(Send(w, "contentView"))
+			// A Window's or a sheet's: the core closes it.
+			if x := h.wins[w]; x != nil {
+				h.emit(x.root, ops.Event{Kind: ops.EventDismissed})
+				return false
+			}
+			h.cancel(Send(w, "contentView"))
 			return false
 		}),
 	}
 }
 
-func (h *Host) toolbarIDs() ID {
+func (h *Host) toolbarIDs(t ID) ID {
 	arr := Send(Class("NSMutableArray"), "array")
-	for _, id := range h.chrome.ids {
-		Send(arr, "addObject:", uintptr(String(id)))
+	if w := h.toolbarWin(t); w != nil {
+		for _, id := range w.chrome.ids {
+			Send(arr, "addObject:", uintptr(String(id)))
+		}
 	}
 	return arr
 }

@@ -253,6 +253,13 @@ var Schema = SchemaDef{
 			{Name: "Min", Type: TInt, Doc: "the earliest choice, in Unix milliseconds (0: none)"},
 			{Name: "Max", Type: TInt, Doc: "the latest choice, in Unix milliseconds (0: none)"},
 		}, Doc: "a date or a time, chosen the platform's way (a compact UIDatePicker; Material's date and time pickers from buttons that show it), in the device's time zone and format. The user's choice is reported with ValueChanged, in Unix milliseconds"},
+		{Name: "Window", Props: []PropDef{
+			{Name: "Title", Type: TString},
+			{Name: "Width", Type: TFloat, Doc: "its content's width when it opens, in points (0: the host's default)"},
+			{Name: "Height", Type: TFloat},
+			{Name: "MinWidth", Type: TFloat, Doc: "the least the user can resize its content to (0: the host's)"},
+			{Name: "MinHeight", Type: TFloat},
+		}, Doc: "a desktop window of the app's (macOS, Windows; mobile hosts can't show one), with one child, its content: Present opens it, Destroy closes it; the user closing it is reported with Dismissed. Sized by the host (and the user), which reports its Environment"},
 	},
 	Events: []EventDef{
 		{Name: "Press", Payload: PNone},
@@ -317,6 +324,8 @@ var Schema = SchemaDef{
 		{Name: "ScrollToOffset", Doc: "args: f32 x, f32 y (points from the content's top left; clamped, so a large one is the end), u8 animated; sent to a Scroll or List"},
 		{Name: "Accent", Doc: "args: u64 Color (0: the platform's), u8 flags (1: on Android, the wallpaper's colors where the system has them); sent to the root when it mounts: the app's accent color, which the platform's controls and Accent take (iOS: the tint color; Android: a Material 3 color scheme made from it)"},
 		{Name: "WebNavigate", Doc: "args: u8 0 back, 1 forward, 2 reload, 3 stop; sent to a WebView"},
+		{Name: "MenuBar", Doc: "args: the app's menus (desktop): u32 count, per menu a u32-length title and u32 item count, per item u8 flags (1 separator, 2 disabled, 4 checked, 8 destructive), a u32-length title, a u32-length key (a character, or enter, escape, tab, space, delete, backspace, up, down, left, right, home, end, pageup, pagedown, f1-f12; empty: no shortcut) and u8 modifiers (1 primary: ⌘ on macOS, Ctrl on Windows; 2 shift; 4 alt, a Mac's option; 8 control); sent to the root, again when they change: the host shows them with its own (a Mac's app, Edit and Window menus), and reports a chosen item, or its shortcut, with Action on the root carrying the item's index among all the menus' items"},
+		{Name: "WindowOptions", Doc: "args: f32 width, height, min width, min height (points, 0: the host's), then the title (rest of the args; empty: the app's name); sent to the root when it mounts: the main window's"},
 		{Name: "ColorScheme", Doc: "args: u8 ColorScheme; sent to the root: the app shows light or dark whatever the system's setting, or follows it again (iOS: the windows' overrideUserInterfaceStyle; Android: AppCompat's night mode)"},
 	},
 	Enums: []EnumDef{

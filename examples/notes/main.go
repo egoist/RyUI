@@ -7,6 +7,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"net/url"
 
 	"github.com/egoist/nui/app"
@@ -68,7 +69,29 @@ func App() ui.Node {
 			}
 		}
 		rows := signal.Func(func() []note { return notes.Get().Rows })
+		stats := signal.New(false)
 		return ui.SafeArea(ui.Style{Grow: 1},
+			// On a desktop: the menu bar's commands, with shortcuts, and a
+			// window of statistics. A phone has neither.
+			ui.MenuBar(signal.Static([]ui.MenuBarMenu{
+				{Title: "File", Items: []ui.MenuItem{{Title: "Add Note", Shortcut: ui.Cmd("enter"), OnPress: add}}},
+				{Title: "Edit", Items: []ui.MenuItem{{Title: "Clear Completed", Shortcut: ui.Cmd("k").With(ui.Shift),
+					OnPress: func() { write(`delete from notes where done`) }}}},
+				{Title: "Window", Items: []ui.MenuItem{{Title: "Statistics", Shortcut: ui.Cmd("i"), OnPress: func() { stats.Set(true) }}}},
+			})),
+			ui.Window(ui.WindowProps{Open: stats, Title: ui.Val("Statistics"), Width: 280, Height: 140, Content: func() ui.Node {
+				return ui.Column(ui.Style{Padding: ui.All(20), Gap: 6},
+					ui.Text(signal.Func(func() string { return fmt.Sprintf("%d notes", len(rows.Get())) }), ui.Style{Font: ui.Title2}),
+					ui.Text(signal.Func(func() string {
+						done := 0
+						for _, n := range rows.Get() {
+							if n.Done {
+								done++
+							}
+						}
+						return fmt.Sprintf("%d done", done)
+					}), ui.Style{Color: ui.SecondaryLabel}))
+			}}),
 			ui.Row(ui.Style{Gap: 8, Padding: ui.Symmetric(8, 16), Align: ui.AlignEnd},
 				ui.TextField(ui.TextFieldProps{Value: draft, Placeholder: ui.Val("New note"), ReturnKey: ui.ReturnDone,
 					OnSubmit: add, Style: ui.Style{Grow: 1}}),
@@ -116,5 +139,5 @@ func App() ui.Node {
 
 func main() {
 	openDB()
-	app.Run(App)
+	app.RunWindow(ui.WindowOptions{Width: 420, Height: 640, MinWidth: 320, MinHeight: 360}, App)
 }

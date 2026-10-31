@@ -147,7 +147,9 @@ type Host struct {
 	dark         bool
 	lists        map[ID]*list
 	videos       map[ID]ops.NodeID // by AVPlayerItem
-	chrome       chrome
+	main         *win              // the main window, holding the root
+	wins         map[ID]*win       // the Windows' windows, by NSWindow
+	appMenus     []appMenu         // MenuBar's
 	chromeQueued bool
 	a11yActions  map[ID]a11yAction
 	exiting      map[ID]bool // views going out with a transition
@@ -167,6 +169,7 @@ func newHost() *Host {
 		videos:      map[ID]ops.NodeID{},
 		a11yActions: map[ID]a11yAction{},
 		exiting:     map[ID]bool{},
+		wins:        map[ID]*win{},
 		target:      New("NuiTarget"),
 	}
 	purego.RegisterFunc(&msgShowPicker, MsgSendAddr())
@@ -488,6 +491,7 @@ func (h *Host) remove(p, c *node) {
 
 func (h *Host) setRoot(n *node) {
 	h.root = n
+	h.main.root = n
 	Send(n.view, "setAutoresizingMask:", 0)
 	if Send(n.view, "superview") != h.content {
 		Send(h.content, "addSubview:", uintptr(n.view))

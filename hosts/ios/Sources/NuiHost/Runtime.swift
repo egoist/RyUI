@@ -647,6 +647,8 @@ final class NuiTextField: UITextField {
             guard args.count >= 8 else { return }
             var r = NuiReader(args)
             setAccent(nuiColor(r.u64()))
+        case .menuBar, .windowOptions:
+            break // desktop hosts' (a phone has no menu bar or windows)
         case .colorScheme:
             guard let v = args.first else { return }
             setColorScheme(NuiColorScheme(rawValue: Int32(v)) ?? .system)
