@@ -36,7 +36,8 @@ and an implementation later.
 Open decisions, with the default to use until they are settled:
 
 - Minimum versions: **iOS 16, Android API 26 (8.0)**.
-- Android widgets: Material Components 3 (decided in M2).
+- Android widgets: Material Components 3 (decided in M2), with the
+  Material 3 Expressive theme and styles (Material Components 1.14).
 - Module path: `github.com/egoist/ryui`.
 
 ## Architecture

@@ -96,65 +96,6 @@ class RyUIList(val id: Int, val runtime: RyUIRuntime) {
         lm.startSmoothScroll(s)
     }
 
-    private fun swipeActionsOf(h: RecyclerView.ViewHolder): List<RyUIAction> =
-        runtime.nodes[(h as Holder).cell.ryuiID]?.swipeActions ?: emptyList()
-
-    /**
-     * Swipe actions, as Material's swipe to dismiss: a row with them swipes
-     * toward its start, over the first action's color and icon, and a full
-     * swipe runs it. The row comes back unless the core removes it.
-     */
-    private val swipes = swipeHelper()
-
-    init {
-        swipes.attachToRecyclerView(recycler)
-    }
-
-    private fun swipeHelper() = androidx.recyclerview.widget.ItemTouchHelper(object : androidx.recyclerview.widget.ItemTouchHelper.SimpleCallback(0, 0) {
-        private val paint = android.graphics.Paint()
-
-        override fun getSwipeDirs(rv: RecyclerView, h: RecyclerView.ViewHolder) =
-            if (swipeActionsOf(h).isEmpty()) 0 else androidx.recyclerview.widget.ItemTouchHelper.START
-
-        override fun onMove(rv: RecyclerView, a: RecyclerView.ViewHolder, b: RecyclerView.ViewHolder) = false
-
-        override fun onSwiped(h: RecyclerView.ViewHolder, direction: Int) {
-            val cell = (h as Holder).cell.ryuiID
-            runtime.emit(cell, RyUIEventKind.ACTION) { RyUIEvents.action(cell, 0) }
-            val p = h.bindingAdapterPosition
-            // Back, if the action didn't remove it (a removal is diffed in).
-            recycler.post { if (p in ids.indices) adapter.notifyItemChanged(p) }
-        }
-
-        override fun onChildDraw(c: android.graphics.Canvas, rv: RecyclerView, h: RecyclerView.ViewHolder, dx: Float, dy: Float, state: Int, active: Boolean) {
-            val a = swipeActionsOf(h).firstOrNull()
-            val v = h.itemView
-            if (a != null && dx != 0f) {
-                val destructive = a.role == RyUIAlertButtonRole.DESTRUCTIVE
-                val bg = com.google.android.material.color.MaterialColors.getColor(runtime.themed,
-                    if (destructive) androidx.appcompat.R.attr.colorError else com.google.android.material.R.attr.colorSecondaryContainer, 0)
-                val fg = com.google.android.material.color.MaterialColors.getColor(runtime.themed,
-                    if (destructive) com.google.android.material.R.attr.colorOnError else com.google.android.material.R.attr.colorOnSecondaryContainer, 0)
-                paint.color = bg
-                val rtl = v.layoutDirection == android.view.View.LAYOUT_DIRECTION_RTL
-                val left = if (rtl) v.left.toFloat() else v.right + dx
-                val right = if (rtl) v.left + dx else v.right.toFloat()
-                c.drawRect(left, v.top.toFloat(), right, v.bottom.toFloat(), paint)
-                runtime.symbol(a.icon.ifEmpty { "trash" })?.let { d ->
-                    val s = Math.round(24 * runtime.density)
-                    val m = Math.round(20 * runtime.density)
-                    val top = v.top + (v.height - s) / 2
-                    val x = if (rtl) v.left + m else v.right - m - s
-                    d.setTint(fg)
-                    d.setBounds(x, top, x + s, top + s)
-                    d.draw(c)
-                }
-            }
-            super.onChildDraw(c, rv, h, dx, dy, state, active)
-        }
-    })
-
-
     /** Takes the divider color from the current theme (after a dark mode change). */
     fun restyle() {
         recycler.removeItemDecoration(divider)
@@ -189,20 +130,23 @@ class RyUIList(val id: Int, val runtime: RyUIRuntime) {
         if (atTop && next.isNotEmpty()) recycler.scrollToPosition(0)
     }
 
-    class Holder(val cell: RyUICell) : RecyclerView.ViewHolder(cell)
+    class Holder(val row: RyUISwipeRow) : RecyclerView.ViewHolder(row) {
+        val cell get() = row.cell
+    }
 
     inner class Adapter : RecyclerView.Adapter<Holder>() {
         override fun getItemCount() = ids.size
         override fun getItemId(position: Int) = ids[position]
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
-            val cell = RyUICell(runtime.themed)
-            cell.layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            runtime.makeCell(cell)
-            return Holder(cell)
+            val row = RyUISwipeRow(runtime, RyUICell(runtime.themed))
+            row.layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            runtime.makeCell(row.cell)
+            return Holder(row)
         }
 
         override fun onBindViewHolder(holder: Holder, position: Int) {
+            holder.row.close(animated = false)
             holder.cell.binding = true
             runtime.enter { RyUINative.listBind(id, position.toLong(), holder.cell.ryuiID) }
             holder.cell.binding = false

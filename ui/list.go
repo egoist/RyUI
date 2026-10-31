@@ -30,8 +30,8 @@ type ListProps struct {
 	OnEndReached func()
 	// SwipeActions are row index's actions, revealed by swiping it: on
 	// iOS its trailing actions (a destructive one red, the first a full
-	// swipe's); on Android a full swipe runs the first, over its color
-	// and icon, as Material's swipe to dismiss.
+	// swipe's); on Android, likewise, Material 3 Expressive's swipe to
+	// reveal (the first at the end edge, a full swipe's).
 	SwipeActions func(index int) []Action
 	// OnScroll is called as it scrolls; see ScrollProps.
 	OnScroll func(x, y float32)

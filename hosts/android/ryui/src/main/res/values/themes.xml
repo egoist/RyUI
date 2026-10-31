@@ -1,6 +1,6 @@
 <resources>
-    <!-- Material 3, light and dark. Apps that set no style look like this. -->
-    <style name="Theme.RyUI" parent="Theme.Material3.DayNight.NoActionBar">
+    <!-- Material 3 Expressive, light and dark. Apps that set no style look like this. -->
+    <style name="Theme.RyUI" parent="Theme.Material3Expressive.DayNight.NoActionBar">
         <item name="android:windowBackground">?attr/colorSurface</item>
         <!-- Material 3 labels aren't all caps. -->
         <item name="actionMenuTextAppearance">@style/TextAppearance.RyUI.ActionMenu</item>
@@ -8,16 +8,16 @@
 
     <!-- Button variants (ui.ButtonVariant): plain is a text button. -->
     <style name="ThemeOverlay.RyUI.TextButton" parent="">
-        <item name="materialButtonStyle">@style/Widget.Material3.Button.TextButton</item>
+        <item name="materialButtonStyle">@style/Widget.Material3Expressive.Button.TextButton</item>
     </style>
     <style name="ThemeOverlay.RyUI.FilledButton" parent="">
-        <item name="materialButtonStyle">@style/Widget.Material3.Button</item>
+        <item name="materialButtonStyle">@style/Widget.Material3Expressive.Button</item>
     </style>
     <style name="ThemeOverlay.RyUI.TonalButton" parent="">
-        <item name="materialButtonStyle">@style/Widget.Material3.Button.TonalButton</item>
+        <item name="materialButtonStyle">@style/Widget.Material3Expressive.Button.TonalButton</item>
     </style>
     <style name="ThemeOverlay.RyUI.OutlinedButton" parent="">
-        <item name="materialButtonStyle">@style/Widget.Material3.Button.OutlinedButton</item>
+        <item name="materialButtonStyle">@style/Widget.Material3Expressive.Button.OutlinedButton</item>
     </style>
 
     <style name="TextAppearance.RyUI.ActionMenu" parent="TextAppearance.Material3.LabelLarge">
