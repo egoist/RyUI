@@ -31,8 +31,16 @@ func Run(root func() ui.Node) {
 		}
 		return
 	}
+	// A desktop host runs the app in this process.
+	if desktop != nil {
+		desktop(root)
+		return
+	}
 	panic("nui: no host on this platform yet; run the app with `nui dev -ios` (or -android)")
 }
+
+// desktop runs the app on a desktop's own host (macOS).
+var desktop func(root func() ui.Node)
 
 // State is the app's lifecycle state.
 type State int

@@ -32,6 +32,7 @@ const (
 	PlatformUnknown Platform = iota
 	PlatformIOS
 	PlatformAndroid
+	PlatformMacOS
 )
 
 func (p Platform) String() string {
@@ -40,6 +41,8 @@ func (p Platform) String() string {
 		return "iOS"
 	case PlatformAndroid:
 		return "Android"
+	case PlatformMacOS:
+		return "macOS"
 	}
 	return "unknown"
 }

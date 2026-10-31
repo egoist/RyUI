@@ -55,3 +55,11 @@ func serveAssets(addr, dir string) {
 	abs, _ := filepath.Abs(dir)
 	http.ListenAndServe(addr, http.FileServer(http.Dir(abs)))
 }
+
+// KeepState turns on keeping signals' values across reloads, for a host
+// that runs the app in its own process under nui dev (desktop), with the
+// values the last run saved in path.
+func KeepState(path string) error { return keepState(path) }
+
+// SaveState writes the live signals' values to path. Main thread.
+func SaveState(path string) error { return saveState(path) }

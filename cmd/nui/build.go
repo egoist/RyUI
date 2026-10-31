@@ -13,6 +13,8 @@ import (
 
 type buildOptions struct {
 	ios, android bool
+	mac          bool
+	sign         string // macOS: a signing identity (default: ad hoc)
 	simulator    bool   // iOS: a release build for the simulator, unsigned
 	distribution string // iOS: app-store, ad-hoc, development
 	profile      string // iOS: a provisioning profile (path, name or UUID)
@@ -24,6 +26,8 @@ func buildFlags(o *buildOptions) *flag.FlagSet {
 	fs := flag.NewFlagSet("build", flag.ContinueOnError)
 	fs.BoolVar(&o.ios, "ios", false, "build an .ipa for the App Store (or -distribution)")
 	fs.BoolVar(&o.android, "android", false, "build an .aab for Google Play, and an .apk")
+	fs.BoolVar(&o.mac, "mac", false, "build a macOS .app (universal: arm64 and x86_64)")
+	fs.StringVar(&o.sign, "sign", "", "macOS: a signing identity, e.g. \"Developer ID Application: ...\" (default: ad hoc)")
 	fs.BoolVar(&o.simulator, "simulator", false, "iOS: a release .app for the simulator instead (not signed for devices)")
 	fs.StringVar(&o.distribution, "distribution", "app-store", "iOS: app-store, ad-hoc or development")
 	fs.StringVar(&o.profile, "profile", "", "iOS: a provisioning profile's path, name or UUID (default: nui.json's, else the best match installed)")
@@ -42,8 +46,8 @@ func cmdBuild(args []string) error {
 	if fs.NArg() > 0 {
 		dir = fs.Arg(0)
 	}
-	if o.ios == o.android {
-		return errors.New("usage: nui build -ios|-android [flags] [dir]")
+	if n := btoi(o.ios) + btoi(o.android) + btoi(o.mac); n != 1 {
+		return errors.New("usage: nui build -ios|-android|-mac [flags] [dir]")
 	}
 	app, err := loadApp(dir)
 	if err != nil {
@@ -57,6 +61,9 @@ func cmdBuild(args []string) error {
 	}
 	if o.ios {
 		return buildIOS(app, &o)
+	}
+	if o.mac {
+		return buildMac(app, &o)
 	}
 	return buildAndroid(app, &o)
 }
@@ -118,4 +125,11 @@ func writePlist(b *strings.Builder, v any, depth int) {
 	default:
 		fmt.Fprintf(b, "%s<string>%s</string>\n", ind, html.EscapeString(fmt.Sprint(x)))
 	}
+}
+
+func btoi(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }

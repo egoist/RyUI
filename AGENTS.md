@@ -2,8 +2,8 @@
 
 nui is a UI framework in Go that renders with each platform's own
 widgets, driven by fine-grained signals. **Mobile first: iOS and
-Android.** Desktop (macOS, Windows, Linux) comes later on the same core;
-don't build desktop hosts until the milestones reach them. **Read
+Android.** Desktop comes later on the same core; the macOS host (`host/darwin`,
+AppKit through purego) is under way, Windows and Linux aren't started. **Read
 [DESIGN.md](DESIGN.md) before changing code**; it is the source of truth
 for the architecture, the APIs and the milestones. Work milestone by
 milestone, in order.
@@ -18,7 +18,7 @@ milestone, in order.
   talk to hosts only through `host.Host` and `ops`. Adding a component
   means: its kind and props in `ops/schema.go`, `go generate ./ops`, the
   component in `ui`, and its view in every host (`fake` first, then iOS
-  and Android).
+  and Android, then macOS in `host/darwin`).
 - **Nothing phone-only in the core's data structures**: no single global
   root, no assumption that the screen size never changes, so desktop
   windows can be added later without rewriting the core.
@@ -53,6 +53,10 @@ go test ./internal/remote                        # the dev transport, against th
 go test -tags e2e ./e2e -run IOS                 # GUI tests: the examples on the simulator (Android: -run Android, an emulator running)
 go run ./cmd/nui build -ios -simulator examples/counter    # a release build (-ios alone: a signed .ipa)
 go run ./cmd/nui build -android examples/counter           # .aab and .apk (NUI_KEYSTORE, NUI_KEY_ALIAS, NUI_KEYSTORE_PASSWORD)
+go run ./cmd/nui dev -mac examples/counter       # macOS: the app and its AppKit host in one process, rerun on save
+go run ./cmd/nui build -mac examples/counter     # a universal .app (-sign "Developer ID Application: ..."; default ad hoc)
+go test ./host/darwin                            # the macOS host, driving real AppKit views (macOS)
+(cd examples/counter && NUI_SNAPSHOT=/tmp/c.png NUI_DUMP=1 go run .)  # macOS: the window as a PNG and its view tree, then quit
 ```
 
 ## Conventions
@@ -66,5 +70,6 @@ go run ./cmd/nui build -android examples/counter           # .aab and .apk (NUI_
   implementation (React Native, react-navigation, Solid, Taffy, the CSS specs) before
   inventing one.
 - Swift host: UIKit only, no SwiftUI. Kotlin host: Android Views and
-  Material Components, no Compose.
+  Material Components, no Compose. macOS host: AppKit only, from Go
+  through `internal/darwin` (purego), no cgo, no SwiftUI.
 - Keep generated files (`ops` decoders) committed and up to date.

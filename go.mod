@@ -2,7 +2,10 @@ module github.com/egoist/nui
 
 go 1.26.0
 
-require modernc.org/sqlite v1.61.0
+require (
+	github.com/ebitengine/purego v0.11.2
+	modernc.org/sqlite v1.61.0
+)
 
 require (
 	github.com/dustin/go-humanize v1.1.0 // indirect

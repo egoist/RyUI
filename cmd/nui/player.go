@@ -65,11 +65,17 @@ type hostProcess struct {
 	cmd  *exec.Cmd
 	done chan struct{}
 	v    bool
+	// flags is the build's -ldflags (default: nui.json's).
+	flags string
 }
 
 func (p *hostProcess) build() error {
 	p.bin = filepath.Join(p.work, "app-host")
-	c := exec.Command("go", "build", p.app.cfg.ldflags(false), "-o", p.bin, ".")
+	flags := p.flags
+	if flags == "" {
+		flags = p.app.cfg.ldflags(false)
+	}
+	c := exec.Command("go", "build", flags, "-o", p.bin, ".")
 	c.Dir = p.app.dir
 	c.Env = append(os.Environ(), "CGO_ENABLED=0")
 	if out, err := c.CombinedOutput(); err != nil {

@@ -51,7 +51,8 @@ ops/                     mount operations, binary encoding
 ─────────────────────────────────────────────────────────────  Host interface
 mobile/ (C ABI, cgo) ──► hosts/ios (Swift)   hosts/android (Kotlin)
 host/fake                                  tests: records ops
-host/darwin, host/windows, host/linux      later: desktop, in process, Go
+host/darwin                                macOS: AppKit in process, Go (purego)
+host/windows, host/linux                   later: desktop, in process, Go
 ```
 
 The core never imports a host. A mobile app is a Go library: `mobile/`
@@ -612,6 +613,8 @@ The CLI does these builds itself (no gomobile).
 nui new <dir>                     a project from the template
 nui dev -ios|-android <dir>       build, run, rebuild and restart on save
 nui build -ios|-android <dir>     a release build for the stores
+nui dev -mac <dir>                build and run on this Mac, rerun on save
+nui build -mac <dir>              a universal .app, signed (-sign; default ad hoc)
 ```
 
 **An app's metadata** is `nui.json` beside its Go code, all optional:
@@ -749,6 +752,9 @@ Desktop adds `host/darwin`, `host/windows`, `host/linux` and
   - a flattened container makes no native view;
   - popping a screen disposes every owner it made;
   - steady-state flushes allocate nothing (`testing.AllocsPerRun`).
+- `host/darwin` (macOS): tests mount components on the real AppKit
+  host, on the main thread (`TestMain` keeps it), and check the views
+  (their text, frames, clicks, list binding, navigation, disposal).
 - `ops`: the Go encoder and the generated Swift and Kotlin decoders
   round-trip the same golden batches (`swift test --package-path
   hosts/ios`; `./gradlew :nui:testDebugUnitTest` in `hosts/android`).
@@ -861,6 +867,18 @@ Each one ends with its examples running and its tests in CI.
   - More GUI tests: gestures, alerts and menus, the gallery.
 - **Then desktop** (below), only when it's called for: until then the
   work is maturing iOS and Android.
+- **macOS** (in progress): `host/darwin`, AppKit in the app's process
+  through purego (`internal/darwin`, MyGo's Objective-C runtime layer),
+  no cgo; `app.Run` runs it on macOS. `nui dev -mac` (rebuild and rerun
+  on save, signals' state kept) and `nui build -mac` (a universal,
+  signed `.app` with its icon and assets). The examples run. Done: the
+  v0 components, navigation (below), rich text (an `NSTextView`), shapes,
+  images, symbols, gestures, menus, animation, `WebView`, `Video`; tests
+  in `host/darwin` drive real AppKit views. Not yet: `ui.Window` (one
+  window per app, holding the root), the app's own menus and keyboard
+  shortcuts, `ui.Native`, the native modules (`ui.Call`: secure storage,
+  device, notifications…), enter/exit transitions and matched views,
+  screen reader actions, notarization.
 
 ## Rich text
 
@@ -969,7 +987,7 @@ After M6, on the same core, `ops` and app code:
 
 | Platform | Host | Notes |
 |---|---|---|
-| macOS | Go, AppKit through purego (`host/darwin`) | No cgo. Port MyGo's `internal/darwin` (Objective-C runtime, `withPool`, classes made at runtime, blocks) and main-thread loop (`loop.go`). |
+| macOS | Go, AppKit through purego (`host/darwin`) | No cgo. `internal/darwin` is MyGo's Objective-C runtime layer (classes made at runtime, blocks, `WithPool`, a main run loop source for `Post`). In progress (see Milestones). |
 | Windows | Go, Win32 with common controls v6 through `syscall` (`host/windows`) | Open: WinUI 3 instead (needs the Windows App SDK). `List` there is core-virtualized: no Win32 list hosts arbitrary rows. |
 | Linux | Go, GTK 4 through purego (`host/linux`) | libadwaita optional. |
 
@@ -977,6 +995,43 @@ Desktop hosts run in process: `app.Run` locks the main OS thread and
 runs the platform's event loop there, and reads the batch's Go structs
 without encoding. purego callbacks are made once per signature and
 routed by user data, never per view.
+
+How the macOS host maps nui (`host/darwin`):
+
+- One window holds the root, its content a flipped view; the
+  environment is the content's size, the display's scale, dark mode,
+  Reduce Motion, locale and time zone (no safe area, keyboard or text
+  size). Frames are set directly: AppKit's coordinates are flipped to
+  nui's (top left) by flipped container views.
+- Controls are AppKit's: `NSTextField` (labels and fields; secure ones
+  swap to `NSSecureTextField`, multiline ones to an `NSTextView`),
+  `NSButton` (Plain is borderless text in the accent color, Filled the
+  accent bezel), `NSSwitch`, `NSSlider`, `NSStepper`,
+  `NSSegmentedControl`, `NSPopUpButton` for `Wheel`, `NSDatePicker`,
+  `NSColorWell`, `NSProgressIndicator`, `NSImageView`, `NSScrollView`.
+  Menus are `NSMenu`s: a button's pops up, a view's `LongPress` menu is
+  its context menu (a secondary click). A secondary click is also a
+  long press.
+- A `Stack` shows its top screen and slides on push and pop; the
+  window's toolbar belongs to the innermost stack on screen (a back
+  button, the top screen's bar buttons and search field) and its title
+  is the screen's. `Tabs` is an `NSTabView`; a `Sheet` a sheet window
+  (Escape dismisses it); an `Alert` an `NSAlert` shown as a sheet.
+- `List` is core-virtualized, as on Windows: a scroll view whose rows
+  the host places, binds through `ListBind` and recycles as it
+  scrolls, heights from the cells' frames (estimated until bound).
+  `NSTableView` would want row heights from a callback returning a
+  float, which purego can't make.
+- `RichText` is a non-editable `NSTextView` (TextKit lays it out and
+  draws it, links, selection and accessibility come with it); outside
+  a `Selectable` it takes clicks only on links. Inline components are
+  attachments of their size, their views placed at the attachment.
+- Messages with float or struct arguments go through purego's typed
+  functions (`internal/darwin`'s `Msg*`), which use reflection: setting a
+  frame allocates. The rest go through `SyscallN`.
+- Debug automation: `NUI_SNAPSHOT=file.png` renders the window to a PNG
+  once it has shown, without taking focus (`NUI_DUMP=1` writes the view
+  tree beside it), then quits.
 
 Desktop needs what mobile doesn't: `ui.Window` (several windows, title,
 size, close requests), the app's menu bar and keyboard shortcuts,

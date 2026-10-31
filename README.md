@@ -35,6 +35,8 @@ func main() { app.Run(Counter) }
   app's state kept, on the simulator, an emulator or a phone.
 - **`nui build`**: a signed `.ipa` for the App Store, and an `.aab` for
   Google Play.
+- **macOS, early**: the same app on AppKit, in one Go process
+  (`nui dev -mac`, `nui build -mac`).
 
 ## Quick start
 

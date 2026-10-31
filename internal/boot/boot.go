@@ -17,3 +17,7 @@ var Accent, DynamicColor string
 // AssetBase, when set (a player running the app over nui dev), is the URL
 // the app's assets are served from: ui.Image loads asset paths from it.
 var AssetBase string
+
+// Name is the app's name from nui.json, set by the nui CLI (-ldflags
+// -X): a desktop host's window title and menus.
+var Name string
