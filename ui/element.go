@@ -55,8 +55,9 @@ type element struct {
 	kind   ops.Kind
 	real   bool
 	frag   bool
-	cell   bool // a list cell: the host made its view
-	inline bool // a RichText's inline component: a layout root of its own
+	cell   bool     // a list cell: the host made its view
+	up     *element // a list cell's List: cells have no parent
+	inline bool     // a RichText's inline component: a layout root of its own
 	dead   bool
 	parent *element
 	kids   []*element
@@ -333,7 +334,7 @@ func (e *element) emitFrame() {
 			y += p.box.Y
 		}
 	}
-	s := e.r.scale
+	s := e.scale()
 	sx, sy := snap(x, s), snap(y, s)
 	f := [4]float32{sx, sy, snap(x+e.box.W, s) - sx, snap(y+e.box.H, s) - sy}
 	if e.measured {
@@ -483,6 +484,60 @@ func newProvider(kind ops.Kind) *element {
 	e.box.SetStyle(st)
 	e.r.provs = append(e.r.provs, e)
 	return e
+}
+
+// scale is the pixels per point e is drawn at: the nearest provider's
+// environment's, which a desktop host reports for a window on a monitor
+// of another scale than the main window's, else the root's.
+func (e *element) scale() float32 {
+	if !e.r.scales {
+		return e.r.scale
+	}
+	for p := e; p != nil; {
+		if p.env != nil {
+			if s := p.env.Peek().Scale; s > 0 {
+				return s
+			}
+		}
+		if p.parent == nil {
+			p = p.up
+		} else {
+			p = p.parent
+		}
+	}
+	return e.r.scale
+}
+
+// setEnv sets a provider's environment; when its scale changed (its
+// window went to a monitor of another), what the host measured in it is
+// measured again.
+func (e *element) setEnv(env host.Environment) {
+	old := e.env.Peek().Scale
+	e.env.Set(env)
+	if s := env.Scale; s > 0 && s != old {
+		if s != e.r.scale {
+			e.r.scales = true
+		}
+		e.markMeasured()
+	}
+}
+
+// markMeasured marks the measured views (text, controls) of e's subtree,
+// list cells included, for measuring again, and its frames for snapping
+// again (to another scale's pixels).
+func (e *element) markMeasured() {
+	if e.box != nil && e.real {
+		if e.kind != ops.KindView {
+			e.box.MarkDirty()
+		}
+		e.queueFrame()
+	}
+	for _, k := range e.kids {
+		k.markMeasured()
+	}
+	if e.list != nil {
+		e.list.eachCell((*element).markMeasured)
+	}
 }
 
 // fill makes n fill its provider, as the root's child does.

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/egoist/nui/host/fake"
+	"github.com/egoist/nui/layout"
 	"github.com/egoist/nui/ops"
 	"github.com/egoist/nui/signal"
 	"github.com/egoist/nui/ui"
@@ -136,5 +137,60 @@ func TestWindowOptions(t *testing.T) {
 	f := func(i int) float32 { return math.Float32frombits(binary.LittleEndian.Uint32(b[i*4:])) }
 	if f(0) != 800 || f(1) != 600 || f(2) != 400 || f(3) != 0 || string(b[16:]) != "Notes" {
 		t.Fatalf("args %v", b)
+	}
+}
+
+// A Window on a monitor of another scale than the main window's: its
+// text is measured for it, not answered from the main window's cached
+// measurement, and its frames are snapped to its own pixels; when its
+// scale changes, it's measured again.
+func TestWindowScale(t *testing.T) {
+	h := fake.New()
+	measured := map[ops.NodeID]int{}
+	h.MeasureFunc = func(v *fake.View, c layout.Constraints) layout.Size {
+		measured[v.ID]++
+		return layout.Size{W: 10.1, H: 20}
+	}
+	open := signal.New(true)
+	r := ui.Mount(h, func() ui.Node {
+		return ui.Column(ui.Style{Align: ui.AlignStart},
+			ui.StaticText("same"),
+			ui.Window(ui.WindowProps{Open: open, Content: func() ui.Node {
+				return ui.Column(ui.Style{Align: ui.AlignStart}, ui.StaticText("same"))
+			}}),
+		)
+	})
+	t.Cleanup(r.Dispose)
+	w := h.Presented()[0]
+	texts := h.Find(ops.KindText, "same")
+	if len(texts) != 2 {
+		t.Fatalf("%d texts", len(texts))
+	}
+	main, inWin := texts[0], texts[1]
+	if main.Parent == w {
+		main, inWin = inWin, main
+	}
+	// The main window is at 3 (the fake host's); the Window at 1.5.
+	h.Dispatch(ops.Event{ID: w.ID, Kind: ops.EventEnvironment, Env: ops.Environment{Width: 320, Height: 240, Scale: 1.5, FontScale: 1}})
+	if measured[inWin.ID] == 0 {
+		t.Fatal("the window's text took the main window's measurement")
+	}
+	if got, want := main.Frame[2], float32(31)/3; got != want {
+		t.Fatalf("the main text is %v wide, want %v (3 pixels a point)", got, want)
+	}
+	if got, want := inWin.Frame[2], float32(16)/1.5; got != want {
+		t.Fatalf("the window's text is %v wide, want %v (1.5 pixels a point)", got, want)
+	}
+	// It moves to a monitor at 2: measured and snapped again.
+	before := measured[inWin.ID]
+	h.Dispatch(ops.Event{ID: w.ID, Kind: ops.EventEnvironment, Env: ops.Environment{Width: 320, Height: 240, Scale: 2, FontScale: 1}})
+	if measured[inWin.ID] == before {
+		t.Fatal("the window's text wasn't measured again at its new scale")
+	}
+	if got, want := inWin.Frame[2], float32(21)/2; got != want {
+		t.Fatalf("the window's text is %v wide at 2, want %v", got, want)
+	}
+	if got, want := main.Frame[2], float32(31)/3; got != want {
+		t.Fatalf("the main text went %v wide", got)
 	}
 }

@@ -14,6 +14,7 @@ type listImpl interface {
 	bind(index int, cell ops.NodeID)
 	unbind(cell ops.NodeID)
 	layoutCells(p *layout.Pass)
+	eachCell(f func(*element))
 }
 
 // ListProps configures a List.
@@ -192,7 +193,7 @@ func (st *listState[T, K]) bind(i int, cell ops.NodeID) {
 		return
 	}
 	r := st.e.r
-	el := &element{r: r, id: cell, kind: ops.KindView, real: true, cell: true, sent: [4]float32{nan32, nan32, nan32, nan32}}
+	el := &element{r: r, id: cell, kind: ops.KindView, real: true, cell: true, up: st.e, sent: [4]float32{nan32, nan32, nan32, nan32}}
 	el.box = layout.New()
 	el.box.Context = el
 	ls := layout.DefaultStyle
@@ -280,6 +281,12 @@ func (st *listState[T, K]) unbind(cell ops.NodeID) {
 			st.order = append(st.order[:i], st.order[i+1:]...)
 			break
 		}
+	}
+}
+
+func (st *listState[T, K]) eachCell(f func(*element)) {
+	for _, c := range st.order {
+		f(c.el)
 	}
 }
 

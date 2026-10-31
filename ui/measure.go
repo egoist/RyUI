@@ -17,6 +17,7 @@ type measureKey struct {
 	font      Font
 	lines     int
 	fontScale float32
+	scale     float32 // its window's: text measured in points differs with pixel rounding
 	c         [4]uint32
 }
 
@@ -70,7 +71,7 @@ func (e *element) measure() {
 		}
 		k := measureKey{
 			kind: e.kind, text: e.text, variant: e.variant,
-			font: e.style.Font, lines: e.style.Lines, fontScale: r.envV.FontScale,
+			font: e.style.Font, lines: e.style.Lines, fontScale: r.envV.FontScale, scale: e.scale(),
 			c: [4]uint32{bits(c.Width), bits(c.Height), bits(c.AvailW), bits(c.AvailH)},
 		}
 		if s, ok := r.measures.get(&k); ok {

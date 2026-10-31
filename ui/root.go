@@ -36,6 +36,7 @@ type Root struct {
 	env       *signal.Signal[host.Environment]
 	envV      host.Environment
 	scale     float32
+	scales    bool // a provider's environment has another scale (a window on another monitor)
 	dispose   func()
 	pass      layout.Pass
 	kidsQ     []*element
@@ -333,7 +334,7 @@ func (r *Root) setEnvironment(env host.Environment) {
 	if env.Scale > 0 {
 		r.scale = env.Scale
 	}
-	if env.FontScale != old.FontScale {
+	if env.FontScale != old.FontScale || env.Scale != old.Scale {
 		r.remeasureText()
 	}
 	r.env.Set(env)
@@ -350,18 +351,7 @@ func (r *Root) Remeasure() {
 
 // remeasureText marks the root's measured views (text, controls) for
 // measuring again: their fonts changed.
-func (r *Root) remeasureText() {
-	var walk func(e *element)
-	walk = func(e *element) {
-		if e.box != nil && e.real && e.kind != ops.KindView {
-			e.box.MarkDirty()
-		}
-		for _, k := range e.kids {
-			walk(k)
-		}
-	}
-	walk(r.el)
-}
+func (r *Root) remeasureText() { r.el.markMeasured() }
 
 // freeMemory collects garbage and gives the Go heap's free pages back to
 // the system now: the runtime otherwise keeps them a while after a big
@@ -386,7 +376,7 @@ func dispatch(ev ops.Event) {
 	case ops.EventEnvironment:
 		setTimeZone(ev.Env.TimeZone)
 		if e := elems[ev.ID]; e != nil && e.env != nil && !e.dead {
-			e.env.Set(ev.Env)
+			e.setEnv(ev.Env)
 			return
 		}
 		for _, r := range roots {
