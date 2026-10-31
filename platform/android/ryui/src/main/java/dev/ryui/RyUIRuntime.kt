@@ -304,6 +304,8 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
             started = true
             RyUIAutomation.start(this)
             RyUINative.load(app)
+            // A share sheet's process: the Go code's root is the app's sheet.
+            if (activity is RyUIShareActivity) runCatching { RyUINative.setenv("RYUI_SHARE_SHEET", "1") }
             registerNatives()
             activity.sendEnvironment(force = true)
             enter { RyUINative.start(this) }
@@ -320,12 +322,17 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
     }
 
     private val pendingURLs = ArrayList<String>()
-    private val pendingShares = ArrayList<String>()
+    private val pendingShares = ArrayList<ByteArray>()
 
-    /** Another app shared text with this one (ACTION_SEND): ui.OnShare gets it, once the core started. */
-    fun shared(text: String) {
-        if (!started) { pendingShares.add(text); return }
-        send(RyUIEvents.shared(rootID, text))
+    /** What was last shared (the Shared event's payload), and its files: a share sheet's, to hand to the app or remove. */
+    var lastShared: ByteArray? = null
+    val lastSharedFiles = ArrayList<String>()
+
+    /** Another app shared with this one (ACTION_SEND, ACTION_SEND_MULTIPLE: receive): ui.OnShare gets the items, once the core started. */
+    fun shared(items: ByteArray) {
+        lastShared = items
+        if (!started) { pendingShares.add(items); return }
+        send(RyUIEvents.shared(rootID, items))
     }
 
     /** The app was opened with url (its scheme, an app link): ui.OnOpenURL gets it, once the core started. */
@@ -540,8 +547,9 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
 
     private fun makeButton(id: Int, variant: Int): MaterialButton {
         val overlay = when (variant) {
-            RyUIButtonVariant.FILLED -> R.style.ThemeOverlay_RyUI_FilledButton
-            RyUIButtonVariant.TINTED, RyUIButtonVariant.GRAY -> R.style.ThemeOverlay_RyUI_TonalButton
+            // Android has no Liquid Glass: Material's tonal and filled buttons.
+            RyUIButtonVariant.FILLED, RyUIButtonVariant.GLASS_PROMINENT -> R.style.ThemeOverlay_RyUI_FilledButton
+            RyUIButtonVariant.TINTED, RyUIButtonVariant.GRAY, RyUIButtonVariant.GLASS -> R.style.ThemeOverlay_RyUI_TonalButton
             RyUIButtonVariant.BORDERED -> R.style.ThemeOverlay_RyUI_OutlinedButton
             else -> R.style.ThemeOverlay_RyUI_TextButton
         }
@@ -813,6 +821,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
                 @Suppress("DEPRECATION") // its replacements (live regions, pane titles) describe views, not events
                 activity?.window?.decorView?.announceForAccessibility(String(b, Charsets.UTF_8))
             }
+            RyUICommand.SHARE_CLOSE -> (activity as? RyUIShareActivity)?.close(if (args.hasRemaining()) args.get().toInt() else 0)
             RyUICommand.COPY -> {
                 val b = ByteArray(args.remaining())
                 args.get(b)

@@ -317,6 +317,18 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
         }
     }
 
+    /// A glass button with an icon alone is a circle: as much room
+    /// around the icon on every side.
+    func roundGlass(_ b: UIButton) {
+        guard glassButtons.contains(ObjectIdentifier(b)), var c = b.configuration else { return }
+        let iconOnly = (c.title ?? "").isEmpty && c.image != nil
+        let want = iconOnly ? NSDirectionalEdgeInsets(top: 11, leading: 11, bottom: 11, trailing: 11) : nil
+        if let want, c.contentInsets != want {
+            c.contentInsets = want
+            b.configuration = c
+        }
+    }
+
     func setOwn(_ n: RyUINode, _ prop: UInt16, _ v: RyUIValue) {
         switch (n.kind, prop) {
         case (.text, RyUIProp.Text.text):
@@ -326,16 +338,30 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             var c = b.configuration ?? .plain()
             c.title = v.string
             b.configuration = c
+            roundGlass(b)
         case (.button, RyUIProp.Button.variant):
             guard let b = n.view as? UIButton else { return }
             let old = b.configuration
             var c: UIButton.Configuration
-            switch RyUIButtonVariant(rawValue: v.enumValue) {
+            let variant = RyUIButtonVariant(rawValue: v.enumValue)
+            switch variant {
             case .filled: c = .filled()
             case .tinted: c = .tinted()
             case .gray: c = .gray()
             case .bordered: c = .bordered()
+            case .glass, .glassProminent:
+                if #available(iOS 26.0, *) {
+                    c = variant == .glass ? .glass() : .prominentGlass()
+                } else {
+                    c = variant == .glass ? .gray() : .filled()
+                    c.cornerStyle = .capsule
+                }
             default: c = .plain()
+            }
+            if variant == .glass || variant == .glassProminent {
+                glassButtons.insert(ObjectIdentifier(b))
+            } else {
+                glassButtons.remove(ObjectIdentifier(b))
             }
             c.title = old?.title
             c.titleTextAttributesTransformer = old?.titleTextAttributesTransformer
@@ -343,12 +369,14 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             c.imagePadding = old?.imagePadding ?? 0
             c.preferredSymbolConfigurationForImage = old?.preferredSymbolConfigurationForImage
             b.configuration = c
+            roundGlass(b)
         case (.button, RyUIProp.Button.icon):
             guard let b = n.view as? UIButton else { return }
             var c = b.configuration ?? .plain()
             c.image = v.string.isEmpty ? nil : UIImage(systemName: v.string)
             c.imagePadding = 6
             b.configuration = c
+            roundGlass(b)
         case (.textField, RyUIProp.TextField.value):
             (n.view as? UITextField)?.text = v.string
             (n.view as? RyUITextView)?.text = v.string
@@ -357,6 +385,9 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             (n.view as? RyUITextView)?.placeholder = v.string
         case (.textField, RyUIProp.TextField.multiline):
             if v.bool { makeMultiline(n) }
+        case (.textField, RyUIProp.TextField.plain):
+            (n.view as? RyUITextField)?.plain = v.bool
+            (n.view as? RyUITextView)?.plain = v.bool
         case (.textField, RyUIProp.TextField.keyboard):
             let t: UIKeyboardType
             switch RyUIKeyboard(rawValue: v.enumValue) {

@@ -70,6 +70,13 @@ func (h *Host) drawButton(n *node, cd *NMCustomDraw) uintptr {
 	variant := ops.ButtonVariantBordered
 	if n.kind == ops.KindButton {
 		variant = ops.ButtonVariant(n.variant)
+		// No Liquid Glass on Windows: the gray and the accent buttons.
+		switch variant {
+		case ops.ButtonVariantGlass:
+			variant = ops.ButtonVariantGray
+		case ops.ButtonVariantGlassProminent:
+			variant = ops.ButtonVariantFilled
+		}
 	}
 	if n.kind == kindHeader {
 		variant = ops.ButtonVariantPlain
@@ -432,7 +439,11 @@ func (h *Host) editMessage(hwnd uintptr, m uint32, w, l uintptr) uintptr {
 			dc := GetDC(hwnd)
 			old := SelectObject(dc, h.nodeFont(n))
 			SetBkMode(dc, TRANSPARENT)
-			SetTextColor(dc, h.theme.secondary.over(h.theme.fieldBg).ref())
+			bg := h.theme.fieldBg
+			if n.plain {
+				bg = h.backdrop(n)
+			}
+			SetTextColor(dc, h.theme.secondary.over(bg).ref())
 			cr := ClientRect(hwnd)
 			DrawText(dc, UTF16Units(n.placeholder), &cr, DT_NOPREFIX|DT_WORDBREAK)
 			SelectObject(dc, old)
@@ -462,6 +473,10 @@ func (h *Host) setField(n *node, p ops.PropID, v *ops.Value) {
 		}
 		SendMessage(n.ctl, EM_SETPASSWORDCHAR, ch, 0)
 		Invalidate(n.ctl)
+	case ops.PropTextFieldPlain:
+		n.plain = v.Int != 0
+		h.layoutField(n)
+		Invalidate(n.hwnd)
 	case ops.PropTextFieldMultiline:
 		if on := v.Int != 0; on != n.multiline {
 			n.multiline = on
@@ -492,10 +507,12 @@ func (h *Host) layoutField(n *node) {
 		old := SelectObject(dc, h.nodeFont(n))
 		tm := TextMetrics(dc)
 		SelectObject(dc, old)
-		x := h.px(n, 10)
+		x, y := h.px(n, 10), h.px(n, 6)
+		if n.plain {
+			x, y = 0, 0 // the text alone
+		}
 		if n.multiline {
-			y := h.px(n, 6)
-			SetWindowPos(n.ctl, 0, x, y, max(r.W()-2*x, 1), max(r.H()-y-h.px(n, 6), 1), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
+			SetWindowPos(n.ctl, 0, x, y, max(r.W()-2*x, 1), max(r.H()-2*y, 1), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 		} else {
 			lh := tm.Height
 			y := (r.H() - lh) / 2
@@ -516,6 +533,9 @@ func (h *Host) layoutField(n *node) {
 // paintField draws Fluent's text box: a rounded, filled frame with a
 // darker bottom edge, the accent's under the focused field.
 func (h *Host) paintField(n *node, g Graphics, w, ht float32) {
+	if n.plain {
+		return // the text alone, on what's behind it
+	}
 	k := h.scaleOf(n)
 	p := &h.theme
 	bg := p.fieldBg

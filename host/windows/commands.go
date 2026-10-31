@@ -310,7 +310,12 @@ func (h *Host) call(root *node, args []byte) {
 // Windows host has.
 func (h *Host) module(name string) func(method string, args []byte) ([]byte, error) {
 	if h.modules == nil {
-		h.modules = map[string]func(method string, args []byte) ([]byte, error){}
+		h.modules = map[string]func(method string, args []byte) ([]byte, error){
+			// Windows's share sheet needs a WinRT DataTransferManager.
+			"share": func(method string, args []byte) ([]byte, error) {
+				return nil, errors.New("ui: Windows has no share sheet for files yet")
+			},
+		}
 	}
 	return h.modules[name]
 }

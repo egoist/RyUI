@@ -67,13 +67,15 @@ struct RyUIModuleError: LocalizedError {
         m(payload, reply)
     }
 
-    // The host's modules: secureStore, browser, photos, device.
+    // The host's modules: secureStore, browser, photos, device, share.
 
     func registerBuiltinModules() {
         // An app's module of the same name stays the app's.
         let apps = modules
         defer { for (k, v) in apps { modules[k] = v } }
-        let service = Bundle.main.bundleIdentifier ?? "ryui"
+        // The app's ID, also in its share sheet (the extension's Info.plist
+        // has it), whose keychain group is the app's.
+        let service = Bundle.main.object(forInfoDictionaryKey: "RyUIAppID") as? String ?? Bundle.main.bundleIdentifier ?? "ryui"
         func query(_ key: String) -> [String: Any] {
             [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: key]
         }
@@ -195,6 +197,7 @@ struct RyUIModuleError: LocalizedError {
         #if RYUI_LIBRARY
         modules["library"] = RyUILibrary.methods()
         #endif
+        modules["share"] = RyUIShare.methods(self)
         #if RYUI_WEBVIEW
         modules["js"] = RyUIScript.methods()
         modules["web"] = RyUIWebView.methods()

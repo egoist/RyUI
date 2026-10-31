@@ -239,12 +239,12 @@ func allFeatures() []string {
 	return out
 }
 
-// usedFeatures are the features the Go archive lib calls (all of them if
-// it can't be read).
-func usedFeatures(lib string) []string {
+// definedSymbols are the functions the Go archive lib defines (nil if it
+// can't be read).
+func definedSymbols(lib string) map[string]bool {
 	out, err := exec.Command("xcrun", "nm", lib).Output()
 	if err != nil {
-		return allFeatures()
+		return nil
 	}
 	defined := map[string]bool{}
 	for _, l := range strings.Split(string(out), "\n") {
@@ -252,6 +252,17 @@ func usedFeatures(lib string) []string {
 			defined[strings.TrimPrefix(f[2], "_")] = true
 		}
 	}
+	return defined
+}
+
+// usedFeatures are the features the Go archive lib calls (all of them if
+// it can't be read), and notes in cfg whether it has a share sheet.
+func usedFeatures(lib string, cfg *appConfig) []string {
+	defined := definedSymbols(lib)
+	if defined == nil {
+		return allFeatures()
+	}
+	cfg.shareSheet = defined[sheetSymbol]
 	var used []string
 	for _, f := range iosFeatures {
 		if defined[f.symbol] && !slices.Contains(used, f.flag) {
@@ -302,9 +313,8 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 	if err != nil {
 		return "", err
 	}
-	args := append([]string{"swiftc", "-target", t.target, "-sdk", t.sdk, hostObj, lib,
-		"-o", filepath.Join(bundle, "RyUIApp"), "-framework", "UIKit", "-framework", "Foundation", "-lresolv"}, ents...)
-	if err := t.run(work, nil, "xcrun", args...); err != nil {
+	code, err := t.linkApp(work, bundle, app.cfg, hostObj, lib, ents)
+	if err != nil {
 		return "", err
 	}
 	if err := copyDir(filepath.Join(app.dir, "assets"), filepath.Join(bundle, "assets")); err != nil {
@@ -332,6 +342,12 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 	for _, k := range app.cfg.iosTrue {
 		urls += fmt.Sprintf("<key>%s</key><true/>\n", html.EscapeString(k))
 	}
+	if g := app.cfg.shareGroup(); g != "" {
+		urls += fmt.Sprintf("<key>RyUIShareGroup</key><string>%s</string>\n", html.EscapeString(g))
+	}
+	if app.cfg.ShareTarget.on && app.cfg.shareSheet {
+		urls += "<key>RyUIShareSheet</key><true/>\n"
+	}
 	devices := ""
 	for _, d := range app.cfg.iosDevices() {
 		devices += fmt.Sprintf("<integer>%d</integer>", d)
@@ -343,8 +359,8 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 	if err := os.WriteFile(filepath.Join(bundle, "Info.plist"), []byte(plist), 0o644); err != nil {
 		return "", err
 	}
-	if app.cfg.ShareTarget {
-		exe, err := t.buildShare(work)
+	if app.cfg.ShareTarget.on {
+		exe, err := t.buildShare(work, app.cfg, code)
 		if err != nil {
 			return "", err
 		}
@@ -358,6 +374,9 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 		if err := t.run(work, nil, "codesign", "--force", "--sign", "-", appex); err != nil {
 			return "", err
 		}
+	}
+	if err := t.signFrameworks(work, bundle, "-"); err != nil {
+		return "", err
 	}
 	return bundle, t.run(work, nil, "codesign", "--force", "--sign", "-", bundle)
 }
@@ -376,6 +395,9 @@ func simulatorEntitlements(work string, cfg *appConfig) ([]string, error) {
 	}
 	if ds := cfg.associatedDomains(true); len(ds) > 0 {
 		m["com.apple.developer.associated-domains"] = ds
+	}
+	if g := cfg.shareGroup(); g != "" {
+		m["com.apple.security.application-groups"] = []string{g}
 	}
 	text := plist(m)
 	if err := os.WriteFile(ent, []byte(text), 0o644); err != nil {
@@ -524,7 +546,7 @@ func devIOS(dir string, o *devOptions, stop <-chan os.Signal) error {
 		if err != nil {
 			return err
 		}
-		hostObj, err := tc.buildHost(work, app, usedFeatures(lib))
+		hostObj, err := tc.buildHost(work, app, usedFeatures(lib, app.cfg))
 		if err != nil {
 			return err
 		}

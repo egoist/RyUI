@@ -170,6 +170,10 @@ final class RyUIContainerView: UIView {
 
 final class RyUITextField: UITextField {
     var ryuiID: UInt32 = 0
+    /// TextFieldProps.Plain: no border, the text alone.
+    var plain = false {
+        didSet { borderStyle = plain ? .none : .roundedRect }
+    }
 }
 
 /// The iOS host: applies the core's ops to UIKit views and reports
@@ -212,7 +216,12 @@ final class RyUITextField: UITextField {
     public static let shared = RyUIRuntime()
 
     var nodes: [UInt32: RyUINode] = [:]
+    /// Buttons with a glass variant (roundGlass).
+    var glassButtons = Set<ObjectIdentifier>()
     weak var controller: RyUIViewController?
+    /// The share sheet this runtime is in (app.ShareSheet, in the share
+    /// extension), if it is.
+    weak var sheet: RyUIShareSheetController?
     var rootID: UInt32 = 0
     var started = false
     var depth = 0
@@ -303,8 +312,9 @@ final class RyUITextField: UITextField {
         // From the share extension (ryui.json's shareTarget): what another
         // app shared, for ui.OnShare.
         if url.scheme?.lowercased() == "ryuishare." + (Bundle.main.bundleIdentifier ?? "").lowercased() {
-            let text = URLComponents(url: url, resolvingAgainstBaseURL: false)?.percentEncodedQuery?.removingPercentEncoding ?? ""
-            if !text.isEmpty { send(RyUIEvents.shared(rootID, text)) }
+            let q = URLComponents(url: url, resolvingAgainstBaseURL: false)?.percentEncodedQuery?.removingPercentEncoding ?? ""
+            let items = RyUIShare.received(q)
+            if !items.isEmpty { send(RyUIEvents.shared(rootID, items)) }
             return
         }
         send(RyUIEvents.incomingURL(rootID, url.absoluteString))
@@ -521,6 +531,7 @@ final class RyUITextField: UITextField {
         for case let s as UIWindowScene in UIApplication.shared.connectedScenes {
             for w in s.windows { w.tintColor = c }
         }
+        controller?.view.window?.tintColor = c // a share sheet's
         RyUILayoutCache.shared.clear()
         for n in nodes.values { (n.view as? RyUIRichTextView)?.invalidate() }
     }
@@ -532,6 +543,7 @@ final class RyUITextField: UITextField {
         for case let scene as UIWindowScene in UIApplication.shared.connectedScenes {
             for w in scene.windows { w.overrideUserInterfaceStyle = colorScheme }
         }
+        controller?.view.window?.overrideUserInterfaceStyle = colorScheme
     }
 
     public func listen(_ id: UInt32, event: UInt16) {
@@ -656,6 +668,8 @@ final class RyUITextField: UITextField {
             setAccent(ryuiColor(r.u64()))
         case .menuBar, .windowOptions:
             break // desktop hosts' (a phone has no menu bar or windows)
+        case .shareClose:
+            sheet?.close(args.first ?? 0)
         case .colorScheme:
             guard let v = args.first else { return }
             setColorScheme(RyUIColorScheme(rawValue: Int32(v)) ?? .system)
@@ -674,6 +688,7 @@ final class RyUITextField: UITextField {
         guard let n = nodes[id] else { return }
         rootID = id
         controller?.mount(n.view)
+        sheet?.deliver()
     }
 
     public func setProp(_ id: UInt32, prop: UInt16, value: RyUIValue) {

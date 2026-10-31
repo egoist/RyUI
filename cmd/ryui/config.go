@@ -76,10 +76,15 @@ type appConfig struct {
 	// universal links (the domain serves apple-app-site-association) and
 	// Android's App Links (assetlinks.json).
 	Links []string `json:"links"`
-	// ShareTarget offers the app in other apps' share sheets, for text
-	// and links (iOS: a share extension that opens the app; Android: an
-	// ACTION_SEND intent filter); ui.OnShare gets what's shared.
-	ShareTarget bool `json:"shareTarget"`
+	// ShareTarget offers the app in other apps' share sheets (iOS: a
+	// share extension that opens the app; Android: ACTION_SEND and
+	// ACTION_SEND_MULTIPLE intent filters); ui.OnShare gets what's
+	// shared. true: texts and links; or what it takes,
+	// {"types": ["text", "image/*", "video/*"], "max": 10}.
+	ShareTarget shareTarget `json:"shareTarget"`
+	// shareSheet: the app's Go code calls app.ShareSheet (its archive has
+	// it, sheetSymbol): the share target shows the app's sheet.
+	shareSheet bool
 	// androidModules are the host's optional Gradle modules the app's
 	// packages need (featurePermissions).
 	androidModules []string
@@ -152,6 +157,9 @@ func loadConfig(dir string) (*appConfig, error) {
 			return nil, fmt.Errorf("ryui.json: link domain %q (want a host name, as example.com)", l)
 		}
 	}
+	if err := c.ShareTarget.check(); err != nil {
+		return nil, fmt.Errorf("ryui.json: shareTarget: %v", err)
+	}
 	if c.Icon != "" && !filepath.IsAbs(c.Icon) {
 		c.Icon = filepath.Join(dir, c.Icon)
 	}
@@ -187,7 +195,7 @@ func (c *appConfig) urlTypes(ios bool) []any {
 	if c.Scheme != "" {
 		schemes = append(schemes, c.Scheme)
 	}
-	if ios && c.ShareTarget {
+	if ios && c.ShareTarget.on {
 		schemes = append(schemes, c.shareScheme())
 	}
 	if len(schemes) == 0 {
@@ -327,15 +335,16 @@ func (c *appConfig) androidManifest(debug bool) string {
 	for _, l := range c.Links {
 		filter(true, fmt.Sprintf(`<data android:scheme="https" android:host="%s" />`, html.EscapeString(l)))
 	}
-	if c.ShareTarget {
-		b.WriteString(`            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
-            </intent-filter>
-`)
+	if c.ShareTarget.on && !c.shareSheet {
+		b.WriteString(c.ShareTarget.intentFilters())
 	}
 	b.WriteString("        </activity>\n")
+	// A share sheet (app.ShareSheet): the shares go to its Activity.
+	if c.ShareTarget.on && c.shareSheet {
+		b.WriteString("        <activity android:name=\"dev.ryui.RyUIShareActivity\" android:exported=\"true\">\n")
+		b.WriteString(c.ShareTarget.intentFilters())
+		b.WriteString("        </activity>\n")
+	}
 	for _, x := range c.androidApp {
 		b.WriteString("        " + x + "\n")
 	}

@@ -306,15 +306,17 @@ func devAndroid(dir string, o *devOptions, stop <-chan os.Signal) error {
 	var logs *exec.Cmd
 	build := func() error {
 		start := time.Now()
+		// The Go code first: whether it has a share sheet is the manifest's.
+		lib, err := tc.buildGo(app, work, serial)
+		if err != nil {
+			return err
+		}
+		app.cfg.shareSheet = hasSheet(lib)
 		apk, hash, err := tc.buildAPK(app, work)
 		if err != nil {
 			return err
 		}
 		if err := tc.installOnce(serial, pkg, apk, hash, filepath.Join(work, "installed-"+serial)); err != nil {
-			return err
-		}
-		lib, err := tc.buildGo(app, work, serial)
-		if err != nil {
 			return err
 		}
 		if logs != nil && logs.Process != nil {
@@ -385,6 +387,14 @@ func devAndroid(dir string, o *devOptions, stop <-chan os.Signal) error {
 
 // androidPackage makes an Android package name from a bundle ID: no
 // hyphens, and no segment starting with a digit.
+// hasSheet reports whether the Go library at path calls app.ShareSheet:
+// its name is in the functions' table, which stripping a release's
+// symbols leaves (stack traces need it).
+func hasSheet(path string) bool {
+	data, err := os.ReadFile(path)
+	return err == nil && bytes.Contains(data, []byte(sheetSymbol+"\x00"))
+}
+
 func androidPackage(id string) string {
 	parts := strings.Split(strings.ReplaceAll(id, "-", "_"), ".")
 	for i, p := range parts {

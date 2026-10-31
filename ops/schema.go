@@ -134,6 +134,7 @@ var Schema = SchemaDef{
 			{Name: "Autocorrect", Type: TEnum, Enum: "Autocorrect"},
 			{Name: "ContentType", Type: TString, Doc: "AutoFill hint, e.g. username"},
 			{Name: "Multiline", Type: TBool, Doc: "lines of text: return is a new line (no Submit), and the field grows with its text up to LineLimit lines (none: no limit), then scrolls; sent before it's inserted"},
+			{Name: "Plain", Type: TBool, Doc: "no border, background nor inset: the text alone, as a field in a form's card; sent before it's inserted"},
 		}},
 		{Name: "Toggle", Props: []PropDef{
 			{Name: "On", Type: TBool},
@@ -302,7 +303,7 @@ var Schema = SchemaDef{
 		{Name: "Request", Payload: PString, Doc: "a WebView's page made a request (its URL), with Requests"},
 		{Name: "Download", Payload: PBytes, Doc: "a WebView's page led to a file it can't show: string URL, string MIME type, string file name, i64 size (-1: unknown)"},
 		{Name: "NewWindow", Payload: PString, Doc: "a WebView's page would open a page in a new window (its URL)"},
-		{Name: "Shared", Payload: PString, Doc: "another app shared text with the app (a link from its share sheet: iOS's share extension, Android's ACTION_SEND, with ryui.json's shareTarget), at launch or since; to the root"},
+		{Name: "Shared", Payload: PBytes, Doc: "another app shared with the app from its share sheet (iOS's share extension, Android's ACTION_SEND and ACTION_SEND_MULTIPLE, with ryui.json's shareTarget), at launch or since; to the root: u32 count, then per item u8 ShareKind, string text (a text, a link's URL), string path (a file: the app's copy), string name (the file's name where it came from), string MIME type, i64 size (-1: unknown)"},
 	},
 	Commands: []CommandDef{
 		{Name: "Focus"},
@@ -329,13 +330,14 @@ var Schema = SchemaDef{
 		{Name: "MenuBar", Doc: "args: the app's menus (desktop): u32 count, per menu a u32-length title and u32 item count, per item u8 flags (1 separator, 2 disabled, 4 checked, 8 destructive), a u32-length title, a u32-length key (a character, or enter, escape, tab, space, delete, backspace, up, down, left, right, home, end, pageup, pagedown, f1-f12; empty: no shortcut) and u8 modifiers (1 primary: ⌘ on macOS, Ctrl on Windows; 2 shift; 4 alt, a Mac's option; 8 control); sent to the root, again when they change: the host shows them with its own (a Mac's app, Edit and Window menus), and reports a chosen item, or its shortcut, with Action on the root carrying the item's index among all the menus' items"},
 		{Name: "WindowOptions", Doc: "args: f32 width, height, min width, min height (points, 0: the host's), then the title (rest of the args; empty: the app's name); sent to the root when it mounts: the main window's"},
 		{Name: "ColorScheme", Doc: "args: u8 ColorScheme; sent to the root: the app shows light or dark whatever the system's setting, or follows it again (iOS: the windows' overrideUserInterfaceStyle; Android: AppCompat's night mode)"},
+		{Name: "ShareClose", Doc: "args: u8 how (0 done, 1 cancelled, 2 open the app with what was shared); sent to a share sheet's root (app.ShareSheet): it closes"},
 	},
 	Enums: []EnumDef{
 		{Name: "Role", Values: []string{"None", "Button", "Header", "Image", "Link", "Text", "Search"}},
 		{Name: "TextStyle", Values: []string{"Default", "LargeTitle", "Title", "Title2", "Title3", "Headline", "Subheadline", "Body", "Callout", "Footnote", "Caption", "Caption2"}},
 		{Name: "FontWeight", Values: []string{"Default", "Ultralight", "Thin", "Light", "Regular", "Medium", "Semibold", "Bold", "Heavy", "Black"}},
 		{Name: "TextAlign", Values: []string{"Start", "Center", "End", "Justify"}},
-		{Name: "ButtonVariant", Values: []string{"Plain", "Filled", "Tinted", "Gray", "Bordered"}},
+		{Name: "ButtonVariant", Values: []string{"Plain", "Filled", "Tinted", "Gray", "Bordered", "Glass", "GlassProminent"}},
 		{Name: "Keyboard", Values: []string{"Default", "Number", "Decimal", "Email", "URL", "Phone"}},
 		{Name: "ReturnKey", Values: []string{"Default", "Done", "Go", "Next", "Search", "Send"}},
 		{Name: "Autocapitalize", Values: []string{"Sentences", "None", "Words", "Characters"}},
@@ -356,5 +358,6 @@ var Schema = SchemaDef{
 		{Name: "AnimationCurve", Values: []string{"EaseInOut", "Linear", "EaseIn", "EaseOut", "Spring"}},
 		{Name: "ColorScheme", Values: []string{"System", "Light", "Dark"}},
 		{Name: "SemanticColor", Values: []string{"None", "Label", "SecondaryLabel", "TertiaryLabel", "Background", "SecondaryBackground", "GroupedBackground", "Separator", "Accent", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink", "Gray", "Clear", "SecondaryGroupedBackground"}},
+		{Name: "ShareKind", Values: []string{"Text", "Link", "Image", "Video", "Audio", "File"}},
 	},
 }

@@ -298,6 +298,13 @@ const (
 	ButtonTinted   = ops.ButtonVariantTinted
 	ButtonGray     = ops.ButtonVariantGray
 	ButtonBordered = ops.ButtonVariantBordered
+	// ButtonGlass is Liquid Glass (iOS 26's glass configuration): a
+	// capsule, a circle around an icon alone. Before iOS 26, and on the
+	// other platforms, it's Gray's look (Material's tonal button).
+	ButtonGlass = ops.ButtonVariantGlass
+	// ButtonGlassProminent is tinted Liquid Glass, for the primary
+	// action (prominentGlass); elsewhere Filled's look.
+	ButtonGlassProminent = ops.ButtonVariantGlassProminent
 )
 
 // ButtonProps configures a Button.
@@ -402,11 +409,15 @@ type TextFieldProps struct {
 	// a new line, not OnSubmit, and it grows with its text up to Style's
 	// Lines lines (0: no limit), then scrolls.
 	Multiline bool
-	OnSubmit  func()
-	OnFocus   func()
-	OnBlur    func()
-	Disabled  signal.Accessor[bool]
-	Style     Styler
+	// Plain draws the field without its border, background and inset:
+	// its text alone (and placeholder), for a field in a card or a form
+	// of the app's own, as Notes' and Reminders' are.
+	Plain    bool
+	OnSubmit func()
+	OnFocus  func()
+	OnBlur   func()
+	Disabled signal.Accessor[bool]
+	Style    Styler
 }
 
 // TextField is a text input: a line, or lines with Multiline.
@@ -417,6 +428,9 @@ func TextField(p TextFieldProps) Node {
 	id := e.id
 	if p.Multiline {
 		b.SetBool(id, ops.PropTextFieldMultiline, true)
+	}
+	if p.Plain {
+		b.SetBool(id, ops.PropTextFieldPlain, true)
 	}
 	e.setStyle(p.Style, true)
 	if p.Keyboard != KeyboardDefault {

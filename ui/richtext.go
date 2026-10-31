@@ -402,15 +402,6 @@ func Copy(text string) {
 	}
 }
 
-// Share shows the system's share sheet for text (a URL is shared as a
-// link): send it to an app, a contact, AirDrop, Nearby Share. Main
-// thread.
-func Share(text string) {
-	if r := activeRoot(); r != nil {
-		r.batch.Command(r.el.id, ops.CmdShare, []byte(text))
-	}
-}
-
 // OpenURL asks the system to open url: a web address in the browser,
 // another scheme in the app that handles it. Main thread.
 func OpenURL(url string) {

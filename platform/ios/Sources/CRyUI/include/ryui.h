@@ -26,5 +26,8 @@ int64_t ryui_list_count(uint32_t list);
 void ryui_list_bind(uint32_t list, int64_t index, uint32_t cell);
 void ryui_list_unbind(uint32_t list, uint32_t cell);
 void ryui_run_posted(void);
+// Sets an environment variable for the Go code (os.Setenv), which copied
+// the process's as it loaded.
+void ryui_setenv(const char *key, const char *value);
 
 #endif

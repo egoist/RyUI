@@ -19,8 +19,8 @@ import androidx.core.view.WindowInsetsCompat
  * takes over the existing tree.
  */
 open class RyUIActivity : AppCompatActivity() {
-    private lateinit var frame: FrameLayout
-    private lateinit var runtime: RyUIRuntime
+    protected lateinit var frame: FrameLayout
+    protected lateinit var runtime: RyUIRuntime
     private var safe = IntArray(4)
     private var keyboard = 0
     /** The keyboard's height over the window, as it animates, in px. */
@@ -32,12 +32,12 @@ open class RyUIActivity : AppCompatActivity() {
         edgeToEdge()
         super.onCreate(savedInstanceState)
         frame = FrameLayout(this)
-        setContentView(frame)
+        setContentView(content(frame))
         onBackPressedDispatcher.addCallback(this, runtime.back)
 
         ViewCompat.setOnApplyWindowInsetsListener(frame) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
-            safe = intArrayOf(bars.top, bars.right, bars.bottom, bars.left)
+            safe = safeInsets(intArrayOf(bars.top, bars.right, bars.bottom, bars.left))
             keyboard = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
             sendEnvironment()
             runtime.insetsChanged()
@@ -63,10 +63,28 @@ open class RyUIActivity : AppCompatActivity() {
         if (savedInstanceState == null) intent?.let { incoming(it) }
     }
 
-    /** What the app was opened with: a URL (a scheme's, an app link), or text another app shared (ACTION_SEND). */
+    /** The view the Activity shows, which holds the root's frame: the frame itself. */
+    protected open fun content(frame: FrameLayout): View = frame
+
+    /** The root's safe area insets (top, right, bottom, left), from the window's. */
+    protected open fun safeInsets(bars: IntArray): IntArray = bars
+
+    /** The window's background, behind the root: the theme's surface. */
+    protected open fun windowBackground(): android.graphics.drawable.Drawable = android.graphics.drawable.ColorDrawable(
+        com.google.android.material.color.MaterialColors.getColor(runtime.themed, com.google.android.material.R.attr.colorSurface, 0))
+
+    /**
+     * What the app was opened with: a URL (a scheme's, an app link), what
+     * another app shared (ACTION_SEND, ACTION_SEND_MULTIPLE), or what the
+     * share sheet hands over (RyUIShareActivity: OpenApp).
+     */
     private fun incoming(intent: android.content.Intent) {
-        if (intent.action == android.content.Intent.ACTION_SEND) {
-            intent.getStringExtra(android.content.Intent.EXTRA_TEXT)?.let { runtime.shared(it) }
+        if (intent.action == android.content.Intent.ACTION_SEND || intent.action == android.content.Intent.ACTION_SEND_MULTIPLE) {
+            runtime.receive(intent)
+            return
+        }
+        if (intent.action == RyUIShareActivity.OPEN_APP) {
+            intent.getByteArrayExtra(RyUIShareActivity.ITEMS)?.let { runtime.shared(it) }
             return
         }
         intent.data?.let { runtime.openURL(it.toString()) }
@@ -108,13 +126,12 @@ open class RyUIActivity : AppCompatActivity() {
     private fun configured(config: Configuration) {
         edgeToEdge() // status bar icons follow dark mode
         runtime.configurationChanged(config)
-        window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(
-            com.google.android.material.color.MaterialColors.getColor(runtime.themed, com.google.android.material.R.attr.colorSurface, 0)))
+        window.setBackgroundDrawable(windowBackground())
         frame.post { sendEnvironment() }
     }
 
     /** Edge to edge, the system bars' icons light or dark as the app is (its color scheme, or the system's). */
-    private fun edgeToEdge() {
+    protected open fun edgeToEdge() {
         val dark = { r: android.content.res.Resources -> runtime.isNight(r.configuration) }
         val clear = android.graphics.Color.TRANSPARENT
         // androidx.activity's default scrims, for the navigation bar's buttons.

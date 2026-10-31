@@ -2,7 +2,10 @@ import UIKit
 
 // The app around the RyUI host: one window scene showing the core's root.
 
+// RyUIAppDelegate: the name an app with a share sheet's main starts it by
+// (its code is a framework, Frameworks/RyUIApp.framework).
 @main
+@objc(RyUIAppDelegate)
 final class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, configurationForConnecting session: UISceneSession,
                      options: UIScene.ConnectionOptions) -> UISceneConfiguration {

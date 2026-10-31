@@ -342,21 +342,27 @@ ui.OnOpenURL(func(raw string) {
 
 With `"shareTarget": true` in `ryui.json`, the app shows in other apps'
 share sheets, for text and links, such as "Share" in a browser or in
-YouTube. `ui.OnShare` gets what's shared. A share that launched the app
-goes to the first handler, as with `OnOpenURL`.
+YouTube; `{"types": ["image/*", ...]}` takes files too (see
+[Device](device.md#shares-from-other-apps-uionshare)). `ui.OnShare` gets
+what's shared. A share that launched the app goes to the first handler,
+as with `OnOpenURL`.
 
 ```go
-ui.OnShare(func(text string) {
-	fmt.Println("shared:", text)
+ui.OnShare(func(items []ui.SharedItem) {
+	for _, it := range items {
+		fmt.Println("shared:", it.Kind, it.Text, it.Path)
+	}
 })
 ```
 
 On iOS the app comes with a share extension, which opens the app with
 what's shared, as Android opens it: the extension shows no screen of
 its own. What's shared is often a title and a link together (a page's
-title and its URL from Safari, a line each), so look for the link in the
-text. [`examples/downloader`](../examples/downloader) does
-this.
+title, a text, and its URL, a link, from Safari).
+[`examples/downloader`](../examples/downloader) looks for the link.
 
-To share from your app instead, `ui.Share(text)` shows the system's
-share sheet.
+To show a sheet of your app's over the app that shares, without opening
+yours, see `app.ShareSheet` in
+[Device](device.md#the-apps-own-share-sheet-appsharesheet). To share
+from your app instead, `ui.Share(text)` shows the system's share sheet,
+and `ui.ShareFiles` shares files.

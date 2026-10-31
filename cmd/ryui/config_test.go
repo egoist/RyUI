@@ -64,7 +64,7 @@ func TestLinks(t *testing.T) {
 // own, and the extension's Info.plist, which takes the app's name,
 // version and build keys; on Android, the ACTION_SEND filter.
 func TestShareTarget(t *testing.T) {
-	c := &appConfig{ID: "com.example.dl", Scheme: "dl", ShareTarget: true}
+	c := &appConfig{ID: "com.example.dl", Scheme: "dl", ShareTarget: textShares}
 	got := plist(map[string]any{"CFBundleURLTypes": c.urlTypes(true)})
 	if !strings.Contains(got, "<string>dl</string>\n\t\t\t\t<string>ryuishare.com.example.dl</string>") {
 		t.Errorf("iOS URL types:\n%s", got)
@@ -82,8 +82,71 @@ func TestShareTarget(t *testing.T) {
 		info["CFBundlePackageType"] != "XPC!" {
 		t.Errorf("extension's Info.plist: %v", info)
 	}
-	if !strings.Contains(c.androidManifest(false), "android.intent.action.SEND") {
-		t.Error("no ACTION_SEND filter")
+	if m := c.androidManifest(false); !strings.Contains(m, "android.intent.action.SEND\"") || !strings.Contains(m, `android:mimeType="text/plain"`) ||
+		strings.Contains(m, "SEND_MULTIPLE") {
+		t.Errorf("Android's filters:\n%s", m)
+	}
+	rule := info["NSExtension"].(map[string]any)["NSExtensionAttributes"].(map[string]any)["NSExtensionActivationRule"].(map[string]any)
+	if len(rule) != 2 || rule["NSExtensionActivationSupportsText"] != true || rule["NSExtensionActivationSupportsWebURLWithMaxCount"] != 1 {
+		t.Errorf("activation rule %v", rule)
+	}
+	if c.shareGroup() != "" || info["RyUIShareGroup"] != nil {
+		t.Error("an App Group for texts")
+	}
+}
+
+// shareTarget is true, false or what the app takes: texts, files by
+// MIME type, and how many at once.
+func TestShareTargetConfig(t *testing.T) {
+	dir := t.TempDir()
+	load := func(js string) (*appConfig, error) {
+		os.WriteFile(filepath.Join(dir, "ryui.json"), []byte(`{"id": "com.example.pics", "shareTarget": `+js+`}`), 0o644)
+		return loadConfig(dir)
+	}
+	for js, want := range map[string]shareTarget{
+		"false": {},
+		"true":  textShares,
+		`{"types": ["Image/*", "video/*"], "max": 5}`: {on: true, Types: []string{"image/*", "video/*"}, Max: 5},
+		`{}`: textShares,
+	} {
+		c, err := load(js)
+		if err != nil || c.ShareTarget.on != want.on || !slices.Equal(c.ShareTarget.Types, want.Types) || c.ShareTarget.Max != want.Max {
+			t.Errorf("%s: %+v, %v", js, c.ShareTarget, err)
+		}
+	}
+	for _, js := range []string{`{"types": ["pictures"]}`, `{"max": -1}`, `"yes"`} {
+		if _, err := load(js); err == nil {
+			t.Errorf("%s was taken", js)
+		}
+	}
+
+	// Images and videos, five at once: Apple's keys, an App Group, and
+	// both of Android's actions.
+	c, _ := load(`{"types": ["text", "image/*", "video/*"], "max": 5}`)
+	rule := c.shareInfo(nil)["NSExtension"].(map[string]any)["NSExtensionAttributes"].(map[string]any)["NSExtensionActivationRule"].(map[string]any)
+	if rule["NSExtensionActivationSupportsImageWithMaxCount"] != 5 || rule["NSExtensionActivationSupportsMovieWithMaxCount"] != 5 ||
+		rule["NSExtensionActivationSupportsText"] != true {
+		t.Errorf("rule %v", rule)
+	}
+	if g := c.shareGroup(); g != "group.com.example.pics" || c.shareInfo(nil)["RyUIShareGroup"] != g {
+		t.Errorf("group %q", g)
+	}
+	m := c.androidManifest(false)
+	single, multiple, _ := strings.Cut(m, "SEND_MULTIPLE")
+	if !strings.Contains(single, `android:mimeType="text/plain"`) || !strings.Contains(single, `android:mimeType="image/*"`) ||
+		!strings.Contains(multiple, `android:mimeType="video/*"`) || strings.Contains(multiple, "text/plain") {
+		t.Errorf("Android's filters:\n%s", m)
+	}
+
+	// A type Apple has no key for: a predicate on the attachments' types.
+	c, _ = load(`{"types": ["audio/*", "application/pdf", "application/x-thing"]}`)
+	want := `SUBQUERY(extensionItems, $e, SUBQUERY($e.attachments, $a, ANY $a.registeredTypeIdentifiers UTI-CONFORMS-TO "public.audio" OR ` +
+		`ANY $a.registeredTypeIdentifiers UTI-CONFORMS-TO "com.adobe.pdf" OR ANY $a.registeredTypeIdentifiers UTI-CONFORMS-TO "public.data").@count >= 1).@count >= 1`
+	if got := c.ShareTarget.activationRule(); got != want {
+		t.Errorf("predicate\n%v\nwant\n%v", got, want)
+	}
+	if strings.Contains(c.androidManifest(false), "SEND_MULTIPLE") {
+		t.Error("SEND_MULTIPLE for one file")
 	}
 }
 
@@ -127,5 +190,39 @@ func TestIPad(t *testing.T) {
 	}
 	if d := c.iosDevices(); !slices.Equal(d, []int{1}) || c.ipadOrientations() != nil {
 		t.Errorf("iPhone only: devices %v, iPad orientations %v", d, c.ipadOrientations())
+	}
+}
+
+// An app with its own share sheet (app.ShareSheet): Android's share
+// filters are its Activity's; iOS's extension is the host's sheet, with
+// the app's ID, and an App Group for the data even for texts alone; the
+// app's keychain group for both.
+func TestShareSheetConfig(t *testing.T) {
+	c := &appConfig{ID: "com.example.pins", ShareTarget: textShares, shareSheet: true}
+	m := c.androidManifest(false)
+	main, sheet, ok := strings.Cut(m, `dev.ryui.RyUIShareActivity`)
+	if !ok || strings.Contains(main, "action.SEND") || !strings.Contains(sheet, "action.SEND") || !strings.Contains(sheet, `android:exported="true"`) {
+		t.Errorf("manifest:\n%s", m)
+	}
+	info := c.shareInfo(nil)
+	if info["NSExtension"].(map[string]any)["NSExtensionPrincipalClass"] != "RyUIShareSheetController" ||
+		info["RyUIShareSheet"] != true || info["RyUIAppID"] != "com.example.pins" || info["RyUIShareGroup"] != "group.com.example.pins" {
+		t.Errorf("extension's Info.plist: %v", info)
+	}
+	if g := c.keychainGroup("TEAM123456"); g != "TEAM123456.com.example.pins" {
+		t.Errorf("keychain group %q", g)
+	}
+	c.shareSheet = false
+	if c.shareGroup() != "" || c.keychainGroup("T") != "" || c.sharePrincipal() != "RyUIShareViewController" {
+		t.Error("no sheet: a group, or the sheet's class")
+	}
+	// The sheet's symbol is found in a library's function names.
+	dir := t.TempDir()
+	lib := filepath.Join(dir, "libryui.so")
+	os.WriteFile(lib, []byte("..."+sheetSymbol+"\x00..."), 0o644)
+	other := filepath.Join(dir, "other.so")
+	os.WriteFile(other, []byte("..."+sheetSymbol+"Thing\x00..."), 0o644)
+	if !hasSheet(lib) || hasSheet(other) {
+		t.Error("hasSheet")
 	}
 }

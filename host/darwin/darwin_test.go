@@ -342,6 +342,17 @@ func TestModules(t *testing.T) {
 		if b, _ := call("secureStore", "get", []byte(key)); len(b) != 1 || b[0] != 0 {
 			fatalf(t, "after delete: %q", b)
 		}
+		// ui.ShareFiles of a file that isn't there: an error, no picker.
+		le := binary.LittleEndian
+		share := le.AppendUint32(nil, 0)
+		for range 3 {
+			share = le.AppendUint32(share, 0)
+		}
+		share = le.AppendUint32(share, 1)
+		share = append(le.AppendUint32(share, uint32(len("/nonexistent/a.pdf"))), "/nonexistent/a.pdf"...)
+		if _, err := call("share", "files", share); err == nil || !strings.Contains(err.Error(), "/nonexistent/a.pdf") || len(sharePickers) != 0 {
+			fatalf(t, "share.files of a missing file: %v", err)
+		}
 	})
 }
 

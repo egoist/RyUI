@@ -334,6 +334,11 @@ fun RyUIRuntime.propBool(id: Int, prop: Int, v: Boolean) {
                     keepMultiline(n, e)
                 }
                 RyUIProp.TextField.MULTILINE -> setMultiline(n, view as EditText, v)
+                // No box nor underline: the text alone (set once, before it's shown).
+                RyUIProp.TextField.PLAIN -> if (v) (view as EditText).apply {
+                    background = null
+                    setPadding(0, 0, 0, 0)
+                }
             }
             RyUIKind.PROGRESS -> if (prop == RyUIProp.Progress.INDETERMINATE) {
                 (view as com.google.android.material.progressindicator.LinearProgressIndicator).isIndeterminate = v

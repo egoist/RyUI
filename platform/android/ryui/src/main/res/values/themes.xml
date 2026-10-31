@@ -6,6 +6,15 @@
         <item name="actionMenuTextAppearance">@style/TextAppearance.RyUI.ActionMenu</item>
     </style>
 
+    <!-- The share sheet (RyUIShareActivity): see-through, the other app
+         behind its scrim and bottom sheet. -->
+    <style name="Theme.RyUI.ShareSheet" parent="Theme.RyUI">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+
     <!-- Button variants (ui.ButtonVariant): plain is a text button. -->
     <style name="ThemeOverlay.RyUI.TextButton" parent="">
         <item name="materialButtonStyle">@style/Widget.Material3Expressive.Button.TextButton</item>

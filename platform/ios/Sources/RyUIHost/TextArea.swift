@@ -11,6 +11,17 @@ final class RyUITextView: UITextView {
     var ryuiID: UInt32 = 0
     var maxLines = 0
     let placeholderLabel = UILabel()
+    /// TextFieldProps.Plain: no border, background nor inset, the text
+    /// alone.
+    var plain = false {
+        didSet {
+            layer.borderWidth = plain ? 0 : 1 / UIScreen.main.scale
+            backgroundColor = plain ? .clear : .systemBackground
+            textContainerInset = plain ? .zero : UIEdgeInsets(top: 7, left: 3, bottom: 7, right: 3)
+            textContainer.lineFragmentPadding = plain ? 0 : 5
+            setNeedsLayout()
+        }
+    }
 
     var placeholder: String? {
         get { placeholderLabel.text }
@@ -104,6 +115,7 @@ final class RyUITextView: UITextView {
         t.autocapitalizationType = old.autocapitalizationType
         t.autocorrectionType = old.autocorrectionType
         t.textContentType = old.textContentType
+        t.plain = old.plain
         if let p = old.superview {
             p.insertSubview(t, aboveSubview: old)
             t.frame = old.frame

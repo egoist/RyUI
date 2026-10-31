@@ -304,6 +304,38 @@ ui.Button(ui.ButtonProps{Title: ui.Val("Call"), OnPress: func() { ui.OpenURL("te
   browser, another scheme (`tel:`, `mailto:`, another app's) in the app
   that handles it.
 
+`ui.ShareFiles(paths, options, done)` shows the share sheet for files: a
+video to send, a PDF to save to Files, photos for AirDrop. `done` runs on
+the main thread once the sheet is gone, whether the user shared or not;
+its error says when the sheet couldn't show (a file that isn't there).
+
+```go
+var share ui.Node
+share = ui.Button(ui.ButtonProps{Title: ui.Val("Share"), OnPress: func() {
+	ui.ShareFiles([]string{report}, ui.ShareOptions{MIME: "application/pdf", Title: "Send the report", From: share}, func(err error) {
+		if err != nil {
+			status.Set(err.Error())
+		}
+	})
+}})
+```
+
+`ShareOptions` are expo-sharing's:
+
+| Option | |
+| --- | --- |
+| `MIME` | The files' type, which the apps on the sheet go by. Android sets the intent's type to it. On iOS it's the type when `UTI` is empty. Default: from the first file's extension. |
+| `UTI` | iOS: the files' Uniform Type Identifier (`com.adobe.pdf`), ahead of `MIME`. |
+| `Title` | The sheet's title: Android's chooser, and a mail's subject on iOS. |
+| `From` | The view the sheet points at where it's a popover (iPad, the Mac), usually the button that shares. Default: the screen's middle. |
+
+On iOS a file whose extension doesn't match its type is shared under a
+name that does, as expo-sharing does: `image.pdf` shared as a JPEG goes
+as `image.pdf.jpeg`, a link to the file, not a copy. On Android the files
+go through the app's FileProvider; one outside the app's own folders is
+copied to its caches first. On the Mac it's the sharing services
+picker. Windows has no share sheet for files yet: `done` gets an error.
+
 To be opened with URLs yourself, see `ryui.json`'s `scheme` and `links` in
 [Shipping](shipping.md#ryuijson), and `ui.OnOpenURL`.
 
@@ -606,29 +638,141 @@ may stop.
 
 ## Shares from other apps: ui.OnShare
 
-`ui.OnShare(f)` calls `f` with what another app shares with this one: a
-link or text sent from its share sheet ("Share" in YouTube, in a
-browser). Set `"shareTarget": true` in `ryui.json` and the app is offered
-there.
+`ui.OnShare(f)` calls `f` with what another app shares with this one
+from its share sheet: a link from YouTube or a browser, a text from
+Notes, photos from the gallery, a PDF from Files. `ryui.json`'s
+`shareTarget` says what the app is offered for:
+
+```json
+{ "shareTarget": true }
+```
+
+takes texts and links. An object takes files too, by MIME type, and at
+most `max` at once (default 1):
+
+```json
+{ "shareTarget": { "types": ["text", "image/*", "video/*"], "max": 10 } }
+```
+
+A type is `"text"` (texts and web links) or a MIME type: `"image/*"`,
+`"video/*"`, `"audio/*"`, `"application/pdf"`, `"*/*"` for any file.
 
 ```go
 func App() ui.Node {
 	link := signal.New("")
-	ui.OnShare(func(text string) {
-		if u := regexp.MustCompile(`https?://\S+`).FindString(text); u != "" {
-			link.Set(u)
+	photos := signal.New([]string(nil))
+	ui.OnShare(func(items []ui.SharedItem) {
+		for _, it := range items {
+			switch it.Kind {
+			case ui.SharedLink:
+				link.Set(it.Text)
+			case ui.SharedImage:
+				photos.Set(append(photos.Peek(), it.Path))
+			}
 		}
 	})
 	return ui.Text(link)
 }
 ```
 
+Each `ui.SharedItem` has a `Kind`: `SharedText`, `SharedLink`,
+`SharedImage`, `SharedVideo`, `SharedAudio` or `SharedFile`. A text or a
+link is in `Text`. A file is at `Path`, the app's own copy in its caches:
+move it where the app keeps it, or remove it when you're done. It comes
+with `Name`, its name in the app it came from (`IMG_0042.HEIC`), its
+`MIME` type and its `Size` (-1 if not known). The items come in the
+order the other app gave them. A page shared from a browser comes as its
+title, a text, and its link.
+
 What came before any handler, the share that launched the app, goes to
-the first one. The handler stops with the component's owner. On iOS a
-share extension in the app takes the share and opens the app with it;
-on Android the share opens the app itself. A page shared from Safari
-comes as its title and its link, a line each. To show a screen for
-what's shared, see [Navigation](navigation.md).
+the first one. The handler stops with the component's owner. To show a
+screen of the app's for what's shared, without opening it, see the
+share sheet below; to open one in the app, see [Navigation](navigation.md).
+
+**Android** opens the app itself with the share (`ACTION_SEND`, and
+`ACTION_SEND_MULTIPLE` when `max` is over 1), for the types' intent
+filters. The app copies the files to its caches before `OnShare` gets
+them, while its access to them still holds.
+
+**iOS** has a share extension in the app, which opens the app with what's
+shared, as Android opens it: the extension shows no screen of its own.
+Its activation rule comes from the types: Apple's keys for texts,
+links, images, videos and any file, which keep `max`; a predicate on the
+attachments' types for others (audio, a PDF), which doesn't. The
+extension takes whatever it's given, so check `Kind` and `MIME`. Files
+go from the extension to the app through an App Group,
+`group.<app ID>`, which a device build's profiles must have (see
+[Shipping](shipping.md#ios)).
+
+Under `ryui dev`, the player takes shares of anything, whatever the
+app's `shareTarget`. On Android the files' paths are on the device, not
+the Mac the Go code runs on: try files with `ryui dev -android -once`.
+
+What a link leads to (a page, an image, a video) is the app's to find
+out, with `net/http`: expo-sharing's "resolved" payloads, in Go.
+
+### The app's own share sheet: app.ShareSheet
+
+By default a share opens the app. `app.ShareSheet(screen)` shows the
+app's own screen instead, over the app that shares, as "Save to
+Raindrop" or "Add to Notes" does: the user saves, and is back where they
+were. Call it before `app.Run`.
+
+```go
+func ShareSheet(s *ui.ShareSheet) ui.Node {
+	note := signal.New("")
+	return ui.Column(ui.Style{Grow: 1, Padding: ui.All(16), Gap: 12},
+		ui.Text(signal.Static(s.Items[0].Text)),
+		ui.TextField(ui.TextFieldProps{Value: note, Placeholder: ui.Val("Note"), Multiline: true}),
+		ui.Row(ui.Style{Gap: 12},
+			ui.Button(ui.ButtonProps{Title: ui.Val("Cancel"), OnPress: s.Cancel}),
+			ui.Button(ui.ButtonProps{Title: ui.Val("Save"), Variant: ui.ButtonFilled, OnPress: func() {
+				save(s.Items, note.Peek())
+				s.Close()
+			}}),
+		),
+	)
+}
+
+func main() {
+	app.ShareSheet(ShareSheet)
+	app.Run(App)
+}
+```
+
+`s.Items` is what's shared, as `OnShare` has it. The sheet ends with
+`s.Close()` (done), `s.Cancel()`, or `s.OpenApp()`, which opens the app
+with the items for its `OnShare`, as without a sheet. Until the items
+have come (a video being copied) it shows a spinner.
+
+The sheet is a root of its own, in a process of its own, as iOS runs
+share extensions: on **iOS** the app's share extension, which iOS shows
+as a sheet, running the app's Go code and the host from the framework it
+shares with the app; on
+**Android** an Activity in a `:share` process, shown as a Material
+bottom sheet over the other app (dragging it down, tapping outside and
+back cancel it). The process ends with the sheet: what's pending in
+`ryui/store` is written as it closes, and `app.OnLifecycle` hears
+`Background`. A file's `Path` is the sheet's until it closes: copy what
+the app keeps.
+
+What the app keeps is the same in its sheet: `ryui/store`, SQLite files
+in `store.Dir()` (`sqlite.Open("app.db")`), `ryui/secure`. Android's
+two processes share the app's files. On iOS the app's data moves to the
+App Group (`group.<app ID>`), once, the first time it runs with a sheet,
+and its keychain group is shared with the extension. The app doesn't
+hear what its sheet wrote while it was running: look again when it
+comes back (`app.OnLifecycle`, `db.Changed()`).
+
+The CLI sees that the app's Go code calls `app.ShareSheet` and builds
+the sheet instead of the extension that opens the app. On iOS the app's
+Go code and the host are then a framework in the app,
+`Frameworks/RyUIApp.framework`, which the app and its extension both
+load, as Xcode shares code with an extension: the app isn't bigger for
+its sheet. Under `ryui dev` the player's sheet runs the app's sheet from
+the Mac too. [`examples/bookmarks`](../examples/bookmarks) is a
+sheet as Raindrop's: the page's title, description and image, a note, a
+collection and tags.
 
 ## JavaScript: ryui/js
 

@@ -65,6 +65,7 @@ and give its password in RYUI_KEYSTORE_PASSWORD (and RYUI_KEY_PASSWORD if the ke
 			return fmt.Errorf("%s: %v", a.abi, err)
 		}
 		os.Remove(strings.TrimSuffix(out, ".so") + ".h")
+		cfg.shareSheet = hasSheet(out)
 	}
 
 	res := filepath.Join(work, "res")

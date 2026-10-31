@@ -150,6 +150,12 @@ return ui.Row(ui.Style{Gap: 12, Wrap: true},
 | `ButtonTinted` | tinted | tonal button |
 | `ButtonGray` | gray | tonal button |
 | `ButtonBordered` | bordered | outlined button |
+| `ButtonGlass` | Liquid Glass (`glass()`, iOS 26; gray before) | tonal button |
+| `ButtonGlassProminent` | tinted Liquid Glass (`prominentGlass()`, iOS 26; filled before) | filled button |
+
+The glass buttons are capsules, and a glass button with an icon alone is
+a circle: a sheet's close button, as iOS 26's own. A Mac and Windows
+show them as `ButtonGray` and `ButtonFilled`.
 
 ### Menus
 
@@ -225,6 +231,14 @@ return ui.Row(ui.Style{Gap: 8, Align: ui.AlignEnd},
 		Disabled: signal.Func(func() bool { return message.Get() == "" }),
 		OnPress:  func() { message.Set("") }}),
 )
+```
+
+**The text alone.** `Plain` drops the field's border, background and
+inset: its text and placeholder, for a field in a card or a form of
+your own, as Notes' and Reminders' are.
+
+```go
+ui.TextField(ui.TextFieldProps{Value: note, Placeholder: ui.Val("Note"), Multiline: true, Plain: true})
 ```
 
 A `SafeArea` is padded by the keyboard, so a field at the bottom of one

@@ -52,7 +52,7 @@ func buildIOS(app *goApp, o *buildOptions) error {
 			return err
 		}
 		fmt.Printf("ryui: signing with %q (%s, team %s) as %s\n", prof.name, prof.kind, prof.team, prof.identityName)
-		if cfg.ShareTarget {
+		if cfg.ShareTarget.on {
 			if shareProf, err = pickProfile(prof.team, cfg.shareID(), cfg.IOS.ShareProfile, o.distribution); err != nil {
 				return fmt.Errorf("the share extension (ryui.json's shareTarget): %v", err)
 			}
@@ -64,7 +64,7 @@ func buildIOS(app *goApp, o *buildOptions) error {
 	if err != nil {
 		return err
 	}
-	hostObj, err := tc.buildHost(work, app, usedFeatures(lib))
+	hostObj, err := tc.buildHost(work, app, usedFeatures(lib, cfg))
 	if err != nil {
 		return err
 	}
@@ -73,24 +73,21 @@ func buildIOS(app *goApp, o *buildOptions) error {
 	if err := os.MkdirAll(bundle, 0o755); err != nil {
 		return err
 	}
-	args := []string{"swiftc", "-target", tc.target, "-sdk", tc.sdk, hostObj, lib,
-		"-o", filepath.Join(bundle, "RyUIApp"), "-framework", "UIKit", "-framework", "Foundation", "-lresolv",
-		"-Xlinker", "-dead_strip"}
+	var ents []string
 	if o.simulator {
-		ents, err := simulatorEntitlements(work, cfg)
-		if err != nil {
+		if ents, err = simulatorEntitlements(work, cfg); err != nil {
 			return err
 		}
-		args = append(args, ents...)
 	}
-	if err := tc.run(work, nil, "xcrun", args...); err != nil {
+	code, err := tc.linkApp(work, bundle, cfg, hostObj, lib, ents)
+	if err != nil {
 		return err
 	}
 	if err := copyDir(filepath.Join(app.dir, "assets"), filepath.Join(bundle, "assets")); err != nil {
 		return err
 	}
 	// The privacy manifest, which App Store Connect requires.
-	manifest, err := privacyManifest(app.dir, filepath.Join(bundle, "RyUIApp"))
+	manifest, err := privacyManifest(app.dir, code)
 	if err != nil {
 		return err
 	}
@@ -113,8 +110,8 @@ func buildIOS(app *goApp, o *buildOptions) error {
 		fmt.Println("ryui: no icon in ryui.json; the App Store needs one (1024×1024 PNG)")
 	}
 	// The share extension, signed before the app, whose signature seals it.
-	if cfg.ShareTarget {
-		exe, err := tc.buildShare(work)
+	if cfg.ShareTarget.on {
+		exe, err := tc.buildShare(work, cfg, code)
 		if err != nil {
 			return err
 		}
@@ -125,11 +122,18 @@ func buildIOS(app *goApp, o *buildOptions) error {
 		if o.simulator {
 			err = tc.run(work, nil, "codesign", "--force", "--sign", "-", appex)
 		} else {
-			err = shareProf.sign(tc, work, appex, cfg.shareID(), nil)
+			err = shareProf.sign(tc, work, appex, cfg.shareID(), nil, cfg.shareGroup(), cfg.keychainGroup(prof.team))
 		}
 		if err != nil {
 			return err
 		}
+	}
+	identity := "-"
+	if !o.simulator {
+		identity = prof.identity
+	}
+	if err := tc.signFrameworks(work, bundle, identity); err != nil {
+		return err
 	}
 	if o.simulator {
 		if err := tc.run(work, nil, "codesign", "--force", "--sign", "-", bundle); err != nil {
@@ -143,7 +147,7 @@ func buildIOS(app *goApp, o *buildOptions) error {
 		fmt.Printf("ryui: %s in %.0fs (install: xcrun simctl install booted %s)\n", out, time.Since(start).Seconds(), out)
 		return nil
 	}
-	if err := prof.sign(tc, work, bundle, cfg.ID, cfg.associatedDomains(false)); err != nil {
+	if err := prof.sign(tc, work, bundle, cfg.ID, cfg.associatedDomains(false), cfg.shareGroup(), cfg.keychainGroup(prof.team)); err != nil {
 		return err
 	}
 	ipa := filepath.Join(o.out, safeName(cfg.Name)+".ipa")
@@ -240,6 +244,12 @@ func (t *iosToolchain) infoPlist(cfg *appConfig, simulator bool) (map[string]any
 	}
 	for _, k := range cfg.iosTrue {
 		m[k] = true
+	}
+	if g := cfg.shareGroup(); g != "" {
+		m["RyUIShareGroup"] = g
+	}
+	if cfg.ShareTarget.on && cfg.shareSheet {
+		m["RyUIShareSheet"] = true
 	}
 	for k, v := range cfg.IOS.InfoPlist {
 		m[k] = v
@@ -469,9 +479,10 @@ func pickProfile(team, id, want, distribution string) (*profile, error) {
 }
 
 // sign embeds the profile, signs the bundle (the app, or an extension in
-// it), whose ID is id, with the profile's entitlements and the
-// associated domains, and checks the signature.
-func (p *profile) sign(t *iosToolchain, work, bundle, id string, domains []string) error {
+// it), whose ID is id, with the profile's entitlements, the associated
+// domains, the App Group group and the keychain group (each if not ""),
+// and checks the signature.
+func (p *profile) sign(t *iosToolchain, work, bundle, id string, domains []string, group, keychain string) error {
 	data, err := os.ReadFile(p.path)
 	if err != nil {
 		return err
@@ -499,6 +510,27 @@ func (p *profile) sign(t *iosToolchain, work, bundle, id string, domains []strin
 	if len(domains) > 0 {
 		js, _ := json.Marshal(domains)
 		if err := t.run(work, nil, "plutil", "-replace", "com.apple.developer.associated-domains", "-json", string(js), ent); err != nil {
+			return err
+		}
+	}
+	// The App Group the share extension leaves files in: the profile
+	// must have it (the App Groups capability of the app ID, with it).
+	if group != "" {
+		have, _ := exec.Command("plutil", "-extract", "com.apple.security.application-groups", "json", "-o", "-", ent).Output()
+		var groups []string
+		json.Unmarshal(have, &groups)
+		if !slices.Contains(groups, group) {
+			return fmt.Errorf("the profile %q has no App Group %s, which a share target that takes files needs: add the App Groups capability to %s, with %s, at developer.apple.com, then the profile again", p.name, group, id, group)
+		}
+		js, _ := json.Marshal([]string{group})
+		if err := t.run(work, nil, "plutil", "-replace", "com.apple.security.application-groups", "-json", string(js), ent); err != nil {
+			return err
+		}
+	}
+	// The app's keychain group, first (the one items go to), for the app
+	// and its share sheet: ryui/secure's items are the same in both.
+	if keychain != "" {
+		if err := t.run(work, nil, "plutil", "-replace", "keychain-access-groups", "-json", `["`+keychain+`"]`, ent); err != nil {
 			return err
 		}
 	}

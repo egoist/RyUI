@@ -2,9 +2,20 @@
     <!-- ui.Image loads http(s) URLs. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <application>
+        <!-- app.ShareSheet: the app's sheet over another app that shares, in a
+             process of its own. The CLI gives it the share intent filters
+             (ryui.json's shareTarget) when the app has a sheet. -->
+        <activity
+            android:name="dev.ryui.RyUIShareActivity"
+            android:process=":share"
+            android:theme="@style/Theme.RyUI.ShareSheet"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|fontScale|density"
+            android:windowSoftInputMode="adjustResize" />
         <!-- ryui/notify: posts a notification when its alarm goes off. -->
         <receiver android:name="dev.ryui.RyUINotifyReceiver" android:exported="false" />
-        <!-- ryui/camera: the camera app writes the photo to a file of the app's. -->
+        <!-- ryui/camera: the camera app writes the photo to a file of the app's; ui.ShareFiles hands files to other apps. -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.ryui.files"

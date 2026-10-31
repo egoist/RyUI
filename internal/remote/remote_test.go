@@ -284,3 +284,55 @@ func TestChangesWhileCutOffArrive(t *testing.T) {
 	s.connect()
 	s.until("Count: 3 and the rows", func() bool { return hasText(s.h, "Count: 3") && hasText(s.h, "row 19") })
 }
+
+// A share sheet's player (its share extension, its share activity)
+// says so first: its session mounts the server's sheet, which gets what
+// was shared and closes; cut off, it comes back to the same sheet.
+func TestShareSheetSession(t *testing.T) {
+	h := fake.New()
+	h.Env = env
+	x := NewProxy(h)
+	x.Sheet = true
+	h.Connect(x)
+	h.SetEnvironment(env)
+	s := &player{t: t, h: h, x: x, posts: make(chan func(), 16), conns: make(chan net.Conn)}
+	srv := NewServer(func() ui.Node { return ui.StaticText("the app") }, s.posts)
+	srv.Sheet = ui.ShareSheetRoot(func(sh *ui.ShareSheet) ui.Node {
+		return ui.Button(ui.ButtonProps{Title: ui.Val("Save " + sh.Items[0].Text), OnPress: sh.Close})
+	})
+	done := make(chan struct{})
+	go func() {
+		srv.Loop(s.conns)
+		close(done)
+	}()
+	t.Cleanup(func() {
+		s.conn.Close()
+		close(s.conns)
+		<-done
+	})
+	s.connect()
+	if hasText(s.h, "the app") || len(s.h.OfKind(ops.KindProgress)) != 1 {
+		t.Fatalf("the sheet's session, before the share:\n%s", s.h.Log())
+	}
+	// What was shared, as a share extension sends it.
+	item := []byte{1, 0, 0, 0, byte(ui.SharedLink)}
+	for _, str := range []string{"https://go.dev", "", "", "text/plain"} {
+		item = append(le.AppendUint32(item, uint32(len(str))), str...)
+	}
+	item = le.AppendUint64(item, ^uint64(0))
+	s.h.Dispatch(ops.Event{ID: s.h.Root().ID, Kind: ops.EventShared, Bytes: item})
+	if len(s.h.OfKind(ops.KindButton)) != 1 {
+		t.Fatalf("the sheet's screen:\n%s", s.h.Log())
+	}
+	save := s.h.One(ops.KindButton, "Save https://go.dev")
+	s.h.Tap(save)
+	if c := s.h.Commands(ops.CmdShareClose); len(c) != 1 || string(c[0].Value.Bytes) != "\x00" {
+		t.Fatalf("closing: %v", c)
+	}
+	// Cut off and back: the sheet's session again.
+	s.conn.Close()
+	s.until("cut off", func() bool { return s.x.peer() == nil })
+	s.connect()
+	s.until("the sheet again", func() bool { return len(s.h.OfKind(ops.KindButton)) == 1 })
+	s.h.One(ops.KindButton, "Save https://go.dev")
+}

@@ -122,6 +122,7 @@ public enum RyUIProp {
         public static let autocorrect: UInt16 = 70
         public static let contentType: UInt16 = 71
         public static let multiline: UInt16 = 72
+        public static let plain: UInt16 = 73
     }
 
     public enum Toggle {
@@ -340,6 +341,7 @@ public enum RyUICommand: UInt16 {
     case menuBar = 22
     case windowOptions = 23
     case colorScheme = 24
+    case shareClose = 25
 }
 
 public enum RyUIRole: Int32 {
@@ -393,6 +395,8 @@ public enum RyUIButtonVariant: Int32 {
     case tinted = 2
     case gray = 3
     case bordered = 4
+    case glass = 5
+    case glassProminent = 6
 }
 
 public enum RyUIKeyboard: Int32 {
@@ -551,6 +555,15 @@ public enum RyUISemanticColor: Int32 {
     case gray = 16
     case clear = 17
     case secondaryGroupedBackground = 18
+}
+
+public enum RyUIShareKind: Int32 {
+    case text = 0
+    case link = 1
+    case image = 2
+    case video = 3
+    case audio = 4
+    case file = 5
 }
 
 /// A prop value. Bytes are valid only during the handler call.
@@ -820,7 +833,7 @@ public enum RyUIEvents {
     public static func newWindow(_ id: UInt32, _ v: String) -> [UInt8] {
         var w = RyUIWriter(); w.header(id, 38); w.string(v); return w.bytes
     }
-    public static func shared(_ id: UInt32, _ v: String) -> [UInt8] {
-        var w = RyUIWriter(); w.header(id, 39); w.string(v); return w.bytes
+    public static func shared(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
+        var w = RyUIWriter(); w.header(id, 39); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
     }
 }

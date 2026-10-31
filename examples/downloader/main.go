@@ -49,11 +49,14 @@ var wifiOnly = store.Signal("wifiOnly", false)
 func App() ui.Node {
 	link := signal.New(sample)
 	status := signal.New("")
-	ui.OnShare(func(text string) {
-		// "A title https://...": the link in it.
-		if u := regexp.MustCompile(`https?://\S+`).FindString(text); u != "" {
-			link.Set(u)
-			status.Set("Shared: " + u)
+	ui.OnShare(func(items []ui.SharedItem) {
+		// A link, or "A title https://...": the link in it.
+		for _, it := range items {
+			if u := regexp.MustCompile(`https?://\S+`).FindString(it.Text); u != "" {
+				link.Set(u)
+				status.Set("Shared: " + u)
+				return
+			}
 		}
 	})
 	net := network.Use()

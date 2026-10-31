@@ -5,9 +5,13 @@ package darwin
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"math"
+	"os"
 	"strings"
 	"time"
+
+	"github.com/ebitengine/purego/objc"
 
 	. "github.com/egoist/ryui/internal/darwin"
 	"github.com/egoist/ryui/ops"
@@ -349,6 +353,73 @@ func (h *Host) share(n *node, s string) {
 	r := Rect{Origin: Point{X: b.Size.Width / 2, Y: 0}, Size: Size{Width: 1, Height: 1}}
 	msgShowPicker(picker, Sel("showRelativeToRect:ofView:preferredEdge:"), r, v, 1)
 }
+
+// sharePickers are the file share pickers on screen (ui.ShareFiles), and
+// what each answers when the user picks a service or closes it.
+var sharePickers = map[ID]func([]byte, error){}
+
+// shareFiles is the "share" module's "files" (args: u32 view, string
+// MIME, string UTI, string title, u32 count, then the paths): the
+// sharing service picker for the files, under the view (default: the
+// window's top middle); it answers once the user picks a service or
+// closes it.
+func (h *Host) shareFiles(args []byte, reply func([]byte, error)) {
+	le := binary.LittleEndian
+	if len(args) < 20 {
+		reply(nil, errors.New("share.files: bad arguments"))
+		return
+	}
+	from := ops.NodeID(le.Uint32(args))
+	rest := args[4:]
+	for range 3 { // MIME, UTI, title: a Mac's picker goes by the files
+		_, rest = readString(rest)
+	}
+	if len(rest) < 4 {
+		reply(nil, errors.New("share.files: bad arguments"))
+		return
+	}
+	n := int(le.Uint32(rest))
+	rest = rest[4:]
+	var items []ID
+	for i := 0; i < n && len(rest) >= 4; i++ {
+		var p string
+		p, rest = readString(rest)
+		if _, err := os.Stat(p); err != nil {
+			reply(nil, fmt.Errorf("no file at %s", p))
+			return
+		}
+		items = append(items, FileURL(p))
+	}
+	if !sharePickerClass {
+		sharePickerClass = true
+		DefineClass("RyUISharePickerDelegate", "NSObject", []string{"NSSharingServicePickerDelegate"}, []objc.MethodDef{
+			Method("sharingServicePicker:didChooseSharingService:", func(self ID, _ SEL, picker, service ID) {
+				if r := sharePickers[picker]; r != nil {
+					delete(sharePickers, picker)
+					Release(picker)
+					r(nil, nil)
+				}
+			}),
+		})
+		sharePickerDelegate = Send(Class("RyUISharePickerDelegate"), "new")
+	}
+	picker := Send(Send(Class("NSSharingServicePicker"), "alloc"), "initWithItems:", uintptr(Array(items...)))
+	Send(picker, "setDelegate:", uintptr(sharePickerDelegate))
+	sharePickers[picker] = reply
+	v := h.content
+	b := MsgRect(v, Sel("bounds"))
+	r := Rect{Origin: Point{X: b.Size.Width / 2, Y: 0}, Size: Size{Width: 1, Height: 1}}
+	if nd := h.nodes[from]; from != 0 && nd != nil && nd.view != 0 && Send(nd.view, "window") != 0 {
+		v = nd.view
+		r = MsgRect(v, Sel("bounds"))
+	}
+	msgShowPicker(picker, Sel("showRelativeToRect:ofView:preferredEdge:"), r, v, 1)
+}
+
+var (
+	sharePickerClass    bool
+	sharePickerDelegate ID
+)
 
 // call runs a module's method (ui.Call) and answers with Result.
 func (h *Host) call(root *node, args []byte) {

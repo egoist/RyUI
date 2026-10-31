@@ -180,6 +180,7 @@ private fun RyUIRuntime.registerBuiltinModules() {
     modules["js"] = scriptMethods()
     modules["web"] = webMethods()
     modules["library"] = libraryMethods()
+    modules["share"] = shareMethods()
     modules["background"] = RyUIBackground(this).methods()
     modules["notify"] = notifyMethods()
     modules["audio"] = audioMethods()

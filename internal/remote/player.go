@@ -35,6 +35,11 @@ type Proxy struct {
 	// queued are the events that came meanwhile.
 	token  string
 	queued [][]byte
+	// Sheet: the player is a share sheet (its share extension, its share
+	// activity), whose session mounts the app's sheet; shared is what was
+	// shared with it, sent again to a new session (the core restarted).
+	Sheet  bool
+	shared []byte
 }
 
 // NewProxy makes a proxy for local, the player's platform host.
@@ -102,6 +107,11 @@ func (x *Proxy) Dispatch(ev ops.Event) {
 		e := ev
 		e.ID = 0 // any session's root
 		x.env = ops.AppendEvent(nil, &e)
+	}
+	if ev.Kind == ops.EventShared && x.Sheet {
+		e := ev
+		e.ID = 0
+		x.shared = ops.AppendEvent(nil, &e)
 	}
 	b := ops.AppendEvent(nil, &ev)
 	if x.peer() == nil && len(x.live) > 0 {
@@ -219,8 +229,14 @@ func (x *Proxy) Attach(conn net.Conn) {
 		x.root = 0
 		x.local.Apply(&b)
 	}
+	if x.Sheet {
+		x.call(mShareSheet, nil)
+	}
 	if x.env != nil {
 		x.call(mEvent, x.env)
+		if x.shared != nil {
+			x.call(mEvent, x.shared)
+		}
 	}
 }
 

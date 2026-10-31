@@ -36,6 +36,7 @@ const (
 	mListUnbind = 6 // host → core: u32 list, u32 cell
 	mAttach     = 7 // host → core: the Activity was recreated
 	mResume     = 8 // host → core: its session's token → u8 resumed (the session it had, kept while it was cut off)
+	mShareSheet = 9 // host → core: the session is a share sheet's (app.ShareSheet), before its environment
 )
 
 // Frame kinds.

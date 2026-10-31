@@ -2,6 +2,7 @@ package ui_test
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -1147,24 +1148,99 @@ func TestMatch(t *testing.T) {
 	r.Dispose()
 }
 
-// What another app shares goes to OnShare's handlers; a share before any
-// handler (the one that launched the app) waits for the first.
+// sharedEvent is a Shared event's payload for items.
+func sharedEvent(items ...ui.SharedItem) []byte {
+	le := binary.LittleEndian
+	str := func(b []byte, s string) []byte { return append(le.AppendUint32(b, uint32(len(s))), s...) }
+	b := le.AppendUint32(nil, uint32(len(items)))
+	for _, it := range items {
+		b = append(b, byte(it.Kind))
+		b = str(str(str(str(b, it.Text), it.Path), it.Name), it.MIME)
+		b = le.AppendUint64(b, uint64(it.Size))
+	}
+	return b
+}
+
+// What another app shares goes to OnShare's handlers, its items in
+// order; a share before any handler (the one that launched the app)
+// waits for the first.
 func TestShared(t *testing.T) {
 	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })
-	h.Dispatch(ops.Event{ID: 0, Kind: ops.EventShared, Str: "https://youtu.be/a"})
-	var got []string
+	first := ui.SharedItem{Kind: ui.SharedLink, Text: "https://youtu.be/a", MIME: "text/plain", Size: -1}
+	h.Dispatch(ops.Event{ID: 0, Kind: ops.EventShared, Bytes: sharedEvent(first)})
+	var got [][]ui.SharedItem
 	r := ui.Mount(h, func() ui.Node {
-		ui.OnShare(func(text string) { got = append(got, text) })
+		ui.OnShare(func(items []ui.SharedItem) { got = append(got, items) })
 		return ui.StaticText("y")
 	})
-	h.Dispatch(ops.Event{ID: 0, Kind: ops.EventShared, Str: "Title https://youtu.be/b"})
-	if len(got) != 2 || got[0] != "https://youtu.be/a" || got[1] != "Title https://youtu.be/b" {
-		t.Fatalf("got %q", got)
+	photo := ui.SharedItem{Kind: ui.SharedImage, Path: "/tmp/ryui-shared/1/IMG_1.HEIC", Name: "IMG_1.HEIC", MIME: "image/heic", Size: 2048}
+	text := ui.SharedItem{Kind: ui.SharedText, Text: "Look", MIME: "text/plain", Size: -1}
+	h.Dispatch(ops.Event{ID: 0, Kind: ops.EventShared, Bytes: sharedEvent(text, photo)})
+	if len(got) != 2 || len(got[0]) != 1 || got[0][0] != first || len(got[1]) != 2 || got[1][0] != text || got[1][1] != photo {
+		t.Fatalf("got %+v", got)
+	}
+	if text.IsFile() || first.IsFile() || !photo.IsFile() {
+		t.Error("IsFile")
+	}
+	// Cut short: the items whole before the cut.
+	b := sharedEvent(text, photo)
+	h.Dispatch(ops.Event{ID: 0, Kind: ops.EventShared, Bytes: b[:len(b)-3]})
+	if len(got) != 3 || len(got[2]) != 1 || got[2][0] != text {
+		t.Fatalf("cut short: %+v", got[2:])
 	}
 	r.Dispose()
-	h.Dispatch(ops.Event{ID: 0, Kind: ops.EventShared, Str: "after"})
-	if len(got) != 2 {
-		t.Fatalf("after dispose: %q", got)
+	h.Dispatch(ops.Event{ID: 0, Kind: ops.EventShared, Bytes: sharedEvent(text)})
+	if len(got) != 3 {
+		t.Fatalf("after dispose: %+v", got)
+	}
+	// It waits for the next handler.
+	r = ui.Mount(h, func() ui.Node {
+		ui.OnShare(func(items []ui.SharedItem) { got = append(got, items) })
+		return ui.StaticText("z")
+	})
+	if len(got) != 4 || got[3][0] != text {
+		t.Fatalf("the next handler: %+v", got)
+	}
+	r.Dispose()
+}
+
+// ShareFiles calls the share module with the view the sheet points at,
+// the type (from the extension), the title and the files; done gets
+// what the module answers once the sheet is gone.
+func TestShareFiles(t *testing.T) {
+	var args []byte
+	var btn ui.Node
+	var errs []error
+	h, r := mount(t, func() ui.Node {
+		btn = ui.Button(ui.ButtonProps{Title: ui.Val("Share"), OnPress: func() {
+			ui.ShareFiles([]string{"/tmp/a.pdf", "/tmp/b.pdf"}, ui.ShareOptions{Title: "Send", From: btn}, func(err error) { errs = append(errs, err) })
+		}})
+		return btn
+	})
+	h.Modules = map[string]func(string, []byte) ([]byte, error){"share": func(method string, b []byte) ([]byte, error) {
+		if method != "files" {
+			return nil, errors.New("no method " + method)
+		}
+		args = b
+		return nil, nil
+	}}
+	h.Tap(h.One(ops.KindButton, "Share"))
+	r.Flush()
+	h.RunPosted()
+	le := binary.LittleEndian
+	str := func(b []byte, s string) []byte { return append(le.AppendUint32(b, uint32(len(s))), s...) }
+	want := le.AppendUint32(nil, uint32(h.One(ops.KindButton, "Share").ID))
+	want = str(str(str(want, "application/pdf"), ""), "Send")
+	want = str(str(le.AppendUint32(want, 2), "/tmp/a.pdf"), "/tmp/b.pdf")
+	if string(args) != string(want) {
+		t.Fatalf("args\n%q\nwant\n%q", args, want)
+	}
+	if len(errs) != 1 || errs[0] != nil {
+		t.Fatalf("done %v", errs)
+	}
+	ui.ShareFiles(nil, ui.ShareOptions{}, func(err error) { errs = append(errs, err) })
+	if len(errs) != 2 || errs[1] == nil {
+		t.Fatalf("no files: %v", errs)
 	}
 }
 
@@ -1201,4 +1277,66 @@ func TestSizeClasses(t *testing.T) {
 	h.SetEnvironment(ops.Environment{Width: 320, Height: 1133, Scale: 2, FontScale: 1,
 		WidthClass: ui.SizeClassCompact, HeightClass: ui.SizeClassExpanded})
 	say("compact expanded")
+}
+
+// A share sheet's root shows a spinner until what's shared comes, then
+// the app's screen, which closes it; with no screen it opens the app.
+// Shares go to the root they're sent to.
+func TestShareSheetRoot(t *testing.T) {
+	var sheet *ui.ShareSheet
+	h, _ := mount(t, ui.ShareSheetRoot(func(s *ui.ShareSheet) ui.Node {
+		sheet = s
+		return ui.Button(ui.ButtonProps{Title: ui.Val("Save " + s.Items[0].Text), OnPress: s.Close})
+	}))
+	if len(h.OfKind(ops.KindProgress)) != 1 || len(h.OfKind(ops.KindButton)) != 0 {
+		t.Fatalf("before the share\n%s", h.Log())
+	}
+	id := h.Root().ID
+	// Another root's handlers don't get the sheet's share.
+	var app []ui.SharedItem
+	other := ui.Mount(h, func() ui.Node {
+		ui.OnShare(func(items []ui.SharedItem) { app = items })
+		return ui.StaticText("app")
+	})
+	link := ui.SharedItem{Kind: ui.SharedLink, Text: "https://go.dev", MIME: "text/plain", Size: -1}
+	h.Dispatch(ops.Event{ID: id, Kind: ops.EventShared, Bytes: sharedEvent(link)})
+	if app != nil || sheet == nil || len(sheet.Items) != 1 || sheet.Items[0] != link {
+		t.Fatalf("app %v, sheet %+v", app, sheet)
+	}
+	h.Tap(h.One(ops.KindButton, "Save https://go.dev"))
+	h.Tap(h.One(ops.KindButton, "Save https://go.dev"))
+	if c := h.Commands(ops.CmdShareClose); len(c) != 1 || c[0].ID != id || string(c[0].Value.Bytes) != "\x00" {
+		t.Fatalf("close (once) %v", c)
+	}
+	// Sent to no root of these: every root's handlers.
+	h.Dispatch(ops.Event{ID: 9999, Kind: ops.EventShared, Bytes: sharedEvent(link)})
+	if len(app) != 1 {
+		t.Fatalf("to no root: %v", app)
+	}
+	other.Dispose()
+
+	h2, r2 := mount(t, ui.ShareSheetRoot(nil))
+	h2.Dispatch(ops.Event{ID: h2.Root().ID, Kind: ops.EventShared, Bytes: sharedEvent(link)})
+	r2.Flush()
+	if c := h2.Commands(ops.CmdShareClose); len(c) != 1 || string(c[0].Value.Bytes) != "\x02" {
+		t.Fatalf("no screen: %v", c)
+	}
+}
+
+// A plain field and the glass buttons are props of the platform's own.
+func TestPlainFieldGlassButton(t *testing.T) {
+	h, _ := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{},
+			ui.TextField(ui.TextFieldProps{Value: signal.New(""), Placeholder: ui.Val("Note"), Plain: true}),
+			ui.TextField(ui.TextFieldProps{Value: signal.New(""), Placeholder: ui.Val("Title")}),
+			ui.Button(ui.ButtonProps{Icon: "xmark", Label: "Close", Variant: ui.ButtonGlass}),
+		)
+	})
+	fields := h.OfKind(ops.KindTextField)
+	if len(fields) != 2 || !fields[0].Bool(ops.PropTextFieldPlain) || fields[1].Bool(ops.PropTextFieldPlain) {
+		t.Fatalf("plain\n%s", h.Log())
+	}
+	if b := h.OfKind(ops.KindButton); len(b) != 1 || ops.ButtonVariant(b[0].Int(ops.PropButtonVariant)) != ops.ButtonVariantGlass {
+		t.Fatalf("variant\n%s", h.Log())
+	}
 }

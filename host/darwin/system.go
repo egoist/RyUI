@@ -117,6 +117,9 @@ func (h *Host) builtinModules() map[string]map[string]method {
 			// args: u8 limit; result: the picked images' paths, a line each.
 			"pick": func(args []byte, reply func([]byte, error)) { h.pickPhotos(args, reply) },
 		},
+		"share": {
+			"files": func(args []byte, reply func([]byte, error)) { h.shareFiles(args, reply) },
+		},
 	}
 }
 

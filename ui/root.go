@@ -393,7 +393,7 @@ func dispatch(ev ops.Event) {
 		incoming(ev.Str)
 		return
 	case ops.EventShared:
-		sharedText(ev.Str)
+		shared(ev.ID, ev.Bytes)
 		return
 	case ops.EventFrame:
 		for _, r := range roots {

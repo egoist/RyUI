@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/egoist/ryui/internal/boot"
+	"github.com/egoist/ryui/mobile/shareddir"
 	"github.com/egoist/ryui/ops"
 	"github.com/egoist/ryui/signal"
 )
@@ -47,11 +48,16 @@ var (
 
 // Dir is the directory the store's file is in: the app's data directory
 // (on Android its files directory, as RYUI_DATA says; on iOS Application
-// Support in its container), or, running elsewhere (the ryui dev player's
-// Mac), the user's config directory.
+// Support in its container, or in its App Group with a share sheet, which
+// runs in its share extension), or, running elsewhere (the ryui dev
+// player's Mac), the user's config directory. Keep the app's files here
+// for its share sheet (app.ShareSheet) to see them.
 func Dir() string {
 	if d := os.Getenv("RYUI_DATA"); d != "" {
 		return d
+	}
+	if shared := shareddir.Dir(); shared != "" {
+		return sharedDir(shared)
 	}
 	// Android sets RYUI_DATA once the library is loaded, after the
 	// packages' init: a store.Signal in a package variable reads the
@@ -71,6 +77,28 @@ func Dir() string {
 		d = os.TempDir()
 	}
 	return filepath.Join(d, "ryui", filepath.Base(os.Args[0]))
+}
+
+var migrate sync.Once
+
+// sharedDir is the data directory in an iOS app's App Group (shared,
+// its Application Support), where the app's data moves from its
+// container once, the first time it has a share sheet.
+func sharedDir(shared string) string {
+	dir := filepath.Join(shared, "ryui", "app")
+	migrate.Do(func() {
+		if _, err := os.Stat(dir); err == nil {
+			return
+		}
+		if base, err := os.UserConfigDir(); err == nil {
+			old := filepath.Join(base, "ryui", filepath.Base(os.Args[0]))
+			if _, err := os.Stat(old); err == nil {
+				os.MkdirAll(filepath.Dir(dir), 0o700)
+				os.Rename(old, dir)
+			}
+		}
+	})
+	return dir
 }
 
 func load() {

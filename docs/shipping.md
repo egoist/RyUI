@@ -34,9 +34,11 @@
   seed of the Material 3 color scheme on Android.
 - `scheme` opens the app for `myapp://` URLs, and `links` for https links
   to your domains (universal links, App Links); `ui.OnOpenURL` gets them.
-- `shareTarget` offers the app in other apps' share sheets, for text and
-  links; `ui.OnShare` gets them. On iOS it's a share extension in the
-  app, with a bundle ID of its own (the app's plus `.share`).
+- `shareTarget` offers the app in other apps' share sheets: `true` for
+  texts and links, or `{"types": ["text", "image/*"], "max": 10}` for
+  files too (see [Device](device.md#shares-from-other-apps-uionshare));
+  `ui.OnShare` gets them. On iOS it's a share extension in the app, with
+  a bundle ID of its own (the app's plus `.share`).
 - `ios.usage` gives the purpose strings of protected resources
   (`NSCameraUsageDescription`...), and `ios.infoPlist` adds keys to
   Info.plist; `android.permissions` adds permissions.
@@ -63,6 +65,15 @@ for its own ID (`com.example.notes.share` for `com.example.notes`), from
 the app's team: `ios.shareProfile`, else the best match installed. A
 wildcard profile (`com.example.*`) serves both. Register the extension's
 ID at developer.apple.com and make it a profile as you did the app's.
+
+A `shareTarget` that takes files also needs the App Group
+`group.<app ID>`, through which the extension hands the files to the
+app. At developer.apple.com, register the group, give both IDs (the
+app's and the extension's) the App Groups capability with it, then make
+their profiles again. A wildcard ID can't have App Groups. The build
+stops, saying so, if a profile lacks the group. The simulator needs
+none of this. An app with its own share sheet (`app.ShareSheet`) needs
+the group too, for its data, whatever it takes.
 
 Upload it with Apple's Transporter, or:
 

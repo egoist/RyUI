@@ -19,13 +19,19 @@ import (
 // ui.SafeArea to keep content clear of the notch, the home indicator and
 // the keyboard.
 func Run(root func() ui.Node) {
+	sheet := ui.ShareSheetRoot(shareScreen)
+	// A share sheet's process (an iOS share extension, Android's share
+	// activity): the sheet is the root.
+	if os.Getenv("RYUI_SHARE_SHEET") == "1" {
+		root = sheet
+	}
 	if boot.Runner != nil {
 		boot.Runner(root)
 		return
 	}
 	// `ryui dev` runs the app here and its views in a player app.
 	if addr := os.Getenv("RYUI_REMOTE"); addr != "" {
-		if err := remote.Run(addr, root); err != nil {
+		if err := remote.Run(addr, root, sheet); err != nil {
 			fmt.Fprintln(os.Stderr, "ryui:", err)
 			os.Exit(1)
 		}
@@ -38,6 +44,25 @@ func Run(root func() ui.Node) {
 	}
 	panic("ryui: no host on this platform yet; run the app with `ryui dev -ios` (or -android)")
 }
+
+var shareScreen func(*ui.ShareSheet) ui.Node
+
+// ShareSheet shows screen when another app shares with this one, over
+// that app, instead of opening this one: the app's own sheet, as "Save
+// to Raindrop" or "Add to Notes". Call it before Run. ryui.json's
+// shareTarget says what the app takes; screen gets it in s.Items, and
+// ends the sheet with s.Close, s.Cancel or s.OpenApp.
+//
+// It runs in a process of its own, with a root of its own: on iOS the
+// app's share extension, which iOS shows as a sheet; on Android an
+// activity shown as a bottom sheet over the other app. What the app
+// keeps (ryui/store, sqlite in store.Dir, ryui/secure) is the same
+// there as in the app.
+//
+// Never inlined: ryui build looks for its symbol (cmd/ryui).
+//
+//go:noinline
+func ShareSheet(screen func(s *ui.ShareSheet) ui.Node) { shareScreen = screen }
 
 // desktop runs the app on a desktop's own host (macOS, Windows).
 var desktop func(root func() ui.Node)

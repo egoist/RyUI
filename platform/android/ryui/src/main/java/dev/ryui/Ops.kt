@@ -125,6 +125,7 @@ object RyUIProp {
         const val AUTOCORRECT = 70
         const val CONTENT_TYPE = 71
         const val MULTILINE = 72
+        const val PLAIN = 73
     }
 
     object Toggle {
@@ -343,6 +344,7 @@ object RyUICommand {
     const val MENU_BAR = 22
     const val WINDOW_OPTIONS = 23
     const val COLOR_SCHEME = 24
+    const val SHARE_CLOSE = 25
 }
 
 object RyUIRole {
@@ -396,6 +398,8 @@ object RyUIButtonVariant {
     const val TINTED = 2
     const val GRAY = 3
     const val BORDERED = 4
+    const val GLASS = 5
+    const val GLASS_PROMINENT = 6
 }
 
 object RyUIKeyboard {
@@ -554,6 +558,15 @@ object RyUISemanticColor {
     const val GRAY = 16
     const val CLEAR = 17
     const val SECONDARY_GROUPED_BACKGROUND = 18
+}
+
+object RyUIShareKind {
+    const val TEXT = 0
+    const val LINK = 1
+    const val IMAGE = 2
+    const val VIDEO = 3
+    const val AUDIO = 4
+    const val FILE = 5
 }
 
 /** Receives decoded ops, in order, on the main thread. */
@@ -730,5 +743,5 @@ object RyUIEvents {
     fun request(id: Int, v: String): ByteArray = RyUIWriter().apply { header(id, 36); string(v) }.bytes()
     fun download(id: Int, v: ByteArray): ByteArray = RyUIWriter().apply { header(id, 37); u32(v.size); raw(v) }.bytes()
     fun newWindow(id: Int, v: String): ByteArray = RyUIWriter().apply { header(id, 38); string(v) }.bytes()
-    fun shared(id: Int, v: String): ByteArray = RyUIWriter().apply { header(id, 39); string(v) }.bytes()
+    fun shared(id: Int, v: ByteArray): ByteArray = RyUIWriter().apply { header(id, 39); u32(v.size); raw(v) }.bytes()
 }

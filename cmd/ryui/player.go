@@ -217,11 +217,8 @@ func devIOSPlayer(app *goApp, tc *iosToolchain, work string, sim *simDevice, sto
 	if err := tc.run(app.dir, env, "go", "build", "-tags", "ios", "-buildmode=c-archive", "-trimpath", "-ldflags=-buildid=", "-o", lib, playerPkg); err != nil {
 		return err
 	}
-	share, err := tc.buildShare(dir)
-	if err != nil {
-		return err
-	}
-	sum := fileHash(hostObj, lib, share)
+	// Its share extension links the same (its sheet: the shared layout).
+	sum := fileHash(hostObj, lib)
 	marker := filepath.Join(dir, "installed-"+sim.UDID)
 	// The app's container changes with each install, and is gone from an
 	// erased simulator: the marker holds both.
@@ -336,7 +333,9 @@ func devAndroidPlayer(app *goApp, tc *androidToolchain, work, serial string, sto
 
 // playerConfig is the player's: every permission an app might need.
 func playerConfig() *appConfig {
-	c := &appConfig{ID: playerID, ShareTarget: true}
+	// Shares of anything: the app under it may take files.
+	// Its sheet is the app's, or opens the app (ui.ShareSheetRoot(nil)).
+	c := &appConfig{ID: playerID, ShareTarget: shareTarget{on: true, Types: []string{"text", "*/*"}, Max: 20}, shareSheet: true}
 	c.permissionsFor(nil)
 	return c
 }

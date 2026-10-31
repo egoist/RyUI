@@ -351,7 +351,7 @@ func dateMillis(ms int64) ID {
 func (h *Host) buttonTitle(n *node) {
 	title := String(n.title)
 	var color ID
-	switch ops.ButtonVariant(n.variant) {
+	switch macVariant(n.variant) {
 	case ops.ButtonVariantPlain:
 		color = h.nsColor(n.color)
 		if color == 0 {
@@ -375,12 +375,24 @@ func (h *Host) buttonTitle(n *node) {
 	Send(n.view, "setAttributedTitle:", uintptr(Autorelease(s)))
 }
 
+// macVariant is the variant a Mac's button looks like: glass as the push
+// button, prominent glass as the default button.
+func macVariant(v int32) ops.ButtonVariant {
+	switch ops.ButtonVariant(v) {
+	case ops.ButtonVariantGlass:
+		return ops.ButtonVariantGray
+	case ops.ButtonVariantGlassProminent:
+		return ops.ButtonVariantFilled
+	}
+	return ops.ButtonVariant(v)
+}
+
 // buttonVariant maps a variant to a macOS button: Plain is borderless
 // text in the accent color, Filled the accent-colored default button,
 // the others push buttons.
 func (h *Host) buttonVariant(n *node) {
 	v := n.view
-	switch ops.ButtonVariant(n.variant) {
+	switch macVariant(n.variant) {
 	case ops.ButtonVariantPlain:
 		Send(v, "setBordered:", 0)
 		Send(v, "setBezelColor:", 0)
@@ -422,10 +434,16 @@ func (h *Host) setField(n *node, p ops.PropID, v *ops.Value) {
 		Send(nv, "setStringValue:", uintptr(String(n.text)))
 		Send(nv, "setPlaceholderString:", uintptr(String(n.placeholder)))
 		h.replaceView(n, nv)
+		if n.plain {
+			h.plainField(n)
+		}
 	case ops.PropTextFieldMultiline:
 		if v.Int != 0 && n.tracking == 0 {
 			h.makeMultiline(n)
 		}
+	case ops.PropTextFieldPlain:
+		n.plain = v.Int != 0
+		h.plainField(n)
 	case ops.PropTextFieldAutocorrect:
 		if n.tracking != 0 {
 			Send(n.tracking, "setAutomaticSpellingCorrectionEnabled:", Bool(ops.Autocorrect(v.Int) != ops.AutocorrectNo))
@@ -457,6 +475,27 @@ func contentType(s string) ID {
 
 // makeMultiline makes a TextField a text view in a scroll view: return
 // is a new line, and it grows with its text up to its line limit.
+// plainField draws n's field as TextFieldProps.Plain says: without its
+// bezel, background and focus ring, or with them.
+func (h *Host) plainField(n *node) {
+	if n.multiline {
+		Send(n.view, "setBorderType:", map[bool]uintptr{true: 0, false: 2}[n.plain])
+		Send(n.view, "setDrawsBackground:", Bool(!n.plain))
+		Send(n.tracking, "setDrawsBackground:", Bool(!n.plain))
+		inset := Size{Width: 2, Height: 4}
+		if n.plain {
+			inset = Size{}
+			MsgSetFloat(Send(n.tracking, "textContainer"), Sel("setLineFragmentPadding:"), 0)
+		}
+		MsgSetSize(n.tracking, Sel("setTextContainerInset:"), inset)
+		return
+	}
+	Send(n.view, "setBezeled:", Bool(!n.plain))
+	Send(n.view, "setBordered:", 0)
+	Send(n.view, "setDrawsBackground:", Bool(!n.plain))
+	Send(n.view, "setFocusRingType:", map[bool]uintptr{true: 1, false: 0}[n.plain]) // none, default
+}
+
 func (h *Host) makeMultiline(n *node) {
 	sv := initView("NSScrollView")
 	Send(sv, "setHasVerticalScroller:", 1)
@@ -477,6 +516,9 @@ func (h *Host) makeMultiline(n *node) {
 	n.multiline = true
 	h.replaceView(n, sv)
 	h.byView[tv] = n
+	if n.plain {
+		h.plainField(n)
+	}
 }
 
 func (h *Host) textViewNode(tv ID) *node {

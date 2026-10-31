@@ -471,6 +471,9 @@ func (h *Host) controlColors(n *node, dc uintptr, m uint32) uintptr {
 		if n.focused {
 			bg = h.theme.fieldFocusBg
 		}
+		if n.plain {
+			bg = h.backdrop(n) // the text alone, on what's behind it
+		}
 		SetTextColor(dc, h.textColor(n, h.theme.label).over(bg).ref())
 		SetBkColor(dc, bg.ref())
 		return h.brush(bg)

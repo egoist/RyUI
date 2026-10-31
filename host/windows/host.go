@@ -83,6 +83,7 @@ type node struct {
 	utext          []uint16
 	placeholder    string
 	multiline      bool
+	plain          bool // TextFieldProps.Plain
 	settingText    bool // the field's text is being set from the core
 	secure         bool
 	keyboard       int32

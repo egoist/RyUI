@@ -68,6 +68,7 @@ type node struct {
 	alertStyle     int32
 	text           string // Text, TextField's last reported value
 	multiline      bool
+	plain          bool     // TextFieldProps.Plain
 	items          []string // Segmented, Wheel
 	source         string   // Image
 	placeholder    string

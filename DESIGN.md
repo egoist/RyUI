@@ -875,17 +875,55 @@ Each one ends with its examples running and its tests in CI.
     `ryui/device`: info, an in-app browser, the photo picker).
   - A search field in the navigation bar (`ScreenOptions.Search`).
   - Incoming links: `ryui.json`'s `scheme` and `links`, `ui.OnOpenURL`.
-  - Shares from other apps: `ryui.json`'s `shareTarget`, `ui.OnShare`.
-    Android takes `ACTION_SEND` text in the app's Activity. iOS has a
-    share extension (`platform/ios/Share`, a `.appex` in the app's
-    PlugIns, built by the CLI with no Go in it): it takes text and web
-    links, then opens the app with them in a URL of a scheme of the
-    app's (`ryuishare.<app ID>`), through the application at the end of
-    its responder chain, as an extension has no `UIApplication.shared`.
-    The host turns that URL into the `Shared` event, so both platforms
-    open the app, as the user expects of a "Download" or "Save" target.
-    The extension has its own bundle ID (`<app ID>.share`) and, on
-    devices, its own provisioning profile.
+  - Shares from other apps: `ryui.json`'s `shareTarget` (`true`, or
+    `{"types": [...], "max": n}`), `ui.OnShare` (a list of
+    `SharedItem`s: texts, links and files). Android takes `ACTION_SEND`
+    and `ACTION_SEND_MULTIPLE` in the app's Activity, with intent
+    filters for the types, and copies the files to the app's caches off
+    the main thread. iOS has a share extension (`platform/ios/Share`, a
+    `.appex` in the app's PlugIns, built by the CLI with no Go in it),
+    whose activation rule comes from the types: it takes texts, web
+    links and files, then opens the app with them in a URL of a scheme
+    of the app's (`ryuishare.<app ID>`; the items as JSON), through the
+    application at the end of its responder chain, as an extension has
+    no `UIApplication.shared`. Files go through the App Group
+    `group.<app ID>`: the extension copies them there, the app moves
+    them to its caches. The host turns that URL into the `Shared` event
+    (its items in bytes), so both platforms open the app, as the user
+    expects of a "Download" or "Save" target. The extension has its own
+    bundle ID (`<app ID>.share`) and, on devices, its own provisioning
+    profile, which has the App Group when the app takes files.
+  - The app's own share sheet: `app.ShareSheet(screen)`. The sheet is
+    a root of its own in a process of its own, the share extension's
+    model on both: `ui.ShareSheetRoot` shows the screen once the
+    `Shared` event comes to its root (`OnShare`'s handlers are the
+    root's they were made in), and `ShareClose` (done, cancelled, open
+    the app) ends it. The process says it's a sheet's with
+    `RYUI_SHARE_SHEET`; `app.Run` mounts the sheet then. iOS: the host
+    and the app's Go code are a dynamic framework,
+    `Frameworks/RyUIApp.framework` (Go's runtime starts as it loads);
+    the app's executable is a main that starts the host's delegate
+    (`RyUIAppDelegate`), the extension's links the framework and starts
+    at `NSExtensionMain`, its principal class
+    `RyUIShareSheetController`, which collects the items
+    (`RyUIShareCollector`, shared with the standalone extension). An
+    app without a sheet stays one executable.
+    The app's data is in the App Group for both (`store.Dir`, from the
+    host through `mobile/shareddir`, a cgo call, since `store.Signal`s
+    in package variables read it as packages initialize), moved there
+    once; the keychain group is the app's in both. Android:
+    `RyUIShareActivity`, in a `:share` process, translucent, a
+    `BottomSheetBehavior` sheet; the process ends with the sheet.
+    `ryui dev`: a share sheet's player tells the core (`mShareSheet`)
+    and its session mounts the sheet; on iOS the player's extension
+    finds the address in the App Group. The CLI looks for
+    `app.ShareSheet`'s symbol (in the archive on iOS; in the function
+    names a release's `.so` keeps on Android).
+  - Sharing files: `ui.ShareFiles` (expo-sharing's `shareAsync`), the
+    `share` module's `files`: `UIActivityViewController` with an item
+    source for the type, anchored to a view on iPad; Android's chooser
+    through the FileProvider, answered when the user is back; the Mac's
+    sharing service picker.
   - Custom fonts (`Font.Family`).
   - Accessibility: pressable views as buttons, `Decorative`,
     `ui.Announce`, swipe actions for TalkBack, Reduce Motion.
