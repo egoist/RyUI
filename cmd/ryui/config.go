@@ -82,6 +82,19 @@ type appConfig struct {
 	// shared. true: texts and links; or what it takes,
 	// {"types": ["text", "image/*", "video/*"], "max": 10}.
 	ShareTarget shareTarget `json:"shareTarget"`
+	// Splash is the launch screen: an image (a square PNG, a logo) in the
+	// middle of a color, until the app's first frame (or splash.Hide).
+	//	"splash": {"image": "logo.png", "size": 120, "background": "#ffffff", "darkBackground": "#000000"}
+	Splash struct {
+		Image string `json:"image"`
+		// Size is the image's width in points (dp): default 120; at most
+		// 160 (Android 12's splash icon's circle holds it).
+		Size int `json:"size"`
+		// Background and DarkBackground are "#rrggbb" (default: white;
+		// the light one).
+		Background     string `json:"background"`
+		DarkBackground string `json:"darkBackground"`
+	} `json:"splash"`
 	// shareSheet: the app's Go code calls app.ShareSheet (its archive has
 	// it, sheetSymbol): the share target shows the app's sheet.
 	shareSheet bool
@@ -92,7 +105,12 @@ type appConfig struct {
 	// true, and application elements of the Android manifest.
 	iosTrue    []string
 	androidApp []string
-	Android    struct {
+	// entitlements are the iOS entitlements the packages need, with their
+	// values for a simulator build (a release's are the profile's, which
+	// must have them); plistArrays, Info.plist's arrays they add to.
+	entitlements map[string]any
+	plistArrays  map[string][]string
+	Android      struct {
 		// DynamicColor takes the colors from the user's wallpaper where
 		// the system has them (Android 12 and later), as Material apps do;
 		// the accent is the seed elsewhere.
@@ -102,6 +120,12 @@ type appConfig struct {
 		// and RYUI_KEY_PASSWORD (default: the keystore's).
 		Keystore string `json:"keystore"`
 		KeyAlias string `json:"keyAlias"`
+		// GoogleServices is the Firebase project's google-services.json,
+		// for ryui/push (Firebase Cloud Messaging).
+		GoogleServices string `json:"googleServices"`
+		// MapsKey is a Google Maps Platform API key (Maps SDK for Android),
+		// for ryui/maps.
+		MapsKey string `json:"mapsKey"`
 	} `json:"android"`
 }
 
@@ -165,6 +189,29 @@ func loadConfig(dir string) (*appConfig, error) {
 	}
 	if c.Android.Keystore != "" && !filepath.IsAbs(c.Android.Keystore) {
 		c.Android.Keystore = filepath.Join(dir, c.Android.Keystore)
+	}
+	if c.Android.GoogleServices != "" && !filepath.IsAbs(c.Android.GoogleServices) {
+		c.Android.GoogleServices = filepath.Join(dir, c.Android.GoogleServices)
+	}
+	if sp := &c.Splash; sp.Image != "" || sp.Background != "" {
+		if sp.Image != "" && !filepath.IsAbs(sp.Image) {
+			sp.Image = filepath.Join(dir, sp.Image)
+		}
+		if sp.Size <= 0 {
+			sp.Size = 120
+		}
+		sp.Size = min(sp.Size, 160)
+		if sp.Background == "" {
+			sp.Background = "#ffffff"
+		}
+		if sp.DarkBackground == "" {
+			sp.DarkBackground = sp.Background
+		}
+		for _, b := range []string{sp.Background, sp.DarkBackground} {
+			if !hexColor.MatchString(b) || len(strings.TrimPrefix(b, "#")) != 6 {
+				return nil, fmt.Errorf("ryui.json: splash background %q (want #rrggbb)", b)
+			}
+		}
 	}
 	return c, nil
 }
@@ -234,27 +281,54 @@ var featurePermissions = []struct {
 	// Android manifest's application (a service, a receiver).
 	iosTrue    []string
 	androidApp []string
+	// entitlements (with a simulator build's values) and Info.plist arrays.
+	entitlements map[string]any
+	plistArrays  map[string][]string
 }{
 	{"github.com/egoist/ryui/location", []string{"android.permission.ACCESS_COARSE_LOCATION", "android.permission.ACCESS_FINE_LOCATION"},
-		map[string]string{"NSLocationWhenInUseUsageDescription": "To show where you are."}, nil, nil, nil},
-	{"github.com/egoist/ryui/notify", []string{"android.permission.POST_NOTIFICATIONS"}, nil, nil, nil, nil},
+		map[string]string{"NSLocationWhenInUseUsageDescription": "To show where you are."}, nil, nil, nil, nil, nil},
+	{"github.com/egoist/ryui/notify", []string{"android.permission.POST_NOTIFICATIONS"}, nil, nil, nil, nil, nil, nil},
 	// camera.View's preview is the app's own: the camera permission (and
 	// with it declared, the system's camera app needs it granted too).
-	{"github.com/egoist/ryui/camera", []string{"android.permission.CAMERA"}, map[string]string{"NSCameraUsageDescription": "To take a photo."}, nil, nil, nil},
-	{"github.com/egoist/ryui/camera/record", []string{"android.permission.RECORD_AUDIO"}, map[string]string{"NSMicrophoneUsageDescription": "To record a video's sound."}, nil, nil, nil},
-	{"github.com/egoist/ryui/network", []string{"android.permission.ACCESS_NETWORK_STATE"}, nil, nil, nil, nil},
+	{"github.com/egoist/ryui/camera", []string{"android.permission.CAMERA"}, map[string]string{"NSCameraUsageDescription": "To take a photo."}, nil, nil, nil, nil, nil},
+	{"github.com/egoist/ryui/camera/record", []string{"android.permission.RECORD_AUDIO"}, map[string]string{"NSMicrophoneUsageDescription": "To record a video's sound."}, nil, nil, nil, nil, nil},
+	{"github.com/egoist/ryui/network", []string{"android.permission.ACCESS_NETWORK_STATE"}, nil, nil, nil, nil, nil, nil},
 	// MediaStore needs no permission from Android 10; before, writing to
 	// the shared folders does. Files in Documents show in iOS's Files.
 	{"github.com/egoist/ryui/library", []string{"android.permission.WRITE_EXTERNAL_STORAGE:28"},
 		map[string]string{"NSPhotoLibraryAddUsageDescription": "To save videos and photos to your library."}, nil,
-		[]string{"UIFileSharingEnabled", "LSSupportsOpeningDocumentsInPlace"}, nil},
+		[]string{"UIFileSharingEnabled", "LSSupportsOpeningDocumentsInPlace"}, nil, nil, nil},
 	// A foreground service of the data sync type, its notification, the
 	// CPU kept awake.
 	{"github.com/egoist/ryui/background", []string{"android.permission.FOREGROUND_SERVICE", "android.permission.FOREGROUND_SERVICE_DATA_SYNC",
 		"android.permission.POST_NOTIFICATIONS", "android.permission.WAKE_LOCK"}, nil, nil, nil,
-		[]string{`<service android:name="dev.ryui.RyUIWorkService" android:exported="false" android:foregroundServiceType="dataSync" />`}},
+		[]string{`<service android:name="dev.ryui.RyUIWorkService" android:exported="false" android:foregroundServiceType="dataSync" />`}, nil, nil},
 	// ML Kit's barcode model: about 2 MB, only in the apps that scan.
-	{"github.com/egoist/ryui/scan", nil, nil, []string{"scan"}, nil, nil},
+	{"github.com/egoist/ryui/scan", nil, nil, []string{"scan"}, nil, nil, nil, nil},
+	{pkg: "github.com/egoist/ryui/screen", android: []string{"android.permission.DETECT_SCREEN_CAPTURE"}},
+	{pkg: "github.com/egoist/ryui/biometric", android: []string{"android.permission.USE_BIOMETRIC"},
+		usage: map[string]string{"NSFaceIDUsageDescription": "To confirm it's you."}},
+	{pkg: "github.com/egoist/ryui/tracking", usage: map[string]string{"NSUserTrackingUsageDescription": "To show you ads that suit you."}},
+	// Play's in-app review, Play Integrity, Play Age Signals, Google Maps:
+	// Google's libraries, only in the apps that use them.
+	{pkg: "github.com/egoist/ryui/review", modules: []string{"review"}},
+	{pkg: "github.com/egoist/ryui/integrity", modules: []string{"integrity"},
+		entitlements: map[string]any{"com.apple.developer.devicecheck.appattest-environment": "development"}},
+	{pkg: "github.com/egoist/ryui/agerange", modules: []string{"agerange"},
+		entitlements: map[string]any{"com.apple.developer.declared-age-range": true}},
+	{pkg: "github.com/egoist/ryui/maps", modules: []string{"maps"}},
+	{pkg: "github.com/egoist/ryui/appleauth", entitlements: map[string]any{"com.apple.developer.applesignin": []string{"Default"}}},
+	// Firebase Cloud Messaging (its manifest has POST_NOTIFICATIONS); APNs.
+	{pkg: "github.com/egoist/ryui/push", modules: []string{"push"},
+		entitlements: map[string]any{"aps-environment": "development"},
+		plistArrays:  map[string][]string{"UIBackgroundModes": {"remote-notification"}}},
+	{pkg: "github.com/egoist/ryui/audio/record", android: []string{"android.permission.RECORD_AUDIO"},
+		usage: map[string]string{"NSMicrophoneUsageDescription": "To record sound."}},
+	// WorkManager; iOS's background tasks, by the identifiers the host
+	// schedules (RyUIPeriodic).
+	{pkg: "github.com/egoist/ryui/periodic", modules: []string{"periodic"},
+		plistArrays: map[string][]string{"UIBackgroundModes": {"fetch", "processing"},
+			"BGTaskSchedulerPermittedIdentifiers": {"dev.ryui.refresh", "dev.ryui.processing"}}},
 }
 
 // permissionsFor adds the permissions the packages deps (an app's
@@ -283,6 +357,22 @@ func (c *appConfig) permissionsFor(deps []string) {
 		for _, x := range f.androidApp {
 			if !slices.Contains(c.androidApp, x) {
 				c.androidApp = append(c.androidApp, x)
+			}
+		}
+		for k, v := range f.entitlements {
+			if c.entitlements == nil {
+				c.entitlements = map[string]any{}
+			}
+			c.entitlements[k] = v
+		}
+		for k, vs := range f.plistArrays {
+			if c.plistArrays == nil {
+				c.plistArrays = map[string][]string{}
+			}
+			for _, v := range vs {
+				if !slices.Contains(c.plistArrays[k], v) {
+					c.plistArrays[k] = append(c.plistArrays[k], v)
+				}
 			}
 		}
 		for k, v := range f.usage {
@@ -315,7 +405,17 @@ func (c *appConfig) androidManifest(debug bool) string {
 	if debug {
 		b.WriteString(" android:usesCleartextTraffic=\"true\"")
 	}
-	b.WriteString(">\n        <activity android:name=\"dev.ryui.RyUIActivity\" android:exported=\"true\">\n")
+	b.WriteString(">\n")
+	// The Maps SDK's key (ryui/maps), which it reads from the manifest.
+	if c.Android.MapsKey != "" && slices.Contains(c.androidModules, "maps") {
+		fmt.Fprintf(&b, "        <meta-data android:name=\"com.google.android.geo.API_KEY\" android:value=\"%s\" />\n", html.EscapeString(c.Android.MapsKey))
+	}
+	// The splash's theme (androidRes), which RyUIActivity leaves as it starts.
+	theme := ""
+	if c.splashOn() {
+		theme = ` android:theme="@style/Theme.RyUI.Splash"`
+	}
+	fmt.Fprintf(&b, "        <activity android:name=\"dev.ryui.RyUIActivity\" android:exported=\"true\"%s>\n", theme)
 	filter := func(verify bool, data string) {
 		v := ""
 		if verify {

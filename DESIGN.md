@@ -576,6 +576,22 @@ the device for that is later, under a name that says storage (say
 not to be confused with keeping state across `ryui dev` reloads (below),
 which needs no code.
 
+The core can also start without a screen: when the system runs a
+background task (`ryui/periodic`: BGTaskScheduler, WorkManager) with the
+app closed, the host starts the core headless (`startHeadless`): `main`
+runs, the root component mounts into views no window holds yet, and the
+task's Go code runs. A screen that comes later (the user opens the app)
+takes that root as a recreated Activity does (`ryui_attach` on Android;
+the root controller mounts the existing root view on iOS).
+
+Packages that need a framework or library of their own cost only the
+apps that use them. On iOS, the host's Swift for them is compiled under a
+flag (`RYUI_MAPS`...) set when the app's Go archive has the package's
+symbol (`iosFeatures`). On Android, each is an optional Gradle module
+(`ryui-maps`, `ryui-push`...) built in for the apps that import its
+package (`featurePermissions`), whose `RyUIPlugin` registers its methods
+and views by name at start.
+
 ## mobile
 
 `mobile/` (build tags `ios || android`, cgo) exports a C ABI:

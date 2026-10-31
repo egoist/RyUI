@@ -62,9 +62,11 @@ reloads it as you save, on the simulator, an emulator or a phone.
   announcements, and text that scales.
 - [Data](data.md): values kept across launches, SQLite with live
   queries, and secure storage.
-- [Device and services](device.md): the camera, code scanning, photos,
-  location, notifications, audio, network, the media library and work
-  in the background.
+- [Device and services](device.md): the camera, code scanning, photos
+  and files, location, notifications and push, audio and recording,
+  network, the media library, work in the background, sign-in and
+  biometrics, the screen and the launch screen, maps, and the stores'
+  services.
 - [Native code](native.md): views and modules of your own, in Swift and
   Kotlin.
 - [Development](development.md): `ryui dev` in depth, devices, tests and

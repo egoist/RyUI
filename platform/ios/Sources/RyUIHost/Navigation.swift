@@ -21,6 +21,10 @@ class RyUIScreenController: UIViewController {
 
     override func loadView() { view = content }
 
+    // ryui/screen's status bar, when this screen is presented full screen.
+    override var preferredStatusBarStyle: UIStatusBarStyle { RyUIScreen.statusBarStyle }
+    override var prefersStatusBarHidden: Bool { RyUIScreen.statusBarHidden }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground

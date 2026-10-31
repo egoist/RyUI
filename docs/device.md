@@ -1,8 +1,10 @@
 # Device and services
 
 RyUI's packages reach what the phone has beyond views: the camera, codes,
-photos, location, notifications, sound, the network's state, the shared
-library, work in the background, shares from other apps and JavaScript.
+photos and files, location, notifications and push, sound and recording,
+the network's state, the shared library, work in the background, shares
+from other apps, JavaScript, sign-in and biometrics, the screen, maps,
+and the stores' services.
 This page covers each package: what it does, its API, the permissions it
 brings and how it behaves on each platform.
 
@@ -23,8 +25,25 @@ photo app doesn't ask for the microphone.
 | `ryui/library` | `WRITE_EXTERNAL_STORAGE` (Android 9 and earlier) | `NSPhotoLibraryAddUsageDescription`; the app's Documents shown in Files |
 | `ryui/background` | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC`, `POST_NOTIFICATIONS`, `WAKE_LOCK`; a foreground service | |
 | `ryui/scan` | ML Kit's barcode model (about 2 MB) | |
+| `ryui/push` | Firebase Cloud Messaging, `POST_NOTIFICATIONS` | the `aps-environment` entitlement; `remote-notification` background mode |
+| `ryui/appleauth` | | the Sign in with Apple entitlement |
+| `ryui/biometric` | `USE_BIOMETRIC` | `NSFaceIDUsageDescription` |
+| `ryui/audio/record` | `RECORD_AUDIO` | `NSMicrophoneUsageDescription` |
+| `ryui/screen` | `DETECT_SCREEN_CAPTURE` | |
+| `ryui/tracking` | | `NSUserTrackingUsageDescription` |
+| `ryui/review` | Play's in-app review library | |
+| `ryui/integrity` | Play Integrity | the App Attest entitlement |
+| `ryui/agerange` | Play Age Signals | the Declared Age Range entitlement |
+| `ryui/maps` | Google's Maps SDK | |
+| `ryui/periodic` | WorkManager | `fetch` and `processing` background modes; the task identifiers |
 
-`ryui/device`, `ryui/audio`, `ryui/js` and `ryui/secure` need none.
+`ryui/device`, `ryui/audio`, `ryui/splash`, `ryui/js` and `ryui/secure`
+need none.
+
+An entitlement needs its capability on the app's App ID
+(developer.apple.com, Identifiers) for a release build: the provisioning
+profile has it then. `ryui build -ios` stops with what's missing if the
+profile lacks one; simulator builds have them all.
 
 The purpose strings RyUI writes are generic ("To take a photo."). iOS
 shows them when it asks the user, so write your own in `ryui.json`'s
@@ -230,6 +249,12 @@ ui.Button(ui.ButtonProps{Title: ui.Val("Help"), OnPress: func() {
   reads what another app put there. `ui.Copy` writes it.
 - `device.KeepAwake(on)` keeps the screen on while `on` is true: a video,
   a recipe, a map. Turn it off when the screen that wants it goes.
+- `device.PickFiles(options, done)` shows the system's document picker
+  (iOS's Files browser, Android's storage picker; no permission). `Types`
+  are MIME types (`"application/pdf"`, `"image/*"`; none: any file) and
+  `Multiple` lets the user pick several. `done` gets a `device.File` for
+  each, its `Path` a copy in the app's caches, with its `Name`, `Type` and
+  `Size`, or none if the user cancelled.
 - `device.GetInfo()` is the device and the app: `Model` ("iPhone", "Pixel
   9"), `System` ("iOS", "Android"), `SystemVersion`, and `AppVersion` and
   `Build`, `ryui.json`'s `version` and `build`. Not on the main thread.
@@ -807,6 +832,273 @@ thrown error's message has its stack.
 
 For script in a page the user sees, use `ui.WebView`
 ([Web pages](components.md#web-pages)).
+
+## Push notifications: ryui/push
+
+`push.Register()` asks the user to allow notifications (the first time),
+registers the device with Apple's (APNs) or Google's (Firebase Cloud
+Messaging) service, and reports its `Token`, its `Service` (`"apns"`,
+`"fcm"`) and whether notifications are `Allowed`. Send the token to your
+server, which sends notifications to it; register at each launch, since
+the token can change. Not on the main thread.
+
+```go
+func App() ui.Node {
+	push.OnOpen(func(m push.Message) { openThread(m.Data["thread"]) })
+	go func() {
+		if r, err := push.Register(); err == nil {
+			api.SaveDeviceToken(r.Service, r.Token)
+		}
+	}()
+	return home()
+}
+```
+
+- `push.OnReceive(f)` gets each message that comes while the app runs.
+  It's shown as a notification too, in the foreground as well, if it has
+  a title or body. Data messages (silent pushes) come here only.
+- `push.OnOpen(f)` gets each notification the user taps, including the
+  one that launched the app, if `f` is set as the app starts. A
+  message's data `"url"` also goes to `ui.OnOpenURL`, as
+  `ryui/notify`'s do.
+- A `push.Message` has its `ID`, `Title`, `Body` and `Data` (iOS: the
+  payload's keys beside `aps`; Android: the message's data).
+
+iOS needs the Push Notifications capability on the App ID for a release
+build; the simulator gets a token too. Android needs a Firebase project:
+add the Android app to it, download its `google-services.json`, and name
+it in `ryui.json`:
+
+```json
+{ "android": { "googleServices": "google-services.json" } }
+```
+
+RyUI writes its settings into the app as Google's Gradle plugin would.
+Without it, `Register` fails with what to do.
+
+## Sign in with Apple: ryui/appleauth
+
+`appleauth.Button` is Apple's own button (its title, logo and colors, in
+the user's language), and `appleauth.SignIn` shows the system's sheet.
+The App Store requires Sign in with Apple of an app that offers another
+company's sign-in for its accounts.
+
+```go
+appleauth.Button(appleauth.ButtonProps{
+	Type:  appleauth.ContinueButton,
+	Style: appleauth.Automatic, // black in light mode, white in dark
+	OnPress: func() {
+		go func() {
+			c, err := appleauth.SignIn(appleauth.Options{Scopes: appleauth.FullName | appleauth.Email, Nonce: nonce})
+			if err == nil {
+				api.SignInWithApple(c.IdentityToken, c.AuthorizationCode)
+			}
+		}()
+	},
+})
+```
+
+The `Credential`'s `User` is the account's stable ID; send its
+`IdentityToken` (a JWT Apple signs) and `AuthorizationCode` to your
+server, which checks them with Apple. `Email`, `GivenName` and
+`FamilyName` come only the first time the user signs in to the app: keep
+them then. `ErrCanceled` is the user closing the sheet.
+`appleauth.CredentialState(user)` says whether the user still uses Sign
+in with Apple for the app (`Revoked`: sign them out). On Android there's
+none: `Button` is nothing, `Available` is false and `SignIn` fails with
+`ErrNotAvailable`. Sign in with Apple there on the web (`ryui/webauth`).
+
+## Face ID and fingerprints: ryui/biometric
+
+`biometric.Authenticate(options)` shows the system's prompt (Face ID,
+Touch ID, Android's BiometricPrompt) and returns nil if it's the device's
+owner, or `ErrCanceled`, `ErrNotAvailable` (no biometry and no passcode,
+or locked out) or `ErrFailed`. Not on the main thread.
+
+```go
+go func() {
+	err := biometric.Authenticate(biometric.Options{Reason: "Unlock your notes"})
+	ui.Post(func() { unlocked.Set(err == nil) })
+}()
+```
+
+- `Reason` says why (iOS's subtitle; Android's title); `Cancel` is the
+  cancel button's title.
+- The user can use the device's passcode, PIN or pattern instead, unless
+  `NoPasscode`: biometry only (on Android, a strong one, Class 3).
+- `biometric.Check()` says what the device has: its `Kind` (`Face`,
+  `Fingerprint`, `Iris`, `Optic`), whether one is `Enrolled`, and whether
+  it has a `Passcode`.
+
+## Recording sound: ryui/audio/record
+
+`record.Start(options, done)` records from the microphone until
+`record.Stop` (or `MaxDuration`), then calls `done` with the file: AAC in
+an MPEG-4 container (`.m4a`), in the app's caches, which `ryui/audio`
+plays. It asks for the microphone the first time; refused, `done` gets
+`"not allowed"`.
+
+```go
+record.Start(record.Options{Quality: record.Voice, MaxDuration: time.Minute}, func(path string, err error) {
+	if err == nil {
+		memo.Set(path)
+	}
+})
+// later
+record.Stop()
+```
+
+`Voice` is mono at 64 kbit/s; `Music`, stereo at 128 kbit/s. `Pause` and
+`Resume` pause and continue the same file. `record.Level()`, from a
+goroutine a few times a second, is the sound's level from 0 to 1, for a
+meter. On iOS the audio session plays and records while it records
+(other apps' sound stops), and goes back after.
+
+## The screen: ryui/screen
+
+```go
+screen.Lock(screen.Landscape) // a video player
+screen.SetBars(screen.Bars{Style: screen.Light, HideStatus: true})
+screen.PreventCapture(true) // a ticket's code
+stop := screen.OnScreenshot(func() { note.Set("That screenshot shows your balance") })
+```
+
+- `screen.Lock(o)` turns the app to `o` and keeps it there: `Portrait`,
+  `PortraitUp`, `Landscape`, `LandscapeLeft`, `LandscapeRight`; `Any`
+  unlocks it. Only the orientations `ryui.json` allows. iPads in Split
+  View or Stage Manager, and Android 16's large screens, ignore it.
+- `screen.SetBars(bars)` sets the status bar's `Style` (`Auto` follows
+  dark mode; `Light` is light icons, for a dark picture under them;
+  `Dark`, dark ones), and hides the status bar (`HideStatus`) or
+  Android's navigation bar (`HideNavigation`; a swipe from the edge shows
+  them a moment). The safe area follows.
+- `screen.PreventCapture(on)` keeps the app out of screenshots and
+  recordings. Android makes the window secure: captures are black, and
+  the recent apps show it blank. iOS can't stop a screenshot: it covers
+  the app while the screen is recorded, mirrored or on AirPlay.
+- `screen.OnScreenshot(f)` calls `f` when the user takes a screenshot
+  (iOS; Android 14 and later), until `stop`.
+
+These are the app's, not a screen's: a screen that sets one sets it back
+as it goes (`signal.OnCleanup`).
+
+## The launch screen: ryui/splash
+
+`ryui.json`'s `splash` is the launch screen: an image (a square PNG, a
+logo), `size` points wide (default 120, at most 160), in the middle of a
+color, in light and dark mode.
+
+```json
+{ "splash": { "image": "logo.png", "size": 96, "background": "#4A63B5", "darkBackground": "#1B2440" } }
+```
+
+It shows from the tap on the icon until the app's first frame: iOS's
+launch screen, then a copy of it over the app until the first frame is
+ready; Android 12's splash screen (the image in the middle of the icon's
+circle) and, before, the window's background. To keep it up while the app
+loads, call `splash.Hold()` as it starts (in the root component) and
+`splash.Hide()` once it's ready:
+
+```go
+func App() ui.Node {
+	splash.Hold()
+	go func() {
+		load()
+		ui.Post(splash.Hide)
+	}()
+	return home()
+}
+```
+
+## Maps: ryui/maps
+
+`maps.View` is a map: Apple Maps on iOS, Google Maps on Android.
+
+```go
+region := signal.New(maps.Region{Center: maps.Coordinate{Lat: 37.77, Lng: -122.42}, LatDelta: 0.05, LngDelta: 0.05})
+maps.View(maps.Props{
+	Region:         region,
+	Markers:        ui.Val([]maps.Marker{{ID: "hq", At: maps.Coordinate{Lat: 37.79, Lng: -122.39}, Title: "HQ"}}),
+	OnRegionChange: func(r maps.Region) { region.Set(r) },
+	OnMarkerPress:  func(id string) { show(id) },
+	Style:          ui.Style{Grow: 1},
+})
+```
+
+- `Region` is where it shows, its center and the degrees it spans;
+  setting it moves the map there. `OnRegionChange` gets the region once
+  the user has moved it.
+- `Markers` are pins, with a `Title`, `Subtitle` and `Color`;
+  `OnMarkerPress` gets a tapped one's `ID`, and `OnPress` where the user
+  taps the map.
+- `Type` is `Standard`, `Satellite`, `Hybrid` or `Muted` (iOS);
+  `ShowsUser` shows the user's location, with the location permission
+  (import `ryui/location` and ask for it first); `NoInteraction` makes
+  it a still preview.
+- A map has no size of its own: give it one, or `Grow`.
+
+Android needs a Google Maps Platform API key with the Maps SDK for
+Android, in `ryui.json`: `{"android": {"mapsKey": "..."}}`. Without it,
+the map says so, and `OnError` gets why.
+
+## Background refresh: ryui/periodic
+
+`ryui/periodic` runs the app's Go code now and then while it isn't on
+screen: a sync, a fetch of what's new. `Handle` sets a task's code, in
+the root component; `Schedule` asks the system to run it.
+
+```go
+func App() ui.Node {
+	periodic.Handle("sync", func(ctx context.Context) error {
+		return syncInbox(ctx)
+	})
+	periodic.Schedule("sync", periodic.Options{Every: time.Hour, Network: true})
+	return home()
+}
+```
+
+The system decides when, from `Every` (15 minutes at least), the
+battery, the network, and how the user uses the app; it may wait much
+longer, and the user can turn it off (iOS's Background App Refresh).
+`Network` runs it only online and `Charging` only while charging. The
+`ctx` ends before the system's deadline: about 25 seconds on iOS (a
+processing task, for `Charging`, has minutes), 9 minutes on Android
+(WorkManager). An error asks Android to retry it.
+
+When the system runs a task with the app closed, the app's Go code
+starts without a screen: `main` runs, and the root component (which
+calls `Handle`), then the task. If the user opens the app then, its
+screen appears. `Cancel(name)` stops a task.
+
+## The stores: ryui/review, ryui/tracking, ryui/integrity, ryui/agerange
+
+`review.Request(done)` asks the store for its rating prompt (the App
+Store's, Google Play's in-app review). The stores decide whether it
+shows, on their own quotas, and don't say; ask after a success, never
+from a button. For a "Rate us" button, `ui.OpenURL(review.AppStoreURL(id))`
+or `review.PlayStoreURL(id)`.
+
+`tracking.Request()` shows iOS's App Tracking Transparency prompt, which
+an app must before it reads the advertising identifier or shares data
+with ad networks, and reports `Allowed`, `Denied`, `Restricted` or
+`NotAsked`; `tracking.Current()` reads it without asking. Android has no
+such prompt: it's `Allowed`. Not on the main thread.
+
+`ryui/integrity` proves to your server that a request comes from your
+app on a real device. iOS: App Attest. `GenerateKey` makes a key (keep
+its ID), `AttestKey(id, challenge)` has Apple attest it for your server's
+challenge, once, and `Assert(id, data)` signs each request after. Android:
+Play Integrity. `Prepare(cloudProjectNumber)` at launch, then
+`Token(requestHash)` for each request. The server checks what they
+return with Apple or Google. `Supported` is false on the iOS simulator.
+
+`agerange.Request(13, 18)` asks for the user's age range without their
+birth date, for the laws that ask apps to know a child: Apple's Declared
+Age Range (iOS 26) and Play's Age Signals. The platform may ask the user
+or their parent to share. The `Result` is `Shared` with a `Lower` and
+`Upper` age (0: open), `Declined`, or `VerificationRequired` (Play); its
+`Source` says how it's known. `ErrNotAvailable` where the platform can't
+answer.
 
 ## Haptics: ui.Haptic
 

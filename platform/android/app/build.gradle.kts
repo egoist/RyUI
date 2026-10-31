@@ -48,6 +48,7 @@ android {
         // over the debug one in development.
         getByName("debug") {
             prop("ryuiManifest")?.let { manifest.srcFile(it) }
+            prop("ryuiRes")?.let { res.srcDir(it) } // the splash, Firebase's settings
         }
         getByName("release") {
             prop("ryuiJniLibs")?.let { jniLibs.srcDir(it) }

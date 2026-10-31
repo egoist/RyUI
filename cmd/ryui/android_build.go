@@ -79,6 +79,9 @@ and give its password in RYUI_KEYSTORE_PASSWORD (and RYUI_KEY_PASSWORD if the ke
 	} else {
 		fmt.Println("ryui: no icon in ryui.json; Google Play needs one (512×512 or larger PNG)")
 	}
+	if _, err := androidRes(cfg, res); err != nil {
+		return err
+	}
 	manifest := filepath.Join(work, "AndroidManifest.xml")
 	if err := os.WriteFile(manifest, []byte(cfg.androidManifest(false)), 0o644); err != nil {
 		return err

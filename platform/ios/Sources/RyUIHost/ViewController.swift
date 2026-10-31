@@ -38,6 +38,13 @@ public final class RyUIViewController: UIViewController {
         rt.start(self)
     }
 
+    // ryui/screen's lock and status bar.
+    public override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
+        RyUIScreen.lock ?? super.supportedInterfaceOrientations
+    }
+    public override var preferredStatusBarStyle: UIStatusBarStyle { RyUIScreen.statusBarStyle }
+    public override var prefersStatusBarHidden: Bool { RyUIScreen.statusBarHidden }
+
     func mount(_ v: UIView) {
         root?.removeFromSuperview()
         root = v

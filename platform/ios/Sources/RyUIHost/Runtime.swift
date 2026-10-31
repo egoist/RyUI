@@ -270,16 +270,35 @@ final class RyUITextField: UITextField {
 
     func start(_ controller: RyUIViewController) {
         self.controller = controller
+        guard !started else {
+            // Started without a screen (ryui/periodic's task): the root goes in it now.
+            if let n = nodes[rootID], n.view.superview == nil { controller.mount(n.view) }
+            return
+        }
+        boot()
+    }
+
+    /// Starts the core without a screen, if it hasn't started: the system
+    /// launched the app in the background for a task (ryui/periodic). The
+    /// root view is made, and goes on screen if a scene comes.
+    func startHeadless() {
         guard !started else { return }
+        boot()
+    }
+
+    private func boot() {
         started = true
         NotificationCenter.default.addObserver(self, selector: #selector(voiceOverChanged), name: UIAccessibility.voiceOverStatusDidChangeNotification, object: nil)
-        #if RYUI_NOTIFY
+        #if RYUI_PUSH
+        RyUIPush.shared.install() // ryui/notify's too
+        #elseif RYUI_NOTIFY
         RyUINotify.shared.install()
         #endif
         #if DEBUG
         RyUIAutomation.start()
         #endif
         registerNatives()
+        if let c = controller { RyUISplash.shared.show(over: c) }
         var cb = ryui_host_callbacks(
             apply: { buf, len in
                 MainActor.assumeIsolated {
@@ -300,6 +319,7 @@ final class RyUITextField: UITextField {
             }
         )
         enter { ryui_start(&cb) }
+        RyUISplash.shared.started()
         let urls = pendingURLs
         pendingURLs = []
         for u in urls { openURL(u) }

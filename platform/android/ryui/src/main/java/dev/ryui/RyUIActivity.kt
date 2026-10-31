@@ -29,9 +29,12 @@ open class RyUIActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         runtime = RyUIRuntime.get(this)
+        RyUISplash.theme(this) // ryui.json's splash: shown, then the app's theme
         edgeToEdge()
         super.onCreate(savedInstanceState)
+        RyUIDisplay.apply(this, runtime.isNight(resources.configuration)) // ryui/screen's, if it set any
         frame = FrameLayout(this)
+        RyUISplash.install(frame) // ryui.json's splash, until the first frame
         setContentView(content(frame))
         onBackPressedDispatcher.addCallback(this, runtime.back)
 
@@ -87,7 +90,9 @@ open class RyUIActivity : AppCompatActivity() {
             intent.getByteArrayExtra(RyUIShareActivity.ITEMS)?.let { runtime.shared(it) }
             return
         }
-        intent.data?.let { runtime.openURL(it.toString()) }
+        // A push the user tapped (ryui/push): its data's url, if any.
+        val pushed = RyUIPushHub.opened(intent)
+        (intent.data?.toString() ?: pushed)?.let { runtime.openURL(it) }
     }
 
     fun mount(root: View) {
@@ -125,6 +130,7 @@ open class RyUIActivity : AppCompatActivity() {
 
     private fun configured(config: Configuration) {
         edgeToEdge() // status bar icons follow dark mode
+        RyUIDisplay.bars(this, runtime.isNight(config)) // unless ryui/screen set them
         runtime.configurationChanged(config)
         window.setBackgroundDrawable(windowBackground())
         frame.post { sendEnvironment() }
@@ -154,6 +160,7 @@ open class RyUIActivity : AppCompatActivity() {
         // one, then closed): take them back.
         if (runtime.activity != null && runtime.activity !== this) frame.post { runtime.attach(this) }
         runtime.lifecycle(RyUILifecycle.FOREGROUND)
+        RyUIDisplay.watch(this, true)
     }
 
     override fun onPause() {
@@ -168,6 +175,7 @@ open class RyUIActivity : AppCompatActivity() {
 
     override fun onStop() {
         super.onStop()
+        RyUIDisplay.watch(this, false)
         runtime.lifecycle(RyUILifecycle.BACKGROUND)
     }
 

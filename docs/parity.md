@@ -35,7 +35,7 @@ what RyUI has for it.
 | Images (remote, cached, placeholders) | `AsyncImage` | `expo-image` | ✓ `Image` (memory and disk cache, `Placeholder`) |
 | Video | `VideoPlayer` | `expo-video` | ✓ `Video` |
 | Web content | `WKWebView` | `react-native-webview` | ✓ `WebView` (URL, HTML, messages both ways, scripts before the page's, blocked requests, its state and history, downloads, new windows, cookies, a script's value; each request on Android); `ryui/js` runs JavaScript off screen |
-| Maps | `Map` | `react-native-maps` | ✗ (a native view through `ui.Native` meanwhile) |
+| Maps | `Map` | `expo-maps` | ✓ `ryui/maps` (Apple Maps; Google Maps with an API key: region, markers, the user's location, taps) |
 | Custom drawing | `Shape`, `Path`, `Canvas` | `react-native-svg`, Skia | ◐ `Shape` and `Path` (lines, curves, arcs, rects, ellipses; fill, stroke, caps, joins; an animatable trim); SVG icons drawn natively (`ryui/svg`); no immediate-mode canvas, no gradient fills |
 | Native escape hatch | `UIViewRepresentable` | native modules | ✓ `ui.Native` views, `ui.Call` modules |
 
@@ -75,20 +75,31 @@ what RyUI has for it.
 | Secure storage | Keychain | `expo-secure-store` | ✓ `ryui/secure` |
 | Files, network | Foundation | `expo-file-system`, fetch | ✓ Go's `os`, `net/http` |
 | Photos | `PhotosPicker` | `expo-image-picker` | ✓ `device.PickPhotos` |
+| Documents | `UIDocumentPickerViewController` | `expo-document-picker` | ✓ `device.PickFiles` (MIME types, several) |
 | Camera | AVFoundation | `expo-camera` | ✓ `ryui/camera`: `Take` (the system's camera), `View` (a live preview, front or back), `Capture`; `ryui/camera/record` records video with sound |
 | Barcodes, QR codes | AVFoundation, Vision | `expo-camera` scanning | ✓ `ryui/scan`: live in `camera.View` (`Scan: scan.Codes(...)`) and in image files (`scan.File`); ML Kit on Android, only in the apps that import it |
 | Location | Core Location | `expo-location` | ✓ `ryui/location` |
-| Local notifications | UserNotifications | `expo-notifications` | ✓ `ryui/notify` (local; no push yet) |
-| Push notifications | APNs | `expo-notifications` | ✗ |
+| Local notifications | UserNotifications | `expo-notifications` | ✓ `ryui/notify` |
+| Push notifications | APNs | `expo-notifications` | ✓ `ryui/push` (APNs, Firebase Cloud Messaging: the token, messages received and tapped) |
 | Clipboard, share sheet, browser | `UIPasteboard`, `ShareLink`, `SFSafariViewController` | `expo-clipboard`, `expo-sharing`, `expo-web-browser` | ✓ `Copy`, `device.Clipboard`, `Share` (text), `ShareFiles` (files, with expo-sharing's MIME type, UTI, title and iPad anchor; done when the sheet closes), `device.Browse` |
 | Keep awake, device info | `isIdleTimerDisabled`, `UIDevice` | `expo-keep-awake`, `expo-device` | ✓ `device.KeepAwake`, `device.GetInfo` |
 | Network state | `NWPathMonitor` | `expo-network` | ✓ `ryui/network` (online, Wi-Fi or cellular, metered, Data Saver / Low Data Mode) |
 | Saving to the gallery, Downloads | `PHPhotoLibrary` | `expo-media-library` | ✓ `ryui/library` (MediaStore's collections; Photos, or Documents in Files) |
-| Work in the background | `beginBackgroundTask`, `BGTaskScheduler` | `expo-task-manager` | ◐ `ryui/background`: Android keeps the app running, its progress and buttons in a notification; iOS gives about 30 seconds; no scheduled tasks |
+| Work in the background | `beginBackgroundTask`, `BGTaskScheduler` | `expo-task-manager`, `expo-background-task` | ✓ `ryui/background`: Android keeps the app running, its progress and buttons in a notification; iOS gives about 30 seconds. `ryui/periodic`: tasks the system runs now and then, the app's Go code started without a screen (BGTaskScheduler, WorkManager) |
 | Receiving shares from other apps | Share extension | `expo-sharing` (`useIncomingShare`) | ✓ `ui.OnShare`: texts, links, images, videos, audio and files, one or many, with their name, MIME type and size (`ryui.json`'s `shareTarget`: types and max, Android's intent filters and iOS's activation rule from them; on iOS a share extension that opens the app, files through an App Group); `app.ShareSheet`, the app's own screen over the app that shares (iOS: its share extension; Android: a bottom sheet in a process of its own), its data shared with the app; no resolving of links (`net/http`) |
-| Audio | AVAudioPlayer | `expo-audio` | ✓ `ryui/audio` (load, play, pause, seek, volume, loop); no recording |
+| Audio | AVAudioPlayer, AVAudioRecorder | `expo-audio` | ✓ `ryui/audio` (load, play, pause, seek, volume, loop); `ryui/audio/record` (voice or music quality, pause, a level meter) |
+| Sign in with Apple | `SignInWithAppleButton` | `expo-apple-authentication` | ✓ `ryui/appleauth` (Apple's button, the credential, its state) |
+| Face ID, fingerprints | LocalAuthentication | `expo-local-authentication` | ✓ `ryui/biometric` |
+| Store review | `requestReview` | `expo-store-review` | ✓ `ryui/review` (the App Store's prompt, Play's in-app review) |
+| Tracking permission | App Tracking Transparency | `expo-tracking-transparency` | ✓ `ryui/tracking` |
+| App integrity | App Attest | `expo-app-integrity` | ✓ `ryui/integrity` (App Attest, Play Integrity) |
+| Age range | Declared Age Range | `expo-age-range` | ✓ `ryui/agerange` (Declared Age Range, Play Age Signals) |
 | Custom fonts | `.font(.custom)` | `expo-font` | ✓ `Font.Family` |
 | Lifecycle | `scenePhase` | AppState | ✓ `app.OnLifecycle` |
+| Launch screen | `UILaunchScreen` | `expo-splash-screen` | ✓ `ryui.json`'s `splash`; `ryui/splash` holds it while the app loads |
+| Status bar, navigation bar | `statusBarHidden`, `preferredStatusBarStyle` | `expo-status-bar`, `expo-navigation-bar` | ✓ `ryui/screen`'s `SetBars` |
+| Orientation lock | `supportedInterfaceOrientations` | `expo-screen-orientation` | ✓ `ryui/screen`'s `Lock` |
+| Screenshots | `isCaptured`, `userDidTakeScreenshotNotification` | `expo-screen-capture` | ✓ `ryui/screen`'s `PreventCapture` (Android: blank captures; iOS: covered while recorded), `OnScreenshot` |
 
 ## Appearance and accessibility
 
@@ -112,7 +123,8 @@ what RyUI has for it.
 
 ## Not yet
 
-In order of what apps miss most: push notifications and maps (both set
-aside for now: push needs an APNs key and a Firebase project, Android's
-maps a provider's choice). Maps can be an app's own native view through
-`ui.Native` until then.
+In order of what apps miss most: sensors (motion, the pedometer), image
+editing (resize, crop, HEIC), contacts and calendars, text to speech,
+the mail and message composers and printing, home-screen widgets and App
+Intents, and over-the-air updates (EAS Update's; RyUI apps are compiled
+Go, which the stores don't let an app replace).

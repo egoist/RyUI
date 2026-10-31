@@ -309,6 +309,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
             registerNatives()
             activity.sendEnvironment(force = true)
             enter { RyUINative.start(this) }
+            RyUISplash.started()
             val urls = ArrayList(pendingURLs)
             pendingURLs.clear()
             for (u in urls) openURL(u)
@@ -319,6 +320,20 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
             activity.sendEnvironment(force = true)
             enter { RyUINative.attach() }
         }
+    }
+
+    /**
+     * Starts the core without an Activity, if it hasn't started: the
+     * system runs a task (ryui/periodic) with the app in the background.
+     * The root's views are made; an Activity that comes takes them (attach).
+     */
+    fun startHeadless() {
+        if (started) return
+        started = true
+        RyUINative.load(app)
+        registerNatives()
+        enter { RyUINative.start(this) }
+        RyUISplash.started()
     }
 
     private val pendingURLs = ArrayList<String>()

@@ -54,7 +54,7 @@ fun RyUIRuntime.call(root: Int, args: ByteBuffer) {
             }
         }
     }
-    val m = modules[module]?.get(method) ?: return reply(Result.failure(Exception("no module method $module.$method")))
+    val m = modules[module]?.let { it[method] ?: it["*"] } ?: return reply(Result.failure(Exception("no module method $module.$method")))
     try {
         m(payload, reply)
     } catch (e: Exception) {
@@ -186,6 +186,22 @@ private fun RyUIRuntime.registerBuiltinModules() {
     modules["audio"] = audioMethods()
     modules["camera"] = cameraMethods()
     modules["scan"] = scanMethods()
+    modules["screen"] = screenMethods()
+    modules["splash"] = RyUISplash.methods()
+    modules["files"] = filesMethods()
+    modules["biometric"] = biometricMethods()
+    modules["tracking"] = trackingMethods()
+    modules["push"] = pushMethods()
+    modules["audioRecord"] = RyUIAudioRecorder(this).methods()
+    modules["periodic"] = RyUIPeriodicHub.methods(this)
+    modules["appleAuth"] = mapOf(
+        "available" to { _, reply -> reply(Result.success(byteArrayOf(0))) },
+        "*" to { _, reply -> reply(Result.failure(Exception("not available"))) },
+    )
+    // Without its module, a package's calls fail with what's missing.
+    for ((m, pkg) in listOf("review" to "review", "integrity" to "integrity", "ageRange" to "agerange")) {
+        modules[m] = mapOf("*" to { _, reply -> reply(Result.failure(Exception("ryui/$pkg isn't in this build"))) })
+    }
     modules["device"] = mapOf(
         // result: JSON: model, system, systemVersion, appVersion, build.
         "info" to { _, reply ->
@@ -247,5 +263,37 @@ private fun RyUIRuntime.pickPhotos(act: RyUIActivity, limit: Int, reply: (Result
             done(listOfNotNull(uri))
         }
         launcher.launch(request)
+    }
+}
+
+/**
+ * An optional module's (platform/android/ryui-<name>: Play's libraries,
+ * Google Maps, Firebase), which only the apps that import its package are
+ * built with: it registers its methods and views. Found by name.
+ */
+interface RyUIPlugin {
+    fun register(rt: RyUIRuntime)
+}
+
+/** The optional modules' plugins, by class name. */
+private val plugins = listOf(
+    "dev.ryui.review.RyUIReviewPlugin",
+    "dev.ryui.integrity.RyUIIntegrityPlugin",
+    "dev.ryui.agerange.RyUIAgeRangePlugin",
+    "dev.ryui.maps.RyUIMapsPlugin",
+    "dev.ryui.push.RyUIPushPlugin",
+    "dev.ryui.periodic.RyUIPeriodicPlugin",
+)
+
+/**
+ * Registers the optional modules this app was built with: at start (with
+ * the native views), so their modules are the app's, over the fallbacks.
+ */
+fun RyUIRuntime.registerPlugins() {
+    for (name in plugins) {
+        try {
+            (Class.forName(name).getDeclaredConstructor().newInstance() as RyUIPlugin).register(this)
+        } catch (_: ReflectiveOperationException) {
+        }
     }
 }

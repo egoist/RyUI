@@ -198,6 +198,38 @@ struct RyUIModuleError: LocalizedError {
         modules["library"] = RyUILibrary.methods()
         #endif
         modules["share"] = RyUIShare.methods(self)
+        modules["screen"] = RyUIScreen.shared.methods(self)
+        modules["splash"] = RyUISplash.shared.methods()
+        #if RYUI_REVIEW
+        modules["review"] = RyUIReview.methods(self)
+        #endif
+        #if RYUI_TRACKING
+        modules["tracking"] = RyUITracking.methods()
+        #endif
+        #if RYUI_BIOMETRIC
+        modules["biometric"] = RyUIBiometric.methods()
+        #endif
+        #if RYUI_PERIODIC
+        modules["periodic"] = RyUIPeriodic.shared.methods()
+        #endif
+        #if RYUI_INTEGRITY
+        modules["integrity"] = RyUIIntegrity.methods()
+        #endif
+        #if RYUI_AGERANGE
+        modules["ageRange"] = RyUIAgeRange.methods(self)
+        #endif
+        #if RYUI_AUDIORECORD
+        modules["audioRecord"] = RyUIAudioRecord.shared.methods()
+        #endif
+        #if RYUI_PUSH
+        modules["push"] = RyUIPush.shared.methods()
+        #endif
+        #if RYUI_APPLEAUTH
+        modules["appleAuth"] = RyUIAppleAuth.shared.methods(self)
+        #endif
+        #if RYUI_FILES
+        modules["files"] = RyUIFiles.methods(self)
+        #endif
         #if RYUI_WEBVIEW
         modules["js"] = RyUIScript.methods()
         modules["web"] = RyUIWebView.methods()

@@ -203,14 +203,25 @@ func (t *androidToolchain) buildAPK(app *goApp, work string) (apk, hash string, 
 		return "", "", err
 	}
 	mods := app.cfg.gradleModules()
-	hash = fmt.Sprintf("%s-%08x", hash, crc32.ChecksumIEEE([]byte(man+mods))) // a manifest or modules change rebuilds
+	// The splash and Firebase's settings (androidRes).
+	res := filepath.Join(work, "res")
+	os.RemoveAll(res)
+	extra := []string{mods}
+	if wrote, err := androidRes(app.cfg, res); err != nil {
+		return "", "", err
+	} else if wrote {
+		extra = append(extra, "-PryuiRes="+res)
+		mods += dirDigest(res)
+	}
+	hash = fmt.Sprintf("%s-%08x", hash, crc32.ChecksumIEEE([]byte(man+mods))) // a manifest, modules or resources change rebuilds
 	apk = filepath.Join(work, "app-"+hash+".apk")
 	if exists(apk) {
 		return apk, hash, nil
 	}
 	fmt.Println("ryui: building the Android app with Gradle (once; the first time downloads Gradle and Android libraries)")
-	if err := t.gradle(src, ":app:assembleDebug", "-PryuiApplicationId="+androidPackage(app.bundleID), "-PryuiAppName="+app.displayName(),
-		"-PryuiManifest="+manifest, mods); err != nil {
+	args := append([]string{":app:assembleDebug", "-PryuiApplicationId=" + androidPackage(app.bundleID), "-PryuiAppName=" + app.displayName(),
+		"-PryuiManifest=" + manifest}, extra...)
+	if err := t.gradle(src, args...); err != nil {
 		return "", "", err
 	}
 	data, err := os.ReadFile(filepath.Join(src, "app", "build", "outputs", "apk", "debug", "app-debug.apk"))

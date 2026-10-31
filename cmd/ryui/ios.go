@@ -226,6 +226,24 @@ var iosFeatures = []struct{ flag, symbol string }{
 	{"RYUI_NETWORK", "github.com/egoist/ryui/network.Current"},
 	{"RYUI_NETWORK", "github.com/egoist/ryui/network.Watch"},
 	{"RYUI_RECORD", "github.com/egoist/ryui/camera/record.Start"},
+	{"RYUI_FILES", "github.com/egoist/ryui/device.PickFiles"},
+	{"RYUI_REVIEW", "github.com/egoist/ryui/review.Request"},
+	{"RYUI_TRACKING", "github.com/egoist/ryui/tracking.Request"},
+	{"RYUI_TRACKING", "github.com/egoist/ryui/tracking.Current"},
+	{"RYUI_BIOMETRIC", "github.com/egoist/ryui/biometric.Check"},
+	{"RYUI_BIOMETRIC", "github.com/egoist/ryui/biometric.Authenticate"},
+	{"RYUI_PUSH", "github.com/egoist/ryui/push.Register"},
+	{"RYUI_AUDIORECORD", "github.com/egoist/ryui/audio/record.Start"},
+	{"RYUI_INTEGRITY", "github.com/egoist/ryui/integrity.Supported"},
+	{"RYUI_INTEGRITY", "github.com/egoist/ryui/integrity.GenerateKey"},
+	{"RYUI_INTEGRITY", "github.com/egoist/ryui/integrity.AttestKey"},
+	{"RYUI_INTEGRITY", "github.com/egoist/ryui/integrity.Assert"},
+	{"RYUI_AGERANGE", "github.com/egoist/ryui/agerange.Request"},
+	{"RYUI_MAPS", "github.com/egoist/ryui/maps.View"},
+	{"RYUI_PERIODIC", "github.com/egoist/ryui/periodic.Schedule"},
+	{"RYUI_APPLEAUTH", "github.com/egoist/ryui/appleauth.SignIn"},
+	{"RYUI_APPLEAUTH", "github.com/egoist/ryui/appleauth.Available"},
+	{"RYUI_APPLEAUTH", "github.com/egoist/ryui/appleauth.CredentialState"},
 }
 
 // allFeatures is every feature: the player runs any app.
@@ -342,6 +360,7 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 	for _, k := range app.cfg.iosTrue {
 		urls += fmt.Sprintf("<key>%s</key><true/>\n", html.EscapeString(k))
 	}
+	urls += plistKeys(app.cfg.plistExtras())
 	if g := app.cfg.shareGroup(); g != "" {
 		urls += fmt.Sprintf("<key>RyUIShareGroup</key><string>%s</string>\n", html.EscapeString(g))
 	}
@@ -358,6 +377,11 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 	plist := fmt.Sprintf(infoPlist, app.bundleID, app.displayName(), app.displayName(), iosMin, devices, urls)
 	if err := os.WriteFile(filepath.Join(bundle, "Info.plist"), []byte(plist), 0o644); err != nil {
 		return "", err
+	}
+	if app.cfg.splashOn() {
+		if err := t.compileAssets(app.cfg, work, bundle, filepath.Join(bundle, "Info.plist"), false); err != nil {
+			return "", err
+		}
 	}
 	if app.cfg.ShareTarget.on {
 		exe, err := t.buildShare(work, app.cfg, code)
@@ -399,6 +423,9 @@ func simulatorEntitlements(work string, cfg *appConfig) ([]string, error) {
 	if g := cfg.shareGroup(); g != "" {
 		m["com.apple.security.application-groups"] = []string{g}
 	}
+	for k, v := range cfg.entitlements {
+		m[k] = v
+	}
 	text := plist(m)
 	if err := os.WriteFile(ent, []byte(text), 0o644); err != nil {
 		return nil, err
@@ -419,7 +446,6 @@ const infoPlist = `<?xml version="1.0" encoding="UTF-8"?>
 <key>MinimumOSVersion</key><string>%s</string>
 <key>CFBundleSupportedPlatforms</key><array><string>iPhoneSimulator</string></array>
 <key>UIDeviceFamily</key><array>%s</array>
-<key>UILaunchScreen</key><dict/>
 <key>CADisableMinimumFrameDurationOnPhone</key><true/>
 <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
 <key>UIApplicationSceneManifest</key><dict><key>UIApplicationSupportsMultipleScenes</key><false/></dict>

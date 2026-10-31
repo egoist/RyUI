@@ -102,12 +102,13 @@ func buildIOS(app *goApp, o *buildOptions) error {
 	if err := os.WriteFile(infoPath, []byte(plist(info)), 0o644); err != nil {
 		return err
 	}
-	if cfg.Icon != "" {
-		if err := tc.compileIcon(cfg, work, bundle, infoPath); err != nil {
+	if cfg.Icon == "" {
+		fmt.Println("ryui: no icon in ryui.json; the App Store needs one (1024×1024 PNG)")
+	}
+	if cfg.Icon != "" || cfg.splashOn() {
+		if err := tc.compileAssets(cfg, work, bundle, infoPath, cfg.Icon != ""); err != nil {
 			return err
 		}
-	} else {
-		fmt.Println("ryui: no icon in ryui.json; the App Store needs one (1024×1024 PNG)")
 	}
 	// The share extension, signed before the app, whose signature seals it.
 	if cfg.ShareTarget.on {
@@ -122,7 +123,7 @@ func buildIOS(app *goApp, o *buildOptions) error {
 		if o.simulator {
 			err = tc.run(work, nil, "codesign", "--force", "--sign", "-", appex)
 		} else {
-			err = shareProf.sign(tc, work, appex, cfg.shareID(), nil, cfg.shareGroup(), cfg.keychainGroup(prof.team))
+			err = shareProf.sign(tc, work, appex, cfg.shareID(), nil, cfg.shareGroup(), cfg.keychainGroup(prof.team), nil)
 		}
 		if err != nil {
 			return err
@@ -147,7 +148,7 @@ func buildIOS(app *goApp, o *buildOptions) error {
 		fmt.Printf("ryui: %s in %.0fs (install: xcrun simctl install booted %s)\n", out, time.Since(start).Seconds(), out)
 		return nil
 	}
-	if err := prof.sign(tc, work, bundle, cfg.ID, cfg.associatedDomains(false), cfg.shareGroup(), cfg.keychainGroup(prof.team)); err != nil {
+	if err := prof.sign(tc, work, bundle, cfg.ID, cfg.associatedDomains(false), cfg.shareGroup(), cfg.keychainGroup(prof.team), cfg); err != nil {
 		return err
 	}
 	ipa := filepath.Join(o.out, safeName(cfg.Name)+".ipa")
@@ -245,6 +246,9 @@ func (t *iosToolchain) infoPlist(cfg *appConfig, simulator bool) (map[string]any
 	for _, k := range cfg.iosTrue {
 		m[k] = true
 	}
+	for k, v := range cfg.plistExtras() {
+		m[k] = v
+	}
 	if g := cfg.shareGroup(); g != "" {
 		m["RyUIShareGroup"] = g
 	}
@@ -280,30 +284,24 @@ func xcodeVersion() (string, string) {
 	return fmt.Sprintf("%02d%s%s", major, p[1][:1], p[2][:1]), build
 }
 
-// compileIcon makes the app icon's asset catalog from ryui.json's icon
-// and compiles it into the bundle, merging the icon keys into Info.plist.
-func (t *iosToolchain) compileIcon(cfg *appConfig, work, bundle, infoPath string) error {
-	icon, err := loadIcon(cfg.Icon)
+// compileAssets compiles the asset catalog (writeAssetCatalog: the app
+// icon from ryui.json's icon, if icon, and the splash's image and color)
+// into the bundle, merging the icon keys into Info.plist.
+func (t *iosToolchain) compileAssets(cfg *appConfig, work, bundle, infoPath string, icon bool) error {
+	cat, err := writeAssetCatalog(cfg, work, icon)
 	if err != nil {
 		return err
 	}
-	set := filepath.Join(work, "Assets.xcassets", "AppIcon.appiconset")
-	os.RemoveAll(filepath.Dir(set))
-	if err := writePNG(filepath.Join(set, "icon.png"), opaque(resize(icon, 1024))); err != nil {
-		return err
-	}
-	contents := `{"images":[{"filename":"icon.png","idiom":"universal","platform":"ios","size":"1024x1024"}],"info":{"author":"ryui","version":1}}`
-	if err := os.WriteFile(filepath.Join(set, "Contents.json"), []byte(contents), 0o644); err != nil {
-		return err
-	}
-	os.WriteFile(filepath.Join(filepath.Dir(set), "Contents.json"), []byte(`{"info":{"author":"ryui","version":1}}`), 0o644)
-	partial := filepath.Join(work, "icon-info.plist")
+	partial := filepath.Join(work, "assets-info.plist")
 	args := []string{"actool", "--compile", bundle, "--platform", t.sdkName,
-		"--minimum-deployment-target", iosMin, "--app-icon", "AppIcon", "--target-device", "iphone"}
+		"--minimum-deployment-target", iosMin, "--target-device", "iphone"}
+	if icon {
+		args = append(args, "--app-icon", "AppIcon")
+	}
 	if slices.Contains(cfg.iosDevices(), 2) {
 		args = append(args, "--target-device", "ipad") // the iPad's icon sizes, CFBundleIcons~ipad
 	}
-	args = append(args, "--output-partial-info-plist", partial, "--output-format", "human-readable-text", filepath.Dir(set))
+	args = append(args, "--output-partial-info-plist", partial, "--output-format", "human-readable-text", cat)
 	if err := t.run(work, nil, "xcrun", args...); err != nil {
 		return err
 	}
@@ -482,7 +480,7 @@ func pickProfile(team, id, want, distribution string) (*profile, error) {
 // it), whose ID is id, with the profile's entitlements, the associated
 // domains, the App Group group and the keychain group (each if not ""),
 // and checks the signature.
-func (p *profile) sign(t *iosToolchain, work, bundle, id string, domains []string, group, keychain string) error {
+func (p *profile) sign(t *iosToolchain, work, bundle, id string, domains []string, group, keychain string, need *appConfig) error {
 	data, err := os.ReadFile(p.path)
 	if err != nil {
 		return err
@@ -500,6 +498,14 @@ func (p *profile) sign(t *iosToolchain, work, bundle, id string, domains []strin
 	ent := filepath.Join(work, name+".entitlements.plist")
 	if err := t.run(work, nil, "plutil", "-extract", "Entitlements", "xml1", "-o", ent, decoded); err != nil {
 		return err
+	}
+	// The capabilities the app's packages need (the app's, not its share
+	// extension's): the profile's entitlements are what the app gets.
+	if need != nil {
+		if missing := need.missingEntitlements(ent); len(missing) > 0 {
+			return fmt.Errorf("the profile %q lacks %s, which the app's packages need: turn the capabilities on for %s at developer.apple.com (Identifiers), then make the profile again",
+				p.name, strings.Join(missing, ", "), id)
+		}
 	}
 	// A wildcard profile's app ID becomes the app's.
 	if err := t.run(work, nil, "plutil", "-replace", "application-identifier", "-string", p.team+"."+id, ent); err != nil {

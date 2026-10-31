@@ -4,3 +4,5 @@
 # The host finds the app's native views by name.
 -keep class dev.ryui.app.RyUIAppNatives { *; }
 -keep class * implements dev.ryui.RyUINativeModule { *; }
+# The optional modules' plugins, found by name.
+-keep class * implements dev.ryui.RyUIPlugin { <init>(); }

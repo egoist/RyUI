@@ -1,0 +1,6 @@
+{
+  "name": "Services",
+  "id": "dev.ryui.services",
+  "scheme": "ryuiservices",
+  "splash": { "image": "logo.png", "size": 96, "background": "#4A63B5", "darkBackground": "#1B2440" }
+}

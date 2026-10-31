@@ -39,13 +39,24 @@
   files too (see [Device](device.md#shares-from-other-apps-uionshare));
   `ui.OnShare` gets them. On iOS it's a share extension in the app, with
   a bundle ID of its own (the app's plus `.share`).
+- `splash` is the launch screen: `{"image": "logo.png", "size": 96,
+  "background": "#ffffff", "darkBackground": "#000000"}` (see
+  [Device](device.md#the-launch-screen-ryuisplash)).
+- `android.googleServices` is the Firebase project's
+  `google-services.json`, for `ryui/push`; `android.mapsKey`, a Google
+  Maps Platform API key, for `ryui/maps`.
 - `ios.usage` gives the purpose strings of protected resources
   (`NSCameraUsageDescription`...), and `ios.infoPlist` adds keys to
   Info.plist; `android.permissions` adds permissions.
 
 The packages an app imports give it the permissions and purpose strings
 they need: `ryui/camera` the camera's, `ryui/location` the location's.
-Write your own in `ios.usage`: the default is generic.
+Write your own in `ios.usage`: the default is generic. Some need a
+capability on the App ID too (Push Notifications for `ryui/push`, Sign
+in with Apple for `ryui/appleauth`, App Attest for `ryui/integrity`,
+Declared Age Range for `ryui/agerange`): turn it on at
+developer.apple.com, then make the profile again. `ryui build -ios` says
+which a profile lacks.
 
 ## iOS
 

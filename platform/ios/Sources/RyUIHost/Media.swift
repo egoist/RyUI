@@ -226,6 +226,12 @@ final class RyUIGestureDelegate: NSObject, UIGestureRecognizerDelegate {
         #if RYUI_CAMERAVIEW
         registerNative("ryui.camera") { RyUICameraView($0) }
         #endif
+        #if RYUI_MAPS
+        registerNative("ryui.map") { RyUIMapView($0) }
+        #endif
+        #if RYUI_APPLEAUTH
+        registerNative("ryui.appleSignIn") { RyUIAppleSignInButton($0) }
+        #endif
         (NSClassFromString("RyUIAppNatives") as? RyUINativeModule.Type)?.register()
     }
 

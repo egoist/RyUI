@@ -4,7 +4,8 @@ package android
 
 import "embed"
 
-// Files holds the RyUI library, the shell app and the Gradle wrapper.
+// Files holds the RyUI library, its optional modules (ryui-*), the shell
+// app and the Gradle wrapper.
 //
-//go:embed settings.gradle.kts build.gradle.kts gradle.properties gradlew gradle/wrapper ryui/build.gradle.kts ryui/consumer-rules.pro ryui/src ryui-scan/build.gradle.kts ryui-scan/consumer-rules.pro ryui-scan/src app/build.gradle.kts app/src
+//go:embed settings.gradle.kts build.gradle.kts gradle.properties gradlew gradle/wrapper ryui/build.gradle.kts ryui/consumer-rules.pro ryui/src ryui-scan/build.gradle.kts ryui-scan/consumer-rules.pro ryui-scan/src ryui-review/build.gradle.kts ryui-review/src ryui-push/build.gradle.kts ryui-push/src ryui-integrity/build.gradle.kts ryui-integrity/src ryui-agerange/build.gradle.kts ryui-agerange/src ryui-maps/build.gradle.kts ryui-maps/src ryui-periodic/build.gradle.kts ryui-periodic/src app/build.gradle.kts app/src
 var Files embed.FS

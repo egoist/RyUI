@@ -7,12 +7,38 @@ import UIKit
 @main
 @objc(RyUIAppDelegate)
 final class AppDelegate: UIResponder, UIApplicationDelegate {
+    #if RYUI_PERIODIC
+    // ryui/periodic: its tasks' handlers, which the system wants before launch ends.
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions options: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        RyUIPeriodic.shared.registerAtLaunch()
+        return true
+    }
+    #endif
+
     func application(_ application: UIApplication, configurationForConnecting session: UISceneSession,
                      options: UIScene.ConnectionOptions) -> UISceneConfiguration {
         let c = UISceneConfiguration(name: nil, sessionRole: session.role)
         c.delegateClass = SceneDelegate.self
         return c
     }
+
+    #if RYUI_PUSH
+    // ryui/push: APNs' token, and data messages.
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken token: Data) {
+        RyUIPush.shared.registered(token)
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        RyUIPush.shared.failed(error)
+    }
+
+    func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+                     fetchCompletionHandler done: @escaping (UIBackgroundFetchResult) -> Void) {
+        // A notification with an alert comes through the center's delegate.
+        if (userInfo["aps"] as? [String: Any])?["alert"] == nil { RyUIPush.shared.received(userInfo) }
+        done(.newData)
+    }
+    #endif
 
     func applicationDidReceiveMemoryWarning(_ application: UIApplication) {
         RyUIRuntime.shared.lifecycle(.memoryWarning)

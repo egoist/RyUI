@@ -293,6 +293,7 @@ class RyUINativeHost(context: Context) : FrameLayout(context) {
 
 fun RyUIRuntime.registerNatives() {
     registerNative("ryui.camera") { ctx -> RyUICameraView(this, ctx) }
+    registerPlugins() // ryui-maps' view, the optional modules' methods
     try {
         val c = Class.forName("dev.ryui.app.RyUIAppNatives")
         (c.getField("INSTANCE").get(null) as RyUINativeModule).register(this)

@@ -1,6 +1,6 @@
 // Package device is what the platform offers apps beyond views: what
 // device it is, its in-app browser, its photo picker, the clipboard's
-// text, keeping the screen on.
+// text, keeping the screen on, its document picker.
 package device
 
 import (
@@ -82,4 +82,47 @@ func KeepAwake(on bool) {
 		arg[0] = 1
 	}
 	ui.Call("device", "keepAwake", arg, nil)
+}
+
+// File is a file the user picked.
+type File struct {
+	Path string `json:"path"` // a copy in the app's caches: the app's to keep or move
+	Name string `json:"name"` // its name where it was ("Invoice.pdf")
+	Type string `json:"type"` // its MIME type, if known ("application/pdf")
+	Size int64  `json:"size"` // bytes
+}
+
+// FileOptions are what PickFiles offers.
+type FileOptions struct {
+	// Types are MIME types ("application/pdf", "image/*", "text/csv");
+	// none: any file.
+	Types []string
+	// Multiple lets the user pick several.
+	Multiple bool
+}
+
+// PickFiles shows the system's document picker (iOS's Files browser,
+// Android's storage picker: no permission asked) and calls done with
+// copies of the files picked, or none if the user cancelled. Main thread.
+//
+// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+//
+//go:noinline
+func PickFiles(o FileOptions, done func(files []File, err error)) {
+	ui.Call("files", "pick", encodeFileOptions(o), func(b []byte, err error) {
+		var files []File
+		if err == nil && len(b) > 0 {
+			err = json.Unmarshal(b, &files)
+		}
+		done(files, err)
+	})
+}
+
+// encodeFileOptions: u8 multiple, then the types, a line each.
+func encodeFileOptions(o FileOptions) []byte {
+	b := []byte{0}
+	if o.Multiple {
+		b[0] = 1
+	}
+	return append(b, strings.Join(o.Types, "\n")...)
 }
