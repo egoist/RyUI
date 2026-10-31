@@ -72,10 +72,11 @@ func (h *Host) automation() {
 // step runs one automation step: tap:<text> clicks the view showing the
 // text (a button's title, a text, a tab), type:<text> types into the
 // focused field, back pops, key:<shortcut> presses keys (ctrl+shift+k,
-// ctrl+enter, f5) in the window in use, menu:<title> chooses the menu
-// bar's item, close closes the window in use (as its close button),
-// dpi:<dpi> moves that window to a monitor at that DPI (WM_DPICHANGED),
-// snap:<file> writes a snapshot.
+// ctrl+enter, f5) in the window in use or the menu open, menu:<title>
+// chooses the menu bar's item, open:<title> opens a menu bar's menu,
+// escape closes a menu or a sheet, close closes the window in use (as its
+// close button), dpi:<dpi> moves that window to a monitor at that DPI
+// (WM_DPICHANGED), snap:<file> writes a snapshot.
 func (h *Host) step(verb, arg string) {
 	switch verb {
 	case "tap":
@@ -100,6 +101,26 @@ func (h *Host) step(verb, arg string) {
 		}
 	case "key":
 		h.pressKeys(arg)
+	case "open":
+		// A menu bar's menu, below its title, as clicking it shows it
+		// (the window isn't active: Alt and its key wouldn't open it).
+		bar := GetMenu(h.window)
+		for i, m := range h.appMenus {
+			if m.title != arg {
+				continue
+			}
+			r := MenuItemRect(h.window, bar, i)
+			h.afterCore(func() {
+				h.menuLoop(true)
+				got := TrackPopupMenu(SubMenu(bar, i), TPM_LEFTALIGN|TPM_TOPALIGN, r.Left, r.Bottom, h.window)
+				h.menuLoop(false)
+				if got > 0 {
+					h.menuCommand(got)
+				}
+			})
+			return
+		}
+		fmt.Fprintf(os.Stderr, "nui: automation: no menu %q\n", arg)
 	case "menu":
 		for _, it := range h.appItems {
 			if it.title == arg {
@@ -160,6 +181,10 @@ func (h *Host) step(verb, arg string) {
 			h.scrollToOffset(s, 0, float32(y))
 		}
 	case "escape":
+		if OpenMenuWindow() != 0 {
+			EndMenu()
+			return
+		}
 		if len(h.sheets) > 0 {
 			h.cancelSheet(h.byHwnd[h.sheets[len(h.sheets)-1].nav.window])
 		}
@@ -268,6 +293,10 @@ func (h *Host) snapshot(path string) {
 		s := h.sheets[len(h.sheets)-1]
 		writeWindowPNG(s.nav.window, base+".sheet.png")
 	}
+	if w := OpenMenuWindow(); w != 0 {
+		// A menu: as it shows on the screen (DWM rounds and borders it).
+		writeScreenPNG(WindowRect(w), base+".menu.png")
+	}
 	for i, w := range h.wins {
 		name := base + ".window.png"
 		if i > 0 {
@@ -296,6 +325,15 @@ func (h *Host) pressKeys(spec string) {
 	a, ok := accelerator(parts[len(parts)-1], mods)
 	if !ok {
 		fmt.Fprintf(os.Stderr, "nui: automation: no key %q\n", spec)
+		return
+	}
+	if w := OpenMenuWindow(); w != 0 {
+		// A menu showing takes the key (arrows, Enter, an access key).
+		if r := []rune(parts[len(parts)-1]); len(r) == 1 && mods == 0 {
+			SendMessage(w, WM_CHAR, uintptr(r[0]), 0)
+		} else {
+			SendMessage(w, WM_KEYDOWN, uintptr(a.Key), 0)
+		}
 		return
 	}
 	saved := KeyboardState()
@@ -447,4 +485,28 @@ func kindName(k ops.Kind) string {
 	}
 
 	return k.String()
+}
+
+// writeScreenPNG writes what the screen shows at r.
+func writeScreenPNG(r Rect, path string) {
+	if r.W() <= 0 || r.H() <= 0 {
+		return
+	}
+	screen := GetDC(0)
+	dc := CreateCompatibleDC(screen)
+	bmp, pixels := DIB(r.W(), r.H())
+	old := SelectObject(dc, bmp)
+	BitBlt(dc, 0, 0, r.W(), r.H(), screen, r.Left, r.Top)
+	ReleaseDC(0, screen)
+	img := stdimage.NewNRGBA(stdimage.Rect(0, 0, int(r.W()), int(r.H())))
+	for i := 0; i < int(r.W()*r.H()); i++ {
+		img.Pix[i*4], img.Pix[i*4+1], img.Pix[i*4+2], img.Pix[i*4+3] = pixels[i*4+2], pixels[i*4+1], pixels[i*4], 255
+	}
+	SelectObject(dc, old)
+	DeleteObject(bmp)
+	DeleteDC(dc)
+	if f, err := os.Create(path); err == nil {
+		png.Encode(f, img)
+		f.Close()
+	}
 }

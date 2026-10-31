@@ -18,7 +18,8 @@ import (
 // and sends Action to the root with its index among all the menus'
 // items. Popup menus follow the app's dark mode through uxtheme
 // (SetAppDark); the bar itself is drawn dark by the window (the UAH
-// messages) while the app is.
+// messages) while the app is. A destructive item is drawn red by the
+// host (menudraw.go).
 
 type appMenu struct {
 	title string
@@ -52,6 +53,10 @@ const (
 // and the accelerators again.
 func (h *Host) setMenuBar(b []byte) {
 	h.appMenus = parseMenus(b)
+	for _, om := range h.barOwned {
+		h.forget(om)
+	}
+	h.barOwned = h.barOwned[:0]
 	h.appItems = h.appItems[:0]
 	for _, m := range h.appMenus {
 		h.appItems = append(h.appItems, m.items...)
@@ -73,9 +78,12 @@ func (h *Host) setMenuBar(b []byte) {
 			}
 			names = accessKeys(names)
 			k := 0
+			var items []menuItem
+			destructive := false
 			for _, it := range m.items {
 				if it.flags&itemSeparator != 0 {
 					AppendMenu(pop, MF_SEPARATOR, 0, "")
+					items = append(items, menuItem{separator: true})
 					continue
 				}
 				flags := uint32(MF_STRING)
@@ -91,6 +99,11 @@ func (h *Host) setMenuBar(b []byte) {
 					text += "\t" + s
 				}
 				AppendMenu(pop, flags, uintptr(menuBase+it.index), text)
+				items = append(items, menuItem{text: text, destructive: it.flags&itemDestructive != 0})
+				destructive = destructive || it.flags&itemDestructive != 0
+			}
+			if destructive {
+				h.barOwned = append(h.barOwned, h.ownerDrawMenu(pop, items))
 			}
 			AppendMenu(bar, MF_POPUP, pop, accessKeys(titles)[i])
 		}

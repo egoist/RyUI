@@ -192,6 +192,13 @@ type Host struct {
 	sizing         bool // the user moves or sizes it
 	normal         Rect // its rectangle when not maximized or minimized
 	savedPlacement []byte
+
+	// Owner-drawn menu items (menudraw.go).
+	owned      map[uintptr]*ownerItem
+	ownedNext  uintptr
+	ownedMenus []*ownerMenu // the owner-drawn menus
+	barOwned   []*ownerMenu // the menu bar's
+	menuStyles map[menuStyleKey]*menuStyle
 }
 
 var theHost *Host

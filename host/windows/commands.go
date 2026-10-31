@@ -133,13 +133,7 @@ func (h *Host) popUp(n *node, anchor uintptr, below bool) {
 		if n == nil || len(n.menu) == 0 || anchor == 0 {
 			return
 		}
-		m := CreatePopupMenu()
-		for i, a := range n.menu {
-			if a.role == ops.AlertButtonRoleCancel {
-				continue
-			}
-			AppendMenu(m, MF_STRING, uintptr(i+1), a.title)
-		}
+		m, om := h.actionMenu(n.menu)
 		p := CursorPos()
 		flags := uint32(TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RIGHTBUTTON)
 		if below {
@@ -147,9 +141,14 @@ func (h *Host) popUp(n *node, anchor uintptr, below bool) {
 			p = Point{X: r.Left, Y: r.Bottom + h.px(n, 4)}
 		}
 		h.modal++
+		if om != nil {
+			h.menuLoop(true) // before the menu window is made
+		}
 		got := TrackPopupMenu(m, flags, p.X, p.Y, RootWindow(anchor))
+		h.menuLoop(false)
 		h.modal--
 		DestroyMenu(m)
+		h.forget(om)
 		if got > 0 {
 			if n := h.nodes[id]; n != nil {
 				h.emit(n, ops.Event{Kind: ops.EventAction, Int: int64(got - 1)})
@@ -314,4 +313,24 @@ func (h *Host) module(name string) func(method string, args []byte) ([]byte, err
 		h.modules = map[string]func(method string, args []byte) ([]byte, error){}
 	}
 	return h.modules[name]
+}
+
+// actionMenu is a popup menu of actions (but the cancel one), item i+1
+// action i's; owner-drawn if one is destructive.
+func (h *Host) actionMenu(actions []action) (uintptr, *ownerMenu) {
+	m := CreatePopupMenu()
+	var items []menuItem
+	destructive := false
+	for i, a := range actions {
+		if a.role == ops.AlertButtonRoleCancel {
+			continue
+		}
+		AppendMenu(m, MF_STRING, uintptr(i+1), a.title)
+		items = append(items, menuItem{text: a.title, destructive: a.role == ops.AlertButtonRoleDestructive})
+		destructive = destructive || a.role == ops.AlertButtonRoleDestructive
+	}
+	if !destructive {
+		return m, nil
+	}
+	return m, h.ownerDrawMenu(m, items)
 }

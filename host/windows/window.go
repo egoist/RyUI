@@ -53,6 +53,12 @@ func (h *Host) message(hwnd uintptr, m uint32, wp, lp uintptr) (uintptr, bool) {
 	if m == WM_COMMAND && lp == 0 && HiWord(wp) <= 1 && h.keyWindow(hwnd) == hwnd && h.menuCommand(int(LoWord(wp))) {
 		return 0, true
 	}
+	// Owner-drawn menu items, in a menu one of the app's windows owns.
+	if m == WM_MEASUREITEM || m == WM_DRAWITEM || m == WM_MENUCHAR || m == WM_INITMENUPOPUP || m == WM_INITMENU || m == WM_ENTERMENULOOP || m == WM_EXITMENULOOP {
+		if r, ok := h.menuItemMessage(hwnd, m, wp, lp); ok {
+			return r, true
+		}
+	}
 	switch hwnd {
 	case h.msgWin:
 		switch m {
@@ -315,6 +321,7 @@ func (h *Host) setDark(dark bool) {
 	h.dark = dark
 	SetAppDark(dark)
 	h.theme = newPalette(dark, h.accent)
+	h.clearMenuStyles()
 	for k, b := range h.brushes {
 		DeleteObject(b)
 		delete(h.brushes, k)

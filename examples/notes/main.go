@@ -75,7 +75,7 @@ func App() ui.Node {
 			// window of statistics. A phone has neither.
 			ui.MenuBar(signal.Static([]ui.MenuBarMenu{
 				{Title: "File", Items: []ui.MenuItem{{Title: "Add Note", Shortcut: ui.Cmd("enter"), OnPress: add}}},
-				{Title: "Edit", Items: []ui.MenuItem{{Title: "Clear Completed", Shortcut: ui.Cmd("k").With(ui.Shift),
+				{Title: "Edit", Items: []ui.MenuItem{{Title: "Clear Completed", Shortcut: ui.Cmd("k").With(ui.Shift), Destructive: true,
 					OnPress: func() { write(`delete from notes where done`) }}}},
 				{Title: "Window", Items: []ui.MenuItem{{Title: "Statistics", Shortcut: ui.Cmd("i"), OnPress: func() { stats.Set(true) }}}},
 			})),

@@ -699,3 +699,114 @@ func TestPlacement(t *testing.T) {
 		t.Fatalf("on the work area: moved to %v", c)
 	}
 }
+
+// A menu with a destructive item (a MenuBar item, or an action in a
+// popup menu) is owner-drawn, all its items, the destructive one's
+// title red, in light and dark; its access keys are still the system's.
+func TestDestructiveMenu(t *testing.T) {
+	h, _ := mount(t, func() ui.Node {
+		return ui.MenuBar(signal.Static([]ui.MenuBarMenu{
+			{Title: "File", Items: []ui.MenuItem{{Title: "Open"}}},
+			{Title: "Edit", Items: []ui.MenuItem{
+				{Title: "Undo", Shortcut: ui.Cmd("z")},
+				ui.MenuSeparator,
+				{Title: "Delete All", Shortcut: ui.Cmd("delete"), Destructive: true},
+			}},
+		}))
+	})
+	onMain(t, func() {
+		bar := GetMenu(h.window)
+		file, edit := SubMenu(bar, 0), SubMenu(bar, 1)
+		if MenuItemType(file, 0)&MFT_OWNERDRAW != 0 {
+			fatalf("a menu without a destructive item is owner-drawn")
+		}
+		for i := range 3 {
+			if MenuItemType(edit, i)&MFT_OWNERDRAW == 0 {
+				fatalf("Edit's item %d isn't owner-drawn", i)
+			}
+		}
+		if MenuItemType(edit, 1)&MF_SEPARATOR == 0 {
+			fatalf("the separator isn't one")
+		}
+		if it := h.owned[MenuItemData(edit, 2)]; it == nil || !it.destructive || h.owned[MenuItemData(edit, 0)].destructive {
+			fatalf("Delete All isn't the destructive item")
+		}
+
+		// Measured as a themed menu's items, a separator shorter.
+		measure := func(i int) MeasureItem {
+			mi := MeasureItem{CtlType: ODT_MENU, ItemData: MenuItemData(edit, i)}
+			if SendMessage(h.window, WM_MEASUREITEM, 0, uintptr(unsafe.Pointer(&mi))) == 0 {
+				fatalf("item %d not measured", i)
+			}
+			return mi
+		}
+		item, sep := measure(0), measure(1)
+		if item.ItemHeight == 0 || item.ItemWidth == 0 || sep.ItemHeight == 0 || sep.ItemHeight >= item.ItemHeight {
+			fatalf("measured %v, the separator %v", item, sep)
+		}
+		if measure(2).ItemWidth != item.ItemWidth {
+			fatalf("the items aren't one width")
+		}
+
+		// Drawn: the destructive title red, the others not.
+		draw := func(i int) (red, text int) {
+			w, ht := int32(item.ItemWidth)+60, int32(item.ItemHeight)
+			dc := CreateCompatibleDC(0)
+			bmp, px := DIB(w, ht)
+			old := SelectObject(dc, bmp)
+			d := DrawItem{CtlType: ODT_MENU, ItemData: MenuItemData(edit, i), DC: dc, Item: Rect{Right: w, Bottom: ht}}
+			SendMessage(h.window, WM_DRAWITEM, 0, uintptr(unsafe.Pointer(&d)))
+			bg, r := h.menuBackground(), h.theme.red
+			for p := 0; p+3 < len(px); p += 4 {
+				b, g, rr := int(px[p]), int(px[p+1]), int(px[p+2])
+				near := func(c rgba) bool {
+					return abs32(int32(rr)-int32(c.r)) < 24 && abs32(int32(g)-int32(c.g)) < 24 && abs32(int32(b)-int32(c.b)) < 24
+				}
+				switch {
+				case near(r):
+					red++
+				case !near(bg):
+					text++
+				}
+			}
+			SelectObject(dc, old)
+			DeleteObject(bmp)
+			DeleteDC(dc)
+			return red, text
+		}
+		for _, dark := range []bool{false, true} {
+			h.setDark(dark)
+			if red, _ := draw(2); red < 20 {
+				fatalf("dark %v: the destructive item has %d red pixels", dark, red)
+			}
+			if red, text := draw(0); red > 0 || text < 20 {
+				fatalf("dark %v: Undo has %d red pixels, %d of text", dark, red, text)
+			}
+		}
+
+		// Its items keep their text, so the system takes their access keys;
+		// a key none takes leaves the menu open.
+		if s := MenuString(edit, 2); s != "&Delete All\tCtrl+Del" {
+			fatalf("the destructive item's text is %q", s)
+		}
+		if r := SendMessage(h.window, WM_MENUCHAR, MakeLong('x', MF_POPUP), edit); r != 0 {
+			fatalf("WM_MENUCHAR x: %#x, want it ignored", r)
+		}
+
+		// A popup menu's actions: owner-drawn with a destructive one only.
+		m, om := h.actionMenu([]action{{title: "Star"}, {title: "Delete…", role: ops.AlertButtonRoleDestructive}, {title: "Cancel", role: ops.AlertButtonRoleCancel}})
+		if om == nil || MenuItemCount(m) != 2 || MenuItemType(m, 0)&MFT_OWNERDRAW == 0 || !h.owned[MenuItemData(m, 1)].destructive {
+			fatalf("the popup menu with Delete… isn't owner-drawn")
+		}
+		DestroyMenu(m)
+		h.forget(om)
+		if len(h.owned) != 3 {
+			fatalf("%d owner-drawn items kept, want the menu bar's 3", len(h.owned))
+		}
+		m, om = h.actionMenu([]action{{title: "Star"}, {title: "Reply"}})
+		if om != nil || MenuItemType(m, 0)&MFT_OWNERDRAW != 0 {
+			fatalf("a popup menu without a destructive action is owner-drawn")
+		}
+		DestroyMenu(m)
+	})
+}

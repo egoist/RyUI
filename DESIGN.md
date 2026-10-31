@@ -1174,7 +1174,7 @@ How the Windows host maps nui (`host/windows`):
   key (its first letter no other took: Alt+F), an item its shortcut
   after a tab ("Ctrl+Shift+K", "Ctrl+Enter", "F5"; Primary and Control
   are both Ctrl), a disabled one grayed, a checked one checked
-  (Destructive has no look in a Win32 menu). The shortcuts are an
+  and a destructive one red (below). The shortcuts are an
   accelerator table (`CreateAcceleratorTable`), translated in the
   message loop against the window the key is for: a character is its
   virtual key on the keyboard's layout (`VkKeyScan`, with Shift if it
@@ -1187,6 +1187,32 @@ How the Windows host maps nui (`host/windows`):
   `WM_UAHDRAWMENUITEM`, as Notepad++ and MyGo do, with Windows 11's
   rounded backplates). A menu bar set before the window shows keeps
   its client size.
+- A destructive item (a `MenuItem` with `Destructive`, an `Action` with
+  `ActionDestructive` in a popup menu) is red, Fluent's critical text
+  color, as macOS's (its title; its shortcut stays the menu's color).
+  A Win32 menu can't color an item, so a menu with a destructive item
+  is owner-drawn (`MFT_OWNERDRAW`, `WM_MEASUREITEM`, `WM_DRAWITEM`),
+  all its items: one owner-drawn item takes the visual style off the
+  menu's others, which the system then draws classic. They're drawn as
+  the system draws a themed menu's, with the visual style's Menu parts
+  (Windows 11's `ImmersiveStart::Menu`, `DarkMode_ImmersiveStart::Menu`;
+  as the system's, light menus' separators are the plain `Menu`
+  class's and dark menus' check marks and disabled gray
+  `DarkMode::Menu`'s) at the owner window's DPI: the menu font, the
+  height and margins (the check mark's), the check mark, the separator,
+  the shortcut column (the submenu arrow's margins to its right),
+  disabled gray; selected, the rounded backplate (`MPI_HOT`) under the
+  mouse and a hairline rounded outline from the keyboard (the item's
+  `ODS_NOFOCUSRECT` says which). The menu window would get the classic
+  frame, so while such a menu is open a thread CBT hook subclasses the
+  menu windows made (`#32768`): the frame is painted the menu's
+  background, and DWM rounds the corners (`DWMWCP_ROUNDSMALL`) and
+  draws the border in Windows 11's menu border color. Measured against
+  the system's own menu at 192 DPI, light and dark, the menu is the
+  same size and its items' pixels the same but the outline's corners.
+  The items keep their text, so access keys, first letters and arrows
+  work as in any menu; a key no item takes leaves it open
+  (`WM_MENUCHAR`, `MNC_IGNORE`).
 - `WindowOptions` set the main window's title, its client size
   (centered in the work area) and its least size (320 points square if
   the app gives none).
@@ -1236,12 +1262,15 @@ How the Windows host maps nui (`host/windows`):
   runs on Windows on Arm, emulated).
 - Debug automation: `NUI_SNAPSHOT=file.png` writes the window (and the
   top sheet's, `file.sheet.png`, and each `Window`'s, `file.window.png`,
-  `file.window2.png`…) with `PrintWindow` once it has shown, without
+  `file.window2.png`…) with `PrintWindow`, and a menu open, `file.menu.png`,
+  from the screen, once it has shown, without
   taking focus, then quits (`NUI_DUMP=1`: the view tree and the menu
   bar beside it); `NUI_SCRIPT` runs steps first (`tap:<text>`,
   `type:<text>`, `submit`, `back`, `escape`, `scroll:<y>`,
   `resize:<w>,<h>`, `key:<shortcut>` such as `key:ctrl+shift+k`,
-  `menu:<item title>`, `close` (the window in use, or the last
+  `key:` also goes to a menu open (`key:down`, `key:d`), `menu:<item
+  title>`, `open:<menu title>` (a menu bar's menu, shown below its title;
+  `escape` closes it), `close` (the window in use, or the last
   `Window`), `dpi:<dpi>` (that window as if moved to a monitor at that
   DPI: `WM_DPICHANGED`, the title bar Windows draws keeping its own),
   `wait:<duration>`, `snap:<file>`), through the controls'
