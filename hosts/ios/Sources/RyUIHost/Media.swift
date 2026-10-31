@@ -499,21 +499,7 @@ final class RyUIGestureDelegate: NSObject, UIGestureRecognizerDelegate {
                 }
             }
         }
-        let ui = UIView.self
-        switch RyUIAnimationCurve(rawValue: curve) {
-        case .spring:
-            ui.animate(withDuration: duration, delay: 0, usingSpringWithDamping: 0.85, initialSpringVelocity: 0,
-                       options: [.beginFromCurrentState, .allowUserInteraction, rep], animations: change)
-        default:
-            let c: UIView.AnimationOptions
-            switch RyUIAnimationCurve(rawValue: curve) {
-            case .linear: c = .curveLinear
-            case .easeIn: c = .curveEaseIn
-            case .easeOut: c = .curveEaseOut
-            default: c = .curveEaseInOut
-            }
-            ui.animate(withDuration: duration, delay: 0, options: [c, .beginFromCurrentState, .allowUserInteraction, rep], animations: change)
-        }
+        animate((duration, curve), options: [.beginFromCurrentState, .allowUserInteraction, rep], change)
     }
 }
 #endif

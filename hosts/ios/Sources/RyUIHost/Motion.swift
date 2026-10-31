@@ -63,6 +63,24 @@ struct RyUITransition {
         }
     }
 
+    /// Animates change on a's duration and curve: a spring is UIKit's.
+    func animate(_ a: (Double, Int32), options: UIView.AnimationOptions, _ change: @escaping () -> Void,
+                 completion: ((Bool) -> Void)? = nil) {
+        let (duration, curve) = a
+        let c: UIView.AnimationOptions
+        switch RyUIAnimationCurve(rawValue: curve) {
+        case .spring:
+            UIView.animate(withDuration: duration, delay: 0, usingSpringWithDamping: 0.85, initialSpringVelocity: 0,
+                           options: options, animations: change, completion: completion)
+            return
+        case .linear: c = .curveLinear
+        case .easeIn: c = .curveEaseIn
+        case .easeOut: c = .curveEaseOut
+        default: c = .curveEaseInOut
+        }
+        UIView.animate(withDuration: duration, delay: 0, options: options.union(c), animations: change, completion: completion)
+    }
+
     /// A view inserted during an animation, with a transition: it starts
     /// in the transition's state, and animates to its own once the batch
     /// is applied (and the rest of the change starts with it).
@@ -73,20 +91,20 @@ struct RyUITransition {
         entering.append((n, animation!))
     }
 
-    /// Runs the enter animations of the batch just applied.
+    /// Runs the enter animations of the batch just applied, at once: a
+    /// view made in it has no frame yet (its first comes in the batch
+    /// after), and its transition is an alpha and a transform, which
+    /// don't wait for its size.
     func runEnters() {
         guard !entering.isEmpty else { return }
         let es = entering
         entering = []
         for (n, a) in es {
-            let saved = animation
-            animation = a
             let v = n.view
-            animated(v) {
+            animate(a, options: [.beginFromCurrentState, .allowUserInteraction]) {
                 v.alpha = n.opacity
                 v.transform = n.baseTransform
             }
-            animation = saved
         }
     }
 
@@ -96,18 +114,14 @@ struct RyUITransition {
         guard let t = n.transition?.reduced, !t.none, let a = animation, n.view.window != nil else { return false }
         let v = n.view
         exiting.insert(ObjectIdentifier(v))
-        let (duration, curve) = a
-        let options: UIView.AnimationOptions = curve == RyUIAnimationCurve.linear.rawValue ? .curveLinear
-            : curve == RyUIAnimationCurve.easeIn.rawValue ? .curveEaseIn
-            : curve == RyUIAnimationCurve.easeOut.rawValue ? .curveEaseOut : .curveEaseInOut
         v.isUserInteractionEnabled = false
-        UIView.animate(withDuration: duration, delay: 0, options: [options, .beginFromCurrentState]) {
+        animate(a, options: .beginFromCurrentState, {
             if t.fade { v.alpha = 0 }
             v.transform = n.baseTransform.concatenating(t.transform)
-        } completion: { [weak self] _ in
+        }, completion: { [weak self] _ in
             v.removeFromSuperview()
             self?.exiting.remove(ObjectIdentifier(v))
-        }
+        })
         return true
     }
 
