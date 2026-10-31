@@ -50,6 +50,7 @@ const (
 	// The messages uxtheme's menu bar ("user API hook") sends its window,
 	// to draw it.
 	WM_NCPAINT         = 0x0085
+	WM_PRINT           = 0x0317
 	WM_NCACTIVATE      = 0x0086
 	WM_UAHDRAWMENU     = 0x0091
 	WM_UAHDRAWMENUITEM = 0x0092

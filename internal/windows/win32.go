@@ -446,6 +446,7 @@ const (
 	WM_NOTIFY           = 0x004E
 	WM_CONTEXTMENU      = 0x007B
 	WM_GETDLGCODE       = 0x0087
+	WM_NCCREATE         = 0x0081
 	WM_NCDESTROY        = 0x0082
 	WM_KEYDOWN          = 0x0100
 	WM_KEYUP            = 0x0101
