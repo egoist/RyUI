@@ -583,7 +583,7 @@ func (h *Host) placeAt(n *node, f [4]float32) {
 	}
 	x0, y0 := h.px(x), h.px(y)
 	w, ht := h.px(x+f[2])-x0, h.px(y+f[3])-y0
-	SetWindowPos(n.hwnd, 0, x0, y0, w, ht, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOOWNERZORDER)
+	SetWindowPos(n.hwnd, 0, x0, y0, w, ht, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOOWNERZORDER|SWP_NOCOPYBITS)
 	h.resized(n)
 }
 

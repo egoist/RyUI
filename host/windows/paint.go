@@ -47,8 +47,10 @@ func (h *Host) paint(n *node, hwnd, dc uintptr, r Rect) {
 		h.paintBehind(hwnd, dc)
 	}
 	w, ht := float32(r.W()), float32(r.H())
+	// GDI+ draws first, GDI's text after its Graphics is closed: GDI
+	// draws at the DC's origin while one is open, not at the origin
+	// paintBehind moved it to.
 	g := NewGraphics(dc)
-	defer g.Close()
 	k := h.scale
 	radius := min(n.cornerRadius*k, w/2, ht/2)
 	bg, hasBg := h.resolve(n.background)
@@ -99,16 +101,12 @@ func (h *Host) paint(n *node, hwnd, dc uintptr, r Rect) {
 		g.StrokeRoundRect(bc.argb(), n.borderWidth*k, 0, 0, w, ht, radius)
 	}
 	switch n.kind {
-	case ops.KindText:
-		h.paintText(n, dc, r)
 	case ops.KindImage:
 		h.paintImage(n, g, w, ht, radius)
-	case ops.KindSymbol:
-		h.paintSymbol(n, dc, r)
 	case ops.KindShape:
 		n.shape.paint(h, n, g)
 	case ops.KindSegmented:
-		h.paintSegmented(n, dc, g, r)
+		h.paintSegmented(n, 0, g, r)
 	case ops.KindProgress:
 		h.paintProgress(n, g, w, ht)
 	case ops.KindActivity:
@@ -116,16 +114,31 @@ func (h *Host) paint(n *node, hwnd, dc uintptr, r Rect) {
 	case ops.KindTextField:
 		h.paintField(n, g, w, ht)
 	case kindHeader:
-		h.paintHeader(n, dc, g, r)
+		h.paintHeader(n, 0, g, r)
 	case kindTabBar:
-		h.paintTabBar(n, dc, g, r)
+		h.paintTabBar(n, 0, g, r)
 	case kindRow:
 		if n.row != nil {
 			n.row.paint(h, g, w, ht)
 		}
 	}
-	if n.focused && n.pressable() && h.keyboardCues(hwnd) {
+	g.Close()
+	switch n.kind {
+	case ops.KindText:
+		h.paintText(n, dc, r)
+	case ops.KindSymbol:
+		h.paintSymbol(n, dc, r)
+	case ops.KindSegmented:
+		h.paintSegmented(n, dc, 0, r)
+	case kindHeader:
+		h.paintHeader(n, dc, 0, r)
+	case kindTabBar:
+		h.paintTabBar(n, dc, 0, r)
+	}
+	if n.focused && (n.pressable() || n.kind == ops.KindSegmented) && h.keyboardCues(hwnd) {
+		g := NewGraphics(dc)
 		h.focusRing(g, w, ht, radius)
+		g.Close()
 	}
 }
 
@@ -143,7 +156,7 @@ func (n *node) interactive() bool {
 	switch n.kind {
 	case ops.KindScroll, ops.KindList, ops.KindSegmented, ops.KindTextField, kindHeader, kindTabBar,
 		ops.KindButton, ops.KindToggle, ops.KindSlider, ops.KindStepper, ops.KindWheel, ops.KindDatePicker,
-		ops.KindColorPicker, ops.KindRichText, ops.KindWebView, ops.KindSelectable:
+		ops.KindColorPicker, ops.KindRichText, ops.KindWebView, ops.KindVideo, ops.KindSelectable:
 		return true
 	}
 	return false

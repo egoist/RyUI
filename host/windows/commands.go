@@ -5,6 +5,7 @@ package windows
 import (
 	"encoding/binary"
 	"errors"
+	"math"
 	"time"
 
 	. "github.com/egoist/nui/internal/windows"
@@ -41,6 +42,18 @@ func (h *Host) command(n *node, c ops.CommandID, args []byte) {
 		h.call(n, args)
 	case ops.CmdCopy:
 		SetClipboardText(h.window, string(args))
+	case ops.CmdPlay:
+		if n.web != nil && n.web.video != nil {
+			n.web.play()
+		}
+	case ops.CmdPause:
+		if n.web != nil && n.web.video != nil {
+			n.web.pause()
+		}
+	case ops.CmdSeek:
+		if n.web != nil && n.web.video != nil && len(args) >= 8 {
+			n.web.seek(math.Float64frombits(binary.LittleEndian.Uint64(args)))
+		}
 	case ops.CmdEval:
 		if n.web != nil {
 			n.web.eval(string(args))

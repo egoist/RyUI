@@ -126,7 +126,7 @@ func (h *Host) makeWindow() {
 	w, ht := r.W(), min(r.H(), work.H())
 	x := work.Left + (work.W()-w)/2
 	y := work.Top + (work.H()-ht)/2
-	SetWindowPos(h.window, 0, x, y, w, ht, SWP_NOZORDER|SWP_NOACTIVATE)
+	SetWindowPos(h.window, 0, x, y, w, ht, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 }
 
 func (h *Host) windowMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
@@ -134,7 +134,7 @@ func (h *Host) windowMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
 	case WM_SIZE:
 		if h.root != nil && h.root.hwnd != 0 {
 			r := ClientRect(h.window)
-			SetWindowPos(h.root.hwnd, 0, 0, 0, r.W(), r.H(), SWP_NOZORDER|SWP_NOACTIVATE)
+			SetWindowPos(h.root.hwnd, 0, 0, 0, r.W(), r.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 		}
 		h.environmentChanged()
 		return 0, true
@@ -236,7 +236,7 @@ func (h *Host) dpiChanged(dpi int, suggested Rect) {
 	h.scale = float32(dpi) / 96
 	h.clearFonts()
 	h.applyFonts()
-	SetWindowPos(h.window, 0, suggested.Left, suggested.Top, suggested.W(), suggested.H(), SWP_NOZORDER|SWP_NOACTIVATE)
+	SetWindowPos(h.window, 0, suggested.Left, suggested.Top, suggested.W(), suggested.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 	for _, n := range h.nodes {
 		if n.hwnd != 0 && n != h.root && n.cell == nil && (n.nav == nil || !n.nav.sizedByHost(n)) {
 			h.placeFrame(n)

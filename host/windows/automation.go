@@ -7,6 +7,7 @@ import (
 	stdimage "image"
 	"image/png"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -84,6 +85,18 @@ func (h *Host) step(verb, arg string) {
 		}
 	case "back":
 		h.back()
+	case "scroll":
+		// The innermost scroll view showing, to a y.
+		y, _ := strconv.ParseFloat(arg, 32)
+		var s *node
+		for _, n := range h.nodes {
+			if (n.kind == ops.KindScroll || n.kind == ops.KindList) && h.onScreen(n) && (s == nil || n.id > s.id) {
+				s = n
+			}
+		}
+		if s != nil {
+			h.scrollToOffset(s, 0, float32(y))
+		}
 	case "escape":
 		if len(h.sheets) > 0 {
 			h.cancelSheet(h.byHwnd[h.sheets[len(h.sheets)-1].nav.window])

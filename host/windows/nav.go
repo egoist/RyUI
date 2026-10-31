@@ -226,7 +226,7 @@ func (h *Host) layoutScreens(n *node) {
 	r := ClientRect(n.hwnd)
 	bar := h.px(h.barHeight(n))
 	if b := n.nav.bar; b != nil && b.hwnd != 0 {
-		SetWindowPos(b.hwnd, HWND_TOP, 0, 0, r.W(), bar, SWP_NOACTIVATE)
+		SetWindowPos(b.hwnd, HWND_TOP, 0, 0, r.W(), bar, SWP_NOACTIVATE|SWP_NOCOPYBITS)
 		if n.kind == ops.KindStack {
 			h.layoutHeader(b)
 		}
@@ -235,7 +235,7 @@ func (h *Host) layoutScreens(n *node) {
 		if c.hwnd == 0 {
 			continue
 		}
-		SetWindowPos(c.hwnd, 0, 0, bar, r.W(), max(r.H()-bar, 0), SWP_NOZORDER|SWP_NOACTIVATE)
+		SetWindowPos(c.hwnd, 0, 0, bar, r.W(), max(r.H()-bar, 0), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 		h.reportScreen(c, h.pt(r.W()), h.pt(max(r.H()-bar, 0)))
 	}
 }
@@ -406,7 +406,7 @@ func (h *Host) layoutHeader(b *node) {
 	r := ClientRect(b.hwnd)
 	size := h.px(36)
 	y := (r.H() - size) / 2
-	SetWindowPos(b.nav.back, 0, h.px(6), y, h.px(40), size, SWP_NOZORDER|SWP_NOACTIVATE)
+	SetWindowPos(b.nav.back, 0, h.px(6), y, h.px(40), size, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 	x := r.W() - h.px(8)
 	screen := b.nav.screen
 	for i := len(b.nav.buttons) - 1; i >= 0; i-- {
@@ -419,7 +419,7 @@ func (h *Host) layoutHeader(b *node) {
 			w = tw + h.px(24)
 		}
 		x -= w
-		SetWindowPos(b.nav.buttons[i], 0, x, y, w, size, SWP_NOZORDER|SWP_NOACTIVATE)
+		SetWindowPos(b.nav.buttons[i], 0, x, y, w, size, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 		x -= h.px(4)
 	}
 }
@@ -454,31 +454,35 @@ func (h *Host) headerCommand(b *node, ctl uintptr) {
 	}
 }
 
-// paintHeader draws the screen's title beside the back button, in
-// Fluent's Subtitle (20, semibold), and a hairline under the bar.
+// paintHeader draws a hairline under the bar (g), and the screen's
+// title beside the back button in Fluent's Subtitle (20, semibold) (dc).
 func (h *Host) paintHeader(b *node, dc uintptr, g Graphics, r Rect) {
 	stack := b.nav.stack
 	screen := b.nav.screen
 	k := h.scale
-	if screen != nil && screen.title != "" {
-		x := h.px(16)
-		if h.liveScreens(stack) > 1 {
-			x = h.px(52)
-		}
-		old := SelectObject(dc, h.font(h.spec(int32(ops.TextStyleTitle2), 0, 0, "")))
-		SetBkMode(dc, TRANSPARENT)
-		SetTextColor(dc, h.theme.label.ref())
-		right := r.Right - h.px(16)
-		for _, btn := range b.nav.buttons {
-			right = min(right, WindowRectIn(btn, b.hwnd).Left-h.px(8))
-		}
-		tr := Rect{Left: x, Top: 0, Right: right, Bottom: r.Bottom}
-		DrawText(dc, UTF16Units(screen.title), &tr, DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX|DT_END_ELLIPSIS)
-		SelectObject(dc, old)
+	if g != 0 {
+		br := SolidBrush(h.theme.separator.argb())
+		g.FillRect(br, 0, float32(r.H())-max(k, 1), float32(r.W()), max(k, 1))
+		br.Close()
+		return
 	}
-	br := SolidBrush(h.theme.separator.argb())
-	g.FillRect(br, 0, float32(r.H())-max(k, 1), float32(r.W()), max(k, 1))
-	br.Close()
+	if screen == nil || screen.title == "" {
+		return
+	}
+	x := h.px(16)
+	if h.liveScreens(stack) > 1 {
+		x = h.px(52)
+	}
+	old := SelectObject(dc, h.font(h.spec(int32(ops.TextStyleTitle2), 0, 0, "")))
+	SetBkMode(dc, TRANSPARENT)
+	SetTextColor(dc, h.theme.label.ref())
+	right := r.Right - h.px(16)
+	for _, btn := range b.nav.buttons {
+		right = min(right, WindowRectIn(btn, b.hwnd).Left-h.px(8))
+	}
+	tr := Rect{Left: x, Top: 0, Right: right, Bottom: r.Bottom}
+	DrawText(dc, UTF16Units(screen.title), &tr, DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX|DT_END_ELLIPSIS)
+	SelectObject(dc, old)
 }
 
 // popStack is the back button: the stack's top screen is popped (the
@@ -625,14 +629,38 @@ func (h *Host) selectTab(tabs *node, i int) {
 	h.emit(tabs, ops.Event{Kind: ops.EventSelected, Int: int64(i)})
 }
 
-// paintTabBar draws the tabs: the selected one's title in the text
-// color with an accent pill under it, the others secondary; a hairline
-// under the bar.
+// paintTabBar draws the tabs: under the mouse, a highlight, and under
+// the selected one an accent pill (g); the titles, the selected one's in
+// the text color and the others' secondary (dc); a hairline under the
+// bar.
 func (h *Host) paintTabBar(b *node, dc uintptr, g Graphics, r Rect) {
 	tabs := b.nav.tabs
 	k := h.scale
 	p := &h.theme
 	rects := h.tabRects(b)
+	if g != 0 {
+		for i := range tabs.children {
+			if i >= len(rects) {
+				break
+			}
+			tr := rects[i]
+			if i == b.nav.hot {
+				g.FillRoundRect(p.subtleHot.argb(), float32(tr.Left), float32(tr.Top), float32(tr.W()), float32(tr.H()), 4*k)
+			}
+			if i == tabs.selected {
+				pw, ph := 16*k, 3*k
+				cx := float32(tr.Left+tr.Right) / 2
+				g.FillRoundRect(p.accent.argb(), cx-pw/2, float32(tr.Bottom)-ph, pw, ph, ph/2)
+				if b.focused && h.keyboardCues(b.hwnd) {
+					g.StrokeRoundRect(p.label.argb(), 2*k, float32(tr.Left), float32(tr.Top), float32(tr.W()), float32(tr.H()), 4*k)
+				}
+			}
+		}
+		br := SolidBrush(p.separator.argb())
+		g.FillRect(br, 0, float32(r.H())-max(k, 1), float32(r.W()), max(k, 1))
+		br.Close()
+		return
+	}
 	font := h.bodyFont()
 	SetBkMode(dc, TRANSPARENT)
 	for i, s := range tabs.children {
@@ -640,35 +668,23 @@ func (h *Host) paintTabBar(b *node, dc uintptr, g Graphics, r Rect) {
 			break
 		}
 		tr := rects[i]
-		if i == b.nav.hot {
-			g.FillRoundRect(p.subtleHot.argb(), float32(tr.Left), float32(tr.Top), float32(tr.W()), float32(tr.H()), 4*k)
-		}
 		color := p.secondary
 		if i == tabs.selected {
 			color = p.label
-			pw, ph := 16*k, 3*k
-			cx := float32(tr.Left+tr.Right) / 2
-			g.FillRoundRect(p.accent.argb(), cx-pw/2, float32(tr.Bottom)-ph, pw, ph, ph/2)
 		}
 		SetTextColor(dc, color.over(p.bg).ref())
 		x := tr.Left + h.px(12)
 		if glyph := symbolGlyph(s.icon); glyph != 0 {
-			SelectObject(dc, h.iconFont(16*h.fontScale()))
+			old := SelectObject(dc, h.iconFont(16*h.fontScale()))
 			gr := Rect{Left: x, Top: tr.Top, Right: x + h.px(16), Bottom: tr.Bottom}
 			DrawText(dc, []uint16{glyph}, &gr, DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX)
+			SelectObject(dc, old)
 			x += h.px(16 + 8)
 		}
 		old := SelectObject(dc, font)
 		lr := Rect{Left: x, Top: tr.Top, Right: tr.Right, Bottom: tr.Bottom}
 		DrawText(dc, UTF16Units(s.title), &lr, DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX)
 		SelectObject(dc, old)
-	}
-	br := SolidBrush(p.separator.argb())
-	g.FillRect(br, 0, float32(r.H())-max(k, 1), float32(r.W()), max(k, 1))
-	br.Close()
-	if b.focused && h.keyboardCues(b.hwnd) && tabs.selected < len(rects) {
-		tr := rects[tabs.selected]
-		g.StrokeRoundRect(p.label.argb(), 2*k, float32(tr.Left), float32(tr.Top), float32(tr.W()), float32(tr.H()), 4*k)
 	}
 }
 
@@ -720,7 +736,7 @@ func (h *Host) openSheet(n *node) {
 	n.presented = true
 	SetParent(n.hwnd, win)
 	cr = ClientRect(win)
-	SetWindowPos(n.hwnd, 0, 0, 0, cr.W(), cr.H(), SWP_NOZORDER|SWP_NOACTIVATE)
+	SetWindowPos(n.hwnd, 0, 0, 0, cr.W(), cr.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 	h.sheets = append(h.sheets, n)
 	h.reportScreen(n, h.pt(cr.W()), h.pt(cr.H()))
 	EnableWindow(owner, false)
@@ -737,7 +753,7 @@ func (h *Host) sheetMessage(sw *node, m uint32, wp, lp uintptr) (uintptr, bool) 
 	case WM_SIZE:
 		if n != nil && n.hwnd != 0 {
 			cr := ClientRect(sw.hwnd)
-			SetWindowPos(n.hwnd, 0, 0, 0, cr.W(), cr.H(), SWP_NOZORDER|SWP_NOACTIVATE)
+			SetWindowPos(n.hwnd, 0, 0, 0, cr.W(), cr.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 			h.reportScreen(n, h.pt(cr.W()), h.pt(cr.H()))
 		}
 		return 0, true

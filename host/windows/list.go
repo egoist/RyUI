@@ -232,7 +232,7 @@ func (l *list) placeRows(h *Host) {
 		y := l.tops[r] - l.offset
 		height := l.rowHeight(r)
 		x0, y0 := int32(0), h.px(y)
-		d = d.Defer(rv.n.hwnd, 0, x0, y0, h.px(l.width), h.px(y+height)-y0, SWP_NOZORDER|SWP_NOACTIVATE|SWP_SHOWWINDOW)
+		d = d.Defer(rv.n.hwnd, 0, x0, y0, h.px(l.width), h.px(y+height)-y0, SWP_NOZORDER|SWP_NOACTIVATE|SWP_SHOWWINDOW|SWP_NOCOPYBITS)
 	}
 	d.End()
 	for r, rv := range l.shown {
@@ -316,7 +316,7 @@ func (c *cell) setHeight(height float32) {
 func (l *list) placeCells(h *Host, rv *rowView, r int) {
 	if l.columns <= 1 {
 		for _, c := range rv.cells {
-			SetWindowPos(c.n.hwnd, 0, 0, 0, h.px(l.width), h.px(c.height), SWP_NOZORDER|SWP_NOACTIVATE)
+			SetWindowPos(c.n.hwnd, 0, 0, 0, h.px(l.width), h.px(c.height), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 		}
 		Invalidate(rv.n.hwnd)
 		return
@@ -324,7 +324,7 @@ func (l *list) placeCells(h *Host, rv *rowView, r int) {
 	cw := (l.width - l.gap*float32(l.columns-1)) / float32(l.columns)
 	for i, c := range rv.cells {
 		x := float32(i) * (cw + l.gap)
-		SetWindowPos(c.n.hwnd, 0, h.px(x), 0, h.px(x+cw)-h.px(x), h.px(c.height), SWP_NOZORDER|SWP_NOACTIVATE)
+		SetWindowPos(c.n.hwnd, 0, h.px(x), 0, h.px(x+cw)-h.px(x), h.px(c.height), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 	}
 }
 

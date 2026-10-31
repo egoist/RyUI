@@ -38,7 +38,6 @@ func (h *Host) drawButton(n *node, cd *NMCustomDraw) uintptr {
 	ctl := cd.Hdr.HwndFrom
 	h.paintBehind(ctl, dc)
 	g := NewGraphics(dc)
-	defer g.Close()
 	k := h.scale
 	w, ht := float32(r.W()), float32(r.H())
 	hot := cd.ItemState&CDIS_HOT != 0
@@ -64,6 +63,7 @@ func (h *Host) drawButton(n *node, cd *NMCustomDraw) uintptr {
 		g.StrokeRoundRect(p.controlStroke.argb(), max(k, 1), 0, 0, w, ht, radius)
 		in := 4 * k
 		g.FillRoundRect(c.argb(), in, in, w-2*in, ht-2*in, radius/2)
+		g.Close()
 		return CDRF_SKIPDEFAULT
 	}
 
@@ -140,6 +140,7 @@ func (h *Host) drawButton(n *node, cd *NMCustomDraw) uintptr {
 	if focus {
 		h.focusRing(g, w, ht, radius)
 	}
+	g.Close() // before GDI draws the title
 
 	glyph, title := h.buttonGlyph(n, ctl)
 	under := fill
@@ -479,21 +480,21 @@ func (h *Host) layoutField(n *node) {
 		x := h.px(10)
 		if n.multiline {
 			y := h.px(6)
-			SetWindowPos(n.ctl, 0, x, y, max(r.W()-2*x, 1), max(r.H()-y-h.px(6), 1), SWP_NOZORDER|SWP_NOACTIVATE)
+			SetWindowPos(n.ctl, 0, x, y, max(r.W()-2*x, 1), max(r.H()-y-h.px(6), 1), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 		} else {
 			lh := tm.Height
 			y := (r.H() - lh) / 2
-			SetWindowPos(n.ctl, 0, x, y, max(r.W()-2*x, 1), lh, SWP_NOZORDER|SWP_NOACTIVATE)
+			SetWindowPos(n.ctl, 0, x, y, max(r.W()-2*x, 1), lh, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 		}
 	case ops.KindWheel:
 		// The selection field fills the view; the list drops below it.
 		SendMessage(n.ctl, CB_SETITEMHEIGHT, ^uintptr(0), uintptr(max(r.H()-h.px(8), 1)))
-		SetWindowPos(n.ctl, 0, 0, 0, r.W(), r.H()+h.px(300), SWP_NOZORDER|SWP_NOACTIVATE)
+		SetWindowPos(n.ctl, 0, 0, 0, r.W(), r.H()+h.px(300), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 	case ops.KindSlider:
 		SendMessage(n.ctl, TBM_SETTHUMBLENGTH, uintptr(h.px(20)), 0)
-		SetWindowPos(n.ctl, 0, 0, 0, r.W(), r.H(), SWP_NOZORDER|SWP_NOACTIVATE)
+		SetWindowPos(n.ctl, 0, 0, 0, r.W(), r.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 	default:
-		SetWindowPos(n.ctl, 0, 0, 0, r.W(), r.H(), SWP_NOZORDER|SWP_NOACTIVATE)
+		SetWindowPos(n.ctl, 0, 0, 0, r.W(), r.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 	}
 }
 
@@ -532,8 +533,8 @@ func (h *Host) layoutStepper(n *node) {
 	r := ClientRect(n.hwnd)
 	gap := h.px(4)
 	bw := (r.W() - gap) / 2
-	SetWindowPos(n.ctl, 0, 0, 0, bw, r.H(), SWP_NOZORDER|SWP_NOACTIVATE)
-	SetWindowPos(n.ctl2, 0, bw+gap, 0, r.W()-bw-gap, r.H(), SWP_NOZORDER|SWP_NOACTIVATE)
+	SetWindowPos(n.ctl, 0, 0, 0, bw, r.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
+	SetWindowPos(n.ctl2, 0, bw+gap, 0, r.W()-bw-gap, r.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 }
 
 // Segmented: the host's own control, drawn as the Windows Community
@@ -557,28 +558,23 @@ func (h *Host) selectSegment(n *node, i int) {
 	h.emit(n, ops.Event{Kind: ops.EventSelected, Int: int64(i)})
 }
 
+// paintSegmented draws the track and the raised segment (g), or the
+// titles (dc).
 func (h *Host) paintSegmented(n *node, dc uintptr, g Graphics, r Rect) {
 	k := h.scale
 	p := &h.theme
 	w, ht := float32(r.W()), float32(r.H())
-	track := rgba{0, 0, 0, 0x0F}
-	if h.dark {
-		track = rgba{255, 255, 255, 0x0F}
-	}
-	g.FillRoundRect(track.argb(), 0, 0, w, ht, 5*k)
-	g.StrokeRoundRect(p.stroke.argb(), max(k, 1), 0, 0, w, ht, 5*k)
 	count := len(n.items)
-	if count == 0 {
-		return
-	}
-	sw := w / float32(count)
-	font := h.nodeFont(n)
-	old := SelectObject(dc, font)
-	SetBkMode(dc, TRANSPARENT)
-	for i, s := range n.items {
-		x := float32(i) * sw
-		color := p.secondary
-		if i == n.selected {
+	sw := w / float32(max(count, 1))
+	if g != 0 {
+		track := rgba{0, 0, 0, 0x0F}
+		if h.dark {
+			track = rgba{255, 255, 255, 0x0F}
+		}
+		g.FillRoundRect(track.argb(), 0, 0, w, ht, 5*k)
+		g.StrokeRoundRect(p.stroke.argb(), max(k, 1), 0, 0, w, ht, 5*k)
+		if n.selected >= 0 && n.selected < count {
+			x := float32(n.selected) * sw
 			in := 3 * k
 			sel := p.control
 			if h.dark {
@@ -592,6 +588,15 @@ func (h *Host) paintSegmented(n *node, dc uintptr, g Graphics, r Rect) {
 			}
 			pw, ph := 16*k, 3*k
 			g.FillRoundRect(accent.argb(), x+sw/2-pw/2, ht-in-ph-1*k, pw, ph, ph/2)
+		}
+		return
+	}
+	old := SelectObject(dc, h.nodeFont(n))
+	SetBkMode(dc, TRANSPARENT)
+	for i, s := range n.items {
+		x := float32(i) * sw
+		color := p.secondary
+		if i == n.selected {
 			color = p.label
 		}
 		if n.disabled {
@@ -602,7 +607,4 @@ func (h *Host) paintSegmented(n *node, dc uintptr, g Graphics, r Rect) {
 		DrawText(dc, UTF16Units(s), &tr, DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX|DT_END_ELLIPSIS)
 	}
 	SelectObject(dc, old)
-	if n.focused && h.keyboardCues(n.hwnd) {
-		h.focusRing(g, w, ht, 5*k)
-	}
 }

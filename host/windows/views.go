@@ -97,10 +97,8 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 		n.list = newList(h, n)
 	case ops.KindRichText:
 		h.makeRich(n)
-	case ops.KindWebView:
+	case ops.KindWebView, ops.KindVideo:
 		h.makeWeb(n)
-	case ops.KindVideo:
-		fail("can't show Video yet")
 	case ops.KindNative:
 		fail("can't show native views (ui.Native) yet: they're the app's Swift and Kotlin")
 	default:
@@ -292,7 +290,7 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 		n.rich.setProp(h, n, p, v)
 	case ops.KindShape:
 		n.shape.setProp(h, n, p, v)
-	case ops.KindWebView:
+	case ops.KindWebView, ops.KindVideo:
 		n.web.setProp(h, n, p, v)
 	default:
 		h.setNavProp(n, p, v)
