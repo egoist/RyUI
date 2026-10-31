@@ -10,10 +10,10 @@ import (
 	"sort"
 	"strings"
 
-	iosHost "github.com/egoist/ryui/hosts/ios"
+	iosHost "github.com/egoist/ryui/platform/ios"
 )
 
-// The share extension (ryui.json's shareTarget): hosts/ios/Share, a
+// The share extension (ryui.json's shareTarget): platform/ios/Share, a
 // binary of its own in the app's PlugIns. It runs no Go: it opens the
 // app with what was shared in a URL of the app's share scheme, which the
 // host turns into the Shared event (ui.OnShare), as Android's
@@ -96,7 +96,7 @@ func (c *appConfig) shareInfo(app map[string]any) map[string]any {
 		"CFBundlePackageType":           "XPC!",
 		"CFBundleInfoDictionaryVersion": "6.0",
 		"CFBundleDevelopmentRegion":     "en",
-		"RyUIShareScheme":                c.shareScheme(),
+		"RyUIShareScheme":               c.shareScheme(),
 		"NSExtension": map[string]any{
 			"NSExtensionPointIdentifier": "com.apple.share-services",
 			"NSExtensionPrincipalClass":  "RyUIShareViewController",

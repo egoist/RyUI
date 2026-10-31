@@ -1,4 +1,4 @@
-// The callbacks a platform host gives the core (see hosts/ios/Sources/CRyUI/include/ryui.h).
+// The callbacks a platform host gives the core (see platform/ios/Sources/CRyUI/include/ryui.h).
 #ifndef RYUI_HOST_H
 #define RYUI_HOST_H
 

@@ -216,7 +216,7 @@ func (c *appConfig) associatedDomains(simulator bool) []string {
 // featurePermissions are what RyUI's packages need of the platform: an
 // app that imports one is given them (and, on iOS, a purpose string,
 // which ryui.json's ios.usage can say better), and the Android host's
-// optional Gradle modules (hosts/android/ryui-<name>) it needs.
+// optional Gradle modules (platform/android/ryui-<name>) it needs.
 var featurePermissions = []struct {
 	pkg     string
 	android []string // permissions; "name:28": up to Android 9 (API 28) only

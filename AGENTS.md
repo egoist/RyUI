@@ -45,8 +45,8 @@ go build ./... && go vet ./...      # CGO_ENABLED=0: everything but mobile/
 go test ./...                       # signal, layout, ui with host/fake, ops, CLI
 go test ./layout -run CSS -update-known  # after fixing layout: refresh known_failures.txt
 go test ./ops -update               # after changing the wire format: refresh golden files
-swift test --package-path hosts/ios # the Swift decoder against the golden files (macOS)
-(cd hosts/android && ./gradlew :ryui:testDebugUnitTest)  # the Kotlin decoder, likewise (ANDROID_HOME set)
+swift test --package-path platform/ios # the Swift decoder against the golden files (macOS)
+(cd platform/android && ./gradlew :ryui:testDebugUnitTest)  # the Kotlin decoder, likewise (ANDROID_HOME set)
 go generate ./ops                   # Go constants, Swift and Kotlin decoders
 go run ./cmd/ryui dev -ios examples/counter       # iOS simulator (Xcode): the Go code runs here, in the player
 go run ./cmd/ryui dev -android examples/counter   # Android emulator (SDK + NDK), likewise

@@ -49,7 +49,7 @@ func runAction(as []Action, i int64) {
 // Icon is a symbol (ui.Symbol, tabs, buttons, actions): an SF Symbol
 // name. iOS draws any; Android draws the common ones, as the Material
 // Symbols for them: the constants here, and more (see
-// hosts/android/gen_symbols.go). A name with ".fill" is the filled
+// platform/android/gen_symbols.go). A name with ".fill" is the filled
 // symbol.
 type Icon string
 

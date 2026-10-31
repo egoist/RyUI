@@ -50,7 +50,7 @@ ui/                      node tree, components, flush scheduler
 layout/                  flexbox over the node tree
 ops/                     mount operations, binary encoding
 ─────────────────────────────────────────────────────────────  Host interface
-mobile/ (C ABI, cgo) ──► hosts/ios (Swift)   hosts/android (Kotlin)
+mobile/ (C ABI, cgo) ──► platform/ios (Swift)   platform/android (Kotlin)
 host/fake                                  tests: records ops
 host/darwin                                macOS: AppKit in process, Go (purego)
 host/windows                               Windows: Win32 in process, Go (syscall)
@@ -472,7 +472,7 @@ layout (in the spirit of Taffy, not a port of it or of Yoga), in points
 
 The only contract between core and hosts. Its schema is written once in
 Go (`ops/schema.go`); `go generate ./ops` writes the Go constants, the
-Swift decoder (`hosts/ios`) and the Kotlin decoder (`hosts/android`),
+Swift decoder (`platform/ios`) and the Kotlin decoder (`platform/android`),
 each with event encoders.
 Mobile hosts read the binary encoding; `host/fake` (and desktop hosts
 later) read the batch's Go structs directly.
@@ -593,7 +593,7 @@ void      ryui_run_posted(void);             // the host's main-thread hop
 All calls come on the main thread. `post` from Go calls the host's
 callback, which hops with `DispatchQueue.main.async` / `Handler.post`
 and calls `ryui_run_posted`. The header Swift and Kotlin compile against
-is `hosts/ios/Sources/CRyUI/include/ryui.h`.
+is `platform/ios/Sources/CRyUI/include/ryui.h`.
 
 An app is a `main` package whose `main` calls `app.Run(root)`. The CLI
 adds a file to it with `go build -overlay` that imports `mobile` and
@@ -603,7 +603,7 @@ root on the mobile host.
 - iOS: `GOOS=ios GOARCH=arm64 CGO_ENABLED=1 go build
   -buildmode=c-archive`, with the SDK's clang (iphonesimulator for the
   simulator, arm64 and x86_64; iphoneos and an XCFramework for devices
-  in M6). `hosts/ios` is a Swift package with the decoder (`RyUIOps`),
+  in M6). `platform/ios` is a Swift package with the decoder (`RyUIOps`),
   the UIKit host (`RyUIHost`) and the C header (`CRyUI`); `App/` holds the
   `@main` app delegate. The CLI embeds them.
 - Android: `GOOS=android CGO_ENABLED=1 go build -buildmode=c-shared` per
@@ -613,7 +613,7 @@ root on the mobile host.
   Kotlin's `dev.ryui.RyUINative` calls in; the core calls
   `RyUIRuntime.apply(ByteBuffer)` (a direct buffer over the encoded
   batch, one call per batch), `measure` and `post` back.
-  `hosts/android` is a Gradle project: the `ryui` library (decoder,
+  `platform/android` is a Gradle project: the `ryui` library (decoder,
   Views host, JNI bindings) and `app`, the shell app the CLI builds per
   app (application ID and name passed as Gradle properties).
 
@@ -739,8 +739,8 @@ ryui/
   host/              Host interface, Environment
     fake/            records ops, measures by fixed rules; for tests
   mobile/            C ABI (cgo, ios||android)
-  hosts/ios/         Swift package
-  hosts/android/     Kotlin/Gradle library
+  platform/ios/      Swift package
+  platform/android/  Kotlin/Gradle library
   app/               app.Root, lifecycle
   cmd/ryui/           CLI
   template/          what `ryui new` copies
@@ -777,13 +777,13 @@ Desktop adds `host/darwin` and `internal/darwin` (macOS),
   screen, and disposal destroying every window.
 - `ops`: the Go encoder and the generated Swift and Kotlin decoders
   round-trip the same golden batches (`swift test --package-path
-  hosts/ios`; `./gradlew :ryui:testDebugUnitTest` in `hosts/android`).
+  platform/ios`; `./gradlew :ryui:testDebugUnitTest` in `platform/android`).
 - Hosts: GUI tests (`e2e/`, build tag `e2e`, in CI on a simulator and
   an emulator) build `examples/` with `ryui dev -once` and drive them
   through the native views. Debug builds take automation commands (tap,
   type, submit, back, tab, rotate, dump: what the screen shows), on iOS from a file in the
   app's container on the `dev.ryui.automation` Darwin notification
-  (`hosts/ios/Sources/RyUIHost/Automation.swift`), on Android from a
+  (`platform/ios/Sources/RyUIHost/Automation.swift`), on Android from a
   `dev.ryui.automation` broadcast (`Automation.kt`; the dump read with
   `run-as`). So both platforms run the same test, and neither needs
   UI Automator's single connection, which device tools hold. Each test
@@ -798,11 +798,11 @@ Each one ends with its examples running and its tests in CI.
 
 - **M0, core without UI** (done): `signal`, `ui` with `host/fake`,
   `layout`, `ops` with the Go encoder. Everything above under `go test`.
-- **M1, iOS** (done): Swift codegen for `ops`, `mobile/`, `hosts/ios`,
+- **M1, iOS** (done): Swift codegen for `ops`, `mobile/`, `platform/ios`,
   `ryui new`, `ryui dev -ios` on the simulator. Counter, todo (`For`,
   `TextField`, `Toggle`, `SafeArea` with the keyboard) and list10k
   (`List`) run. Not yet: XCUITest GUI tests and CI on macOS runners.
-- **M2, Android** (done): Kotlin codegen, `hosts/android`,
+- **M2, Android** (done): Kotlin codegen, `platform/android`,
   `ryui dev -android` on the emulator, Activity recreation
   (`ryui_attach`). The same examples run unchanged; live rotation, dark
   mode, font scale and the keyboard (insets, animated) work. Not yet:
@@ -846,7 +846,7 @@ Each one ends with its examples running and its tests in CI.
 - **M7, toward a production release** (in progress). Done:
   - `ui.Symbol` and icons on buttons and actions: SF Symbols on iOS; on
     Android their Material Symbols, a curated set generated by
-    `hosts/android/gen_symbols.go` with TalkBack labels.
+    `platform/android/gen_symbols.go` with TalkBack labels.
   - Multiline `TextField`, growing to `Lines` lines, then scrolling.
   - `ui.Segmented`, `ui.Progress` and `ui.DatePicker`, each the
     platform's control (Material's pickers on Android).
@@ -877,7 +877,7 @@ Each one ends with its examples running and its tests in CI.
   - Incoming links: `ryui.json`'s `scheme` and `links`, `ui.OnOpenURL`.
   - Shares from other apps: `ryui.json`'s `shareTarget`, `ui.OnShare`.
     Android takes `ACTION_SEND` text in the app's Activity. iOS has a
-    share extension (`hosts/ios/Share`, a `.appex` in the app's
+    share extension (`platform/ios/Share`, a `.appex` in the app's
     PlugIns, built by the CLI with no Go in it): it takes text and web
     links, then opens the app with them in a URL of a scheme of the
     app's (`ryuishare.<app ID>`), through the application at the end of

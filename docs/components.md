@@ -351,7 +351,7 @@ tabs take one too. The `Icon` constants are the common ones:
 
 iOS draws any SF Symbol. Android draws a curated set: the constants and
 more, mapped to Material Symbols in
-[`hosts/android/gen_symbols.go`](../hosts/android/gen_symbols.go). A
+[`platform/android/gen_symbols.go`](../platform/android/gen_symbols.go). A
 name outside that set shows nothing on Android (it logs a warning), so
 check a name you write as a string, like `"archivebox"`, on both.
 

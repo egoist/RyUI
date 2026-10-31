@@ -5,7 +5,7 @@ package ops
 // The schema: every kind of native view, its props, the events hosts
 // send, the commands the core sends and the enums they use. go generate
 // writes the Go constants (schema_gen.go) and the Swift decoder
-// (hosts/ios/Sources/RyUIOps/Ops.swift) from it.
+// (platform/ios/Sources/RyUIOps/Ops.swift) from it.
 //
 // Adding a component: add its kind and props here, run go generate, add
 // the component in ui, and its view in every host.

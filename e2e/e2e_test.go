@@ -4,8 +4,8 @@
 // through the platform's widgets, not the core. The tests build each app
 // with `ryui dev -once` (its Go code embedded, a debug build), then tap
 // and read the screen through the debug hosts' automation
-// (hosts/ios/Sources/RyUIHost/Automation.swift, a notification;
-// hosts/android/ryui/src/main/java/dev/ryui/Automation.kt, a broadcast).
+// (platform/ios/Sources/RyUIHost/Automation.swift, a notification;
+// platform/android/ryui/src/main/java/dev/ryui/Automation.kt, a broadcast).
 //
 //	go test -tags e2e ./e2e -run IOS      # a booted simulator, else the newest iPhone
 //	go test -tags e2e ./e2e -run Android  # a running emulator or a device

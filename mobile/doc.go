@@ -1,5 +1,5 @@
 // Package mobile adapts RyUI's core to the C ABI that the iOS and Android
-// hosts call (see hosts/ios/Sources/CRyUI/include/ryui.h). It builds only
+// hosts call (see platform/ios/Sources/CRyUI/include/ryui.h). It builds only
 // for ios and android, with cgo; elsewhere it is empty.
 //
 // The CLI links the app's main package with this package and sets Main

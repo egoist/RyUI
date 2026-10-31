@@ -12,7 +12,7 @@ import com.google.android.material.textview.MaterialTextView
 fun RyUIRuntime.symbol(name: String): Drawable? {
     val res = symbolDrawables[name] ?: symbolDrawables[name.removeSuffix(".fill")]
     if (res == null) {
-        if (name.isNotEmpty()) android.util.Log.w("ryui", "no Android symbol for \"$name\" (see hosts/android/gen_symbols.go)")
+        if (name.isNotEmpty()) android.util.Log.w("ryui", "no Android symbol for \"$name\" (see platform/android/gen_symbols.go)")
         return null
     }
     return AppCompatResources.getDrawable(themed, res)?.mutate()

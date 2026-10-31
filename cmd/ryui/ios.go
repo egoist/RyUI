@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	iosHost "github.com/egoist/ryui/hosts/ios"
+	iosHost "github.com/egoist/ryui/platform/ios"
 )
 
 // The iOS dev loop: the Swift host is compiled once (and cached); on each

@@ -5,7 +5,7 @@
 // drawables, for the SF Symbol names ui.Symbol and ui.Icon take, and the
 // table from those names to the drawables (Symbols.kt).
 //
-//	go run hosts/android/gen_symbols.go
+//	go run platform/android/gen_symbols.go
 package main
 
 import (
@@ -221,7 +221,7 @@ func drawable(material string, fill bool, d string) string {
 }
 
 func main() {
-	res := filepath.Join("hosts", "android", "ryui", "src", "main", "res", "drawable")
+	res := filepath.Join("platform", "android", "ryui", "src", "main", "res", "drawable")
 	old, _ := filepath.Glob(filepath.Join(res, "ryui_sym_*.xml"))
 	for _, f := range old {
 		os.Remove(f)
@@ -279,7 +279,7 @@ func main() {
 		fmt.Fprintf(&b, "    %q to %q,\n", e.sf, e.label)
 	}
 	b.WriteString(")\n")
-	kt := filepath.Join("hosts", "android", "ryui", "src", "main", "java", "dev", "ryui", "Symbols.kt")
+	kt := filepath.Join("platform", "android", "ryui", "src", "main", "java", "dev", "ryui", "Symbols.kt")
 	if err := os.WriteFile(kt, []byte(b.String()), 0o644); err != nil {
 		panic(err)
 	}

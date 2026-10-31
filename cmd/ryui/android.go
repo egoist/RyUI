@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	androidHost "github.com/egoist/ryui/hosts/android"
+	androidHost "github.com/egoist/ryui/platform/android"
 )
 
 // The Android dev loop: the shell app is built with Gradle once per host

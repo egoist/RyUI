@@ -1,4 +1,4 @@
-// JNI entry points for the Android host (hosts/android, dev.ryui.RyUINative).
+// JNI entry points for the Android host (platform/android, dev.ryui.RyUINative).
 // Kotlin calls in on the main thread; the core calls back into
 // dev.ryui.RyUIRuntime: apply(ByteBuffer) once per batch, measure(...) and
 // post() (from any thread).

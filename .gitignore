@@ -1,6 +1,6 @@
 # Build outputs
-hosts/ios/.build/
-hosts/ios/.swiftpm/
+platform/ios/.build/
+platform/ios/.swiftpm/
 .DS_Store
 
 # go build in cmd/ryui
