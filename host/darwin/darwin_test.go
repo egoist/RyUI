@@ -33,13 +33,35 @@ func TestMain(m *testing.M) {
 	}
 }
 
+// onMain runs f on the main thread. A failure in f (fatal) ends f,
+// not the main thread's loop, which t.Fatal's Goexit would.
 func onMain(f func()) {
 	ok := make(chan struct{})
 	mainQ <- func() {
 		defer close(ok)
+		defer func() {
+			if r := recover(); r != nil && r != errFatal {
+				panic(r)
+			}
+		}()
 		WithPool(f)
 	}
 	<-ok
+}
+
+var errFatal = new(int)
+
+// fatal fails the test and ends the onMain func it's called in.
+func fatal(t *testing.T, args ...any) {
+	t.Helper()
+	t.Error(args...)
+	panic(errFatal)
+}
+
+func fatalf(t *testing.T, format string, args ...any) {
+	t.Helper()
+	t.Errorf(format, args...)
+	panic(errFatal)
 }
 
 // mount mounts root on a new host (a window of its own), as Run does but
@@ -89,23 +111,23 @@ func TestCounter(t *testing.T) {
 	onMain(func() {
 		texts, buttons := find(h, ops.KindText), find(h, ops.KindButton)
 		if len(texts) != 1 || len(buttons) != 1 {
-			t.Fatalf("%d texts, %d buttons", len(texts), len(buttons))
+			fatalf(t, "%d texts, %d buttons", len(texts), len(buttons))
 		}
 		label, button := texts[0], buttons[0]
 		if s := text(label); s != "Count: 0" {
-			t.Fatalf("text %q", s)
+			fatalf(t, "text %q", s)
 		}
 		// A real click, through the button's target and action.
 		Send(button.view, "performClick:", 0)
 		if s := text(label); s != "Count: 1" {
-			t.Fatalf("after a click: %q", s)
+			fatalf(t, "after a click: %q", s)
 		}
 		f := MsgRect(label.view, Sel("frame"))
 		if f.Origin.X != 16 || f.Origin.Y != 16 || f.Size.Width <= 0 || f.Size.Height <= 0 {
-			t.Fatalf("text frame %+v", f)
+			fatalf(t, "text frame %+v", f)
 		}
 		if Send(label.view, "window") != h.window {
-			t.Fatal("the text isn't in the window")
+			fatal(t, "the text isn't in the window")
 		}
 	})
 }
@@ -118,7 +140,7 @@ func TestTextWraps(t *testing.T) {
 	onMain(func() {
 		f := MsgRect(find(h, ops.KindText)[0].view, Sel("frame"))
 		if f.Size.Width > 120 || f.Size.Height < 40 {
-			t.Fatalf("a long text in 120pt: %+v", f.Size)
+			fatalf(t, "a long text in 120pt: %+v", f.Size)
 		}
 	})
 }
@@ -134,17 +156,17 @@ func TestTextField(t *testing.T) {
 		Send(f.view, "setStringValue:", uintptr(String("hello")))
 		h.textChanged(f.view)
 		if value.Peek() != "hello" {
-			t.Fatalf("the signal is %q", value.Peek())
+			fatalf(t, "the signal is %q", value.Peek())
 		}
 		h.textCommand(f.view, 0, Sel("insertNewline:"))
 		if submitted != 1 {
-			t.Fatalf("submitted %d times", submitted)
+			fatalf(t, "submitted %d times", submitted)
 		}
 		// The app's write reaches the field.
 		h.enter(func() { ui.Post(func() { value.Set("set") }) })
 		h.runPosted()
 		if s := text(f); s != "set" {
-			t.Fatalf("the field shows %q", s)
+			fatalf(t, "the field shows %q", s)
 		}
 	})
 }
@@ -164,10 +186,10 @@ func TestListBindsOnlyWhatShows(t *testing.T) {
 	onMain(func() {
 		l := find(h, ops.KindList)[0].list
 		if len(l.shown) == 0 || len(l.shown) > 60 {
-			t.Fatalf("%d rows shown of 10,000", len(l.shown))
+			fatalf(t, "%d rows shown of 10,000", len(l.shown))
 		}
 		if total := l.tops[len(l.tops)-1]; total < 10000*40-1 {
-			t.Fatalf("the content is %.0f tall", total)
+			fatalf(t, "the content is %.0f tall", total)
 		}
 		// Scrolled to the middle, the rows there are bound.
 		h.scrollToOffset(l.n, 0, 200000, false)
@@ -177,12 +199,12 @@ func TestListBindsOnlyWhatShows(t *testing.T) {
 			if r == 5000 {
 				found = true
 				if s := text(firstText(rv.cells[0].n)); s != "Row 5000" {
-					t.Fatalf("row 5000 shows %q", s)
+					fatalf(t, "row 5000 shows %q", s)
 				}
 			}
 		}
 		if !found {
-			t.Fatal("row 5000 isn't shown at 200,000pt")
+			fatal(t, "row 5000 isn't shown at 200,000pt")
 		}
 	})
 }
@@ -207,21 +229,21 @@ func TestStackPushAndBack(t *testing.T) {
 		})
 		h.runPosted()
 		if s := GoString(Send(h.window, "title")); s != "Detail" {
-			t.Fatalf("the window's title is %q", s)
+			fatalf(t, "the window's title is %q", s)
 		}
 		if !h.main.chrome.back || h.main.chrome.toolbar == 0 {
-			t.Fatal("no back button")
+			fatal(t, "no back button")
 		}
 		// The toolbar's back button: Popped, and the core disposes the screen.
 		h.back(h.main)
 		if disposed != 1 {
-			t.Fatalf("the popped screen's owner was disposed %d times", disposed)
+			fatalf(t, "the popped screen's owner was disposed %d times", disposed)
 		}
 		if s := GoString(Send(h.window, "title")); s != "Home" {
-			t.Fatalf("after back, the title is %q", s)
+			fatalf(t, "after back, the title is %q", s)
 		}
 		if nav.Depth() != 1 {
-			t.Fatalf("depth %d", nav.Depth())
+			fatalf(t, "depth %d", nav.Depth())
 		}
 	})
 }
@@ -237,11 +259,11 @@ func TestDisposeDestroysViews(t *testing.T) {
 			})
 		})
 		if len(h.nodes) == 0 {
-			t.Fatal("no views")
+			fatal(t, "no views")
 		}
 		h.enter(r.Dispose)
 		if len(h.nodes) != 0 || len(h.byView) != 0 {
-			t.Fatalf("%d nodes, %d views left", len(h.nodes), len(h.byView))
+			fatalf(t, "%d nodes, %d views left", len(h.nodes), len(h.byView))
 		}
 		Send(h.window, "close")
 	})
@@ -270,25 +292,25 @@ func TestModules(t *testing.T) {
 		}
 		b, err := call("device", "info", nil)
 		if err != nil || !strings.Contains(string(b), `"system":"macOS"`) {
-			t.Fatalf("device.info: %s, %v", b, err)
+			fatalf(t, "device.info: %s, %v", b, err)
 		}
 		key := fmt.Sprintf("nui-test-%d", time.Now().UnixNano())
 		if b, err := call("secureStore", "get", []byte(key)); err != nil || len(b) != 1 || b[0] != 0 {
-			t.Fatalf("a missing key: %v, %v", b, err)
+			fatalf(t, "a missing key: %v, %v", b, err)
 		}
 		args := binary.LittleEndian.AppendUint32(nil, uint32(len(key)))
 		args = append(append(args, key...), "secret"...)
 		if _, err := call("secureStore", "set", args); err != nil {
-			t.Fatal(err)
+			fatal(t, err)
 		}
 		if b, err := call("secureStore", "get", []byte(key)); err != nil || string(b) != "\x01secret" {
-			t.Fatalf("get after set: %q, %v", b, err)
+			fatalf(t, "get after set: %q, %v", b, err)
 		}
 		if _, err := call("secureStore", "delete", []byte(key)); err != nil {
-			t.Fatal(err)
+			fatal(t, err)
 		}
 		if b, _ := call("secureStore", "get", []byte(key)); len(b) != 1 || b[0] != 0 {
-			t.Fatalf("after delete: %q", b)
+			fatalf(t, "after delete: %q", b)
 		}
 	})
 }
@@ -310,25 +332,25 @@ func TestAccessibility(t *testing.T) {
 			}
 		}
 		if v == nil {
-			t.Fatal("no labeled view")
+			fatal(t, "no labeled view")
 		}
 		if s := GoString(Send(v.view, "accessibilityLabel")); s != "Volume" {
-			t.Fatalf("label %q", s)
+			fatalf(t, "label %q", s)
 		}
 		actions := ArrayItems(Send(v.view, "accessibilityCustomActions"))
 		if len(actions) != 1 || GoString(Send(actions[0], "name")) != "Mute" {
-			t.Fatalf("%d actions", len(actions))
+			fatalf(t, "%d actions", len(actions))
 		}
 		// VoiceOver takes the action: its target and selector.
 		Send(Send(actions[0], "target"), "a11yAction:", uintptr(actions[0]))
 		if did != "Mute" {
-			t.Fatal("the action didn't run")
+			fatal(t, "the action didn't run")
 		}
 		Send(v.view, "accessibilityPerformIncrement")
 		Send(v.view, "accessibilityPerformIncrement")
 		Send(v.view, "accessibilityPerformDecrement")
 		if by != 1 {
-			t.Fatalf("adjusted by %d", by)
+			fatalf(t, "adjusted by %d", by)
 		}
 	})
 }
@@ -355,20 +377,20 @@ func TestTransitions(t *testing.T) {
 			}
 		}
 		if toast == nil {
-			t.Fatal("no toast")
+			fatal(t, "no toast")
 		}
 		v := Retain(toast.view)
 		defer Release(v)
 		if toast.entering || !toast.placed {
-			t.Fatal("the toast didn't come in")
+			fatal(t, "the toast didn't come in")
 		}
 		toggle(false)
 		// It's gone from the core's tree, and stays on screen while it goes.
 		if h.nodes[toast.id] != nil {
-			t.Fatal("the toast's node is still there")
+			fatal(t, "the toast's node is still there")
 		}
 		if !h.exiting[v] || Send(v, "superview") == 0 {
-			t.Fatal("the toast left at once")
+			fatal(t, "the toast left at once")
 		}
 	})
 }
@@ -387,28 +409,28 @@ func TestWindow(t *testing.T) {
 		h.enter(func() { ui.Post(func() { open.Set(true) }) })
 		h.runPosted()
 		if len(h.wins) != 1 {
-			t.Fatalf("%d windows", len(h.wins))
+			fatalf(t, "%d windows", len(h.wins))
 		}
 		var w *win
 		for _, x := range h.wins {
 			w = x
 		}
 		if s := GoString(Send(w.window, "title")); s != "Inspector" {
-			t.Fatalf("title %q", s)
+			fatalf(t, "title %q", s)
 		}
 		if b := MsgRect(w.content, Sel("bounds")); b.Size.Width != 300 || b.Size.Height != 200 {
-			t.Fatalf("content %+v", b.Size)
+			fatalf(t, "content %+v", b.Size)
 		}
 		// Its content lays out at the window's size.
 		if s := text(firstText(w.root)); s != "width 300" {
-			t.Fatalf("the content says %q", s)
+			fatalf(t, "the content says %q", s)
 		}
 		// The user closes it: the core closes it.
 		if SendBool(h.target, "windowShouldClose:", uintptr(w.window)) {
-			t.Fatal("closed without the core")
+			fatal(t, "closed without the core")
 		}
 		if open.Peek() || closed != 1 || len(h.wins) != 0 {
-			t.Fatalf("open %v closed %d windows %d", open.Peek(), closed, len(h.wins))
+			fatalf(t, "open %v closed %d windows %d", open.Peek(), closed, len(h.wins))
 		}
 	})
 }
@@ -426,39 +448,50 @@ func TestMenuBar(t *testing.T) {
 		find := func(menu, title string) ID {
 			m := Send(Send(bar, "itemWithTitle:", uintptr(String(menu))), "submenu")
 			if m == 0 {
-				t.Fatalf("no %s menu", menu)
+				fatalf(t, "no %s menu", menu)
 			}
 			return Send(m, "itemWithTitle:", uintptr(String(title)))
 		}
 		save := find("File", "Save")
 		if save == 0 || GoString(Send(save, "keyEquivalent")) != "s" || SendInt(save, "keyEquivalentModifierMask") != modCommand {
-			t.Fatal("no Save with ⌘S in File")
+			fatal(t, "no Save with ⌘S in File")
 		}
 		if find("File", "Close Window") == 0 {
-			t.Fatal("File lost Close Window")
+			fatal(t, "File lost Close Window")
 		}
 		// Clicked, as AppKit sends it: the item's OnPress runs.
 		Send(Send(save, "target"), "appMenuItem:", uintptr(save))
 		if saved != 1 {
-			t.Fatal("Save didn't run")
+			fatal(t, "Save didn't run")
 		}
 		lint := find("Tools", "Lint")
 		if lint == 0 || h.validateMenuItem(lint) {
-			t.Fatal("Lint isn't there and off")
+			fatal(t, "Lint isn't there and off")
 		}
 	})
 }
 
 func TestWindowOptions(t *testing.T) {
-	ui.SetWindowOptions(ui.WindowOptions{Title: "Notes", MinWidth: 400, MinHeight: 300})
+	ui.SetWindowOptions(ui.WindowOptions{Title: "Notes", Width: 420, Height: 500, MinWidth: 400, MinHeight: 300})
 	defer ui.SetWindowOptions(ui.WindowOptions{})
-	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })
+	// No size the user left the window at: the options' is the window's.
 	onMain(func() {
+		Send(Send(Class("NSUserDefaults"), "standardUserDefaults"), "removeObjectForKey:", uintptr(String("NSWindow Frame nui "+appName())))
+	})
+	h, _ := mount(t, func() ui.Node {
+		return ui.Text(signal.Func(func() string { return fmt.Sprint("width ", ui.UseEnvironment().Get().Width) }))
+	})
+	onMain(func() {
+		// The core lays out at the size the options gave the window (unless
+		// the user's is remembered).
+		if s := text(find(h, ops.KindText)[0]); s != "width 420" {
+			fatalf(t, "the root laid out at %q", s)
+		}
 		if s := GoString(Send(h.window, "title")); s != "Notes" {
-			t.Fatalf("title %q", s)
+			fatalf(t, "title %q", s)
 		}
 		if m := MsgSize(h.window, Sel("contentMinSize")); m.Width != 400 || m.Height != 300 {
-			t.Fatalf("min %+v", m)
+			fatalf(t, "min %+v", m)
 		}
 	})
 }

@@ -497,6 +497,10 @@ func (h *Host) setRoot(n *node) {
 		Send(h.content, "addSubview:", uintptr(n.view))
 	}
 	h.updateWindowChrome()
+	// The window may have changed since the core read the environment
+	// (WindowOptions come in the same batch, before the root is set).
+	h.env = h.environment()
+	h.dispatch(ops.Event{ID: n.id, Kind: ops.EventEnvironment, Env: h.env})
 }
 
 func (h *Host) setFrame(n *node, f [4]float32) {
