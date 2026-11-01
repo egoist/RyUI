@@ -322,7 +322,15 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
         }
     }
 
-    func present(_ n: RyUINode) {
+    func present(_ n: RyUINode, tries: Int = 40) {
+        // A sheet or an alert in the app's first frame: UIKit won't present
+        // from a controller that's not in a window yet, so it waits to be.
+        if let top = topController, top.viewIfLoaded?.window == nil, tries > 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self, weak n] in
+                if let n, self?.nodes[n.id] === n { self?.present(n, tries: tries - 1) }
+            }
+            return
+        }
         switch n.kind {
         case .sheet:
             guard let s = n.vc as? RyUISheetController, let top = topController else { return }
