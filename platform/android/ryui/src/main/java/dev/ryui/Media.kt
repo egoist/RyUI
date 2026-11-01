@@ -464,6 +464,19 @@ class RyUIGestures(private val rt: RyUIRuntime, private val id: Int, context: Co
         rt.emit(id, kind) { if (kind == RyUIEventKind.PAN) RyUIEvents.pan(id, g) else RyUIEvents.pinch(id, g) }
     }
 
+    /**
+     * A touch on a child that's pressable never reaches onTouch: the view
+     * watches it on its way there, and takes it (the child gets a cancel)
+     * once it's a gesture.
+     */
+    fun intercept(v: View, e: MotionEvent): Boolean {
+        if (!pan && !pinch && !rotate) return false
+        if (pinch) trackPinch(v, e)
+        if (rotate) trackRotate(v, e)
+        if (pan) trackPan(v, e)
+        return panning || scaling || rotating
+    }
+
     override fun onTouch(v: View, e: MotionEvent): Boolean {
         if (pinch) trackPinch(v, e)
         if (rotate) trackRotate(v, e)
@@ -514,6 +527,7 @@ fun RyUIRuntime.listenGesture(n: RyUINode, event: Int) {
     val g = n.gestures ?: RyUIGestures(this, n.id, themed).also {
         n.gestures = it
         n.view.setOnTouchListener(it)
+        (n.view as? RyUIContainer)?.gestures = it
     }
     when (event) {
         RyUIEventKind.PAN -> g.pan = true

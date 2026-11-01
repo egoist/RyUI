@@ -1,5 +1,6 @@
 #if canImport(UIKit)
 import UIKit
+import UIKit.UIGestureRecognizerSubclass
 import CommonCrypto
 #if canImport(RyUIOps)
 import RyUIOps
@@ -215,6 +216,26 @@ final class RyUINativeHostView: UIView {
 // Gestures
 
 /// Lets a view's pan and pinch recognize together.
+/// A pan whose translation counts from where the finger came down, as
+/// Android's does: UIKit's starts at zero only once the finger has moved far
+/// enough to be a pan, about 10 points later, and an app drawing from
+/// location minus translation would start in the wrong place.
+final class RyUIPanRecognizer: UIPanGestureRecognizer {
+    private var down = CGPoint.zero
+    /// What UIKit's translation leaves out, from the moment it began.
+    var slop = CGPoint.zero
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
+        if numberOfTouches == 0, let t = touches.first { down = t.location(in: nil) }
+        super.touchesBegan(touches, with: event)
+    }
+
+    func began() {
+        let at = location(in: nil), t = translation(in: nil)
+        slop = CGPoint(x: at.x - down.x - t.x, y: at.y - down.y - t.y)
+    }
+}
+
 final class RyUIGestureDelegate: NSObject, UIGestureRecognizerDelegate {
     func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
         g.view === other.view
@@ -391,7 +412,7 @@ final class RyUIGestureDelegate: NSObject, UIGestureRecognizerDelegate {
         let v = n.view
         switch e {
         case .pan:
-            let g = UIPanGestureRecognizer(target: self, action: #selector(panned(_:)))
+            let g = RyUIPanRecognizer(target: self, action: #selector(panned(_:)))
             g.delegate = gestureDelegate
             v.addGestureRecognizer(g)
         case .pinch:
@@ -428,9 +449,14 @@ final class RyUIGestureDelegate: NSObject, UIGestureRecognizerDelegate {
         guard let v = g.view, let id = nodeID(of: v), let s = gestureState(g) else { return }
         var e = RyUIGesture()
         e.state = s
+        var slop = CGPoint.zero
+        if let r = g as? RyUIPanRecognizer {
+            if g.state == .began { r.began() }
+            slop = r.slop
+        }
         let p = g.location(in: v), t = g.translation(in: nil), vel = g.velocity(in: nil)
         e.x = Float(p.x); e.y = Float(p.y)
-        e.translationX = Float(t.x); e.translationY = Float(t.y)
+        e.translationX = Float(t.x + slop.x); e.translationY = Float(t.y + slop.y)
         e.velocityX = Float(vel.x); e.velocityY = Float(vel.y)
         emit(id, .pan) { RyUIEvents.pan(id, e) }
     }

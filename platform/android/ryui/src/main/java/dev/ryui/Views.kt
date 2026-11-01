@@ -161,6 +161,12 @@ open class RyUIContainer(context: Context) : ViewGroup(context) {
     private var movedOff = false
     private val slop = ViewConfiguration.get(context).scaledTouchSlop
 
+    /** Its pans, pinches and rotations, which take a touch from a child that's pressable, as iOS's recognizers do. */
+    var gestures: RyUIGestures? = null
+
+    override fun onInterceptTouchEvent(e: MotionEvent): Boolean =
+        gestures?.intercept(this, e) ?: super.onInterceptTouchEvent(e)
+
     override fun setPressed(pressed: Boolean) {
         super.setPressed(pressed)
         val f = onPressedChange ?: return

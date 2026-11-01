@@ -315,8 +315,8 @@ Pan, pinch and rotate call their function with a `ui.Gesture` as it goes:
   `ui.GestureEnded`, or `ui.GestureCancelled` if the system took the
   touch away.
 - `X`, `Y`: where the touch is, in the view, in points.
-- `TranslationX`, `TranslationY`: how far a pan has moved since it
-  began.
+- `TranslationX`, `TranslationY`: how far a pan has moved since the finger
+  came down, so `X - TranslationX` is where it came down.
 - `VelocityX`, `VelocityY`: a pan's speed, in points per second.
 - `Scale`: a pinch's scale since it began (1 for a pan).
 - `Rotation`: a rotation's angle since it began, in radians, clockwise.
@@ -373,7 +373,8 @@ return ui.View(ui.ViewProps{
 ```
 
 Once a pan, pinch or rotation has begun, it has the touch: a scroll
-view around it doesn't take it over.
+view around it doesn't take it over, and a pressable view inside it
+gets no press, as a drag that starts on a button doesn't press it.
 
 A swipe or a pan can't be done with a screen reader on. Offer what it
 does as an [accessibility action](accessibility.md#custom-actions) too.
