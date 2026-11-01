@@ -1,15 +1,19 @@
 package dev.ryui
 
 import android.content.Context
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.ViewGroup
+import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.FrameLayout
 
 /** A native view the core made, or a list cell the host made. */
 class RyUINode(val id: Int, val kind: Int, var view: View) {
     val children = ArrayList<RyUINode>()
     var parent: RyUINode? = null
-    var listens = 0 // bit per event kind
+    /** A bit per event kind the core listens for (kinds are u16: any number of words). */
+    private var listenBits = LongArray(1)
 
     var textStyle = 0
     var fontSize = 0f
@@ -68,7 +72,26 @@ class RyUINode(val id: Int, val kind: Int, var view: View) {
     var frame: FloatArray? = null // the frame set last, in points: applied again if the density changes
     val base = RyUIBase()
 
-    fun listens(event: Int) = listens and (1 shl event) != 0
+    fun listens(event: Int): Boolean {
+        val w = event ushr 6
+        return w < listenBits.size && listenBits[w] and (1L shl (event and 63)) != 0L
+    }
+
+    fun setListening(event: Int, on: Boolean) {
+        val w = event ushr 6
+        if (w >= listenBits.size) {
+            if (!on) return
+            listenBits = listenBits.copyOf(w + 1)
+        }
+        listenBits[w] = if (on) listenBits[w] or (1L shl (event and 63)) else listenBits[w] and (1L shl (event and 63)).inv()
+    }
+
+    /** The ripple foreground wirePresses set, if it's on. */
+    var ripple: android.graphics.drawable.Drawable? = null
+    /** DropAccept: the MIME type patterns it takes drops of. */
+    var dropAccept: List<String> = emptyList()
+    /** DragItems: what dragging it carries. */
+    var dragItems: List<RyUIDragItem> = emptyList()
 
     /** Where children's views go. */
     val container: ViewGroup? get() = view as? ViewGroup
@@ -115,6 +138,109 @@ open class RyUIContainer(context: Context) : ViewGroup(context) {
     // What overflows shows, as on iOS (and React Native's views): only
     // Style.Clip clips.
     init { clipChildren = false }
+
+    /** Reports its pressed state as it changes (a View listening for Pressed). */
+    var onPressedChange: ((Boolean) -> Unit)? = null
+        set(f) {
+            field = f
+            if (f == null) reportedPressed = false
+        }
+    /** Reports a pointer coming over it and leaving it, its children included (a View listening for Hover). */
+    var onHoverChange: ((Boolean) -> Unit)? = null
+        set(f) {
+            field = f
+            if (f == null) hovered = false
+        }
+    /** Pressable only to report Pressed: not an action for TalkBack. */
+    var pressOnly = false
+    private var reportedPressed = false
+    private var hovered = false
+    // The touch is down and still the view's (no long press or drag took
+    // it), and whether it moved off the view, which unpresses it.
+    private var tracking = false
+    private var movedOff = false
+    private val slop = ViewConfiguration.get(context).scaledTouchSlop
+
+    override fun setPressed(pressed: Boolean) {
+        super.setPressed(pressed)
+        val f = onPressedChange ?: return
+        // ViewGroup.dispatchSetPressed passes an ancestor's to views that
+        // aren't clickable; a view listening for Pressed always is.
+        val now = isPressed
+        if (now != reportedPressed) {
+            reportedPressed = now
+            f(now)
+        }
+    }
+
+    /** A long press or a drag took the touch: unpressed at once, and not again until the next touch. */
+    fun cancelPress() {
+        tracking = false
+        isPressed = false
+        jumpDrawablesToCurrentState()
+    }
+
+    override fun onTouchEvent(e: MotionEvent): Boolean {
+        val handled = super.onTouchEvent(e)
+        if (onPressedChange == null || !isEnabled || !isClickable) return handled
+        when (e.actionMasked) {
+            MotionEvent.ACTION_DOWN -> { tracking = true; movedOff = false }
+            MotionEvent.ACTION_MOVE -> if (tracking) {
+                val s = slop.toFloat()
+                val inside = e.x >= -s && e.y >= -s && e.x < width + s && e.y < height + s
+                if (!inside) movedOff = true
+                else if (movedOff && !isPressed) {
+                    // Back on the view while still down: pressed again (as
+                    // UIControl's tracking), so a release here fires Press.
+                    movedOff = false
+                    drawableHotspotChanged(e.x, e.y)
+                    isPressed = true
+                }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> tracking = false
+        }
+        return handled
+    }
+
+    override fun dispatchHoverEvent(e: MotionEvent): Boolean {
+        val handled = super.dispatchHoverEvent(e)
+        val f = onHoverChange ?: return handled
+        // A finger's are TalkBack exploring by touch, not a pointer.
+        if (e.getToolType(0) == MotionEvent.TOOL_TYPE_FINGER) return handled
+        val on = when (e.actionMasked) {
+            MotionEvent.ACTION_HOVER_ENTER, MotionEvent.ACTION_HOVER_MOVE -> true
+            MotionEvent.ACTION_HOVER_EXIT -> false
+            else -> return true
+        }
+        if (on != hovered) {
+            hovered = on
+            f(on)
+        }
+        // Handled: the parent keeps it as a hover target and sends it the
+        // exit as the pointer leaves its bounds, over its children or not.
+        return true
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        tracking = false
+        if (reportedPressed) {
+            reportedPressed = false
+            onPressedChange?.invoke(false)
+        }
+        if (hovered) {
+            hovered = false
+            onHoverChange?.invoke(false)
+        }
+    }
+
+    override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo) {
+        super.onInitializeAccessibilityNodeInfo(info)
+        if (pressOnly) {
+            info.isClickable = false
+            info.removeAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_CLICK)
+        }
+    }
 
     override fun generateDefaultLayoutParams(): LayoutParams = RyUIParams()
     override fun checkLayoutParams(p: LayoutParams?) = p is RyUIParams

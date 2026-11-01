@@ -115,7 +115,10 @@ var Schema = SchemaDef{
 		{Name: "Match", Type: TString, Doc: "a key it shares with another view: when one with the key is destroyed during an animation and another inserted, the new one comes in from the old one's place and size, and the old one goes out to the new one's, fading (SwiftUI's matchedGeometryEffect). The host notes where the views with keys are as an animated batch starts destroying, and matches them once the batch's frames are applied"},
 	},
 	Kinds: []KindDef{
-		{Name: "View", Doc: "a plain container"},
+		{Name: "View", Props: []PropDef{
+			{Name: "DropAccept", Type: TBytes, Doc: "the view takes drops: u32 count, then u32-length MIME type patterns (text/plain, image/*, */*; an app's own types, for its drags within the app), case-insensitive. A drag with an item whose type matches one is reported with DragOver while it's over the view, and dropping it with Drop. Empty: no drops"},
+			{Name: "DragItems", Type: TBytes, Doc: "the view can be dragged (a long press, then a move, on touch screens; a move with the button down, past the system's drag distance, with a mouse), carrying these items: u32 count, per item u8 ShareKind, string text (a text, a link's URL), string path (a file), string name, string MIME type, u8 flags (1: it carries an app's value, which only the app's own drops get; other apps get its text, link or file, if it has one). Empty: not draggable. Dragging reports Dragging"},
+		}, Doc: "a plain container"},
 		{Name: "Text", Props: []PropDef{
 			{Name: "Text", Type: TString},
 		}},
@@ -304,6 +307,11 @@ var Schema = SchemaDef{
 		{Name: "Download", Payload: PBytes, Doc: "a WebView's page led to a file it can't show: string URL, string MIME type, string file name, i64 size (-1: unknown)"},
 		{Name: "NewWindow", Payload: PString, Doc: "a WebView's page would open a page in a new window (its URL)"},
 		{Name: "Shared", Payload: PBytes, Doc: "another app shared with the app from its share sheet (iOS's share extension, Android's ACTION_SEND and ACTION_SEND_MULTIPLE, with ryui.json's shareTarget), at launch or since; to the root: u32 count, then per item u8 ShareKind, string text (a text, a link's URL), string path (a file: the app's copy), string name (the file's name where it came from), string MIME type, i64 size (-1: unknown)"},
+		{Name: "Pressed", Payload: PBool, Doc: "the view is pressed (true): a finger, or the mouse's primary button, went down on it (a moment later in a scrolling container, as the platform's own views are, so a scroll doesn't show it); or isn't any more (false): it lifted, moved off the view (back on, it's pressed again), or a scroll, another gesture, a long press or a drag took the touch. Listened for (or Hover), the host leaves off its own pressed and hover looks (Android's ripple, Windows' fills): the app draws them"},
+		{Name: "Hover", Payload: PBool, Doc: "a pointer (a mouse, a trackpad, an iPad's pointer, a hovering pencil or stylus) came over the view (true) or left it (false); it stays over while on the view's children, as CSS's :hover does"},
+		{Name: "DragOver", Payload: PGesture, Doc: "a drag the view takes (DropAccept) came over it (Began), moved over it (Changed), or left it, ended or was dropped on it (Cancelled); X and Y are its place in the view"},
+		{Name: "Drop", Payload: PBytes, Doc: "a drag the view takes was dropped on it: f32 x, y (its place in the view), u32 the view it was dragged from (0: another app's), u8 flags (1: its files are the app's own copies, in its caches), then its items as in Shared (none for a drag from the app: the core has them). Sent once the items are loaded and their files copied, which may be after DragOver's Cancelled"},
+		{Name: "Dragging", Payload: PInt, Doc: "the view's drag (DragItems): a DragPhase. Began as it lifts, then Dropped (a target took it, the app's or another app's) or Cancelled"},
 	},
 	Commands: []CommandDef{
 		{Name: "Focus"},
@@ -359,5 +367,6 @@ var Schema = SchemaDef{
 		{Name: "ColorScheme", Values: []string{"System", "Light", "Dark"}},
 		{Name: "SemanticColor", Values: []string{"None", "Label", "SecondaryLabel", "TertiaryLabel", "Background", "SecondaryBackground", "GroupedBackground", "Separator", "Accent", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink", "Gray", "Clear", "SecondaryGroupedBackground"}},
 		{Name: "ShareKind", Values: []string{"Text", "Link", "Image", "Video", "Audio", "File"}},
+		{Name: "DragPhase", Values: []string{"Began", "Dropped", "Cancelled"}},
 	},
 }

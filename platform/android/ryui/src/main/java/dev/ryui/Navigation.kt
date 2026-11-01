@@ -855,30 +855,56 @@ fun RyUIRuntime.clicked(id: Int) {
     else emit(id, RyUIEventKind.PRESS) { RyUIEvents.press(id) }
 }
 
+/**
+ * A long click on a view: a drag, if it has DragItems; else its menu, if
+ * it opens on a long press, or LongPress. Each takes the touch: the view
+ * is unpressed at once, and the release fires no Press.
+ */
 fun RyUIRuntime.longClicked(id: Int): Boolean {
     val n = nodes[id] ?: return false
+    if (n.dragItems.isNotEmpty() && startDrag(n)) return true
     if (n.actions.isNotEmpty() && n.kind != RyUIKind.BUTTON && n.menuTrigger == RyUIMenuTrigger.LONG_PRESS) {
+        cancelPress(n)
         showMenu(n)
         return true
     }
     if (!n.listens(RyUIEventKind.LONG_PRESS)) return false
+    cancelPress(n)
     emit(id, RyUIEventKind.LONG_PRESS) { RyUIEvents.longPress(id) }
     return true
 }
 
-/** Wires a view's taps and long presses to its menu or its listeners. */
+/**
+ * Wires a view's taps and long presses to its menu or its listeners, and
+ * its pressed and hover states to Pressed and Hover. A view listening for
+ * Pressed is pressable (for Pressed alone, without being an action to
+ * TalkBack); one listening for either draws its own states, so it has
+ * no ripple.
+ */
 fun RyUIRuntime.wirePresses(n: RyUINode) {
     if (n.kind != RyUIKind.VIEW) return
     val v = n.view
     val id = n.id
     val tap = n.listens(RyUIEventKind.PRESS) || (n.actions.isNotEmpty() && n.menuTrigger == RyUIMenuTrigger.TAP)
-    val long = n.listens(RyUIEventKind.LONG_PRESS) || (n.actions.isNotEmpty() && n.menuTrigger == RyUIMenuTrigger.LONG_PRESS)
+    val long = n.listens(RyUIEventKind.LONG_PRESS) || (n.actions.isNotEmpty() && n.menuTrigger == RyUIMenuTrigger.LONG_PRESS) || n.dragItems.isNotEmpty()
+    val pressed = n.listens(RyUIEventKind.PRESSED)
+    val hover = n.listens(RyUIEventKind.HOVER)
     if (tap) v.setOnClickListener { clicked(id) }
     if (long) v.setOnLongClickListener { longClicked(id) }
-    if ((tap || long) && v.foreground == null) {
+    if (pressed) v.isClickable = true
+    (v as? RyUIContainer)?.let { c ->
+        c.pressOnly = pressed && !tap
+        c.onPressedChange = if (pressed) ({ on -> emit(id, RyUIEventKind.PRESSED) { RyUIEvents.pressed(id, on) } }) else null
+        c.onHoverChange = if (hover) ({ on -> emit(id, RyUIEventKind.HOVER) { RyUIEvents.hover(id, on) } }) else null
+    }
+    if (pressed || hover) {
+        if (n.ripple != null && v.foreground === n.ripple) v.foreground = null
+        n.ripple = null
+    } else if ((tap || long) && v.foreground == null) {
         val tv = TypedValue()
         themed.theme.resolveAttribute(android.R.attr.selectableItemBackground, tv, true)
         v.foreground = androidx.core.content.ContextCompat.getDrawable(themed, tv.resourceId)
+        n.ripple = v.foreground
     }
 }
 

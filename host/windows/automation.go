@@ -76,9 +76,43 @@ func (h *Host) automation() {
 // chooses the menu bar's item, open:<title> opens a menu bar's menu,
 // escape closes a menu or a sheet, close closes the window in use (as its
 // close button), dpi:<dpi> moves that window to a monitor at that DPI
-// (WM_DPICHANGED), snap:<file> writes a snapshot.
+// (WM_DPICHANGED), hover:<text> puts the pointer over the view showing
+// the text (hover: alone takes it off the app), press:<text> holds the
+// mouse's button down on it and release lets go, snap:<file> writes a
+// snapshot.
 func (h *Host) step(verb, arg string) {
 	switch verb {
+	case "hover":
+		if arg == "" {
+			h.hoverAt(0, Point{})
+			return
+		}
+		n := h.showing(arg)
+		if n == nil {
+			fmt.Fprintf(os.Stderr, "ryui: automation: nothing shows %q\n", arg)
+			return
+		}
+		c := ClientRect(n.hwnd)
+		h.hoverAt(RootWindow(n.hwnd), ClientToScreen(n.hwnd, Point{X: c.W() / 2, Y: c.H() / 2}))
+	case "press":
+		n := h.showing(arg)
+		t := n
+		for t != nil && !t.interactive() {
+			t = t.parent
+		}
+		if t == nil || t.hwnd == 0 {
+			fmt.Fprintf(os.Stderr, "ryui: automation: nothing to press shows %q\n", arg)
+			return
+		}
+		c := ClientRect(n.hwnd)
+		p := MapPoint(n.hwnd, t.hwnd, Point{X: c.W() / 2, Y: c.H() / 2})
+		held = [2]uintptr{t.hwnd, MakeLong(uint16(p.X), uint16(p.Y))}
+		SendMessage(t.hwnd, WM_LBUTTONDOWN, MK_LBUTTON, held[1])
+	case "release":
+		if held[0] != 0 && IsWindow(held[0]) {
+			SendMessage(held[0], WM_LBUTTONUP, 0, held[1])
+		}
+		held = [2]uintptr{}
 	case "tap":
 		if !h.tap(arg) {
 			fmt.Fprintf(os.Stderr, "ryui: automation: nothing shows %q\n", arg)
@@ -194,6 +228,26 @@ func (h *Host) step(verb, arg string) {
 			os.WriteFile(arg+".txt", []byte(h.dump()), 0o644)
 		}
 	}
+}
+
+// held is the window press: holds the mouse's button down on, and where.
+var held [2]uintptr
+
+// showing is the view on screen that shows text (the last made, if
+// many): a text, a button's title, a field's placeholder.
+func (h *Host) showing(text string) *node {
+	var found *node
+	for _, n := range h.nodes {
+		if !h.onScreen(n) {
+			continue
+		}
+		if n.text == text && n.kind != ops.KindTextField || n.title == text && n.kind == ops.KindButton || n.kind == ops.KindTextField && n.placeholder == text {
+			if found == nil || n.id > found.id {
+				found = n
+			}
+		}
+	}
+	return found
 }
 
 // tap clicks what shows text: the mouse's messages, at its center, to

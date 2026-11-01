@@ -48,6 +48,7 @@ func (h *Host) openWindow(n *node) {
 	fw.parent = n
 	fw.k = dpiScale(dpi)
 	h.byHwnd[win] = fw
+	h.acceptDrops(win)
 	SetDarkTitleBar(win, h.dark)
 	n.nav.window = win
 	n.presented = true

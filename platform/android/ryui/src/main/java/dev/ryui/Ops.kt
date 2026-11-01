@@ -105,6 +105,11 @@ object RyUIProp {
     const val SWIPE_ACTIONS = 29
     const val MATCH = 30
 
+    object View {
+        const val DROP_ACCEPT = 64
+        const val DRAG_ITEMS = 65
+    }
+
     object Text {
         const val TEXT = 64
     }
@@ -317,6 +322,11 @@ object RyUIEventKind {
     const val DOWNLOAD = 37
     const val NEW_WINDOW = 38
     const val SHARED = 39
+    const val PRESSED = 40
+    const val HOVER = 41
+    const val DRAG_OVER = 42
+    const val DROP = 43
+    const val DRAGGING = 44
 }
 
 object RyUICommand {
@@ -569,6 +579,12 @@ object RyUIShareKind {
     const val FILE = 5
 }
 
+object RyUIDragPhase {
+    const val BEGAN = 0
+    const val DROPPED = 1
+    const val CANCELLED = 2
+}
+
 /** Receives decoded ops, in order, on the main thread. */
 interface RyUIOpHandler {
     fun create(id: Int, kind: Int)
@@ -744,4 +760,9 @@ object RyUIEvents {
     fun download(id: Int, v: ByteArray): ByteArray = RyUIWriter().apply { header(id, 37); u32(v.size); raw(v) }.bytes()
     fun newWindow(id: Int, v: String): ByteArray = RyUIWriter().apply { header(id, 38); string(v) }.bytes()
     fun shared(id: Int, v: ByteArray): ByteArray = RyUIWriter().apply { header(id, 39); u32(v.size); raw(v) }.bytes()
+    fun pressed(id: Int, v: Boolean): ByteArray = RyUIWriter().apply { header(id, 40); u8(if (v) 1 else 0) }.bytes()
+    fun hover(id: Int, v: Boolean): ByteArray = RyUIWriter().apply { header(id, 41); u8(if (v) 1 else 0) }.bytes()
+    fun dragOver(id: Int, g: RyUIGesture): ByteArray = RyUIWriter().apply { header(id, 42); gesture(g) }.bytes()
+    fun drop(id: Int, v: ByteArray): ByteArray = RyUIWriter().apply { header(id, 43); u32(v.size); raw(v) }.bytes()
+    fun dragging(id: Int, v: Long): ByteArray = RyUIWriter().apply { header(id, 44); u64(v) }.bytes()
 }

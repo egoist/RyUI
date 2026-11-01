@@ -275,6 +275,141 @@ type Style struct {
 	Color     Color // text color, or tint for controls
 	TextAlign TextAlign
 	Lines     int // max lines of text; 0: no limit
+
+	// Hovered, Pressed, Dragging and DragOver are a View's style in its
+	// interaction states (CSS's :hover and :active, Tailwind's hover:
+	// and active:), laid over the rest while it's in them: the fields a
+	// variant sets replace the style's, in that order (pressed wins over
+	// hovered). The View tracks only the states its variants name, from
+	// when they first appear: a Pressed variant makes it report its
+	// pressed state, so it draws its own and the platform's highlight
+	// (Android's ripple) is left off. Dragging is while the View is
+	// dragged (its Drag), DragOver while a drag its Drop takes is over
+	// it. Other components ignore them: their style follows a View's
+	// states through its Interaction and When.
+	//
+	//	ui.Style{Padding: ui.All(16), Background: ui.SecondaryBackground,
+	//		Pressed: &ui.Style{Background: ui.Separator, Transform: ui.Transform{Scale: 0.97}}}
+	Hovered, Pressed, Dragging, DragOver *Style
+}
+
+// When is s with over laid on it while cond is true: a style that
+// follows a state, a View's Interaction's (a group's hover) or any
+// signal's. The fields over sets (non-zero) replace s's; a field it
+// leaves zero keeps s's, so a state can't clear one: Unless sets it in
+// the other state. They chain, later ones laid over earlier:
+//
+//	ui.Style{Color: ui.SecondaryLabel}.When(card.Hovered, ui.Style{Color: ui.Accent})
+//	ui.Style{}.Unless(row.Hovered, ui.Style{Hidden: true}) // shown on the row's hover
+func (s Style) When(cond func() bool, over Style) StyleFunc {
+	return func() Style {
+		r := s
+		if cond() {
+			r.overlay(&over)
+		}
+		return r
+	}
+}
+
+// Unless is s with over laid on it while cond is false.
+func (s Style) Unless(cond func() bool, over Style) StyleFunc {
+	return func() Style {
+		r := s
+		if !cond() {
+			r.overlay(&over)
+		}
+		return r
+	}
+}
+
+// When is f's style with over laid on it while cond is true.
+func (f StyleFunc) When(cond func() bool, over Style) StyleFunc {
+	return func() Style {
+		r := f()
+		if cond() {
+			r.overlay(&over)
+		}
+		return r
+	}
+}
+
+// Unless is f's style with over laid on it while cond is false.
+func (f StyleFunc) Unless(cond func() bool, over Style) StyleFunc {
+	return func() Style {
+		r := f()
+		if !cond() {
+			r.overlay(&over)
+		}
+		return r
+	}
+}
+
+// overlay sets the fields o sets on s. A Font is laid field by field
+// (a weight over a text style keeps the style); every other field is
+// replaced whole.
+func (s *Style) overlay(o *Style) {
+	set(&s.Direction, o.Direction)
+	set(&s.Wrap, o.Wrap)
+	set(&s.Justify, o.Justify)
+	set(&s.Align, o.Align)
+	set(&s.AlignSelf, o.AlignSelf)
+	set(&s.Gap, o.Gap)
+	set(&s.Padding, o.Padding)
+	set(&s.Margin, o.Margin)
+	set(&s.Width, o.Width)
+	set(&s.Height, o.Height)
+	set(&s.MinWidth, o.MinWidth)
+	set(&s.MinHeight, o.MinHeight)
+	set(&s.MaxWidth, o.MaxWidth)
+	set(&s.MaxHeight, o.MaxHeight)
+	set(&s.AspectRatio, o.AspectRatio)
+	set(&s.Grow, o.Grow)
+	set(&s.Shrink, o.Shrink)
+	set(&s.Basis, o.Basis)
+	set(&s.Absolute, o.Absolute)
+	set(&s.Top, o.Top)
+	set(&s.Right, o.Right)
+	set(&s.Bottom, o.Bottom)
+	set(&s.Left, o.Left)
+	set(&s.Grid, o.Grid)
+	set(&s.GridColumn, o.GridColumn)
+	set(&s.GridRow, o.GridRow)
+	set(&s.Background, o.Background)
+	set(&s.CornerRadius, o.CornerRadius)
+	set(&s.BorderWidth, o.BorderWidth)
+	set(&s.BorderColor, o.BorderColor)
+	set(&s.Opacity, o.Opacity)
+	set(&s.Hidden, o.Hidden)
+	set(&s.Clip, o.Clip)
+	set(&s.Transform, o.Transform)
+	set(&s.Shadow, o.Shadow)
+	set(&s.Gradient, o.Gradient)
+	set(&s.Material, o.Material)
+	set(&s.Transition, o.Transition)
+	set(&s.Match, o.Match)
+	set(&s.Font.Style, o.Font.Style)
+	set(&s.Font.Size, o.Font.Size)
+	set(&s.Font.Weight, o.Font.Weight)
+	set(&s.Font.Family, o.Font.Family)
+	set(&s.Color, o.Color)
+	set(&s.TextAlign, o.TextAlign)
+	set(&s.Lines, o.Lines)
+	set(&s.Hovered, o.Hovered)
+	set(&s.Pressed, o.Pressed)
+	set(&s.Dragging, o.Dragging)
+	set(&s.DragOver, o.DragOver)
+}
+
+func set[T comparable](dst *T, v T) {
+	var zero T
+	if v != zero {
+		*dst = v
+	}
+}
+
+// hasVariants reports whether s has a variant for an interaction state.
+func (s *Style) hasVariants() bool {
+	return s.Hovered != nil || s.Pressed != nil || s.Dragging != nil || s.DragOver != nil
 }
 
 // Styler is a Style or a StyleFunc.

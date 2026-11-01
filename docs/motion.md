@@ -378,6 +378,197 @@ view around it doesn't take it over.
 A swipe or a pan can't be done with a screen reader on. Offer what it
 does as an [accessibility action](accessibility.md#custom-actions) too.
 
+## Pressed and hover states
+
+A `View` reports its interaction states as they change, and a style
+can follow them in three ways. Start with the first one that does the
+job:
+
+1. **Variants**, for the view's own look. `Style.Pressed`, `Hovered`,
+   `Dragging` and `DragOver` are laid over the rest of the style while
+   the view is in that state. They are CSS's `:active` and `:hover`, or
+   Tailwind's `active:` and `hover:`.
+2. **An `Interaction`**, for other views and anything else that follows
+   the state. Give the view one, then read `it.Pressed()` or
+   `it.Hovered()` wherever you need them, such as `Style.When`, a
+   `StyleFunc`, a `Text` or a `Show`. This is how a child follows its
+   parent (a group's hover) and a sibling follows its neighbor (a peer's).
+3. **Handlers**, for what isn't a style, such as starting a recording:
+   `OnPressedChange` and `OnHoverChange`.
+
+```go
+func Card(title string, open func()) ui.Node {
+	card := ui.NewInteraction()
+	return ui.View(ui.ViewProps{
+		OnPress:     open,
+		Interaction: card,
+		Style: ui.Style{Direction: ui.RowDir, Padding: ui.All(16), CornerRadius: 12,
+			Background: ui.SecondaryGroupedBackground,
+			Hovered:    &ui.Style{Background: ui.SecondaryBackground},
+			Pressed:    &ui.Style{Background: ui.Separator, Transform: ui.Transform{Scale: 0.97}}},
+	},
+		// The card's hover, followed by its title: a group's hover.
+		ui.StaticText(title, ui.Style{Grow: 1}.When(card.Hovered, ui.Style{Color: ui.Accent})),
+	)
+}
+```
+
+The states:
+
+- **Pressed** is true while a finger, or the mouse's primary button, is
+  down on the view.
+  - In a scrolling container it comes on a moment late, so a scroll
+    doesn't flash it.
+  - It goes off when the finger lifts, moves off the view (moving back
+    on presses it again), or a scroll, a long press or another gesture
+    takes over the touch.
+  - `OnPress` fires only for a release while pressed.
+- **Hovered** is true while a pointer is over the view or its children:
+  a mouse, a trackpad, an iPad's pointer, or a hovering Apple Pencil or
+  stylus. A touch screen alone never hovers.
+- **Dragging** is true while the view is being dragged (its `Drag`).
+- **DragOver** is true while a drag that its `Drop` takes is over it.
+
+How variants and `When` combine:
+
+- A variant sets only the fields it names. The rest stay as the style
+  has them.
+- `Font` is merged field by field, so `Font{Weight: ui.Bold}` keeps the
+  text style. Every other field is replaced whole.
+- Variants apply in the order Hovered, Pressed, Dragging, DragOver, so
+  pressed wins over hovered.
+- `When` calls chain, and later ones win.
+- A zero field means "not set", so a state can't clear a field. To show
+  something only in a state, set the field in the other state with
+  `Unless`:
+
+```go
+row := ui.NewInteraction()
+ui.View(ui.ViewProps{Interaction: row},
+	ui.Text(name),
+	// The delete button shows while the row is hovered.
+	ui.View(ui.ViewProps{OnPress: remove, Style: ui.Style{}.Unless(row.Hovered, ui.Style{Hidden: true})},
+		ui.Symbol(ui.IconTrash)),
+)
+```
+
+`When` and `Unless` take any `func() bool`, so a style can follow any
+signal too: `base.When(selected.Get, ui.Style{Background: ui.Accent})`.
+
+A view tracks only the states that something reads: its variants, or
+reads of its `Interaction`.
+
+- A view with no `Pressed` variant and no reader of `Pressed` doesn't
+  report its pressed state, and keeps the platform's highlight.
+- Once a view reports its pressed state, it draws its own. The
+  platform's highlight (Android's ripple, Windows' hover and pressed
+  fills) is left off.
+
+Each state is reported once per change. A view that goes away while in
+a state leaves it, so nothing that follows it stays stuck. Give the same
+`Interaction` to several views and a state is true while any of them is
+in it.
+
+Without `OnPress`, a press held is a hold, as in hold to record. The
+recording is a side effect, so it goes in the handler:
+
+```go
+ui.View(ui.ViewProps{
+	OnPressedChange: func(on bool) {
+		if on {
+			recorder.Start()
+		} else {
+			recorder.Stop()
+		}
+	},
+	Label: "Hold to record",
+	Style:           ui.Style{Padding: ui.All(16), Pressed: &ui.Style{Background: ui.Red}},
+}, ...)
+```
+
+## Drag and drop
+
+`ViewProps.Drag` makes a view draggable. On a touch screen, a long
+press then a move lifts it, and that long press doesn't also fire
+`OnLongPress`. With a mouse, a move with the button held drags it. The
+view's image follows the finger or pointer, within the app and into
+other apps. `ViewProps.Drop` makes a view take drops.
+
+A `ui.DragItem` is a text, a link (`Kind: ui.SharedLink`), a file
+(`Path`), or a value of the app's (`Value`):
+
+- Inside the app, a drop gets each item as it is, Go value and all.
+- Other apps get the item's text, link or file. An item that's only a
+  value goes nowhere else.
+- `MIME` is the item's type, which targets accept it by. Texts, links
+  and files get theirs filled in. Give a `Value` a type of the app's
+  own, so only its targets take it.
+
+```go
+type Task struct{ Title string; Done bool }
+
+func TaskCard(t *Task) ui.Node {
+	return ui.View(ui.ViewProps{
+		Drag: &ui.DragSource{
+			Items: func() []ui.DragItem {
+				return []ui.DragItem{{Value: t, MIME: "application/x-myapp-task", Text: t.Title}}
+			},
+		},
+		// Faded while it's dragged.
+		Style: ui.Style{Padding: ui.All(12), Dragging: &ui.Style{Opacity: 0.4}},
+	}, ui.StaticText(t.Title))
+}
+
+func DoneColumn(move func(*Task), cards ...ui.Node) ui.Node {
+	return ui.View(ui.ViewProps{
+		Drop: &ui.DropTarget{
+			Accept: []string{"application/x-myapp-task"},
+			OnDrop: func(d ui.Drop) {
+				for _, it := range d.Items {
+					if t, ok := it.Value.(*Task); ok {
+						move(t)
+					}
+				}
+			},
+		},
+		// Outlined while a task is dragged over it.
+		Style: ui.Style{Gap: 8, Padding: ui.All(8), BorderWidth: 2, BorderColor: ui.Clear,
+			DragOver: &ui.Style{BorderColor: ui.Accent}},
+	}, cards...)
+}
+```
+
+The drag source:
+
+- `Items` runs in an effect, so what it reads keeps it up to date. A
+  drag carries what the items were when it began.
+- `OnPhase` reports `ui.DragBegan` as the view lifts. Then it reports
+  either `ui.DragDropped`, when a target took it (for a move, remove
+  what was dragged), or `ui.DragCancelled`. For the dragged look, use
+  the `Dragging` variant or `Interaction.Dragging`.
+
+The drop target:
+
+- `Accept` lists MIME types: exact (`"text/plain"`), a family
+  (`"image/*"`) or anything (`"*/*"`).
+- A drag with no item of those types never comes over the view.
+- Of nested targets, the innermost one that takes a drag gets it.
+- `OnOverChange` reports a drag coming over the view and leaving it,
+  the same state as the `DragOver` variant.
+- `OnMove` reports where the drag is over the view, as an insertion
+  point.
+- `OnDrop` gets the items it takes and where they were dropped.
+  `Drop.Local` says the drag came from the app.
+
+Drops from other apps (files from Finder or Files, a photo from Photos,
+a link from a browser) come once their items are loaded:
+
+- On iOS and Android, files are copied into the app's caches first and
+  `Drop.Copied` is true. Move them where the app keeps them, or remove
+  them when done.
+- On macOS and Windows, `Path` is the user's file itself. Don't remove
+  it.
+
 ## Haptics
 
 `ui.Haptic` plays feedback: `ui.HapticSelection` (a value ticked over),

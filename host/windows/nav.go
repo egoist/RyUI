@@ -768,6 +768,7 @@ func (h *Host) openSheet(n *node) {
 	sw.parent = n
 	sw.k = k
 	h.byHwnd[win] = sw
+	h.acceptDrops(win)
 	SetDarkTitleBar(win, h.dark)
 	n.nav.window, n.nav.owner = win, owner
 	n.presented = true

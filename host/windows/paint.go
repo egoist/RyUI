@@ -82,7 +82,7 @@ func (h *Host) paintOwn(n *node, hwnd, dc uintptr, r Rect) {
 			b.Close()
 		}
 	}
-	if n.pressable() && !n.disabled && (n.hot || n.pressed) {
+	if n.pressable() && !n.disabled && (n.hot || n.pressed) && !n.drawsStates() {
 		c := h.theme.subtleHot
 		if n.pressed {
 			c = h.theme.subtlePressed
@@ -147,7 +147,8 @@ func (h *Host) paintOwn(n *node, hwnd, dc uintptr, r Rect) {
 	}
 }
 
-// pressable views highlight under the mouse and take clicks.
+// pressable views highlight under the mouse (unless they draw their own
+// states) and take clicks.
 func (n *node) pressable() bool {
 	return n.listening(ops.EventPress) || n.listening(ops.EventLongPress) || len(n.menu) > 0 && n.kind == ops.KindView
 }
@@ -155,7 +156,7 @@ func (n *node) pressable() bool {
 // interactive views take the mouse; the others let it through to what's
 // under them (a text in a pressable row).
 func (n *node) interactive() bool {
-	if n.pressable() || n.listening(ops.EventPan) || n.listening(ops.EventPinch) || n.listening(ops.EventSwipe) {
+	if n.tracksPress() || n.draggable() || n.listening(ops.EventPan) || n.listening(ops.EventPinch) || n.listening(ops.EventSwipe) {
 		return true
 	}
 	switch n.kind {

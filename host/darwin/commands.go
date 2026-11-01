@@ -183,11 +183,7 @@ func (h *Host) setMenu(n *node) {
 	m := h.makeMenuOf(n.menuActions, "menuItem:")
 	n.menu = m
 	h.byMenu[m] = n
-	if n.kind == ops.KindView && n.menuTrigger == int32(ops.MenuTriggerTap) && !n.listening(ops.EventPress) {
-		g := Send(Send(Class("NSClickGestureRecognizer"), "alloc"), "initWithTarget:action:", uintptr(h.target), uintptr(Sel("click:")))
-		Send(n.view, "addGestureRecognizer:", uintptr(g))
-		Release(g)
-	}
+	// A view's Tap menu opens as a press is released on it (mouseUp).
 }
 
 // makeMenuOf makes an NSMenu (+1) of actions whose items send action to

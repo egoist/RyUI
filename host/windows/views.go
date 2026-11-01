@@ -153,6 +153,13 @@ const sliderSteps = 10000
 
 func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 	switch n.kind {
+	case ops.KindView:
+		switch p {
+		case ops.PropViewDropAccept:
+			n.dropAccept = ops.DecodeStrings(v.Bytes)
+		case ops.PropViewDragItems:
+			n.dragItems = ops.DecodeDragItems(v.Bytes)
+		}
 	case ops.KindText:
 		if p == ops.PropTextText {
 			n.text = v.Str
@@ -563,10 +570,8 @@ func (h *Host) viewMessage(n *node, hwnd uintptr, m uint32, wp, lp uintptr) (uin
 		}
 		return 0, true
 	case WM_CAPTURECHANGED:
-		if n.pressed && lp != hwnd {
-			n.pressed = false
-			KillTimer(hwnd, timerLongPress)
-			h.redraw(n)
+		if n.tracking && lp != hwnd && !n.releasing {
+			h.cancelPress(n)
 		}
 		return 0, true
 	case WM_RBUTTONUP:
@@ -583,10 +588,9 @@ func (h *Host) viewMessage(n *node, hwnd uintptr, m uint32, wp, lp uintptr) (uin
 		switch wp {
 		case timerLongPress:
 			KillTimer(hwnd, timerLongPress)
-			if n.pressed {
+			if n.tracking && n.pressed {
 				n.longFired = true
-				n.pressed = false
-				h.redraw(n)
+				h.cancelPress(n)
 				h.longPress(n, hwnd)
 			}
 		case timerBars:
@@ -602,6 +606,11 @@ func (h *Host) viewMessage(n *node, hwnd uintptr, m uint32, wp, lp uintptr) (uin
 		return 0, false
 	case WM_KILLFOCUS:
 		n.focused = false
+		if n.spaceDown {
+			// Focus going while Space is held: no press.
+			n.spaceDown = false
+			h.setPressed(n, false)
+		}
 		Invalidate(hwnd)
 		return 0, false
 	case WM_GETDLGCODE:
@@ -610,13 +619,28 @@ func (h *Host) viewMessage(n *node, hwnd uintptr, m uint32, wp, lp uintptr) (uin
 			code |= DLGC_WANTARROWS
 		}
 		if lp != 0 {
-			if msg := Native[Msg](lp); msg.Message == WM_KEYDOWN && (msg.WParam == VK_RETURN || msg.WParam == VK_SPACE) && (n.pressable() || n.kind == ops.KindSegmented) {
+			msg := Native[Msg](lp)
+			if msg.Message == WM_KEYDOWN && (msg.WParam == VK_RETURN || msg.WParam == VK_SPACE) && (n.pressable() || n.kind == ops.KindSegmented) {
 				code |= DLGC_WANTALLKEYS
+			}
+			if msg.Message == WM_CHAR && msg.WParam == ' ' && n.pressable() {
+				code |= DLGC_WANTCHARS // Space's character: the press's, not a mnemonic
 			}
 		}
 		return code, true
 	case WM_KEYDOWN:
 		if h.key(n, hwnd, wp) {
+			return 0, true
+		}
+	case WM_KEYUP:
+		if wp == VK_SPACE && n.spaceDown {
+			// Space let go of: the press fires.
+			n.spaceDown = false
+			h.endPress(n, hwnd, n.pressable())
+			return 0, true
+		}
+	case WM_CHAR:
+		if wp == ' ' && n.pressable() {
 			return 0, true
 		}
 	case WM_UPDATEUISTATE:
@@ -643,8 +667,18 @@ func (h *Host) key(n *node, hwnd uintptr, vk uintptr) bool {
 			return true
 		}
 	case n.pressable():
-		if vk == VK_RETURN || vk == VK_SPACE {
+		switch vk {
+		case VK_RETURN:
+			// Enter presses at once.
 			h.press(n, hwnd)
+			return true
+		case VK_SPACE:
+			// Space presses while it's held (its repeats too), and fires as
+			// it's let go of (WM_KEYUP).
+			if !n.spaceDown {
+				n.spaceDown = true
+				h.setPressed(n, true)
+			}
 			return true
 		}
 	case n.list != nil || n.kind == ops.KindScroll:
@@ -670,9 +704,11 @@ func (h *Host) key(n *node, hwnd uintptr, vk uintptr) bool {
 	return false
 }
 
-// The mouse on a view: a press is a click inside it; held, a long press;
-// dragged, a pan (it cancels the press). A secondary click is a long
-// press too, or shows the view's context menu.
+// The mouse on a view: a press is a click inside it (pressed while the
+// mouse is over it, again as it comes back on); held, a long press;
+// dragged, a drag and drop (a view with DragItems) or else a pan, either
+// of which cancels the press. A secondary click is a long press too, or
+// shows the view's context menu.
 
 func (h *Host) mouseDown(n *node, hwnd, lp uintptr) {
 	if n.kind == ops.KindSegmented {
@@ -680,62 +716,67 @@ func (h *Host) mouseDown(n *node, hwnd, lp uintptr) {
 		SetFocus(hwnd)
 		return
 	}
-	if !n.pressable() && !n.listening(ops.EventPan) && !n.listening(ops.EventSwipe) {
+	if !n.tracksPress() && !n.draggable() && !n.listening(ops.EventPan) && !n.listening(ops.EventSwipe) {
 		return
 	}
 	if n.disabled {
 		return
 	}
 	SetCapture(hwnd)
-	n.pressed = n.pressable()
+	n.tracking = n.tracksPress()
 	n.longFired, n.panning = false, false
 	n.pressAt = Point{X: XParam(lp), Y: YParam(lp)}
 	n.panLast, n.panTime = n.pressAt, time.Now().UnixNano()
 	if n.listening(ops.EventLongPress) || len(n.menu) > 0 && n.menuTrigger == int32(ops.MenuTriggerLongPress) {
 		SetTimer(hwnd, timerLongPress, 500)
 	}
-	if n.pressed {
-		h.redraw(n)
-	}
+	h.setPressed(n, n.tracking)
 }
 
 func (h *Host) mouseMove(n *node, hwnd, wp, lp uintptr) {
 	if n.pressable() && !n.hot {
 		n.hot = true
 		TrackLeave(hwnd)
-		h.redraw(n)
+		if !n.drawsStates() {
+			h.redraw(n)
+		}
 	}
 	if Capture() != hwnd || wp&MK_LBUTTON == 0 {
 		return
 	}
 	p := Point{X: XParam(lp), Y: YParam(lp)}
-	if !n.panning && (n.listening(ops.EventPan) || n.listening(ops.EventSwipe)) {
-		drag := int32(SystemMetric(68, h.dpiOf(n))) // SM_CXDRAG
-		if abs32(p.X-n.pressAt.X) > drag || abs32(p.Y-n.pressAt.Y) > drag {
-			n.panning = true
-			KillTimer(hwnd, timerLongPress)
-			if n.pressed {
-				n.pressed = false
-				h.redraw(n)
-			}
-			h.pan(n, ops.GestureStateBegan, p)
-		}
-	} else if n.panning {
+	if n.panning {
 		h.pan(n, ops.GestureStateChanged, p)
+		return
 	}
-	if n.pressed && !h.inside(hwnd, p) {
-		n.pressed = false
-		KillTimer(hwnd, timerLongPress)
-		h.redraw(n)
+	dpi := h.dpiOf(n)
+	far := abs32(p.X-n.pressAt.X) > int32(SystemMetric(68, dpi)) || abs32(p.Y-n.pressAt.Y) > int32(SystemMetric(69, dpi)) // SM_CXDRAG, SM_CYDRAG
+	switch {
+	case far && n.draggable():
+		h.startDrag(n, hwnd)
+		return
+	case far && (n.listening(ops.EventPan) || n.listening(ops.EventSwipe)):
+		n.panning = true
+		h.cancelPress(n)
+		h.pan(n, ops.GestureStateBegan, p)
+		return
+	}
+	if n.tracking {
+		in := h.inside(hwnd, p)
+		if !in {
+			KillTimer(hwnd, timerLongPress)
+		}
+		h.setPressed(n, in)
 	}
 }
 
 func (h *Host) mouseUp(n *node, hwnd, lp uintptr) {
-	// Read before the capture goes: losing it cancels a press.
-	wasPressed, panning := n.pressed, n.panning
-	n.pressed, n.panning = false, false
+	pressed, panning := n.tracking && n.pressed, n.panning
+	n.tracking, n.panning = false, false
 	if Capture() == hwnd {
+		n.releasing = true
 		ReleaseCapture()
+		n.releasing = false
 	}
 	KillTimer(hwnd, timerLongPress)
 	p := Point{X: XParam(lp), Y: YParam(lp)}
@@ -743,12 +784,7 @@ func (h *Host) mouseUp(n *node, hwnd, lp uintptr) {
 		h.pan(n, ops.GestureStateEnded, p)
 		return
 	}
-	if wasPressed {
-		h.redraw(n)
-	}
-	if wasPressed && !n.longFired && h.inside(hwnd, p) {
-		h.press(n, hwnd)
-	}
+	h.endPress(n, hwnd, pressed && !n.longFired && n.pressable() && h.inside(hwnd, p))
 }
 
 func (h *Host) press(n *node, hwnd uintptr) {

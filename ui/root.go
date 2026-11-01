@@ -429,6 +429,9 @@ func dispatch(ev ops.Event) {
 		return
 	}
 	h := e.h
+	if interactionEvent(e, h, &ev) {
+		return
+	}
 	switch ev.Kind {
 	case ops.EventPress:
 		call(h.press)

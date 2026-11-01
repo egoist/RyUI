@@ -89,6 +89,11 @@ var (
 	MsgSetTransform func(obj ID, sel SEL, t AffineTransform)
 	MsgOtherEvent   func(cls ID, sel SEL, typ uint, loc Point, flags uint, ts float64, wn int, ctx ID, subtype int16, d1, d2 int) ID
 	MsgPopUpMenu    func(menu ID, sel SEL, item ID, loc Point, view ID) bool
+	MsgMouseEvent   func(cls ID, sel SEL, typ uint, loc Point, flags uint, ts float64, wn int, ctx ID, num, clicks int, pressure float32) ID
+	MsgPointToPoint func(obj ID, sel SEL, p Point) Point
+	MsgPointIntInt  func(obj ID, sel SEL, p Point, i int) int
+	MsgSizeID       func(obj ID, sel SEL, s Size) ID
+	MsgInitTracking func(obj ID, sel SEL, r Rect, opts uint, owner, info ID) ID
 	MsgDateSince    func(cls ID, sel SEL, seconds float64) ID
 	MsgTimer        func(cls ID, sel SEL, interval float64, repeats bool, block ID) ID
 	MsgDrawRect     func(obj ID, sel SEL, r Rect, op uint, fraction float64)
@@ -168,7 +173,8 @@ func Load() {
 			{&MsgFloatID, msgSendAddr}, {&MsgFloat2ID, msgSendAddr}, {&MsgIDFloatID, msgSendAddr}, {&MsgFloatIDID, msgSendAddr},
 			{&MsgSetFloatInt, msgSendAddr}, {&MsgFloatInt, msgSendAddr},
 			{&MsgSetEdges, msgSendAddr}, {&MsgSetTransform, msgSendAddr},
-			{&MsgOtherEvent, msgSendAddr}, {&MsgPopUpMenu, msgSendAddr}, {&MsgDateSince, msgSendAddr}, {&MsgTimer, msgSendAddr},
+			{&MsgOtherEvent, msgSendAddr}, {&MsgPopUpMenu, msgSendAddr}, {&MsgMouseEvent, msgSendAddr},
+			{&MsgPointToPoint, msgSendAddr}, {&MsgPointIntInt, msgSendAddr}, {&MsgSizeID, msgSendAddr}, {&MsgInitTracking, msgSendAddr}, {&MsgDateSince, msgSendAddr}, {&MsgTimer, msgSendAddr},
 			{&MsgDrawRect, msgSendAddr}, {&MsgDrawAt, msgSendAddr}, {&MsgDrawInRect, msgSendAddr}, {&MsgScrollPoint, msgSendAddr},
 		} {
 			purego.RegisterFunc(f.fn, f.addr)

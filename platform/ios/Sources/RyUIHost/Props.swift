@@ -449,6 +449,10 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             guard let s = n.view as? UIScrollView else { return }
             s.alwaysBounceVertical = !v.bool
             s.alwaysBounceHorizontal = v.bool
+        case (.view, RyUIProp.View.dropAccept):
+            setDropAccept(n, v)
+        case (.view, RyUIProp.View.dragItems):
+            setDragItems(n, v)
         case (.activity, RyUIProp.Activity.animating):
             guard let a = n.view as? UIActivityIndicatorView else { return }
             if v.bool { a.startAnimating() } else { a.stopAnimating() }

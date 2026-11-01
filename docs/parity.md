@@ -61,6 +61,8 @@ what RyUI has for it.
 | Frame-driven animation | `TimelineView(.animation)` | `useFrameCallback` | ✓ `OnFrame` |
 | Shadows, gradients, blur | `.shadow`, `LinearGradient`, materials | style, expo-linear-gradient, expo-blur | ✓ `Shadow`, `LinearGradient`, `Material` |
 | Gestures | tap, long press, drag, magnify, rotate | Gesture Handler | ✓ tap, long press, pan, pinch, rotate, swipe |
+| Pressed and hover states | `ButtonStyle`'s `isPressed`, `.onHover` | `Pressable`'s `pressed`, `onHoverIn`/`onHoverOut` | ✓ `Style.Pressed`, `Hovered` variants; `Interaction` for a group's or a peer's (`Style.When`); `OnPressedChange`, `OnHoverChange` |
+| Drag and drop | `.draggable`, `.dropDestination` | (none built in) | ✓ `Drag`, `Drop` (Go values within the app; texts, links, files with other apps; `Dragging` and `DragOver` variants) |
 | Shared-element transitions | `matchedGeometryEffect`, `.navigationTransition(.zoom)` | shared transitions | ✓ `Style.Match` (a view grows from another's place and size), `ScreenOptions.ZoomFrom` (a pushed screen zooms out of a view: iOS 18's zoom; Material's container transform) |
 | Haptics | `sensoryFeedback` | `expo-haptics` | ✓ `Haptic` |
 | Reduce Motion | `accessibilityReduceMotion` | `useReducedMotion` | ✓ `Environment.ReduceMotion` (iOS transitions dissolve) |

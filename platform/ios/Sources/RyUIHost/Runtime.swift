@@ -59,6 +59,11 @@ import CRyUI
     var imageLoaded = false
     var imagePlaceholder = ""
     var native: RyUINativeView?
+    /// DropAccept's patterns, and DragItems' items, and their interactions.
+    var dropAccept: [String] = []
+    var dragItems: [RyUIDragSpec] = []
+    var dropInteraction: UIDropInteraction?
+    var dragInteraction: UIDragInteraction?
 
     /// Whether an ancestor is being popped or dismissed.
     var underDying: Bool {
@@ -116,6 +121,16 @@ final class RyUIContainerView: UIView {
         isAccessibilityElement = false
     }
     required init?(coder: NSCoder) { fatalError() }
+
+    /// Leaving the window, or hidden: no longer pressed or hovered.
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window == nil { RyUIRuntime.shared.viewLeft(self) }
+    }
+
+    override var isHidden: Bool {
+        didSet { if isHidden && !oldValue { RyUIRuntime.shared.viewLeft(self) } }
+    }
 
     /// The app's label, or a pressable (adjustable, actionable) view's
     /// content, as VoiceOver reads a row: its texts and labeled images, in
@@ -578,11 +593,14 @@ final class RyUITextField: UITextField {
         case .pan, .pinch, .swipe, .rotate:
             listenGesture(n, e)
         case .press:
-            let tap = UITapGestureRecognizer(target: self, action: #selector(tapped(_:)))
-            n.view.addGestureRecognizer(tap)
+            installPress(n) // Press and Pressed, one recognizer (Interaction.swift)
             if let c = n.view as? RyUIContainerView { c.pressable = true } else { n.view.accessibilityTraits.insert(.button) }
+        case .pressed:
+            installPress(n) // no button for VoiceOver: a hold isn't one
+        case .hover:
+            installHover(n)
         case .longPress:
-            n.view.addGestureRecognizer(UILongPressGestureRecognizer(target: self, action: #selector(longPressed(_:))))
+            installLongPress(n)
         default:
             break
         }
@@ -592,13 +610,9 @@ final class RyUITextField: UITextField {
         nodes[id]?.listens.remove(event)
     }
 
-    @objc func tapped(_ g: UITapGestureRecognizer) {
-        guard let id = nodeID(of: g.view) else { return }
-        emit(id, .press) { RyUIEvents.press(id) }
-    }
-
     @objc func longPressed(_ g: UILongPressGestureRecognizer) {
-        guard g.state == .began, let id = nodeID(of: g.view) else { return }
+        // A draggable view's long press lifts it instead.
+        guard g.state == .began, let id = nodeID(of: g.view), nodes[id]?.dragInteraction == nil else { return }
         emit(id, .longPress) { RyUIEvents.longPress(id) }
     }
 

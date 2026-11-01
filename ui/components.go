@@ -59,6 +59,38 @@ type ViewProps struct {
 	// or -1. Give it a Label, and a Hint or value text that says where
 	// it is.
 	OnAdjust func(by int)
+
+	// Interaction states. A style follows them most simply through its
+	// variants (Style.Pressed, Hovered, Dragging, DragOver); other views'
+	// styles, and anything else, through Interaction; and what isn't a
+	// style through the handlers. Each is reported once per change, and
+	// leaving it when the view goes away while in it. A view that
+	// reports its pressed state draws its own: the platform's highlight
+	// (Android's ripple, Windows' hover and pressed fills) is left off.
+	//
+	// Interaction is the view's states as values, for what follows them:
+	// its children's styles (a group's hover), its siblings' (a peer's),
+	// a Text. See Interaction.
+	Interaction *Interaction
+	// OnPressedChange reports the view pressed (CSS's :active): true as
+	// a finger, or the mouse's primary button, goes down on it (a moment
+	// later in a scrolling container, as the platform's own views do, so
+	// a scroll doesn't flash it); false as it lifts, moves off the view
+	// (back on, it's pressed again), or a scroll, another gesture, a long
+	// press or a drag takes the touch over. A press held, with no
+	// OnPress, is a hold (to record, say).
+	OnPressedChange func(pressed bool)
+	// OnHoverChange reports a pointer over the view (CSS's :hover): a
+	// mouse, a trackpad, an iPad's pointer, a hovering Apple Pencil or
+	// stylus. It stays over while on the view's children. A touch
+	// screen alone never hovers.
+	OnHoverChange func(hovered bool)
+
+	// Drag makes the view draggable, within the app and to other apps.
+	Drag *DragSource
+	// Drop makes the view take drops (CSS's drag-over is its
+	// OnOverChange).
+	Drop *DropTarget
 }
 
 // A11yAction is a screen reader's action on a view.
@@ -129,8 +161,8 @@ func addKids(e *element, kids []Node) {
 func View(p ViewProps, children ...Node) Node {
 	real := p.OnPress != nil || p.OnLongPress != nil || p.Label != "" || p.Hint != "" || p.Role != RoleNone || p.Decorative || p.OnLayout != nil ||
 		len(p.Actions) > 0 || p.OnAdjust != nil ||
-		p.OnPan != nil || p.OnPinch != nil || p.OnSwipe != nil || p.OnRotate != nil
-	if s, ok := p.Style.(Style); ok && s.visual() {
+		p.OnPan != nil || p.OnPinch != nil || p.OnSwipe != nil || p.OnRotate != nil || p.interactive()
+	if s, ok := p.Style.(Style); ok && (s.visual() || s.hasVariants()) {
 		real = true
 	}
 	e := newElement(ops.KindView, real)
@@ -173,8 +205,9 @@ func View(p ViewProps, children ...Node) Node {
 			e.listen(ops.EventAdjust)
 		}
 		e.listenGestures(&p)
+		e.listenInteraction(&p)
 	}
-	e.setStyle(p.Style, false)
+	e.setStyle(e.variantStyle(p.Style, p.Interaction), false)
 	addKids(e, children)
 	return Node{e}
 }

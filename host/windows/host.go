@@ -72,6 +72,13 @@ type node struct {
 	panLast      Point
 	panTime      int64
 	focused      bool
+	tracking     bool // a press of the mouse on it is under way (pressed while over it)
+	releasing    bool // its capture is let go of by the host: not a cancel
+	spaceDown    bool // Space is held on it: pressed until it's let go of
+
+	// Drag and drop (interaction.go).
+	dropAccept []string   // DropAccept: the MIME types it takes
+	dragItems  []ops.Item // DragItems: what dragging it carries
 
 	// Kind-specific.
 	title, message string // Button, Screen, Alert
@@ -200,6 +207,23 @@ type Host struct {
 	ownedMenus []*ownerMenu // the owner-drawn menus
 	barOwned   []*ownerMenu // the menu bar's
 	menuStyles map[menuStyleKey]*menuStyle
+
+	// Interaction states and drags (interaction.go).
+	hovered        []*node // the views listening for Hover under the pointer
+	hoverNext      []*node
+	chain          []*node
+	hoverViews     int     // views listening for Hover
+	hoverWin       uintptr // the app's top-level window the pointer was last over, 0: none
+	hoverPt        Point   // where, on the screen
+	hoverQueued    bool
+	hoverRefreshes int     // refreshes since the pointer last moved
+	hovering       bool    // hoverAt is reporting
+	hoverAgain     bool    // and was called meanwhile
+	tracked        uintptr // the window TrackMouseEvent watches for the pointer leaving
+	dragSource     ops.NodeID
+	dragSnapshot   []ops.Item // its items as its drag began
+	dropHelp       DropHelper
+	dropHelperMade bool
 }
 
 var theHost *Host
@@ -208,6 +232,7 @@ var theHost *Host
 func newHost() *Host {
 	DPIAware()
 	ActivateCommonControls()
+	OleInitialize() // drag and drop
 	StartGDIPlus()
 	registerClasses()
 	h := &Host{
@@ -274,8 +299,12 @@ func Run(root func() ui.Node) {
 func (h *Host) loop() {
 	var m Msg
 	for GetMessage(&m) {
-		if m.Message == WM_MOUSEMOVE {
+		switch m.Message {
+		case WM_MOUSEMOVE:
 			h.mouseOver(m.Hwnd)
+			h.pointerMoved(m.Hwnd, m.Pt, true)
+		case WM_MOUSELEAVE:
+			h.mouseLeft(m.Hwnd)
 		}
 		if h.preTranslate(&m) {
 			continue
@@ -407,6 +436,7 @@ func (h *Host) Apply(b *ops.Batch) {
 	for i := range b.Ops {
 		h.apply(&b.Ops[i])
 	}
+	h.refreshHover()
 }
 
 func (h *Host) apply(op *ops.Op) {
@@ -439,11 +469,17 @@ func (h *Host) apply(op *ops.Op) {
 		}
 	case ops.OpListen:
 		if n := h.nodes[op.ID]; n != nil && op.Event < 128 {
+			if op.Event == ops.EventHover && !n.listening(op.Event) {
+				h.hoverViews++
+			}
 			n.listens[op.Event/64] |= 1 << (op.Event % 64)
 			h.listen(n, op.Event)
 		}
 	case ops.OpUnlisten:
 		if n := h.nodes[op.ID]; n != nil && op.Event < 128 {
+			if op.Event == ops.EventHover && n.listening(op.Event) {
+				h.hoverViews--
+			}
 			n.listens[op.Event/64] &^= 1 << (op.Event % 64)
 		}
 	case ops.OpCommand:
@@ -473,6 +509,7 @@ func (h *Host) destroy(id ops.NodeID) {
 		return
 	}
 	delete(h.nodes, id)
+	h.forgetInteraction(n)
 	if h.destroyNav(n) {
 		return
 	}

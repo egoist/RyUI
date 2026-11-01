@@ -27,7 +27,7 @@ func registerClasses() {
 	firstMouse := Method("acceptsFirstMouse:", func(self ID, _ SEL, ev ID) bool { return true })
 
 	// A container: RyUI places its subviews itself.
-	DefineClass("RyUIView", "NSView", nil, []objc.MethodDef{
+	DefineClass("RyUIView", "NSView", []string{"NSDraggingDestination", "NSDraggingSource"}, append([]objc.MethodDef{
 		flipped, firstMouse,
 		Method("accessibilityPerformPress", func(self ID, _ SEL) bool {
 			n := theHost.byView[self]
@@ -71,7 +71,7 @@ func registerClasses() {
 			// Escape in a sheet's content dismisses it.
 			theHost.cancel(self)
 		}),
-	})
+	}, interactionMethods()...))
 	// Text fields that report focus.
 	focus := func(cls string) objc.MethodDef {
 		return Method("becomeFirstResponder", func(self ID, _ SEL) bool {
@@ -109,6 +109,8 @@ func registerTarget() {
 		}),
 		Method("applicationDidHide:", func(self ID, _ SEL, n ID) { h().lifecycle(ops.LifecycleBackground) }),
 		Method("applicationDidUnhide:", func(self ID, _ SEL, n ID) { h().lifecycle(ops.LifecycleForeground) }),
+		Method("applicationDidResignActive:", func(self ID, _ SEL, n ID) { h().appActive(false) }),
+		Method("applicationDidBecomeActive:", func(self ID, _ SEL, n ID) { h().appActive(true) }),
 		Method("application:openURLs:", func(self ID, _ SEL, app, urls ID) {
 			for _, u := range ArrayItems(urls) {
 				h().openURL(GoString(Send(u, "absoluteString")))
@@ -135,9 +137,13 @@ func registerTarget() {
 
 		// Controls.
 		Method("act:", func(self ID, _ SEL, sender ID) { h().act(sender) }),
-		Method("click:", func(self ID, _ SEL, g ID) { h().gesture(g, ops.EventPress) }),
 		Method("longPress:", func(self ID, _ SEL, g ID) { h().gesture(g, ops.EventLongPress) }),
 		Method("pan:", func(self ID, _ SEL, g ID) { h().gesture(g, ops.EventPan) }),
+		// A pan doesn't begin while the mouse went down on a draggable
+		// view: moving it drags the view.
+		Method("gestureRecognizerShouldBegin:", func(self ID, _ SEL, g ID) bool {
+			return h().mouse.source == nil && h().drag == nil
+		}),
 		Method("magnify:", func(self ID, _ SEL, g ID) { h().gesture(g, ops.EventPinch) }),
 		Method("rotate:", func(self ID, _ SEL, g ID) { h().gesture(g, ops.EventRotate) }),
 		Method("menuItem:", func(self ID, _ SEL, item ID) { h().menuItem(item) }),
@@ -187,7 +193,7 @@ func registerTarget() {
 	methods = append(methods, navMethods()...)
 	DefineClass("RyUITarget", "NSObject", []string{
 		"NSApplicationDelegate", "NSWindowDelegate", "NSTextFieldDelegate", "NSTextViewDelegate",
-		"NSTabViewDelegate", "NSMenuDelegate",
+		"NSTabViewDelegate", "NSMenuDelegate", "NSGestureRecognizerDelegate",
 		"WKNavigationDelegate", "WKScriptMessageHandler", "WKUIDelegate", "NSToolbarDelegate", "NSSearchFieldDelegate",
 	}, methods)
 }

@@ -40,6 +40,9 @@ func registerClasses() {
 }
 
 func wndProc(hwnd, m, wp, lp uintptr) uintptr {
+	if m == WM_DESTROY {
+		windowDestroyed(hwnd)
+	}
 	if h := theHost; h != nil {
 		if r, ok := h.message(hwnd, uint32(m), wp, lp); ok {
 			return r
@@ -66,10 +69,14 @@ func (h *Host) message(hwnd uintptr, m uint32, wp, lp uintptr) (uintptr, bool) {
 			h.runPosted()
 			return 0, true
 		case WM_TIMER:
-			if wp == timerFrame {
+			switch {
+			case wp == timerFrame:
 				h.tick()
-			} else if wp == timerAnimate && h.anim != nil {
+			case wp == timerAnimate && h.anim != nil:
 				h.anim.step(h)
+			case wp == timerHover:
+				p := CursorPos()
+				h.pointerMoved(WindowFromPoint(p), p, true)
 			}
 			return 0, true
 		}
@@ -140,6 +147,7 @@ func (h *Host) makeWindow() {
 	x := work.Left + (work.W()-w)/2
 	y := work.Top + (work.H()-ht)/2
 	SetWindowPos(h.window, 0, x, y, w, ht, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
+	h.acceptDrops(h.window)
 }
 
 func (h *Host) windowMessage(m uint32, wp, lp uintptr) (uintptr, bool) {

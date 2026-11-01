@@ -23,7 +23,8 @@ import java.util.concurrent.Executors
  * app's caches.
  */
 
-private val shareCopier = Executors.newSingleThreadExecutor()
+/** Copies what other apps give (shares, drops) off the main thread, in order. */
+internal val shareCopier = Executors.newSingleThreadExecutor()
 private var shareSheets = 0
 
 /** ui.ShareKind. */
@@ -73,34 +74,9 @@ fun RyUIRuntime.receive(intent: Intent) {
         val dir = File(app.cacheDir, "ryui-shared")
         val files = ArrayList<String>()
         for (u in uris) {
-            runCatching {
-                val mime = app.contentResolver.getType(u) ?: type?.takeIf { !it.contains('*') }
-                    ?: MimeTypeMap.getSingleton().getMimeTypeFromExtension(MimeTypeMap.getFileExtensionFromUrl(u.toString())) ?: "application/octet-stream"
-                var name = ""
-                var size = -1L
-                if (u.scheme == "content") {
-                    app.contentResolver.query(u, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)?.use { c ->
-                        if (c.moveToFirst()) {
-                            c.getColumnIndex(OpenableColumns.DISPLAY_NAME).takeIf { it >= 0 && !c.isNull(it) }?.let { name = c.getString(it) }
-                            c.getColumnIndex(OpenableColumns.SIZE).takeIf { it >= 0 && !c.isNull(it) }?.let { size = c.getLong(it) }
-                        }
-                    }
-                }
-                if (name.isEmpty()) name = u.lastPathSegment?.substringAfterLast('/').orEmpty()
-                name = name.replace('/', '_').replace('\u0000', '_').trim().trimStart('.')
-                if (name.isEmpty()) name = "file"
-                if (!name.contains('.')) MimeTypeMap.getSingleton().getExtensionFromMimeType(mime)?.let { name += ".$it" }
-                val f = File(File(dir, UUID.randomUUID().toString()).apply { mkdirs() }, name)
-                app.contentResolver.openInputStream(u)!!.use { i -> f.outputStream().use { o -> i.copyTo(o) } }
-                val kind = when {
-                    mime.startsWith("image/") -> Kind.IMAGE
-                    mime.startsWith("video/") -> Kind.VIDEO
-                    mime.startsWith("audio/") -> Kind.AUDIO
-                    else -> Kind.FILE
-                }
-                item(kind, "", f.absolutePath, name, mime, f.length())
-                files.add(f.absolutePath)
-            }
+            val f = copyToCaches(u, uriMIME(u, type), dir) ?: continue
+            item(f.kind, "", f.path, f.name, f.mime, f.size)
+            files.add(f.path)
         }
         if (n == 0) return@execute
         val out = RyUIWriter()
@@ -111,6 +87,60 @@ fun RyUIRuntime.receive(intent: Intent) {
             lastSharedFiles.addAll(files)
             shared(bytes)
         }
+    }
+}
+
+/** A file another app gave, copied into the app's caches. */
+class RyUICopiedFile(val kind: Int, val path: String, val name: String, val mime: String, val size: Long)
+
+/** A URI's MIME type: its provider's, else hint (a concrete one), else its extension's. */
+fun RyUIRuntime.uriMIME(u: Uri, hint: String?): String = runCatching { app.contentResolver.getType(u) }.getOrNull()
+    ?: hint?.takeIf { !it.contains('*') }
+    ?: MimeTypeMap.getSingleton().getMimeTypeFromExtension(MimeTypeMap.getFileExtensionFromUrl(u.toString())) ?: "application/octet-stream"
+
+/** The ShareKind of a file of a MIME type. */
+fun fileKind(mime: String) = when {
+    mime.startsWith("image/") -> Kind.IMAGE
+    mime.startsWith("video/") -> Kind.VIDEO
+    mime.startsWith("audio/") -> Kind.AUDIO
+    else -> Kind.FILE
+}
+
+/**
+ * Copies a file another app gave (u) into a folder of its own in dir,
+ * named as the provider names it; null if it can't be read. Off the main
+ * thread, while the grant to it holds.
+ */
+fun RyUIRuntime.copyToCaches(u: Uri, mime: String, dir: File): RyUICopiedFile? = runCatching {
+    var name = ""
+    var size = -1L
+    if (u.scheme == "content") {
+        app.contentResolver.query(u, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)?.use { c ->
+            if (c.moveToFirst()) {
+                c.getColumnIndex(OpenableColumns.DISPLAY_NAME).takeIf { it >= 0 && !c.isNull(it) }?.let { name = c.getString(it) }
+                c.getColumnIndex(OpenableColumns.SIZE).takeIf { it >= 0 && !c.isNull(it) }?.let { size = c.getLong(it) }
+            }
+        }
+    }
+    if (name.isEmpty()) name = u.lastPathSegment?.substringAfterLast('/').orEmpty()
+    name = name.replace('/', '_').replace('\u0000', '_').trim().trimStart('.')
+    if (name.isEmpty()) name = "file"
+    if (!name.contains('.')) MimeTypeMap.getSingleton().getExtensionFromMimeType(mime)?.let { name += ".$it" }
+    val f = File(File(dir, UUID.randomUUID().toString()).apply { mkdirs() }, name)
+    app.contentResolver.openInputStream(u)!!.use { i -> f.outputStream().use { o -> i.copyTo(o) } }
+    RyUICopiedFile(fileKind(mime), f.absolutePath, name, mime, f.length())
+}.getOrNull()
+
+/** A content URI other apps can read a file by: the app's FileProvider's (a file outside its folders is copied to its caches first). */
+fun RyUIRuntime.providerURI(path: String): Uri {
+    val authority = app.packageName + ".ryui.files"
+    val f = File(path)
+    return try {
+        FileProvider.getUriForFile(app, authority, f)
+    } catch (_: IllegalArgumentException) {
+        val c = File(File(app.cacheDir, "ryui-share/" + UUID.randomUUID()).apply { mkdirs() }, f.name)
+        f.copyTo(c, overwrite = true)
+        FileProvider.getUriForFile(app, authority, c)
     }
 }
 
@@ -140,17 +170,7 @@ fun RyUIRuntime.shareMethods(): Map<String, RyUIModuleMethod> = mapOf(
             act == null -> reply(Result.failure(Exception("no screen")))
             else -> {
                 val (mime, title, paths) = parsed
-                val authority = app.packageName + ".ryui.files"
-                val uris = ArrayList(paths.map { p ->
-                    val f = File(p)
-                    try {
-                        FileProvider.getUriForFile(app, authority, f)
-                    } catch (_: IllegalArgumentException) {
-                        val c = File(File(app.cacheDir, "ryui-share/" + UUID.randomUUID()).apply { mkdirs() }, f.name)
-                        f.copyTo(c, overwrite = true)
-                        FileProvider.getUriForFile(app, authority, c)
-                    }
-                })
+                val uris = ArrayList(paths.map { providerURI(it) })
                 val send = Intent(if (uris.size == 1) Intent.ACTION_SEND else Intent.ACTION_SEND_MULTIPLE).apply {
                     type = mime.ifEmpty { if (uris.size == 1) app.contentResolver.getType(uris[0]) ?: "*/*" else "*/*" }
                     if (uris.size == 1) putExtra(Intent.EXTRA_STREAM, uris[0]) else putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)

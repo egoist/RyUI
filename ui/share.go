@@ -250,39 +250,9 @@ func ShareSheetRoot(screen func(s *ShareSheet) Node) func() Node {
 // decodeShared reads a Shared event's payload (see ops' EventShared); a
 // short one ends the list where it's cut.
 func decodeShared(b []byte) []SharedItem {
-	le := binary.LittleEndian
-	if len(b) < 4 {
-		return nil
-	}
-	n := le.Uint32(b)
-	b = b[4:]
-	str := func() (string, bool) {
-		if len(b) < 4 || uint64(len(b)-4) < uint64(le.Uint32(b)) {
-			return "", false
-		}
-		l := le.Uint32(b)
-		s := string(b[4 : 4+l])
-		b = b[4+l:]
-		return s, true
-	}
 	var items []SharedItem
-	for range n {
-		if len(b) < 1 {
-			break
-		}
-		it := SharedItem{Kind: ShareKind(b[0])}
-		b = b[1:]
-		var ok1, ok2, ok3, ok4 bool
-		it.Text, ok1 = str()
-		it.Path, ok2 = str()
-		it.Name, ok3 = str()
-		it.MIME, ok4 = str()
-		if !ok1 || !ok2 || !ok3 || !ok4 || len(b) < 8 {
-			break
-		}
-		it.Size = int64(le.Uint64(b))
-		b = b[8:]
-		items = append(items, it)
+	for _, it := range ops.DecodeItems(b) {
+		items = append(items, SharedItem{Kind: it.Kind, Text: it.Text, Path: it.Path, Name: it.Name, MIME: it.MIME, Size: it.Size})
 	}
 	return items
 }

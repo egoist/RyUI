@@ -603,6 +603,13 @@ return ui.View(ui.ViewProps{
 - Gestures, with the platform's recognizers: `OnPan`, `OnPinch`,
   `OnRotate` (each given a `ui.Gesture`) and `OnSwipe` (a
   `ui.SwipeDirection`). See [Motion](motion.md).
+- Interaction states. The view's own style follows them through its
+  variants (`Style.Pressed`, `Hovered`, `Dragging`, `DragOver`). Other
+  views follow them through `Interaction` (a `ui.Interaction`, read
+  with `Style.When` or in a `StyleFunc`). Side effects go in
+  `OnPressedChange` and `OnHoverChange`. Drag and drop: `Drag` (a
+  `ui.DragSource`) and `Drop` (a `ui.DropTarget`). See
+  [Motion](motion.md#pressed-and-hover-states).
 - `OnLayout`, called with the view's `ui.Frame` once it's laid out and
   each time that changes.
 - Accessibility: `Label`, `Hint`, `Role`, `Decorative`, `Actions` and

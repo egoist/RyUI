@@ -337,6 +337,13 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 		n.web.setProp(h, n, p, v)
 	case ops.KindVideo:
 		n.video.setProp(h, n, p, v)
+	case ops.KindView:
+		switch p {
+		case ops.PropViewDropAccept:
+			h.setDropAccept(n, v.Bytes)
+		case ops.PropViewDragItems:
+			n.dragItems = ops.DecodeDragItems(v.Bytes)
+		}
 	default:
 		h.setNavProp(n, p, v)
 	}
@@ -624,13 +631,16 @@ func (h *Host) listen(n *node, e ops.EventKind) {
 	}
 	add := func(cls, action string) ID {
 		g := Send(Send(Class(cls), "alloc"), "initWithTarget:action:", uintptr(h.target), uintptr(Sel(action)))
+		// The view sees the mouse as it goes, for its press (Pressed);
+		// a gesture that begins cancels the press.
+		Send(g, "setDelaysPrimaryMouseButtonEvents:", 0)
 		Send(n.view, "addGestureRecognizer:", uintptr(g))
 		Release(g)
 		return g
 	}
 	switch e {
 	case ops.EventPress:
-		add("NSClickGestureRecognizer", "click:")
+		// Pressed and released on the view (mouseDown:, mouseUp:).
 		Send(n.view, "setAccessibilityElement:", 1)
 		Send(n.view, "setAccessibilityRole:", uintptr(String("AXButton")))
 	case ops.EventLongPress:
@@ -640,7 +650,10 @@ func (h *Host) listen(n *node, e ops.EventKind) {
 		r := add("NSClickGestureRecognizer", "longPress:")
 		Send(r, "setButtonMask:", 2)
 	case ops.EventPan:
-		add("NSPanGestureRecognizer", "pan:")
+		g := add("NSPanGestureRecognizer", "pan:")
+		Send(g, "setDelegate:", uintptr(h.target))
+	case ops.EventHover:
+		h.listenHover(n)
 	case ops.EventPinch:
 		add("NSMagnificationGestureRecognizer", "magnify:")
 	case ops.EventRotate:
@@ -656,16 +669,17 @@ func (h *Host) gesture(g ID, e ops.EventKind) {
 		return
 	}
 	state := SendInt(g, "state") // possible, began, changed, ended, cancelled, failed
+	if state == 1 || state == 3 && e == ops.EventLongPress {
+		h.cancelPress() // the gesture takes the mouse
+	}
 	switch e {
-	case ops.EventPress:
-		if state == 3 {
-			h.emit(n, ops.Event{Kind: ops.EventPress})
-		}
-		return
 	case ops.EventLongPress:
 		if state == 1 || state == 3 && SendBool(g, "isKindOfClass:", uintptr(Class("NSClickGestureRecognizer"))) {
 			if n.menu != 0 && n.menuTrigger == int32(ops.MenuTriggerLongPress) {
 				return // its context menu shows
+			}
+			if h.drag != nil {
+				return // the hold became a drag
 			}
 			h.emit(n, ops.Event{Kind: ops.EventLongPress})
 		}

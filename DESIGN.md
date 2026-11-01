@@ -364,6 +364,147 @@ after `Create`, picks the factory.
   interpolating the layout bounds; views that weren't on screen don't
   animate in).
 
+### Interaction states, drag and drop
+
+A view's interaction states (pressed, hovered, dragged, a drag over a
+drop target) are reported by the host as events, and the core turns
+them into what styles read (`ui/interaction.go`). There are three
+layers, each built on the one below:
+
+- **Variants**, for the view's own style: `Style.Pressed`, `Hovered`,
+  `Dragging` and `DragOver` (`*Style`). They are CSS's `:active` and
+  `:hover`, and Tailwind's `active:` and `hover:`. While the view is in
+  a state, its variant is laid over the style. Merging rules:
+  - A variant replaces only the fields it sets (non-zero).
+  - `Font` is merged field by field.
+  - Variants apply in the order Hovered, Pressed, Dragging, DragOver.
+  - A View whose style (or `StyleFunc`) has variants wraps it in an
+    effect that applies them. A flattened container whose
+    `StyleFunc` comes to have variants gets a view of its own.
+  - Other components ignore variants.
+- **`Interaction`** (`ViewProps.Interaction`), the view's states as
+  values. Compose has `InteractionSource` and Flutter has
+  `WidgetStatesController` for the same thing.
+  - `it.Pressed()`, `Hovered()`, `Dragging()` and `DragOver()` read
+    signals.
+  - Other views follow the state with `Style.When(it.Hovered, ...)` and
+    `Unless`, and anything else can read it in a `StyleFunc`, a `Text`
+    or a `Show`. That covers Tailwind's group-hover and peer-hover.
+  - Variants use the view's `Interaction` (or one of its own made for
+    them).
+  - Given to several views, a state is true while any of them is in it.
+    Each view's changes are counted, and a disposed view is taken out.
+- **Handlers**, for side effects: `OnPressedChange`, `OnHoverChange`,
+  a `DropTarget`'s `OnOverChange` and a `DragSource`'s `OnPhase`.
+
+A view listens for a state only from when something first reads it,
+whether a variant or a read of its `Interaction`.
+
+- A host may get the `Listen` long after `Create`, and every host
+  handles that.
+- A view that nothing asks for its pressed state doesn't report it, and
+  keeps the platform's highlight.
+- This is exact, not an approximation: a read that never happened can't
+  have changed any output.
+
+`When` takes any `func() bool`, so styles follow ordinary signals the
+same way. Because a zero field means unset, a state can't clear a field.
+`Unless` sets the field in the other state instead.
+
+`ViewProps.Drag` (a `DragSource`) and `Drop` (a `DropTarget`) set up drag
+and drop. The core reports each state change once, and keeps the states
+last reported. A view disposed while in a state reports leaving it, to
+its handlers and its `Interaction`, so what follows it elsewhere doesn't
+stay stuck.
+
+The wire (ops/schema.go): events `Pressed` and `Hover` (bool),
+`DragOver` (a gesture payload: Began, Changed, Cancelled, and X, Y),
+`Drop` (bytes: x, y, the source view, flags, items) and `Dragging` (a
+`DragPhase`); `View` props `DropAccept` (MIME patterns) and `DragItems`
+(the items, each with its kind, text, path, name, MIME type and whether
+it carries an app's value). `ops/item.go` has the codecs and
+`ops.MatchMIME`, which the Go hosts share. What every host does:
+
+- **Pressed** (a `View` listening for `Pressed`). True as the primary
+  pointer goes down on the view (a touch, the mouse's primary button);
+  only the innermost: a touch on a descendant that is pressable itself
+  (`Press`, `LongPress`, `Pressed`, a tap menu) or a control (a button,
+  a switch, a field) doesn't press its ancestors, as UIKit's cells and
+  Android's clickable views behave. In a scrolling ancestor it comes
+  after the platform's tap delay (UIScrollView's 150 ms, Android's tap
+  timeout), so a scroll doesn't flash it; a tap released sooner reports
+  true, then false a moment later (Android's pressed-state duration,
+  about 64 ms; iOS likewise), so the look shows. False as it lifts;
+  as it moves off the view (back on, while still down, true again;
+  iOS keeps a 20-point margin, as UIControl's tracking does, Android
+  its touch slop); as a
+  scroll, another gesture (a pan, a swipe), a long press or a drag
+  takes the touch (the press then doesn't fire); as the app goes to the
+  background or the view leaves the window. `Press` fires only for a
+  release while pressed, so the two agree. Only the first touch counts.
+  A view with `Pressed` and no `Press` (a hold to record) tracks presses
+  without becoming a button for screen readers. Windows: Space held on
+  a focused pressable view presses it, its release fires `Press`.
+- **Hover** (a `View` listening for `Hover`). True as a pointer (a
+  mouse, a trackpad, an iPad's pointer, a hovering pencil or stylus)
+  comes inside the view's bounds; it stays true over its descendants,
+  as CSS's `:hover` does, and goes false as the pointer leaves the
+  bounds, the window or the app, or the view is hidden or removed.
+  iOS: `UIHoverGestureRecognizer`, recognizing with the others. Android:
+  the container's `dispatchHoverEvent`, which sees the pointer over its
+  children too (its `onHoverEvent` gets an exit as a hoverable child
+  takes the pointer). macOS: an `NSTrackingArea` (entered and exited,
+  in the visible rect, active in the active app), checked against the
+  mouse as it's added, so a view that appears under the pointer is
+  hovered. Windows: tracked from the message loop: each mouse move finds
+  the views under the cursor, the window it's over and its ancestors,
+  and `TrackMouseEvent`'s leave clears them as it leaves the app's
+  windows.
+- A view that reports its pressed or hover state draws its own: the
+  host leaves off its own highlight (Android's ripple foreground,
+  Windows' hover and pressed fills; the focus ring stays).
+- **Drop targets** (`DropAccept`). A drag is taken if any of its items'
+  MIME types matches a pattern (`ops.MatchMIME`: exact, `type/*`, `*/*`
+  or `*`, without regard to case or parameters). An item's type: a text
+  `text/plain`, a link `text/uri-list`, a file's from its UTI or
+  extension (unknown: `application/octet-stream`), image data its
+  image type, an item dragged from the app its `DragItems` MIME type
+  (the core fills it in). Only the innermost target under the pointer
+  that takes a drag gets it. `DragOver` Began as a taken drag comes
+  over the view, Changed as it moves (its place in the view, in
+  points), Cancelled as it leaves, ends or is dropped. The platform
+  shows a move for the app's own drags, a copy for other apps'. A drop
+  from the app sends `Drop` at once, with its source view and no items
+  (the core has them, Values and all, as they were when the drag
+  began). Another app's drop loads the items the target takes, and
+  only those, then sends `Drop` with them: texts, links (as
+  `ShareKindLink`), files; on iOS and Android the files (and image data)
+  are copied into the app's caches, as a share's are (flag 1: the app
+  owns them), on macOS and Windows they're the files themselves; a
+  macOS file promise is received into the caches.
+- **Drag sources** (`DragItems`). Touch: a long press lifts the view
+  (`UIDragInteraction`, enabled on iPhone too; Android's long click
+  starting `startDragAndDrop`), and the long press then fires no
+  `LongPress`. Mouse: a move with the primary button down past the
+  system's drag distance, which cancels the press (`Pressed` false, no
+  `Press`) and comes before a pan. The drag shows the view's image.
+  Other apps get each item's text (plain text), link (a URL) or file
+  (iOS: the file's provider; Android: a `FileProvider` URI with global
+  read; macOS: a file URL; Windows: `CF_HDROP`); an item that's only a
+  value goes nowhere else, and a drag of only values is kept to the
+  app. The session carries its source view's ID in a private type (iOS's
+  local context, Android's local state, a private pasteboard type or
+  clipboard format with the process's ID on desktop), which a drop in
+  the same process sends as its source. `Dragging` Began as it lifts,
+  then exactly one of Dropped (an operation other than none) or
+  Cancelled. Windows lets a drag that carries files copy or link only
+  (never move them, Explorer included), so the app's own targets show
+  a copy for those; its drops take virtual files too (Outlook's
+  attachments, a browser's images), copied into the app's folder.
+- With presses the view's own, iOS's `Press` follows UIControl (a
+  release within the margin, not a tap recognizer's 10 points), and a
+  macOS view's tap menu opens on a click's release, as on Windows.
+
 ### Accessibility
 
 Native widgets bring their own. `View` takes `Label`, `Hint`, `Role`

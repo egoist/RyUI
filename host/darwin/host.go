@@ -94,6 +94,12 @@ type node struct {
 	placed         bool   // has had a frame
 	transition     []byte // Style.Transition's
 	entering       bool
+
+	// Interaction states and drag and drop (interaction.go).
+	hovered    bool
+	hoverArea  ID         // its NSTrackingArea (listening for Hover)
+	dropAccept []string   // DropAccept's MIME type patterns
+	dragItems  []ops.Item // DragItems
 }
 
 func (n *node) listening(e ops.EventKind) bool {
@@ -154,6 +160,12 @@ type Host struct {
 	chromeQueued bool
 	a11yActions  map[ID]a11yAction
 	exiting      map[ID]bool // views going out with a transition
+
+	mouse       mouseState  // the primary button's press
+	over        dropState   // a drag over the app's drop targets
+	drag        *dragSource // the app's drag under way
+	hoverCheck  []*node     // views to check the pointer against
+	hoverQueued bool
 }
 
 var theHost *Host
@@ -395,6 +407,7 @@ func (h *Host) destroy(id ops.NodeID) {
 
 // release lets go of n's native objects.
 func (h *Host) release(n *node) {
+	h.dropInteraction(n)
 	for a, x := range h.a11yActions {
 		if x.n == n {
 			delete(h.a11yActions, a)
@@ -553,6 +566,9 @@ func (h *Host) place(n *node, f [4]float32) {
 		MsgSetRect(v, selSetFrame, r)
 	}
 	n.placed = true
+	if n.hoverArea != 0 {
+		h.checkHover(n) // moved under the pointer
+	}
 	if n.transform != nil {
 		h.setTransform(n, n.transform)
 	}

@@ -666,6 +666,14 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
             wirePresses(n)
             return
         }
+        if (n.kind == RyUIKind.VIEW && prop == RyUIProp.View.DROP_ACCEPT) {
+            setDropAccept(n, v)
+            return
+        }
+        if (n.kind == RyUIKind.VIEW && prop == RyUIProp.View.DRAG_ITEMS) {
+            setDragItems(n, v)
+            return
+        }
         if (prop == RyUIProp.A11Y_ACTIONS) {
             setA11yActions(n, v)
             return
@@ -778,14 +786,15 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
 
     override fun listen(id: Int, event: Int) {
         val n = nodes[id] ?: return
-        n.listens = n.listens or (1 shl event)
-        if (event == RyUIEventKind.PRESS || event == RyUIEventKind.LONG_PRESS) wirePresses(n)
+        n.setListening(event, true)
+        if (event == RyUIEventKind.PRESS || event == RyUIEventKind.LONG_PRESS || event == RyUIEventKind.PRESSED || event == RyUIEventKind.HOVER) wirePresses(n)
         if (n.kind == RyUIKind.VIEW && (event == RyUIEventKind.PAN || event == RyUIEventKind.PINCH || event == RyUIEventKind.SWIPE || event == RyUIEventKind.ROTATE)) listenGesture(n, event)
     }
 
     override fun unlisten(id: Int, event: Int) {
         val n = nodes[id] ?: return
-        n.listens = n.listens and (1 shl event).inv()
+        n.setListening(event, false)
+        if (event == RyUIEventKind.PRESSED || event == RyUIEventKind.HOVER) wirePresses(n)
     }
 
     override fun command(id: Int, command: Int, args: ByteBuffer) {

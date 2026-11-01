@@ -120,6 +120,16 @@ func (h *Host) applyHidden(n *node) {
 		return // a stack shows its top screen, tabs their page
 	}
 	if hide {
+		if n.tracking || n.spaceDown {
+			// A view that goes doesn't stay pressed.
+			n.spaceDown = false
+			h.cancelPress(n)
+			if Capture() == n.hwnd {
+				n.releasing = true
+				ReleaseCapture()
+				n.releasing = false
+			}
+		}
 		ShowWindow(n.hwnd, SW_HIDE)
 	} else {
 		ShowWindow(n.hwnd, SW_SHOWNA)

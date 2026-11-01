@@ -36,6 +36,12 @@ type handlers struct {
 	adjust              func(by int)
 	color               func(Color)
 	web                 *webHandlers // a WebView's
+	pressed, hover      func(bool)
+	drag                *dragHandlers
+	drop                *dropHandlers
+	state               uint8        // the interaction states last reported (statePressed...)
+	listens             uint8        // the states the view listens for (statePressed, stateHovered)
+	ia                  *Interaction // the view's states, for styles to read
 }
 
 // webHandlers are a WebView's own events'.
@@ -59,6 +65,7 @@ type element struct {
 	up     *element // a list cell's List: cells have no parent
 	inline bool     // a RichText's inline component: a layout root of its own
 	dead   bool
+	hooked bool // leaves its interaction states when disposed
 	parent *element
 	kids   []*element
 	box    *layout.Node
@@ -432,6 +439,7 @@ func layoutPart(s Style) Style {
 	s.Hidden = false
 	s.Font, s.TextAlign, s.Lines = Font{}, 0, 0
 	s.Transform, s.Shadow, s.Gradient, s.Transition, s.Material = Transform{}, Shadow{}, nil, Transition{}, 0 // drawn, not laid out
+	s.Hovered, s.Pressed, s.Dragging, s.DragOver = nil, nil, nil, nil                                         // a View's are laid on before
 	return s
 }
 

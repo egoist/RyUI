@@ -88,6 +88,7 @@ func (h *Host) inExiting(v ID) bool {
 // forget drops a node whose view stays on screen a while (going out):
 // the view is released when it goes.
 func (h *Host) forget(n *node) {
+	h.dropInteraction(n)
 	for a, x := range h.a11yActions {
 		if x.n == n {
 			delete(h.a11yActions, a)

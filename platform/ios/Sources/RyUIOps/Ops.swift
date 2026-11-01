@@ -102,6 +102,11 @@ public enum RyUIProp {
     public static let swipeActions: UInt16 = 29
     public static let match: UInt16 = 30
 
+    public enum View {
+        public static let dropAccept: UInt16 = 64
+        public static let dragItems: UInt16 = 65
+    }
+
     public enum Text {
         public static let text: UInt16 = 64
     }
@@ -314,6 +319,11 @@ public enum RyUIEventKind: UInt16 {
     case download = 37
     case newWindow = 38
     case shared = 39
+    case pressed = 40
+    case hover = 41
+    case dragOver = 42
+    case drop = 43
+    case dragging = 44
 }
 
 public enum RyUICommand: UInt16 {
@@ -564,6 +574,12 @@ public enum RyUIShareKind: Int32 {
     case video = 3
     case audio = 4
     case file = 5
+}
+
+public enum RyUIDragPhase: Int32 {
+    case began = 0
+    case dropped = 1
+    case cancelled = 2
 }
 
 /// A prop value. Bytes are valid only during the handler call.
@@ -835,5 +851,20 @@ public enum RyUIEvents {
     }
     public static func shared(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
         var w = RyUIWriter(); w.header(id, 39); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
+    }
+    public static func pressed(_ id: UInt32, _ v: Bool) -> [UInt8] {
+        var w = RyUIWriter(); w.header(id, 40); w.u8(v ? 1 : 0); return w.bytes
+    }
+    public static func hover(_ id: UInt32, _ v: Bool) -> [UInt8] {
+        var w = RyUIWriter(); w.header(id, 41); w.u8(v ? 1 : 0); return w.bytes
+    }
+    public static func dragOver(_ id: UInt32, _ g: RyUIGesture) -> [UInt8] {
+        var w = RyUIWriter(); w.header(id, 42); w.gesture(g); return w.bytes
+    }
+    public static func drop(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
+        var w = RyUIWriter(); w.header(id, 43); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
+    }
+    public static func dragging(_ id: UInt32, _ v: Int64) -> [UInt8] {
+        var w = RyUIWriter(); w.header(id, 44); w.u64(UInt64(bitPattern: v)); return w.bytes
     }
 }

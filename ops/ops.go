@@ -385,6 +385,9 @@ type reader struct {
 func (r *reader) take(n int) []byte {
 	if r.err != nil || len(r.b) < n {
 		r.err = errShort
+		if n > 8 {
+			return nil // a corrupt length mustn't allocate what it claims
+		}
 		return make([]byte, n)
 	}
 	v := r.b[:n]
