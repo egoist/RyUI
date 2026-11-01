@@ -43,7 +43,7 @@ func ryuiEncodeCodes(_ codes: [(String, String)]) -> Data {
 }
 #endif
 
-#if canImport(UIKit) && RYUI_SCAN // an app that calls scan.File (see the CLI's iosFeatures)
+#if canImport(UIKit) && (RYUI_SCAN || RYUI_VISION) // an app that calls scan.File or vision.Analyze (see the CLI's iosFeatures)
 import Vision
 
 /// ryui/scan's module: "file" reads the codes in an image file, with Vision.

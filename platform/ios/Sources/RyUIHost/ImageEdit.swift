@@ -131,11 +131,13 @@ enum RyUIImageEdit {
         return (tw, th)
     }
 
-    static func context(_ w: Int, _ h: Int, opaque: Bool = false) throws -> CGContext {
+    static func context(_ w: Int, _ h: Int, opaque: Bool = false, space: CGColorSpace? = nil) throws -> CGContext {
         let info = opaque ? CGImageAlphaInfo.noneSkipLast.rawValue : CGImageAlphaInfo.premultipliedLast.rawValue
         guard w > 0, h > 0, w * h <= 400_000_000,
               let c = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
-                                space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: info) else {
+                                space: space ?? CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: info)
+                ?? CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
+                             space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: info) else {
             throw RyUIModuleError("can't make a \(w)×\(h) image")
         }
         c.interpolationQuality = .high
@@ -144,9 +146,36 @@ enum RyUIImageEdit {
 
     static func apply(_ actions: [[String: Any]], to image: CGImage) throws -> CGImage {
         var img = image
+        // Fills and pixelations in a row share one drawing, in the image's
+        // own color space: a screenshot in Display P3 stays in it.
+        var canvas: CGContext?
+        func finish() {
+            if let c = canvas, let done = c.makeImage() { img = done }
+            canvas = nil
+        }
+        defer { finish() }
         for a in actions {
+            let op = a["op"] as? String
+            if op != "fill" && op != "pixelate" { finish() }
             let w = img.width, h = img.height
-            switch a["op"] as? String {
+            switch op {
+            case "fill", "pixelate":
+                if canvas == nil {
+                    let c = try context(w, h, space: img.colorSpace)
+                    c.draw(img, in: CGRect(x: 0, y: 0, width: w, height: h))
+                    canvas = c
+                }
+                let r = CGRect(x: a["x"] as? Int ?? 0, y: a["y"] as? Int ?? 0, width: a["width"] as? Int ?? 0, height: a["height"] as? Int ?? 0)
+                    .intersection(CGRect(x: 0, y: 0, width: w, height: h))
+                if r.isNull || r.width < 1 || r.height < 1 { continue }
+                if op == "fill" {
+                    let rgb = a["rgb"] as? Int ?? 0
+                    canvas!.setShouldAntialias(false)
+                    canvas!.setFillColor(CGColor(srgbRed: CGFloat(rgb >> 16 & 255) / 255, green: CGFloat(rgb >> 8 & 255) / 255, blue: CGFloat(rgb & 255) / 255, alpha: 1))
+                    canvas!.fill(CGRect(x: r.minX, y: CGFloat(h) - r.maxY, width: r.width, height: r.height)) // y is up
+                } else {
+                    pixelate(canvas!, r, block: max(a["block"] as? Int ?? 1, 1))
+                }
             case "resize":
                 let (tw, th) = target(a, w, h)
                 if tw == w && th == h { continue }
@@ -188,7 +217,42 @@ enum RyUIImageEdit {
                 throw RyUIModuleError("unknown action \(a["op"] ?? "")")
             }
         }
+        finish()
         return img
+    }
+
+    /// Squares of block pixels, aligned to the image, each the average of
+    /// all it covers; only those within r change. A bitmap context's
+    /// memory is top row first.
+    static func pixelate(_ c: CGContext, _ r: CGRect, block: Int) {
+        guard let data = c.data?.assumingMemoryBound(to: UInt8.self) else { return }
+        let w = c.width, h = c.height, row = c.bytesPerRow
+        let rx0 = Int(r.minX), ry0 = Int(r.minY), rx1 = Int(r.maxX), ry1 = Int(r.maxY)
+        var by = ry0 / block * block
+        while by < ry1 {
+            let by1 = min(by + block, h)
+            var bx = rx0 / block * block
+            while bx < rx1 {
+                let bx1 = min(bx + block, w)
+                var sum = (0, 0, 0, 0)
+                for y in by..<by1 {
+                    let p = data + y * row
+                    for x in bx..<bx1 {
+                        sum.0 += Int(p[x * 4]); sum.1 += Int(p[x * 4 + 1]); sum.2 += Int(p[x * 4 + 2]); sum.3 += Int(p[x * 4 + 3])
+                    }
+                }
+                let n = (by1 - by) * (bx1 - bx)
+                let v = (UInt8(sum.0 / n), UInt8(sum.1 / n), UInt8(sum.2 / n), UInt8(sum.3 / n))
+                for y in max(by, ry0)..<min(by1, ry1) {
+                    let p = data + y * row
+                    for x in max(bx, rx0)..<min(bx1, rx1) {
+                        p[x * 4] = v.0; p[x * 4 + 1] = v.1; p[x * 4 + 2] = v.2; p[x * 4 + 3] = v.3
+                    }
+                }
+                bx += block
+            }
+            by += block
+        }
     }
 
     /// Writes the image to the caches: PNG, or JPEG on white (it has no

@@ -264,6 +264,12 @@ struct RyUIModuleError: LocalizedError {
         #if RYUI_SCAN
         modules["scan"] = RyUIScan.methods()
         #endif
+        #if RYUI_VISION
+        modules["vision"] = RyUIVision.methods()
+        #endif
+        #if RYUI_PHOTOLIBRARY
+        modules["photoLibrary"] = RyUIPhotos.methods()
+        #endif
         modules["device"] = [
             // result: JSON: model, system, systemVersion, appVersion, build.
             "info": { args, reply in

@@ -97,7 +97,9 @@ what RyUI has for it.
 | App integrity | App Attest | `expo-app-integrity` | ✓ `ryui/integrity` (App Attest, Play Integrity) |
 | Age range | Declared Age Range | `expo-age-range` | ✓ `ryui/agerange` (Declared Age Range, Play Age Signals) |
 | Sensors | Core Motion | `expo-sensors` | ✓ `ryui/sensors` (accelerometer, gyroscope, magnetometer, device motion with attitude and heading, barometer, light, pedometer; the same axes and units on both) |
-| Image editing | Core Graphics, ImageIO | `expo-image-manipulator` | ✓ `ryui/imageedit` (resize, crop, rotate, flip; HEIC in, JPEG or PNG out, upright) |
+| Image editing | Core Graphics, ImageIO | `expo-image-manipulator` | ✓ `ryui/imageedit` (resize, crop, rotate, flip, fill, pixelate; HEIC in, JPEG or PNG out, upright, without the source's metadata) |
+| Text, faces and codes in an image | Vision | no | ✓ `ryui/vision`, with where each is; ML Kit on Android, only in the apps that import it |
+| The photo library | PhotoKit | `expo-media-library` | ✓ `ryui/photos`: permission, listing, thumbnails, the original files |
 | Video thumbnails | `AVAssetImageGenerator` | `expo-video-thumbnails` | ✓ `imageedit.VideoFrame` |
 | Text to speech | `AVSpeechSynthesizer` | `expo-speech` | ✓ `ryui/speech` (a queue, voices, pitch, rate, pause at a word) |
 | Contacts | Contacts, ContactsUI | `expo-contacts` | ✓ `ryui/contacts` (the picker and new contact screen without permission; the address book with it) |

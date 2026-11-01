@@ -320,6 +320,12 @@ var featurePermissions = []struct {
 		[]string{`<service android:name="dev.ryui.RyUIWorkService" android:exported="false" android:foregroundServiceType="dataSync" />`}, nil, nil, nil},
 	// ML Kit's barcode model: about 2 MB, only in the apps that scan.
 	{"github.com/egoist/ryui/scan", nil, nil, []string{"scan"}, nil, nil, nil, nil, nil},
+	// ML Kit's text, face and barcode models: only in the apps that analyze.
+	{pkg: "github.com/egoist/ryui/vision", modules: []string{"vision"}},
+	// Reading the library: all of it, or what the user chose (Android 14).
+	{pkg: "github.com/egoist/ryui/photos",
+		android: []string{"android.permission.READ_EXTERNAL_STORAGE:32", "android.permission.READ_MEDIA_IMAGES", "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"},
+		usage:   map[string]string{"NSPhotoLibraryUsageDescription": "To show your photos."}},
 	{pkg: "github.com/egoist/ryui/screen", android: []string{"android.permission.DETECT_SCREEN_CAPTURE"}},
 	{pkg: "github.com/egoist/ryui/biometric", android: []string{"android.permission.USE_BIOMETRIC"},
 		usage: map[string]string{"NSFaceIDUsageDescription": "To confirm it's you."}},

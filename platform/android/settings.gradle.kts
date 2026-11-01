@@ -15,4 +15,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "ryui-android"
-include(":ryui", ":app", ":ryui-scan", ":ryui-review", ":ryui-push", ":ryui-integrity", ":ryui-agerange", ":ryui-maps", ":ryui-periodic")
+include(":ryui", ":app", ":ryui-scan", ":ryui-vision", ":ryui-review", ":ryui-push", ":ryui-integrity", ":ryui-agerange", ":ryui-maps", ":ryui-periodic")

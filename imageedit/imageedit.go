@@ -25,6 +25,8 @@ type Action struct {
 	width, height int
 	x, y          int
 	degrees       float64
+	block         int
+	rgb           int
 }
 
 // Resize scales the image to width×height pixels; a 0 keeps the aspect
@@ -47,6 +49,22 @@ func FlipHorizontal() Action { return Action{op: "flipH"} }
 
 // FlipVertical mirrors the image top to bottom.
 func FlipVertical() Action { return Action{op: "flipV"} }
+
+// Fill paints the rectangle at x, y, width×height pixels, in a solid color:
+// what was there is gone from the file.
+func Fill(x, y, width, height int, r, g, b uint8) Action {
+	return Action{op: "fill", x: x, y: y, width: width, height: height, rgb: int(r)<<16 | int(g)<<8 | int(b)}
+}
+
+// Pixelate turns the rectangle at x, y, width×height pixels into squares of
+// block pixels, each the average of what's under it. The squares are
+// aligned to the image, not the rectangle, so rectangles that touch look as
+// one, and pixelating the whole image shows what any part will look like.
+// Text under small squares can sometimes be read back: for what must stay
+// hidden, use Fill.
+func Pixelate(x, y, width, height, block int) Action {
+	return Action{op: "pixelate", x: x, y: y, width: width, height: height, block: max(block, 1)}
+}
 
 // Format is the file written.
 type Format uint8
@@ -118,10 +136,12 @@ func request(source string, actions []Action, o Options, at time.Duration) []byt
 		X       int     `json:"x,omitempty"`
 		Y       int     `json:"y,omitempty"`
 		Degrees float64 `json:"degrees,omitempty"`
+		Block   int     `json:"block,omitempty"`
+		RGB     int     `json:"rgb,omitempty"`
 	}
 	as := make([]action, len(actions))
 	for i, a := range actions {
-		as[i] = action{a.op, a.width, a.height, a.x, a.y, a.degrees}
+		as[i] = action{a.op, a.width, a.height, a.x, a.y, a.degrees, a.block, a.rgb}
 	}
 	q := o.Quality
 	if q <= 0 || q > 1 {

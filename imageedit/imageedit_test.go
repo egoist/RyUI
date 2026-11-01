@@ -17,6 +17,14 @@ func TestRequest(t *testing.T) {
 		as[2].(map[string]any)["degrees"] != 90.0 || as[3].(map[string]any)["op"] != "flipH" {
 		t.Fatalf("actions %v", as)
 	}
+	json.Unmarshal(request("x.png", []Action{Fill(1, 2, 3, 4, 0x11, 0x22, 0x33), Pixelate(5, 6, 7, 8, 9)}, Options{}, 0), &r)
+	as = r["actions"].([]any)
+	if f := as[0].(map[string]any); f["op"] != "fill" || f["x"] != 1.0 || f["height"] != 4.0 || f["rgb"] != float64(0x112233) {
+		t.Fatalf("fill %v", f)
+	}
+	if p := as[1].(map[string]any); p["op"] != "pixelate" || p["y"] != 6.0 || p["block"] != 9.0 {
+		t.Fatalf("pixelate %v", p)
+	}
 	json.Unmarshal(request("x.png", nil, Options{Format: PNG, Quality: 0.5}, 0), &r)
 	if r["format"] != "png" || r["quality"] != 0.5 {
 		t.Fatalf("%v", r)

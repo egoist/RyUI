@@ -186,6 +186,8 @@ private fun RyUIRuntime.registerBuiltinModules() {
     modules["audio"] = audioMethods()
     modules["camera"] = cameraMethods()
     modules["scan"] = scanMethods()
+    modules["vision"] = visionMethods()
+    modules["photoLibrary"] = RyUIPhotoLibrary(this).methods()
     modules["screen"] = screenMethods()
     modules["splash"] = RyUISplash.methods()
     modules["clipboard"] = RyUIClipboard(this).methods()

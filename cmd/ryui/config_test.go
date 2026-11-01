@@ -159,6 +159,14 @@ func TestFeaturesFromImports(t *testing.T) {
 	if !slices.Contains(c.Android.Permissions, "android.permission.CAMERA") || slices.Contains(c.Android.Permissions, "android.permission.POST_NOTIFICATIONS") {
 		t.Errorf("permissions: %v", c.Android.Permissions)
 	}
+	var pics appConfig
+	pics.permissionsFor([]string{"github.com/egoist/ryui/vision", "github.com/egoist/ryui/photos"})
+	if got := pics.gradleModules(); got != "-PryuiModules=vision" {
+		t.Errorf("modules: %s", got)
+	}
+	if !slices.Contains(pics.Android.Permissions, "android.permission.READ_MEDIA_IMAGES") || pics.IOS.Usage["NSPhotoLibraryUsageDescription"] == "" {
+		t.Errorf("photos: %v %v", pics.Android.Permissions, pics.IOS.Usage)
+	}
 	var none appConfig
 	none.permissionsFor([]string{"github.com/egoist/ryui/ui"})
 	if got := none.gradleModules(); got != "-PryuiModules=" {

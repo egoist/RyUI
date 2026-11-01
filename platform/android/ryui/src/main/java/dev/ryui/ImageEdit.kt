@@ -188,6 +188,18 @@ class RyUIImageEdit(private val rt: RyUIRuntime) {
                     Canvas(out).drawBitmap(img, m, Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG))
                     replace(out)
                 }
+                "fill", "pixelate" -> {
+                    if (!img.isMutable) replace(img.copy(Bitmap.Config.ARGB_8888, true))
+                    val x = a.optInt("x").coerceIn(0, w); val y = a.optInt("y").coerceIn(0, h)
+                    val x1 = (a.optInt("x") + a.optInt("width")).coerceIn(0, w); val y1 = (a.optInt("y") + a.optInt("height")).coerceIn(0, h)
+                    if (x1 <= x || y1 <= y) continue
+                    if (a.optString("op") == "fill") {
+                        val paint = Paint().apply { color = Color.BLACK or a.optInt("rgb"); isAntiAlias = false }
+                        Canvas(img).drawRect(x.toFloat(), y.toFloat(), x1.toFloat(), y1.toFloat(), paint)
+                    } else {
+                        pixelate(img, x, y, x1, y1, maxOf(a.optInt("block"), 1))
+                    }
+                }
                 "flipH", "flipV" -> {
                     val m = Matrix().apply { if (a.optString("op") == "flipH") setScale(-1f, 1f) else setScale(1f, -1f) }
                     replace(Bitmap.createBitmap(img, 0, 0, w, h, m, true))
@@ -196,6 +208,34 @@ class RyUIImageEdit(private val rt: RyUIRuntime) {
             }
         }
         return img
+    }
+
+    /**
+     * Squares of block pixels, aligned to the image, each the average of
+     * all it covers; only those within the rectangle change.
+     */
+    private fun pixelate(img: Bitmap, x0: Int, y0: Int, x1: Int, y1: Int, block: Int) {
+        val w = img.width; val h = img.height
+        var by = y0 / block * block
+        while (by < y1) {
+            val by1 = minOf(by + block, h)
+            var bx = x0 / block * block
+            while (bx < x1) {
+                val bx1 = minOf(bx + block, w)
+                val bw = bx1 - bx; val bh = by1 - by
+                val px = IntArray(bw * bh)
+                img.getPixels(px, 0, bw, bx, by, bw, bh)
+                var a = 0L; var r = 0L; var g = 0L; var b = 0L
+                for (p in px) { a += p ushr 24; r += p shr 16 and 255; g += p shr 8 and 255; b += p and 255 }
+                val n = px.size
+                val v = Color.argb((a / n).toInt(), (r / n).toInt(), (g / n).toInt(), (b / n).toInt())
+                val cx0 = maxOf(bx, x0); val cy0 = maxOf(by, y0)
+                val cw = minOf(bx1, x1) - cx0; val ch = minOf(by1, y1) - cy0
+                img.setPixels(IntArray(cw * ch) { v }, 0, cw, cx0, cy0, cw, ch)
+                bx += block
+            }
+            by += block
+        }
     }
 
     /** Writes to the caches: PNG, or JPEG on white (it has no transparency). */

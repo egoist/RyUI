@@ -1,7 +1,7 @@
 # Device and services
 
 RyUI's packages reach what the phone has beyond views: the camera, codes,
-photos and files, location, notifications and push, sound and recording,
+what's in an image, photos and files, location, notifications and push, sound and recording,
 the network's state, the shared library, work in the background, shares
 from other apps, JavaScript, sign-in and biometrics, the screen, maps,
 and the stores' services.
@@ -25,6 +25,8 @@ photo app doesn't ask for the microphone.
 | `ryui/library` | `WRITE_EXTERNAL_STORAGE` (Android 9 and earlier) | `NSPhotoLibraryAddUsageDescription`; the app's Documents shown in Files |
 | `ryui/background` | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC`, `POST_NOTIFICATIONS`, `WAKE_LOCK`; a foreground service | |
 | `ryui/scan` | ML Kit's barcode model (about 2 MB) | |
+| `ryui/vision` | ML Kit's text, face and barcode models (about 30 MB) | |
+| `ryui/photos` | `READ_MEDIA_IMAGES`, `READ_MEDIA_VISUAL_USER_SELECTED`; `READ_EXTERNAL_STORAGE` (Android 12 and earlier) | `NSPhotoLibraryUsageDescription` |
 | `ryui/push` | Firebase Cloud Messaging, `POST_NOTIFICATIONS` | the `aps-environment` entitlement; `remote-notification` background mode |
 | `ryui/appleauth` | | the Sign in with Apple entitlement |
 | `ryui/biometric` | `USE_BIOMETRIC` | `NSFaceIDUsageDescription` |
@@ -221,6 +223,85 @@ kinds: `QR`, `Aztec`, `DataMatrix`, `PDF417`, `EAN13`, `EAN8`, `UPCA`,
 
 **iOS** reads a UPC-A as an EAN-13 with a leading 0; asked for `UPCA`,
 RyUI gives it as a UPC-A again.
+
+## What's in an image: ryui/vision
+
+`vision.Analyze(path, options)` finds text, faces and codes in an image,
+and where each is. It runs on the device: Apple's Vision on iOS, ML Kit's
+bundled models on Android, which only the apps that import `ryui/vision`
+are built with. Not on the main thread.
+
+```go
+go func() {
+	r, err := vision.Analyze(photo, vision.Options{Languages: []string{"zh-Hans", "en-US"}})
+	if err != nil {
+		return
+	}
+	ui.Post(func() {
+		for _, l := range r.Lines {
+			fmt.Println(l.Text, l.Box)
+			for _, w := range l.Words {
+				fmt.Println(" ", w.Text, w.Box, w.Start, w.End)
+			}
+		}
+		fmt.Println(len(r.Faces), "faces,", len(r.Codes), "codes")
+	})
+}()
+```
+
+- A `Box` is in fractions of the image from its top left, with the image
+  upright: it's the same at any scale, for a view over the image or
+  `ryui/imageedit`'s pixels.
+- A `Line` has its `Text`, `Box` and `Words`. A `Word` is what the platform's
+  word breaking finds (dictionary-based for Chinese and Japanese), or a mark of
+  punctuation. `Start` and `End` are its place in the line's text, in runes.
+- A `Code` has its `Kind` (as `ryui/scan` names them), `Value` and `Box`.
+- `Options` turn off what you don't need (`NoText`, `NoFaces`, `NoCodes`).
+  `Languages` are the text's, most likely first, iOS only: Vision reads only
+  the script of the first's family well, so put Chinese first where it may
+  appear. Its Chinese model reads Latin letters too. Android reads Chinese and
+  Latin scripts always.
+
+**iOS** boxes what it read as one group: words of a Chinese line that share a
+box divide it by their width, so a word's box there is an estimate. A barcode's
+box from Vision can be the line it read along; RyUI grows it to the bars. On
+**Android** the words' boxes come from each symbol's.
+
+OCR scales what it's given to a size of its own, and loses small text in a very
+long screenshot: slice it with `imageedit.Crop` and analyze each slice.
+
+## The photo library: ryui/photos
+
+`ryui/photos` reads the user's library, with their permission: PhotoKit on iOS,
+MediaStore on Android. It's for an app whose screen is the library. To let the
+user pick a few photos, `device.PickPhotos` asks for no permission: prefer it
+where it'll do. Google Play asks an app that reads the library why it does, in
+the Play Console. Every call waits: not on the main thread.
+
+```go
+go func() {
+	if a, _ := photos.Request(); a == photos.Denied {
+		return
+	}
+	assets, _ := photos.List(photos.Query{Screenshots: true, Limit: 60})
+	thumb, _ := photos.Thumbnail(assets[0].ID, 300) // a file, for ui.Image
+	full, _ := photos.Export(assets[0].ID)          // the original, as a file
+	fmt.Println(thumb, full.Path, full.Name)
+}()
+```
+
+- `photos.Current()` says what's allowed without asking: `NotAsked`, `Denied`,
+  `Limited` (only the photos the user chose: iOS 14, Android 14) or `Allowed`.
+  `photos.Request()` asks the first time. `photos.ManageLimited()` lets a
+  `Limited` user change which photos.
+- `photos.List(query)` is newest first, from `Offset`, at most `Limit`. An
+  `Asset` has its `ID`, `Width`, `Height`, `Created()` and `Screenshot`.
+  `Screenshots` keeps only those: iOS knows; on Android it's what's in a
+  Screenshots folder.
+- `photos.Thumbnail(id, size)` is a JPEG at least `size` pixels on its short
+  side, kept in the app's caches for the next time.
+- `photos.Export(id)` copies the full image as it is in the library (HEIC,
+  JPEG, PNG), with its name. iCloud photos download first.
 
 ## Photos, the browser, the clipboard: ryui/device
 
@@ -1159,7 +1240,12 @@ go func() {
 ```
 
 The actions are `Resize`, `Crop`, `Rotate` (clockwise, any angle),
-`FlipHorizontal` and `FlipVertical`. A first `Resize` decodes the image
+`FlipHorizontal`, `FlipVertical`, `Fill` and `Pixelate`. `Fill(x, y, w, h, r, g,
+b)` paints a rectangle a solid color, and what was there is gone from the file;
+`Pixelate(x, y, w, h, block)` turns one into squares, each the average of what's
+under it, aligned to the image, so rectangles that touch look as one. Text under
+small squares can sometimes be read back: for what must stay hidden, use `Fill`.
+The file written has none of the source's metadata: no location, no camera. A first `Resize` decodes the image
 near that size, which saves memory on large photos. `imageedit.Size`
 reads an image's size without decoding it. `imageedit.VideoFrame(source,
 at, actions, options)` takes a video's frame at a time (a thumbnail, a
