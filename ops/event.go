@@ -28,8 +28,17 @@ type Environment struct {
 	// leaves them unspecified gets Material's, from the size
 	// (WidthClassOf, HeightClassOf).
 	WidthClass, HeightClass SizeClass
-	Locale                  string
-	TimeZone                string // IANA, e.g. Asia/Shanghai: the core's time.Local
+	// Locale is the locale of the user's regional formats, as the system
+	// names it: a BCP 47 tag, or a POSIX one with keywords (en_US@rg=gbzzzz).
+	Locale   string
+	TimeZone string // IANA, e.g. Asia/Shanghai: the core's time.Local
+	// Languages are the languages the user reads, most preferred first,
+	// BCP 47 tags joined by commas: the app's own language first when it has
+	// one (the system's per-app language, or what SaveLocale kept).
+	Languages string
+	// FirstWeekday is the day the user's weeks start on, 1 Sunday to 7
+	// Saturday, and HourCycle 12 or 24; 0 when the system doesn't say.
+	FirstWeekday, HourCycle uint8
 }
 
 // Platform is the system a host runs on.
@@ -176,6 +185,9 @@ func AppendEvent(buf []byte, e *Event) []byte {
 		buf = append(buf, v.Locale...)
 		buf = le.AppendUint32(buf, uint32(len(v.TimeZone)))
 		buf = append(buf, v.TimeZone...)
+		buf = le.AppendUint32(buf, uint32(len(v.Languages)))
+		buf = append(buf, v.Languages...)
+		buf = append(buf, v.FirstWeekday, v.HourCycle)
 	case PGesture:
 		g := &e.G
 		buf = append(buf, byte(g.State))
@@ -216,6 +228,8 @@ func DecodeEvent(data []byte) (Event, error) {
 		v.WidthClass, v.HeightClass = SizeClass(c&3), SizeClass(c>>2&3)
 		v.Locale = string(r.bytes())
 		v.TimeZone = string(r.bytes())
+		v.Languages = string(r.bytes())
+		v.FirstWeekday, v.HourCycle = r.u8(), r.u8()
 	case PGesture:
 		g := &e.G
 		g.State = GestureState(r.u8())

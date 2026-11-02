@@ -24,6 +24,11 @@ func (h *Host) makeView(style uint32) uintptr {
 // in).
 func (h *Host) makeControl(n *node, class string, style, exStyle uint32) {
 	n.hwnd = h.makeView(0)
+	h.makeControlIn(n, class, style, exStyle)
+}
+
+// makeControlIn makes the control inside n's view.
+func (h *Host) makeControlIn(n *node, class string, style, exStyle uint32) {
 	n.ctl = CreateWindow(exStyle, class, "", WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|style, 0, 0, 0, 0, n.hwnd, 1)
 	if n.ctl == 0 {
 		fail("couldn't make a %s (%s)", n.kind, class)
@@ -71,11 +76,14 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 		SendMessage(n.ctl, TBM_SETLINESIZE, 0, sliderSteps/100)
 		SendMessage(n.ctl, TBM_SETPAGESIZE, 0, sliderSteps/10)
 		n.max = 1
+		Subclass(n.ctl, func(hwnd uintptr, m uint32, w, l uintptr) uintptr {
+			return h.sliderMessage(hwnd, m, w, l)
+		})
 	case ops.KindStepper:
 		n.hwnd = h.makeView(0)
 		n.min, n.max, n.step = 0, 100, 1
 		for i := range 2 {
-			b := CreateWindow(0, "BUTTON", [...]string{"Decrease", "Increase"}[i], WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON, 0, 0, 0, 0, n.hwnd, uintptr(i+1))
+			b := CreateWindow(0, "BUTTON", "", WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON, 0, 0, 0, 0, n.hwnd, uintptr(i+1))
 			SendMessage(b, WM_UPDATEUISTATE, MakeLong(UIS_SET, UISF_HIDEFOCUS), 0)
 			if i == 0 {
 				n.ctl = b
@@ -84,8 +92,9 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 				h.byHwnd[b] = n
 			}
 		}
+		h.nameStepper(n)
 	case ops.KindWheel:
-		h.makeControl(n, "COMBOBOX", CBS_DROPDOWNLIST|WS_VSCROLL|WS_TABSTOP, 0)
+		h.makeControl(n, "COMBOBOX", wheelStyle, h.wheelExStyle(n))
 	case ops.KindDatePicker:
 		h.makeControl(n, "SysDateTimePick32", WS_TABSTOP|DTS_SHORTDATEFORMAT, 0)
 		h.dateFormat(n)
@@ -148,6 +157,40 @@ func (h *Host) themeControl(n *node) {
 }
 
 func (n *node) stepButtons() []uintptr { return []uintptr{n.ctl, n.ctl2} }
+
+const wheelStyle = CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+
+// wheelExStyle is a combo box's direction: right to left, its text on the
+// right and its arrow on the left.
+func (h *Host) wheelExStyle(n *node) uint32 {
+	if h.isRTL(n) {
+		return WS_EX_RIGHT | WS_EX_RTLREADING | WS_EX_LEFTSCROLLBAR
+	}
+	return 0
+}
+
+// remakeWheel makes a combo box again in its direction: a combo box takes
+// its extended styles as it's made.
+func (h *Host) remakeWheel(n *node) {
+	old := n.ctl
+	if old == 0 {
+		return
+	}
+	h.makeControlIn(n, "COMBOBOX", wheelStyle, h.wheelExStyle(n))
+	h.byHwnd[n.ctl] = n
+	h.forgetTree(old)
+	DestroyWindow(old)
+	h.byHwnd[n.ctl] = n
+	for _, s := range n.items {
+		SendMessage(n.ctl, CB_ADDSTRING, 0, Str(s))
+	}
+	SendMessage(n.ctl, CB_SETCURSEL, uintptr(n.selected), 0)
+	if n.disabled {
+		EnableWindow(n.ctl, false)
+	}
+	h.themeControl(n)
+	h.layoutField(n)
+}
 
 const sliderSteps = 10000
 
@@ -320,12 +363,19 @@ func (h *Host) applySlider(n *node) {
 	if n.max > n.min {
 		pos = (n.value - n.min) / (n.max - n.min) * sliderSteps
 	}
-	SendMessage(n.ctl, TBM_SETPOS, 1, uintptr(int(math.Round(min(max(pos, 0), sliderSteps)))))
+	pos = min(max(pos, 0), sliderSteps)
+	if h.isRTL(n) {
+		pos = sliderSteps - pos
+	}
+	SendMessage(n.ctl, TBM_SETPOS, 1, uintptr(int(math.Round(pos))))
 	Invalidate(n.ctl)
 }
 
 func (h *Host) sliderMoved(n *node) {
 	pos := float64(SendMessage(n.ctl, TBM_GETPOS, 0, 0))
+	if h.isRTL(n) {
+		pos = sliderSteps - pos
+	}
 	v := n.min + pos/sliderSteps*(n.max-n.min)
 	Invalidate(n.ctl)
 	if v == n.value {
@@ -333,6 +383,19 @@ func (h *Host) sliderMoved(n *node) {
 	}
 	n.value = v
 	h.emit(n, ops.Event{Kind: ops.EventValueChanged, Float: v})
+}
+
+// sliderMessage is a trackbar's subclass. Right to left the trackbar stays
+// as it is, its position the value's mirror (a mirrored control would have
+// its custom draw mirrored, which GDI+ doesn't follow), so its keys that mean
+// the value's ends swap; the arrows move the thumb the way they point.
+func (h *Host) sliderMessage(hwnd uintptr, m uint32, w, l uintptr) uintptr {
+	if m == WM_KEYDOWN && (w == VK_HOME || w == VK_END) {
+		if n := h.byHwnd[hwnd]; n != nil && h.isRTL(n) {
+			w = VK_HOME + VK_END - w
+		}
+	}
+	return DefSubclass(hwnd, m, w, l)
 }
 
 // dateFormat sets a date picker's format: the locale's short date, its
@@ -658,6 +721,9 @@ const (
 func (h *Host) key(n *node, hwnd uintptr, vk uintptr) bool {
 	switch {
 	case n.kind == ops.KindSegmented:
+		if h.isRTL(n) && (vk == VK_LEFT || vk == VK_RIGHT) {
+			vk = VK_LEFT + VK_RIGHT - vk // the arrows go the way they point
+		}
 		switch vk {
 		case VK_LEFT, VK_UP:
 			h.selectSegment(n, n.selected-1)

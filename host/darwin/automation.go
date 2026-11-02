@@ -68,6 +68,9 @@ func (h *Host) dump() string {
 			if Send(n.view, "window") == 0 {
 				b.WriteString(" nowindow")
 			}
+			if SendInt(n.view, "userInterfaceLayoutDirection") == 1 {
+				b.WriteString(" rtl")
+			}
 		}
 		if n.text != "" {
 			fmt.Fprintf(&b, " %q", n.text)

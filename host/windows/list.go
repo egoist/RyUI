@@ -291,10 +291,21 @@ func (l *list) take(h *Host) *rowView {
 	rn.hwnd = h.makeView(0)
 	rn.row = rv
 	rn.k = l.n.k
+	rn.dir = l.n.dir
 	rv.n = rn
 	SetParent(rn.hwnd, l.n.hwnd)
 	h.add(rn)
 	return rv
+}
+
+// setDirection gives the rows the list's direction.
+func (l *list) setDirection(d ops.LayoutDirection) {
+	for _, rv := range l.shown {
+		rv.n.dir = d
+	}
+	for _, rv := range l.free {
+		rv.n.dir = d
+	}
 }
 
 // bind binds row r's items into the row view's cells.
@@ -353,7 +364,8 @@ func (c *cell) setHeight(height float32) {
 }
 
 // placeCells lays out a row's cells: a grid's side by side, each (width
-// - gap × (columns - 1)) / columns wide.
+// - gap × (columns - 1)) / columns wide, the first on the right, right to
+// left.
 func (l *list) placeCells(h *Host, rv *rowView, r int) {
 	if l.columns <= 1 {
 		_, w := l.rowX()
@@ -371,8 +383,12 @@ func (l *list) placeCells(h *Host, rv *rowView, r int) {
 		return
 	}
 	cw := (l.width - l.gap*float32(l.columns-1)) / float32(l.columns)
+	rtl := h.isRTL(l.n)
 	for i, c := range rv.cells {
 		x := float32(i) * (cw + l.gap)
+		if rtl {
+			x = l.width - x - cw
+		}
 		SetWindowPos(c.n.hwnd, 0, h.px(l.n, x), 0, h.px(l.n, x+cw)-h.px(l.n, x), h.px(l.n, c.height), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 	}
 }
@@ -392,8 +408,12 @@ func (rv *rowView) paint(h *Host, g Graphics, w, ht float32) {
 	if !rv.sep {
 		return
 	}
+	x := 16 * k // inset at the start
+	if h.isRTL(rv.n) {
+		x = 0
+	}
 	b := SolidBrush(h.theme.separator.argb())
-	g.FillRect(b, 16*k, ht-max(k, 1), w-16*k, max(k, 1))
+	g.FillRect(b, x, ht-max(k, 1), w-16*k, max(k, 1))
 	b.Close()
 }
 
@@ -480,6 +500,9 @@ func (h *Host) wheel(n *node, horizontal bool, delta int32) bool {
 	// the view it's in), and a horizontal one only a horizontal view.
 	if KeyDown(VK_SHIFT) && !horizontal {
 		horizontal = true
+		if h.isRTL(n) {
+			d = -d // down the wheel is on along the content, to the left
+		}
 	}
 	if horizontal != n.horizontal {
 		return false
@@ -565,6 +588,7 @@ func (h *Host) scrollToOffset(n *node, x, y float32) {
 		return
 	}
 	n.scrollX, n.scrollY = x, y
+	n.scrollEnd = max(n.contentW-vw, 0) - x
 	for _, c := range n.children {
 		h.placeFrame(c)
 	}
@@ -574,7 +598,10 @@ func (h *Host) scrollToOffset(n *node, x, y float32) {
 }
 
 // updateScroll takes a Scroll's new size or content size: the position
-// clamped, the scroll bar shown when the content overflows.
+// clamped, the scroll bar shown when the content overflows. A horizontal
+// one going right to left starts at its trailing end, and keeps its distance
+// from that end as they change: the content stays at its origin, so what
+// shows doesn't move, and its position, which is physical, does.
 func (h *Host) updateScroll(n *node) {
 	if n.hwnd == 0 {
 		return
@@ -588,11 +615,32 @@ func (h *Host) updateScroll(n *node) {
 	vw, vh := h.pt(n, r.W()), h.pt(n, r.H())
 	x := min(max(n.scrollX, 0), max(n.contentW-vw, 0))
 	y := min(max(n.scrollY, 0), max(n.contentH-vh, 0))
+	followsEnd := n.horizontal && h.isRTL(n)
+	if followsEnd {
+		x = max(n.contentW-vw-n.scrollEnd, 0)
+	}
 	if x != n.scrollX || y != n.scrollY {
 		n.scrollX, n.scrollY = x, y
 		for _, c := range n.children {
 			h.placeFrame(c)
 		}
 		h.updateBars(n)
+		if followsEnd {
+			h.emit(n, ops.Event{Kind: ops.EventScrolled, X: float64(x), Y: float64(y)})
+		}
 	}
+}
+
+// restartScroll puts a horizontal Scroll at its start in a new direction: its
+// right end, right to left; its left, left to right.
+func (h *Host) restartScroll(n *node) {
+	if !n.horizontal || n.hwnd == 0 {
+		return
+	}
+	n.scrollEnd = 0
+	if h.isRTL(n) {
+		h.updateScroll(n)
+		return
+	}
+	h.scrollToOffset(n, 0, n.scrollY)
 }

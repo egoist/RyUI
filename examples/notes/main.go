@@ -95,7 +95,7 @@ func App() ui.Node {
 			ui.Row(ui.Style{Gap: 8, Padding: ui.Symmetric(8, 16), Align: ui.AlignEnd},
 				ui.TextField(ui.TextFieldProps{Value: draft, Placeholder: ui.Val("New note"), ReturnKey: ui.ReturnDone,
 					OnSubmit: add, Style: ui.Style{Grow: 1}}),
-				ui.Button(ui.ButtonProps{Icon: ui.IconPlus, Label: "Add", Variant: ui.ButtonFilled, OnPress: add,
+				ui.Button(ui.ButtonProps{Icon: ui.IconPlus, Label: ui.Val("Add"), Variant: ui.ButtonFilled, OnPress: add,
 					Disabled: signal.Func(func() bool { return draft.Get() == "" })}),
 			),
 			ui.Show(signal.Func(func() bool { r := notes.Get(); return !r.Loading && len(r.Rows) == 0 }), func() ui.Node {
@@ -109,7 +109,7 @@ func App() ui.Node {
 					}), ui.Style{Color: ui.SecondaryLabel}))
 			}),
 			ui.List(ui.ListProps{SwipeActions: func(i int) []ui.Action {
-				return []ui.Action{{Title: "Delete", Icon: ui.IconTrash, Role: ui.ActionDestructive, OnPress: func() {
+				return []ui.Action{{Title: ui.Val("Delete"), Icon: ui.IconTrash, Role: ui.ActionDestructive, OnPress: func() {
 					if l := signal.Untrack(rows.Get); i < len(l) {
 						write(`delete from notes where id = ?`, l[i].ID)
 					}
@@ -134,7 +134,7 @@ func App() ui.Node {
 				)
 			}),
 		)
-	}, ui.ScreenOptions{Title: ui.Val("Notes"), Search: &ui.Search{Text: query, Placeholder: "Search notes"}})
+	}, ui.ScreenOptions{Title: ui.Val("Notes"), Search: &ui.Search{Text: query, Placeholder: ui.Val("Search notes")}})
 }
 
 func main() {

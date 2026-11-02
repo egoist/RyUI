@@ -15,7 +15,7 @@ func App() ui.Node {
 	return ui.Stack(func() ui.Node {
 		onLink := func(url string) {
 			ui.Alert(ui.AlertProps{Title: "Open link?", Message: url, Actions: []ui.Action{
-				{Title: "Cancel", Role: ui.ActionCancel}, {Title: "Open"},
+				{Title: ui.Val("Cancel"), Role: ui.ActionCancel}, {Title: ui.Val("Open")},
 			}})
 		}
 		return ui.Scroll(ui.ScrollProps{Style: ui.Style{Grow: 1}},

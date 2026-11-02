@@ -35,7 +35,7 @@ func (h *Host) openWindow(n *node) {
 	dpi := DPI(h.windowInUse())
 	r := frameRect(w, ht, style, dpi)
 	x, y := h.cascade(r.W(), r.H())
-	win := CreateWindow(0, classWindow, h.windowTitle(n), style, x, y, r.W(), r.H(), 0, 0)
+	win := CreateWindow(h.topLevelStyle(), classWindow, h.windowTitle(n), style, x, y, r.W(), r.H(), 0, 0)
 	if d := DPI(win); d != dpi {
 		// It opened on a monitor of another DPI.
 		dpi = d
@@ -111,13 +111,18 @@ func (h *Host) windowTitle(n *node) string {
 }
 
 // cascade places a window of w by ht pixels down and right of the window
-// in use, past the app's windows already there, inside the work area.
+// in use (down and left, right to left), past the app's windows already
+// there, inside the work area.
 func (h *Host) cascade(w, ht int32) (x, y int32) {
 	from := h.windowInUse()
 	wr := WindowRect(from)
 	work := WorkArea(from)
 	step := int32(32 * DPI(from) / 96)
 	x, y = wr.Left+step, wr.Top+step
+	across := step
+	if h.rtl {
+		x, across = wr.Right-step-w, -step
+	}
 	for range 32 {
 		taken := false
 		for _, o := range h.topWindows() {
@@ -129,11 +134,12 @@ func (h *Host) cascade(w, ht int32) (x, y int32) {
 		if !taken {
 			break
 		}
-		x, y = x+step, y+step
+		x, y = x+across, y+step
 	}
 	if x+w > work.Right {
 		x = max(work.Left, work.Right-w)
 	}
+	x = max(x, work.Left)
 	if y+ht > work.Bottom {
 		y = max(work.Top, work.Bottom-ht)
 	}
@@ -267,6 +273,14 @@ func (h *Host) minTrackSize(hwnd uintptr, least [2]float32, mi *MinMaxInfo) {
 	}
 }
 
+// setWindowTitle is the main window's title; "": the app's name.
+func (h *Host) setWindowTitle(title string) {
+	if title == "" {
+		title = h.appName
+	}
+	SetWindowText(h.window, title)
+}
+
 // windowOptions applies WindowOptions to the main window: its title, its
 // least size, and its client size, centered in the work area (a placement
 // the host remembers, restored after, wins over it).
@@ -277,7 +291,7 @@ func (h *Host) windowOptions(args []byte) {
 	w, ht := f32(args, 0), f32(args, 4)
 	h.minSize = [2]float32{f32(args, 8), f32(args, 12)}
 	if title := string(args[16:]); title != "" {
-		SetWindowText(h.window, title)
+		h.setWindowTitle(title)
 	}
 	if w <= 0 && ht <= 0 {
 		return

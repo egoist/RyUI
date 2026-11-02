@@ -124,7 +124,7 @@ func TestMenuBar(t *testing.T) {
 }
 
 func TestWindowOptions(t *testing.T) {
-	ui.SetWindowOptions(ui.WindowOptions{Title: "Notes", Width: 800, Height: 600, MinWidth: 400})
+	ui.SetWindowOptions(ui.WindowOptions{Title: ui.Val("Notes"), Width: 800, Height: 600, MinWidth: 400})
 	defer ui.SetWindowOptions(ui.WindowOptions{})
 	h := fake.New()
 	r := ui.Mount(h, func() ui.Node { return ui.StaticText("x") })

@@ -90,6 +90,17 @@ const (
 	OverflowScroll
 )
 
+// Direction is CSS's direction: the way a box's inline axis runs. It's
+// inherited: DirInherit takes the parent's, and a layout root's is
+// left to right.
+type Direction uint8
+
+const (
+	DirInherit Direction = iota
+	DirLTR
+	DirRTL
+)
+
 // FlexDirection is a flex container's main axis.
 type FlexDirection uint8
 
@@ -115,6 +126,9 @@ const (
 // Align positions an item within its line or grid area (align-items,
 // align-self, justify-items, justify-self). AlignAuto means "normal"
 // for containers and "the container's value" for self-alignment.
+// AlignStart and AlignEnd are the container's start and end;
+// AlignSelfStart and AlignSelfEnd the item's own, which differ on the
+// inline axis when the item's direction isn't the container's.
 type Align uint8
 
 const (
@@ -126,6 +140,8 @@ const (
 	AlignCenter
 	AlignBaseline
 	AlignStretch
+	AlignSelfStart
+	AlignSelfEnd
 )
 
 // Content distributes space between lines, tracks or items
@@ -279,6 +295,7 @@ type Style struct {
 	AlignContent   Content
 	JustifyContent Content
 
+	Direction     Direction
 	FlexDirection FlexDirection
 	FlexWrap      FlexWrap
 	FlexGrow      float32

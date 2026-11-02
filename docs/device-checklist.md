@@ -92,3 +92,16 @@ Turn the screen reader on (Settings → Accessibility), open the gallery.
 
 Send back what you saw (or screenshots of what looks wrong), and I'll
 fix what didn't match.
+
+## Languages
+
+- On an iPhone: choose the app's language in Settings; the app relaunches in it, with
+  UIKit's own words. `ui.SetLocale`, then relaunch.
+- iOS 16: the navigation bar's back chevron in a language forced against the system's.
+- On Android 12 or earlier: `ui.SetLocale`, kill the app, relaunch (RyUI's preferences).
+- Android, in Arabic: predictive back, a sheet, dragging selection handles, TalkBack.
+- Windows (nothing has run there yet): Arabic and English Windows, the mirrored title
+  and menu bars, clicks landing on the right views, a runtime switch with a sheet and a
+  window open, Arabic font fallback and punctuation in `DT_RTLREADING`, `TPM_LAYOUTRTL`
+  menus opening on the right side, RichEdit's paragraph direction. Then
+  `go test ./host/windows ./internal/windows`.

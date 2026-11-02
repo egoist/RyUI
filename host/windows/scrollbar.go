@@ -95,6 +95,9 @@ func (h *Host) updateBars(n *node) {
 		t = Rect{Left: at, Top: r.H() - thick - inset, Right: at + length, Bottom: r.H() - inset}
 	} else {
 		t = Rect{Left: r.W() - thick - inset, Top: at, Right: r.W() - inset, Bottom: at + length}
+		if h.isRTL(n) {
+			t.Left, t.Right = inset, inset+thick // on the left, as a mirrored window's
+		}
 	}
 	if t != b.thumb {
 		b.thumb = t

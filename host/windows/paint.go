@@ -240,13 +240,16 @@ func (h *Host) textColor(n *node, def rgba) rgba {
 	return c.over(h.backdrop(n))
 }
 
-// textFormat is DrawText's flags for n's alignment and line limit.
-func textFormat(n *node) uint32 {
-	f := uint32(DT_NOPREFIX | DT_EDITCONTROL)
-	switch ops.TextAlign(n.textAlign) {
-	case ops.TextAlignCenter:
+// textFormat is DrawText's flags for n's alignment, direction and line
+// limit: Start (the default) on the side its direction starts on, End on
+// the other.
+func (h *Host) textFormat(n *node) uint32 {
+	rtl := h.isRTL(n)
+	f := uint32(DT_NOPREFIX|DT_EDITCONTROL) | textDirection(h.readsRTL(n))
+	switch a := ops.TextAlign(n.textAlign); {
+	case a == ops.TextAlignCenter:
 		f |= DT_CENTER
-	case ops.TextAlignEnd:
+	case alignedRight(a, rtl):
 		f |= DT_RIGHT
 	}
 	if n.lineLimit == 1 {
@@ -270,13 +273,13 @@ func (h *Host) paintText(n *node, dc uintptr, r Rect) {
 		tm := TextMetrics(dc)
 		r.Bottom = min(r.Bottom, r.Top+tm.Height*int32(n.lineLimit))
 	}
-	DrawText(dc, n.utext, &r, textFormat(n))
+	DrawText(dc, n.utext, &r, h.textFormat(n))
 	SelectObject(dc, old)
 }
 
 // paintSymbol draws a symbol's glyph of Segoe Fluent Icons, centered.
 func (h *Host) paintSymbol(n *node, dc uintptr, r Rect) {
-	glyph := symbolGlyph(n.symbol)
+	glyph := directedGlyph(n.symbol, h.isRTL(n))
 	if glyph == 0 {
 		return
 	}
@@ -308,6 +311,9 @@ func (h *Host) paintProgress(n *node, g Graphics, w, ht float32) {
 		t := float32(math.Mod(n.phase, 1))
 		seg := w * 0.4
 		x := -seg + t*(w+seg)
+		if h.isRTL(n) {
+			x = w - x - seg // it runs from the right
+		}
 		x0, x1 := max(x, 0), min(x+seg, w)
 		if x1 > x0 {
 			g.FillRoundRect(fill.argb(), x0, y, x1-x0, th, th/2)
@@ -316,7 +322,12 @@ func (h *Host) paintProgress(n *node, g Graphics, w, ht float32) {
 	}
 	v := float32(min(max(n.value, 0), 1))
 	if v > 0 {
-		g.FillRoundRect(fill.argb(), 0, y, max(w*v, th), th, th/2)
+		fw := max(w*v, th)
+		x := float32(0)
+		if h.isRTL(n) {
+			x = w - fw // it fills from the right
+		}
+		g.FillRoundRect(fill.argb(), x, y, fw, th, th/2)
 	}
 }
 
@@ -423,7 +434,10 @@ func (h *Host) colorBehind(n *node) rgba {
 	// The middle of the part that shows: what scroll views and parents
 	// clip off isn't painted.
 	vis := WindowRect(n.hwnd)
-	for p := Parent(n.hwnd); p != 0 && p != h.window; p = Parent(p) {
+	// Up to the top-level window: its one child fills it (and its client
+	// origin is on the right, if it's mirrored).
+	root := RootWindow(n.hwnd)
+	for p := Parent(n.hwnd); p != 0 && p != root; p = Parent(p) {
 		c := ClientRect(p)
 		o := ClientToScreen(p, Point{})
 		vis.Left, vis.Top = max(vis.Left, o.X), max(vis.Top, o.Y)

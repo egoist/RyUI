@@ -64,6 +64,10 @@ import CRyUI
     var dragItems: [RyUIDragSpec] = []
     var dropInteraction: UIDropInteraction?
     var dragInteraction: UIDragInteraction?
+    /// Style.TextAlign as set: what it means depends on the direction.
+    var textAlign: Int32 = 0
+    /// The LayoutDirection prop: inherit is the app's.
+    var direction = RyUILayoutDirection.inherit
 
     /// Whether an ancestor is being popped or dismissed.
     var underDying: Bool {
@@ -210,6 +214,8 @@ final class RyUITextField: UITextField {
     var accent: UIColor?
     /// The app's appearance (the ColorScheme command's): the windows' override.
     var colorScheme = UIUserInterfaceStyle.unspecified
+    /// The app's direction (the Locale command's).
+    lazy var rtl = systemRTL
     #if RYUI_WEBAUTH
     /// The webAuth module's sign-ins under way: each session, what presents
     /// it, and its start's reply.
@@ -242,6 +248,7 @@ final class RyUITextField: UITextField {
     var depth = 0
     var pendingLists: [RyUIList] = []
     var pendingEvents: [[UInt8]] = []
+    var pendingDirection: (() -> Void)? // the direction of the views there are, once Go has returned
     var nextCellID: UInt32 = 0
     var scale: CGFloat = UIScreen.main.scale
 
@@ -254,7 +261,11 @@ final class RyUITextField: UITextField {
         depth += 1
         f()
         depth -= 1
-        while depth == 0 && (!pendingLists.isEmpty || !pendingEvents.isEmpty) {
+        while depth == 0 && (pendingDirection != nil || !pendingLists.isEmpty || !pendingEvents.isEmpty) {
+            if let d = pendingDirection {
+                pendingDirection = nil
+                d()
+            }
             let lists = pendingLists
             pendingLists = []
             for l in lists { l.applyPending() }
@@ -380,6 +391,7 @@ final class RyUITextField: UITextField {
             let node = RyUINode(id: id, kind: kind, view: v)
             node.vc = vc
             nodes[id] = node
+            adoptDirection(node)
             return
         }
         let view: UIView
@@ -499,6 +511,7 @@ final class RyUITextField: UITextField {
         (view as? RyUIScrollView)?.node = node
         (view as? RyUISelectionArea)?.node = node
         nodes[id] = node
+        adoptDirection(node)
     }
 
     public func destroy(_ id: UInt32) {
@@ -552,6 +565,8 @@ final class RyUITextField: UITextField {
             v.bounds = CGRect(origin: v.bounds.origin, size: f.size)
             v.center = CGPoint(x: f.midX, y: f.midY)
             scroll?.contentSize = f.size
+            (scroll as? RyUIScrollView)?.keepEnd()
+            (v as? RyUIScrollView)?.keepEnd()
         }
         // A row of a Scroll's content moved: what it takes out is redone.
         (n.parent?.parent?.view as? RyUIScrollView)?.setNeedsLayout()
@@ -700,8 +715,12 @@ final class RyUITextField: UITextField {
             guard args.count >= 8 else { return }
             var r = RyUIReader(args)
             setAccent(ryuiColor(r.u64()))
-        case .menuBar, .windowOptions:
+        case .menuBar, .windowOptions, .windowTitle:
             break // desktop hosts' (a phone has no menu bar or windows)
+        case .locale:
+            setLocale(args)
+        case .saveLocale:
+            saveLocale(String(decoding: args, as: UTF8.self))
         case .shareClose:
             sheet?.close(args.first ?? 0)
         case .colorScheme:
@@ -742,6 +761,7 @@ final class RyUITextField: UITextField {
         let n = RyUINode(id: id, kind: nil, view: cell)
         n.cell = cell
         nodes[id] = n
+        adoptDirection(n)
         return id
     }
 }

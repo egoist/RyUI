@@ -216,7 +216,7 @@ func Photos() ui.Node {
 		func(id signal.Accessor[int], _ signal.Accessor[int]) ui.Node {
 			nav := ui.UseNavigator()
 			return ui.View(ui.ViewProps{
-				Label: "Photo",
+				Label: ui.Val("Photo"),
 				OnPress: func() {
 					i := signal.Untrack(id.Get)
 					nav.Push(func() ui.Node { return Photo(i) },
@@ -352,7 +352,7 @@ together: pinch and turn at once.
 angle, base := signal.New(float32(0)), float32(0)
 scale, baseScale := signal.New(float32(1)), float32(1)
 return ui.View(ui.ViewProps{
-	Label: "A square to turn",
+	Label: ui.Val("A square to turn"),
 	OnRotate: func(g ui.Gesture) {
 		angle.Set(base + g.Rotation*180/math.Pi)
 		if g.State == ui.GestureEnded || g.State == ui.GestureCancelled {
@@ -482,7 +482,7 @@ ui.View(ui.ViewProps{
 			recorder.Stop()
 		}
 	},
-	Label: "Hold to record",
+	Label: ui.Val("Hold to record"),
 	Style:           ui.Style{Padding: ui.All(16), Pressed: &ui.Style{Background: ui.Red}},
 }, ...)
 ```

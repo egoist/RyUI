@@ -132,6 +132,11 @@ func (h *Host) applyLayerColors(n *node) {
 }
 
 func (h *Host) setCommon(n *node, p ops.PropID, v *ops.Value) {
+	if p == ops.PropLayoutDirection {
+		n.dir = ops.LayoutDirection(v.Int)
+		h.applyDirection(n)
+		return
+	}
 	if n.view == 0 {
 		h.setNavCommon(n, p, v)
 		return
@@ -219,8 +224,8 @@ func (h *Host) setCommon(n *node, p ops.PropID, v *ops.Value) {
 		n.textAlign = int32(v.Int)
 		if n.rich != nil {
 			n.rich.invalidate(h, n)
-		} else if RespondsTo(n.view, "setAlignment:") {
-			Send(n.view, "setAlignment:", uintptr(textAlignment(n.textAlign)))
+		} else if n.kind == ops.KindText || n.kind == ops.KindTextField || RespondsTo(n.view, "setAlignment:") {
+			h.applyTextAlign(n)
 		}
 	case ops.PropLineLimit:
 		n.lineLimit = int(v.Int)
@@ -290,18 +295,6 @@ func hideA11y(v ID) {
 		Send(s, "setAccessibilityElement:", 0)
 		hideA11y(s)
 	}
-}
-
-func textAlignment(a int32) int {
-	switch ops.TextAlign(a) {
-	case ops.TextAlignCenter:
-		return 1 // NSTextAlignmentCenter
-	case ops.TextAlignEnd:
-		return 2 // right
-	case ops.TextAlignJustify:
-		return 3
-	}
-	return 4 // natural
 }
 
 // applyCorner rounds the layer, at most half the shorter side (999: a

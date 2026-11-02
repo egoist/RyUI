@@ -129,7 +129,8 @@ func (h *Host) measureText(n *node, c layout.Constraints) (w, ht float32) {
 	if limit >= big {
 		r.Right = 1 << 24
 	}
-	f := textFormat(n) | DT_CALCRECT
+	// The same lines whatever side they're on: DT_CALCRECT from the left.
+	f := h.textFormat(n)&^(DT_CENTER|DT_RIGHT) | DT_CALCRECT
 	DrawText(dc, n.utext, &r, f)
 	if n.lineLimit > 1 {
 		tm := TextMetrics(dc)

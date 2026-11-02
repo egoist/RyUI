@@ -10,12 +10,49 @@ import UIKit
 /// A row out of the tree keeps its frame and props, so it comes back as
 /// it was. While VoiceOver runs it takes nothing out: VoiceOver moves
 /// through every row, scrolling to it.
+///
+/// A horizontal one, right to left, starts at the content's trailing end,
+/// and keeps its distance from that end as the content's width changes. The
+/// content is at the origin and offsets are physical, as ever.
 final class RyUIScrollView: UIScrollView {
     weak var node: RyUINode?
+    var horizontal = false { didSet { keepEnd() } }
+    private var fromEnd: CGFloat = 0 // how far the offset is from the trailing end
+    private var keptContent: CGFloat = -1, keptBounds: CGFloat = -1 // the widths it's for
+    private var keeping = false // whether it's kept right to left
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        keepEnd()
         cull()
+    }
+
+    /// Right to left, a change of width keeps the distance from the trailing
+    /// end; else the offset is the user's, and that's the distance now. A
+    /// change of direction keeps the distance from the start the content had.
+    func keepEnd() {
+        let rtl = horizontal && (node?.isRTL ?? false)
+        guard rtl || keeping else { return }
+        let i = adjustedContentInset
+        let last = max(-i.left, contentSize.width - bounds.width + i.right)
+        if rtl != keeping {
+            keeping = rtl
+            if rtl {
+                fromEnd = max(contentOffset.x + i.left, 0)
+                keptContent = -1
+            } else {
+                contentOffset.x = min(fromEnd - i.left, last)
+            }
+        }
+        guard rtl, bounds.width > 0 else { return }
+        if contentSize.width != keptContent || bounds.width != keptBounds {
+            keptContent = contentSize.width
+            keptBounds = bounds.width
+            let to = max(last - fromEnd, -i.left)
+            if contentOffset.x != to { contentOffset.x = to }
+        } else {
+            fromEnd = max(last - contentOffset.x, 0)
+        }
     }
 
     func cull() {

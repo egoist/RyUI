@@ -3,9 +3,12 @@
 package darwin
 
 import (
+	"slices"
+
 	"github.com/ebitengine/purego/objc"
 
 	. "github.com/egoist/ryui/internal/darwin"
+	"github.com/egoist/ryui/internal/l10n"
 	"github.com/egoist/ryui/ops"
 )
 
@@ -32,7 +35,8 @@ type nav struct {
 	tabItem     ID
 
 	// Tabs.
-	setting bool
+	setting  bool
+	reversed bool // its items are in the reverse order of its children
 
 	// Sheet and Alert.
 	window ID
@@ -117,10 +121,8 @@ func (h *Host) insertNav(p, c *node, index int) bool {
 		Send(it, "setView:", uintptr(c.view))
 		c.nav.tabItem = it
 		p.nav.setting = true
-		Send(p.view, "insertTabViewItem:atIndex:", uintptr(it), uintptr(i))
-		if p.selected < len(p.children) {
-			Send(p.view, "selectTabViewItemAtIndex:", uintptr(p.selected))
-		}
+		Send(p.view, "insertTabViewItem:atIndex:", uintptr(it), uintptr(h.tabIndex(p, i, len(p.children))))
+		h.selectTab(p)
 		p.nav.setting = false
 		h.layoutScreens(p)
 		h.updateWindowChrome()
@@ -249,10 +251,15 @@ func (h *Host) topScreen(stack *node) *node {
 }
 
 // slide animates a push (in comes from the right over out, which moves
-// a little left) or a pop (out leaves to the right), as macOS navigates.
+// a little left) or a pop (out leaves to the right), as macOS navigates;
+// the other way round where the stack reads right to left.
 func (h *Host) slide(stack, in, out *node, push bool) {
 	b := MsgRect(stack.view, Sel("bounds"))
 	w := b.Size.Width
+	away := w // where a screen coming on a push starts, and one going on a pop ends
+	if h.isRTL(stack) {
+		away = -w
+	}
 	if Send(stack.view, "window") == 0 || h.env.ReduceMotion || w <= 0 {
 		Send(out.view, "setHidden:", Bool(push))
 		if !push {
@@ -262,9 +269,9 @@ func (h *Host) slide(stack, in, out *node, push bool) {
 	}
 	at := func(x float64) Rect { return Rect{Origin: Point{X: x, Y: 0}, Size: b.Size} }
 	if push {
-		MsgSetRect(in.view, selSetFrame, at(w))
+		MsgSetRect(in.view, selSetFrame, at(away))
 	} else {
-		MsgSetRect(in.view, selSetFrame, at(-w/3))
+		MsgSetRect(in.view, selSetFrame, at(-away/3))
 		Send(in.view, "setHidden:", 0)
 		Send(stack.view, "addSubview:positioned:relativeTo:", uintptr(out.view), nsWindowAbove, uintptr(in.view))
 	}
@@ -275,9 +282,9 @@ func (h *Host) slide(stack, in, out *node, push bool) {
 		Send(ctx, "setTimingFunction:", uintptr(Send(Class("CAMediaTimingFunction"), "functionWithName:", uintptr(String("easeInEaseOut")))))
 		MsgSetRect(Send(inView, "animator"), selSetFrame, at(0))
 		if push {
-			MsgSetRect(Send(outView, "animator"), selSetFrame, at(-w/3))
+			MsgSetRect(Send(outView, "animator"), selSetFrame, at(-away/3))
 		} else {
-			MsgSetRect(Send(outView, "animator"), selSetFrame, at(w))
+			MsgSetRect(Send(outView, "animator"), selSetFrame, at(away))
 		}
 	})
 	Retain(outView)
@@ -386,11 +393,9 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 	case ops.KindTabs:
 		if p == ops.PropTabsSelected {
 			n.selected = int(v.Int)
-			if n.selected < len(n.children) {
-				n.nav.setting = true
-				Send(n.view, "selectTabViewItemAtIndex:", uintptr(n.selected))
-				n.nav.setting = false
-			}
+			n.nav.setting = true
+			h.selectTab(n)
+			n.nav.setting = false
 			h.updateWindowChrome()
 		}
 	case ops.KindSheet:
@@ -433,7 +438,15 @@ func (h *Host) tabSelected(tv, item ID) {
 	if n == nil || n.nav == nil || n.nav.setting {
 		return
 	}
-	i := SendInt(tv, "indexOfTabViewItem:", uintptr(item))
+	i := -1
+	for k, c := range n.children {
+		if c.nav != nil && c.nav.tabItem == item {
+			i = k
+		}
+	}
+	if i < 0 {
+		return
+	}
 	n.selected = i
 	h.emit(n, ops.Event{Kind: ops.EventSelected, Int: int64(i)})
 	h.layoutScreens(n)
@@ -499,7 +512,7 @@ func (h *Host) present(n *node) {
 			}
 		}
 		if len(order) == 0 {
-			Send(a, "addButtonWithTitle:", uintptr(String("OK")))
+			Send(a, "addButtonWithTitle:", uintptr(String(l10n.OK(h.locale))))
 		}
 		n.nav.alert = a
 		n.nav.order = order
@@ -669,6 +682,9 @@ func (h *Host) updateChrome(w *win) {
 		for i := range c.actions {
 			ids = append(ids, "ryui.action."+itoa(i))
 		}
+		if h.toolbarReversed() {
+			slices.Reverse(ids)
+		}
 	}
 	if stack == nil {
 		if c.toolbar != 0 {
@@ -680,7 +696,9 @@ func (h *Host) updateChrome(w *win) {
 		return
 	}
 	if c.toolbar == 0 {
-		t := Send(Send(Class("NSToolbar"), "alloc"), "initWithIdentifier:", uintptr(String("ryui")))
+		// Its own identifier: toolbars that share one keep the same items, which
+		// the windows' don't.
+		t := Send(Send(Class("NSToolbar"), "alloc"), "initWithIdentifier:", uintptr(String("ryui."+itoa(int(w.window)))))
 		Send(t, "setDelegate:", uintptr(h.target))
 		Send(t, "setDisplayMode:", 2) // icons
 		Send(t, "setAllowsUserCustomization:", 0)
@@ -755,12 +773,15 @@ func (h *Host) toolbarItem(w *win, ident string) ID {
 	switch {
 	case ident == "ryui.back":
 		it := item()
-		Send(it, "setImage:", uintptr(symbolImage("chevron.left")))
-		Send(it, "setLabel:", uintptr(String("Back")))
-		Send(it, "setToolTip:", uintptr(String("Back")))
+		back := l10n.Back(h.locale)
+		Send(it, "setImage:", uintptr(symbolImage(h.backSymbol())))
+		Send(it, "setLabel:", uintptr(String(back)))
+		Send(it, "setToolTip:", uintptr(String(back)))
 		Send(it, "setTarget:", uintptr(h.target))
 		Send(it, "setAction:", uintptr(Sel("back:")))
-		if RespondsTo(it, "setNavigational:") {
+		// A navigational item goes on the app's leading side, wherever it's
+		// put: not where the host orders the toolbar itself.
+		if RespondsTo(it, "setNavigational:") && !h.toolbarReversed() {
 			Send(it, "setNavigational:", 1)
 		}
 		if RespondsTo(it, "setBordered:") {
@@ -782,6 +803,10 @@ func (h *Host) toolbarItem(w *win, ident string) ID {
 		}
 		f := c.searchField
 		Send(f, "setDelegate:", uintptr(h.target))
+		Send(f, "setUserInterfaceLayoutDirection:", direction(h.rtl))
+		if h.rtl {
+			Send(f, "setAlignment:", alignRight)
+		}
 		Send(f, "setPlaceholderString:", uintptr(String(c.search)))
 		if c.screen != nil {
 			Send(f, "setStringValue:", uintptr(String(c.screen.nav.searchText)))
@@ -796,7 +821,7 @@ func (h *Host) toolbarItem(w *win, ident string) ID {
 		it := item()
 		Send(it, "setLabel:", uintptr(String(a.title)))
 		Send(it, "setToolTip:", uintptr(String(a.title)))
-		if img := symbolImage(a.icon); img != 0 {
+		if img := h.barSymbol(a.icon); img != 0 {
 			Send(it, "setImage:", uintptr(img))
 		} else if RespondsTo(it, "setTitle:") {
 			Send(it, "setTitle:", uintptr(String(a.title)))

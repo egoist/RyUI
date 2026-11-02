@@ -11,7 +11,7 @@
             android:theme="@style/Theme.RyUI.ShareSheet"
             android:excludeFromRecents="true"
             android:taskAffinity=""
-            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|fontScale|density"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|fontScale|density|locale|layoutDirection"
             android:windowSoftInputMode="adjustResize" />
         <!-- ryui/notify: posts a notification when its alarm goes off. -->
         <receiver android:name="dev.ryui.RyUINotifyReceiver" android:exported="false" />

@@ -1,12 +1,14 @@
 package dev.ryui
 
 import android.content.Context
+import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.FrameLayout
+import android.widget.HorizontalScrollView
 
 /** A native view the core made, or a list cell the host made. */
 class RyUINode(val id: Int, val kind: Int, var view: View) {
@@ -101,7 +103,8 @@ class RyUINode(val id: Int, val kind: Int, var view: View) {
         children.add(i, child)
         child.parent = this
         val c = container ?: return
-        val lp = if (c is RyUIContainer) RyUIParams() else FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        // At the left whatever the direction: frames are physical.
+        val lp = if (c is RyUIContainer) RyUIParams() else FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.LEFT or Gravity.TOP)
         val v = child.outer
         (v.parent as? ViewGroup)?.removeView(v)
         // Among the views there: a Scroll takes rows out of sight out.
@@ -294,5 +297,53 @@ class RyUICell(context: Context) : RyUIContainer(context) {
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
         setMeasuredDimension(MeasureSpec.getSize(widthSpec), rowHeight)
         measureChildren()
+    }
+}
+
+/**
+ * A horizontal Scroll. Its content is at its origin in every direction and
+ * its offset is physical, from the content's left (as the core's OnScroll
+ * and ScrollToOffset are). Right to left it starts at the content's right
+ * end and keeps its distance from that end as the content's width changes,
+ * where the platform's only does so as it's first laid out.
+ */
+class RyUIHorizontalScroll(context: Context) : HorizontalScrollView(context) {
+    /** How far, in px, what it shows is from the content's right end. */
+    private var fromEnd = 0
+    private var keeping = false
+
+    private val range get() = maxOf(0, (getChildAt(0)?.width ?: 0) - (width - paddingLeft - paddingRight))
+
+    override fun onScrollChanged(l: Int, t: Int, oldl: Int, oldt: Int) {
+        super.onScrollChanged(l, t, oldl, oldt)
+        if (!keeping) fromEnd = maxOf(0, range - l)
+    }
+
+    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+        keeping = true
+        super.onLayout(changed, l, t, r, b)
+        keeping = false
+        keep()
+    }
+
+    /** Its place, after its content's frame changed (which the core sets, without a layout of this view). */
+    fun keep() {
+        if (layoutDirection != LAYOUT_DIRECTION_RTL) return
+        keeping = true
+        scrollTo(maxOf(0, range - fromEnd), 0)
+        keeping = false
+    }
+
+    private var was = LAYOUT_DIRECTION_LTR
+
+    override fun onRtlPropertiesChanged(layoutDirection: Int) {
+        super.onRtlPropertiesChanged(layoutDirection)
+        if (layoutDirection == was) return
+        // The language turned: it starts over from its leading end.
+        was = layoutDirection
+        fromEnd = 0
+        keeping = true
+        scrollTo(if (layoutDirection == LAYOUT_DIRECTION_RTL) range else 0, 0)
+        keeping = false
     }
 }

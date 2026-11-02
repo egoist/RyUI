@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"slices"
+	"strings"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -361,6 +362,7 @@ func Run(addr string, root, sheet func() ui.Node) error {
 	if err := keepState(store); err != nil {
 		fmt.Fprintln(os.Stderr, "ryui: restoring state:", err)
 	}
+	keepDevLocale()
 	if base := os.Getenv("RYUI_ASSETS_URL"); base != "" {
 		boot.AssetBase = base
 		if a := os.Getenv("RYUI_ASSETS_ADDR"); a != "" {
@@ -399,4 +401,20 @@ func Run(addr string, root, sheet func() ui.Node) error {
 	}()
 	srv.Loop(conns)
 	return nil
+}
+
+// keepDevLocale keeps the language ui.SetLocale chose beside the kept
+// state, on this machine: the player runs every app, and its saved language
+// would be theirs too.
+func keepDevLocale() {
+	file := os.Getenv("RYUI_STATE")
+	if file == "" {
+		return
+	}
+	file += ".locale"
+	boot.SavedLocale = func() string {
+		b, _ := os.ReadFile(file)
+		return strings.TrimSpace(string(b))
+	}
+	boot.SaveLocale = func(tag string) { os.WriteFile(file, []byte(tag), 0o644) }
 }

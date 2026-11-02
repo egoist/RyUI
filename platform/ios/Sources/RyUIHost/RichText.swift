@@ -39,6 +39,12 @@ struct RyUIRichBase: Hashable {
     var color: UInt64 = 0
     var align: Int32 = 0
     var lines = 0
+    /// The paragraphs' base writing direction: 1 right to left, 0 left to
+    /// right, as a view with a LayoutDirection of its own goes; -1 the
+    /// text's own (its first strong character), as a label's is.
+    var writing: Int8 = -1
+    /// The view goes right to left: which side Start is.
+    var rtl = false
 }
 
 /// A font from text props: a Dynamic Type text style, or a system font
@@ -100,6 +106,9 @@ final class RyUIParagraphLayout {
         var ascent: CGFloat, descent: CGFloat
         var width: CGFloat
         var range: CFRange
+        /// Where the width starts: past a right-to-left line's trailing
+        /// whitespace, if CoreText puts it inside the line, on its left.
+        var ink: CGFloat = 0
     }
     var lines: [Line] = []
     var height: CGFloat = 0
@@ -128,15 +137,56 @@ final class RyUIParagraphLayout {
                 line = CTLineCreateTruncatedLine(rest, Double(width), .end, token) ?? line
             }
             var a: CGFloat = 0, d: CGFloat = 0, l: CGFloat = 0
-            let w = CGFloat(CTLineGetTypographicBounds(line, &a, &d, &l)) - CGFloat(CTLineGetTrailingWhitespaceWidth(line))
+            let space = CGFloat(CTLineGetTrailingWhitespaceWidth(line))
+            let w = CGFloat(CTLineGetTypographicBounds(line, &a, &d, &l)) - space
             y += a
-            lines.append(Line(line: line, baseline: y, ascent: a, descent: d, width: w, range: CFRange(location: start, length: count)))
+            lines.append(Line(line: line, baseline: y, ascent: a, descent: d, width: w, range: CFRange(location: start, length: count), ink: space > 0 ? RyUIParagraphLayout.ink(line, s) : 0))
             y += d + max(l, 0)
             self.width = max(self.width, w)
             start += count
         }
         height = ceil(y)
     }
+
+    /// Where the text of a line with trailing whitespace starts: where the
+    /// whitespace ends, if the line runs right to left.
+    private static func ink(_ line: CTLine, _ s: NSAttributedString) -> CGFloat {
+        let range = CTLineGetStringRange(line)
+        let end = range.location + range.length
+        let text = s.string as NSString
+        guard end <= text.length else { return 0 }
+        var i = end
+        while i > range.location, let u = UnicodeScalar(text.character(at: i - 1)), CharacterSet.whitespacesAndNewlines.contains(u) { i -= 1 }
+        guard i < end else { return 0 }
+        for run in CTLineGetGlyphRuns(line) as! [CTRun] {
+            let r = CTRunGetStringRange(run)
+            if end - 1 >= r.location && end - 1 < r.location + r.length {
+                guard CTRunGetStatus(run).contains(.rightToLeft) else { return 0 }
+                return max(CTLineGetOffsetForStringIndex(line, i, nil), 0)
+            }
+        }
+        return 0
+    }
+}
+
+/// A line's runs, left to right, each with where it starts. Each starts
+/// where the one before it ends: a first glyph's position alone won't do, as
+/// Arabic's cursive attachment moves it off the run's edge. The first may
+/// start before the line's origin (right to left, the trailing whitespace).
+func ryuiRuns(_ line: CTLine) -> [(run: CTRun, x: CGFloat, width: CGFloat)] {
+    var out: [(run: CTRun, x: CGFloat, width: CGFloat)] = []
+    var x: CGFloat?
+    for run in CTLineGetGlyphRuns(line) as! [CTRun] {
+        if x == nil {
+            var p = CGPoint.zero
+            if CTRunGetGlyphCount(run) > 0 { CTRunGetPositions(run, CFRange(location: 0, length: 1), &p) }
+            x = p.x
+        }
+        let w = CGFloat(CTRunGetTypographicBounds(run, CFRange(location: 0, length: 0), nil, nil, nil))
+        out.append((run, x!, w))
+        x! += w
+    }
+    return out
 }
 
 /// Paragraph layouts by their inputs, shared by all rich texts. Layouts
@@ -380,6 +430,14 @@ final class RyUIRichTextView: UIView {
             if s.strike { a[.ryuiStrike] = true }
             out.append(NSAttributedString(string: run.text, attributes: a))
         }
+        if base.writing >= 0, out.length > 0 {
+            var d: CTWritingDirection = base.writing == 1 ? .rightToLeft : .leftToRight
+            let style = withUnsafeBytes(of: &d) { b -> CTParagraphStyle in
+                var setting = CTParagraphStyleSetting(spec: .baseWritingDirection, valueSize: b.count, value: b.baseAddress!)
+                return CTParagraphStyleCreate(&setting, 1)
+            }
+            out.addAttribute(NSAttributedString.Key(kCTParagraphStyleAttributeName as String), value: style, range: NSRange(location: 0, length: out.length))
+        }
         return out
     }
 
@@ -476,13 +534,13 @@ final class RyUIRichTextView: UIView {
 
     private func penX(_ l: RyUIParagraphLayout.Line) -> CGFloat {
         var flush: CGFloat = 0
-        let rtl = effectiveUserInterfaceLayoutDirection == .rightToLeft
+        let rtl = base.rtl
         switch RyUITextAlign(rawValue: base.align) {
         case .center: flush = 0.5
         case .end: flush = rtl ? 0 : 1
         default: flush = rtl ? 1 : 0
         }
-        return (bounds.width - l.width) * flush
+        return (bounds.width - l.width) * flush - l.ink
     }
 
     override func draw(_ rect: CGRect) {
@@ -494,15 +552,17 @@ final class RyUIRichTextView: UIView {
             for l in p.lines {
                 let x = penX(l)
                 let baseline = top + l.baseline
-                let runs = CTLineGetGlyphRuns(l.line) as! [CTRun]
+                let runs = ryuiRuns(l.line)
                 // Backgrounds first, each run's on this line, rounded.
-                for run in runs {
+                for (run, rx, rw) in runs {
                     let attrs = CTRunGetAttributes(run) as NSDictionary
                     guard let bg = attrs[NSAttributedString.Key.ryuiBackground] else { continue }
                     // Not past the line's end: the space a line breaks at isn't highlighted.
-                    var r = runRect(l, run, x: x, baseline: baseline)
-                    r.size.width = max(0, min(r.maxX, x + l.width) - r.minX)
-                    if r.width == 0 { continue }
+                    var r = runRect(run, x: x + rx, width: rw, baseline: baseline)
+                    let left = max(r.minX, x + l.ink), right = min(r.maxX, x + l.ink + l.width)
+                    if right <= left { continue }
+                    r.origin.x = left
+                    r.size.width = right - left
                     r = r.insetBy(dx: -3, dy: -1)
                     ctx.setFillColor(bg as! CGColor)
                     ctx.addPath(UIBezierPath(roundedRect: r, cornerRadius: min(5, r.height / 4)).cgPath)
@@ -511,13 +571,13 @@ final class RyUIRichTextView: UIView {
                 ctx.textPosition = CGPoint(x: x, y: baseline)
                 CTLineDraw(l.line, ctx)
                 // Underlines and strikethroughs: CoreText draws neither.
-                for run in runs {
+                for (run, rx, rw) in runs {
                     let attrs = CTRunGetAttributes(run) as NSDictionary
                     let under = attrs[NSAttributedString.Key.ryuiUnderline] != nil
                     let strike = attrs[NSAttributedString.Key.ryuiStrike] != nil
                     guard under || strike, let font = attrs[kCTFontAttributeName] else { continue }
                     let f = font as! CTFont
-                    let r = runRect(l, run, x: x, baseline: baseline)
+                    let r = runRect(run, x: x + rx, width: rw, baseline: baseline)
                     let thick = max(CTFontGetUnderlineThickness(f), 1)
                     let color = attrs[NSAttributedString.Key.ctForeground] as! CGColor
                     ctx.setFillColor(color)
@@ -533,13 +593,10 @@ final class RyUIRichTextView: UIView {
         }
     }
 
-    private func runRect(_ l: RyUIParagraphLayout.Line, _ run: CTRun, x: CGFloat, baseline: CGFloat) -> CGRect {
-        let range = CTRunGetStringRange(run)
-        let x0 = CTLineGetOffsetForStringIndex(l.line, range.location, nil)
-        let x1 = CTLineGetOffsetForStringIndex(l.line, range.location + range.length, nil)
+    private func runRect(_ run: CTRun, x: CGFloat, width: CGFloat, baseline: CGFloat) -> CGRect {
         var a: CGFloat = 0, d: CGFloat = 0
         CTRunGetTypographicBounds(run, CFRange(location: 0, length: 0), &a, &d, nil)
-        return CGRect(x: x + min(x0, x1), y: baseline - a, width: abs(x1 - x0), height: a + d)
+        return CGRect(x: x, y: baseline - a, width: width, height: a + d)
     }
 
     // Geometry, for selection: offsets are into the plain text (the
@@ -553,7 +610,7 @@ final class RyUIRichTextView: UIView {
         var top: CGFloat // the paragraph's top
         var x: CGFloat // the line's pen
         var start: Int // the paragraph's offset in the plain text
-        var rect: CGRect { CGRect(x: x, y: top + line.baseline - line.ascent, width: line.width, height: line.ascent + line.descent) }
+        var rect: CGRect { CGRect(x: x + line.ink, y: top + line.baseline - line.ascent, width: line.width, height: line.ascent + line.descent) }
     }
 
     func lineGeometry() -> [LineGeometry] {
@@ -595,18 +652,79 @@ final class RyUIRichTextView: UIView {
         return CGRect(x: x(of: offset, in: g), y: r.minY, width: 2, height: r.height)
     }
 
-    /// The rectangles covering [from, to), a line each.
-    func rects(from: Int, to: Int) -> [CGRect] {
-        var out: [CGRect] = []
+    /// A piece of a selection: what's contiguous on screen on a line, one
+    /// way. Mixed directions make several on a line; the selection's start
+    /// and end are in the pieces that hold them, not the first and last.
+    struct SelectionPiece {
+        var rect: CGRect
+        var rtl: Bool
+        var start = false
+        var end = false
+    }
+
+    /// The edge of string index i in a run from x wide: where the characters
+    /// before i end, as the run goes, in the line.
+    private func edge(_ run: CTRun, x: CGFloat, width: CGFloat, at i: Int, rtl: Bool) -> CGFloat {
+        let n = CTRunGetGlyphCount(run)
+        var indices = [CFIndex](repeating: 0, count: n)
+        var positions = [CGPoint](repeating: .zero, count: n)
+        let all = CFRange(location: 0, length: n)
+        CTRunGetStringIndices(run, all, &indices)
+        CTRunGetPositions(run, all, &positions)
+        // Visually left to right: right to left, the indices go down.
+        for g in 0..<n where rtl ? indices[g] < i : indices[g] >= i {
+            return g == 0 ? x : positions[g].x
+        }
+        return x + width
+    }
+
+    /// The pieces covering [from, to), line by line.
+    func selectionPieces(from: Int, to: Int) -> [SelectionPiece] {
+        var out: [SelectionPiece] = []
         for g in lineGeometry() {
             let a = g.start + g.line.range.location, b = a + g.line.range.length
-            let s = max(from, a), e = min(to, b)
-            guard s < e else { continue }
-            let x0 = x(of: s, in: g), x1 = min(x(of: e, in: g), g.x + g.line.width)
-            let r = g.rect
-            out.append(CGRect(x: min(x0, x1), y: r.minY, width: max(abs(x1 - x0), 4), height: r.height))
+            guard max(from, a) < min(to, b) else { continue }
+            let box = g.rect
+            var line: [SelectionPiece] = []
+            for (run, rx, rw) in ryuiRuns(g.line.line) {
+                let r = CTRunGetStringRange(run)
+                let ra = g.start + r.location, rb = ra + r.length
+                let s = max(from, ra), e = min(to, rb)
+                guard s < e else { continue }
+                let rtl = CTRunGetStatus(run).contains(.rightToLeft)
+                let x0 = g.x + edge(run, x: rx, width: rw, at: s - g.start, rtl: rtl)
+                let x1 = g.x + edge(run, x: rx, width: rw, at: e - g.start, rtl: rtl)
+                // Not the whitespace a line breaks at.
+                let left = max(min(x0, x1), box.minX), right = min(max(x0, x1), box.maxX)
+                var p = SelectionPiece(rect: CGRect(x: left, y: box.minY, width: max(right - left, 0), height: box.height), rtl: rtl)
+                p.start = from >= ra && from < rb
+                p.end = to > ra && to <= rb
+                line.append(p)
+            }
+            line.sort { $0.rect.minX < $1.rect.minX }
+            // Runs that only differ in their style are one piece.
+            var merged: [SelectionPiece] = []
+            for p in line {
+                if var m = merged.last, m.rtl == p.rtl, abs(p.rect.minX - m.rect.maxX) < 0.5 {
+                    m.rect.size.width = p.rect.maxX - m.rect.minX
+                    m.start = m.start || p.start
+                    m.end = m.end || p.end
+                    merged[merged.count - 1] = m
+                } else {
+                    merged.append(p)
+                }
+            }
+            for var m in merged {
+                if m.rect.width < 4 { m.rect.size.width = 4 }
+                out.append(m)
+            }
         }
         return out
+    }
+
+    /// The rectangles covering [from, to).
+    func rects(from: Int, to: Int) -> [CGRect] {
+        selectionPieces(from: from, to: to).map(\.rect)
     }
 
     /// The offset closest to p.
@@ -682,11 +800,10 @@ final class RyUIRichTextView: UIView {
         var top: CGFloat = 0
         for p in current() {
             for l in p.lines {
-                for run in CTLineGetGlyphRuns(l.line) as! [CTRun] {
+                for (run, rx, _) in ryuiRuns(l.line) {
                     let attrs = CTRunGetAttributes(run) as NSDictionary
                     guard let i = attrs[NSAttributedString.Key.ryuiInline] as? Int, i >= 0, i < inlines.count else { continue }
-                    let x = penX(l) + CTLineGetOffsetForStringIndex(l.line, CTRunGetStringRange(run).location, nil)
-                    at[i] = CGPoint(x: x, y: top + l.baseline - inlines[i].size.height)
+                    at[i] = CGPoint(x: penX(l) + rx, y: top + l.baseline - inlines[i].size.height)
                 }
             }
             top += p.height
@@ -716,12 +833,17 @@ final class RyUIRichTextView: UIView {
             if p.y >= top && p.y < top + para.height {
                 for l in para.lines where p.y < top + l.baseline + l.descent + 2 {
                     let x = p.x - penX(l)
-                    guard x >= -4 && x <= l.width + 4 else { return nil }
-                    let i = CTLineGetStringIndexForPosition(l.line, CGPoint(x: x, y: 0))
-                    guard i != kCFNotFound, i < para.string.length else { return nil }
-                    // The index is the caret's nearest; the glyph is the one before it when the tap is left of it.
-                    let at = CTLineGetOffsetForStringIndex(l.line, i, nil) > x && i > l.range.location ? i - 1 : i
-                    return para.string.attribute(.ryuiLink, at: at, effectiveRange: nil) as? String
+                    guard x >= l.ink - 4 && x <= l.ink + l.width + 4 else { return nil }
+                    // The run under the tap, on screen, whichever way each goes.
+                    var nearest: CTRun?
+                    var dist = CGFloat.infinity
+                    for (run, x0, w) in ryuiRuns(l.line) {
+                        let x1 = x0 + w
+                        let d = x < x0 ? x0 - x : x > x1 ? x - x1 : 0
+                        if d < dist { dist = d; nearest = run }
+                    }
+                    guard let nearest else { return nil }
+                    return (CTRunGetAttributes(nearest) as NSDictionary)[NSAttributedString.Key.ryuiLink] as? String
                 }
                 return nil
             }

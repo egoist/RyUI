@@ -23,9 +23,9 @@ func (h *Host) buttonGlyph(n *node, ctl uintptr) (glyph uint16, title string) {
 		}
 		return 0xE948, "" // Add
 	case kindHeader:
-		return n.nav.headerButton(ctl)
+		return n.nav.headerButton(ctl, h.isRTL(n))
 	case ops.KindButton:
-		return symbolGlyph(n.icon), n.title
+		return directedGlyph(n.icon, h.isRTL(n)), n.title
 	}
 	return 0, ""
 }
@@ -175,12 +175,17 @@ func (h *Host) drawButton(n *node, cd *NMCustomDraw) uintptr {
 	if gw > 0 && tw > 0 {
 		gap = h.px(n, 8)
 	}
-	x := r.Left + (r.W()-(gw+gap+tw))/2
+	// The icon before the title: on its right, right to left.
+	rtl := h.isRTL(n)
+	left := r.Left + (r.W()-(gw+gap+tw))/2
+	gx, x := left, left+gw+gap
+	if rtl {
+		gx, x = left+tw+gap, left
+	}
 	if glyph != 0 {
-		gr := Rect{Left: x, Top: r.Top, Right: x + gw, Bottom: r.Bottom}
+		gr := Rect{Left: gx, Top: r.Top, Right: gx + gw, Bottom: r.Bottom}
 		DrawText(dc, []uint16{glyph}, &gr, DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX)
 		SelectObject(dc, font)
-		x += gw + gap
 	}
 	if tw > 0 {
 		y := r.Top + (r.H()-th)/2
@@ -188,7 +193,7 @@ func (h *Host) drawButton(n *node, cd *NMCustomDraw) uintptr {
 		if x < r.Left+h.px(n, 4) {
 			tr.Left = r.Left + h.px(n, 4)
 		}
-		DrawText(dc, ut, &tr, DT_SINGLELINE|DT_NOPREFIX|DT_END_ELLIPSIS)
+		DrawText(dc, ut, &tr, DT_SINGLELINE|DT_NOPREFIX|DT_END_ELLIPSIS|startSide(rtl))
 	}
 	SelectObject(dc, old)
 	return CDRF_SKIPDEFAULT
@@ -203,7 +208,7 @@ func (h *Host) fontScale() float32 {
 
 // drawToggle draws a check box as Fluent's toggle switch: a 40 by 20
 // pill, outlined and empty off, filled with the accent on, its knob
-// sliding to the end.
+// sliding to the end (the left, right to left).
 func (h *Host) drawToggle(n *node, cd *NMCustomDraw) uintptr {
 	if cd.DrawStage != CDDS_PREPAINT {
 		return CDRF_DODEFAULT
@@ -221,6 +226,12 @@ func (h *Host) drawToggle(n *node, cd *NMCustomDraw) uintptr {
 	on := SendMessage(cd.Hdr.HwndFrom, BM_GETCHECK, 0, 0) == 1
 	tw, th := 40*k, 20*k
 	x, y := float32(0), (float32(r.H())-th)/2
+	// The knob at its start and its end.
+	knobOff, knobOn := func(d float32) float32 { return x + th/2 - d/2 }, func(d float32) float32 { return x + tw - th/2 - d/2 }
+	if h.isRTL(n) {
+		x = float32(r.W()) - tw // the switch at the view's start
+		knobOff, knobOn = knobOn, knobOff
+	}
 	strong := p.secondary
 	if disabled {
 		strong = p.disabled
@@ -246,13 +257,13 @@ func (h *Host) drawToggle(n *node, cd *NMCustomDraw) uintptr {
 		}
 		g.FillRoundRect(fill.argb(), x, y, tw, th, th/2)
 		kc := p.onAccent
-		g.FillEllipse(SolidBrushTmp(kc.argb()), x+tw-th/2-knob/2, y+th/2-knob/2, knob, knob)
+		g.FillEllipse(SolidBrushTmp(kc.argb()), knobOn(knob), y+th/2-knob/2, knob, knob)
 	} else {
 		if hot {
 			g.FillRoundRect(p.subtleHot.argb(), x, y, tw, th, th/2)
 		}
 		g.StrokeRoundRect(strong.argb(), max(k, 1), x, y, tw, th, th/2)
-		g.FillEllipse(SolidBrushTmp(strong.argb()), x+th/2-knob/2, y+th/2-knob/2, knob, knob)
+		g.FillEllipse(SolidBrushTmp(strong.argb()), knobOff(knob), y+th/2-knob/2, knob, knob)
 	}
 	if cd.ItemState&CDIS_FOCUS != 0 && cd.ItemState&CDIS_SHOWKEYBOARDCUES != 0 {
 		g.StrokeRoundRect(p.label.argb(), 2*k, x-3*k, y-3*k, tw+6*k, th+6*k, th/2+3*k)
@@ -295,7 +306,11 @@ func (h *Host) drawSlider(n *node, cd *NMCustomDraw) uintptr {
 		r := 10 * k
 		x0, x1 := r, float32(client.W())-r
 		g.FillRoundRect(p.track.argb(), x0, cy-th/2, x1-x0, th, th/2)
-		if cx > x0 {
+		if h.isRTL(n) {
+			if cx < x1 {
+				g.FillRoundRect(accent.argb(), cx, cy-th/2, x1-cx, th, th/2)
+			}
+		} else if cx > x0 {
 			g.FillRoundRect(accent.argb(), x0, cy-th/2, cx-x0, th, th/2)
 		}
 		g.Close()
@@ -361,8 +376,15 @@ func (h *Host) makeEdit(n *node) {
 	if n.keyboard == int32(ops.KeyboardNumber) {
 		style |= ES_NUMBER
 	}
+	n.editRTL = h.isRTL(n)
+	n.editSide = editAlign(n, n.editRTL)
+	style |= n.editSide
+	var ex uint32
+	if n.editRTL {
+		ex = WS_EX_RTLREADING
+	}
 	old := n.ctl
-	n.ctl = CreateWindow(0, "EDIT", "", style, 0, 0, 0, 0, n.hwnd, 1)
+	n.ctl = CreateWindow(ex, "EDIT", "", style, 0, 0, 0, 0, n.hwnd, 1)
 	SendMessage(n.ctl, WM_SETFONT, h.nodeFont(n), 0)
 	SendMessage(n.ctl, EM_SETMARGINS, EC_LEFTMARGIN|EC_RIGHTMARGIN, 0)
 	h.byHwnd[n.ctl] = n
@@ -380,11 +402,46 @@ func (h *Host) makeEdit(n *node) {
 	if n.secure {
 		SendMessage(n.ctl, EM_SETPASSWORDCHAR, 0x25CF, 0)
 	}
+	if n.disabled {
+		EnableWindow(n.ctl, false)
+	}
 	ctl := n.ctl
 	Subclass(ctl, func(hwnd uintptr, m uint32, w, l uintptr) uintptr {
 		return h.editMessage(hwnd, m, w, l)
 	})
 	h.layoutField(n)
+}
+
+// editAlign is an EDIT's style for a field's alignment in a direction.
+func editAlign(n *node, rtl bool) uint32 {
+	switch a := ops.TextAlign(n.textAlign); {
+	case a == ops.TextAlignCenter:
+		return ES_CENTER
+	case alignedRight(a, rtl):
+		return ES_RIGHT
+	}
+	return ES_LEFT
+}
+
+// alignField follows a field's alignment and direction. An EDIT takes both
+// as it's made (its alignment styles aren't among those Edit Control Styles
+// says can change), so a new one makes it again, with what it had.
+func (h *Host) alignField(n *node) {
+	if n.ctl == 0 {
+		return
+	}
+	rtl := h.isRTL(n)
+	if rtl == n.editRTL && editAlign(n, rtl) == n.editSide {
+		return
+	}
+	focused := Focus() == n.ctl
+	sel := SendMessage(n.ctl, EM_GETSEL, 0, 0)
+	h.makeEdit(n)
+	h.themeControl(n)
+	SendMessage(n.ctl, EM_SETSEL, sel&0xFFFF, sel>>16&0xFFFF)
+	if focused {
+		SetFocus(n.ctl)
+	}
 }
 
 // editText is the field's text with Windows's line breaks.
@@ -445,13 +502,27 @@ func (h *Host) editMessage(hwnd uintptr, m uint32, w, l uintptr) uintptr {
 			}
 			SetTextColor(dc, h.theme.secondary.over(bg).ref())
 			cr := ClientRect(hwnd)
-			DrawText(dc, UTF16Units(n.placeholder), &cr, DT_NOPREFIX|DT_WORDBREAK)
+			DrawText(dc, UTF16Units(n.placeholder), &cr, DT_NOPREFIX|DT_WORDBREAK|h.placeholderSide(n))
 			SelectObject(dc, old)
 			ReleaseDC(hwnd, dc)
 			return r
 		}
 	}
 	return DefSubclass(hwnd, m, w, l)
+}
+
+// placeholderSide is DrawText's flags for a multiline field's placeholder:
+// where its text goes.
+func (h *Host) placeholderSide(n *node) uint32 {
+	rtl := h.isRTL(n)
+	f := textDirection(rtl)
+	switch a := ops.TextAlign(n.textAlign); {
+	case a == ops.TextAlignCenter:
+		f |= DT_CENTER
+	case alignedRight(a, rtl):
+		f |= DT_RIGHT
+	}
+	return f
 }
 
 func (h *Host) setField(n *node, p ops.PropID, v *ops.Value) {
@@ -568,8 +639,13 @@ func (h *Host) layoutStepper(n *node) {
 	r := ClientRect(n.hwnd)
 	gap := h.px(n, 4)
 	bw := (r.W() - gap) / 2
-	SetWindowPos(n.ctl, 0, 0, 0, bw, r.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
-	SetWindowPos(n.ctl2, 0, bw+gap, 0, r.W()-bw-gap, r.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
+	// Minus, then plus: from the right, right to left.
+	first, second := n.ctl, n.ctl2
+	if h.isRTL(n) {
+		first, second = second, first
+	}
+	SetWindowPos(first, 0, 0, 0, bw, r.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
+	SetWindowPos(second, 0, bw+gap, 0, r.W()-bw-gap, r.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 }
 
 // Segmented: the host's own control, drawn as the Windows Community
@@ -581,7 +657,11 @@ func (h *Host) segmentAt(n *node, x int32) int {
 		return -1
 	}
 	w := ClientRect(n.hwnd).W()
-	return min(max(int(x*int32(len(n.items))/max(w, 1)), 0), len(n.items)-1)
+	i := min(max(int(x*int32(len(n.items))/max(w, 1)), 0), len(n.items)-1)
+	if h.isRTL(n) {
+		i = len(n.items) - 1 - i // the first on the right
+	}
+	return i
 }
 
 func (h *Host) selectSegment(n *node, i int) {
@@ -601,6 +681,14 @@ func (h *Host) paintSegmented(n *node, dc uintptr, g Graphics, r Rect) {
 	w, ht := float32(r.W()), float32(r.H())
 	count := len(n.items)
 	sw := w / float32(max(count, 1))
+	rtl := h.isRTL(n)
+	// A segment's place across, the first on the right, right to left.
+	place := func(i int) float32 {
+		if rtl {
+			i = count - 1 - i
+		}
+		return float32(i) * sw
+	}
 	if g != 0 {
 		track := rgba{0, 0, 0, 0x0F}
 		if h.dark {
@@ -609,7 +697,7 @@ func (h *Host) paintSegmented(n *node, dc uintptr, g Graphics, r Rect) {
 		g.FillRoundRect(track.argb(), 0, 0, w, ht, 5*k)
 		g.StrokeRoundRect(p.stroke.argb(), max(k, 1), 0, 0, w, ht, 5*k)
 		if n.selected >= 0 && n.selected < count {
-			x := float32(n.selected) * sw
+			x := place(n.selected)
 			in := 3 * k
 			sel := p.control
 			if h.dark {
@@ -629,7 +717,7 @@ func (h *Host) paintSegmented(n *node, dc uintptr, g Graphics, r Rect) {
 	old := SelectObject(dc, h.nodeFont(n))
 	SetBkMode(dc, TRANSPARENT)
 	for i, s := range n.items {
-		x := float32(i) * sw
+		x := place(i)
 		color := p.secondary
 		if i == n.selected {
 			color = p.label
@@ -639,7 +727,7 @@ func (h *Host) paintSegmented(n *node, dc uintptr, g Graphics, r Rect) {
 		}
 		SetTextColor(dc, color.over(h.backdrop(n)).ref())
 		tr := Rect{Left: int32(x) + h.px(n, 6), Top: r.Top, Right: int32(x+sw) - h.px(n, 6), Bottom: r.Bottom - h.px(n, 2)}
-		DrawText(dc, UTF16Units(s), &tr, DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX|DT_END_ELLIPSIS)
+		DrawText(dc, UTF16Units(s), &tr, DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX|DT_END_ELLIPSIS|textDirection(rtl))
 	}
 	SelectObject(dc, old)
 }

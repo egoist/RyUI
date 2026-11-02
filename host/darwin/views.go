@@ -179,6 +179,7 @@ func (h *Host) replaceView(n *node, v ID) {
 	h.byView[v] = n
 	h.applyFont(n)
 	h.applyColor(n)
+	h.applyDirection(n)
 }
 
 func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
@@ -234,6 +235,7 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 		}
 	case ops.KindScroll:
 		if p == ops.PropScrollHorizontal {
+			n.horizontal = v.Int != 0
 			Send(n.view, "setHasHorizontalScroller:", Bool(v.Int != 0))
 			Send(n.view, "setHasVerticalScroller:", Bool(v.Int == 0))
 		}
@@ -289,6 +291,7 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 				// addItemWithTitle: drops duplicate titles; menu items don't.
 				Send(Send(n.view, "menu"), "addItemWithTitle:action:keyEquivalent:", uintptr(String(s)), 0, uintptr(String("")))
 			}
+			setMenuDirection(Send(n.view, "menu"), h.isRTL(n))
 			Send(n.view, "selectItemAtIndex:", uintptr(n.selected))
 		case ops.PropWheelSelected:
 			n.selected = int(v.Int)
@@ -422,6 +425,7 @@ func (h *Host) setField(n *node, p ops.PropID, v *ops.Value) {
 		n.text = v.Str
 		if n.tracking != 0 {
 			Send(n.tracking, "setString:", uintptr(String(v.Str)))
+			h.applyTextAlign(n)
 		} else {
 			Send(n.view, "setStringValue:", uintptr(String(v.Str)))
 		}

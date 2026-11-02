@@ -112,6 +112,7 @@ var Schema = SchemaDef{
 		{Name: "Material", Type: TEnum, Enum: "Material", Doc: "a translucent background that blurs what's behind (iOS's materials); Android, which can't, shows its surface color, translucent"},
 		{Name: "FontFamily", Type: TString, Doc: "a font file's name in the app's assets/fonts (Inter-Bold.ttf: Inter-Bold), a family of them (Inter: Inter-Regular, Inter-Bold...), a generic family (serif, monospace, rounded) or a system family; scaled as the text style is. Under ryui dev, a font file's URL, which the host loads, then sends FontLoaded"},
 		{Name: "SwipeActions", Type: TBytes, Doc: "a List cell's swipe actions, encoded as Menu (iOS: its trailing actions; Android: a full swipe runs the first); Action events on the cell carry the index"},
+		{Name: "LayoutDirection", Type: TEnum, Enum: "LayoutDirection", Doc: "the view lays itself out and aligns its text in this direction, whatever the app's (ui.WithDirection): sent to each view in the subtree, as a platform's view doesn't take it from its parent. Frames are always physical"},
 		{Name: "Match", Type: TString, Doc: "a key it shares with another view: when one with the key is destroyed during an animation and another inserted, the new one comes in from the old one's place and size, and the old one goes out to the new one's, fading (SwiftUI's matchedGeometryEffect). The host notes where the views with keys are as an animated batch starts destroying, and matches them once the batch's frames are applied"},
 	},
 	Kinds: []KindDef{
@@ -337,7 +338,10 @@ var Schema = SchemaDef{
 		{Name: "WebNavigate", Doc: "args: u8 0 back, 1 forward, 2 reload, 3 stop; sent to a WebView"},
 		{Name: "MenuBar", Doc: "args: the app's menus (desktop): u32 count, per menu a u32-length title and u32 item count, per item u8 flags (1 separator, 2 disabled, 4 checked, 8 destructive), a u32-length title, a u32-length key (a character, or enter, escape, tab, space, delete, backspace, up, down, left, right, home, end, pageup, pagedown, f1-f12; empty: no shortcut) and u8 modifiers (1 primary: ⌘ on macOS, Ctrl on Windows; 2 shift; 4 alt, a Mac's option; 8 control); sent to the root, again when they change: the host shows them with its own (a Mac's app, Edit and Window menus), and reports a chosen item, or its shortcut, with Action on the root carrying the item's index among all the menus' items"},
 		{Name: "WindowOptions", Doc: "args: f32 width, height, min width, min height (points, 0: the host's), then the title (rest of the args; empty: the app's name); sent to the root when it mounts: the main window's"},
+		{Name: "WindowTitle", Doc: "args: the title (empty: the app's name); sent to the root when the main window's changes (desktop; mobile hosts have none)"},
 		{Name: "ColorScheme", Doc: "args: u8 ColorScheme; sent to the root: the app shows light or dark whatever the system's setting, or follows it again (iOS: the windows' overrideUserInterfaceStyle; Android: AppCompat's night mode)"},
+		{Name: "Locale", Doc: "args: u8 flags (1: right to left), then the BCP 47 tag of the language the app shows; sent to the root as it mounts (before any view is made, after Accent) and when it changes. The host mirrors what it draws itself (navigation, transitions, a list's swipes), its views' natural text alignment, and its own words in that language where the platform lets it"},
+		{Name: "SaveLocale", Doc: "args: the BCP 47 tag of the language the app chose (ui.SetLocale), empty to follow the user's languages again; sent to the root. The host keeps it across launches where the system does (iOS's and macOS's AppleLanguages of the app's defaults, which Settings shows; Android 13's LocaleManager) or itself (Android before 13, Windows), and from then on reports it first in the environment's Languages"},
 		{Name: "ShareClose", Doc: "args: u8 how (0 done, 1 cancelled, 2 open the app with what was shared); sent to a share sheet's root (app.ShareSheet): it closes"},
 	},
 	Enums: []EnumDef{
@@ -345,6 +349,7 @@ var Schema = SchemaDef{
 		{Name: "TextStyle", Values: []string{"Default", "LargeTitle", "Title", "Title2", "Title3", "Headline", "Subheadline", "Body", "Callout", "Footnote", "Caption", "Caption2"}},
 		{Name: "FontWeight", Values: []string{"Default", "Ultralight", "Thin", "Light", "Regular", "Medium", "Semibold", "Bold", "Heavy", "Black"}},
 		{Name: "TextAlign", Values: []string{"Start", "Center", "End", "Justify"}},
+		{Name: "LayoutDirection", Values: []string{"Inherit", "LeftToRight", "RightToLeft"}},
 		{Name: "ButtonVariant", Values: []string{"Plain", "Filled", "Tinted", "Gray", "Bordered", "Glass", "GlassProminent"}},
 		{Name: "Keyboard", Values: []string{"Default", "Number", "Decimal", "Email", "URL", "Phone"}},
 		{Name: "ReturnKey", Values: []string{"Default", "Done", "Go", "Next", "Search", "Send"}},

@@ -64,10 +64,14 @@ func parseLength(s string) Length {
 func parseAlign(s string) Align {
 	s = strings.TrimPrefix(strings.TrimPrefix(s, "safe "), "unsafe ")
 	switch s {
-	case "start", "self-start", "left":
+	case "start", "left":
 		return AlignStart
-	case "end", "self-end", "right":
+	case "end", "right":
 		return AlignEnd
+	case "self-start":
+		return AlignSelfStart
+	case "self-end":
+		return AlignSelfEnd
 	case "flex-start":
 		return AlignFlexStart
 	case "flex-end":
@@ -256,6 +260,12 @@ func styleOf(x *xNode) Style {
 	}
 	if get("position") == "absolute" {
 		s.Position = Absolute
+	}
+	switch get("direction") {
+	case "ltr":
+		s.Direction = DirLTR
+	case "rtl":
+		s.Direction = DirRTL
 	}
 	if get("box-sizing") == "content-box" {
 		s.BoxSizing = ContentBox
@@ -452,21 +462,23 @@ func runFixture(path string) (name string, diffs []string, err error) {
 	if len(t.Input.Kids) != 1 || len(t.Expect.Kids) != 1 {
 		return name, nil, fmt.Errorf("%s: want one root", path)
 	}
+	return name, runTest(&t), nil
+}
+
+func runTest(t *xTest) (diffs []string) {
 	root := build(&t.Input.Kids[0])
 	var p Pass
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				diffs = append(diffs, fmt.Sprintf("panic: %v", r))
-			}
-		}()
-		root.Layout(Size{space(t.Viewport.Width), space(t.Viewport.Height)}, &p)
-		if t.Rounding != "false" {
-			Round(root, 1)
+	defer func() {
+		if r := recover(); r != nil {
+			diffs = append(diffs, fmt.Sprintf("panic: %v", r))
 		}
-		compare(root, &t.Expect.Kids[0], "root", &diffs)
 	}()
-	return name, diffs, nil
+	root.Layout(Size{space(t.Viewport.Width), space(t.Viewport.Height)}, &p)
+	if t.Rounding != "false" {
+		Round(root, 1)
+	}
+	compare(root, &t.Expect.Kids[0], "root", &diffs)
+	return diffs
 }
 
 func TestCSSFixtures(t *testing.T) {
@@ -523,6 +535,35 @@ func TestCSSFixtures(t *testing.T) {
 		body := "# Fixtures ryui's layout doesn't match yet. go test ./layout -run CSS -update-known rewrites this.\n" + strings.Join(failing, "\n") + "\n"
 		if err := os.WriteFile("testdata/css/known_failures.txt", []byte(body), 0o644); err != nil {
 			t.Fatal(err)
+		}
+	}
+}
+
+// TestRTLAgainstChrome runs the right-to-left cases beyond Taffy's fixtures:
+// testdata/rtl_chrome.xml says how they were made.
+func TestRTLAgainstChrome(t *testing.T) { againstChrome(t, "testdata/rtl_chrome.xml") }
+
+func TestLTRAgainstChrome(t *testing.T) { againstChrome(t, "testdata/ltr_chrome.xml") }
+
+func againstChrome(t *testing.T, path string) {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var file struct {
+		Tests []xTest `xml:"test"`
+	}
+	if err := xml.Unmarshal(data, &file); err != nil {
+		t.Fatal(err)
+	}
+	if len(file.Tests) == 0 {
+		t.Fatal("no cases")
+	}
+	for i := range file.Tests {
+		tc := &file.Tests[i]
+		if diffs := runTest(tc); len(diffs) > 0 {
+			t.Errorf("%s:\n  %s", tc.Name, strings.Join(diffs, "\n  "))
 		}
 	}
 }

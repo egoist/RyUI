@@ -62,6 +62,7 @@ func (o *Owner) clean() {
 	if o.first == nil && len(o.cleanups) == 0 {
 		return
 	}
+	settleAmbient()
 	prevSub := activeSub
 	activeSub = nil
 	for c := o.last; c != nil; {
@@ -75,6 +76,7 @@ func (o *Owner) clean() {
 		f()
 	}
 	o.cleanups = o.cleanups[:0]
+	settleAmbient()
 	activeSub = prevSub
 }
 
@@ -101,9 +103,13 @@ func (o *Owner) Disposed() bool { return o.disposed }
 // returns.
 func Root(f func(dispose func())) {
 	o := &Owner{parent: currentOwner}
+	settleAmbient()
 	prevOwner, prevSub := currentOwner, activeSub
 	currentOwner, activeSub = o, nil
-	defer func() { currentOwner, activeSub = prevOwner, prevSub }()
+	defer func() {
+		settleAmbient()
+		currentOwner, activeSub = prevOwner, prevSub
+	}()
 	Batch(func() { f(o.Dispose) })
 }
 
@@ -119,9 +125,13 @@ func CurrentOwner() *Owner { return currentOwner }
 
 // RunWithOwner runs f with o as the current owner, untracked.
 func RunWithOwner(o *Owner, f func()) {
+	settleAmbient()
 	prevOwner, prevSub := currentOwner, activeSub
 	currentOwner, activeSub = o, nil
-	defer func() { currentOwner, activeSub = prevOwner, prevSub }()
+	defer func() {
+		settleAmbient()
+		currentOwner, activeSub = prevOwner, prevSub
+	}()
 	f()
 }
 

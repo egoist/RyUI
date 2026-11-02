@@ -43,6 +43,9 @@ android {
             if (prop("ryuiKeystore") != null) signingConfig = signingConfigs.getByName("release")
         }
     }
+    // Language splits would leave out the Material strings of a language the
+    // app chooses in-app (ui.SetLocale) rather than the device's.
+    bundle { language { enableSplit = false } }
     sourceSets {
         // The app's manifest (ryui.json's permissions, scheme and links),
         // over the debug one in development.

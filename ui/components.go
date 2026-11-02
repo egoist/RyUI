@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"bytes"
 	"encoding/binary"
 	"time"
 
@@ -38,8 +39,8 @@ type ViewProps struct {
 	OnRotate func(Gesture)
 	// Accessibility. A view with any of these is an accessibility
 	// element; plain containers never appear in the accessibility tree.
-	Label string
-	Hint  string
+	Label signal.Accessor[string]
+	Hint  signal.Accessor[string]
 	Role  Role
 	// Decorative hides the view, and everything in it, from screen
 	// readers: a decoration, or what its neighbors already say.
@@ -95,7 +96,7 @@ type ViewProps struct {
 
 // A11yAction is a screen reader's action on a view.
 type A11yAction struct {
-	Name string
+	Name signal.Accessor[string]
 	Do   func()
 }
 
@@ -131,6 +132,46 @@ func bind[T comparable](a signal.Accessor[T], apply func(T)) {
 	})
 }
 
+// hasText reports whether a says anything: an accessor that can, or a constant
+// that isn't empty. A label left out isn't a label of nothing.
+func hasText(a signal.Accessor[string]) bool {
+	if a == nil {
+		return false
+	}
+	if v, ok := signal.StaticValue(a); ok {
+		return v != ""
+	}
+	return true
+}
+
+// bindStrings sends a, encoded as a list of strings, and again when it
+// changes.
+func bindStrings(a signal.Accessor[[]string], apply func([]byte)) {
+	encode := func(list []string) []byte {
+		b := binary.LittleEndian.AppendUint32(nil, uint32(len(list)))
+		for _, s := range list {
+			b = binary.LittleEndian.AppendUint32(b, uint32(len(s)))
+			b = append(b, s...)
+		}
+		return b
+	}
+	if a == nil {
+		apply(encode(nil))
+		return
+	}
+	if v, ok := signal.StaticValue(a); ok {
+		apply(encode(v))
+		return
+	}
+	var last []byte
+	signal.RenderEffect(func() {
+		if b := encode(a.Get()); !bytes.Equal(b, last) {
+			last = b
+			apply(b)
+		}
+	})
+}
+
 func (e *element) listen(ev ops.EventKind) { e.r.batch.Listen(e.id, ev) }
 
 func (e *element) handlers() *handlers {
@@ -159,7 +200,7 @@ func addKids(e *element, kids []Node) {
 // props it makes no native view: its children are placed in the nearest
 // ancestor that has one.
 func View(p ViewProps, children ...Node) Node {
-	real := p.OnPress != nil || p.OnLongPress != nil || p.Label != "" || p.Hint != "" || p.Role != RoleNone || p.Decorative || p.OnLayout != nil ||
+	real := p.OnPress != nil || p.OnLongPress != nil || hasText(p.Label) || hasText(p.Hint) || p.Role != RoleNone || p.Decorative || p.OnLayout != nil ||
 		len(p.Actions) > 0 || p.OnAdjust != nil ||
 		p.OnPan != nil || p.OnPinch != nil || p.OnSwipe != nil || p.OnRotate != nil || p.interactive()
 	if s, ok := p.Style.(Style); ok && (s.visual() || s.hasVariants()) {
@@ -175,11 +216,11 @@ func View(p ViewProps, children ...Node) Node {
 		if h.longPress != nil {
 			e.listen(ops.EventLongPress)
 		}
-		if p.Label != "" {
-			e.r.batch.SetString(e.id, ops.PropA11yLabel, p.Label)
+		if hasText(p.Label) {
+			bind(p.Label, func(v string) { e.r.batch.SetString(e.id, ops.PropA11yLabel, v) })
 		}
-		if p.Hint != "" {
-			e.r.batch.SetString(e.id, ops.PropA11yHint, p.Hint)
+		if hasText(p.Hint) {
+			bind(p.Hint, func(v string) { e.r.batch.SetString(e.id, ops.PropA11yHint, v) })
 		}
 		if p.Role != RoleNone {
 			e.r.batch.SetEnum(e.id, ops.PropA11yRole, int32(p.Role))
@@ -189,14 +230,22 @@ func View(p ViewProps, children ...Node) Node {
 		}
 		h.layout = p.OnLayout
 		if len(p.Actions) > 0 {
-			var b []byte
-			b = binary.LittleEndian.AppendUint32(b, uint32(len(p.Actions)))
 			for _, a := range p.Actions {
-				b = binary.LittleEndian.AppendUint32(b, uint32(len(a.Name)))
-				b = append(b, a.Name...)
 				h.a11yActions = append(h.a11yActions, a.Do)
 			}
-			e.r.batch.SetBytes(e.id, ops.PropA11yActions, b)
+			names := make([]signal.Accessor[string], len(p.Actions))
+			for i, a := range p.Actions {
+				names[i] = a.Name
+			}
+			bindStrings(signal.Func(func() []string {
+				out := make([]string, len(names))
+				for i, n := range names {
+					if n != nil {
+						out[i] = n.Get()
+					}
+				}
+				return out
+			}), func(b []byte) { e.r.batch.SetBytes(e.id, ops.PropA11yActions, b) })
 			e.listen(ops.EventA11yAction)
 		}
 		if p.OnAdjust != nil {
@@ -294,7 +343,7 @@ func SafeArea(style Styler, children ...Node) Node {
 	}
 	signal.RenderEffect(func() {
 		env := envSig.Get()
-		pad := Edges{env.SafeTop, env.SafeRight, max(env.SafeBottom, env.Keyboard), env.SafeLeft}
+		pad := Edges{Top: env.SafeTop, Right: env.SafeRight, Bottom: max(env.SafeBottom, env.Keyboard), Left: env.SafeLeft}
 		if pad == e.extraPad {
 			return
 		}
@@ -354,7 +403,7 @@ type ButtonProps struct {
 	// Label is what VoiceOver and TalkBack read: the title by default.
 	// Give an icon-only button one (the platforms name a few symbols
 	// themselves, in English on Android).
-	Label    string
+	Label    signal.Accessor[string]
 	Disabled signal.Accessor[bool]
 	Style    Styler
 }
@@ -371,8 +420,8 @@ func Button(p ButtonProps) Node {
 	if p.Icon != "" {
 		e.r.batch.SetString(e.id, ops.PropButtonIcon, string(p.Icon))
 	}
-	if p.Label != "" {
-		e.r.batch.SetString(e.id, ops.PropA11yLabel, p.Label)
+	if hasText(p.Label) {
+		bind(p.Label, func(v string) { e.r.batch.SetString(e.id, ops.PropA11yLabel, v) })
 	}
 	bind(p.Title, func(v string) {
 		e.text = string(p.Icon) + "\x00" + v // the measure cache's key
@@ -386,7 +435,7 @@ func Button(p ButtonProps) Node {
 	}
 	if len(p.Menu) > 0 {
 		menu := p.Menu
-		e.r.batch.SetBytes(e.id, ops.PropMenu, encodeActions(menu))
+		bindActions(menu, func(b []byte) { e.r.batch.SetBytes(e.id, ops.PropMenu, b) })
 		e.handlers().action = func(i int64) { runAction(menu, i) }
 		e.listen(ops.EventAction)
 	}
@@ -630,7 +679,8 @@ func Symbol(name Icon, style ...Styler) Node {
 
 // SegmentedProps configures a Segmented control.
 type SegmentedProps struct {
-	Segments []string
+	// Segments are what they say; they can follow the app's language.
+	Segments signal.Accessor[[]string]
 	// Selected is the selected segment's index: the user's choice writes
 	// it.
 	Selected *signal.Signal[int]
@@ -644,12 +694,14 @@ func Segmented(p SegmentedProps) Node {
 	e := newElement(ops.KindSegmented, true)
 	e.measure()
 	e.setStyle(p.Style, false)
-	b := binary.LittleEndian.AppendUint32(nil, uint32(len(p.Segments)))
-	for _, s := range p.Segments {
-		b = binary.LittleEndian.AppendUint32(b, uint32(len(s)))
-		b = append(b, s...)
-	}
-	e.r.batch.SetBytes(e.id, ops.PropSegmentedSegments, b)
+	first := true
+	bindStrings(p.Segments, func(b []byte) {
+		e.r.batch.SetBytes(e.id, ops.PropSegmentedSegments, b)
+		if !first {
+			e.remeasure()
+		}
+		first = false
+	})
 	bind(p.Disabled, func(v bool) { e.r.batch.SetBool(e.id, ops.PropDisabled, v) })
 	if p.Selected != nil {
 		reported, known := 0, false
@@ -784,6 +836,12 @@ func Scroll(p ScrollProps, children ...Node) Node {
 		if p.Horizontal {
 			ls.FlexDirection = layout.Row
 			ls.OverflowX = layout.OverflowScroll
+			// Right to left, the content is laid out from the right, but it
+			// sits at the scroll view's origin, where a platform's scroll
+			// view wants it: the host starts at its end, not the layout.
+			if e.rtl() {
+				ls.Direction = layout.DirLTR
+			}
 		} else {
 			ls.OverflowY = layout.OverflowScroll
 		}
@@ -800,7 +858,15 @@ func Scroll(p ScrollProps, children ...Node) Node {
 	refreshable(e, p.OnRefresh, p.Refreshing, ops.PropScrollRefreshable, ops.PropScrollRefreshing)
 	onScroll(e, p.OnScroll)
 	content := newElement(ops.KindView, true)
-	content.adjust = func(cs *layout.Style) { cs.FlexShrink = 0 } // the content keeps its size; that's the point
+	content.adjust = func(cs *layout.Style) {
+		cs.FlexShrink = 0 // the content keeps its size; that's the point
+		if p.Horizontal && content.rtl() {
+			cs.Direction = layout.DirRTL
+			if cs.MinWidth.IsAuto() {
+				cs.MinWidth = layout.Pct(100) // short content hugs the right
+			}
+		}
+	}
 	content.setStyle(withDirection(p.ContentStyle, dir), false)
 	addKids(content, children)
 	e.appendKid(content)
@@ -809,7 +875,8 @@ func Scroll(p ScrollProps, children ...Node) Node {
 
 // WheelProps configures a Wheel.
 type WheelProps struct {
-	Items []string
+	// Items are what they say; they can follow the app's language.
+	Items signal.Accessor[[]string]
 	// Selected is the selected item's index: the user's choice writes it.
 	Selected *signal.Signal[int]
 	Disabled signal.Accessor[bool]
@@ -822,12 +889,14 @@ func Wheel(p WheelProps) Node {
 	e := newElement(ops.KindWheel, true)
 	e.measure()
 	e.setStyle(p.Style, false)
-	b := binary.LittleEndian.AppendUint32(nil, uint32(len(p.Items)))
-	for _, s := range p.Items {
-		b = binary.LittleEndian.AppendUint32(b, uint32(len(s)))
-		b = append(b, s...)
-	}
-	e.r.batch.SetBytes(e.id, ops.PropWheelItems, b)
+	first := true
+	bindStrings(p.Items, func(b []byte) {
+		e.r.batch.SetBytes(e.id, ops.PropWheelItems, b)
+		if !first {
+			e.remeasure()
+		}
+		first = false
+	})
 	bind(p.Disabled, func(v bool) { e.r.batch.SetBool(e.id, ops.PropDisabled, v) })
 	if p.Selected != nil {
 		reported, known := 0, false
@@ -855,7 +924,7 @@ type ColorPickerProps struct {
 	// Alpha lets the user choose an opacity too.
 	Alpha bool
 	// Title is the picker's (default: the platform's).
-	Title    string
+	Title    signal.Accessor[string]
 	Disabled signal.Accessor[bool]
 	Style    Styler
 }
@@ -872,9 +941,7 @@ func ColorPicker(p ColorPickerProps) Node {
 	if p.Alpha {
 		b.SetBool(e.id, ops.PropColorPickerAlpha, true)
 	}
-	if p.Title != "" {
-		b.SetString(e.id, ops.PropColorPickerTitle, p.Title)
-	}
+	bind(p.Title, func(v string) { e.r.batch.SetString(e.id, ops.PropColorPickerTitle, v) })
 	bind(p.Disabled, func(v bool) { e.r.batch.SetBool(e.id, ops.PropDisabled, v) })
 	if p.Value != nil {
 		var reported Color

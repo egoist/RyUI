@@ -172,6 +172,11 @@ final class RyUIWeakList {
         applied = true
     }
 
+    /// The layout mirrors its cells for the collection view's direction.
+    func directionChanged() {
+        collection.collectionViewLayout.invalidateLayout()
+    }
+
     func heightsChanged() {
         guard !binding else { return }
         collection.collectionViewLayout.invalidateLayout()

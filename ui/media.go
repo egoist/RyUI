@@ -37,7 +37,7 @@ type ImageProps struct {
 	Placeholder string
 	// Label describes the image to screen readers; without it the image
 	// is decorative.
-	Label   string
+	Label   signal.Accessor[string]
 	OnLoad  func(width, height float32)
 	OnError func(message string)
 }
@@ -74,8 +74,8 @@ func Image(p ImageProps) Node {
 	if p.Placeholder != "" {
 		e.r.batch.SetString(e.id, ops.PropImagePlaceholder, assetURL(p.Placeholder))
 	}
-	if p.Label != "" {
-		e.r.batch.SetString(e.id, ops.PropA11yLabel, p.Label)
+	if hasText(p.Label) {
+		bind(p.Label, func(v string) { e.r.batch.SetString(e.id, ops.PropA11yLabel, v) })
 		e.r.batch.SetEnum(e.id, ops.PropA11yRole, int32(RoleImage))
 	}
 	bind(p.Source, func(v string) { e.r.batch.SetString(e.id, ops.PropImageSource, assetURL(v)) })

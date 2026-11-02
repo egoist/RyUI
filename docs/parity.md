@@ -81,6 +81,8 @@ what RyUI has for it.
 | Camera | AVFoundation | `expo-camera` | ✓ `ryui/camera`: `Take` (the system's camera), `View` (a live preview, front or back), `Capture`; `ryui/camera/record` records video with sound |
 | Barcodes, QR codes | AVFoundation, Vision | `expo-camera` scanning | ✓ `ryui/scan`: live in `camera.View` (`Scan: scan.Codes(...)`) and in image files (`scan.File`); ML Kit on Android, only in the apps that import it |
 | Location | Core Location | `expo-location` | ✓ `ryui/location` |
+| Translations, plurals, regional formats | String Catalogs, FormatStyle | `expo-localization`, i18next | ✓ `ryui/i18n`, catalogs ([Languages](i18n.md)) |
+| Right-to-left layout | `layoutDirection` | `I18nManager` | ✓ follows the language, `ui.WithDirection` |
 | Local notifications | UserNotifications | `expo-notifications` | ✓ `ryui/notify` |
 | Push notifications | APNs | `expo-notifications` | ✓ `ryui/push` (APNs, Firebase Cloud Messaging: the token, messages received and tapped) |
 | Clipboard, share sheet, browser | `UIPasteboard`, `ShareLink`, `SFSafariViewController` | `expo-clipboard`, `expo-sharing`, `expo-web-browser` | ✓ `Copy`, `device.Clipboard` (text; images: `CopyImage`, `ClipboardImage`; `ClipboardHas`, `OnClipboardChange`), `Share` (text), `ShareFiles` (files, with expo-sharing's MIME type, UTI, title and iPad anchor; done when the sheet closes), `device.Browse` |

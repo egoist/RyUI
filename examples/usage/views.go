@@ -127,13 +127,13 @@ func meter(w signal.Accessor[Window]) ui.Node {
 					CornerRadius: 3, Background: color()}
 			})})
 		}
-		return ui.View(ui.ViewProps{Label: "Meter", Style: ui.Style{Height: ui.Pt(6), CornerRadius: 3, Clip: true, Background: ui.Gray.Opacity(0.2)}},
+		return ui.View(ui.ViewProps{Label: ui.Val("Meter"), Style: ui.Style{Height: ui.Pt(6), CornerRadius: 3, Clip: true, Background: ui.Gray.Opacity(0.2)}},
 			over(func() float32 { f, b, _ := parts(); return f + b }, func() ui.Color { return paceColor(pace.Get()).Opacity(0.4) }),
 			over(func() float32 { f, _, _ := parts(); return f }, func() ui.Color { return ui.Accent }),
 		)
 	}
 	return ui.View(ui.ViewProps{
-		Label: "Meter",
+		Label: ui.Val("Meter"),
 		Style: ui.Style{Direction: ui.RowDir, Gap: 4, Height: ui.Pt(4)},
 	},
 		part(func() float32 { f, _, _ := parts(); return f }, func() ui.Color { return ui.Accent }),
@@ -214,7 +214,7 @@ func chart(w signal.Accessor[Window]) ui.Node {
 	}
 	return ui.Column(ui.Style{Gap: 8},
 		ui.View(ui.ViewProps{
-			Label:    "Use so far, and the forecast to the reset",
+			Label:    ui.Val("Use so far, and the forecast to the reset"),
 			OnLayout: func(f ui.Frame) { size.Set([2]float32{f.Width, f.Height}) },
 			Style:    ui.Style{Height: ui.Pt(150)},
 		},

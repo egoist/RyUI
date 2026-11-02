@@ -1,0 +1,12 @@
+{
+  "ok": "확인",
+  "search": "검색",
+  "back": "뒤로",
+  "decrease": "감소",
+  "increase": "증가",
+  "about": "{app}에 관하여",
+  "hide": "{app} 가리기",
+  "quit": "{app} 종료",
+  "hideOthers": "기타 가리기",
+  "zoom": "확대/축소"
+}

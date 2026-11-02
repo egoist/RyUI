@@ -1,0 +1,12 @@
+{
+  "ok": "OK",
+  "search": "Keresés",
+  "back": "Vissza",
+  "decrease": "Csökkentés",
+  "increase": "Növelés",
+  "about": "A(z) {app} névjegye",
+  "hide": "A(z) {app} elrejtése",
+  "quit": "Kilépés a(z) {app} appból",
+  "hideOthers": "A többi elrejtése",
+  "zoom": "Nagyítás"
+}

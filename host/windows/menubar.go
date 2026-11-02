@@ -53,6 +53,19 @@ const (
 // and the accelerators again.
 func (h *Host) setMenuBar(b []byte) {
 	h.appMenus = parseMenus(b)
+	h.buildMenuBar()
+}
+
+// buildMenuBar makes the menu bar and the accelerators from the menus, in
+// the app's direction: a mirrored window's menu bar runs from the right
+// itself (MFT_RIGHTJUSTIFY would push it back to the other side), and its
+// menus open mirrored; MF_RIGHTORDER has their text read right to left and
+// their submenus cascade to the left.
+func (h *Host) buildMenuBar() {
+	order := uint32(0)
+	if h.rtl {
+		order = MF_RIGHTORDER
+	}
 	for _, om := range h.barOwned {
 		h.forget(om)
 	}
@@ -86,7 +99,7 @@ func (h *Host) setMenuBar(b []byte) {
 					items = append(items, menuItem{separator: true})
 					continue
 				}
-				flags := uint32(MF_STRING)
+				flags := uint32(MF_STRING) | order
 				if it.flags&itemDisabled != 0 {
 					flags |= MF_GRAYED
 				}
@@ -103,9 +116,9 @@ func (h *Host) setMenuBar(b []byte) {
 				destructive = destructive || it.flags&itemDestructive != 0
 			}
 			if destructive {
-				h.barOwned = append(h.barOwned, h.ownerDrawMenu(pop, items))
+				h.barOwned = append(h.barOwned, h.ownerDrawMenu(pop, items, order))
 			}
-			AppendMenu(bar, MF_POPUP, pop, accessKeys(titles)[i])
+			AppendMenu(bar, MF_POPUP|order, pop, accessKeys(titles)[i])
 		}
 	}
 	// A menu bar coming or going before the window shows keeps its client
@@ -388,7 +401,12 @@ func (h *Host) drawMenuBarItem(d *UAHDrawMenuItem) {
 	}
 	FillColor(dc, r, darkMenuBar)
 	if plate != darkMenuBar {
-		if Windows11() {
+		if Windows11() && Mirrored(dc) {
+			// A mirrored window's DC: GDI+ doesn't follow it.
+			k := h.scale
+			in := int32(2*k + 0.5)
+			FillRoundRectGDI(dc, Rect{Left: r.Left + in, Top: r.Top + in, Right: r.Right - in, Bottom: r.Bottom - in}, int32(4*k+0.5), plate)
+		} else if Windows11() {
 			k := h.scale
 			g := NewGraphics(dc)
 			c := MakeARGB(255, uint8(plate), uint8(plate>>8), uint8(plate>>16))
@@ -398,7 +416,7 @@ func (h *Host) drawMenuBarItem(d *UAHDrawMenuItem) {
 			FillColor(dc, r, plate)
 		}
 	}
-	flags := uint32(DT_CENTER | DT_VCENTER | DT_SINGLELINE)
+	flags := uint32(DT_CENTER|DT_VCENTER|DT_SINGLELINE) | textDirection(h.rtl)
 	if state&ODS_NOACCEL != 0 {
 		flags |= DT_HIDEPREFIX
 	}

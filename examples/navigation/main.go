@@ -38,8 +38,8 @@ func newMessage(id int) message {
 func App() ui.Node {
 	tab := signal.New(0)
 	return ui.Tabs(ui.TabsProps{Selected: tab},
-		ui.Tab{Title: "Inbox", Icon: ui.IconList, Content: inbox},
-		ui.Tab{Title: "Settings", Icon: ui.IconSettings, Content: settings},
+		ui.Tab{Title: ui.Val("Inbox"), Icon: ui.IconList, Content: inbox},
+		ui.Tab{Title: ui.Val("Settings"), Icon: ui.IconSettings, Content: settings},
 	)
 }
 
@@ -89,7 +89,7 @@ func inbox() ui.Node {
 				msg := m.Get() // in a handler: not tracked
 				nav.Push(func() ui.Node { return detail(msg, update, remove) }, ui.ScreenOptions{
 					Title: ui.Val(msg.from),
-					Actions: []ui.Action{{Title: "Star", OnPress: func() {
+					Actions: []ui.Action{{Title: ui.Val("Star"), OnPress: func() {
 						update(msg.id, func(x *message) { x.starred = !x.starred })
 						ui.Haptic(ui.HapticSelection)
 					}}},
@@ -123,8 +123,8 @@ func detail(msg message, update func(int, func(*message)), remove func(int)) ui.
 			Title:   "Delete this message?",
 			Message: "You can't undo this.",
 			Actions: []ui.Action{
-				{Title: "Cancel", Role: ui.ActionCancel},
-				{Title: "Delete", Role: ui.ActionDestructive, OnPress: func() {
+				{Title: ui.Val("Cancel"), Role: ui.ActionCancel},
+				{Title: ui.Val("Delete"), Role: ui.ActionDestructive, OnPress: func() {
 					remove(msg.id)
 					ui.Haptic(ui.HapticSuccess)
 					nav.Pop()
@@ -145,13 +145,13 @@ func detail(msg message, update func(int, func(*message)), remove func(int)) ui.
 			ui.Row(ui.Style{Gap: 12, Wrap: true},
 				ui.Button(ui.ButtonProps{Title: ui.Val("Add a note"), Variant: ui.ButtonFilled, OnPress: func() { sheet.Set(true) }}),
 				ui.Button(ui.ButtonProps{Title: ui.Val("More"), Variant: ui.ButtonGray, Menu: []ui.Action{
-					{Title: "Star", OnPress: func() { update(msg.id, func(x *message) { x.starred = !x.starred }) }},
-					{Title: "Delete…", Role: ui.ActionDestructive, OnPress: confirmDelete},
+					{Title: ui.Val("Star"), OnPress: func() { update(msg.id, func(x *message) { x.starred = !x.starred }) }},
+					{Title: ui.Val("Delete…"), Role: ui.ActionDestructive, OnPress: confirmDelete},
 				}}),
 			),
 			ui.Menu(ui.MenuProps{LongPress: true, Actions: []ui.Action{
-				{Title: "Reply", OnPress: func() { ui.Haptic(ui.HapticLight) }},
-				{Title: "Delete…", Role: ui.ActionDestructive, OnPress: confirmDelete},
+				{Title: ui.Val("Reply"), OnPress: func() { ui.Haptic(ui.HapticLight) }},
+				{Title: ui.Val("Delete…"), Role: ui.ActionDestructive, OnPress: confirmDelete},
 			}, Style: ui.Style{Padding: ui.All(16), Background: ui.SecondaryBackground, CornerRadius: 12}},
 				ui.StaticText("Long-press here for a context menu"),
 			),

@@ -24,6 +24,8 @@ func usage() {
   ryui dev -mac [flags] [dir]     run on this Mac, rebuilding on save
   ryui dev -windows [flags] [dir] run on this PC, rebuilding on save
   ryui build -ios|-android|-mac|-windows [flags] [dir]   a release build
+  ryui generate [dir]             write the functions of the app's catalogs
+  ryui i18n init|add|check        start, add languages to, and check the catalogs
 
 ryui dev flags:
 `)
@@ -42,6 +44,10 @@ func main() {
 		err = cmdDev(os.Args[2:])
 	case "build":
 		err = cmdBuild(os.Args[2:])
+	case "generate":
+		err = cmdGenerate(os.Args[2:])
+	case "i18n":
+		err = cmdI18n(os.Args[2:])
 	case "-h", "-help", "--help", "help":
 		usage()
 		devFlags(new(devOptions)).PrintDefaults()
@@ -64,6 +70,7 @@ type devOptions struct {
 	once         bool
 	embed        bool
 	verbose      bool
+	lang, dir    string
 }
 
 func devFlags(o *devOptions) *flag.FlagSet {
@@ -76,6 +83,8 @@ func devFlags(o *devOptions) *flag.FlagSet {
 	fs.BoolVar(&o.once, "once", false, "build the app with its Go code and launch it once, without watching or streaming logs")
 	fs.BoolVar(&o.embed, "embed", false, "build the app with its Go code (the default runs the Go code here, in the player)")
 	fs.BoolVar(&o.verbose, "v", false, "print the commands ryui runs")
+	fs.StringVar(&o.lang, "lang", "", "show this language for this run, as de or zh-Hans, or a pseudo locale: en-XA (accented, a third longer) or ar-XB (right to left)")
+	fs.StringVar(&o.dir, "dir", "", "lay the app out rtl or ltr for this run, whatever its language")
 	return fs
 }
 
@@ -83,6 +92,9 @@ func cmdDev(args []string) error {
 	var o devOptions
 	fs := devFlags(&o)
 	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if err := setDevLocale(o.lang, o.dir); err != nil {
 		return err
 	}
 	dir := "."

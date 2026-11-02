@@ -92,7 +92,7 @@ and give its password in RYUI_KEYSTORE_PASSWORD (and RYUI_KEY_PASSWORD if the ke
 		return err
 	}
 	args := []string{":app:bundleRelease", ":app:assembleRelease",
-		"-PryuiApplicationId=" + androidPackage(cfg.ID), "-PryuiAppName=" + cfg.Name,
+		"-PryuiApplicationId=" + androidPackage(cfg.ID), "-PryuiAppName=" + cfg.androidLabel(),
 		"-PryuiVersionCode=" + strconv.Itoa(cfg.Build), "-PryuiVersionName=" + cfg.Version,
 		"-PryuiIcon=" + icon, "-PryuiJniLibs=" + jni, "-PryuiRes=" + res, "-PryuiManifest=" + manifest,
 		"-PryuiKeystore=" + keystore, "-PryuiKeyAlias=" + alias, cfg.gradleModules()}

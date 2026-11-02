@@ -285,17 +285,11 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             }
             n.applyFont()
         case RyUIProp.textAlign:
-            let a: NSTextAlignment
-            switch RyUITextAlign(rawValue: v.enumValue) {
-            case .center: a = .center
-            case .end: a = view.effectiveUserInterfaceLayoutDirection == .rightToLeft ? .left : .right
-            case .justify: a = .justified
-            default: a = .natural
-            }
-            (view as? UILabel)?.textAlignment = a
-            (view as? UITextField)?.textAlignment = a
-            (view as? UITextView)?.textAlignment = a
+            n.textAlign = v.enumValue
+            n.applyTextAlign()
             (view as? RyUIRichTextView)?.base.align = v.enumValue
+        case RyUIProp.layoutDirection:
+            setDirection(n, RyUILayoutDirection(rawValue: v.enumValue) ?? .inherit)
         case RyUIProp.lineLimit:
             (view as? UILabel)?.numberOfLines = Int(v.int)
             (view as? RyUIRichTextView)?.base.lines = Int(v.int)
@@ -449,6 +443,7 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             guard let s = n.view as? UIScrollView else { return }
             s.alwaysBounceVertical = !v.bool
             s.alwaysBounceHorizontal = v.bool
+            (s as? RyUIScrollView)?.horizontal = v.bool
         case (.view, RyUIProp.View.dropAccept):
             setDropAccept(n, v)
         case (.view, RyUIProp.View.dragItems):

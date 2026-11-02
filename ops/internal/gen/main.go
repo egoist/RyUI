@@ -401,6 +401,10 @@ public struct RyUIEnvironment: Equatable {
     public var widthClass: UInt8 = 0, heightClass: UInt8 = 0
     public var locale = ""
     public var timeZone = TimeZone.current.identifier
+    /// The languages the user reads, most preferred first, joined by commas.
+    public var languages = ""
+    /// 1 Sunday to 7 Saturday, and 12 or 24; 0 when the system doesn't say.
+    public var firstWeekday: UInt8 = 0, hourCycle: UInt8 = 0
     public init() {}
 }
 
@@ -422,6 +426,9 @@ public struct RyUIWriter {
         u8((e.widthClass & 3) | (e.heightClass & 3) << 2)
         string(e.locale)
         string(e.timeZone)
+        string(e.languages)
+        u8(e.firstWeekday)
+        u8(e.hourCycle)
     }
     public mutating func gesture(_ g: RyUIGesture) {
         u8(UInt8(g.state))
@@ -621,6 +628,10 @@ data class RyUIEnvironment(
     val widthClass: Int = 0, val heightClass: Int = 0,
     val locale: String = "",
     val timeZone: String = java.util.TimeZone.getDefault().id,
+    /** The languages the user reads, most preferred first, joined by commas. */
+    val languages: String = "",
+    /** 1 Sunday to 7 Saturday, and 12 or 24; 0 when the system doesn't say. */
+    val firstWeekday: Int = 0, val hourCycle: Int = 0,
 )
 
 /** Writes the little-endian wire format. */
@@ -648,6 +659,9 @@ class RyUIWriter {
         u8((e.widthClass and 3) or ((e.heightClass and 3) shl 2))
         string(e.locale)
         string(e.timeZone)
+        string(e.languages)
+        u8(e.firstWeekday)
+        u8(e.hourCycle)
     }
     fun gesture(g: RyUIGesture) {
         u8(g.state)

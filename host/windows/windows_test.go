@@ -10,6 +10,7 @@ import (
 	"testing"
 	"unsafe"
 
+	"github.com/egoist/ryui/internal/l10n"
 	. "github.com/egoist/ryui/internal/windows"
 	"github.com/egoist/ryui/ops"
 	"github.com/egoist/ryui/signal"
@@ -481,7 +482,7 @@ func TestMenuBarFollows(t *testing.T) {
 }
 
 func TestWindowOptions(t *testing.T) {
-	ui.SetWindowOptions(ui.WindowOptions{Title: "Notes", Width: 500, Height: 400, MinWidth: 400, MinHeight: 300})
+	ui.SetWindowOptions(ui.WindowOptions{Title: ui.Val("Notes"), Width: 500, Height: 400, MinWidth: 400, MinHeight: 300})
 	defer ui.SetWindowOptions(ui.WindowOptions{})
 	h, _ := mount(t, func() ui.Node {
 		return ui.Column(ui.Style{},
@@ -824,7 +825,7 @@ func TestDestructiveMenu(t *testing.T) {
 		}
 
 		// A popup menu's actions: owner-drawn with a destructive one only.
-		m, om := h.actionMenu([]action{{title: "Star"}, {title: "Delete…", role: ops.AlertButtonRoleDestructive}, {title: "Cancel", role: ops.AlertButtonRoleCancel}})
+		m, om := h.actionMenu([]action{{title: "Star"}, {title: "Delete…", role: ops.AlertButtonRoleDestructive}, {title: "Cancel", role: ops.AlertButtonRoleCancel}}, false)
 		if om == nil || MenuItemCount(m) != 2 || MenuItemType(m, 0)&MFT_OWNERDRAW == 0 || !h.owned[MenuItemData(m, 1)].destructive {
 			fatalf("the popup menu with Delete… isn't owner-drawn")
 		}
@@ -833,10 +834,416 @@ func TestDestructiveMenu(t *testing.T) {
 		if len(h.owned) != 3 {
 			fatalf("%d owner-drawn items kept, want the menu bar's 3", len(h.owned))
 		}
-		m, om = h.actionMenu([]action{{title: "Star"}, {title: "Reply"}})
+		m, om = h.actionMenu([]action{{title: "Star"}, {title: "Reply"}}, false)
 		if om != nil || MenuItemType(m, 0)&MFT_OWNERDRAW != 0 {
 			fatalf("a popup menu without a destructive action is owner-drawn")
 		}
 		DestroyMenu(m)
+	})
+}
+
+// setLocale tells the host what the core's Locale command does.
+func setLocale(h *Host, rtl bool, tag string) {
+	flags := byte(0)
+	if rtl {
+		flags = 1
+	}
+	h.enter(func() { h.command(h.root, ops.CmdLocale, append([]byte{flags}, tag...)) })
+}
+
+// Right to left, the top-level window is mirrored for its title bar and
+// menu bar, and nothing in it: frames stay physical.
+func TestLocaleMirrorsOnlyTheTopLevel(t *testing.T) {
+	h, _ := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{Padding: ui.All(16)}, ui.StaticText("a"))
+	})
+	onMain(t, func() {
+		text := find(h, ops.KindText)[0]
+		before, at := frame(h, text), ClientToScreen(text.hwnd, Point{})
+		setLocale(h, true, "ar")
+		if !h.rtl || h.locale != "ar" {
+			fatalf("rtl %v, locale %q", h.rtl, h.locale)
+		}
+		ex := WindowLong(h.window, GWL_EXSTYLE)
+		if ex&WS_EX_LAYOUTRTL == 0 || ex&WS_EX_NOINHERITLAYOUT == 0 {
+			fatalf("the window's extended style is %#x", ex)
+		}
+		for _, n := range []*node{h.root, text} {
+			if WindowLong(n.hwnd, GWL_EXSTYLE)&WS_EX_LAYOUTRTL != 0 {
+				fatalf("%s is mirrored", n.kind)
+			}
+		}
+		// The root still fills the client area, in its own coordinates.
+		if r, c := WindowRectIn(h.root.hwnd, h.window), ClientRect(h.window); r != c {
+			fatalf("the root is at %+v in a client area of %+v", r, c)
+		}
+		if f, p := frame(h, text), ClientToScreen(text.hwnd, Point{}); f != before || p != at {
+			fatalf("the text moved: %v at %+v, was %v at %+v", f, p, before, at)
+		}
+		// A hit test finds it where it shows.
+		if w := windowAt(h.window, Point{X: at.X + 1, Y: at.Y + 1}); w != text.hwnd {
+			fatalf("the window at the text is %#x, not the text's %#x", w, text.hwnd)
+		}
+		setLocale(h, false, "en")
+		if WindowLong(h.window, GWL_EXSTYLE)&(WS_EX_LAYOUTRTL|WS_EX_NOINHERITLAYOUT) != 0 {
+			fatalf("left to right again, its extended style is %#x", WindowLong(h.window, GWL_EXSTYLE))
+		}
+		if f := frame(h, text); f != before {
+			fatalf("left to right again, the text is at %v, was %v", f, before)
+		}
+	})
+}
+
+func TestTextAlignFollowsDirection(t *testing.T) {
+	h, _ := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{},
+			ui.StaticText("a"),
+			ui.WithDirection(ui.LeftToRight, func() ui.Node { return ui.StaticText("b") }),
+			ui.TextField(ui.TextFieldProps{Value: signal.New("kept")}),
+		)
+	})
+	onMain(t, func() {
+		var a, b *node
+		for _, n := range find(h, ops.KindText) {
+			if n.text == "a" {
+				a = n
+			} else {
+				b = n
+			}
+		}
+		field := find(h, ops.KindTextField)[0]
+		if f := h.textFormat(a); f&DT_RIGHT != 0 || f&DT_RTLREADING != 0 {
+			fatalf("left to right: %#x", f)
+		}
+		before := field.ctl
+		setLocale(h, true, "ar")
+		// On the right, reading as its letters do: Latin ones left to right.
+		if f := h.textFormat(a); f&DT_RIGHT == 0 || f&DT_RTLREADING != 0 {
+			fatalf("Start, right to left: %#x", f)
+		}
+		latin := a.utext
+		a.utext = UTF16Units("مرحبا")
+		if f := h.textFormat(a); f&DT_RIGHT == 0 || f&DT_RTLREADING == 0 {
+			fatalf("Start, right to left, in Arabic: %#x", f)
+		}
+		a.utext = latin
+		a.textAlign = int32(ops.TextAlignEnd)
+		if f := h.textFormat(a); f&DT_RIGHT != 0 {
+			fatalf("End, right to left: %#x", f)
+		}
+		a.textAlign = int32(ops.TextAlignCenter)
+		if f := h.textFormat(a); f&DT_CENTER == 0 || f&DT_RIGHT != 0 {
+			fatalf("Center, right to left: %#x", f)
+		}
+		// The view whose LayoutDirection says otherwise keeps it.
+		if f := h.textFormat(b); f&DT_RIGHT != 0 || f&DT_RTLREADING != 0 {
+			fatalf("a left-to-right view in a right-to-left app: %#x", f)
+		}
+		// An EDIT takes its reading order as it's made: a new one, with its
+		// text, the one before gone.
+		if field.ctl == before || IsWindow(before) || h.byHwnd[field.ctl] != field {
+			fatalf("the field's EDIT wasn't made again")
+		}
+		if WindowLong(field.ctl, GWL_STYLE)&ES_RIGHT == 0 || WindowLong(field.ctl, GWL_EXSTYLE)&WS_EX_RTLREADING == 0 {
+			fatalf("the field's styles: %#x %#x", WindowLong(field.ctl, GWL_STYLE), WindowLong(field.ctl, GWL_EXSTYLE))
+		}
+		if s := WindowText(field.ctl); s != "kept" {
+			fatalf("the field's text is %q", s)
+		}
+		// End goes the other way, in an EDIT made again; the same alignment
+		// again doesn't make one.
+		end := &ops.Value{Int: int64(ops.TextAlignEnd)}
+		h.enter(func() { h.setCommon(field, ops.PropTextAlign, end) })
+		if WindowLong(field.ctl, GWL_STYLE)&ES_RIGHT != 0 || WindowText(field.ctl) != "kept" {
+			fatalf("End, right to left: %#x, %q", WindowLong(field.ctl, GWL_STYLE), WindowText(field.ctl))
+		}
+		now := field.ctl
+		h.enter(func() { h.setCommon(field, ops.PropTextAlign, end) })
+		if field.ctl != now {
+			fatalf("the same alignment made the EDIT again")
+		}
+	})
+}
+
+func TestHeaderMirrors(t *testing.T) {
+	var nav *ui.Navigator
+	h, _ := mount(t, func() ui.Node {
+		return ui.Stack(func() ui.Node {
+			nav = ui.UseNavigator()
+			return ui.StaticText("Home")
+		}, ui.ScreenOptions{Title: ui.Val("Home")})
+	})
+	onMain(t, func() {
+		h.enter(func() {
+			ui.Post(func() {
+				nav.Push(func() ui.Node { return ui.StaticText("Detail") },
+					ui.ScreenOptions{Title: ui.Val("Detail"), Actions: []ui.Action{{Title: ui.Val("Save")}}})
+			})
+		})
+		h.runPosted()
+		header := find(h, ops.KindStack)[0].nav.bar
+		w := ClientRect(header.hwnd).W()
+		if r := WindowRectIn(header.nav.back, header.hwnd); r.Left != h.px(header, 6) {
+			fatalf("left to right, the back button is at %+v", r)
+		}
+		if s := WindowText(header.nav.back); s != "Back" {
+			fatalf("the back button says %q", s)
+		}
+		setLocale(h, true, "ar")
+		if r := WindowRectIn(header.nav.back, header.hwnd); r.Right != w-h.px(header, 6) {
+			fatalf("right to left, the back button is at %+v in %d", r, w)
+		}
+		if g, _ := header.nav.headerButton(header.nav.back, h.isRTL(header)); g != 0xE72A {
+			fatalf("right to left, the back arrow is %#x", g)
+		}
+		if r := WindowRectIn(header.nav.buttons[0], header.hwnd); r.Left != h.px(header, 8) {
+			fatalf("right to left, the bar button is at %+v", r)
+		}
+		if s := WindowText(header.nav.back); s == "Back" || s != l10n.Back("ar") {
+			fatalf("in Arabic, the back button says %q", s)
+		}
+		setLocale(h, false, "en")
+		if r := WindowRectIn(header.nav.back, header.hwnd); r.Left != h.px(header, 6) {
+			fatalf("left to right again, the back button is at %+v", r)
+		}
+	})
+}
+
+func TestTabsMirror(t *testing.T) {
+	selected := signal.New(0)
+	page := func() ui.Node { return ui.StaticText("p") }
+	h, _ := mount(t, func() ui.Node {
+		return ui.Tabs(ui.TabsProps{Selected: selected},
+			ui.Tab{Title: ui.Val("One"), Content: page},
+			ui.Tab{Title: ui.Val("Two"), Content: page})
+	})
+	onMain(t, func() {
+		tabs := find(h, ops.KindTabs)[0]
+		bar := tabs.nav.bar
+		if r := h.tabRects(bar); r[0].Left >= r[1].Left {
+			fatalf("left to right, the tabs are at %+v", r)
+		}
+		setLocale(h, true, "ar")
+		r := h.tabRects(bar)
+		if r[0].Left <= r[1].Left || r[0].Right != ClientRect(bar.hwnd).W()-h.px(bar, 8) {
+			fatalf("right to left, the tabs are at %+v", r)
+		}
+		// The next tab is to the left.
+		SendMessage(bar.hwnd, WM_KEYDOWN, VK_LEFT, 0)
+		if tabs.selected != 1 {
+			fatalf("Left selected tab %d", tabs.selected)
+		}
+	})
+}
+
+func TestGridColumnsRunFromTheRight(t *testing.T) {
+	h, _ := mount(t, func() ui.Node {
+		return ui.List(ui.ListProps{Columns: 2, Gap: 10}, signal.Static([]int{1, 2}), func(i int) int { return i },
+			func(item signal.Accessor[int], _ signal.Accessor[int]) ui.Node {
+				return ui.Text(signal.Func(func() string { return fmt.Sprint(item.Get()) }))
+			})
+	})
+	onMain(t, func() {
+		l := find(h, ops.KindList)[0].list
+		rv := l.shown[0]
+		first := func() Rect { return WindowRectIn(rv.cells[0].n.hwnd, rv.n.hwnd) }
+		if first().Left != 0 {
+			fatalf("left to right, the first column is at %+v", first())
+		}
+		setLocale(h, true, "ar")
+		l.flush(h)
+		rv = l.shown[0]
+		if r, second := first(), WindowRectIn(rv.cells[1].n.hwnd, rv.n.hwnd); r.Right != ClientRect(rv.n.hwnd).W() || second.Left != 0 {
+			fatalf("right to left, the columns are at %+v and %+v", r, second)
+		}
+	})
+}
+
+func TestSliderMirrors(t *testing.T) {
+	value := signal.New(0.25)
+	h, _ := mount(t, func() ui.Node { return ui.Slider(ui.SliderProps{Value: value}) })
+	onMain(t, func() {
+		s := find(h, ops.KindSlider)[0]
+		if p := SendMessage(s.ctl, TBM_GETPOS, 0, 0); p != sliderSteps/4 {
+			fatalf("left to right, the trackbar is at %d", p)
+		}
+		setLocale(h, true, "ar")
+		if p := SendMessage(s.ctl, TBM_GETPOS, 0, 0); p != sliderSteps-sliderSteps/4 {
+			fatalf("right to left, the trackbar is at %d", p)
+		}
+		// The thumb dragged: the value is read from the right.
+		SendMessage(s.ctl, TBM_SETPOS, 1, sliderSteps-sliderSteps/10)
+		h.sliderMoved(s)
+		if s.value != 0.1 {
+			fatalf("the value is %v", s.value)
+		}
+	})
+}
+
+// A horizontal Scroll right to left starts at its trailing end and keeps its
+// distance from it, its content at its origin, and its offsets physical.
+func TestHorizontalScrollKeepsItsEnd(t *testing.T) {
+	width := signal.New[float32](300)
+	var gotX float32
+	h, _ := mount(t, func() ui.Node {
+		return ui.WithDirection(ui.RightToLeft, func() ui.Node {
+			return ui.Scroll(ui.ScrollProps{Horizontal: true, Style: ui.Style{Width: ui.Pt(100), Height: ui.Pt(40)},
+				OnScroll: func(x, y float32) { gotX = x }},
+				ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style { return ui.Style{Width: ui.Pt(width.Get()), Height: ui.Pt(40)} })}))
+		})
+	})
+	setWidth := func(w float32) {
+		h.enter(func() { ui.Post(func() { width.Set(w) }) })
+		h.runPosted()
+	}
+	onMain(t, func() {
+		s := find(h, ops.KindScroll)[0]
+		content := s.children[0]
+		if s.contentW != 300 || s.scrollX != 200 {
+			fatalf("content %v at %v, want its end showing", s.contentW, s.scrollX)
+		}
+		if content.frame[0] != 0 {
+			fatalf("the content's frame is at %v, not the origin", content.frame[0])
+		}
+		if r := WindowRectIn(content.hwnd, s.hwnd); r.Left != h.px(s, -200) {
+			fatalf("the content's window is at %+v", r)
+		}
+		h.scrollToOffset(s, 150, 0) // physical
+		if s.scrollX != 150 || s.scrollEnd != 50 || gotX != 150 {
+			fatalf("at %v, %v from its end, OnScroll %v", s.scrollX, s.scrollEnd, gotX)
+		}
+		setWidth(400)
+		if s.scrollX != 250 || s.scrollEnd != 50 || gotX != 250 {
+			fatalf("grown: at %v, %v from its end, OnScroll %v", s.scrollX, s.scrollEnd, gotX)
+		}
+		setWidth(120)
+		if s.scrollX != 0 {
+			fatalf("shrunk: at %v", s.scrollX)
+		}
+	})
+}
+
+// The other direction's end of a left-to-right Scroll stays where it is.
+func TestHorizontalScrollLeftToRightStartsAtZero(t *testing.T) {
+	h, _ := mount(t, func() ui.Node {
+		return ui.Scroll(ui.ScrollProps{Horizontal: true, Style: ui.Style{Width: ui.Pt(100), Height: ui.Pt(40)}},
+			ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(300), Height: ui.Pt(40)}}))
+	})
+	onMain(t, func() {
+		if s := find(h, ops.KindScroll)[0]; s.scrollX != 0 {
+			fatalf("at %v", s.scrollX)
+		}
+	})
+}
+
+func TestSymbolsMirror(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		rtl  bool
+		want string
+	}{
+		{"chevron.forward", false, "chevron.right"},
+		{"chevron.forward", true, "chevron.left"},
+		{"chevron.backward", false, "chevron.left"},
+		{"chevron.backward", true, "chevron.right"},
+		{"chevron.right", true, "chevron.right"},
+		{"chevron.left", true, "chevron.left"},
+		{"arrow.uturn.forward", false, "arrow.uturn.forward"},
+		{"arrow.uturn.forward", true, "arrow.uturn.backward"},
+		{"forward.fill", true, "backward.fill"},
+		{"star", true, "star"},
+	} {
+		if got, want := directedGlyph(c.name, c.rtl), symbols[c.want]; got != want || got == 0 {
+			t.Errorf("%s (rtl %v): %#x, want %s's %#x", c.name, c.rtl, got, c.want, want)
+		}
+	}
+	if g := directedGlyph("nothing.forward", true); g != 0 {
+		t.Errorf("a symbol there's no glyph for: %#x", g)
+	}
+}
+
+func TestEnvironmentLanguages(t *testing.T) {
+	h, _ := mount(t, func() ui.Node { return ui.StaticText("a") })
+	onMain(t, func() {
+		if h.env.FirstWeekday > 7 || h.env.HourCycle != 0 && h.env.HourCycle != 12 && h.env.HourCycle != 24 {
+			fatalf("first weekday %d, hour cycle %d", h.env.FirstWeekday, h.env.HourCycle)
+		}
+		if h.env.Languages == "" {
+			fatalf("no languages")
+		}
+	})
+	if s := joinLanguages("de", []string{"en-US", "de", "fr"}); s != "de,en-US,fr" {
+		t.Errorf("joined %q", s)
+	}
+	if s := joinLanguages("", []string{"en-US", "fr"}); s != "en-US,fr" {
+		t.Errorf("joined %q", s)
+	}
+}
+
+// The language the app chose is kept in a file of the app's data, comes
+// first in Languages at once, and goes as it follows the system again.
+func TestSaveLocale(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "sub", localeName)
+	h, _ := mount(t, func() ui.Node { return ui.StaticText("a") })
+	onMain(t, func() {
+		h.localePath = path
+		system := h.env.Languages
+		h.enter(func() { h.command(h.root, ops.CmdSaveLocale, []byte("ar")) })
+		if b, err := os.ReadFile(path); err != nil || string(b) != "ar" {
+			fatalf("kept %q, %v", b, err)
+		}
+		if got := readSavedLocale(path); got != "ar" {
+			fatalf("read %q", got)
+		}
+		if h.env.Languages != joinLanguages("ar", h.intl.languages) || h.env.Languages[:2] != "ar" {
+			fatalf("languages %q", h.env.Languages)
+		}
+		h.enter(func() { h.command(h.root, ops.CmdSaveLocale, nil) })
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			fatalf("kept after following the system again: %v", err)
+		}
+		if h.env.Languages != system {
+			fatalf("languages %q, was %q", h.env.Languages, system)
+		}
+		// What isn't a language isn't read.
+		os.MkdirAll(filepath.Dir(path), 0o755)
+		os.WriteFile(path, []byte("not a language tag at all"), 0o644)
+		if got := readSavedLocale(path); got != "" {
+			fatalf("read %q", got)
+		}
+	})
+}
+
+func TestWindowTitleCommand(t *testing.T) {
+	h, _ := mount(t, func() ui.Node { return ui.StaticText("a") })
+	onMain(t, func() {
+		h.enter(func() { h.command(h.root, ops.CmdWindowTitle, []byte("مرحبا")) })
+		if s := WindowText(h.window); s != "مرحبا" {
+			fatalf("title %q", s)
+		}
+		h.enter(func() { h.command(h.root, ops.CmdWindowTitle, nil) })
+		if s := WindowText(h.window); s != h.appName {
+			fatalf("title %q, the app's name %q", s, h.appName)
+		}
+	})
+}
+
+// A menu bar made right to left, and again as the direction changes.
+func TestMenuBarMirrors(t *testing.T) {
+	h, _ := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{},
+			ui.MenuBar(signal.Static([]ui.MenuBarMenu{{Title: "File", Items: []ui.MenuItem{{Title: "New"}}}})),
+			ui.StaticText("x"))
+	})
+	onMain(t, func() {
+		bar := GetMenu(h.window)
+		setLocale(h, true, "ar")
+		now := GetMenu(h.window)
+		if now == 0 || now == bar {
+			fatalf("the menu bar wasn't made again")
+		}
+		if MenuItemType(SubMenu(now, 0), 0)&MF_RIGHTORDER == 0 {
+			fatalf("its item's type is %#x", MenuItemType(SubMenu(now, 0), 0))
+		}
 	})
 }

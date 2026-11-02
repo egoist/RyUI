@@ -1,0 +1,12 @@
+{
+  "ok": "OK",
+  "search": "Hledat",
+  "back": "Zpět",
+  "decrease": "Snížit",
+  "increase": "Zvýšit",
+  "about": "O aplikaci {app}",
+  "hide": "Skrýt aplikaci {app}",
+  "quit": "Ukončit aplikaci {app}",
+  "hideOthers": "Skrýt ostatní",
+  "zoom": "Přepnout velikost"
+}

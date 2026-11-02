@@ -76,8 +76,8 @@ instead of the title, and VoiceOver and TalkBack read the title.
 nav.Push(func() ui.Node { return Detail(n) }, ui.ScreenOptions{
 	Title: ui.Val(n.Text),
 	Actions: []ui.Action{
-		{Title: "Share", Icon: ui.IconShare, OnPress: func() { ui.Share(n.Text) }},
-		{Title: "Delete", Role: ui.ActionDestructive, OnPress: func() { nav.Pop() }},
+		{Title: ui.Val("Share"), Icon: ui.IconShare, OnPress: func() { ui.Share(n.Text) }},
+		{Title: ui.Val("Delete"), Role: ui.ActionDestructive, OnPress: func() { nav.Pop() }},
 	},
 })
 ```
@@ -108,7 +108,7 @@ return ui.Stack(func() ui.Node {
 		func(n signal.Accessor[note], _ signal.Accessor[int]) ui.Node {
 			return ui.Text(signal.Func(func() string { return n.Get().Text }), ui.Style{Padding: ui.Symmetric(12, 20)})
 		})
-}, ui.ScreenOptions{Title: ui.Val("Notes"), Search: &ui.Search{Text: query, Placeholder: "Search notes"}})
+}, ui.ScreenOptions{Title: ui.Val("Notes"), Search: &ui.Search{Text: query, Placeholder: ui.Val("Search notes")}})
 ```
 
 On iOS it's a `UISearchController` under the title, which stays shown
@@ -125,7 +125,7 @@ it's pushed, and back into it as it's popped. See
 ```go
 key := fmt.Sprintf("photo-%d", id)
 return ui.View(ui.ViewProps{
-	Label: "Photo",
+	Label: ui.Val("Photo"),
 	Style: ui.Style{AspectRatio: 1, Match: key},
 	OnPress: func() {
 		nav.Push(func() ui.Node { return photo(id) }, ui.ScreenOptions{Title: ui.Val("Photo"), ZoomFrom: key})
@@ -167,10 +167,10 @@ writing it switches tabs.
 ```go
 tab := signal.New(0)
 return ui.Tabs(ui.TabsProps{Selected: tab},
-	ui.Tab{Title: "Notes", Icon: ui.IconList, Content: func() ui.Node {
+	ui.Tab{Title: ui.Val("Notes"), Icon: ui.IconList, Content: func() ui.Node {
 		return ui.Stack(Notes, ui.ScreenOptions{Title: ui.Val("Notes")})
 	}},
-	ui.Tab{Title: "Settings", Icon: ui.IconSettings, Content: func() ui.Node {
+	ui.Tab{Title: ui.Val("Settings"), Icon: ui.IconSettings, Content: func() ui.Node {
 		return ui.Stack(Settings, ui.ScreenOptions{Title: ui.Val("Settings")})
 	}},
 )
@@ -238,8 +238,8 @@ ui.Alert(ui.AlertProps{
 	Title:   "Delete this note?",
 	Message: "You can't undo this.",
 	Actions: []ui.Action{
-		{Title: "Cancel", Role: ui.ActionCancel},
-		{Title: "Delete", Role: ui.ActionDestructive, OnPress: remove},
+		{Title: ui.Val("Cancel"), Role: ui.ActionCancel},
+		{Title: ui.Val("Delete"), Role: ui.ActionDestructive, OnPress: remove},
 	},
 })
 ```
@@ -264,9 +264,9 @@ ui.Alert(ui.AlertProps{
 	Title:       "Photo",
 	ActionSheet: true,
 	Actions: []ui.Action{
-		{Title: "Take a photo", OnPress: func() {}},
-		{Title: "Choose from library", OnPress: func() {}},
-		{Title: "Cancel", Role: ui.ActionCancel},
+		{Title: ui.Val("Take a photo"), OnPress: func() {}},
+		{Title: ui.Val("Choose from library"), OnPress: func() {}},
+		{Title: ui.Val("Cancel"), Role: ui.ActionCancel},
 	},
 })
 ```

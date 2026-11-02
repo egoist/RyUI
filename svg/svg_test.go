@@ -355,7 +355,7 @@ func TestView(t *testing.T) {
 	h, _ := mount(t, func() ui.Node {
 		return ui.Column(ui.Style{},
 			svg.View(svg.Props{Icon: download, Style: ui.Style{Width: ui.Pt(24), Height: ui.Pt(24)}}),
-			svg.View(svg.Props{Icon: download, Label: "Download", Color: ui.Val(ui.Accent),
+			svg.View(svg.Props{Icon: download, Label: ui.Val("Download"), Color: ui.Val(ui.Accent),
 				Style: ui.Style{Width: ui.Pt(48), Height: ui.Pt(48)}}),
 		)
 	})

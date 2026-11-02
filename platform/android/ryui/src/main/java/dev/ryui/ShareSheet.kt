@@ -46,6 +46,8 @@ class RyUIShareActivity : RyUIActivity() {
         })
     }
 
+    override val themeRes get() = R.style.Theme_RyUI_ShareSheet
+
     override fun content(frame: FrameLayout): View {
         val d = resources.displayMetrics.density
         val themed = RyUIRuntime.get(this).themed

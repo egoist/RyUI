@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	. "github.com/egoist/ryui/internal/darwin"
+	"github.com/egoist/ryui/internal/l10n"
 	"github.com/egoist/ryui/ops"
 )
 
@@ -48,70 +49,77 @@ func (h *Host) makeWindow() {
 }
 
 // makeMenu makes the main menu: the app's, File, Edit (text fields' copy
-// and paste go through it), View, Window and Help, with the app's own
-// menus (MenuBar): one titled as a standard one adds its items to it,
-// the others go between View and Window, as macOS orders them.
+// and paste go through it), View, Window and Help, in the language shown,
+// with the app's own menus (MenuBar): one titled as a standard one, in
+// English or in that language, adds its items to it, the others go between
+// View and Window, as macOS orders them.
 func (h *Host) makeMenu(app ID) {
 	bar := New("NSMenu")
 	name := h.appName
 	own := map[string]*appMenu{}
+	joined := map[*appMenu]bool{}
 	for i := range h.appMenus {
 		m := &h.appMenus[i]
-		switch strings.ToLower(m.title) {
-		case "file", "edit", "view", "window", "help":
-			own[strings.ToLower(m.title)] = m
+		for _, s := range []string{"File", "Edit", "View", "Window", "Help"} {
+			if strings.EqualFold(m.title, s) || strings.EqualFold(m.title, h.menuWord(s)) {
+				if old := own[s]; old != nil {
+					delete(joined, old)
+				}
+				own[s], joined[m] = m, true
+				break
+			}
 		}
 	}
 
 	appMenu := menu("")
-	item(appMenu, "About "+name, "orderFrontStandardAboutPanel:", "", 0)
+	item(appMenu, l10n.About(h.locale, name), "orderFrontStandardAboutPanel:", "", 0)
 	sep(appMenu)
-	services := menu("Services")
-	sub(appMenu, "Services", services)
+	services := menu(h.menuWord("Services"))
+	sub(appMenu, h.menuWord("Services"), services)
 	Send(app, "setServicesMenu:", uintptr(services))
 	sep(appMenu)
-	item(appMenu, "Hide "+name, "hide:", "h", 0)
-	item(appMenu, "Hide Others", "hideOtherApplications:", "h", modOption)
-	item(appMenu, "Show All", "unhideAllApplications:", "", 0)
+	item(appMenu, l10n.Hide(h.locale, name), "hide:", "h", 0)
+	item(appMenu, l10n.HideOthers(h.locale), "hideOtherApplications:", "h", modOption)
+	item(appMenu, h.menuWord("Show All"), "unhideAllApplications:", "", 0)
 	sep(appMenu)
-	item(appMenu, "Quit "+name, "terminate:", "q", 0)
+	item(appMenu, l10n.Quit(h.locale, name), "terminate:", "q", 0)
 	sub(bar, name, appMenu)
 
-	file := menu("File")
-	if m := own["file"]; m != nil {
+	file := menu(h.menuWord("File"))
+	if m := own["File"]; m != nil {
 		h.addAppItems(file, m)
 		sep(file)
 	}
-	item(file, "Close Window", "performClose:", "w", 0)
-	sub(bar, "File", file)
+	item(file, h.menuWord("Close Window"), "performClose:", "w", 0)
+	sub(bar, h.menuWord("File"), file)
 
-	edit := menu("Edit")
-	item(edit, "Undo", "undo:", "z", 0)
-	item(edit, "Redo", "redo:", "z", modShift)
+	edit := menu(h.menuWord("Edit"))
+	item(edit, h.menuWord("Undo"), "undo:", "z", 0)
+	item(edit, h.menuWord("Redo"), "redo:", "z", modShift)
 	sep(edit)
-	item(edit, "Cut", "cut:", "x", 0)
-	item(edit, "Copy", "copy:", "c", 0)
-	item(edit, "Paste", "paste:", "v", 0)
-	item(edit, "Select All", "selectAll:", "a", 0)
-	if m := own["edit"]; m != nil {
+	item(edit, h.menuWord("Cut"), "cut:", "x", 0)
+	item(edit, h.menuWord("Copy"), "copy:", "c", 0)
+	item(edit, h.menuWord("Paste"), "paste:", "v", 0)
+	item(edit, h.menuWord("Select All"), "selectAll:", "a", 0)
+	if m := own["Edit"]; m != nil {
 		sep(edit)
 		h.addAppItems(edit, m)
 	}
-	sub(bar, "Edit", edit)
+	sub(bar, h.menuWord("Edit"), edit)
 
-	view := menu("View")
-	if m := own["view"]; m != nil {
+	view := menu(h.menuWord("View"))
+	if m := own["View"]; m != nil {
 		h.addAppItems(view, m)
 		sep(view)
 	}
-	item(view, "Back", "back:", "[", 0)
+	item(view, l10n.Back(h.locale), "back:", "[", 0)
 	sep(view)
-	item(view, "Enter Full Screen", "toggleFullScreen:", "f", modControl)
-	sub(bar, "View", view)
+	item(view, h.menuWord("Enter Full Screen"), "toggleFullScreen:", "f", modControl)
+	sub(bar, h.menuWord("View"), view)
 
 	for i := range h.appMenus {
 		m := &h.appMenus[i]
-		if own[strings.ToLower(m.title)] == m {
+		if joined[m] {
 			continue
 		}
 		mm := menu(m.title)
@@ -119,25 +127,26 @@ func (h *Host) makeMenu(app ID) {
 		sub(bar, m.title, mm)
 	}
 
-	win := menu("Window")
-	item(win, "Minimize", "performMiniaturize:", "m", 0)
-	item(win, "Zoom", "performZoom:", "", 0)
-	if m := own["window"]; m != nil {
+	win := menu(h.menuWord("Window"))
+	item(win, h.menuWord("Minimize"), "performMiniaturize:", "m", 0)
+	item(win, l10n.Zoom(h.locale), "performZoom:", "", 0)
+	if m := own["Window"]; m != nil {
 		sep(win)
 		h.addAppItems(win, m)
 	}
 	sep(win)
-	item(win, "Bring All to Front", "arrangeInFront:", "", 0)
-	sub(bar, "Window", win)
+	item(win, h.menuWord("Bring All to Front"), "arrangeInFront:", "", 0)
+	sub(bar, h.menuWord("Window"), win)
 	Send(app, "setWindowsMenu:", uintptr(win))
 
-	if m := own["help"]; m != nil {
-		help := menu("Help")
+	if m := own["Help"]; m != nil {
+		help := menu(h.menuWord("Help"))
 		h.addAppItems(help, m)
-		sub(bar, "Help", help)
+		sub(bar, h.menuWord("Help"), help)
 		Send(app, "setHelpMenu:", uintptr(help))
 	}
 
+	setMenuDirection(bar, h.rtl)
 	old := Send(app, "mainMenu")
 	Send(app, "setMainMenu:", uintptr(bar))
 	Release(bar)
@@ -190,8 +199,9 @@ func (h *Host) observe() {
 }
 
 // environment is the window's: its content's size, its display's scale,
-// dark mode, Reduce Motion, the locale and time zone. A Mac has no safe
-// area or keyboard over the window, and no text size setting.
+// dark mode, Reduce Motion, the locale, languages and formats, and the time
+// zone. A Mac has no safe area or keyboard over the window, and no text size
+// setting.
 func (h *Host) environment() ops.Environment {
 	b := MsgRect(h.content, Sel("bounds"))
 	scale := MsgFloat(h.window, Sel("backingScaleFactor"))
@@ -209,6 +219,9 @@ func (h *Host) environment() ops.Environment {
 		Platform:     ops.PlatformMacOS,
 		Locale:       locale,
 		TimeZone:     tz,
+		Languages:    h.languages,
+		FirstWeekday: h.firstWeekday,
+		HourCycle:    h.hourCycle,
 	}
 }
 

@@ -278,3 +278,12 @@ version of RyUI in the app's `go.mod`. `build` in `ryui.json` must still
 grow with each upload: bump it before you tag. The App Store takes builds
 made with a recent Xcode only; if the runner's default is older, pick
 one with `sudo xcode-select -s /Applications/Xcode_<version>.app`.
+
+## Languages
+
+An app with [catalogs](i18n.md) needs nothing more: `ryui build` declares its
+languages to each store and system (`CFBundleLocalizations` and `.lproj`s on
+iOS and macOS, a `locales_config` on Android), which makes Settings offer the
+app's language. The app's name and its purpose strings can be translated too,
+with keys `ryui.appName` and `ryui.NSCameraUsageDescription` in the catalogs
+([Packaging](i18n.md#what-the-system-shows)).

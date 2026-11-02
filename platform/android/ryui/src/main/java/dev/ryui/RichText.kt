@@ -11,6 +11,7 @@ import android.text.Layout
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.StaticLayout
+import android.text.TextDirectionHeuristics
 import android.text.TextPaint
 import android.text.TextUtils
 import android.text.style.AbsoluteSizeSpan
@@ -124,6 +125,15 @@ class RyUIRichText(private val rt: RyUIRuntime, private val id2: Int) : RyUICont
     }
     private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rect = RectF()
+    private val range = android.graphics.Path()
+    private val bounds = RectF()
+
+    /** Sets range to [from, to) of a line, which may be several runs in a line of two directions, and bounds around it. */
+    private fun rangeBounds(l: Layout, from: Int, to: Int) {
+        range.reset()
+        l.getSelectionPath(from, to, range)
+        range.computeBounds(bounds, true)
+    }
 
     companion object {
         // Paragraph layouts by their inputs, shared by all rich texts. They're
@@ -220,7 +230,8 @@ class RyUIRichText(private val rt: RyUIRuntime, private val id2: Int) : RyUICont
                 val line = l.getLineForOffset(o)
                 if (o >= l.getLineEnd(line) || s.index < 0) return@forEach
                 if (line == l.lineCount - 1 && l.getEllipsisCount(line) > 0 && o >= l.getLineStart(line) + l.getEllipsisStart(line)) return@forEach
-                val x = l.getPrimaryHorizontal(o)
+                // In a right to left run a character's offset is at its right.
+                val x = l.getPrimaryHorizontal(o) - (if (l.isRtlCharAt(o)) s.w else 0)
                 val base = top + l.getLineBaseline(line)
                 at[s.index] = Math.round(x) to Math.round(base - s.h)
             }
@@ -307,17 +318,23 @@ class RyUIRichText(private val rt: RyUIRuntime, private val id2: Int) : RyUICont
         return sb
     }
 
-    private fun alignment() = when (align) {
-        RyUITextAlign.CENTER -> Layout.Alignment.ALIGN_CENTER
-        RyUITextAlign.END -> Layout.Alignment.ALIGN_OPPOSITE
-        else -> Layout.Alignment.ALIGN_NORMAL
+    private val rtlLaidOut get() = layoutDirection == LAYOUT_DIRECTION_RTL
+    private var wasRtl = false
+
+    override fun onRtlPropertiesChanged(layoutDirection: Int) {
+        super.onRtlPropertiesChanged(layoutDirection)
+        val now = layoutDirection == LAYOUT_DIRECTION_RTL
+        if (now != wasRtl) {
+            wasRtl = now
+            invalidateText()
+        }
     }
 
     private fun key(p: RyUIRichParagraph, left: Int, width: Int): String {
         val cfg = resources.configuration
         // With its inline components' sizes.
         val ins = if (p.inlines.isEmpty()) "" else p.inlines.joinToString(",") { i -> inlines.getOrNull(i)?.let { "${it.second}x${it.third}" } ?: "0x0" }
-        return "${p.key}|$ins|$textStyle|$size|$weight|$family|${RyUIFonts.version}|$color|$align|$left|$width|${cfg.fontScale}|${cfg.uiMode}|${cfg.densityDpi}|${rt.themeVersion}"
+        return "${p.key}|$ins|$textStyle|$size|$weight|$family|${RyUIFonts.version}|$color|$align|$rtlLaidOut|$left|$width|${cfg.fontScale}|${cfg.uiMode}|${cfg.densityDpi}|${rt.themeVersion}"
     }
 
     /** The paragraphs' layouts at a width in px (cached). */
@@ -325,23 +342,35 @@ class RyUIRichText(private val rt: RyUIRuntime, private val id2: Int) : RyUICont
         val paint = basePaint()
         val out = ArrayList<StaticLayout>(paragraphs.size)
         var left = lines
-        val alignment = alignment()
+        val rtl = rtlLaidOut
         if (width < (1 shl 22)) lastWidth = width
         for (p in paragraphs) {
             if (lines > 0 && left <= 0) break
             val key = key(p, left, width)
             val l = cache.get(key)
                 ?: pending[key]?.let { runCatching { it.get() }.getOrNull() }
-                ?: build(spanned(p), paint, width, alignment, spacingExtra, spacingMult, left).also { cache.put(key, it) }
+                ?: build(spanned(p), paint, width, align, rtl, spacingExtra, spacingMult, left).also { cache.put(key, it) }
             out.add(l)
             left -= maxOf(l.lineCount, 1)
         }
         return out
     }
 
-    private fun build(text: CharSequence, paint: TextPaint, width: Int, alignment: Layout.Alignment, extra: Float, mult: Float, left: Int): StaticLayout {
+    private fun build(text: CharSequence, paint: TextPaint, width: Int, align: Int, rtl: Boolean, extra: Float, mult: Float, left: Int): StaticLayout {
+        // As a TextView: its first strong letter says which way a paragraph
+        // runs (with the view's direction where it has none), and the view's
+        // direction which side it's on, so a Latin paragraph keeps its
+        // punctuation and is on the right, right to left.
+        val direction = if (rtl) TextDirectionHeuristics.FIRSTSTRONG_RTL else TextDirectionHeuristics.FIRSTSTRONG_LTR
+        val sameWay = direction.isRtl(text, 0, text.length) == rtl
+        val alignment = when {
+            align == RyUITextAlign.CENTER -> Layout.Alignment.ALIGN_CENTER
+            (align == RyUITextAlign.END) == sameWay -> Layout.Alignment.ALIGN_OPPOSITE
+            else -> Layout.Alignment.ALIGN_NORMAL
+        }
         val b = StaticLayout.Builder.obtain(text, 0, text.length, paint, maxOf(width, 1))
             .setAlignment(alignment)
+            .setTextDirection(direction)
             .setIncludePad(false)
             .setLineSpacing(extra, mult)
         if (Build.VERSION.SDK_INT >= 28) b.setUseLineSpacingFromFallbacks(true)
@@ -358,7 +387,8 @@ class RyUIRichText(private val rt: RyUIRuntime, private val id2: Int) : RyUICont
         if (lastWidth <= 0 || lines > 0) return
         val width = lastWidth
         val paint = basePaint()
-        val alignment = alignment()
+        val align = align
+        val rtl = rtlLaidOut
         val extra = spacingExtra
         val mult = spacingMult
         for (p in paragraphs) {
@@ -368,7 +398,7 @@ class RyUIRichText(private val rt: RyUIRuntime, private val id2: Int) : RyUICont
             // Its own paint: a layout keeps the one it's built with.
             val own = TextPaint(paint)
             val task = java.util.concurrent.FutureTask {
-                build(text, own, width, alignment, extra, mult, 0).also {
+                build(text, own, width, align, rtl, extra, mult, 0).also {
                     cache.put(key, it)
                     pending.remove(key)
                 }
@@ -437,12 +467,11 @@ class RyUIRichText(private val rt: RyUIRuntime, private val id2: Int) : RyUICont
                     val ls = maxOf(s, l.getLineStart(line))
                     val le = minOf(e, l.getLineVisibleEnd(line))
                     if (le <= ls) continue
-                    val x0 = l.getPrimaryHorizontal(ls)
-                    val x1 = if (le >= l.getLineVisibleEnd(line)) l.getLineLeft(line) + l.getLineMax(line) else l.getPrimaryHorizontal(le)
+                    rangeBounds(l, ls, le)
                     // The text's height, not the line's (its spacing).
                     val fm = l.paint.fontMetrics
                     val base = l.getLineBaseline(line).toFloat()
-                    rect.set(minOf(x0, x1) - pad, base + fm.ascent - pad / 3, maxOf(x0, x1) + pad, base + fm.descent + pad / 3)
+                    rect.set(bounds.left - pad, base + fm.ascent - pad / 3, bounds.right + pad, base + fm.descent + pad / 3)
                     canvas.drawRoundRect(rect, radius, radius, bgPaint)
                 }
             }
@@ -499,9 +528,8 @@ class RyUIRichText(private val rt: RyUIRuntime, private val id2: Int) : RyUICont
             val s = maxOf(from, a)
             val e = minOf(to, b)
             if (s >= e) continue
-            val x0 = g.layout.getPrimaryHorizontal(s - g.start)
-            val x1 = if (e >= b) g.layout.getLineLeft(g.line) + g.layout.getLineMax(g.line) else g.layout.getPrimaryHorizontal(e - g.start)
-            out.add(RectF(minOf(x0, x1), g.top + g.layout.getLineTop(g.line), maxOf(x0, x1), g.top + g.layout.getLineBottom(g.line)))
+            rangeBounds(g.layout, s - g.start, e - g.start)
+            out.add(RectF(bounds.left, g.top + g.layout.getLineTop(g.line), bounds.right, g.top + g.layout.getLineBottom(g.line)))
         }
         return out
     }
@@ -522,12 +550,24 @@ class RyUIRichText(private val rt: RyUIRuntime, private val id2: Int) : RyUICont
         return best.start + o.coerceIn(best.layout.getLineStart(best.line), best.layout.getLineEnd(best.line))
     }
 
+    /** Whether the character at offset runs right to left. */
+    fun isRtlAt(offset: Int): Boolean {
+        val g = lineOf(offset, lines()) ?: return false
+        val local = offset - g.start
+        return local in 0 until g.layout.text.length && g.layout.isRtlCharAt(local)
+    }
+
     private fun selectionUnder(canvas: Canvas, l: StaticLayout, top: Float) {
         val sel = selected ?: return
-        for (r in rects(sel.first, sel.last + 1)) {
-            // rects() are in the view's coordinates; the canvas is at the paragraph.
-            if (r.bottom <= top || r.top >= top + l.height) continue
-            canvas.drawRect(r.left, r.top - top, r.right, r.bottom - top, selPaint)
+        for (g in lines()) {
+            if (g.layout !== l) continue
+            val s = maxOf(sel.first, g.start + l.getLineStart(g.line))
+            val e = minOf(sel.last + 1, g.start + l.getLineVisibleEnd(g.line))
+            if (s >= e) continue
+            // A path, not a rectangle: a line of two directions has a run of
+            // the selection on each side of the rest. The canvas is at the paragraph.
+            rangeBounds(l, s - g.start, e - g.start)
+            canvas.drawPath(range, selPaint)
         }
     }
 

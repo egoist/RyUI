@@ -103,7 +103,8 @@ object RyUIProp {
     const val MATERIAL = 27
     const val FONT_FAMILY = 28
     const val SWIPE_ACTIONS = 29
-    const val MATCH = 30
+    const val LAYOUT_DIRECTION = 30
+    const val MATCH = 31
 
     object View {
         const val DROP_ACCEPT = 64
@@ -353,8 +354,11 @@ object RyUICommand {
     const val WEB_NAVIGATE = 21
     const val MENU_BAR = 22
     const val WINDOW_OPTIONS = 23
-    const val COLOR_SCHEME = 24
-    const val SHARE_CLOSE = 25
+    const val WINDOW_TITLE = 24
+    const val COLOR_SCHEME = 25
+    const val LOCALE = 26
+    const val SAVE_LOCALE = 27
+    const val SHARE_CLOSE = 28
 }
 
 object RyUIRole {
@@ -400,6 +404,12 @@ object RyUITextAlign {
     const val CENTER = 1
     const val END = 2
     const val JUSTIFY = 3
+}
+
+object RyUILayoutDirection {
+    const val INHERIT = 0
+    const val LEFT_TO_RIGHT = 1
+    const val RIGHT_TO_LEFT = 2
 }
 
 object RyUIButtonVariant {
@@ -673,6 +683,10 @@ data class RyUIEnvironment(
     val widthClass: Int = 0, val heightClass: Int = 0,
     val locale: String = "",
     val timeZone: String = java.util.TimeZone.getDefault().id,
+    /** The languages the user reads, most preferred first, joined by commas. */
+    val languages: String = "",
+    /** 1 Sunday to 7 Saturday, and 12 or 24; 0 when the system doesn't say. */
+    val firstWeekday: Int = 0, val hourCycle: Int = 0,
 )
 
 /** Writes the little-endian wire format. */
@@ -700,6 +714,9 @@ class RyUIWriter {
         u8((e.widthClass and 3) or ((e.heightClass and 3) shl 2))
         string(e.locale)
         string(e.timeZone)
+        string(e.languages)
+        u8(e.firstWeekday)
+        u8(e.hourCycle)
     }
     fun gesture(g: RyUIGesture) {
         u8(g.state)

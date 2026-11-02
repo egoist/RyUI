@@ -172,7 +172,9 @@ class RyUIColorPicker(private val rt: RyUIRuntime, private val ryuiID: Int) : Ry
         val b = MaterialAlertDialogBuilder(act).setView(body)
         b.setTitle(title.ifEmpty { "Color" })
         if (withAlpha) b.setPositiveButton(android.R.string.ok, null) else b.setNegativeButton(android.R.string.cancel, null)
-        val dialog = b.show()
+        val dialog = b.create()
+        rt.directDialog(dialog)
+        dialog.show()
         for ((i, s) in swatches.withIndex()) {
             s.setOnClickListener {
                 val a = if (opacity != null) Math.round(opacity.value * 255 / 100) else 255

@@ -201,7 +201,8 @@ class RyUIStack(context: Context, val nodeID: Int, private val rt: RyUIRuntime) 
         v.layout(0, bh, width, height)
     }
 
-    private val slide get() = 0.08f * width.coerceAtLeast(1)
+    /** How far screens slide, toward the end they go to: a push comes from the end, which is the left right to left. */
+    private val slide get() = (if (layoutDirection == LAYOUT_DIRECTION_RTL) -0.08f else 0.08f) * width.coerceAtLeast(1)
 
     fun insert(n: RyUINode, index: Int) {
         val v = n.view
@@ -261,7 +262,9 @@ class RyUIStack(context: Context, val nodeID: Int, private val rt: RyUIRuntime) 
             // screen that zoomed out of a view goes back into it.
             backing = false
             if (zoom(n, below, false)) return
-            v.animate().alpha(0f).translationX(v.translationX + slide).setDuration(popMillis / 2).setInterpolator(emphasized)
+            // It goes on the way the gesture took it.
+            val away = if (v.translationX == 0f) slide else if (v.translationX < 0) -Math.abs(slide) else Math.abs(slide)
+            v.animate().alpha(0f).translationX(v.translationX + away).setDuration(popMillis / 2).setInterpolator(emphasized)
                 .withEndAction { removeView(v) }.start()
             return
         }
@@ -374,7 +377,12 @@ class RyUIStack(context: Context, val nodeID: Int, private val rt: RyUIRuntime) 
         val s = 1f - 0.1f * e.progress
         v.scaleX = s
         v.scaleY = s
-        v.translationX = (if (e.swipeEdge == BackEventCompat.EDGE_RIGHT) -1 else 1) * e.progress * slide
+        // Along the finger from either edge; from no edge (buttons), as a pop goes.
+        v.translationX = e.progress * when (e.swipeEdge) {
+            BackEventCompat.EDGE_LEFT -> Math.abs(slide)
+            BackEventCompat.EDGE_RIGHT -> -Math.abs(slide)
+            else -> slide
+        }
     }
 
     fun backCancelled() {
@@ -599,7 +607,10 @@ fun RyUIRuntime.environment(v: View, keyboardPx: Int? = null): RyUIEnvironment {
         dark = isNight(c),
         reduceMotion = !android.animation.ValueAnimator.areAnimatorsEnabled(),
         widthClass = widthClass(win.width / d), heightClass = heightClass(win.height / d),
-        locale = c.locales[0].toLanguageTag(),
+        locale = region.locale,
+        languages = region.languages,
+        firstWeekday = region.firstWeekday,
+        hourCycle = region.hourCycle,
     )
 }
 
@@ -908,6 +919,11 @@ fun RyUIRuntime.wirePresses(n: RyUINode) {
     }
 }
 
+/** A dialog's window is laid out in the system's direction unless it's told: the app's. */
+fun RyUIRuntime.directDialog(d: android.app.Dialog) {
+    if (shownLocale != null) d.window?.decorView?.layoutDirection = if (rtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
+}
+
 fun RyUIRuntime.present(n: RyUINode) {
     val act = activity ?: return
     when (n.kind) {
@@ -918,6 +934,7 @@ fun RyUIRuntime.present(n: RyUINode) {
 
 private fun RyUIRuntime.presentSheet(act: RyUIActivity, n: RyUINode) {
     val d = BottomSheetDialog(act)
+    directDialog(d)
     val screen = n.view as RyUIScreen
     (screen.parent as? ViewGroup)?.removeView(screen)
     val box = LinearLayout(act).apply { orientation = LinearLayout.VERTICAL }
@@ -1014,6 +1031,7 @@ private fun RyUIRuntime.presentAlert(act: RyUIActivity, n: RyUINode) {
     }
     if (cancel >= 0) b.setNegativeButton(acts[cancel].title) { _, _ -> acted(cancel) }
     val d = b.create()
+    directDialog(d)
     d.setOnDismissListener {
         if (!n.dying) {
             n.dying = true

@@ -124,7 +124,8 @@ class RyUIDatePicker(private val rt: RyUIRuntime, private val id: Int) : android
         time.isEnabled = enabled
     }
 
-    private fun refresh() {
+    /** Shows the value, in the language. */
+    fun refresh() {
         val d = java.util.Date(value)
         date.text = java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM).format(d)
         time.text = android.text.format.DateFormat.getTimeFormat(context).format(d)
@@ -153,6 +154,7 @@ class RyUIDatePicker(private val rt: RyUIRuntime, private val id: Int) : android
             set(c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH))
         }
         val constraints = com.google.android.material.datepicker.CalendarConstraints.Builder()
+        constraints.setFirstDayOfWeek(rt.region.firstWeekday)
         val validators = ArrayList<com.google.android.material.datepicker.CalendarConstraints.DateValidator>()
         if (min != 0L) validators.add(com.google.android.material.datepicker.DateValidatorPointForward.from(utcDay(min)))
         if (max != 0L) validators.add(com.google.android.material.datepicker.DateValidatorPointBackward.before(utcDay(max) + 1))
@@ -169,6 +171,8 @@ class RyUIDatePicker(private val rt: RyUIRuntime, private val id: Int) : android
             choose(out.timeInMillis)
         }
         p.show(act.supportFragmentManager, "ryui-date-$id")
+        act.supportFragmentManager.executePendingTransactions()
+        p.dialog?.let { rt.directDialog(it) }
     }
 
     /** The UTC midnight of ms's local date. */
@@ -198,5 +202,7 @@ class RyUIDatePicker(private val rt: RyUIRuntime, private val id: Int) : android
             }.timeInMillis)
         }
         p.show(act.supportFragmentManager, "ryui-time-$id")
+        act.supportFragmentManager.executePendingTransactions()
+        p.dialog?.let { rt.directDialog(it) }
     }
 }

@@ -33,7 +33,7 @@ func App() ui.Node {
 				ui.Button(ui.ButtonProps{Title: ui.Val("Open the inbox (a List)"), Icon: ui.IconMail, Variant: ui.ButtonBordered,
 					OnPress: func() {
 						nav.Push(inbox, ui.ScreenOptions{Title: ui.Val("Inbox"), Actions: []ui.Action{
-							{Title: "Top", Icon: ui.IconUp, OnPress: func() { ui.ScrollToItem(inboxList, 0, true) }},
+							{Title: ui.Val("Top"), Icon: ui.IconUp, OnPress: func() { ui.ScrollToItem(inboxList, 0, true) }},
 						}})
 					}}),
 				ui.Button(ui.ButtonProps{Title: ui.Val("Open the settings (a grouped List)"), Icon: ui.IconSettings, Variant: ui.ButtonBordered,
@@ -45,7 +45,7 @@ func App() ui.Node {
 				ui.Button(ui.ButtonProps{Title: ui.Val("Open a web page"), Icon: ui.IconGlobe, Variant: ui.ButtonBordered,
 					OnPress: func() {
 						nav.Push(webPage, ui.ScreenOptions{Title: ui.Val("Web"), Actions: []ui.Action{
-							{Title: "Run script", Icon: "curlybraces", OnPress: func() {
+							{Title: ui.Val("Run script"), Icon: "curlybraces", OnPress: func() {
 								ui.EvalJS(webView, `document.getElementById("out").textContent = "Set from Go at " + new Date().toLocaleTimeString()`)
 							}},
 						}})
@@ -66,7 +66,7 @@ func App() ui.Node {
 		return ui.View(ui.ViewProps{Style: ui.Style{Grow: 1}}, page, toastOverlay(toast),
 			topButton(down, func() { ui.ScrollTo(page, 0, 0, true) }))
 	}, ui.ScreenOptions{Title: ui.Val("Gallery"), Actions: []ui.Action{
-		{Title: "Share", Icon: ui.IconShare, OnPress: func() {}},
+		{Title: ui.Val("Share"), Icon: ui.IconShare, OnPress: func() {}},
 	}})
 }
 
@@ -100,9 +100,9 @@ func symbols() ui.Node {
 				return "Like"
 			}), Icon: ui.IconHeart, Variant: ui.ButtonTinted, OnPress: func() { liked.Set(!liked.Peek()) }}),
 			ui.Button(ui.ButtonProps{Icon: ui.IconMore, Menu: []ui.Action{
-				{Title: "Copy", Icon: ui.IconCopy},
-				{Title: "Edit", Icon: ui.IconEdit},
-				{Title: "Delete", Icon: ui.IconTrash, Role: ui.ActionDestructive},
+				{Title: ui.Val("Copy"), Icon: ui.IconCopy},
+				{Title: ui.Val("Edit"), Icon: ui.IconEdit},
+				{Title: ui.Val("Delete"), Icon: ui.IconTrash, Role: ui.ActionDestructive},
 			}}),
 		),
 	)
@@ -126,7 +126,7 @@ func fonts() ui.Node {
 func images() ui.Node {
 	return section("Images",
 		ui.Image(ui.ImageProps{Source: ui.Val("https://picsum.photos/id/1015/600/400"), Placeholder: "placeholder.png",
-			Mode: ui.ImageFill, Label: "A river in a valley",
+			Mode: ui.ImageFill, Label: ui.Val("A river in a valley"),
 			Style: ui.Style{AspectRatio: 3.0 / 2, CornerRadius: 12}}),
 	)
 }
@@ -152,7 +152,7 @@ func shapes() ui.Node {
 	done := signal.New(float32(0.3))
 	return section("Shapes",
 		ui.Row(ui.Style{Gap: 24, Align: ui.AlignCenter, Wrap: true}, // on a narrow phone, the button goes under
-			ui.View(ui.ViewProps{Label: "Progress", Style: ui.Style{Width: ui.Pt(72), Height: ui.Pt(72)}},
+			ui.View(ui.ViewProps{Label: ui.Val("Progress"), Style: ui.Style{Width: ui.Pt(72), Height: ui.Pt(72)}},
 				ui.Shape(ui.ShapeProps{Path: ring, Stroke: ui.SecondaryBackground, LineWidth: 8,
 					Style: ui.Style{Absolute: true, Left: ui.Pt(0), Top: ui.Pt(0), Width: ui.Pt(72), Height: ui.Pt(72)}}),
 				ui.Shape(ui.ShapeProps{Path: ring, Stroke: ui.Accent, LineWidth: 8, LineCap: ui.CapRound, TrimEnd: done,
@@ -202,7 +202,7 @@ func textInput() ui.Node {
 		ui.Row(ui.Style{Gap: 8, Align: ui.AlignEnd},
 			ui.TextField(ui.TextFieldProps{Value: message, Placeholder: ui.Val("Message"), Multiline: true,
 				Style: ui.Style{Grow: 1, Lines: 5}}),
-			ui.Button(ui.ButtonProps{Icon: ui.IconSend, Label: "Send", Variant: ui.ButtonFilled,
+			ui.Button(ui.ButtonProps{Icon: ui.IconSend, Label: ui.Val("Send"), Variant: ui.ButtonFilled,
 				Disabled: signal.Func(func() bool { return message.Get() == "" }),
 				OnPress:  func() { sent.Set(message.Peek()); message.Set("") }}),
 		),
@@ -224,7 +224,7 @@ func controls() ui.Node {
 	cups := signal.New(2.0)
 	tint := signal.New(ui.Hex(0x039be5))
 	return section("Controls",
-		ui.Segmented(ui.SegmentedProps{Segments: []string{"Day", "Week", "Month"}, Selected: period}),
+		ui.Segmented(ui.SegmentedProps{Segments: ui.Val([]string{"Day", "Week", "Month"}), Selected: period}),
 		ui.Text(signal.Func(func() string {
 			return []string{"Today", "This week", "This month"}[period.Get()]
 		}), ui.Style{Color: ui.SecondaryLabel}),
@@ -249,9 +249,9 @@ func controls() ui.Node {
 		ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
 			ui.Symbol(ui.Icon("heart.fill"), ui.StyleFunc(func() ui.Style { return ui.Style{Color: tint.Get(), Font: ui.Title2} })),
 			ui.StaticText("Tint", ui.Style{Grow: 1}),
-			ui.ColorPicker(ui.ColorPickerProps{Value: tint, Alpha: true, Title: "Tint"}),
+			ui.ColorPicker(ui.ColorPickerProps{Value: tint, Alpha: true, Title: ui.Val("Tint")}),
 		),
-		ui.Wheel(ui.WheelProps{Items: sizes, Selected: size}),
+		ui.Wheel(ui.WheelProps{Items: ui.Val(sizes), Selected: size}),
 		ui.Text(signal.Func(func() string { return "Size: " + sizes[size.Get()] }), ui.Style{Color: ui.SecondaryLabel}),
 	)
 }
@@ -301,7 +301,7 @@ func photos() ui.Node {
 			nav := ui.UseNavigator()
 			// Each photo has a key: its screen zooms out of it (ZoomFrom).
 			return ui.View(ui.ViewProps{
-				Label: "Photo",
+				Label: ui.Val("Photo"),
 				OnPress: func() {
 					i := signal.Untrack(id.Get)
 					nav.Push(func() ui.Node { return photo(i) },
@@ -332,8 +332,8 @@ func inbox() ui.Node {
 	inboxList = ui.List(ui.ListProps{
 		SwipeActions: func(i int) []ui.Action {
 			return []ui.Action{
-				{Title: "Delete", Icon: ui.IconTrash, Role: ui.ActionDestructive, OnPress: func() { remove(i) }},
-				{Title: "Archive", Icon: "archivebox", OnPress: func() { remove(i) }},
+				{Title: ui.Val("Delete"), Icon: ui.IconTrash, Role: ui.ActionDestructive, OnPress: func() { remove(i) }},
+				{Title: ui.Val("Archive"), Icon: "archivebox", OnPress: func() { remove(i) }},
 			}
 		},
 		OnEndReached: func() {
@@ -346,7 +346,7 @@ func inbox() ui.Node {
 		// What swiping does, for a screen reader's user.
 		act := func() { remove(signal.Untrack(i.Get)) }
 		return ui.View(ui.ViewProps{
-			Actions: []ui.A11yAction{{Name: "Archive", Do: act}, {Name: "Delete", Do: act}},
+			Actions: []ui.A11yAction{{Name: ui.Val("Archive"), Do: act}, {Name: ui.Val("Delete"), Do: act}},
 			Style:   ui.Style{Direction: ui.RowDir, Padding: ui.Symmetric(12, 20), Gap: 12, Align: ui.AlignCenter},
 		},
 			ui.Symbol(ui.IconPerson.Filled(), ui.Style{Color: ui.SecondaryLabel, Font: ui.Title2}),
@@ -382,7 +382,7 @@ func settings() ui.Node {
 	return ui.List(ui.ListProps{
 		Appearance: ui.ListInsetGrouped,
 		SwipeActions: func(i int) []ui.Action {
-			return []ui.Action{{Title: "Remove", Role: ui.ActionDestructive, OnPress: func() {
+			return []ui.Action{{Title: ui.Val("Remove"), Role: ui.ActionDestructive, OnPress: func() {
 				l := append([]setting(nil), items.Peek()...)
 				items.Set(append(l[:i], l[i+1:]...))
 			}}}
@@ -494,12 +494,12 @@ func matched() ui.Node {
 	}
 	return ui.Column(ui.Style{},
 		ui.Show(open, func() ui.Node {
-			return ui.View(ui.ViewProps{OnPress: toggle, Label: "Night Drive, close",
+			return ui.View(ui.ViewProps{OnPress: toggle, Label: ui.Val("Night Drive, close"),
 				Style: ui.Style{Gap: 12, Align: ui.AlignCenter}},
 				ui.View(ui.ViewProps{Style: art(ui.Pt(240), 24)}),
 				ui.StaticText("Night Drive", ui.Style{Font: ui.Title2.Weighted(ui.Bold), Match: "album-title"}))
 		}, func() ui.Node {
-			return ui.View(ui.ViewProps{OnPress: toggle, Label: "Night Drive, open",
+			return ui.View(ui.ViewProps{OnPress: toggle, Label: ui.Val("Night Drive, open"),
 				Style: ui.Style{Direction: ui.RowDir, Gap: 12, Align: ui.AlignCenter}},
 				ui.View(ui.ViewProps{Style: art(ui.Pt(56), 10)}),
 				ui.StaticText("Night Drive", ui.Style{Font: ui.Headline, Match: "album-title"}))
@@ -535,7 +535,7 @@ func turner() ui.Node {
 	scale, baseScale := signal.New(float32(1)), float32(1)
 	return ui.Column(ui.Style{Gap: 12, Align: ui.AlignCenter, Padding: ui.Symmetric(24, 0)},
 		ui.View(ui.ViewProps{
-			Label: "A square to turn",
+			Label: ui.Val("A square to turn"),
 			OnRotate: func(g ui.Gesture) {
 				angle.Set(base + g.Rotation*180/math.Pi)
 				if g.State == ui.GestureEnded || g.State == ui.GestureCancelled {
@@ -703,7 +703,7 @@ func topButton(shown signal.Accessor[bool], top func()) ui.Node {
 		return ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style {
 			return ui.Style{Absolute: true, Right: ui.Pt(20), Bottom: ui.Pt(env.Get().SafeBottom + 12), Transition: ui.Pop}
 		})},
-			ui.Button(ui.ButtonProps{Icon: ui.IconUp, Label: "Back to top", Variant: ui.ButtonFilled, OnPress: top}))
+			ui.Button(ui.ButtonProps{Icon: ui.IconUp, Label: ui.Val("Back to top"), Variant: ui.ButtonFilled, OnPress: top}))
 	})
 }
 
@@ -724,7 +724,7 @@ func cameraScreen() ui.Node {
 			})}),
 		ui.SafeArea(nil, ui.Row(ui.Style{Padding: ui.All(16), Gap: 16, Align: ui.AlignCenter},
 			ui.Show(signal.Func(func() bool { return last.Get() != "" }), func() ui.Node {
-				return ui.Image(ui.ImageProps{Source: last, Mode: ui.ImageFill, Label: "The last photo",
+				return ui.Image(ui.ImageProps{Source: last, Mode: ui.ImageFill, Label: ui.Val("The last photo"),
 					Style: ui.Style{Width: ui.Pt(56), Height: ui.Pt(56), CornerRadius: 8, Clip: true}})
 			}),
 			ui.Text(status, ui.Style{Grow: 1, Color: ui.SecondaryLabel, Font: ui.Footnote}),
@@ -754,7 +754,7 @@ func cameraScreen() ui.Node {
 						}, ui.ScreenOptions{Title: ui.Val("The video")})
 					})
 				}}),
-			ui.Button(ui.ButtonProps{Icon: ui.IconCamera, Label: "Take a photo", Variant: ui.ButtonFilled, OnPress: func() {
+			ui.Button(ui.ButtonProps{Icon: ui.IconCamera, Label: ui.Val("Take a photo"), Variant: ui.ButtonFilled, OnPress: func() {
 				camera.Capture(func(path string, err error) {
 					if err != nil {
 						status.Set(err.Error())

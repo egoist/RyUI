@@ -77,8 +77,11 @@ class RyUIStepper(private val rt: RyUIRuntime, private val ryuiID: Int) : androi
 
     override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
         val y = maxOf(0, (b - t - side) / 2)
-        minus.layout(0, y, side, y + side)
-        plus.layout(side + gap, y, 2 * side + gap, y + side)
+        // Minus first, in the direction it reads.
+        val rtl = layoutDirection == LAYOUT_DIRECTION_RTL
+        val (first, second) = if (rtl) plus to minus else minus to plus
+        first.layout(0, y, side, y + side)
+        second.layout(side + gap, y, 2 * side + gap, y + side)
     }
 
     private fun button(symbol: String, label: String, by: () -> Double) =

@@ -22,14 +22,35 @@ func Pct(v float32) Dim { return layout.Pct(v) }
 // Auto is the zero Dim.
 var Auto = layout.Auto
 
-// Edges are per-side lengths in points.
-type Edges struct{ Top, Right, Bottom, Left float32 }
+// Edges are per-side lengths in points. Left and Right are physical, as in
+// CSS. Start and End are the sides a line of text starts and ends on: left
+// and right in a left-to-right language, right and left in Arabic or
+// Hebrew. Use them for what should mirror; where a side has both, Start or
+// End wins.
+type Edges struct{ Top, Right, Bottom, Left, Start, End float32 }
 
 // All is the same length on every side.
-func All(v float32) Edges { return Edges{v, v, v, v} }
+func All(v float32) Edges { return Edges{Top: v, Right: v, Bottom: v, Left: v} }
 
 // Symmetric is v vertically and h horizontally.
-func Symmetric(v, h float32) Edges { return Edges{v, h, v, h} }
+func Symmetric(v, h float32) Edges { return Edges{Top: v, Right: h, Bottom: v, Left: h} }
+
+// physical returns e with Start and End on the sides they are in direction
+// rtl.
+func (e Edges) physical(rtl bool) Edges {
+	start, end := &e.Left, &e.Right
+	if rtl {
+		start, end = &e.Right, &e.Left
+	}
+	if e.Start != 0 {
+		*start = e.Start
+	}
+	if e.End != 0 {
+		*end = e.End
+	}
+	e.Start, e.End = 0, 0
+	return e
+}
 
 // Direction is the axis a container stacks its children on.
 type Direction uint8
@@ -230,9 +251,12 @@ type Style struct {
 	Basis  Dim
 
 	// Absolute takes the node out of the flow; Top, Right, Bottom and
-	// Left place it in its parent.
+	// Left place it in its parent. Start and End place it from the sides a
+	// line of text starts and ends on (see Edges), and win over Left and
+	// Right.
 	Absolute                 bool
 	Top, Right, Bottom, Left Dim
+	Start, End               Dim
 
 	Grid       *Grid
 	GridColumn layout.Placement
@@ -371,6 +395,8 @@ func (s *Style) overlay(o *Style) {
 	set(&s.Right, o.Right)
 	set(&s.Bottom, o.Bottom)
 	set(&s.Left, o.Left)
+	set(&s.Start, o.Start)
+	set(&s.End, o.End)
 	set(&s.Grid, o.Grid)
 	set(&s.GridColumn, o.GridColumn)
 	set(&s.GridRow, o.GridRow)
@@ -604,8 +630,14 @@ func align(a Align) layout.Align {
 	return layout.AlignAuto
 }
 
-// layoutStyle maps s to CSS.
-func (s *Style) layoutStyle(extraPad Edges) layout.Style {
+// logical reports whether s has sides that depend on the direction.
+func (s *Style) logical() bool {
+	return s.Padding.Start != 0 || s.Padding.End != 0 || s.Margin.Start != 0 || s.Margin.End != 0 ||
+		!s.Start.IsAuto() || !s.End.IsAuto()
+}
+
+// layoutStyle maps s to CSS, in direction rtl.
+func (s *Style) layoutStyle(extraPad Edges, rtl bool) layout.Style {
 	l := layout.DefaultStyle
 	l.FlexDirection = layout.Column
 	if s.Direction == RowDir {
@@ -619,13 +651,13 @@ func (s *Style) layoutStyle(extraPad Edges) layout.Style {
 	l.AlignItems = align(s.Align)
 	l.AlignSelf = align(s.AlignSelf)
 	l.ColumnGap, l.RowGap = layout.Pt(s.Gap), layout.Pt(s.Gap)
-	pad := s.Padding
+	pad := s.Padding.physical(rtl)
 	pad.Top += extraPad.Top
 	pad.Right += extraPad.Right
 	pad.Bottom += extraPad.Bottom
 	pad.Left += extraPad.Left
 	l.Padding = edges(pad)
-	l.Margin = edges(s.Margin)
+	l.Margin = edges(s.Margin.physical(rtl))
 	l.Border = layout.All(layout.Pt(s.BorderWidth))
 	l.Width, l.Height = s.Width, s.Height
 	l.MinWidth, l.MinHeight = s.MinWidth, s.MinHeight
@@ -643,6 +675,20 @@ func (s *Style) layoutStyle(extraPad Edges) layout.Style {
 		l.Position = layout.Absolute
 	}
 	l.Inset = layout.Rect[layout.Length]{Top: s.Top, Right: s.Right, Bottom: s.Bottom, Left: s.Left}
+	if !s.Start.IsAuto() {
+		if rtl {
+			l.Inset.Right = s.Start
+		} else {
+			l.Inset.Left = s.Start
+		}
+	}
+	if !s.End.IsAuto() {
+		if rtl {
+			l.Inset.Left = s.End
+		} else {
+			l.Inset.Right = s.End
+		}
+	}
 	if s.Clip {
 		l.OverflowX, l.OverflowY = layout.OverflowHidden, layout.OverflowHidden
 	}

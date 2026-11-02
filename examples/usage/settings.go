@@ -26,7 +26,7 @@ func settings() ui.Node {
 	signal.Effect(func() { every.Set(intervals[interval.Get()]) })
 
 	appearance := func(s int) ui.Action {
-		return ui.Action{Title: schemes[s], OnPress: func() {
+		return ui.Action{Title: ui.Val(schemes[s]), OnPress: func() {
 			scheme.Set(s)
 			ui.SetColorScheme(ui.ColorScheme(s))
 		}}
@@ -37,7 +37,7 @@ func settings() ui.Node {
 			group(
 				stacked(
 					ui.StaticText("Show quotas as"),
-					ui.Segmented(ui.SegmentedProps{Segments: []string{"Left", "Used"}, Selected: shown}),
+					ui.Segmented(ui.SegmentedProps{Segments: ui.Val([]string{"Left", "Used"}), Selected: shown}),
 				),
 				row(
 					ui.StaticText("Appearance", ui.Style{Grow: 1}),
@@ -52,7 +52,7 @@ func settings() ui.Node {
 			group(
 				stacked(
 					ui.StaticText("Refresh every"),
-					ui.Segmented(ui.SegmentedProps{Segments: []string{"3 min", "5 min", "10 min"}, Selected: interval}),
+					ui.Segmented(ui.SegmentedProps{Segments: ui.Val([]string{"3 min", "5 min", "10 min"}), Selected: interval}),
 				),
 			),
 			note("While the app is open. Pull down on a page to refresh now."),

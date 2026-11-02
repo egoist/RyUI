@@ -1,0 +1,12 @@
+{
+  "ok": "OK",
+  "search": "検索",
+  "back": "戻る",
+  "decrease": "減らす",
+  "increase": "増やす",
+  "about": "{app}について",
+  "hide": "{app}を非表示",
+  "quit": "{app}を終了",
+  "hideOthers": "ほかを非表示",
+  "zoom": "拡大/縮小"
+}

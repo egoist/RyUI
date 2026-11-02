@@ -274,7 +274,7 @@ func browser(link, status *signal.Signal[string]) ui.Node {
 	})
 	return ui.SafeArea(ui.Style{Grow: 1},
 		ui.Row(ui.Style{Gap: 8, Padding: ui.Symmetric(8, 12), Align: ui.AlignCenter},
-			ui.Button(ui.ButtonProps{Icon: ui.IconBack, Label: "Back", Variant: ui.ButtonGray,
+			ui.Button(ui.ButtonProps{Icon: ui.IconBack, Label: ui.Val("Back"), Variant: ui.ButtonGray,
 				Disabled: signal.Func(func() bool { return !state.Get().CanGoBack }), OnPress: func() { ui.WebBack(web) }}),
 			svg.View(svg.Props{Icon: iconGlobe, Style: ui.Style{Width: ui.Pt(18), Height: ui.Pt(18)}}),
 			ui.Text(signal.Func(func() string {
@@ -287,7 +287,7 @@ func browser(link, status *signal.Signal[string]) ui.Node {
 				}
 				return s.URL
 			}), ui.Style{Grow: 1, Lines: 1, Font: ui.Footnote}),
-			ui.Button(ui.ButtonProps{Icon: ui.IconRefresh, Label: "Reload", Variant: ui.ButtonGray, OnPress: func() { ui.WebReload(web) }}),
+			ui.Button(ui.ButtonProps{Icon: ui.IconRefresh, Label: ui.Val("Reload"), Variant: ui.ButtonGray, OnPress: func() { ui.WebReload(web) }}),
 		),
 		web,
 		ui.Column(ui.Style{Padding: ui.All(12), Gap: 8},

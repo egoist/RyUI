@@ -219,7 +219,7 @@ func (t *androidToolchain) buildAPK(app *goApp, work string) (apk, hash string, 
 		return apk, hash, nil
 	}
 	fmt.Println("ryui: building the Android app with Gradle (once; the first time downloads Gradle and Android libraries)")
-	args := append([]string{":app:assembleDebug", "-PryuiApplicationId=" + androidPackage(app.bundleID), "-PryuiAppName=" + app.displayName(),
+	args := append([]string{":app:assembleDebug", "-PryuiApplicationId=" + androidPackage(app.bundleID), "-PryuiAppName=" + app.cfg.androidLabel(),
 		"-PryuiManifest=" + manifest}, extra...)
 	if err := t.gradle(src, args...); err != nil {
 		return "", "", err

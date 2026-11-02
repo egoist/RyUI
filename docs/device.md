@@ -713,7 +713,7 @@ go func() {
 		time.Sleep(time.Second) // the work
 		p := float64(i) / 10
 		ui.Post(func() {
-			task.Update(background.Options{Title: "Exporting", Text: fmt.Sprintf("%.0f%%", p*100), Progress: p,
+			task.Update(background.Options{Title: ui.Val("Exporting"), Text: fmt.Sprintf("%.0f%%", p*100), Progress: p,
 				Actions: []background.Action{{ID: "cancel", Title: "Cancel"}}})
 		})
 	}

@@ -295,8 +295,16 @@ class RyUISelectionArea(private val rt: RyUIRuntime) : RyUIContainer(rt.themed) 
     // The handles: the theme's, in popups over the window, as a TextView's.
 
     private fun showHandles() {
-        start.show(caret(a))
-        end.show(caret(b))
+        start.show(caret(a), isRtlAt(a))
+        end.show(caret(b), isRtlAt(maxOf(b - 1, 0)))
+    }
+
+    /** Whether the character at offset o runs right to left: a handle points away from the selection's inside. */
+    private fun isRtlAt(o: Int): Boolean {
+        var found: Pair<RyUIRichText, Int>? = null
+        for (p in layout()) if (o >= p.second) found = p
+        val (s, at) = found ?: return false
+        return s.isRtlAt(o - at)
     }
 
     private val reposition = ViewTreeObserver.OnPreDrawListener {
@@ -318,14 +326,18 @@ class RyUISelectionArea(private val rt: RyUIRuntime) : RyUIContainer(rt.themed) 
         super.onDetachedFromWindow()
     }
 
+    private fun handleImage(attr: Int): Drawable? = context.obtainStyledAttributes(intArrayOf(attr)).let { t -> t.getDrawable(0).also { t.recycle() } }
+
     private inner class Handle(val isStart: Boolean) {
-        private val image: Drawable? = context.obtainStyledAttributes(
-            intArrayOf(if (isStart) android.R.attr.textSelectHandleLeft else android.R.attr.textSelectHandleRight)
-        ).let { t -> t.getDrawable(0).also { t.recycle() } }
-        private val w = image?.intrinsicWidth ?: 0
-        private val h = image?.intrinsicHeight ?: 0
+        // Which way it points depends on which way the text under it runs, as a TextView's.
+        private val leftImage = handleImage(android.R.attr.textSelectHandleLeft)
+        private val rightImage = handleImage(android.R.attr.textSelectHandleRight)
+        private var pointsLeft = isStart
+        private val image: Drawable? get() = if (pointsLeft) leftImage else rightImage
+        private val w get() = image?.intrinsicWidth ?: 0
+        private val h get() = image?.intrinsicHeight ?: 0
         // The point of the handle that sits at the caret's bottom.
-        private val hotspot = if (isStart) w * 3 / 4 else w / 4
+        private val hotspot get() = if (pointsLeft) w * 3 / 4 else w / 4
         var dragging = false
         private var caretHeight = 0f
         private var touchX = 0f
@@ -347,12 +359,20 @@ class RyUISelectionArea(private val rt: RyUIRuntime) : RyUIContainer(rt.themed) 
             setBackgroundDrawable(null)
         }
 
-        fun show(caret: RectF?) {
+        fun show(caret: RectF?, rtlRun: Boolean) {
+            val left = isStart != rtlRun
+            if (left != pointsLeft) {
+                pointsLeft = left
+                view.setImageDrawable(image)
+            }
             if (caret == null || image == null) { hide(); return }
             caretHeight = caret.height()
             // Hidden when its end of the selection is scrolled out of view.
             val vis = Rect()
-            if (!getLocalVisibleRect(vis) || !vis.contains(caret.left.toInt(), (caret.top + caret.bottom).toInt() / 2)) { hide(); return }
+            val inside = getLocalVisibleRect(vis)
+            // A right to left line starts at the very right, which contains() leaves out.
+            val cx = caret.left.toInt().let { if (it == vis.right) it - 1 else it }
+            if (!inside || !vis.contains(cx, (caret.top + caret.bottom).toInt() / 2)) { hide(); return }
             val loc = IntArray(2)
             getLocationInWindow(loc)
             val x = loc[0] + caret.left.toInt() - hotspot

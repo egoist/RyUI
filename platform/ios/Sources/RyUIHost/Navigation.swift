@@ -108,6 +108,27 @@ final class RyUITabsController: UITabBarController, UITabBarControllerDelegate {
     }
 }
 
+/// An alert. Its title and message are attributed text, whose natural
+/// alignment is the process's and not the view's: where the app goes another
+/// way, they're aligned to its side.
+final class RyUIAlertController: UIAlertController {
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        let rt = RyUIRuntime.shared
+        guard rt.rtl != rt.systemRTL else { return }
+        let side: NSTextAlignment = rt.rtl ? .right : .left
+        let other: NSTextAlignment = rt.rtl ? .left : .right
+        func walk(_ v: UIView) {
+            if let l = v as? UILabel, let t = l.text, t == title || t == message,
+               l.textAlignment == .natural || l.textAlignment == other {
+                l.textAlignment = side
+            }
+            for s in v.subviews { walk(s) }
+        }
+        walk(view)
+    }
+}
+
 /// Shows a container's menu on a long press.
 final class RyUIContextMenu: NSObject, UIContextMenuInteractionDelegate {
     weak var node: RyUINode?
@@ -172,7 +193,7 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
         e.reduceMotion = UIAccessibility.isReduceMotionEnabled
         e.widthClass = t.horizontalSizeClass.ryui
         e.heightClass = t.verticalSizeClass.ryui
-        e.locale = Locale.current.identifier
+        e.setLanguages()
         return e
     }
 
@@ -345,8 +366,8 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
             top.present(s, animated: true)
         case .alert:
             guard let top = topController else { return }
-            let a = UIAlertController(title: n.alertTitle, message: n.alertMessage,
-                                      preferredStyle: n.alertStyle == RyUIAlertStyle.actionSheet.rawValue ? .actionSheet : .alert)
+            let a = RyUIAlertController(title: n.alertTitle, message: n.alertMessage,
+                                        preferredStyle: n.alertStyle == RyUIAlertStyle.actionSheet.rawValue ? .actionSheet : .alert)
             let id = n.id
             for (i, act) in n.actions.enumerated() {
                 let style: UIAlertAction.Style = act.role == RyUIAlertButtonRole.cancel.rawValue ? .cancel
@@ -413,6 +434,7 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
         case (.screen, RyUIProp.Screen.title):
             n.vc?.navigationItem.title = v.string
             n.vc?.title = v.string
+            n.vc?.tabBarItem.accessibilityLabel = v.string // it keeps the first title otherwise
         case (.screen, RyUIProp.Screen.icon):
             n.vc?.tabBarItem.image = UIImage(systemName: v.string)
         case (.screen, RyUIProp.Screen.search):

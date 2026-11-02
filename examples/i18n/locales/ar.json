@@ -1,0 +1,23 @@
+{
+  "@@locale": "ar",
+  "title": "اللغات",
+  "language": "اللغة",
+  "systemLanguage": "مثل النظام",
+  "inbox": "الوارد",
+  "settings": "الإعدادات",
+  "unread": "{count, plural, =0 {لا توجد رسائل غير مقروءة} zero {لا توجد رسائل غير مقروءة} one {رسالة واحدة غير مقروءة} two {رسالتان غير مقروءتين} few {# رسائل غير مقروءة} many {# رسالة غير مقروءة} other {# رسالة غير مقروءة}}",
+  "more": "المزيد",
+  "less": "أقل",
+  "greeting": "مرحبًا، {name}!",
+  "lastSeen": "آخر ظهور {when, date, medium} في {when, time, short}",
+  "storage": "{used, number, percent} من مساحة التخزين مستخدمة",
+  "deleteMessage": "حذف",
+  "archive": "أرشفة",
+  "alertTitle": "هل تريد حذف هذه الرسالة؟",
+  "alertBody": "لا يمكنك التراجع عن هذا.",
+  "searchHint": "ابحث في رسائلك",
+  "wide": "سطر أطول يبدأ من حيث تبدأ أسطر هذه اللغة",
+  "next": "الشاشة التالية",
+  "alwaysLtr": "هذا الصف من اليسار إلى اليمين في كل لغة",
+  "ryui.appName": "اللغات"
+}

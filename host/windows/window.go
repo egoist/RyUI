@@ -3,7 +3,6 @@
 package windows
 
 import (
-	"strings"
 	"syscall"
 
 	. "github.com/egoist/ryui/internal/windows"
@@ -205,9 +204,9 @@ func (h *Host) windowMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
 }
 
 // environment is the window's: its client area's size, its DPI as the
-// scale, the text size, dark mode, animations (Reduce Motion), the
-// locale and time zone. A desktop window has no safe area or keyboard
-// over it.
+// scale, the text size, dark mode, animations (Reduce Motion), the time
+// zone, the user's languages and regional formats. A desktop window has
+// no safe area or keyboard over it.
 func (h *Host) environment() ops.Environment {
 	r := ClientRect(h.window)
 	return ops.Environment{
@@ -217,8 +216,11 @@ func (h *Host) environment() ops.Environment {
 		Dark:         h.dark,
 		ReduceMotion: SystemParam(SPI_GETCLIENTAREAANIMATION) == 0,
 		Platform:     ops.PlatformWindows,
-		Locale:       strings.ReplaceAll(LocaleName(), "-", "_"),
+		Locale:       h.intl.locale,
 		TimeZone:     timeZone(),
+		Languages:    joinLanguages(h.savedLocale, h.intl.languages),
+		FirstWeekday: h.intl.firstWeekday,
+		HourCycle:    h.intl.hourCycle,
 	}
 }
 
@@ -312,6 +314,7 @@ func (h *Host) settingChanged(what string) {
 	switch what {
 	case "intl":
 		tzName = ""
+		h.intl = readIntl()
 	case "ImmersiveColorSet", "":
 		dark := !AppsUseLightTheme()
 		if scheme != ops.ColorSchemeSystem {
@@ -390,8 +393,9 @@ func (h *Host) keyMessage(m *Msg) bool {
 				return true
 			}
 		}
-	case VK_LEFT:
-		if m.Message == WM_SYSKEYDOWN {
+	case VK_LEFT, VK_RIGHT:
+		// Alt+Left, and Alt+Right right to left, where the back arrow points that way.
+		if m.Message == WM_SYSKEYDOWN && (m.WParam == VK_LEFT || h.rtl) {
 			if r := h.rootOf(RootWindow(m.Hwnd)); r != nil {
 				h.back(r)
 				return true

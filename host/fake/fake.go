@@ -78,7 +78,7 @@ func New() *Host {
 		Views: map[ops.NodeID]*View{},
 		Env: host.Environment{
 			Width: 390, Height: 844, SafeTop: 47, SafeBottom: 34,
-			Scale: 3, FontScale: 1, Locale: "en_US",
+			Scale: 3, FontScale: 1, Locale: "en_US", Languages: "en-US",
 		},
 	}
 }

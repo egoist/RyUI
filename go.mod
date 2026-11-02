@@ -4,6 +4,7 @@ go 1.26.0
 
 require (
 	github.com/ebitengine/purego v0.11.2
+	golang.org/x/text v0.43.0
 	modernc.org/sqlite v1.61.0
 )
 

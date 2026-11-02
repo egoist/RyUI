@@ -113,8 +113,10 @@ const (
 	PropFontFamily PropID = 28
 	// PropSwipeActions: a List cell's swipe actions, encoded as Menu (iOS: its trailing actions; Android: a full swipe runs the first); Action events on the cell carry the index.
 	PropSwipeActions PropID = 29
+	// PropLayoutDirection: the view lays itself out and aligns its text in this direction, whatever the app's (ui.WithDirection): sent to each view in the subtree, as a platform's view doesn't take it from its parent. Frames are always physical.
+	PropLayoutDirection PropID = 30
 	// PropMatch: a key it shares with another view: when one with the key is destroyed during an animation and another inserted, the new one comes in from the old one's place and size, and the old one goes out to the new one's, fading (SwiftUI's matchedGeometryEffect). The host notes where the views with keys are as an animated batch starts destroying, and matches them once the batch's frames are applied.
-	PropMatch PropID = 30
+	PropMatch PropID = 31
 )
 
 // View props.
@@ -371,7 +373,7 @@ const (
 	PropWindowMinHeight PropID = 68
 )
 
-var commonProps = [...]propInfo{{}, {"Background", TColor}, {"CornerRadius", TFloat}, {"BorderWidth", TFloat}, {"BorderColor", TColor}, {"Opacity", TFloat}, {"Hidden", TBool}, {"Clip", TBool}, {"A11yLabel", TString}, {"A11yHint", TString}, {"A11yRole", TEnum}, {"A11yActions", TBytes}, {"A11yAdjustable", TBool}, {"A11yHidden", TBool}, {"Color", TColor}, {"TextStyle", TEnum}, {"FontSize", TFloat}, {"FontWeight", TEnum}, {"TextAlign", TEnum}, {"LineLimit", TInt}, {"Disabled", TBool}, {"Menu", TBytes}, {"MenuTrigger", TEnum}, {"Transform", TBytes}, {"Shadow", TBytes}, {"Gradient", TBytes}, {"Transition", TBytes}, {"Material", TEnum}, {"FontFamily", TString}, {"SwipeActions", TBytes}, {"Match", TString}}
+var commonProps = [...]propInfo{{}, {"Background", TColor}, {"CornerRadius", TFloat}, {"BorderWidth", TFloat}, {"BorderColor", TColor}, {"Opacity", TFloat}, {"Hidden", TBool}, {"Clip", TBool}, {"A11yLabel", TString}, {"A11yHint", TString}, {"A11yRole", TEnum}, {"A11yActions", TBytes}, {"A11yAdjustable", TBool}, {"A11yHidden", TBool}, {"Color", TColor}, {"TextStyle", TEnum}, {"FontSize", TFloat}, {"FontWeight", TEnum}, {"TextAlign", TEnum}, {"LineLimit", TInt}, {"Disabled", TBool}, {"Menu", TBytes}, {"MenuTrigger", TEnum}, {"Transform", TBytes}, {"Shadow", TBytes}, {"Gradient", TBytes}, {"Transition", TBytes}, {"Material", TEnum}, {"FontFamily", TString}, {"SwipeActions", TBytes}, {"LayoutDirection", TEnum}, {"Match", TString}}
 
 var kindProps = [...][]propInfo{nil, {{"DropAccept", TBytes}, {"DragItems", TBytes}}, {{"Text", TString}}, {{"Title", TString}, {"Variant", TEnum}, {"Icon", TString}}, {{"Value", TString}, {"Placeholder", TString}, {"Keyboard", TEnum}, {"ReturnKey", TEnum}, {"Secure", TBool}, {"Autocapitalize", TEnum}, {"Autocorrect", TEnum}, {"ContentType", TString}, {"Multiline", TBool}, {"Plain", TBool}}, {{"On", TBool}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}}, {{"Horizontal", TBool}, {"Refreshable", TBool}, {"Refreshing", TBool}}, {{"Refreshable", TBool}, {"Refreshing", TBool}, {"Columns", TInt}, {"Gap", TFloat}, {"Appearance", TEnum}, {"Inset", TFloat}}, {{"Animating", TBool}}, {}, {{"Title", TString}, {"Actions", TBytes}, {"BackGesture", TBool}, {"Icon", TString}, {"Search", TString}, {"SearchText", TString}, {"ZoomFrom", TString}}, {{"Selected", TInt}}, {{"Detents", TInt}, {"Grabber", TBool}}, {{"Title", TString}, {"Message", TString}, {"Buttons", TBytes}, {"Style", TEnum}}, {{"Source", TString}, {"Mode", TEnum}, {"Placeholder", TString}}, {{"Type", TString}, {"Prop", TBytes}}, {{"Content", TBytes}, {"Inlines", TBytes}}, {}, {{"Name", TString}}, {{"Segments", TBytes}, {"Selected", TInt}}, {{"Items", TBytes}, {"Selected", TInt}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}, {"Step", TFloat}}, {{"Value", TColor}, {"Alpha", TBool}, {"Title", TString}}, {{"Value", TFloat}, {"Indeterminate", TBool}}, {{"Path", TBytes}, {"Fill", TColor}, {"Stroke", TColor}, {"LineWidth", TFloat}, {"LineCap", TEnum}, {"LineJoin", TEnum}, {"TrimStart", TFloat}, {"TrimEnd", TFloat}, {"Dash", TBytes}}, {{"Source", TString}, {"Mode", TEnum}, {"HideControls", TBool}, {"AutoPlay", TBool}, {"Loop", TBool}, {"Muted", TBool}}, {{"URL", TString}, {"HTML", TString}, {"Preload", TString}, {"UserAgent", TString}, {"Block", TBytes}, {"Requests", TBool}}, {{"Value", TInt}, {"Mode", TEnum}, {"Min", TInt}, {"Max", TInt}}, {{"Title", TString}, {"Width", TFloat}, {"Height", TFloat}, {"MinWidth", TFloat}, {"MinHeight", TFloat}}}
 
@@ -519,13 +521,19 @@ const (
 	CmdMenuBar CommandID = 22
 	// CmdWindowOptions: args: f32 width, height, min width, min height (points, 0: the host's), then the title (rest of the args; empty: the app's name); sent to the root when it mounts: the main window's.
 	CmdWindowOptions CommandID = 23
+	// CmdWindowTitle: args: the title (empty: the app's name); sent to the root when the main window's changes (desktop; mobile hosts have none).
+	CmdWindowTitle CommandID = 24
 	// CmdColorScheme: args: u8 ColorScheme; sent to the root: the app shows light or dark whatever the system's setting, or follows it again (iOS: the windows' overrideUserInterfaceStyle; Android: AppCompat's night mode).
-	CmdColorScheme CommandID = 24
+	CmdColorScheme CommandID = 25
+	// CmdLocale: args: u8 flags (1: right to left), then the BCP 47 tag of the language the app shows; sent to the root as it mounts (before any view is made, after Accent) and when it changes. The host mirrors what it draws itself (navigation, transitions, a list's swipes), its views' natural text alignment, and its own words in that language where the platform lets it.
+	CmdLocale CommandID = 26
+	// CmdSaveLocale: args: the BCP 47 tag of the language the app chose (ui.SetLocale), empty to follow the user's languages again; sent to the root. The host keeps it across launches where the system does (iOS's and macOS's AppleLanguages of the app's defaults, which Settings shows; Android 13's LocaleManager) or itself (Android before 13, Windows), and from then on reports it first in the environment's Languages.
+	CmdSaveLocale CommandID = 27
 	// CmdShareClose: args: u8 how (0 done, 1 cancelled, 2 open the app with what was shared); sent to a share sheet's root (app.ShareSheet): it closes.
-	CmdShareClose CommandID = 25
+	CmdShareClose CommandID = 28
 )
 
-var commandNames = [...]string{"", "Focus", "Blur", "ListUpdate", "Present", "Haptic", "AnimateBegin", "AnimateEnd", "OpenURL", "Call", "Copy", "Play", "Pause", "Seek", "Eval", "Frames", "Announce", "Share", "ScrollTo", "ScrollToOffset", "Accent", "WebNavigate", "MenuBar", "WindowOptions", "ColorScheme", "ShareClose"}
+var commandNames = [...]string{"", "Focus", "Blur", "ListUpdate", "Present", "Haptic", "AnimateBegin", "AnimateEnd", "OpenURL", "Call", "Copy", "Play", "Pause", "Seek", "Eval", "Frames", "Announce", "Share", "ScrollTo", "ScrollToOffset", "Accent", "WebNavigate", "MenuBar", "WindowOptions", "WindowTitle", "ColorScheme", "Locale", "SaveLocale", "ShareClose"}
 
 func (c CommandID) String() string {
 	if int(c) < len(commandNames) && c > 0 {
@@ -585,6 +593,14 @@ const (
 	TextAlignCenter
 	TextAlignEnd
 	TextAlignJustify
+)
+
+type LayoutDirection int32
+
+const (
+	LayoutDirectionInherit LayoutDirection = iota
+	LayoutDirectionLeftToRight
+	LayoutDirectionRightToLeft
 )
 
 type ButtonVariant int32

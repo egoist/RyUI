@@ -108,7 +108,7 @@ func TestScreenActions(t *testing.T) {
 	saved := 0
 	h, _ := mount(t, func() ui.Node {
 		return ui.Stack(func() ui.Node { return ui.StaticText("x") },
-			ui.ScreenOptions{Title: ui.Val("Edit"), Actions: []ui.Action{{Title: "Save", OnPress: func() { saved++ }}}})
+			ui.ScreenOptions{Title: ui.Val("Edit"), Actions: []ui.Action{{Title: ui.Val("Save"), OnPress: func() { saved++ }}}})
 	})
 	screen := h.OfKind(ops.KindScreen)[0]
 	if got := screen.Actions(ops.PropScreenActions); len(got) != 1 || got[0] != "Save" {
@@ -124,8 +124,8 @@ func TestTabs(t *testing.T) {
 	sel := signal.New(0)
 	h, r := mount(t, func() ui.Node {
 		return ui.Tabs(ui.TabsProps{Selected: sel},
-			ui.Tab{Title: "Home", Icon: ui.IconHome, Content: func() ui.Node { return ui.StaticText("home page") }},
-			ui.Tab{Title: "Settings", Icon: ui.IconSettings, Content: func() ui.Node { return ui.StaticText("settings page") }},
+			ui.Tab{Title: ui.Val("Home"), Icon: ui.IconHome, Content: func() ui.Node { return ui.StaticText("home page") }},
+			ui.Tab{Title: ui.Val("Settings"), Icon: ui.IconSettings, Content: func() ui.Node { return ui.StaticText("settings page") }},
 		)
 	})
 	tabs := h.OfKind(ops.KindTabs)[0]
@@ -194,8 +194,8 @@ func TestAlert(t *testing.T) {
 	h, _ := mount(t, func() ui.Node {
 		return ui.Button(ui.ButtonProps{Title: ui.Val("Delete"), OnPress: func() {
 			ui.Alert(ui.AlertProps{Title: "Delete?", Message: "This can't be undone.", Actions: []ui.Action{
-				{Title: "Cancel", Role: ui.ActionCancel},
-				{Title: "Delete", Role: ui.ActionDestructive, OnPress: func() { deleted++ }},
+				{Title: ui.Val("Cancel"), Role: ui.ActionCancel},
+				{Title: ui.Val("Delete"), Role: ui.ActionDestructive, OnPress: func() { deleted++ }},
 			}})
 		}})
 	})
@@ -219,11 +219,11 @@ func TestMenuAndButtonMenu(t *testing.T) {
 	var picked []string
 	h, _ := mount(t, func() ui.Node {
 		return ui.Row(ui.Style{},
-			ui.Menu(ui.MenuProps{LongPress: true, Actions: []ui.Action{{Title: "Copy", OnPress: func() { picked = append(picked, "copy") }}}},
+			ui.Menu(ui.MenuProps{LongPress: true, Actions: []ui.Action{{Title: ui.Val("Copy"), OnPress: func() { picked = append(picked, "copy") }}}},
 				ui.StaticText("hold me")),
 			ui.Button(ui.ButtonProps{Title: ui.Val("More"), Menu: []ui.Action{
-				{Title: "Share", OnPress: func() { picked = append(picked, "share") }},
-				{Title: "Remove", Role: ui.ActionDestructive, OnPress: func() { picked = append(picked, "remove") }},
+				{Title: ui.Val("Share"), OnPress: func() { picked = append(picked, "share") }},
+				{Title: ui.Val("Remove"), Role: ui.ActionDestructive, OnPress: func() { picked = append(picked, "remove") }},
 			}}),
 		)
 	})

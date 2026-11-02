@@ -40,7 +40,8 @@ type node struct {
 	ctl2     uintptr // a second one (a Stepper's plus)
 	children []*node
 	parent   *node
-	listens  [2]uint64  // bits by EventKind
+	listens  [2]uint64 // bits by EventKind
+	dir      ops.LayoutDirection
 	frame    [4]float32 // x, y, width, height in points, in its native parent
 	k        float32    // pixels per point of the top-level window it's in; 0: the main window's
 
@@ -90,8 +91,10 @@ type node struct {
 	utext          []uint16
 	placeholder    string
 	multiline      bool
-	plain          bool // TextFieldProps.Plain
-	settingText    bool // the field's text is being set from the core
+	plain          bool   // TextFieldProps.Plain
+	settingText    bool   // the field's text is being set from the core
+	editRTL        bool   // its EDIT was made right to left
+	editSide       uint32 // and with this alignment style
 	secure         bool
 	keyboard       int32
 	items          []string // Segmented, Wheel
@@ -106,6 +109,7 @@ type node struct {
 	horizontal     bool // Scroll
 	scrollX        float32
 	scrollY        float32
+	scrollEnd      float32 // right to left, a horizontal Scroll's distance from its trailing end
 	contentW       float32
 	contentH       float32
 	wheelAcc       int32
@@ -178,6 +182,8 @@ type Host struct {
 	modules   map[string]func(method string, args []byte) ([]byte, error)
 	assets    string
 	appName   string
+	locale    string // the language the app shows
+	rtl       bool   // and its direction
 	fonts     map[fontKey]uintptr
 	measureDC uintptr
 	brushes   map[uint32]uintptr
@@ -193,6 +199,11 @@ type Host struct {
 	appItems []appItem        // their items, in order
 	accel    uintptr          // their shortcuts' accelerator table
 	coreEnv  host.Environment // the environment the core was last told
+
+	// The user's languages and formats, and the app's own language (locale.go).
+	intl        intl
+	savedLocale string
+	localePath  string
 
 	// The main window's placement (placement.go).
 	placementPath  string
@@ -244,6 +255,9 @@ func newHost() *Host {
 	theHost = h
 	h.appName = appName()
 	h.placementPath = placementFile()
+	h.localePath = localeFile()
+	h.savedLocale = readSavedLocale(h.localePath)
+	h.intl = readIntl()
 	h.assets = assetsDir()
 	h.measureDC = CreateCompatibleDC(0)
 	h.msgWin = CreateWindow(0, classMessage, "", 0, 0, 0, 0, 0, ^uintptr(2), 0) // HWND_MESSAGE: -3

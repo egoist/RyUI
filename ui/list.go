@@ -207,6 +207,7 @@ func (st *listState[T, K]) swipeActions(c *listCell[T, K], i int) {
 	if st.swipe == nil {
 		return
 	}
+	// In an effect, the titles and what the actions depend on are followed.
 	c.actions = st.swipe(i)
 	b := encodeActions(c.actions)
 	if string(b) == string(c.sent) {
@@ -244,18 +245,24 @@ func (st *listState[T, K]) bind(i int, cell ops.NodeID) {
 		return
 	}
 	r := st.e.r
-	el := &element{r: r, id: cell, kind: ops.KindView, real: true, cell: true, up: st.e, sent: [4]float32{nan32, nan32, nan32, nan32}}
+	el := &element{r: r, id: cell, kind: ops.KindView, real: true, cell: true, up: st.e, dir: st.e.dir, sent: [4]float32{nan32, nan32, nan32, nan32}}
 	el.box = layout.New()
 	el.box.Context = el
 	ls := layout.DefaultStyle
 	ls.FlexDirection = layout.Column
 	ls.Width = layout.Pct(100)
+	ls.Direction = el.layoutDirection()
 	el.box.SetStyle(ls)
+	if el.dir != InheritDirection {
+		r.batch.SetEnum(cell, ops.PropLayoutDirection, int32(el.dir))
+	}
 	elems[cell] = el
 	c = &listCell[T, K]{el: el, key: st.key(item)}
+	var cellOwner *signal.Owner
 	signal.RunWithOwner(st.owner, func() {
 		signal.Root(func(d func()) {
 			c.dispose = d
+			cellOwner = signal.CurrentOwner()
 			c.item = signal.NewFunc(item, st.eq)
 			c.index = signal.New(i)
 			if n := withRoot(r, func() Node { return st.row(c.item, c.index) }); n.e != nil {
@@ -268,7 +275,9 @@ func (st *listState[T, K]) bind(i int, cell ops.NodeID) {
 	if st.swipe != nil {
 		el.handlers().action = func(k int64) { runAction(c.actions, k) }
 		el.listen(ops.EventAction)
-		st.swipeActions(c, i)
+		signal.RunWithOwner(cellOwner, func() {
+			signal.RenderEffect(func() { st.swipeActions(c, c.index.Get()) })
+		})
 	}
 }
 

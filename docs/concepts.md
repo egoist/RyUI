@@ -393,7 +393,10 @@ Its fields:
   is Medium on Android, where Material still shows one pane: each
   follows its platform. macOS and Windows have none of their own, and
   take Material's.
-- `Locale`: the user's locale.
+- `Locale`, `Languages`, `FirstWeekday`, `HourCycle`: the locale of the
+  user's regional formats, the languages they read, the day their weeks
+  start on and their clock. Most apps read them through
+  [`ui.Locale` and `ui.FormatLocale`](i18n.md).
 - `TimeZone`: the device's time zone, by its IANA name. RyUI makes it
   Go's `time.Local`, so `time.Now().Format` shows the device's time.
 

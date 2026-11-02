@@ -144,7 +144,7 @@ func stacked(kids ...ui.Node) ui.Node {
 // chevron says a row opens another screen.
 func chevron() ui.Node {
 	if ios {
-		return ui.Symbol("chevron.right", ui.Style{Font: ui.Footnote.Weighted(ui.Semibold), Color: ui.TertiaryLabel})
+		return ui.Symbol(ui.IconForward, ui.Style{Font: ui.Footnote.Weighted(ui.Semibold), Color: ui.TertiaryLabel})
 	}
-	return ui.Symbol("chevron.right", ui.Style{Color: ui.SecondaryLabel})
+	return ui.Symbol(ui.IconForward, ui.Style{Color: ui.SecondaryLabel})
 }

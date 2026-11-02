@@ -559,7 +559,7 @@ func TestSymbol(t *testing.T) {
 			ui.Symbol(ui.IconHeart.Filled(), ui.Style{Color: ui.Red}),
 			ui.Symbol(ui.IconHeart.Filled(), ui.Style{Color: ui.Red}),
 			ui.Button(ui.ButtonProps{Title: ui.Val("Share"), Icon: ui.IconShare, Menu: []ui.Action{
-				{Title: "Copy", Icon: ui.IconCopy}, {Title: "Delete", Role: ui.ActionDestructive},
+				{Title: ui.Val("Copy"), Icon: ui.IconCopy}, {Title: ui.Val("Delete"), Role: ui.ActionDestructive},
 			}}),
 		)
 	})
@@ -611,7 +611,7 @@ func TestSegmentedAndProgress(t *testing.T) {
 	done := signal.New(0.25)
 	h, r := mount(t, func() ui.Node {
 		return ui.Column(ui.Style{},
-			ui.Segmented(ui.SegmentedProps{Segments: []string{"Day", "Week", "Month"}, Selected: sel}),
+			ui.Segmented(ui.SegmentedProps{Segments: ui.Val([]string{"Day", "Week", "Month"}), Selected: sel}),
 			ui.Progress(done),
 			ui.Progress(nil),
 		)
@@ -684,7 +684,7 @@ func TestListSwipeAndEnd(t *testing.T) {
 	h, r := mount(t, func() ui.Node {
 		list = ui.List(ui.ListProps{
 			SwipeActions: func(i int) []ui.Action {
-				return []ui.Action{{Title: "Delete", Icon: ui.IconTrash, Role: ui.ActionDestructive, OnPress: func() { deleted = append(deleted, i) }}}
+				return []ui.Action{{Title: ui.Val("Delete"), Icon: ui.IconTrash, Role: ui.ActionDestructive, OnPress: func() { deleted = append(deleted, i) }}}
 			},
 			OnEndReached: func() {
 				ends++
@@ -1040,8 +1040,8 @@ func TestA11yActions(t *testing.T) {
 	var did []string
 	n := 0
 	h, _ := mount(t, func() ui.Node {
-		return ui.View(ui.ViewProps{Label: "Message",
-			Actions:  []ui.A11yAction{{Name: "Reply", Do: func() { did = append(did, "reply") }}, {Name: "Delete", Do: func() { did = append(did, "delete") }}},
+		return ui.View(ui.ViewProps{Label: ui.Val("Message"),
+			Actions:  []ui.A11yAction{{Name: ui.Val("Reply"), Do: func() { did = append(did, "reply") }}, {Name: ui.Val("Delete"), Do: func() { did = append(did, "delete") }}},
 			OnAdjust: func(by int) { n += by }})
 	})
 	var v *fake.View
@@ -1068,7 +1068,7 @@ func TestWheelStepper(t *testing.T) {
 	count := signal.New(2.0)
 	h, r := mount(t, func() ui.Node {
 		return ui.Column(ui.Style{},
-			ui.Wheel(ui.WheelProps{Items: []string{"S", "M", "L"}, Selected: pick}),
+			ui.Wheel(ui.WheelProps{Items: ui.Val([]string{"S", "M", "L"}), Selected: pick}),
 			ui.Stepper(ui.StepperProps{Value: count, Min: 0, Max: 10}))
 	})
 	w, s := h.OfKind(ops.KindWheel)[0], h.OfKind(ops.KindStepper)[0]
@@ -1091,7 +1091,7 @@ func TestWheelStepper(t *testing.T) {
 func TestColorPicker(t *testing.T) {
 	c := signal.New(ui.Hex(0x3366cc))
 	h, r := mount(t, func() ui.Node {
-		return ui.Row(ui.Style{Align: ui.AlignStart}, ui.ColorPicker(ui.ColorPickerProps{Value: c, Alpha: true, Title: "Tint"}))
+		return ui.Row(ui.Style{Align: ui.AlignStart}, ui.ColorPicker(ui.ColorPickerProps{Value: c, Alpha: true, Title: ui.Val("Tint")}))
 	})
 	p := h.OfKind(ops.KindColorPicker)[0]
 	if ops.Color(p.Int(ops.PropColorPickerValue)) != ui.Hex(0x3366cc) || !p.Bool(ops.PropColorPickerAlpha) || p.String(ops.PropColorPickerTitle) != "Tint" || p.Frame[2] != 28 || p.Frame[3] != 28 {
@@ -1329,7 +1329,7 @@ func TestPlainFieldGlassButton(t *testing.T) {
 		return ui.Column(ui.Style{},
 			ui.TextField(ui.TextFieldProps{Value: signal.New(""), Placeholder: ui.Val("Note"), Plain: true}),
 			ui.TextField(ui.TextFieldProps{Value: signal.New(""), Placeholder: ui.Val("Title")}),
-			ui.Button(ui.ButtonProps{Icon: "xmark", Label: "Close", Variant: ui.ButtonGlass}),
+			ui.Button(ui.ButtonProps{Icon: "xmark", Label: ui.Val("Close"), Variant: ui.ButtonGlass}),
 		)
 	})
 	fields := h.OfKind(ops.KindTextField)

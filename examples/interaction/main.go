@@ -57,7 +57,7 @@ func cards() ui.Node {
 		return ui.View(ui.ViewProps{
 			OnPress:     func() { presses.Update(func(n int) int { return n + 1 }) },
 			Interaction: it,
-			Label:       name,
+			Label:       ui.Val(name),
 			Style: ui.Style{Direction: ui.RowDir, Align: ui.AlignCenter, Gap: 12, Padding: ui.All(16), CornerRadius: 12,
 				Background: ui.SecondaryGroupedBackground, BorderWidth: 1, BorderColor: ui.Separator,
 				Hovered: &ui.Style{Background: ui.SecondaryBackground, BorderColor: ui.Accent},
@@ -99,7 +99,7 @@ func hold() ui.Node {
 	return ui.View(ui.ViewProps{
 		OnPressedChange: recording.Set, // start and stop the recorder here
 		Interaction:     it,
-		Label:           "Hold to record",
+		Label:           ui.Val("Hold to record"),
 		Style: ui.Style{Direction: ui.RowDir, Align: ui.AlignCenter, Justify: ui.JustifyCenter, Gap: 8, Padding: ui.All(16), CornerRadius: 28,
 			Background: ui.SecondaryBackground,
 			Pressed:    &ui.Style{Background: ui.Red}},

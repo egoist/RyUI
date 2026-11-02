@@ -162,7 +162,10 @@ func rgb(hex string) (r, g, b uint8) {
 // widgets' and the shortcuts', and Firebase's settings (google-services.json's, as Google's Gradle plugin
 // writes them). It reports whether it wrote any.
 func androidRes(c *appConfig, res string) (bool, error) {
-	wrote := false
+	wrote, err := c.androidLocaleRes(res)
+	if err != nil {
+		return false, err
+	}
 	if c.splashOn() {
 		if err := androidSplash(c, res); err != nil {
 			return false, err

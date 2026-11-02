@@ -97,6 +97,18 @@ func (r *rich) setProp(h *Host, n *node, p ops.PropID, v *ops.Value) {
 
 func (r *rich) invalidate(h *Host, n *node) { r.dirty = true }
 
+// directionChanged sets the text again the way it now reads, once the core
+// has returned (it lays it out again only if its size may have changed).
+func (r *rich) directionChanged(h *Host, n *node) {
+	r.invalidate(h, n)
+	h.afterCore(func() {
+		if h.nodes[n.id] != n || n.view == 0 {
+			return
+		}
+		WithPool(func() { r.placeInlines(h, n) })
+	})
+}
+
 // build makes the attributed string of the content, styled by the
 // view's text props.
 func (r *rich) build(h *Host, n *node) {
@@ -117,7 +129,8 @@ func (r *rich) build(h *Host, n *node) {
 
 	para := New("NSMutableParagraphStyle")
 	defer Release(para)
-	Send(para, "setAlignment:", uintptr(textAlignment(n.textAlign)))
+	Send(para, "setAlignment:", h.alignment(n))
+	Send(para, "setBaseWritingDirection:", h.writingDirection(n))
 	baseColor := h.nsColor(n.color)
 	if baseColor == 0 {
 		baseColor = Send(Class("NSColor"), "labelColor")

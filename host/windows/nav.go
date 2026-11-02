@@ -3,6 +3,7 @@
 package windows
 
 import (
+	"github.com/egoist/ryui/internal/l10n"
 	. "github.com/egoist/ryui/internal/windows"
 	"github.com/egoist/ryui/ops"
 )
@@ -11,7 +12,8 @@ import (
 //
 //   - A Stack shows its top Screen under a header bar of its own: a back
 //     button (Alt+Left too) while there's a screen to go back to, the
-//     screen's title, and its bar buttons on the right.
+//     screen's title, and its bar buttons on the right. Screens change
+//     without a transition, so there's no slide to mirror.
 //   - Tabs are a bar of tabs on top (as WinUI's NavigationView at the
 //     top: an icon and a title each, an accent pill under the selected
 //     one), the selected page under it.
@@ -352,8 +354,9 @@ func (h *Host) makeHeader(stack *node) *node {
 	b.hwnd = h.makeView(0)
 	b.nav = &nav{stack: stack}
 	b.k = stack.k
+	b.dir = stack.dir
 	SetParent(b.hwnd, stack.hwnd)
-	b.nav.back = CreateWindow(0, "BUTTON", "Back", WS_CHILD|WS_TABSTOP|BS_PUSHBUTTON, 0, 0, 0, 0, b.hwnd, 1)
+	b.nav.back = CreateWindow(0, "BUTTON", l10n.Back(h.locale), WS_CHILD|WS_TABSTOP|BS_PUSHBUTTON, 0, 0, 0, 0, b.hwnd, 1)
 	SendMessage(b.nav.back, WM_UPDATEUISTATE, MakeLong(UIS_SET, UISF_HIDEFOCUS), 0)
 	h.add(b)
 	h.byHwnd[b.nav.back] = b
@@ -428,12 +431,20 @@ func (h *Host) updateHeader(stack *node) {
 }
 
 // layoutHeader places the back button on the left and the bar buttons
-// on the right, 40 points square, or as wide as their titles.
+// on the right (the other way round, right to left), 40 points square, or
+// as wide as their titles.
 func (h *Host) layoutHeader(b *node) {
 	r := ClientRect(b.hwnd)
 	size := h.px(b, 36)
 	y := (r.H() - size) / 2
-	SetWindowPos(b.nav.back, 0, h.px(b, 6), y, h.px(b, 40), size, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
+	rtl := h.isRTL(b)
+	across := func(x, w int32) int32 {
+		if rtl {
+			return r.W() - x - w
+		}
+		return x
+	}
+	SetWindowPos(b.nav.back, 0, across(h.px(b, 6), h.px(b, 40)), y, h.px(b, 40), size, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 	x := r.W() - h.px(b, 8)
 	screen := b.nav.screen
 	for i := len(b.nav.buttons) - 1; i >= 0; i-- {
@@ -446,21 +457,24 @@ func (h *Host) layoutHeader(b *node) {
 			w = tw + h.px(b, 24)
 		}
 		x -= w
-		SetWindowPos(b.nav.buttons[i], 0, x, y, w, size, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
+		SetWindowPos(b.nav.buttons[i], 0, across(x, w), y, w, size, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 		x -= h.px(b, 4)
 	}
 }
 
 // headerButton is what a header's button shows: the back arrow, or a
 // bar button's icon (Segoe Fluent Icons) or title.
-func (nv *nav) headerButton(ctl uintptr) (uint16, string) {
+func (nv *nav) headerButton(ctl uintptr, rtl bool) (uint16, string) {
 	if ctl == nv.back {
+		if rtl {
+			return 0xE72A, "" // Forward: an arrow to the right, the way back goes
+		}
 		return 0xE72B, "" // Back
 	}
 	for i, b := range nv.buttons {
 		if b == ctl && nv.screen != nil && i < len(nv.screen.actions) {
 			a := nv.screen.actions[i]
-			if g := symbolGlyph(a.icon); g != 0 {
+			if g := directedGlyph(a.icon, rtl); g != 0 {
 				return g, ""
 			}
 			return 0, a.title
@@ -503,12 +517,20 @@ func (h *Host) paintHeader(b *node, dc uintptr, g Graphics, r Rect) {
 	old := SelectObject(dc, h.font(h.titleSpec(b)))
 	SetBkMode(dc, TRANSPARENT)
 	SetTextColor(dc, h.theme.label.ref())
-	right := r.Right - h.px(b, 16)
-	for _, btn := range b.nav.buttons {
-		right = min(right, WindowRectIn(btn, b.hwnd).Left-h.px(b, 8))
+	rtl := h.isRTL(b)
+	tr := Rect{Left: x, Top: 0, Right: r.Right - h.px(b, 16), Bottom: r.Bottom}
+	if rtl {
+		tr = flipIn(tr, r)
 	}
-	tr := Rect{Left: x, Top: 0, Right: right, Bottom: r.Bottom}
-	DrawText(dc, UTF16Units(screen.title), &tr, DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX|DT_END_ELLIPSIS)
+	for _, btn := range b.nav.buttons {
+		br := WindowRectIn(btn, b.hwnd)
+		if rtl {
+			tr.Left = max(tr.Left, br.Right+h.px(b, 8))
+		} else {
+			tr.Right = min(tr.Right, br.Left-h.px(b, 8))
+		}
+	}
+	DrawText(dc, UTF16Units(screen.title), &tr, DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX|DT_END_ELLIPSIS|startSide(rtl))
 	SelectObject(dc, old)
 }
 
@@ -576,6 +598,7 @@ func (h *Host) makeTabBar(tabs *node) *node {
 	b.hwnd = h.makeView(WS_TABSTOP)
 	b.nav = &nav{tabs: tabs, hot: -1}
 	b.k = tabs.k
+	b.dir = tabs.dir
 	b.host = tabBarMessage
 	SetParent(b.hwnd, tabs.hwnd)
 	h.add(b)
@@ -583,7 +606,7 @@ func (h *Host) makeTabBar(tabs *node) *node {
 }
 
 // tabRects are the tabs' places in the bar: each its icon and title,
-// padded, from the left.
+// padded, from the left (the right, right to left).
 func (h *Host) tabRects(b *node) []Rect {
 	tabs := b.nav.tabs
 	r := ClientRect(b.hwnd)
@@ -600,6 +623,11 @@ func (h *Host) tabRects(b *node) []Rect {
 		}
 		out = append(out, Rect{Left: x, Top: h.px(b, 6), Right: x + w, Bottom: r.H() - h.px(b, 6)})
 		x += w + h.px(b, 4)
+	}
+	if h.isRTL(b) {
+		for i := range out {
+			out[i] = flipIn(out[i], r)
+		}
 	}
 	return out
 }
@@ -635,12 +663,18 @@ func tabBarMessage(h *Host, b *node, m uint32, wp, lp uintptr) (uintptr, bool) {
 	case WM_GETDLGCODE:
 		return DLGC_WANTARROWS, true
 	case WM_KEYDOWN:
+		// The arrows go the way they point: the next tab is to the left,
+		// right to left.
+		step := 1
+		if h.isRTL(b) {
+			step = -1
+		}
 		switch wp {
 		case VK_LEFT:
-			h.selectTab(tabs, tabs.selected-1)
+			h.selectTab(tabs, tabs.selected-step)
 			return 0, true
 		case VK_RIGHT:
-			h.selectTab(tabs, tabs.selected+1)
+			h.selectTab(tabs, tabs.selected+step)
 			return 0, true
 		}
 	}
@@ -692,6 +726,7 @@ func (h *Host) paintTabBar(b *node, dc uintptr, g Graphics, r Rect) {
 	}
 	font := h.bodyFont(b)
 	SetBkMode(dc, TRANSPARENT)
+	rtl := h.isRTL(b)
 	for i, s := range tabs.children {
 		if i >= len(rects) {
 			break
@@ -703,16 +738,22 @@ func (h *Host) paintTabBar(b *node, dc uintptr, g Graphics, r Rect) {
 		}
 		SetTextColor(dc, color.over(p.bg).ref())
 		x := tr.Left + h.px(b, 12)
-		if glyph := symbolGlyph(s.icon); glyph != 0 {
+		if glyph := directedGlyph(s.icon, rtl); glyph != 0 {
 			old := SelectObject(dc, h.iconFont(b, 16*h.fontScale()))
 			gr := Rect{Left: x, Top: tr.Top, Right: x + h.px(b, 16), Bottom: tr.Bottom}
+			if rtl {
+				gr = flipIn(gr, tr)
+			}
 			DrawText(dc, []uint16{glyph}, &gr, DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX)
 			SelectObject(dc, old)
 			x += h.px(b, 16+8)
 		}
 		old := SelectObject(dc, font)
 		lr := Rect{Left: x, Top: tr.Top, Right: tr.Right, Bottom: tr.Bottom}
-		DrawText(dc, UTF16Units(s.title), &lr, DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX)
+		if rtl {
+			lr = flipIn(lr, tr)
+		}
+		DrawText(dc, UTF16Units(s.title), &lr, DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX|startSide(rtl))
 		SelectObject(dc, old)
 	}
 }
@@ -755,7 +796,7 @@ func (h *Host) openSheet(n *node) {
 	wr := WindowRect(owner)
 	x := wr.Left + (wr.W()-r.W())/2
 	y := wr.Top + (wr.H()-r.H())/2
-	win := CreateWindow(0, classWindow, h.appName, style, x, y, r.W(), r.H(), owner, 0)
+	win := CreateWindow(h.topLevelStyle(), classWindow, h.appName, style, x, y, r.W(), r.H(), owner, 0)
 	if d := DPI(win); d != dpi {
 		// It opened on a monitor of another DPI.
 		dpi, k = d, dpiScale(d)
@@ -868,7 +909,10 @@ func (h *Host) showAlert(id ops.NodeID) {
 		flags |= TDF_USE_COMMAND_LINKS
 	}
 	if len(buttons) == 0 {
-		buttons = []TaskButton{{ID: 100, Title: "OK"}}
+		buttons = []TaskButton{{ID: 100, Title: l10n.OK(h.locale)}}
+	}
+	if h.rtl {
+		flags |= TDF_RTL_LAYOUT
 	}
 	owner := h.windowInUse()
 	title, content := n.title, n.message

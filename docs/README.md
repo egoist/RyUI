@@ -60,6 +60,8 @@ reloads it as you save, on the simulator, an emulator or a phone.
   elements, gestures and haptics.
 - [Accessibility](accessibility.md): labels, roles, custom actions,
   announcements, and text that scales.
+- [Languages](i18n.md): translated messages with plurals, numbers and
+  dates in the user's way, right-to-left layouts, and trying a language.
 - [Data](data.md): values kept across launches, SQLite with live
   queries, and secure storage.
 - [Device and services](device.md): the camera, code scanning, photos

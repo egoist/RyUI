@@ -20,6 +20,7 @@ public final class RyUIViewController: UIViewController {
         nc.addObserver(self, selector: #selector(keyboardWillChange(_:)), name: UIResponder.keyboardWillHideNotification, object: nil)
         nc.addObserver(self, selector: #selector(contentSizeChanged), name: UIContentSizeCategory.didChangeNotification, object: nil)
         nc.addObserver(self, selector: #selector(contentSizeChanged), name: UIAccessibility.reduceMotionStatusDidChangeNotification, object: nil)
+        nc.addObserver(self, selector: #selector(localeChanged), name: NSLocale.currentLocaleDidChangeNotification, object: nil)
         if #available(iOS 17.0, *) {
             registerForTraitChanges([UITraitUserInterfaceStyle.self, UITraitDisplayScale.self]) { (vc: RyUIViewController, _: UITraitCollection) in
                 vc.sendEnvironment()
@@ -56,6 +57,7 @@ public final class RyUIViewController: UIViewController {
         RyUIRuntime.shared.adoptControllers(in: self)
         if let c = RyUIRuntime.shared.accent { view.window?.tintColor = c }
         if RyUIRuntime.shared.colorScheme != .unspecified { view.window?.overrideUserInterfaceStyle = RyUIRuntime.shared.colorScheme }
+        if let w = view.window { RyUIRuntime.shared.setWindowDirection(w) }
     }
 
     public override func viewDidLayoutSubviews() {
@@ -78,6 +80,11 @@ public final class RyUIViewController: UIViewController {
             self.sendEnvironment()
             RyUIRuntime.shared.reportScreens()
         }
+    }
+
+    /// The formats or the languages changed in Settings.
+    @objc func localeChanged() {
+        DispatchQueue.main.async { RyUIRuntime.shared.localeChanged() }
     }
 
     func updateKeyboard() {
@@ -125,7 +132,7 @@ public final class RyUIViewController: UIViewController {
         e.reduceMotion = UIAccessibility.isReduceMotionEnabled
         e.widthClass = traitCollection.horizontalSizeClass.ryui
         e.heightClass = traitCollection.verticalSizeClass.ryui
-        e.locale = Locale.current.identifier
+        e.setLanguages()
         guard e != lastEnv, e.width > 0 else { return }
         lastEnv = e
         let rt = RyUIRuntime.shared

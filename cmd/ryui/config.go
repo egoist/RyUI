@@ -100,6 +100,10 @@ type appConfig struct {
 	} `json:"splash"`
 	// Widgets are the app's home screen widgets (ryui/widget fills them).
 	Widgets []widgetConfig `json:"widgets"`
+	// I18n says where the app's catalogs are, when they aren't in locales.
+	I18n *i18nConfig `json:"i18n"`
+	// dir is the app's directory.
+	dir string
 	// Shortcuts are the app's actions for the system: on iOS, App
 	// Shortcuts (Siri, Spotlight, the Shortcuts app, the Action button);
 	// on Android, the launcher's shortcuts. Each opens the app with its URL.
@@ -157,6 +161,7 @@ func loadConfig(dir string) (*appConfig, error) {
 	} else if !os.IsNotExist(err) {
 		return nil, err
 	}
+	c.useI18nDefaults(dir)
 	base := filepath.Base(dir)
 	if c.Name == "" {
 		c.Name = base
@@ -241,6 +246,12 @@ func (c *appConfig) ldflags(release bool) string {
 	}
 	if c != nil && c.Android.DynamicColor {
 		f = append(f, "-X", "github.com/egoist/ryui/internal/boot.DynamicColor=1")
+	}
+	if devLang != "" {
+		f = append(f, "-X", "github.com/egoist/ryui/internal/boot.Lang="+devLang)
+	}
+	if devDirection != "" {
+		f = append(f, "-X", "github.com/egoist/ryui/internal/boot.Direction="+devDirection)
 	}
 	return "-ldflags=" + strings.Join(f, " ")
 }
@@ -441,6 +452,9 @@ func (c *appConfig) androidManifest(debug bool) string {
 		b.WriteString("    " + x + "\n")
 	}
 	b.WriteString("    <application")
+	if c.androidHasLocales() {
+		b.WriteString(" android:localeConfig=\"@xml/ryui_locales_config\"")
+	}
 	if debug {
 		b.WriteString(" android:usesCleartextTraffic=\"true\"")
 	}

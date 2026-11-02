@@ -133,7 +133,10 @@ func registerTarget() {
 		Method("videoEnded:", func(self ID, _ SEL, n ID) { h().videoEnded(Send(n, "object")) }),
 		Method("videoFailed:", func(self ID, _ SEL, n ID) { h().videoFailed(Send(n, "object")) }),
 		Method("contentResized:", func(self ID, _ SEL, n ID) { h().environmentChanged() }),
-		Method("systemChanged:", func(self ID, _ SEL, n ID) { h().environmentChanged() }),
+		Method("systemChanged:", func(self ID, _ SEL, n ID) {
+			h().refreshLocale()
+			h().environmentChanged()
+		}),
 
 		// Controls.
 		Method("act:", func(self ID, _ SEL, sender ID) { h().act(sender) }),

@@ -86,7 +86,7 @@ func App() ui.Node {
 				)
 			}),
 			ui.List(ui.ListProps{SwipeActions: func(i int) []ui.Action {
-				return []ui.Action{{Title: "Delete", Icon: ui.IconTrash, Role: ui.ActionDestructive, OnPress: func() {
+				return []ui.Action{{Title: ui.Val("Delete"), Icon: ui.IconTrash, Role: ui.ActionDestructive, OnPress: func() {
 					if l := signal.Untrack(rows.Get); i < len(l) {
 						write(`delete from bookmarks where id = ?`, l[i].ID)
 					}
@@ -128,8 +128,8 @@ func App() ui.Node {
 		)
 	}, ui.ScreenOptions{
 		Title:  ui.Val("Bookmarks"),
-		Search: &ui.Search{Text: query, Placeholder: "Search bookmarks"},
-		Actions: []ui.Action{{Title: "Add", Icon: ui.IconPlus, OnPress: func() {
+		Search: &ui.Search{Text: query, Placeholder: ui.Val("Search bookmarks")},
+		Actions: []ui.Action{{Title: ui.Val("Add"), Icon: ui.IconPlus, OnPress: func() {
 			added = newDraft()
 			// A link on the clipboard: the one to add, most likely.
 			d := added

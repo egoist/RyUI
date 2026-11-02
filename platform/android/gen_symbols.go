@@ -21,6 +21,9 @@ import (
 
 // symbols maps SF Symbol names to Material Symbols names. A name's
 // ".fill" variant, when SF Symbols has one, is the Material symbol filled.
+// Names with ".forward" or ".backward" mirror right to left (Symbol.kt's
+// symbol), so a symbol that means a direction the language decides is one
+// of those, drawn as it looks left to right, and "chevron.left" isn't.
 var symbols = map[string]string{
 	"house":                              "home",
 	"magnifyingglass":                    "search",
@@ -42,10 +45,20 @@ var symbols = map[string]string{
 	"chevron.right":                      "chevron_right",
 	"chevron.up":                         "expand_less",
 	"chevron.down":                       "expand_more",
+	"chevron.forward":                    "chevron_right",
+	"chevron.backward":                   "chevron_left",
 	"arrow.left":                         "arrow_back",
 	"arrow.right":                        "arrow_forward",
 	"arrow.up":                           "arrow_upward",
 	"arrow.down":                         "arrow_downward",
+	"arrow.forward":                      "arrow_forward",
+	"arrow.backward":                     "arrow_back",
+	"arrow.forward.circle":               "arrow_circle_right",
+	"arrow.backward.circle":              "arrow_circle_left",
+	"arrow.forward.to.line":              "last_page",
+	"arrow.backward.to.line":             "first_page",
+	"arrowshape.turn.up.forward":         "forward",
+	"arrowshape.turn.up.backward":        "reply",
 	"arrow.clockwise":                    "refresh",
 	"arrow.uturn.backward":               "undo",
 	"arrow.uturn.forward":                "redo",
@@ -140,7 +153,8 @@ var fills = map[string]bool{
 	"sun.max": true, "moon": true, "folder": true, "doc": true, "doc.on.doc": true, "globe": false,
 	"square.grid.2x2": true, "chart.bar": true, "bubble.left.and.bubble.right": true,
 	"hand.thumbsup": true, "hand.thumbsdown": true, "gift": true, "tray": true, "archivebox": true,
-	"pin": true, "ellipsis.circle": true,
+	"pin": true, "ellipsis.circle": true, "arrow.forward.circle": true, "arrow.backward.circle": true,
+	"arrowshape.turn.up.forward": true, "arrowshape.turn.up.backward": true,
 }
 
 // labels name the symbols for TalkBack where the Material symbol's name
@@ -150,6 +164,9 @@ var labels = map[string]string{
 	"magnifyingglass": "Search", "gearshape": "Settings", "xmark": "Close", "plus": "Add",
 	"minus": "Remove", "checkmark": "Done", "chevron.left": "Back", "chevron.right": "Forward",
 	"chevron.up": "Collapse", "chevron.down": "Expand", "arrow.left": "Back", "arrow.clockwise": "Refresh",
+	"chevron.forward": "Forward", "chevron.backward": "Back", "arrow.forward": "Forward", "arrow.backward": "Back",
+	"arrow.forward.circle": "Forward", "arrow.backward.circle": "Back", "arrow.forward.to.line": "Last", "arrow.backward.to.line": "First",
+	"arrowshape.turn.up.forward": "Forward", "arrowshape.turn.up.backward": "Reply",
 	"ellipsis": "More", "ellipsis.circle": "More", "trash": "Delete", "pencil": "Edit",
 	"square.and.pencil": "Compose", "square.and.arrow.up": "Share", "square.and.arrow.down": "Download",
 	"paperplane": "Send", "bell": "Notifications", "envelope": "Mail", "phone": "Call",

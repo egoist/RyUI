@@ -28,6 +28,7 @@ const (
 	DT_NOPREFIX      = 0x00000800
 	DT_EDITCONTROL   = 0x00002000
 	DT_END_ELLIPSIS  = 0x00008000
+	DT_RTLREADING    = 0x00020000
 	DT_WORD_ELLIPSIS = 0x00040000
 	DT_HIDEPREFIX    = 0x00100000
 
@@ -38,6 +39,9 @@ const (
 	CLEARTYPE_QUALITY = 5
 
 	NULL_BRUSH = 5
+	NULL_PEN   = 8
+
+	LAYOUT_RTL = 0x00000001
 
 	SRCCOPY = 0x00CC0020
 )
@@ -96,6 +100,39 @@ func DrawText(dc uintptr, s []uint16, r *Rect, format uint32) int32 {
 	}
 	h, _, _ := procDrawTextW.Call(dc, uintptr(unsafe.Pointer(&s[0])), uintptr(len(s)), uintptr(unsafe.Pointer(r)), uintptr(format))
 	return int32(h)
+}
+
+// Mirrored reports whether a DC is right to left: its origin on the right,
+// as a mirrored window's DC is. GDI follows that; GDI+ doesn't, so what
+// draws into one sticks to GDI.
+func Mirrored(dc uintptr) bool {
+	r, _, _ := procGetLayout.Call(dc)
+	return uint32(r) != 0xFFFFFFFF && r&LAYOUT_RTL != 0
+}
+
+// FillRoundRectGDI fills a rounded rectangle with a COLORREF, through GDI
+// (no antialiasing): for a mirrored DC.
+func FillRoundRectGDI(dc uintptr, r Rect, radius int32, c uint32) {
+	b := CreateSolidBrush(c)
+	oldB := SelectObject(dc, b)
+	oldP := SelectObject(dc, StockObject(NULL_PEN))
+	// Without a pen, RoundRect's right and bottom edges are a pixel short.
+	procRoundRect.Call(dc, uintptr(r.Left), uintptr(r.Top), uintptr(r.Right+1), uintptr(r.Bottom+1), uintptr(2*radius), uintptr(2*radius))
+	SelectObject(dc, oldP)
+	SelectObject(dc, oldB)
+	DeleteObject(b)
+}
+
+// StrokeRoundRectGDI outlines a rounded rectangle with a COLORREF, through
+// GDI (no antialiasing): for a mirrored DC.
+func StrokeRoundRectGDI(dc uintptr, r Rect, width, radius int32, c uint32) {
+	pen, _, _ := procCreatePen.Call(0, uintptr(width), uintptr(c)) // PS_SOLID
+	oldP := SelectObject(dc, pen)
+	oldB := SelectObject(dc, StockObject(NULL_BRUSH))
+	procRoundRect.Call(dc, uintptr(r.Left), uintptr(r.Top), uintptr(r.Right), uintptr(r.Bottom), uintptr(2*radius), uintptr(2*radius))
+	SelectObject(dc, oldB)
+	SelectObject(dc, oldP)
+	DeleteObject(pen)
 }
 
 // TextExtent is a line of text's size in the DC's font.

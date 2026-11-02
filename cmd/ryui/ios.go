@@ -65,8 +65,19 @@ func loadApp(dir string) (*goApp, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := cfg.generateCatalogs(); err != nil {
+		return nil, err
+	}
+	beforeRebuild = func() {
+		if err := cfg.generateCatalogs(); err != nil {
+			fmt.Fprintln(os.Stderr, "ryui:", err)
+		}
+	}
 	deps, _ := exec.Command("go", "-C", abs, "list", "-deps", ".").Output()
 	cfg.permissionsFor(strings.Fields(string(deps)))
+	warnCatalogsUnused(cfg, strings.Fields(string(deps)))
+	warnDevLang(cfg)
+	warnFrozenMessages(cfg, f[1])
 	return &goApp{dir: f[2], name: filepath.Base(abs), moduleDir: f[1], bundleID: cfg.ID, cfg: cfg}, nil
 }
 
@@ -398,8 +409,12 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 	if o := app.cfg.ipadOrientations(); o != nil {
 		urls += "<key>UISupportedInterfaceOrientations~ipad</key><array><string>" + strings.Join(o, "</string><string>") + "</string></array>\n"
 	}
+	urls += app.cfg.plistLocalizationKeys()
 	plist := fmt.Sprintf(infoPlist, app.bundleID, app.displayName(), app.displayName(), iosMin, devices, urls)
 	if err := os.WriteFile(filepath.Join(bundle, "Info.plist"), []byte(plist), 0o644); err != nil {
+		return "", err
+	}
+	if err := app.cfg.writeLprojs(bundle); err != nil {
 		return "", err
 	}
 	if app.cfg.splashOn() {
@@ -438,6 +453,9 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 			"CFBundleSupportedPlatforms": []string{"iPhoneSimulator"}, "UIDeviceFamily": app.cfg.iosDevices(),
 		}))
 		if err != nil {
+			return "", err
+		}
+		if err := app.cfg.writeLprojs(appex); err != nil {
 			return "", err
 		}
 		if err := t.run(work, nil, "codesign", "--force", "--sign", sign, appex); err != nil {

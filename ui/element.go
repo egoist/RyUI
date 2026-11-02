@@ -76,8 +76,9 @@ type element struct {
 	frameQ     bool
 
 	style    Style
-	extraPad Edges // SafeArea's insets
-	fill     bool  // the root's child: fills the screen
+	extraPad Edges           // SafeArea's insets
+	dir      LayoutDirection // a WithDirection's, for what's built in it
+	fill     bool            // the root's child: fills the screen
 	// adjust is what the component sets on the layout style its Style
 	// gives (a Scroll's overflow), kept whenever that's derived again.
 	adjust  func(*layout.Style)
@@ -118,8 +119,16 @@ func withRoot(r *Root, f func() Node) Node {
 func newElement(kind ops.Kind, real bool) *element {
 	r := current()
 	e := &element{r: r, kind: kind, sent: [4]float32{nan32, nan32, nan32, nan32}}
+	if dirOverrides > 0 {
+		e.dir = dirCtx.Use()
+	}
 	e.box = layout.New()
 	e.box.Context = e
+	if e.dir != InheritDirection {
+		st := layout.DefaultStyle
+		st.Direction = e.layoutDirection()
+		e.box.SetStyle(st)
+	}
 	if real {
 		e.makeView()
 	}
@@ -138,6 +147,9 @@ func (e *element) makeView() {
 	e.id = nextID
 	elems[e.id] = e
 	e.r.batch.Create(e.id, e.kind)
+	if e.dir != InheritDirection {
+		e.r.batch.SetEnum(e.id, ops.PropLayoutDirection, int32(e.dir))
+	}
 }
 
 // remeasure marks the element's content as changed.
@@ -410,7 +422,8 @@ func (e *element) setStyle(st Styler, text bool) {
 }
 
 func (e *element) layoutStyle(s *Style) layout.Style {
-	l := s.layoutStyle(e.extraPad)
+	l := s.layoutStyle(e.extraPad, e.rtl())
+	l.Direction = e.layoutDirection()
 	if e.fill && s.Height.IsAuto() && s.Grow == 0 {
 		l.FlexGrow = 1
 	}
@@ -502,6 +515,7 @@ func newProvider(kind ops.Kind) *element {
 	st := layout.DefaultStyle
 	st.FlexDirection = layout.Column
 	st.Width, st.Height = layout.Pct(100), layout.Pct(100)
+	st.Direction = e.layoutDirection()
 	e.box.SetStyle(st)
 	e.r.provs = append(e.r.provs, e)
 	return e

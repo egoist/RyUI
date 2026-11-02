@@ -135,6 +135,17 @@ ui.Column(ui.Style{Padding: ui.Symmetric(8, 16), Margin: ui.Edges{Top: 24}},
 )
 ```
 
+In a language written right to left, a `Row` runs from the right, `Justify`
+and `Align` follow it, and the side a line of text starts on is the right.
+`Left` and `Right` stay where they say, as in CSS. To put a space on the side
+text starts or ends on, say `Start` or `End`:
+
+```go
+ui.Style{Padding: ui.Edges{Start: 16, End: 8}} // 16 on the left in English, on the right in Arabic
+```
+
+See [Languages](i18n.md#right-to-left).
+
 ## Absolute positioning
 
 `Absolute` takes a view out of the flow; `Top`, `Right`, `Bottom` and

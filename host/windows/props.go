@@ -68,7 +68,12 @@ func (h *Host) setCommon(n *node, p ops.PropID, v *ops.Value) {
 		if n.rich != nil {
 			n.rich.invalidate(h, n)
 		}
+		if n.kind == ops.KindTextField {
+			h.alignField(n)
+		}
 		h.redraw(n)
+	case ops.PropLayoutDirection:
+		h.setDirection(n, ops.LayoutDirection(v.Int))
 	case ops.PropLineLimit:
 		n.lineLimit = int(v.Int)
 		if n.rich != nil {

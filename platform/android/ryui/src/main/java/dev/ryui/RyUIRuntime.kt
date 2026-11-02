@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Context
 import android.net.Uri
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.text.Editable
@@ -57,9 +58,104 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
         private set
     /** Whether the colors are the wallpaper's (ryui.json's android.dynamicColor). */
     private var wallpaperColors = false
-    /** Changes when the theme does: what caches theme colors keys by it. */
+    /** Changes when the theme or the language does: what caches theme colors keys by it. */
     var themeVersion = 0
         private set
+    /** The language the app shows (the Locale command's), whatever the system's; null until the core says. */
+    var shownLocale: java.util.Locale? = null
+        private set
+    /** Whether the app is laid out right to left: the Locale command's flag, which may disagree with its tag (ryui dev -dir). */
+    var rtl = false
+        private set
+    /** The user's languages and formats, as the environment reports them. */
+    var region = readRegion()
+        private set
+
+    /** config with the language and direction the app shows: what its views' strings and resources come from. */
+    fun localized(config: android.content.res.Configuration): android.content.res.Configuration {
+        val l = shownLocale ?: return config
+        return android.content.res.Configuration(config).apply {
+            // One locale: with more, resources may choose another one as the
+            // best match, and the configuration's direction with it.
+            setLocales(android.os.LocaleList(l))
+            screenLayout = (screenLayout and android.content.res.Configuration.SCREENLAYOUT_LAYOUTDIR_MASK.inv()) or
+                (if (rtl) android.content.res.Configuration.SCREENLAYOUT_LAYOUTDIR_RTL else android.content.res.Configuration.SCREENLAYOUT_LAYOUTDIR_LTR)
+        }
+    }
+
+    /**
+     * The direction a view is laid out in: its own (ui.WithDirection), or
+     * the app's. Each view has it from when it's made, not through its
+     * parent: the core measures views that aren't attached yet.
+     */
+    fun directionOf(n: RyUINode): Int = when (n.props[RyUIProp.LAYOUT_DIRECTION] as? Int) {
+        RyUILayoutDirection.LEFT_TO_RIGHT -> View.LAYOUT_DIRECTION_LTR
+        RyUILayoutDirection.RIGHT_TO_LEFT -> View.LAYOUT_DIRECTION_RTL
+        RyUILayoutDirection.INHERIT -> View.LAYOUT_DIRECTION_INHERIT
+        else -> if (rtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
+    }
+
+    /** The Locale command: makes the app's views again in the language and direction, keeping the user's state. */
+    private fun setLocale(l: java.util.Locale, rtl: Boolean) {
+        if (l == shownLocale && rtl == this.rtl) return
+        val turned = rtl != this.rtl
+        shownLocale = l
+        this.rtl = rtl
+        keepDefaultLocale()
+        themeBase = app.createConfigurationContext(localized(schemed(app.resources.configuration)))
+        themed = theme(themeBase)
+        themeVersion++
+        activity?.localeChanged()
+        if (turned) for (n in nodes.values) n.view.layoutDirection = directionOf(n)
+        restyleAll(true)
+    }
+
+    /**
+     * What's made without a context (a text's locale, which picks Han
+     * glyphs; formats of dates) goes by the default locale, which the system
+     * sets again at every configuration change.
+     */
+    private fun keepDefaultLocale() {
+        val l = shownLocale ?: return
+        if (java.util.Locale.getDefault() != l) android.os.LocaleList.setDefault(android.os.LocaleList(l))
+    }
+
+    /** Reads the user's languages and formats again; if they changed, the environment says so. */
+    fun regionChanged() {
+        keepDefaultLocale()
+        val next = readRegion()
+        if (next == region) return
+        region = next
+        activity?.sendEnvironment()
+        reportScreens()
+    }
+
+    private var regionReceiver: android.content.BroadcastReceiver? = null
+
+    /** The system's languages and 24-hour setting can change with no Activity to be told. */
+    private fun watchRegion() {
+        if (regionReceiver != null) return
+        val r = object : android.content.BroadcastReceiver() {
+            override fun onReceive(c: Context, i: android.content.Intent) = regionChanged()
+        }
+        regionReceiver = r
+        val f = android.content.IntentFilter(android.content.Intent.ACTION_LOCALE_CHANGED)
+        f.addAction(android.content.Intent.ACTION_TIME_CHANGED)
+        androidx.core.content.ContextCompat.registerReceiver(app, r, f, androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
+    }
+
+    /** The SaveLocale command: the app's language for its next launches, or "" to follow the system's. */
+    private fun saveLocale(tag: String) {
+        if (Build.VERSION.SDK_INT >= 33) {
+            // The system tells the process with a configuration change, which
+            // the Activity handles (configChanges): the language has changed by then.
+            app.getSystemService(android.app.LocaleManager::class.java)?.applicationLocales =
+                if (tag.isEmpty()) android.os.LocaleList.getEmptyLocaleList() else android.os.LocaleList.forLanguageTags(tag)
+            return
+        }
+        saveRegionLocale(tag)
+        regionChanged()
+    }
 
     /**
      * The app's Material theme on base: with a color scheme from the
@@ -95,7 +191,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
         if (c == accent && wallpaper == wallpaperColors) return
         accent = c
         wallpaperColors = wallpaper
-        themeBase = app.createConfigurationContext(schemed(activity?.resources?.configuration ?: app.resources.configuration))
+        themeBase = app.createConfigurationContext(localized(schemed(activity?.resources?.configuration ?: app.resources.configuration)))
         themed = theme(themeBase)
         themeVersion++
         restyleAll(true)
@@ -303,6 +399,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
         if (!started) {
             started = true
             RyUIAutomation.start(this)
+            watchRegion()
             RyUINative.load(app)
             // A share sheet's process: the Go code's root is the app's sheet.
             if (activity is RyUIShareActivity) runCatching { RyUINative.setenv("RYUI_SHARE_SHEET", "1") }
@@ -330,6 +427,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
     fun startHeadless() {
         if (started) return
         started = true
+        watchRegion()
         RyUINative.load(app)
         registerNatives()
         enter { RyUINative.start(this) }
@@ -390,10 +488,11 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
 
     /** The configuration changed (dark mode, font scale): restyle what the theme decided. */
     fun configurationChanged(system: android.content.res.Configuration) {
-        val config = schemed(system)
+        val config = localized(schemed(system))
         val night = isNight(config)
         themeBase = app.createConfigurationContext(config)
         themed = theme(themeBase)
+        regionChanged() // the system's languages, and the default locale it just set
         density = config.densityDpi / 160f
         // Views resolve theme colors and text sizes when they're made:
         // after a dark mode, font scale or density change, make the ones
@@ -435,6 +534,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
                 (n.view as? RyUIStack)?.restyle()
                 (n.view as? RyUITabs)?.restyle()
                 (n.view as? RyUISegmented)?.restyle()
+                (n.view as? RyUIDatePicker)?.refresh() // says the date in the language
             }
         }
     }
@@ -473,9 +573,16 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
         settingProp = false
         val now = n.view // replaying a button's variant replaced it again
         restyle(n)
-        val parent = old.parent as? ViewGroup ?: return
-        val i = parent.indexOfChild(old)
         val lp = old.layoutParams
+        val parent = old.parent as? ViewGroup
+        if (parent == null) {
+            // A Scroll's row out of sight: it keeps its frame to come back with.
+            if (lp != null) now.layoutParams = lp
+            now.measure(View.MeasureSpec.makeMeasureSpec(old.width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(old.height, View.MeasureSpec.EXACTLY))
+            now.layout(old.left, old.top, old.right, old.bottom)
+            return
+        }
+        val i = parent.indexOfChild(old)
         val focused = old.hasFocus()
         parent.removeViewAt(i)
         parent.addView(now, i, lp)
@@ -524,7 +631,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
             // The platform's TextView: AppCompat's (Material's) posts a message
             // to load the theme's font for each one made, and needs nothing
             // else here; the Material text appearance is applied all the same.
-            RyUIKind.TEXT -> TextView(ctx).apply { applyTextStyle(this, 0) }
+            RyUIKind.TEXT -> TextView(ctx).apply { applyTextStyle(this, 0); textAlignment = View.TEXT_ALIGNMENT_VIEW_START }
             RyUIKind.BUTTON -> makeButton(id, RyUIButtonVariant.PLAIN)
             RyUIKind.TEXT_FIELD -> makeTextField(id)
             RyUIKind.TOGGLE -> MaterialSwitch(ctx).apply {
@@ -555,7 +662,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
             RyUIKind.RICH_TEXT -> RyUIRichText(this, id)
             RyUIKind.SELECTABLE -> RyUISelectionArea(this)
             else -> error("ryui: the Android host can't show ${RyUIKind.name(kind)} ($kind) yet")
-        }
+        }.also { if (rtl) it.layoutDirection = View.LAYOUT_DIRECTION_RTL }
     }
 
     var settingProp = false
@@ -576,6 +683,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
 
     private fun makeTextField(id: Int) = AppCompatEditText(themed).apply {
         isSingleLine = true
+        textAlignment = View.TEXT_ALIGNMENT_VIEW_START
         imeOptions = EditorInfo.IME_ACTION_DONE
         addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -607,8 +715,9 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
     fun setHorizontal(n: RyUINode, horizontal: Boolean) {
         val old = n.view as? android.widget.FrameLayout ?: return
         if ((old is HorizontalScrollView) == horizontal) return
-        val v: android.widget.FrameLayout = if (horizontal) HorizontalScrollView(themed).apply { isFillViewport = false }
+        val v: android.widget.FrameLayout = if (horizontal) RyUIHorizontalScroll(themed).apply { isFillViewport = false }
             else NestedScrollView(themed).apply { isFillViewport = false }
+        v.layoutDirection = directionOf(n)
         reportScrolls(v, n.id)
         while (old.childCount > 0) {
             val c = old.getChildAt(0)
@@ -633,6 +742,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
     fun replaceButton(n: RyUINode, variant: Int) {
         val old = n.view as MaterialButton
         val b = makeButton(n.id, variant)
+        b.layoutDirection = directionOf(n)
         b.text = old.text
         b.isEnabled = old.isEnabled
         (n.props[RyUIProp.Button.ICON] as? String)?.let { setButtonIcon(n, b, it) }
@@ -779,7 +889,11 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
         val parent = v.parent
         // An inline component: its size is the core's, its place the text's.
         if (parent is RyUIRichText) parent.placeInlines()
+        if (parent is RyUIHorizontalScroll) parent.keep()
         if (parent is NestedScrollView || parent is HorizontalScrollView || parent is FrameLayout) {
+            // A scroll view measures its content in specs of its own, which
+            // the view would answer from its measure cache, in its old size.
+            v.forceLayout()
             (parent as View).requestLayout()
         }
     }
@@ -828,6 +942,18 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
                 setAccent(if (c != 0L) color(c) else null, flags and 1 != 0)
             }
             RyUICommand.COLOR_SCHEME -> if (args.remaining() > 0) setColorScheme(args.get().toInt())
+            RyUICommand.LOCALE -> {
+                if (args.remaining() < 1) return
+                val flags = args.get().toInt()
+                val b = ByteArray(args.remaining())
+                args.get(b)
+                setLocale(java.util.Locale.forLanguageTag(String(b, Charsets.UTF_8)), flags and 1 != 0)
+            }
+            RyUICommand.SAVE_LOCALE -> {
+                val b = ByteArray(args.remaining())
+                args.get(b)
+                saveLocale(String(b, Charsets.UTF_8))
+            }
             RyUICommand.CALL -> call(id, args)
             RyUICommand.FRAMES -> setFrames(args.remaining() > 0 && args.get().toInt() == 1)
             RyUICommand.PLAY -> (n.view as? RyUIVideo)?.player?.play()
@@ -906,6 +1032,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
         nextCellID++
         val id = (0x80000000L or nextCellID.toLong()).toInt()
         cell.ryuiID = id
+        if (rtl) cell.layoutDirection = View.LAYOUT_DIRECTION_RTL
         nodes[id] = RyUINode(id, 0, cell)
         return id
     }

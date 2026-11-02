@@ -95,6 +95,11 @@ type node struct {
 	transition     []byte // Style.Transition's
 	entering       bool
 
+	// Languages (locale.go).
+	dir        ops.LayoutDirection // its LayoutDirection prop
+	rtl        bool                // the way it reads
+	horizontal bool                // a horizontal Scroll
+
 	// Interaction states and drag and drop (interaction.go).
 	hovered    bool
 	hoverArea  ID         // its NSTrackingArea (listening for Hover)
@@ -166,6 +171,14 @@ type Host struct {
 	drag        *dragSource // the app's drag under way
 	hoverCheck  []*node     // views to check the pointer against
 	hoverQueued bool
+
+	// Languages (locale.go).
+	locale       string // the language the app shows (the Locale command)
+	rtl          bool   // the way it reads
+	appRTL       bool   // the way AppKit reads, for good: its application's
+	languages    string // the environment's
+	firstWeekday uint8
+	hourCycle    uint8
 }
 
 var theHost *Host
@@ -173,6 +186,7 @@ var theHost *Host
 // newHost makes the application and its window. Main thread.
 func newHost() *Host {
 	Load()
+	latchDirection()
 	registerClasses()
 	h := &Host{
 		nodes:       map[ops.NodeID]*node{},
@@ -190,7 +204,10 @@ func newHost() *Host {
 	h.appName = appName()
 	h.assets = assetsDir()
 	h.source = NewMainSource(h.runPosted)
+	h.refreshLocale()
 	app := Send(Class("NSApplication"), "sharedApplication")
+	h.appRTL = SendInt(app, "userInterfaceLayoutDirection") == 1
+	h.rtl = h.appRTL
 	Send(app, "setActivationPolicy:", 0) // regular: a Dock icon and a menu bar
 	Send(Class("NSWindow"), "setAllowsAutomaticWindowTabbing:", 0)
 	Send(app, "setDelegate:", uintptr(h.target))
@@ -370,6 +387,7 @@ func (h *Host) add(n *node) {
 	if n.view != 0 {
 		h.byView[n.view] = n
 	}
+	h.applyDirection(n)
 }
 
 func (h *Host) destroy(id ops.NodeID) {
@@ -555,15 +573,25 @@ func (h *Host) place(n *node, f [4]float32) {
 		h.setTransform(n, nil)
 	}
 	v := n.view
+	// A horizontal Scroll keeps its distance from the end it starts at as its
+	// content or its width changes.
+	keep := h.horizontalScroll(n)
+	var gap float64
+	if keep != nil {
+		gap = h.startGap(keep)
+	}
 	switch {
 	case n.entering:
 		// Comes in from its transition's state, to its first frame.
 		n.entering = false
 		h.enter_(n, r)
-	case h.animating:
+	case h.animating && keep == nil:
 		MsgSetRect(Send(v, "animator"), selSetFrame, r)
 	default:
 		MsgSetRect(v, selSetFrame, r)
+	}
+	if keep != nil {
+		h.scrollFromStart(keep, gap)
 	}
 	n.placed = true
 	if n.hoverArea != 0 {

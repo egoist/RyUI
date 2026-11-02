@@ -360,8 +360,8 @@ func TestAccessibility(t *testing.T) {
 	did, by := "", 0
 	h, _ := mount(t, func() ui.Node {
 		return ui.View(ui.ViewProps{
-			Label:    "Volume",
-			Actions:  []ui.A11yAction{{Name: "Mute", Do: func() { did = "Mute" }}},
+			Label:    ui.Val("Volume"),
+			Actions:  []ui.A11yAction{{Name: ui.Val("Mute"), Do: func() { did = "Mute" }}},
 			OnAdjust: func(n int) { by += n },
 		}, ui.StaticText("x"))
 	})
@@ -531,7 +531,7 @@ func TestMenuBar(t *testing.T) {
 }
 
 func TestWindowOptions(t *testing.T) {
-	ui.SetWindowOptions(ui.WindowOptions{Title: "Notes", Width: 420, Height: 500, MinWidth: 400, MinHeight: 300})
+	ui.SetWindowOptions(ui.WindowOptions{Title: ui.Val("Notes"), Width: 420, Height: 500, MinWidth: 400, MinHeight: 300})
 	defer ui.SetWindowOptions(ui.WindowOptions{})
 	h, _ := mount(t, func() ui.Node {
 		return ui.Text(signal.Func(func() string { return fmt.Sprint("width ", ui.UseEnvironment().Get().Width) }))

@@ -1,0 +1,12 @@
+{
+  "ok": "OK",
+  "search": "Haku",
+  "back": "Takaisin",
+  "decrease": "Vähennä",
+  "increase": "Lisää",
+  "about": "Tietoja: {app}",
+  "hide": "Kätke {app}",
+  "quit": "Lopeta {app}",
+  "hideOthers": "Kätke muut",
+  "zoom": "Zoomaa"
+}

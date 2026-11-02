@@ -190,7 +190,7 @@ func (n *Node) grid(in *input, p *Pass) output {
 	st := &n.Style
 	pad, bor := n.paddingBorder(in.parent.W)
 	gutter := n.scrollGutter()
-	inset := Rect[float32]{pad.Top + bor.Top, pad.Right + bor.Right + gutter.W, pad.Bottom + bor.Bottom + gutter.H, pad.Left + bor.Left}
+	inset := n.contentInset(pad, bor, gutter)
 	pbs := sumBoth(inset)
 	margin := n.margins(in.parent.W)
 
@@ -485,10 +485,12 @@ func (n *Node) grid(in *input, p *Pass) output {
 		if it.align[0] == AlignAuto {
 			it.align[0] = st.JustifyItems
 		}
+		it.align[0] = resolveSelfAlign(it.align[0], true, n.rtl, ch.rtlUnder(n.rtl))
 		it.align[1] = cs.AlignSelf
 		if it.align[1] == AlignAuto {
 			it.align[1] = st.AlignItems
 		}
+		it.align[1] = resolveSelfAlign(it.align[1], false, n.rtl, ch.rtlUnder(n.rtl))
 		for a := 0; a < 2; a++ {
 			it.minC[a], it.maxC[a], it.minimum[a] = nan, nan, nan
 			for ti := it.span[a][0]; ti < it.span[a][1]; ti++ {
@@ -521,8 +523,16 @@ func (n *Node) grid(in *input, p *Pass) output {
 		return output{size: outSize, baseline: nan}
 	}
 	innerFinal := Size{outSize.W - pbs.W, outSize.H - pbs.H}
+	// Right to left, the columns are placed from the right of the border box,
+	// where scrollbars and padding can't push it out.
+	boxW := outSize.W
+	if isDef(size.W) {
+		boxW = maxf(size.W, pad.Left+pad.Right+bor.Left+bor.Right)
+	}
 
-	// Align the tracks (justify-content, align-content).
+	// Align the tracks (justify-content, align-content). Their offsets are
+	// from the start of the axis: on the columns of a right-to-left grid,
+	// from the right of the border box, until an item's x is worked out.
 	contents := [2]Content{st.JustifyContent, st.AlignContent}
 	for a := 0; a < 2; a++ {
 		ts := tracks[a]
@@ -535,6 +545,9 @@ func (n *Node) grid(in *input, p *Pass) output {
 		}
 		lead, between := distribute(contents[a], free, visible, true)
 		pos := inset.start(a) + lead
+		if a == 0 && n.rtl {
+			pos = inset.Right + lead
+		}
 		first := true
 		for i := range ts {
 			t := &ts[i]
@@ -570,6 +583,9 @@ func (n *Node) grid(in *input, p *Pass) output {
 			free := areaSize[a] - sz - sumAxis(it.margin, a)
 			o := it.margin.start(a)
 			as, ae := it.autoM.start(a), it.autoM.end(a)
+			if a == 0 && n.rtl {
+				o, as, ae = it.margin.Right, ae, as
+			}
 			switch {
 			case as && ae:
 				o += free / 2
@@ -586,6 +602,9 @@ func (n *Node) grid(in *input, p *Pass) output {
 			}
 			pos[a] = areaPos[a] + o
 			known.set(a, sz)
+		}
+		if n.rtl {
+			pos[0] = boxW - pos[0] - final.W
 		}
 		out := it.node.compute(input{mode: modeLayout, known: known, parent: Size{areaSize[0], areaSize[1]}, avail: Size{areaSize[0], areaSize[1]}}, p)
 		px, py := relativeOffset(it.node, pos[0], pos[1], Size{areaSize[0], areaSize[1]})
@@ -606,36 +625,79 @@ func (n *Node) grid(in *input, p *Pass) output {
 			continue
 		}
 		ax, ay := bor.Left, bor.Top
+		if n.rtl { // on the columns' offsets, from the right
+			ax = bor.Right
+		}
 		aw, ah := outSize.W-bor.Left-bor.Right-gutter.W, outSize.H-bor.Top-bor.Bottom-gutter.H
 		area := [2][2]float32{{ax, ax + aw}, {ay, ay + ah}}
 		pls := [2]Placement{cs.GridColumn, cs.GridRow}
 		for a := 0; a < 2; a++ {
 			ts := tracks[a]
-			lineAt := func(l GridLine) (float32, bool) {
+			line := func(l GridLine) (int, bool) {
 				if l.Kind != LineIndex || l.N == 0 {
 					return 0, false
 				}
-				k := resolveLine(l, explicit[a]) + off[a]
-				switch {
-				case k < 0 || k > len(ts):
-					return 0, false
-				case k == len(ts):
-					if k == 0 {
-						return 0, false
-					}
-					return ts[k-1].offset + ts[k-1].base, true
+				return resolveLine(l, explicit[a]) + off[a], true
+			}
+			ks, hasStart := line(pls[a].Start)
+			ke, hasEnd := line(pls[a].End)
+			// Two lines the wrong way round swap, and the same line twice is
+			// one track (CSS Grid §8.3.1), for an absolute item too.
+			if hasStart && hasEnd {
+				if ks > ke {
+					ks, ke = ke, ks
+				} else if ks == ke {
+					ke = ks + 1
 				}
-				return ts[k].offset, true
 			}
-			if v, ok := lineAt(pls[a].Start); ok {
-				area[a][0] = v
+			// A line the grid hasn't is the padding edge, as auto is. The end of
+			// a track is this side of the gap after it.
+			if hasStart && ks >= 0 && ks < len(ts) {
+				area[a][0] = ts[ks].offset
+			} else if hasStart && ks == len(ts) && ks > 0 {
+				area[a][0] = ts[ks-1].offset + ts[ks-1].base
 			}
-			if v, ok := lineAt(pls[a].End); ok {
-				area[a][1] = v
+			if hasEnd && ke > 0 && ke <= len(ts) {
+				area[a][1] = ts[ke-1].offset + ts[ke-1].base
+			} else if hasEnd && ke == 0 && len(ts) > 0 {
+				area[a][1] = ts[0].offset
 			}
 		}
-		p.placeAbsoluteAligned(ch, area[0][0], area[1][0], area[0][1]-area[0][0], area[1][1]-area[1][0],
-			area[0][0], area[1][0], area[0][1]-area[0][0], area[1][1]-area[1][0], [2]float32{})
+		// A line past the end: no size.
+		area[0][1] = maxf(area[0][1], area[0][0])
+		area[1][1] = maxf(area[1][1], area[1][0])
+		left := area[0][0]
+		if n.rtl {
+			left = boxW - area[0][1]
+		}
+		var frac [2]float32
+		// A static position on the inline axis honors justify-self.
+		al := cs.JustifySelf
+		if al == AlignAuto {
+			al = st.JustifyItems
+		}
+		switch resolveSelfAlign(al, true, n.rtl, ch.rtlUnder(n.rtl)) {
+		case AlignCenter:
+			frac[0] = 0.5
+		case AlignEnd, AlignFlexEnd:
+			frac[0] = 1
+		}
+		if n.rtl {
+			frac[0] = 1 - frac[0]
+		}
+		// And on the block axis, align-self.
+		al = cs.AlignSelf
+		if al == AlignAuto {
+			al = st.AlignItems
+		}
+		switch resolveSelfAlign(al, false, n.rtl, ch.rtlUnder(n.rtl)) {
+		case AlignCenter:
+			frac[1] = 0.5
+		case AlignEnd, AlignFlexEnd:
+			frac[1] = 1
+		}
+		p.placeAbsoluteAligned(ch, left, area[1][0], area[0][1]-area[0][0], area[1][1]-area[1][0],
+			left, area[1][0], area[0][1]-area[0][0], area[1][1]-area[1][0], frac)
 	}
 	return output{size: outSize, baseline: baseline}
 }

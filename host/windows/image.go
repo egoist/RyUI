@@ -291,7 +291,10 @@ var symbols = map[string]uint16{
 	"person.circle": 0xE77B, "person.crop.circle.fill": 0xEA8C, "ellipsis.bubble": 0xE8BD,
 }
 
-func symbolGlyph(name string) uint16 {
+// symbolGlyph is a symbol's glyph left to right; 0 if the host has none.
+func symbolGlyph(name string) uint16 { return directedGlyph(name, false) }
+
+func plainGlyph(name string) uint16 {
 	if name == "" {
 		return 0
 	}

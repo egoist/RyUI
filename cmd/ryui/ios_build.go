@@ -104,6 +104,10 @@ func buildIOS(app *goApp, o *buildOptions) error {
 	if err != nil {
 		return err
 	}
+	cfg.plistLocalizations(info)
+	if err := cfg.writeLprojs(bundle); err != nil {
+		return err
+	}
 	infoPath := filepath.Join(bundle, "Info.plist")
 	if err := os.WriteFile(infoPath, []byte(plist(info)), 0o644); err != nil {
 		return err
@@ -143,6 +147,9 @@ func buildIOS(app *goApp, o *buildOptions) error {
 		}
 		appex, err := embedWidgets(bundle, exe, cfg.widgetInfo(info))
 		if err != nil {
+			return err
+		}
+		if err := cfg.writeLprojs(appex); err != nil {
 			return err
 		}
 		if o.simulator {

@@ -185,13 +185,16 @@ func (v *view) block(b signal.Accessor[block], tight bool, quote int) ui.Node {
 		if th.CodeBlockBorder != 0 {
 			box.BorderWidth, box.BorderColor = 1, th.CodeBlockBorder
 		}
-		return ui.View(ui.ViewProps{Style: box},
-			ui.Scroll(ui.ScrollProps{Horizontal: true},
-				ui.View(ui.ViewProps{Style: ui.Style{Padding: ui.All(th.CodeBlockPadding)}},
-					ui.RichText(ui.RichTextProps{Style: ui.Style{Font: th.CodeFont, Color: th.Code, TextAlign: align},
-						Text: signal.Func(func() ui.Rich {
-							return ui.Rich{{Text: code.Get(), Mono: true}}
-						})}))))
+		// Code reads left to right in every language.
+		return ui.WithDirection(ui.LeftToRight, func() ui.Node {
+			return ui.View(ui.ViewProps{Style: box},
+				ui.Scroll(ui.ScrollProps{Horizontal: true},
+					ui.View(ui.ViewProps{Style: ui.Style{Padding: ui.All(th.CodeBlockPadding)}},
+						ui.RichText(ui.RichTextProps{Style: ui.Style{Font: th.CodeFont, Color: th.Code, TextAlign: align},
+							Text: signal.Func(func() ui.Rich {
+								return ui.Rich{{Text: code.Get(), Mono: true}}
+							})}))))
+		})
 	case parser.Quote:
 		return ui.Row(ui.Style{Gap: 12},
 			ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(th.QuoteBarWidth), Background: th.QuoteBar, CornerRadius: th.QuoteBarWidth / 2}}),
@@ -278,11 +281,19 @@ func tableAlign(d *parser.Document, row, col int) ui.TextAlign {
 	if col >= len(al) {
 		return ui.TextStart
 	}
+	// GFM's :--- and ---: are left and right on the page, as HTML's are.
 	switch al[col] {
 	case parser.AlignCenter:
 		return ui.TextCenter
 	case parser.AlignRight:
+		if ui.IsRTL() {
+			return ui.TextStart
+		}
 		return ui.TextEnd
+	case parser.AlignLeft:
+		if ui.IsRTL() {
+			return ui.TextEnd
+		}
 	}
 	return ui.TextStart
 }
@@ -306,7 +317,7 @@ func (v *view) paragraph(b signal.Accessor[block], color ui.Color) ui.Node {
 			if images != nil {
 				var kids []ui.Node
 				for _, im := range images {
-					kids = append(kids, ui.Image(ui.ImageProps{Source: ui.Val(im.dest), Label: im.alt,
+					kids = append(kids, ui.Image(ui.ImageProps{Source: ui.Val(im.dest), Label: ui.Val(im.alt),
 						Style: ui.Style{AlignSelf: ui.AlignStart, CornerRadius: v.th.ImageRadius, Clip: true}}))
 				}
 				return ui.Column(ui.Style{Gap: 8}, kids...)
@@ -428,12 +439,12 @@ func (v *view) spans(i int) ui.Rich {
 				// its place among the paragraph's images, and its source.
 				dest, link := n.Dest, s.Link
 				out = append(out, ui.Embed(strconv.Itoa(images)+" "+link+" "+dest, func() ui.Node {
-					img := ui.Image(ui.ImageProps{Source: ui.Val(dest), Label: alt})
+					img := ui.Image(ui.ImageProps{Source: ui.Val(dest), Label: ui.Val(alt)})
 					if link == "" {
 						return img
 					}
 					// A linked image (a badge) follows its link.
-					return ui.View(ui.ViewProps{Role: ui.RoleLink, Label: alt, OnPress: func() { v.p.OnLink(link) }}, img)
+					return ui.View(ui.ViewProps{Role: ui.RoleLink, Label: ui.Val(alt), OnPress: func() { v.p.OnLink(link) }}, img)
 				}))
 				images++
 			case parser.FootnoteRef:

@@ -135,6 +135,10 @@ func buildMac(app *goApp, o *buildOptions) error {
 		}
 		info["CFBundleIconFile"] = "AppIcon"
 	}
+	app.cfg.plistLocalizations(info)
+	if err := app.cfg.writeLprojs(res); err != nil {
+		return err
+	}
 	if err := os.WriteFile(filepath.Join(contents, "Info.plist"), []byte(plist(info)), 0o644); err != nil {
 		return err
 	}

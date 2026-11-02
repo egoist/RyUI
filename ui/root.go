@@ -74,6 +74,7 @@ func Mount(h host.Host, root func() Node) *Root {
 	r := &Root{host: h, batch: new(ops.Batch)}
 	r.envV = classify(h.Environment())
 	setTimeZone(r.envV.TimeZone)
+	environmentLocale(r.envV)
 	r.scale = r.envV.Scale
 	if r.scale <= 0 {
 		r.scale = 1
@@ -89,6 +90,11 @@ func Mount(h host.Host, root func() Node) *Root {
 			r.dispose = dispose
 			r.el = newElement(ops.KindView, true)
 			r.sendAccent()
+			r.sendLocale(shown.Load(), false)
+			if pendingSave != nil {
+				r.batch.Command(r.el.id, ops.CmdSaveLocale, []byte(*pendingSave))
+				pendingSave = nil
+			}
 			r.sendWindowOptions()
 			if colorScheme != ColorSchemeSystem {
 				r.batch.Command(r.el.id, ops.CmdColorScheme, []byte{byte(colorScheme)})
@@ -96,6 +102,7 @@ func Mount(h host.Host, root func() Node) *Root {
 			st := layout.DefaultStyle
 			st.FlexDirection = layout.Column
 			st.Width, st.Height = layout.Pct(100), layout.Pct(100)
+			st.Direction = rootDirection(isRTLNow())
 			r.el.box.SetStyle(st)
 			var n Node
 			envCtx.Provide(r.env, func() { n = root() })
@@ -329,6 +336,7 @@ func setTimeZone(name string) {
 
 func (r *Root) setEnvironment(env host.Environment) {
 	setTimeZone(env.TimeZone)
+	environmentLocale(env)
 	old := r.envV
 	r.envV = env
 	if env.Scale > 0 {

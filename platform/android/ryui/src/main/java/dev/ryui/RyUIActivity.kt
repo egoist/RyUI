@@ -2,6 +2,7 @@ package dev.ryui
 
 import android.content.ComponentCallbacks2
 import android.content.res.Configuration
+import android.content.res.Resources
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
@@ -26,6 +27,32 @@ open class RyUIActivity : AppCompatActivity() {
     /** The keyboard's height over the window, as it animates, in px. */
     val keyboardPx get() = keyboard
     private var last: RyUIEnvironment? = null
+    // The app's language and direction, where they aren't the Activity's
+    // configuration's: what it makes (dialogs, Material's pickers) is in them.
+    private var shownResources: Resources? = null
+    private var shownTheme: Resources.Theme? = null
+
+    override fun getResources(): Resources = shownResources ?: super.getResources()
+    override fun getTheme(): Resources.Theme = shownTheme ?: super.getTheme()
+
+    /** The language the app shows changed, or this Activity's configuration did. */
+    fun localeChanged() {
+        shownResources = null
+        shownTheme = null
+        val shown = runtime.shownLocale ?: return
+        val own = super.getResources().configuration
+        val config = runtime.localized(runtime.schemed(own))
+        // en shown on an en-US system is what the Activity has already.
+        val same = own.locales[0].let { it.language == shown.language && it.script == shown.script }
+        if (!same || config.layoutDirection != own.layoutDirection) {
+            val r = createConfigurationContext(config).resources
+            shownResources = r
+            shownTheme = r.newTheme().apply { applyStyle(themeRes, true) }
+        }
+        val direction = if (runtime.rtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
+        if (::frame.isInitialized) frame.layoutDirection = direction
+        window?.decorView?.layoutDirection = direction
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         runtime = RyUIRuntime.get(this)
@@ -34,6 +61,7 @@ open class RyUIActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         RyUIDisplay.apply(this, runtime.isNight(resources.configuration)) // ryui/screen's, if it set any
         frame = FrameLayout(this)
+        localeChanged()
         RyUISplash.install(frame) // ryui.json's splash, until the first frame
         setContentView(content(frame))
         onBackPressedDispatcher.addCallback(this, runtime.back)
@@ -65,6 +93,9 @@ open class RyUIActivity : AppCompatActivity() {
         // Opened with a URL (a scheme's, an app link).
         if (savedInstanceState == null) intent?.let { incoming(it) }
     }
+
+    /** The Activity's theme, for what it makes in another language. */
+    protected open val themeRes: Int get() = R.style.Theme_RyUI
 
     /** The view the Activity shows, which holds the root's frame: the frame itself. */
     protected open fun content(frame: FrameLayout): View = frame
@@ -113,7 +144,10 @@ open class RyUIActivity : AppCompatActivity() {
             dark = runtime.isNight(c),
             reduceMotion = !android.animation.ValueAnimator.areAnimatorsEnabled(),
             widthClass = widthClass(frame.width / d), heightClass = heightClass(frame.height / d),
-            locale = c.locales[0].toLanguageTag(),
+            locale = runtime.region.locale,
+            languages = runtime.region.languages,
+            firstWeekday = runtime.region.firstWeekday,
+            hourCycle = runtime.region.hourCycle,
         )
         if (!force && e == last) return
         last = e
@@ -121,6 +155,9 @@ open class RyUIActivity : AppCompatActivity() {
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
+        // Its own resources again, for what the Activity updates with it.
+        shownResources = null
+        shownTheme = null
         super.onConfigurationChanged(newConfig)
         configured(newConfig)
     }
@@ -132,6 +169,7 @@ open class RyUIActivity : AppCompatActivity() {
         edgeToEdge() // status bar icons follow dark mode
         RyUIDisplay.bars(this, runtime.isNight(config)) // unless ryui/screen set them
         runtime.configurationChanged(config)
+        localeChanged()
         window.setBackgroundDrawable(windowBackground())
         frame.post { sendEnvironment() }
     }
@@ -159,6 +197,7 @@ open class RyUIActivity : AppCompatActivity() {
         // Another instance had the views (one launched on top of this
         // one, then closed): take them back.
         if (runtime.activity != null && runtime.activity !== this) frame.post { runtime.attach(this) }
+        runtime.regionChanged() // what changed while it was away
         runtime.lifecycle(RyUILifecycle.FOREGROUND)
         RyUIDisplay.watch(this, true)
     }

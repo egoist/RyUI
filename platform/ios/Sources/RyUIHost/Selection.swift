@@ -19,9 +19,10 @@ final class RyUITextRange: UITextRange {
 final class RyUISelectionRect: UITextSelectionRect {
     let r: CGRect
     let first: Bool, last: Bool
-    init(_ r: CGRect, first: Bool, last: Bool) { self.r = r; self.first = first; self.last = last }
+    let rtl: Bool
+    init(_ r: CGRect, rtl: Bool, first: Bool, last: Bool) { self.r = r; self.rtl = rtl; self.first = first; self.last = last }
     override var rect: CGRect { r }
-    override var writingDirection: NSWritingDirection { .natural }
+    override var writingDirection: NSWritingDirection { rtl ? .rightToLeft : .leftToRight }
     override var containsStart: Bool { first }
     override var containsEnd: Bool { last }
     override var isVertical: Bool { false }
@@ -204,8 +205,8 @@ final class RyUISelectionInput: UIView, UITextInput, UIGestureRecognizerDelegate
     func position(from position: UITextPosition, in direction: UITextLayoutDirection, offset: Int) -> UITextPosition? {
         guard let p = position as? RyUITextPosition else { return nil }
         switch direction {
-        case .left: return self.position(from: p, offset: -offset)
-        case .right: return self.position(from: p, offset: offset)
+        case .left: return self.position(from: p, offset: isRTL(p.offset) ? offset : -offset)
+        case .right: return self.position(from: p, offset: isRTL(p.offset) ? -offset : offset)
         case .up, .down:
             var r = caretRect(for: p)
             for _ in 0..<max(offset, 1) {
@@ -228,15 +229,31 @@ final class RyUISelectionInput: UIView, UITextInput, UIGestureRecognizerDelegate
 
     func position(within range: UITextRange, farthestIn direction: UITextLayoutDirection) -> UITextPosition? {
         guard let r = range as? RyUITextRange else { return nil }
-        return direction == .left || direction == .up ? r.start : r.end
+        return before(direction, at: r.a) ? r.start : r.end
     }
 
     func characterRange(byExtending position: UITextPosition, in direction: UITextLayoutDirection) -> UITextRange? {
         guard let p = position as? RyUITextPosition else { return nil }
-        return direction == .left || direction == .up ? RyUITextRange(clamp(p.offset - 1), p.offset) : RyUITextRange(p.offset, clamp(p.offset + 1))
+        return before(direction, at: p.offset) ? RyUITextRange(clamp(p.offset - 1), p.offset) : RyUITextRange(p.offset, clamp(p.offset + 1))
     }
 
-    func baseWritingDirection(for position: UITextPosition, in direction: UITextStorageDirection) -> NSWritingDirection { .natural }
+    /// Whether the text at offset o runs right to left.
+    private func isRTL(_ o: Int) -> Bool { segment(at: o)?.0.base.rtl ?? false }
+
+    /// Whether going that way from offset o goes back in the text.
+    private func before(_ direction: UITextLayoutDirection, at o: Int) -> Bool {
+        switch direction {
+        case .up: return true
+        case .left: return !isRTL(o)
+        case .right: return isRTL(o)
+        default: return false
+        }
+    }
+
+    func baseWritingDirection(for position: UITextPosition, in direction: UITextStorageDirection) -> NSWritingDirection {
+        guard let p = position as? RyUITextPosition, let (s, _) = segment(at: p.offset) else { return .natural }
+        return s.base.writing < 0 ? .natural : s.base.writing == 1 ? .rightToLeft : .leftToRight
+    }
     func setBaseWritingDirection(_ writingDirection: NSWritingDirection, for range: UITextRange) {}
 
     // UITextInput: geometry, in the area's coordinates
@@ -252,13 +269,16 @@ final class RyUISelectionInput: UIView, UITextInput, UIGestureRecognizerDelegate
 
     func selectionRects(for range: UITextRange) -> [UITextSelectionRect] {
         guard let r = range as? RyUITextRange, r.a < r.b else { return [] }
-        var rects: [CGRect] = []
+        var out: [RyUISelectionRect] = []
         for (s, start) in layout() {
             let a = max(r.a - start, 0), b = min(r.b - start, s.textLength)
             guard a < b else { continue }
-            rects += s.rects(from: a, to: b).map { s.convert($0, to: self) }
+            // The selection's start and end, in the texts that hold them.
+            for p in s.selectionPieces(from: a, to: b) {
+                out.append(RyUISelectionRect(s.convert(p.rect, to: self), rtl: p.rtl, first: p.start && r.a >= start, last: p.end && r.b <= start + s.textLength))
+            }
         }
-        return rects.enumerated().map { i, rc in RyUISelectionRect(rc, first: i == 0, last: i == rects.count - 1) }
+        return out
     }
 
     func closestPosition(to point: CGPoint) -> UITextPosition? {
@@ -310,6 +330,13 @@ final class RyUISelectionInput: UIView, UITextInput, UIGestureRecognizerDelegate
     override func selectAll(_ sender: Any?) {
         inputDelegate?.selectionWillChange(self)
         selection = RyUITextRange(0, length)
+        inputDelegate?.selectionDidChange(self)
+    }
+
+    /// The texts moved (the direction changed): UIKit asks for the
+    /// selection's rectangles again.
+    func geometryChanged() {
+        inputDelegate?.selectionWillChange(self)
         inputDelegate?.selectionDidChange(self)
     }
 

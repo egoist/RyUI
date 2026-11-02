@@ -129,7 +129,7 @@ return ui.Row(ui.Style{Gap: 12, Wrap: true},
 	ui.Button(ui.ButtonProps{Title: ui.Val("Save"), Variant: ui.ButtonFilled, Disabled: saving,
 		OnPress: func() { saving.Set(true) }}),
 	ui.Button(ui.ButtonProps{Title: ui.Val("Compose"), Icon: ui.IconCompose, Variant: ui.ButtonTinted}),
-	ui.Button(ui.ButtonProps{Icon: ui.IconTrash, Label: "Delete", Variant: ui.ButtonGray}),
+	ui.Button(ui.ButtonProps{Icon: ui.IconTrash, Label: ui.Val("Delete"), Variant: ui.ButtonGray}),
 )
 ```
 
@@ -165,10 +165,10 @@ calling `OnPress` (a `UIMenu` on iOS, a `PopupMenu` on Android). Each
 `OnPress`. `ui.ActionDestructive` shows it in red.
 
 ```go
-ui.Button(ui.ButtonProps{Icon: ui.IconMore, Label: "More", Menu: []ui.Action{
-	{Title: "Copy", Icon: ui.IconCopy, OnPress: func() { ui.Copy("https://go.dev") }},
-	{Title: "Share", Icon: ui.IconShare, OnPress: func() { ui.Share("https://go.dev") }},
-	{Title: "Delete", Icon: ui.IconTrash, Role: ui.ActionDestructive, OnPress: func() {}},
+ui.Button(ui.ButtonProps{Icon: ui.IconMore, Label: ui.Val("More"), Menu: []ui.Action{
+	{Title: ui.Val("Copy"), Icon: ui.IconCopy, OnPress: func() { ui.Copy("https://go.dev") }},
+	{Title: ui.Val("Share"), Icon: ui.IconShare, OnPress: func() { ui.Share("https://go.dev") }},
+	{Title: ui.Val("Delete"), Icon: ui.IconTrash, Role: ui.ActionDestructive, OnPress: func() {}},
 }})
 ```
 
@@ -177,8 +177,8 @@ menu, shown on a long press:
 
 ```go
 ui.Menu(ui.MenuProps{LongPress: true, Actions: []ui.Action{
-	{Title: "Reply", Icon: ui.IconMessage},
-	{Title: "Delete", Role: ui.ActionDestructive},
+	{Title: ui.Val("Reply"), Icon: ui.IconMessage},
+	{Title: ui.Val("Delete"), Role: ui.ActionDestructive},
 }, Style: ui.Style{Padding: ui.All(16), Background: ui.SecondaryBackground, CornerRadius: 12}},
 	ui.StaticText("Long-press for a menu"),
 )
@@ -227,7 +227,7 @@ message := signal.New("")
 return ui.Row(ui.Style{Gap: 8, Align: ui.AlignEnd},
 	ui.TextField(ui.TextFieldProps{Value: message, Placeholder: ui.Val("Message"), Multiline: true,
 		Style: ui.Style{Grow: 1, Lines: 5}}),
-	ui.Button(ui.ButtonProps{Icon: ui.IconSend, Label: "Send", Variant: ui.ButtonFilled,
+	ui.Button(ui.ButtonProps{Icon: ui.IconSend, Label: ui.Val("Send"), Variant: ui.ButtonFilled,
 		Disabled: signal.Func(func() bool { return message.Get() == "" }),
 		OnPress:  func() { message.Set("") }}),
 )
@@ -255,14 +255,14 @@ return ui.Column(ui.Style{Gap: 16},
 		ui.StaticText("Wi-Fi", ui.Style{Grow: 1}),
 		ui.Toggle(ui.ToggleProps{Value: wifi})),
 	ui.Slider(ui.SliderProps{Value: volume}),
-	ui.Segmented(ui.SegmentedProps{Segments: []string{"Day", "Week", "Month"}, Selected: period}),
+	ui.Segmented(ui.SegmentedProps{Segments: ui.Val([]string{"Day", "Week", "Month"}), Selected: period}),
 	ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
 		ui.Text(signal.Func(func() string { return fmt.Sprintf("%.0f cups", cups.Get()) }), ui.Style{Grow: 1}),
 		ui.Stepper(ui.StepperProps{Value: cups, Min: 1, Max: 8})),
-	ui.Wheel(ui.WheelProps{Items: sizes, Selected: size}),
+	ui.Wheel(ui.WheelProps{Items: ui.Val(sizes), Selected: size}),
 	ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
 		ui.StaticText("Tint", ui.Style{Grow: 1}),
-		ui.ColorPicker(ui.ColorPickerProps{Value: tint, Alpha: true, Title: "Tint"})),
+		ui.ColorPicker(ui.ColorPickerProps{Value: tint, Alpha: true, Title: ui.Val("Tint")})),
 	ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
 		ui.StaticText("Starts", ui.Style{Grow: 1}),
 		ui.DatePicker(ui.DatePickerProps{Value: when, Mode: ui.DateAndTime, Min: time.Now()})),
@@ -317,7 +317,7 @@ return ui.Column(ui.Style{Gap: 12},
 		Source:      ui.Val("https://picsum.photos/id/1015/600/400"),
 		Placeholder: "placeholder.png",
 		Mode:        ui.ImageFill,
-		Label:       "A river in a valley",
+		Label:       ui.Val("A river in a valley"),
 		Style:       ui.Style{AspectRatio: 3.0 / 2, CornerRadius: 12, Clip: true},
 	}),
 )
@@ -379,7 +379,7 @@ vector drawing; nothing is rasterized. `svg.MustParse` reads the markup
 var download = svg.MustParse(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>`)
 
 func downloadIcon() ui.Node {
-	return svg.View(svg.Props{Icon: download, Color: ui.Val(ui.Accent), Label: "Download",
+	return svg.View(svg.Props{Icon: download, Color: ui.Val(ui.Accent), Label: ui.Val("Download"),
 		Style: ui.Style{Width: ui.Pt(24), Height: ui.Pt(24)}})
 }
 ```
@@ -446,11 +446,11 @@ web = ui.WebView(ui.WebViewProps{
 })
 return ui.Column(ui.Style{Grow: 1},
 	ui.Row(ui.Style{Gap: 8, Padding: ui.Symmetric(8, 12), Align: ui.AlignCenter},
-		ui.Button(ui.ButtonProps{Icon: ui.IconBack, Label: "Back",
+		ui.Button(ui.ButtonProps{Icon: ui.IconBack, Label: ui.Val("Back"),
 			Disabled: signal.Func(func() bool { return !state.Get().CanGoBack }),
 			OnPress:  func() { ui.WebBack(web) }}),
 		ui.Text(signal.Func(func() string { return state.Get().Title }), ui.Style{Grow: 1, Lines: 1}),
-		ui.Button(ui.ButtonProps{Icon: ui.IconRefresh, Label: "Reload", OnPress: func() { ui.WebReload(web) }}),
+		ui.Button(ui.ButtonProps{Icon: ui.IconRefresh, Label: ui.Val("Reload"), OnPress: func() { ui.WebReload(web) }}),
 	),
 	ui.Show(signal.Func(func() bool { return state.Get().Loading }), func() ui.Node {
 		return ui.Progress(signal.Func(func() float64 { return float64(state.Get().Progress) }))
@@ -562,7 +562,7 @@ func ring(w, h float32) *ui.Path {
 
 func progressRing(done signal.Accessor[float32]) ui.Node {
 	box := ui.Style{Absolute: true, Left: ui.Pt(0), Top: ui.Pt(0), Width: ui.Pct(100), Height: ui.Pct(100)}
-	return ui.View(ui.ViewProps{Label: "Progress", Style: ui.Style{Width: ui.Pt(72), Height: ui.Pt(72)}},
+	return ui.View(ui.ViewProps{Label: ui.Val("Progress"), Style: ui.Style{Width: ui.Pt(72), Height: ui.Pt(72)}},
 		ui.Shape(ui.ShapeProps{Path: ring, Stroke: ui.SecondaryBackground, LineWidth: 8, Style: box}),
 		ui.Shape(ui.ShapeProps{Path: ring, Stroke: ui.Accent, LineWidth: 8, LineCap: ui.CapRound,
 			TrimEnd: done, Style: box}),
@@ -586,7 +586,7 @@ open := signal.New(false)
 return ui.View(ui.ViewProps{
 	OnPress:     func() { open.Set(!open.Peek()) },
 	OnLongPress: func() { ui.Haptic(ui.HapticMedium) },
-	Label:       "Ada, 2 unread",
+	Label:       ui.Val("Ada, 2 unread"),
 	Style:       ui.Style{Direction: ui.RowDir, Gap: 12, Padding: ui.All(16), Background: ui.SecondaryBackground, CornerRadius: 12},
 },
 	ui.Symbol(ui.IconPerson.Filled()),
@@ -631,7 +631,7 @@ scroll = ui.Scroll(ui.ScrollProps{
 return ui.View(ui.ViewProps{Style: ui.Style{Grow: 1}}, scroll,
 	ui.Show(down, func() ui.Node {
 		return ui.View(ui.ViewProps{Style: ui.Style{Absolute: true, Right: ui.Pt(20), Bottom: ui.Pt(20)}},
-			ui.Button(ui.ButtonProps{Icon: ui.IconUp, Label: "Back to top", Variant: ui.ButtonFilled,
+			ui.Button(ui.ButtonProps{Icon: ui.IconUp, Label: ui.Val("Back to top"), Variant: ui.ButtonFilled,
 				OnPress: func() { ui.ScrollTo(scroll, 0, 0, true) }}))
 	}))
 ```
@@ -717,8 +717,8 @@ remove := func(i int) {
 list := ui.List(ui.ListProps{
 	SwipeActions: func(i int) []ui.Action {
 		return []ui.Action{
-			{Title: "Delete", Icon: ui.IconTrash, Role: ui.ActionDestructive, OnPress: func() { remove(i) }},
-			{Title: "Archive", Icon: "archivebox", OnPress: func() { remove(i) }},
+			{Title: ui.Val("Delete"), Icon: ui.IconTrash, Role: ui.ActionDestructive, OnPress: func() { remove(i) }},
+			{Title: ui.Val("Archive"), Icon: "archivebox", OnPress: func() { remove(i) }},
 		}
 	},
 	OnEndReached: func() {

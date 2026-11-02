@@ -100,6 +100,12 @@ func (h *Host) command(n *node, c ops.CommandID, args []byte) {
 		h.setMenuBar(args)
 	case ops.CmdWindowOptions:
 		h.windowOptions(args)
+	case ops.CmdWindowTitle:
+		h.setWindowTitle(string(args))
+	case ops.CmdLocale:
+		h.setLocale(args)
+	case ops.CmdSaveLocale:
+		h.saveLocale(string(args))
 	case ops.CmdColorScheme:
 		if len(args) > 0 {
 			h.setColorScheme(ops.ColorScheme(args[0]))
@@ -191,6 +197,7 @@ func (h *Host) setMenu(n *node) {
 func (h *Host) makeMenuOf(actions []action, sel string) ID {
 	m := menu("")
 	Send(m, "setAutoenablesItems:", 0)
+	Send(m, "setUserInterfaceLayoutDirection:", direction(h.rtl))
 	for i, a := range actions {
 		if a.role == ops.AlertButtonRoleCancel {
 			continue

@@ -44,12 +44,16 @@ func (n *Node) flex(in *input, p *Pass) output {
 	}
 	x := 1 - m
 	reverse := st.FlexDirection.isReverse()
+	// The main axis runs against x or y on a reversed direction, and a row's
+	// also runs against x in a right-to-left box, whose start is the right.
+	mirrorM := reverse != (m == 0 && n.rtl)
+	// Likewise the cross axis of a right-to-left column.
+	mirrorX := m == 1 && n.rtl
 	wrap := st.FlexWrap != NoWrap
 	wrapReverse := st.FlexWrap == WrapReverse
 
 	pad, bor := n.paddingBorder(in.parent.W)
-	gutter := n.scrollGutter()
-	inset := Rect[float32]{pad.Top + bor.Top, pad.Right + bor.Right + gutter.W, pad.Bottom + bor.Bottom + gutter.H, pad.Left + bor.Left}
+	inset := n.contentInset(pad, bor, n.scrollGutter())
 	pbs := sumBoth(inset)
 	pbOnly := Size{pad.Left + pad.Right + bor.Left + bor.Right, pad.Top + pad.Bottom + bor.Top + bor.Bottom}
 	margin := n.margins(in.parent.W)
@@ -121,6 +125,7 @@ func (n *Node) flex(in *input, p *Pass) output {
 		if it.align == AlignAuto {
 			it.align = AlignStretch
 		}
+		it.align = resolveSelfAlign(it.align, m == 1, n.rtl, ch.rtlUnder(n.rtl))
 		it.grow, it.shrink = cs.FlexGrow, cs.FlexShrink
 		p.flexItems = append(p.flexItems, it)
 	}
@@ -358,7 +363,7 @@ func (n *Node) flex(in *input, p *Pass) output {
 		perAuto := float32(0)
 		if autos > 0 && free > 0 {
 			perAuto = free / float32(autos)
-		} else if autos == 0 {
+		} else { // auto margins take no negative space
 			jc := st.JustifyContent
 			if reverse {
 				switch jc {
@@ -366,6 +371,10 @@ func (n *Node) flex(in *input, p *Pass) output {
 					jc = ContentFlexEnd
 				case ContentEnd:
 					jc = ContentFlexStart
+				case ContentSpaceAround, ContentSpaceEvenly:
+					if free < 0 { // these overflow from start, not main-start
+						jc = ContentFlexEnd
+					}
 				}
 			}
 			l2, b2 := distribute(jc, free, len(line), false)
@@ -374,18 +383,22 @@ func (n *Node) flex(in *input, p *Pass) output {
 		pos := lead
 		for i := range line {
 			it := &line[i]
-			if it.autoM.start(m) {
+			ms, me, as, ae := it.margin.start(m), it.margin.end(m), it.autoM.start(m), it.autoM.end(m)
+			if mirrorM { // positions run from the far side: it comes first
+				ms, me, as, ae = me, ms, ae, as
+			}
+			if as {
 				pos += perAuto
 			}
-			pos += it.margin.start(m)
+			pos += ms
 			it.posM = pos
-			pos += it.target + it.margin.end(m)
-			if it.autoM.end(m) {
+			pos += it.target + me
+			if ae {
 				pos += perAuto
 			}
 			pos += between
 		}
-		if reverse {
+		if mirrorM {
 			for i := range line {
 				it := &line[i]
 				it.posM = innerM - it.posM - it.target
@@ -402,11 +415,15 @@ func (n *Node) flex(in *input, p *Pass) output {
 	if wrap {
 		ac2 := ac
 		if wrapReverse {
-			switch ac2 {
-			case ContentFlexStart:
-				ac2 = ContentFlexEnd
-			case ContentFlexEnd:
-				ac2 = ContentFlexStart
+			switch {
+			// The lines get mirrored below, which is right for flex-start and
+			// flex-end, whose cross-start has moved, and not for start and end.
+			case ac2 == ContentStart:
+				ac2 = ContentEnd
+			case ac2 == ContentEnd:
+				ac2 = ContentStart
+			case free < 0 && (ac2 == ContentSpaceAround || ac2 == ContentSpaceEvenly):
+				ac2 = ContentEnd
 			}
 		}
 		l2, b2 := distribute(ac2, free, len(lines), true)
@@ -429,13 +446,16 @@ func (n *Node) flex(in *input, p *Pass) output {
 			it := &items[i]
 			outer := it.cross + sumAxis(it.margin, x)
 			free := l.cross - outer
-			off := it.margin.start(x)
+			off, as, ae := it.margin.start(x), it.autoM.start(x), it.autoM.end(x)
+			if mirrorX {
+				off, as, ae = it.margin.end(x), ae, as
+			}
 			switch {
-			case it.autoM.start(x) && it.autoM.end(x):
+			case as && ae:
 				off += maxf(0, free) / 2
-			case it.autoM.start(x):
+			case as:
 				off += maxf(0, free)
-			case it.autoM.end(x):
+			case ae:
 			default:
 				align := it.align
 				if wrapReverse {
@@ -458,10 +478,21 @@ func (n *Node) flex(in *input, p *Pass) output {
 				}
 			}
 			it.posX = l.pos + off
+			if mirrorX {
+				it.posX = innerX - it.posX - it.cross
+			}
 		}
 	}
 
-	// 12. Final layout of each item.
+	// 12. Final layout of each item. The content box hangs from the inline
+	// start's edge, which shows when padding and scrollbars overrun the box.
+	contentX := inset.Left
+	if n.rtl {
+		contentX = outSize.W - inset.Right - innerM
+		if m == 1 {
+			contentX = outSize.W - inset.Right - innerX
+		}
+	}
 	for i := range items {
 		it := &items[i]
 		known := Size{}
@@ -473,9 +504,9 @@ func (n *Node) flex(in *input, p *Pass) output {
 		out := it.node.compute(input{mode: modeLayout, known: known, parent: innerSize, avail: ca}, p)
 		var px, py float32
 		if m == 0 {
-			px, py = inset.Left+it.posM, inset.Top+it.posX
+			px, py = contentX+it.posM, inset.Top+it.posX
 		} else {
-			px, py = inset.Left+it.posX, inset.Top+it.posM
+			px, py = contentX+it.posX, inset.Top+it.posM
 		}
 		px, py = relativeOffset(it.node, px, py, innerSize)
 		p.place(it.node, px, py, out.size)
@@ -498,15 +529,17 @@ func (n *Node) flex(in *input, p *Pass) output {
 	return output{size: outSize, baseline: containerBaseline}
 }
 
-// relativeOffset applies a relatively positioned node's insets.
+// relativeOffset applies a relatively positioned node's insets. With both
+// left and right, the parent's inline start wins.
 func relativeOffset(ch *Node, x, y float32, parent Size) (float32, float32) {
 	ins := &ch.Style.Inset
 	if ch.Style.Position != Relative || (ins.Left.IsAuto() && ins.Right.IsAuto() && ins.Top.IsAuto() && ins.Bottom.IsAuto()) {
 		return x, y
 	}
-	if l := ins.Left.resolve(parent.W); isDef(l) {
+	l, r := ins.Left.resolve(parent.W), ins.Right.resolve(parent.W)
+	if isDef(l) && !(ch.parent.rtl && isDef(r)) {
 		x += l
-	} else if r := ins.Right.resolve(parent.W); isDef(r) {
+	} else if isDef(r) {
 		x -= r
 	}
 	if t := ins.Top.resolve(parent.H); isDef(t) {
@@ -525,6 +558,10 @@ func (n *Node) layoutAbsolute(size Size, bor, inset Rect[float32], m int, revers
 	for _, ch := range n.children {
 		if ch.Style.Position != Absolute || ch.Style.Display == DisplayNone {
 			continue
+		}
+		ax := bor.Left
+		if n.rtl {
+			ax += n.scrollGutter().W
 		}
 		aw := size.W - bor.Left - bor.Right - n.scrollGutter().W
 		ah := size.H - bor.Top - bor.Bottom - n.scrollGutter().H
@@ -551,6 +588,7 @@ func (n *Node) layoutAbsolute(size Size, bor, inset Rect[float32], m int, revers
 		if align == AlignAuto {
 			align = st.AlignItems
 		}
+		align = resolveSelfAlign(align, m == 1, n.rtl, ch.rtlUnder(n.rtl))
 		fx := float32(0)
 		switch align {
 		case AlignCenter:
@@ -566,9 +604,29 @@ func (n *Node) layoutAbsolute(size Size, bor, inset Rect[float32], m int, revers
 				fx = 1
 			}
 		}
+		if n.rtl { // the fractions are from the left: the inline axis is mirrored
+			if m == 0 {
+				fm = 1 - fm
+			} else {
+				fx = 1 - fx
+			}
+		}
 		frac[m], frac[1-m] = fm, fx
-		p.placeAbsoluteAligned(ch, bor.Left, bor.Top, aw, ah, inset.Left, inset.Top, cw, ch2, frac)
+		p.placeAbsoluteAligned(ch, ax, bor.Top, aw, ah, inset.Left, inset.Top, cw, ch2, frac)
 	}
+}
+
+// resolveSelfAlign turns self-start and self-end into the container's
+// start or end. On the inline axis that depends on whether the item goes
+// the container's way; the block axis runs down in both.
+func resolveSelfAlign(al Align, inline, containerRTL, itemRTL bool) Align {
+	if al != AlignSelfStart && al != AlignSelfEnd {
+		return al
+	}
+	if (al == AlignSelfStart) == (!inline || containerRTL == itemRTL) {
+		return AlignStart
+	}
+	return AlignEnd
 }
 
 // distribute returns the leading space and the extra space between n

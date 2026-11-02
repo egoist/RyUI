@@ -16,9 +16,9 @@ import RyUIOps
 /// <text>` replaces the focused text field's text (or the first text
 /// field's); `submit` presses return in it; `switch <n>` flips the
 /// n-th switch (from 0, in creation order); `scroll <points>` scrolls
-/// the first scroll view or list down by that much; `dump` writes what
-/// the screen shows (each label's text, button's title or view's
-/// accessibility label, a line each, in creation order) to
+/// the first vertical scroll view or list down by that much; `dump`
+/// writes what the screen shows (each label's text, button's title or
+/// view's accessibility label, a line each, in creation order) to
 /// tmp/ryui-dump.txt; `back` pops the shown stack's top screen, as its
 /// back button does; `tab <title>` selects the tab with that title, as
 /// tapping it does.
@@ -138,9 +138,9 @@ import RyUIOps
     }
 
     static func scroll(_ dy: CGFloat) {
-        guard let s = rt.nodes.values.sorted(by: { $0.id < $1.id }).compactMap({ $0.view as? UIScrollView }).first else { return }
+        guard let s = rt.nodes.values.sorted(by: { $0.id < $1.id }).compactMap({ $0.view as? UIScrollView }).first(where: { !(($0 as? RyUIScrollView)?.horizontal ?? false) }) else { return }
         let maxY = max(0, s.contentSize.height - s.bounds.height + s.adjustedContentInset.bottom)
-        s.setContentOffset(CGPoint(x: 0, y: min(maxY, max(0, s.contentOffset.y + dy))), animated: false)
+        s.setContentOffset(CGPoint(x: s.contentOffset.x, y: min(maxY, max(0, s.contentOffset.y + dy))), animated: false)
         s.layoutIfNeeded()
     }
 

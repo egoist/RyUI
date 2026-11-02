@@ -102,7 +102,8 @@ func Window(p WindowProps) Node {
 // name), its content's size when it opens and the least the user can
 // make it, in points (0: the host's).
 type WindowOptions struct {
-	Title               string
+	// Title can follow the app's language; WindowTitle sends its changes.
+	Title               signal.Accessor[string]
 	Width, Height       float32
 	MinWidth, MinHeight float32
 }
@@ -127,8 +128,20 @@ func (r *Root) sendWindowOptions() {
 	for _, v := range [...]float32{o.Width, o.Height, o.MinWidth, o.MinHeight} {
 		b = binary.LittleEndian.AppendUint32(b, math.Float32bits(v))
 	}
-	b = append(b, o.Title...)
-	r.batch.Command(r.el.id, ops.CmdWindowOptions, b)
+	if o.Title == nil {
+		r.batch.Command(r.el.id, ops.CmdWindowOptions, b)
+		return
+	}
+	id := r.el.id
+	first := true
+	bind(o.Title, func(title string) {
+		if first {
+			first = false
+			r.batch.Command(id, ops.CmdWindowOptions, append(b, title...))
+			return
+		}
+		r.batch.Command(id, ops.CmdWindowTitle, []byte(title))
+	})
 }
 
 // Modifiers are a shortcut's modifier keys.

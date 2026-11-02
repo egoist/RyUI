@@ -32,6 +32,7 @@ type rich struct {
 	selectOK  bool
 	pressed   int  // the link the mouse went down on
 	bg        rgba // the background it has, what's behind it
+	align     uint16
 }
 
 type inlineSize struct {
@@ -191,7 +192,8 @@ func (r *rich) linkAt(hwnd uintptr, p Point) int {
 			var a, b Point
 			SendMessage(hwnd, emPosFromChar, Ptr(&a), uintptr(i))
 			SendMessage(hwnd, emPosFromChar, Ptr(&b), uintptr(i+1))
-			if p.Y >= a.Y && (b.X > a.X && p.X <= b.X+2 || b.Y > a.Y) {
+			// (A character of a right-to-left run goes leftward.)
+			if p.Y >= a.Y && (b.X > a.X && p.X <= b.X+2 || b.Y > a.Y || b.Y == a.Y && b.X < a.X && p.X >= b.X-2) {
 				return k
 			}
 		}
@@ -417,22 +419,23 @@ func (r *rich) build(h *Host, n *node) {
 		SendMessage(ctl, emExSetSel, 0, Ptr(&sel))
 		SendMessage(ctl, emSetCharFormat, scfSelection, Ptr(&cf))
 	}
-	// Alignment, for every paragraph.
-	pf := paraFormat{Mask: 0x8} // PFM_ALIGNMENT
-	pf.Size = uint32(unsafe.Sizeof(pf))
-	switch ops.TextAlign(n.textAlign) {
-	case ops.TextAlignCenter:
-		pf.Alignment = 3
-	case ops.TextAlignEnd:
-		pf.Alignment = 2
-	case ops.TextAlignJustify:
-		pf.Alignment = 4
-	default:
-		pf.Alignment = 1
+	// Alignment and direction, for every paragraph. The alignment is
+	// physical in a paragraph of either direction: Start is the right,
+	// right to left.
+	rtl := h.isRTL(n)
+	align := uint16(pfaLeft)
+	switch a := ops.TextAlign(n.textAlign); {
+	case a == ops.TextAlignCenter:
+		align = pfaCenter
+	case a == ops.TextAlignJustify:
+		align = pfaJustify
+	case alignedRight(a, rtl):
+		align = pfaRight
 	}
-	sel := [2]int32{0, -1}
-	SendMessage(ctl, emExSetSel, 0, Ptr(&sel))
-	SendMessage(ctl, emSetParaFormat, 0, Ptr(&pf))
+	setParagraphs(ctl, align, rtl)
+	if n.dir == ops.LayoutDirectionInherit {
+		textDirections(ctl, align, rtl, text, r.paraEnds)
+	}
 	h.insertInlines(n, r, ctl)
 	// A line limit ends the last line shown with an ellipsis.
 	ellipsis := uintptr(0)
@@ -440,14 +443,15 @@ func (r *rich) build(h *Host, n *node) {
 		ellipsis = 1 // ELLIPSIS_END
 	}
 	SendMessage(ctl, WM_USER+306, 0, ellipsis) // EM_SETELLIPSISMODE
-	sel = [2]int32{0, 0}
+	sel := [2]int32{0, 0}
 	SendMessage(ctl, emExSetSel, 0, Ptr(&sel))
 	SendMessage(ctl, WM_SETREDRAW, 1, 0)
 	Invalidate(ctl)
 	r.maxWidth = -1
+	r.align = align
 }
 
-// paraFormat is PARAFORMAT.
+// paraFormat is PARAFORMAT2.
 type paraFormat struct {
 	Size      uint32
 	Mask      uint32
@@ -459,6 +463,61 @@ type paraFormat struct {
 	Alignment uint16
 	TabCount  int16
 	Tabs      [32]int32
+
+	SpaceBefore, SpaceAfter, LineSpacing int32
+	Style                                int16
+	LineSpacingRule, OutlineLevel        byte
+	ShadingWeight, ShadingStyle          uint16
+	NumberingStart, NumberingStyle       uint16
+	NumberingTab, BorderSpace            uint16
+	BorderWidth, Borders                 uint16
+}
+
+const (
+	pfaLeft    = 1
+	pfaRight   = 2
+	pfaCenter  = 3
+	pfaJustify = 4
+
+	pfmAlignment = 0x00000008
+	pfmRTLPara   = 0x00010000
+	pfeRTLPara   = 0x0001
+)
+
+// setParagraphs gives all of a rich edit's paragraphs an alignment and a
+// direction (it leaves the selection on all of them).
+func setParagraphs(ctl uintptr, align uint16, rtl bool) {
+	pf := paraFormat{Mask: pfmAlignment | pfmRTLPara, Alignment: align}
+	pf.Size = uint32(unsafe.Sizeof(pf))
+	if rtl {
+		pf.Effects = pfeRTLPara
+	}
+	sel := [2]int32{0, -1}
+	SendMessage(ctl, emExSetSel, 0, Ptr(&sel))
+	SendMessage(ctl, emSetParaFormat, 0, Ptr(&pf))
+}
+
+// textDirections gives the paragraphs that read the other way than the view
+// their own direction, from their first strong characters: a sentence of
+// English in an Arabic app keeps its full stop at its end, on the view's side.
+func textDirections(ctl uintptr, align uint16, rtl bool, text []uint16, ends []int32) {
+	start := int32(0)
+	for _, end := range ends {
+		if end > int32(len(text)) {
+			break
+		}
+		if para := firstStrongRTL(text[start:end], rtl); para != rtl {
+			pf := paraFormat{Mask: pfmAlignment | pfmRTLPara, Alignment: align}
+			pf.Size = uint32(unsafe.Sizeof(pf))
+			if para {
+				pf.Effects = pfeRTLPara
+			}
+			sel := [2]int32{start, end}
+			SendMessage(ctl, emExSetSel, 0, Ptr(&sel))
+			SendMessage(ctl, emSetParaFormat, 0, Ptr(&pf))
+		}
+		start = end + 1
+	}
 }
 
 // insertInlines replaces each inline component's placeholder with a
@@ -519,12 +578,24 @@ func (r *rich) layoutAt(h *Host, n *node, width int32) int32 {
 // widest is the widest paragraph's width, unwrapped, in pixels: its
 // paragraph end's x.
 func (r *rich) widest(h *Host, n *node) int32 {
+	// Only a paragraph going left to right from the left ends at its width:
+	// right to left it ends on the left. Measured that way for now; a line
+	// takes as much room either way.
+	rtl := h.isRTL(n)
+	if rtl {
+		setParagraphs(n.ctl, pfaLeft, false)
+	}
 	r.layoutAt(h, n, 32000)
 	widest := int32(0)
 	for _, e := range r.paraEnds {
 		var p Point
 		SendMessage(n.ctl, emPosFromChar, Ptr(&p), uintptr(e))
 		widest = max(widest, p.X)
+	}
+	if rtl {
+		setParagraphs(n.ctl, r.align, true)
+		sel := [2]int32{0, 0}
+		SendMessage(n.ctl, emExSetSel, 0, Ptr(&sel))
 	}
 	return widest + 1
 }
@@ -577,7 +648,7 @@ func (r *rich) minContent(h *Host, n *node) float32 {
 		var a, b Point
 		SendMessage(n.ctl, emPosFromChar, Ptr(&a), uintptr(start))
 		SendMessage(n.ctl, emPosFromChar, Ptr(&b), uintptr(max(end-1, start)))
-		widest = max(widest, b.X-a.X+h.px(n, 10))
+		widest = max(widest, abs32(b.X-a.X)+h.px(n, 10))
 	}
 	return h.pt(n, widest)
 }
@@ -610,6 +681,17 @@ func (r *rich) placeInlines(h *Host, n *node) {
 		}
 		var p Point
 		SendMessage(n.ctl, emPosFromChar, Ptr(&p), uintptr(at))
+		if h.isRTL(n) {
+			// The picture's leading edge: on its right in a right-to-left
+			// run. Where the next character starts says which it is.
+			var e Point
+			SendMessage(n.ctl, emPosFromChar, Ptr(&e), uintptr(at+1))
+			if e.Y == p.Y {
+				p.X = min(p.X, e.X)
+			} else {
+				p.X -= h.px(n, in.w)
+			}
+		}
 		if Parent(c.hwnd) != n.hwnd {
 			SetParent(c.hwnd, n.hwnd)
 		}

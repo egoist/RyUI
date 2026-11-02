@@ -48,7 +48,7 @@ func TestWidgetSwift(t *testing.T) {
 	}
 	s := c.widgetKindsSwift()
 	// Twelve: two nested bundles, the main one holding them.
-	for _, want := range []string{`static let name = "Name \"quoted\""`, "[.systemSmall, .accessoryCircular]",
+	for _, want := range []string{`forKey: "Name \"quoted\"", value: "Name \"quoted\""`, "[.systemSmall, .accessoryCircular]",
 		"struct RyUIWidgets0_1: WidgetBundle", "RyUIWidgets0_0().body", "@main\nstruct RyUIWidgets: WidgetBundle"} {
 		if !strings.Contains(s, want) {
 			t.Errorf("no %q in\n%s", want, s)

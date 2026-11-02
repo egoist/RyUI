@@ -382,8 +382,14 @@ func (l *list) place(h *Host, rv *rowView, r int) {
 		Send(rv.sep, "setHidden:", 1)
 	}
 	cw := (l.width - l.gap*float64(l.columns-1)) / float64(l.columns)
+	rtl := h.isRTL(l.n)
 	for i, c := range rv.cells {
-		MsgSetRect(c.n.view, selSetFrame, Rect{Origin: Point{X: float64(i) * (cw + l.gap)}, Size: Size{Width: cw, Height: c.height}})
+		// A grid's columns run the way the list reads.
+		col := i
+		if rtl {
+			col = l.columns - 1 - i
+		}
+		MsgSetRect(c.n.view, selSetFrame, Rect{Origin: Point{X: float64(col) * (cw + l.gap)}, Size: Size{Width: cw, Height: c.height}})
 	}
 }
 

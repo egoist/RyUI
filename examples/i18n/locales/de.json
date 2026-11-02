@@ -1,0 +1,23 @@
+{
+  "@@locale": "de",
+  "title": "Sprachen",
+  "language": "Sprache",
+  "systemLanguage": "Wie das System",
+  "inbox": "Eingang",
+  "settings": "Einstellungen",
+  "unread": "{count, plural, =0 {Keine ungelesenen Nachrichten} one {# ungelesene Nachricht} other {# ungelesene Nachrichten}}",
+  "more": "Mehr",
+  "less": "Weniger",
+  "greeting": "Hallo, {name}!",
+  "lastSeen": "Zuletzt gesehen am {when, date, medium} um {when, time, short}",
+  "storage": "{used, number, percent} deines Speichers sind belegt",
+  "deleteMessage": "Löschen",
+  "archive": "Archivieren",
+  "alertTitle": "Diese Nachricht löschen?",
+  "alertBody": "Das lässt sich nicht rückgängig machen.",
+  "searchHint": "Nachrichten durchsuchen",
+  "wide": "Eine längere Zeile, die dort beginnt, wo Zeilen in dieser Sprache beginnen",
+  "next": "Nächster Bildschirm",
+  "alwaysLtr": "Diese Zeile läuft in jeder Sprache von links nach rechts",
+  "ryui.appName": "Sprachen"
+}

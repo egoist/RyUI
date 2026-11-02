@@ -154,6 +154,7 @@ type Node struct {
 	X, Y, W, H float32
 
 	dirty    bool
+	rtl      bool // the resolved direction, the one cache was computed under
 	cache    cache
 	reported [4]float32
 	staticY  float32 // block layout's static position for absolute children
@@ -164,10 +165,16 @@ func New() *Node {
 	return &Node{Style: DefaultStyle, dirty: true, reported: [4]float32{nan, nan, nan, nan}}
 }
 
-// SetStyle replaces the style and marks the node dirty.
+// SetStyle replaces the style and marks the node dirty, with everything
+// below it if its direction changed.
 func (n *Node) SetStyle(s Style) {
+	flipped := s.Direction != n.Style.Direction
 	n.Style = s
-	n.MarkDirty()
+	if flipped {
+		n.MarkSubtreeDirty()
+	} else {
+		n.MarkDirty()
+	}
 }
 
 // SetMeasure makes n a leaf measured by f (nil: an empty box).
@@ -188,6 +195,23 @@ func (n *Node) MarkDirty() {
 		}
 		p.dirty = true
 		p.cache.clear()
+	}
+}
+
+// MarkSubtreeDirty clears the caches of n, its ancestors and everything
+// below it: what the node's direction changes, which no cached input says.
+func (n *Node) MarkSubtreeDirty() {
+	n.MarkDirty()
+	for _, c := range n.children {
+		c.markBelow()
+	}
+}
+
+func (n *Node) markBelow() {
+	n.dirty = true
+	n.cache.clear()
+	for _, c := range n.children {
+		c.markBelow()
 	}
 }
 
@@ -294,7 +318,7 @@ func (n *Node) Layout(avail Size, p *Pass) Size {
 	if isDef(known.H) {
 		known.H = maxf(known.H, pad.Top+pad.Bottom+bor.Top+bor.Bottom)
 	}
-	out := n.compute(input{mode: modeLayout, known: known, parent: parent, avail: avail}, p)
+	out := n.computeDir(input{mode: modeLayout, known: known, parent: parent, avail: avail}, n.resolveRTL(), p)
 	m := n.margins(parent.W)
 	p.place(n, m.Left, m.Top, out.size)
 	return out.size
@@ -309,7 +333,44 @@ func (p *Pass) place(n *Node, x, y float32, s Size) {
 	}
 }
 
+// rtlUnder is n's direction inside a box whose direction is parent.
+func (n *Node) rtlUnder(parent bool) bool {
+	if d := n.Style.Direction; d != DirInherit {
+		return d == DirRTL
+	}
+	return parent
+}
+
+// resolveRTL finds n's direction from its style and its ancestors': for a
+// layout root, whose ancestors aren't being laid out. Below it each node
+// reads its parent's, resolved as the parent is computed.
+func (n *Node) resolveRTL() bool {
+	for a := n; a != nil; a = a.parent {
+		if d := a.Style.Direction; d != DirInherit {
+			return d == DirRTL
+		}
+	}
+	return false
+}
+
+// compute runs n under in. Only n's parent calls it, in the middle of its
+// own computation, so the parent's direction is current.
 func (n *Node) compute(in input, p *Pass) output {
+	parent := false
+	if n.parent != nil {
+		parent = n.parent.rtl
+	}
+	return n.computeDir(in, n.rtlUnder(parent), p)
+}
+
+func (n *Node) computeDir(in input, rtl bool, p *Pass) output {
+	// The cache's keys don't say the direction: answers made under the other
+	// one are dropped here, however it changed (a new parent, an ancestor's
+	// style), and the children come through here in turn when n recomputes.
+	if rtl != n.rtl {
+		n.rtl = rtl
+		n.cache.clear()
+	}
 	if out, ok := n.cache.get(&in); ok {
 		return out
 	}
@@ -436,6 +497,17 @@ func (n *Node) scrollGutter() Size {
 	return g
 }
 
+// contentInset is what separates the border box from the content box:
+// padding, border, and the gutter of the scrollbars, whose vertical one
+// is on the left in a right-to-left box, as in Chrome.
+func (n *Node) contentInset(pad, bor Rect[float32], gutter Size) Rect[float32] {
+	r := Rect[float32]{pad.Top + bor.Top, pad.Right + bor.Right + gutter.W, pad.Bottom + bor.Bottom + gutter.H, pad.Left + bor.Left}
+	if n.rtl {
+		r.Right, r.Left = pad.Right+bor.Right, pad.Left+bor.Left+gutter.W
+	}
+	return r
+}
+
 func (n *Node) isScrollContainer() bool {
 	return n.Style.OverflowX != OverflowVisible || n.Style.OverflowY != OverflowVisible
 }
@@ -518,9 +590,12 @@ func (n *Node) leaf(in *input, p *Pass) output {
 // its containing block (ax, ay, aw, ah: the padding box or a grid area,
 // relative to the parent's border box). An axis whose insets are both
 // auto takes its static position: frac (0 start, 0.5 center, 1 end) of
-// the way along the content box (cx, cy, cw, ch).
+// the way along the content box (cx, cy, cw, ch), from its left and top.
+// Over-constrained, the containing block's inline start wins: right, in a
+// right-to-left parent.
 func (p *Pass) placeAbsoluteAligned(c *Node, ax, ay, aw, ah, cx, cy, cw, ch float32, frac [2]float32) {
 	st := &c.Style
+	rtl := c.parent.rtl
 	area := Size{aw, ah}
 	m := c.margins(aw)
 	ins := Rect[float32]{st.Inset.Top.resolve(ah), st.Inset.Right.resolve(aw), st.Inset.Bottom.resolve(ah), st.Inset.Left.resolve(aw)}
@@ -563,10 +638,15 @@ func (p *Pass) placeAbsoluteAligned(c *Node, ax, ay, aw, ah, cx, cy, cw, ch floa
 				half := free / 2
 				if half < 0 && a == 0 {
 					half = 0
+					if rtl {
+						half = free
+					}
 				}
 				ms += half
 			case autoM[a][0]:
 				ms += free
+			case a == 0 && rtl && !autoM[a][1]:
+				ms += free // left is the one ignored
 			}
 		}
 		switch {

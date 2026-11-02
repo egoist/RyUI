@@ -18,7 +18,7 @@ func (n *Node) block(in *input, p *Pass) output {
 	st := &n.Style
 	pad, bor := n.paddingBorder(in.parent.W)
 	gutter := n.scrollGutter()
-	inset := Rect[float32]{pad.Top + bor.Top, pad.Right + bor.Right + gutter.W, pad.Bottom + bor.Bottom + gutter.H, pad.Left + bor.Left}
+	inset := n.contentInset(pad, bor, gutter)
 	pbs := Size{pad.Left + pad.Right + bor.Left + bor.Right, pad.Top + pad.Bottom + bor.Top + bor.Bottom}
 	insetW, insetH := inset.Left+inset.Right, inset.Top+inset.Bottom
 
@@ -124,6 +124,13 @@ func (n *Node) block(in *input, p *Pass) output {
 	}
 	parent := Size{innerW, percentH}
 
+	// The content box hangs from the inline start's edge, which shows when
+	// padding and scrollbars overrun the box.
+	contentX := inset.Left
+	if n.rtl {
+		contentX = size.W - inset.Right - innerW
+	}
+
 	// Lay out the in-flow children.
 	final := in.mode == modeLayout
 	y := inset.Top
@@ -163,12 +170,22 @@ func (n *Node) block(in *input, p *Pass) output {
 		case it.autoM.Left:
 			left += freeX
 		}
+		if n.rtl { // the same from the inline start: margin-left gives way
+			right := it.margin.Right
+			switch {
+			case it.autoM.Left && it.autoM.Right:
+				right += freeX / 2
+			case it.autoM.Right:
+				right += freeX
+			}
+			left = innerW - out.size.W - right
+		}
 		yOff := active.join(top).value()
 		if collapsingFirst && adjoinTop {
 			yOff = 0
 		}
 		if final {
-			px, py := relativeOffset(ch, inset.Left+left, y+yOff, parent)
+			px, py := relativeOffset(ch, contentX+left, y+yOff, parent)
 			p.place(ch, px, py, out.size)
 			if isNaN(firstBaseline) && isDef(out.baseline) {
 				firstBaseline = py + out.baseline
@@ -219,12 +236,16 @@ func (n *Node) block(in *input, p *Pass) output {
 	// Absolutely positioned children, from their static position.
 	cw := size.W - insetW
 	ch2 := size.H - insetH
+	ax, fx := bor.Left, float32(0)
+	if n.rtl {
+		ax, fx = bor.Left+gutter.W, 1
+	}
 	for _, c := range n.children {
 		if c.Style.Position != Absolute || c.Style.Display == DisplayNone {
 			continue
 		}
-		p.placeAbsoluteAligned(c, bor.Left, bor.Top, size.W-bor.Left-bor.Right-gutter.W, size.H-bor.Top-bor.Bottom-gutter.H,
-			inset.Left, c.staticY, cw, ch2, [2]float32{0, 0})
+		p.placeAbsoluteAligned(c, ax, bor.Top, size.W-bor.Left-bor.Right-gutter.W, size.H-bor.Top-bor.Bottom-gutter.H,
+			inset.Left, c.staticY, cw, ch2, [2]float32{fx, 0})
 	}
 	return out
 }

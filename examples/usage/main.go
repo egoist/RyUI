@@ -73,9 +73,9 @@ func App() ui.Node {
 		nav = ui.UseNavigator()
 		return ui.View(ui.ViewProps{Style: ui.Style{Grow: 1}}, home(adding), addSheet(adding, ""))
 	}, ui.ScreenOptions{Title: ui.Val("Usage"), Actions: []ui.Action{
-		{Title: "Add account", Icon: ui.IconPlus, OnPress: func() { adding.Set(true) }},
-		{Title: "Refresh", Icon: ui.IconRefresh, OnPress: refreshAll},
-		{Title: "Settings", Icon: ui.IconSettings, OnPress: func() {
+		{Title: ui.Val("Add account"), Icon: ui.IconPlus, OnPress: func() { adding.Set(true) }},
+		{Title: ui.Val("Refresh"), Icon: ui.IconRefresh, OnPress: refreshAll},
+		{Title: ui.Val("Settings"), Icon: ui.IconSettings, OnPress: func() {
 			nav.Push(settings, ui.ScreenOptions{Title: ui.Val("Settings")})
 		}},
 	}})
@@ -118,12 +118,12 @@ func accountCard(a signal.Accessor[Account]) ui.Node {
 		return ws
 	})
 	return ui.View(ui.ViewProps{
-		Label: "Account details",
+		Label: ui.Val("Account details"),
 		Role:  ui.RoleButton,
 		OnPress: func() {
 			nav.Push(func() ui.Node { return detail(id) }, ui.ScreenOptions{
 				Title:   signal.Func(func() string { acc, _ := find(id); return acc.Title() }),
-				Actions: []ui.Action{{Title: "Refresh", Icon: ui.IconRefresh, OnPress: func() { refresh(id) }}},
+				Actions: []ui.Action{{Title: ui.Val("Refresh"), Icon: ui.IconRefresh, OnPress: func() { refresh(id) }}},
 			})
 		},
 		Style: ui.StyleFunc(func() ui.Style {

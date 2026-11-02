@@ -582,8 +582,8 @@ layout (in the spirit of Taffy, not a port of it or of Yoga), in points
   `fit-content`, `fr`, sparse and dense auto-placement, spanning items,
   track alignment; lines clamped to ±10000 as browsers do). Block per
   CSS 2 (auto widths fill, vertical margins collapse between siblings,
-  through empty boxes and with the parent's edges). Not yet: RTL,
-  writing modes, floats, named grid lines and areas, sizing keywords
+  through empty boxes and with the parent's edges), each in either
+  `direction`. Not yet: writing modes, floats, named grid lines and areas, sizing keywords
   (`min-content` etc. as widths), `safe` alignment.
 - **Incremental.** Each node caches its final layout and eight
   measurements keyed by inputs; `MarkDirty` clears a node's caches and
@@ -606,7 +606,8 @@ layout (in the spirit of Taffy, not a port of it or of Yoga), in points
   wraps), as Yoga does for text.
 - **Correctness** is defined by Chrome: `layout/testdata/css` holds
   Taffy's Chrome-generated fixtures (block, flex, grid; border-box,
-  left to right), run as table tests; `known_failures.txt` lists the ones
+  either direction), run as table tests, with what they don't cover in
+  `rtl_chrome.xml` and `ltr_chrome.xml`, each rendered by Chrome; `known_failures.txt` lists the ones
   that don't match yet (mostly the unsupported features above).
 
 ## ops
@@ -797,6 +798,8 @@ ryui dev -mac <dir>                build and run on this Mac, rerun on save
 ryui build -mac <dir>              a universal .app, signed (-sign; default ad hoc)
 ryui dev -windows <dir>            build and run on this PC, rerun on save
 ryui build -windows <dir>          a folder: the .exe (icon, manifest, version) and its assets
+ryui generate <dir>                the typed functions of the app's catalogs
+ryui i18n init|add|check           start, add languages to, and check the catalogs
 ```
 
 **An app's metadata** is `ryui.json` beside its Go code, all optional:
@@ -904,6 +907,7 @@ ryui/
   ui/                components, nodes, flush, flattening, navigation
   layout/            flexbox
   ops/               schema, Go encoder; generate writes Swift/Kotlin decoders
+  i18n/              languages, catalogs, ICU messages, CLDR's formats
   host/              Host interface, Environment
     fake/            records ops, measures by fixed rules; for tests
   mobile/            C ABI (cgo, ios||android)
@@ -1262,8 +1266,112 @@ platform label, with native accessibility, Dynamic Type and behavior.
   (dark mode needs nothing), so a view with no theme looks native.
 
 **Not yet:** selection for screen reader users (VoiceOver and TalkBack
-read the texts and links but don't select across them); bidirectional
-text in selection geometry (the rectangles assume left-to-right lines).
+read the texts and links but don't select across them).
+
+## Languages
+
+An app says its messages in the language of the people who use it, and is
+laid out the way that language reads. docs/i18n.md is the guide; this is how
+it's built. Package `i18n` and the catalog generator (`internal/i18ngen`) are
+MyGo's, whose data comes from a pinned release of CLDR.
+
+- **Catalogs** are ARB files of ICU MessageFormat, one per language, in
+  `locales/`. `ryui generate` (and `dev`, `build`, as a catalog changes)
+  writes `locales/catalog_gen.go`, a package with a typed function per message,
+  which embeds and registers the catalogs. `locales.Unread(3)` says a string;
+  `locales.Live.Unread(count)` is an accessor over accessors, for props;
+  `locales.In("de").Unread(3)` says another language.
+- **The language shown** is the process's, as `time.Local` is: not a root's,
+  since a message has no context to read one from. `ui/locale.go` matches the
+  environment's `Languages` (with what `ui.SetLocale` chose, first) against
+  the languages the app has, by CLDR's distances, and falls back to the app's
+  own: a reader of Chinese sees an English-only app in English, as on UIKit.
+- **Following it.** A component runs once, so a message has to be read in an
+  effect to follow the language, and it must read like any other function:
+  a goroutine may say one too. A signal read can't do both, since subscribing
+  touches `activeSub`, which is the main thread's. So `signal.Ambient` only
+  counts a read, atomically; the main thread settles the count each time the
+  running computation changes, subscribing the one that ran. A goroutine's read
+  may subscribe whatever ran at that moment, which then runs once more at the
+  next language change: harmless, and rare. A change costs the props whose text
+  changed, as any signal does.
+- **What can't follow.** A string read outside an effect stays what it was:
+  `ui.StaticText(locales.Title())` doesn't change with the language. Every
+  prop that shows text is therefore an accessor (tabs, actions, labels,
+  placeholders, segments), and what a call shows once (an alert, a
+  notification) takes a string.
+- **Regional formats** are a setting of their own: the environment's `Locale`,
+  `FirstWeekday` and `HourCycle`, with `ui.FormatLocale()` putting them
+  together with the language (`en-GB-u-fw-mon-hc-h23`), as Apple's
+  `Locale.current` does.
+- **RyUI's own words** (`internal/l10n`) are the few the platforms don't supply:
+  an alert's only button, a search field's placeholder, a desktop back button.
+  They're a library's catalog an app overrides with keys `ryui.<key>`.
+
+**Right to left.** The layout engine implements CSS `direction`, against
+Chrome's results on Taffy's fixtures. The core sets it on each layout root
+(the root, screens, sheets, cells, inline components); the rest inherit.
+`Row`, `Justify` and `Align` follow it. `Edges.Left` and `Right` are physical,
+as in CSS; `Start` and `End` mirror. Frames are always physical, so **a host
+never mirrors what the core places**: it only mirrors what it draws itself.
+
+What every host does:
+
+- **Reports** `Languages` (BCP 47, most preferred first, the app's own language
+  first if the system or `SaveLocale` keeps one), `Locale`, `FirstWeekday`
+  and `HourCycle`, again as they change.
+- **`Locale`** (a command, as the root mounts and when it changes; flags, then
+  the tag): the platform's views go that way, whatever the system's language,
+  for what they lay out themselves: a navigation bar and its back button, push
+  and pop transitions, the tab bar, a list's swipe actions, a text's natural
+  alignment (`TextStart` is the side the language starts on, and is the default),
+  a slider's direction, `RichText`'s paragraphs. Where the platform lets it, it
+  also says the platform's own words in the language.
+- **`LayoutDirection`** (a common prop): the same for one view, for what
+  `ui.WithDirection` builds.
+- **A horizontal `Scroll` or `List`** starts at its trailing end right to left,
+  and keeps its distance from that end as its content's width changes. The
+  content is at the scroll view's origin, laid out from the right within it.
+  `OnScroll` and `ScrollToOffset` stay physical.
+- **Symbols** whose names say a direction by `forward` or `backward` mirror
+  (`chevron.forward`); `chevron.left` doesn't, since it means left.
+- **`SaveLocale`** keeps the language: AppleLanguages of the app's defaults
+  (iOS, macOS), which Settings shows and UIKit and AppKit read at launch;
+  `LocaleManager` (Android 13), or the host's own preferences before it and on
+  Windows. Android declares its languages in `locales_config`, iOS and macOS
+  in `CFBundleLocalizations` and `.lproj`s: `ryui build` writes them from the
+  catalogs, with the app's name and purpose strings in each.
+
+Under `ryui dev` the player runs every app, so `boot.SaveLocale` keeps the
+choice beside the kept state on the Mac, not in the player.
+
+What each host does by its own means:
+
+- **iOS**: `semanticContentAttribute` through the appearance and a walk of what
+  exists, with a window trait override, since the back chevron follows traits
+  (iOS 17 and later). The walk waits until Go has returned: a collection view
+  asks for its cells as its direction changes. UIKit's own words stay in the
+  process's language until the next launch.
+- **Android**: the themed context carries the locale and direction, views are
+  made again as for a dark mode change, and `RyUIActivity` overrides
+  `getResources` and `getTheme` for Material's pickers, which are `DialogFragment`s
+  on the Activity's context. It takes no recreation.
+- **macOS**: `setUserInterfaceLayoutDirection:` per view. `NSApplication`'s
+  direction is read once, so the host sets `NSForceRightToLeftWritingDirection` in
+  the argument domain before it makes the app, from the language it will show. A
+  change of direction while running leaves the traffic lights, the title, a
+  vertical scroller's side and an alert's button order until the next launch. The
+  standard menus' words come from AppKit's own tables.
+- **Windows**: `WS_EX_LAYOUTRTL | WS_EX_NOINHERITLAYOUT` on top-level windows only.
+  Each has one child that fills its client area, so below it every window and DC
+  stays left to right, and frames stay physical, while Windows mirrors the title
+  and menu bars. The date picker, which isn't custom drawn, doesn't mirror.
+
+A line of text reads as its own letters do (its first strong character), and its
+side comes from the view's direction, on every host; only a `WithDirection` forces
+a reading order. So a message in a right-to-left language has to say how it starts
+when an argument or a number comes first: `i18n` then begins it with a
+right-to-left mark (CLDR's Arabic percent begins with a left-to-right one).
 
 ## Desktop, later
 

@@ -48,6 +48,9 @@ go test ./ops -update               # after changing the wire format: refresh go
 swift test --package-path platform/ios # the Swift decoder against the golden files (macOS)
 (cd platform/android && ./gradlew :ryui:testDebugUnitTest)  # the Kotlin decoder, likewise (ANDROID_HOME set)
 go generate ./ops                   # Go constants, Swift and Kotlin decoders
+go generate ./i18n                  # CLDR's tables, from the pinned release
+go run ./cmd/ryui generate examples/i18n  # an app's catalog functions (dev and build do it too)
+go run ./cmd/ryui dev -ios -lang ar examples/i18n  # a language for one run; -lang ar-XB, en-XA: pseudo locales; -dir rtl: any app right to left
 go run ./cmd/ryui dev -ios examples/counter       # iOS simulator (Xcode): the Go code runs here, in the player
 go run ./cmd/ryui dev -android examples/counter   # Android emulator (SDK + NDK), likewise
 go run ./cmd/ryui dev -ios -once examples/counter # build the app with its Go code, launch once (-embed: and watch)
@@ -81,4 +84,7 @@ go test ./host/windows                           # the Windows host, driving rea
   Win32 and the common controls, from Go through `internal/windows`
   (syscall), no cgo, no WinUI; the controls drawn as Fluent's in custom
   draw, so an app that sets no style looks like Windows 11.
-- Keep generated files (`ops` decoders) committed and up to date.
+- Every prop that shows text is an accessor, so it can follow the app's
+  language (`locales.Live.Title()`); only what's shown once (an alert) takes a
+  string. Frames are always physical: a host never mirrors what the core places.
+- Keep generated files (`ops` decoders, `locales/catalog_gen.go`) committed and up to date.

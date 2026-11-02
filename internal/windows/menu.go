@@ -28,9 +28,15 @@ var (
 	procGetWindowDC             = user32.NewProc("GetWindowDC")
 	procGetForegroundWindow     = user32.NewProc("GetForegroundWindow")
 	procGetCurrentObject        = gdi32.NewProc("GetCurrentObject")
+	procGetLayout               = gdi32.NewProc("GetLayout")
+	procRoundRect               = gdi32.NewProc("RoundRect")
+	procCreatePen               = gdi32.NewProc("CreatePen")
 )
 
 const (
+	// MF_RIGHTORDER is MFT_RIGHTORDER: the menu's text reads right to left,
+	// and its submenus cascade to the left.
+	MF_RIGHTORDER = 0x2000
 	MF_POPUP      = 0x0010
 	MF_CHECKED    = 0x0008
 	MF_DISABLED   = 0x0002
@@ -136,6 +142,9 @@ func MenuBarRect(hwnd uintptr) (Rect, bool) {
 	r := mbi.Bar
 	r.Left, r.Right = r.Left-wr.Left, r.Right-wr.Left
 	r.Top, r.Bottom = r.Top-wr.Top, r.Bottom-wr.Top
+	if r.Left > r.Right { // a mirrored window's
+		r.Left, r.Right = r.Right, r.Left
+	}
 	return r, true
 }
 

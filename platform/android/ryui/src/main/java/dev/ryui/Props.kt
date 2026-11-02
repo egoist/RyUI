@@ -202,7 +202,7 @@ fun keepMultiline(n: RyUINode, e: EditText) {
 fun RyUIRuntime.setButtonIcon(n: RyUINode, b: MaterialButton, name: String) {
     // A start drawable counts only once the view has a layout direction,
     // which it inherits when attached: the core measures it before.
-    b.layoutDirection = android.text.TextUtils.getLayoutDirectionFromLocale(java.util.Locale.getDefault())
+    b.layoutDirection = directionOf(n)
     b.icon = if (name.isEmpty()) null else symbol(name)
     b.iconGravity = MaterialButton.ICON_GRAVITY_TEXT_START
     b.iconTint = b.textColors
@@ -490,11 +490,22 @@ fun RyUIRuntime.propEnum(id: Int, prop: Int, v: Int) {
         RyUIProp.TEXT_STYLE -> { n.textStyle = v; applyText(n) }
         RyUIProp.FONT_WEIGHT -> { n.fontWeight = v; applyText(n) }
         RyUIProp.MENU_TRIGGER -> { n.menuTrigger = v; wirePresses(n) }
-        RyUIProp.TEXT_ALIGN -> if (view is RyUIRichText) { view.align = v; view.invalidateText() } else (view as? TextView)?.gravity = when (v) {
-            RyUITextAlign.CENTER -> Gravity.CENTER_HORIZONTAL
-            RyUITextAlign.END -> Gravity.END
-            else -> Gravity.START
-        } or Gravity.CENTER_VERTICAL
+        RyUIProp.LAYOUT_DIRECTION -> view.layoutDirection = directionOf(n)
+        RyUIProp.TEXT_ALIGN -> if (view is RyUIRichText) { view.align = v; view.invalidateText() } else (view as? TextView)?.let {
+            it.gravity = when (v) {
+                RyUITextAlign.CENTER -> Gravity.CENTER_HORIZONTAL
+                RyUITextAlign.END -> Gravity.END
+                else -> Gravity.START
+            } or Gravity.CENTER_VERTICAL
+            // The side the view starts on, whichever way its text runs: a
+            // Latin string in a right to left app is on the right. A button
+            // places its icon by its gravity.
+            if (it !is MaterialButton) it.textAlignment = when (v) {
+                RyUITextAlign.CENTER -> View.TEXT_ALIGNMENT_CENTER
+                RyUITextAlign.END -> View.TEXT_ALIGNMENT_VIEW_END
+                else -> View.TEXT_ALIGNMENT_VIEW_START
+            }
+        }
         RyUIProp.A11Y_ROLE -> if (view is RyUIRichText) view.heading = v == RyUIRole.HEADER
         else ViewCompat.setAccessibilityDelegate(view, object : AccessibilityDelegateCompat() {
             override fun onInitializeAccessibilityNodeInfo(host: View, info: AccessibilityNodeInfoCompat) {

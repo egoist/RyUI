@@ -1,0 +1,12 @@
+{
+  "ok": "ตกลง",
+  "search": "ค้นหา",
+  "back": "ย้อนกลับ",
+  "decrease": "ลด",
+  "increase": "เพิ่ม",
+  "about": "เกี่ยวกับ{app}",
+  "hide": "ซ่อน{app}",
+  "quit": "ออกจาก{app}",
+  "hideOthers": "ซ่อนอื่นๆ",
+  "zoom": "ซูม"
+}

@@ -1,0 +1,12 @@
+{
+  "ok": "OK",
+  "search": "Search",
+  "back": "Back",
+  "decrease": "Decrease",
+  "increase": "Increase",
+  "about": "About {app}",
+  "hide": "Hide {app}",
+  "quit": "Quit {app}",
+  "hideOthers": "Hide Others",
+  "zoom": "Zoom"
+}

@@ -92,7 +92,7 @@ type Props struct {
 	Style ui.Styler
 	// Label describes the icon to screen readers; without it the icon is
 	// decorative.
-	Label string
+	Label signal.Accessor[string]
 }
 
 // View draws an icon: a view sized by its Style, holding a Shape per
@@ -115,7 +115,13 @@ func View(p Props) ui.Node {
 		}
 	}
 	vp := ui.ViewProps{Style: p.Style, Label: p.Label}
-	if p.Label != "" {
+	labelled := p.Label != nil
+	if labelled {
+		if v, ok := signal.StaticValue(p.Label); ok {
+			labelled = v != ""
+		}
+	}
+	if labelled {
 		vp.Role = ui.RoleImage
 	} else {
 		vp.Decorative = true

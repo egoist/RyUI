@@ -34,7 +34,7 @@ func images() ui.Node {
 			ui.Image(ui.ImageProps{
 				Source:  ui.Val("https://picsum.photos/id/1015/1200/800"),
 				Mode:    ui.ImageFill,
-				Label:   "A river between mountains",
+				Label:   ui.Val("A river between mountains"),
 				Style:   ui.Style{AspectRatio: 16.0 / 9, CornerRadius: 12, Background: ui.SecondaryBackground},
 				OnLoad:  func(w, h float32) { status.Set(fmt.Sprintf("Loaded, %.0f×%.0f", w, h)) },
 				OnError: func(m string) { status.Set("Failed: " + m) },

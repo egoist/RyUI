@@ -1,0 +1,12 @@
+{
+  "ok": "OK",
+  "search": "Zoeken",
+  "back": "Terug",
+  "decrease": "Verlagen",
+  "increase": "Verhogen",
+  "about": "Over {app}",
+  "hide": "Verberg {app}",
+  "quit": "Stop {app}",
+  "hideOthers": "Verberg andere",
+  "zoom": "Vergroot/verklein"
+}

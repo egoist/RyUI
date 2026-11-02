@@ -100,7 +100,8 @@ public enum RyUIProp {
     public static let material: UInt16 = 27
     public static let fontFamily: UInt16 = 28
     public static let swipeActions: UInt16 = 29
-    public static let match: UInt16 = 30
+    public static let layoutDirection: UInt16 = 30
+    public static let match: UInt16 = 31
 
     public enum View {
         public static let dropAccept: UInt16 = 64
@@ -350,8 +351,11 @@ public enum RyUICommand: UInt16 {
     case webNavigate = 21
     case menuBar = 22
     case windowOptions = 23
-    case colorScheme = 24
-    case shareClose = 25
+    case windowTitle = 24
+    case colorScheme = 25
+    case locale = 26
+    case saveLocale = 27
+    case shareClose = 28
 }
 
 public enum RyUIRole: Int32 {
@@ -397,6 +401,12 @@ public enum RyUITextAlign: Int32 {
     case center = 1
     case end = 2
     case justify = 3
+}
+
+public enum RyUILayoutDirection: Int32 {
+    case inherit = 0
+    case leftToRight = 1
+    case rightToLeft = 2
 }
 
 public enum RyUIButtonVariant: Int32 {
@@ -694,6 +704,10 @@ public struct RyUIEnvironment: Equatable {
     public var widthClass: UInt8 = 0, heightClass: UInt8 = 0
     public var locale = ""
     public var timeZone = TimeZone.current.identifier
+    /// The languages the user reads, most preferred first, joined by commas.
+    public var languages = ""
+    /// 1 Sunday to 7 Saturday, and 12 or 24; 0 when the system doesn't say.
+    public var firstWeekday: UInt8 = 0, hourCycle: UInt8 = 0
     public init() {}
 }
 
@@ -715,6 +729,9 @@ public struct RyUIWriter {
         u8((e.widthClass & 3) | (e.heightClass & 3) << 2)
         string(e.locale)
         string(e.timeZone)
+        string(e.languages)
+        u8(e.firstWeekday)
+        u8(e.hourCycle)
     }
     public mutating func gesture(_ g: RyUIGesture) {
         u8(UInt8(g.state))

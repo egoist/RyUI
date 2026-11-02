@@ -86,6 +86,12 @@ func (h *Host) command(n *node, c ops.CommandID, args []byte) {
 		h.setMenuBar(args)
 	case ops.CmdWindowOptions:
 		h.windowOptions(args)
+	case ops.CmdWindowTitle:
+		h.setWindowTitle(string(args))
+	case ops.CmdLocale:
+		h.setLocale(args)
+	case ops.CmdSaveLocale:
+		h.saveLocale(string(args))
 	case ops.CmdColorScheme:
 		if len(args) > 0 {
 			h.setColorScheme(ops.ColorScheme(args[0]))
@@ -133,12 +139,19 @@ func (h *Host) popUp(n *node, anchor uintptr, below bool) {
 		if n == nil || len(n.menu) == 0 || anchor == 0 {
 			return
 		}
-		m, om := h.actionMenu(n.menu)
+		rtl := h.isRTL(n)
+		m, om := h.actionMenu(n.menu, rtl)
 		p := CursorPos()
 		flags := uint32(TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RIGHTBUTTON)
+		if rtl {
+			flags |= TPM_LAYOUTRTL // from the point leftward, itself mirrored
+		}
 		if below {
 			r := WindowRect(anchor)
 			p = Point{X: r.Left, Y: r.Bottom + h.px(n, 4)}
+			if rtl {
+				p.X = r.Right
+			}
 		}
 		h.modal++
 		if om != nil {
@@ -322,20 +335,24 @@ func (h *Host) module(name string) func(method string, args []byte) ([]byte, err
 
 // actionMenu is a popup menu of actions (but the cancel one), item i+1
 // action i's; owner-drawn if one is destructive.
-func (h *Host) actionMenu(actions []action) (uintptr, *ownerMenu) {
+func (h *Host) actionMenu(actions []action, rtl bool) (uintptr, *ownerMenu) {
 	m := CreatePopupMenu()
 	var items []menuItem
 	destructive := false
+	order := uint32(0)
+	if rtl {
+		order = MF_RIGHTORDER
+	}
 	for i, a := range actions {
 		if a.role == ops.AlertButtonRoleCancel {
 			continue
 		}
-		AppendMenu(m, MF_STRING, uintptr(i+1), a.title)
+		AppendMenu(m, MF_STRING|order, uintptr(i+1), a.title)
 		items = append(items, menuItem{text: a.title, destructive: a.role == ops.AlertButtonRoleDestructive})
 		destructive = destructive || a.role == ops.AlertButtonRoleDestructive
 	}
 	if !destructive {
 		return m, nil
 	}
-	return m, h.ownerDrawMenu(m, items)
+	return m, h.ownerDrawMenu(m, items, order)
 }

@@ -153,6 +153,31 @@ func navigation(t *testing.T, s screen) {
 	waitFor(t, s, []string{"Message 19"}, "Notifications")
 }
 
+// languages is the same test on each platform, from an app in English: its
+// languages menu changes what the screen says at once, keeping the state the
+// user made, and the choice is there when the app starts again.
+func languages(t *testing.T, s screen) {
+	waitFor(t, s, []string{"Hello, Ada!", "3 unread messages"})
+	s.tap("More")
+	waitFor(t, s, []string{"4 unread messages"})
+	s.command("tab Settings")
+	waitFor(t, s, []string{"English", "Deutsch", "العربية"}, "Hello, Ada!")
+	s.tap("العربية")
+	waitFor(t, s, []string{"مثل النظام"})
+	s.command("tab الوارد")
+	waitFor(t, s, []string{"مرحبًا، Ada!", "4 رسائل غير مقروءة"}, "Hello, Ada!")
+	s.command("tab الإعدادات")
+	s.tap("Deutsch")
+	s.command("tab Eingang")
+	waitFor(t, s, []string{"Hallo, Ada!", "4 ungelesene Nachrichten"}, "مرحبًا، Ada!")
+	s.relaunch()
+	waitFor(t, s, []string{"Hallo, Ada!", "3 ungelesene Nachrichten"})
+	s.command("tab Einstellungen")
+	s.tap("English")
+	s.command("tab Inbox")
+	waitFor(t, s, []string{"Hello, Ada!"}, "Hallo, Ada!")
+}
+
 // iOS
 
 type iosScreen struct {
@@ -163,7 +188,18 @@ type iosScreen struct {
 }
 
 func (s *iosScreen) command(cmds string) {
-	if err := os.WriteFile(filepath.Join(s.tmp, "ryui-commands.txt"), []byte(cmds+"\n"), 0o644); err != nil {
+	file := filepath.Join(s.tmp, "ryui-commands.txt")
+	// The app removes the file as it reads it. One it hasn't read yet (its main
+	// thread is showing the keyboard, say) mustn't be written over, which would
+	// lose that command. An app just launched may never read one sent before it
+	// listened, so this is bounded.
+	for range 500 {
+		if _, err := os.Stat(file); os.IsNotExist(err) {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if err := os.WriteFile(file, []byte(cmds+"\n"), 0o644); err != nil {
 		s.t.Fatal(err)
 	}
 	run(s.t, "xcrun", "simctl", "spawn", s.udid, "notifyutil", "-p", "dev.ryui.automation")
@@ -185,6 +221,7 @@ func (s *iosScreen) texts() []string {
 func (s *iosScreen) tap(text string) { s.command("tap " + text) }
 
 func (s *iosScreen) relaunch() {
+	os.Remove(filepath.Join(s.tmp, "ryui-commands.txt")) // for the run that's ending
 	run(s.t, "xcrun", "simctl", "launch", "--terminate-running-process", s.udid, s.bundle)
 }
 
@@ -205,6 +242,40 @@ func TestCounterIOS(t *testing.T) { counter(t, iosApp(t, "counter", "dev.ryui.co
 func TestNotesIOS(t *testing.T)   { notes(t, iosApp(t, "notes", "dev.ryui.notes")) }
 func TestNavigationIOS(t *testing.T) {
 	navigation(t, iosApp(t, "navigation", "dev.ryui.navigation"))
+}
+
+// TestLanguagesIOS changes examples/i18n's language: at once, from its
+// menu, and kept for the next launch (AppleLanguages) until it follows the
+// system again. The simulator's language is English, as for the other tests.
+func TestLanguagesIOS(t *testing.T) {
+	s := iosApp(t, "i18n", "dev.ryui.i18n")
+	reset := func() {
+		exec.Command("xcrun", "simctl", "spawn", s.udid, "defaults", "delete", s.bundle, "AppleLanguages").Run() // none to delete is fine
+	}
+	reset()
+	t.Cleanup(reset)
+	s.relaunch()
+	waitFor(t, s, []string{"Hello, Ada!", "More"})
+	s.command("tab Settings")
+	waitFor(t, s, []string{"As the system's", "Deutsch"}, "Hello, Ada!")
+	s.tap("Deutsch")
+	waitFor(t, s, []string{"Wie das System", "Deutsch"}, "As the system's")
+	s.command("tab Eingang")
+	waitFor(t, s, []string{"Hallo, Ada!", "Mehr"}, "Hello, Ada!")
+	s.relaunch()
+	waitFor(t, s, []string{"Hallo, Ada!", "Mehr"}, "Hello, Ada!")
+	s.command("tab Einstellungen")
+	waitFor(t, s, []string{"Wie das System"})
+	s.tap("العربية")
+	waitFor(t, s, []string{"مثل النظام"}, "Wie das System")
+	s.command("tab الوارد")
+	waitFor(t, s, []string{"المزيد"}, "Mehr")
+	s.command("tab الإعدادات")
+	waitFor(t, s, []string{"مثل النظام"}, "المزيد")
+	s.tap("مثل النظام")
+	waitFor(t, s, []string{"As the system's"}, "مثل النظام")
+	s.relaunch()
+	waitFor(t, s, []string{"Hello, Ada!", "More"})
 }
 
 // Android
@@ -251,7 +322,8 @@ func (s *androidScreen) tap(text string) { s.command("tap " + text) }
 
 func (s *androidScreen) relaunch() {
 	s.adb("shell", "am", "force-stop", s.pkg)
-	if out, err := s.adb("shell", "monkey", "-p", s.pkg, "-c", "android.intent.category.LAUNCHER", "1"); err != nil {
+	// Not monkey: it refuses to run on recent emulator images, which have no system keys.
+	if out, err := s.adb("shell", "am", "start", "-n", s.pkg+"/dev.ryui.RyUIActivity"); err != nil {
 		s.t.Fatalf("launch: %v\n%s", err, out)
 	}
 }
@@ -272,4 +344,12 @@ func TestCounterAndroid(t *testing.T) { counter(t, androidApp(t, "counter", "dev
 func TestNotesAndroid(t *testing.T)   { notes(t, androidApp(t, "notes", "dev.ryui.notes")) }
 func TestNavigationAndroid(t *testing.T) {
 	navigation(t, androidApp(t, "navigation", "dev.ryui.navigation"))
+}
+func TestLanguagesAndroid(t *testing.T) {
+	s := androidApp(t, "i18n", "dev.ryui.i18n")
+	// The language a run before this one kept (Android 13's; before it the
+	// test leaves English): what the test starts from is the app's own.
+	s.adb("shell", "cmd", "locale", "set-app-locales", s.pkg, "--locales", "en")
+	s.relaunch()
+	languages(t, s)
 }

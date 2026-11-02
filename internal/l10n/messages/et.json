@@ -1,0 +1,12 @@
+{
+  "ok": "OK",
+  "search": "Otsi",
+  "back": "Tagasi",
+  "decrease": "Vähenda",
+  "increase": "Suurenda",
+  "about": "Teave: {app}",
+  "hide": "Peida {app}",
+  "quit": "Sulge {app}",
+  "hideOthers": "Peida teised",
+  "zoom": "Suumi"
+}

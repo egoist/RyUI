@@ -167,6 +167,12 @@ var widgetFamilies = map[string]string{
 	"circular": ".accessoryCircular", "rectangular": ".accessoryRectangular", "inline": ".accessoryInline",
 }
 
+// swiftLocalized is a Swift expression of s in the extension's language, from
+// the catalogs' ryui.widget.<kind>.name and .description (writeLprojs).
+func swiftLocalized(s string) string {
+	return "Bundle.main.localizedString(forKey: " + swiftString(s) + ", value: " + swiftString(s) + ", table: nil)"
+}
+
 // widgetKindsSwift is the extension's Kinds.swift: a RyUIWidgetKind for
 // each kind, and the bundle of them (WidgetBundleBuilder takes ten at a
 // time: more go in nested bundles).
@@ -182,7 +188,7 @@ func (c *appConfig) widgetKindsSwift() string {
 			fams = append(fams, widgetFamilies[s])
 		}
 		fmt.Fprintf(&b, "enum %s: RyUIWidgetKind {\n    static let kind = %s\n    static let name = %s\n    static let summary = %s\n    static let families: [WidgetFamily] = [%s]\n}\n\n",
-			name, swiftString(w.Kind), swiftString(w.Name), swiftString(w.Description), strings.Join(fams, ", "))
+			name, swiftString(w.Kind), swiftLocalized(w.Name), swiftLocalized(w.Description), strings.Join(fams, ", "))
 	}
 	// Ten to a bundle, the bundles ten to a bundle, up to the one @main.
 	level := 0
@@ -302,6 +308,7 @@ func (c *appConfig) widgetInfo(app map[string]any) map[string]any {
 		"RyUIAppGroup":                  c.appGroup(),
 		"NSExtension":                   map[string]any{"NSExtensionPointIdentifier": "com.apple.widgetkit-extension"},
 	}
+	c.plistLocalizations(m)
 	if c.Accent != "" {
 		m["RyUIAccent"] = c.Accent
 	}

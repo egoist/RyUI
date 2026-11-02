@@ -1,8 +1,10 @@
 package ui
 
 import (
+	"bytes"
 	"encoding/binary"
 
+	"github.com/egoist/ryui/internal/l10n"
 	"github.com/egoist/ryui/layout"
 	"github.com/egoist/ryui/ops"
 	"github.com/egoist/ryui/signal"
@@ -20,7 +22,9 @@ const (
 
 // Action is a button of an alert, a menu item or a bar button.
 type Action struct {
-	Title string
+	// Title is what it says; it can follow the app's language, or anything
+	// else: Title: locales.Live.Delete().
+	Title signal.Accessor[string]
 	Role  ActionRole
 	// Icon is a symbol beside the title in a menu; a navigation bar
 	// shows it instead of the title (which VoiceOver and TalkBack read).
@@ -31,13 +35,40 @@ type Action struct {
 func encodeActions(as []Action) []byte {
 	b := binary.LittleEndian.AppendUint32(nil, uint32(len(as)))
 	for _, a := range as {
+		title := ""
+		if a.Title != nil {
+			title = a.Title.Get()
+		}
 		b = append(b, byte(a.Role))
-		b = binary.LittleEndian.AppendUint32(b, uint32(len(a.Title)))
-		b = append(b, a.Title...)
+		b = binary.LittleEndian.AppendUint32(b, uint32(len(title)))
+		b = append(b, title...)
 		b = binary.LittleEndian.AppendUint32(b, uint32(len(a.Icon)))
 		b = append(b, a.Icon...)
 	}
 	return b
+}
+
+// bindActions sends as, and again when a title changes.
+func bindActions(as []Action, apply func([]byte)) {
+	static := true
+	for _, a := range as {
+		if a.Title != nil {
+			if _, ok := signal.StaticValue(a.Title); !ok {
+				static = false
+			}
+		}
+	}
+	if static {
+		apply(encodeActions(as))
+		return
+	}
+	var last []byte
+	signal.RenderEffect(func() {
+		if b := encodeActions(as); !bytes.Equal(b, last) {
+			last = b
+			apply(b)
+		}
+	})
 }
 
 func runAction(as []Action, i int64) {
@@ -69,8 +100,8 @@ const (
 	IconMinus     Icon = "minus"
 	IconClose     Icon = "xmark"
 	IconCheck     Icon = "checkmark"
-	IconBack      Icon = "chevron.left"
-	IconForward   Icon = "chevron.right"
+	IconBack      Icon = "chevron.backward" // mirrors right to left, with the reading direction
+	IconForward   Icon = "chevron.forward"  // likewise
 	IconUp        Icon = "chevron.up"
 	IconDown      Icon = "chevron.down"
 	IconRefresh   Icon = "arrow.clockwise"
@@ -148,7 +179,7 @@ type ScreenOptions struct {
 type Search struct {
 	// Text is what's typed: the user's typing writes it, code's is shown.
 	Text        *signal.Signal[string]
-	Placeholder string // "Search" when empty
+	Placeholder signal.Accessor[string] // nil: "Search", in the app's language
 	OnSubmit    func()
 }
 
@@ -158,10 +189,10 @@ func search(e *element, s *Search) {
 		return
 	}
 	ph := s.Placeholder
-	if ph == "" {
-		ph = "Search"
+	if ph == nil {
+		ph = signal.Func(func() string { return l10n.Search(Locale()) })
 	}
-	e.r.batch.SetString(e.id, ops.PropScreenSearch, ph)
+	bind(ph, func(v string) { e.r.batch.SetString(e.id, ops.PropScreenSearch, v) })
 	h := e.handlers()
 	if s.Text != nil {
 		reported, known := "", false
@@ -260,7 +291,6 @@ func (st *stackState) push(build func() Node, o ScreenOptions) {
 		b := r.batch
 		id := s.el.id
 		if len(o.Actions) > 0 {
-			b.SetBytes(id, ops.PropScreenActions, encodeActions(o.Actions))
 			s.el.handlers().action = func(i int64) { runAction(s.actions, i) }
 			s.el.listen(ops.EventAction)
 		}
@@ -273,6 +303,9 @@ func (st *stackState) push(build func() Node, o ScreenOptions) {
 		signal.RunWithOwner(st.owner, func() {
 			signal.Root(func(dispose func()) {
 				s.dispose = dispose
+				if len(o.Actions) > 0 {
+					bindActions(o.Actions, func(v []byte) { r.batch.SetBytes(id, ops.PropScreenActions, v) })
+				}
 				bind(o.Title, func(v string) { r.batch.SetString(id, ops.PropScreenTitle, v) })
 				search(s.el, o.Search)
 				navCtx.Provide(st.nav, func() {
@@ -306,7 +339,7 @@ func (st *stackState) remove(s *stackScreen) {
 
 // Tab is a page of Tabs.
 type Tab struct {
-	Title   string
+	Title   signal.Accessor[string]
 	Icon    Icon
 	Content func() Node
 }
@@ -329,9 +362,10 @@ func Tabs(p TabsProps, tabs ...Tab) Node {
 	var disposes []func()
 	for _, t := range tabs {
 		page := newProvider(ops.KindScreen)
-		if t.Title != "" {
-			r.batch.SetString(page.id, ops.PropScreenTitle, t.Title)
-		}
+		pageID := page.id
+		signal.RunWithOwner(owner, func() {
+			bind(t.Title, func(v string) { r.batch.SetString(pageID, ops.PropScreenTitle, v) })
+		})
 		if t.Icon != "" {
 			r.batch.SetString(page.id, ops.PropScreenIcon, string(t.Icon))
 		}
@@ -483,7 +517,7 @@ func Alert(p AlertProps) {
 	r := activeRoot()
 	actions := p.Actions
 	if len(actions) == 0 {
-		actions = []Action{{Title: "OK", Role: ActionCancel}}
+		actions = []Action{{Title: Val(l10n.OK(Locale())), Role: ActionCancel}}
 	}
 	withRoot(r, func() Node {
 		e := newElement(ops.KindAlert, true)
@@ -494,7 +528,7 @@ func Alert(p AlertProps) {
 		if p.Message != "" {
 			b.SetString(e.id, ops.PropAlertMessage, p.Message)
 		}
-		b.SetBytes(e.id, ops.PropAlertButtons, encodeActions(actions))
+		b.SetBytes(e.id, ops.PropAlertButtons, signal.Untrack(func() []byte { return encodeActions(actions) }))
 		if p.ActionSheet {
 			b.SetEnum(e.id, ops.PropAlertStyle, int32(ops.AlertStyleActionSheet))
 		}
@@ -525,7 +559,7 @@ type MenuProps struct {
 func Menu(p MenuProps, children ...Node) Node {
 	e := newElement(ops.KindView, true)
 	e.setStyle(p.Style, false)
-	e.r.batch.SetBytes(e.id, ops.PropMenu, encodeActions(p.Actions))
+	bindActions(p.Actions, func(b []byte) { e.r.batch.SetBytes(e.id, ops.PropMenu, b) })
 	if p.LongPress {
 		e.r.batch.SetEnum(e.id, ops.PropMenuTrigger, int32(ops.MenuTriggerLongPress))
 	}

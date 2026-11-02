@@ -184,6 +184,7 @@ func (st *richState) build(in *Inline) *inlineKid {
 				st := layout.DefaultStyle
 				st.FlexDirection = layout.Column
 				st.AlignItems = layout.AlignStart
+				st.Direction = el.layoutDirection()
 				el.box.SetStyle(st)
 				if n := in.Build(); n.e != nil {
 					el.appendKid(n.e)

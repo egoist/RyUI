@@ -124,6 +124,8 @@ final class RyUITextView: UITextView {
         n.view = t
         n.applyFont()
         n.applyColor()
+        setAttribute(t, from: .unspecified, to: old.semanticContentAttribute, forced: [:], redo: false)
+        n.applyTextAlign()
     }
 }
 

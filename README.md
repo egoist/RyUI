@@ -29,6 +29,9 @@ func main() { app.Run(Counter) }
   and your own native views.
 - **Motion**: animations, transforms, enter and exit transitions, shared
   elements, gestures.
+- **Languages**: typed messages from ICU catalogs that follow the language as
+  it changes, CLDR's plurals, numbers and dates, and right-to-left layouts that
+  mirror with no code.
 - **Batteries**: SQLite with live queries, secure storage, the camera and
   code scanning, photos, location, notifications, audio.
 - **`ryui dev`**: your Go code runs on your Mac and reloads on save, the

@@ -37,10 +37,10 @@ using it does, when the label doesn't.
 
 ```go
 ui.Row(ui.Style{Gap: 12},
-	ui.Button(ui.ButtonProps{Icon: ui.IconSend, Label: "Send", Variant: ui.ButtonFilled, OnPress: send}),
-	ui.Image(ui.ImageProps{Source: ui.Val("https://picsum.photos/id/1015/600/400"), Label: "A river in a valley",
+	ui.Button(ui.ButtonProps{Icon: ui.IconSend, Label: ui.Val("Send"), Variant: ui.ButtonFilled, OnPress: send}),
+	ui.Image(ui.ImageProps{Source: ui.Val("https://picsum.photos/id/1015/600/400"), Label: ui.Val("A river in a valley"),
 		Style: ui.Style{AspectRatio: 3.0 / 2}}),
-	ui.View(ui.ViewProps{Label: "Favorite", Role: ui.RoleImage},
+	ui.View(ui.ViewProps{Label: ui.Val("Favorite"), Role: ui.RoleImage},
 		ui.Symbol(ui.IconHeart.Filled(), ui.Style{Color: ui.Red})),
 )
 ```
@@ -91,7 +91,7 @@ is three stops; often it should be one. Two ways:
 func Row(m message, open func()) ui.Node {
 	return ui.View(ui.ViewProps{
 		OnPress: open,
-		Hint:    "Opens the message",
+		Hint:    ui.Val("Opens the message"),
 		Style:   ui.Style{Direction: ui.RowDir, Gap: 12, Padding: ui.Symmetric(12, 20)},
 	},
 		ui.View(ui.ViewProps{Decorative: true}, ui.Symbol(ui.IconPerson.Filled(), ui.Style{Color: ui.SecondaryLabel})),
@@ -138,7 +138,7 @@ already.
 ```go
 ui.RichText(ui.RichTextProps{Text: ui.Val(ui.Rich{ui.Plain("Recent")}), Role: ui.RoleHeader,
 	Style: ui.Style{Font: ui.Title2.Weighted(ui.Bold)}}),
-ui.View(ui.ViewProps{Label: "Settings", Role: ui.RoleHeader},
+ui.View(ui.ViewProps{Label: ui.Val("Settings"), Role: ui.RoleHeader},
 	ui.StaticText("Settings", ui.Style{Font: ui.Title2})),
 ```
 
@@ -154,7 +154,7 @@ lists them on a view:
 
 ```go
 ui.View(ui.ViewProps{
-	Actions: []ui.A11yAction{{Name: "Reply", Do: reply}, {Name: "Archive", Do: archive}},
+	Actions: []ui.A11yAction{{Name: ui.Val("Reply"), Do: reply}, {Name: ui.Val("Archive"), Do: archive}},
 	Style:   ui.Style{Padding: ui.Symmetric(12, 20)},
 }, ui.Text(subject))
 ```
@@ -170,7 +170,7 @@ again in `Actions`.
 ui.List(ui.ListProps{
 	SwipeActions: func(i int) []ui.Action {
 		return []ui.Action{
-			{Title: "Delete", Icon: ui.IconTrash, Role: ui.ActionDestructive, OnPress: func() { remove(i) }},
+			{Title: ui.Val("Delete"), Icon: ui.IconTrash, Role: ui.ActionDestructive, OnPress: func() { remove(i) }},
 		}
 	},
 }, items, key, row)

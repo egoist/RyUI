@@ -122,6 +122,7 @@ func (m *Memo[T]) Get() T {
 func (m *Memo[T]) update() bool {
 	m.owner.clean()
 	n := &m.n
+	settleAmbient()
 	prevSub, prevOwner := activeSub, currentOwner
 	activeSub, currentOwner = n, &m.owner
 	inMemo++
@@ -131,6 +132,7 @@ func (m *Memo[T]) update() bool {
 		activeSub, currentOwner = prevSub, prevOwner
 	}()
 	v := m.fn()
+	settleAmbient()
 	endTracking(n)
 	changed := !m.ready || m.equal == nil || !m.equal(m.value, v)
 	m.value, m.ready = v, true
@@ -166,11 +168,13 @@ func newEffect(fn func(), extra flags) *effect {
 func (e *effect) update() bool {
 	e.owner.clean()
 	n := &e.n
+	settleAmbient()
 	prevSub, prevOwner := activeSub, currentOwner
 	activeSub, currentOwner = n, &e.owner
 	startTracking(n)
 	defer func() { activeSub, currentOwner = prevSub, prevOwner }()
 	e.fn()
+	settleAmbient()
 	endTracking(n)
 	return true
 }
@@ -199,9 +203,13 @@ func RenderEffect(f func()) {
 // Untrack runs f without subscribing the current computation to what f
 // reads.
 func Untrack[T any](f func() T) T {
+	settleAmbient()
 	prev := activeSub
 	activeSub = nil
-	defer func() { activeSub = prev }()
+	defer func() {
+		settleAmbient()
+		activeSub = prev
+	}()
 	return f()
 }
 

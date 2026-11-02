@@ -126,7 +126,7 @@ func Editor(d *draft, heading string, onClose func(), onSave func()) ui.Node {
 	return ui.Column(ui.Style{Grow: 1, Background: ui.GroupedBackground},
 		// The header.
 		ui.Row(ui.Style{Padding: ui.Symmetric(12, 16), Gap: 12, Align: ui.AlignCenter},
-			ui.Button(ui.ButtonProps{Icon: "xmark", Label: "Close", Variant: ui.ButtonGlass, OnPress: onClose}),
+			ui.Button(ui.ButtonProps{Icon: "xmark", Label: ui.Val("Close"), Variant: ui.ButtonGlass, OnPress: onClose}),
 			ui.StaticText(heading, ui.Style{Grow: 1, Font: ui.Headline, TextAlign: ui.TextCenter}),
 			ui.Button(ui.ButtonProps{Title: ui.Val("Save"), Variant: ui.ButtonGlassProminent,
 				Disabled: signal.Func(func() bool { return saving.Get() || (d.URL.Get() == "" && d.Cover.Get() == "") }),
@@ -145,7 +145,7 @@ func Editor(d *draft, heading string, onClose func(), onSave func()) ui.Node {
 						ui.TextField(ui.TextFieldProps{Value: d.Description, Placeholder: ui.Val("Add description"), Multiline: true, Plain: true,
 							Style: ui.Style{Font: ui.Subheadline, Color: ui.SecondaryLabel, Lines: 4}}),
 					),
-					ui.Image(ui.ImageProps{Source: d.Cover, Mode: ui.ImageFill, Label: "Cover",
+					ui.Image(ui.ImageProps{Source: d.Cover, Mode: ui.ImageFill, Label: ui.Val("Cover"),
 						Style: ui.Style{Width: ui.Pt(72), MinWidth: ui.Pt(72), Height: ui.Pt(72), CornerRadius: 10, Clip: true, Background: ui.GroupedBackground}}),
 				),
 				divider(),
@@ -200,7 +200,7 @@ func row(icon ui.Icon, text signal.Accessor[string], placeholder signal.Accessor
 			}
 			return s
 		})),
-		ui.Symbol("chevron.right", ui.Style{Color: ui.TertiaryLabel}),
+		ui.Symbol(ui.IconForward, ui.Style{Color: ui.TertiaryLabel}),
 	)
 }
 

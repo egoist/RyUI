@@ -47,8 +47,8 @@ type menuItem struct {
 }
 
 // ownerDrawMenu makes all of a menu's items owner-drawn (it has a
-// destructive one).
-func (h *Host) ownerDrawMenu(m uintptr, items []menuItem) *ownerMenu {
+// destructive one). order is what else its items' type says (MF_RIGHTORDER).
+func (h *Host) ownerDrawMenu(m uintptr, items []menuItem, order uint32) *ownerMenu {
 	if h.owned == nil {
 		h.owned = map[uintptr]*ownerItem{}
 	}
@@ -61,9 +61,9 @@ func (h *Host) ownerDrawMenu(m uintptr, items []menuItem) *ownerMenu {
 		h.owned[id] = it
 		om.items = append(om.items, it)
 		om.ids = append(om.ids, id)
-		flags := uint32(0)
+		flags := order
 		if it.separator {
-			flags = MF_SEPARATOR
+			flags |= MF_SEPARATOR
 		}
 		SetMenuItemOwnerDraw(m, i, id, flags)
 	}
@@ -344,7 +344,10 @@ func (h *Host) drawMenuItem(s *menuStyle, d *DrawItem, it *ownerItem) {
 	} else {
 		SetTextColor(dc, color)
 	}
-	flags := uint32(DT_SINGLELINE | DT_VCENTER | DT_LEFT)
+	// A mirrored menu's DC is mirrored, so all of this goes the other way
+	// by itself: the left here is its right.
+	rtl := Mirrored(dc)
+	flags := uint32(DT_SINGLELINE|DT_VCENTER|DT_LEFT) | textDirection(rtl)
 	if state&ODS_NOACCEL != 0 {
 		flags |= DT_HIDEPREFIX
 	}
@@ -352,7 +355,7 @@ func (h *Host) drawMenuItem(s *menuStyle, d *DrawItem, it *ownerItem) {
 	DrawText(dc, it.text, &tr, flags)
 	if len(it.key) > 0 {
 		SetTextColor(dc, color)
-		DrawText(dc, it.key, &tr, DT_SINGLELINE|DT_VCENTER|DT_RIGHT|DT_NOPREFIX)
+		DrawText(dc, it.key, &tr, DT_SINGLELINE|DT_VCENTER|DT_RIGHT|DT_NOPREFIX|textDirection(rtl))
 	}
 	SelectObject(dc, old)
 }
@@ -374,6 +377,11 @@ func (h *Host) menuFocus(dc uintptr, r Rect, k float32) {
 		c = 255
 	}
 	w := max(1, float32(int32(k/2+0.5)))
+	if Mirrored(dc) {
+		// A mirrored menu's DC: GDI+ doesn't follow it.
+		StrokeRoundRectGDI(dc, r, int32(w), int32(1.75*k+0.5), RGB(c, c, c))
+		return
+	}
 	g := NewGraphics(dc)
 	// On whole pixels: GDI+ puts their centers at half coordinates.
 	g.StrokeRoundRect(MakeARGB(255, c, c, c), w, float32(r.Left), float32(r.Top), float32(r.W()), float32(r.H()), 1.75*k)
@@ -452,6 +460,9 @@ func (h *Host) paintMenuFrame(hwnd, dc uintptr) {
 	w, ht := wr.W(), wr.H()
 	// The client area, in window coordinates.
 	p := ClientToScreen(hwnd, Point{})
+	if WindowLong(hwnd, GWL_EXSTYLE)&WS_EX_LAYOUTRTL != 0 {
+		p.X -= cr.W() // a mirrored window's client origin is its top right
+	}
 	c := Rect{Left: p.X - wr.Left, Top: p.Y - wr.Top}
 	c.Right, c.Bottom = c.Left+cr.W(), c.Top+cr.H()
 	bg := h.menuBackground().ref()

@@ -142,8 +142,8 @@ func actions(id string, acc signal.Accessor[Account], renaming, signing *signal.
 			Title:   "Remove this account?",
 			Message: "Its token is deleted from this device.",
 			Actions: []ui.Action{
-				{Title: "Cancel", Role: ui.ActionCancel},
-				{Title: "Remove", Role: ui.ActionDestructive, OnPress: func() { nav.Pop(); remove(id) }},
+				{Title: ui.Val("Cancel"), Role: ui.ActionCancel},
+				{Title: ui.Val("Remove"), Role: ui.ActionDestructive, OnPress: func() { nav.Pop(); remove(id) }},
 			},
 		})
 	}
@@ -160,7 +160,7 @@ func actions(id string, acc signal.Accessor[Account], renaming, signing *signal.
 	}
 	return ui.Column(ui.Style{Gap: 20},
 		group(rows...),
-		group(ui.View(ui.ViewProps{OnPress: confirm, Label: "Remove Account", Role: ui.RoleButton,
+		group(ui.View(ui.ViewProps{OnPress: confirm, Label: ui.Val("Remove Account"), Role: ui.RoleButton,
 			Style: ui.Style{Padding: ui.Symmetric(11, 16), MinHeight: ui.Pt(48), Justify: ui.JustifyCenter, Align: ui.AlignCenter}},
 			ui.StaticText("Remove Account", ui.Style{Color: ui.Red}))),
 	)
@@ -226,7 +226,7 @@ func actionRow(icon ui.Node, title, detail string, press func(), trailing func()
 	if ios {
 		style = ui.Style{Direction: ui.RowDir, Gap: 12, Align: ui.AlignCenter, Padding: ui.Symmetric(11, 16), MinHeight: ui.Pt(48)}
 	}
-	return cellWith(ui.ViewProps{OnPress: press, Label: title, Hint: detail, Role: ui.RoleButton, Style: style}, kids...)
+	return cellWith(ui.ViewProps{OnPress: press, Label: ui.Val(title), Hint: ui.Val(detail), Role: ui.RoleButton, Style: style}, kids...)
 }
 
 // renameSheet names an account.

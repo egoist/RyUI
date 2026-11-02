@@ -15,7 +15,12 @@ fun RyUIRuntime.symbol(name: String): Drawable? {
         if (name.isNotEmpty()) android.util.Log.w("ryui", "no Android symbol for \"$name\" (see platform/android/gen_symbols.go)")
         return null
     }
-    return AppCompatResources.getDrawable(themed, res)?.mutate()
+    val d = AppCompatResources.getDrawable(themed, res)?.mutate()
+    // A name that says forward or backward means a direction the language
+    // decides: chevron.forward points left right to left, as chevron.left
+    // always does. Plain forward and backward are media's, which don't mirror.
+    if (name.contains(".forward") || name.contains(".backward")) d?.isAutoMirrored = true
+    return d
 }
 
 /**

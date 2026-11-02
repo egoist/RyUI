@@ -58,7 +58,8 @@ final class RyUIDatePickerView: UIView {
         // At its own size, at the end (as a trailing control sits).
         let s = sizeThatFits(bounds.size)
         let w = min(s.width, bounds.width)
-        picker.frame = CGRect(x: bounds.width - w, y: (bounds.height - s.height) / 2, width: w, height: s.height)
+        let x = effectiveUserInterfaceLayoutDirection == .rightToLeft ? 0 : bounds.width - w
+        picker.frame = CGRect(x: x, y: (bounds.height - s.height) / 2, width: w, height: s.height)
     }
 
     override var tintColor: UIColor! {
