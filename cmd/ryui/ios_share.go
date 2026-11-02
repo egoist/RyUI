@@ -167,7 +167,7 @@ func (c *appConfig) shareInfo(app map[string]any) map[string]any {
 	}
 	for k, v := range app {
 		switch k {
-		case "CFBundleName", "CFBundleDisplayName", "CFBundleShortVersionString", "CFBundleVersion", "MinimumOSVersion", "CFBundleSupportedPlatforms", "UIDeviceFamily":
+		case "CFBundleName", "CFBundleDisplayName", "CFBundleShortVersionString", "CFBundleVersion", "MinimumOSVersion", "CFBundleSupportedPlatforms", "UIDeviceFamily", "UIRequiredDeviceCapabilities":
 			m[k] = v
 		default:
 			if strings.HasPrefix(k, "DT") {

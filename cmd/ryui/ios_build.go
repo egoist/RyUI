@@ -503,6 +503,10 @@ func pickProfile(team, id, want, distribution string) (*profile, error) {
 	return nil, errors.New(msg + ". Make one for the app ID in Xcode (Settings › Accounts) or at developer.apple.com, or pass -profile")
 }
 
+// plistKey is a plist key as plutil's key paths take it: plutil reads a
+// dot as a step into a dictionary, and entitlement names are full of them.
+func plistKey(key string) string { return strings.ReplaceAll(key, ".", `\.`) }
+
 // sign embeds the profile, signs the bundle (the app, or an extension in
 // it), whose ID is id, with the profile's entitlements, the associated
 // domains, the App Group group and the keychain group (each if not ""),
@@ -542,21 +546,21 @@ func (p *profile) sign(t *iosToolchain, work, bundle, id string, domains []strin
 	// Associated Domains capability of the app ID).
 	if len(domains) > 0 {
 		js, _ := json.Marshal(domains)
-		if err := t.run(work, nil, "plutil", "-replace", "com.apple.developer.associated-domains", "-json", string(js), ent); err != nil {
+		if err := t.run(work, nil, "plutil", "-replace", plistKey("com.apple.developer.associated-domains"), "-json", string(js), ent); err != nil {
 			return err
 		}
 	}
 	// The App Group the share extension leaves files in: the profile
 	// must have it (the App Groups capability of the app ID, with it).
 	if group != "" {
-		have, _ := exec.Command("plutil", "-extract", "com.apple.security.application-groups", "json", "-o", "-", ent).Output()
+		have, _ := exec.Command("plutil", "-extract", plistKey("com.apple.security.application-groups"), "json", "-o", "-", ent).Output()
 		var groups []string
 		json.Unmarshal(have, &groups)
 		if !slices.Contains(groups, group) {
 			return fmt.Errorf("the profile %q has no App Group %s, which a share target that takes files needs: add the App Groups capability to %s, with %s, at developer.apple.com, then the profile again", p.name, group, id, group)
 		}
 		js, _ := json.Marshal([]string{group})
-		if err := t.run(work, nil, "plutil", "-replace", "com.apple.security.application-groups", "-json", string(js), ent); err != nil {
+		if err := t.run(work, nil, "plutil", "-replace", plistKey("com.apple.security.application-groups"), "-json", string(js), ent); err != nil {
 			return err
 		}
 	}

@@ -4,6 +4,7 @@ import (
 	"image"
 	"image/color"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -108,5 +109,29 @@ func TestPrivacyAccessed(t *testing.T) {
 	}
 	if got := types(map[string]bool{"write": true}, ""); len(got) != 0 {
 		t.Errorf("none: %v", got)
+	}
+}
+
+// A profile's App Group is read and written whole: plutil would otherwise
+// read the dots in the entitlement's name as steps into dictionaries.
+func TestPlistKeyEntitlement(t *testing.T) {
+	if _, err := exec.LookPath("plutil"); err != nil {
+		t.Skip("no plutil")
+	}
+	ent := filepath.Join(t.TempDir(), "ent.plist")
+	key := plistKey("com.apple.security.application-groups")
+	plist := `<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict><key>com.apple.security.application-groups</key><array><string>group.a</string><string>group.b</string></array></dict></plist>`
+	if err := os.WriteFile(ent, []byte(plist), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("plutil", "-replace", key, "-json", `["group.b"]`, ent).CombinedOutput(); err != nil {
+		t.Fatalf("replace: %v: %s", err, out)
+	}
+	out, err := exec.Command("plutil", "-extract", key, "json", "-o", "-", ent).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.TrimSpace(string(out)); got != `["group.b"]` {
+		t.Fatalf("got %s", got)
 	}
 }
