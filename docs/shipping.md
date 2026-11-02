@@ -52,7 +52,9 @@
   Maps Platform API key, for `ryui/maps`.
 - `ios.usage` gives the purpose strings of protected resources
   (`NSCameraUsageDescription`...), and `ios.infoPlist` adds keys to
-  Info.plist; `android.permissions` adds permissions.
+  Info.plist; `ios.backgroundModes` adds to `UIBackgroundModes` (`"audio"`,
+  to record and play with the screen locked); `android.permissions` adds
+  permissions.
 
 The packages an app imports give it the permissions and purpose strings
 they need: `ryui/camera` the camera's, `ryui/location` the location's.

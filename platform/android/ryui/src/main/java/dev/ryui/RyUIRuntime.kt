@@ -179,6 +179,9 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
         }
     }
 
+    /** A context for a dialog over act: the activity's window, the app's colors. */
+    fun dialogContext(act: Context): Context = theme(act)
+
     /** The accent color: the scheme's primary, or the accent itself where there's no scheme from it. */
     fun accentColor(): Int {
         val seed = accent
@@ -681,6 +684,8 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
         }
     }
 
+    private var heightCheckQueued = false
+
     private fun makeTextField(id: Int) = AppCompatEditText(themed).apply {
         isSingleLine = true
         textAlignment = View.TEXT_ALIGNMENT_VIEW_START
@@ -692,6 +697,16 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
                 if (!settingProp) {
                     val t = s?.toString() ?: ""
                     emit(id, RyUIEventKind.TEXT_CHANGED) { RyUIEvents.textChanged(id, t) }
+                    // A paste's lines aren't laid out yet when it's reported: report
+                    // it again once they are, so a multiline field grows to fit.
+                    if (maxLines > 1 && !heightCheckQueued) {
+                        heightCheckQueued = true
+                        post {
+                            heightCheckQueued = false
+                            val now = text?.toString() ?: ""
+                            emit(id, RyUIEventKind.TEXT_CHANGED) { RyUIEvents.textChanged(id, now) }
+                        }
+                    }
                 }
             }
         })

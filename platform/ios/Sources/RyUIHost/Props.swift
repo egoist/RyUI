@@ -51,6 +51,7 @@ func semanticColor(_ c: RyUISemanticColor?) -> UIColor? {
     case .gray: return .systemGray
     case .clear: return .clear
     case .secondaryGroupedBackground: return .secondarySystemGroupedBackground
+    case .onAccent: return .white
     default: return nil
     }
 }

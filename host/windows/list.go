@@ -322,7 +322,7 @@ func (l *list) bind(h *Host, rv *rowView, r int) {
 			ShowWindow(c.n.hwnd, SW_SHOWNA)
 		}
 	}
-	rv.sep = l.columns <= 1 && !l.grouped() && r < len(l.ids)-1
+	rv.sep = l.columns <= 1 && !l.grouped() && l.appearance != ops.ListAppearanceBare && r < len(l.ids)-1
 	for i := range k {
 		c := rv.cells[i]
 		c.item = l.ids[first+i]

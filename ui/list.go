@@ -59,6 +59,10 @@ const (
 	// Settings'; Windows 11's settings cards. Rows are laid out at the
 	// list's width less the insets.
 	ListInsetGrouped = ops.ListAppearanceInsetGrouped
+	// ListBare is rows with nothing around them: no separators, and no
+	// background, so what's behind the list shows through. Its rows draw
+	// their own cards and leave their own space, and can still be swiped.
+	ListBare = ops.ListAppearanceBare
 )
 
 // listInset is an inset grouped list's rows' inset from each side: the
@@ -142,6 +146,8 @@ func List[T any, K comparable](p ListProps, items signal.Accessor[[]T], key func
 	e.r.lists = append(e.r.lists, e)
 	if p.Appearance != ListPlain {
 		e.r.batch.SetEnum(e.id, ops.PropListAppearance, int32(p.Appearance))
+	}
+	if p.Appearance == ListInsetGrouped {
 		env := UseEnvironment()
 		signal.RenderEffect(func() {
 			// The rows are laid out again at the new width.

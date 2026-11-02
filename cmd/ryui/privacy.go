@@ -43,7 +43,7 @@ var privacyAPIs = []struct {
 // the app's own (ios/PrivacyInfo.xcprivacy beside its main package, for
 // what it collects or tracks) if it has one, else the reasons for the
 // APIs bin uses, no tracking and no data collected (RyUI collects none).
-func privacyManifest(appDir, bin string) ([]byte, error) {
+func privacyManifest(appDir, bin string, collected ...collectedData) ([]byte, error) {
 	if own, err := os.ReadFile(filepath.Join(appDir, "ios", "PrivacyInfo.xcprivacy")); err == nil {
 		return own, nil
 	}
@@ -66,9 +66,27 @@ func privacyManifest(appDir, bin string) ([]byte, error) {
 	return []byte(plist(map[string]any{
 		"NSPrivacyTracking":           false,
 		"NSPrivacyTrackingDomains":    []string{},
-		"NSPrivacyCollectedDataTypes": []any{},
+		"NSPrivacyCollectedDataTypes": privacyCollected(collected),
 		"NSPrivacyAccessedAPITypes":   privacyAccessed(imported, data),
 	})), nil
+}
+
+// privacyCollected is the manifest's NSPrivacyCollectedDataTypes.
+func privacyCollected(collected []collectedData) []any {
+	out := []any{}
+	for _, c := range collected {
+		purposes := make([]string, len(c.Purposes))
+		for i, p := range c.Purposes {
+			purposes[i] = "NSPrivacyCollectedDataTypePurpose" + p
+		}
+		out = append(out, map[string]any{
+			"NSPrivacyCollectedDataType":         "NSPrivacyCollectedDataType" + c.Type,
+			"NSPrivacyCollectedDataTypeLinked":   c.Linked,
+			"NSPrivacyCollectedDataTypeTracking": c.Tracking,
+			"NSPrivacyCollectedDataTypePurposes": purposes,
+		})
+	}
+	return out
 }
 
 // privacyAccessed is the manifest's NSPrivacyAccessedAPITypes for a

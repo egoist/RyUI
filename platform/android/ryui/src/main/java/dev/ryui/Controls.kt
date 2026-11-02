@@ -20,6 +20,13 @@ class RyUISegmented(private val rt: RyUIRuntime, private val id: Int) : Material
     init {
         isSingleSelection = true
         isSelectionRequired = true
+        // One control, as Material 3's segmented buttons are: the group's ends
+        // round and its segments share their edges. The theme's Expressive
+        // default is separate pills, with an inverse color for the checked one.
+        spacing = 0
+        innerCornerSize = com.google.android.material.shape.AbsoluteCornerSize(0f)
+        shapeAppearance = com.google.android.material.shape.ShapeAppearanceModel.builder()
+            .setAllCornerSizes(com.google.android.material.shape.RelativeCornerSize(0.5f)).build()
         addOnButtonCheckedListener { _, buttonId, checked ->
             if (checked && !setting) {
                 val i = indexOfChild(findViewById(buttonId)).toLong()
@@ -50,11 +57,30 @@ class RyUISegmented(private val rt: RyUIRuntime, private val id: Int) : Material
         val selected = checkedButtonId.let { if (it == View.NO_ID) -1 else indexOfChild(findViewById(it)) }
         setting = true
         removeAllViews()
+        val c = ContextThemeWrapper(rt.themed, R.style.ThemeOverlay_RyUI_SegmentedButton)
+        fun role(attr: Int) = com.google.android.material.color.MaterialColors.getColor(c, attr, 0)
+        val checkedState = intArrayOf(android.R.attr.state_checked)
+        fun colors(on: Int, off: Int) = android.content.res.ColorStateList(arrayOf(checkedState, intArrayOf()), intArrayOf(on, off))
+        val background = colors(role(com.google.android.material.R.attr.colorSecondaryContainer), android.graphics.Color.TRANSPARENT)
+        val foreground = colors(role(com.google.android.material.R.attr.colorOnSecondaryContainer), role(com.google.android.material.R.attr.colorOnSurface))
+        val outline = android.content.res.ColorStateList.valueOf(role(com.google.android.material.R.attr.colorOutline))
+        val d = resources.displayMetrics.density
         for (t in titles) {
-            addView(MaterialButton(ContextThemeWrapper(rt.themed, R.style.ThemeOverlay_RyUI_OutlinedButton)).apply {
+            addView(MaterialButton(c).apply {
                 id = View.generateViewId()
                 text = t
                 isAllCaps = false
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                backgroundTintList = background
+                setTextColor(foreground)
+                strokeColor = outline
+                strokeWidth = Math.round(d)
+                insetTop = 0
+                insetBottom = 0
+                minimumWidth = 0
+                minWidth = 0
+                setPadding(Math.round(8 * d), paddingTop, Math.round(8 * d), paddingBottom)
             })
         }
         setting = false

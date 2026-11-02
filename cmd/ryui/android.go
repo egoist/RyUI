@@ -450,8 +450,9 @@ func (t *androidToolchain) pushAssets(app *goApp, work, serial, pkg string) erro
 		return nil
 	}
 	tmp := "/data/local/tmp/ryui-" + pkg + "-assets"
-	t.run(work, nil, t.adb, "-s", serial, "shell", "rm", "-rf", tmp)
-	if err := t.run(work, nil, t.adb, "-s", serial, "push", dir, tmp); err != nil {
+	// adb doesn't make a directory with nothing in it, which an empty assets is.
+	t.run(work, nil, t.adb, "-s", serial, "shell", "rm", "-rf", tmp, "&&", "mkdir", "-p", tmp)
+	if err := t.run(work, nil, t.adb, "-s", serial, "push", dir+"/.", tmp); err != nil {
 		return err
 	}
 	if err := t.run(work, nil, t.adb, "-s", serial, "shell", "run-as", pkg, "sh", "-c",

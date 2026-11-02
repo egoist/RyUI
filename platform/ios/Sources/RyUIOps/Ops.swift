@@ -167,7 +167,10 @@ public enum RyUIProp {
         public static let icon: UInt16 = 67
         public static let search: UInt16 = 68
         public static let searchText: UInt16 = 69
-        public static let zoomFrom: UInt16 = 70
+        public static let searchButton: UInt16 = 70
+        public static let zoomFrom: UInt16 = 71
+        public static let largeTitle: UInt16 = 72
+        public static let barColor: UInt16 = 73
     }
 
     public enum Tabs {
@@ -269,6 +272,7 @@ public enum RyUIProp {
         public static let mode: UInt16 = 65
         public static let min: UInt16 = 66
         public static let max: UInt16 = 67
+        public static let inline: UInt16 = 68
     }
 
     public enum Window {
@@ -492,6 +496,7 @@ public enum RyUIImageMode: Int32 {
 public enum RyUIListAppearance: Int32 {
     case plain = 0
     case insetGrouped = 1
+    case bare = 2
 }
 
 public enum RyUIDateMode: Int32 {
@@ -575,6 +580,7 @@ public enum RyUISemanticColor: Int32 {
     case gray = 16
     case clear = 17
     case secondaryGroupedBackground = 18
+    case onAccent = 19
 }
 
 public enum RyUIShareKind: Int32 {

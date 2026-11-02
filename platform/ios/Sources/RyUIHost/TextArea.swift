@@ -65,6 +65,18 @@ final class RyUITextView: UITextView {
     }
     required init?(coder: NSCoder) { fatalError() }
 
+    /// A text area that grows with its text doesn't scroll: what holds it does.
+    /// Keeps the caret in sight in that, above the keyboard, as it moves.
+    func revealCaret() {
+        guard isFirstResponder, let at = selectedTextRange?.end else { return }
+        var holder = superview
+        while let v = holder, !((v as? UIScrollView)?.isScrollEnabled ?? false) { holder = v.superview }
+        guard let scroll = holder as? UIScrollView else { return }
+        let caret = caretRect(for: at)
+        guard !caret.isNull, !caret.isInfinite, caret.origin.y.isFinite else { return }
+        scroll.scrollRectToVisible(convert(caret, to: scroll).insetBy(dx: 0, dy: -14), animated: false)
+    }
+
     private func updateBorder() {
         layer.borderColor = UIColor.systemGray4.resolvedColor(with: traitCollection).cgColor
     }
@@ -74,7 +86,14 @@ final class RyUITextView: UITextView {
         if #unavailable(iOS 17) { updateBorder() }
     }
 
+    private var laidOutHeight: CGFloat = 0
+
     override func layoutSubviews() {
+        // Grown by a new line: now there's somewhere for the caret to go.
+        if bounds.height != laidOutHeight {
+            laidOutHeight = bounds.height
+            DispatchQueue.main.async { [weak self] in self?.revealCaret() }
+        }
         super.layoutSubviews()
         let pad = textContainer.lineFragmentPadding
         let x = textContainerInset.left + pad
@@ -89,6 +108,12 @@ final class RyUITextView: UITextView {
         let line = (font ?? .preferredFont(forTextStyle: .body)).lineHeight
         var h = sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude)).height
         h = max(h, ceil(line + insets))
+        // A placeholder can run longer than a line: it's what's showing.
+        if (text ?? "").isEmpty, !(placeholderLabel.text ?? "").isEmpty {
+            let pad = textContainer.lineFragmentPadding
+            let w = width - textContainerInset.left - textContainerInset.right - 2 * pad
+            h = max(h, ceil(placeholderLabel.sizeThatFits(CGSize(width: w, height: .greatestFiniteMagnitude)).height + insets))
+        }
         if maxLines > 0 {
             let cap = ceil(line * CGFloat(maxLines) + insets)
             isScrollEnabled = h > cap
@@ -135,12 +160,19 @@ extension RyUIRuntime: UITextViewDelegate {
         t.placeholderLabel.isHidden = !t.text.isEmpty
         let id = t.ryuiID, s = t.text ?? ""
         emit(id, .textChanged) { RyUIEvents.textChanged(id, s) }
+        t.revealCaret()
+    }
+
+    public func textViewDidChangeSelection(_ textView: UITextView) {
+        (textView as? RyUITextView)?.revealCaret()
     }
 
     public func textViewDidBeginEditing(_ textView: UITextView) {
         guard let t = textView as? RyUITextView else { return }
         let id = t.ryuiID
         emit(id, .focus) { RyUIEvents.focus(id) }
+        // Once the keyboard's up and whatever holds this has made room for it.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak t] in t?.revealCaret() }
     }
 
     public func textViewDidEndEditing(_ textView: UITextView) {

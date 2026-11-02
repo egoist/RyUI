@@ -233,7 +233,8 @@ A `ui.Color` is one of:
   - backgrounds: `ui.SystemBackground`, `ui.SecondaryBackground`,
     `ui.GroupedBackground`, and `ui.SecondaryGroupedBackground` for
     a grouped list's rows on it (iOS's inset grouped cells);
-  - `ui.Separator`, `ui.Accent` (the app's accent), `ui.Clear`
+  - `ui.Separator`, `ui.Accent` (the app's accent), `ui.OnAccent` (what
+    reads on it: an icon on a button filled with the accent), `ui.Clear`
     (transparent);
   - the system's hues: `ui.Red`, `ui.Orange`, `ui.Yellow`, `ui.Green`,
     `ui.Blue`, `ui.Purple`, `ui.Pink`, `ui.Gray`.

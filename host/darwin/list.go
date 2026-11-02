@@ -396,6 +396,9 @@ func (l *list) place(h *Host, rv *rowView, r int) {
 // separator is a list row's hairline at its bottom, but the last row's;
 // in a group, inset from the box's sides.
 func (l *list) separator(rv *rowView, r int, w, height float64) {
+	if l.appearance == ops.ListAppearanceBare {
+		return
+	}
 	if rv.sep == 0 {
 		rv.sep = initView("NSBox")
 		Send(rv.sep, "setBoxType:", 2) // separator

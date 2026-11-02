@@ -33,6 +33,30 @@ class RyUIScreenController: UIViewController {
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         report()
+        findContentScrollView()
+    }
+
+    private weak var scrollsContent: UIScrollView?
+
+    /// Tells UIKit which scroll view the screen's bar follows, for its large
+    /// title and scroll edge. It only looks down each view's first subview on
+    /// its own, so a screen with something behind its list would never collapse
+    /// its title. It's the first that takes up most of the screen: a row of
+    /// photos that scrolls isn't what the bar should follow.
+    private func findContentScrollView() {
+        if let s = scrollsContent, s.window != nil, !s.isHidden { return }
+        var queue: [UIView] = [content]
+        var i = 0
+        while i < queue.count {
+            let v = queue[i]
+            i += 1
+            if let s = v as? UIScrollView, !s.isHidden, s.bounds.height >= content.bounds.height / 2, s.bounds.height > 0 {
+                scrollsContent = s
+                setContentScrollView(s, for: .top)
+                return
+            }
+            if !(v is UIScrollView) { queue.append(contentsOf: v.subviews) }
+        }
     }
 
     override func viewSafeAreaInsetsDidChange() {
@@ -69,6 +93,9 @@ final class RyUISheetController: RyUIScreenController, UIAdaptivePresentationCon
 /// user makes (back button, swipe) are reported as Popped.
 final class RyUIStackController: UINavigationController, UINavigationControllerDelegate, UIGestureRecognizerDelegate {
     let nodeID: UInt32
+    /// What the stack is to become when the transition under way ends: UIKit
+    /// drops a push or pop made during one, as a pop then a push would be.
+    private var queued: [UIViewController]?
 
     init(nodeID: UInt32) {
         self.nodeID = nodeID
@@ -76,10 +103,19 @@ final class RyUIStackController: UINavigationController, UINavigationControllerD
     }
     required init?(coder: NSCoder) { fatalError() }
 
+    /// The screens, with what's queued.
+    var target: [UIViewController] { queued ?? viewControllers }
+
+    /// Whether a change now must wait for the transition under way.
+    var mustQueue: Bool { queued != nil || transitionCoordinator != nil }
+
+    func enqueue(_ screens: [UIViewController]) { queued = screens }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         delegate = self
         interactivePopGestureRecognizer?.delegate = self
+        navigationBar.prefersLargeTitles = true // each screen's largeTitleDisplayMode decides
     }
 
     func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
@@ -89,6 +125,10 @@ final class RyUIStackController: UINavigationController, UINavigationControllerD
 
     func navigationController(_ nav: UINavigationController, didShow vc: UIViewController, animated: Bool) {
         RyUIRuntime.shared.stackDidShow(self)
+        if let q = queued {
+            queued = nil
+            if q != viewControllers { setViewControllers(q, animated: view.window != nil) }
+        }
     }
 }
 
@@ -269,7 +309,11 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
                         return m.view
                     }
                 }
-                nav.pushViewController(screen, animated: !nav.viewControllers.isEmpty && nav.view.window != nil)
+                if nav.mustQueue {
+                    nav.enqueue(nav.target + [screen])
+                } else {
+                    nav.pushViewController(screen, animated: !nav.viewControllers.isEmpty && nav.view.window != nil)
+                }
             } else {
                 var vcs = nav.viewControllers
                 vcs.insert(screen, at: min(i, vcs.count))
@@ -305,7 +349,9 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
         n.dying = true
         if let nav = n.parent?.vc as? RyUIStackController {
             n.parent?.children.removeAll { $0 === n }
-            if nav.topViewController === vc {
+            if nav.mustQueue {
+                nav.enqueue(nav.target.filter { $0 !== vc })
+            } else if nav.topViewController === vc {
                 nav.popViewController(animated: nav.view.window != nil)
             } else if nav.viewControllers.contains(vc) {
                 nav.setViewControllers(nav.viewControllers.filter { $0 !== vc }, animated: false)
@@ -333,7 +379,7 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
     /// The user popped screens (back button, swipe): tell the core.
     func stackDidShow(_ nav: RyUIStackController) {
         guard let node = nodes[nav.nodeID] else { return }
-        let shown = Set(nav.viewControllers.map { ObjectIdentifier($0) })
+        let shown = Set(nav.target.map { ObjectIdentifier($0) })
         for c in node.children.reversed() where !c.dying {
             guard let vc = c.vc, !shown.contains(ObjectIdentifier(vc)) else { continue }
             c.dying = true
@@ -435,6 +481,8 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
             n.vc?.navigationItem.title = v.string
             n.vc?.title = v.string
             n.vc?.tabBarItem.accessibilityLabel = v.string // it keeps the first title otherwise
+        case (.screen, RyUIProp.Screen.largeTitle):
+            n.vc?.navigationItem.largeTitleDisplayMode = v.bool ? .always : .never
         case (.screen, RyUIProp.Screen.icon):
             n.vc?.tabBarItem.image = UIImage(systemName: v.string)
         case (.screen, RyUIProp.Screen.search):
@@ -445,6 +493,15 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
             vc.navigationItem.searchController = s.controller
             vc.navigationItem.hidesSearchBarWhenScrolling = false
             vc.definesPresentationContext = true
+        case (.screen, RyUIProp.Screen.searchButton):
+            guard let vc = n.vc, v.bool else { return }
+            if #available(iOS 26.0, *) {
+                vc.navigationItem.preferredSearchBarPlacement = .integratedButton
+                vc.navigationItem.searchBarPlacementAllowsToolbarIntegration = false
+                n.search?.titled = vc
+            } else {
+                vc.navigationItem.hidesSearchBarWhenScrolling = true
+            }
         case (.screen, RyUIProp.Screen.searchText):
             n.search?.setText(v.string)
         case (.screen, RyUIProp.Screen.zoomFrom):
@@ -520,11 +577,26 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
 
 /// A screen's search field (ScreenOptions.Search): typing and the search
 /// key go to the screen's node.
-@MainActor final class RyUISearch: NSObject, UISearchResultsUpdating, UISearchBarDelegate {
+@MainActor final class RyUISearch: NSObject, UISearchResultsUpdating, UISearchBarDelegate, UISearchControllerDelegate {
     let controller = UISearchController(searchResultsController: nil)
     let id: UInt32
     weak var runtime: RyUIRuntime?
     private var setting = false
+    /// A search button's screen: its large title makes way for the field while
+    /// it's open, as nothing else moves it.
+    weak var titled: UIViewController?
+    private var titleMode: UINavigationItem.LargeTitleDisplayMode?
+
+    func willPresentSearchController(_ c: UISearchController) {
+        guard let item = titled?.navigationItem else { return }
+        titleMode = item.largeTitleDisplayMode
+        item.largeTitleDisplayMode = .never
+    }
+
+    func willDismissSearchController(_ c: UISearchController) {
+        if let m = titleMode { titled?.navigationItem.largeTitleDisplayMode = m }
+        titleMode = nil
+    }
 
     init(id: UInt32, runtime: RyUIRuntime) {
         self.id = id
@@ -533,6 +605,7 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
         controller.obscuresBackgroundDuringPresentation = false
         controller.searchResultsUpdater = self
         controller.searchBar.delegate = self
+        controller.delegate = self
     }
 
     func setText(_ s: String) {

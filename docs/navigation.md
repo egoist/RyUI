@@ -66,6 +66,12 @@ the root and to `Push` for the others.
   [Back](#back)).
 - `Search` puts a search field in the bar.
 - `ZoomFrom` zooms the screen out of a view on the screen below.
+- `LargeTitle` shows the title large at the top of the screen on iOS,
+  collapsing into the bar as it scrolls. Android's top app bar stays as it
+  is. The bar follows the first scroll view that takes up most of the screen,
+  so something can be behind it.
+- `BarColor` is the top app bar's color on Android, to continue a background
+  the screen draws itself. iOS's bar is clear at the top of a screen already.
 
 ### Bar buttons
 
@@ -113,7 +119,10 @@ return ui.Stack(func() ui.Node {
 
 On iOS it's a `UISearchController` under the title, which stays shown
 as the screen scrolls. On Android it's Material's pattern: a search
-button in the top app bar that expands into the field.
+button in the top app bar that expands into the field. `Button: true` keeps
+it out of the way on iOS too, for a screen with its own controls at the bottom:
+a button in the bar on iOS 26, and before that, hidden above the content until
+it's pulled down.
 
 ### Zooming from a view
 

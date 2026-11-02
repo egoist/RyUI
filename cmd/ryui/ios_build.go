@@ -93,7 +93,7 @@ func buildIOS(app *goApp, o *buildOptions) error {
 		return err
 	}
 	// The privacy manifest, which App Store Connect requires.
-	manifest, err := privacyManifest(app.dir, code)
+	manifest, err := privacyManifest(app.dir, code, cfg.IOS.Collected...)
 	if err != nil {
 		return err
 	}
@@ -258,7 +258,6 @@ func (t *iosToolchain) infoPlist(cfg *appConfig, simulator bool) (map[string]any
 		"CADisableMinimumFrameDurationOnPhone": true, // 120 Hz on ProMotion iPhones
 		"UIApplicationSceneManifest":           map[string]any{"UIApplicationSupportsMultipleScenes": false},
 		"UISupportedInterfaceOrientations":     orient,
-		"ITSAppUsesNonExemptEncryption":        false,
 		"DTPlatformName":                       t.sdkName,
 		"DTPlatformVersion":                    sdkVersion,
 		"DTSDKName":                            t.sdkName + sdkVersion,
@@ -267,6 +266,14 @@ func (t *iosToolchain) infoPlist(cfg *appConfig, simulator bool) (map[string]any
 		"DTXcode":                              xcode,
 		"DTXcodeBuild":                         xcodeBuild,
 		"DTCompiler":                           "com.apple.compilers.llvm.clang.1_0",
+	}
+	switch cfg.IOS.NonExemptEncryption {
+	case "yes":
+		m["ITSAppUsesNonExemptEncryption"] = true
+	case "ask":
+		// Said nothing: App Store Connect asks at each upload.
+	default:
+		m["ITSAppUsesNonExemptEncryption"] = false
 	}
 	if o := cfg.ipadOrientations(); o != nil {
 		m["UISupportedInterfaceOrientations~ipad"] = o

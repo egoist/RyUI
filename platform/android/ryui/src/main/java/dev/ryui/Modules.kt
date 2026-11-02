@@ -202,6 +202,7 @@ private fun RyUIRuntime.registerBuiltinModules() {
     modules["tracking"] = trackingMethods()
     modules["push"] = pushMethods()
     modules["audioRecord"] = RyUIAudioRecorder(this).methods()
+    modules["transcribe"] = RyUITranscribe(this).methods()
     modules["periodic"] = RyUIPeriodicHub.methods(this)
     modules["appleAuth"] = mapOf(
         "available" to { _, reply -> reply(Result.success(byteArrayOf(0))) },

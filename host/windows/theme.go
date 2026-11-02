@@ -200,6 +200,8 @@ func (h *Host) semantic(s ops.SemanticColor) (rgba, bool) {
 		return p.gray, true
 	case ops.SemanticColorClear:
 		return rgba{}, true
+	case ops.SemanticColorOnAccent:
+		return rgba{r: 255, g: 255, b: 255, a: 255}, true
 	}
 	return rgba{}, false
 }

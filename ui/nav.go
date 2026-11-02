@@ -173,6 +173,16 @@ type ScreenOptions struct {
 	// and back into it as it's popped (SwiftUI's
 	// navigationTransition(.zoom); iOS before 18 pushes as usual).
 	ZoomFrom string
+	// LargeTitle shows the title large at the top of the screen, collapsing
+	// into the bar as it scrolls: iOS's way for an app's main screens
+	// (SwiftUI's navigationBarTitleDisplayMode(.large)). Material's top app
+	// bar has its own look, and Android keeps it.
+	LargeTitle bool
+	// BarColor is the top app bar's color on Android while this screen is
+	// on top, so the bar can continue a background the screen draws itself
+	// (nil, or 0: the surface). iOS's bar is clear at the top of a screen,
+	// over the screen, and needs no help.
+	BarColor signal.Accessor[Color]
 }
 
 // Search is a screen's search field.
@@ -181,6 +191,11 @@ type Search struct {
 	Text        *signal.Signal[string]
 	Placeholder signal.Accessor[string] // nil: "Search", in the app's language
 	OnSubmit    func()
+	// Button keeps the field out of the way until it's asked for, for a
+	// screen with its own controls where iOS would put it: a button on iOS
+	// 26, and before that, hidden above the content until it's pulled down.
+	// Android's is a search action in the bar already.
+	Button bool
 }
 
 // search wires a screen's search field.
@@ -193,6 +208,9 @@ func search(e *element, s *Search) {
 		ph = signal.Func(func() string { return l10n.Search(Locale()) })
 	}
 	bind(ph, func(v string) { e.r.batch.SetString(e.id, ops.PropScreenSearch, v) })
+	if s.Button {
+		e.r.batch.SetBool(e.id, ops.PropScreenSearchButton, true)
+	}
 	h := e.handlers()
 	if s.Text != nil {
 		reported, known := "", false
@@ -300,6 +318,9 @@ func (st *stackState) push(build func() Node, o ScreenOptions) {
 		if o.ZoomFrom != "" {
 			b.SetString(id, ops.PropScreenZoomFrom, o.ZoomFrom)
 		}
+		if o.LargeTitle {
+			b.SetBool(id, ops.PropScreenLargeTitle, true)
+		}
 		signal.RunWithOwner(st.owner, func() {
 			signal.Root(func(dispose func()) {
 				s.dispose = dispose
@@ -307,6 +328,7 @@ func (st *stackState) push(build func() Node, o ScreenOptions) {
 					bindActions(o.Actions, func(v []byte) { r.batch.SetBytes(id, ops.PropScreenActions, v) })
 				}
 				bind(o.Title, func(v string) { r.batch.SetString(id, ops.PropScreenTitle, v) })
+				bind(o.BarColor, func(v Color) { r.batch.SetColor(id, ops.PropScreenBarColor, v) })
 				search(s.el, o.Search)
 				navCtx.Provide(st.nav, func() {
 					envCtx.Provide(s.el.env, func() {

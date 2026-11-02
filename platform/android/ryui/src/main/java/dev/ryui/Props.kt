@@ -71,6 +71,7 @@ fun RyUIRuntime.color(v: Long, fallback: Int = Color.TRANSPARENT): Int {
                 RyUISemanticColor.GROUPED_BACKGROUND -> attr(com.google.android.material.R.attr.colorSurfaceContainerLow)
                 RyUISemanticColor.SEPARATOR -> attr(com.google.android.material.R.attr.colorOutlineVariant)
                 RyUISemanticColor.ACCENT -> accentColor()
+                RyUISemanticColor.ON_ACCENT -> attr(com.google.android.material.R.attr.colorOnPrimary)
                 RyUISemanticColor.RED -> attr(androidx.appcompat.R.attr.colorError)
                 RyUISemanticColor.ORANGE -> 0xFFF57C00.toInt()
                 RyUISemanticColor.YELLOW -> 0xFFFBC02D.toInt()
@@ -330,7 +331,9 @@ fun RyUIRuntime.propBool(id: Int, prop: Int, v: Boolean) {
             RyUIKind.TEXT_FIELD -> when (prop) {
                 RyUIProp.TextField.SECURE -> {
                     val e = view as EditText
+                    val typeface = e.typeface
                     e.inputType = if (v) InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD else InputType.TYPE_CLASS_TEXT
+                    e.typeface = typeface // a password's input type turns it monospaced, placeholder and all
                     keepMultiline(n, e)
                 }
                 RyUIProp.TextField.MULTILINE -> setMultiline(n, view as EditText, v)
@@ -471,6 +474,11 @@ fun RyUIRuntime.propColor(id: Int, prop: Int, v: Long) {
     if (n.kind == RyUIKind.COLOR_PICKER && setWheelProp(n, prop, v)) return
     n.props[prop] = v
     if (n.kind == RyUIKind.SHAPE && setShapeProp(n, prop, v)) return
+    if (n.kind == RyUIKind.SCREEN && prop == RyUIProp.Screen.BAR_COLOR) {
+        (n.view as RyUIScreen).barColor = v
+        (n.parent?.view as? RyUIStack)?.let { if (it.top === n) it.refreshBar() }
+        return
+    }
     when (prop) {
         RyUIProp.BACKGROUND -> { n.background = v; applyBackground(n) }
         RyUIProp.BORDER_COLOR -> { n.borderColor = v; applyBackground(n) }

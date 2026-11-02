@@ -62,6 +62,17 @@ type appConfig struct {
 		Usage map[string]string `json:"usage"`
 		// InfoPlist adds string keys to Info.plist.
 		InfoPlist map[string]string `json:"infoPlist"`
+		// NonExemptEncryption is what a build says of its encryption
+		// (ITSAppUsesNonExemptEncryption), a legal statement that's yours to
+		// make: "no" (the default), "yes", or "ask", which says nothing, so App
+		// Store Connect asks at each upload.
+		NonExemptEncryption string `json:"nonExemptEncryption"`
+		// Collected is the data the app collects, for its privacy manifest:
+		// what App Store Connect's report compares with its privacy labels.
+		Collected []collectedData `json:"collected"`
+		// BackgroundModes adds to Info.plist's UIBackgroundModes: "audio",
+		// to keep recording and playing with the screen locked.
+		BackgroundModes []string `json:"backgroundModes"`
 		// IPhoneOnly leaves iPad out: the app runs there as an iPhone app,
 		// in a phone-sized window. By default it's an iPad app too, in
 		// Split View and Stage Manager, at any size the user gives it.
@@ -292,6 +303,18 @@ func (c *appConfig) associatedDomains(simulator bool) []string {
 // androidManifest is the app's manifest, merged over the host's: its
 // permissions, and the intent filters for its scheme and links. A debug
 // build's also lets ryui dev serve over plain HTTP.
+// collectedData is a kind of data in a privacy manifest.
+type collectedData struct {
+	// Type is Apple's name without its prefix: "EmailAddress" is
+	// NSPrivacyCollectedDataTypeEmailAddress.
+	Type string `json:"type"`
+	// Linked: tied to the user's identity. Tracking: used to track them.
+	Linked   bool `json:"linked"`
+	Tracking bool `json:"tracking"`
+	// Purposes are Apple's, without their prefix: "AppFunctionality".
+	Purposes []string `json:"purposes"`
+}
+
 // featurePermissions are what RyUI's packages need of the platform: an
 // app that imports one is given them (and, on iOS, a purpose string,
 // which ryui.json's ios.usage can say better), and the Android host's
@@ -354,8 +377,14 @@ var featurePermissions = []struct {
 	{pkg: "github.com/egoist/ryui/push", modules: []string{"push"},
 		entitlements: map[string]any{"aps-environment": "development"},
 		plistArrays:  map[string][]string{"UIBackgroundModes": {"remote-notification"}}},
-	{pkg: "github.com/egoist/ryui/audio/record", android: []string{"android.permission.RECORD_AUDIO"},
-		usage: map[string]string{"NSMicrophoneUsageDescription": "To record sound."}},
+	// The service keeps a recording with Options.Background going out of sight.
+	{pkg: "github.com/egoist/ryui/audio/record", android: []string{"android.permission.RECORD_AUDIO",
+		"android.permission.FOREGROUND_SERVICE", "android.permission.FOREGROUND_SERVICE_MICROPHONE", "android.permission.POST_NOTIFICATIONS"},
+		usage:      map[string]string{"NSMicrophoneUsageDescription": "To record sound."},
+		androidApp: []string{`<service android:name="dev.ryui.RyUIRecordService" android:exported="false" android:foregroundServiceType="microphone" />`}},
+	// On-device speech recognition; Android's reads the file as the microphone's permission.
+	{pkg: "github.com/egoist/ryui/transcribe", android: []string{"android.permission.RECORD_AUDIO"},
+		usage: map[string]string{"NSSpeechRecognitionUsageDescription": "To turn your recordings into text, on this device."}},
 	// WorkManager; iOS's background tasks, by the identifiers the host
 	// schedules (RyUIPeriodic).
 	{pkg: "github.com/egoist/ryui/periodic", modules: []string{"periodic"},

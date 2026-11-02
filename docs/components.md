@@ -285,6 +285,8 @@ return ui.Column(ui.Style{Gap: 16},
   none, so it's a Material dialog of a palette, with an opacity slider
   for `Alpha`.
 - **DatePicker** picks a `time.Time`, shown in the device's time zone.
+  `Inline` shows iOS's calendar and time in place, for a sheet of its own;
+  Android keeps its buttons.
   `Mode` is `ui.DateOnly` (the default), `ui.TimeOnly` or
   `ui.DateAndTime`; `Min` and `Max` bound it. On iOS it's UIKit's
   compact date picker; on Android, buttons showing the date and time
@@ -708,6 +710,11 @@ grows. It draws the platform's separators between rows.
   each length the list has: load more there.
 - `OnRefresh` and `Refreshing`, pull to refresh as on a `Scroll`.
 - `OnScroll`, as on a `Scroll`.
+- `Appearance`, its look. `ui.ListPlain` is rows edge to edge, apart by
+  separators; `ui.ListInsetGrouped` is the platform's grouped list;
+  `ui.ListBare` has no separators and nothing behind its rows, so what's
+  behind the list shows through, for rows that draw their own cards. A bare
+  list's rows leave their own space, and can still be swiped.
 
 ```go
 messages := signal.NewFunc(fetch(0, 30), nil)

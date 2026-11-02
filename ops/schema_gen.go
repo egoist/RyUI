@@ -185,7 +185,7 @@ const (
 	PropListColumns PropID = 66
 	// PropListGap: a grid's spacing between cells, across and down.
 	PropListGap PropID = 67
-	// PropListAppearance: a list's look (not a grid's): inset grouped, its rows the list's width less Inset on each side.
+	// PropListAppearance: a list's look (not a grid's): inset grouped, its rows the list's width less Inset on each side; or bare, with no separators and nothing behind its rows, which draw their own.
 	PropListAppearance PropID = 68
 	// PropListInset: an inset grouped list's rows' inset from each side, in points (the core's, from the platform's margins).
 	PropListInset PropID = 69
@@ -209,8 +209,14 @@ const (
 	PropScreenSearch PropID = 68
 	// PropScreenSearchText: the search field's text, set from code.
 	PropScreenSearchText PropID = 69
+	// PropScreenSearchButton: iOS: the search field stays a button until it's asked for (iOS 26's integrated button; before that, hidden above the content until it's pulled down). Android's is a search action already.
+	PropScreenSearchButton PropID = 70
 	// PropScreenZoomFrom: a Match key: the view with it on the screen below, which the screen zooms out of as it's pushed and into as it's popped (iOS 18's zoom transition, whose back swipe shrinks it into the view; on Android, Material's container transform).
-	PropScreenZoomFrom PropID = 70
+	PropScreenZoomFrom PropID = 71
+	// PropScreenLargeTitle: iOS: the bar's large title, collapsing as the screen scrolls; Android's top app bar stays as it is.
+	PropScreenLargeTitle PropID = 72
+	// PropScreenBarColor: Android: the top app bar's color while this screen is on top, so it can continue the screen's own background (0: the surface). iOS's bar is clear at the top of a screen and blurs what's under it, so it has no need of one.
+	PropScreenBarColor PropID = 73
 )
 
 // Tabs props.
@@ -360,6 +366,8 @@ const (
 	PropDatePickerMin PropID = 66
 	// PropDatePickerMax: the latest choice, in Unix milliseconds (0: none).
 	PropDatePickerMax PropID = 67
+	// PropDatePickerInline: iOS: the calendar and time shown in place (an inline UIDatePicker), for a sheet of its own; Android keeps its buttons.
+	PropDatePickerInline PropID = 68
 )
 
 // Window props.
@@ -375,7 +383,7 @@ const (
 
 var commonProps = [...]propInfo{{}, {"Background", TColor}, {"CornerRadius", TFloat}, {"BorderWidth", TFloat}, {"BorderColor", TColor}, {"Opacity", TFloat}, {"Hidden", TBool}, {"Clip", TBool}, {"A11yLabel", TString}, {"A11yHint", TString}, {"A11yRole", TEnum}, {"A11yActions", TBytes}, {"A11yAdjustable", TBool}, {"A11yHidden", TBool}, {"Color", TColor}, {"TextStyle", TEnum}, {"FontSize", TFloat}, {"FontWeight", TEnum}, {"TextAlign", TEnum}, {"LineLimit", TInt}, {"Disabled", TBool}, {"Menu", TBytes}, {"MenuTrigger", TEnum}, {"Transform", TBytes}, {"Shadow", TBytes}, {"Gradient", TBytes}, {"Transition", TBytes}, {"Material", TEnum}, {"FontFamily", TString}, {"SwipeActions", TBytes}, {"LayoutDirection", TEnum}, {"Match", TString}}
 
-var kindProps = [...][]propInfo{nil, {{"DropAccept", TBytes}, {"DragItems", TBytes}}, {{"Text", TString}}, {{"Title", TString}, {"Variant", TEnum}, {"Icon", TString}}, {{"Value", TString}, {"Placeholder", TString}, {"Keyboard", TEnum}, {"ReturnKey", TEnum}, {"Secure", TBool}, {"Autocapitalize", TEnum}, {"Autocorrect", TEnum}, {"ContentType", TString}, {"Multiline", TBool}, {"Plain", TBool}}, {{"On", TBool}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}}, {{"Horizontal", TBool}, {"Refreshable", TBool}, {"Refreshing", TBool}}, {{"Refreshable", TBool}, {"Refreshing", TBool}, {"Columns", TInt}, {"Gap", TFloat}, {"Appearance", TEnum}, {"Inset", TFloat}}, {{"Animating", TBool}}, {}, {{"Title", TString}, {"Actions", TBytes}, {"BackGesture", TBool}, {"Icon", TString}, {"Search", TString}, {"SearchText", TString}, {"ZoomFrom", TString}}, {{"Selected", TInt}}, {{"Detents", TInt}, {"Grabber", TBool}}, {{"Title", TString}, {"Message", TString}, {"Buttons", TBytes}, {"Style", TEnum}}, {{"Source", TString}, {"Mode", TEnum}, {"Placeholder", TString}}, {{"Type", TString}, {"Prop", TBytes}}, {{"Content", TBytes}, {"Inlines", TBytes}}, {}, {{"Name", TString}}, {{"Segments", TBytes}, {"Selected", TInt}}, {{"Items", TBytes}, {"Selected", TInt}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}, {"Step", TFloat}}, {{"Value", TColor}, {"Alpha", TBool}, {"Title", TString}}, {{"Value", TFloat}, {"Indeterminate", TBool}}, {{"Path", TBytes}, {"Fill", TColor}, {"Stroke", TColor}, {"LineWidth", TFloat}, {"LineCap", TEnum}, {"LineJoin", TEnum}, {"TrimStart", TFloat}, {"TrimEnd", TFloat}, {"Dash", TBytes}}, {{"Source", TString}, {"Mode", TEnum}, {"HideControls", TBool}, {"AutoPlay", TBool}, {"Loop", TBool}, {"Muted", TBool}}, {{"URL", TString}, {"HTML", TString}, {"Preload", TString}, {"UserAgent", TString}, {"Block", TBytes}, {"Requests", TBool}}, {{"Value", TInt}, {"Mode", TEnum}, {"Min", TInt}, {"Max", TInt}}, {{"Title", TString}, {"Width", TFloat}, {"Height", TFloat}, {"MinWidth", TFloat}, {"MinHeight", TFloat}}}
+var kindProps = [...][]propInfo{nil, {{"DropAccept", TBytes}, {"DragItems", TBytes}}, {{"Text", TString}}, {{"Title", TString}, {"Variant", TEnum}, {"Icon", TString}}, {{"Value", TString}, {"Placeholder", TString}, {"Keyboard", TEnum}, {"ReturnKey", TEnum}, {"Secure", TBool}, {"Autocapitalize", TEnum}, {"Autocorrect", TEnum}, {"ContentType", TString}, {"Multiline", TBool}, {"Plain", TBool}}, {{"On", TBool}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}}, {{"Horizontal", TBool}, {"Refreshable", TBool}, {"Refreshing", TBool}}, {{"Refreshable", TBool}, {"Refreshing", TBool}, {"Columns", TInt}, {"Gap", TFloat}, {"Appearance", TEnum}, {"Inset", TFloat}}, {{"Animating", TBool}}, {}, {{"Title", TString}, {"Actions", TBytes}, {"BackGesture", TBool}, {"Icon", TString}, {"Search", TString}, {"SearchText", TString}, {"SearchButton", TBool}, {"ZoomFrom", TString}, {"LargeTitle", TBool}, {"BarColor", TColor}}, {{"Selected", TInt}}, {{"Detents", TInt}, {"Grabber", TBool}}, {{"Title", TString}, {"Message", TString}, {"Buttons", TBytes}, {"Style", TEnum}}, {{"Source", TString}, {"Mode", TEnum}, {"Placeholder", TString}}, {{"Type", TString}, {"Prop", TBytes}}, {{"Content", TBytes}, {"Inlines", TBytes}}, {}, {{"Name", TString}}, {{"Segments", TBytes}, {"Selected", TInt}}, {{"Items", TBytes}, {"Selected", TInt}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}, {"Step", TFloat}}, {{"Value", TColor}, {"Alpha", TBool}, {"Title", TString}}, {{"Value", TFloat}, {"Indeterminate", TBool}}, {{"Path", TBytes}, {"Fill", TColor}, {"Stroke", TColor}, {"LineWidth", TFloat}, {"LineCap", TEnum}, {"LineJoin", TEnum}, {"TrimStart", TFloat}, {"TrimEnd", TFloat}, {"Dash", TBytes}}, {{"Source", TString}, {"Mode", TEnum}, {"HideControls", TBool}, {"AutoPlay", TBool}, {"Loop", TBool}, {"Muted", TBool}}, {{"URL", TString}, {"HTML", TString}, {"Preload", TString}, {"UserAgent", TString}, {"Block", TBytes}, {"Requests", TBool}}, {{"Value", TInt}, {"Mode", TEnum}, {"Min", TInt}, {"Max", TInt}, {"Inline", TBool}}, {{"Title", TString}, {"Width", TFloat}, {"Height", TFloat}, {"MinWidth", TFloat}, {"MinHeight", TFloat}}}
 
 // Events.
 const (
@@ -710,6 +718,7 @@ type ListAppearance int32
 const (
 	ListAppearancePlain ListAppearance = iota
 	ListAppearanceInsetGrouped
+	ListAppearanceBare
 )
 
 type DateMode int32
@@ -811,6 +820,7 @@ const (
 	SemanticColorGray
 	SemanticColorClear
 	SemanticColorSecondaryGroupedBackground
+	SemanticColorOnAccent
 )
 
 type ShareKind int32

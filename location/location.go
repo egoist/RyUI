@@ -113,3 +113,20 @@ func follow() {
 		})
 	}
 }
+
+// PlaceName is what a place is called, as a person would say it ("Mission
+// District, San Francisco"), in the device's language. It asks the platform's
+// geocoder, which asks its servers: ask only when the user wants the name.
+// Not on the main thread.
+//
+// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+//
+//go:noinline
+func PlaceName(latitude, longitude float64) (string, error) {
+	args, err := json.Marshal(map[string]float64{"lat": latitude, "lon": longitude})
+	if err != nil {
+		return "", err
+	}
+	b, err := ui.CallWait("location", "name", args)
+	return string(b), err
+}

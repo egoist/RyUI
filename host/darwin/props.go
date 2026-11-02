@@ -74,6 +74,8 @@ func (h *Host) semantic(s ops.SemanticColor) ID {
 		name = "systemGrayColor"
 	case ops.SemanticColorClear:
 		name = "clearColor"
+	case ops.SemanticColorOnAccent:
+		name = "whiteColor"
 	default:
 		return 0
 	}

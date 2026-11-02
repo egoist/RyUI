@@ -40,6 +40,16 @@ func (c *appConfig) plistExtras() map[string]any {
 		sort.Strings(vs)
 		m[k] = vs
 	}
+	if len(c.IOS.BackgroundModes) > 0 {
+		vs, _ := m["UIBackgroundModes"].([]string)
+		for _, v := range c.IOS.BackgroundModes {
+			if !slices.Contains(vs, v) {
+				vs = append(vs, v)
+			}
+		}
+		sort.Strings(vs)
+		m["UIBackgroundModes"] = vs
+	}
 	if c.splashOn() {
 		ls := map[string]any{"UIColorName": "RyUISplashBackground", "UIImageRespectsSafeAreaInsets": false}
 		if c.Splash.Image != "" {

@@ -272,6 +272,9 @@ final class RyUIGestureDelegate: NSObject, UIGestureRecognizerDelegate {
             case .dateTime: d.datePickerMode = .dateAndTime
             default: d.datePickerMode = .date
             }
+        case (.datePicker, RyUIProp.DatePicker.inline):
+            (n.view as? RyUIDatePickerView)?.picker.preferredDatePickerStyle = v.bool ? .inline : .compact
+            n.view.invalidateIntrinsicContentSize()
         case (.datePicker, RyUIProp.DatePicker.min):
             (n.view as? RyUIDatePickerView)?.picker.minimumDate = v.int == 0 ? nil : Date(timeIntervalSince1970: Double(v.int) / 1000)
         case (.datePicker, RyUIProp.DatePicker.max):

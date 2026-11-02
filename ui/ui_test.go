@@ -915,6 +915,28 @@ func TestListGrid(t *testing.T) {
 // An inset grouped list tells the host its look and inset, and lays its
 // rows out at its width less the inset on each side: the platform's
 // margins, which follow the environment. A grid's look is plain.
+func TestListBare(t *testing.T) {
+	items := signal.NewFunc([]todo{{ID: 1, Title: "a"}}, nil)
+	h, _ := mount(t, func() ui.Node {
+		return ui.List(ui.ListProps{Appearance: ui.ListBare, SwipeActions: func(int) []ui.Action {
+			return []ui.Action{{Title: ui.Val("Delete")}}
+		}}, items, func(t todo) int { return t.ID },
+			func(it signal.Accessor[todo], _ signal.Accessor[int]) ui.Node {
+				return ui.Text(signal.Func(func() string { return it.Get().Title }))
+			})
+	})
+	list := h.OfKind(ops.KindList)[0]
+	if list.Int(ops.PropListAppearance) != int64(ui.ListBare) {
+		t.Fatalf("appearance %d", list.Int(ops.PropListAppearance))
+	}
+	// Rows are the list's width: it isn't inset as a grouped list is.
+	c := h.NewCell()
+	h.Bind(list, 0, c)
+	if c.Frame[2] != 390 {
+		t.Fatalf("row %v, want 390 wide", c.Frame)
+	}
+}
+
 func TestListInsetGrouped(t *testing.T) {
 	items := signal.NewFunc([]todo{{ID: 1, Title: "a"}, {ID: 2, Title: "b"}}, nil)
 	columns := 1

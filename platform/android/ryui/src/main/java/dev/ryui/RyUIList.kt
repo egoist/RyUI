@@ -34,6 +34,7 @@ class RyUIList(val id: Int, val runtime: RyUIRuntime) {
 
     /** A list's dividers; a segmented list's gaps, 2dp (Material's catalog). */
     private fun makeSeparators(): RecyclerView.ItemDecoration {
+        if (appearance == RyUIListAppearance.BARE) return object : RecyclerView.ItemDecoration() {}
         if (!grouped) return MaterialDividerItemDecoration(runtime.themed, LinearLayoutManager.VERTICAL).apply {
             isLastItemDecorated = false
         }

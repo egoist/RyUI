@@ -70,6 +70,8 @@ class RyUIScreen(context: Context, val nodeID: Int, private val rt: RyUIRuntime)
     /** A search field's placeholder (ScreenOptions.Search); empty: none. */
     var search = ""
     var searchText = ""
+    /** ScreenOptions.BarColor, as the core sends it; 0: the surface. */
+    var barColor = 0L
     private var searching = false // the text is being set from code
 
     // A screen keeps its content to itself (over the bar, in a transition).
@@ -400,6 +402,7 @@ class RyUIStack(context: Context, val nodeID: Int, private val rt: RyUIRuntime) 
         val t = top ?: return
         val s = t.view as RyUIScreen
         bar.title = s.title
+        bar.setBackgroundColor(if (s.barColor != 0L) rt.color(s.barColor) else surface())
         if (screens.size > 1) {
             bar.setNavigationIcon(R.drawable.ryui_ic_arrow_back)
             bar.setNavigationIconTint(MaterialColors.getColor(bar, com.google.android.material.R.attr.colorOnSurface))
@@ -756,6 +759,7 @@ fun RyUIRuntime.setNavProp(n: RyUINode, prop: Int, v: Any): Boolean {
                 RyUIProp.Screen.ACTIONS -> s.actions = decodeActions(v as ByteBuffer)
                 RyUIProp.Screen.SEARCH -> s.search = v as String
                 RyUIProp.Screen.SEARCH_TEXT -> { s.showSearchText(v as String); return true }
+                RyUIProp.Screen.LARGE_TITLE -> return true // Material's top app bar keeps its look
                 else -> return false
             }
             when (val pv = n.parent?.view) {
@@ -933,7 +937,7 @@ fun RyUIRuntime.present(n: RyUINode) {
 }
 
 private fun RyUIRuntime.presentSheet(act: RyUIActivity, n: RyUINode) {
-    val d = BottomSheetDialog(act)
+    val d = BottomSheetDialog(dialogContext(act))
     directDialog(d)
     val screen = n.view as RyUIScreen
     (screen.parent as? ViewGroup)?.removeView(screen)
@@ -1009,7 +1013,7 @@ private fun RyUIRuntime.presentSheet(act: RyUIActivity, n: RyUINode) {
 }
 
 private fun RyUIRuntime.presentAlert(act: RyUIActivity, n: RyUINode) {
-    val b = MaterialAlertDialogBuilder(act)
+    val b = MaterialAlertDialogBuilder(dialogContext(act))
     if (n.alertTitle.isNotEmpty()) b.setTitle(n.alertTitle)
     val acts = n.actions
     val id = n.id

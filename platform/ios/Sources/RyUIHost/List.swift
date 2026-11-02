@@ -40,6 +40,7 @@ final class RyUIWeakList {
     var pending: [Int64]?
     var applied = false
     var binding = false
+    private var applying = false
     var columns = 1
     var gap: CGFloat = 0
     var appearance = RyUIListAppearance.plain
@@ -50,7 +51,8 @@ final class RyUIWeakList {
     /// The list layout's configuration, in an appearance.
     private func config(_ appearance: UICollectionLayoutListConfiguration.Appearance) -> UICollectionLayoutListConfiguration {
         var config = UICollectionLayoutListConfiguration(appearance: appearance)
-        config.showsSeparators = true
+        config.showsSeparators = self.appearance != .bare
+        if self.appearance == .bare { config.backgroundColor = .clear }
         config.trailingSwipeActionsConfigurationProvider = swipes
         return config
     }
@@ -92,6 +94,7 @@ final class RyUIWeakList {
             let cell = cv.dequeueConfiguredReusableCell(using: reg, for: path, item: item)
             guard let self else { return cell }
             cell.list = self
+            if self.appearance == .bare { cell.backgroundConfiguration = .clear() }
             if cell.ryuiID == 0 {
                 cell.ryuiID = runtime.makeCell(cell)
             }
@@ -150,6 +153,7 @@ final class RyUIWeakList {
         } else {
             listLayout = UICollectionViewCompositionalLayout.list(using: config(.plain))
         }
+        collection.backgroundColor = appearance == .bare ? .clear : nil
         if columns == 1 {
             collection.setCollectionViewLayout(listLayout, animated: false)
         }
@@ -162,14 +166,25 @@ final class RyUIWeakList {
         collection.scrollToItem(at: IndexPath(item: i, section: 0), at: .top, animated: animated)
     }
 
+    /// Applies what the core last sent. A row being bound can change the list
+    /// it's in (its language changing, say), and a data source mustn't be applied
+    /// to from inside itself or a cell's making: that waits until it's done.
     func applyPending() {
-        guard let ids = pending else { return }
-        pending = nil
-        var snap = NSDiffableDataSourceSnapshot<Int, Int64>()
-        snap.appendSections([0])
-        snap.appendItems(ids)
-        source.apply(snap, animatingDifferences: applied)
-        applied = true
+        guard !applying else { return }
+        guard !binding else {
+            DispatchQueue.main.async { [weak self] in self?.applyPending() }
+            return
+        }
+        applying = true
+        defer { applying = false }
+        while let ids = pending {
+            pending = nil
+            var snap = NSDiffableDataSourceSnapshot<Int, Int64>()
+            snap.appendSections([0])
+            snap.appendItems(ids)
+            source.apply(snap, animatingDifferences: applied)
+            applied = true
+        }
     }
 
     /// The layout mirrors its cells for the collection view's direction.

@@ -50,6 +50,17 @@ class RyUILocation(private val rt: RyUIRuntime) {
     }
 
     fun methods(): Map<String, RyUIModuleMethod> = mapOf(
+        "name" to { args, reply ->
+            val o = org.json.JSONObject(String(args, Charsets.UTF_8))
+            Thread {
+                reply(runCatching {
+                    @Suppress("DEPRECATION")
+                    val a = android.location.Geocoder(rt.app).getFromLocation(o.getDouble("lat"), o.getDouble("lon"), 1)?.firstOrNull()
+                        ?: throw Exception("no name for this place")
+                    listOfNotNull(a.subLocality ?: a.thoroughfare, a.locality ?: a.adminArea ?: a.countryName).distinct().joinToString(", ").toByteArray()
+                })
+            }.start()
+        },
         "current" to { _, reply ->
             rt.withPermission(perms) { ok ->
                 if (!ok) { reply(Result.failure(Exception("denied"))); return@withPermission }

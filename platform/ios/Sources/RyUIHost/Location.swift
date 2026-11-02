@@ -35,6 +35,18 @@ import CoreLocation
 
     func methods() -> [String: RyUIModuleMethod] {
         [
+            "name": { args, reply in
+                let o = (try? JSONSerialization.jsonObject(with: args)) as? [String: Double] ?? [:]
+                CLGeocoder().reverseGeocodeLocation(CLLocation(latitude: o["lat"] ?? 0, longitude: o["lon"] ?? 0)) { places, error in
+                    if let p = places?.first {
+                        let parts = [p.subLocality ?? p.name, p.locality ?? p.administrativeArea ?? p.country].compactMap { $0 }
+                        var seen = Set<String>()
+                        reply(.success(Data(parts.filter { seen.insert($0).inserted }.joined(separator: ", ").utf8)))
+                    } else {
+                        reply(.failure(error ?? RyUIModuleError("no name for this place")))
+                    }
+                }
+            },
             "current": { [unowned self] _, reply in
                 authorize { ok in
                     guard ok else { reply(.failure(RyUIModuleError("denied"))); return }

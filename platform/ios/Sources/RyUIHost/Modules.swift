@@ -240,6 +240,9 @@ struct RyUIModuleError: LocalizedError {
         #if RYUI_AUDIORECORD
         modules["audioRecord"] = RyUIAudioRecord.shared.methods()
         #endif
+        #if RYUI_TRANSCRIBE
+        modules["transcribe"] = RyUITranscribe.shared.methods()
+        #endif
         #if RYUI_PUSH
         modules["push"] = RyUIPush.shared.methods()
         #endif

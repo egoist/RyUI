@@ -126,3 +126,24 @@ func TestFirebaseValues(t *testing.T) {
 		t.Error("another app: no error")
 	}
 }
+
+func TestBackgroundModesJoinThePackages(t *testing.T) {
+	c := &appConfig{}
+	c.plistArrays = map[string][]string{"UIBackgroundModes": {"fetch"}}
+	c.IOS.BackgroundModes = []string{"audio", "fetch"}
+	got, _ := c.plistExtras()["UIBackgroundModes"].([]string)
+	if len(got) != 2 || got[0] != "audio" || got[1] != "fetch" {
+		t.Errorf("UIBackgroundModes = %v", got)
+	}
+}
+
+func TestPrivacyCollected(t *testing.T) {
+	got := privacyCollected([]collectedData{{Type: "EmailAddress", Linked: true, Purposes: []string{"AppFunctionality"}}})
+	m := got[0].(map[string]any)
+	if m["NSPrivacyCollectedDataType"] != "NSPrivacyCollectedDataTypeEmailAddress" || m["NSPrivacyCollectedDataTypeLinked"] != true {
+		t.Errorf("%v", m)
+	}
+	if p := m["NSPrivacyCollectedDataTypePurposes"].([]string); p[0] != "NSPrivacyCollectedDataTypePurposeAppFunctionality" {
+		t.Errorf("%v", p)
+	}
+}

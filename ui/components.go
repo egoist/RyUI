@@ -754,6 +754,10 @@ type DatePickerProps struct {
 	Mode  DateMode
 	// Min and Max bound the choice (zero: no bound).
 	Min, Max time.Time
+	// Inline shows iOS's calendar and time in place, for a sheet of its
+	// own, rather than behind compact buttons. Android keeps its buttons,
+	// which open Material's pickers.
+	Inline   bool
 	Disabled signal.Accessor[bool]
 	Style    Styler
 }
@@ -774,6 +778,9 @@ func DatePicker(p DatePickerProps) Node {
 	}
 	if !p.Max.IsZero() {
 		b.SetInt(e.id, ops.PropDatePickerMax, p.Max.UnixMilli())
+	}
+	if p.Inline {
+		b.SetBool(e.id, ops.PropDatePickerInline, true)
 	}
 	bind(p.Disabled, func(v bool) { e.r.batch.SetBool(e.id, ops.PropDisabled, v) })
 	if p.Value != nil {

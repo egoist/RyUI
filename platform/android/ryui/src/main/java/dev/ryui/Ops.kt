@@ -170,7 +170,10 @@ object RyUIProp {
         const val ICON = 67
         const val SEARCH = 68
         const val SEARCH_TEXT = 69
-        const val ZOOM_FROM = 70
+        const val SEARCH_BUTTON = 70
+        const val ZOOM_FROM = 71
+        const val LARGE_TITLE = 72
+        const val BAR_COLOR = 73
     }
 
     object Tabs {
@@ -272,6 +275,7 @@ object RyUIProp {
         const val MODE = 65
         const val MIN = 66
         const val MAX = 67
+        const val INLINE = 68
     }
 
     object Window {
@@ -495,6 +499,7 @@ object RyUIImageMode {
 object RyUIListAppearance {
     const val PLAIN = 0
     const val INSET_GROUPED = 1
+    const val BARE = 2
 }
 
 object RyUIDateMode {
@@ -578,6 +583,7 @@ object RyUISemanticColor {
     const val GRAY = 16
     const val CLEAR = 17
     const val SECONDARY_GROUPED_BACKGROUND = 18
+    const val ON_ACCENT = 19
 }
 
 object RyUIShareKind {

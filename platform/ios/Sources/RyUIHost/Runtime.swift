@@ -389,6 +389,7 @@ final class RyUITextField: UITextField {
             // container controller. Never by autoresizing.
             if kind == .stack || kind == .tabs { v.autoresizingMask = [] }
             let node = RyUINode(id: id, kind: kind, view: v)
+            vc?.navigationItem.largeTitleDisplayMode = .never // Screen.LargeTitle asks for it
             node.vc = vc
             nodes[id] = node
             adoptDirection(node)

@@ -135,6 +135,10 @@ var (
 	SecondaryGroupedBackground = semantic(ops.SemanticColorSecondaryGroupedBackground)
 	Separator                  = semantic(ops.SemanticColorSeparator)
 	Accent                     = semantic(ops.SemanticColorAccent)
+	// OnAccent is what reads on Accent: an icon or text on a view filled with
+	// it. White on iOS; Material's on-primary on Android, whose accent is light
+	// in dark mode.
+	OnAccent = semantic(ops.SemanticColorOnAccent)
 	Red                        = semantic(ops.SemanticColorRed)
 	Orange                     = semantic(ops.SemanticColorOrange)
 	Yellow                     = semantic(ops.SemanticColorYellow)

@@ -30,7 +30,8 @@ photo app doesn't ask for the microphone.
 | `ryui/push` | Firebase Cloud Messaging, `POST_NOTIFICATIONS` | the `aps-environment` entitlement; `remote-notification` background mode |
 | `ryui/appleauth` | | the Sign in with Apple entitlement |
 | `ryui/biometric` | `USE_BIOMETRIC` | `NSFaceIDUsageDescription` |
-| `ryui/audio/record` | `RECORD_AUDIO` | `NSMicrophoneUsageDescription` |
+| `ryui/audio/record` | `RECORD_AUDIO`, `FOREGROUND_SERVICE_MICROPHONE`; a foreground service | `NSMicrophoneUsageDescription` |
+| `ryui/transcribe` | `RECORD_AUDIO` | `NSSpeechRecognitionUsageDescription` |
 | `ryui/screen` | `DETECT_SCREEN_CAPTURE` | |
 | `ryui/tracking` | | `NSUserTrackingUsageDescription` |
 | `ryui/review` | Play's in-app review library | |
@@ -502,6 +503,10 @@ func Track() ui.Node {
 }
 ```
 
+`location.PlaceName(lat, lon)` is what a place is called ("Mission District, San
+Francisco"), from the platform's geocoder, which asks its servers: ask only when
+the user wants the name. Not on the main thread.
+
 A `location.Position` has `Latitude`, `Longitude`, `Accuracy` (meters:
 the radius the device is within), `Altitude` (meters above sea level; 0 if
 not known) and `Time`.
@@ -583,10 +588,12 @@ func Sounds() ui.Node {
 }
 ```
 
-A `Player`'s methods, all on the main thread: `Play` (from where it is),
-`Pause`, `Seek(seconds)`, `SetVolume` (0 to 1, the default), `SetLoop`,
-and `Release`, which stops it and frees what it holds. Release a player
-when it's no longer needed.
+A `Player`'s methods, all on the main thread: `Play` (from where it is;
+after its end, from the start), `Pause`, `Seek(seconds)`, `SetVolume` (0 to
+1, the default), `SetRate` (0.25 to 4, keeping the pitch), `SetLoop`,
+`Status(done)` (its `Position`, `Duration`, `Playing` and `Ended`: read it
+a few times a second to follow it) and `Release`, which stops it and frees
+what it holds. Release a player when it's no longer needed.
 
 The sound plays with iOS's silent switch on, as a music or game app's
 does, and doesn't mix with other apps' audio.
@@ -1042,8 +1049,49 @@ record.Stop()
 `Voice` is mono at 64 kbit/s; `Music`, stereo at 128 kbit/s. `Pause` and
 `Resume` pause and continue the same file. `record.Level()`, from a
 goroutine a few times a second, is the sound's level from 0 to 1, for a
-meter. On iOS the audio session plays and records while it records
-(other apps' sound stops), and goes back after.
+meter. `record.CurrentStatus(done)`, from the main thread, is the level,
+whether sound is being kept and how much has been: what a timer should
+show, as the system can pause a recording (a call), and iOS goes on after
+when it says it may. On iOS the audio session plays and records while it
+records (other apps' sound stops), and goes back after.
+
+`Options.Stream` records an ADTS stream (`.aac`), whose frames are each whole,
+so what's recorded survives the app or phone dying, where an MPEG-4 file is
+unreadable until it's closed. Give it a `Path` to find the file again after a
+crash, and make it an `.m4a` for keeping with `record.Finalize(stream, dst)`,
+which seeks properly: after a stop or a crash alike.
+
+`Options.Background` keeps it recording out of sight and with the screen
+locked. iOS needs `"ios": {"backgroundModes": ["audio"]}` in `ryui.json`;
+Android runs a foreground service of the microphone type, with an ongoing
+notification (`BackgroundTitle`) and a button to stop. Google Play asks
+what the service is for: declare it before you upload.
+
+## Speech to text: ryui/transcribe
+
+`transcribe.File(path, options)` turns a recording into text, on the
+device: the sound never leaves it. Where the device can't do that, it says
+`ErrNotAvailable`, rather than using a server. Not on the main thread.
+
+```go
+go func() {
+	r, err := transcribe.File(path, transcribe.Options{Language: "en-US"})
+	ui.Post(func() {
+		if err == nil {
+			text.Set(r.Text)
+		}
+	})
+}()
+```
+
+The `Result` has its `Text`, its `Language`, and `Segments`, words with
+their `Start` and `Duration` in seconds, on iOS and Android 14. A recording
+with no speech is an empty `Text`. `transcribe.Check(language)` says what
+the device can do, without asking anything of the user. iOS uses the Speech
+framework (its models are in iOS, not on the simulator's every runtime); it
+asks for speech recognition the first time. Android's on-device recognizer
+needs Android 13; it needs the language's model, which it fetches when it's
+missing (`ErrDownloading`: try again later).
 
 ## The screen: ryui/screen
 
