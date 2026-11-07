@@ -168,9 +168,25 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
 }
 
 @MainActor extension RyUIRuntime {
+    /// ContentInset: the room padding and border take inside the frame;
+    /// texts and fields draw their content inside it.
+    func setContentInset(_ n: RyUINode, _ i: UIEdgeInsets) {
+        switch n.view {
+        case let l as RyUILabel: l.contentInset = i
+        case let f as RyUITextField: f.contentInset_ = i
+        case let t as RyUITextView: t.contentInset_ = i
+        case let r as RyUIRichTextView: r.contentInset_ = i
+        default: break // centered content (buttons, symbols) needs none
+        }
+    }
+
     func setCommon(_ n: RyUINode, _ prop: UInt16, _ v: RyUIValue) {
         let view = n.view
         switch prop {
+        case RyUIProp.contentInset:
+            if case .edges(let t, let r, let b, let l) = v {
+                setContentInset(n, UIEdgeInsets(top: CGFloat(t), left: CGFloat(l), bottom: CGFloat(b), right: CGFloat(r)))
+            }
         case RyUIProp.background:
             let c = ryuiColor(v.color)
             animated(view) { view.backgroundColor = c }
@@ -304,6 +320,11 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
         case RyUIProp.swipeActions:
             guard case .bytes(let b) = v else { return }
             n.swipeActions = decodeActions(b)
+        case RyUIProp.leadingSwipeActions:
+            guard case .bytes(let b) = v else { return }
+            n.leadingSwipeActions = decodeActions(b)
+        case RyUIProp.selected:
+            if let c = n.cell { c.list?.setSelected(c, v.bool) }
         case RyUIProp.menuTrigger:
             n.menuTrigger = v.enumValue
             installMenu(n)
@@ -380,6 +401,19 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             (n.view as? RyUITextView)?.placeholder = v.string
         case (.textField, RyUIProp.TextField.multiline):
             if v.bool { makeMultiline(n) }
+        case (.textField, RyUIProp.TextField.selection):
+            if case .bytes(let b) = v, b.count >= 8 {
+                var r = RyUIReader(b)
+                setSelection(n, Int(r.u32()), Int(r.u32()))
+            }
+        case (.textField, RyUIProp.TextField.rich):
+            if case .bytes(let b) = v { setRich(n, b) }
+        case (.textField, RyUIProp.TextField.pasteTypes):
+            if case .bytes(let b) = v {
+                let types = RyUIInteraction.decodeStrings(b)
+                (n.view as? RyUITextField)?.pasteTypes = types
+                (n.view as? RyUITextView)?.pasteTypes = types
+            }
         case (.textField, RyUIProp.TextField.plain):
             (n.view as? RyUITextField)?.plain = v.bool
             (n.view as? RyUITextView)?.plain = v.bool
@@ -487,12 +521,18 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             s = n.view.sizeThatFits(CGSize(width: big, height: big))
             s.width = w.isNaN ? (aw.isFinite ? CGFloat(aw) : 200) : CGFloat(w)
         case let t as RyUITextView:
-            // As wide as a field would be; as tall as its text, to its limit.
+            // As wide as a field would be; as tall as its text, to its limit
+            // (its content's: at its frame's width, less its padding).
             let width = w.isNaN ? (aw.isFinite ? CGFloat(max(aw, 0)) : 200) : CGFloat(w)
-            s = CGSize(width: width, height: t.height(at: width))
-        case is UITextField:
-            // A text field scrolls its text: it can be narrow.
+            let ci = t.contentInset_
+            s = CGSize(width: width, height: t.height(at: width + ci.left + ci.right) - ci.top - ci.bottom)
+        case let f as UITextField:
+            // A text field scrolls its text: it can be narrow. Its content
+            // alone, without its padding.
+            let ci = (f as? RyUITextField)?.contentInset_ ?? .zero
+            (f as? RyUITextField)?.contentInset_ = .zero
             s = n.view.sizeThatFits(CGSize(width: big, height: big))
+            (f as? RyUITextField)?.contentInset_ = ci
             s.width = max(s.width, 120)
             if aw == -.infinity { s.width = 80 }
             if aw.isFinite { s.width = min(s.width, CGFloat(max(aw, 0))) }

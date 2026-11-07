@@ -193,6 +193,9 @@ func (h *Host) observe() {
 	for _, name := range []string{"NSCurrentLocaleDidChangeNotification", "NSSystemTimeZoneDidChangeNotification", "NSSystemColorsDidChangeNotification"} {
 		Send(center, "addObserver:selector:name:object:", uintptr(h.target), uintptr(Sel("systemChanged:")), uintptr(String(name)), 0)
 	}
+	// Text fields' selections, as their text views move them.
+	Send(center, "addObserver:selector:name:object:", uintptr(h.target), uintptr(Sel("textSelectionChanged:")),
+		uintptr(String("NSTextViewDidChangeSelectionNotification")), 0)
 	ws := Send(Send(Class("NSWorkspace"), "sharedWorkspace"), "notificationCenter")
 	Send(ws, "addObserver:selector:name:object:", uintptr(h.target), uintptr(Sel("systemChanged:")),
 		uintptr(String("NSWorkspaceAccessibilityDisplayOptionsDidChangeNotification")), 0)

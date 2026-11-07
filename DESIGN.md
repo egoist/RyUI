@@ -196,12 +196,43 @@ field.
 Go has no compile step to hide this, as Solid's JSX compiler does when
 it turns `refreshing={r()}` into a getter, and we don't add one: `go
 build`, `go test`, gopls and the debugger would all see code that means
-something else. Planned instead: a vet-style analyzer
-(`golang.org/x/tools/go/analysis`) that flags a signal read in a
-component's body outside any effect, which runs once and never updates
-(Solid's most common bug, too), and shortcuts for the common reactive
-cases. A JSX-like syntax, if ever, would be a separate file type that
-generates Go (as templ does), once the component API has settled.
+something else. Instead, `ryui vet` (package `vet`, analyzers on
+`golang.org/x/tools/go/analysis`, which `ryui dev` and `ryui build` run
+as warnings) reports a signal read in a component's body outside any
+effect, which runs once and never updates (Solid's most common bug,
+too), when what it reads goes into the tree; with shortcuts for the
+common reactive cases planned. A JSX-like syntax, if ever, would be a
+separate file type that generates Go (as templ does), once the
+component API has settled.
+
+**`ryui vet`** reports only what's certain from the code, as the
+compiler would; a check that cries wolf gets turned off. Its analyzers:
+
+- `reads`: what's built is a function returning a `Node` (or `[]Node`)
+  and the func literals given to what runs them once, untracked: `Show`'s
+  branches, `For`'s and `List`'s rows, a screen, a tab's or a sheet's
+  `Content`. Not `Dynamic`'s, which builds again when what it read
+  changes, nor the components it runs. A read is a `Get` of a signal, a
+  memo or an accessor, a call that says the app's language (`ui.Locale`,
+  a catalog's messages, and what calls them, in any package: a fact of
+  the analysis), and a call of the component's own closure that reads.
+  It's reported when its value goes into the tree (a node's argument,
+  `ui.Val`, a `Style`, an `if` or a `range`, what's returned), followed
+  through expressions and local variables, so a read for an action, an
+  event handler's capture or a new signal's first value isn't. Not
+  followed: a function that reads a signal, whose callers often use what
+  can't change (a record's ID); a field that can't change (the
+  environment's `Platform`); a `For` row's item that can't (a pointer,
+  or its own key).
+- `mainthread`: a `Set` or `Update` run by a `go` statement (directly,
+  through what runs right there, as `Batch`, or through the package's
+  functions that write), not inside `ui.Post`.
+- `memowrites`: a write inside a memo's function, which panics.
+
+`ryui` is its own `-vettool`: run by `go vet` (`-V=full`, `-flags`, a
+`.cfg`), it serves the analyzers by `unitchecker`'s protocol, so `ryui
+vet` is `go vet -vettool=ryui` with go vet's caching, build flags and
+facts across packages; dev and build read its `-json`.
 
 ### Control flow
 
@@ -686,6 +717,29 @@ thread, the data source calls straight in:
   in place by the core.
 - Cells are views the host makes; their IDs have the high bit set. A
   cell's `SetFrame` carries the row's height.
+- Sections (`ListProps.Section`) follow the item IDs in the same
+  `ListUpdate`: each section's first item and an ID of its own (stable
+  while its key lasts, as an item's). A section's header is a cell too,
+  bound with `ListBind`'s index `-1 - section`, so no new entry point
+  crosses the C ABI or the dev socket. A plain list's header sticks at
+  the top: a pinned supplementary view on iOS (iOS 26's scroll edge
+  effect goes behind the pinned one only:
+  `UIScrollEdgeElementContainerInteraction`, whose region takes
+  touches); on Android, which has no sticky headers, a cell of its own
+  over the RecyclerView, in a frame that is the list's view.
+- The anchor (`AnchorBottom`, a chat's) and keeping what's on screen in
+  place as rows are added above are the host's, which knows where rows
+  are: iOS remembers the first visible row and its offset before a
+  snapshot applies and puts it back after, and pins the end in
+  `layoutSubviews` while the user hasn't scrolled off it; Android's
+  `LinearLayoutManager` keeps its anchor row itself (`stackFromEnd` for
+  the bottom); the desktop hosts, which tile their own rows, keep the
+  row at the top as rows bind and change height. `OnStartReached` is the
+  core's, from the rows it's asked to bind.
+- Selecting rows: the core sends `Selecting` and each cell's `Selected`;
+  the host shows its control, reports the user's choices
+  (`RowSelected`), and the room the control takes from the rows
+  (`RowInset`), at which the core lays them out again.
 
 ### Text input
 
@@ -696,6 +750,39 @@ sends `SetProp` only when the signal differs from it, so typing never
 round-trips and IME composition is never disturbed. Props for the
 keyboard: type (text, number, email, URL, phone), return key, secure
 entry, autocapitalization, autocorrection, content type (for AutoFill).
+
+The selection (`TextFieldProps.Selection`) is kept the same way: the
+host reports its moves (`SelectionChanged`, after the text change that
+caused them) and the core sends one only when the signal differs from
+what was reported. The wire counts UTF-16 units, as UIKit and Android
+do; the core converts to byte offsets of the Go string. `InsertText`
+replaces the selection through the platform's own text input (UITextInput's
+`insertText`, `Editable.replace`, the field editor's `insertText:`,
+`EM_REPLACESEL`), so it's undoable and reported as typing. Content of
+`PasteTypes` that's pasted, put in by a keyboard or dropped goes to the
+app as files (`Pasted`, its items as `Shared`'s) instead of into the
+text.
+
+A Rich field's styled text (`TextFieldProps.Rich`) goes to the host in
+RichText's Content encoding and comes back in the same, canonically
+(styles in the order runs first use them, runs of one style merged), so
+the core tells the user's edit from what it sent, as with Value. Each
+host keeps a run's style as it was sent beside the platform's
+attributes (an attribute of its own, a span; Windows's rich edit has
+neither, and goes through RTF, `internal/rtf`), so what the user didn't
+change comes back as it was: bold, italic, underline, strikethrough,
+monospace and links are read from what the text has. Formatting is
+undoable with the typing around it: UIKit's, AppKit's and the rich
+edit's undo cover it; Android's covers text only (and puts deleted text
+back unstyled), so an Android rich field keeps its own history, the
+text with its spans and the selection before each change, typing
+grouped as editors do.
+
+A measured view's padding and border are inside its frame
+(`ContentInset`, sent when it isn't zero): the host draws its content
+inside them (a label's text rect, a field's text rects, a text view's
+container inset, view padding on Android) and measures its content
+alone.
 
 ### Lifecycle and state
 
@@ -744,6 +831,19 @@ Xcode does (swiftc's constant values, appintentsmetadataprocessor); each
 opens the app with its URL. On Android, the CLI generates an App Widget
 provider for each kind (over the host's `RyUIWidgetProvider`, with
 RemoteViews) and the launcher's static shortcuts.
+
+Two extensions run the app's Go code, from the app's own symbols rather
+than `ryui.json`: the share sheet (`app.ShareSheet`) and the
+Notification Service Extension (`push.Rewrite`). With either, the app's
+Go code and the host are one dynamic framework (RyUIApp.framework) that
+the app and the extension link, their data in the App Group they share.
+The extension starts the core headless with a root of its own
+(`RYUI_SHARE_SHEET`, `RYUI_NOTIFICATION_SERVICE`). Android runs both in
+the app's package: the share sheet's activity, and the push rewrite in
+Firebase's service, starting the core headless as a background task does.
+Notifications' responses work the same way: a background action starts
+the core headless (iOS's center delegate, Android's broadcast receiver)
+and hands Go the response, keeping the process until Go reports it done.
 
 ## mobile
 
@@ -800,6 +900,7 @@ ryui dev -windows <dir>            build and run on this PC, rerun on save
 ryui build -windows <dir>          a folder: the .exe (icon, manifest, version) and its assets
 ryui generate <dir>                the typed functions of the app's catalogs
 ryui i18n init|add|check           start, add languages to, and check the catalogs
+ryui vet [packages]                what builds but runs wrong: a signal read once, written off the main thread
 ```
 
 **An app's metadata** is `ryui.json` beside its Go code, all optional:
@@ -908,6 +1009,7 @@ ryui/
   layout/            flexbox
   ops/               schema, Go encoder; generate writes Swift/Kotlin decoders
   i18n/              languages, catalogs, ICU messages, CLDR's formats
+  vet/               ryui vet's analyzers
   host/              Host interface, Environment
     fake/            records ops, measures by fixed rules; for tests
   mobile/            C ABI (cgo, ios||android)
@@ -1105,11 +1207,27 @@ Each one ends with its examples running and its tests in CI.
     core changing views then stops it.
   - GUI tests on CI (`e2e/`): the counter; notes (a text field,
     SQLite, a List, a relaunch); navigation (a push, a sheet with a
-    field, back, tabs), on both platforms.
+    field, back, tabs); chat (a list anchored at its bottom staying at
+    its end as messages come), on both platforms. `RYUI_DEVICE` picks
+    one of several simulators or emulators.
   - Images fetched over http(s) kept on disk across launches (256 MB,
     least recently used first; not a `no-store` response, nor ryui dev's
     assets from this machine), and `ImageProps.Placeholder`.
   - `examples/gallery` shows each; `examples/notes` is SQLite's.
+
+  - Lists for chats and mail: `Anchor` (a chat's, at its bottom),
+    `OnStartReached`, rows added above what shows leaving it in place,
+    sections with headers that stick, selecting rows (`Selecting`,
+    `Selected`, `OnSelect`, `OnSelectBegin`), leading swipe actions;
+    desktop rows' swipe actions in their context menus.
+  - Text fields: `Selection`, `ui.InsertText`, pasted and keyboard
+    content (`PasteTypes`, `OnPaste`); on iOS the keyboard followed
+    frame by frame through its interactive dismissal.
+  - Rich text fields (`TextFieldProps.Rich`: bold, italic, underline,
+    strikethrough, code, links; `ToggleFormat`, `SetLink`, `OnFormats`),
+    on every host (Windows through RTF, `internal/rtf`).
+  - A text's and a field's padding inside their frames (`ContentInset`).
+  - `examples/chat` and `examples/mail`.
 
   docs/parity.md has what RyUI has against SwiftUI and Expo;
   docs/device-checklist.md, what's left to check on real devices.

@@ -436,6 +436,22 @@ func sumAxis(r Rect[float32], axis int) float32 { return r.start(axis) + r.end(a
 
 func sumBoth(r Rect[float32]) Size { return Size{r.Left + r.Right, r.Top + r.Bottom} }
 
+// ContentInsets is the room its padding and border take inside its box,
+// per side (percentages of its parent's content width, as its last
+// layout had it): where its content sits.
+func (n *Node) ContentInsets() Rect[float32] {
+	if n.Style.Padding == (Rect[Length]{}) && n.Style.Border == (Rect[Length]{}) {
+		return Rect[float32]{}
+	}
+	var cw float32
+	if p := n.parent; p != nil {
+		pi := p.ContentInsets()
+		cw = max(p.W-pi.Left-pi.Right, 0)
+	}
+	pad, bor := n.paddingBorder(cw)
+	return Rect[float32]{pad.Top + bor.Top, pad.Right + bor.Right, pad.Bottom + bor.Bottom, pad.Left + bor.Left}
+}
+
 func (n *Node) paddingBorder(parentW float32) (pad, border Rect[float32]) {
 	return resolveRect(&n.Style.Padding, parentW), resolveRect(&n.Style.Border, parentW)
 }

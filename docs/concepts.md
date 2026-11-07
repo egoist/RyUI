@@ -109,7 +109,8 @@ left := signal.NewMemo(func() int {
 ```
 
 `signal.NewMemoFunc` is a memo with your own equality, as `NewFunc` is
-for signals. A memo must not write signals: `Set` inside one panics.
+for signals. A memo must not write signals: `Set` inside one panics
+(and `ryui vet` reports it).
 
 ## What updates
 
@@ -135,7 +136,15 @@ func Score() ui.Node {
 
 The first text is the most common mistake: a signal read in the
 component's body is read once, as the component runs once. Read it
-inside an accessor, a `ui.StyleFunc` or an effect.
+inside an accessor, a `ui.StyleFunc` or an effect. To read it once on
+purpose, say so with `Peek` (`signal.Untrack` for an accessor).
+
+[`ryui vet`](development.md#ryui-vet), which `ryui dev` runs as you
+save, finds these: a read in a component's body, or in a `ui.Show`
+branch or a `ui.For` row, which run once too, whose value goes into the
+views it builds. The same holds for the language the app shows: a
+catalog's message said in the body (`locales.Title()`) won't follow a
+change of language, where `locales.Live.Title()` does.
 
 A `ui.StyleFunc` is a style that changes. It runs in one effect for its
 view; what it returns is compared with the last, and only the props that
@@ -301,7 +310,8 @@ platform's main thread. Don't block it: a slow request or a big file
 belongs in a goroutine.
 
 A goroutine doesn't touch signals or views itself. It hands a function
-to `ui.Post`, which runs it on the main thread, then updates the views:
+to `ui.Post`, which runs it on the main thread, then updates the views
+(`ryui vet` reports a signal a goroutine writes itself):
 
 ```go
 load := func() {

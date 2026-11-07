@@ -15,7 +15,7 @@ const (
 	KindSlider    Kind = 6
 	// KindScroll: its single child is the content; the content's frame is the content size.
 	KindScroll Kind = 7
-	// KindList: rows live in host-made cells, bound through ListBind.
+	// KindList: rows live in host-made cells, bound through ListBind; with sections (ListUpdate), each section's header lives in a cell too, bound with ListBind's index -1 - the section's. A plain or bare list's headers stick to its top while their rows scroll under them (UITableView's plain style); an inset grouped list's scroll with them.
 	KindList     Kind = 8
 	KindActivity Kind = 9
 	// KindStack: a navigation stack; its children are Screens: an Insert pushes, a Destroy pops (animated when it's the top). A pop the user makes (back gesture, back button) is reported with Popped, the screen's ID.
@@ -115,8 +115,14 @@ const (
 	PropSwipeActions PropID = 29
 	// PropLayoutDirection: the view lays itself out and aligns its text in this direction, whatever the app's (ui.WithDirection): sent to each view in the subtree, as a platform's view doesn't take it from its parent. Frames are always physical.
 	PropLayoutDirection PropID = 30
+	// PropContentInset: the room a measured view's padding and border take inside its frame, in points (top, right, bottom, left: physical): the host draws its content (a text, a field's text, a button's title, an image) inside it, and measures its content alone, as before. Sent when it changes from none.
+	PropContentInset PropID = 31
+	// PropLeadingSwipeActions: a List cell's swipe actions from its leading edge (Mail's Unread), encoded as Menu; Action events on the cell carry -1 - the index.
+	PropLeadingSwipeActions PropID = 32
+	// PropSelected: a List cell's row is selected: in a selecting list, its selection control is checked and the row is highlighted.
+	PropSelected PropID = 33
 	// PropMatch: a key it shares with another view: when one with the key is destroyed during an animation and another inserted, the new one comes in from the old one's place and size, and the old one goes out to the new one's, fading (SwiftUI's matchedGeometryEffect). The host notes where the views with keys are as an animated batch starts destroying, and matches them once the batch's frames are applied.
-	PropMatch PropID = 31
+	PropMatch PropID = 34
 )
 
 // View props.
@@ -155,6 +161,12 @@ const (
 	PropTextFieldMultiline PropID = 72
 	// PropTextFieldPlain: no border, background nor inset: the text alone, as a field in a form's card; sent before it's inserted.
 	PropTextFieldPlain PropID = 73
+	// PropTextFieldSelection: u32 start, u32 end, in UTF-16 code units of the text (as UIKit and Android count): set from code, the cursor (start = end) or the selection goes there. Listened for, the user's changes are reported with SelectionChanged.
+	PropTextFieldSelection PropID = 74
+	// PropTextFieldRich: styled text, as RichText's Content (without inline components), for a Multiline field: bold (a FontWeight of Semibold or more), italic, underline, strikethrough, monospaced, links and colors, which the user can edit (iOS's B/I/U menu, the Format command). The user's edits are reported with RichChanged, in the same encoding: its styles in the order its runs first use them, runs of one style merged.
+	PropTextFieldRich PropID = 75
+	// PropTextFieldPasteTypes: u32 count, then u32-length MIME type patterns (image/*, */*: as DropAccept's): content of these types pasted, or put in by the keyboard (GIFs, stickers: Android's commitContent, iOS's pasteboard), is reported with Pasted instead of going into the text; the edit menu offers Paste for it. Empty: the platform's own paste.
+	PropTextFieldPasteTypes PropID = 76
 )
 
 // Toggle props.
@@ -189,6 +201,10 @@ const (
 	PropListAppearance PropID = 68
 	// PropListInset: an inset grouped list's rows' inset from each side, in points (the core's, from the platform's margins).
 	PropListInset PropID = 69
+	// PropListAnchor: where the list rests. Bottom (a chat's messages): it opens at its end, rows that don't fill it sit at its bottom, and while it's scrolled to its end it stays there, as rows are added at the end, as rows change height, and as the list gets shorter (the keyboard). Either way, rows added or removed before the ones on screen keep those where they are, unless the list is at its start (Top) or end (Bottom).
+	PropListAnchor PropID = 70
+	// PropListSelecting: the list is selecting rows: each shows the platform's selection control (iOS's edit mode circles; a Material checkbox at the row's end on Android; a highlight on desktop), a tap selects or deselects the row instead of pressing it (RowSelected), and rows don't swipe. A host whose control takes room from the rows reports it with RowInset.
+	PropListSelecting PropID = 71
 )
 
 // Activity props.
@@ -381,9 +397,9 @@ const (
 	PropWindowMinHeight PropID = 68
 )
 
-var commonProps = [...]propInfo{{}, {"Background", TColor}, {"CornerRadius", TFloat}, {"BorderWidth", TFloat}, {"BorderColor", TColor}, {"Opacity", TFloat}, {"Hidden", TBool}, {"Clip", TBool}, {"A11yLabel", TString}, {"A11yHint", TString}, {"A11yRole", TEnum}, {"A11yActions", TBytes}, {"A11yAdjustable", TBool}, {"A11yHidden", TBool}, {"Color", TColor}, {"TextStyle", TEnum}, {"FontSize", TFloat}, {"FontWeight", TEnum}, {"TextAlign", TEnum}, {"LineLimit", TInt}, {"Disabled", TBool}, {"Menu", TBytes}, {"MenuTrigger", TEnum}, {"Transform", TBytes}, {"Shadow", TBytes}, {"Gradient", TBytes}, {"Transition", TBytes}, {"Material", TEnum}, {"FontFamily", TString}, {"SwipeActions", TBytes}, {"LayoutDirection", TEnum}, {"Match", TString}}
+var commonProps = [...]propInfo{{}, {"Background", TColor}, {"CornerRadius", TFloat}, {"BorderWidth", TFloat}, {"BorderColor", TColor}, {"Opacity", TFloat}, {"Hidden", TBool}, {"Clip", TBool}, {"A11yLabel", TString}, {"A11yHint", TString}, {"A11yRole", TEnum}, {"A11yActions", TBytes}, {"A11yAdjustable", TBool}, {"A11yHidden", TBool}, {"Color", TColor}, {"TextStyle", TEnum}, {"FontSize", TFloat}, {"FontWeight", TEnum}, {"TextAlign", TEnum}, {"LineLimit", TInt}, {"Disabled", TBool}, {"Menu", TBytes}, {"MenuTrigger", TEnum}, {"Transform", TBytes}, {"Shadow", TBytes}, {"Gradient", TBytes}, {"Transition", TBytes}, {"Material", TEnum}, {"FontFamily", TString}, {"SwipeActions", TBytes}, {"LayoutDirection", TEnum}, {"ContentInset", TEdges}, {"LeadingSwipeActions", TBytes}, {"Selected", TBool}, {"Match", TString}}
 
-var kindProps = [...][]propInfo{nil, {{"DropAccept", TBytes}, {"DragItems", TBytes}}, {{"Text", TString}}, {{"Title", TString}, {"Variant", TEnum}, {"Icon", TString}}, {{"Value", TString}, {"Placeholder", TString}, {"Keyboard", TEnum}, {"ReturnKey", TEnum}, {"Secure", TBool}, {"Autocapitalize", TEnum}, {"Autocorrect", TEnum}, {"ContentType", TString}, {"Multiline", TBool}, {"Plain", TBool}}, {{"On", TBool}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}}, {{"Horizontal", TBool}, {"Refreshable", TBool}, {"Refreshing", TBool}}, {{"Refreshable", TBool}, {"Refreshing", TBool}, {"Columns", TInt}, {"Gap", TFloat}, {"Appearance", TEnum}, {"Inset", TFloat}}, {{"Animating", TBool}}, {}, {{"Title", TString}, {"Actions", TBytes}, {"BackGesture", TBool}, {"Icon", TString}, {"Search", TString}, {"SearchText", TString}, {"SearchButton", TBool}, {"ZoomFrom", TString}, {"LargeTitle", TBool}, {"BarColor", TColor}}, {{"Selected", TInt}}, {{"Detents", TInt}, {"Grabber", TBool}}, {{"Title", TString}, {"Message", TString}, {"Buttons", TBytes}, {"Style", TEnum}}, {{"Source", TString}, {"Mode", TEnum}, {"Placeholder", TString}}, {{"Type", TString}, {"Prop", TBytes}}, {{"Content", TBytes}, {"Inlines", TBytes}}, {}, {{"Name", TString}}, {{"Segments", TBytes}, {"Selected", TInt}}, {{"Items", TBytes}, {"Selected", TInt}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}, {"Step", TFloat}}, {{"Value", TColor}, {"Alpha", TBool}, {"Title", TString}}, {{"Value", TFloat}, {"Indeterminate", TBool}}, {{"Path", TBytes}, {"Fill", TColor}, {"Stroke", TColor}, {"LineWidth", TFloat}, {"LineCap", TEnum}, {"LineJoin", TEnum}, {"TrimStart", TFloat}, {"TrimEnd", TFloat}, {"Dash", TBytes}}, {{"Source", TString}, {"Mode", TEnum}, {"HideControls", TBool}, {"AutoPlay", TBool}, {"Loop", TBool}, {"Muted", TBool}}, {{"URL", TString}, {"HTML", TString}, {"Preload", TString}, {"UserAgent", TString}, {"Block", TBytes}, {"Requests", TBool}}, {{"Value", TInt}, {"Mode", TEnum}, {"Min", TInt}, {"Max", TInt}, {"Inline", TBool}}, {{"Title", TString}, {"Width", TFloat}, {"Height", TFloat}, {"MinWidth", TFloat}, {"MinHeight", TFloat}}}
+var kindProps = [...][]propInfo{nil, {{"DropAccept", TBytes}, {"DragItems", TBytes}}, {{"Text", TString}}, {{"Title", TString}, {"Variant", TEnum}, {"Icon", TString}}, {{"Value", TString}, {"Placeholder", TString}, {"Keyboard", TEnum}, {"ReturnKey", TEnum}, {"Secure", TBool}, {"Autocapitalize", TEnum}, {"Autocorrect", TEnum}, {"ContentType", TString}, {"Multiline", TBool}, {"Plain", TBool}, {"Selection", TBytes}, {"Rich", TBytes}, {"PasteTypes", TBytes}}, {{"On", TBool}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}}, {{"Horizontal", TBool}, {"Refreshable", TBool}, {"Refreshing", TBool}}, {{"Refreshable", TBool}, {"Refreshing", TBool}, {"Columns", TInt}, {"Gap", TFloat}, {"Appearance", TEnum}, {"Inset", TFloat}, {"Anchor", TEnum}, {"Selecting", TBool}}, {{"Animating", TBool}}, {}, {{"Title", TString}, {"Actions", TBytes}, {"BackGesture", TBool}, {"Icon", TString}, {"Search", TString}, {"SearchText", TString}, {"SearchButton", TBool}, {"ZoomFrom", TString}, {"LargeTitle", TBool}, {"BarColor", TColor}}, {{"Selected", TInt}}, {{"Detents", TInt}, {"Grabber", TBool}}, {{"Title", TString}, {"Message", TString}, {"Buttons", TBytes}, {"Style", TEnum}}, {{"Source", TString}, {"Mode", TEnum}, {"Placeholder", TString}}, {{"Type", TString}, {"Prop", TBytes}}, {{"Content", TBytes}, {"Inlines", TBytes}}, {}, {{"Name", TString}}, {{"Segments", TBytes}, {"Selected", TInt}}, {{"Items", TBytes}, {"Selected", TInt}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}, {"Step", TFloat}}, {{"Value", TColor}, {"Alpha", TBool}, {"Title", TString}}, {{"Value", TFloat}, {"Indeterminate", TBool}}, {{"Path", TBytes}, {"Fill", TColor}, {"Stroke", TColor}, {"LineWidth", TFloat}, {"LineCap", TEnum}, {"LineJoin", TEnum}, {"TrimStart", TFloat}, {"TrimEnd", TFloat}, {"Dash", TBytes}}, {{"Source", TString}, {"Mode", TEnum}, {"HideControls", TBool}, {"AutoPlay", TBool}, {"Loop", TBool}, {"Muted", TBool}}, {{"URL", TString}, {"HTML", TString}, {"Preload", TString}, {"UserAgent", TString}, {"Block", TBytes}, {"Requests", TBool}}, {{"Value", TInt}, {"Mode", TEnum}, {"Min", TInt}, {"Max", TInt}, {"Inline", TBool}}, {{"Title", TString}, {"Width", TFloat}, {"Height", TFloat}, {"MinWidth", TFloat}, {"MinHeight", TFloat}}}
 
 // Events.
 const (
@@ -461,13 +477,27 @@ const (
 	EventDragOver EventKind = 42
 	// EventDrop: a drag the view takes was dropped on it: f32 x, y (its place in the view), u32 the view it was dragged from (0: another app's), u8 flags (1: its files are the app's own copies, in its caches), then its items as in Shared (none for a drag from the app: the core has them). Sent once the items are loaded and their files copied, which may be after DragOver's Cancelled.
 	EventDrop EventKind = 43
+	// EventSelectionChanged: a TextField's cursor or selection moved (the user's, or the text changing): u32 start, u32 end, in UTF-16 code units.
+	EventSelectionChanged EventKind = 44
+	// EventRichChanged: a Rich TextField's styled text changed (the user typed, or formatted it): as its Rich prop.
+	EventRichChanged EventKind = 45
+	// EventFormats: the styles where a Rich TextField's cursor is (what's typed next) or that all its selection has: u8 TextFormat bits (1 bold, 2 italic, 4 underline, 8 strikethrough, 16 monospaced), then the link (u32-length string; empty: none); as they change.
+	EventFormats EventKind = 46
+	// EventPasted: content of a TextField's PasteTypes was pasted or put in by the keyboard: its items as Shared's (files are the app's own copies, in its caches).
+	EventPasted EventKind = 47
+	// EventRowSelected: the user selected (true) or deselected (false) a selecting List's row; to its cell.
+	EventRowSelected EventKind = 48
+	// EventRowSelectBegin: the user began selecting rows at this one, the list not selecting: a two-finger pan over rows (iOS), a long press (Android); to its cell.
+	EventRowSelectBegin EventKind = 49
+	// EventRowInset: a List's rows' content is narrower than the core lays it out by X points at the leading edge and Y at the trailing (a selection control's room); to the list. The core lays its rows out again.
+	EventRowInset EventKind = 50
 	// EventDragging: the view's drag (DragItems): a DragPhase. Began as it lifts, then Dropped (a target took it, the app's or another app's) or Cancelled.
-	EventDragging EventKind = 44
+	EventDragging EventKind = 51
 )
 
-var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh", "Pan", "Pinch", "Rotate", "Swipe", "Loaded", "Failed", "Native", "Link", "A11yAction", "Adjust", "Ended", "Navigated", "Message", "IncomingURL", "FontLoaded", "Frame", "Result", "ColorChanged", "WebState", "Request", "Download", "NewWindow", "Shared", "Pressed", "Hover", "DragOver", "Drop", "Dragging"}
+var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh", "Pan", "Pinch", "Rotate", "Swipe", "Loaded", "Failed", "Native", "Link", "A11yAction", "Adjust", "Ended", "Navigated", "Message", "IncomingURL", "FontLoaded", "Frame", "Result", "ColorChanged", "WebState", "Request", "Download", "NewWindow", "Shared", "Pressed", "Hover", "DragOver", "Drop", "SelectionChanged", "RichChanged", "Formats", "Pasted", "RowSelected", "RowSelectBegin", "RowInset", "Dragging"}
 
-var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone, PGesture, PGesture, PGesture, PInt, PPoint, PString, PBytes, PString, PInt, PInt, PNone, PString, PString, PString, PString, PFloat, PBytes, PInt, PBytes, PString, PBytes, PString, PBytes, PBool, PBool, PGesture, PBytes, PInt}
+var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone, PGesture, PGesture, PGesture, PInt, PPoint, PString, PBytes, PString, PInt, PInt, PNone, PString, PString, PString, PString, PFloat, PBytes, PInt, PBytes, PString, PBytes, PString, PBytes, PBool, PBool, PGesture, PBytes, PBytes, PBytes, PBytes, PBytes, PBool, PNone, PPoint, PInt}
 
 func (e EventKind) String() string {
 	if int(e) < len(eventNames) && e > 0 {
@@ -488,7 +518,7 @@ func EventPayload(e EventKind) Payload {
 const (
 	CmdFocus CommandID = 1
 	CmdBlur  CommandID = 2
-	// CmdListUpdate: args: u32 count, then count i64 item IDs in order.
+	// CmdListUpdate: args: u32 count, then count i64 item IDs in order; then u32 section count (0, or the args ending there: one section, without a header), per section u32 the index of its first item and i64 its ID (stable, as an item's). Sections are in order; the first starts at 0.
 	CmdListUpdate CommandID = 3
 	// CmdPresent: show a Sheet or Alert.
 	CmdPresent CommandID = 4
@@ -537,11 +567,17 @@ const (
 	CmdLocale CommandID = 26
 	// CmdSaveLocale: args: the BCP 47 tag of the language the app chose (ui.SetLocale), empty to follow the user's languages again; sent to the root. The host keeps it across launches where the system does (iOS's and macOS's AppleLanguages of the app's defaults, which Settings shows; Android 13's LocaleManager) or itself (Android before 13, Windows), and from then on reports it first in the environment's Languages.
 	CmdSaveLocale CommandID = 27
+	// CmdFormat: args: u8 TextFormat bits (as Formats'), u8 0 off, 1 on, 2 toggle (on unless all the selection has them); sent to a Rich TextField: the selection takes the styles, or, at the cursor, what's typed next. Reported with RichChanged and Formats.
+	CmdFormat CommandID = 28
+	// CmdSetLink: args: the URL (empty: none); sent to a Rich TextField: its selection links there (at the cursor, the link around it). Reported with RichChanged and Formats.
+	CmdSetLink CommandID = 29
+	// CmdInsertText: args: the text; sent to a TextField: it replaces the selection (or goes in at the cursor) as if typed, undoably, and is reported with TextChanged and SelectionChanged.
+	CmdInsertText CommandID = 30
 	// CmdShareClose: args: u8 how (0 done, 1 cancelled, 2 open the app with what was shared); sent to a share sheet's root (app.ShareSheet): it closes.
-	CmdShareClose CommandID = 28
+	CmdShareClose CommandID = 31
 )
 
-var commandNames = [...]string{"", "Focus", "Blur", "ListUpdate", "Present", "Haptic", "AnimateBegin", "AnimateEnd", "OpenURL", "Call", "Copy", "Play", "Pause", "Seek", "Eval", "Frames", "Announce", "Share", "ScrollTo", "ScrollToOffset", "Accent", "WebNavigate", "MenuBar", "WindowOptions", "WindowTitle", "ColorScheme", "Locale", "SaveLocale", "ShareClose"}
+var commandNames = [...]string{"", "Focus", "Blur", "ListUpdate", "Present", "Haptic", "AnimateBegin", "AnimateEnd", "OpenURL", "Call", "Copy", "Play", "Pause", "Seek", "Eval", "Frames", "Announce", "Share", "ScrollTo", "ScrollToOffset", "Accent", "WebNavigate", "MenuBar", "WindowOptions", "WindowTitle", "ColorScheme", "Locale", "SaveLocale", "Format", "SetLink", "InsertText", "ShareClose"}
 
 func (c CommandID) String() string {
 	if int(c) < len(commandNames) && c > 0 {
@@ -840,4 +876,11 @@ const (
 	DragPhaseBegan DragPhase = iota
 	DragPhaseDropped
 	DragPhaseCancelled
+)
+
+type ScrollAnchor int32
+
+const (
+	ScrollAnchorTop ScrollAnchor = iota
+	ScrollAnchorBottom
 )

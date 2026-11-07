@@ -20,7 +20,50 @@ object RyUIPushHub {
     var register: ((RyUIRuntime, (Result<ByteArray>) -> Unit) -> Unit)? = null
 
     fun message(id: String, title: String, body: String, data: Map<String, String>): ByteArray =
-        JSONObject().put("id", id).put("title", title).put("body", body).put("data", JSONObject(data as Map<*, *>)).toString().toByteArray()
+        messageJSON(id, title, body, data, null, null).toString().toByteArray()
+
+    /**
+     * A push as push.Message's JSON: a notification message's title, body,
+     * channel and image, or a data message's keys of those names (and
+     * "subtitle", "category", "thread", "summary", "badge").
+     */
+    fun messageJSON(id: String, title: String, body: String, data: Map<String, String>, channel: String?, image: String?): JSONObject =
+        JSONObject().put("id", id).put("title", title).put("body", body).put("data", JSONObject(data as Map<*, *>))
+            .put("subtitle", data["subtitle"].orEmpty()).put("category", data["category"].orEmpty())
+            .put("thread", data["thread"].orEmpty()).put("summary", data["summary"].orEmpty())
+            .put("channel", channel ?: data["channel"].orEmpty()).put("image", image ?: data["image"].orEmpty())
+            .put("badge", data["badge"]?.toIntOrNull() ?: 0)
+
+    /** The rewrites (push.Rewrite) waiting for Go. */
+    private val rewrites = RyUIWaitQueue()
+    private val pendingRewrites = HashMap<String, (JSONObject?) -> Unit>()
+
+    /**
+     * Has Go rewrite message (push.Message's JSON), starting the core
+     * without a screen if it hasn't: the notification to show, or null to
+     * show it as it came (the rewrite failed, or took more than seconds).
+     * Not on the main thread.
+     */
+    fun rewrite(rt: RyUIRuntime, message: JSONObject, seconds: Long): JSONObject? {
+        var out: JSONObject? = null
+        val done = java.util.concurrent.CountDownLatch(1)
+        val token = java.util.UUID.randomUUID().toString()
+        main.post {
+            rt.startHeadless()
+            pendingRewrites[token] = { out = it; done.countDown() }
+            rewrites.deliver(JSONObject().put("token", token).put("message", message).toString().toByteArray())
+        }
+        done.await(seconds, java.util.concurrent.TimeUnit.SECONDS)
+        main.post { pendingRewrites.remove(token) }
+        return out
+    }
+
+    fun nextRewrite(reply: (Result<ByteArray>) -> Unit) = rewrites.next(reply)
+
+    fun rewritten(o: JSONObject) {
+        val p = pendingRewrites.remove(o.optString("token")) ?: return
+        p(if (o.optBoolean("ok")) o.optJSONObject("spec") else null)
+    }
 
     /** A message for kind, from any thread. */
     fun deliver(kind: String, m: ByteArray) = main.post {
@@ -58,7 +101,11 @@ object RyUIPushHub {
     }
 }
 
-/** ryui/push's module: "register", "nextReceived", "nextOpened", "stop" (the method's name). */
+/**
+ * ryui/push's module: "register", "nextReceived", "nextOpened", "stop" (the
+ * method's name); "nextRewrite" ({token, message}) and "rewritten"
+ * ({token, ok, spec}) for push.Rewrite.
+ */
 fun RyUIRuntime.pushMethods(): Map<String, RyUIModuleMethod> = mapOf(
     "register" to { _, reply ->
         val r = RyUIPushHub.register
@@ -67,6 +114,11 @@ fun RyUIRuntime.pushMethods(): Map<String, RyUIModuleMethod> = mapOf(
     },
     "nextReceived" to { _, reply -> RyUIPushHub.next("nextReceived", reply) },
     "nextOpened" to { _, reply -> RyUIPushHub.next("nextOpened", reply) },
+    "nextRewrite" to { _, reply -> RyUIPushHub.nextRewrite(reply) },
+    "rewritten" to { args, reply ->
+        try { RyUIPushHub.rewritten(JSONObject(String(args, Charsets.UTF_8))) } catch (_: Exception) {}
+        reply(Result.success(ByteArray(0)))
+    },
     "stop" to { args, reply ->
         RyUIPushHub.stop(String(args, Charsets.UTF_8))
         reply(Result.success(ByteArray(0)))

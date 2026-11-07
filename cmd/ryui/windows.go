@@ -26,11 +26,15 @@ import (
 // assets beside it; it builds from any system.
 
 // windowsLdflags is the -ldflags of a Windows build: ryui.json's, the
-// app's name (its window title), and for a release, the GUI subsystem
-// (no console window).
+// app's name (its window title) and version (its crash reports'), and
+// for a release, the GUI subsystem (no console window).
 func windowsLdflags(app *goApp, release bool) string {
 	f := strings.TrimPrefix(app.cfg.ldflags(release), "-ldflags=")
 	f += " -X " + strconv.Quote("github.com/egoist/ryui/internal/boot.Name="+app.displayName())
+	if app.cfg != nil {
+		f += " -X " + strconv.Quote("github.com/egoist/ryui/internal/boot.Version="+app.cfg.Version)
+		f += " -X " + strconv.Quote("github.com/egoist/ryui/internal/boot.Build="+strconv.Itoa(app.cfg.Build))
+	}
 	if release {
 		f += " -H windowsgui"
 	}

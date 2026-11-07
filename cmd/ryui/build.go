@@ -21,6 +21,7 @@ type buildOptions struct {
 	profile      string // iOS: a provisioning profile (path, name or UUID)
 	out          string
 	verbose      bool
+	vet          bool
 }
 
 func buildFlags(o *buildOptions) *flag.FlagSet {
@@ -35,6 +36,7 @@ func buildFlags(o *buildOptions) *flag.FlagSet {
 	fs.StringVar(&o.profile, "profile", "", "iOS: a provisioning profile's path, name or UUID (default: ryui.json's, else the best match installed)")
 	fs.StringVar(&o.out, "o", "", "the output directory (default: dist in the app's directory)")
 	fs.BoolVar(&o.verbose, "v", false, "print the commands ryui runs")
+	fs.BoolVar(&o.vet, "vet", true, "run ryui vet first and print what it finds (warnings: the build goes on)")
 	return fs
 }
 
@@ -55,6 +57,7 @@ func cmdBuild(args []string) error {
 	if err != nil {
 		return err
 	}
+	vetBuild(app.dir, o.vet)
 	if o.out == "" {
 		o.out = filepath.Join(app.dir, "dist")
 	}

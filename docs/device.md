@@ -1,10 +1,11 @@
 # Device and services
 
 RyUI's packages reach what the phone has beyond views: the camera, codes,
-what's in an image, photos and files, location, notifications and push, sound and recording,
+what's in an image, photos and files, previewing, printing and PDFs, the
+mail and message composers, location, notifications and push, sound and recording,
 the network's state, the shared library, work in the background, shares
 from other apps, JavaScript, sign-in and biometrics, the screen, maps,
-and the stores' services.
+the stores' services, and crash reports.
 This page covers each package: what it does, its API, the permissions it
 brings and how it behaves on each platform.
 
@@ -43,9 +44,11 @@ photo app doesn't ask for the microphone.
 | `ryui/speech` | the text-to-speech engine's visibility (`<queries>`) | |
 | `ryui/contacts` | `READ_CONTACTS` (for `List`) | `NSContactsUsageDescription` |
 | `ryui/calendar` | `READ_CALENDAR` (for `Calendars`, `Events`) | `NSCalendarsFullAccessUsageDescription`, `NSCalendarsUsageDescription` |
+| `ryui/compose` | the visibility of the apps for `mailto:` and `smsto:` (`<queries>`) | `mailto` in `LSApplicationQueriesSchemes` |
 
 `ryui/device`, `ryui/audio`, `ryui/splash`, `ryui/imageedit`,
-`ryui/widget`, `ryui/js` and `ryui/secure` need none.
+`ryui/widget`, `ryui/js`, `ryui/secure`, `ryui/preview` and
+`ryui/print` need none.
 
 An entitlement needs its capability on the app's App ID
 (developer.apple.com, Identifiers) for a release build: the provisioning
@@ -456,6 +459,172 @@ picker. Windows has no share sheet for files yet: `done` gets an error.
 To be opened with URLs yourself, see `ryui.json`'s `scheme` and `links` in
 [Shipping](shipping.md#ryuijson), and `ui.OnOpenURL`.
 
+## Previewing files: ryui/preview
+
+`preview.Show(sources, options, done)` shows files with the system's
+viewer, as a mail app shows an attachment: PDFs, images, video, audio,
+Office and iWork documents, text. A source is a file's path, an asset's
+(as `ui.Image` takes it), or an http(s) URL, which the host downloads to
+the app's caches first, under its name (or with the extension of the type
+the server gives). Main thread.
+
+```go
+var open ui.Node
+open = ui.Button(ui.ButtonProps{Title: ui.Val("Open the invoice"), OnPress: func() {
+	preview.Show([]string{invoice, "docs/terms.pdf"}, preview.Options{From: open}, func(err error) {
+		if errors.Is(err, preview.ErrNoViewer) {
+			status.Set("Nothing on this device opens it")
+		}
+	})
+}})
+```
+
+| Option | |
+| --- | --- |
+| `Start` | The index of the file shown first. |
+| `From` | The view the viewer grows from (iOS), usually what the user tapped. |
+| `Edit` | Lets the user mark up PDFs and images with Markup, which saves into the files (iOS). |
+
+`done` runs on the main thread once the viewer is gone, with
+`preview.ErrNoViewer` if nothing can show the files, or another error (no
+such file, a download that failed).
+
+| | Viewer | `done` |
+| --- | --- | --- |
+| iOS | Quick Look (`QLPreviewController`) over the screen: swipe between the files; share, Markup, search | when it's dismissed |
+| Android | `ACTION_VIEW` of the `Start` file in the app the user picks for its type (Drive's PDF viewer, Photos), through the app's FileProvider with the right to read it alone | when the user is back |
+| macOS | Quick Look's panel (`QLPreviewPanel`), its arrows between the files | when the panel closes |
+| Windows | the file's default app (`ShellExecuteEx`), or the "How do you want to open this?" dialog | once it's handed over |
+
+Android has no system viewer, nor one that pages through several files:
+it opens one, as Android's mail apps do with each attachment.
+
+## Printing and PDFs: ryui/print
+
+`ryui/print` shows the system's print dialog, with its printers and
+options (copies, pages, paper, orientation; Save as PDF on Android and the
+Mac), for a file, HTML markup or a WebView's page; and lays HTML out on
+pages as a PDF. Each call but `PDF` runs on the main thread, and `done`
+gets a `print.Result` once the dialog is closed:
+
+```go
+var printButton ui.Node
+printButton = ui.Button(ui.ButtonProps{Title: ui.Val("Print"), OnPress: func() {
+	print.HTML(receipt, print.Options{Job: "Receipt", From: printButton}, func(r print.Result, err error) {
+		if err == nil && r == print.Printed {
+			status.Set("Sent to the printer")
+		}
+	})
+}})
+```
+
+- `print.File(source, options, done)` prints a PDF or an image (a path, an
+  asset, an http(s) URL, as `preview.Show` takes them). Another type fails
+  with `print.ErrUnsupported`, but on Windows.
+- `print.HTML(markup, options, done)` prints markup, paginated as a browser
+  prints a page: CSS's `@media print` and `break-before` apply. Images and
+  styles come from absolute URLs (`https:`, `data:`).
+- `print.WebView(web, options, done)` prints what a `ui.WebView` shows.
+
+`Options` has `Job`, the job's name in the queue (default: the file's
+name, the page's title, else the app's name), `Orientation`, which the
+dialog starts with (`print.Portrait`, `print.Landscape`), and `From`, the
+view the dialog points at where it's a popover (the iPad).
+
+A `Result` is `print.Printed` (the job is in the printer's queue, or saved
+as a PDF from the dialog), `print.Cancelled`, or `print.Unknown` where
+the platform doesn't say. A job that fails is an error.
+`print.ErrUnavailable` says the device can't print.
+
+| | Dialog | File | HTML, WebView | Result |
+| --- | --- | --- | --- | --- |
+| iOS | `UIPrintInteractionController`, a popover on the iPad | PDFs and images (`printingItem`) | WebKit's print formatter | printed or cancelled |
+| Android | `PrintManager`'s print screen | a PDF written through; an image fit to the page, upright (as `PrintHelper`) | the WebView's print adapter | printed, cancelled or failed (the job's state) |
+| macOS | `NSPrintOperation`'s panel, a sheet on the window, with a preview | PDFKit (a PDF; an image on a page) | WebKit's print operation | printed or cancelled |
+| Windows | WebView2's: the system's print dialog for HTML, the browser's preview for a WebView | the file's app prints it (the shell's `print` verb), whatever its type | WebView2 | unknown |
+
+An image wider than tall starts in landscape on Android and iOS, as their
+photo printing does.
+
+### PDFs from HTML
+
+`print.PDF(markup, options)` lays markup out on pages, as `print.HTML`
+prints it but without a dialog, and writes a PDF in the app's caches,
+named after the page's `<title>` ("Receipt.pdf"; "Document.pdf" without
+one). It returns its path, to share, mail or move. Its text stays text:
+searchable, selectable. Not on the main thread.
+
+```go
+go func() {
+	path, err := print.PDF(receipt, print.PDFOptions{Page: print.A4, Margins: print.Uniform(48)})
+	ui.Post(func() {
+		if err == nil {
+			ui.ShareFiles([]string{path}, ui.ShareOptions{Title: "Receipt"}, nil)
+		}
+	})
+}()
+```
+
+| Option | |
+| --- | --- |
+| `Page` | The paper, in points: `print.A3`, `A4`, `A5`, `Letter`, `Legal`, or a size of your own. Default: the user's region's, Letter in the Americas that use it (CLDR's paper sizes), A4 elsewhere. |
+| `Landscape` | Turns the page: its width the longer side. |
+| `Margins` | The space around each page's content, in points. Default: half an inch (36 points); `print.Uniform(0)` for none. |
+
+iOS lays it out with WebKit (`UIPrintPageRenderer` with the web view's
+print formatter), Android with its WebView's print adapter, the Mac with
+WebKit's print operation, Windows with WebView2 (Chromium's
+`Page.printToPDF`).
+
+## Mail and messages: ryui/compose
+
+`ryui/compose` opens the system's mail and message composers, filled in
+for the user to send. Main thread; `done` gets a `compose.Result`:
+`compose.Sent`, `Saved` (a draft), `Cancelled`, or `Unknown` where
+another app has the mail and doesn't say.
+
+```go
+compose.Mail(compose.MailMessage{
+	To:      []string{"support@example.com"},
+	Subject: "Order 1042",
+	Body:    "<p>Hello,</p><p>The receipt is attached.</p>",
+	HTML:    true,
+	Attachments: []compose.Attachment{{Source: receiptPDF, Name: "Receipt 1042.pdf"}},
+}, func(r compose.Result, err error) {
+	if errors.Is(err, compose.ErrUnavailable) {
+		status.Set("Set up a mail account to send it")
+	}
+})
+
+compose.Message(compose.TextMessage{To: []string{"+15555550100"}, Body: "On my way"}, nil)
+```
+
+A `MailMessage` has `To`, `CC` and `BCC` addresses, a `Subject`, a `Body`
+(markup if `HTML`) and `Attachments`; a `TextMessage` has `To` (phone
+numbers, or iMessage addresses), a `Subject` (where Messages has subjects
+on; elsewhere it goes before the body), a `Body` and `Attachments`. An
+`Attachment` is a `Source` (a path, an asset, an http(s) URL), its `Type`
+(default: its extension's) and the `Name` the recipient sees (default:
+the file's). Where a mail can't carry markup (a `mailto:` link, Simple
+MAPI), its body goes as text, as `compose.PlainText` makes it.
+
+`compose.Check()` says what the device can do (not on the main thread):
+`Mail`, a mail account or app; `MailComposer`, iOS's own composer, which
+says what the user did and takes attachments; `Text`, text messages; and
+`TextAttachments`, messages with attachments. `CanSendMail`,
+`CanSendText` and `CanSendAttachments` read one each. A call the device
+can't do fails with `compose.ErrUnavailable`.
+
+| | Mail | Messages | Result |
+| --- | --- | --- | --- |
+| iOS | Mail's composer (`MFMailComposeViewController`) over the app; without a Mail account, a `mailto:` link for the mail app the user set (without attachments) | Messages' composer (`MFMessageComposeViewController`) | sent, saved, cancelled; unknown for a link |
+| Android | the mail apps only: `ACTION_SENDTO` `mailto:`, or with attachments `ACTION_SEND` with `mailto:` as its selector, the files through the app's FileProvider; markup as spans (`EXTRA_TEXT`) and as `EXTRA_HTML_TEXT` | the default SMS app: `smsto:` with `sms_body`, or with attachments `ACTION_SEND` | unknown, once the user is back |
+| macOS | a `mailto:` link for the user's mail app; with attachments, the mail share service (`NSSharingService`), which takes no CC or BCC (they fail with `ErrUnavailable`) | Messages (`NSSharingService`) | unknown, or cancelled |
+| Windows | a `mailto:` link; with attachments, Simple MAPI (`MAPISendMailW`: Outlook, Thunderbird; the new Outlook and Windows's Mail app don't take it: `ErrUnavailable`) | `ErrUnavailable` | unknown, or cancelled (MAPI) |
+
+The iOS simulator has no Mail account and no Messages: try the composers
+on a device.
+
 ## Location: ryui/location
 
 `ryui/location` is where the device is, now and as it moves, with the
@@ -517,8 +686,12 @@ known, or fails with `"no location"`.
 
 ## Notifications: ryui/notify
 
-`ryui/notify` shows local notifications at a time the app sets, whether or
-not the app is running then. Tapping one opens the app with its URL.
+`ryui/notify` shows local notifications, now or at a time the app sets,
+whether or not the app is running then. Tapping one opens the app with
+its URL. It also has what a messaging app needs, for `ryui/push`'s
+notifications too: actions and replies typed in the notification,
+threads, Android's channels, messages in conversations, the badge, the
+notifications showing, and which ones show while the app is open.
 
 ```go
 go func() {
@@ -543,25 +716,207 @@ go func() {
   time, and reports whether they're allowed: their answer then, or what
   they've set in Settings since. Not on the main thread.
 - `notify.Schedule(n)` sets `n` to show `n.After` from now (at least a
-  second). Scheduling one with the `ID` of one waiting replaces it. Not on
-  the main thread.
+  second); `notify.Show(n)` shows it now. One with the `ID` of one
+  waiting or showing replaces it. Not on the main thread.
 - `notify.Cancel(id)` takes the notification away, waiting or shown. On
   the main thread.
 
 A `Notification`'s `URL` should be one of the app's scheme (`ryui.json`'s
 `scheme`): `ui.OnOpenURL` gets it when the user taps the notification.
+Its other fields:
+
+| Field | What it does |
+|---|---|
+| `Subtitle` | A line under the title (iOS); Android's sub text beside the app's name |
+| `Data` | The app's own keys, given back in `Showing`, `OnAction` and `Present` |
+| `Category` | A category's ID: the actions it shows (below) |
+| `Thread` | Groups it with the thread's others: iOS's thread, an Android group with a summary notification RyUI keeps |
+| `Summary` | The line under an Android group's summary ("3 new messages"); iOS writes its own |
+| `Channel` | The Android channel it's in (below); iOS has none |
+| `Badge` | The app icon's number when it shows (iOS, macOS); Android's notification number |
+| `Silent` | No sound |
+| `Image` | A picture, as `ui.Image`'s sources (an asset, a file, an http(s) URL): iOS's attachment, Android's big picture |
+
+**iOS** shows a notification while the app is open too, as a banner,
+unless `Present` says otherwise. **Android** posts a scheduled one from an
+inexact alarm (no exact-alarm permission needed), so it may come a
+little after its time.
+
+### Actions and replies
+
+A category is a kind of notification and its buttons. Set the app's
+categories as it starts, in its root component, before notifications
+that name them come (a push's too: `aps.category` on iOS, the data's
+`"category"` on Android). They hold across launches.
 
 ```go
-ui.OnOpenURL(func(url string) {
-	if url == "myapp://plants" {
-		notify.Cancel("water")
+notify.SetCategories(notify.Category{ID: "message", Actions: []notify.Action{
+	{ID: "reply", Title: "Reply", Icon: "arrowshape.turn.up.left",
+		Reply: &notify.Reply{Button: "Send", Placeholder: "Message"}},
+	{ID: "read", Title: "Mark as Read"},
+	{ID: "delete", Title: "Delete", Destructive: true, Unlock: true},
+	{ID: "open", Title: "Open", Open: true},
+}})
+
+notify.OnAction(func(r notify.Response) {
+	switch r.Action {
+	case "": // a tap on the notification
+		openChat(r.Notification.Thread)
+	case "reply":
+		_, done := r.Defer() // sending takes a moment
+		go func() {
+			defer done()
+			api.Send(r.Notification.Thread, r.Reply)
+		}()
+	case "read":
+		notify.RemoveThread(r.Notification.Thread)
 	}
 })
 ```
 
-**iOS** shows a notification while the app is open too, as a banner.
-**Android** posts it from an inexact alarm (no exact-alarm permission
-needed), so it may come a little after its time.
+- An `Action` has its `ID` and `Title`, an `Icon` (an SF Symbol; iOS
+  15 and macOS 12 show it, Android shows actions without icons),
+  `Destructive` (iOS shows it red), `Unlock` (the device unlocks first:
+  iOS, Android 12 and later), `Open` (it opens the app) and `Reply` (a
+  text field, with its send button's title and placeholder).
+- `notify.OnAction(f)` calls `f` on the main thread with each response,
+  until `stop`: a tap (`Action` `""`) or an action, `Reply` the text
+  typed, `Notification` the one answered (`ryui/push`'s too). A response
+  that came before any `f` (the one that launched the app, or woke it)
+  waits for the first, so set it as the app starts.
+- An action without `Open` runs in the background: the app's Go code
+  runs (started without a screen if the app isn't running: `main`, then
+  the root component, which must call `OnAction`), and the app doesn't
+  come to the front. Work that goes on after `f` returns calls
+  `r.Defer()` in `f`, and `done` when it's finished: the system keeps the
+  app running until then, or `ctx`'s deadline, a little before its own
+  (iOS gives about 30 seconds, Android about 10).
+
+**Android** takes a background action's notification away, as iOS does,
+unless the app shows it again (`Show`, with its `ID`) by the time it's
+done. After a reply, Android wants the notification posted again (its
+spinner turns until then): RyUI adds the reply to a conversation's
+notification, under the user's name, and takes another away.
+
+### Threads and the notifications showing
+
+A `Thread` groups a chat's notifications: iOS stacks them, Android puts
+them in a group under a summary notification, which RyUI keeps as they
+come and go.
+
+- `notify.Showing()` lists the app's notifications that show (in
+  Notification Center, the shade), its pushes' too, newest first: each
+  `Delivered` has its `ID`, `Title`, `Subtitle`, `Body`, `URL`, `Data`,
+  `Category`, `Thread`, `Time`, and `Remote` for a push. Not on the main
+  thread.
+- `notify.Remove(ids...)`, `notify.RemoveThread(thread)` (a chat that's
+  read) and `notify.RemoveAll()` take them away. On the main thread.
+
+### What shows while the app is open
+
+```go
+notify.Present(func(n notify.Delivered) notify.Presentation {
+	if n.Thread == openChat.Peek() {
+		return notify.Hide // the chat is on screen
+	}
+	return notify.Banner
+})
+```
+
+`notify.Present(f)` has `f` say how each notification that comes while
+the app is in the foreground shows: `Banner` (as with the app closed),
+`Quiet` (in Notification Center, the shade, without a banner or sound)
+or `Hide`. It runs on the main thread as the notification comes, and
+must answer at once: the host waits a second at most, then shows it.
+`nil` shows them all again. On the main thread.
+
+### Messages in conversations
+
+A message shows as the platform shows messages, with the sender's
+picture: iOS's communication notification, Android's conversation (the
+shade's Conversations section, with the conversation's shortcut).
+
+```go
+ana := notify.Person{ID: "u7", Name: "Ana", Image: "https://example.com/ana.jpg"}
+chat := notify.Conversation{ID: "climbing", Title: "Climbing", Group: true}
+go notify.Show(notify.Notification{Body: "Who's in for Saturday?", Category: "message"}.From(ana, chat))
+```
+
+- `n.From(sender, c)` makes `n` a message: `sender` said `n.Body` in
+  `c`. Its `ID` and `Thread` default to the conversation's `ID` (a 1:1
+  conversation's is the sender's), its `Title` to the sender's name (the
+  group's title, for a group).
+- A `Person` has an `ID` (the same each time), a `Name`, an `Image` (as
+  `ui.Image`'s sources) and `Bot`. A `Conversation` has its `ID`, a
+  group's `Title` and `Image`, `Group`, `Me` (the user as the
+  conversation shows them; Android names their replies with it, "You" by
+  default) and `Earlier` messages.
+- **Android** shows a conversation as one notification, its messages in
+  it: a message adds to the conversation's notification that shows (or
+  `Earlier` sets what comes before it). **iOS** shows each message as a
+  notification of its own, in the conversation's thread.
+- **iOS** needs the Communication Notifications capability on the App
+  ID: an app that calls `From` is given its entitlement and Info.plist's
+  `NSUserActivityTypes` (`INSendMessageIntent`), and a release build's
+  profile must have it. Without it, a message shows as a plain
+  notification. **macOS** shows a message as a plain notification.
+
+### Android's channels
+
+A channel is a kind of notification the user can turn off or quiet in
+the app's settings. Android shows a notification with its channel's
+sound, vibration and importance; iOS has no channels, and ignores them.
+
+```go
+notify.SetChannelGroups(notify.ChannelGroup{ID: "chats", Name: "Chats"})
+notify.SetChannels(
+	notify.Channel{ID: "messages", Name: "Messages", Importance: notify.ImportanceHigh, Group: "chats"},
+	notify.Channel{ID: "digest", Name: "Daily digest", Importance: notify.ImportanceLow, NoBadge: true},
+)
+```
+
+- `notify.SetChannels(cs...)` makes the channels, renames the ones made
+  before, and deletes those it made before that aren't in `cs`. A
+  channel's `Importance` (`ImportanceDefault`, `ImportanceHigh`: heads-up,
+  `ImportanceLow`: no sound, `ImportanceMin`), `Silent`, `NoVibration`
+  and `NoBadge` are its when it's made; after, they're the user's to
+  change. `notify.SetChannelGroups(gs...)` does the same for groups
+  (deleting a group deletes its channels). On the main thread.
+- A notification without a `Channel`, or with one that isn't, is in
+  the default channel ("Notifications"), which stays. A push names its
+  channel with FCM's `android.notification.channel_id`, or a data
+  message's `"channel"`.
+
+### The badge
+
+`notify.SetBadge(n)` sets the number on the app's icon; `0` takes it
+away. **iOS** and **macOS** (the Dock) show it as set. **Android** has no
+badge of its own: launchers that badge count the app's notifications (or
+show a dot), so the badge goes as they're read (`Remove`,
+`RemoveThread`), and `SetBadge` does nothing; a notification's `Badge`
+is the number a launcher may show. A channel with `NoBadge` doesn't
+count.
+
+### On each platform
+
+| | iOS | Android | macOS | Windows |
+|---|---|---|---|---|
+| Show, schedule, cancel | ✓ | ✓ | ✓ | ✗ |
+| Actions, replies | ✓ | ✓ | ✓ | ✗ |
+| Background actions | ✓ (about 25 s) | ✓ (about 9 s) | ✓ | ✗ |
+| Threads | ✓ | ✓ (a group and its summary) | ✓ | ✗ |
+| Channels | ignored | ✓ | ignored | ✗ |
+| Conversations | ✓ (communication notifications) | ✓ (MessagingStyle, shortcuts) | plain | ✗ |
+| Badge | ✓ | the launcher's | ✓ (the Dock) | ✗ |
+| Showing, removing | ✓ | ✓ | ✓ | ✗ |
+| Present | ✓ | ✓ | ✓ | ✗ |
+
+**macOS** needs the app's bundle (`ryui build -mac`): an executable run on
+its own (`go run`, `ryui dev -mac`) has no bundle ID, and its calls fail
+with an error that says so. **Windows** has no notifications yet: its
+toasts need the app registered with the shell (an AppUserModelID, a COM
+activator for actions), which `ryui build -windows` doesn't do; the calls
+fail with an error that says so.
 
 ## Sound: ryui/audio
 
@@ -973,6 +1328,77 @@ it in `ryui.json`:
 
 RyUI writes its settings into the app as Google's Gradle plugin would.
 Without it, `Register` fails with what to do.
+
+### Categories, threads and channels in a push
+
+A push uses `ryui/notify`'s categories (its actions, `notify.OnAction`),
+threads, channels, badge and `Present`, named in its payload:
+
+- **iOS**: `aps`'s `category`, `thread-id` and `badge`, as APNs has them.
+- **Android**: a notification message's `android.notification.channel_id`
+  and `image`; a data message's `"title"`, `"body"`, `"subtitle"`,
+  `"category"`, `"thread"`, `"summary"`, `"channel"`, `"image"`, `"badge"`
+  and `"url"`. A data message with a `"title"` or `"body"` shows as a
+  notification (RyUI builds it, with its actions); one without is
+  silent (`OnReceive` only). A notification message that comes while
+  the app is in the background is shown by Firebase, without actions or
+  a thread: send data messages for them.
+
+A `push.Message` has these too: `Subtitle`, `Category`, `Thread`,
+`Channel`, `Image`, `Badge`, `Summary`.
+
+### Rewriting a push before it shows
+
+`push.Rewrite(f)` has the app's Go code change each push before it
+shows: decrypt an end-to-end encrypted payload, set its title and body,
+attach an image, make it a message in a conversation with the sender's
+picture, set its thread and category. Call it in `main`, before
+`app.Run`.
+
+```go
+func main() {
+	push.Rewrite(func(m *push.Message) error {
+		text, from, err := decrypt(m.Data["box"]) // with a key in ryui/secure
+		if err != nil {
+			return err // shows the push as it came
+		}
+		m.Body = text
+		m.Category = "message"
+		m.From(notify.Person{ID: from.ID, Name: from.Name, Image: from.Avatar},
+			notify.Conversation{ID: m.Data["chat"]})
+		return nil
+	})
+	app.Run(App)
+}
+```
+
+`f` runs on its own goroutine, not the main thread. An error, or a
+panic, shows the push as it came. `m.Image` is downloaded and attached;
+`m.From` makes it a message, as `notify.Notification`'s `From` does.
+
+**iOS** rewrites in a Notification Service Extension, which `ryui build`
+makes for an app that calls `push.Rewrite`: it runs the app's Go code in
+a process of its own for each push with `"mutable-content": 1` in its
+`aps` (and an `alert`, which shows if the rewrite fails). `main` runs,
+then `f`; the root component doesn't, so keep `main` light. iOS gives it
+about 30 seconds and 24 MB, and shows the push as it came when time runs
+out. What the app keeps is the same there: its data (`ryui/store`, files
+in `store.Dir`) is in the App Group the two share, its keychain items
+(`ryui/secure`) in the app's group. A release build needs a provisioning
+profile for the extension's bundle ID, the app's plus `.notification`
+(`ryui.json`'s `ios.notificationProfile` names one; by default, the best
+match installed), with the App Groups capability and the app's group.
+A rewrite can't hide a push on iOS.
+
+**Android** rewrites FCM's data messages in the app's process: the Go
+code starts without a screen if the app isn't running, rewrites within
+about ten seconds, and the notification shows. A data message whose
+rewrite leaves no title or body doesn't show.
+
+Under `ryui dev`'s player there's no extension (the app's Go code runs on
+the computer): pushes show as they came. `ryui dev -ios -once` and a
+build have it. The simulator runs the extension only for pushes that
+come from APNs, not for `xcrun simctl push`.
 
 ## Sign in with Apple: ryui/appleauth
 
@@ -1404,3 +1830,115 @@ ui.Haptic(ui.HapticSuccess)
 ```
 
 See [Motion](motion.md) for feedback that goes with animation.
+
+## Crash reports: ryui/crash
+
+An app that imports `ryui/crash` keeps a report of each crash, and reads
+it on its next launch, to send where it likes: its own server, Sentry,
+Crashlytics. RyUI uploads nothing.
+
+```go
+func App() ui.Node {
+	crash.OnReport(func(r crash.Report) {
+		go func() {
+			if err := send(r); err == nil { // your upload: r is JSON
+				crash.Delete(r.ID)
+			}
+		}()
+	})
+	crash.Set("user", userID)
+	// ...
+}
+
+// Elsewhere, as the app goes:
+crash.Breadcrumb("opened the cart")
+crash.Record(err) // an error handled, reported too
+```
+
+`OnReport(f)` calls `f` on the main thread with each report kept, then
+with each that comes (a diagnostic iOS delivers a moment after launch,
+an error recorded), once each, until its `stop`. `Reports()` reads them
+all, oldest first (not on the main thread). A report stays until
+`Delete(id)`; past `MaxReports` (50) the oldest go. Its `ID` is the same
+each time it's read, so a server can tell one sent twice.
+
+What's reported, as a `Kind`:
+
+| | iOS | Android | macOS | Windows |
+|---|---|---|---|---|
+| `Go`: a panic not recovered, on any goroutine; a fatal error (a concurrent map write, a deadlock, out of memory) | ✓ | ✓ | ✓ | ✓ |
+| `Exception`: uncaught | NSException (Objective-C, Swift's `NSException`s) | a JVM `Throwable` | — | — |
+| `Native`: a signal, a Mach or Windows exception | MetricKit | the system's tombstone | MetricKit | the runtime's report |
+| `Hang` | MetricKit's hangs (not fatal), the watchdog | ANRs, with their traces | MetricKit | — |
+| `OutOfMemory` | the memory limit, when MetricKit says | low-memory kills | — | — |
+| `Resource` | CPU and disk-write exceptions (not fatal) | excessive resource use | MetricKit | — |
+| `NonFatal`: `Record(err)` | ✓ | ✓ | ✓ | ✓ |
+
+A Go crash is kept by Go's runtime itself (`runtime/debug.SetCrashOutput`,
+set as the app starts, before its `main`), with every goroutine's stack.
+An uncaught exception is written by the host's handler as the app ends
+(a handler set before, a crash SDK's, still runs after). The rest the
+system hands over on a later launch: iOS and macOS's MetricKit
+diagnostics, and Android's record of how the app's processes ended
+(`getHistoricalProcessExitReasons`, Android 11 and later; a native
+crash's tombstone from Android 12). A crash the system reports again
+after the host's handler did (iOS's SIGABRT of an uncaught exception,
+Android's `REASON_CRASH`) is left out.
+
+Each report has its `Context`: the app's version and build, the device's
+model and system, the process and how long it had run, whether it was in
+the foreground, and the last `Breadcrumb`s (`MaxBreadcrumbs`, 100) and
+the values `Set`. They're written to the app's data directory as they
+change, a line appended each (no sync, so as cheap as a write), the file
+rewritten when it's twice what it needs: they're on disk before the
+crash, whatever kills the app. The lifecycle's changes are breadcrumbs
+too ("app: background").
+
+A report's `Text` is what the platform gives (Go's crash output, a stack
+trace, a tombstone, an ANR's traces); its `Threads` are those stacks
+read into frames, the crashed one first. A Go frame has its function,
+file and line. A native one has its binary, the binary's UUID (Mach-O)
+or build ID (ELF), the address and its offset in the binary: what a
+service symbolicates with the build's symbols (see
+[Shipping](shipping.md#symbols-for-crash-reports)).
+
+**Sending to Sentry or Crashlytics.** For Sentry, make an event of each
+report (its envelope endpoint, `https://<host>/api/<project>/envelope/`
+with your DSN's key): `exception.values[0]` with the `Kind` as its
+`type`, the `Message` as its `value`, and the crashed thread's frames as
+its `stacktrace.frames`, outermost first (Sentry's order, the reverse of
+a `Thread`'s), each with `function`, `filename` and `lineno`, or
+`instruction_addr` and `package` for a native frame; and in
+`debug_meta.images` each binary of the frames, `{"type": "macho",
+"debug_id": BinaryID, "image_addr": Address-Offset}` (`"elf"` on
+Android), so the dSYMs or symbols you upload with `sentry-cli` apply.
+The `Context` goes in `contexts`, `tags` and `breadcrumbs`. Crashlytics
+has no public endpoint to send to: send the reports to your server, or
+record them in Crashlytics' SDK as non-fatal errors from your own native
+module ([Native code](native.md)). Either way, App Store review asks
+about crash data: if you send it, say so (`ios.collected` in
+`ryui.json`, `{"type": "CrashData", "purposes": ["AppFunctionality"]}`).
+
+**On each platform.** iOS links MetricKit only into an app that reads
+its reports (`crash.Reports` or `crash.OnReport`), and delivers its
+diagnostics to the app, not its share extension. An app with its own
+share sheet (`app.ShareSheet`) keeps the sheet's crashes with its own,
+in their App Group, and either reads them. MetricKit has a crash's process ID from iOS 17 on, which ties it
+to its run's context; before, it's the run that was last before it. It
+doesn't deliver on the simulator. Android needs nothing more; before
+Android 11 there's no record of native crashes and ANRs. macOS: MetricKit
+from macOS 12; an uncaught Objective-C exception that ends the app is
+MetricKit's crash (AppKit catches those of the main thread and logs
+them). Windows: Go's runtime handles every exception the process
+doesn't (its last handler): it prints the exception and the goroutines,
+and exits. Without a console (a release, built for the GUI), RyUI sends
+what the runtime prints to a file of the run's, which the next launch
+reads into a `Native` report. RyUI sets no unhandled exception filter of
+its own: Go's handler runs first, and replacing it would break Go's.
+Windows Error Reporting keeps its record as ever.
+
+**Under `ryui dev`** the Go code runs on your Mac (or PC): its crashes
+print in the terminal, as ever, and are kept there, so `crash.Reports`
+on the next run has them. The player's own native crashes aren't the
+app's, and aren't reported to it; a build of the app (`ryui dev -once`,
+`ryui build`) reports everything.

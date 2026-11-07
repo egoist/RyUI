@@ -68,9 +68,14 @@ type node struct {
 	alertStyle     int32
 	text           string // Text, TextField's last reported value
 	multiline      bool
-	plain          bool     // TextFieldProps.Plain
-	items          []string // Segmented, Wheel
-	source         string   // Image
+	plain          bool       // TextFieldProps.Plain
+	pasteTypes     []string   // TextFieldProps.PasteTypes
+	inset          [4]float32 // ContentInset: top, right, bottom, left points
+	selection      [2]uint    // a TextField's, as last reported or set (UTF-16)
+	selPending     bool       // the core set it while the field wasn't edited
+	selQueued      bool       // a report of its selection waits
+	items          []string   // Segmented, Wheel
+	source         string     // Image
 	placeholder    string
 	loaded         bool
 	imageMode      int32
@@ -79,6 +84,7 @@ type node struct {
 	cell           *cell
 	nav            *nav
 	rich           *rich
+	field          *richField // a Rich TextField's
 	shape          *shape
 	web            *web
 	video          *video
@@ -158,6 +164,7 @@ type Host struct {
 	appName      string
 	dark         bool
 	lists        map[ID]*list
+	editors      map[ID]ID         // each window's field editor (RyUIFieldEditor)
 	videos       map[ID]ops.NodeID // by AVPlayerItem
 	main         *win              // the main window, holding the root
 	wins         map[ID]*win       // the Windows' windows, by NSWindow
@@ -193,6 +200,7 @@ func newHost() *Host {
 		byView:      map[ID]*node{},
 		byMenu:      map[ID]*node{},
 		lists:       map[ID]*list{},
+		editors:     map[ID]ID{},
 		videos:      map[ID]ops.NodeID{},
 		a11yActions: map[ID]a11yAction{},
 		exiting:     map[ID]bool{},
@@ -224,9 +232,13 @@ func Run(root func() ui.Node) {
 	if !IsMainThread() {
 		panic("ryui: darwin.Run must be called from main, on the main thread")
 	}
+	Load()
+	WithPool(startCrash)
 	WithPool(func() {
 		h := newHost()
 		restoreState()
+		// ryui/notify: the center's delegate before launch ends.
+		h.installNotifications()
 		h.enter(func() { ui.Mount(h, root) })
 		if os.Getenv("RYUI_SNAPSHOT") != "" {
 			// Automation: shown, without taking the user's focus.
@@ -442,8 +454,10 @@ func (h *Host) release(n *node) {
 			n.video.close()
 		}
 		if n.scroll {
+			clip := Send(n.view, "contentView")
 			center := Send(Class("NSNotificationCenter"), "defaultCenter")
-			Send(center, "removeObserver:name:object:", uintptr(h.target), 0, uintptr(Send(n.view, "contentView")))
+			Send(center, "removeObserver:name:object:", uintptr(h.target), 0, uintptr(clip))
+			delete(h.lists, clip) // a list's: gone with its view
 		}
 		Release(n.view)
 		n.view = 0

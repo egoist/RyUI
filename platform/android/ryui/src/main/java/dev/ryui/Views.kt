@@ -50,6 +50,13 @@ class RyUINode(val id: Int, val kind: Int, var view: View) {
     /** A menu, an alert's buttons. */
     var actions: List<RyUIAction> = emptyList()
     var swipeActions: List<RyUIAction> = emptyList() // a list cell's
+    var leadingSwipeActions: List<RyUIAction> = emptyList() // a list cell's
+    var pasteTypes: ByteArray? = null // a text field's PasteTypes, to set again on a remade view
+    var richBytes: ByteArray? = null // a rich text field's text, likewise
+    /** ContentInset (dp: top, right, bottom, left): its padding and border, inside its frame. */
+    var contentInset: FloatArray? = null
+    /** The view's own padding (a field's background's), under ContentInset's. */
+    var basePadding: IntArray? = null
     var swipeA11y: Pair<View, List<Int>>? = null // the TalkBack actions made from them: the view, their IDs
     var menuTrigger = RyUIMenuTrigger.TAP
     var dialog: android.app.Dialog? = null
@@ -293,6 +300,8 @@ class RyUICell(context: Context) : RyUIContainer(context) {
     var ryuiID = 0
     var rowHeight = 0
     var binding = false // RecyclerView measures it right after binding
+    /** The row it's in, if it's a row's (not a header's). */
+    var row: RyUISwipeRow? = null
 
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
         setMeasuredDimension(MeasureSpec.getSize(widthSpec), rowHeight)

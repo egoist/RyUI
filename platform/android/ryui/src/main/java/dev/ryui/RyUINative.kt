@@ -14,6 +14,8 @@ object RyUINative {
     @JvmStatic external fun listUnbind(list: Int, cell: Int)
     @JvmStatic external fun runPosted()
     @JvmStatic external fun setenv(key: String, value: String)
+    @JvmStatic external fun crashStart(info: String): String
+    @JvmStatic external fun crashNotify()
 
     private var loaded = false
     private var loader: Thread? = null
@@ -54,5 +56,7 @@ object RyUINative {
         // Where the Go code keeps its files (ryui/store). A library from
         // before ryui_setenv hasn't it: nothing to set then.
         runCatching { setenv("RYUI_DATA", context.filesDir.absolutePath) }
+        // ryui/crash's record of the run, before the Go code's main.
+        RyUICrash.start(context)
     }
 }

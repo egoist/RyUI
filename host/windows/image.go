@@ -289,6 +289,9 @@ var symbols = map[string]uint16{
 	"doc.on.clipboard": 0xE77F, "arrow.triangle.2.circlepath": 0xE895, "arrow.uturn.backward": 0xE7A7,
 	"arrow.uturn.forward": 0xE7A6, "plus.circle": 0xE948, "plus.circle.fill": 0xE948, "minus.circle": 0xE949,
 	"person.circle": 0xE77B, "person.crop.circle.fill": 0xEA8C, "ellipsis.bubble": 0xE8BD,
+	// Formatting and mail, for composers.
+	"bold": 0xE8DD, "italic": 0xE8DB, "underline": 0xE8DC, "chevron.left.forwardslash.chevron.right": 0xE943,
+	"arrowshape.turn.up.left": 0xE8CA, "arrowshape.turn.up.left.2": 0xE8C2, "paperclip": 0xE723,
 }
 
 // symbolGlyph is a symbol's glyph left to right; 0 if the host has none.

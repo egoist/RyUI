@@ -258,8 +258,13 @@ func (v *view) block(b signal.Accessor[block], tight bool, quote int) ui.Node {
 								font = font.Weighted(ui.Semibold)
 							}
 							pad := th.TableCellPadding
+							// Aligned as its column says, on the page: a
+							// change of the app's direction flips it.
+							text := ui.StyleFunc(func() ui.Style {
+								return ui.Style{Font: font, Color: th.Text, TextAlign: tableAlign(d, signal.Untrack(r.Get).i, signal.Untrack(ci.Get))}
+							})
 							return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(th.TableColumnWidth), Padding: ui.Symmetric(pad[1], pad[0]), BorderWidth: 0.5, BorderColor: th.TableBorder}},
-								ui.RichText(ui.RichTextProps{OnLink: v.p.OnLink, Style: ui.Style{Font: font, Color: th.Text, TextAlign: tableAlign(d, signal.Untrack(r.Get).i, signal.Untrack(ci.Get))},
+								ui.RichText(ui.RichTextProps{OnLink: v.p.OnLink, Style: text,
 									Text: signal.Func(func() ui.Rich { return v.spans(c.Get().i) })}))
 						}))
 				})))

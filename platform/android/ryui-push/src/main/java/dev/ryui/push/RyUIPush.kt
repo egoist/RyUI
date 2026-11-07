@@ -1,19 +1,15 @@
 package dev.ryui.push
 
 import android.Manifest
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
+import android.content.pm.PackageManager
 import android.os.Build
-import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import dev.ryui.RyUIPlugin
+import dev.ryui.RyUINotifications
 import dev.ryui.RyUIPushHub
 import dev.ryui.RyUIRuntime
 import dev.ryui.withPermission
@@ -44,48 +40,50 @@ class RyUIPushPlugin : RyUIPlugin {
  * Firebase's messages. In the background, Firebase shows a notification
  * message itself, and a tap opens the app with its data as extras
  * (RyUIActivity hands them to RyUIPushHub); this sees data messages, and
- * every message while the app is in the foreground, which it shows the
- * same way.
+ * every message while the app is in the foreground. It shows them with
+ * ryui/notify's builder: a notification message, and a data message with
+ * a "title" or "body" (its "channel", "category", "thread", "image"...).
+ * With push.Rewrite (the manifest's dev.ryui.push.rewrite), the Go code
+ * rewrites each first, started without a screen if the app isn't running.
  */
 class RyUIPushService : FirebaseMessagingService() {
     override fun onMessageReceived(m: RemoteMessage) {
         val n = m.notification
         val id = m.messageId ?: java.util.UUID.randomUUID().toString()
-        RyUIPushHub.deliver("nextReceived", RyUIPushHub.message(id, n?.title ?: "", n?.body ?: "", m.data))
-        if (n != null) show(this, id, n.title ?: "", n.body ?: "", m.data)
+        val message = RyUIPushHub.messageJSON(id, n?.title ?: m.data["title"].orEmpty(), n?.body ?: m.data["body"].orEmpty(), m.data,
+            n?.channelId, n?.imageUrl?.toString())
+        RyUIPushHub.deliver("nextReceived", message.toString().toByteArray())
+        var spec = if (n != null || m.data["title"] != null || m.data["body"] != null) specOf(message) else null
+        if (rewrites(this)) RyUIPushHub.rewrite(RyUIRuntime.get(this), message, REWRITE_SECONDS)?.let { spec = it }
+        val s = spec ?: return
+        if (s.optString("title").isEmpty() && s.optString("body").isEmpty()) return
+        // The push's id for its tap (push.OnOpen), whatever the notification's is.
+        s.put("ryui.message", id)
+        if (s.optString("url").isEmpty()) m.data["url"]?.let { s.put("url", it) }
+        RyUINotifications.show(this, s, remote = true)
     }
 
     // A new token: the app sends it on its next Register.
     override fun onNewToken(token: String) {}
 
     companion object {
-        @android.annotation.SuppressLint("MissingPermission")
-        fun show(ctx: Context, id: String, title: String, body: String, data: Map<String, String>) {
-            val nm = NotificationManagerCompat.from(ctx)
-            if (!nm.areNotificationsEnabled()) return
-            val sys = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            if (sys.getNotificationChannel("ryui") == null) {
-                sys.createNotificationChannel(NotificationChannel("ryui", "Notifications", NotificationManager.IMPORTANCE_DEFAULT))
-            }
-            // A tap opens the app as Firebase's tray notifications do: the data as extras.
-            val open = (ctx.packageManager.getLaunchIntentForPackage(ctx.packageName) ?: Intent()).apply {
-                for ((k, v) in data) putExtra(k, v)
-                putExtra("google.message_id", id).putExtra("ryui.title", title).putExtra("ryui.body", body)
-                data["url"]?.let { action = Intent.ACTION_VIEW; setData(Uri.parse(it)) }
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            }
-            val tap = PendingIntent.getActivity(ctx, id.hashCode(), open, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-            val notification = NotificationCompat.Builder(ctx, "ryui")
-                .setSmallIcon(ctx.applicationInfo.icon)
-                .setContentTitle(title)
-                .setContentText(body)
-                .setAutoCancel(true)
-                .setContentIntent(tap)
-                .build()
-            try {
-                nm.notify(id, 0, notification)
-            } catch (_: SecurityException) {
-            }
+        /** What Firebase gives onMessageReceived is about 20 seconds: the rewrite has half. */
+        const val REWRITE_SECONDS = 10L
+
+        /** The message as it came, as the notification to show (a notifyspec.Spec). */
+        fun specOf(message: JSONObject): JSONObject = JSONObject()
+            .put("id", message.optString("id")).put("title", message.optString("title")).put("body", message.optString("body"))
+            .put("subtitle", message.optString("subtitle")).put("data", message.optJSONObject("data") ?: JSONObject())
+            .put("category", message.optString("category")).put("thread", message.optString("thread"))
+            .put("summary", message.optString("summary")).put("channel", message.optString("channel"))
+            .put("image", message.optString("image")).put("badge", message.optInt("badge"))
+
+        /** Whether the app rewrites its pushes (push.Rewrite): the CLI says so in the manifest. */
+        fun rewrites(ctx: Context): Boolean = try {
+            val ai = ctx.packageManager.getApplicationInfo(ctx.packageName, PackageManager.GET_META_DATA)
+            ai.metaData?.getBoolean("dev.ryui.push.rewrite") == true
+        } catch (_: Exception) {
+            false
         }
     }
 }

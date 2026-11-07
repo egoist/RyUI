@@ -60,12 +60,15 @@ and give its password in RYUI_KEYSTORE_PASSWORD (and RYUI_KEY_PASSWORD if the ke
 		if a.goarm != "" {
 			env = append(env, "GOARM="+a.goarm)
 		}
-		if err := tc.run(app.dir, env, "go", "build", "-buildmode=c-shared", "-trimpath", app.cfg.ldflags(true),
+		// The symbol table stays, for the native debug symbols: Gradle
+		// strips the libraries it packages (with the NDK the build names).
+		if err := tc.run(app.dir, env, "go", "build", "-buildmode=c-shared", "-trimpath", app.cfg.ldflagsStrip("-w"),
 			"-overlay", ov, "-o", out, "."); err != nil {
 			return fmt.Errorf("%s: %v", a.abi, err)
 		}
 		os.Remove(strings.TrimSuffix(out, ".so") + ".h")
 		cfg.shareSheet = hasSheet(out)
+		cfg.pushRewrite = hasSymbol(out, rewriteSymbol)
 	}
 
 	res := filepath.Join(work, "res")
@@ -87,6 +90,12 @@ and give its password in RYUI_KEYSTORE_PASSWORD (and RYUI_KEY_PASSWORD if the ke
 		return err
 	}
 
+	// The host's sources and Gradle build are shared: one build at a time.
+	unlock, err := lockShared(androidHostDir(work))
+	if err != nil {
+		return err
+	}
+	defer unlock()
 	src, _, err := prepareAndroidHost(app, work)
 	if err != nil {
 		return err
@@ -95,7 +104,7 @@ and give its password in RYUI_KEYSTORE_PASSWORD (and RYUI_KEY_PASSWORD if the ke
 		"-PryuiApplicationId=" + androidPackage(cfg.ID), "-PryuiAppName=" + cfg.androidLabel(),
 		"-PryuiVersionCode=" + strconv.Itoa(cfg.Build), "-PryuiVersionName=" + cfg.Version,
 		"-PryuiIcon=" + icon, "-PryuiJniLibs=" + jni, "-PryuiRes=" + res, "-PryuiManifest=" + manifest,
-		"-PryuiKeystore=" + keystore, "-PryuiKeyAlias=" + alias, cfg.gradleModules()}
+		"-PryuiKeystore=" + keystore, "-PryuiKeyAlias=" + alias, "-PryuiNdkVersion=" + filepath.Base(tc.ndk), cfg.gradleModules()}
 	// Passwords go in the environment, not on a command line.
 	secrets := []string{"ORG_GRADLE_PROJECT_ryuiKeystorePassword=" + storePass}
 	if kp := os.Getenv("RYUI_KEY_PASSWORD"); kp != "" {
@@ -109,15 +118,28 @@ and give its password in RYUI_KEYSTORE_PASSWORD (and RYUI_KEY_PASSWORD if the ke
 		return err
 	}
 	name := safeName(cfg.Name)
-	outs := map[string]string{
-		filepath.Join(src, "app", "build", "outputs", "bundle", "release", "app-release.aab"): filepath.Join(o.out, name+".aab"),
-		filepath.Join(src, "app", "build", "outputs", "apk", "release", "app-release.apk"):    filepath.Join(o.out, name+".apk"),
+	built := filepath.Join(src, "app", "build", "outputs")
+	outs := []struct {
+		from, to string
+		optional bool
+	}{
+		{filepath.Join(built, "bundle", "release", "app-release.aab"), name + ".aab", false},
+		{filepath.Join(built, "apk", "release", "app-release.apk"), name + ".apk", false},
+		// For a crash service (the .aab has both for Google Play): the Go
+		// code's and the host's native symbols, and R8's map of the
+		// Kotlin it renamed.
+		{filepath.Join(built, "native-debug-symbols", "release", "native-debug-symbols.zip"), name + "-native-debug-symbols.zip", true},
+		{filepath.Join(built, "mapping", "release", "mapping.txt"), name + "-mapping.txt", true},
 	}
-	for from, to := range outs {
-		data, err := os.ReadFile(from)
+	for _, f := range outs {
+		data, err := os.ReadFile(f.from)
 		if err != nil {
+			if f.optional {
+				continue
+			}
 			return err
 		}
+		to := filepath.Join(o.out, f.to)
 		if err := os.WriteFile(to, data, 0o644); err != nil {
 			return err
 		}

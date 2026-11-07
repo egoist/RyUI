@@ -241,7 +241,7 @@ func (t *iosToolchain) buildWidgets(work string, cfg *appConfig) (string, error)
 	}
 	opt := []string{"-Onone", "-D", "DEBUG"}
 	if t.release {
-		opt = []string{"-O", "-Xlinker", "-dead_strip"}
+		opt = []string{"-O", "-g", "-Xlinker", "-dead_strip"}
 	}
 	// An extension, with the extension-safe APIs only. Its entry point is
 	// NSExtensionMain, as Xcode links one (the @main WidgetBundle's main
@@ -275,7 +275,7 @@ func (t *iosToolchain) buildWidgets(work string, cfg *appConfig) (string, error)
 	}
 	dir := filepath.Join(filepath.Dir(filepath.Dir(work)), "ios-widgets", hex.EncodeToString(h.Sum(nil))[:16])
 	exe := filepath.Join(dir, widgetExe)
-	if exists(exe) {
+	if t.cached(exe) {
 		return exe, nil
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -292,7 +292,10 @@ func (t *iosToolchain) buildWidgets(work string, cfg *appConfig) (string, error)
 	if err := t.run(dir, nil, "xcrun", args...); err != nil {
 		return "", err
 	}
-	return exe, os.Rename(exe+".tmp", exe)
+	if err := os.Rename(exe+".tmp", exe); err != nil {
+		return "", err
+	}
+	return exe, t.cacheSymbols(exe)
 }
 
 // widgetInfo is the extension's Info.plist: its ID and WidgetKit's
@@ -414,13 +417,14 @@ func (t *iosToolchain) buildShortcuts(work string, cfg *appConfig) (obj, src, co
 	if err := os.WriteFile(protocols, []byte(constProtocols), 0o644); err != nil {
 		return "", "", "", err
 	}
-	opt := "-Onone"
+	opt := []string{"-Onone"}
 	if t.release {
-		opt = "-O"
+		opt = []string{"-O", "-g"}
 	}
-	err = t.run(dir, nil, "xcrun", "swiftc", "-target", t.target, "-sdk", t.sdk, "-swift-version", "5", opt,
+	args := append([]string{"swiftc", "-target", t.target, "-sdk", t.sdk, "-swift-version", "5"}, opt...)
+	err = t.run(dir, nil, "xcrun", append(args,
 		"-module-name", shortcutsModule, "-parse-as-library", "-wmo", "-c", "-o", obj, src,
-		"-Xfrontend", "-const-gather-protocols-file", "-Xfrontend", protocols, "-emit-const-values-path", consts)
+		"-Xfrontend", "-const-gather-protocols-file", "-Xfrontend", protocols, "-emit-const-values-path", consts)...)
 	return obj, src, consts, err
 }
 

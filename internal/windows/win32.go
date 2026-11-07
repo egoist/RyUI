@@ -649,6 +649,13 @@ const (
 	ES_WANTRETURN      = 0x1000
 	ES_NUMBER          = 0x2000
 	EM_GETSEL          = 0x00B0
+	EM_REPLACESEL      = 0x00C2
+	WM_CUT             = 0x0300
+	WM_PASTE           = 0x0302
+	WM_CLEAR           = 0x0303
+	WM_UNDO            = 0x0304
+	CF_DIB             = 8
+	CF_DIBV5           = 17
 	EM_SETSEL          = 0x00B1
 	EM_GETRECT         = 0x00B2
 	EM_SETRECT         = 0x00B3

@@ -384,7 +384,10 @@ func (h *Host) makeEdit(n *node) {
 		ex = WS_EX_RTLREADING
 	}
 	old := n.ctl
-	n.ctl = CreateWindow(ex, "EDIT", "", style, 0, 0, 0, 0, n.hwnd, 1)
+	if n.richText {
+		style |= ES_NOHIDESEL
+	}
+	n.ctl = CreateWindow(ex, h.richClass(n), "", style, 0, 0, 0, 0, n.hwnd, 1)
 	SendMessage(n.ctl, WM_SETFONT, h.nodeFont(n), 0)
 	SendMessage(n.ctl, EM_SETMARGINS, EC_LEFTMARGIN|EC_RIGHTMARGIN, 0)
 	h.byHwnd[n.ctl] = n
@@ -409,6 +412,7 @@ func (h *Host) makeEdit(n *node) {
 	Subclass(ctl, func(hwnd uintptr, m uint32, w, l uintptr) uintptr {
 		return h.editMessage(hwnd, m, w, l)
 	})
+	h.setupRichEdit(n)
 	h.layoutField(n)
 }
 
@@ -465,6 +469,13 @@ func (h *Host) editMessage(hwnd uintptr, m uint32, w, l uintptr) uintptr {
 	n := h.byHwnd[hwnd]
 	if n == nil {
 		return DefSubclass(hwnd, m, w, l)
+	}
+	if m == WM_PASTE && h.pasteContent(n) {
+		h.checkSelection(n)
+		return 0
+	}
+	if movesSelection(m, w) {
+		defer h.checkSelection(n)
 	}
 	switch m {
 	case WM_GETDLGCODE:
@@ -544,6 +555,12 @@ func (h *Host) setField(n *node, p ops.PropID, v *ops.Value) {
 		}
 		SendMessage(n.ctl, EM_SETPASSWORDCHAR, ch, 0)
 		Invalidate(n.ctl)
+	case ops.PropTextFieldSelection:
+		h.setSelection(n, v.Bytes)
+	case ops.PropTextFieldPasteTypes:
+		n.pasteTypes = decodeStrings(v.Bytes)
+	case ops.PropTextFieldRich:
+		h.setRichText(n, v.Bytes)
 	case ops.PropTextFieldPlain:
 		n.plain = v.Int != 0
 		h.layoutField(n)
@@ -574,6 +591,7 @@ func (h *Host) layoutField(n *node) {
 	r := ClientRect(n.hwnd)
 	switch n.kind {
 	case ops.KindTextField:
+		r = h.insetRect(n, r) // inside its padding (ContentInset)
 		dc := h.measureDC
 		old := SelectObject(dc, h.nodeFont(n))
 		tm := TextMetrics(dc)
@@ -583,11 +601,11 @@ func (h *Host) layoutField(n *node) {
 			x, y = 0, 0 // the text alone
 		}
 		if n.multiline {
-			SetWindowPos(n.ctl, 0, x, y, max(r.W()-2*x, 1), max(r.H()-2*y, 1), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
+			SetWindowPos(n.ctl, 0, r.Left+x, r.Top+y, max(r.W()-2*x, 1), max(r.H()-2*y, 1), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 		} else {
 			lh := tm.Height
-			y := (r.H() - lh) / 2
-			SetWindowPos(n.ctl, 0, x, y, max(r.W()-2*x, 1), lh, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
+			y := r.Top + (r.H()-lh)/2
+			SetWindowPos(n.ctl, 0, r.Left+x, y, max(r.W()-2*x, 1), lh, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 		}
 	case ops.KindWheel:
 		// The selection field fills the view; the list drops below it.

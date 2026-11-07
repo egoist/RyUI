@@ -316,6 +316,7 @@ fun RyUIRuntime.propBool(id: Int, prop: Int, v: Boolean) {
         RyUIProp.HIDDEN -> view.visibility = if (v) View.INVISIBLE else View.VISIBLE
         RyUIProp.CLIP -> { view.clipToOutline = v; (view as? android.view.ViewGroup)?.clipChildren = v }
         RyUIProp.DISABLED -> view.isEnabled = !v
+        RyUIProp.SELECTED -> (view as? RyUICell)?.row?.setChosen(v)
         RyUIProp.A11Y_ADJUSTABLE -> if (v) setAdjustable(n)
         RyUIProp.A11Y_HIDDEN -> view.importantForAccessibility =
             if (v) View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS else View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
@@ -492,6 +493,7 @@ fun RyUIRuntime.propEnum(id: Int, prop: Int, v: Int) {
     if (n.kind == RyUIKind.SHAPE && setShapeProp(n, prop, v)) return
     if (prop == RyUIProp.MATERIAL) { n.material = v; applyBackground(n); return }
     if (n.kind == RyUIKind.LIST && prop == RyUIProp.List.APPEARANCE) { n.list?.let { it.setAppearance(v, it.inset) }; return }
+    if (n.kind == RyUIKind.LIST && prop == RyUIProp.List.ANCHOR) { n.list?.setAnchor(v); return }
     if (n.kind == RyUIKind.DATE_PICKER && prop == RyUIProp.DatePicker.MODE) { (n.view as RyUIDatePicker).mode = v; return }
     val view = n.view
     when (prop) {
@@ -561,6 +563,39 @@ fun RyUIRuntime.propEnum(id: Int, prop: Int, v: Int) {
     }
 }
 
+// Padding
+
+/**
+ * ContentInset: a text, a field or an image draws its content inside its
+ * padding and border (the view's padding, on top of its own: a field's
+ * background's). Measurements are of the content alone (measureNode).
+ * Centered content (a button's title, a symbol) needs none.
+ */
+fun RyUIRuntime.applyContentInset(n: RyUINode) {
+    val ci = n.contentInset ?: return
+    val d = density
+    val t = Math.round(ci[0] * d)
+    val r = Math.round(ci[1] * d)
+    val b = Math.round(ci[2] * d)
+    val l = Math.round(ci[3] * d)
+    when (val v = n.view) {
+        is RyUIRichText -> v.setInset(l, t, r)
+        is com.google.android.material.button.MaterialButton -> {}
+        is TextView, is android.widget.ImageView -> {
+            val base = n.basePadding ?: intArrayOf(v.paddingLeft, v.paddingTop, v.paddingRight, v.paddingBottom).also { n.basePadding = it }
+            v.setPadding(base[0] + l, base[1] + t, base[2] + r, base[3] + b)
+        }
+    }
+}
+
+/** The padding ContentInset added to a view, in px (horizontal, vertical): what its measurement leaves out. */
+private fun RyUIRuntime.insetPx(n: RyUINode): Pair<Int, Int> {
+    val ci = n.contentInset ?: return 0 to 0
+    if (n.basePadding == null) return 0 to 0
+    val d = density
+    return (Math.round(ci[1] * d) + Math.round(ci[3] * d)) to (Math.round(ci[0] * d) + Math.round(ci[2] * d))
+}
+
 // Measuring
 
 /** Measures a view's content in dp: known sizes (NaN: free) and the space available. */
@@ -599,13 +634,18 @@ fun RyUIRuntime.measureNode(n: RyUINode, w: Float, h: Float, aw: Float, ah: Floa
             minW = ceil(widest).toInt() + v.totalPaddingLeft + v.totalPaddingRight
         }
     }
-    var ws = spec(w, aw, minW)
+    // Its padding (ContentInset) is the core's to add: measured with room
+    // for it, then without it.
+    val (px, py) = insetPx(n)
+    fun grow(spec: Int, by: Int): Int = if (by == 0 || View.MeasureSpec.getMode(spec) == View.MeasureSpec.UNSPECIFIED) spec
+        else View.MeasureSpec.makeMeasureSpec(View.MeasureSpec.getSize(spec) + by, View.MeasureSpec.getMode(spec))
+    var ws = grow(spec(w, aw, if (minW >= 0) minW - px else minW), px)
     if (v is Slider && w.isNaN()) {
         ws = View.MeasureSpec.makeMeasureSpec(Math.round((if (aw.isFinite()) maxOf(aw, 0f) else 200f) * d), View.MeasureSpec.EXACTLY)
     }
-    v.measure(ws, spec(h, ah, -1))
-    var mw = v.measuredWidth / d
-    var mh = v.measuredHeight / d
+    v.measure(ws, grow(spec(h, ah, -1), py))
+    var mw = maxOf(v.measuredWidth - px, 0) / d
+    var mh = maxOf(v.measuredHeight - py, 0) / d
     if (v is EditText && aw == Float.NEGATIVE_INFINITY && w.isNaN()) mw = 80f
     if (!w.isNaN()) mw = w
     if (!h.isNaN()) mh = h

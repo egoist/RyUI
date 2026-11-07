@@ -62,6 +62,9 @@ func registerClasses() {
 		Method("accessibilityPerformDecrement", func(self ID, _ SEL) bool { return theHost.adjust(self, -1) }),
 		Method("menuForEvent:", func(self ID, _ SEL, ev ID) ID {
 			n := theHost.byView[self]
+			if n != nil && n.cell != nil && n.menu == 0 {
+				return theHost.cellMenu(n.cell) // a row's swipe actions
+			}
 			if n == nil || n.menu == 0 || n.menuTrigger != int32(ops.MenuTriggerLongPress) {
 				return 0
 			}
@@ -78,15 +81,49 @@ func registerClasses() {
 			ok := byte(SendSuper(self, cls, "becomeFirstResponder")) != 0
 			if n := theHost.byView[self]; ok && n != nil {
 				theHost.emit(n, ops.Event{Kind: ops.EventFocus})
+				theHost.applyPendingSelection(n)
 			}
 			return ok
 		})
 	}
 	DefineClass("RyUITextField", "NSTextField", nil, []objc.MethodDef{focus("RyUITextField")})
+	// A one-line field's cell: its text, placeholder and field editor
+	// inside the field's padding (ContentInset), as AppKit lays them out
+	// in what this returns.
+	DefineClass("RyUITextFieldCell", "NSTextFieldCell", nil, []objc.MethodDef{
+		Method("drawingRectForBounds:", func(self ID, _ SEL, b Rect) Rect {
+			r := SendSuperRect(self, "RyUITextFieldCell", "drawingRectForBounds:", b)
+			if n := theHost.byView[Send(self, "controlView")]; n != nil {
+				in := n.inset
+				r.Origin.X += float64(in[3])
+				r.Origin.Y += float64(in[0])
+				r.Size.Width = max(r.Size.Width-float64(in[1]+in[3]), 0)
+				r.Size.Height = max(r.Size.Height-float64(in[0]+in[2]), 0)
+			}
+			return r
+		}),
+	})
+	DefineClass("RyUIFieldEditor", "NSTextView", nil, fieldEditorMethods())
 	DefineClass("RyUISecureField", "NSSecureTextField", nil, []objc.MethodDef{focus("RyUISecureField")})
 	DefineClass("RyUILabel", "NSTextField", nil, []objc.MethodDef{
 		// Clicks go to the view under the label (a pressable row).
 		Method("hitTest:", func(self ID, _ SEL, p Point) ID { return 0 }),
+		// Its text inside its padding (ContentInset), as NSTextField draws
+		// its cell, in its bounds less the inset.
+		Method("drawRect:", func(self ID, _ SEL, dirty Rect) {
+			b := MsgRect(self, Sel("bounds"))
+			if n := theHost.byView[self]; n != nil {
+				in := n.inset
+				b.Origin.X += float64(in[3])
+				b.Origin.Y += float64(in[0])
+				if !SendBool(self, "isFlipped") {
+					b.Origin.Y = b.Origin.Y - float64(in[0]) + float64(in[2])
+				}
+				b.Size.Width = max(b.Size.Width-float64(in[1]+in[3]), 0)
+				b.Size.Height = max(b.Size.Height-float64(in[0]+in[2]), 0)
+			}
+			MsgRectIDVoid(Send(self, "cell"), Sel("drawWithFrame:inView:"), b, self)
+		}),
 	})
 	DefineClass("RyUIImageView", "NSImageView", nil, []objc.MethodDef{
 		Method("hitTest:", func(self ID, _ SEL, p Point) ID { return 0 }),
@@ -175,6 +212,8 @@ func registerTarget() {
 			return h().textCommand(control, tv, cmd)
 		}),
 		Method("textDidChange:", func(self ID, _ SEL, n ID) { h().textViewChanged(Send(n, "object")) }),
+		Method("textSelectionChanged:", func(self ID, _ SEL, n ID) { h().selectionChanged(Send(n, "object")) }),
+		Method("windowWillReturnFieldEditor:toObject:", func(self ID, _ SEL, w, obj ID) ID { return h().fieldEditor(w, obj) }),
 		Method("textDidBeginEditing:", func(self ID, _ SEL, n ID) {
 			if v := h().textViewNode(Send(n, "object")); v != nil {
 				h().emit(v, ops.Event{Kind: ops.EventFocus})
@@ -194,6 +233,7 @@ func registerTarget() {
 	}
 	methods = append(methods, webMethods()...)
 	methods = append(methods, navMethods()...)
+	methods = append(methods, previewMethods()...)
 	DefineClass("RyUITarget", "NSObject", []string{
 		"NSApplicationDelegate", "NSWindowDelegate", "NSTextFieldDelegate", "NSTextViewDelegate",
 		"NSTabViewDelegate", "NSMenuDelegate", "NSGestureRecognizerDelegate",

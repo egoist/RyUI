@@ -81,12 +81,13 @@ func (s shareTarget) files() bool {
 
 // appGroup is the App Group the app shares with its extensions: the one
 // the share extension leaves files in for the app, when it takes files;
-// where an app with a share sheet keeps its data for both; where the app
+// where an app with a share sheet or a push rewrite keeps its data for
+// it and its extension; where the app
 // leaves its widgets' entries for the widget extension ("" if none). A
 // device build's profiles must have it, the app's and the extensions'
 // (the App Groups capability).
 func (c *appConfig) appGroup() string {
-	if !c.ShareTarget.files() && !(c.ShareTarget.on && c.shareSheet) && len(c.Widgets) == 0 {
+	if !c.ShareTarget.files() && !(c.ShareTarget.on && c.shareSheet) && len(c.Widgets) == 0 && !c.pushRewrite {
 		return ""
 	}
 	return "group." + c.ID
@@ -229,10 +230,10 @@ var mimeUTIs = map[string]string{
 }
 
 // keychainGroup is the keychain access group of an app with a share
-// sheet, which the sheet's extension has too ("" without one: the
-// profile's).
+// sheet or a push rewrite, which their extension has too ("" without
+// either: the profile's).
 func (c *appConfig) keychainGroup(team string) string {
-	if !c.ShareTarget.on || !c.shareSheet {
+	if !(c.ShareTarget.on && c.shareSheet) && !c.pushRewrite {
 		return ""
 	}
 	return team + "." + c.ID

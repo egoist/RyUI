@@ -11,6 +11,7 @@
 package windows
 
 import (
+	"github.com/egoist/ryui/internal/rtf"
 	"fmt"
 	"math"
 	"os"
@@ -93,6 +94,21 @@ type node struct {
 	multiline      bool
 	plain          bool   // TextFieldProps.Plain
 	settingText    bool   // the field's text is being set from the core
+	pasteTypes     []string  // TextFieldProps.PasteTypes
+	// A Rich TextField's (richfield.go): its control is a rich edit, the
+	// styled text the core sent, its runs as last read, and the formats
+	// last reported.
+	richText     bool
+	richContent  []byte
+	richDoc      rtf.Doc                  // the defaults its RTF was written with
+	richColors   map[rtf.Color]ops.Color // the colors its spans were sent with, by what they were drawn in
+	fieldRuns    []fieldRun
+	formatsKnown bool
+	formats      byte
+	formatLink   string
+	inset          [4]float32 // ContentInset: top, right, bottom, left points
+	selection      [2]uint32 // a TextField's, as last reported or set (UTF-16, the core's text)
+	selQueued      bool      // a report of its selection waits
 	editRTL        bool   // its EDIT was made right to left
 	editSide       uint32 // and with this alignment style
 	secure         bool
@@ -279,6 +295,7 @@ func newHost() *Host {
 // Run runs root as the app's window until it's closed. Main thread: call
 // it from main.
 func Run(root func() ui.Node) {
+	startCrash()
 	h := newHost()
 	restoreState()
 	h.enter(func() { ui.Mount(h, root) })

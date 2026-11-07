@@ -16,13 +16,19 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         }
     }
 
-    #if RYUI_PERIODIC
-    // ryui/periodic: its tasks' handlers, which the system wants before launch ends.
     func application(_ application: UIApplication, didFinishLaunchingWithOptions options: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        #if RYUI_PERIODIC
+        // ryui/periodic: its tasks' handlers, which the system wants before launch ends.
         RyUIPeriodic.shared.registerAtLaunch()
+        #endif
+        #if RYUI_NOTIFY || RYUI_PUSH || RYUI_NOTIFICATION_SERVICE
+        // ryui/notify, ryui/push: the center's delegate before launch
+        // ends, to see the response that launched the app (a background
+        // action launches it without a scene).
+        RyUINotifyCenter.shared.install()
+        #endif
         return true
     }
-    #endif
 
     func application(_ application: UIApplication, configurationForConnecting session: UISceneSession,
                      options: UIScene.ConnectionOptions) -> UISceneConfiguration {

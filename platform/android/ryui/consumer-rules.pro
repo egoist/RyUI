@@ -6,3 +6,5 @@
 -keep class * implements dev.ryui.RyUINativeModule { *; }
 # The optional modules' plugins, found by name.
 -keep class * implements dev.ryui.RyUIPlugin { <init>(); }
+# ryui/print's PDF writer subclasses the print callbacks in their package.
+-keep class android.print.RyUIPdfWriter** { *; }

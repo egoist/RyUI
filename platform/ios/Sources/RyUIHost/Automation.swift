@@ -108,7 +108,7 @@ import RyUIOps
     static func find(_ text: String) -> RyUINode? {
         rt.nodes.values.sorted(by: { $0.id < $1.id }).first { n in
             switch n.view {
-            case let b as UIButton: return b.configuration?.title == text
+            case let b as UIButton: return b.configuration?.title == text || b.accessibilityLabel == text
             case let l as UILabel: return l.text == text
             default: return n.view.accessibilityLabel == text
             }
@@ -144,20 +144,32 @@ import RyUIOps
         s.layoutIfNeeded()
     }
 
-    static func field() -> RyUITextField? {
-        let fields = rt.nodes.values.sorted(by: { $0.id < $1.id }).compactMap { $0.view as? RyUITextField }
+    /// The field typed into: the one with the keyboard, else the first; a
+    /// one-line field's UITextField or a multiline one's text view.
+    static func field() -> UIView? {
+        let fields = rt.nodes.values.sorted(by: { $0.id < $1.id }).compactMap { n -> UIView? in
+            (n.view as? RyUITextField) ?? (n.view as? RyUITextView)
+        }
         return fields.first(where: { $0.isFirstResponder }) ?? fields.first
     }
 
     static func type(_ text: String) {
-        guard let f = field() else { return }
-        f.becomeFirstResponder()
-        f.text = text
-        f.sendActions(for: .editingChanged)
+        switch field() {
+        case let f as RyUITextField:
+            f.becomeFirstResponder()
+            f.text = text
+            f.sendActions(for: .editingChanged)
+        case let t as RyUITextView:
+            t.becomeFirstResponder()
+            t.text = text
+            rt.textViewDidChange(t)
+        default:
+            break
+        }
     }
 
     static func submit() {
-        guard let f = field() else { return }
+        guard let f = field() as? RyUITextField else { return }
         _ = rt.textFieldShouldReturn(f)
     }
 }

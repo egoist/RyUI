@@ -6,13 +6,14 @@ import (
 	"strconv"
 )
 
-// An app with a share sheet (app.ShareSheet) runs its Go code and the
-// host in two processes, the app's and its share extension's. Both are
-// in one dynamic framework, Frameworks/RyUIApp.framework, as Xcode
+// An app with a share sheet (app.ShareSheet) or a push rewrite
+// (push.Rewrite) runs its Go code and the host in more than one process:
+// the app's, and its share extension's or its Notification Service
+// Extension's. All are in one dynamic framework, Frameworks/RyUIApp.framework, as Xcode
 // shares code between an app and its extensions: the app's executable is
 // a main that starts the host's app delegate, the extension's links the
 // framework and starts at NSExtensionMain. Go's runtime starts as the
-// framework loads, in either. An app without a sheet is one executable.
+// framework loads, in each. An app without either is one executable.
 
 const (
 	fwName = "RyUIApp" // the framework, and its binary
@@ -20,7 +21,7 @@ const (
 )
 
 // sharedLayout reports whether cfg's app is built with the framework.
-func (c *appConfig) sharedLayout() bool { return c.ShareTarget.on && c.shareSheet }
+func (c *appConfig) sharedLayout() bool { return c.ShareTarget.on && c.shareSheet || c.pushRewrite }
 
 // appMain is the app's executable with the framework: UIApplicationMain
 // with the host's delegate (App/AppDelegate.swift, in the framework).
@@ -107,18 +108,24 @@ func (t *iosToolchain) linkApp(work, bundle string, cfg *appConfig, hostObj, lib
 	return bin, t.run(work, nil, "xcrun", append(args, ents...)...)
 }
 
-// shareStub is the share extension's executable's only source with a
-// share sheet: its code is the framework's.
-const shareStub = "// The share sheet's code is the app's framework (Frameworks/RyUIApp.framework).\n"
+// extensionStub is the only source of an extension's executable that
+// links the framework: its code is the framework's.
+const extensionStub = "// The extension's code is the app's framework (Frameworks/RyUIApp.framework).\n"
 
 // linkSheet links the share extension's executable with the framework
 // (bin), returning its path.
 func (t *iosToolchain) linkSheet(work, bin string, ents []string) (string, error) {
-	stub := filepath.Join(work, "ShareMain.swift")
-	if err := os.WriteFile(stub, []byte(shareStub), 0o644); err != nil {
+	return t.linkExtension(work, bin, shareExe, ents)
+}
+
+// linkExtension links an extension's executable, name, with the
+// framework (bin), returning its path.
+func (t *iosToolchain) linkExtension(work, bin, name string, ents []string) (string, error) {
+	stub := filepath.Join(work, name+"Main.swift")
+	if err := os.WriteFile(stub, []byte(extensionStub), 0o644); err != nil {
 		return "", err
 	}
-	exe := filepath.Join(work, shareExe)
+	exe := filepath.Join(work, name)
 	args := []string{"swiftc", "-target", t.target, "-sdk", t.sdk, "-parse-as-library", "-application-extension", stub, bin, "-o", exe,
 		"-Xlinker", "-e", "-Xlinker", "_NSExtensionMain", "-Xlinker", "-application_extension",
 		"-Xlinker", "-rpath", "-Xlinker", "@executable_path/../../Frameworks",

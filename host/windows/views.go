@@ -473,8 +473,12 @@ func (h *Host) controlCommand(n *node, ctl uintptr, code uint32) {
 			if n.multiline {
 				s = strings.ReplaceAll(s, "\r\n", "\n")
 			}
+			if n.richText {
+				s = strings.ReplaceAll(s, "\r", "\n") // a rich edit's lines end in \r
+			}
 			n.text = s
 			h.emit(n, ops.Event{Kind: ops.EventTextChanged, Str: s})
+			h.richEdited(n)
 
 		case EN_SETFOCUS:
 			n.focused = true
@@ -500,6 +504,12 @@ func (h *Host) controlCommand(n *node, ctl uintptr, code uint32) {
 // notify is a control's WM_NOTIFY notification.
 func (h *Host) notify(n *node, hdr *NMHdr, lp uintptr) (uintptr, bool) {
 	switch hdr.Code {
+	case enSelChange:
+		if n.richText {
+			h.reportRichFormats(n)
+			h.checkSelection(n)
+			return 0, true
+		}
 	case NM_CUSTOMDRAW:
 		cd := Native[NMCustomDraw](lp)
 		switch n.kind {
@@ -618,6 +628,9 @@ func (h *Host) viewMessage(n *node, hwnd uintptr, m uint32, wp, lp uintptr) (uin
 	case WM_SETCURSOR:
 		return 0, false
 	case WM_LBUTTONDOWN, WM_LBUTTONDBLCLK:
+		if h.selectClick(n) {
+			return 0, true // a row of a selecting list: selected or deselected
+		}
 		h.mouseDown(n, hwnd, lp)
 		return 0, true
 	case WM_MOUSEMOVE:
@@ -646,6 +659,9 @@ func (h *Host) viewMessage(n *node, hwnd uintptr, m uint32, wp, lp uintptr) (uin
 		if n.pressable() {
 			h.secondaryClick(n, hwnd)
 			return 0, true
+		}
+		if n.cell != nil && h.rowMenu(n.cell) {
+			return 0, true // DefWindowProc brought it up from the row's content
 		}
 	case WM_TIMER:
 		switch wp {

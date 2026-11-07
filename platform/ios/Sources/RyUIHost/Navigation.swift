@@ -556,6 +556,10 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
             n.list?.setAppearance(RyUIListAppearance(rawValue: v.enumValue) ?? .plain, inset: n.list?.inset ?? 0)
         case (.list, RyUIProp.List.inset):
             n.list?.setAppearance(n.list?.appearance ?? .plain, inset: CGFloat(v.float))
+        case (.list, RyUIProp.List.anchor):
+            n.list?.setAnchor(RyUIScrollAnchor(rawValue: v.enumValue) ?? .top)
+        case (.list, RyUIProp.List.selecting):
+            n.list?.setEditing(v.bool)
         default:
             break
         }

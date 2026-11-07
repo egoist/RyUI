@@ -87,6 +87,9 @@ func (h *Host) mouseDown(view, ev ID) bool {
 	if uint(Send(ev, "modifierFlags"))&nsEventModifierControl != 0 {
 		return false // a secondary click: the context menu
 	}
+	if h.selectClick(view) {
+		return true // a row of a selecting list: selected or deselected
+	}
 	var target, source *node
 	for v := view; v != 0 && (target == nil || source == nil); v = Send(v, "superview") {
 		n := h.byView[v]

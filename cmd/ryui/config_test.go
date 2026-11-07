@@ -27,6 +27,14 @@ func TestAccent(t *testing.T) {
 	if got := (&appConfig{}).ldflags(false); got != "-ldflags=" {
 		t.Fatalf("no accent: %q", got)
 	}
+	// Releases that keep symbols for crash reports: iOS all (its dSYM),
+	// Android the symbol table (its native debug symbols).
+	if got := c.ldflagsStrip(); got != "-ldflags=-X github.com/egoist/ryui/internal/boot.Accent=#7c3aed -X github.com/egoist/ryui/internal/boot.DynamicColor=1" {
+		t.Fatalf("iOS release: %q", got)
+	}
+	if got := c.ldflagsStrip("-w"); !strings.HasPrefix(got, "-ldflags=-w -X ") {
+		t.Fatalf("Android release: %q", got)
+	}
 	write(`{"accent": "purple"}`)
 	if _, err := loadConfig(dir); err == nil {
 		t.Fatal("a bad accent was taken")
@@ -232,5 +240,61 @@ func TestShareSheetConfig(t *testing.T) {
 	os.WriteFile(other, []byte("..."+sheetSymbol+"Thing\x00..."), 0o644)
 	if !hasSheet(lib) || hasSheet(other) {
 		t.Error("hasSheet")
+	}
+}
+
+// A push rewrite (push.Rewrite) gives the app a Notification Service
+// Extension: the shared layout, the App Group and keychain group it
+// shares, its own bundle ID; Android's manifest says so to the host.
+func TestPushRewriteConfig(t *testing.T) {
+	c := &appConfig{ID: "com.example.chat"}
+	if c.sharedLayout() || c.appGroup() != "" || c.keychainGroup("TEAM") != "" {
+		t.Fatal("no rewrite: one executable, no group")
+	}
+	if strings.Contains(c.androidManifest(false), "dev.ryui.push.rewrite") {
+		t.Fatal("no rewrite: no meta-data")
+	}
+	c.pushRewrite = true
+	if !c.sharedLayout() || c.appGroup() != "group.com.example.chat" || c.keychainGroup("TEAM") != "TEAM.com.example.chat" {
+		t.Fatalf("rewrite: %v %q %q", c.sharedLayout(), c.appGroup(), c.keychainGroup("TEAM"))
+	}
+	info := c.notificationInfo(map[string]any{"CFBundleVersion": "7", "DTSDKName": "iphoneos", "Other": 1})
+	ext := info["NSExtension"].(map[string]any)
+	if info["CFBundleIdentifier"] != "com.example.chat.notification" || ext["NSExtensionPointIdentifier"] != "com.apple.usernotifications.service" ||
+		ext["NSExtensionPrincipalClass"] != "RyUINotificationService" || info["RyUIAppGroup"] != "group.com.example.chat" ||
+		info["RyUINotificationService"] != true || info["CFBundleVersion"] != "7" || info["DTSDKName"] != "iphoneos" || info["Other"] != nil {
+		t.Fatalf("extension Info.plist %v", info)
+	}
+	if !strings.Contains(c.androidManifest(false), `<meta-data android:name="dev.ryui.push.rewrite" android:value="true" />`) {
+		t.Fatal("rewrite: no meta-data")
+	}
+}
+
+// Messages in conversations (notify's From) need the Communication
+// Notifications entitlement and the intent in Info.plist: only in the
+// apps whose Go code calls From.
+func TestFeatureExtras(t *testing.T) {
+	c := &appConfig{ID: "com.example.chat"}
+	c.addFeatureExtras([]string{"RYUI_NOTIFY"})
+	if c.entitlements != nil || c.plistArrays != nil {
+		t.Fatalf("notify alone: %v %v", c.entitlements, c.plistArrays)
+	}
+	c.addFeatureExtras([]string{"RYUI_CONVERSATIONS"})
+	c.addFeatureExtras([]string{"RYUI_CONVERSATIONS"})
+	if c.entitlements["com.apple.developer.usernotifications.communication"] != true ||
+		len(c.plistArrays["NSUserActivityTypes"]) != 1 || c.plistArrays["NSUserActivityTypes"][0] != "INSendMessageIntent" {
+		t.Fatalf("conversations: %v %v", c.entitlements, c.plistArrays)
+	}
+	if got := c.plistExtras()["NSUserActivityTypes"]; len(got.([]string)) != 1 {
+		t.Fatalf("Info.plist %v", got)
+	}
+	found := false
+	for _, f := range iosFeatures {
+		if f.flag == "RYUI_CONVERSATIONS" && f.symbol == "github.com/egoist/ryui/notify.Notification.From" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("From's symbol isn't a feature's")
 	}
 }

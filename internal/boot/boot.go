@@ -2,6 +2,8 @@
 // cycles.
 package boot
 
+import "sync"
+
 // Runner, set by a platform host (mobile/), mounts the app's root
 // component (a func() ui.Node).
 var Runner func(root any)
@@ -22,6 +24,10 @@ var AssetBase string
 // -X): a desktop host's window title and menus.
 var Name string
 
+// Version and Build are ryui.json's, set by the RyUI CLI (-ldflags -X)
+// where the platform has no bundle to read them from (Windows).
+var Version, Build string
+
 // Lang is the language `ryui dev -lang` shows (a BCP 47 tag, a pseudo locale
 // too), and Direction "rtl" or "ltr" what `ryui dev -dir` lays the app out
 // in, whatever the language: set by the RyUI CLI for one run (-ldflags -X),
@@ -36,3 +42,36 @@ var (
 	SaveLocale  func(tag string)
 	SavedLocale func() string
 )
+
+// afterMount are what waits for the first root (AfterMount).
+var (
+	mountMu    sync.Mutex
+	mounted    bool
+	afterMount []func()
+)
+
+// AfterMount runs f once a root is mounted, when ui.Post and ui.Call
+// work: now, if one is. A package's setting made in main, before app.Run
+// (push.Rewrite), starts its work with it.
+func AfterMount(f func()) {
+	mountMu.Lock()
+	if !mounted {
+		afterMount = append(afterMount, f)
+		mountMu.Unlock()
+		return
+	}
+	mountMu.Unlock()
+	f()
+}
+
+// Mounted, from ui.Mount, runs what waits for it.
+func Mounted() {
+	mountMu.Lock()
+	mounted = true
+	fs := afterMount
+	afterMount = nil
+	mountMu.Unlock()
+	for _, f := range fs {
+		f()
+	}
+}

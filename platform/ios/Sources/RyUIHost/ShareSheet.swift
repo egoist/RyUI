@@ -81,13 +81,14 @@ public final class RyUIShareSheetController: UIViewController {
 }
 
 /// The directory the app keeps its data in (store.Dir) when it has a
-/// share sheet, which runs in its share extension: in the App Group the
-/// two share, so both see the same; nil without a sheet (the app's
+/// share sheet or a push rewrite, which run in its extensions: in the App
+/// Group they share, so all see the same; nil without either (the app's
 /// container). Go asks for it as its packages initialize, before the
 /// host has started it.
 @_cdecl("ryui_ios_shared_dir")
 public func ryuiIOSSharedDir() -> UnsafeMutablePointer<CChar>? {
-    guard Bundle.main.object(forInfoDictionaryKey: "RyUIShareSheet") as? Bool == true,
+    let info = Bundle.main.infoDictionary ?? [:]
+    guard info["RyUIShareSheet"] as? Bool == true || info["RyUINotificationService"] as? Bool == true,
           let group = Bundle.main.object(forInfoDictionaryKey: "RyUIAppGroup") as? String,
           let c = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) else { return nil }
     return strdup(c.appendingPathComponent("Library/Application Support", isDirectory: true).path)

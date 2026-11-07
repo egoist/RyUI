@@ -1,6 +1,7 @@
 // Services: what the platform does beyond views, a button each: sign-in,
-// biometrics, push, files, the screen, the stores' services, a map,
-// recording and work in the background.
+// biometrics, push and a messaging app's notifications, files, the
+// screen, the stores' services, a map, recording and work in the
+// background.
 package main
 
 import (
@@ -47,6 +48,7 @@ func App() ui.Node {
 	})
 	push.OnOpen(func(m push.Message) { log.Printf("services: opened push %q", m.Title) })
 	status := signal.New("Tap a service.")
+	setUpMessages(status)
 	// ryui.json's shortcuts and the widget open the app with these.
 	ui.OnOpenURL(func(u string) {
 		status.Set("Opened with " + u)
@@ -118,6 +120,7 @@ func App() ui.Node {
 					log.Printf("services: %s token %s", r.Service, r.Token)
 					return fmt.Sprintf("%s token %.12s… (allowed: %v)", r.Service, r.Token, r.Allowed)
 				})),
+				item("Messages: replies, threads, the badge", func() { nav.Push(messagesScreen, ui.ScreenOptions{Title: ui.Val("Climbing")}) }),
 
 				section("Files and sound"),
 				item("Pick files", func() {
@@ -454,4 +457,7 @@ func mapScreen() ui.Node {
 	)
 }
 
-func main() { app.Run(App) }
+func main() {
+	push.Rewrite(rewriteMessage)
+	app.Run(App)
+}

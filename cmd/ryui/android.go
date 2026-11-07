@@ -27,8 +27,8 @@ import (
 const androidMinAPI = "26"
 
 type androidToolchain struct {
-	sdk, ndkBin, adb, javaHome string
-	verbose                    bool
+	sdk, ndk, ndkBin, adb, javaHome string
+	verbose                         bool
 }
 
 func findAndroidSDK() string {
@@ -62,6 +62,7 @@ func newAndroidToolchain(verbose bool) (*androidToolchain, error) {
 	}
 	t := &androidToolchain{
 		sdk:     sdk,
+		ndk:     ndks[len(ndks)-1],
 		ndkBin:  filepath.Join(ndks[len(ndks)-1], "toolchains", "llvm", "prebuilt", host, "bin"),
 		adb:     filepath.Join(sdk, "platform-tools", "adb"),
 		verbose: verbose,
@@ -193,6 +194,12 @@ func (t *androidToolchain) buildGo(app *goApp, work, serial string) (string, err
 // buildAPK builds the shell app for app with Gradle, cached by the host
 // sources and the app ID.
 func (t *androidToolchain) buildAPK(app *goApp, work string) (apk, hash string, err error) {
+	// The host's sources and Gradle build are shared: one build at a time.
+	unlock, err := lockShared(androidHostDir(work))
+	if err != nil {
+		return "", "", err
+	}
+	defer unlock()
 	src, hash, err := prepareAndroidHost(app, work)
 	if err != nil {
 		return "", "", err
@@ -243,6 +250,12 @@ func (t *androidToolchain) gradleEnv(src string, extra []string, args ...string)
 	return t.run(src, env, filepath.Join(src, "gradlew"), append([]string{"-q"}, args...)...)
 }
 
+// androidHostDir is where the Android host is built, shared by every app
+// (lockShared it while building there).
+func androidHostDir(work string) string {
+	return filepath.Join(filepath.Dir(filepath.Dir(work)), "android-host")
+}
+
 // prepareAndroidHost writes the embedded host, with the app's own
 // Kotlin, where Gradle builds it (shared by the apps), and returns its
 // directory and a hash of what it holds.
@@ -257,7 +270,7 @@ func prepareAndroidHost(app *goApp, work string) (src, hash string, err error) {
 		return nil
 	})
 	sort.Strings(files)
-	src = filepath.Join(filepath.Dir(filepath.Dir(work)), "android-host")
+	src = androidHostDir(work)
 	for _, f := range files {
 		data, _ := androidHost.Files.ReadFile(f)
 		h.Write([]byte(f))
@@ -270,6 +283,7 @@ func prepareAndroidHost(app *goApp, work string) (src, hash string, err error) {
 			}
 		}
 	}
+	removeStaleSources(src, files)
 	// The app's own Kotlin (android/*.kt: native views for ui.Native)
 	// builds into the shell app.
 	own := filepath.Join(src, "app", "src", "main", "java", "dev", "ryui", "app", "own")
@@ -300,6 +314,42 @@ func prepareAndroidHost(app *goApp, work string) (src, hash string, err error) {
 		}
 	}
 	return src, hex.EncodeToString(h.Sum(nil))[:16], nil
+}
+
+// removeStaleSources removes what the host's source trees (each
+// module's src/) hold that the embedded host doesn't: a file an earlier
+// version of the host had and this one hasn't would build with it. What
+// Gradle makes (build/, .gradle/) isn't touched, and the app's own
+// Kotlin and widgets are written again after.
+func removeStaleSources(src string, files []string) {
+	keep := make(map[string]bool, len(files))
+	for _, f := range files {
+		keep[filepath.FromSlash(f)] = true
+	}
+	filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		rel, _ := filepath.Rel(src, path)
+		if d.IsDir() {
+			switch d.Name() {
+			case "build", ".gradle", ".kotlin", ".idea":
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		inSrc := false
+		for _, part := range strings.Split(filepath.ToSlash(rel), "/") {
+			if part == "src" {
+				inSrc = true
+				break
+			}
+		}
+		if inSrc && !keep[rel] {
+			os.Remove(path)
+		}
+		return nil
+	})
 }
 
 func devAndroid(dir string, o *devOptions, stop <-chan os.Signal) error {
@@ -334,6 +384,7 @@ func devAndroid(dir string, o *devOptions, stop <-chan os.Signal) error {
 			return err
 		}
 		app.cfg.shareSheet = hasSheet(lib)
+		app.cfg.pushRewrite = hasSymbol(lib, rewriteSymbol)
 		apk, hash, err := tc.buildAPK(app, work)
 		if err != nil {
 			return err
@@ -412,9 +463,13 @@ func devAndroid(dir string, o *devOptions, stop <-chan os.Signal) error {
 // hasSheet reports whether the Go library at path calls app.ShareSheet:
 // its name is in the functions' table, which stripping a release's
 // symbols leaves (stack traces need it).
-func hasSheet(path string) bool {
+func hasSheet(path string) bool { return hasSymbol(path, sheetSymbol) }
+
+// hasSymbol reports whether the Go library at path has the function
+// symbol (its symbol table names it).
+func hasSymbol(path, symbol string) bool {
 	data, err := os.ReadFile(path)
-	return err == nil && bytes.Contains(data, []byte(sheetSymbol+"\x00"))
+	return err == nil && bytes.Contains(data, []byte(symbol+"\x00"))
 }
 
 func androidPackage(id string) string {

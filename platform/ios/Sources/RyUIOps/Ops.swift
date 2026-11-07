@@ -101,7 +101,10 @@ public enum RyUIProp {
     public static let fontFamily: UInt16 = 28
     public static let swipeActions: UInt16 = 29
     public static let layoutDirection: UInt16 = 30
-    public static let match: UInt16 = 31
+    public static let contentInset: UInt16 = 31
+    public static let leadingSwipeActions: UInt16 = 32
+    public static let selected: UInt16 = 33
+    public static let match: UInt16 = 34
 
     public enum View {
         public static let dropAccept: UInt16 = 64
@@ -129,6 +132,9 @@ public enum RyUIProp {
         public static let contentType: UInt16 = 71
         public static let multiline: UInt16 = 72
         public static let plain: UInt16 = 73
+        public static let selection: UInt16 = 74
+        public static let rich: UInt16 = 75
+        public static let pasteTypes: UInt16 = 76
     }
 
     public enum Toggle {
@@ -154,6 +160,8 @@ public enum RyUIProp {
         public static let gap: UInt16 = 67
         public static let appearance: UInt16 = 68
         public static let inset: UInt16 = 69
+        public static let anchor: UInt16 = 70
+        public static let selecting: UInt16 = 71
     }
 
     public enum Activity {
@@ -328,7 +336,14 @@ public enum RyUIEventKind: UInt16 {
     case hover = 41
     case dragOver = 42
     case drop = 43
-    case dragging = 44
+    case selectionChanged = 44
+    case richChanged = 45
+    case formats = 46
+    case pasted = 47
+    case rowSelected = 48
+    case rowSelectBegin = 49
+    case rowInset = 50
+    case dragging = 51
 }
 
 public enum RyUICommand: UInt16 {
@@ -359,7 +374,10 @@ public enum RyUICommand: UInt16 {
     case colorScheme = 25
     case locale = 26
     case saveLocale = 27
-    case shareClose = 28
+    case format = 28
+    case setLink = 29
+    case insertText = 30
+    case shareClose = 31
 }
 
 public enum RyUIRole: Int32 {
@@ -596,6 +614,11 @@ public enum RyUIDragPhase: Int32 {
     case began = 0
     case dropped = 1
     case cancelled = 2
+}
+
+public enum RyUIScrollAnchor: Int32 {
+    case top = 0
+    case bottom = 1
 }
 
 /// A prop value. Bytes are valid only during the handler call.
@@ -887,7 +910,28 @@ public enum RyUIEvents {
     public static func drop(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
         var w = RyUIWriter(); w.header(id, 43); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
     }
+    public static func selectionChanged(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
+        var w = RyUIWriter(); w.header(id, 44); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
+    }
+    public static func richChanged(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
+        var w = RyUIWriter(); w.header(id, 45); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
+    }
+    public static func formats(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
+        var w = RyUIWriter(); w.header(id, 46); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
+    }
+    public static func pasted(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
+        var w = RyUIWriter(); w.header(id, 47); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
+    }
+    public static func rowSelected(_ id: UInt32, _ v: Bool) -> [UInt8] {
+        var w = RyUIWriter(); w.header(id, 48); w.u8(v ? 1 : 0); return w.bytes
+    }
+    public static func rowSelectBegin(_ id: UInt32) -> [UInt8] {
+        var w = RyUIWriter(); w.header(id, 49); return w.bytes
+    }
+    public static func rowInset(_ id: UInt32, x: Double, y: Double) -> [UInt8] {
+        var w = RyUIWriter(); w.header(id, 50); w.f64(x); w.f64(y); return w.bytes
+    }
     public static func dragging(_ id: UInt32, _ v: Int64) -> [UInt8] {
-        var w = RyUIWriter(); w.header(id, 44); w.u64(UInt64(bitPattern: v)); return w.bytes
+        var w = RyUIWriter(); w.header(id, 51); w.u64(UInt64(bitPattern: v)); return w.bytes
     }
 }

@@ -13,6 +13,17 @@ var le = binary.LittleEndian
 
 func (h *Host) setCommon(n *node, p ops.PropID, v *ops.Value) {
 	switch p {
+	case ops.PropContentInset:
+		// Its content inside its padding and border: a text's, a field's,
+		// a rich text's (paintText, layoutField, rich.place).
+		n.inset = v.Edges
+		switch {
+		case n.rich != nil:
+			n.rich.place(h, n)
+		case n.ctl != 0:
+			h.layoutField(n)
+		}
+		h.redraw(n)
 	case ops.PropBackground:
 		n.background = ops.Color(v.Int)
 		h.redraw(n)
@@ -111,6 +122,15 @@ func (h *Host) setCommon(n *node, p ops.PropID, v *ops.Value) {
 	case ops.PropSwipeActions:
 		if n.cell != nil {
 			n.cell.swipe = decodeActions(v.Bytes)
+		}
+	case ops.PropLeadingSwipeActions:
+		if n.cell != nil {
+			n.cell.leading = decodeActions(v.Bytes)
+		}
+	case ops.PropSelected:
+		if n.cell != nil {
+			n.cell.selected = v.Int != 0
+			Invalidate(n.cell.rv.n.hwnd)
 		}
 	}
 }

@@ -1,0 +1,69 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+3 0 obj
+<< /Length 245 >>
+stream
+BT
+/F2 28 Tf
+72 720 Td
+(RyUI Gallery) Tj
+/F1 14 Tf
+0 -40 Td
+(A bundled PDF, shown with the system's viewer:) Tj
+0 -20 Td
+(Quick Look on iOS and the Mac, the app the user) Tj
+0 -20 Td
+(picks on Android, the default app on Windows.) Tj
+0 -20 Td
+ET
+endstream
+endobj
+4 0 obj
+<< /Length 172 >>
+stream
+BT
+/F2 28 Tf
+72 720 Td
+(Page two) Tj
+/F1 14 Tf
+0 -40 Td
+(Swipe or use the arrows to move between files) Tj
+0 -20 Td
+(where the viewer pages through several.) Tj
+0 -20 Td
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 7 0 R /MediaBox [0 0 612 792] /Contents 3 0 R /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> >>
+endobj
+6 0 obj
+<< /Type /Page /Parent 7 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> >>
+endobj
+7 0 obj
+<< /Type /Pages /Kids [5 0 R 6 0 R] /Count 2 >>
+endobj
+8 0 obj
+<< /Type /Catalog /Pages 7 0 R >>
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000009 00000 n 
+0000000079 00000 n 
+0000000154 00000 n 
+0000000450 00000 n 
+0000000673 00000 n 
+0000000809 00000 n 
+0000000945 00000 n 
+0000001008 00000 n 
+trailer
+<< /Size 9 /Root 8 0 R >>
+startxref
+1057
+%%EOF

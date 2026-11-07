@@ -266,6 +266,7 @@ func (h *Host) paintText(n *node, dc uintptr, r Rect) {
 	if len(n.utext) == 0 {
 		return
 	}
+	r = h.insetRect(n, r)
 	old := SelectObject(dc, h.nodeFont(n))
 	SetBkMode(dc, TRANSPARENT)
 	SetTextColor(dc, h.textColor(n, h.theme.label).ref())
@@ -275,6 +276,18 @@ func (h *Host) paintText(n *node, dc uintptr, r Rect) {
 	}
 	DrawText(dc, n.utext, &r, h.textFormat(n))
 	SelectObject(dc, old)
+}
+
+// insetRect is r less n's ContentInset: where its content goes.
+func (h *Host) insetRect(n *node, r Rect) Rect {
+	in := n.inset
+	r.Top += h.px(n, in[0])
+	r.Right -= h.px(n, in[1])
+	r.Bottom -= h.px(n, in[2])
+	r.Left += h.px(n, in[3])
+	r.Right = max(r.Right, r.Left)
+	r.Bottom = max(r.Bottom, r.Top)
+	return r
 }
 
 // paintSymbol draws a symbol's glyph of Segoe Fluent Icons, centered.

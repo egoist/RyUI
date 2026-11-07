@@ -14,6 +14,9 @@ what RyUI has for it.
 | Scrolling | `ScrollView` | `ScrollView` | ✓ `Scroll` (vertical, horizontal; out-of-sight rows leave the tree) |
 | Lazy lists, cell recycling | `List`, `LazyVStack` | `FlatList` | ✓ `List` (the platform's: UICollectionView, RecyclerView) |
 | Grids | `LazyVGrid` | `FlatList numColumns` | ✓ `ListProps.Columns`, `Gap` |
+| Chat lists: start at the end, load older above | `defaultScrollAnchor(.bottom)`, `scrollPosition` | `FlatList inverted`, `maintainVisibleContentPosition` | ✓ `ListProps.Anchor`, `OnStartReached`; rows added above what shows leave it in place, in every list |
+| Sections, sticky headers | `Section` in a `List` | `SectionList`, `stickySectionHeadersEnabled` | ✓ `ListProps.Section`, `Header` (sticky in plain and bare lists) |
+| Selecting rows | `List(selection:)`, `EditButton` | community | ✓ `ListProps.Selecting`, `Selected`, `OnSelect`, `OnSelectBegin` (iOS's edit mode and two-finger pan; Android's checkboxes and long press) |
 | Safe area, keyboard | automatic | `SafeAreaView`, `KeyboardAvoidingView` | ✓ `SafeArea`, `UseEnvironment().Keyboard` |
 | Reading a view's size | `GeometryReader` | `onLayout` | ✓ `ViewProps.OnLayout` |
 | Aspect ratio, min/max sizes | `.aspectRatio`, `.frame(min:max:)` | style | ✓ `Style` |
@@ -25,6 +28,9 @@ what RyUI has for it.
 | Text, styled text, links | `Text`, `AttributedString` | `Text` | ✓ `Text`, `RichText` (spans, links, inline views, selection), `ryui/markdown` |
 | Buttons (variants, icons, menus) | `Button`, `Menu` | `Pressable` | ✓ `Button` (filled, tinted, gray, bordered; icon; menu), `Menu`, context menus |
 | Text fields | `TextField`, `SecureField`, `TextEditor` | `TextInput` | ✓ `TextField` (secure, keyboards, return keys, multiline) |
+| The cursor, inserting at it | `TextSelection` | `selection`, `onSelectionChange` | ✓ `TextFieldProps.Selection`, `ui.InsertText` |
+| Rich text editing (a mail's body) | `TextEditor` with `AttributedString` (iOS 26) | community (10tap, pell) | ✓ `TextFieldProps.Rich`, `ToggleFormat`, `SetLink`, `OnFormats` |
+| Pasted images, keyboard GIFs and stickers | `onPasteCommand`, `PasteButton` | community (`onPaste`) | ✓ `TextFieldProps.PasteTypes`, `OnPaste` (Android's `commitContent` too) |
 | Toggle, slider | `Toggle`, `Slider` | community | ✓ `Toggle`, `Slider` |
 | Segmented control | `Picker(.segmented)` | community | ✓ `Segmented` |
 | Date and time | `DatePicker` | community | ✓ `DatePicker` (date, time, both) |
@@ -49,7 +55,7 @@ what RyUI has for it.
 | Sheets with detents | `.sheet`, `.presentationDetents` | modal | ✓ `Sheet` (`Detents`, `Grabber`) |
 | Alerts, action sheets | `.alert`, `.confirmationDialog` | `Alert` | ✓ `Alert` (both styles) |
 | Deep links, universal and app links | `.onOpenURL` | Linking | ✓ `OnOpenURL`, `ryui.json` scheme and links |
-| Pull to refresh, swipe actions | `.refreshable`, `.swipeActions` | `RefreshControl` | ✓ |
+| Pull to refresh, swipe actions | `.refreshable`, `.swipeActions` | `RefreshControl` | ✓ (both edges: `SwipeActions`, `LeadingSwipeActions`) |
 
 ## Motion
 
@@ -83,9 +89,18 @@ what RyUI has for it.
 | Location | Core Location | `expo-location` | ✓ `ryui/location` |
 | Translations, plurals, regional formats | String Catalogs, FormatStyle | `expo-localization`, i18next | ✓ `ryui/i18n`, catalogs ([Languages](i18n.md)) |
 | Right-to-left layout | `layoutDirection` | `I18nManager` | ✓ follows the language, `ui.WithDirection` |
-| Local notifications | UserNotifications | `expo-notifications` | ✓ `ryui/notify` |
+| Local notifications | UserNotifications | `expo-notifications` | ✓ `ryui/notify` (now or scheduled, images; iOS, Android, macOS; not on Windows yet) |
 | Push notifications | APNs | `expo-notifications` | ✓ `ryui/push` (APNs, Firebase Cloud Messaging: the token, messages received and tapped) |
+| Notification actions, inline replies | `UNNotificationCategory`, `UNTextInputNotificationAction` | `setNotificationCategoryAsync` | ✓ `notify.SetCategories`, `OnAction` (background actions run the app's Go code, started without a screen if it isn't running; `Response.Defer`; Android's reply posted back into the conversation) |
+| Threads, the notifications showing, the badge | `threadIdentifier`, `getDeliveredNotifications`, `setBadgeCount` | `getPresentedNotificationsAsync`, `setBadgeCountAsync` | ✓ `Thread` (Android: a group with its summary kept), `notify.Showing`, `Remove`, `RemoveThread`, `SetBadge` (Android: the launcher's, from the notifications) |
+| Notifications in the foreground | `willPresent` | `setNotificationHandler` | ✓ `notify.Present` (banner, quiet, hidden) |
+| Android notification channels | — | `setNotificationChannelAsync` | ✓ `notify.SetChannels`, `SetChannelGroups`; a push's `channel_id` (iOS has none) |
+| Messages in conversations | Communication notifications (`INSendMessageIntent`) | community | ✓ `Notification.From`, `push.Message.From`: iOS's communication notifications (the entitlement added for the apps that use it), Android's MessagingStyle and conversation shortcuts; plain on macOS; no bubbles |
+| Changing a push before it shows | Notification Service Extension | community (`expo-notifications` has none) | ✓ `push.Rewrite`: the app's Go code in iOS's extension (built and signed by `ryui build`), in the app's process for Android's data messages |
 | Clipboard, share sheet, browser | `UIPasteboard`, `ShareLink`, `SFSafariViewController` | `expo-clipboard`, `expo-sharing`, `expo-web-browser` | ✓ `Copy`, `device.Clipboard` (text; images: `CopyImage`, `ClipboardImage`; `ClipboardHas`, `OnClipboardChange`), `Share` (text), `ShareFiles` (files, with expo-sharing's MIME type, UTI, title and iPad anchor; done when the sheet closes), `device.Browse` |
+| Previewing files | `QLPreviewController`, `.quickLookPreview` | `react-native-file-viewer` | ✓ `ryui/preview` (Quick Look on iOS and the Mac, several files, Markup; Android's viewer apps; Windows's default app) |
+| Printing, PDFs from HTML | `UIPrintInteractionController`, `UIPrintPageRenderer` | `expo-print` | ✓ `ryui/print` (files, HTML, a WebView, with the system's dialog and its result; `PDF`: paginated, the region's paper, margins) |
+| Mail and message composers | `MFMailComposeViewController`, `MFMessageComposeViewController` | `expo-mail-composer`, `expo-sms` | ✓ `ryui/compose` (recipients, subject, HTML body, attachments; what the user did on iOS; the mail apps only on Android; Messages on the Mac) |
 | Keep awake, device info | `isIdleTimerDisabled`, `UIDevice` | `expo-keep-awake`, `expo-device` | ✓ `device.KeepAwake`, `device.GetInfo` |
 | Network state | `NWPathMonitor` | `expo-network` | ✓ `ryui/network` (online, Wi-Fi or cellular, metered, Data Saver / Low Data Mode) |
 | Saving to the gallery, Downloads | `PHPhotoLibrary` | `expo-media-library` | ✓ `ryui/library` (MediaStore's collections; Photos, or Documents in Files) |
@@ -114,6 +129,7 @@ what RyUI has for it.
 | Status bar, navigation bar | `statusBarHidden`, `preferredStatusBarStyle` | `expo-status-bar`, `expo-navigation-bar` | ✓ `ryui/screen`'s `SetBars` |
 | Orientation lock | `supportedInterfaceOrientations` | `expo-screen-orientation` | ✓ `ryui/screen`'s `Lock` |
 | Screenshots | `isCaptured`, `userDidTakeScreenshotNotification` | `expo-screen-capture` | ✓ `ryui/screen`'s `PreventCapture` (Android: blank captures; iOS: covered while recorded), `OnScreenshot` |
+| Crash reports | MetricKit, Crashlytics, Sentry | Sentry, Crashlytics (`@react-native-firebase/crashlytics`) | ✓ `ryui/crash`: Go panics and fatal errors, uncaught exceptions, MetricKit's crashes and hangs, Android's native crashes and ANRs, with breadcrumbs and values; the app sends them where it likes (no service built in); dSYMs and native debug symbols from `ryui build` |
 
 ## Appearance and accessibility
 
@@ -137,8 +153,7 @@ what RyUI has for it.
 
 ## Not yet
 
-In order of what apps miss most: the mail and message composers and
-printing, App Intents with parameters and entities (shortcuts take none
-yet), widgets of the app's own layout (one template for now), and
-over-the-air updates (EAS Update's; RyUI apps are compiled Go, which the
+In order of what apps miss most: App Intents with parameters and
+entities (shortcuts take none yet), widgets of the app's own layout (one
+template for now), and over-the-air updates (EAS Update's; RyUI apps are compiled Go, which the
 stores don't let an app replace).

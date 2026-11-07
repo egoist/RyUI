@@ -9,6 +9,7 @@
 //
 //	go test -tags e2e ./e2e -run IOS      # a booted simulator, else the newest iPhone
 //	go test -tags e2e ./e2e -run Android  # a running emulator or a device
+//	RYUI_DEVICE=emulator-5556 go test -tags e2e ./e2e -run Android  # one of several
 //
 // They wait for what they expect (bounded, so a broken app fails rather
 // than hangs), never for a fixed time.
@@ -38,10 +39,15 @@ func root(t *testing.T) string {
 }
 
 // launch builds and launches example on the platform with ryui dev -once,
-// and returns what it printed.
+// and returns what it printed. RYUI_DEVICE picks the simulator, emulator
+// or device (ryui dev's -device), when there's more than one.
 func launch(t *testing.T, platform, example string) string {
 	t.Helper()
-	c := exec.Command("go", "run", "./cmd/ryui", "dev", "-"+platform, "-once", "examples/"+example)
+	args := []string{"run", "./cmd/ryui", "dev", "-" + platform, "-once"}
+	if d := os.Getenv("RYUI_DEVICE"); d != "" {
+		args = append(args, "-device", d)
+	}
+	c := exec.Command("go", append(args, "examples/"+example)...)
 	c.Dir = root(t)
 	out, err := c.CombinedOutput()
 	if err != nil {
@@ -178,6 +184,18 @@ func languages(t *testing.T, s screen) {
 	waitFor(t, s, []string{"Hello, Ada!"}, "Hallo, Ada!")
 }
 
+// chat is the same test on each platform: the conversation opens at its
+// newest message (a list anchored at its bottom); a message sent from
+// the composer shows, and so does the answer that comes after it, the
+// list staying at its end.
+func chat(t *testing.T, s screen) {
+	waitFor(t, s, []string{"The sticky headers look right on Android now.", "Send"})
+	msg := fmt.Sprintf("e2e %d", time.Now().UnixNano())
+	s.command("type " + msg)
+	s.tap("Send")
+	waitFor(t, s, []string{msg, "Got it: “" + msg + "”"})
+}
+
 // iOS
 
 type iosScreen struct {
@@ -240,6 +258,7 @@ func iosApp(t *testing.T, example, bundle string) *iosScreen {
 
 func TestCounterIOS(t *testing.T) { counter(t, iosApp(t, "counter", "dev.ryui.counter")) }
 func TestNotesIOS(t *testing.T)   { notes(t, iosApp(t, "notes", "dev.ryui.notes")) }
+func TestChatIOS(t *testing.T)    { chat(t, iosApp(t, "chat", "dev.ryui.chat")) }
 func TestNavigationIOS(t *testing.T) {
 	navigation(t, iosApp(t, "navigation", "dev.ryui.navigation"))
 }
@@ -342,6 +361,7 @@ func androidApp(t *testing.T, example, pkg string) *androidScreen {
 
 func TestCounterAndroid(t *testing.T) { counter(t, androidApp(t, "counter", "dev.ryui.counter")) }
 func TestNotesAndroid(t *testing.T)   { notes(t, androidApp(t, "notes", "dev.ryui.notes")) }
+func TestChatAndroid(t *testing.T)    { chat(t, androidApp(t, "chat", "dev.ryui.chat")) }
 func TestNavigationAndroid(t *testing.T) {
 	navigation(t, androidApp(t, "navigation", "dev.ryui.navigation"))
 }

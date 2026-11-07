@@ -668,6 +668,40 @@ return ui.Scroll(ui.ScrollProps{
 }, ui.StaticText("Pull down"))
 ```
 
+**Styled text.** `Rich` makes a field a text area of styled text, for a
+mail's body or a formatted message: bold, italic, underline,
+strikethrough, monospaced code and links (colors and text styles a span
+has are kept as they are). It's the same `ui.Rich` a `RichText` shows.
+The user's typing and formatting write it; writing it replaces the text.
+`ui.ToggleFormat(field, ui.FormatBold)` turns a style on for the
+selection unless all of it has it, then off (`FormatText` sets it either
+way); with no selection, it's what's typed next. `ui.SetLink(field, url)`
+links the selection ("" unlinks; at the cursor, the link it's in).
+`OnFormats` reports the styles where the cursor is, or that all the
+selection has, for a toolbar to show.
+
+```go
+body := signal.NewFunc(ui.Rich{ui.Plain("Hi,\n\nThe "), ui.Strong("1.0"), ui.Plain(" build is ready.")}, nil)
+formats := signal.New(ui.TextFormats{})
+var field ui.Node
+field = ui.TextField(ui.TextFieldProps{Rich: body, Plain: true, OnFormats: formats.Set, Style: ui.Style{Grow: 1}})
+bold := ui.Button(ui.ButtonProps{Icon: "bold", Label: ui.Val("Bold"),
+	Style:   ui.StyleFunc(func() ui.Style { if formats.Get().Has(ui.FormatBold) { return ui.Style{Background: ui.SecondaryBackground} }; return ui.Style{} }),
+	OnPress: func() { ui.ToggleFormat(field, ui.FormatBold) }})
+```
+
+| | iOS | Android | macOS | Windows |
+|---|---|---|---|---|
+| The view | `UITextView`, its attributed text | `EditText`, its spans | `NSTextView`, rich | a rich edit (`RICHEDIT50W`), through RTF |
+| The user's formatting | the edit menu's B/I/U | a hardware keyboard's Ctrl+B, Ctrl+I, Ctrl+U | the Format menu, ⌘B ⌘I ⌘U | Ctrl+B, Ctrl+I, Ctrl+U |
+| Undo of formatting | yes | yes: the field's own history (Android's keeps text only), Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y | yes | yes |
+
+[`examples/mail`](../examples/mail) has a composer with a toolbar.
+
+**Padding.** A text's or a field's `Padding` (and `BorderWidth`) is
+inside its frame, around its content, as in CSS: its background fills
+it, its text is drawn inside it, and a field's editing happens inside it.
+
 ## Lists
 
 `ui.List` shows a row per item in the platform's recycling list
@@ -735,8 +769,107 @@ list := ui.List(ui.ListProps{
 }, messages, func(m message) int { return m.ID }, row)
 ```
 
+`LeadingSwipeActions` are revealed by swiping the other way, from the
+row's leading edge (Mail's Unread, Pin): the first is at that edge, and
+a full swipe's. iOS tints them; Android shows them as Material's
+filled buttons.
+
 `ui.ScrollToItem(list, index, animated)` scrolls a list so an item
 shows; `ScrollTo` and `ScrollToEnd` work too.
+
+### Chats: a list anchored at its bottom
+
+`Anchor: ui.AnchorBottom` is a chat's list: it opens at its last row,
+rows that don't fill it sit at its bottom, and while it's at its end it
+stays there: as rows are added at the end, as they change height, and
+as the list gets shorter (the keyboard). The user scrolling up leaves
+the end; scrolling back to it, or `ui.ScrollToEnd`, sticks again.
+`OnStartReached` is called when the first rows are about to show, once
+for each first item: load older messages there.
+
+Whatever the anchor, rows added or removed above the ones on screen
+don't move those (React Native's `maintainVisibleContentPosition`):
+older messages loaded at the top, or an item removed above, leave the
+user reading what they were. Only at the edge the list is anchored to
+does it show the new rows: at the top of a list read from the top (a
+new mail), at the end of a chat.
+
+```go
+msgs := signal.NewFunc(latest(40), nil)
+var list ui.Node
+list = ui.List(ui.ListProps{
+	Anchor:         ui.AnchorBottom,
+	OnStartReached: func() { go loadOlder() }, // then ui.Post prepends them
+}, msgs, func(m message) int { return m.ID }, bubble)
+send := func(text string) {
+	msgs.Set(append(slices.Clone(msgs.Peek()), message{Text: text}))
+	ui.ScrollToEnd(list, true) // one's own message shows, wherever the list was
+}
+```
+
+[`examples/chat`](../examples/chat) is a whole conversation.
+
+### Sections
+
+`Section` puts rows in sections: rows next to each other with the same
+key are one, headed by `Header`'s view (a day in a chat, a letter in
+contacts, Today and Yesterday in a mailbox). `Header` gets the key as an
+accessor: a header is a row of its own, made as it comes into view and
+reused for another section after.
+
+```go
+ui.List(ui.ListProps{
+	Section: func(i int) string { return day(msgs.Peek()[i].At) },
+	Header: func(day signal.Accessor[string]) ui.Node {
+		return ui.Text(day, ui.Style{Font: ui.Footnote.Weighted(ui.Semibold), Padding: ui.Symmetric(6, 20)})
+	},
+}, msgs, key, row)
+```
+
+A plain or bare list's header stays at the top while its section's rows
+scroll under it, and the next header pushes it up (UITableView's plain
+style; on Android, which has none, a cell over the list, bound to the
+section at the top; on desktop, the header row itself). A plain list's
+header is on the list's background; a bare list's draws its own (a
+chat's pill over the messages). An inset grouped list's sections are
+groups of their own, each under its header, which scrolls with it.
+
+### Selecting rows
+
+`Selecting` puts a list in selection mode (Mail's Edit): each row shows
+the platform's selection control, a tap selects or deselects it instead
+of pressing it, and rows don't swipe. `Selected` says which rows are
+(it's followed in an effect, so a selection kept in signals shows as it
+changes), and `OnSelect` hears the user's choices; what the app doesn't
+take goes back. The rows are laid out narrower by the control's room.
+
+```go
+selecting := signal.New(false)
+chosen := signal.NewFunc(map[int]bool{}, nil) // by message ID
+ui.List(ui.ListProps{
+	Selecting: selecting,
+	Selected:  func(i int) bool { return chosen.Get()[msgs.Peek()[i].ID] },
+	OnSelect: func(i int, v bool) {
+		m := maps.Clone(chosen.Peek())
+		if v {
+			m[msgs.Peek()[i].ID] = true
+		} else {
+			delete(m, msgs.Peek()[i].ID)
+		}
+		chosen.Set(m)
+	},
+	OnSelectBegin: func(i int) { selecting.Set(true) },
+}, msgs, key, row)
+```
+
+| | iOS | Android | macOS, Windows |
+|---|---|---|---|
+| The control | UIKit's edit mode circles | a Material checkbox at the row's end | the row highlighted (the accent's selection color; a WinUI list's pill) |
+| `OnSelectBegin` | a two-finger pan over rows, which goes on to select the rows it crosses | a long press (Gmail's) | — |
+| Screen readers | each row selectable | each row a checkbox, its text the label | — |
+
+On desktop a row's swipe actions, leading then trailing, are its context
+menu (a secondary click).
 
 ### Grids
 

@@ -67,6 +67,7 @@ func (w *watcher) changed() bool {
 		s = w.scan()
 	}
 	w.last = s
+	vetAgain()
 	return true
 }
 

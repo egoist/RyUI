@@ -569,6 +569,13 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
             old is android.widget.EditText && cur is android.widget.EditText -> {
                 cur.setText(old.text)
                 cur.setSelection(old.selectionStart.coerceAtLeast(0), old.selectionEnd.coerceAtLeast(0))
+                n.pasteTypes?.let { setPasteTypes(n, ByteBuffer.wrap(it)) }
+                // A rich field's spans, as they are now (the user's edits too).
+                if ((old as? RyUIEditText)?.rich == true) {
+                    old.text?.let { n.richBytes = encodeRich(it) }
+                    n.richBytes?.let { setRich(n, ByteBuffer.wrap(it).order(java.nio.ByteOrder.LITTLE_ENDIAN)) }
+                    cur.setSelection(old.selectionStart.coerceAtLeast(0), old.selectionEnd.coerceAtLeast(0))
+                }
             }
             old is MaterialSwitch && cur is MaterialSwitch -> cur.isChecked = old.isChecked
             old is Slider && cur is Slider -> { cur.valueFrom = old.valueFrom; cur.valueTo = old.valueTo; cur.value = old.value }
@@ -576,6 +583,8 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
         settingProp = false
         val now = n.view // replaying a button's variant replaced it again
         restyle(n)
+        n.basePadding = null // the new view's own
+        applyContentInset(n)
         val lp = old.layoutParams
         val parent = old.parent as? ViewGroup
         if (parent == null) {
@@ -647,7 +656,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
             RyUIKind.SHAPE -> RyUIShape(this)
             RyUIKind.VIDEO -> RyUIVideo(this, id)
             RyUIKind.SCROLL -> NestedScrollView(ctx).apply { isFillViewport = false; reportScrolls(this, id) }
-            RyUIKind.LIST -> RyUIList(id, this).recycler
+            RyUIKind.LIST -> RyUIList(id, this).frame
             RyUIKind.ACTIVITY -> CircularProgressIndicator(ctx).apply { isIndeterminate = true }
             RyUIKind.SYMBOL -> RyUISymbol(this)
             RyUIKind.SEGMENTED -> RyUISegmented(this, id)
@@ -686,17 +695,29 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
 
     private var heightCheckQueued = false
 
-    private fun makeTextField(id: Int) = AppCompatEditText(themed).apply {
+    private fun makeTextField(id: Int) = RyUIEditText(themed, this, id).apply {
         isSingleLine = true
         textAlignment = View.TEXT_ALIGNMENT_VIEW_START
         imeOptions = EditorInfo.IME_ACTION_DONE
         addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
+                if (!settingProp) richWillChange(s, start, count, after)
+            }
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                changeStart = start
+                changeCount = count
+                richDidChange(start, count)
+            }
             override fun afterTextChanged(s: Editable?) {
                 if (!settingProp) {
                     val t = s?.toString() ?: ""
                     emit(id, RyUIEventKind.TEXT_CHANGED) { RyUIEvents.textChanged(id, t) }
+                    nodes[id]?.let { n ->
+                        if (rich && !history.restoring) {
+                            typedRich(n, changeStart, changeCount)
+                            richChanged(n)
+                        }
+                    }
                     // A paste's lines aren't laid out yet when it's reported: report
                     // it again once they are, so a multiline field grows to fit.
                     if (maxLines > 1 && !heightCheckQueued) {
@@ -711,6 +732,10 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
             }
         })
         setOnEditorActionListener { _, action, _ ->
+            // A multiline field's return is a new line: TextView asks this
+            // listener first about Enter's key (IME_NULL), a hardware
+            // keyboard's or a soft one's, so it mustn't take it.
+            if (action == EditorInfo.IME_NULL && nodes[id]?.props?.get(RyUIProp.TextField.MULTILINE) == true) return@setOnEditorActionListener false
             if (action == EditorInfo.IME_NULL || action >= EditorInfo.IME_ACTION_GO) {
                 emit(id, RyUIEventKind.SUBMIT) { RyUIEvents.submit(id) }
                 true
@@ -779,13 +804,34 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
     override fun setFloat(id: Int, prop: Int, v: Double) = propFloat(id, prop, v)
     override fun setString(id: Int, prop: Int, v: String) = propString(id, prop, v)
     override fun setColor(id: Int, prop: Int, v: Long) = propColor(id, prop, v)
-    override fun setEdges(id: Int, prop: Int, top: Float, right: Float, bottom: Float, left: Float) {}
+    override fun setEdges(id: Int, prop: Int, top: Float, right: Float, bottom: Float, left: Float) {
+        val n = nodes[id] ?: return
+        if (prop == RyUIProp.CONTENT_INSET) {
+            n.contentInset = floatArrayOf(top, right, bottom, left)
+            applyContentInset(n)
+        }
+    }
     override fun setEnum(id: Int, prop: Int, v: Int) = propEnum(id, prop, v)
     override fun setBytes(id: Int, prop: Int, v: ByteBuffer) {
         val n = nodes[id] ?: return
         if (n.kind == RyUIKind.SHAPE && setShapeProp(n, prop, v)) return
         if (n.kind == RyUIKind.WHEEL && setWheelProp(n, prop, v)) return
         if (n.kind == RyUIKind.WEB_VIEW && prop == RyUIProp.WebView.BLOCK) { (n.view as RyUIWebView).setBlock(v); return }
+        if (n.kind == RyUIKind.TEXT_FIELD && prop == RyUIProp.TextField.SELECTION) { setFieldSelection(n, v); return }
+        if (n.kind == RyUIKind.TEXT_FIELD && prop == RyUIProp.TextField.RICH) {
+            val a = ByteArray(v.remaining())
+            v.duplicate().get(a)
+            n.richBytes = a
+            setRich(n, v)
+            return
+        }
+        if (n.kind == RyUIKind.TEXT_FIELD && prop == RyUIProp.TextField.PASTE_TYPES) {
+            val a = ByteArray(v.remaining())
+            v.duplicate().get(a)
+            n.pasteTypes = a
+            setPasteTypes(n, v)
+            return
+        }
         if (prop == RyUIProp.MENU) {
             n.actions = decodeActions(v)
             wirePresses(n)
@@ -805,6 +851,11 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
         }
         if (prop == RyUIProp.SWIPE_ACTIONS) {
             n.swipeActions = decodeActions(v)
+            swipeAccessibility(n)
+            return
+        }
+        if (prop == RyUIProp.LEADING_SWIPE_ACTIONS) {
+            n.leadingSwipeActions = decodeActions(v)
             swipeAccessibility(n)
             return
         }
@@ -942,9 +993,27 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
             RyUICommand.LIST_UPDATE -> {
                 val count = args.int
                 val ids = LongArray(count) { args.long }
+                val ns = if (args.remaining() >= 4) args.int else 0
+                val starts = IntArray(ns)
+                val sections = LongArray(ns)
+                for (s in 0 until ns) {
+                    starts[s] = args.int
+                    sections[s] = args.long
+                }
                 val l = n.list ?: return
-                l.update(ids)
+                l.update(ids, starts, sections)
                 if (l !in pendingLists) pendingLists.add(l)
+            }
+            RyUICommand.FORMAT -> if (args.remaining() >= 2) format(n, args.get().toInt() and 0xff, args.get().toInt() and 0xff)
+            RyUICommand.SET_LINK -> {
+                val b = ByteArray(args.remaining())
+                args.get(b)
+                setLink(n, String(b, Charsets.UTF_8))
+            }
+            RyUICommand.INSERT_TEXT -> {
+                val b = ByteArray(args.remaining())
+                args.get(b)
+                insertFieldText(n, String(b, Charsets.UTF_8))
             }
             RyUICommand.PRESENT -> present(n)
             RyUICommand.HAPTIC -> if (args.remaining() > 0) haptic(args.get().toInt() and 0xff)
@@ -1017,12 +1086,14 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
                 when (val v = n.view) {
                     is NestedScrollView -> if (animated) v.smoothScrollTo(x, y) else v.scrollTo(x, y)
                     is HorizontalScrollView -> if (animated) v.smoothScrollTo(x, y) else v.scrollTo(x, y)
-                    is androidx.recyclerview.widget.RecyclerView -> {
-                        n.list?.applyPending()
+                    else -> n.list?.let { l ->
+                        val v = l.recycler
+                        l.applyPending()
                         // By the difference: a list knows where it is, not where an offset is.
                         val dx = x - v.computeHorizontalScrollOffset()
                         val dy = y - v.computeVerticalScrollOffset()
                         if (animated) v.smoothScrollBy(dx, dy) else v.scrollBy(dx, dy)
+                        l.scrolledTo()
                     }
                 }
             }

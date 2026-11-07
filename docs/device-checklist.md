@@ -105,3 +105,30 @@ fix what didn't match.
   window open, Arabic font fallback and punctuation in `DT_RTLREADING`, `TPM_LAYOUTRTL`
   menus opening on the right side, RichEdit's paragraph direction. Then
   `go test ./host/windows ./internal/windows`.
+
+## Previewing, printing, composing
+
+In the gallery's Documents section.
+
+- [ ] iPhone and iPad: "Preview a PDF" grows Quick Look from the button;
+      both pages show; closing it comes back to the gallery.
+- [ ] Android: "Preview a PDF" asks which app opens PDFs (or opens the one
+      set); back returns to the gallery. On a phone without a PDF app the
+      status says nothing can show it.
+- [ ] "Print a receipt": the print screen with the receipt (one page);
+      printing to a printer, or Save as PDF on Android, then the status
+      says "Print: printed"; backing out says "cancelled". On the iPad the
+      sheet is a popover.
+- [ ] The web page's Print button prints what the page shows.
+- [ ] "Make a PDF and share it": the share sheet offers "Receipt.pdf"; it
+      opens with its text selectable.
+- [ ] "Mail the PDF" with a Mail account (iPhone): Mail's composer with
+      the PDF attached and "gallery's" in bold; sending says "Mail: sent",
+      deleting the draft "cancelled", saving it "saved". On Android: only
+      mail apps are offered, and the PDF is attached.
+- [ ] "Text a friend": Messages' composer (iPhone), the SMS app (Android),
+      with the number and the text.
+- [ ] Windows (nothing has run there yet): Preview opens the PDF in its
+      app; Print shows the system's print dialog; the PDF is made
+      (`go test ./host/windows -run Documents`); Mail with Outlook classic
+      or Thunderbird set as the mail app shows its composer with the PDF.

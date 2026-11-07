@@ -333,20 +333,24 @@ func appendRich(b []byte, r Rich) []byte {
 			k.flags |= 16
 			text = string(objectChar)
 		}
-		i, ok := index[k]
-		if !ok {
-			i = uint32(len(styles))
-			index[k] = i
-			styles = append(styles, k)
-		}
 		for n, part := range strings.Split(text, "\n") {
 			if n > 0 {
 				paras = append(paras, nil)
 			}
-			if part != "" {
-				last := &paras[len(paras)-1]
-				*last = append(*last, run{i, part})
+			if part == "" {
+				continue
 			}
+			// A style is in the table once a run has it, in the order
+			// they come: the encoding is canonical (an editing host's
+			// is the same), so what's sent can be told from what was.
+			i, ok := index[k]
+			if !ok {
+				i = uint32(len(styles))
+				index[k] = i
+				styles = append(styles, k)
+			}
+			last := &paras[len(paras)-1]
+			*last = append(*last, run{i, part})
 		}
 	}
 	b = le.AppendUint32(b, uint32(len(styles)))

@@ -84,6 +84,7 @@ func (c *appConfig) missingEntitlements(ent string) []string {
 		"com.apple.developer.applesignin":                       "Sign in with Apple (ryui/appleauth)",
 		"com.apple.developer.devicecheck.appattest-environment": "App Attest (ryui/integrity)",
 		"com.apple.developer.declared-age-range":                "Declared Age Range (ryui/agerange)",
+		"com.apple.developer.usernotifications.communication":   "Communication Notifications (ryui/notify's From)",
 	}
 	data, err := os.ReadFile(ent)
 	if err != nil {

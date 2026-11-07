@@ -317,11 +317,14 @@ func (r *rich) widestWord(h *Host, n *node) float64 {
 // inline component's view where its attachment is.
 func (r *rich) placeInlines(h *Host, n *node) {
 	r.build(h, n)
-	r.width = n.frame.Size.Width
+	// Its text inside its padding (ContentInset): the container is as wide
+	// as what's left, at the text view's container origin.
+	r.width = n.frame.Size.Width - float64(n.inset[1]+n.inset[3])
 	r.layoutAt(max(r.width, 1))
 	if len(r.inlines) == 0 {
 		return
 	}
+	ox, oy := float64(n.inset[3]), float64(n.inset[0])
 	ts := Send(r.view, "textStorage")
 	lm := Send(r.view, "layoutManager")
 	tc := Send(r.view, "textContainer")
@@ -341,7 +344,7 @@ func (r *rich) placeInlines(h *Host, n *node) {
 					frag := MsgLineFragment(lm, Sel("lineFragmentRectForGlyphAtIndex:effectiveRange:"), g, 0)
 					y = frag.Origin.Y + loc.Y - in.h
 				}
-				MsgSetRect(c.view, selSetFrame, Rect{Origin: Point{X: rect.Origin.X, Y: y}, Size: Size{Width: in.w, Height: in.h}})
+				MsgSetRect(c.view, selSetFrame, Rect{Origin: Point{X: ox + rect.Origin.X, Y: oy + y}, Size: Size{Width: in.w, Height: in.h}})
 			}
 		}
 		if ch >= 0x10000 {

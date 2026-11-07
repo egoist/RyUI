@@ -11,6 +11,10 @@ public final class RyUIViewController: UIViewController {
     var keyboardEnd: CGRect?
     var lastEnv: RyUIEnvironment?
     weak var root: UIView?
+    /// Follows the keyboard's top (UIKeyboardLayoutGuide), which moves
+    /// with the finger as a list's interactive dismissal drags it down,
+    /// when no notification says so.
+    private let keyboardTracker = UIView()
 
     public override func viewDidLoad() {
         super.viewDidLoad()
@@ -33,6 +37,17 @@ public final class RyUIViewController: UIViewController {
                 RyUIRuntime.shared.reportScreens()
             }
         }
+        keyboardTracker.isHidden = true
+        keyboardTracker.isUserInteractionEnabled = false
+        keyboardTracker.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(keyboardTracker)
+        if #available(iOS 17.0, *) { view.keyboardLayoutGuide.usesBottomSafeArea = false }
+        NSLayoutConstraint.activate([
+            keyboardTracker.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            keyboardTracker.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            keyboardTracker.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            keyboardTracker.topAnchor.constraint(equalTo: view.keyboardLayoutGuide.topAnchor),
+        ])
         let rt = RyUIRuntime.shared
         rt.scale = traitCollection.displayScale > 0 ? traitCollection.displayScale : UIScreen.main.scale
         sendEnvironment()
@@ -62,8 +77,33 @@ public final class RyUIViewController: UIViewController {
 
     public override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        let moved = trackKeyboard()
         updateKeyboard()
         sendEnvironment()
+        if moved { RyUIRuntime.shared.reportScreens() }
+    }
+
+    /// The keyboard's top as the layout guide has it: during an
+    /// interactive dismissal (a list's keyboardDismissMode), the keyboard
+    /// follows the finger with no notification, and what sits on it (a
+    /// chat's composer) follows the guide, frame by frame. Notified
+    /// changes agree with it once their animation is set up.
+    private func trackKeyboard() -> Bool {
+        guard let window = view.window else { return false }
+        var h = keyboardTracker.frame.height
+        if #unavailable(iOS 17.0) {
+            // The guide sits on the safe area while the keyboard's away.
+            if h <= view.safeAreaInsets.bottom + 0.5 { h = 0 }
+        }
+        h = max(0, min(h, view.bounds.height))
+        guard abs(h - keyboard) > 0.5 else { return false }
+        if h < 0.5 {
+            keyboardEnd = nil
+        } else {
+            let r = CGRect(x: 0, y: view.bounds.maxY - h, width: view.bounds.width, height: h)
+            keyboardEnd = view.convert(r, to: window.screen.coordinateSpace)
+        }
+        return true
     }
 
     public override func viewSafeAreaInsetsDidChange() {

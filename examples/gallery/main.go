@@ -4,6 +4,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"time"
@@ -12,9 +13,13 @@ import (
 	"github.com/egoist/ryui/audio"
 	"github.com/egoist/ryui/camera"
 	"github.com/egoist/ryui/camera/record"
+	"github.com/egoist/ryui/compose"
+	"github.com/egoist/ryui/crash"
 	"github.com/egoist/ryui/device"
 	"github.com/egoist/ryui/location"
 	"github.com/egoist/ryui/notify"
+	"github.com/egoist/ryui/preview"
+	"github.com/egoist/ryui/print"
 	"github.com/egoist/ryui/scan"
 	"github.com/egoist/ryui/secure"
 	"github.com/egoist/ryui/signal"
@@ -48,6 +53,7 @@ func App() ui.Node {
 							{Title: ui.Val("Run script"), Icon: "curlybraces", OnPress: func() {
 								ui.EvalJS(webView, `document.getElementById("out").textContent = "Set from Go at " + new Date().toLocaleTimeString()`)
 							}},
+							{Title: ui.Val("Print"), Icon: "printer", OnPress: func() { print.WebView(webView, print.Options{}, nil) }},
 						}})
 					}}),
 				motion(toast),
@@ -60,7 +66,9 @@ func App() ui.Node {
 				controls(),
 				dates(),
 				services(),
+				documents(),
 				platform(),
+				crashes(),
 			),
 		)
 		return ui.View(ui.ViewProps{Style: ui.Style{Grow: 1}}, page, toastOverlay(toast),
@@ -419,6 +427,84 @@ func services() ui.Node {
 	)
 }
 
+// receipt is the markup documents prints and makes a PDF of.
+const receipt = `<!doctype html><meta charset="utf-8"><title>Receipt</title>
+<style>body { font: 14px system-ui, sans-serif; } h1 { font-size: 22px; } td { padding: 4px 12px 4px 0; }
+.total { font-weight: 600; border-top: 1px solid #999; }</style>
+<h1>Receipt</h1><p>Thank you for your order.</p>
+<table><tr><td>Coffee beans</td><td>2</td><td>$24.00</td></tr><tr><td>Filter papers</td><td>1</td><td>$4.50</td></tr>
+<tr class="total"><td>Total</td><td></td><td>$28.50</td></tr></table>`
+
+// documents shows files with the system's viewer, prints, makes a PDF,
+// and composes a mail and a text message.
+func documents() ui.Node {
+	status := signal.New("")
+	report := func(what string) func(error) {
+		return func(err error) {
+			if err != nil {
+				status.Set(what + ": " + err.Error())
+			}
+		}
+	}
+	var pdfButton, shareButton ui.Node
+	pdfButton = ui.Button(ui.ButtonProps{Title: ui.Val("Preview a PDF"), Icon: "doc", Variant: ui.ButtonGray,
+		OnPress: func() {
+			preview.Show([]string{"docs/Gallery.pdf"}, preview.Options{From: pdfButton}, report("Preview"))
+		}})
+	shareButton = ui.Button(ui.ButtonProps{Title: ui.Val("Make a PDF and share it"), Icon: ui.IconShare, Variant: ui.ButtonGray, OnPress: func() {
+		status.Set("Making the PDF…")
+		go func() {
+			path, err := print.PDF(receipt, print.PDFOptions{})
+			ui.Post(func() {
+				if err != nil {
+					status.Set("PDF: " + err.Error())
+					return
+				}
+				status.Set("")
+				ui.ShareFiles([]string{path}, ui.ShareOptions{Title: "Receipt", From: shareButton}, report("Share"))
+			})
+		}()
+	}})
+	return section("Documents",
+		ui.Row(ui.Style{Gap: 12, Wrap: true},
+			pdfButton,
+			ui.Button(ui.ButtonProps{Title: ui.Val("Print a receipt"), Icon: "printer", Variant: ui.ButtonGray, OnPress: func() {
+				print.HTML(receipt, print.Options{Job: "Receipt"}, func(r print.Result, err error) {
+					if err != nil {
+						status.Set("Print: " + err.Error())
+						return
+					}
+					status.Set("Print: " + r.String())
+				})
+			}}),
+			shareButton,
+			ui.Button(ui.ButtonProps{Title: ui.Val("Mail the PDF"), Icon: ui.IconMail, Variant: ui.ButtonGray, OnPress: func() {
+				compose.Mail(compose.MailMessage{
+					To: []string{"friend@example.com"}, Subject: "The gallery's PDF",
+					Body: "<p>Here's the <b>gallery's</b> PDF.</p>", HTML: true,
+					Attachments: []compose.Attachment{{Source: "docs/Gallery.pdf"}},
+				}, func(r compose.Result, err error) {
+					if err != nil {
+						status.Set("Mail: " + err.Error())
+						return
+					}
+					status.Set("Mail: " + r.String())
+				})
+			}}),
+			ui.Button(ui.ButtonProps{Title: ui.Val("Text a friend"), Icon: "message", Variant: ui.ButtonGray, OnPress: func() {
+				compose.Message(compose.TextMessage{To: []string{"+15555550123"}, Body: "Look at RyUI's gallery."}, func(r compose.Result, err error) {
+					if err != nil {
+						status.Set("Message: " + err.Error())
+						return
+					}
+					status.Set("Message: " + r.String())
+				})
+			}}),
+		),
+		ui.Text(status, ui.Style{Color: ui.SecondaryLabel, Font: ui.Footnote}),
+	)
+}
+
 // motion animates transforms (a tap flips and grows the card, with a
 // spring), follows a drag, and brings a toast in and out with a
 // transition.
@@ -677,6 +763,62 @@ func platform() ui.Node {
 		})),
 	)
 }
+
+// crashes shows the crash reports kept (ryui/crash): the app's own
+// crashes, from earlier runs, and the errors it recorded. A real app
+// sends each to its server and deletes it; here, Delete only forgets it.
+func crashes() ui.Node {
+	reports := signal.NewFunc([]crash.Report(nil), nil)
+	crash.OnReport(func(r crash.Report) { reports.Set(append(reports.Peek(), r)) })
+	crash.Breadcrumb("gallery: opened")
+	return section("Crash reports",
+		ui.StaticText("Crash the app, open it again: the crash is here, with what the app was doing.", ui.Style{Color: ui.SecondaryLabel, Font: ui.Footnote}),
+		ui.Row(ui.Style{Gap: 12, Wrap: true},
+			ui.Button(ui.ButtonProps{Title: ui.Val("Crash the app"), Icon: ui.IconWarning, Variant: ui.ButtonGray, OnPress: func() {
+				crash.Breadcrumb("gallery: crashing on purpose")
+				crash.Set("screen", "gallery")
+				var cart map[string]int
+				cart["items"]++ // a nil map: Go panics
+			}}),
+			ui.Button(ui.ButtonProps{Title: ui.Val("Crash on a goroutine"), Variant: ui.ButtonGray, OnPress: func() {
+				crash.Breadcrumb("gallery: crashing off the main thread")
+				go func() { panic(fmt.Sprintf("sync failed at %s", time.Now().Format("15:04:05"))) }()
+			}}),
+			ui.Button(ui.ButtonProps{Title: ui.Val("Record an error"), Variant: ui.ButtonGray, OnPress: func() {
+				crash.Record(fmt.Errorf("checkout: %w", errNoNetwork))
+			}}),
+		),
+		ui.Show(signal.Func(func() bool { return len(reports.Get()) == 0 }), func() ui.Node {
+			return ui.StaticText("No reports.", ui.Style{Color: ui.SecondaryLabel})
+		}),
+		ui.Column(ui.Style{Gap: 10}, ui.For(reports, func(r crash.Report) string { return r.ID }, func(r signal.Accessor[crash.Report], _ signal.Accessor[int]) ui.Node {
+			return ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
+				ui.Column(ui.Style{Grow: 1, Shrink: 1, Gap: 2},
+					ui.Text(signal.Func(func() string { return r.Get().Message }), ui.Style{Font: ui.Subheadline, Lines: 2}),
+					ui.Text(signal.Func(func() string {
+						c := r.Get().Context
+						s := fmt.Sprintf("%s · %s · %s %s", r.Get().Kind, r.Get().Time.Local().Format("Jan 2 15:04"), c.AppVersion, c.Build)
+						if n := len(c.Breadcrumbs); n > 0 {
+							s += " · last: " + c.Breadcrumbs[n-1].Message
+						}
+						return s
+					}), ui.Style{Color: ui.SecondaryLabel, Font: ui.Footnote, Lines: 2})),
+				ui.Button(ui.ButtonProps{Icon: ui.IconTrash, Label: ui.Val("Delete"), Variant: ui.ButtonPlain, OnPress: func() {
+					id := r.Get().ID
+					crash.Delete(id)
+					var keep []crash.Report
+					for _, x := range reports.Peek() {
+						if x.ID != id {
+							keep = append(keep, x)
+						}
+					}
+					reports.Set(keep)
+				}}))
+		})),
+	)
+}
+
+var errNoNetwork = errors.New("no network")
 
 // toastOverlay floats the toast over the screen's bottom, above the home
 // indicator, sliding up in and down out.

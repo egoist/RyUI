@@ -790,6 +790,7 @@ fun RyUIRuntime.setNavProp(n: RyUINode, prop: Int, v: Any): Boolean {
             RyUIProp.List.REFRESHABLE -> setRefreshable(n, v as Boolean)
             RyUIProp.List.REFRESHING -> (n.wrapper as? SwipeRefreshLayout)?.isRefreshing = v as Boolean
             RyUIProp.List.COLUMNS -> n.list?.let { it.setGrid((v as Long).toInt(), it.gap) }
+            RyUIProp.List.SELECTING -> n.list?.setSelecting(v as Boolean)
             else -> return false
         }
         RyUIKind.IMAGE -> when (prop) {
@@ -830,6 +831,8 @@ private fun RyUIRuntime.setRefreshable(n: RyUINode, on: Boolean) {
         if (parent != null) parent.addView(s, i, lp)
         val id = n.id
         s.setOnRefreshListener { emit(id, RyUIEventKind.REFRESH) { RyUIEvents.refresh(id) } }
+        // A list's view is a frame around its RecyclerView: that's what scrolls.
+        n.list?.let { l -> s.setOnChildScrollUpCallback { _, _ -> l.recycler.canScrollVertically(-1) } }
         n.wrapper = s
         srl = s
     }

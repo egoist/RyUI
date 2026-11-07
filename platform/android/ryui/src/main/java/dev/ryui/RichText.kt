@@ -243,7 +243,7 @@ class RyUIRichText(private val rt: RyUIRuntime, private val id2: Int) : RyUICont
             val p = at[i]
             if (p == null) { v.visibility = INVISIBLE; continue }
             v.visibility = VISIBLE
-            v.layout(p.first, p.second, p.first + v.width, p.second + v.height)
+            v.layout(insetLeft + p.first, insetTop + p.second, insetLeft + p.first + v.width, insetTop + p.second + v.height)
         }
     }
 
@@ -442,15 +442,39 @@ class RyUIRichText(private val rt: RyUIRuntime, private val id2: Int) : RyUICont
         return mw to ls.sumOf { it.height } / d
     }
 
+    // ContentInset, in px: the text sits inside its padding. Its layout,
+    // drawing and geometry are the text's, from its origin; what's in view
+    // coordinates (touches, the caret and selection's rectangles, inline
+    // components) is moved by these.
+    var insetLeft = 0
+    var insetTop = 0
+    var insetRight = 0
+
+    fun setInset(left: Int, top: Int, right: Int) {
+        if (left == insetLeft && top == insetTop && right == insetRight) return
+        insetLeft = left
+        insetTop = top
+        insetRight = right
+        invalidateText()
+    }
+
     private fun current(): List<StaticLayout> {
-        if (laidWidth != width) {
-            laid = layouts(width)
-            laidWidth = width
+        val w = maxOf(width - insetLeft - insetRight, 0)
+        if (laidWidth != w) {
+            laid = layouts(w)
+            laidWidth = w
         }
         return laid
     }
 
     override fun onDraw(canvas: Canvas) {
+        canvas.save()
+        canvas.translate(insetLeft.toFloat(), insetTop.toFloat())
+        drawText(canvas)
+        canvas.restore()
+    }
+
+    private fun drawText(canvas: Canvas) {
         val pad = 3 * rt.density
         val radius = 5 * rt.density
         var top = 0f
@@ -515,8 +539,8 @@ class RyUIRichText(private val rt: RyUIRuntime, private val id2: Int) : RyUICont
     fun caret(offset: Int): RectF {
         val g = lineOf(offset, lines()) ?: return RectF(0f, 0f, 0f, 0f)
         val local = (offset - g.start).coerceIn(0, g.layout.text.length)
-        val x = g.layout.getPrimaryHorizontal(local)
-        return RectF(x, g.top + g.layout.getLineTop(g.line), x, g.top + g.layout.getLineBottom(g.line))
+        val x = g.layout.getPrimaryHorizontal(local) + insetLeft
+        return RectF(x, insetTop + g.top + g.layout.getLineTop(g.line), x, insetTop + g.top + g.layout.getLineBottom(g.line))
     }
 
     /** The rectangles covering [from, to), a line each. */
@@ -529,13 +553,15 @@ class RyUIRichText(private val rt: RyUIRuntime, private val id2: Int) : RyUICont
             val e = minOf(to, b)
             if (s >= e) continue
             rangeBounds(g.layout, s - g.start, e - g.start)
-            out.add(RectF(bounds.left, g.top + g.layout.getLineTop(g.line), bounds.right, g.top + g.layout.getLineBottom(g.line)))
+            out.add(RectF(insetLeft + bounds.left, insetTop + g.top + g.layout.getLineTop(g.line), insetLeft + bounds.right, insetTop + g.top + g.layout.getLineBottom(g.line)))
         }
         return out
     }
 
     /** The offset closest to (x, y). */
-    fun closestOffset(x: Float, y: Float): Int {
+    fun closestOffset(vx: Float, vy: Float): Int {
+        val x = vx - insetLeft
+        val y = vy - insetTop
         val ls = lines()
         if (ls.isEmpty()) return 0
         var best = ls[0]
@@ -649,7 +675,9 @@ class RyUIRichText(private val rt: RyUIRuntime, private val id2: Int) : RyUICont
         }
     }
 
-    private fun linkAt(x: Float, y: Float): String? {
+    private fun linkAt(vx: Float, vy: Float): String? {
+        val x = vx - insetLeft
+        val y = vy - insetTop
         var top = 0f
         for (l in current()) {
             if (y >= top && y < top + l.height) {

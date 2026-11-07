@@ -127,6 +127,44 @@ RYUI_KEYSTORE_PASSWORD=... ryui build -android
 an `.apk` to install yourself, for 64-bit and 32-bit ARM phones and
 x86_64 (emulators, Chromebooks), Android 8 and later.
 
+## Symbols for crash reports
+
+A native crash's frames are addresses in the app's binaries; a crash
+service (or App Store Connect, or Google Play) turns them into
+functions and lines with the build's symbols. Go's own stack traces
+need none (their tables are in the binary), so a Go panic reads as it
+is.
+
+**iOS.** `ryui build -ios` compiles the host with debug information,
+keeps the Go code's, and makes a dSYM of each binary (the app, its
+framework when it has a share sheet, its extensions), as Xcode's archive
+does, then strips the binaries. They're in `dist/<Name>.dSYMs`, beside
+the `.ipa` (or the simulator's `.app`), and their symbols in the `.ipa`
+(`Symbols/`), so App Store Connect and Xcode's Organizer symbolicate
+the crashes they show. Upload the dSYMs to your crash service:
+
+```sh
+sentry-cli debug-files upload --org ORG --project PROJECT dist/Notes.dSYMs
+# Crashlytics' tool, from its SDK:
+upload-symbols -gsp GoogleService-Info.plist -p ios dist/Notes.dSYMs
+```
+
+**Android.** `ryui build -android` keeps the Go libraries' symbol tables
+for Gradle, which strips the libraries it packages and puts their
+symbols in the `.aab`, with R8's map of the Kotlin it renamed: Google
+Play symbolicates native crashes and ANRs, and deobfuscates stack
+traces, with them. For a crash service they're beside the `.aab` too:
+`dist/<Name>-native-debug-symbols.zip` and `dist/<Name>-mapping.txt`.
+
+```sh
+sentry-cli debug-files upload --org ORG --project PROJECT dist/Notes-native-debug-symbols.zip
+sentry-cli upload-proguard --org ORG --project PROJECT dist/Notes-mapping.txt
+```
+
+Keep each release's symbols: a crash is symbolicated with those of the
+build it happened in. See [Device](device.md#crash-reports-ryuicrash)
+for the reports themselves.
+
 ## What the stores check
 
 Run the release build on a phone before you upload it: `ryui build

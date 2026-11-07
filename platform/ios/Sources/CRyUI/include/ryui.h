@@ -29,5 +29,11 @@ void ryui_run_posted(void);
 // Sets an environment variable for the Go code (os.Setenv), which copied
 // the process's as it loaded.
 void ryui_setenv(const char *key, const char *value);
+// Begins the run's crash record (ryui/crash), with info, JSON of the
+// device and the app: the directory native reports go in, "" if the app
+// doesn't report crashes. Any thread, before ryui_start; free the result.
+char *ryui_crash_start(const char *info);
+// Says the host wrote a report in the directory's inbox. Any thread.
+void ryui_crash_notify(void);
 
 #endif

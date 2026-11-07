@@ -57,6 +57,10 @@ type appConfig struct {
 		// WidgetProfile is the widget extension's (widgets), whose ID is
 		// the app's plus ".widgets" (default: the best match installed).
 		WidgetProfile string `json:"widgetProfile"`
+		// NotificationProfile is the Notification Service Extension's
+		// (push.Rewrite), whose ID is the app's plus ".notification"
+		// (default: the best match installed).
+		NotificationProfile string `json:"notificationProfile"`
 		// Usage are the purpose strings for protected resources
 		// (NSCameraUsageDescription, ...).
 		Usage map[string]string `json:"usage"`
@@ -122,6 +126,9 @@ type appConfig struct {
 	// shareSheet: the app's Go code calls app.ShareSheet (its archive has
 	// it, sheetSymbol): the share target shows the app's sheet.
 	shareSheet bool
+	// pushRewrite: the app's Go code calls push.Rewrite (rewriteSymbol):
+	// on iOS it has a Notification Service Extension, which runs it.
+	pushRewrite bool
 	// androidModules are the host's optional Gradle modules the app's
 	// packages need (featurePermissions).
 	androidModules []string
@@ -248,10 +255,18 @@ func loadConfig(dir string) (*appConfig, error) {
 // ldflags is the go build -ldflags for the app: what of ryui.json its Go
 // code reads (internal/boot), and, for a release, no symbol tables.
 func (c *appConfig) ldflags(release bool) string {
-	var f []string
 	if release {
-		f = append(f, "-s", "-w")
+		return c.ldflagsStrip("-s", "-w")
 	}
+	return c.ldflagsStrip()
+}
+
+// ldflagsStrip is ldflags with what the linker leaves out: an iOS
+// release keeps Go's debug information for its dSYM, an Android one its
+// symbol table for the native debug symbols (crash reports' native
+// frames), which the build strips from the binaries it ships.
+func (c *appConfig) ldflagsStrip(strip ...string) string {
+	f := append([]string(nil), strip...)
 	if c != nil && c.Accent != "" {
 		f = append(f, "-X", "github.com/egoist/ryui/internal/boot.Accent="+c.Accent)
 	}
@@ -400,6 +415,12 @@ var featurePermissions = []struct {
 	// iOS 17's full access, and before it.
 	{pkg: "github.com/egoist/ryui/calendar", android: []string{"android.permission.READ_CALENDAR"},
 		usage: map[string]string{"NSCalendarsFullAccessUsageDescription": "To show your events.", "NSCalendarsUsageDescription": "To show your events."}},
+	// Whether an app takes mailto: and smsto: links: iOS's canOpenURL,
+	// Android 11's package visibility.
+	{pkg: "github.com/egoist/ryui/compose",
+		plistArrays: map[string][]string{"LSApplicationQueriesSchemes": {"mailto"}},
+		androidTop: []string{`<queries><intent><action android:name="android.intent.action.SENDTO" /><data android:scheme="mailto" /></intent>` +
+			`<intent><action android:name="android.intent.action.SENDTO" /><data android:scheme="smsto" /></intent></queries>`}},
 }
 
 // permissionsFor adds the permissions the packages deps (an app's
@@ -491,6 +512,10 @@ func (c *appConfig) androidManifest(debug bool) string {
 	// The Maps SDK's key (ryui/maps), which it reads from the manifest.
 	if c.Android.MapsKey != "" && slices.Contains(c.androidModules, "maps") {
 		fmt.Fprintf(&b, "        <meta-data android:name=\"com.google.android.geo.API_KEY\" android:value=\"%s\" />\n", html.EscapeString(c.Android.MapsKey))
+	}
+	// push.Rewrite: FCM's data messages start the Go code to rewrite them.
+	if c.pushRewrite {
+		b.WriteString("        <meta-data android:name=\"dev.ryui.push.rewrite\" android:value=\"true\" />\n")
 	}
 	// The splash's theme (androidRes), which RyUIActivity leaves as it starts.
 	theme := ""

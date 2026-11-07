@@ -195,3 +195,28 @@ func TestTheme(t *testing.T) {
 	}
 	t.Fatal("no code block background")
 }
+
+// A column aligned right on the page stays on the right when the app's
+// direction flips: its cells' TextAlign follows it.
+func TestTableAlignFollowsTheDirection(t *testing.T) {
+	src := "| a | b |\n|---|--:|\n| 1 | 2 |\n"
+	h, r := mount(t, func() ui.Node { return markdown.View(markdown.Props{Text: ui.Val(src)}) })
+	t.Cleanup(func() { ui.SetLocale("") })
+	cell := func() *fake.View {
+		for _, v := range h.OfKind(ops.KindRichText) {
+			if ps := v.Rich(); len(ps) == 1 && ps[0].Text() == "2" {
+				return v
+			}
+		}
+		t.Fatal("no cell 2")
+		return nil
+	}
+	if got := ops.TextAlign(cell().Int(ops.PropTextAlign)); got != ops.TextAlignEnd {
+		t.Fatalf("left to right: %v, want End", got)
+	}
+	ui.SetLocale("ar-XB")
+	r.Flush()
+	if got := ops.TextAlign(cell().Int(ops.PropTextAlign)); got != ops.TextAlignStart {
+		t.Fatalf("right to left: %v, want Start", got)
+	}
+}

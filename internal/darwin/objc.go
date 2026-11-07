@@ -71,8 +71,10 @@ var (
 	MsgLineFragment func(obj ID, sel SEL, i int, r uintptr) Rect
 	MsgGlyphAtPoint func(obj ID, sel SEL, p Point, c ID, frac *float64) int
 	msgSuperPoint   func(sup ID, sel SEL, p Point) ID
+	msgSuperRect    func(sup ID, sel SEL, r Rect) Rect
 	MsgRangeToRect  func(obj ID, sel SEL, loc, length uint, container ID) Rect
 	MsgRangeRange   func(obj ID, sel SEL, loc, length uint, actual uintptr) Range
+	MsgRange        func(obj ID, sel SEL) Range
 	MsgInitRect     func(obj ID, sel SEL, r Rect) ID
 	MsgInitRectID   func(obj ID, sel SEL, r Rect, a ID) ID
 	MsgRectToID     func(obj ID, sel SEL, r Rect) ID
@@ -154,9 +156,10 @@ func Load() {
 		msgSendSuperAddr = mustDlsym(libObjC, "objc_msgSendSuper")
 		// Methods returning structs larger than 16 bytes use another entry
 		// point on amd64.
-		stret := msgSendAddr
+		stret, superStret := msgSendAddr, msgSendSuperAddr
 		if runtime.GOARCH == "amd64" {
 			stret = mustDlsym(libObjC, "objc_msgSend_stret")
+			superStret = mustDlsym(libObjC, "objc_msgSendSuper_stret")
 		}
 		for _, f := range []struct {
 			fn   any
@@ -167,8 +170,8 @@ func Load() {
 			{&MsgFloat, msgSendAddr}, {&MsgSetFloat, msgSendAddr},
 			{&MsgSize, msgSendAddr}, {&MsgSetSize, msgSendAddr}, {&MsgSizeToSize, msgSendAddr},
 			{&MsgPoint, msgSendAddr}, {&MsgSetPoint, msgSendAddr}, {&MsgPointID, msgSendAddr}, {&MsgPointFromID, msgSendAddr}, {&MsgIDToPoint, msgSendAddr}, {&MsgIDToSize, msgSendAddr}, {&MsgIDToRect, stret}, {&MsgFloatFromID, msgSendAddr},
-			{&MsgPointFromInt, msgSendAddr}, {&MsgLineFragment, stret}, {&MsgGlyphAtPoint, msgSendAddr}, {&msgSuperPoint, msgSendSuperAddr},
-			{&MsgRangeToRect, stret}, {&MsgRangeRange, msgSendAddr},
+			{&MsgPointFromInt, msgSendAddr}, {&MsgLineFragment, stret}, {&MsgGlyphAtPoint, msgSendAddr}, {&msgSuperPoint, msgSendSuperAddr}, {&msgSuperRect, superStret},
+			{&MsgRangeToRect, stret}, {&MsgRangeRange, msgSendAddr}, {&MsgRange, msgSendAddr},
 			{&MsgInitRect, msgSendAddr}, {&MsgInitRectID, msgSendAddr}, {&MsgRectToID, msgSendAddr}, {&MsgRectIDVoid, msgSendAddr}, {&MsgInitWindow, msgSendAddr}, {&MsgColor, msgSendAddr},
 			{&MsgFloatID, msgSendAddr}, {&MsgFloat2ID, msgSendAddr}, {&MsgIDFloatID, msgSendAddr}, {&MsgFloatIDID, msgSendAddr},
 			{&MsgSetFloatInt, msgSendAddr}, {&MsgFloatInt, msgSendAddr},
@@ -316,6 +319,14 @@ func SendSuperPointID(self ID, className, selector string, p Point) ID {
 	var pin runtime.Pinner
 	defer pin.Unpin()
 	return msgSuperPoint(Super(self, className, &pin), Sel(selector), p)
+}
+
+// SendSuperRect calls the superclass's method that takes a rect and
+// returns one (drawingRectForBounds:).
+func SendSuperRect(self ID, className, selector string, r Rect) Rect {
+	var pin runtime.Pinner
+	defer pin.Unpin()
+	return msgSuperRect(Super(self, className, &pin), Sel(selector), r)
 }
 
 // SuperAddr is objc_msgSendSuper, for typed super calls.

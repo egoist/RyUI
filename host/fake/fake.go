@@ -35,8 +35,17 @@ type View struct {
 	Frame    [4]float32
 	Listens  map[ops.EventKind]bool
 	Root     bool
+	// A List's, as its last ListUpdate had them.
+	Items    []int64
+	Sections []ListSection
 
 	presented bool
+}
+
+// ListSection is a List's section, as ListUpdate sends it.
+type ListSection struct {
+	Start int
+	ID    int64
 }
 
 // String returns a prop as text ("" when unset).
@@ -236,6 +245,9 @@ func (h *Host) apply(op *ops.Op) {
 			h.call(op.ID, op.Value.Bytes)
 			return
 		}
+		if op.Cmd == ops.CmdListUpdate {
+			v.Items, v.Sections = decodeListUpdate(op.Value.Bytes)
+		}
 		if op.Cmd == ops.CmdPresent {
 			if v.Kind != ops.KindSheet && v.Kind != ops.KindAlert && v.Kind != ops.KindWindow {
 				panic(fmt.Sprintf("fake: Present on a %s", v.Kind))
@@ -250,6 +262,32 @@ func (h *Host) apply(op *ops.Op) {
 	default:
 		panic(fmt.Sprintf("fake: unknown op %d", op.Code))
 	}
+}
+
+// decodeListUpdate decodes ListUpdate's args: the item IDs, then the
+// sections, if there are any.
+func decodeListUpdate(b []byte) ([]int64, []ListSection) {
+	le := binary.LittleEndian
+	n := int(le.Uint32(b))
+	b = b[4:]
+	ids := make([]int64, n)
+	for i := range ids {
+		ids[i] = int64(le.Uint64(b[8*i:]))
+	}
+	b = b[8*n:]
+	if len(b) < 4 {
+		return ids, nil
+	}
+	ns := int(le.Uint32(b))
+	b = b[4:]
+	var secs []ListSection
+	for i := range ns {
+		secs = append(secs, ListSection{Start: int(le.Uint32(b[12*i:])), ID: int64(le.Uint64(b[12*i+4:]))})
+	}
+	if secs != nil && secs[0].Start != 0 {
+		panic("fake: a list's first section doesn't start at 0")
+	}
+	return ids, secs
 }
 
 func typeName(t ops.Type) string {
@@ -541,6 +579,18 @@ func (h *Host) Bind(list *View, index int, cell *View) {
 // Unbind asks the core to let go of cell.
 func (h *Host) Unbind(list *View, cell *View) {
 	h.core.ListUnbind(list.ID, cell.ID)
+}
+
+// SelectRow selects (or deselects) a selecting list's row as the user
+// does: the cell shows it, then the core hears of it.
+func (h *Host) SelectRow(cell *View, selected bool) {
+	h.listening(cell, ops.EventRowSelected)
+	var v int64
+	if selected {
+		v = 1
+	}
+	cell.Props[ops.PropSelected] = ops.Value{Type: ops.TBool, Int: v}
+	h.dispatch(ops.Event{ID: cell.ID, Kind: ops.EventRowSelected, Bool: selected})
 }
 
 // ListCount asks the core how many items list has.

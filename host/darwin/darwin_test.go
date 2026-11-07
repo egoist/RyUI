@@ -550,3 +550,36 @@ func TestWindowOptions(t *testing.T) {
 		}
 	})
 }
+
+// ryui/notify needs the app's bundle: a test binary has none, and is told
+// so; what needs no center (the Dock's badge, Android's channels) works.
+func TestNotifyWithoutBundle(t *testing.T) {
+	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })
+	onMain(func() {
+		call := func(m string, args []byte) ([]byte, error) {
+			var out []byte
+			var err error
+			h.module("notify")[m](args, func(b []byte, e error) { out, err = b, e })
+			return out, err
+		}
+		for _, m := range []string{"request", "schedule", "showing", "removeAll"} {
+			if _, err := call(m, []byte(`{"title":"x"}`)); err != errNoBundle {
+				fatalf(t, "notify.%s: %v", m, err)
+			}
+		}
+		if _, err := call("badge", []byte{3, 0, 0, 0}); err != nil {
+			fatalf(t, "badge: %v", err)
+		}
+		tile := Send(Send(Class("NSApplication"), "sharedApplication"), "dockTile")
+		if got := GoString(Send(tile, "badgeLabel")); got != "3" {
+			fatalf(t, "badge label %q", got)
+		}
+		call("badge", []byte{0, 0, 0, 0})
+		if got := GoString(Send(tile, "badgeLabel")); got != "" {
+			fatalf(t, "badge label %q after 0", got)
+		}
+		if _, err := call("channels", []byte(`[]`)); err != nil {
+			fatalf(t, "channels: %v", err)
+		}
+	})
+}

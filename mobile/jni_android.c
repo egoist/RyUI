@@ -4,6 +4,7 @@
 // post() (from any thread).
 
 #include <jni.h>
+#include <stdlib.h>
 #include <string.h>
 #include "_cgo_export.h"
 
@@ -104,3 +105,14 @@ JNIEXPORT void JNICALL Java_dev_ryui_RyUINative_setenv(JNIEnv *e, jclass cls, js
 	(*e)->ReleaseStringUTFChars(e, key, k);
 	(*e)->ReleaseStringUTFChars(e, value, v);
 }
+
+JNIEXPORT jstring JNICALL Java_dev_ryui_RyUINative_crashStart(JNIEnv *e, jclass cls, jstring info) {
+	const char *i = (*e)->GetStringUTFChars(e, info, NULL);
+	char *dir = ryui_crash_start((char *)i);
+	(*e)->ReleaseStringUTFChars(e, info, i);
+	jstring out = (*e)->NewStringUTF(e, dir);
+	free(dir);
+	return out;
+}
+
+JNIEXPORT void JNICALL Java_dev_ryui_RyUINative_crashNotify(JNIEnv *e, jclass cls) { ryui_crash_notify(); }

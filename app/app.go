@@ -11,6 +11,7 @@ import (
 	"os"
 
 	"github.com/egoist/ryui/internal/boot"
+	"github.com/egoist/ryui/internal/crashrun"
 	"github.com/egoist/ryui/internal/remote"
 	"github.com/egoist/ryui/ui"
 )
@@ -25,12 +26,19 @@ func Run(root func() ui.Node) {
 	if os.Getenv("RYUI_SHARE_SHEET") == "1" {
 		root = sheet
 	}
+	// iOS's Notification Service Extension (push.Rewrite): main has set
+	// the rewrite, which needs no screen.
+	if os.Getenv("RYUI_NOTIFICATION_SERVICE") == "1" {
+		root = func() ui.Node { return ui.View(ui.ViewProps{}) }
+	}
 	if boot.Runner != nil {
 		boot.Runner(root)
 		return
 	}
-	// `ryui dev` runs the app here and its views in a player app.
+	// `ryui dev` runs the app here and its views in a player app: its Go
+	// crashes are kept on this machine.
 	if addr := os.Getenv("RYUI_REMOTE"); addr != "" {
+		crashrun.Start(crashrun.Info{System: "ryui dev"})
 		if err := remote.Run(addr, root, sheet); err != nil {
 			fmt.Fprintln(os.Stderr, "ryui:", err)
 			os.Exit(1)

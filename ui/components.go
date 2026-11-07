@@ -500,10 +500,85 @@ type TextFieldProps struct {
 	OnBlur   func()
 	Disabled signal.Accessor[bool]
 	Style    Styler
+	// Selection is the cursor (Start == End) or the selected text, as
+	// byte offsets into Value's text. The user's moves (and typing)
+	// write it; writing it moves the cursor or the selection, as a
+	// mention picker or a formatting button does. It needs Value.
+	Selection *signal.Signal[TextRange]
+	// PasteTypes are the MIME types (patterns, as "image/*") of content
+	// OnPaste takes: pasted, or put in by the keyboard (a GIF keyboard's
+	// images, stickers), it goes to OnPaste instead of into the text,
+	// and the edit menu offers Paste for it. Text that isn't of these
+	// types pastes as usual.
+	PasteTypes []string
+	// OnPaste is called with what was pasted of PasteTypes: images and
+	// files are the app's own copies, in its caches, as a share's are.
+	OnPaste func(items []SharedItem)
+	// Rich makes it a text area of styled text (a mail's body, a
+	// formatted message): bold, italic, underline, strikethrough,
+	// monospaced code, links (and colors, kept as they are). The user's
+	// typing and formatting write it (iOS's B/I/U edit menu; ToggleFormat
+	// and SetLink from a toolbar); writing it replaces the text. Value,
+	// if given too, follows its plain text. Inline components aren't
+	// editable and are left out. It makes the field Multiline.
+	Rich *signal.Signal[Rich]
+	// OnFormats is called with the styles where the cursor is, or that
+	// all the selection has, as they change: a toolbar's buttons show
+	// them.
+	OnFormats func(TextFormats)
+}
+
+// TextRange is a span of a TextField's text, as byte offsets into it
+// (text[Start:End]); Start == End is the cursor.
+type TextRange struct{ Start, End int }
+
+// InsertText puts text into a TextField as if it were typed: in place of
+// the selection, or at the cursor, undoably (an emoji picker's, a
+// mention's). The field reports the change as typing does.
+func InsertText(field Node, text string) {
+	if e := field.e; e != nil && e.kind == ops.KindTextField {
+		e.r.batch.Command(e.id, ops.CmdInsertText, []byte(text))
+	}
+}
+
+// utf16Offset is the UTF-16 offset of byte offset b in s (as UIKit and
+// Android count), b clamped to s and moved back to a character's start.
+func utf16Offset(s string, b int) int {
+	n := 0
+	for i, r := range s {
+		if i >= b {
+			break
+		}
+		if r >= 0x10000 {
+			n += 2
+		} else {
+			n++
+		}
+	}
+	return n
+}
+
+// byteOffset is the byte offset in s of UTF-16 offset u (clamped).
+func byteOffset(s string, u int) int {
+	n := 0
+	for i, r := range s {
+		if n >= u {
+			return i
+		}
+		if r >= 0x10000 {
+			n += 2
+		} else {
+			n++
+		}
+	}
+	return len(s)
 }
 
 // TextField is a text input: a line, or lines with Multiline.
 func TextField(p TextFieldProps) Node {
+	if p.Rich != nil {
+		p.Multiline = true
+	}
 	e := newElement(ops.KindTextField, true)
 	e.measure()
 	b := e.r.batch
@@ -536,6 +611,7 @@ func TextField(p TextFieldProps) Node {
 	bind(p.Placeholder, func(v string) { e.r.batch.SetString(id, ops.PropTextFieldPlaceholder, v) })
 	bind(p.Disabled, func(v bool) { e.r.batch.SetBool(id, ops.PropDisabled, v) })
 	h := e.handlers()
+	var richSent func(string)
 	if p.Value != nil {
 		// The core remembers what the widget last reported and sends the
 		// value only when the signal differs from it, so typing never
@@ -543,7 +619,8 @@ func TextField(p TextFieldProps) Node {
 		reported, known := "", false
 		signal.RenderEffect(func() {
 			v := p.Value.Get()
-			if known && v == reported {
+			if known && v == reported || p.Rich != nil {
+				// A Rich field's text is Rich's: Value follows it.
 				return
 			}
 			reported, known = v, true
@@ -552,6 +629,13 @@ func TextField(p TextFieldProps) Node {
 				e.remeasure()
 			}
 		})
+		if p.Rich != nil {
+			// What's sent as Rich is the field's text: Value says it too.
+			richSent = func(s string) {
+				reported, known = s, true
+				p.Value.Set(s)
+			}
+		}
 		h.text = func(s string) {
 			reported, known = s, true
 			p.Value.Set(s)
@@ -563,6 +647,32 @@ func TextField(p TextFieldProps) Node {
 	} else if p.Multiline {
 		h.text = func(string) { e.remeasure() }
 		e.listen(ops.EventTextChanged)
+	}
+	if p.Rich != nil {
+		richField(e, p.Rich, richSent)
+	}
+	if p.OnFormats != nil {
+		onFormats := p.OnFormats
+		h.formats = func(b []byte) { onFormats(decodeFormats(b)) }
+		e.listen(ops.EventFormats)
+	}
+	if p.Selection != nil && p.Value != nil {
+		textSelection(e, p.Value, p.Selection)
+	}
+	if len(p.PasteTypes) > 0 && p.OnPaste != nil {
+		b := binary.LittleEndian.AppendUint32(nil, uint32(len(p.PasteTypes)))
+		for _, t := range p.PasteTypes {
+			b = binary.LittleEndian.AppendUint32(b, uint32(len(t)))
+			b = append(b, t...)
+		}
+		e.r.batch.SetBytes(id, ops.PropTextFieldPasteTypes, b)
+		onPaste := p.OnPaste
+		h.pasted = func(b []byte) {
+			if items := decodeShared(b); len(items) > 0 {
+				onPaste(items)
+			}
+		}
+		e.listen(ops.EventPasted)
 	}
 	if p.OnSubmit != nil {
 		h.submit = p.OnSubmit
@@ -577,6 +687,44 @@ func TextField(p TextFieldProps) Node {
 		e.listen(ops.EventBlur)
 	}
 	return Node{e}
+}
+
+// textSelection keeps a field's selection and sel in step: the user's
+// moves write sel, and sel's changes move the field's, except to where
+// the field last said it was (so a move never round-trips). Offsets are
+// UTF-16 on the wire, bytes of the text in Go; the host reports a move
+// after the text change that made it.
+func textSelection(e *element, value *signal.Signal[string], sel *signal.Signal[TextRange]) {
+	id := e.id
+	var reported [2]uint32
+	known := false
+	signal.RenderEffect(func() {
+		r := sel.Get()
+		text := signal.Untrack(value.Get)
+		start, end := min(max(r.Start, 0), len(text)), min(max(r.End, 0), len(text))
+		if end < start {
+			start, end = end, start
+		}
+		u := [2]uint32{uint32(utf16Offset(text, start)), uint32(utf16Offset(text, end))}
+		if known && u == reported {
+			return
+		}
+		reported, known = u, true
+		var b [8]byte
+		binary.LittleEndian.PutUint32(b[:], u[0])
+		binary.LittleEndian.PutUint32(b[4:], u[1])
+		e.r.batch.SetBytes(id, ops.PropTextFieldSelection, b[:])
+	})
+	e.handlers().selection = func(b []byte) {
+		if len(b) < 8 {
+			return
+		}
+		u := [2]uint32{binary.LittleEndian.Uint32(b), binary.LittleEndian.Uint32(b[4:])}
+		reported, known = u, true
+		text := value.Peek()
+		sel.Set(TextRange{byteOffset(text, int(u[0])), byteOffset(text, int(u[1]))})
+	}
+	e.listen(ops.EventSelectionChanged)
 }
 
 // Focus asks a TextField for the keyboard.

@@ -42,7 +42,7 @@ func buildIOS(app *goApp, o *buildOptions) error {
 	// Sign first: no point building for a profile that isn't there. The
 	// share extension has a bundle ID, and so a profile, of its own (a
 	// wildcard one can serve both), from the app's team.
-	var prof, shareProf, widgetProf *profile
+	var prof, shareProf, widgetProf, notificationProf *profile
 	if !o.simulator {
 		want := o.profile
 		if want == "" {
@@ -74,6 +74,14 @@ func buildIOS(app *goApp, o *buildOptions) error {
 	if err != nil {
 		return err
 	}
+	// The Notification Service Extension (push.Rewrite), whose profile is
+	// known once the Go code is: signed with one of its own, likewise.
+	if cfg.pushRewrite && !o.simulator {
+		if notificationProf, err = pickProfile(prof.team, cfg.notificationID(), cfg.IOS.NotificationProfile, o.distribution); err != nil {
+			return fmt.Errorf("the Notification Service Extension (push.Rewrite): %v", err)
+		}
+		fmt.Printf("ryui: signing the Notification Service Extension with %q\n", notificationProf.name)
+	}
 	bundle := filepath.Join(work, safeName(cfg.Name)+".app")
 	os.RemoveAll(bundle)
 	if err := os.MkdirAll(bundle, 0o755); err != nil {
@@ -87,6 +95,15 @@ func buildIOS(app *goApp, o *buildOptions) error {
 	}
 	code, err := tc.linkApp(work, bundle, cfg, hostObj, lib, ents)
 	if err != nil {
+		return err
+	}
+	os.RemoveAll(filepath.Join(work, "dSYMs"))
+	if cfg.sharedLayout() {
+		if err := tc.dsym(work, code, fwName+".framework"); err != nil {
+			return err
+		}
+	}
+	if err := tc.dsym(work, filepath.Join(bundle, appExe), filepath.Base(bundle)); err != nil {
 		return err
 	}
 	if err := copyDir(filepath.Join(app.dir, "assets"), filepath.Join(bundle, "assets")); err != nil {
@@ -130,10 +147,32 @@ func buildIOS(app *goApp, o *buildOptions) error {
 		if err != nil {
 			return err
 		}
+		if err := tc.keepSymbols(work, exe, filepath.Base(appex)); err != nil {
+			return err
+		}
 		if o.simulator {
 			err = tc.run(work, nil, "codesign", "--force", "--sign", simulatorIdentity(cfg.IOS.Team), appex)
 		} else {
 			err = shareProf.sign(tc, work, appex, cfg.shareID(), nil, cfg.appGroup(), cfg.keychainGroup(prof.team), nil)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	// The Notification Service Extension, likewise.
+	if cfg.pushRewrite {
+		exe, err := tc.buildNotification(work, cfg, code)
+		if err != nil {
+			return err
+		}
+		appex, err := embedNotification(bundle, exe, cfg.notificationInfo(info))
+		if err != nil {
+			return err
+		}
+		if o.simulator {
+			err = tc.run(work, nil, "codesign", "--force", "--sign", simulatorIdentity(cfg.IOS.Team), appex)
+		} else {
+			err = notificationProf.sign(tc, work, appex, cfg.notificationID(), nil, cfg.appGroup(), cfg.keychainGroup(prof.team), nil)
 		}
 		if err != nil {
 			return err
@@ -147,6 +186,9 @@ func buildIOS(app *goApp, o *buildOptions) error {
 		}
 		appex, err := embedWidgets(bundle, exe, cfg.widgetInfo(info))
 		if err != nil {
+			return err
+		}
+		if err := tc.keepSymbols(work, exe, filepath.Base(appex)); err != nil {
 			return err
 		}
 		if err := cfg.writeLprojs(appex); err != nil {
@@ -179,6 +221,11 @@ func buildIOS(app *goApp, o *buildOptions) error {
 		if err := tc.run(work, nil, "ditto", bundle, out); err != nil {
 			return err
 		}
+		if dsyms, err := tc.writeSymbols(work, o.out, safeName(cfg.Name)); err != nil {
+			return err
+		} else if dsyms != "" {
+			fmt.Println("ryui:", dsyms, "(its symbols, for crash reports)")
+		}
 		fmt.Printf("ryui: %s in %.0fs (install: xcrun simctl install booted %s)\n", out, time.Since(start).Seconds(), out)
 		return nil
 	}
@@ -188,6 +235,13 @@ func buildIOS(app *goApp, o *buildOptions) error {
 	ipa := filepath.Join(o.out, safeName(cfg.Name)+".ipa")
 	if err := packIPA(tc, work, bundle, ipa); err != nil {
 		return err
+	}
+	dsyms, err := tc.writeSymbols(work, o.out, safeName(cfg.Name))
+	if err != nil {
+		return err
+	}
+	if dsyms != "" {
+		fmt.Println("ryui:", dsyms, "(its symbols: upload them to your crash service; the .ipa has them for App Store Connect)")
 	}
 	fmt.Printf("ryui: %s in %.0fs\n", ipa, time.Since(start).Seconds())
 	if prof.kind == "app-store" {
@@ -296,6 +350,9 @@ func (t *iosToolchain) infoPlist(cfg *appConfig, simulator bool) (map[string]any
 	if cfg.ShareTarget.on && cfg.shareSheet {
 		m["RyUIShareSheet"] = true
 	}
+	if cfg.pushRewrite {
+		m["RyUINotificationService"] = true
+	}
 	for k, v := range cfg.IOS.InfoPlist {
 		m[k] = v
 	}
@@ -359,8 +416,18 @@ func packIPA(t *iosToolchain, work, bundle, ipa string) error {
 	if err := t.run(work, nil, "ditto", bundle, filepath.Join(payload, filepath.Base(bundle))); err != nil {
 		return err
 	}
+	if err := t.ipaSymbols(work, stage); err != nil {
+		return err
+	}
 	os.Remove(ipa)
-	return t.run(stage, nil, "ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", "Payload", ipa)
+	if err := t.run(stage, nil, "ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", "Payload", ipa); err != nil {
+		return err
+	}
+	if !exists(filepath.Join(stage, "Symbols")) {
+		return nil
+	}
+	// Beside Payload, at the archive's root.
+	return t.run(stage, nil, "zip", "-qry", ipa, "Symbols")
 }
 
 // Provisioning profiles
@@ -564,14 +631,15 @@ func (p *profile) sign(t *iosToolchain, work, bundle, id string, domains []strin
 			return err
 		}
 	}
-	// The App Group the share extension leaves files in: the profile
+	// The App Group the app shares its files through (with its share
+	// extension, widgets and Notification Service Extension): the profile
 	// must have it (the App Groups capability of the app ID, with it).
 	if group != "" {
 		have, _ := exec.Command("plutil", "-extract", plistKey("com.apple.security.application-groups"), "json", "-o", "-", ent).Output()
 		var groups []string
 		json.Unmarshal(have, &groups)
 		if !slices.Contains(groups, group) {
-			return fmt.Errorf("the profile %q has no App Group %s, which a share target that takes files needs: add the App Groups capability to %s, with %s, at developer.apple.com, then the profile again", p.name, group, id, group)
+			return fmt.Errorf("the profile %q has no App Group %s, through which %s shares the app's files (its share target, widgets, Notification Service Extension): add the App Groups capability to %s, with %s, at developer.apple.com, then make the profile again", p.name, group, id, id, group)
 		}
 		js, _ := json.Marshal([]string{group})
 		if err := t.run(work, nil, "plutil", "-replace", plistKey("com.apple.security.application-groups"), "-json", string(js), ent); err != nil {

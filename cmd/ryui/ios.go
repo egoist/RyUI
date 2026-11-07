@@ -78,6 +78,7 @@ func loadApp(dir string) (*goApp, error) {
 	warnCatalogsUnused(cfg, strings.Fields(string(deps)))
 	warnDevLang(cfg)
 	warnFrozenMessages(cfg, f[1])
+	startDevVet(f[2])
 	return &goApp{dir: f[2], name: filepath.Base(abs), moduleDir: f[1], bundleID: cfg.ID, cfg: cfg}, nil
 }
 
@@ -144,8 +145,13 @@ func filterLinker(out []byte) string {
 // (its ios/*.swift: native views for ui.Native), into one object file,
 // cached by the hash of its sources and the SDK.
 func (t *iosToolchain) buildHost(work string, app *goApp, features []string) (string, error) {
+	opt := []string{"-Onone", "-D", "DEBUG"}
+	if t.release {
+		// With debug information, for the app's dSYM (iosSymbols).
+		opt = []string{"-O", "-g"}
+	}
 	h := sha256.New()
-	fmt.Fprintln(h, t.sdk, t.target, t.release, features)
+	fmt.Fprintln(h, t.sdk, t.target, t.release, features, opt)
 	var files []string
 	err := fs.WalkDir(iosHost.Files, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
@@ -162,6 +168,12 @@ func (t *iosToolchain) buildHost(work string, app *goApp, features []string) (st
 	}
 	sort.Strings(files)
 	shared := filepath.Join(filepath.Dir(filepath.Dir(work)), "ios-host") // shared by all apps
+	// Its sources are written again for each build: one at a time.
+	unlock, err := lockShared(shared)
+	if err != nil {
+		return "", err
+	}
+	defer unlock()
 	src := filepath.Join(shared, "src")
 	os.RemoveAll(src)
 	var swift []string
@@ -196,10 +208,6 @@ func (t *iosToolchain) buildHost(work string, app *goApp, features []string) (st
 		return obj, nil
 	}
 	fmt.Println("ryui: compiling the iOS host (once)")
-	opt := []string{"-Onone", "-D", "DEBUG"}
-	if t.release {
-		opt = []string{"-O"}
-	}
 	args := append([]string{"swiftc", "-target", t.target, "-sdk", t.sdk, "-swift-version", "5",
 		"-module-name", "RyUIApp", "-parse-as-library", "-wmo"}, opt...)
 	for _, f := range features {
@@ -230,6 +238,21 @@ var iosFeatures = []struct{ flag, symbol string }{
 	{"RYUI_LOCATION", "github.com/egoist/ryui/location.PlaceName"},
 	{"RYUI_NOTIFY", "github.com/egoist/ryui/notify.Request"},
 	{"RYUI_NOTIFY", "github.com/egoist/ryui/notify.Schedule"},
+	{"RYUI_NOTIFY", "github.com/egoist/ryui/notify.Show"},
+	{"RYUI_NOTIFY", "github.com/egoist/ryui/notify.SetCategories"},
+	{"RYUI_NOTIFY", "github.com/egoist/ryui/notify.OnAction"},
+	{"RYUI_NOTIFY", "github.com/egoist/ryui/notify.Present"},
+	{"RYUI_NOTIFY", "github.com/egoist/ryui/notify.Showing"},
+	{"RYUI_NOTIFY", "github.com/egoist/ryui/notify.SetBadge"},
+	{"RYUI_NOTIFY", "github.com/egoist/ryui/notify.Remove"},
+	{"RYUI_NOTIFY", "github.com/egoist/ryui/notify.RemoveThread"},
+	{"RYUI_NOTIFY", "github.com/egoist/ryui/notify.RemoveAll"},
+	{"RYUI_NOTIFY", "github.com/egoist/ryui/notify.Cancel"},
+	// Messages in conversations: Intents' INSendMessageIntent.
+	{"RYUI_CONVERSATIONS", "github.com/egoist/ryui/notify.Notification.From"},
+	{"RYUI_CONVERSATIONS", "github.com/egoist/ryui/push.(*Message).From"},
+	// The Notification Service Extension's principal class.
+	{"RYUI_NOTIFICATION_SERVICE", rewriteSymbol},
 	{"RYUI_AUDIO", "github.com/egoist/ryui/audio.Load"},
 	{"RYUI_CAMERAVIEW", "github.com/egoist/ryui/camera.View"},
 	{"RYUI_SCAN", "github.com/egoist/ryui/scan.File"},
@@ -282,6 +305,60 @@ var iosFeatures = []struct{ flag, symbol string }{
 	{"RYUI_APPLEAUTH", "github.com/egoist/ryui/appleauth.SignIn"},
 	{"RYUI_APPLEAUTH", "github.com/egoist/ryui/appleauth.Available"},
 	{"RYUI_APPLEAUTH", "github.com/egoist/ryui/appleauth.CredentialState"},
+	{"RYUI_CRASH", "github.com/egoist/ryui/crash.Reports"},
+	{"RYUI_CRASH", "github.com/egoist/ryui/crash.OnReport"},
+	{"RYUI_PREVIEW", "github.com/egoist/ryui/preview.Show"},
+	{"RYUI_PRINT", "github.com/egoist/ryui/print.File"},
+	{"RYUI_PRINT", "github.com/egoist/ryui/print.HTML"},
+	{"RYUI_PRINT", "github.com/egoist/ryui/print.WebView"},
+	{"RYUI_PRINT", "github.com/egoist/ryui/print.PDF"},
+	{"RYUI_PRINTHTML", "github.com/egoist/ryui/print.HTML"},
+	{"RYUI_PRINTHTML", "github.com/egoist/ryui/print.PDF"},
+	{"RYUI_COMPOSE", "github.com/egoist/ryui/compose.Mail"},
+	{"RYUI_COMPOSE", "github.com/egoist/ryui/compose.Message"},
+	{"RYUI_COMPOSE", "github.com/egoist/ryui/compose.Check"},
+}
+
+// featureExtras are what a feature needs of the app beyond its framework:
+// the entitlements (with a simulator build's values; a release's profile
+// must have them) and Info.plist's arrays, as featurePermissions' are a
+// package's.
+var featureExtras = map[string]struct {
+	entitlements map[string]any
+	plistArrays  map[string][]string
+}{
+	// Communication notifications: the capability, and the intent the
+	// app donates for each message.
+	"RYUI_CONVERSATIONS": {
+		entitlements: map[string]any{"com.apple.developer.usernotifications.communication": true},
+		plistArrays:  map[string][]string{"NSUserActivityTypes": {"INSendMessageIntent"}},
+	},
+}
+
+// addFeatureExtras adds what the features flags need (featureExtras).
+func (c *appConfig) addFeatureExtras(flags []string) {
+	for _, f := range flags {
+		x, ok := featureExtras[f]
+		if !ok {
+			continue
+		}
+		for k, v := range x.entitlements {
+			if c.entitlements == nil {
+				c.entitlements = map[string]any{}
+			}
+			c.entitlements[k] = v
+		}
+		for k, vs := range x.plistArrays {
+			if c.plistArrays == nil {
+				c.plistArrays = map[string][]string{}
+			}
+			for _, v := range vs {
+				if !slices.Contains(c.plistArrays[k], v) {
+					c.plistArrays[k] = append(c.plistArrays[k], v)
+				}
+			}
+		}
+	}
 }
 
 // allFeatures is every feature: the player runs any app.
@@ -312,19 +389,24 @@ func definedSymbols(lib string) map[string]bool {
 }
 
 // usedFeatures are the features the Go archive lib calls (all of them if
-// it can't be read), and notes in cfg whether it has a share sheet.
+// it can't be read), and notes in cfg whether it has a share sheet or a
+// push rewrite, and what its features need (addFeatureExtras).
 func usedFeatures(lib string, cfg *appConfig) []string {
 	defined := definedSymbols(lib)
 	if defined == nil {
-		return allFeatures()
+		all := allFeatures()
+		cfg.addFeatureExtras(all)
+		return all
 	}
 	cfg.shareSheet = defined[sheetSymbol]
+	cfg.pushRewrite = defined[rewriteSymbol]
 	var used []string
 	for _, f := range iosFeatures {
 		if defined[f.symbol] && !slices.Contains(used, f.flag) {
 			used = append(used, f.flag)
 		}
 	}
+	cfg.addFeatureExtras(used)
 	return used
 }
 
@@ -351,7 +433,9 @@ func (t *iosToolchain) buildGo(app *goApp, work string) (string, error) {
 	flags := "-isysroot " + t.sdk + " -target " + t.target
 	env := []string{"GOOS=ios", "GOARCH=" + t.goarch, "CGO_ENABLED=1", "CC=" + t.clang,
 		"CGO_CFLAGS=" + flags, "CGO_LDFLAGS=" + flags}
-	args := []string{"build", "-tags", "ios", "-buildmode=c-archive", "-overlay", ovPath, "-o", lib, app.cfg.ldflags(t.release)}
+	// A release keeps Go's symbols and debug information, for the dSYM:
+	// the executable is stripped of them once it's made (iosSymbols).
+	args := []string{"build", "-tags", "ios", "-buildmode=c-archive", "-overlay", ovPath, "-o", lib, app.cfg.ldflagsStrip()}
 	if t.release {
 		args = append(args, "-trimpath")
 	}
@@ -405,6 +489,9 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 	if app.cfg.ShareTarget.on && app.cfg.shareSheet {
 		urls += "<key>RyUIShareSheet</key><true/>\n"
 	}
+	if app.cfg.pushRewrite {
+		urls += "<key>RyUINotificationService</key><true/>\n"
+	}
 	devices := ""
 	for _, d := range app.cfg.iosDevices() {
 		devices += fmt.Sprintf("<integer>%d</integer>", d)
@@ -436,6 +523,22 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 			return "", err
 		}
 		appex, err := embedShare(bundle, exe, app.cfg.shareInfo(map[string]any{
+			"CFBundleName": app.displayName(), "CFBundleDisplayName": app.displayName(), "CFBundleShortVersionString": "1.0", "CFBundleVersion": "1", "MinimumOSVersion": iosMin,
+			"CFBundleSupportedPlatforms": []string{"iPhoneSimulator"}, "UIDeviceFamily": app.cfg.iosDevices(),
+		}))
+		if err != nil {
+			return "", err
+		}
+		if err := t.run(work, nil, "codesign", "--force", "--sign", sign, appex); err != nil {
+			return "", err
+		}
+	}
+	if app.cfg.pushRewrite {
+		exe, err := t.buildNotification(work, app.cfg, code)
+		if err != nil {
+			return "", err
+		}
+		appex, err := embedNotification(bundle, exe, app.cfg.notificationInfo(map[string]any{
 			"CFBundleName": app.displayName(), "CFBundleDisplayName": app.displayName(), "CFBundleShortVersionString": "1.0", "CFBundleVersion": "1", "MinimumOSVersion": iosMin,
 			"CFBundleSupportedPlatforms": []string{"iPhoneSimulator"}, "UIDeviceFamily": app.cfg.iosDevices(),
 		}))

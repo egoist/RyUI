@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -205,6 +206,14 @@ func devIOSPlayer(app *goApp, tc *iosToolchain, work string, sim *simDevice, sto
 	}
 	// The player: the host, and the player library instead of an app.
 	dir := playerDir(work, "ios")
+	// The player's build is shared by every app: one at a time, until
+	// it's installed.
+	unlock, err := lockShared(dir)
+	if err != nil {
+		return err
+	}
+	release := sync.OnceFunc(unlock)
+	defer release()
 	hostObj, err := tc.buildHost(dir, nil, allFeatures())
 	if err != nil {
 		return err
@@ -240,6 +249,7 @@ func devIOSPlayer(app *goApp, tc *iosToolchain, work string, sim *simDevice, sto
 	if err := proc.restart(); err != nil {
 		return err
 	}
+	release()
 	launch := exec.Command("xcrun", "simctl", "launch", "--terminate-running-process", sim.UDID, playerID)
 	launch.Env = append(os.Environ(), fmt.Sprintf("SIMCTL_CHILD_RYUI_REMOTE=127.0.0.1:%d", port))
 	if out, err := launch.CombinedOutput(); err != nil {
@@ -274,6 +284,14 @@ func devAndroidPlayer(app *goApp, tc *androidToolchain, work, serial string, sto
 		return err
 	}
 	dir := playerDir(work, "android")
+	// The player's build is shared by every app: one at a time, until
+	// it's on the device.
+	unlock, err := lockShared(dir)
+	if err != nil {
+		return err
+	}
+	release := sync.OnceFunc(unlock)
+	defer release()
 	player := &goApp{dir: dir, name: playerName, bundleID: playerID, cfg: playerConfig()}
 	apk, hash, err := tc.buildAPK(player, dir)
 	if err != nil {
@@ -306,6 +324,7 @@ func devAndroidPlayer(app *goApp, tc *androidToolchain, work, serial string, sto
 			return err
 		}
 	}
+	release()
 	// Tell the player where to connect.
 	if err := tc.run(dir, nil, tc.adb, "-s", serial, "shell", "run-as", pkg, "sh", "-c",
 		"'mkdir -p files/ryui && echo "+remote+" > files/ryui/remote'"); err != nil {
@@ -337,5 +356,6 @@ func playerConfig() *appConfig {
 	// Its sheet is the app's, or opens the app (ui.ShareSheetRoot(nil)).
 	c := &appConfig{ID: playerID, ShareTarget: shareTarget{on: true, Types: []string{"text", "*/*"}, Max: 20}, shareSheet: true}
 	c.permissionsFor(nil)
+	c.addFeatureExtras(allFeatures())
 	return c
 }

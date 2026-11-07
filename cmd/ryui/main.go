@@ -14,6 +14,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/egoist/ryui/vet"
+	"golang.org/x/tools/go/analysis/unitchecker"
 )
 
 func usage() {
@@ -26,12 +29,17 @@ func usage() {
   ryui build -ios|-android|-mac|-windows [flags] [dir]   a release build
   ryui generate [dir]             write the functions of the app's catalogs
   ryui i18n init|add|check        start, add languages to, and check the catalogs
+  ryui vet [flags] [packages]     report what builds but runs wrong, as a signal read once
 
 ryui dev flags:
 `)
 }
 
 func main() {
+	if isVetTool(os.Args[1:]) {
+		// go vet -vettool=ryui: its analyzers, by go vet's protocol.
+		unitchecker.Main(vet.Analyzers...)
+	}
 	if len(os.Args) < 2 {
 		usage()
 		os.Exit(2)
@@ -48,6 +56,8 @@ func main() {
 		err = cmdGenerate(os.Args[2:])
 	case "i18n":
 		err = cmdI18n(os.Args[2:])
+	case "vet":
+		err = cmdVet(os.Args[2:])
 	case "-h", "-help", "--help", "help":
 		usage()
 		devFlags(new(devOptions)).PrintDefaults()
@@ -71,6 +81,7 @@ type devOptions struct {
 	embed        bool
 	verbose      bool
 	lang, dir    string
+	vet          bool
 }
 
 func devFlags(o *devOptions) *flag.FlagSet {
@@ -85,6 +96,7 @@ func devFlags(o *devOptions) *flag.FlagSet {
 	fs.BoolVar(&o.verbose, "v", false, "print the commands ryui runs")
 	fs.StringVar(&o.lang, "lang", "", "show this language for this run, as de or zh-Hans, or a pseudo locale: en-XA (accented, a third longer) or ar-XB (right to left)")
 	fs.StringVar(&o.dir, "dir", "", "lay the app out rtl or ltr for this run, whatever its language")
+	fs.BoolVar(&o.vet, "vet", true, "run ryui vet in the background, on start and on each change, and print what it finds")
 	return fs
 }
 
@@ -97,6 +109,7 @@ func cmdDev(args []string) error {
 	if err := setDevLocale(o.lang, o.dir); err != nil {
 		return err
 	}
+	devVet.on = o.vet
 	dir := "."
 	if fs.NArg() > 0 {
 		dir = fs.Arg(0)

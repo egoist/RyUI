@@ -50,6 +50,7 @@ swift test --package-path platform/ios # the Swift decoder against the golden fi
 go generate ./ops                   # Go constants, Swift and Kotlin decoders
 go generate ./i18n                  # CLDR's tables, from the pinned release
 go run ./cmd/ryui generate examples/i18n  # an app's catalog functions (dev and build do it too)
+go run ./cmd/ryui vet ./...                # the analyzers (package vet): a signal read once, written off the main thread
 go run ./cmd/ryui dev -ios -lang ar examples/i18n  # a language for one run; -lang ar-XB, en-XA: pseudo locales; -dir rtl: any app right to left
 go run ./cmd/ryui dev -ios examples/counter       # iOS simulator (Xcode): the Go code runs here, in the player
 go run ./cmd/ryui dev -android examples/counter   # Android emulator (SDK + NDK), likewise

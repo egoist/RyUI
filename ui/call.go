@@ -61,6 +61,18 @@ func CallWait(module, method string, args []byte) ([]byte, error) {
 	return r.b, r.err
 }
 
+// ViewID is the id the host knows n's view by, for a package's module
+// call that points at a view (the button a popover comes from, the
+// WebView to print); 0 if n has no view of its own, or not yet (its
+// effects haven't run, it's disposed). A host answers a module call for
+// a view it doesn't have as for none. Main thread.
+func ViewID(n Node) uint32 {
+	if n.e == nil || !n.e.real || n.e.dead {
+		return 0
+	}
+	return uint32(n.e.id)
+}
+
 // result delivers a Result event to its Call.
 func result(b []byte) {
 	if len(b) < 5 {

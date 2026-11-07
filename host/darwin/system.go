@@ -120,6 +120,21 @@ func (h *Host) builtinModules() map[string]map[string]method {
 		"share": {
 			"files": func(args []byte, reply func([]byte, error)) { h.shareFiles(args, reply) },
 		},
+		"preview": {
+			"show": func(args []byte, reply func([]byte, error)) { h.preview(args, reply) },
+		},
+		"print": {
+			"file":    func(args []byte, reply func([]byte, error)) { h.print("file", args, reply) },
+			"html":    func(args []byte, reply func([]byte, error)) { h.print("html", args, reply) },
+			"webView": func(args []byte, reply func([]byte, error)) { h.print("webView", args, reply) },
+			"pdf":     func(args []byte, reply func([]byte, error)) { h.print("pdf", args, reply) },
+		},
+		"compose": {
+			"can":     func(args []byte, reply func([]byte, error)) { h.compose("can", args, reply) },
+			"mail":    func(args []byte, reply func([]byte, error)) { h.compose("mail", args, reply) },
+			"message": func(args []byte, reply func([]byte, error)) { h.compose("message", args, reply) },
+		},
+		"notify": h.notifyModule(),
 	}
 }
 

@@ -268,6 +268,22 @@ final class RyUILayoutCache: @unchecked Sendable {
 /// so what's measured is what's drawn. Layouts are cached by paragraph
 /// content, the view's text props, the width and the traits.
 final class RyUIRichTextView: UIView {
+    /// ContentInset: its text is inside its padding. Its bounds start at
+    /// minus the inset, so what's drawn, its links' and its selection's
+    /// places, and its inline components, all from its text's origin, sit
+    /// inside it.
+    var contentInset_: UIEdgeInsets = .zero {
+        didSet {
+            guard contentInset_ != oldValue else { return }
+            bounds.origin = CGPoint(x: -contentInset_.left, y: -contentInset_.top)
+            setNeedsLayout()
+            setNeedsDisplay()
+        }
+    }
+
+    /// Its text's width: its own, less its padding.
+    var contentWidth: CGFloat { bounds.width - contentInset_.left - contentInset_.right }
+
     var styles: [RyUIRichStyle] = []
     var paragraphs: [RyUIRichParagraph] = []
     var base = RyUIRichBase() { didSet { if base != oldValue { invalidate() } } }
@@ -525,9 +541,9 @@ final class RyUIRichTextView: UIView {
     }
 
     private func current() -> [RyUIParagraphLayout] {
-        if laidWidth != bounds.width {
-            laid = layouts(bounds.width)
-            laidWidth = bounds.width
+        if laidWidth != contentWidth {
+            laid = layouts(contentWidth)
+            laidWidth = contentWidth
         }
         return laid
     }
@@ -540,7 +556,7 @@ final class RyUIRichTextView: UIView {
         case .end: flush = rtl ? 0 : 1
         default: flush = rtl ? 1 : 0
         }
-        return (bounds.width - l.width) * flush - l.ink
+        return (contentWidth - l.width) * flush - l.ink
     }
 
     override func draw(_ rect: CGRect) {

@@ -115,6 +115,7 @@ func Mount(h host.Host, root func() Node) *Root {
 	})
 	r.batch.SetRoot(r.el.id)
 	r.Flush()
+	boot.Mounted()
 	return r
 }
 
@@ -526,6 +527,32 @@ func dispatch(ev ops.Event) {
 	case ops.EventScrolled:
 		if h.scrolled != nil {
 			h.scrolled(float32(ev.X), float32(ev.Y))
+		}
+	case ops.EventRowInset:
+		if h.rowInset != nil {
+			h.rowInset(float32(ev.X), float32(ev.Y))
+		}
+	case ops.EventRowSelected:
+		if h.rowSelected != nil {
+			h.rowSelected(ev.Bool)
+		}
+	case ops.EventRowSelectBegin:
+		call(h.rowSelectBegin)
+	case ops.EventSelectionChanged:
+		if h.selection != nil {
+			h.selection(ev.Bytes)
+		}
+	case ops.EventPasted:
+		if h.pasted != nil {
+			h.pasted(ev.Bytes)
+		}
+	case ops.EventRichChanged:
+		if h.rich != nil {
+			h.rich(ev.Bytes)
+		}
+	case ops.EventFormats:
+		if h.formats != nil {
+			h.formats(ev.Bytes)
 		}
 	case ops.EventLoaded:
 		if h.loaded != nil {

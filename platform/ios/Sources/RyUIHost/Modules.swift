@@ -246,18 +246,30 @@ struct RyUIModuleError: LocalizedError {
         #if RYUI_PUSH
         modules["push"] = RyUIPush.shared.methods()
         #endif
+        #if RYUI_NOTIFICATION_SERVICE
+        modules["push", default: [:]].merge(RyUIRewrites.shared.methods()) { _, new in new }
+        #endif
         #if RYUI_APPLEAUTH
         modules["appleAuth"] = RyUIAppleAuth.shared.methods(self)
         #endif
         #if RYUI_FILES
         modules["files"] = RyUIFiles.methods(self)
         #endif
+        #if RYUI_PREVIEW
+        modules["preview"] = RyUIPreview.methods(self)
+        #endif
+        #if RYUI_PRINT
+        modules["print"] = RyUIPrint.methods(self)
+        #endif
+        #if RYUI_COMPOSE
+        modules["compose"] = RyUICompose.shared.methods(self)
+        #endif
         #if RYUI_WEBVIEW
         modules["js"] = RyUIScript.methods()
         modules["web"] = RyUIWebView.methods()
         #endif
-        #if RYUI_NOTIFY
-        modules["notify"] = RyUINotify.shared.methods()
+        #if RYUI_NOTIFY || RYUI_PUSH || RYUI_NOTIFICATION_SERVICE
+        modules["notify"] = RyUINotifyCenter.shared.methods()
         #endif
         #if RYUI_AUDIO
         modules["audio"] = RyUIAudio.shared.methods()

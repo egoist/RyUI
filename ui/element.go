@@ -29,6 +29,11 @@ type handlers struct {
 	native              func([]byte)
 	link                func(string)
 	scrolled            func(x, y float32)
+	rowInset            func(lead, trail float32) // a List's
+	rowSelected         func(bool)                // a List cell's
+	rowSelectBegin      func()                    // a List cell's
+	selection, pasted   func([]byte)              // a TextField's
+	rich, formats       func([]byte)              // a Rich TextField's
 	navigated, message  func(string)
 	ended               func()
 	layout              func(Frame)
@@ -91,7 +96,8 @@ type element struct {
 	// environment, which the host reports.
 	env       *signal.Signal[host.Environment]
 	hostSized bool
-	measured  bool // the host measures its content
+	measured  bool       // the host measures its content
+	insets    [4]float32 // a measured view's ContentInset, as last sent
 	laidSize  layout.Size
 }
 
@@ -361,6 +367,15 @@ func (e *element) emitFrame() {
 		// smaller, and a label a pixel narrower wraps: round its size up.
 		f[2] = max(f[2], ceilPx(e.box.W, s))
 		f[3] = max(f[3], ceilPx(e.box.H, s))
+	}
+	if e.measured {
+		// Its padding and border are inside its frame: the host draws
+		// its content inside them.
+		in := e.box.ContentInsets()
+		if c := [4]float32{in.Top, in.Right, in.Bottom, in.Left}; c != e.insets {
+			e.insets = c
+			e.r.batch.SetEdges(e.id, ops.PropContentInset, c[0], c[1], c[2], c[3])
+		}
 	}
 	if f != e.sent {
 		e.sent = f

@@ -4,6 +4,7 @@ package mobile
 
 /*
 #cgo android LDFLAGS: -landroid -llog
+#include <stdlib.h>
 #include "ryui_host.h"
 
 static ryui_host_callbacks ryui_cb;
@@ -18,6 +19,7 @@ static void ryui_call_post(void) { ryui_cb.post(); }
 import "C"
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"sync"
@@ -25,6 +27,7 @@ import (
 
 	"github.com/egoist/ryui/host"
 	"github.com/egoist/ryui/internal/boot"
+	"github.com/egoist/ryui/internal/crashrun"
 	"github.com/egoist/ryui/layout"
 	"github.com/egoist/ryui/ops"
 	"github.com/egoist/ryui/ui"
@@ -136,6 +139,38 @@ func ryui_list_bind(list C.uint32_t, index C.int64_t, cell C.uint32_t) {
 func ryui_list_unbind(list C.uint32_t, cell C.uint32_t) {
 	core.ListUnbind(ops.NodeID(list), ops.NodeID(cell))
 }
+
+// ryui_crash_start begins this run's crash record, if the app reports
+// crashes (ryui/crash): Go's crash output, and the run's context, with
+// info, the host's JSON of the device and the app (model, system,
+// systemVersion, appVersion, build) and, if it knows, whether the app
+// starts in the foreground (foreground). The host calls it as early as it
+// can, before ryui_start, from any thread. It returns the directory the
+// host writes its native reports in (inbox), "" if the app doesn't report
+// crashes: the host installs nothing then. The caller frees it.
+//
+//export ryui_crash_start
+func ryui_crash_start(info *C.char) *C.char {
+	var i struct {
+		crashrun.Info
+		Foreground *bool `json:"foreground"`
+	}
+	if info != nil {
+		json.Unmarshal([]byte(C.GoString(info)), &i)
+	}
+	dir := crashrun.Start(i.Info)
+	if i.Foreground != nil {
+		crashrun.Foreground(*i.Foreground)
+	}
+	return C.CString(dir)
+}
+
+// ryui_crash_notify says the host wrote a report in the inbox (MetricKit's
+// diagnostics, Android's record of how the last runs ended): ryui/crash
+// reads it, for OnReport. Any thread.
+//
+//export ryui_crash_notify
+func ryui_crash_notify() { crashrun.Notify() }
 
 // ryui_setenv sets an environment variable for the Go code: Android
 // hands a library the environment the process started with, so a

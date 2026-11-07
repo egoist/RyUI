@@ -348,6 +348,7 @@ func (h *Host) setDark(dark bool) {
 	}
 	for _, n := range h.nodes {
 		h.themeControl(n)
+		h.rethemeRich(n)
 		if n.web != nil {
 			n.web.colorScheme(dark)
 		}

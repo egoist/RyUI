@@ -664,8 +664,8 @@ func (r *rich) place(h *Host, n *node) {
 		return
 	}
 	r.build(h, n)
-	cr := ClientRect(n.hwnd)
-	SetWindowPos(n.ctl, 0, 0, 0, cr.W(), cr.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
+	cr := h.insetRect(n, ClientRect(n.hwnd)) // inside its padding (ContentInset)
+	SetWindowPos(n.ctl, 0, cr.Left, cr.Top, cr.W(), cr.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 	r.placeInlines(h, n)
 }
 
@@ -695,7 +695,9 @@ func (r *rich) placeInlines(h *Host, n *node) {
 		if Parent(c.hwnd) != n.hwnd {
 			SetParent(c.hwnd, n.hwnd)
 		}
-		SetWindowPos(c.hwnd, HWND_TOP, p.X, p.Y, h.px(n, in.w), h.px(n, in.h), SWP_NOACTIVATE|SWP_NOCOPYBITS)
+		// The control's places are its own; the components are the view's.
+		x0, y0 := h.px(n, n.inset[3]), h.px(n, n.inset[0])
+		SetWindowPos(c.hwnd, HWND_TOP, x0+p.X, y0+p.Y, h.px(n, in.w), h.px(n, in.h), SWP_NOACTIVATE|SWP_NOCOPYBITS)
 	}
 }
 

@@ -104,7 +104,10 @@ object RyUIProp {
     const val FONT_FAMILY = 28
     const val SWIPE_ACTIONS = 29
     const val LAYOUT_DIRECTION = 30
-    const val MATCH = 31
+    const val CONTENT_INSET = 31
+    const val LEADING_SWIPE_ACTIONS = 32
+    const val SELECTED = 33
+    const val MATCH = 34
 
     object View {
         const val DROP_ACCEPT = 64
@@ -132,6 +135,9 @@ object RyUIProp {
         const val CONTENT_TYPE = 71
         const val MULTILINE = 72
         const val PLAIN = 73
+        const val SELECTION = 74
+        const val RICH = 75
+        const val PASTE_TYPES = 76
     }
 
     object Toggle {
@@ -157,6 +163,8 @@ object RyUIProp {
         const val GAP = 67
         const val APPEARANCE = 68
         const val INSET = 69
+        const val ANCHOR = 70
+        const val SELECTING = 71
     }
 
     object Activity {
@@ -331,7 +339,14 @@ object RyUIEventKind {
     const val HOVER = 41
     const val DRAG_OVER = 42
     const val DROP = 43
-    const val DRAGGING = 44
+    const val SELECTION_CHANGED = 44
+    const val RICH_CHANGED = 45
+    const val FORMATS = 46
+    const val PASTED = 47
+    const val ROW_SELECTED = 48
+    const val ROW_SELECT_BEGIN = 49
+    const val ROW_INSET = 50
+    const val DRAGGING = 51
 }
 
 object RyUICommand {
@@ -362,7 +377,10 @@ object RyUICommand {
     const val COLOR_SCHEME = 25
     const val LOCALE = 26
     const val SAVE_LOCALE = 27
-    const val SHARE_CLOSE = 28
+    const val FORMAT = 28
+    const val SET_LINK = 29
+    const val INSERT_TEXT = 30
+    const val SHARE_CLOSE = 31
 }
 
 object RyUIRole {
@@ -601,6 +619,11 @@ object RyUIDragPhase {
     const val CANCELLED = 2
 }
 
+object RyUIScrollAnchor {
+    const val TOP = 0
+    const val BOTTOM = 1
+}
+
 /** Receives decoded ops, in order, on the main thread. */
 interface RyUIOpHandler {
     fun create(id: Int, kind: Int)
@@ -787,5 +810,12 @@ object RyUIEvents {
     fun hover(id: Int, v: Boolean): ByteArray = RyUIWriter().apply { header(id, 41); u8(if (v) 1 else 0) }.bytes()
     fun dragOver(id: Int, g: RyUIGesture): ByteArray = RyUIWriter().apply { header(id, 42); gesture(g) }.bytes()
     fun drop(id: Int, v: ByteArray): ByteArray = RyUIWriter().apply { header(id, 43); u32(v.size); raw(v) }.bytes()
-    fun dragging(id: Int, v: Long): ByteArray = RyUIWriter().apply { header(id, 44); u64(v) }.bytes()
+    fun selectionChanged(id: Int, v: ByteArray): ByteArray = RyUIWriter().apply { header(id, 44); u32(v.size); raw(v) }.bytes()
+    fun richChanged(id: Int, v: ByteArray): ByteArray = RyUIWriter().apply { header(id, 45); u32(v.size); raw(v) }.bytes()
+    fun formats(id: Int, v: ByteArray): ByteArray = RyUIWriter().apply { header(id, 46); u32(v.size); raw(v) }.bytes()
+    fun pasted(id: Int, v: ByteArray): ByteArray = RyUIWriter().apply { header(id, 47); u32(v.size); raw(v) }.bytes()
+    fun rowSelected(id: Int, v: Boolean): ByteArray = RyUIWriter().apply { header(id, 48); u8(if (v) 1 else 0) }.bytes()
+    fun rowSelectBegin(id: Int): ByteArray = RyUIWriter().apply { header(id, 49) }.bytes()
+    fun rowInset(id: Int, x: Double, y: Double): ByteArray = RyUIWriter().apply { header(id, 50); f64(x); f64(y) }.bytes()
+    fun dragging(id: Int, v: Long): ByteArray = RyUIWriter().apply { header(id, 51); u64(v) }.bytes()
 }

@@ -121,6 +121,8 @@ open class RyUIActivity : AppCompatActivity() {
             intent.getByteArrayExtra(RyUIShareActivity.ITEMS)?.let { runtime.shared(it) }
             return
         }
+        // A notification's tap or action that opens the app (ryui/notify).
+        RyUINotifyHub.opened(this, intent)
         // A push the user tapped (ryui/push): its data's url, if any.
         val pushed = RyUIPushHub.opened(intent)
         (intent.data?.toString() ?: pushed)?.let { runtime.openURL(it) }

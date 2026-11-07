@@ -28,6 +28,14 @@ func (h *Host) command(n *node, c ops.CommandID, args []byte) {
 		if n.list != nil {
 			n.list.update(h, args)
 		}
+	case ops.CmdInsertText:
+		if n.kind == ops.KindTextField {
+			h.insertText(n, string(args))
+		}
+	case ops.CmdFormat:
+		h.formatRich(n, args)
+	case ops.CmdSetLink:
+		h.setRichLink(n, string(args))
 	case ops.CmdPresent:
 		h.present(n)
 	case ops.CmdHaptic:
@@ -299,6 +307,20 @@ func (h *Host) call(root *node, args []byte) {
 	callID := binary.LittleEndian.Uint32(args)
 	module, rest := readString(args[4:])
 	method, rest := readString(rest)
+	if m := h.asyncModule(module)[method]; m != nil {
+		id := root.id
+		m(rest, func(res []byte, err error) {
+			out := binary.LittleEndian.AppendUint32(nil, callID)
+			if err != nil {
+				out = append(append(out, 0), err.Error()...)
+			} else {
+				out = append(append(out, 1), res...)
+			}
+			ev := ops.Event{ID: id, Kind: ops.EventResult, Bytes: out}
+			h.Post(func() { h.core.Dispatch(ev) })
+		})
+		return
+	}
 	var res []byte
 	var err error
 	if f := h.module(module); f != nil {
@@ -327,6 +349,17 @@ func (h *Host) module(name string) func(method string, args []byte) ([]byte, err
 			// Windows's share sheet needs a WinRT DataTransferManager.
 			"share": func(method string, args []byte) ([]byte, error) {
 				return nil, errors.New("ui: Windows has no share sheet for files yet")
+			},
+			// ryui/notify: Windows's toasts need the app registered with
+			// the shell (an AppUserModelID, a COM activator for actions),
+			// which ryui build -windows doesn't do yet. Channels are
+			// Android's, ignored as on iOS.
+			"notify": func(method string, args []byte) ([]byte, error) {
+				switch method {
+				case "channels", "channelGroups":
+					return nil, nil
+				}
+				return nil, errors.New("ryui/notify: Windows has no notifications yet")
 			},
 		}
 	}

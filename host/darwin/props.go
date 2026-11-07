@@ -133,6 +133,34 @@ func (h *Host) applyLayerColors(n *node) {
 	}
 }
 
+// applyContentInset puts n's content inside its padding and border
+// (ContentInset): a label's text (drawRect:), a rich text's (its text
+// container's origin and width), a multiline field's (its scroll view's
+// content insets), a one-line field's (its cell's drawing rect, where its
+// field editor goes too).
+func (h *Host) applyContentInset(n *node) {
+	in := n.inset
+	switch {
+	case n.rich != nil:
+		MsgSetSize(n.rich.view, Sel("setTextContainerInset:"), Size{Width: float64(in[3]), Height: float64(in[0])})
+		n.rich.placeInlines(h, n)
+		Send(n.view, "setNeedsDisplay:", 1)
+	case n.kind == ops.KindTextField && n.tracking != 0:
+		Send(n.view, "setAutomaticallyAdjustsContentInsets:", 0)
+		MsgSetEdges(n.view, Sel("setContentInsets:"), EdgeInsets{Top: float64(in[0]), Left: float64(in[3]), Bottom: float64(in[2]), Right: float64(in[1])})
+	case n.kind == ops.KindText:
+		Send(n.view, "setNeedsDisplay:", 1)
+	case n.kind == ops.KindTextField:
+		// Its cell's drawing rect is inside it (RyUITextFieldCell); a field
+		// being edited moves its field editor there.
+		Send(n.view, "setNeedsDisplay:", 1)
+		if ed := Send(n.view, "currentEditor"); ed != 0 {
+			r := MsgRectToRect(Send(n.view, "cell"), Sel("drawingRectForBounds:"), MsgRect(n.view, Sel("bounds")))
+			MsgSetRect(ed, selSetFrame, r)
+		}
+	}
+}
+
 func (h *Host) setCommon(n *node, p ops.PropID, v *ops.Value) {
 	if p == ops.PropLayoutDirection {
 		n.dir = ops.LayoutDirection(v.Int)
@@ -144,6 +172,9 @@ func (h *Host) setCommon(n *node, p ops.PropID, v *ops.Value) {
 		return
 	}
 	switch p {
+	case ops.PropContentInset:
+		n.inset = v.Edges
+		h.applyContentInset(n)
 	case ops.PropBackground:
 		n.background = ops.Color(v.Int)
 		if n.kind == ops.KindButton {
@@ -263,6 +294,14 @@ func (h *Host) setCommon(n *node, p ops.PropID, v *ops.Value) {
 	case ops.PropSwipeActions:
 		if n.cell != nil {
 			n.cell.swipe = decodeActions(v.Bytes)
+		}
+	case ops.PropLeadingSwipeActions:
+		if n.cell != nil {
+			n.cell.leading = decodeActions(v.Bytes)
+		}
+	case ops.PropSelected:
+		if n.cell != nil {
+			n.cell.setSelected(v.Int != 0)
 		}
 	case ops.PropTransition:
 		n.transition = nil

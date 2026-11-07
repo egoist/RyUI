@@ -17,10 +17,21 @@ final class RyUITextView: UITextView {
         didSet {
             layer.borderWidth = plain ? 0 : 1 / UIScreen.main.scale
             backgroundColor = plain ? .clear : .systemBackground
-            textContainerInset = plain ? .zero : UIEdgeInsets(top: 7, left: 3, bottom: 7, right: 3)
+            updateInsets()
             textContainer.lineFragmentPadding = plain ? 0 : 5
             setNeedsLayout()
         }
+    }
+
+    /// ContentInset: its padding, inside its own inset.
+    var contentInset_: UIEdgeInsets = .zero {
+        didSet { if contentInset_ != oldValue { updateInsets(); setNeedsLayout() } }
+    }
+
+    private func updateInsets() {
+        let own = plain ? UIEdgeInsets.zero : UIEdgeInsets(top: 7, left: 3, bottom: 7, right: 3)
+        textContainerInset = UIEdgeInsets(top: own.top + contentInset_.top, left: own.left + contentInset_.left,
+                                          bottom: own.bottom + contentInset_.bottom, right: own.right + contentInset_.right)
     }
 
     var placeholder: String? {
@@ -41,6 +52,26 @@ final class RyUITextView: UITextView {
 
     override var text: String! {
         didSet { placeholderLabel.isHidden = !(text ?? "").isEmpty }
+    }
+
+    /// TextFieldProps.PasteTypes: content of these types pastes into the
+    /// app's OnPaste, not the text.
+    var pasteTypes: [String] = []
+    /// TextFieldProps.Rich: its text is styled (RichField.swift); the
+    /// core is setting it; the styles at the cursor as last reported.
+    var rich = false
+    var settingRich = false
+    var lastFormats = RyUIFormat(rawValue: 0xff)
+    var lastLink = ""
+
+    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        if action == #selector(paste(_:)), RyUIPaste.available(pasteTypes) { return true }
+        return super.canPerformAction(action, withSender: sender)
+    }
+
+    override func paste(_ sender: Any?) {
+        if RyUIPaste.take(ryuiID, pasteTypes) { return }
+        super.paste(sender)
     }
 
     init() {
@@ -160,11 +191,15 @@ extension RyUIRuntime: UITextViewDelegate {
         t.placeholderLabel.isHidden = !t.text.isEmpty
         let id = t.ryuiID, s = t.text ?? ""
         emit(id, .textChanged) { RyUIEvents.textChanged(id, s) }
+        richChanged(t)
         t.revealCaret()
     }
 
     public func textViewDidChangeSelection(_ textView: UITextView) {
-        (textView as? RyUITextView)?.revealCaret()
+        guard let t = textView as? RyUITextView else { return }
+        t.revealCaret()
+        reportSelection(t.ryuiID)
+        reportFormats(t)
     }
 
     public func textViewDidBeginEditing(_ textView: UITextView) {

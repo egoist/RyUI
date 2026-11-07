@@ -22,6 +22,7 @@ var (
 	procRevokeDragDrop           = ole32.NewProc("RevokeDragDrop")
 	procDoDragDrop               = ole32.NewProc("DoDragDrop")
 	procReleaseStgMedium         = ole32.NewProc("ReleaseStgMedium")
+	procOleGetClipboard          = ole32.NewProc("OleGetClipboard")
 	procCoCreateInstance         = ole32.NewProc("CoCreateInstance")
 	procCoTaskMemAlloc           = ole32.NewProc("CoTaskMemAlloc")
 	procCoTaskMemFree            = ole32.NewProc("CoTaskMemFree")
@@ -454,6 +455,16 @@ func GetText(data uintptr, cf uint16, ansi bool) (string, bool) {
 		return string(b), true
 	}
 	return UTF16Bytes(b), true
+}
+
+// OleGetClipboard is the clipboard as a data object (0: none); Release
+// it after.
+func OleGetClipboard() uintptr {
+	var data uintptr
+	if r, _, _ := procOleGetClipboard.Call(uintptr(unsafe.Pointer(&data))); r != 0 {
+		return 0
+	}
+	return data
 }
 
 // DroppedFiles are the paths in a data object's CF_HDROP.

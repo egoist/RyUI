@@ -152,6 +152,12 @@ func (h *Host) makeField(n *node, secure bool) ID {
 		cls = "RyUISecureField"
 	}
 	v := initView(cls)
+	if !secure {
+		// Its own cell, which puts its text inside its padding.
+		cell := Send(Send(Class("RyUITextFieldCell"), "alloc"), "initTextCell:", uintptr(String("")))
+		Send(v, "setCell:", uintptr(cell))
+		Release(cell)
+	}
 	Send(v, "setBezeled:", 1)
 	Send(v, "setBezelStyle:", 1) // rounded
 	Send(v, "setEditable:", 1)
@@ -455,6 +461,12 @@ func (h *Host) setField(n *node, p ops.PropID, v *ops.Value) {
 	case ops.PropTextFieldPlain:
 		n.plain = v.Int != 0
 		h.plainField(n)
+	case ops.PropTextFieldSelection:
+		h.setSelection(n, v.Bytes)
+	case ops.PropTextFieldPasteTypes:
+		n.pasteTypes = decodeStrings(v.Bytes)
+	case ops.PropTextFieldRich:
+		h.setRichField(n, v.Bytes)
 	case ops.PropTextFieldAutocorrect:
 		if n.tracking != 0 {
 			Send(n.tracking, "setAutomaticSpellingCorrectionEnabled:", Bool(ops.Autocorrect(v.Int) != ops.AutocorrectNo))
@@ -511,8 +523,8 @@ func (h *Host) makeMultiline(n *node) {
 	sv := initView("NSScrollView")
 	Send(sv, "setHasVerticalScroller:", 1)
 	Send(sv, "setAutohidesScrollers:", 1)
-	Send(sv, "setBorderType:", 2) // bezel
-	tv := initView("NSTextView")
+	Send(sv, "setBorderType:", 2)     // bezel
+	tv := initView("RyUIFieldEditor") // an NSTextView that pastes the content the field takes
 	Send(tv, "setRichText:", 0)
 	Send(tv, "setDelegate:", uintptr(h.target))
 	Send(tv, "setVerticallyResizable:", 1)
@@ -548,6 +560,7 @@ func (h *Host) textViewChanged(tv ID) {
 	s := GoString(Send(tv, "string"))
 	n.text = s
 	h.emit(n, ops.Event{Kind: ops.EventTextChanged, Str: s})
+	h.richFieldChanged(n)
 }
 
 func (h *Host) textChanged(field ID) {

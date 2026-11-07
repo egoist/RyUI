@@ -2,8 +2,9 @@
 
 `ryui dev` runs an app on the iOS simulator or an Android emulator or
 phone, and reloads it as you save. This page covers how it does that,
-what a reload keeps, devices, assets and logs, what it can't reload, the
-problems you may meet, and RyUI's own GUI tests and benchmarks.
+what a reload keeps, devices, assets and logs, what it can't reload,
+`ryui vet`, the problems you may meet, and RyUI's own GUI tests and
+benchmarks.
 
 ## ryui dev
 
@@ -25,6 +26,7 @@ package that calls `app.Run`. The flags:
 - `-once`: build the app with its Go code, install it and launch it,
   then exit: no watching, no logs.
 - `-v`: print the commands RyUI runs.
+- `-vet=false`: don't run [`ryui vet`](#ryui-vet) beside the builds.
 
 ## The player and built apps
 
@@ -159,6 +161,44 @@ app again, at its root screen.
 
 Stopping `ryui dev` (Ctrl-C) stops the player too, so it doesn't join
 the next session, which may be another app's.
+
+## ryui vet
+
+```sh
+ryui vet [flags] [packages]
+```
+
+`ryui vet` finds the mistakes that build and run but do the wrong thing.
+It reports:
+
+- **reads**: a signal read while a component builds its views, so what
+  it shows never changes, as `ui.StaticText(fmt.Sprint(count.Get()))`
+  or `if open.Get() { ... }` in a component's body. See [What
+  updates](concepts.md#what-updates).
+- **mainthread**: a signal written on a goroutine instead of in
+  `ui.Post`. See [The main thread](concepts.md#the-main-thread).
+- **memowrites**: a signal written inside a memo, which panics.
+
+```
+$ ryui vet
+main.go:14:23: count.Get() is read once, while App builds its views, so the constant made from it never changes: give the prop signal.Func(func() T { ... }) instead, or use count.Peek() to read it once on purpose
+```
+
+It reports only what it's sure of, so a report is worth fixing. Each
+message names the fix, and how to say you meant it: a read once on
+purpose is `Peek`, or `signal.Untrack` for an accessor, which it never
+reports.
+
+The packages are `./...` by default, as `go vet` takes them. So are the
+flags (`-tags=...`, `-json`), and one per check: `-reads=false` turns
+reads off. `ryui vet` exits with 1 when it reports anything, for CI.
+It runs the same checks as `go vet -vettool=$(which ryui)`, where `go
+vet`'s own checks don't run.
+
+`ryui dev` runs it in the background when it starts and after each
+save, and prints what's new as warnings; `ryui build` runs it before it
+builds. Neither stops for what it finds. It takes a second or two, beside
+a build; `-vet=false` turns it off for either.
 
 ## Common problems
 

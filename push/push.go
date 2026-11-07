@@ -11,14 +11,17 @@
 // with Firebase Cloud Messaging and POST_NOTIFICATIONS.
 //
 // A notification shows whether or not the app runs (in the foreground
-// too); tapping it opens the app, with its data's "url", if it has one,
-// for ui.OnOpenURL, as ryui/notify's do.
+// too, as ryui/notify's Present says); tapping it opens the app, with its
+// data's "url", if it has one, for ui.OnOpenURL, as ryui/notify's do.
+// ryui/notify's categories, actions (OnAction), threads, channels and
+// badge are a push's too; Rewrite changes a push before it shows.
 package push
 
 import (
 	"encoding/json"
 	"sync"
 
+	"github.com/egoist/ryui/notify"
 	"github.com/egoist/ryui/ui"
 )
 
@@ -60,6 +63,38 @@ type Message struct {
 	// Data are the payload's own keys (iOS: the keys beside "aps";
 	// Android: the message's data).
 	Data map[string]string `json:"data"`
+	// Subtitle, Category, Thread, Channel, Image and Badge are the
+	// payload's (iOS: aps's subtitle, category, thread-id and badge;
+	// Android: the notification's channel_id and image, or a data
+	// message's "subtitle", "category", "thread", "channel", "image" and
+	// "badge"). A rewrite (Rewrite) sets them for the notification shown,
+	// as ryui/notify's Notification fields of the same names.
+	Subtitle string `json:"subtitle"`
+	Category string `json:"category"`
+	Thread   string `json:"thread"`
+	Channel  string `json:"channel"`
+	Image    string `json:"image"`
+	Badge    int    `json:"badge"`
+	// Summary is the thread's summary text, as a Notification's.
+	Summary string `json:"summary"`
+
+	// From's.
+	sender       *notify.Person
+	conversation notify.Conversation
+}
+
+// From makes the message that shows a message in a conversation, as
+// notify.Notification's From does: sender said m.Body in c. In a
+// rewrite (Rewrite), to show a chat's push as one, with the sender's
+// picture. On Android it shows in the conversation's notification (its
+// ID is the conversation's), under the messages there.
+//
+// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+//
+//go:noinline
+func (m *Message) From(sender notify.Person, c notify.Conversation) {
+	m.sender = &sender
+	m.conversation = c
 }
 
 // OnReceive calls f, on the main thread, with each message that comes

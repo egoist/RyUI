@@ -32,6 +32,14 @@ func (h *Host) command(n *node, c ops.CommandID, args []byte) {
 		if n.list != nil {
 			n.list.update(h, args)
 		}
+	case ops.CmdInsertText:
+		if n.kind == ops.KindTextField {
+			h.insertText(n, string(args))
+		}
+	case ops.CmdFormat:
+		h.formatField(n, args)
+	case ops.CmdSetLink:
+		h.setFieldLink(n, string(args))
 	case ops.CmdPresent:
 		h.present(n)
 	case ops.CmdHaptic:
@@ -227,11 +235,20 @@ func (h *Host) popUp(n *node) {
 }
 
 func (h *Host) menuItem(it ID) {
-	n := h.byMenu[Send(it, "menu")]
+	m := Send(it, "menu")
+	n := h.byMenu[m]
 	if n == nil {
 		return
 	}
-	h.emit(n, ops.Event{Kind: ops.EventAction, Int: int64(SendInt(it, "tag"))})
+	tag := int64(SendInt(it, "tag"))
+	if c := n.cell; c != nil && c.menu == m {
+		// A row's swipe action: a leading one's Action is -1 - its index.
+		if tag < 0 || int(tag) >= len(c.menuTags) {
+			return
+		}
+		tag = c.menuTags[tag]
+	}
+	h.emit(n, ops.Event{Kind: ops.EventAction, Int: tag})
 }
 
 // animation is what AnimateBegin asked for.

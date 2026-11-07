@@ -13,6 +13,10 @@ fun prop(name: String) = providers.gradleProperty(name).orNull
 android {
     namespace = "dev.ryui.app"
     compileSdk = 36
+    // The NDK the CLI built the Go libraries with (the SDK's ndk/<version>):
+    // Gradle strips them with it, and keeps their symbols
+    // (native-debug-symbols.zip).
+    prop("ryuiNdkVersion")?.let { ndkVersion = it }
     defaultConfig {
         applicationId = prop("ryuiApplicationId") ?: "dev.ryui.app"
         minSdk = 26
@@ -37,9 +41,11 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
-            // The Go libraries are stripped; Go's stack traces don't need
-            // the symbols (they're in its own tables).
-            ndk { debugSymbolLevel = "NONE" }
+            // Go's stack traces don't need the libraries' symbols (they're
+            // in its own tables), a native crash's frames do: Gradle strips
+            // the libraries it packages and keeps their symbol tables, in
+            // the .aab for Google Play (and native-debug-symbols.zip).
+            ndk { debugSymbolLevel = "SYMBOL_TABLE" }
             if (prop("ryuiKeystore") != null) signingConfig = signingConfigs.getByName("release")
         }
     }

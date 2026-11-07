@@ -74,7 +74,7 @@ func (t *iosToolchain) buildShare(work string, cfg *appConfig, fw string) (strin
 	}
 	opt := []string{"-Onone", "-D", "DEBUG"}
 	if t.release {
-		opt = []string{"-O", "-Xlinker", "-dead_strip"}
+		opt = []string{"-O", "-g", "-Xlinker", "-dead_strip"}
 	}
 	// With the extension-safe APIs only.
 	args := append([]string{"swiftc", "-target", t.target, "-sdk", t.sdk, "-swift-version", "5",
@@ -103,7 +103,7 @@ func (t *iosToolchain) buildShare(work string, cfg *appConfig, fw string) (strin
 	}
 	dir := filepath.Join(filepath.Dir(filepath.Dir(work)), "ios-share", hex.EncodeToString(h.Sum(nil))[:16])
 	exe := filepath.Join(dir, shareExe)
-	if exists(exe) {
+	if t.cached(exe) {
 		return exe, nil
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -120,7 +120,10 @@ func (t *iosToolchain) buildShare(work string, cfg *appConfig, fw string) (strin
 	if err := t.run(dir, nil, "xcrun", args...); err != nil {
 		return "", err
 	}
-	return exe, os.Rename(exe+".tmp", exe)
+	if err := os.Rename(exe+".tmp", exe); err != nil {
+		return "", err
+	}
+	return exe, t.cacheSymbols(exe)
 }
 
 // sharePrincipal is the extension's principal class: the host's sheet,

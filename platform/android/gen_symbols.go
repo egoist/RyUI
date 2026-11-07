@@ -154,6 +154,19 @@ var symbols = map[string]string{
 	"hand.raised":                        "back_hand",
 	"text.alignleft":                     "notes",
 	"faceid":                             "face",
+	// Formatting, for composers' toolbars.
+	"bold":          "format_bold",
+	"italic":        "format_italic",
+	"underline":     "format_underlined",
+	"strikethrough": "format_strikethrough",
+	"chevron.left.forwardslash.chevron.right": "code",
+	"text.quote":                "format_quote",
+	"list.number":               "format_list_numbered",
+	"arrowshape.turn.up.left":   "reply",
+	"arrowshape.turn.up.left.2": "reply_all",
+	"at":                        "alternate_email",
+	"textformat":                "text_format",
+	"link.badge.plus":           "add_link",
 }
 
 // fills are the SF Symbols with a ".fill" variant here.
@@ -196,6 +209,10 @@ var labels = map[string]string{
 	"paperclip": "Attach", "globe": "Language", "sun.max": "Light mode", "moon": "Dark mode",
 	"info.circle": "Info", "questionmark.circle": "Help", "exclamationmark.triangle": "Warning",
 	"rectangle.portrait.and.arrow.right": "Sign out", "person.badge.plus": "Add person",
+	"bold": "Bold", "italic": "Italic", "underline": "Underline", "strikethrough": "Strikethrough",
+	"chevron.left.forwardslash.chevron.right": "Code", "text.quote": "Quote", "list.number": "Numbered list",
+	"arrowshape.turn.up.left": "Reply", "arrowshape.turn.up.left.2": "Reply all", "at": "Mention",
+	"textformat": "Format", "link.badge.plus": "Add link",
 }
 
 // label is the TalkBack label of an SF Symbol name.

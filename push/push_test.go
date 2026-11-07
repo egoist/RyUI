@@ -1,11 +1,14 @@
 package push_test
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
 
 	"github.com/egoist/ryui/host/fake"
+	"github.com/egoist/ryui/internal/notifyspec"
+	"github.com/egoist/ryui/notify"
 	"github.com/egoist/ryui/push"
 	"github.com/egoist/ryui/ui"
 )
@@ -73,4 +76,61 @@ func TestRegisterAndMessages(t *testing.T) {
 	stopReceive()
 	stopOpen()
 	wait("stop", func() bool { return stops == 2 })
+}
+
+// Rewrite gets each push the host hands over and answers with the
+// notification to show; an error shows it as it came.
+func TestRewrite(t *testing.T) {
+	h := fake.New()
+	queue := []string{
+		`{"token":"r1","message":{"id":"m1","title":"New message","body":"","data":{"box":"c2VjcmV0"},"category":"message"}}`,
+		`{"token":"r2","message":{"id":"m2","data":{"fail":"1"}}}`,
+	}
+	answers := map[string]notifyspec.Rewritten{}
+	h.Modules = map[string]func(string, []byte) ([]byte, error){"push": func(m string, args []byte) ([]byte, error) {
+		switch m {
+		case "nextRewrite":
+			if len(queue) == 0 {
+				return nil, errors.New("empty")
+			}
+			q := queue[0]
+			queue = queue[1:]
+			return []byte(q), nil
+		case "rewritten":
+			var r notifyspec.Rewritten
+			if err := json.Unmarshal(args, &r); err != nil {
+				t.Error(err)
+			}
+			answers[r.Token] = r
+		}
+		return nil, nil
+	}}
+	r := ui.Mount(h, func() ui.Node { return ui.StaticText("x") })
+	t.Cleanup(r.Dispose)
+	push.Rewrite(func(m *push.Message) error {
+		if m.Data["fail"] != "" {
+			return errors.New("can't decrypt")
+		}
+		m.Body = "decrypted: " + m.Data["box"]
+		m.Image = "https://example.com/p.jpg"
+		m.From(notify.Person{ID: "u7", Name: "Ana"}, notify.Conversation{ID: "chat-42", Title: "Climbing", Group: true})
+		return nil
+	})
+	for range 5000 { // a safety net, not what passes
+		h.RunPosted()
+		r.Flush()
+		if len(answers) == 2 {
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+	a1, a2 := answers["r1"], answers["r2"]
+	if !a1.OK || a1.Spec.Body != "decrypted: c2VjcmV0" || a1.Spec.Title != "New message" || a1.Spec.Category != "message" ||
+		a1.Spec.ID != "chat-42" || a1.Spec.Thread != "chat-42" || a1.Spec.Sender == nil || a1.Spec.Sender.Name != "Ana" ||
+		a1.Spec.Conversation == nil || !a1.Spec.Conversation.Group || a1.Spec.Image != "https://example.com/p.jpg" || a1.Spec.Data["box"] != "c2VjcmV0" {
+		t.Fatalf("r1 %+v", a1)
+	}
+	if a2.OK || a2.Token != "r2" {
+		t.Fatalf("r2 %+v", a2)
+	}
 }

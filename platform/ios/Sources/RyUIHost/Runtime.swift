@@ -37,6 +37,7 @@ import CRyUI
     var selected: Int?
     var actions: [RyUIAction] = []
     var swipeActions: [RyUIAction] = [] // a list cell's
+    var leadingSwipeActions: [RyUIAction] = [] // a list cell's
     var shadowColor: UIColor?
     var transition: RyUITransition?
     var match: String? // Style.Match's key
@@ -187,11 +188,43 @@ final class RyUIContainerView: UIView {
     }
 }
 
+/// A Text: a label that draws its text inside its padding (ContentInset).
+final class RyUILabel: UILabel {
+    var contentInset: UIEdgeInsets = .zero {
+        didSet { if contentInset != oldValue { setNeedsDisplay() } }
+    }
+
+    override func drawText(in rect: CGRect) {
+        super.drawText(in: rect.inset(by: contentInset))
+    }
+}
+
 final class RyUITextField: UITextField {
     var ryuiID: UInt32 = 0
+    /// ContentInset: its text, placeholder and editing are inside it.
+    var contentInset_: UIEdgeInsets = .zero {
+        didSet { if contentInset_ != oldValue { setNeedsLayout() } }
+    }
+
+    override func textRect(forBounds bounds: CGRect) -> CGRect { super.textRect(forBounds: bounds.inset(by: contentInset_)) }
+    override func editingRect(forBounds bounds: CGRect) -> CGRect { super.editingRect(forBounds: bounds.inset(by: contentInset_)) }
+    override func placeholderRect(forBounds bounds: CGRect) -> CGRect { super.placeholderRect(forBounds: bounds.inset(by: contentInset_)) }
     /// TextFieldProps.Plain: no border, the text alone.
     var plain = false {
         didSet { borderStyle = plain ? .none : .roundedRect }
+    }
+    /// TextFieldProps.PasteTypes: content of these types pastes into the
+    /// app's OnPaste, not the text.
+    var pasteTypes: [String] = []
+
+    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        if action == #selector(paste(_:)), RyUIPaste.available(pasteTypes) { return true }
+        return super.canPerformAction(action, withSender: sender)
+    }
+
+    override func paste(_ sender: Any?) {
+        if RyUIPaste.take(ryuiID, pasteTypes) { return }
+        super.paste(sender)
     }
 }
 
@@ -250,6 +283,11 @@ final class RyUITextField: UITextField {
     var pendingEvents: [[UInt8]] = []
     var pendingDirection: (() -> Void)? // the direction of the views there are, once Go has returned
     var nextCellID: UInt32 = 0
+    // Text fields' selections: as last reported (or set), those waiting
+    // to be, and whether the core is setting one.
+    var lastSelection: [UInt32: (Int, Int)] = [:]
+    var selectionQueued = Set<UInt32>()
+    var settingSelection = false
     var scale: CGFloat = UIScreen.main.scale
 
     // MARK: Calling into Go
@@ -314,11 +352,10 @@ final class RyUITextField: UITextField {
 
     private func boot() {
         started = true
+        RyUICrash.start() // before the Go code's main: its crashes are kept
         NotificationCenter.default.addObserver(self, selector: #selector(voiceOverChanged), name: UIAccessibility.voiceOverStatusDidChangeNotification, object: nil)
-        #if RYUI_PUSH
-        RyUIPush.shared.install() // ryui/notify's too
-        #elseif RYUI_NOTIFY
-        RyUINotify.shared.install()
+        #if RYUI_NOTIFY || RYUI_PUSH || RYUI_NOTIFICATION_SERVICE
+        RyUINotifyCenter.shared.install() // ryui/push's too
         #endif
         #if DEBUG
         RyUIAutomation.start()
@@ -401,7 +438,7 @@ final class RyUITextField: UITextField {
         case .view:
             view = RyUIContainerView()
         case .text:
-            let l = UILabel()
+            let l = RyUILabel()
             l.numberOfLines = 0
             l.font = .preferredFont(forTextStyle: .body)
             l.adjustsFontForContentSizeCategory = true
@@ -602,7 +639,7 @@ final class RyUITextField: UITextField {
         n.listens.insert(event)
         if event == RyUIEventKind.scrolled.rawValue, let s = n.view as? UIScrollView, n.scrolls == nil {
             n.scrolls = RyUIScrollReporter(id, self)
-            s.delegate = n.scrolls
+            if n.list == nil { s.delegate = n.scrolls } // a list's own delegate forwards it
         }
         guard n.kind == .view, let e = RyUIEventKind(rawValue: event) else { return }
         switch e {
@@ -640,6 +677,12 @@ final class RyUITextField: UITextField {
     public func command(_ id: UInt32, command: UInt16, args: UnsafeRawBufferPointer) {
         guard let n = nodes[id], let c = RyUICommand(rawValue: command) else { return }
         switch c {
+        case .insertText:
+            insertText(n, String(decoding: args, as: UTF8.self))
+        case .format:
+            if args.count >= 2 { format(n, args[0], args[1]) }
+        case .setLink:
+            setLink(n, String(decoding: args, as: UTF8.self))
         case .focus:
             n.view.becomeFirstResponder()
         case .blur:
@@ -710,6 +753,7 @@ final class RyUITextField: UITextField {
             let maxY = max(-i.top, s.contentSize.height - s.bounds.height + i.bottom)
             let to = CGPoint(x: min(max(x - i.left, -i.left), maxX), y: min(max(y - i.top, -i.top), maxY))
             s.setContentOffset(to, animated: r.u8() != 0)
+            n.list?.scrolled(toY: to.y)
         case .openURL:
             if let url = URL(string: String(decoding: args, as: UTF8.self)) { UIApplication.shared.open(url) }
         case .accent:
@@ -733,7 +777,16 @@ final class RyUITextField: UITextField {
             var ids = [Int64]()
             ids.reserveCapacity(count)
             for _ in 0..<count { ids.append(Int64(bitPattern: r.u64())) }
-            n.list?.update(ids)
+            var sections: [(start: Int, id: Int64)] = []
+            if !r.atEnd {
+                let ns = Int(r.u32())
+                sections.reserveCapacity(ns)
+                for _ in 0..<ns {
+                    let start = Int(r.u32())
+                    sections.append((start, Int64(bitPattern: r.u64())))
+                }
+            }
+            n.list?.update(ids, sections: sections)
             if let l = n.list, !pendingLists.contains(where: { $0 === l }) { pendingLists.append(l) }
         }
     }
@@ -779,6 +832,11 @@ extension RyUIRuntime: UITextFieldDelegate {
         guard let t = textField as? RyUITextField else { return }
         let id = t.ryuiID
         emit(id, .focus) { RyUIEvents.focus(id) }
+    }
+
+    public func textFieldDidChangeSelection(_ textField: UITextField) {
+        guard let t = textField as? RyUITextField else { return }
+        reportSelection(t.ryuiID)
     }
 
     public func textFieldDidEndEditing(_ textField: UITextField) {
