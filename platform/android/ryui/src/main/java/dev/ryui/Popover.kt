@@ -20,10 +20,22 @@ class RyUIPopover(private val rt: RyUIRuntime, private val n: RyUINode) {
     var height = 0f
     private var popup: PopupWindow? = null
     private var closing = false // the core closes it
+    private var wanted = false // presented, and shown once the core sizes it
 
     private fun px(v: Float) = Math.round(v * rt.density)
 
+    /**
+     * Shows it once the core has laid it out (its size comes after the
+     * present, in the flush's frames): a window of no size would take the
+     * focus with nothing to show.
+     */
     fun present() {
+        wanted = true
+        if (width > 0 && height > 0) show()
+    }
+
+    private fun show() {
+        wanted = false
         val screen = n.view as? RyUIScreen ?: return
         val a = rt.nodes[anchor]?.view ?: return
         if (!a.isAttachedToWindow) return
@@ -68,11 +80,13 @@ class RyUIPopover(private val rt: RyUIRuntime, private val n: RyUINode) {
     }
 
     fun resize() {
+        if (wanted && width > 0 && height > 0) return show()
         val p = popup ?: return
         if (p.isShowing) p.update(px(width), px(height))
     }
 
     fun dismiss() {
+        wanted = false
         val p = popup ?: return
         popup = null
         closing = true

@@ -407,7 +407,9 @@ fun RyUIRuntime.propFloat(id: Int, prop: Int, v: Double) {
             else { stopRepeating(n.view, View.ALPHA); n.view.alpha = v.toFloat() }
         }
         RyUIProp.FONT_SIZE -> { n.fontSize = v.toFloat(); applyText(n) }
-        else -> if (n.kind == RyUIKind.LIST && prop == RyUIProp.List.GAP) {
+        else -> if (setNavProp(n, prop, v)) {
+            // A popover's or a keyboard bar's size.
+        } else if (n.kind == RyUIKind.LIST && prop == RyUIProp.List.GAP) {
             n.list?.let { it.setGrid(it.columns, v.toFloat()) }
         } else if (n.kind == RyUIKind.LIST && prop == RyUIProp.List.INSET) {
             n.list?.let { it.setAppearance(it.appearance, v.toFloat()) }
