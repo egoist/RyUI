@@ -609,6 +609,7 @@ fun RyUIRuntime.environment(v: View, keyboardPx: Int? = null): RyUIEnvironment {
         fontScale = c.fontScale,
         dark = isNight(c),
         reduceMotion = !android.animation.ValueAnimator.areAnimatorsEnabled(),
+        screenReader = (app.getSystemService(Context.ACCESSIBILITY_SERVICE) as android.view.accessibility.AccessibilityManager).isTouchExplorationEnabled,
         widthClass = widthClass(win.width / d), heightClass = heightClass(win.height / d),
         locale = region.locale,
         languages = region.languages,

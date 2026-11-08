@@ -24,6 +24,7 @@ public final class RyUIViewController: UIViewController {
         nc.addObserver(self, selector: #selector(keyboardWillChange(_:)), name: UIResponder.keyboardWillHideNotification, object: nil)
         nc.addObserver(self, selector: #selector(contentSizeChanged), name: UIContentSizeCategory.didChangeNotification, object: nil)
         nc.addObserver(self, selector: #selector(contentSizeChanged), name: UIAccessibility.reduceMotionStatusDidChangeNotification, object: nil)
+        nc.addObserver(self, selector: #selector(contentSizeChanged), name: UIAccessibility.voiceOverStatusDidChangeNotification, object: nil)
         nc.addObserver(self, selector: #selector(localeChanged), name: NSLocale.currentLocaleDidChangeNotification, object: nil)
         if #available(iOS 17.0, *) {
             registerForTraitChanges([UITraitUserInterfaceStyle.self, UITraitDisplayScale.self]) { (vc: RyUIViewController, _: UITraitCollection) in
@@ -170,6 +171,7 @@ public final class RyUIViewController: UIViewController {
         e.fontScale = Float(UIFontMetrics.default.scaledValue(for: 17) / 17)
         e.dark = traitCollection.userInterfaceStyle == .dark
         e.reduceMotion = UIAccessibility.isReduceMotionEnabled
+        e.screenReader = UIAccessibility.isVoiceOverRunning
         e.widthClass = traitCollection.horizontalSizeClass.ryui
         e.heightClass = traitCollection.verticalSizeClass.ryui
         e.setLanguages()

@@ -139,6 +139,8 @@ what RyUI has for it.
 | Dynamic Type, font scale | automatic | `allowFontScaling` | ✓ text styles and custom fonts scale |
 | Screen reader labels, roles, hiding | `.accessibilityLabel`... | `accessibilityLabel`... | ✓ `Label`, `Hint`, `Role`, `Decorative`; pressable views are buttons |
 | Announcements | `AccessibilityNotification.Announcement` | `announceForAccessibility` | ✓ `Announce` |
+| Moving a screen reader's focus | `@AccessibilityFocusState` | `setAccessibilityFocus` | ✓ `AccessibilityFocus` |
+| Is a screen reader on | `voiceOverEnabled` | `isScreenReaderEnabled` | ✓ `Environment.ScreenReader` |
 | Custom actions, adjustable | `.accessibilityAction`, `.accessibilityAdjustableAction` | `accessibilityActions` | ✓ `ViewProps.Actions`, `OnAdjust` (and List swipe actions are TalkBack actions) |
 
 ## Tooling

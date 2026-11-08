@@ -90,6 +90,8 @@ open class RyUIActivity : AppCompatActivity() {
         // Animations turned off (or on) in the system's settings: less motion.
         contentResolver.registerContentObserver(
             android.provider.Settings.Global.getUriFor(android.provider.Settings.Global.ANIMATOR_DURATION_SCALE), false, motion)
+        // TalkBack turned on or off: the environment's ScreenReader.
+        a11y.addTouchExplorationStateChangeListener(screenReader)
         // Opened with a URL (a scheme's, an app link).
         if (savedInstanceState == null) intent?.let { incoming(it) }
     }
@@ -145,6 +147,7 @@ open class RyUIActivity : AppCompatActivity() {
             fontScale = c.fontScale,
             dark = runtime.isNight(c),
             reduceMotion = !android.animation.ValueAnimator.areAnimatorsEnabled(),
+            screenReader = a11y.isTouchExplorationEnabled,
             widthClass = widthClass(frame.width / d), heightClass = heightClass(frame.height / d),
             locale = runtime.region.locale,
             languages = runtime.region.languages,
@@ -232,8 +235,15 @@ open class RyUIActivity : AppCompatActivity() {
         }
     }
 
+    private val a11y by lazy { getSystemService(ACCESSIBILITY_SERVICE) as android.view.accessibility.AccessibilityManager }
+    private val screenReader = android.view.accessibility.AccessibilityManager.TouchExplorationStateChangeListener {
+        sendEnvironment()
+        runtime.reportScreens()
+    }
+
     override fun onDestroy() {
         contentResolver.unregisterContentObserver(motion)
+        a11y.removeTouchExplorationStateChangeListener(screenReader)
         runtime.detach(this)
         super.onDestroy()
     }

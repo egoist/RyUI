@@ -224,6 +224,39 @@ It's `UIAccessibility`'s announcement on iOS and
 `announceForAccessibility` on Android. Without a screen reader, it does
 nothing. Don't announce what the focused view says already.
 
+## Moving focus
+
+`ui.AccessibilityFocus(node)` moves the screen reader's focus to a view,
+for when the screen changed under the user and what matters is
+somewhere else: the error under a form that failed to submit, the first
+result of a search, the title of a panel that slid in.
+
+```go
+errText := ui.Text(message)
+// ...
+OnPress: func() {
+	if err := signIn(); err != nil {
+		message.Set(err.Error())
+		ui.AccessibilityFocus(errText)
+	}
+},
+```
+
+It's sent with the next flush, once the view exists and has its frame:
+`UIAccessibility`'s screen-changed notification with the view on iOS,
+`ACTION_ACCESSIBILITY_FOCUS` on Android, a layout change naming the view
+on macOS and the focus event on Windows. A container with no view of
+its own focuses its first view. Without a screen reader it does nothing,
+and it never moves the keyboard's focus (that's `ui.Focus`).
+
+## Is a screen reader on
+
+`ui.UseEnvironment()`'s `ScreenReader` is true while VoiceOver, TalkBack
+or Narrator is on, and follows it being turned on or off. Use it for
+what works differently by ear, not to hide things: keep a toast up until
+it's dismissed rather than for three seconds, or turn a carousel that
+advances by itself into one that waits.
+
 ## Text size
 
 Text scales with no code, so what's left is layout that still works at

@@ -103,7 +103,7 @@ func goldenEvents() []Event {
 		{ID: 1, Kind: EventLifecycle, Int: int64(LifecycleBackground)},
 		{ID: 1, Kind: EventEnvironment, Env: Environment{
 			Width: 402, Height: 874, SafeTop: 62, SafeBottom: 34, Keyboard: 336,
-			Scale: 3, FontScale: 1.25, Dark: true, ReduceMotion: true, Platform: PlatformIOS,
+			Scale: 3, FontScale: 1.25, Dark: true, ReduceMotion: true, ScreenReader: true, Platform: PlatformIOS,
 			WidthClass: SizeClassCompact, HeightClass: SizeClassExpanded, Locale: "en_US", TimeZone: "Asia/Shanghai",
 			Languages: "en-US,zh-Hans", FirstWeekday: 2, HourCycle: 24,
 		}},

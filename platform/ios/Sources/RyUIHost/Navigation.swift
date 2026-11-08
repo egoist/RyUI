@@ -231,6 +231,7 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
         e.fontScale = Float(UIFontMetrics.default.scaledValue(for: 17) / 17)
         e.dark = t.userInterfaceStyle == .dark
         e.reduceMotion = UIAccessibility.isReduceMotionEnabled
+        e.screenReader = UIAccessibility.isVoiceOverRunning
         e.widthClass = t.horizontalSizeClass.ryui
         e.heightClass = t.verticalSizeClass.ryui
         e.setLanguages()

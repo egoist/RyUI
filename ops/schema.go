@@ -365,6 +365,7 @@ var Schema = SchemaDef{
 		{Name: "SetLink", Doc: "args: the URL (empty: none); sent to a Rich TextField: its selection links there (at the cursor, the link around it). Reported with RichChanged and Formats"},
 		{Name: "InsertText", Doc: "args: the text; sent to a TextField: it replaces the selection (or goes in at the cursor) as if typed, undoably, and is reported with TextChanged and SelectionChanged"},
 		{Name: "ShareClose", Doc: "args: u8 how (0 done, 1 cancelled, 2 open the app with what was shared); sent to a share sheet's root (app.ShareSheet): it closes"},
+		{Name: "A11yFocus", Doc: "sent to a view: a screen reader, if one is on, moves its focus there (UIAccessibility's screenChanged with the view; Android's ACTION_ACCESSIBILITY_FOCUS)"},
 	},
 	Enums: []EnumDef{
 		{Name: "Role", Values: []string{"None", "Button", "Header", "Image", "Link", "Text", "Search"}},

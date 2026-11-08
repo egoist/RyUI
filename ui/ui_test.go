@@ -1362,3 +1362,34 @@ func TestPlainFieldGlassButton(t *testing.T) {
 		t.Fatalf("variant\n%s", h.Log())
 	}
 }
+
+// AccessibilityFocus sends A11yFocus to the node's view (a container
+// with no view of its own: its first); the environment says whether a
+// screen reader is on.
+func TestAccessibilityFocus(t *testing.T) {
+	var reader bool
+	h, r := mount(t, func() ui.Node {
+		err := ui.Text(ui.Val("Wrong password"))
+		env := ui.UseEnvironment()
+		signal.Effect(func() { reader = env.Get().ScreenReader })
+		return ui.Column(ui.Style{},
+			err,
+			ui.Button(ui.ButtonProps{Title: ui.Val("Sign in"), OnPress: func() { ui.AccessibilityFocus(err) }}))
+	})
+	h.Tap(h.One(ops.KindButton, "Sign in"))
+	r.Flush()
+	c := h.Commands(ops.CmdA11yFocus)
+	if len(c) != 1 || c[0].ID != h.One(ops.KindText, "Wrong password").ID {
+		t.Fatalf("a11y focus commands %v", c)
+	}
+	if reader {
+		t.Fatal("a screen reader before one is on")
+	}
+	e := h.Env
+	e.ScreenReader = true
+	h.SetEnvironment(e)
+	r.Flush()
+	if !reader {
+		t.Fatal("ScreenReader didn't follow the environment")
+	}
+}

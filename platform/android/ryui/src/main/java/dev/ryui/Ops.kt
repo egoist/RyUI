@@ -381,6 +381,7 @@ object RyUICommand {
     const val SET_LINK = 29
     const val INSERT_TEXT = 30
     const val SHARE_CLOSE = 31
+    const val A11Y_FOCUS = 32
 }
 
 object RyUIRole {
@@ -706,6 +707,7 @@ data class RyUIEnvironment(
     val fontScale: Float = 1f,
     val dark: Boolean = false,
     val reduceMotion: Boolean = false,
+    val screenReader: Boolean = false,
     /** ops.Platform: this host's, Android. */
     val platform: Int = 2,
     /** ops.SizeClass: 1 compact, 2 medium, 3 expanded; 0 unspecified. */
@@ -739,7 +741,7 @@ class RyUIWriter {
     fun header(id: Int, kind: Int) { u32(id); u16(kind) }
     fun environment(e: RyUIEnvironment) {
         for (f in floatArrayOf(e.width, e.height, e.safeTop, e.safeRight, e.safeBottom, e.safeLeft, e.keyboard, e.scale, e.fontScale)) f32(f)
-        u8((if (e.dark) 1 else 0) or (if (e.reduceMotion) 2 else 0) or ((e.platform and 3) shl 2))
+        u8((if (e.dark) 1 else 0) or (if (e.reduceMotion) 2 else 0) or ((e.platform and 3) shl 2) or (if (e.screenReader) 32 else 0))
         u8((e.widthClass and 3) or ((e.heightClass and 3) shl 2))
         string(e.locale)
         string(e.timeZone)

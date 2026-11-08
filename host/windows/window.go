@@ -215,6 +215,7 @@ func (h *Host) environment() ops.Environment {
 		FontScale:    TextScale(),
 		Dark:         h.dark,
 		ReduceMotion: SystemParam(SPI_GETCLIENTAREAANIMATION) == 0,
+		ScreenReader: SystemParam(SPI_GETSCREENREADER) != 0,
 		Platform:     ops.PlatformWindows,
 		Locale:       h.intl.locale,
 		TimeZone:     timeZone(),

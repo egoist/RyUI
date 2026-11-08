@@ -89,6 +89,8 @@ func (h *Host) command(n *node, c ops.CommandID, args []byte) {
 		h.setFrames(len(args) > 0 && args[0] != 0)
 	case ops.CmdAnnounce:
 		h.announce(string(args))
+	case ops.CmdA11yFocus:
+		h.a11yFocus(n)
 	case ops.CmdShare:
 		h.share(n, string(args))
 	case ops.CmdScrollTo:
@@ -357,6 +359,15 @@ func (h *Host) announce(s string) {
 		String("AXPriorityKey"), NumberInt(90), // high
 	)
 	post(Send(Class("NSApplication"), "sharedApplication"), String("AXAnnouncementRequested"), info)
+}
+
+// a11yFocus moves VoiceOver's cursor to n's view: a layout change naming it.
+func (h *Host) a11yFocus(n *node) {
+	post := announcer()
+	if post == nil || n.view == 0 {
+		return
+	}
+	post(n.view, String("AXLayoutChanged"), Dict(String("AXUIElementsKey"), Array(n.view)))
 }
 
 func (h *Host) share(n *node, s string) {

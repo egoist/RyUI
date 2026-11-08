@@ -74,6 +74,11 @@ func (h *Host) command(n *node, c ops.CommandID, args []byte) {
 		h.setFrames(len(args) > 0 && args[0] != 0)
 	case ops.CmdAnnounce:
 		// Not yet on Windows (UI Automation's notifications).
+	case ops.CmdA11yFocus:
+		// Narrator follows the focus event to the view.
+		if n.hwnd != 0 {
+			NotifyWinEvent(EVENT_OBJECT_FOCUS, n.hwnd, OBJID_CLIENT, CHILDID_SELF)
+		}
 	case ops.CmdShare:
 		// Windows's share sheet needs a WinRT DataTransferManager: the
 		// text is copied instead.

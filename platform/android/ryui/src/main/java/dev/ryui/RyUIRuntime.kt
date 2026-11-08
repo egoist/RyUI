@@ -1055,6 +1055,10 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
                 @Suppress("DEPRECATION") // its replacements (live regions, pane titles) describe views, not events
                 activity?.window?.decorView?.announceForAccessibility(String(b, Charsets.UTF_8))
             }
+            RyUICommand.A11Y_FOCUS -> n.view?.let { v ->
+                // After this batch's frames, so TalkBack finds the view where it shows.
+                v.post { if (v.isAttachedToWindow) v.performAccessibilityAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS, null) }
+            }
             RyUICommand.SHARE_CLOSE -> (activity as? RyUIShareActivity)?.close(if (args.hasRemaining()) args.get().toInt() else 0)
             RyUICommand.COPY -> {
                 val b = ByteArray(args.remaining())

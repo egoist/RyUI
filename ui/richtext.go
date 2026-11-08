@@ -400,6 +400,26 @@ func Announce(text string) {
 	}
 }
 
+// AccessibilityFocus moves a screen reader's focus, if one is on, to n's
+// view: what a screen reader should read next after the screen changed
+// under it (an error by a field, the first result, a dialog's title).
+// It's sent with the next flush, after n's view exists. A node with no
+// view of its own focuses its first. Main thread.
+func AccessibilityFocus(n Node) {
+	if n.e == nil {
+		return
+	}
+	var target *element
+	n.e.eachNative(func(d *element) {
+		if target == nil {
+			target = d
+		}
+	})
+	if target != nil && !target.dead {
+		target.r.batch.Command(target.id, ops.CmdA11yFocus, nil)
+	}
+}
+
 // Copy puts text on the clipboard. Main thread.
 func Copy(text string) {
 	if r := activeRoot(); r != nil {

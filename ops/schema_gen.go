@@ -575,9 +575,11 @@ const (
 	CmdInsertText CommandID = 30
 	// CmdShareClose: args: u8 how (0 done, 1 cancelled, 2 open the app with what was shared); sent to a share sheet's root (app.ShareSheet): it closes.
 	CmdShareClose CommandID = 31
+	// CmdA11yFocus: sent to a view: a screen reader, if one is on, moves its focus there (UIAccessibility's screenChanged with the view; Android's ACTION_ACCESSIBILITY_FOCUS).
+	CmdA11yFocus CommandID = 32
 )
 
-var commandNames = [...]string{"", "Focus", "Blur", "ListUpdate", "Present", "Haptic", "AnimateBegin", "AnimateEnd", "OpenURL", "Call", "Copy", "Play", "Pause", "Seek", "Eval", "Frames", "Announce", "Share", "ScrollTo", "ScrollToOffset", "Accent", "WebNavigate", "MenuBar", "WindowOptions", "WindowTitle", "ColorScheme", "Locale", "SaveLocale", "Format", "SetLink", "InsertText", "ShareClose"}
+var commandNames = [...]string{"", "Focus", "Blur", "ListUpdate", "Present", "Haptic", "AnimateBegin", "AnimateEnd", "OpenURL", "Call", "Copy", "Play", "Pause", "Seek", "Eval", "Frames", "Announce", "Share", "ScrollTo", "ScrollToOffset", "Accent", "WebNavigate", "MenuBar", "WindowOptions", "WindowTitle", "ColorScheme", "Locale", "SaveLocale", "Format", "SetLink", "InsertText", "ShareClose", "A11yFocus"}
 
 func (c CommandID) String() string {
 	if int(c) < len(commandNames) && c > 0 {

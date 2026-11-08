@@ -724,6 +724,12 @@ final class RyUITextField: UITextField {
         #endif
         case .announce:
             UIAccessibility.post(notification: .announcement, argument: String(decoding: args, as: UTF8.self))
+        case .a11yFocus:
+            // After this batch's frames, so VoiceOver finds the view where it shows.
+            DispatchQueue.main.async { [weak v = n.view] in
+                guard let v, v.window != nil else { return }
+                UIAccessibility.post(notification: .screenChanged, argument: v)
+            }
         case .share:
             let s = String(decoding: args, as: UTF8.self)
             // A URL is shared as one (a link preview, Safari's actions).

@@ -385,6 +385,8 @@ Its fields:
 - `Dark`: dark mode is on.
 - `ReduceMotion`: the user asked for less motion (iOS's Reduce Motion,
   Android's animations off). See [Motion](motion.md).
+- `ScreenReader`: VoiceOver, TalkBack or Narrator is on. See
+  [Accessibility](accessibility.md#is-a-screen-reader-on).
 - `Platform`: `ui.PlatformIOS` or `ui.PlatformAndroid`, the system the
   app runs on (the device's, also in `ryui dev`, where the Go code runs
   on the Mac). The platform's views look as they should by themselves;
