@@ -118,6 +118,7 @@ var Schema = SchemaDef{
 		{Name: "Selected", Type: TBool, Doc: "a List cell's row is selected: in a selecting list, its selection control is checked and the row is highlighted"},
 		{Name: "Match", Type: TString, Doc: "a key it shares with another view: when one with the key is destroyed during an animation and another inserted, the new one comes in from the old one's place and size, and the old one goes out to the new one's, fading (SwiftUI's matchedGeometryEffect). The host notes where the views with keys are as an animated batch starts destroying, and matches them once the batch's frames are applied"},
 		{Name: "InterceptBack", Type: TBool, Doc: "a Screen, Sheet or the root takes the user's going back itself (ui.OnBack): the host sends Back to it instead of popping the screen (its back button, Android's back; iOS's edge swipe is off while it's on top), dismissing the sheet (a swipe down, a tap outside, Android's back) or, for the root, leaving the app (Android's back with no screen to pop). Predictive back doesn't animate it"},
+		{Name: "Tooltip", Type: TString, Doc: "a short text the platform shows by the view while a pointer rests on it (iPadOS's and macOS's pointer, a mouse on Android and Windows) or, on Android, as it's long pressed when it has no long press of its own; screen readers read it as a hint where the view has none. Empty: none"},
 	},
 	Kinds: []KindDef{
 		{Name: "View", Props: []PropDef{

@@ -327,6 +327,10 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             if let c = n.cell { c.list?.setSelected(c, v.bool) }
         case RyUIProp.interceptBack:
             setInterceptBack(n, v.bool)
+        case RyUIProp.tooltip:
+            // Shown by the pointer (iPadOS, an iPhone app on a Mac).
+            for i in n.view.interactions where i is UIToolTipInteraction { n.view.removeInteraction(i) }
+            if !v.string.isEmpty { n.view.addInteraction(UIToolTipInteraction(defaultToolTip: v.string)) }
         case RyUIProp.menuTrigger:
             n.menuTrigger = v.enumValue
             installMenu(n)

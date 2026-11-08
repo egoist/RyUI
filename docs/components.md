@@ -138,6 +138,12 @@ return ui.Row(ui.Style{Gap: 12, Wrap: true},
   the icon alone.
 - `Label` is what VoiceOver and TalkBack read, the title by default.
   Give an icon-only button one.
+- `Tooltip` is a short text shown while a pointer rests on it: an
+  iPad's pointer or a Mac's (`UIToolTipInteraction`), a mouse on
+  Android, where a long press shows it too (`tooltipText`), and on
+  Windows. Give an icon-only button one, its name. `ViewProps.Tooltip`
+  is the same for any view. A touch screen alone never shows it on iOS,
+  so it can't be the only place something is said.
 - `Disabled` disables it, the platform's way.
 - `Style.Font` and `Style.Color` change its text and tint.
 

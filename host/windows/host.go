@@ -144,6 +144,7 @@ type node struct {
 	detents        int64
 	dying          bool
 	interceptBack  bool // ui.OnBack: going back asks the core (Back)
+	tooltip        string
 	a11yLabel      string
 	colorValue     ops.Color
 	host           func(h *Host, n *node, m uint32, w, l uintptr) (uintptr, bool) // a host-made view's messages
@@ -179,6 +180,7 @@ type Host struct {
 	window uintptr // the app's window
 	park   uintptr // a hidden window views wait in until they're inserted
 	msgWin uintptr // a message-only window: Post's wake-ups
+	tips   uintptr // the tooltip control, made with the first tooltip
 	env    host.Environment
 	dpi    int
 	scale  float32 // pixels per point: dpi / 96
@@ -544,6 +546,9 @@ func (h *Host) destroy(id ops.NodeID) {
 	h.forgetInteraction(n)
 	if h.destroyNav(n) {
 		return
+	}
+	if n.tooltip != "" {
+		SetTooltip(h.tips, n.hwnd, "")
 	}
 	if n.parent != nil {
 		h.remove(n.parent, n)

@@ -106,6 +106,7 @@ public enum RyUIProp {
     public static let selected: UInt16 = 33
     public static let match: UInt16 = 34
     public static let interceptBack: UInt16 = 35
+    public static let tooltip: UInt16 = 36
 
     public enum View {
         public static let dropAccept: UInt16 = 64

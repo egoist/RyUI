@@ -303,6 +303,8 @@ func (h *Host) setCommon(n *node, p ops.PropID, v *ops.Value) {
 		if n.cell != nil {
 			n.cell.setSelected(v.Int != 0)
 		}
+	case ops.PropTooltip:
+		Send(n.view, "setToolTip:", uintptr(String(v.Str)))
 	case ops.PropInterceptBack:
 		n.interceptBack = v.Int != 0 // ui.OnBack: the back button and Escape ask the core
 	case ops.PropTransition:

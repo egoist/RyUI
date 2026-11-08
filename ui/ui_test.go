@@ -1393,3 +1393,30 @@ func TestAccessibilityFocus(t *testing.T) {
 		t.Fatal("ScreenReader didn't follow the environment")
 	}
 }
+
+// A tooltip is a prop of a button, and makes a plain view a real one;
+// it follows its signal.
+func TestTooltip(t *testing.T) {
+	tip := signal.New("Add to favorites")
+	h, r := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{},
+			ui.Button(ui.ButtonProps{Icon: "star", Tooltip: tip}),
+			ui.View(ui.ViewProps{Tooltip: ui.Val("Pinned")}, ui.Symbol("pin")))
+	})
+	b := h.OfKind(ops.KindButton)[0]
+	if b.String(ops.PropTooltip) != "Add to favorites" {
+		t.Fatalf("button tooltip %q", b.String(ops.PropTooltip))
+	}
+	found := false
+	for _, v := range h.OfKind(ops.KindView) {
+		found = found || v.String(ops.PropTooltip) == "Pinned"
+	}
+	if !found {
+		t.Fatal("the view has no tooltip")
+	}
+	tip.Set("Remove from favorites")
+	r.Flush()
+	if b.String(ops.PropTooltip) != "Remove from favorites" {
+		t.Fatal("the tooltip didn't follow its signal")
+	}
+}

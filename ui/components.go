@@ -45,6 +45,12 @@ type ViewProps struct {
 	// Decorative hides the view, and everything in it, from screen
 	// readers: a decoration, or what its neighbors already say.
 	Decorative bool
+	// Tooltip is a short text the platform shows by the view while a
+	// pointer rests on it (an iPad's pointer, a mouse), and on Android
+	// as it's long pressed (when it has no OnLongPress): what an icon
+	// does ("Add to favorites"). Touch-only users never see it, so it
+	// can't be the only place something is said.
+	Tooltip signal.Accessor[string]
 	// OnLayout is called with the view's frame once it's laid out, and
 	// again each time layout changes it (SwiftUI's GeometryReader, React
 	// Native's onLayout): to size something else by it, or to know where
@@ -200,7 +206,7 @@ func addKids(e *element, kids []Node) {
 // props it makes no native view: its children are placed in the nearest
 // ancestor that has one.
 func View(p ViewProps, children ...Node) Node {
-	real := p.OnPress != nil || p.OnLongPress != nil || hasText(p.Label) || hasText(p.Hint) || p.Role != RoleNone || p.Decorative || p.OnLayout != nil ||
+	real := p.OnPress != nil || p.OnLongPress != nil || hasText(p.Label) || hasText(p.Hint) || hasText(p.Tooltip) || p.Role != RoleNone || p.Decorative || p.OnLayout != nil ||
 		len(p.Actions) > 0 || p.OnAdjust != nil ||
 		p.OnPan != nil || p.OnPinch != nil || p.OnSwipe != nil || p.OnRotate != nil || p.interactive()
 	if s, ok := p.Style.(Style); ok && (s.visual() || s.hasVariants()) {
@@ -221,6 +227,9 @@ func View(p ViewProps, children ...Node) Node {
 		}
 		if hasText(p.Hint) {
 			bind(p.Hint, func(v string) { e.r.batch.SetString(e.id, ops.PropA11yHint, v) })
+		}
+		if hasText(p.Tooltip) {
+			bind(p.Tooltip, func(v string) { e.r.batch.SetString(e.id, ops.PropTooltip, v) })
 		}
 		if p.Role != RoleNone {
 			e.r.batch.SetEnum(e.id, ops.PropA11yRole, int32(p.Role))
@@ -403,7 +412,10 @@ type ButtonProps struct {
 	// Label is what VoiceOver and TalkBack read: the title by default.
 	// Give an icon-only button one (the platforms name a few symbols
 	// themselves, in English on Android).
-	Label    signal.Accessor[string]
+	Label signal.Accessor[string]
+	// Tooltip is shown while a pointer rests on the button (and as it's
+	// long pressed on Android): an icon-only button's name, mostly.
+	Tooltip  signal.Accessor[string]
 	Disabled signal.Accessor[bool]
 	Style    Styler
 }
@@ -422,6 +434,9 @@ func Button(p ButtonProps) Node {
 	}
 	if hasText(p.Label) {
 		bind(p.Label, func(v string) { e.r.batch.SetString(e.id, ops.PropA11yLabel, v) })
+	}
+	if hasText(p.Tooltip) {
+		bind(p.Tooltip, func(v string) { e.r.batch.SetString(e.id, ops.PropTooltip, v) })
 	}
 	bind(p.Title, func(v string) {
 		e.text = string(p.Icon) + "\x00" + v // the measure cache's key

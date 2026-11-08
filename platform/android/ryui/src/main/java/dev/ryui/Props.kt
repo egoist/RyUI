@@ -434,6 +434,8 @@ fun RyUIRuntime.propString(id: Int, prop: Int, v: String) {
     val view = n.view
     when (prop) {
         RyUIProp.A11Y_LABEL -> view.contentDescription = v
+        // A mouse's hover, or a long press when the view has none of its own.
+        RyUIProp.TOOLTIP -> view.tooltipText = v.ifEmpty { null }
         RyUIProp.A11Y_HINT -> ViewCompat.setStateDescription(view, v)
         RyUIProp.FONT_FAMILY -> {
             n.fontFamily = v

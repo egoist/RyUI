@@ -109,6 +109,7 @@ object RyUIProp {
     const val SELECTED = 33
     const val MATCH = 34
     const val INTERCEPT_BACK = 35
+    const val TOOLTIP = 36
 
     object View {
         const val DROP_ACCEPT = 64
