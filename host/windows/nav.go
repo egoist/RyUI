@@ -51,6 +51,10 @@ type nav struct {
 	window uintptr
 	owner  uintptr
 
+	// Popover: what it points at, and its content's size (points).
+	anchor     ops.NodeID
+	popW, popH float32
+
 	// Window: its content's size when it opens, and its least, in points.
 	size, minSize [2]float32
 }
@@ -73,7 +77,7 @@ func (h *Host) createNav(n *node) bool {
 		n.hwnd = h.makeView(0)
 		n.nav = &nav{}
 		n.nav.bar = h.makeTabBar(n)
-	case ops.KindSheet, ops.KindWindow:
+	case ops.KindSheet, ops.KindWindow, ops.KindPopover:
 		n.hwnd = h.makeView(0)
 		n.nav = &nav{}
 	case ops.KindAlert:
@@ -87,7 +91,7 @@ func (h *Host) createNav(n *node) bool {
 // sizedByHost reports whether the host sizes n (a screen, a sheet's
 // content), not the core.
 func (nv *nav) sizedByHost(n *node) bool {
-	return n.kind == ops.KindScreen || n.kind == ops.KindSheet || n.kind == ops.KindWindow
+	return n.kind == ops.KindScreen || n.kind == ops.KindSheet || n.kind == ops.KindWindow || n.kind == ops.KindPopover
 }
 
 func (h *Host) insertNav(p, c *node, index int) bool {
@@ -163,11 +167,14 @@ func (h *Host) destroyNav(n *node) bool {
 			h.updateHeader(p)
 		}
 		return true
-	case ops.KindSheet, ops.KindWindow:
+	case ops.KindSheet, ops.KindWindow, ops.KindPopover:
 		n.dying = true
-		if n.kind == ops.KindSheet {
+		switch n.kind {
+		case ops.KindSheet:
 			h.closeSheet(n)
-		} else {
+		case ops.KindPopover:
+			h.closePopover(n)
+		default:
 			h.closeWindow(n)
 		}
 		for _, c := range n.children {
@@ -316,6 +323,8 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 		if p == ops.PropSheetDetents {
 			n.detents = v.Int
 		}
+	case ops.KindPopover:
+		h.setPopoverProp(n, p, v)
 	case ops.KindWindow:
 		switch p {
 		case ops.PropWindowTitle:
@@ -579,7 +588,7 @@ func (h *Host) activeStack(root *node) *node {
 				walk(n.children[n.selected])
 			}
 			return
-		case ops.KindSheet, ops.KindAlert, ops.KindWindow:
+		case ops.KindSheet, ops.KindAlert, ops.KindWindow, ops.KindPopover:
 			if n != root {
 				return
 			}
@@ -774,6 +783,13 @@ func (h *Host) present(n *node) {
 		h.openSheet(n)
 	case ops.KindWindow:
 		h.openWindow(n)
+	case ops.KindPopover:
+		id := n.id
+		h.afterCore(func() { // its anchor, made with it, is placed once the batch is
+			if p := h.nodes[id]; p != nil && !p.dying {
+				h.openPopover(p)
+			}
+		})
 	case ops.KindAlert:
 		id := n.id
 		h.afterCore(func() { h.showAlert(id) })

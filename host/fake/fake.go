@@ -249,7 +249,7 @@ func (h *Host) apply(op *ops.Op) {
 			v.Items, v.Sections = decodeListUpdate(op.Value.Bytes)
 		}
 		if op.Cmd == ops.CmdPresent {
-			if v.Kind != ops.KindSheet && v.Kind != ops.KindAlert && v.Kind != ops.KindWindow {
+			if v.Kind != ops.KindSheet && v.Kind != ops.KindPopover && v.Kind != ops.KindAlert && v.Kind != ops.KindWindow {
 				panic(fmt.Sprintf("fake: Present on a %s", v.Kind))
 			}
 			v.presented = true
@@ -325,6 +325,8 @@ func (h *Host) Measure(id ops.NodeID, c layout.Constraints) layout.Size {
 		}
 	case ops.KindToggle:
 		s = layout.Size{W: 51, H: 31}
+	case ops.KindPageControl:
+		s = layout.Size{W: float32(v.Int(ops.PropPageControlCount))*16 + 16, H: 26}
 	case ops.KindSlider:
 		s = layout.Size{W: 200, H: 30}
 		if fin(c.AvailW) {

@@ -37,7 +37,8 @@ object RyUIKind {
     const val WEB_VIEW = 27
     const val DATE_PICKER = 28
     const val PAGE_CONTROL = 29
-    const val WINDOW = 30
+    const val POPOVER = 30
+    const val WINDOW = 31
 
     fun name(kind: Int): String = when (kind) {
         1 -> "View"
@@ -69,7 +70,8 @@ object RyUIKind {
         27 -> "WebView"
         28 -> "DatePicker"
         29 -> "PageControl"
-        30 -> "Window"
+        30 -> "Popover"
+        31 -> "Window"
         else -> "Kind($kind)"
     }
 }
@@ -294,6 +296,12 @@ object RyUIProp {
     object PageControl {
         const val COUNT = 64
         const val PAGE = 65
+    }
+
+    object Popover {
+        const val ANCHOR = 64
+        const val WIDTH = 65
+        const val HEIGHT = 66
     }
 
     object Window {

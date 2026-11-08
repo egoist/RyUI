@@ -98,6 +98,36 @@ final class RyUISheetController: RyUIScreenController, UIAdaptivePresentationCon
     }
 }
 
+/// A Popover's content: a popover on every size class (an iPhone's too,
+/// as SwiftUI's popover with its compact adaptation turned off), as big as
+/// the core laid its content out, pointing at its anchor.
+final class RyUIPopoverController: RyUIScreenController, UIPopoverPresentationControllerDelegate {
+    var anchor: UInt32 = 0
+    var size = CGSize.zero {
+        didSet { preferredContentSize = size }
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .clear // the popover's own background (Liquid Glass on iOS 26)
+    }
+
+    func adaptivePresentationStyle(for controller: UIPresentationController, traitCollection: UITraitCollection) -> UIModalPresentationStyle { .none }
+
+    func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+        guard let n = RyUIRuntime.shared.nodes[nodeID], !n.dying else { return }
+        let id = nodeID
+        RyUIRuntime.shared.emit(id, .dismissed) { RyUIEvents.dismissed(id) }
+    }
+
+    /// A tap outside while it intercepts (isModalInPresentation): ui.OnBack decides.
+    func presentationControllerDidAttemptToDismiss(_ presentationController: UIPresentationController) {
+        guard let n = RyUIRuntime.shared.nodes[nodeID], !n.dying else { return }
+        let id = nodeID
+        RyUIRuntime.shared.emit(id, .back) { RyUIEvents.back(id) }
+    }
+}
+
 /// A Stack: screens are pushed by Insert and popped by Destroy; pops the
 /// user makes (back button, swipe) are reported as Popped.
 final class RyUIStackController: UINavigationController, UINavigationControllerDelegate, UIGestureRecognizerDelegate {
@@ -295,6 +325,9 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
         case .sheet:
             let s = RyUISheetController(nodeID: id)
             return (s.content, s)
+        case .popover:
+            let p = RyUIPopoverController(nodeID: id)
+            return (p.content, p)
         case .alert:
             return (UIView(), nil)
         default:
@@ -375,7 +408,7 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
             tabs.setViewControllers(n.parent?.children.compactMap { $0.vc }, animated: false)
             return true
         }
-        if vc is RyUISheetController || vc is UIAlertController {
+        if vc is RyUISheetController || vc is RyUIPopoverController || vc is UIAlertController {
             if vc.presentingViewController != nil && !vc.isBeingDismissed {
                 vc.dismiss(animated: true)
             }
@@ -422,6 +455,17 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
             }
             s.presentationController?.delegate = s
             top.present(s, animated: true)
+        case .popover:
+            guard let p = n.vc as? RyUIPopoverController, let top = topController,
+                  let anchor = nodes[p.anchor]?.view, anchor.window != nil else { return }
+            p.modalPresentationStyle = .popover
+            p.preferredContentSize = p.size
+            if let pc = p.popoverPresentationController {
+                pc.sourceView = anchor
+                pc.sourceRect = anchor.bounds
+                pc.delegate = p
+            }
+            top.present(p, animated: true)
         case .alert:
             guard let top = topController else { return }
             let a = RyUIAlertController(title: n.alertTitle, message: n.alertMessage,
@@ -499,7 +543,7 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
             vc.navigationItem.backAction = on ? UIAction { [weak self] _ in
                 self?.emit(id, .back) { RyUIEvents.back(id) }
             } : nil
-        case .sheet:
+        case .sheet, .popover:
             n.vc?.isModalInPresentation = on
         default:
             break
@@ -554,6 +598,14 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
         case (.tabs, RyUIProp.Tabs.selected):
             n.selected = Int(v.int)
             (n.vc as? RyUITabsController)?.selectedIndex = Int(v.int)
+        case (.popover, RyUIProp.Popover.anchor):
+            (n.vc as? RyUIPopoverController)?.anchor = UInt32(truncatingIfNeeded: v.int)
+        case (.popover, RyUIProp.Popover.width):
+            guard let p = n.vc as? RyUIPopoverController else { return }
+            p.size.width = CGFloat(v.float)
+        case (.popover, RyUIProp.Popover.height):
+            guard let p = n.vc as? RyUIPopoverController else { return }
+            p.size.height = CGFloat(v.float)
         case (.sheet, RyUIProp.Sheet.detents):
             (n.vc as? RyUISheetController)?.detents = v.int
         case (.sheet, RyUIProp.Sheet.grabber):

@@ -64,6 +64,9 @@ func (h *Host) createNav(n *node) bool {
 		n.view = v
 	case ops.KindSheet, ops.KindWindow:
 		n.view = initView("RyUIView")
+	case ops.KindPopover:
+		n.view = initView("RyUIView")
+		n.popover = &popover{}
 	case ops.KindAlert:
 	default:
 		return false
@@ -78,7 +81,7 @@ func (h *Host) createNav(n *node) bool {
 // sizedByHost reports whether the host sizes n (a screen, a sheet's
 // content), not the core.
 func (nv *nav) sizedByHost(n *node) bool {
-	return n.kind == ops.KindScreen || n.kind == ops.KindSheet || n.kind == ops.KindWindow
+	return n.kind == ops.KindScreen || n.kind == ops.KindSheet || n.kind == ops.KindWindow || n.kind == ops.KindPopover
 }
 
 func (h *Host) insertNav(p, c *node, index int) bool {
@@ -203,6 +206,14 @@ func (h *Host) destroyNav(n *node) bool {
 			Release(w)
 			n.nav.window = 0
 		}
+		for _, c := range n.children {
+			c.parent = nil
+		}
+		h.release(n)
+		return true
+	case ops.KindPopover:
+		n.dying = true
+		h.closePopover(n)
 		for _, c := range n.children {
 			c.parent = nil
 		}
@@ -402,6 +413,8 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 		if p == ops.PropSheetDetents {
 			n.detents = v.Int
 		}
+	case ops.KindPopover:
+		h.setPopoverProp(n, p, v)
 	case ops.KindWindow:
 		switch p {
 		case ops.PropWindowTitle:
@@ -483,6 +496,8 @@ func (h *Host) present(n *node) {
 		Send(over.window, "beginSheet:completionHandler:", uintptr(w), 0)
 	case ops.KindWindow:
 		h.openWindow(n)
+	case ops.KindPopover:
+		h.presentPopover(n)
 	case ops.KindAlert:
 		a := New("NSAlert")
 		Send(a, "setMessageText:", uintptr(String(n.title)))
@@ -616,7 +631,7 @@ func (h *Host) activeStack(root *node) *node {
 				walk(n.children[n.selected])
 			}
 			return
-		case ops.KindSheet, ops.KindAlert, ops.KindWindow:
+		case ops.KindSheet, ops.KindAlert, ops.KindWindow, ops.KindPopover:
 			if n != root {
 				return
 			}

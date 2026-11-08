@@ -533,6 +533,98 @@ func Sheet(p SheetProps) Node {
 	return Node{f}
 }
 
+// PopoverProps configures a Popover.
+type PopoverProps struct {
+	// Open shows the popover while true; the user dismissing it (a tap
+	// outside) sets it false.
+	Open    *signal.Signal[bool]
+	Content func() Node
+	// MaxWidth is how wide it may be, in points (0: 320); it's as wide as
+	// its content otherwise, and as tall, up to most of the screen.
+	MaxWidth  float32
+	OnDismiss func()
+	// Style is the anchor's: the view the popover points at, which holds
+	// Popover's children.
+	Style Styler
+}
+
+// Popover shows Content in a bubble pointing at its children while Open
+// is true: a few options, a detail, a small form, over the screen
+// (SwiftUI's popover). It's iPadOS's and iOS's popover, a popover on an
+// iPhone too (UIPopoverPresentationController, not adapted into a
+// sheet); a PopupWindow with Material's surface and elevation on
+// Android; NSPopover on macOS; a popup window on Windows. It's as big as
+// its content, up to MaxWidth wide. Its content is built when it opens
+// and disposed when it closes; OnBack in it takes its dismissal.
+func Popover(p PopoverProps, children ...Node) Node {
+	anchor := newElement(ops.KindView, true)
+	anchor.setStyle(p.Style, false)
+	addKids(anchor, children)
+	r := anchor.r
+	owner := signal.CurrentOwner()
+	var pop *element
+	var dispose func()
+	closePop := func() {
+		if pop == nil {
+			return
+		}
+		dispose()
+		pop.destroy()
+		pop, dispose = nil, nil
+	}
+	signal.RenderEffect(func() {
+		open := p.Open.Get()
+		if open == (pop != nil) {
+			return
+		}
+		if !open {
+			closePop()
+			return
+		}
+		withRoot(r, func() Node {
+			pop = newProvider(ops.KindPopover)
+			pop.fits = true
+			pop.maxW = p.MaxWidth
+			if pop.maxW <= 0 {
+				pop.maxW = 320
+			}
+			st := pop.box.Style
+			st.Width, st.Height = layout.Auto, layout.Auto
+			pop.box.SetStyle(st)
+			r.batch.SetInt(pop.id, ops.PropPopoverAnchor, int64(anchor.id))
+			s := pop
+			s.handlers().dismissed = func() {
+				p.Open.Set(false)
+				if p.OnDismiss != nil {
+					p.OnDismiss()
+				}
+			}
+			s.listen(ops.EventDismissed)
+			signal.RunWithOwner(owner, func() {
+				signal.Root(func(d func()) {
+					dispose = d
+					scope := newBackScope(s, func() {
+						if pop == s {
+							s.h.dismissed()
+						}
+					})
+					backCtx.Provide(scope, func() {
+						envCtx.Provide(s.env, func() {
+							if n := p.Content(); n.e != nil {
+								s.appendKid(n.e)
+							}
+						})
+					})
+				})
+			})
+			r.batch.Command(s.id, ops.CmdPresent, nil)
+			return Node{}
+		})
+	})
+	signal.OnCleanup(closePop)
+	return Node{anchor}
+}
+
 // activeRoot is the root new imperative UI (alerts, haptics) belongs to.
 func activeRoot() *Root {
 	if cur != nil {

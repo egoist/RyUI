@@ -161,7 +161,8 @@ const (
 	kindTabBar
 	kindSheetWindow
 	kindScrollBar
-	kindWindowFrame // a Window's top-level window
+	kindWindowFrame   // a Window's top-level window
+	kindPopoverWindow // a Popover's popup window
 )
 
 func (n *node) listening(e ops.EventKind) bool {

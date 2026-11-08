@@ -79,6 +79,7 @@ var (
 	MsgInitRectID   func(obj ID, sel SEL, r Rect, a ID) ID
 	MsgRectToID     func(obj ID, sel SEL, r Rect) ID
 	MsgRectIDVoid   func(obj ID, sel SEL, r Rect, a ID)
+	MsgRectIDUint   func(obj ID, sel SEL, r Rect, a ID, u uint)
 	MsgInitWindow   func(obj ID, sel SEL, r Rect, style uint, backing uint, deferFlag bool) ID
 	MsgColor        func(cls ID, sel SEL, r, g, b, a float64) ID
 	MsgFloatID      func(obj ID, sel SEL, v float64) ID
@@ -172,7 +173,7 @@ func Load() {
 			{&MsgPoint, msgSendAddr}, {&MsgSetPoint, msgSendAddr}, {&MsgPointID, msgSendAddr}, {&MsgPointFromID, msgSendAddr}, {&MsgIDToPoint, msgSendAddr}, {&MsgIDToSize, msgSendAddr}, {&MsgIDToRect, stret}, {&MsgFloatFromID, msgSendAddr},
 			{&MsgPointFromInt, msgSendAddr}, {&MsgLineFragment, stret}, {&MsgGlyphAtPoint, msgSendAddr}, {&msgSuperPoint, msgSendSuperAddr}, {&msgSuperRect, superStret},
 			{&MsgRangeToRect, stret}, {&MsgRangeRange, msgSendAddr}, {&MsgRange, msgSendAddr},
-			{&MsgInitRect, msgSendAddr}, {&MsgInitRectID, msgSendAddr}, {&MsgRectToID, msgSendAddr}, {&MsgRectIDVoid, msgSendAddr}, {&MsgInitWindow, msgSendAddr}, {&MsgColor, msgSendAddr},
+			{&MsgInitRect, msgSendAddr}, {&MsgInitRectID, msgSendAddr}, {&MsgRectToID, msgSendAddr}, {&MsgRectIDVoid, msgSendAddr}, {&MsgRectIDUint, msgSendAddr}, {&MsgInitWindow, msgSendAddr}, {&MsgColor, msgSendAddr},
 			{&MsgFloatID, msgSendAddr}, {&MsgFloat2ID, msgSendAddr}, {&MsgIDFloatID, msgSendAddr}, {&MsgFloatIDID, msgSendAddr},
 			{&MsgSetFloatInt, msgSendAddr}, {&MsgFloatInt, msgSendAddr},
 			{&MsgSetEdges, msgSendAddr}, {&MsgSetTransform, msgSendAddr},

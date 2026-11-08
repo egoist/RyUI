@@ -262,6 +262,7 @@ func controls() ui.Node {
 			ui.StaticText("Tint", ui.Style{Grow: 1}),
 			ui.ColorPicker(ui.ColorPickerProps{Value: tint, Alpha: true, Title: ui.Val("Tint")}),
 		),
+		popover(),
 		ui.Wheel(ui.WheelProps{Items: ui.Val(sizes), Selected: size}),
 		ui.Text(signal.Func(func() string { return "Size: " + sizes[size.Get()] }), ui.Style{Color: ui.SecondaryLabel}),
 	)
@@ -289,6 +290,21 @@ func editor() ui.Node {
 		ui.TextField(ui.TextFieldProps{Value: text, Placeholder: ui.Val("Type, then go back"), Multiline: true}),
 		ui.Button(ui.ButtonProps{Title: ui.Val("Save"), Variant: ui.ButtonFilled, OnPress: func() { saved.Set(text.Peek()) }}),
 	)
+}
+
+// popover shows a small panel pointing at its button.
+func popover() ui.Node {
+	open := signal.New(false)
+	return ui.Row(ui.Style{Align: ui.AlignCenter, Gap: 12},
+		ui.StaticText("Popover", ui.Style{Grow: 1}),
+		ui.Popover(ui.PopoverProps{Open: open, MaxWidth: 280, Content: func() ui.Node {
+			return ui.Column(ui.Style{Padding: ui.All(16), Gap: 8},
+				ui.StaticText("About this gallery", ui.Style{Font: ui.Headline}),
+				ui.StaticText("Every view here is the platform's own, laid out by RyUI's core and driven by signals.",
+					ui.Style{Color: ui.SecondaryLabel}),
+				ui.Button(ui.ButtonProps{Title: ui.Val("Done"), Variant: ui.ButtonTinted, OnPress: func() { open.Set(false) }}))
+		}}, ui.Button(ui.ButtonProps{Icon: ui.Icon("info.circle"), Label: ui.Val("About"), Tooltip: ui.Val("About"),
+			OnPress: func() { open.Set(true) }})))
 }
 
 // pages is a carousel: a paging Scroll and a PageControl sharing a page.

@@ -98,6 +98,10 @@ type element struct {
 	// environment, which the host reports.
 	env       *signal.Signal[host.Environment]
 	hostSized bool
+	// fits: a host-sized root the core sizes to its content (a popover),
+	// at most maxW wide, and tells the host.
+	fits bool
+	maxW float32
 	measured  bool       // the host measures its content
 	insets    [4]float32 // a measured view's ContentInset, as last sent
 	laidSize  layout.Size

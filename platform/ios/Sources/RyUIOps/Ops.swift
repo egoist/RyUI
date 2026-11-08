@@ -32,7 +32,8 @@ public enum RyUIKind: UInt16 {
     case webView = 27
     case datePicker = 28
     case pageControl = 29
-    case window = 30
+    case popover = 30
+    case window = 31
 
     public var name: String {
         switch self {
@@ -65,6 +66,7 @@ public enum RyUIKind: UInt16 {
         case .webView: return "WebView"
         case .datePicker: return "DatePicker"
         case .pageControl: return "PageControl"
+        case .popover: return "Popover"
         case .window: return "Window"
         }
     }
@@ -291,6 +293,12 @@ public enum RyUIProp {
     public enum PageControl {
         public static let count: UInt16 = 64
         public static let page: UInt16 = 65
+    }
+
+    public enum Popover {
+        public static let anchor: UInt16 = 64
+        public static let width: UInt16 = 65
+        public static let height: UInt16 = 66
     }
 
     public enum Window {

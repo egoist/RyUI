@@ -287,6 +287,31 @@ Setting `Open` to false from code closes it without calling
 `OnDismiss`. So `OnDismiss` means "closed without your say", such as a
 draft left unsaved.
 
+## Popovers
+
+`ui.Popover` shows content in a bubble pointing at a view, over the
+screen, while `Open` is true: a few options, a detail, a small form.
+Its children are what it points at:
+
+```go
+open := signal.New(false)
+return ui.Popover(ui.PopoverProps{Open: open, MaxWidth: 280, Content: func() ui.Node {
+	return ui.Column(ui.Style{Padding: ui.All(16), Gap: 8},
+		ui.StaticText("Shared with 3 people", ui.Style{Font: ui.Headline}),
+		ui.Button(ui.ButtonProps{Title: ui.Val("Manage"), OnPress: manage}))
+}}, ui.Button(ui.ButtonProps{Icon: "person.2", Label: ui.Val("Sharing"), OnPress: func() { open.Set(true) }}))
+```
+
+It's as big as its content, no wider than `MaxWidth` (320 by default),
+text wrapping to it, and no taller than most of the screen. A tap
+outside dismisses it, setting `Open` false and calling `OnDismiss`, as a
+sheet's; `ui.OnBack` in it can keep it.
+
+| | iOS | Android | macOS | Windows |
+|---|---|---|---|---|
+| The view | `UIPopoverPresentationController`, a popover on iPhone too (not adapted into a sheet), Liquid Glass on iOS 26 | a `PopupWindow` on Material's container surface, 16dp corners, elevated | `NSPopover`, transient | a popup window, light dismissed, Windows 11's corners (WinUI's Flyout) |
+| Where | where UIKit fits it, its arrow on the anchor | below the anchor, centered (above it without room) | below the anchor, where AppKit fits it | below the anchor, centered (above it without room) |
+
 ## Alerts and action sheets
 
 `ui.Alert` shows an alert now: a `UIAlertController` on iOS, a Material

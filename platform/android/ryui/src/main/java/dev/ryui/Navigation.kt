@@ -125,6 +125,7 @@ class RyUIScreen(context: Context, val nodeID: Int, private val rt: RyUIRuntime)
         // the navigation bar; it moves without a layout, so its position
         // says nothing.
         if (n.kind == RyUIKind.SHEET) e = e.copy(safeTop = 0f, safeBottom = 0f)
+        if (n.kind == RyUIKind.POPOVER) e = e.copy(safeTop = 0f, safeRight = 0f, safeBottom = 0f, safeLeft = 0f, keyboard = 0f)
         if (e == lastEnv) return
         lastEnv = e
         rt.send(RyUIEvents.environment(nodeID, e))
@@ -763,6 +764,11 @@ fun RyUIRuntime.destroyNav(n: RyUINode): Boolean {
             (p.view as RyUITabs).remove(n)
             return true
         }
+        n.kind == RyUIKind.POPOVER -> {
+            n.dying = true
+            n.popover?.dismiss()
+            return true
+        }
         n.kind == RyUIKind.SHEET || n.kind == RyUIKind.ALERT -> {
             n.dying = true
             n.dialog?.dismiss()
@@ -795,6 +801,14 @@ fun RyUIRuntime.setNavProp(n: RyUINode, prop: Int, v: Any): Boolean {
             }
         }
         RyUIKind.TABS -> if (prop == RyUIProp.Tabs.SELECTED) (n.view as RyUITabs).select((v as Long).toInt()) else return false
+        RyUIKind.POPOVER -> n.popover?.let {
+            when (prop) {
+                RyUIProp.Popover.ANCHOR -> it.anchor = (v as Long).toInt()
+                RyUIProp.Popover.WIDTH -> { it.width = (v as Double).toFloat(); it.resize() }
+                RyUIProp.Popover.HEIGHT -> { it.height = (v as Double).toFloat(); it.resize() }
+                else -> return false
+            }
+        }
         RyUIKind.SHEET -> when (prop) {
             RyUIProp.Sheet.DETENTS -> n.detents = v as Long
             RyUIProp.Sheet.GRABBER -> n.grabber = v as Boolean
@@ -970,6 +984,7 @@ fun RyUIRuntime.present(n: RyUINode) {
     val act = activity ?: return
     when (n.kind) {
         RyUIKind.SHEET -> presentSheet(act, n)
+        RyUIKind.POPOVER -> n.popover?.present()
         RyUIKind.ALERT -> presentAlert(act, n)
     }
 }

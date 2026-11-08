@@ -108,6 +108,7 @@ type node struct {
 	horizontal bool                // a horizontal Scroll
 	paging     bool                // a Scroll that settles on pages
 	dots       *pageDots           // a PageControl's
+	popover    *popover            // a Popover's
 
 	// Interaction states and drag and drop (interaction.go).
 	hovered    bool

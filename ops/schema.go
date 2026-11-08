@@ -279,6 +279,11 @@ var Schema = SchemaDef{
 			{Name: "Count", Type: TInt, Doc: "how many pages"},
 			{Name: "Page", Type: TInt, Doc: "the current page, from the first in the reading direction"},
 		}, Doc: "a row of dots, one per page, the current one highlighted (UIPageControl; drawn on Android, macOS and Windows, which have none); measured. Tapping or a screen reader's adjusting changes the page: Selected with its index"},
+		{Name: "Popover", Props: []PropDef{
+			{Name: "Anchor", Type: TInt, Doc: "the view it points at (a node ID)"},
+			{Name: "Width", Type: TFloat, Doc: "its content's size, in points, as the core laid it out: the host makes the popover this big"},
+			{Name: "Height", Type: TFloat},
+		}, Doc: "content shown in a bubble pointing at a view, over the screen, until it's dismissed (UIPopoverPresentationController, a popover on iPhone too; a PopupWindow on Android; NSPopover; a popup window on Windows); a layout root of its own, presented with Present and destroyed to close. Tapping outside dismisses it: Dismissed"},
 		{Name: "Window", Props: []PropDef{
 			{Name: "Title", Type: TString},
 			{Name: "Width", Type: TFloat, Doc: "its content's width when it opens, in points (0: the host's default)"},

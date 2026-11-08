@@ -651,6 +651,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
         if (kind == RyUIKind.LIST) n.list = (view.tag as RyUIList)
         if (kind == RyUIKind.TEXT_FIELD) n.textStyle = RyUITextStyle.BODY
         if (kind == RyUIKind.STACK) stacks.add(n)
+        if (kind == RyUIKind.POPOVER) n.popover = RyUIPopover(this, n)
         nodes[id] = n
         if (kind == RyUIKind.TEXT || kind == RyUIKind.TEXT_FIELD) applyColor(n)
     }
@@ -687,7 +688,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
             RyUIKind.DATE_PICKER -> RyUIDatePicker(this, id)
             RyUIKind.STACK -> RyUIStack(ctx, id, this)
             RyUIKind.TABS -> RyUITabs(ctx, id, this)
-            RyUIKind.SCREEN, RyUIKind.SHEET -> RyUIScreen(ctx, id, this)
+            RyUIKind.SCREEN, RyUIKind.SHEET, RyUIKind.POPOVER -> RyUIScreen(ctx, id, this)
             RyUIKind.ALERT -> View(ctx)
             RyUIKind.IMAGE -> androidx.appcompat.widget.AppCompatImageView(ctx).apply { scaleType = android.widget.ImageView.ScaleType.FIT_CENTER }
             RyUIKind.NATIVE -> RyUINativeHost(ctx)
@@ -895,7 +896,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
         (n.view as? RyUIVideo)?.release()
         stacks.remove(n)
         if (n.underDying) return // its views leave with the animating screen or sheet
-        if ((n.kind == RyUIKind.SCREEN || n.kind == RyUIKind.SHEET || n.kind == RyUIKind.ALERT) && destroyNav(n)) return
+        if ((n.kind == RyUIKind.SCREEN || n.kind == RyUIKind.SHEET || n.kind == RyUIKind.POPOVER || n.kind == RyUIKind.ALERT) && destroyNav(n)) return
         if (matchOut(n)) {
             n.parent?.children?.remove(n)
             n.parent = null
