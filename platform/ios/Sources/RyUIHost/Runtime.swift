@@ -515,6 +515,18 @@ final class RyUITextField: UITextField {
                 self?.emit(id, .selected) { RyUIEvents.selected(id, i) }
             }, for: .valueChanged)
             view = s
+        case .pageControl:
+            // The system's dots: tapping its sides steps, a scrub moves along, VoiceOver adjusts.
+            let p = UIPageControl()
+            // Its default dots are white, for photos; on the app's own background, the label's.
+            p.currentPageIndicatorTintColor = .label
+            p.pageIndicatorTintColor = .tertiaryLabel
+            p.addAction(UIAction { [weak self, weak p] _ in
+                guard let p else { return }
+                let i = Int64(p.currentPage)
+                self?.emit(id, .selected) { RyUIEvents.selected(id, i) }
+            }, for: .valueChanged)
+            view = p
         case .progress:
             view = UIProgressView(progressViewStyle: .default)
         case .datePicker:
@@ -637,7 +649,7 @@ final class RyUITextField: UITextField {
     public func listen(_ id: UInt32, event: UInt16) {
         guard let n = nodes[id] else { return }
         n.listens.insert(event)
-        if event == RyUIEventKind.scrolled.rawValue, let s = n.view as? UIScrollView, n.scrolls == nil {
+        if event == RyUIEventKind.scrolled.rawValue || event == RyUIEventKind.paged.rawValue, let s = n.view as? UIScrollView, n.scrolls == nil {
             n.scrolls = RyUIScrollReporter(id, self)
             if n.list == nil { s.delegate = n.scrolls } // a list's own delegate forwards it
         }

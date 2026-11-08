@@ -31,7 +31,8 @@ public enum RyUIKind: UInt16 {
     case video = 26
     case webView = 27
     case datePicker = 28
-    case window = 29
+    case pageControl = 29
+    case window = 30
 
     public var name: String {
         switch self {
@@ -63,6 +64,7 @@ public enum RyUIKind: UInt16 {
         case .video: return "Video"
         case .webView: return "WebView"
         case .datePicker: return "DatePicker"
+        case .pageControl: return "PageControl"
         case .window: return "Window"
         }
     }
@@ -153,6 +155,7 @@ public enum RyUIProp {
         public static let horizontal: UInt16 = 64
         public static let refreshable: UInt16 = 65
         public static let refreshing: UInt16 = 66
+        public static let paging: UInt16 = 67
     }
 
     public enum List {
@@ -285,6 +288,11 @@ public enum RyUIProp {
         public static let inline: UInt16 = 68
     }
 
+    public enum PageControl {
+        public static let count: UInt16 = 64
+        public static let page: UInt16 = 65
+    }
+
     public enum Window {
         public static let title: UInt16 = 64
         public static let width: UInt16 = 65
@@ -347,6 +355,7 @@ public enum RyUIEventKind: UInt16 {
     case rowInset = 50
     case dragging = 51
     case back = 52
+    case paged = 53
 }
 
 public enum RyUICommand: UInt16 {
@@ -942,5 +951,8 @@ public enum RyUIEvents {
     }
     public static func back(_ id: UInt32) -> [UInt8] {
         var w = RyUIWriter(); w.header(id, 52); return w.bytes
+    }
+    public static func paged(_ id: UInt32, _ v: Int64) -> [UInt8] {
+        var w = RyUIWriter(); w.header(id, 53); w.u64(UInt64(bitPattern: v)); return w.bytes
     }
 }

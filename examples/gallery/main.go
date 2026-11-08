@@ -64,6 +64,7 @@ func App() ui.Node {
 				video(),
 				textInput(),
 				controls(),
+				pages(),
 				dates(),
 				services(),
 				documents(),
@@ -261,6 +262,26 @@ func controls() ui.Node {
 		),
 		ui.Wheel(ui.WheelProps{Items: ui.Val(sizes), Selected: size}),
 		ui.Text(signal.Func(func() string { return "Size: " + sizes[size.Get()] }), ui.Style{Color: ui.SecondaryLabel}),
+	)
+}
+
+// pages is a carousel: a paging Scroll and a PageControl sharing a page.
+func pages() ui.Node {
+	page := signal.New(0)
+	colors := []ui.Color{ui.Hex(0x039be5), ui.Hex(0x43a047), ui.Hex(0xfb8c00), ui.Hex(0x8e24aa)}
+	cards := make([]ui.Node, len(colors))
+	for i, c := range colors {
+		cards[i] = ui.View(ui.ViewProps{Style: ui.Style{Background: c, CornerRadius: 16, Margin: ui.Symmetric(0, 4), Justify: ui.JustifyCenter, Align: ui.AlignCenter}},
+			ui.StaticText(fmt.Sprintf("Page %d", i+1), ui.Style{Font: ui.Title2, Color: ui.RGB(255, 255, 255)}))
+	}
+	return section("Pages",
+		ui.Scroll(ui.ScrollProps{Horizontal: true, Paging: true, Page: page, Style: ui.Style{Height: ui.Pt(160)}}, cards...),
+		ui.Row(ui.Style{Justify: ui.JustifyCenter, Align: ui.AlignCenter, Gap: 8},
+			ui.Button(ui.ButtonProps{Icon: ui.Icon("chevron.backward"), Tooltip: ui.Val("Previous page"), Label: ui.Val("Previous page"),
+				OnPress: func() { page.Set(max(page.Peek()-1, 0)) }}),
+			ui.PageControl(ui.PageControlProps{Count: ui.Val(len(colors)), Page: page}),
+			ui.Button(ui.ButtonProps{Icon: ui.Icon("chevron.forward"), Tooltip: ui.Val("Next page"), Label: ui.Val("Next page"),
+				OnPress: func() { page.Set(min(page.Peek()+1, len(colors)-1)) }})),
 	)
 }
 

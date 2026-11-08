@@ -290,6 +290,10 @@ final class RyUIGestureDelegate: NSObject, UIGestureRecognizerDelegate {
             s.selectedSegmentIndex = selected < s.numberOfSegments ? selected : UISegmentedControl.noSegment
         case (.segmented, RyUIProp.Segmented.selected):
             (n.view as? UISegmentedControl)?.selectedSegmentIndex = Int(v.int)
+        case (.pageControl, RyUIProp.PageControl.count):
+            (n.view as? UIPageControl)?.numberOfPages = Int(v.int)
+        case (.pageControl, RyUIProp.PageControl.page):
+            (n.view as? UIPageControl)?.currentPage = Int(v.int)
         case (.progress, RyUIProp.Progress.value):
             guard let p = n.view as? UIProgressView else { return true }
             p.setProgress(Float(v.float), animated: p.window != nil)

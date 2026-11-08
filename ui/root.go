@@ -489,6 +489,10 @@ func dispatch(ev ops.Event) {
 		call(h.dismissed)
 	case ops.EventBack:
 		call(h.back)
+	case ops.EventPaged:
+		if h.paged != nil {
+			h.paged(ev.Int)
+		}
 	case ops.EventRefresh:
 		call(h.refresh)
 	case ops.EventPan:

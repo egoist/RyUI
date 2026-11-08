@@ -36,7 +36,8 @@ object RyUIKind {
     const val VIDEO = 26
     const val WEB_VIEW = 27
     const val DATE_PICKER = 28
-    const val WINDOW = 29
+    const val PAGE_CONTROL = 29
+    const val WINDOW = 30
 
     fun name(kind: Int): String = when (kind) {
         1 -> "View"
@@ -67,7 +68,8 @@ object RyUIKind {
         26 -> "Video"
         27 -> "WebView"
         28 -> "DatePicker"
-        29 -> "Window"
+        29 -> "PageControl"
+        30 -> "Window"
         else -> "Kind($kind)"
     }
 }
@@ -156,6 +158,7 @@ object RyUIProp {
         const val HORIZONTAL = 64
         const val REFRESHABLE = 65
         const val REFRESHING = 66
+        const val PAGING = 67
     }
 
     object List {
@@ -288,6 +291,11 @@ object RyUIProp {
         const val INLINE = 68
     }
 
+    object PageControl {
+        const val COUNT = 64
+        const val PAGE = 65
+    }
+
     object Window {
         const val TITLE = 64
         const val WIDTH = 65
@@ -350,6 +358,7 @@ object RyUIEventKind {
     const val ROW_INSET = 50
     const val DRAGGING = 51
     const val BACK = 52
+    const val PAGED = 53
 }
 
 object RyUICommand {
@@ -825,4 +834,5 @@ object RyUIEvents {
     fun rowInset(id: Int, x: Double, y: Double): ByteArray = RyUIWriter().apply { header(id, 50); f64(x); f64(y) }.bytes()
     fun dragging(id: Int, v: Long): ByteArray = RyUIWriter().apply { header(id, 51); u64(v) }.bytes()
     fun back(id: Int): ByteArray = RyUIWriter().apply { header(id, 52) }.bytes()
+    fun paged(id: Int, v: Long): ByteArray = RyUIWriter().apply { header(id, 53); u64(v) }.bytes()
 }

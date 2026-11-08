@@ -654,6 +654,30 @@ return ui.View(ui.ViewProps{Style: ui.Style{Grow: 1}}, scroll,
 ui.Scroll(ui.ScrollProps{Horizontal: true, ContentStyle: ui.Style{Gap: 8, Padding: ui.Symmetric(0, 16)}}, kids...)
 ```
 
+**Pages.** `Paging` makes it rest only at whole pages: a carousel, an
+onboarding's steps, a feed of full-screen videos. Each child of its
+content is a page, as big as the scroll view along its axis. `Page` is
+the page shown: a swipe writes it as it settles, and writing it scrolls
+there. `ui.PageControl` shows where it is, a dot per page, and moves it
+too when one is tapped:
+
+```go
+page := signal.New(0)
+return ui.Column(ui.Style{Gap: 8},
+	ui.Scroll(ui.ScrollProps{Horizontal: true, Paging: true, Page: page, Style: ui.Style{Height: ui.Pt(200)}},
+		card(1), card(2), card(3)),
+	ui.PageControl(ui.PageControlProps{Count: ui.Val(3), Page: page}))
+```
+
+| | iOS | Android | macOS | Windows |
+|---|---|---|---|---|
+| Paging | `isPagingEnabled` | each swipe snaps to the next page, or back | settles on the nearest page when a swipe ends | a page per wheel notch (FlipView's) |
+| `PageControl` | `UIPageControl` | dots in the theme's primary color (Material has none) | dots in the accent color | pips (PipsPager's) |
+
+Pages count from the reading start: right to left, the first is the
+rightmost. When the scroll view's size changes (a rotation), it stays on
+its page. Screen readers say "page 2 of 3" on the dots and adjust them.
+
 **Pull to refresh.** `OnRefresh` turns it on (`UIRefreshControl`,
 `SwipeRefreshLayout`). Set `Refreshing` true while you refresh; the
 spinner hides when it turns false. Without `Refreshing`, it hides as

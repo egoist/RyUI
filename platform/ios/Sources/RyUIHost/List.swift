@@ -605,5 +605,17 @@ extension UICollectionView {
         let id = self.id
         runtime?.emit(id, .scrolled) { RyUIEvents.scrolled(id, x: Double(p.x), y: Double(p.y)) }
     }
+
+    /// A paging Scroll's swipe: the page it's settling on, from the content's
+    /// physical start, as soon as UIKit knows it.
+    func scrollViewWillEndDragging(_ s: UIScrollView, withVelocity velocity: CGPoint, targetContentOffset: UnsafeMutablePointer<CGPoint>) {
+        guard s.isPagingEnabled, s.bounds.width > 0, s.bounds.height > 0 else { return }
+        let i = s.adjustedContentInset
+        let t = targetContentOffset.pointee
+        let horizontal = (s as? RyUIScrollView)?.horizontal ?? (s.contentSize.width > s.bounds.width)
+        let page = horizontal ? ((t.x + i.left) / s.bounds.width).rounded() : ((t.y + i.top) / s.bounds.height).rounded()
+        let id = self.id
+        runtime?.emit(id, .paged) { RyUIEvents.paged(id, Int64(page)) }
+    }
 }
 #endif

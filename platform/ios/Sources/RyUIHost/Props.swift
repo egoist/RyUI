@@ -480,6 +480,11 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             (n.view as? UISlider)?.minimumValue = Float(v.float)
         case (.slider, RyUIProp.Slider.max):
             (n.view as? UISlider)?.maximumValue = Float(v.float)
+        case (.scroll, RyUIProp.Scroll.paging):
+            guard let s = n.view as? UIScrollView else { return }
+            s.isPagingEnabled = v.bool
+            s.showsHorizontalScrollIndicator = !v.bool
+            s.showsVerticalScrollIndicator = !v.bool
         case (.scroll, RyUIProp.Scroll.horizontal):
             guard let s = n.view as? UIScrollView else { return }
             s.alwaysBounceVertical = !v.bool

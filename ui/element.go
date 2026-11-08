@@ -30,6 +30,7 @@ type handlers struct {
 	native              func([]byte)
 	link                func(string)
 	scrolled            func(x, y float32)
+	paged               func(int64)               // a Paging Scroll's
 	rowInset            func(lead, trail float32) // a List's
 	rowSelected         func(bool)                // a List cell's
 	rowSelectBegin      func()                    // a List cell's

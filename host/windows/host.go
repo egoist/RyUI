@@ -115,6 +115,9 @@ type node struct {
 	keyboard       int32
 	items          []string // Segmented, Wheel
 	selected       int
+	pages          int     // a PageControl's
+	paging         bool    // a Scroll that moves by pages
+	wheelSum       int32   // a paging Scroll's wheel, toward a page
 	value          float64 // Slider, Stepper, Progress, DatePicker
 	min, max, step float64
 	on             bool    // Toggle

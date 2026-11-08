@@ -995,6 +995,19 @@ type ScrollProps struct {
 	// OnScroll is called as it scrolls, with its content offset: points
 	// from its content's top left.
 	OnScroll func(x, y float32)
+	// Paging stops it only at whole pages: a carousel, an onboarding's
+	// steps, a feed of full-screen videos (iOS's isPagingEnabled; on
+	// Android a swipe snaps to the next page, or back). Each child of its
+	// content is a page, made exactly as big as the scroll view along its
+	// axis and as its content across (ContentStyle's direction, wrapping
+	// and gaps don't apply). Its scroll bars hide: a PageControl says
+	// where it is.
+	Paging bool
+	// Page, with Paging, is the page shown, from the first in the
+	// reading direction (right to left, the rightmost): the user's swipes
+	// write it as they settle, and code's writes scroll there, animated.
+	// When the scroll view's size changes (a rotation), it stays on it.
+	Page *signal.Signal[int]
 }
 
 // Scroll scrolls its children along one axis. Give it a size (or Grow)
@@ -1040,6 +1053,124 @@ func Scroll(p ScrollProps, children ...Node) Node {
 	content.setStyle(withDirection(p.ContentStyle, dir), false)
 	addKids(content, children)
 	e.appendKid(content)
+	if p.Paging {
+		paging(e, content, p.Horizontal, p.Page)
+	}
+	return Node{e}
+}
+
+// paging makes a Scroll stop at whole pages, and keeps page and the
+// page it shows in step.
+func paging(e, content *element, horizontal bool, page *signal.Signal[int]) {
+	e.r.batch.SetBool(e.id, ops.PropScrollPaging, true)
+	// Each of its content's children is a page, exactly as big as the
+	// scroll view along its axis: a track each of a grid that flows along
+	// it, made again when the scroll view's size changes.
+	pageSize := float32(0)
+	adjust := content.adjust
+	content.adjust = func(cs *layout.Style) {
+		adjust(cs)
+		if pageSize <= 0 {
+			return
+		}
+		cs.Display = layout.DisplayGrid
+		if horizontal {
+			cs.GridAutoFlow = layout.FlowColumn
+			cs.GridAutoColumns = []layout.TrackSize{layout.Px(pageSize)}
+		} else {
+			cs.GridAutoFlow = layout.FlowRow
+			cs.GridAutoRows = []layout.TrackSize{layout.Px(pageSize)}
+		}
+	}
+	along := func(w, h float32) float32 {
+		if horizontal {
+			return w
+		}
+		return h
+	}
+	size := signal.New(float32(0))
+	e.handlers().layout = func(f Frame) { size.Set(along(f.Width, f.Height)) }
+	signal.RenderEffect(func() {
+		if s := size.Get(); s != pageSize {
+			pageSize = s
+			content.box.SetStyle(content.layoutStyle(&content.style))
+		}
+	})
+	if page == nil {
+		return
+	}
+	// logical turns a page from the physical start (left, top) into one
+	// from the reading start, and back: right to left, horizontally, the
+	// first is the rightmost.
+	logical := func(i int) int {
+		if !horizontal || !content.rtl() {
+			return i
+		}
+		return max(len(content.box.Children())-1-i, 0)
+	}
+	shown, laid := -1, float32(0) // the page the host shows, and the size it was laid out at
+	signal.RenderEffect(func() {
+		pg, sz := page.Get(), size.Get()
+		if sz <= 0 || (pg == shown && sz == laid) {
+			return
+		}
+		animated := laid == sz && shown >= 0 // a size change keeps the page, at once
+		shown, laid = pg, sz
+		off := float32(logical(pg)) * sz
+		x, y := off, float32(0)
+		if !horizontal {
+			x, y = 0, off
+		}
+		ScrollTo(Node{e}, x, y, animated)
+	})
+	e.handlers().paged = func(i int64) {
+		pg := logical(int(i))
+		shown = pg
+		page.Set(pg)
+	}
+	e.listen(ops.EventPaged)
+}
+
+// PageControlProps configures a PageControl.
+type PageControlProps struct {
+	// Count is how many pages there are.
+	Count signal.Accessor[int]
+	// Page is the current page: tapping a dot (or the control's sides on
+	// iOS), or a screen reader's adjusting, writes it. Share it with a
+	// Paging Scroll's Page to move both.
+	Page  *signal.Signal[int]
+	Style Styler
+}
+
+// PageControl is a row of dots, one per page, with the current one
+// highlighted: UIPageControl on iOS, which has its own Liquid Glass look
+// on iOS 26. Android, macOS and Windows have no such control, and get the
+// same dots, drawn in their theme's colors. VoiceOver and TalkBack say
+// "page 2 of 5", and adjust it.
+func PageControl(p PageControlProps) Node {
+	e := newElement(ops.KindPageControl, true)
+	e.measure()
+	e.setStyle(p.Style, false)
+	bind(p.Count, func(n int) {
+		e.r.batch.SetInt(e.id, ops.PropPageControlCount, int64(n))
+		e.remeasure()
+	})
+	if p.Page != nil {
+		reported, known := 0, false
+		signal.RenderEffect(func() {
+			v := p.Page.Get()
+			if known && v == reported {
+				return
+			}
+			reported, known = v, true
+			e.r.batch.SetInt(e.id, ops.PropPageControlPage, int64(v))
+		})
+		e.handlers().selected = func(i int64) {
+			reported, known = int(i), true
+			p.Page.Set(int(i))
+		}
+		e.listen(ops.EventSelected)
+	}
 	return Node{e}
 }
 

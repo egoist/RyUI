@@ -353,6 +353,22 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
     }
 
     /** Reports a Scroll's offset, in points, as Scrolled (when the core listens). */
+    /**
+     * A scroll view shows its content only inside its frame, as UIKit's does:
+     * RyUI's containers let their children draw outside them, and its parent
+     * would show the content it scrolled out of sight (the next page of a
+     * carousel). Clipped to its background's outline (its corners) if any.
+     */
+    private fun clipsToFrame(v: View) {
+        v.outlineProvider = object : android.view.ViewOutlineProvider() {
+            override fun getOutline(view: View, outline: android.graphics.Outline) {
+                view.background?.getOutline(outline)
+                if (outline.isEmpty) outline.setRect(0, 0, view.width, view.height)
+            }
+        }
+        v.clipToOutline = true
+    }
+
     private fun reportScrolls(v: View, id: Int) {
         val r = RyUIScrollReporter(this, id, v)
         v.setOnScrollChangeListener { _, x, y, _, _ ->
@@ -658,7 +674,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
             RyUIKind.WEB_VIEW -> RyUIWebView(this, id)
             RyUIKind.SHAPE -> RyUIShape(this)
             RyUIKind.VIDEO -> RyUIVideo(this, id)
-            RyUIKind.SCROLL -> NestedScrollView(ctx).apply { isFillViewport = false; reportScrolls(this, id) }
+            RyUIKind.SCROLL -> NestedScrollView(ctx).apply { isFillViewport = false; clipsToFrame(this); reportScrolls(this, id) }
             RyUIKind.LIST -> RyUIList(id, this).frame
             RyUIKind.ACTIVITY -> CircularProgressIndicator(ctx).apply { isIndeterminate = true }
             RyUIKind.SYMBOL -> RyUISymbol(this)
@@ -667,6 +683,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
             RyUIKind.STEPPER -> RyUIStepper(this, id)
             RyUIKind.COLOR_PICKER -> RyUIColorPicker(this, id)
             RyUIKind.PROGRESS -> makeProgress()
+            RyUIKind.PAGE_CONTROL -> RyUIPageDots(this, id)
             RyUIKind.DATE_PICKER -> RyUIDatePicker(this, id)
             RyUIKind.STACK -> RyUIStack(ctx, id, this)
             RyUIKind.TABS -> RyUITabs(ctx, id, this)
@@ -761,6 +778,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
         val v: android.widget.FrameLayout = if (horizontal) RyUIHorizontalScroll(themed).apply { isFillViewport = false }
             else NestedScrollView(themed).apply { isFillViewport = false }
         v.layoutDirection = directionOf(n)
+        clipsToFrame(v)
         reportScrolls(v, n.id)
         while (old.childCount > 0) {
             val c = old.getChildAt(0)
@@ -779,6 +797,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
         }
         n.view = v
         restyle(n)
+        RyUIPager.apply(this, n)
     }
 
     /** Replaces a button with one of another variant (a style is fixed when a view is made). */

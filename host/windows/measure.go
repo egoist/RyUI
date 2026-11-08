@@ -63,6 +63,8 @@ func (h *Host) measure(n *node, c layout.Constraints) layout.Size {
 		}
 	case ops.KindActivity:
 		w, ht = 32, 32
+	case ops.KindPageControl:
+		w, ht = h.measurePips(n)
 	case ops.KindStepper:
 		w, ht = 92, 32
 	case ops.KindSegmented:

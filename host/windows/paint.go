@@ -114,6 +114,8 @@ func (h *Host) paintOwn(n *node, hwnd, dc uintptr, r Rect) {
 		h.paintSegmented(n, 0, g, r)
 	case ops.KindProgress:
 		h.paintProgress(n, g, w, ht)
+	case ops.KindPageControl:
+		h.paintPips(n, g, w, ht)
 	case ops.KindActivity:
 		h.paintActivity(n, g, w, ht)
 	case ops.KindTextField:

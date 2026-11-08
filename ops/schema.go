@@ -160,6 +160,7 @@ var Schema = SchemaDef{
 			{Name: "Horizontal", Type: TBool},
 			{Name: "Refreshable", Type: TBool, Doc: "pull to refresh sends Refresh"},
 			{Name: "Refreshing", Type: TBool},
+			{Name: "Paging", Type: TBool, Doc: "it stops only at multiples of its own size along its axis, a page each (iOS's isPagingEnabled; Android snaps each swipe to the next page, or back), and hides its scroll bars; a swipe that settles on a page sends Paged"},
 		}, Doc: "its single child is the content; the content's frame is the content size"},
 		{Name: "List", Props: []PropDef{
 			{Name: "Refreshable", Type: TBool},
@@ -274,6 +275,10 @@ var Schema = SchemaDef{
 			{Name: "Max", Type: TInt, Doc: "the latest choice, in Unix milliseconds (0: none)"},
 			{Name: "Inline", Type: TBool, Doc: "iOS: the calendar and time shown in place (an inline UIDatePicker), for a sheet of its own; Android keeps its buttons"},
 		}, Doc: "a date or a time, chosen the platform's way (a compact UIDatePicker; Material's date and time pickers from buttons that show it), in the device's time zone and format. The user's choice is reported with ValueChanged, in Unix milliseconds"},
+		{Name: "PageControl", Props: []PropDef{
+			{Name: "Count", Type: TInt, Doc: "how many pages"},
+			{Name: "Page", Type: TInt, Doc: "the current page, from the first in the reading direction"},
+		}, Doc: "a row of dots, one per page, the current one highlighted (UIPageControl; drawn on Android, macOS and Windows, which have none); measured. Tapping or a screen reader's adjusting changes the page: Selected with its index"},
 		{Name: "Window", Props: []PropDef{
 			{Name: "Title", Type: TString},
 			{Name: "Width", Type: TFloat, Doc: "its content's width when it opens, in points (0: the host's default)"},
@@ -335,6 +340,7 @@ var Schema = SchemaDef{
 		{Name: "RowInset", Payload: PPoint, Doc: "a List's rows' content is narrower than the core lays it out by X points at the leading edge and Y at the trailing (a selection control's room); to the list. The core lays its rows out again"},
 		{Name: "Dragging", Payload: PInt, Doc: "the view's drag (DragItems): a DragPhase. Began as it lifts, then Dropped (a target took it, the app's or another app's) or Cancelled"},
 		{Name: "Back", Payload: PNone, Doc: "the user went back from a Screen, Sheet or the root with InterceptBack, which the host didn't do"},
+		{Name: "Paged", Payload: PInt, Doc: "a Paging Scroll's swipe is settling on a page: its index from the content's physical start (left or top), page = offset / the scroll's size"},
 	},
 	Commands: []CommandDef{
 		{Name: "Focus"},

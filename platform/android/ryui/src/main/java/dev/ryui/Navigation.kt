@@ -809,6 +809,7 @@ fun RyUIRuntime.setNavProp(n: RyUINode, prop: Int, v: Any): Boolean {
         }
         RyUIKind.SCROLL -> when (prop) {
             RyUIProp.Scroll.HORIZONTAL -> setHorizontal(n, v as Boolean)
+            RyUIProp.Scroll.PAGING -> RyUIPager.apply(this, n)
             RyUIProp.Scroll.REFRESHABLE -> setRefreshable(n, v as Boolean)
             RyUIProp.Scroll.REFRESHING -> (n.wrapper as? SwipeRefreshLayout)?.isRefreshing = v as Boolean
             else -> return false
@@ -831,6 +832,13 @@ fun RyUIRuntime.setNavProp(n: RyUINode, prop: Int, v: Any): Boolean {
             else -> return false
         }
         RyUIKind.NATIVE -> return setNativeProp(n, prop, v)
+        RyUIKind.PAGE_CONTROL -> (n.view as RyUIPageDots).let {
+            when (prop) {
+                RyUIProp.PageControl.COUNT -> it.count = (v as Long).toInt()
+                RyUIProp.PageControl.PAGE -> it.page = (v as Long).toInt()
+                else -> return false
+            }
+        }
         RyUIKind.SEGMENTED -> if (prop == RyUIProp.Segmented.SEGMENTS) (n.view as RyUISegmented).setSegments(v as ByteBuffer) else return false
         RyUIKind.RICH_TEXT -> when (prop) {
             RyUIProp.RichText.CONTENT -> (n.view as RyUIRichText).setContent(v as ByteBuffer)

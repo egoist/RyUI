@@ -109,6 +109,9 @@ func (h *Host) updateBars(n *node) {
 // showBars shows a scroll view's thumb for a moment (it scrolled, or
 // the mouse moved over it).
 func (h *Host) showBars(n *node) {
+	if n.paging {
+		return // a pager has no scroll bar
+	}
 	content, view, _, _ := h.extent(n)
 	if content <= view+0.5 {
 		return

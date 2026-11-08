@@ -106,6 +106,8 @@ type node struct {
 	dir        ops.LayoutDirection // its LayoutDirection prop
 	rtl        bool                // the way it reads
 	horizontal bool                // a horizontal Scroll
+	paging     bool                // a Scroll that settles on pages
+	dots       *pageDots           // a PageControl's
 
 	// Interaction states and drag and drop (interaction.go).
 	hovered    bool
@@ -411,6 +413,9 @@ func (h *Host) destroy(id ops.NodeID) {
 	delete(h.nodes, id)
 	if h.destroyNav(n) {
 		return
+	}
+	if n.paging {
+		h.setPaging(n, false) // its observer goes
 	}
 	for _, c := range n.children {
 		c.parent = nil

@@ -120,6 +120,8 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 		}
 		Send(v, "setTarget:", uintptr(h.target))
 		Send(v, "setAction:", uintptr(Sel("act:")))
+	case ops.KindPageControl:
+		v = h.makePageDots(n)
 	case ops.KindRichText:
 		n.rich = newRich()
 		v = n.rich.makeView()
@@ -242,9 +244,14 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 	case ops.KindScroll:
 		if p == ops.PropScrollHorizontal {
 			n.horizontal = v.Int != 0
-			Send(n.view, "setHasHorizontalScroller:", Bool(v.Int != 0))
-			Send(n.view, "setHasVerticalScroller:", Bool(v.Int == 0))
+			Send(n.view, "setHasHorizontalScroller:", Bool(v.Int != 0 && !n.paging))
+			Send(n.view, "setHasVerticalScroller:", Bool(v.Int == 0 && !n.paging))
 		}
+		if p == ops.PropScrollPaging {
+			h.setPaging(n, v.Int != 0)
+		}
+	case ops.KindPageControl:
+		h.setPageDots(n, p, v)
 		// Pull to refresh: not on macOS.
 	case ops.KindList:
 		n.list.setProp(h, n, p, v)

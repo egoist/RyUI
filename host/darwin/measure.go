@@ -85,6 +85,8 @@ func (h *Host) measure(n *node, c layout.Constraints) layout.Size {
 		s = Size{}
 	case ops.KindScroll, ops.KindList:
 		s = Size{}
+	case ops.KindPageControl:
+		s = h.measureDots(n)
 	default:
 		s = MsgSize(v, Sel("intrinsicContentSize"))
 		if s.Width < 0 { // NSViewNoIntrinsicMetric

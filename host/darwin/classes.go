@@ -130,6 +130,7 @@ func registerClasses() {
 	})
 	registerRichClass(flipped)
 	registerShapeClass(flipped)
+	registerPageDotsClass(flipped)
 	registerTarget()
 }
 
@@ -199,6 +200,7 @@ func registerTarget() {
 		Method("appMenuItem:", func(self ID, _ SEL, item ID) { h().appMenuItem(item) }),
 		Method("validateMenuItem:", func(self ID, _ SEL, item ID) bool { return h().validateMenuItem(item) }),
 		Method("boundsChanged:", func(self ID, _ SEL, n ID) { h().scrolled(Send(n, "object")) }),
+		Method("liveScrollEnded:", func(self ID, _ SEL, n ID) { h().settlePage(Send(n, "object")) }),
 		Method("frameTick:", func(self ID, _ SEL, t ID) { h().tick() }),
 
 		// Text fields.
