@@ -793,7 +793,7 @@ func TestRepeatingAnimation(t *testing.T) {
 	ui.AnimateWith(ui.Animation{Duration: 0.8, Repeat: ui.Forever, Autoreverses: true}, func() { on.Set(true) })
 	r.Flush()
 	b := h.Commands(ops.CmdAnimateBegin)[0].Value.Bytes
-	if len(b) != 10 || int32(binary.LittleEndian.Uint32(b[5:])) != -1 || b[9] != 1 {
+	if len(b) != 22 || int32(binary.LittleEndian.Uint32(b[5:])) != -1 || b[9] != 1 {
 		t.Fatalf("args %v", b)
 	}
 }
@@ -1418,5 +1418,38 @@ func TestTooltip(t *testing.T) {
 	r.Flush()
 	if b.String(ops.PropTooltip) != "Remove from favorites" {
 		t.Fatal("the tooltip didn't follow its signal")
+	}
+}
+
+// A spring's delay, damping and velocity ride with AnimateBegin, and
+// OnDone comes once it's logically complete.
+func TestSpringAndOnDone(t *testing.T) {
+	x := signal.New(float32(0))
+	h, r := mount(t, func() ui.Node {
+		return ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style {
+			return ui.Style{Transform: ui.Transform{TranslateX: x.Get()}}
+		})})
+	})
+	done := make(chan struct{}, 1)
+	ui.AnimateWith(ui.Animation{Duration: 0.02, Curve: ui.Spring, Delay: 0.01, Damping: 0.6, Velocity: 2.5,
+		OnDone: func() { done <- struct{}{} }}, func() { x.Set(120) })
+	r.Flush()
+	b := h.Commands(ops.CmdAnimateBegin)[0].Value.Bytes
+	f := func(i int) float32 { return math.Float32frombits(binary.LittleEndian.Uint32(b[i:])) }
+	if f(10) != 0.01 || f(14) != 0.6 || f(18) != 2.5 {
+		t.Fatalf("delay %v, damping %v, velocity %v", f(10), f(14), f(18))
+	}
+	// It's posted to the main thread after 30ms: wait for it there.
+	for i := 0; ; i++ {
+		h.RunPosted()
+		select {
+		case <-done:
+			return
+		default:
+		}
+		if i > 2000 {
+			t.Fatal("OnDone never came")
+		}
+		time.Sleep(time.Millisecond)
 	}
 }

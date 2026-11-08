@@ -366,7 +366,7 @@ var Schema = SchemaDef{
 		{Name: "ListUpdate", Doc: "args: u32 count, then count i64 item IDs in order; then u32 section count (0, or the args ending there: one section, without a header), per section u32 the index of its first item and i64 its ID (stable, as an item's). Sections are in order; the first starts at 0"},
 		{Name: "Present", Doc: "show a Sheet or Alert"},
 		{Name: "Haptic", Doc: "args: u8 Haptic; sent to the root"},
-		{Name: "AnimateBegin", Doc: "args: f32 duration (seconds), u8 AnimationCurve, i32 repeat (times more; -1: forever), u8 autoreverses; sent to the root: the frames and visual props up to AnimateEnd animate. A repeating animation stops when its prop is set again"},
+		{Name: "AnimateBegin", Doc: "args: f32 duration (seconds), u8 AnimationCurve, i32 repeat (times more; -1: forever), u8 autoreverses, f32 delay (seconds), f32 a spring's damping ratio (1: no overshoot), f32 a spring's initial velocity (the change's fraction per second); sent to the root: the frames and visual props up to AnimateEnd animate. A repeating animation stops when its prop is set again"},
 		{Name: "AnimateEnd"},
 		{Name: "OpenURL", Doc: "args: the URL; sent to the root: the system opens it (a browser, another app)"},
 		{Name: "Call", Doc: "args: u32 call id, string module, string method, then the call's bytes; sent to the root: the host runs the module's method (its own, or one an app registers) and answers with Result"},

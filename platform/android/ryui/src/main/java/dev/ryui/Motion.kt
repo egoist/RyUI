@@ -64,7 +64,7 @@ fun RyUIRuntime.runEnters() {
     for ((n, a) in es) {
         val b = n.base
         n.outer.animate().alpha(b.alpha).translationX(b.tx).translationY(b.ty).scaleX(b.sx).scaleY(b.sy)
-            .setDuration(a.millis).setInterpolator(a.interpolator()).start()
+            .setDuration(a.millis).setStartDelay(a.delay).setInterpolator(a.interpolator()).start()
     }
 }
 
@@ -83,7 +83,7 @@ fun RyUIRuntime.exit(n: RyUINode): Boolean {
     v.animate().alpha(if (t.fade) 0f else v.alpha)
         .translationX(n.base.tx + t.x * density).translationY(n.base.ty + t.y * density)
         .scaleX(n.base.sx * s).scaleY(n.base.sy * s)
-        .setDuration(a.millis).setInterpolator(a.interpolator())
+        .setDuration(a.millis).setStartDelay(a.delay).setInterpolator(a.interpolator())
         .withEndAction {
             (v.parent as? ViewGroup)?.removeView(v)
             exiting.remove(v)
@@ -99,7 +99,7 @@ fun RyUIRuntime.exit(n: RyUINode): Boolean {
 fun RyUIRuntime.animateProps(v: View, a: RyUIAnimation, vararg values: Pair<android.util.Property<View, Float>, Float>) {
     for ((prop, _) in values) stopRepeating(v, prop)
     if (a.repeat == 0 && !a.autoreverses) {
-        val p = v.animate().setDuration(a.millis).setInterpolator(a.interpolator())
+        val p = v.animate().setDuration(a.millis).setStartDelay(a.delay).setInterpolator(a.interpolator())
         for ((prop, to) in values) when (prop) {
             View.ALPHA -> p.alpha(to)
             View.TRANSLATION_X -> p.translationX(to)
@@ -114,6 +114,7 @@ fun RyUIRuntime.animateProps(v: View, a: RyUIAnimation, vararg values: Pair<andr
     val holders = values.map { (prop, to) -> android.animation.PropertyValuesHolder.ofFloat(prop, prop.get(v), to) }
     val o = android.animation.ObjectAnimator.ofPropertyValuesHolder(v, *holders.toTypedArray())
     o.duration = a.millis
+    o.startDelay = a.delay
     o.interpolator = a.interpolator()
     o.repeatCount = if (a.repeat < 0) android.animation.ValueAnimator.INFINITE else a.repeat
     o.repeatMode = if (a.autoreverses) android.animation.ValueAnimator.REVERSE else android.animation.ValueAnimator.RESTART
@@ -239,7 +240,7 @@ fun RyUIRuntime.runMatches() {
             m = m.parent
         }
         if (to.width() <= 0 || to.height() <= 0 || from.width() <= 0 || from.height() <= 0) {
-            old.animate().alpha(0f).setDuration(a.millis).withEndAction { gone(old) }.start()
+            old.animate().alpha(0f).setDuration(a.millis).setStartDelay(a.delay).withEndAction { gone(old) }.start()
             continue
         }
         val b = n.base
@@ -248,14 +249,14 @@ fun RyUIRuntime.runMatches() {
         v.scaleX = b.sx * from.width() / to.width()
         v.scaleY = b.sy * from.height() / to.height()
         v.animate().translationX(b.tx).translationY(b.ty).scaleX(b.sx).scaleY(b.sy)
-            .setDuration(a.millis).setInterpolator(a.interpolator()).start()
+            .setDuration(a.millis).setStartDelay(a.delay).setInterpolator(a.interpolator()).start()
         old.animate().translationX(to.exactCenterX() - from.exactCenterX()).translationY(to.exactCenterY() - from.exactCenterY())
             .scaleX(to.width().toFloat() / from.width()).scaleY(to.height().toFloat() / from.height()).alpha(0f)
-            .setDuration(a.millis).setInterpolator(a.interpolator()).withEndAction { gone(old) }.start()
+            .setDuration(a.millis).setStartDelay(a.delay).setInterpolator(a.interpolator()).withEndAction { gone(old) }.start()
     }
     for ((_, out) in matchOut) {
         val old = out.first
-        old.animate().alpha(0f).setDuration(a.millis).setInterpolator(a.interpolator()).withEndAction { gone(old) }.start()
+        old.animate().alpha(0f).setDuration(a.millis).setStartDelay(a.delay).setInterpolator(a.interpolator()).withEndAction { gone(old) }.start()
     }
     matchOut.clear()
 }

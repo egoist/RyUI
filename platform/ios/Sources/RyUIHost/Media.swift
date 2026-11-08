@@ -514,6 +514,12 @@ final class RyUIGestureDelegate: NSObject, UIGestureRecognizerDelegate {
             let n = Int32(bitPattern: r.u32()), auto = r.u8() != 0
             if n != 0 || auto { repeating = (n, auto) }
         }
+        animationDelay = 0
+        spring = (0.85, 0)
+        if args.count >= 22 {
+            animationDelay = Double(r.f32())
+            spring = (CGFloat(r.f32()), CGFloat(r.f32()))
+        }
     }
 
     /// Runs change, animated if an animation is on and the view is shown.

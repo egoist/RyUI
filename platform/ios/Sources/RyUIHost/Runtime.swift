@@ -235,6 +235,9 @@ final class RyUITextField: UITextField {
     let gestureDelegate = RyUIGestureDelegate()
     /// Between AnimateBegin and AnimateEnd: the duration and curve.
     var animation: (Double, Int32)?
+    /// The animation's delay, and a spring's damping ratio and initial velocity.
+    var animationDelay: Double = 0
+    var spring: (damping: CGFloat, velocity: CGFloat) = (0.85, 0)
     /// The animation's repeat: times more (-1 forever), and autoreverses.
     var repeating: (Int32, Bool)?
     /// Views with a repeating animation, which a plain change stops.

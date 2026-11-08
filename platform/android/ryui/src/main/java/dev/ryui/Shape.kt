@@ -69,6 +69,7 @@ class RyUIShape(private val rt: RyUIRuntime) : View(rt.themed) {
         if (a == null || !isAttachedToWindow) { apply(to); return }
         val va = ValueAnimator.ofFloat(from, to).apply {
             duration = a.millis
+            startDelay = a.delay
             interpolator = a.interpolator()
             addUpdateListener { apply(it.animatedValue as Float) }
         }

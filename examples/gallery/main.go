@@ -662,7 +662,15 @@ func motion(toast *signal.Signal[bool]) ui.Node {
 	puck := ui.View(ui.ViewProps{
 		OnPan: func(g ui.Gesture) {
 			if g.State == ui.GestureEnded || g.State == ui.GestureCancelled {
-				ui.AnimateWith(ui.Animation{Curve: ui.Spring, Duration: 0.45}, func() { drag.Set(ui.Gesture{}) })
+				// Back home on a bouncy spring that carries on the fling: its
+				// speed toward home, as a fraction of the way left per second.
+				d := math.Hypot(float64(g.TranslationX), float64(g.TranslationY))
+				v := 0.0
+				if d > 1 {
+					v = -(float64(g.VelocityX*g.TranslationX) + float64(g.VelocityY*g.TranslationY)) / d / d
+				}
+				ui.AnimateWith(ui.Animation{Curve: ui.Spring, Duration: 0.6, Damping: 0.55, Velocity: float32(v)},
+					func() { drag.Set(ui.Gesture{}) })
 				return
 			}
 			drag.Set(g)
@@ -685,12 +693,11 @@ func motion(toast *signal.Signal[bool]) ui.Node {
 		spinner(),
 		turner(),
 		ui.Button(ui.ButtonProps{Title: ui.Val("Show a toast"), Variant: ui.ButtonGray, OnPress: func() {
-			ui.Animate(func() { toast.Set(true) })
+			// In, then out a while after it's in: a chain of animations.
+			ui.AnimateWith(ui.Animation{OnDone: func() {
+				ui.AnimateWith(ui.Animation{Delay: 1.5}, func() { toast.Set(false) })
+			}}, func() { toast.Set(true) })
 			ui.Announce("Saved") // a screen reader wouldn't notice the toast
-			go func() {
-				time.Sleep(1500 * time.Millisecond)
-				ui.Post(func() { ui.Animate(func() { toast.Set(false) }) })
-			}()
 		}}),
 	)
 }

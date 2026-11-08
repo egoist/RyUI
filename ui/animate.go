@@ -3,6 +3,7 @@ package ui
 import (
 	"encoding/binary"
 	"math"
+	"time"
 
 	"github.com/egoist/ryui/ops"
 	"github.com/egoist/ryui/signal"
@@ -28,6 +29,20 @@ type Animation struct {
 	// Autoreverses each run goes back before the next.
 	Repeat       int
 	Autoreverses bool
+	// Delay is how long it waits, in seconds, before it starts.
+	Delay float32
+	// Damping is a Spring's, from 0 to 1: 1 settles without passing its
+	// end, less overshoots and bounces back (UIKit's damping ratio); 0:
+	// 0.85, a little.
+	Damping float32
+	// Velocity is a Spring's at the start, as a fraction of the change
+	// per second (UIKit's initialSpringVelocity): to carry on a fling, the
+	// gesture's velocity divided by the distance left to go. 0: from rest.
+	Velocity float32
+	// OnDone is called on the main thread once the animation is logically
+	// complete (after Delay and Duration, each repeat), whatever its views
+	// are still settling: to chain the next step. Never for Forever.
+	OnDone func()
 }
 
 // Forever repeats an animation until its props change again.
@@ -57,6 +72,14 @@ func AnimateWith(a Animation, f func()) {
 		r.animBegin()
 	}
 	signal.Batch(f)
+	if a.OnDone != nil && a.Repeat >= 0 {
+		runs := float32(a.Repeat + 1)
+		if a.Autoreverses {
+			runs *= 2
+		}
+		d := time.Duration(float64(a.Delay+a.Duration*runs) * float64(time.Second))
+		time.AfterFunc(d, func() { Post(a.OnDone) })
+	}
 }
 
 func (r *Root) animBegin() {
@@ -67,6 +90,13 @@ func (r *Root) animBegin() {
 	if r.anim.Autoreverses {
 		r.animArgs[9] = 1
 	}
+	binary.LittleEndian.PutUint32(r.animArgs[10:14], math.Float32bits(max(r.anim.Delay, 0)))
+	damping := r.anim.Damping
+	if damping <= 0 {
+		damping = 0.85
+	}
+	binary.LittleEndian.PutUint32(r.animArgs[14:18], math.Float32bits(min(damping, 1)))
+	binary.LittleEndian.PutUint32(r.animArgs[18:22], math.Float32bits(r.anim.Velocity))
 	r.batch.Command(r.el.id, ops.CmdAnimateBegin, r.animArgs[:])
 }
 

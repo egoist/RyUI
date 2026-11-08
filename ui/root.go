@@ -53,7 +53,7 @@ type Root struct {
 
 	anim      Animation // what ui.Animate asked for, for this flush
 	animating bool
-	animArgs  [10]byte
+	animArgs  [22]byte
 
 	menuBars   []*menuBar // MenuBar's, mounted; the last shows
 	menuItems  []MenuItem // the menus' items, in order (Action's index)

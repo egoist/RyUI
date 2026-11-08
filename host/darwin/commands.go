@@ -290,6 +290,14 @@ func (h *Host) beginAnimation(args []byte) {
 		name = "easeOut"
 	}
 	tf := Send(Class("CAMediaTimingFunction"), "functionWithName:", uintptr(String(name)))
+	if a.curve == ops.AnimationCurveSpring && len(args) >= 22 && f32(args, 14) < 0.7 {
+		// A bouncy spring: AppKit's implicit animations have no springs,
+		// so a curve that overshoots its end and comes back, about as far
+		// as the damping says. The delay isn't AppKit's either: it starts
+		// at once.
+		over := 1 + 0.9*(0.7-f32(args, 14))
+		tf = MsgFloat4ID(Class("CAMediaTimingFunction"), Sel("functionWithControlPoints::::"), 0.34, over, 0.64, 1)
+	}
 	Send(ctx, "setTimingFunction:", uintptr(tf))
 }
 

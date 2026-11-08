@@ -43,9 +43,18 @@ call it inside `ui.Post`.
 
 - `Duration` is in seconds; 0 means 0.25.
 - `Curve` is `ui.EaseInOut` (the default), `ui.Linear`, `ui.EaseIn`,
-  `ui.EaseOut` or `ui.Spring`. A spring settles with a little overshoot:
-  UIKit's spring animation on iOS, an overshoot interpolator on Android.
-  It still takes `Duration`.
+  `ui.EaseOut` or `ui.Spring`. A spring is a damped spring that settles
+  by the end of `Duration`: UIKit's spring animation on iOS, the same
+  spring's interpolator on Android and Windows.
+- `Damping` is a spring's damping ratio: 1 settles without passing its
+  end, less overshoots and comes back (0 means 0.85, a little).
+  `Velocity` is its speed at the start, as a fraction of the change per
+  second (UIKit's `initialSpringVelocity`), to carry on a fling.
+- `Delay` waits that many seconds before it starts.
+- `OnDone` is called once the animation is logically complete (after
+  `Delay` and `Duration`, each repeat): chain the next step from it.
+- On macOS, AppKit's implicit animations have neither springs nor
+  delays: a bouncy spring overshoots on a curve, and a delay is skipped.
 - `Repeat` runs it again this many times more; `ui.Forever` repeats it
   until the props change again. With `Autoreverses`, each run goes back
   before the next.
@@ -72,6 +81,35 @@ func Pulse() ui.Node {
 		ui.Button(ui.ButtonProps{Title: ui.Val("Stop"), OnPress: stop}),
 	)
 }
+```
+
+A gesture's end often hands over to a spring. Its velocity, divided by
+the distance left to go, is the spring's `Velocity`, so the view keeps
+the speed the finger gave it:
+
+```go
+OnPan: func(g ui.Gesture) {
+	if g.State != ui.GestureEnded {
+		drag.Set(g) // follows the finger
+		return
+	}
+	d := math.Hypot(float64(g.TranslationX), float64(g.TranslationY))
+	v := 0.0
+	if d > 1 { // the speed toward home, along the way back
+		v = -(float64(g.VelocityX*g.TranslationX) + float64(g.VelocityY*g.TranslationY)) / d / d
+	}
+	ui.AnimateWith(ui.Animation{Curve: ui.Spring, Duration: 0.6, Damping: 0.55, Velocity: float32(v)},
+		func() { drag.Set(ui.Gesture{}) })
+},
+```
+
+Steps that follow each other chain through `OnDone`; a toast that comes
+in, stays, and goes:
+
+```go
+ui.AnimateWith(ui.Animation{OnDone: func() {
+	ui.AnimateWith(ui.Animation{Delay: 1.5}, func() { shown.Set(false) })
+}}, func() { shown.Set(true) })
 ```
 
 A repeating animation stops when its props are set again without an

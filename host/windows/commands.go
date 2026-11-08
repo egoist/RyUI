@@ -188,6 +188,9 @@ func (h *Host) popUp(n *node, anchor uintptr, below bool) {
 type animation struct {
 	duration float64
 	curve    ops.AnimationCurve
+	delay    float64
+	damping  float64 // a spring's damping ratio
+	velocity float64 // a spring's initial velocity, the change's fraction per second
 	active   bool
 	start    time.Time
 	tweens   map[*node]*tween
@@ -208,6 +211,12 @@ func (h *Host) beginAnimation(args []byte) {
 		h.anim = &animation{tweens: map[*node]*tween{}}
 	}
 	h.anim.duration, h.anim.curve, h.anim.active = d, ops.AnimationCurve(args[4]), true
+	h.anim.delay, h.anim.damping, h.anim.velocity = 0, 0.85, 0
+	if len(args) >= 22 {
+		h.anim.delay = float64(f32(args, 10))
+		h.anim.damping = float64(f32(args, 14))
+		h.anim.velocity = float64(f32(args, 18))
+	}
 }
 
 func (h *Host) endAnimation() {
@@ -222,7 +231,7 @@ func (h *Host) endAnimation() {
 		}
 		return
 	}
-	a.start = time.Now()
+	a.start = time.Now().Add(time.Duration(a.delay * float64(time.Second)))
 	if !a.running {
 		a.running = true
 		SetTimer(h.msgWin, timerAnimate, 10)
@@ -238,11 +247,14 @@ func (a *animation) add(n *node, from, to [4]float32) {
 }
 
 func (a *animation) step(h *Host) {
-	t := time.Since(a.start).Seconds() / a.duration
+	t := max(time.Since(a.start).Seconds()/a.duration, 0) // waits out its delay at 0
 	if t > 1 {
 		t = 1
 	}
 	e := ease(a.curve, t)
+	if a.curve == ops.AnimationCurveSpring {
+		e = spring(t, a.duration, a.damping, a.velocity)
+	}
 	for n, tw := range a.tweens {
 		if n.hwnd == 0 {
 			continue
@@ -262,6 +274,26 @@ func (a *animation) step(h *Host) {
 			a.tweens = map[*node]*tween{}
 		}
 	}
+}
+
+// spring is a damped spring's progress at t (0 to 1) of its duration, as
+// UIKit's usingSpringWithDamping: settled by the end, overshooting when
+// underdamped; v0 is its initial velocity, the change's fraction per
+// second.
+func spring(t, duration, damping, v0 float64) float64 {
+	if t >= 1 {
+		return 1
+	}
+	dur := max(duration, 0.001)
+	zeta := min(max(damping, 0.05), 1)
+	w0 := max(6.9/(zeta*dur), 2*math.Pi/dur)
+	s := t * dur
+	decay := math.Exp(-zeta * w0 * s)
+	if zeta >= 0.999 {
+		return 1 - decay*(1+(w0-v0)*s)
+	}
+	wd := w0 * math.Sqrt(1-zeta*zeta)
+	return 1 - decay*(math.Cos(wd*s)+(zeta*w0-v0)/wd*math.Sin(wd*s))
 }
 
 func ease(c ops.AnimationCurve, t float64) float64 {
