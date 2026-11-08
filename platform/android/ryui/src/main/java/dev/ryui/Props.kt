@@ -475,7 +475,7 @@ fun RyUIRuntime.propString(id: Int, prop: Int, v: String) {
                         settingProp = false
                     }
                     RyUIProp.TextField.PLACEHOLDER -> e.hint = v
-                    RyUIProp.TextField.CONTENT_TYPE -> if (Build.VERSION.SDK_INT >= 26) e.setAutofillHints(v)
+                    RyUIProp.TextField.CONTENT_TYPE -> if (Build.VERSION.SDK_INT >= 26) e.setAutofillHints(autofillHint(v))
                 }
             }
         }
@@ -704,4 +704,24 @@ fun RyUIRuntime.setAdjustable(n: RyUINode) {
         }
     })
     n.view.isFocusable = true
+}
+
+/** A TextField's ContentType (ui.Content...) as Android's autofill hints name it; another an autofill hint itself. */
+fun autofillHint(s: String): String = when (s) {
+    "username" -> android.view.View.AUTOFILL_HINT_USERNAME
+    "password" -> android.view.View.AUTOFILL_HINT_PASSWORD
+    "newPassword" -> "newPassword" // androidx.autofill's HintConstants
+    "oneTimeCode" -> "smsOTPCode"
+    "email" -> android.view.View.AUTOFILL_HINT_EMAIL_ADDRESS
+    "phone" -> android.view.View.AUTOFILL_HINT_PHONE
+    "name" -> android.view.View.AUTOFILL_HINT_NAME
+    "givenName" -> "personGivenName"
+    "familyName" -> "personFamilyName"
+    "address" -> "streetAddress"
+    "postalCode" -> android.view.View.AUTOFILL_HINT_POSTAL_CODE
+    "city" -> "addressLocality"
+    "country" -> "addressCountry"
+    "cardNumber" -> android.view.View.AUTOFILL_HINT_CREDIT_CARD_NUMBER
+    "url" -> "url"
+    else -> s
 }

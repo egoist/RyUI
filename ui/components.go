@@ -490,6 +490,27 @@ const (
 	AutocorrectNo      = ops.AutocorrectNo
 )
 
+// What a text field holds, for AutoFill (TextFieldProps.ContentType):
+// each host names it as its platform does (UIKit's UITextContentType,
+// Android's autofill hints).
+const (
+	ContentUsername    = "username"
+	ContentPassword    = "password"
+	ContentNewPassword = "newPassword" // a password being made: the platform offers a strong one
+	ContentOneTimeCode = "oneTimeCode" // a code a message (SMS, email) brought
+	ContentEmail       = "email"
+	ContentPhone       = "phone"
+	ContentName        = "name"
+	ContentGivenName   = "givenName"
+	ContentFamilyName  = "familyName"
+	ContentAddress     = "address" // a street address, on one line
+	ContentPostalCode  = "postalCode"
+	ContentCity        = "city"
+	ContentCountry     = "country"
+	ContentCardNumber  = "cardNumber"
+	ContentURL         = "url"
+)
+
 // TextFieldProps configures a TextField.
 type TextFieldProps struct {
 	// Value is the field's text. The widget owns its text: typing writes
@@ -501,7 +522,10 @@ type TextFieldProps struct {
 	Secure         bool
 	Autocapitalize Autocapitalize
 	Autocorrect    Autocorrect
-	ContentType    string // AutoFill hint: "username", "password", "email", ...
+	// ContentType says what the field holds, for the system's AutoFill:
+	// one of the Content constants (ContentOneTimeCode puts the code a
+	// message just brought above the keyboard), or a platform's own hint.
+	ContentType string
 	// Multiline makes it lines of text (a message, a comment): return is
 	// a new line, not OnSubmit, and it grows with its text up to Style's
 	// Lines lines (0: no limit), then scrolls.

@@ -72,6 +72,29 @@ func uiTextStyle(_ v: Int32) -> UIFont.TextStyle {
     }
 }
 
+/// A TextField's ContentType (ui.Content...) as UIKit names it; another a
+/// UITextContentType's own.
+func contentType(_ s: String) -> UITextContentType {
+    switch s {
+    case "username": return .username
+    case "password": return .password
+    case "newPassword": return .newPassword
+    case "oneTimeCode": return .oneTimeCode
+    case "email": return .emailAddress
+    case "phone": return .telephoneNumber
+    case "name": return .name
+    case "givenName": return .givenName
+    case "familyName": return .familyName
+    case "address": return .fullStreetAddress
+    case "postalCode": return .postalCode
+    case "city": return .addressCity
+    case "country": return .countryName
+    case "cardNumber": return .creditCardNumber
+    case "url": return .URL
+    default: return UITextContentType(rawValue: s)
+    }
+}
+
 func uiWeight(_ v: Int32) -> UIFont.Weight? {
     switch RyUIFontWeight(rawValue: v) {
     case .ultralight: return .ultraLight
@@ -483,8 +506,9 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
         case (.accessory, RyUIProp.Accessory.height):
             (n.view as? RyUIAccessoryView)?.height = CGFloat(v.float)
         case (.textField, RyUIProp.TextField.contentType):
-            (n.view as? UITextField)?.textContentType = UITextContentType(rawValue: v.string)
-            (n.view as? RyUITextView)?.textContentType = UITextContentType(rawValue: v.string)
+            let t = contentType(v.string)
+            (n.view as? UITextField)?.textContentType = t
+            (n.view as? RyUITextView)?.textContentType = t
         case (.toggle, RyUIProp.Toggle.on):
             (n.view as? UISwitch)?.setOn(v.bool, animated: n.view.window != nil)
             (n.view as? RyUICheckbox)?.isOn = v.bool

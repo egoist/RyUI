@@ -214,8 +214,13 @@ return ui.Column(ui.Style{Gap: 12}, em, pw)
 - `ReturnKey` is the return key's label: `ReturnDefault`, `ReturnDone`,
   `ReturnGo`, `ReturnNext`, `ReturnSearch`, `ReturnSend`. Pressing it
   calls `OnSubmit`.
-- `ContentType` is an AutoFill hint: `"username"`, `"password"`,
-  `"email"`, `"name"`...
+- `ContentType` says what it holds, for the system's AutoFill:
+  `ui.ContentUsername`, `ContentPassword`, `ContentNewPassword` (the
+  platform offers a strong password), `ContentOneTimeCode` (the code a
+  message just brought shows above the keyboard: UIKit's `oneTimeCode`,
+  Android's SMS code hint), `ContentEmail`, `ContentPhone`,
+  `ContentName`, `ContentAddress`, `ContentPostalCode`,
+  `ContentCardNumber`... Each host names it as its platform does.
 - `Autocapitalize`: `CapitalizeSentences` (the default),
   `CapitalizeNone`, `CapitalizeWords`, `CapitalizeCharacters`.
   `Autocorrect`: `AutocorrectDefault`, `AutocorrectYes`,
