@@ -8,7 +8,6 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -49,8 +48,8 @@ class RyUIBackground(private val rt: RyUIRuntime) {
             val id = o.getInt("id")
             tasks[id] = Task(o)
             channel()
-            // Its notification shows (Android 13 asks first); the work goes on either way.
-            if (Build.VERSION.SDK_INT >= 33) rt.withPermission(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS)) {}
+            // Its notification shows (the system asks first); the work goes on either way.
+            rt.withPermission(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS)) {}
             if (tasks.size == 1) {
                 wake = (rt.app.getSystemService(Context.POWER_SERVICE) as PowerManager)
                     // Six hours: as long as Android 15 lets a data sync service run a day.
@@ -171,7 +170,7 @@ class RyUIWorkService : Service() {
     /** Shows the first task's notification as the service's; false if none. */
     fun foreground(): Boolean {
         val (id, n) = RyUIBackground.current?.first() ?: return false
-        val type = if (Build.VERSION.SDK_INT >= 29) ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC else 0
+        val type = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
         ServiceCompat.startForeground(this, RyUIBackground.notificationID(id), n, type)
         return true
     }

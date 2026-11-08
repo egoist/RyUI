@@ -113,8 +113,7 @@ class RyUICanvas(private val rt: RyUIRuntime) : View(rt.themed) {
                     val align = r.get().toInt()
                     val x = f() * d; val y = f() * d
                     val b = ByteArray(r.int).also { r.get(it) }
-                    text.typeface = if (android.os.Build.VERSION.SDK_INT >= 28) Typeface.create(Typeface.DEFAULT, if (weight > 0) weight else 400, false)
-                        else if (weight >= 600) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+                    text.typeface = Typeface.create(Typeface.DEFAULT, if (weight > 0) weight else 400, false)
                     text.textAlign = when (align) {
                         RyUITextAlign.CENTER -> Paint.Align.CENTER
                         RyUITextAlign.END -> Paint.Align.RIGHT

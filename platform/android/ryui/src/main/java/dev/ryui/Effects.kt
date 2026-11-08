@@ -2,7 +2,6 @@ package dev.ryui
 
 import android.graphics.Outline
 import android.graphics.drawable.GradientDrawable
-import android.os.Build
 import android.view.View
 import android.view.ViewOutlineProvider
 import java.nio.ByteBuffer
@@ -52,8 +51,8 @@ fun RyUIRuntime.setTransform(n: RyUINode, b: ByteBuffer) {
 
 /**
  * Style.Shadow as Android draws shadows: an elevation, over the view's
- * rounded shape, tinted by the color where the system can (Android 9 and
- * later); the light, not the offset, places it.
+ * rounded shape, tinted by the color; the light, not the offset, places
+ * it.
  */
 fun RyUIRuntime.setShadow(n: RyUINode, b: ByteBuffer) {
     if (b.remaining() < 20) return
@@ -71,11 +70,9 @@ fun RyUIRuntime.setShadow(n: RyUINode, b: ByteBuffer) {
         }
     }
     v.elevation = radius / 2 * density
-    if (Build.VERSION.SDK_INT >= 28) {
-        val col = color(c)
-        v.outlineSpotShadowColor = col
-        v.outlineAmbientShadowColor = col
-    }
+    val col = color(c)
+    v.outlineSpotShadowColor = col
+    v.outlineAmbientShadowColor = col
 }
 
 fun RyUIRuntime.setGradient(n: RyUINode, b: ByteBuffer) {

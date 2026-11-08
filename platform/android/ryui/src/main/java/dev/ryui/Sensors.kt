@@ -6,7 +6,6 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.os.Build
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -62,7 +61,7 @@ class RyUISensors(private val rt: RyUIRuntime) {
             val micros = maxOf(b.int, 5000)
             when {
                 !available(kind) -> reply(Result.failure(Exception("not available")))
-                kind == STEPS && Build.VERSION.SDK_INT >= 29 -> rt.withPermission(arrayOf(Manifest.permission.ACTIVITY_RECOGNITION)) { ok ->
+                kind == STEPS -> rt.withPermission(arrayOf(Manifest.permission.ACTIVITY_RECOGNITION)) { ok ->
                     if (ok) { start(kind, micros); reply(Result.success(ByteArray(0))) }
                     else reply(Result.failure(Exception("not allowed")))
                 }

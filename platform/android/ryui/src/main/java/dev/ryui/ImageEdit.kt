@@ -23,8 +23,8 @@ import kotlin.math.sin
 /**
  * ryui/imageedit's module: "edit", "size" and "videoFrame", each with
  * JSON (source, actions, format, quality, at in ms), answer JSON (path,
- * width, height) or "no image". BitmapFactory decodes (JPEG, PNG, WebP;
- * HEIC from Android 9) a power of two smaller where the first resize
+ * width, height) or "no image". BitmapFactory decodes (JPEG, PNG, WebP,
+ * HEIC) a power of two smaller where the first resize
  * allows, then turns it upright as its EXIF says; Matrix does the
  * actions; Bitmap.compress writes JPEG or PNG. Off the main thread.
  */

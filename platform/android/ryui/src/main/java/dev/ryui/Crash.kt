@@ -19,10 +19,10 @@ import java.util.UUID
  *   the system's, still runs): inbox/exception-<UUID>.json, with every
  *   thread's stack;
  * - on the next launch, how the last runs ended, from
- *   ActivityManager.getHistoricalProcessExitReasons (Android 11 and
- *   later): native crashes with their tombstone (Android 12 and later),
- *   ANRs with their traces, low-memory kills, excessive resource use:
- *   inbox/exit-<time>-<pid>.json, and its trace in a .trace beside it.
+ *   ActivityManager.getHistoricalProcessExitReasons: native crashes
+ *   with their tombstone, ANRs with their traces, low-memory kills,
+ *   excessive resource use: inbox/exit-<time>-<pid>.json, and its trace
+ *   in a .trace beside it.
  *   The last one written is remembered (exits, in the directory), so
  *   each is written once.
  *
@@ -46,10 +46,8 @@ object RyUICrash {
             if (previous != null) previous.uncaughtException(t, e)
             else { Process.killProcess(Process.myPid()); System.exit(10) }
         }
-        if (Build.VERSION.SDK_INT >= 30) {
-            val app = context.applicationContext
-            Thread({ runCatching { exits(app, root, box) } }, "ryui-crash").start()
-        }
+        val app = context.applicationContext
+        Thread({ runCatching { exits(app, root, box) } }, "ryui-crash").start()
     }
 
     /**
@@ -61,11 +59,7 @@ object RyUICrash {
         val state = ActivityManager.RunningAppProcessInfo()
         ActivityManager.getMyMemoryState(state)
         val p = runCatching { context.packageManager.getPackageInfo(context.packageName, 0) }.getOrNull()
-        val build = when {
-            p == null -> ""
-            Build.VERSION.SDK_INT >= 28 -> p.longVersionCode.toString()
-            else -> @Suppress("DEPRECATION") p.versionCode.toString()
-        }
+        val build = p?.longVersionCode?.toString() ?: ""
         return JSONObject(mapOf(
             "model" to Build.MODEL, "system" to "Android", "systemVersion" to Build.VERSION.RELEASE,
             "appVersion" to (p?.versionName ?: ""), "build" to build,
@@ -92,7 +86,6 @@ object RyUICrash {
     }
 
     /** Writes how the runs since the last launch ended, those that crashed. */
-    @androidx.annotation.RequiresApi(30)
     private fun exits(context: Context, root: File, box: File) {
         val am = context.getSystemService(ActivityManager::class.java) ?: return
         val seen = File(root, "exits")

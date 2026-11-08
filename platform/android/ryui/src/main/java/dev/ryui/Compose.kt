@@ -5,7 +5,6 @@ import android.content.ClipData
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.provider.Telephony
 import android.text.Html
 import org.json.JSONArray
@@ -28,8 +27,7 @@ fun RyUIRuntime.composeMethods(): Map<String, RyUIModuleMethod> = mapOf(
     "can" to { _, reply ->
         val pm = app.packageManager
         fun takes(uri: String) = pm.queryIntentActivities(Intent(Intent.ACTION_SENDTO, Uri.parse(uri)), 0).isNotEmpty()
-        val phone = if (Build.VERSION.SDK_INT >= 33) pm.hasSystemFeature(PackageManager.FEATURE_TELEPHONY_MESSAGING)
-            else pm.hasSystemFeature(PackageManager.FEATURE_TELEPHONY)
+        val phone = pm.hasSystemFeature(PackageManager.FEATURE_TELEPHONY_MESSAGING)
         val text = phone && takes("smsto:")
         val mms = text && Telephony.Sms.getDefaultSmsPackage(app) != null
         reply(Result.success(byteArrayOf(if (takes("mailto:")) 1 else 0, 0, if (text) 1 else 0, if (mms) 1 else 0)))

@@ -1473,8 +1473,7 @@ What every host does:
   (`chevron.forward`); `chevron.left` doesn't, since it means left.
 - **`SaveLocale`** keeps the language: AppleLanguages of the app's defaults
   (iOS, macOS), which Settings shows and UIKit and AppKit read at launch;
-  `LocaleManager` (Android 13), or the host's own preferences before it and on
-  Windows. Android declares its languages in `locales_config`, iOS and macOS
+  `LocaleManager` (Android), or the host's own preferences on Windows. Android declares its languages in `locales_config`, iOS and macOS
   in `CFBundleLocalizations` and `.lproj`s: `ryui build` writes them from the
   catalogs, with the app's name and purpose strings in each.
 

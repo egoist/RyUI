@@ -5,9 +5,9 @@ import android.view.ViewTreeObserver
 
 /**
  * ryui.json's splash (Theme.RyUI.Splash, which the CLI writes): the
- * system's splash (Android 12) or the window's background stays until
- * the Activity first draws, which waits for the core's first flush, or,
- * if the app holds it (splash.Hold), for "hide".
+ * system's splash stays until the Activity first draws, which waits for
+ * the core's first flush, or, if the app holds it (splash.Hold), for
+ * "hide".
  */
 object RyUISplash {
     private var held = false

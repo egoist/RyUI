@@ -3,7 +3,6 @@ package dev.ryui
 import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.OpenableColumns
@@ -44,15 +43,10 @@ fun RyUIRuntime.receive(intent: Intent) {
     if (texts.isEmpty()) intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.let { texts.add(it) }
     val subject = intent.getStringExtra(Intent.EXTRA_SUBJECT)?.trim().orEmpty()
     val uris = ArrayList<Uri>()
-    @Suppress("DEPRECATION")
     if (intent.action == Intent.ACTION_SEND_MULTIPLE) {
-        val list: List<Uri>? = if (Build.VERSION.SDK_INT >= 33) intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
-            else intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM)
-        list?.let { uris.addAll(it) }
+        intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)?.let { uris.addAll(it) }
     } else {
-        val u: Uri? = if (Build.VERSION.SDK_INT >= 33) intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
-            else intent.getParcelableExtra(Intent.EXTRA_STREAM)
-        u?.let { uris.add(it) }
+        intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)?.let { uris.add(it) }
     }
     // Some apps give the files only in the clip.
     if (uris.isEmpty()) intent.clipData?.let { c -> for (i in 0 until c.itemCount) c.getItemAt(i).uri?.let { uris.add(it) } }

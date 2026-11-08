@@ -9,7 +9,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.media.MediaRecorder
-import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
 import androidx.core.app.NotificationCompat
@@ -59,8 +58,8 @@ class RyUIAudioRecorder(private val rt: RyUIRuntime) {
         if (nm.getNotificationChannel(CHANNEL) == null) {
             nm.createNotificationChannel(NotificationChannel(CHANNEL, "Recording", NotificationManager.IMPORTANCE_LOW))
         }
-        // Its notification shows (Android 13 asks first); recording goes on either way.
-        if (Build.VERSION.SDK_INT >= 33) rt.withPermission(arrayOf(Manifest.permission.POST_NOTIFICATIONS)) {}
+        // Its notification shows (the system asks first); recording goes on either way.
+        rt.withPermission(arrayOf(Manifest.permission.POST_NOTIFICATIONS)) {}
         ContextCompat.startForegroundService(rt.app, Intent(rt.app, RyUIRecordService::class.java))
         service = true
     }
@@ -115,7 +114,7 @@ class RyUIAudioRecorder(private val rt: RyUIRuntime) {
         val f = if (path.isNotEmpty()) File(path) else File(dir, java.util.UUID.randomUUID().toString() + if (stream) ".aac" else ".m4a")
         // While the app is on screen: Android doesn't let one start later.
         if (background) runCatching { startService() }
-        val r = if (Build.VERSION.SDK_INT >= 31) MediaRecorder(rt.app) else @Suppress("DEPRECATION") MediaRecorder()
+        val r = MediaRecorder(rt.app)
         try {
             r.setAudioSource(MediaRecorder.AudioSource.MIC)
             r.setOutputFormat(if (stream) MediaRecorder.OutputFormat.AAC_ADTS else MediaRecorder.OutputFormat.MPEG_4)
@@ -188,7 +187,7 @@ class RyUIRecordService : Service() {
         if (open != null) {
             b.setContentIntent(PendingIntent.getActivity(this, 0, open, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT))
         }
-        val type = if (Build.VERSION.SDK_INT >= 30) ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE else 0
+        val type = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
         ServiceCompat.startForeground(this, RyUIAudioRecorder.NOTIFICATION, b.build(), type)
         return START_NOT_STICKY
     }

@@ -6,7 +6,6 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
-import android.os.Build
 import android.text.Layout
 import android.text.SpannableStringBuilder
 import android.text.Spanned
@@ -293,16 +292,12 @@ class RyUIRichText(private val rt: RyUIRuntime, private val id2: Int) : RyUICont
             }
             val w = weightOf(s.weight)
             val custom = if (family.isNotEmpty() && !s.mono && (w > 0 || s.italic)) RyUIFonts.typeface(rt.app, family, w, s.italic) else null
-            if (custom != null && Build.VERSION.SDK_INT >= 28) {
+            if (custom != null) {
                 span(TypefaceSpan(custom))
-            } else if (w > 0 && Build.VERSION.SDK_INT >= 28) {
+            } else if (w > 0) {
                 span(TypefaceSpan(Typeface.create(if (s.mono) Typeface.MONOSPACE else Typeface.DEFAULT, w, s.italic)))
-            } else if (w >= 600 || s.italic) {
-                span(StyleSpan(when {
-                    w >= 600 && s.italic -> Typeface.BOLD_ITALIC
-                    w >= 600 -> Typeface.BOLD
-                    else -> Typeface.ITALIC
-                }))
+            } else if (s.italic) {
+                span(StyleSpan(Typeface.ITALIC))
             }
             val c = when {
                 s.color != 0L -> rt.color(s.color)
@@ -373,7 +368,7 @@ class RyUIRichText(private val rt: RyUIRuntime, private val id2: Int) : RyUICont
             .setTextDirection(direction)
             .setIncludePad(false)
             .setLineSpacing(extra, mult)
-        if (Build.VERSION.SDK_INT >= 28) b.setUseLineSpacingFromFallbacks(true)
+            .setUseLineSpacingFromFallbacks(true)
         if (left > 0) b.setMaxLines(left).setEllipsize(TextUtils.TruncateAt.END)
         return b.build()
     }

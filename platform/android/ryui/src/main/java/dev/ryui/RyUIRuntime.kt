@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Context
 import android.net.Uri
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.text.Editable
@@ -146,21 +145,16 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
 
     /** The SaveLocale command: the app's language for its next launches, or "" to follow the system's. */
     private fun saveLocale(tag: String) {
-        if (Build.VERSION.SDK_INT >= 33) {
-            // The system tells the process with a configuration change, which
-            // the Activity handles (configChanges): the language has changed by then.
-            app.getSystemService(android.app.LocaleManager::class.java)?.applicationLocales =
-                if (tag.isEmpty()) android.os.LocaleList.getEmptyLocaleList() else android.os.LocaleList.forLanguageTags(tag)
-            return
-        }
-        saveRegionLocale(tag)
-        regionChanged()
+        // The system tells the process with a configuration change, which
+        // the Activity handles (configChanges): the language has changed by then.
+        app.getSystemService(android.app.LocaleManager::class.java)?.applicationLocales =
+            if (tag.isEmpty()) android.os.LocaleList.getEmptyLocaleList() else android.os.LocaleList.forLanguageTags(tag)
     }
 
     /**
      * The app's Material theme on base: with a color scheme from the
-     * wallpaper or the accent where the system can make one (Android 12
-     * and later), as Material's DynamicColors does.
+     * wallpaper or the accent where the system can make one, as Material's
+     * DynamicColors does.
      */
     private fun theme(base: Context): Context {
         val t = ContextThemeWrapper(base, R.style.Theme_RyUI)

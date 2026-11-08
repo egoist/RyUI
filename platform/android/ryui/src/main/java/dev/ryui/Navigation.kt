@@ -2,7 +2,6 @@ package dev.ryui
 
 import android.content.Context
 import android.graphics.Color
-import android.os.Build
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
@@ -946,7 +945,7 @@ fun RyUIRuntime.showMenu(n: RyUINode) {
                 else com.google.android.material.R.attr.colorOnSurfaceVariant, Color.DKGRAY))
         }
     }
-    if (Build.VERSION.SDK_INT >= 29 && n.actions.any { it.icon.isNotEmpty() }) m.setForceShowIcon(true)
+    if (n.actions.any { it.icon.isNotEmpty() }) m.setForceShowIcon(true)
     val id = n.id
     m.setOnMenuItemClickListener { item ->
         emit(id, RyUIEventKind.ACTION) { RyUIEvents.action(id, item.itemId.toLong()) }
@@ -1158,15 +1157,14 @@ private fun RyUIRuntime.presentAlert(act: RyUIActivity, n: RyUINode) {
 
 fun RyUIRuntime.haptic(kind: Int) {
     val v = activity?.window?.decorView ?: return
-    val api30 = android.os.Build.VERSION.SDK_INT >= 30
     val c = when (kind) {
         RyUIHaptic.SELECTION -> HapticFeedbackConstants.CLOCK_TICK
         RyUIHaptic.LIGHT -> HapticFeedbackConstants.KEYBOARD_TAP
         RyUIHaptic.MEDIUM -> HapticFeedbackConstants.VIRTUAL_KEY
         RyUIHaptic.HEAVY -> HapticFeedbackConstants.LONG_PRESS
-        RyUIHaptic.SUCCESS -> if (api30) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.VIRTUAL_KEY
-        RyUIHaptic.WARNING -> if (api30) HapticFeedbackConstants.REJECT else HapticFeedbackConstants.LONG_PRESS
-        RyUIHaptic.ERROR -> if (api30) HapticFeedbackConstants.REJECT else HapticFeedbackConstants.LONG_PRESS
+        RyUIHaptic.SUCCESS -> HapticFeedbackConstants.CONFIRM
+        RyUIHaptic.WARNING -> HapticFeedbackConstants.REJECT
+        RyUIHaptic.ERROR -> HapticFeedbackConstants.REJECT
         else -> return
     }
     v.performHapticFeedback(c)

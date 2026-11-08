@@ -4,7 +4,6 @@ import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.os.Build
 import android.text.InputType
 import android.util.TypedValue
 import android.view.Gravity
@@ -170,8 +169,7 @@ fun RyUIRuntime.applyTextStyle(tv: TextView, style: Int, size: Float = 0f, weigh
     if (custom != null) {
         tv.typeface = custom
     } else if (w > 0) {
-        tv.typeface = if (Build.VERSION.SDK_INT >= 28) Typeface.create(tv.typeface, w, false)
-        else Typeface.create(tv.typeface, if (w >= 600) Typeface.BOLD else Typeface.NORMAL)
+        tv.typeface = Typeface.create(tv.typeface, w, false)
     }
 }
 
@@ -288,7 +286,7 @@ fun RyUIRuntime.applyBackground(n: RyUINode) {
         // Over the background color: a GradientDrawable fills one or the other.
         n.backgroundAnimator?.cancel()
         val d = GradientDrawable(g.orientation(), g.colors)
-        if (Build.VERSION.SDK_INT >= 29) d.setColors(g.colors, g.offsets)
+        d.setColors(g.colors, g.offsets)
         d.cornerRadius = toRadius
         if (n.borderWidth > 0) d.setStroke(Math.round(n.borderWidth * density), color(n.borderColor, Color.GRAY))
         n.view.background = d
@@ -475,7 +473,7 @@ fun RyUIRuntime.propString(id: Int, prop: Int, v: String) {
                         settingProp = false
                     }
                     RyUIProp.TextField.PLACEHOLDER -> e.hint = v
-                    RyUIProp.TextField.CONTENT_TYPE -> if (Build.VERSION.SDK_INT >= 26) e.setAutofillHints(autofillHint(v))
+                    RyUIProp.TextField.CONTENT_TYPE -> e.setAutofillHints(autofillHint(v))
                 }
             }
         }

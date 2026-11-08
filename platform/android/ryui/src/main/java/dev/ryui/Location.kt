@@ -6,7 +6,6 @@ import android.content.Context
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
-import android.os.Build
 import android.os.Looper
 import androidx.core.location.LocationManagerCompat
 import org.json.JSONObject
@@ -27,7 +26,7 @@ class RyUILocation(private val rt: RyUIRuntime) {
     private val listener = LocationListener { l -> got(l) }
 
     private fun provider(): String = when {
-        Build.VERSION.SDK_INT >= 31 && lm.hasProvider(LocationManager.FUSED_PROVIDER) -> LocationManager.FUSED_PROVIDER
+        lm.hasProvider(LocationManager.FUSED_PROVIDER) -> LocationManager.FUSED_PROVIDER
         lm.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
         else -> LocationManager.NETWORK_PROVIDER
     }
