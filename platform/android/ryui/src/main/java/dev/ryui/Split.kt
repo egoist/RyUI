@@ -28,6 +28,7 @@ class RyUISplit(private val rt: RyUIRuntime, private val id: Int) : DrawerLayout
     /** The drawer stands open beside the content. */
     var wide = false
         private set
+    private var measured = false
     private val back = object : OnBackPressedCallback(false) {
         override fun handleOnBackPressed() { closeDrawer(nav) }
     }
@@ -78,13 +79,29 @@ class RyUISplit(private val rt: RyUIRuntime, private val id: Int) : DrawerLayout
                 flat++
             }
         }
-        selected.let { if (it >= 0) nav.setCheckedItem(it) }
+        check(selected)
     }
 
     private var selected = -1
     fun select(i: Int) {
         selected = i
-        if (i >= 0 && nav.menu.findItem(i) != null) nav.setCheckedItem(i)
+        check(i)
+    }
+
+    /**
+     * Checks destination i, and only it: the items themselves, which is
+     * what NavigationView's menu keeps when it updates (setCheckedItem
+     * alone marks its presenter's), across the sections' groups.
+     */
+    private fun check(i: Int) {
+        val menu = nav.menu
+        for (j in 0 until menu.size()) {
+            val item = menu.getItem(j)
+            val sub = item.subMenu
+            if (sub == null) item.isChecked = item.itemId == i
+            else for (k in 0 until sub.size()) sub.getItem(k).let { it.isChecked = it.itemId == i }
+        }
+        if (i >= 0 && menu.findItem(i) != null) nav.setCheckedItem(i)
     }
 
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
@@ -93,14 +110,19 @@ class RyUISplit(private val rt: RyUIRuntime, private val id: Int) : DrawerLayout
         val isWide = w / d >= 840
         val navWidth = minOf(Math.round(360 * d), w - Math.round(56 * d))
         (nav.layoutParams as LayoutParams).width = navWidth
-        if (isWide != wide) {
+        // The drawer goes under the system bars, its items between them.
+        // (The activity takes the insets, so NavigationView never gets them.)
+        val ins = rt.insetsOver(this, w, MeasureSpec.getSize(heightSpec))
+        if (nav.paddingTop != ins.top || nav.paddingBottom != ins.bottom) nav.setPadding(0, ins.top, 0, ins.bottom)
+        if (isWide != wide || !measured) {
+            measured = true
             wide = isWide
             setDrawerLockMode(if (wide) LOCK_MODE_LOCKED_OPEN else LOCK_MODE_UNLOCKED, nav)
             setScrimColor(if (wide) 0 else 0x52000000)
             if (wide) openDrawer(nav, false) else closeDrawer(nav, false)
             back.isEnabled = false
             // The detail's first screen shows the menu button only while the drawer hides.
-            post { (content.getChildAt(0) as? RyUIStack)?.refreshBar() }
+            refreshDetailBar()
         }
         (content.layoutParams as LayoutParams).marginStart = if (wide) navWidth else 0
         super.onMeasure(widthSpec, heightSpec)
@@ -111,7 +133,10 @@ class RyUISplit(private val rt: RyUIRuntime, private val id: Int) : DrawerLayout
         (v.parent as? ViewGroup)?.removeView(v)
         content.removeAllViews()
         content.addView(v, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+        refreshDetailBar() // its bar drew before it was the detail: no menu button yet
     }
+
+    private fun refreshDetailBar() = post { (content.getChildAt(0) as? RyUIStack)?.refreshBar() }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
