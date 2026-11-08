@@ -19,7 +19,7 @@ android {
     prop("ryuiNdkVersion")?.let { ndkVersion = it }
     defaultConfig {
         applicationId = prop("ryuiApplicationId") ?: "dev.ryui.app"
-        minSdk = 26
+        minSdk = 33
         targetSdk = 36
         versionCode = (prop("ryuiVersionCode") ?: "1").toInt()
         versionName = prop("ryuiVersionName") ?: "1.0"

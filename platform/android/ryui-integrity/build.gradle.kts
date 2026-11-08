@@ -9,7 +9,7 @@ android {
     namespace = "dev.ryui.integrity"
     compileSdk = 36
     defaultConfig {
-        minSdk = 26
+        minSdk = 33
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

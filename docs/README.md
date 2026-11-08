@@ -40,7 +40,7 @@ input and scrolling as they have them.
 Signals hold the state. A component runs once; when a signal changes,
 only the props that read it are sent again, without diffing a tree.
 
-RyUI needs Go 1.26 or later, and runs on iOS 16 and Android 8 (API 26)
+RyUI needs Go 1.26 or later, and runs on iOS 16 and Android 13 (API 33)
 and later. `ryui dev` runs your Go code on your Mac while you work, and
 reloads it as you save, on the simulator, an emulator or a phone.
 

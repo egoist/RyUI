@@ -125,7 +125,7 @@ RYUI_KEYSTORE_PASSWORD=... ryui build -android
 (`RYUI_KEY_PASSWORD` too if the key's differs; `RYUI_KEYSTORE` and
 `RYUI_KEY_ALIAS` name them in CI.) It makes an `.aab` for Google Play and
 an `.apk` to install yourself, for 64-bit and 32-bit ARM phones and
-x86_64 (emulators, Chromebooks), Android 8 and later.
+x86_64 (emulators, Chromebooks), Android 13 and later.
 
 ## In an existing app
 

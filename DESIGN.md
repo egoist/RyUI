@@ -35,7 +35,7 @@ and an implementation later.
 
 Open decisions, with the default to use until they are settled:
 
-- Minimum versions: **iOS 16, Android API 26 (8.0)**.
+- Minimum versions: **iOS 16, Android API 33 (13)**: Android 13 brought RuntimeShader (ui.Shader) and per-app languages, and what came before it is a small share of devices.
 - Android widgets: Material Components 3 (decided in M2), with the
   Material 3 Expressive theme and styles (Material Components 1.14).
 - Module path: `github.com/egoist/ryui`.

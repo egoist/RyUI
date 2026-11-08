@@ -24,7 +24,7 @@ import (
 // code is rebuilt as a shared library and pushed into the app's private
 // files, where the shell app loads it from, and the app is restarted.
 
-const androidMinAPI = "26"
+const androidMinAPI = "33"
 
 type androidToolchain struct {
 	sdk, ndk, ndkBin, adb, javaHome string

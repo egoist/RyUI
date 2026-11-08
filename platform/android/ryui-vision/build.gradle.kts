@@ -11,7 +11,7 @@ android {
     namespace = "dev.ryui.vision"
     compileSdk = 36
     defaultConfig {
-        minSdk = 26
+        minSdk = 33
         consumerProguardFiles("consumer-rules.pro")
     }
     compileOptions {
