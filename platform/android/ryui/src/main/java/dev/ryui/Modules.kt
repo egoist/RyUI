@@ -219,7 +219,7 @@ private fun RyUIRuntime.registerBuiltinModules() {
         // result: JSON: model, system, systemVersion, appVersion, build.
         "info" to { _, reply ->
             val p = app.packageManager.getPackageInfo(app.packageName, 0)
-            val build = if (Build.VERSION.SDK_INT >= 28) p.longVersionCode else @Suppress("DEPRECATION") p.versionCode.toLong()
+            val build = p.longVersionCode
             val json = org.json.JSONObject(mapOf(
                 "model" to Build.MODEL, "system" to "Android", "systemVersion" to Build.VERSION.RELEASE,
                 "appVersion" to (p.versionName ?: ""), "build" to build.toString(),

@@ -248,6 +248,34 @@ Everything the function reads is tracked, including reads in the bodies
 of the components it calls, and each change rebuilds the whole subtree.
 Prefer `Show` and `For`.
 
+### When something panics
+
+`ui.Catch` keeps a panic in part of the UI from taking the app down: it
+shows what a build function returns, and when building it panics, or an
+effect in it does later, it shows a fallback instead.
+
+```go
+ui.Catch(func() ui.Node { return Profile(id) }, func(err any, reset func()) ui.Node {
+	log.Printf("profile: %v", err)
+	return ui.Column(ui.Style{Gap: 8},
+		ui.StaticText("Couldn't show this profile"),
+		ui.Button(ui.ButtonProps{Title: ui.Val("Try again"), OnPress: reset}))
+})
+```
+
+The failed UI is disposed, as a `Show` branch that goes: its effects
+stop, and its views are destroyed, including those a build made before
+it panicked. `reset` builds it again. Effects owned by a `Catch` run
+with a recover; effects outside every `Catch` don't, and pay nothing.
+
+What a `Catch` doesn't own still crashes, as it would without one: an
+event handler's panic (`OnPress`), a goroutine's, the fallback's. Put
+a `Catch` around a part of the screen that could fail on its own (a
+widget fed by a server, a plugin, a rich document), not around the app
+to hide bugs.
+
+The signal package's `signal.Catch` is the same for effects without UI.
+
 ### Long lists
 
 `For` builds every row and keeps them all. For long or unbounded lists
@@ -385,6 +413,8 @@ Its fields:
 - `Dark`: dark mode is on.
 - `ReduceMotion`: the user asked for less motion (iOS's Reduce Motion,
   Android's animations off). See [Motion](motion.md).
+- `ScreenReader`: VoiceOver, TalkBack or Narrator is on. See
+  [Accessibility](accessibility.md#is-a-screen-reader-on).
 - `Platform`: `ui.PlatformIOS` or `ui.PlatformAndroid`, the system the
   app runs on (the device's, also in `ryui dev`, where the Go code runs
   on the Mac). The platform's views look as they should by themselves;

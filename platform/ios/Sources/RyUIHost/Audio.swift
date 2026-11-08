@@ -65,7 +65,7 @@ import AVFoundation
     private func load(_ id: String, _ source: String) {
         let url: URL? = source.hasPrefix("http://") || source.hasPrefix("https://") || source.hasPrefix("file://") ? URL(string: source)
             : source.hasPrefix("/") ? URL(fileURLWithPath: source)
-            : Bundle.main.resourceURL?.appendingPathComponent("assets").appendingPathComponent(source)
+            : ryuiAssets?.appendingPathComponent(source)
         guard let url else { return }
         let item = AVPlayerItem(url: url)
         item.audioTimePitchAlgorithm = .timeDomain // keeps a voice's pitch at any rate

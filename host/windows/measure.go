@@ -51,6 +51,9 @@ func (h *Host) measure(n *node, c layout.Constraints) layout.Size {
 		}
 	case ops.KindToggle:
 		w, ht = 40, 20
+		if n.checkbox {
+			w = 20
+		}
 	case ops.KindSlider:
 		w, ht = 200, 32
 		if finite(c.AvailW) {
@@ -63,6 +66,8 @@ func (h *Host) measure(n *node, c layout.Constraints) layout.Size {
 		}
 	case ops.KindActivity:
 		w, ht = 32, 32
+	case ops.KindPageControl:
+		w, ht = h.measurePips(n)
 	case ops.KindStepper:
 		w, ht = 92, 32
 	case ops.KindSegmented:

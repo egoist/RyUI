@@ -117,6 +117,8 @@ var Schema = SchemaDef{
 		{Name: "LeadingSwipeActions", Type: TBytes, Doc: "a List cell's swipe actions from its leading edge (Mail's Unread), encoded as Menu; Action events on the cell carry -1 - the index"},
 		{Name: "Selected", Type: TBool, Doc: "a List cell's row is selected: in a selecting list, its selection control is checked and the row is highlighted"},
 		{Name: "Match", Type: TString, Doc: "a key it shares with another view: when one with the key is destroyed during an animation and another inserted, the new one comes in from the old one's place and size, and the old one goes out to the new one's, fading (SwiftUI's matchedGeometryEffect). The host notes where the views with keys are as an animated batch starts destroying, and matches them once the batch's frames are applied"},
+		{Name: "InterceptBack", Type: TBool, Doc: "a Screen, Sheet or the root takes the user's going back itself (ui.OnBack): the host sends Back to it instead of popping the screen (its back button, Android's back; iOS's edge swipe is off while it's on top), dismissing the sheet (a swipe down, a tap outside, Android's back) or, for the root, leaving the app (Android's back with no screen to pop). Predictive back doesn't animate it"},
+		{Name: "Tooltip", Type: TString, Doc: "a short text the platform shows by the view while a pointer rests on it (iPadOS's and macOS's pointer, a mouse on Android and Windows) or, on Android, as it's long pressed when it has no long press of its own; screen readers read it as a hint where the view has none. Empty: none"},
 	},
 	Kinds: []KindDef{
 		{Name: "View", Props: []PropDef{
@@ -145,9 +147,11 @@ var Schema = SchemaDef{
 			{Name: "Selection", Type: TBytes, Doc: "u32 start, u32 end, in UTF-16 code units of the text (as UIKit and Android count): set from code, the cursor (start = end) or the selection goes there. Listened for, the user's changes are reported with SelectionChanged"},
 			{Name: "Rich", Type: TBytes, Doc: "styled text, as RichText's Content (without inline components), for a Multiline field: bold (a FontWeight of Semibold or more), italic, underline, strikethrough, monospaced, links and colors, which the user can edit (iOS's B/I/U menu, the Format command). The user's edits are reported with RichChanged, in the same encoding: its styles in the order its runs first use them, runs of one style merged"},
 			{Name: "PasteTypes", Type: TBytes, Doc: "u32 count, then u32-length MIME type patterns (image/*, */*: as DropAccept's): content of these types pasted, or put in by the keyboard (GIFs, stickers: Android's commitContent, iOS's pasteboard), is reported with Pasted instead of going into the text; the edit menu offers Paste for it. Empty: the platform's own paste"},
+			{Name: "Accessory", Type: TInt, Doc: "its Accessory's node ID (0: none)"},
 		}},
 		{Name: "Toggle", Props: []PropDef{
 			{Name: "On", Type: TBool},
+			{Name: "Checkbox", Type: TBool, Doc: "a checkbox, not a switch: Android's MaterialCheckBox, a Mac's and Windows' check box; iOS, which has none, a circle that fills with a checkmark (Reminders' and Notes')"},
 		}},
 		{Name: "Slider", Props: []PropDef{
 			{Name: "Value", Type: TFloat},
@@ -158,6 +162,7 @@ var Schema = SchemaDef{
 			{Name: "Horizontal", Type: TBool},
 			{Name: "Refreshable", Type: TBool, Doc: "pull to refresh sends Refresh"},
 			{Name: "Refreshing", Type: TBool},
+			{Name: "Paging", Type: TBool, Doc: "it stops only at multiples of its own size along its axis, a page each (iOS's isPagingEnabled; Android snaps each swipe to the next page, or back), and hides its scroll bars; a swipe that settles on a page sends Paged"},
 		}, Doc: "its single child is the content; the content's frame is the content size"},
 		{Name: "List", Props: []PropDef{
 			{Name: "Refreshable", Type: TBool},
@@ -272,6 +277,32 @@ var Schema = SchemaDef{
 			{Name: "Max", Type: TInt, Doc: "the latest choice, in Unix milliseconds (0: none)"},
 			{Name: "Inline", Type: TBool, Doc: "iOS: the calendar and time shown in place (an inline UIDatePicker), for a sheet of its own; Android keeps its buttons"},
 		}, Doc: "a date or a time, chosen the platform's way (a compact UIDatePicker; Material's date and time pickers from buttons that show it), in the device's time zone and format. The user's choice is reported with ValueChanged, in Unix milliseconds"},
+		{Name: "PageControl", Props: []PropDef{
+			{Name: "Count", Type: TInt, Doc: "how many pages"},
+			{Name: "Page", Type: TInt, Doc: "the current page, from the first in the reading direction"},
+		}, Doc: "a row of dots, one per page, the current one highlighted (UIPageControl; drawn on Android, macOS and Windows, which have none); measured. Tapping or a screen reader's adjusting changes the page: Selected with its index"},
+		{Name: "Popover", Props: []PropDef{
+			{Name: "Anchor", Type: TInt, Doc: "the view it points at (a node ID)"},
+			{Name: "Width", Type: TFloat, Doc: "its content's size, in points, as the core laid it out: the host makes the popover this big"},
+			{Name: "Height", Type: TFloat},
+		}, Doc: "content shown in a bubble pointing at a view, over the screen, until it's dismissed (UIPopoverPresentationController, a popover on iPhone too; a PopupWindow on Android; NSPopover; a popup window on Windows); a layout root of its own, presented with Present and destroyed to close. Tapping outside dismisses it: Dismissed"},
+		{Name: "Accessory", Props: []PropDef{
+			{Name: "Width", Type: TFloat, Doc: "its content's size, in points, as the core laid it out (as wide as the root)"},
+			{Name: "Height", Type: TFloat},
+		}, Doc: "a TextField's bar over the keyboard (TextField's Accessory), a layout root of its own: UIKit's inputAccessoryView, moving with the keyboard and its interactive dismissal; on Android a bar on top of the keyboard, following it frame by frame, while the field is focused; desktops, with no on-screen keyboard, don't show it"},
+		{Name: "Canvas", Props: []PropDef{
+			{Name: "Commands", Type: TBytes, Doc: "what it draws, in points from its top left, in order: per command a u8 CanvasOp and its arguments. Save, Restore: none; Translate, Scale: f32 x, y; Rotate: f32 degrees, clockwise; Alpha: f32 (multiplies what's drawn after); Clip: a path; Fill: u64 color, a path; Stroke: u64 color, f32 width, u8 LineCap, u8 LineJoin, u32 dash count, f32 dash phase, f32 each dash, a path; Gradient: u32 stop count, per stop u64 color and f32 location, f32 start x, y, end x, y, a path (filled); Text: u64 color, f32 size, u8 FontWeight, u8 TextAlign (Start: its left edge at x, Center, End: its right edge at x), f32 x, y (its baseline), u32-length string. A path is u32 length, then Shape's Path format. Colors may be semantic, resolved in the view's appearance"},
+		}, Doc: "drawn by the app (SwiftUI's Canvas; Compose's and Android's Canvas): a display list replayed with Core Graphics, Android's Canvas, GDI+; it takes the size its style gives it"},
+		{Name: "Split", Props: []PropDef{
+			{Name: "Items", Type: TBytes, Doc: "the sidebar's destinations: u32 section count, per section a string title (empty: none) and u32 item count, per item a string title and a string icon (Symbol.Name; empty: none)"},
+			{Name: "Selected", Type: TInt, Doc: "the selected destination, its index among all the sections' items (-1: none)"},
+			{Name: "Title", Type: TString, Doc: "the sidebar's title"},
+		}, Doc: "destinations in a sidebar and the selected one's screens beside it (UISplitViewController's sidebar on iPad, collapsing into a stack on iPhone, the list its first screen; Material's navigation drawer on Android, modal on a phone and standing beside the content on a wide screen; a source list on macOS; a navigation pane on Windows). Its one child is a Stack, the detail, which the host places; choosing a destination sends Selected"},
+		{Name: "Shader", Props: []PropDef{
+			{Name: "Code", Type: TBytes, Doc: "the compiled shader (package shader; internal/shadercode's Encode): its Kage source, its Metal and AGSL programs, and where its uniforms' lanes go"},
+			{Name: "Uniforms", Type: TBytes, Doc: "the uniforms' values: u32 lanes, in package interp's order (a float's bits, an int's, a uint's, a bool's 0 or 1); the host sets the size, the scale and Time itself"},
+			{Name: "Animated", Type: TBool, Doc: "Time runs: drawn again every frame the display draws"},
+		}, Doc: "a box a GPU program draws, under its children: a Kage shader, as Metal on iOS and macOS (a CAMetalLayer), AGSL on Android (RuntimeShader), on the CPU on Windows (package interp)"},
 		{Name: "Window", Props: []PropDef{
 			{Name: "Title", Type: TString},
 			{Name: "Width", Type: TFloat, Doc: "its content's width when it opens, in points (0: the host's default)"},
@@ -332,6 +363,8 @@ var Schema = SchemaDef{
 		{Name: "RowSelectBegin", Payload: PNone, Doc: "the user began selecting rows at this one, the list not selecting: a two-finger pan over rows (iOS), a long press (Android); to its cell"},
 		{Name: "RowInset", Payload: PPoint, Doc: "a List's rows' content is narrower than the core lays it out by X points at the leading edge and Y at the trailing (a selection control's room); to the list. The core lays its rows out again"},
 		{Name: "Dragging", Payload: PInt, Doc: "the view's drag (DragItems): a DragPhase. Began as it lifts, then Dropped (a target took it, the app's or another app's) or Cancelled"},
+		{Name: "Back", Payload: PNone, Doc: "the user went back from a Screen, Sheet or the root with InterceptBack, which the host didn't do"},
+		{Name: "Paged", Payload: PInt, Doc: "a Paging Scroll's swipe is settling on a page: its index from the content's physical start (left or top), page = offset / the scroll's size"},
 	},
 	Commands: []CommandDef{
 		{Name: "Focus"},
@@ -339,7 +372,7 @@ var Schema = SchemaDef{
 		{Name: "ListUpdate", Doc: "args: u32 count, then count i64 item IDs in order; then u32 section count (0, or the args ending there: one section, without a header), per section u32 the index of its first item and i64 its ID (stable, as an item's). Sections are in order; the first starts at 0"},
 		{Name: "Present", Doc: "show a Sheet or Alert"},
 		{Name: "Haptic", Doc: "args: u8 Haptic; sent to the root"},
-		{Name: "AnimateBegin", Doc: "args: f32 duration (seconds), u8 AnimationCurve, i32 repeat (times more; -1: forever), u8 autoreverses; sent to the root: the frames and visual props up to AnimateEnd animate. A repeating animation stops when its prop is set again"},
+		{Name: "AnimateBegin", Doc: "args: f32 duration (seconds), u8 AnimationCurve, i32 repeat (times more; -1: forever), u8 autoreverses, f32 delay (seconds), f32 a spring's damping ratio (1: no overshoot), f32 a spring's initial velocity (the change's fraction per second); sent to the root: the frames and visual props up to AnimateEnd animate. A repeating animation stops when its prop is set again"},
 		{Name: "AnimateEnd"},
 		{Name: "OpenURL", Doc: "args: the URL; sent to the root: the system opens it (a browser, another app)"},
 		{Name: "Call", Doc: "args: u32 call id, string module, string method, then the call's bytes; sent to the root: the host runs the module's method (its own, or one an app registers) and answers with Result"},
@@ -365,6 +398,9 @@ var Schema = SchemaDef{
 		{Name: "SetLink", Doc: "args: the URL (empty: none); sent to a Rich TextField: its selection links there (at the cursor, the link around it). Reported with RichChanged and Formats"},
 		{Name: "InsertText", Doc: "args: the text; sent to a TextField: it replaces the selection (or goes in at the cursor) as if typed, undoably, and is reported with TextChanged and SelectionChanged"},
 		{Name: "ShareClose", Doc: "args: u8 how (0 done, 1 cancelled, 2 open the app with what was shared); sent to a share sheet's root (app.ShareSheet): it closes"},
+		{Name: "A11yFocus", Doc: "sent to a view: a screen reader, if one is on, moves its focus there (UIAccessibility's screenChanged with the view; Android's ACTION_ACCESSIBILITY_FOCUS)"},
+		{Name: "BackExit", Doc: "sent to the root: the app's OnBack handlers let the user's back go on from the root, so the host does what the system would have (Android's back: the activity finishes or goes to the background)"},
+		{Name: "Replace", Doc: "sent to a Stack: its screens destroyed after it, and the screen inserted next (its new first), change at once, with no pop or push: a SplitView's destination changing"},
 	},
 	Enums: []EnumDef{
 		{Name: "Role", Values: []string{"None", "Button", "Header", "Image", "Link", "Text", "Search"}},
@@ -390,6 +426,7 @@ var Schema = SchemaDef{
 		{Name: "PathOp", Values: []string{"End", "Move", "Line", "Quad", "Cubic", "Close", "Rect", "RoundedRect", "Ellipse", "Arc"}},
 		{Name: "LineCap", Values: []string{"Butt", "Round", "Square"}},
 		{Name: "LineJoin", Values: []string{"Miter", "Round", "Bevel"}},
+		{Name: "CanvasOp", Values: []string{"End", "Save", "Restore", "Translate", "Scale", "Rotate", "Alpha", "Clip", "Fill", "Stroke", "Gradient", "Text"}},
 		{Name: "AnimationCurve", Values: []string{"EaseInOut", "Linear", "EaseIn", "EaseOut", "Spring"}},
 		{Name: "ColorScheme", Values: []string{"System", "Light", "Dark"}},
 		{Name: "SemanticColor", Values: []string{"None", "Label", "SecondaryLabel", "TertiaryLabel", "Background", "SecondaryBackground", "GroupedBackground", "Separator", "Accent", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink", "Gray", "Clear", "SecondaryGroupedBackground", "OnAccent"}},

@@ -31,7 +31,13 @@ public enum RyUIKind: UInt16 {
     case video = 26
     case webView = 27
     case datePicker = 28
-    case window = 29
+    case pageControl = 29
+    case popover = 30
+    case accessory = 31
+    case canvas = 32
+    case split = 33
+    case shader = 34
+    case window = 35
 
     public var name: String {
         switch self {
@@ -63,6 +69,12 @@ public enum RyUIKind: UInt16 {
         case .video: return "Video"
         case .webView: return "WebView"
         case .datePicker: return "DatePicker"
+        case .pageControl: return "PageControl"
+        case .popover: return "Popover"
+        case .accessory: return "Accessory"
+        case .canvas: return "Canvas"
+        case .split: return "Split"
+        case .shader: return "Shader"
         case .window: return "Window"
         }
     }
@@ -105,6 +117,8 @@ public enum RyUIProp {
     public static let leadingSwipeActions: UInt16 = 32
     public static let selected: UInt16 = 33
     public static let match: UInt16 = 34
+    public static let interceptBack: UInt16 = 35
+    public static let tooltip: UInt16 = 36
 
     public enum View {
         public static let dropAccept: UInt16 = 64
@@ -135,10 +149,12 @@ public enum RyUIProp {
         public static let selection: UInt16 = 74
         public static let rich: UInt16 = 75
         public static let pasteTypes: UInt16 = 76
+        public static let accessory: UInt16 = 77
     }
 
     public enum Toggle {
         public static let on: UInt16 = 64
+        public static let checkbox: UInt16 = 65
     }
 
     public enum Slider {
@@ -151,6 +167,7 @@ public enum RyUIProp {
         public static let horizontal: UInt16 = 64
         public static let refreshable: UInt16 = 65
         public static let refreshing: UInt16 = 66
+        public static let paging: UInt16 = 67
     }
 
     public enum List {
@@ -283,6 +300,38 @@ public enum RyUIProp {
         public static let inline: UInt16 = 68
     }
 
+    public enum PageControl {
+        public static let count: UInt16 = 64
+        public static let page: UInt16 = 65
+    }
+
+    public enum Popover {
+        public static let anchor: UInt16 = 64
+        public static let width: UInt16 = 65
+        public static let height: UInt16 = 66
+    }
+
+    public enum Accessory {
+        public static let width: UInt16 = 64
+        public static let height: UInt16 = 65
+    }
+
+    public enum Canvas {
+        public static let commands: UInt16 = 64
+    }
+
+    public enum Split {
+        public static let items: UInt16 = 64
+        public static let selected: UInt16 = 65
+        public static let title: UInt16 = 66
+    }
+
+    public enum Shader {
+        public static let code: UInt16 = 64
+        public static let uniforms: UInt16 = 65
+        public static let animated: UInt16 = 66
+    }
+
     public enum Window {
         public static let title: UInt16 = 64
         public static let width: UInt16 = 65
@@ -344,6 +393,8 @@ public enum RyUIEventKind: UInt16 {
     case rowSelectBegin = 49
     case rowInset = 50
     case dragging = 51
+    case back = 52
+    case paged = 53
 }
 
 public enum RyUICommand: UInt16 {
@@ -378,6 +429,9 @@ public enum RyUICommand: UInt16 {
     case setLink = 29
     case insertText = 30
     case shareClose = 31
+    case a11yFocus = 32
+    case backExit = 33
+    case replace = 34
 }
 
 public enum RyUIRole: Int32 {
@@ -564,6 +618,21 @@ public enum RyUILineJoin: Int32 {
     case bevel = 2
 }
 
+public enum RyUICanvasOp: Int32 {
+    case end = 0
+    case save = 1
+    case restore = 2
+    case translate = 3
+    case scale = 4
+    case rotate = 5
+    case alpha = 6
+    case clip = 7
+    case fill = 8
+    case stroke = 9
+    case gradient = 10
+    case text = 11
+}
+
 public enum RyUIAnimationCurve: Int32 {
     case easeInOut = 0
     case linear = 1
@@ -727,6 +796,7 @@ public struct RyUIEnvironment: Equatable {
     public var fontScale: Float = 1
     public var dark = false
     public var reduceMotion = false
+    public var screenReader = false
     /// ops.Platform: this host's, iOS.
     public var platform: UInt8 = 1
     /// ops.SizeClass: 1 compact, 3 expanded (UIKit's regular); 0 unspecified.
@@ -754,7 +824,7 @@ public struct RyUIWriter {
     public mutating func header(_ id: UInt32, _ kind: UInt16) { u32(id); u16(kind) }
     public mutating func environment(_ e: RyUIEnvironment) {
         for f in [e.width, e.height, e.safeTop, e.safeRight, e.safeBottom, e.safeLeft, e.keyboard, e.scale, e.fontScale] { f32(f) }
-        u8((e.dark ? 1 : 0) | (e.reduceMotion ? 2 : 0) | (e.platform & 3) << 2)
+        u8((e.dark ? 1 : 0) | (e.reduceMotion ? 2 : 0) | (e.platform & 3) << 2 | (e.screenReader ? 32 : 0))
         u8((e.widthClass & 3) | (e.heightClass & 3) << 2)
         string(e.locale)
         string(e.timeZone)
@@ -933,5 +1003,11 @@ public enum RyUIEvents {
     }
     public static func dragging(_ id: UInt32, _ v: Int64) -> [UInt8] {
         var w = RyUIWriter(); w.header(id, 51); w.u64(UInt64(bitPattern: v)); return w.bytes
+    }
+    public static func back(_ id: UInt32) -> [UInt8] {
+        var w = RyUIWriter(); w.header(id, 52); return w.bytes
+    }
+    public static func paged(_ id: UInt32, _ v: Int64) -> [UInt8] {
+        var w = RyUIWriter(); w.header(id, 53); w.u64(UInt64(bitPattern: v)); return w.bytes
     }
 }

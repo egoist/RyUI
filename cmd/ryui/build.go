@@ -20,6 +20,8 @@ type buildOptions struct {
 	distribution string // iOS: app-store, ad-hoc, development
 	profile      string // iOS: a provisioning profile (path, name or UUID)
 	out          string
+	xcframework  bool // iOS: an .xcframework to embed in another app
+	aar          bool // Android: an .aar to embed in another app
 	verbose      bool
 	vet          bool
 }
@@ -32,6 +34,8 @@ func buildFlags(o *buildOptions) *flag.FlagSet {
 	fs.BoolVar(&o.windows, "windows", false, "build a Windows app: a folder with the .exe (its icon and version built in) and its assets")
 	fs.StringVar(&o.sign, "sign", "", "macOS: a signing identity, e.g. \"Developer ID Application: ...\" (default: ad hoc)")
 	fs.BoolVar(&o.simulator, "simulator", false, "iOS: a release .app for the simulator instead (not signed for devices)")
+	fs.BoolVar(&o.xcframework, "xcframework", false, "iOS: RyUIApp.xcframework, the app to embed in an app made in Xcode (import RyUIApp; RyUIViewController())")
+	fs.BoolVar(&o.aar, "aar", false, "Android: an .aar, the app to embed in an app made in Android Studio (start dev.ryui.RyUIActivity)")
 	fs.StringVar(&o.distribution, "distribution", "app-store", "iOS: app-store, ad-hoc or development")
 	fs.StringVar(&o.profile, "profile", "", "iOS: a provisioning profile's path, name or UUID (default: ryui.json's, else the best match installed)")
 	fs.StringVar(&o.out, "o", "", "the output directory (default: dist in the app's directory)")
@@ -63,6 +67,12 @@ func cmdBuild(args []string) error {
 	}
 	if err := os.MkdirAll(o.out, 0o755); err != nil {
 		return err
+	}
+	if o.android && o.aar {
+		return buildAndroidAAR(app, &o)
+	}
+	if o.ios && o.xcframework {
+		return buildIOSFramework(app, &o)
 	}
 	if o.ios {
 		return buildIOS(app, &o)

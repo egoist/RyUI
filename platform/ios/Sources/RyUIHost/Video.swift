@@ -58,7 +58,7 @@ import RyUIOps
         guard !source.isEmpty else { player.replaceCurrentItem(with: nil); return }
         let url: URL? = source.hasPrefix("http://") || source.hasPrefix("https://") || source.hasPrefix("file://") ? URL(string: source)
             : source.hasPrefix("/") ? URL(fileURLWithPath: source)
-            : Bundle.main.resourceURL?.appendingPathComponent("assets").appendingPathComponent(source)
+            : ryuiAssets?.appendingPathComponent(source)
         guard let url else { return }
         let item = AVPlayerItem(url: url)
         let id = ryuiID

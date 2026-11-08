@@ -4,7 +4,6 @@ import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.os.Build
 import android.text.InputType
 import android.util.TypedValue
 import android.view.Gravity
@@ -170,8 +169,7 @@ fun RyUIRuntime.applyTextStyle(tv: TextView, style: Int, size: Float = 0f, weigh
     if (custom != null) {
         tv.typeface = custom
     } else if (w > 0) {
-        tv.typeface = if (Build.VERSION.SDK_INT >= 28) Typeface.create(tv.typeface, w, false)
-        else Typeface.create(tv.typeface, if (w >= 600) Typeface.BOLD else Typeface.NORMAL)
+        tv.typeface = Typeface.create(tv.typeface, w, false)
     }
 }
 
@@ -255,6 +253,9 @@ fun RyUIRuntime.applyColor(n: RyUINode) {
         is RyUISymbol -> { v.tint = n.color; v.applyTint() }
         is com.google.android.material.progressindicator.LinearProgressIndicator -> if (n.color != 0L) v.setIndicatorColor(color(n.color))
         is MaterialButton -> if (n.color != 0L) v.setTextColor(color(n.color))
+        is com.google.android.material.checkbox.MaterialCheckBox -> if (n.color != 0L) v.buttonTintList = ColorStateList(
+            arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
+            intArrayOf(color(n.color), MaterialColors.getColor(themed, com.google.android.material.R.attr.colorOnSurfaceVariant, Color.GRAY)))
         is TextView -> v.setTextColor(if (n.color != 0L) color(n.color) else MaterialColors.getColor(themed, com.google.android.material.R.attr.colorOnSurface, Color.BLACK))
         is MaterialSwitch -> if (n.color != 0L) v.trackTintList = ColorStateList(
             arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
@@ -285,7 +286,7 @@ fun RyUIRuntime.applyBackground(n: RyUINode) {
         // Over the background color: a GradientDrawable fills one or the other.
         n.backgroundAnimator?.cancel()
         val d = GradientDrawable(g.orientation(), g.colors)
-        if (Build.VERSION.SDK_INT >= 29) d.setColors(g.colors, g.offsets)
+        d.setColors(g.colors, g.offsets)
         d.cornerRadius = toRadius
         if (n.borderWidth > 0) d.setStroke(Math.round(n.borderWidth * density), color(n.borderColor, Color.GRAY))
         n.view.background = d
@@ -318,6 +319,10 @@ fun RyUIRuntime.propBool(id: Int, prop: Int, v: Boolean) {
         RyUIProp.DISABLED -> view.isEnabled = !v
         RyUIProp.SELECTED -> (view as? RyUICell)?.row?.setChosen(v)
         RyUIProp.A11Y_ADJUSTABLE -> if (v) setAdjustable(n)
+        RyUIProp.INTERCEPT_BACK -> {
+            if (n.kind == RyUIKind.SHEET) sheetIntercepts(n)
+            updateBack()
+        }
         RyUIProp.A11Y_HIDDEN -> view.importantForAccessibility =
             if (v) View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS else View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
         else -> if (!setNavProp(n, prop, v)) when (n.kind) {
@@ -347,10 +352,13 @@ fun RyUIRuntime.propBool(id: Int, prop: Int, v: Boolean) {
             RyUIKind.PROGRESS -> if (prop == RyUIProp.Progress.INDETERMINATE) {
                 (view as com.google.android.material.progressindicator.LinearProgressIndicator).isIndeterminate = v
             }
-            RyUIKind.TOGGLE -> if (prop == RyUIProp.Toggle.ON) {
-                settingProp = true
-                (view as MaterialSwitch).isChecked = v
-                settingProp = false
+            RyUIKind.TOGGLE -> when (prop) {
+                RyUIProp.Toggle.ON -> {
+                    settingProp = true
+                    (view as android.widget.CompoundButton).isChecked = v
+                    settingProp = false
+                }
+                RyUIProp.Toggle.CHECKBOX -> if (v) makeCheckbox(n)
             }
             // Material starts and stops its animation in show and hide.
             RyUIKind.ACTIVITY -> if (prop == RyUIProp.Activity.ANIMATING) (view as CircularProgressIndicator).let {
@@ -399,7 +407,9 @@ fun RyUIRuntime.propFloat(id: Int, prop: Int, v: Double) {
             else { stopRepeating(n.view, View.ALPHA); n.view.alpha = v.toFloat() }
         }
         RyUIProp.FONT_SIZE -> { n.fontSize = v.toFloat(); applyText(n) }
-        else -> if (n.kind == RyUIKind.LIST && prop == RyUIProp.List.GAP) {
+        else -> if (setNavProp(n, prop, v)) {
+            // A popover's or a keyboard bar's size.
+        } else if (n.kind == RyUIKind.LIST && prop == RyUIProp.List.GAP) {
             n.list?.let { it.setGrid(it.columns, v.toFloat()) }
         } else if (n.kind == RyUIKind.LIST && prop == RyUIProp.List.INSET) {
             n.list?.let { it.setAppearance(it.appearance, v.toFloat()) }
@@ -430,6 +440,8 @@ fun RyUIRuntime.propString(id: Int, prop: Int, v: String) {
     val view = n.view
     when (prop) {
         RyUIProp.A11Y_LABEL -> view.contentDescription = v
+        // A mouse's hover, or a long press when the view has none of its own.
+        RyUIProp.TOOLTIP -> view.tooltipText = v.ifEmpty { null }
         RyUIProp.A11Y_HINT -> ViewCompat.setStateDescription(view, v)
         RyUIProp.FONT_FAMILY -> {
             n.fontFamily = v
@@ -463,7 +475,7 @@ fun RyUIRuntime.propString(id: Int, prop: Int, v: String) {
                         settingProp = false
                     }
                     RyUIProp.TextField.PLACEHOLDER -> e.hint = v
-                    RyUIProp.TextField.CONTENT_TYPE -> if (Build.VERSION.SDK_INT >= 26) e.setAutofillHints(v)
+                    RyUIProp.TextField.CONTENT_TYPE -> e.setAutofillHints(autofillHint(v))
                 }
             }
         }
@@ -692,4 +704,24 @@ fun RyUIRuntime.setAdjustable(n: RyUINode) {
         }
     })
     n.view.isFocusable = true
+}
+
+/** A TextField's ContentType (ui.Content...) as Android's autofill hints name it; another an autofill hint itself. */
+fun autofillHint(s: String): String = when (s) {
+    "username" -> android.view.View.AUTOFILL_HINT_USERNAME
+    "password" -> android.view.View.AUTOFILL_HINT_PASSWORD
+    "newPassword" -> "newPassword" // androidx.autofill's HintConstants
+    "oneTimeCode" -> "smsOTPCode"
+    "email" -> android.view.View.AUTOFILL_HINT_EMAIL_ADDRESS
+    "phone" -> android.view.View.AUTOFILL_HINT_PHONE
+    "name" -> android.view.View.AUTOFILL_HINT_NAME
+    "givenName" -> "personGivenName"
+    "familyName" -> "personFamilyName"
+    "address" -> "streetAddress"
+    "postalCode" -> android.view.View.AUTOFILL_HINT_POSTAL_CODE
+    "city" -> "addressLocality"
+    "country" -> "addressCountry"
+    "cardNumber" -> android.view.View.AUTOFILL_HINT_CREDIT_CARD_NUMBER
+    "url" -> "url"
+    else -> s
 }

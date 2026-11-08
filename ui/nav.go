@@ -3,6 +3,7 @@ package ui
 import (
 	"bytes"
 	"encoding/binary"
+	"slices"
 
 	"github.com/egoist/ryui/internal/l10n"
 	"github.com/egoist/ryui/layout"
@@ -281,8 +282,13 @@ type stackState struct {
 // screen is an owner: popping it, by code or by the user's back gesture,
 // disposes it.
 func Stack(root func() Node, o ScreenOptions, style ...Styler) Node {
+	n, _ := newStack(root, o, firstStyle(style))
+	return n
+}
+
+func newStack(root func() Node, o ScreenOptions, style Styler) (Node, *stackState) {
 	e := newElement(ops.KindStack, true)
-	e.setStyle(firstStyle(style), false)
+	e.setStyle(style, false)
 	growByDefault(e)
 	st := &stackState{e: e, owner: signal.CurrentOwner()}
 	st.nav = &Navigator{st}
@@ -292,13 +298,26 @@ func Stack(root func() Node, o ScreenOptions, style ...Styler) Node {
 		}
 	}
 	e.listen(ops.EventPopped)
-	st.push(root, o)
+	if root != nil {
+		st.push(root, o)
+	}
 	signal.OnCleanup(func() {
 		for _, s := range st.screens {
 			s.dispose()
 		}
 	})
-	return Node{e}
+	return Node{e}, st
+}
+
+// reset makes root the stack's only screen: its screens are disposed, the
+// last first, and root is pushed in an empty stack, which the host shows
+// with no push.
+func (st *stackState) reset(root func() Node, o ScreenOptions) {
+	st.e.r.batch.Command(st.e.id, ops.CmdReplace, nil)
+	for len(st.screens) > 0 {
+		st.remove(st.screens[len(st.screens)-1])
+	}
+	st.push(root, o)
 }
 
 func (st *stackState) push(build func() Node, o ScreenOptions) {
@@ -330,13 +349,24 @@ func (st *stackState) push(build func() Node, o ScreenOptions) {
 				bind(o.Title, func(v string) { r.batch.SetString(id, ops.PropScreenTitle, v) })
 				bind(o.BarColor, func(v Color) { r.batch.SetColor(id, ops.PropScreenBarColor, v) })
 				search(s.el, o.Search)
-				navCtx.Provide(st.nav, func() {
+				content := func() {
 					envCtx.Provide(s.el.env, func() {
 						if n := build(); n.e != nil {
 							fill(n)
 							s.el.appendKid(n.e)
 						}
 					})
+				}
+				navCtx.Provide(st.nav, func() {
+					if len(st.screens) == 0 {
+						content() // going back from the first screen leaves the stack: the scope around it
+						return
+					}
+					backCtx.Provide(newBackScope(s.el, func() {
+						if slices.Contains(st.screens, s) {
+							st.remove(s)
+						}
+					}), content)
 				})
 			})
 		})
@@ -498,11 +528,18 @@ func Sheet(p SheetProps) Node {
 			signal.RunWithOwner(owner, func() {
 				signal.Root(func(d func()) {
 					dispose = d
-					envCtx.Provide(s.env, func() {
-						if n := p.Content(); n.e != nil {
-							fill(n)
-							s.appendKid(n.e)
+					scope := newBackScope(s, func() {
+						if sheet == s {
+							s.h.dismissed() // as if the user dismissed it
 						}
+					})
+					backCtx.Provide(scope, func() {
+						envCtx.Provide(s.env, func() {
+							if n := p.Content(); n.e != nil {
+								fill(n)
+								s.appendKid(n.e)
+							}
+						})
 					})
 				})
 			})
@@ -512,6 +549,98 @@ func Sheet(p SheetProps) Node {
 	})
 	signal.OnCleanup(closeSheet)
 	return Node{f}
+}
+
+// PopoverProps configures a Popover.
+type PopoverProps struct {
+	// Open shows the popover while true; the user dismissing it (a tap
+	// outside) sets it false.
+	Open    *signal.Signal[bool]
+	Content func() Node
+	// MaxWidth is how wide it may be, in points (0: 320); it's as wide as
+	// its content otherwise, and as tall, up to most of the screen.
+	MaxWidth  float32
+	OnDismiss func()
+	// Style is the anchor's: the view the popover points at, which holds
+	// Popover's children.
+	Style Styler
+}
+
+// Popover shows Content in a bubble pointing at its children while Open
+// is true: a few options, a detail, a small form, over the screen
+// (SwiftUI's popover). It's iPadOS's and iOS's popover, a popover on an
+// iPhone too (UIPopoverPresentationController, not adapted into a
+// sheet); a PopupWindow with Material's surface and elevation on
+// Android; NSPopover on macOS; a popup window on Windows. It's as big as
+// its content, up to MaxWidth wide. Its content is built when it opens
+// and disposed when it closes; OnBack in it takes its dismissal.
+func Popover(p PopoverProps, children ...Node) Node {
+	anchor := newElement(ops.KindView, true)
+	anchor.setStyle(p.Style, false)
+	addKids(anchor, children)
+	r := anchor.r
+	owner := signal.CurrentOwner()
+	var pop *element
+	var dispose func()
+	closePop := func() {
+		if pop == nil {
+			return
+		}
+		dispose()
+		pop.destroy()
+		pop, dispose = nil, nil
+	}
+	signal.RenderEffect(func() {
+		open := p.Open.Get()
+		if open == (pop != nil) {
+			return
+		}
+		if !open {
+			closePop()
+			return
+		}
+		withRoot(r, func() Node {
+			pop = newProvider(ops.KindPopover)
+			pop.fits = true
+			pop.maxW = p.MaxWidth
+			if pop.maxW <= 0 {
+				pop.maxW = 320
+			}
+			st := pop.box.Style
+			st.Width, st.Height = layout.Auto, layout.Auto
+			pop.box.SetStyle(st)
+			r.batch.SetInt(pop.id, ops.PropPopoverAnchor, int64(anchor.id))
+			s := pop
+			s.handlers().dismissed = func() {
+				p.Open.Set(false)
+				if p.OnDismiss != nil {
+					p.OnDismiss()
+				}
+			}
+			s.listen(ops.EventDismissed)
+			signal.RunWithOwner(owner, func() {
+				signal.Root(func(d func()) {
+					dispose = d
+					scope := newBackScope(s, func() {
+						if pop == s {
+							s.h.dismissed()
+						}
+					})
+					backCtx.Provide(scope, func() {
+						envCtx.Provide(s.env, func() {
+							if n := p.Content(); n.e != nil {
+								s.appendKid(n.e)
+							}
+						})
+					})
+				})
+			})
+			r.batch.Command(s.id, ops.CmdPresent, nil)
+			return Node{}
+		})
+	})
+	signal.OnCleanup(closePop)
+	return Node{anchor}
 }
 
 // activeRoot is the root new imperative UI (alerts, haptics) belongs to.

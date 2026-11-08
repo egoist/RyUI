@@ -12,6 +12,8 @@ class RyUIScreenController: UIViewController {
     let content = RyUIContainerView()
     var lastEnv: RyUIEnvironment?
     var backGesture = true
+    /// ui.OnBack: the core decides whether going back pops it.
+    var interceptsBack = false
 
     init(nodeID: UInt32) {
         self.nodeID = nodeID
@@ -87,12 +89,51 @@ final class RyUISheetController: RyUIScreenController, UIAdaptivePresentationCon
         guard let n = RyUIRuntime.shared.nodes[nodeID], !n.dying else { return }
         RyUIRuntime.shared.emit(nodeID, .dismissed) { RyUIEvents.dismissed(nodeID) }
     }
+
+    /// A swipe down or a tap outside while it intercepts (isModalInPresentation): ui.OnBack decides.
+    func presentationControllerDidAttemptToDismiss(_ presentationController: UIPresentationController) {
+        guard let n = RyUIRuntime.shared.nodes[nodeID], !n.dying else { return }
+        let id = nodeID
+        RyUIRuntime.shared.emit(id, .back) { RyUIEvents.back(id) }
+    }
+}
+
+/// A Popover's content: a popover on every size class (an iPhone's too,
+/// as SwiftUI's popover with its compact adaptation turned off), as big as
+/// the core laid its content out, pointing at its anchor.
+final class RyUIPopoverController: RyUIScreenController, UIPopoverPresentationControllerDelegate {
+    var anchor: UInt32 = 0
+    var size = CGSize.zero {
+        didSet { preferredContentSize = size }
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .clear // the popover's own background (Liquid Glass on iOS 26)
+    }
+
+    func adaptivePresentationStyle(for controller: UIPresentationController, traitCollection: UITraitCollection) -> UIModalPresentationStyle { .none }
+
+    func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+        guard let n = RyUIRuntime.shared.nodes[nodeID], !n.dying else { return }
+        let id = nodeID
+        RyUIRuntime.shared.emit(id, .dismissed) { RyUIEvents.dismissed(id) }
+    }
+
+    /// A tap outside while it intercepts (isModalInPresentation): ui.OnBack decides.
+    func presentationControllerDidAttemptToDismiss(_ presentationController: UIPresentationController) {
+        guard let n = RyUIRuntime.shared.nodes[nodeID], !n.dying else { return }
+        let id = nodeID
+        RyUIRuntime.shared.emit(id, .back) { RyUIEvents.back(id) }
+    }
 }
 
 /// A Stack: screens are pushed by Insert and popped by Destroy; pops the
 /// user makes (back button, swipe) are reported as Popped.
 final class RyUIStackController: UINavigationController, UINavigationControllerDelegate, UIGestureRecognizerDelegate {
     let nodeID: UInt32
+    /// Replace: the screens destroyed next, and the one inserted next, change at once.
+    var instant = false
     /// What the stack is to become when the transition under way ends: UIKit
     /// drops a push or pop made during one, as a pop then a push would be.
     private var queued: [UIViewController]?
@@ -115,12 +156,14 @@ final class RyUIStackController: UINavigationController, UINavigationControllerD
         super.viewDidLoad()
         delegate = self
         interactivePopGestureRecognizer?.delegate = self
+        if #available(iOS 26.0, *) { interactiveContentPopGestureRecognizer?.delegate = self }
         navigationBar.prefersLargeTitles = true // each screen's largeTitleDisplayMode decides
     }
 
     func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
         guard viewControllers.count > 1 else { return false }
-        return (topViewController as? RyUIScreenController)?.backGesture ?? true
+        guard let top = topViewController as? RyUIScreenController else { return true }
+        return top.backGesture && !top.interceptsBack
     }
 
     func navigationController(_ nav: UINavigationController, didShow vc: UIViewController, animated: Bool) {
@@ -231,6 +274,7 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
         e.fontScale = Float(UIFontMetrics.default.scaledValue(for: 17) / 17)
         e.dark = t.userInterfaceStyle == .dark
         e.reduceMotion = UIAccessibility.isReduceMotionEnabled
+        e.screenReader = UIAccessibility.isVoiceOverRunning
         e.widthClass = t.horizontalSizeClass.ryui
         e.heightClass = t.verticalSizeClass.ryui
         e.setLanguages()
@@ -259,7 +303,7 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
     /// have been attached before their screen existed).
     func adoptControllers(in vc: UIViewController) {
         for n in nodes.values {
-            guard let child = n.vc, child is RyUIStackController || child is RyUITabsController,
+            guard let child = n.vc, child is RyUIStackController || child is RyUITabsController || child is RyUISplitController,
                   child.parent !== vc, child.view.isDescendant(of: vc.view) else { continue }
             if let owner = hostController(of: n), owner !== vc, child.parent === owner { continue }
             child.willMove(toParent: nil)
@@ -283,6 +327,12 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
         case .sheet:
             let s = RyUISheetController(nodeID: id)
             return (s.content, s)
+        case .popover:
+            let p = RyUIPopoverController(nodeID: id)
+            return (p.content, p)
+        case .split:
+            let s = RyUISplitController(nodeID: id)
+            return (s.view, s)
         case .alert:
             return (UIView(), nil)
         default:
@@ -292,6 +342,12 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
 
     /// Handles inserting into a Stack or Tabs; false: an ordinary insert.
     func insertController(_ p: RyUINode, _ c: RyUINode, _ index: Int) -> Bool {
+        if let split = p.vc as? RyUISplitController, let stack = c.vc as? RyUIStackController {
+            p.children.insert(c, at: min(index, p.children.count))
+            c.parent = p
+            split.setViewController(stack, for: .secondary)
+            return true
+        }
         if let nav = p.vc as? RyUIStackController, let screen = c.vc {
             let i = min(index, p.children.count)
             p.children.insert(c, at: i)
@@ -312,8 +368,9 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
                 if nav.mustQueue {
                     nav.enqueue(nav.target + [screen])
                 } else {
-                    nav.pushViewController(screen, animated: !nav.viewControllers.isEmpty && nav.view.window != nil)
+                    nav.pushViewController(screen, animated: !nav.instant && !nav.viewControllers.isEmpty && nav.view.window != nil)
                 }
+                nav.instant = false
             } else {
                 var vcs = nav.viewControllers
                 vcs.insert(screen, at: min(i, vcs.count))
@@ -329,7 +386,7 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
             if let sel = p.selected { tabs.selectedIndex = sel }
             return true
         }
-        if let child = c.vc, child is RyUIStackController || child is RyUITabsController {
+        if let child = c.vc, child is RyUIStackController || child is RyUITabsController || child is RyUISplitController {
             let owner = hostController(of: p) ?? controller
             owner?.addChild(child)
             p.insert(c, at: index)
@@ -351,6 +408,10 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
             n.parent?.children.removeAll { $0 === n }
             if nav.mustQueue {
                 nav.enqueue(nav.target.filter { $0 !== vc })
+            } else if nav.instant {
+                // A SplitView's destination changing: gone at once, the
+                // stack's first screen too.
+                nav.setViewControllers(nav.viewControllers.filter { $0 !== vc }, animated: false)
             } else if nav.topViewController === vc {
                 nav.popViewController(animated: nav.view.window != nil)
             } else if nav.viewControllers.contains(vc) {
@@ -363,7 +424,7 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
             tabs.setViewControllers(n.parent?.children.compactMap { $0.vc }, animated: false)
             return true
         }
-        if vc is RyUISheetController || vc is UIAlertController {
+        if vc is RyUISheetController || vc is RyUIPopoverController || vc is UIAlertController {
             if vc.presentingViewController != nil && !vc.isBeingDismissed {
                 vc.dismiss(animated: true)
             }
@@ -410,6 +471,17 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
             }
             s.presentationController?.delegate = s
             top.present(s, animated: true)
+        case .popover:
+            guard let p = n.vc as? RyUIPopoverController, let top = topController,
+                  let anchor = nodes[p.anchor]?.view, anchor.window != nil else { return }
+            p.modalPresentationStyle = .popover
+            p.preferredContentSize = p.size
+            if let pc = p.popoverPresentationController {
+                pc.sourceView = anchor
+                pc.sourceRect = anchor.bounds
+                pc.delegate = p
+            }
+            top.present(p, animated: true)
         case .alert:
             guard let top = topController else { return }
             let a = RyUIAlertController(title: n.alertTitle, message: n.alertMessage,
@@ -475,6 +547,25 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
         n.menuOverlay = b
     }
 
+    /// ui.OnBack on a screen (its back button asks the core, its edge swipe
+    /// is off) or a sheet (it can't be swiped away; trying asks the core).
+    /// The root has no back on iOS.
+    func setInterceptBack(_ n: RyUINode, _ on: Bool) {
+        let id = n.id
+        switch n.kind {
+        case .screen:
+            guard let vc = n.vc as? RyUIScreenController else { return }
+            vc.interceptsBack = on
+            vc.navigationItem.backAction = on ? UIAction { [weak self] _ in
+                self?.emit(id, .back) { RyUIEvents.back(id) }
+            } : nil
+        case .sheet, .popover:
+            n.vc?.isModalInPresentation = on
+        default:
+            break
+        }
+    }
+
     func setNavProp(_ n: RyUINode, _ prop: UInt16, _ v: RyUIValue) {
         switch (n.kind, prop) {
         case (.screen, RyUIProp.Screen.title):
@@ -523,6 +614,14 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
         case (.tabs, RyUIProp.Tabs.selected):
             n.selected = Int(v.int)
             (n.vc as? RyUITabsController)?.selectedIndex = Int(v.int)
+        case (.popover, RyUIProp.Popover.anchor):
+            (n.vc as? RyUIPopoverController)?.anchor = UInt32(truncatingIfNeeded: v.int)
+        case (.popover, RyUIProp.Popover.width):
+            guard let p = n.vc as? RyUIPopoverController else { return }
+            p.size.width = CGFloat(v.float)
+        case (.popover, RyUIProp.Popover.height):
+            guard let p = n.vc as? RyUIPopoverController else { return }
+            p.size.height = CGFloat(v.float)
         case (.sheet, RyUIProp.Sheet.detents):
             (n.vc as? RyUISheetController)?.detents = v.int
         case (.sheet, RyUIProp.Sheet.grabber):

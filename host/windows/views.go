@@ -50,7 +50,7 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 		return
 	}
 	switch kind {
-	case ops.KindView, ops.KindSelectable, ops.KindText, ops.KindSymbol, ops.KindShape,
+	case ops.KindView, ops.KindSelectable, ops.KindText, ops.KindSymbol, ops.KindShape, ops.KindCanvas, ops.KindShader,
 		ops.KindProgress, ops.KindActivity, ops.KindImage:
 		n.hwnd = h.makeView(0)
 		switch kind {
@@ -61,8 +61,14 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 		case ops.KindImage:
 			n.image = &image{}
 		}
-	case ops.KindSegmented:
+	case ops.KindSegmented, ops.KindPageControl:
 		n.hwnd = h.makeView(WS_TABSTOP)
+	case ops.KindSplit:
+		h.makeSplit(n)
+	case ops.KindAccessory:
+		// A field's bar over the keyboard: never shown, with no on-screen
+		// keyboard to put it on (it waits in the parking window).
+		n.hwnd = h.makeView(0)
 	case ops.KindButton:
 		h.makeControl(n, "BUTTON", BS_PUSHBUTTON|WS_TABSTOP, 0)
 	case ops.KindToggle:
@@ -223,11 +229,14 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 	case ops.KindTextField:
 		h.setField(n, p, v)
 	case ops.KindToggle:
-		if p == ops.PropToggleOn {
+		switch p {
+		case ops.PropToggleOn:
 			n.on = v.Int != 0
 			SendMessage(n.ctl, BM_SETCHECK, uintptr(v.Int), 0)
-			h.redrawControl(n)
+		case ops.PropToggleCheckbox:
+			n.checkbox = v.Int != 0
 		}
+		h.redrawControl(n)
 	case ops.KindSlider:
 		switch p {
 		case ops.PropSliderValue:
@@ -254,6 +263,27 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 			n.horizontal = v.Int != 0
 			h.updateScroll(n)
 		}
+		if p == ops.PropScrollPaging {
+			n.paging = v.Int != 0
+			h.hideBars(n)
+		}
+	case ops.KindSplit:
+		h.setSplitProp(n, p, v)
+	case ops.KindShader:
+		h.setShaderProp(n, p, v)
+	case ops.KindCanvas:
+		if p == ops.PropCanvasCommands {
+			n.canvas = append(n.canvas[:0], v.Bytes...)
+			h.redraw(n)
+		}
+	case ops.KindPageControl:
+		switch p {
+		case ops.PropPageControlCount:
+			n.pages = max(int(v.Int), 0)
+		case ops.PropPageControlPage:
+			n.selected = int(v.Int)
+		}
+		h.redraw(n)
 		// Pull to refresh: not on Windows.
 	case ops.KindList:
 		n.list.setProp(h, n, p, v)
@@ -614,6 +644,12 @@ func (h *Host) viewMessage(n *node, hwnd uintptr, m uint32, wp, lp uintptr) (uin
 		}
 		return 0, false
 	case WM_MOUSEWHEEL, WM_MOUSEHWHEEL:
+		if n.kind == ops.KindScroll && n.paging {
+			if h.pageWheel(n, m == WM_MOUSEHWHEEL, int32(int16(HiWord(wp)))) {
+				return 0, true
+			}
+			return 0, false
+		}
 		if n.kind == ops.KindScroll || n.list != nil {
 			if h.wheel(n, m == WM_MOUSEHWHEEL, int32(int16(HiWord(wp)))) {
 				return 0, true
@@ -677,6 +713,8 @@ func (h *Host) viewMessage(n *node, hwnd uintptr, m uint32, wp, lp uintptr) (uin
 		case timerSpin:
 			n.phase += 1.0 / 60 / 1.5
 			Invalidate(hwnd)
+		case timerShader:
+			h.renderShader(n)
 		}
 		return 0, true
 	case WM_SETFOCUS:
@@ -796,6 +834,10 @@ func (h *Host) mouseDown(n *node, hwnd, lp uintptr) {
 	if n.kind == ops.KindSegmented {
 		h.selectSegment(n, h.segmentAt(n, XParam(lp)))
 		SetFocus(hwnd)
+		return
+	}
+	if n.kind == ops.KindPageControl {
+		h.selectPip(n, h.pipAt(n, XParam(lp)))
 		return
 	}
 	if !n.tracksPress() && !n.draggable() && !n.listening(ops.EventPan) && !n.listening(ops.EventSwipe) {

@@ -93,6 +93,8 @@ func (h *Host) message(hwnd uintptr, m uint32, wp, lp uintptr) (uintptr, bool) {
 	switch n.kind {
 	case kindSheetWindow:
 		return h.sheetMessage(n, m, wp, lp)
+	case kindPopoverWindow:
+		return h.popoverMessage(n, m, wp, lp)
 	case kindWindowFrame:
 		return h.windowFrameMessage(n, m, wp, lp)
 	}
@@ -215,6 +217,7 @@ func (h *Host) environment() ops.Environment {
 		FontScale:    TextScale(),
 		Dark:         h.dark,
 		ReduceMotion: SystemParam(SPI_GETCLIENTAREAANIMATION) == 0,
+		ScreenReader: SystemParam(SPI_GETSCREENREADER) != 0,
 		Platform:     ops.PlatformWindows,
 		Locale:       h.intl.locale,
 		TimeZone:     timeZone(),
@@ -391,6 +394,10 @@ func (h *Host) keyMessage(m *Msg) bool {
 		if w := RootWindow(m.Hwnd); w != h.window {
 			if n := h.byHwnd[w]; n != nil && n.kind == kindSheetWindow {
 				h.cancelSheet(n)
+				return true
+			}
+			if n := h.byHwnd[w]; n != nil && n.kind == kindPopoverWindow {
+				h.cancelPopover(n)
 				return true
 			}
 		}

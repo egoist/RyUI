@@ -70,7 +70,7 @@ struct RyUITransition {
         let c: UIView.AnimationOptions
         switch RyUIAnimationCurve(rawValue: curve) {
         case .spring:
-            UIView.animate(withDuration: duration, delay: 0, usingSpringWithDamping: 0.85, initialSpringVelocity: 0,
+            UIView.animate(withDuration: duration, delay: animationDelay, usingSpringWithDamping: spring.damping, initialSpringVelocity: spring.velocity,
                            options: options, animations: change, completion: completion)
             return
         case .linear: c = .curveLinear
@@ -78,7 +78,7 @@ struct RyUITransition {
         case .easeOut: c = .curveEaseOut
         default: c = .curveEaseInOut
         }
-        UIView.animate(withDuration: duration, delay: 0, options: options.union(c), animations: change, completion: completion)
+        UIView.animate(withDuration: duration, delay: animationDelay, options: options.union(c), animations: change, completion: completion)
     }
 
     /// A view inserted during an animation, with a transition: it starts

@@ -3,6 +3,8 @@ package ui
 import (
 	"reflect"
 
+	"github.com/egoist/ryui/ops"
+
 	"github.com/egoist/ryui/signal"
 )
 
@@ -58,6 +60,85 @@ func Show(when signal.Accessor[bool], then func() Node, otherwise ...func() Node
 		}
 	})
 	return Node{f}
+}
+
+// Catch shows what build returns; when building it panics, or an effect
+// in it does later (a text's accessor, a Show's branch, a For's row),
+// it shows what fallback returns instead (React's and Solid's error
+// boundaries). fallback gets the panic's value and reset, which builds
+// build again. The failed UI is disposed: its effects stop and its
+// views, those it had finished and those it hadn't, are destroyed.
+//
+// A panic in fallback, or that Catch doesn't own (event handlers, a
+// goroutine), goes up as before, to the Catch around this one or to the
+// app's crash. Recovering doesn't make a panic's cause go away: show what
+// went wrong, log it, and let the user try again.
+//
+//	ui.Catch(func() ui.Node { return profile(id) }, func(err any, reset func()) ui.Node {
+//		return ui.Column(ui.Style{},
+//			ui.StaticText("Couldn't show this profile"),
+//			ui.Button(ui.ButtonProps{Title: ui.Val("Try again"), OnPress: reset}))
+//	})
+func Catch(build func() Node, fallback func(err any, reset func()) Node) Node {
+	f := newFragment()
+	r := f.r
+	failed := signal.NewFunc[any](nil, nil) // every write rebuilds, nil too
+	reset := func() { failed.Set(nil) }
+	var dispose func()
+	var shown *element
+	signal.RenderEffect(func() {
+		err := failed.Get()
+		if shown != nil {
+			f.removeKid(shown, true)
+			shown = nil
+		}
+		if dispose != nil {
+			dispose()
+			dispose = nil
+		}
+		show := func(n Node) {
+			if n.e != nil {
+				shown = n.e
+				f.appendKid(shown)
+			}
+		}
+		signal.Root(func(d func()) {
+			dispose = d
+			if err != nil {
+				show(withRoot(r, func() Node { return fallback(err, reset) }))
+				return
+			}
+			mark := nextID
+			signal.Catch(func() { show(withRoot(r, build)) }, func(err any) {
+				sweepOrphans(mark)
+				failed.Set(err)
+			})
+		})
+	})
+	signal.OnCleanup(func() {
+		if dispose != nil {
+			dispose()
+		}
+	})
+	return Node{f}
+}
+
+// sweepOrphans destroys the views made since mark that aren't in a tree:
+// what a build that panicked made before it could put them anywhere.
+func sweepOrphans(mark ops.NodeID) {
+	for id, e := range elems {
+		if id <= mark || e.dead {
+			continue
+		}
+		top := e
+		for top.parent != nil {
+			top = top.parent
+		}
+		if top.dead || top.hostSized || top.cell || top.inline || top.kind == ops.KindAlert || top == top.r.el {
+			continue // a tree's top: a root, sheet, cell, alert
+		}
+		top.destroy()
+	}
 }
 
 // Dynamic shows what f returns, rebuilding it when what f reads changes.

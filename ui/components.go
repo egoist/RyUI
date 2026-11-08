@@ -45,6 +45,12 @@ type ViewProps struct {
 	// Decorative hides the view, and everything in it, from screen
 	// readers: a decoration, or what its neighbors already say.
 	Decorative bool
+	// Tooltip is a short text the platform shows by the view while a
+	// pointer rests on it (an iPad's pointer, a mouse), and on Android
+	// as it's long pressed (when it has no OnLongPress): what an icon
+	// does ("Add to favorites"). Touch-only users never see it, so it
+	// can't be the only place something is said.
+	Tooltip signal.Accessor[string]
 	// OnLayout is called with the view's frame once it's laid out, and
 	// again each time layout changes it (SwiftUI's GeometryReader, React
 	// Native's onLayout): to size something else by it, or to know where
@@ -200,7 +206,7 @@ func addKids(e *element, kids []Node) {
 // props it makes no native view: its children are placed in the nearest
 // ancestor that has one.
 func View(p ViewProps, children ...Node) Node {
-	real := p.OnPress != nil || p.OnLongPress != nil || hasText(p.Label) || hasText(p.Hint) || p.Role != RoleNone || p.Decorative || p.OnLayout != nil ||
+	real := p.OnPress != nil || p.OnLongPress != nil || hasText(p.Label) || hasText(p.Hint) || hasText(p.Tooltip) || p.Role != RoleNone || p.Decorative || p.OnLayout != nil ||
 		len(p.Actions) > 0 || p.OnAdjust != nil ||
 		p.OnPan != nil || p.OnPinch != nil || p.OnSwipe != nil || p.OnRotate != nil || p.interactive()
 	if s, ok := p.Style.(Style); ok && (s.visual() || s.hasVariants()) {
@@ -221,6 +227,9 @@ func View(p ViewProps, children ...Node) Node {
 		}
 		if hasText(p.Hint) {
 			bind(p.Hint, func(v string) { e.r.batch.SetString(e.id, ops.PropA11yHint, v) })
+		}
+		if hasText(p.Tooltip) {
+			bind(p.Tooltip, func(v string) { e.r.batch.SetString(e.id, ops.PropTooltip, v) })
 		}
 		if p.Role != RoleNone {
 			e.r.batch.SetEnum(e.id, ops.PropA11yRole, int32(p.Role))
@@ -403,7 +412,10 @@ type ButtonProps struct {
 	// Label is what VoiceOver and TalkBack read: the title by default.
 	// Give an icon-only button one (the platforms name a few symbols
 	// themselves, in English on Android).
-	Label    signal.Accessor[string]
+	Label signal.Accessor[string]
+	// Tooltip is shown while a pointer rests on the button (and as it's
+	// long pressed on Android): an icon-only button's name, mostly.
+	Tooltip  signal.Accessor[string]
 	Disabled signal.Accessor[bool]
 	Style    Styler
 }
@@ -422,6 +434,9 @@ func Button(p ButtonProps) Node {
 	}
 	if hasText(p.Label) {
 		bind(p.Label, func(v string) { e.r.batch.SetString(e.id, ops.PropA11yLabel, v) })
+	}
+	if hasText(p.Tooltip) {
+		bind(p.Tooltip, func(v string) { e.r.batch.SetString(e.id, ops.PropTooltip, v) })
 	}
 	bind(p.Title, func(v string) {
 		e.text = string(p.Icon) + "\x00" + v // the measure cache's key
@@ -475,6 +490,27 @@ const (
 	AutocorrectNo      = ops.AutocorrectNo
 )
 
+// What a text field holds, for AutoFill (TextFieldProps.ContentType):
+// each host names it as its platform does (UIKit's UITextContentType,
+// Android's autofill hints).
+const (
+	ContentUsername    = "username"
+	ContentPassword    = "password"
+	ContentNewPassword = "newPassword" // a password being made: the platform offers a strong one
+	ContentOneTimeCode = "oneTimeCode" // a code a message (SMS, email) brought
+	ContentEmail       = "email"
+	ContentPhone       = "phone"
+	ContentName        = "name"
+	ContentGivenName   = "givenName"
+	ContentFamilyName  = "familyName"
+	ContentAddress     = "address" // a street address, on one line
+	ContentPostalCode  = "postalCode"
+	ContentCity        = "city"
+	ContentCountry     = "country"
+	ContentCardNumber  = "cardNumber"
+	ContentURL         = "url"
+)
+
 // TextFieldProps configures a TextField.
 type TextFieldProps struct {
 	// Value is the field's text. The widget owns its text: typing writes
@@ -486,7 +522,10 @@ type TextFieldProps struct {
 	Secure         bool
 	Autocapitalize Autocapitalize
 	Autocorrect    Autocorrect
-	ContentType    string // AutoFill hint: "username", "password", "email", ...
+	// ContentType says what the field holds, for the system's AutoFill:
+	// one of the Content constants (ContentOneTimeCode puts the code a
+	// message just brought above the keyboard), or a platform's own hint.
+	ContentType string
 	// Multiline makes it lines of text (a message, a comment): return is
 	// a new line, not OnSubmit, and it grows with its text up to Style's
 	// Lines lines (0: no limit), then scrolls.
@@ -526,6 +565,14 @@ type TextFieldProps struct {
 	// all the selection has, as they change: a toolbar's buttons show
 	// them.
 	OnFormats func(TextFormats)
+	// Accessory is a bar shown on top of the keyboard while the field is
+	// focused: a character count and Done, formatting buttons, quick
+	// replies (UIKit's inputAccessoryView, SwiftUI's keyboard toolbar). It's
+	// as wide as the window and as tall as its content, moves with the
+	// keyboard (on iOS with its interactive dismissal too), and is built
+	// with the field and disposed with it. Desktops, with no on-screen
+	// keyboard, don't show it.
+	Accessory func() Node
 }
 
 // TextRange is a span of a TextField's text, as byte offsets into it
@@ -686,6 +733,9 @@ func TextField(p TextFieldProps) Node {
 		h.blur = p.OnBlur
 		e.listen(ops.EventBlur)
 	}
+	if p.Accessory != nil {
+		accessory(e, p.Accessory) // after Multiline, which can make the field's view again
+	}
 	return Node{e}
 }
 
@@ -745,12 +795,22 @@ func Blur(n Node) {
 type ToggleProps struct {
 	Value    *signal.Signal[bool]
 	Disabled signal.Accessor[bool]
+	// Checkbox makes it a checkbox: an item of a list to tick, an
+	// agreement, a choice among several that aren't exclusive. Android's
+	// MaterialCheckBox, a Mac's and Windows' check box; iOS has none of its
+	// own, and shows a circle that fills with a checkmark, as Reminders'
+	// and Notes' lists do. Its Style's Color tints it.
+	Checkbox bool
 	Style    Styler
 }
 
-// Toggle is a switch.
+// Toggle is a switch, or a checkbox.
 func Toggle(p ToggleProps) Node {
 	e := newElement(ops.KindToggle, true)
+	if p.Checkbox {
+		e.r.batch.SetBool(e.id, ops.PropToggleCheckbox, true) // before it's measured: its view is made again
+		e.variant = 1                                         // measured apart from switches
+	}
 	e.measure()
 	e.setStyle(p.Style, false)
 	bind(p.Disabled, func(v bool) { e.r.batch.SetBool(e.id, ops.PropDisabled, v) })
@@ -980,6 +1040,19 @@ type ScrollProps struct {
 	// OnScroll is called as it scrolls, with its content offset: points
 	// from its content's top left.
 	OnScroll func(x, y float32)
+	// Paging stops it only at whole pages: a carousel, an onboarding's
+	// steps, a feed of full-screen videos (iOS's isPagingEnabled; on
+	// Android a swipe snaps to the next page, or back). Each child of its
+	// content is a page, made exactly as big as the scroll view along its
+	// axis and as its content across (ContentStyle's direction, wrapping
+	// and gaps don't apply). Its scroll bars hide: a PageControl says
+	// where it is.
+	Paging bool
+	// Page, with Paging, is the page shown, from the first in the
+	// reading direction (right to left, the rightmost): the user's swipes
+	// write it as they settle, and code's writes scroll there, animated.
+	// When the scroll view's size changes (a rotation), it stays on it.
+	Page *signal.Signal[int]
 }
 
 // Scroll scrolls its children along one axis. Give it a size (or Grow)
@@ -1025,6 +1098,124 @@ func Scroll(p ScrollProps, children ...Node) Node {
 	content.setStyle(withDirection(p.ContentStyle, dir), false)
 	addKids(content, children)
 	e.appendKid(content)
+	if p.Paging {
+		paging(e, content, p.Horizontal, p.Page)
+	}
+	return Node{e}
+}
+
+// paging makes a Scroll stop at whole pages, and keeps page and the
+// page it shows in step.
+func paging(e, content *element, horizontal bool, page *signal.Signal[int]) {
+	e.r.batch.SetBool(e.id, ops.PropScrollPaging, true)
+	// Each of its content's children is a page, exactly as big as the
+	// scroll view along its axis: a track each of a grid that flows along
+	// it, made again when the scroll view's size changes.
+	pageSize := float32(0)
+	adjust := content.adjust
+	content.adjust = func(cs *layout.Style) {
+		adjust(cs)
+		if pageSize <= 0 {
+			return
+		}
+		cs.Display = layout.DisplayGrid
+		if horizontal {
+			cs.GridAutoFlow = layout.FlowColumn
+			cs.GridAutoColumns = []layout.TrackSize{layout.Px(pageSize)}
+		} else {
+			cs.GridAutoFlow = layout.FlowRow
+			cs.GridAutoRows = []layout.TrackSize{layout.Px(pageSize)}
+		}
+	}
+	along := func(w, h float32) float32 {
+		if horizontal {
+			return w
+		}
+		return h
+	}
+	size := signal.New(float32(0))
+	e.handlers().layout = func(f Frame) { size.Set(along(f.Width, f.Height)) }
+	signal.RenderEffect(func() {
+		if s := size.Get(); s != pageSize {
+			pageSize = s
+			content.box.SetStyle(content.layoutStyle(&content.style))
+		}
+	})
+	if page == nil {
+		return
+	}
+	// logical turns a page from the physical start (left, top) into one
+	// from the reading start, and back: right to left, horizontally, the
+	// first is the rightmost.
+	logical := func(i int) int {
+		if !horizontal || !content.rtl() {
+			return i
+		}
+		return max(len(content.box.Children())-1-i, 0)
+	}
+	shown, laid := -1, float32(0) // the page the host shows, and the size it was laid out at
+	signal.RenderEffect(func() {
+		pg, sz := page.Get(), size.Get()
+		if sz <= 0 || (pg == shown && sz == laid) {
+			return
+		}
+		animated := laid == sz && shown >= 0 // a size change keeps the page, at once
+		shown, laid = pg, sz
+		off := float32(logical(pg)) * sz
+		x, y := off, float32(0)
+		if !horizontal {
+			x, y = 0, off
+		}
+		ScrollTo(Node{e}, x, y, animated)
+	})
+	e.handlers().paged = func(i int64) {
+		pg := logical(int(i))
+		shown = pg
+		page.Set(pg)
+	}
+	e.listen(ops.EventPaged)
+}
+
+// PageControlProps configures a PageControl.
+type PageControlProps struct {
+	// Count is how many pages there are.
+	Count signal.Accessor[int]
+	// Page is the current page: tapping a dot (or the control's sides on
+	// iOS), or a screen reader's adjusting, writes it. Share it with a
+	// Paging Scroll's Page to move both.
+	Page  *signal.Signal[int]
+	Style Styler
+}
+
+// PageControl is a row of dots, one per page, with the current one
+// highlighted: UIPageControl on iOS, which has its own Liquid Glass look
+// on iOS 26. Android, macOS and Windows have no such control, and get the
+// same dots, drawn in their theme's colors. VoiceOver and TalkBack say
+// "page 2 of 5", and adjust it.
+func PageControl(p PageControlProps) Node {
+	e := newElement(ops.KindPageControl, true)
+	e.measure()
+	e.setStyle(p.Style, false)
+	bind(p.Count, func(n int) {
+		e.r.batch.SetInt(e.id, ops.PropPageControlCount, int64(n))
+		e.remeasure()
+	})
+	if p.Page != nil {
+		reported, known := 0, false
+		signal.RenderEffect(func() {
+			v := p.Page.Get()
+			if known && v == reported {
+				return
+			}
+			reported, known = v, true
+			e.r.batch.SetInt(e.id, ops.PropPageControlPage, int64(v))
+		})
+		e.handlers().selected = func(i int64) {
+			reported, known = int(i), true
+			p.Page.Set(int(i))
+		}
+		e.listen(ops.EventSelected)
+	}
 	return Node{e}
 }
 
@@ -1165,4 +1356,25 @@ func Stepper(p StepperProps) Node {
 		e.listen(ops.EventValueChanged)
 	}
 	return Node{e}
+}
+
+// accessory builds a field's bar over the keyboard: a layout root of its
+// own, as wide as the root and as tall as its content, in the root's
+// environment.
+func accessory(field *element, build func() Node) {
+	r := field.r
+	a := newElement(ops.KindAccessory, true)
+	a.hostSized, a.fits, a.fullWidth = true, true, true
+	a.env = r.env
+	st := layout.DefaultStyle
+	st.FlexDirection = layout.Column
+	st.Direction = a.layoutDirection()
+	a.box.SetStyle(st)
+	r.provs = append(r.provs, a)
+	// Built under the field's owner, and gone with it.
+	if n := build(); n.e != nil {
+		a.appendKid(n.e)
+	}
+	r.batch.SetInt(field.id, ops.PropTextFieldAccessory, int64(a.id))
+	signal.OnCleanup(a.destroy)
 }

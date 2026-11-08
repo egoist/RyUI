@@ -132,6 +132,14 @@ func (h *Host) setCommon(n *node, p ops.PropID, v *ops.Value) {
 			n.cell.selected = v.Int != 0
 			Invalidate(n.cell.rv.n.hwnd)
 		}
+	case ops.PropTooltip:
+		if h.tips == 0 && v.Str != "" {
+			h.tips = NewTooltips(h.window)
+		}
+		n.tooltip = v.Str
+		SetTooltip(h.tips, n.hwnd, v.Str)
+	case ops.PropInterceptBack:
+		n.interceptBack = v.Int != 0 // ui.OnBack: the back button and Escape ask the core
 	}
 }
 

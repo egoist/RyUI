@@ -61,7 +61,7 @@ final class RyUIImageLoader: @unchecked Sendable {
             // A file (a picked photo), or one of the app's assets.
             let url = source.hasPrefix("/") ? URL(fileURLWithPath: source)
                 : source.hasPrefix("file://") ? URL(string: source)
-                : Bundle.main.resourceURL?.appendingPathComponent("assets").appendingPathComponent(source)
+                : ryuiAssets?.appendingPathComponent(source)
             finish(Self.decode(url.flatMap { try? Data(contentsOf: $0) }))
         }
     }
@@ -290,6 +290,10 @@ final class RyUIGestureDelegate: NSObject, UIGestureRecognizerDelegate {
             s.selectedSegmentIndex = selected < s.numberOfSegments ? selected : UISegmentedControl.noSegment
         case (.segmented, RyUIProp.Segmented.selected):
             (n.view as? UISegmentedControl)?.selectedSegmentIndex = Int(v.int)
+        case (.pageControl, RyUIProp.PageControl.count):
+            (n.view as? UIPageControl)?.numberOfPages = Int(v.int)
+        case (.pageControl, RyUIProp.PageControl.page):
+            (n.view as? UIPageControl)?.currentPage = Int(v.int)
         case (.progress, RyUIProp.Progress.value):
             guard let p = n.view as? UIProgressView else { return true }
             p.setProgress(Float(v.float), animated: p.window != nil)
@@ -509,6 +513,12 @@ final class RyUIGestureDelegate: NSObject, UIGestureRecognizerDelegate {
         if args.count >= 10 {
             let n = Int32(bitPattern: r.u32()), auto = r.u8() != 0
             if n != 0 || auto { repeating = (n, auto) }
+        }
+        animationDelay = 0
+        spring = (0.85, 0)
+        if args.count >= 22 {
+            animationDelay = Double(r.f32())
+            spring = (CGFloat(r.f32()), CGFloat(r.f32()))
         }
     }
 

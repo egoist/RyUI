@@ -10,7 +10,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import android.util.SizeF
@@ -25,43 +24,30 @@ import org.json.JSONObject
  * kind in its meta-data (dev.ryui.widget.kind). It shows the kind's
  * entries, which ryui/widget's "set" keeps in the app's preferences: the
  * one whose time has come, laid out for the widget's size (small, medium,
- * large; Android 12's responsive layouts, or before, the size the
- * launcher reports), and wakes for the next one, and for a countdown's
- * end, with an alarm.
+ * large, as responsive layouts), and wakes for the next one, and for a
+ * countdown's end, with an alarm.
  */
 open class RyUIWidgetProvider(private val kind: String, private val sizes: String) : AppWidgetProvider() {
     override fun onUpdate(ctx: Context, mgr: AppWidgetManager, ids: IntArray) {
-        for (id in ids) mgr.updateAppWidget(id, views(ctx, mgr, id))
+        for (id in ids) mgr.updateAppWidget(id, views(ctx))
         schedule(ctx, ids)
     }
 
     override fun onAppWidgetOptionsChanged(ctx: Context, mgr: AppWidgetManager, id: Int, options: Bundle) {
-        mgr.updateAppWidget(id, views(ctx, mgr, id))
+        mgr.updateAppWidget(id, views(ctx))
     }
 
-    private fun views(ctx: Context, mgr: AppWidgetManager, id: Int): RemoteViews {
+    private fun views(ctx: Context): RemoteViews {
         val entry = RyUIWidgets.current(RyUIWidgets.entries(ctx, kind))
         val ss = sizes.split(',')
         fun layout(size: String) = RyUIWidgets.render(ctx, kind, entry, size)
-        if (Build.VERSION.SDK_INT >= 31) {
-            // Each size it comes in, from the smallest box that takes it.
-            val m = LinkedHashMap<SizeF, RemoteViews>()
-            if ("small" in ss) m[SizeF(40f, 40f)] = layout("small")
-            if ("medium" in ss) m[SizeF(200f, 40f)] = layout("medium")
-            if ("large" in ss) m[SizeF(200f, 200f)] = layout("large")
-            if (m.isEmpty()) m[SizeF(40f, 40f)] = layout("small")
-            return RemoteViews(m)
-        }
-        val o = mgr.getAppWidgetOptions(id)
-        val w = o.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)
-        val h = o.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT)
-        val size = when {
-            "large" in ss && w >= 200 && h >= 200 -> "large"
-            "medium" in ss && w >= 200 -> "medium"
-            "small" in ss -> "small"
-            else -> ss.firstOrNull() ?: "small"
-        }
-        return layout(size)
+        // Each size it comes in, from the smallest box that takes it.
+        val m = LinkedHashMap<SizeF, RemoteViews>()
+        if ("small" in ss) m[SizeF(40f, 40f)] = layout("small")
+        if ("medium" in ss) m[SizeF(200f, 40f)] = layout("medium")
+        if ("large" in ss) m[SizeF(200f, 200f)] = layout("large")
+        if (m.isEmpty()) m[SizeF(40f, 40f)] = layout("small")
+        return RemoteViews(m)
     }
 
     /** An alarm for the next entry's time, or a countdown's end: then it updates again. */
@@ -140,7 +126,7 @@ object RyUIWidgets {
         if (e.optBoolean("showProgress")) {
             v.setViewVisibility(R.id.ryui_widget_progress, View.VISIBLE)
             v.setProgressBar(R.id.ryui_widget_progress, 1000, (e.optDouble("progress", 0.0).coerceIn(0.0, 1.0) * 1000).toInt(), false)
-            if (Build.VERSION.SDK_INT >= 31) v.setColorStateList(R.id.ryui_widget_progress, "setProgressTintList", ColorStateList.valueOf(tint))
+            v.setColorStateList(R.id.ryui_widget_progress, "setProgressTintList", ColorStateList.valueOf(tint))
         } else v.setViewVisibility(R.id.ryui_widget_progress, View.GONE)
         val until = e.optLong("untilMs")
         if (until > 0) {

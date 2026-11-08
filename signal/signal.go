@@ -166,6 +166,24 @@ func newEffect(fn func(), extra flags) *effect {
 }
 
 func (e *effect) update() bool {
+	if e.owner.catcher != nil {
+		return e.updateCatching()
+	}
+	return e.run()
+}
+
+// updateCatching runs an effect a Catch owns: a panic goes to its handler.
+func (e *effect) updateCatching() bool {
+	defer func() {
+		if err := recover(); err != nil {
+			endTracking(&e.n) // it re-runs when what it read before the panic changes
+			handleError(&e.owner, err)
+		}
+	}()
+	return e.run()
+}
+
+func (e *effect) run() bool {
 	e.owner.clean()
 	n := &e.n
 	settleAmbient()

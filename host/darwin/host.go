@@ -92,6 +92,7 @@ type node struct {
 	min, max       float64
 	scroll         bool // observes its scroll position
 	dying          bool
+	interceptBack  bool // ui.OnBack: going back asks the core (Back)
 	presented      bool
 	detents        int64
 	tracking       ID // a TextField's text view (Multiline)
@@ -105,6 +106,12 @@ type node struct {
 	dir        ops.LayoutDirection // its LayoutDirection prop
 	rtl        bool                // the way it reads
 	horizontal bool                // a horizontal Scroll
+	paging     bool                // a Scroll that settles on pages
+	dots       *pageDots           // a PageControl's
+	popover    *popover            // a Popover's
+	canvas     []byte              // a Canvas's display list
+	split      *split              // a SplitView's
+	shader     *shader             // a Shader's
 
 	// Interaction states and drag and drop (interaction.go).
 	hovered    bool
@@ -154,24 +161,27 @@ type Host struct {
 	posted []func()
 	source *MainSource
 
-	animating    bool
-	anim         animation
-	accent       ops.Color
-	nextCell     ops.NodeID
-	frames       *frameClock
-	modules      map[string]map[string]method
-	assets       string
-	appName      string
-	dark         bool
-	lists        map[ID]*list
-	editors      map[ID]ID         // each window's field editor (RyUIFieldEditor)
-	videos       map[ID]ops.NodeID // by AVPlayerItem
-	main         *win              // the main window, holding the root
-	wins         map[ID]*win       // the Windows' windows, by NSWindow
-	appMenus     []appMenu         // MenuBar's
-	chromeQueued bool
-	a11yActions  map[ID]a11yAction
-	exiting      map[ID]bool // views going out with a transition
+	animating     bool
+	anim          animation
+	accent        ops.Color
+	nextCell      ops.NodeID
+	frames        *frameClock
+	modules       map[string]map[string]method
+	assets        string
+	appName       string
+	dark          bool
+	lists         map[ID]*list
+	splits        map[ID]*node // SplitViews, by their sidebar's table
+	shaderTimer   ID           // animated Shaders' clock, while there are any
+	sidebarSource ID
+	editors       map[ID]ID         // each window's field editor (RyUIFieldEditor)
+	videos        map[ID]ops.NodeID // by AVPlayerItem
+	main          *win              // the main window, holding the root
+	wins          map[ID]*win       // the Windows' windows, by NSWindow
+	appMenus      []appMenu         // MenuBar's
+	chromeQueued  bool
+	a11yActions   map[ID]a11yAction
+	exiting       map[ID]bool // views going out with a transition
 
 	mouse       mouseState  // the primary button's press
 	over        dropState   // a drag over the app's drop targets
@@ -200,6 +210,7 @@ func newHost() *Host {
 		byView:      map[ID]*node{},
 		byMenu:      map[ID]*node{},
 		lists:       map[ID]*list{},
+		splits:      map[ID]*node{},
 		editors:     map[ID]ID{},
 		videos:      map[ID]ops.NodeID{},
 		a11yActions: map[ID]a11yAction{},
@@ -411,6 +422,16 @@ func (h *Host) destroy(id ops.NodeID) {
 	if h.destroyNav(n) {
 		return
 	}
+	if n.paging {
+		h.setPaging(n, false) // its observer goes
+	}
+	if n.split != nil {
+		delete(h.splits, n.split.table)
+	}
+	if n.shader != nil && n.shader.animated {
+		n.shader.animated = false
+		defer h.updateShaderClock() // once it's gone from the nodes
+	}
 	for _, c := range n.children {
 		c.parent = nil
 	}
@@ -470,7 +491,7 @@ func (h *Host) release(n *node) {
 }
 
 func (h *Host) insert(p, c *node, index int) {
-	if h.insertNav(p, c, index) {
+	if h.insertNav(p, c, index) || h.insertSplit(p, c, index) {
 		return
 	}
 	i := min(index, len(p.children))
@@ -550,6 +571,9 @@ func (h *Host) setRoot(n *node) {
 }
 
 func (h *Host) setFrame(n *node, f [4]float32) {
+	if n.parent != nil && n.parent.split != nil {
+		return // a SplitView's detail: its content item sizes it
+	}
 	if h.animating && !n.placed && !n.entering {
 		// A view's first frame doesn't animate: it wasn't on screen. The
 		// batch's implicit animations would grow it, its layers and its
@@ -608,6 +632,9 @@ func (h *Host) place(n *node, f [4]float32) {
 		h.scrollFromStart(keep, gap)
 	}
 	n.placed = true
+	if n.shader != nil {
+		h.layoutShader(n)
+	}
 	if n.hoverArea != 0 {
 		h.checkHover(n) // moved under the pointer
 	}

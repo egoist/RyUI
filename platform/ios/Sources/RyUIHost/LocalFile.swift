@@ -15,7 +15,7 @@ enum RyUILocalFile {
         }
         var path = source
         if path.hasPrefix("file://") { path = URL(string: path)?.path ?? path }
-        if !path.hasPrefix("/"), let assets = Bundle.main.resourceURL?.appendingPathComponent("assets") {
+        if !path.hasPrefix("/"), let assets = ryuiAssets {
             path = assets.appendingPathComponent(path).path
         }
         guard FileManager.default.fileExists(atPath: path) else { return done(.failure(RyUIModuleError("no file at \(source)"))) }

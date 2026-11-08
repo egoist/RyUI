@@ -9,7 +9,7 @@ android {
     namespace = "dev.ryui.agerange"
     compileSdk = 36
     defaultConfig {
-        minSdk = 26
+        minSdk = 33
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

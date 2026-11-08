@@ -56,11 +56,23 @@ const (
 	KindWebView Kind = 27
 	// KindDatePicker: a date or a time, chosen the platform's way (a compact UIDatePicker; Material's date and time pickers from buttons that show it), in the device's time zone and format. The user's choice is reported with ValueChanged, in Unix milliseconds.
 	KindDatePicker Kind = 28
+	// KindPageControl: a row of dots, one per page, the current one highlighted (UIPageControl; drawn on Android, macOS and Windows, which have none); measured. Tapping or a screen reader's adjusting changes the page: Selected with its index.
+	KindPageControl Kind = 29
+	// KindPopover: content shown in a bubble pointing at a view, over the screen, until it's dismissed (UIPopoverPresentationController, a popover on iPhone too; a PopupWindow on Android; NSPopover; a popup window on Windows); a layout root of its own, presented with Present and destroyed to close. Tapping outside dismisses it: Dismissed.
+	KindPopover Kind = 30
+	// KindAccessory: a TextField's bar over the keyboard (TextField's Accessory), a layout root of its own: UIKit's inputAccessoryView, moving with the keyboard and its interactive dismissal; on Android a bar on top of the keyboard, following it frame by frame, while the field is focused; desktops, with no on-screen keyboard, don't show it.
+	KindAccessory Kind = 31
+	// KindCanvas: drawn by the app (SwiftUI's Canvas; Compose's and Android's Canvas): a display list replayed with Core Graphics, Android's Canvas, GDI+; it takes the size its style gives it.
+	KindCanvas Kind = 32
+	// KindSplit: destinations in a sidebar and the selected one's screens beside it (UISplitViewController's sidebar on iPad, collapsing into a stack on iPhone, the list its first screen; Material's navigation drawer on Android, modal on a phone and standing beside the content on a wide screen; a source list on macOS; a navigation pane on Windows). Its one child is a Stack, the detail, which the host places; choosing a destination sends Selected.
+	KindSplit Kind = 33
+	// KindShader: a box a GPU program draws, under its children: a Kage shader, as Metal on iOS and macOS (a CAMetalLayer), AGSL on Android (RuntimeShader), on the CPU on Windows (package interp).
+	KindShader Kind = 34
 	// KindWindow: a desktop window of the app's (macOS, Windows; mobile hosts can't show one), with one child, its content: Present opens it, Destroy closes it; the user closing it is reported with Dismissed. Sized by the host (and the user), which reports its Environment.
-	KindWindow Kind = 29
+	KindWindow Kind = 35
 )
 
-var kindNames = [...]string{"", "View", "Text", "Button", "TextField", "Toggle", "Slider", "Scroll", "List", "Activity", "Stack", "Screen", "Tabs", "Sheet", "Alert", "Image", "Native", "RichText", "Selectable", "Symbol", "Segmented", "Wheel", "Stepper", "ColorPicker", "Progress", "Shape", "Video", "WebView", "DatePicker", "Window"}
+var kindNames = [...]string{"", "View", "Text", "Button", "TextField", "Toggle", "Slider", "Scroll", "List", "Activity", "Stack", "Screen", "Tabs", "Sheet", "Alert", "Image", "Native", "RichText", "Selectable", "Symbol", "Segmented", "Wheel", "Stepper", "ColorPicker", "Progress", "Shape", "Video", "WebView", "DatePicker", "PageControl", "Popover", "Accessory", "Canvas", "Split", "Shader", "Window"}
 
 func (k Kind) String() string {
 	if int(k) < len(kindNames) && k > 0 {
@@ -123,6 +135,10 @@ const (
 	PropSelected PropID = 33
 	// PropMatch: a key it shares with another view: when one with the key is destroyed during an animation and another inserted, the new one comes in from the old one's place and size, and the old one goes out to the new one's, fading (SwiftUI's matchedGeometryEffect). The host notes where the views with keys are as an animated batch starts destroying, and matches them once the batch's frames are applied.
 	PropMatch PropID = 34
+	// PropInterceptBack: a Screen, Sheet or the root takes the user's going back itself (ui.OnBack): the host sends Back to it instead of popping the screen (its back button, Android's back; iOS's edge swipe is off while it's on top), dismissing the sheet (a swipe down, a tap outside, Android's back) or, for the root, leaving the app (Android's back with no screen to pop). Predictive back doesn't animate it.
+	PropInterceptBack PropID = 35
+	// PropTooltip: a short text the platform shows by the view while a pointer rests on it (iPadOS's and macOS's pointer, a mouse on Android and Windows) or, on Android, as it's long pressed when it has no long press of its own; screen readers read it as a hint where the view has none. Empty: none.
+	PropTooltip PropID = 36
 )
 
 // View props.
@@ -167,11 +183,15 @@ const (
 	PropTextFieldRich PropID = 75
 	// PropTextFieldPasteTypes: u32 count, then u32-length MIME type patterns (image/*, */*: as DropAccept's): content of these types pasted, or put in by the keyboard (GIFs, stickers: Android's commitContent, iOS's pasteboard), is reported with Pasted instead of going into the text; the edit menu offers Paste for it. Empty: the platform's own paste.
 	PropTextFieldPasteTypes PropID = 76
+	// PropTextFieldAccessory: its Accessory's node ID (0: none).
+	PropTextFieldAccessory PropID = 77
 )
 
 // Toggle props.
 const (
 	PropToggleOn PropID = 64
+	// PropToggleCheckbox: a checkbox, not a switch: Android's MaterialCheckBox, a Mac's and Windows' check box; iOS, which has none, a circle that fills with a checkmark (Reminders' and Notes').
+	PropToggleCheckbox PropID = 65
 )
 
 // Slider props.
@@ -187,6 +207,8 @@ const (
 	// PropScrollRefreshable: pull to refresh sends Refresh.
 	PropScrollRefreshable PropID = 65
 	PropScrollRefreshing  PropID = 66
+	// PropScrollPaging: it stops only at multiples of its own size along its axis, a page each (iOS's isPagingEnabled; Android snaps each swipe to the next page, or back), and hides its scroll bars; a swipe that settles on a page sends Paged.
+	PropScrollPaging PropID = 67
 )
 
 // List props.
@@ -386,6 +408,56 @@ const (
 	PropDatePickerInline PropID = 68
 )
 
+// PageControl props.
+const (
+	// PropPageControlCount: how many pages.
+	PropPageControlCount PropID = 64
+	// PropPageControlPage: the current page, from the first in the reading direction.
+	PropPageControlPage PropID = 65
+)
+
+// Popover props.
+const (
+	// PropPopoverAnchor: the view it points at (a node ID).
+	PropPopoverAnchor PropID = 64
+	// PropPopoverWidth: its content's size, in points, as the core laid it out: the host makes the popover this big.
+	PropPopoverWidth  PropID = 65
+	PropPopoverHeight PropID = 66
+)
+
+// Accessory props.
+const (
+	// PropAccessoryWidth: its content's size, in points, as the core laid it out (as wide as the root).
+	PropAccessoryWidth  PropID = 64
+	PropAccessoryHeight PropID = 65
+)
+
+// Canvas props.
+const (
+	// PropCanvasCommands: what it draws, in points from its top left, in order: per command a u8 CanvasOp and its arguments. Save, Restore: none; Translate, Scale: f32 x, y; Rotate: f32 degrees, clockwise; Alpha: f32 (multiplies what's drawn after); Clip: a path; Fill: u64 color, a path; Stroke: u64 color, f32 width, u8 LineCap, u8 LineJoin, u32 dash count, f32 dash phase, f32 each dash, a path; Gradient: u32 stop count, per stop u64 color and f32 location, f32 start x, y, end x, y, a path (filled); Text: u64 color, f32 size, u8 FontWeight, u8 TextAlign (Start: its left edge at x, Center, End: its right edge at x), f32 x, y (its baseline), u32-length string. A path is u32 length, then Shape's Path format. Colors may be semantic, resolved in the view's appearance.
+	PropCanvasCommands PropID = 64
+)
+
+// Split props.
+const (
+	// PropSplitItems: the sidebar's destinations: u32 section count, per section a string title (empty: none) and u32 item count, per item a string title and a string icon (Symbol.Name; empty: none).
+	PropSplitItems PropID = 64
+	// PropSplitSelected: the selected destination, its index among all the sections' items (-1: none).
+	PropSplitSelected PropID = 65
+	// PropSplitTitle: the sidebar's title.
+	PropSplitTitle PropID = 66
+)
+
+// Shader props.
+const (
+	// PropShaderCode: the compiled shader (package shader; internal/shadercode's Encode): its Kage source, its Metal and AGSL programs, and where its uniforms' lanes go.
+	PropShaderCode PropID = 64
+	// PropShaderUniforms: the uniforms' values: u32 lanes, in package interp's order (a float's bits, an int's, a uint's, a bool's 0 or 1); the host sets the size, the scale and Time itself.
+	PropShaderUniforms PropID = 65
+	// PropShaderAnimated: Time runs: drawn again every frame the display draws.
+	PropShaderAnimated PropID = 66
+)
+
 // Window props.
 const (
 	PropWindowTitle PropID = 64
@@ -397,9 +469,9 @@ const (
 	PropWindowMinHeight PropID = 68
 )
 
-var commonProps = [...]propInfo{{}, {"Background", TColor}, {"CornerRadius", TFloat}, {"BorderWidth", TFloat}, {"BorderColor", TColor}, {"Opacity", TFloat}, {"Hidden", TBool}, {"Clip", TBool}, {"A11yLabel", TString}, {"A11yHint", TString}, {"A11yRole", TEnum}, {"A11yActions", TBytes}, {"A11yAdjustable", TBool}, {"A11yHidden", TBool}, {"Color", TColor}, {"TextStyle", TEnum}, {"FontSize", TFloat}, {"FontWeight", TEnum}, {"TextAlign", TEnum}, {"LineLimit", TInt}, {"Disabled", TBool}, {"Menu", TBytes}, {"MenuTrigger", TEnum}, {"Transform", TBytes}, {"Shadow", TBytes}, {"Gradient", TBytes}, {"Transition", TBytes}, {"Material", TEnum}, {"FontFamily", TString}, {"SwipeActions", TBytes}, {"LayoutDirection", TEnum}, {"ContentInset", TEdges}, {"LeadingSwipeActions", TBytes}, {"Selected", TBool}, {"Match", TString}}
+var commonProps = [...]propInfo{{}, {"Background", TColor}, {"CornerRadius", TFloat}, {"BorderWidth", TFloat}, {"BorderColor", TColor}, {"Opacity", TFloat}, {"Hidden", TBool}, {"Clip", TBool}, {"A11yLabel", TString}, {"A11yHint", TString}, {"A11yRole", TEnum}, {"A11yActions", TBytes}, {"A11yAdjustable", TBool}, {"A11yHidden", TBool}, {"Color", TColor}, {"TextStyle", TEnum}, {"FontSize", TFloat}, {"FontWeight", TEnum}, {"TextAlign", TEnum}, {"LineLimit", TInt}, {"Disabled", TBool}, {"Menu", TBytes}, {"MenuTrigger", TEnum}, {"Transform", TBytes}, {"Shadow", TBytes}, {"Gradient", TBytes}, {"Transition", TBytes}, {"Material", TEnum}, {"FontFamily", TString}, {"SwipeActions", TBytes}, {"LayoutDirection", TEnum}, {"ContentInset", TEdges}, {"LeadingSwipeActions", TBytes}, {"Selected", TBool}, {"Match", TString}, {"InterceptBack", TBool}, {"Tooltip", TString}}
 
-var kindProps = [...][]propInfo{nil, {{"DropAccept", TBytes}, {"DragItems", TBytes}}, {{"Text", TString}}, {{"Title", TString}, {"Variant", TEnum}, {"Icon", TString}}, {{"Value", TString}, {"Placeholder", TString}, {"Keyboard", TEnum}, {"ReturnKey", TEnum}, {"Secure", TBool}, {"Autocapitalize", TEnum}, {"Autocorrect", TEnum}, {"ContentType", TString}, {"Multiline", TBool}, {"Plain", TBool}, {"Selection", TBytes}, {"Rich", TBytes}, {"PasteTypes", TBytes}}, {{"On", TBool}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}}, {{"Horizontal", TBool}, {"Refreshable", TBool}, {"Refreshing", TBool}}, {{"Refreshable", TBool}, {"Refreshing", TBool}, {"Columns", TInt}, {"Gap", TFloat}, {"Appearance", TEnum}, {"Inset", TFloat}, {"Anchor", TEnum}, {"Selecting", TBool}}, {{"Animating", TBool}}, {}, {{"Title", TString}, {"Actions", TBytes}, {"BackGesture", TBool}, {"Icon", TString}, {"Search", TString}, {"SearchText", TString}, {"SearchButton", TBool}, {"ZoomFrom", TString}, {"LargeTitle", TBool}, {"BarColor", TColor}}, {{"Selected", TInt}}, {{"Detents", TInt}, {"Grabber", TBool}}, {{"Title", TString}, {"Message", TString}, {"Buttons", TBytes}, {"Style", TEnum}}, {{"Source", TString}, {"Mode", TEnum}, {"Placeholder", TString}}, {{"Type", TString}, {"Prop", TBytes}}, {{"Content", TBytes}, {"Inlines", TBytes}}, {}, {{"Name", TString}}, {{"Segments", TBytes}, {"Selected", TInt}}, {{"Items", TBytes}, {"Selected", TInt}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}, {"Step", TFloat}}, {{"Value", TColor}, {"Alpha", TBool}, {"Title", TString}}, {{"Value", TFloat}, {"Indeterminate", TBool}}, {{"Path", TBytes}, {"Fill", TColor}, {"Stroke", TColor}, {"LineWidth", TFloat}, {"LineCap", TEnum}, {"LineJoin", TEnum}, {"TrimStart", TFloat}, {"TrimEnd", TFloat}, {"Dash", TBytes}}, {{"Source", TString}, {"Mode", TEnum}, {"HideControls", TBool}, {"AutoPlay", TBool}, {"Loop", TBool}, {"Muted", TBool}}, {{"URL", TString}, {"HTML", TString}, {"Preload", TString}, {"UserAgent", TString}, {"Block", TBytes}, {"Requests", TBool}}, {{"Value", TInt}, {"Mode", TEnum}, {"Min", TInt}, {"Max", TInt}, {"Inline", TBool}}, {{"Title", TString}, {"Width", TFloat}, {"Height", TFloat}, {"MinWidth", TFloat}, {"MinHeight", TFloat}}}
+var kindProps = [...][]propInfo{nil, {{"DropAccept", TBytes}, {"DragItems", TBytes}}, {{"Text", TString}}, {{"Title", TString}, {"Variant", TEnum}, {"Icon", TString}}, {{"Value", TString}, {"Placeholder", TString}, {"Keyboard", TEnum}, {"ReturnKey", TEnum}, {"Secure", TBool}, {"Autocapitalize", TEnum}, {"Autocorrect", TEnum}, {"ContentType", TString}, {"Multiline", TBool}, {"Plain", TBool}, {"Selection", TBytes}, {"Rich", TBytes}, {"PasteTypes", TBytes}, {"Accessory", TInt}}, {{"On", TBool}, {"Checkbox", TBool}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}}, {{"Horizontal", TBool}, {"Refreshable", TBool}, {"Refreshing", TBool}, {"Paging", TBool}}, {{"Refreshable", TBool}, {"Refreshing", TBool}, {"Columns", TInt}, {"Gap", TFloat}, {"Appearance", TEnum}, {"Inset", TFloat}, {"Anchor", TEnum}, {"Selecting", TBool}}, {{"Animating", TBool}}, {}, {{"Title", TString}, {"Actions", TBytes}, {"BackGesture", TBool}, {"Icon", TString}, {"Search", TString}, {"SearchText", TString}, {"SearchButton", TBool}, {"ZoomFrom", TString}, {"LargeTitle", TBool}, {"BarColor", TColor}}, {{"Selected", TInt}}, {{"Detents", TInt}, {"Grabber", TBool}}, {{"Title", TString}, {"Message", TString}, {"Buttons", TBytes}, {"Style", TEnum}}, {{"Source", TString}, {"Mode", TEnum}, {"Placeholder", TString}}, {{"Type", TString}, {"Prop", TBytes}}, {{"Content", TBytes}, {"Inlines", TBytes}}, {}, {{"Name", TString}}, {{"Segments", TBytes}, {"Selected", TInt}}, {{"Items", TBytes}, {"Selected", TInt}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}, {"Step", TFloat}}, {{"Value", TColor}, {"Alpha", TBool}, {"Title", TString}}, {{"Value", TFloat}, {"Indeterminate", TBool}}, {{"Path", TBytes}, {"Fill", TColor}, {"Stroke", TColor}, {"LineWidth", TFloat}, {"LineCap", TEnum}, {"LineJoin", TEnum}, {"TrimStart", TFloat}, {"TrimEnd", TFloat}, {"Dash", TBytes}}, {{"Source", TString}, {"Mode", TEnum}, {"HideControls", TBool}, {"AutoPlay", TBool}, {"Loop", TBool}, {"Muted", TBool}}, {{"URL", TString}, {"HTML", TString}, {"Preload", TString}, {"UserAgent", TString}, {"Block", TBytes}, {"Requests", TBool}}, {{"Value", TInt}, {"Mode", TEnum}, {"Min", TInt}, {"Max", TInt}, {"Inline", TBool}}, {{"Count", TInt}, {"Page", TInt}}, {{"Anchor", TInt}, {"Width", TFloat}, {"Height", TFloat}}, {{"Width", TFloat}, {"Height", TFloat}}, {{"Commands", TBytes}}, {{"Items", TBytes}, {"Selected", TInt}, {"Title", TString}}, {{"Code", TBytes}, {"Uniforms", TBytes}, {"Animated", TBool}}, {{"Title", TString}, {"Width", TFloat}, {"Height", TFloat}, {"MinWidth", TFloat}, {"MinHeight", TFloat}}}
 
 // Events.
 const (
@@ -493,11 +565,15 @@ const (
 	EventRowInset EventKind = 50
 	// EventDragging: the view's drag (DragItems): a DragPhase. Began as it lifts, then Dropped (a target took it, the app's or another app's) or Cancelled.
 	EventDragging EventKind = 51
+	// EventBack: the user went back from a Screen, Sheet or the root with InterceptBack, which the host didn't do.
+	EventBack EventKind = 52
+	// EventPaged: a Paging Scroll's swipe is settling on a page: its index from the content's physical start (left or top), page = offset / the scroll's size.
+	EventPaged EventKind = 53
 )
 
-var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh", "Pan", "Pinch", "Rotate", "Swipe", "Loaded", "Failed", "Native", "Link", "A11yAction", "Adjust", "Ended", "Navigated", "Message", "IncomingURL", "FontLoaded", "Frame", "Result", "ColorChanged", "WebState", "Request", "Download", "NewWindow", "Shared", "Pressed", "Hover", "DragOver", "Drop", "SelectionChanged", "RichChanged", "Formats", "Pasted", "RowSelected", "RowSelectBegin", "RowInset", "Dragging"}
+var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh", "Pan", "Pinch", "Rotate", "Swipe", "Loaded", "Failed", "Native", "Link", "A11yAction", "Adjust", "Ended", "Navigated", "Message", "IncomingURL", "FontLoaded", "Frame", "Result", "ColorChanged", "WebState", "Request", "Download", "NewWindow", "Shared", "Pressed", "Hover", "DragOver", "Drop", "SelectionChanged", "RichChanged", "Formats", "Pasted", "RowSelected", "RowSelectBegin", "RowInset", "Dragging", "Back", "Paged"}
 
-var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone, PGesture, PGesture, PGesture, PInt, PPoint, PString, PBytes, PString, PInt, PInt, PNone, PString, PString, PString, PString, PFloat, PBytes, PInt, PBytes, PString, PBytes, PString, PBytes, PBool, PBool, PGesture, PBytes, PBytes, PBytes, PBytes, PBytes, PBool, PNone, PPoint, PInt}
+var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone, PGesture, PGesture, PGesture, PInt, PPoint, PString, PBytes, PString, PInt, PInt, PNone, PString, PString, PString, PString, PFloat, PBytes, PInt, PBytes, PString, PBytes, PString, PBytes, PBool, PBool, PGesture, PBytes, PBytes, PBytes, PBytes, PBytes, PBool, PNone, PPoint, PInt, PNone, PInt}
 
 func (e EventKind) String() string {
 	if int(e) < len(eventNames) && e > 0 {
@@ -524,7 +600,7 @@ const (
 	CmdPresent CommandID = 4
 	// CmdHaptic: args: u8 Haptic; sent to the root.
 	CmdHaptic CommandID = 5
-	// CmdAnimateBegin: args: f32 duration (seconds), u8 AnimationCurve, i32 repeat (times more; -1: forever), u8 autoreverses; sent to the root: the frames and visual props up to AnimateEnd animate. A repeating animation stops when its prop is set again.
+	// CmdAnimateBegin: args: f32 duration (seconds), u8 AnimationCurve, i32 repeat (times more; -1: forever), u8 autoreverses, f32 delay (seconds), f32 a spring's damping ratio (1: no overshoot), f32 a spring's initial velocity (the change's fraction per second); sent to the root: the frames and visual props up to AnimateEnd animate. A repeating animation stops when its prop is set again.
 	CmdAnimateBegin CommandID = 6
 	CmdAnimateEnd   CommandID = 7
 	// CmdOpenURL: args: the URL; sent to the root: the system opens it (a browser, another app).
@@ -575,9 +651,15 @@ const (
 	CmdInsertText CommandID = 30
 	// CmdShareClose: args: u8 how (0 done, 1 cancelled, 2 open the app with what was shared); sent to a share sheet's root (app.ShareSheet): it closes.
 	CmdShareClose CommandID = 31
+	// CmdA11yFocus: sent to a view: a screen reader, if one is on, moves its focus there (UIAccessibility's screenChanged with the view; Android's ACTION_ACCESSIBILITY_FOCUS).
+	CmdA11yFocus CommandID = 32
+	// CmdBackExit: sent to the root: the app's OnBack handlers let the user's back go on from the root, so the host does what the system would have (Android's back: the activity finishes or goes to the background).
+	CmdBackExit CommandID = 33
+	// CmdReplace: sent to a Stack: its screens destroyed after it, and the screen inserted next (its new first), change at once, with no pop or push: a SplitView's destination changing.
+	CmdReplace CommandID = 34
 )
 
-var commandNames = [...]string{"", "Focus", "Blur", "ListUpdate", "Present", "Haptic", "AnimateBegin", "AnimateEnd", "OpenURL", "Call", "Copy", "Play", "Pause", "Seek", "Eval", "Frames", "Announce", "Share", "ScrollTo", "ScrollToOffset", "Accent", "WebNavigate", "MenuBar", "WindowOptions", "WindowTitle", "ColorScheme", "Locale", "SaveLocale", "Format", "SetLink", "InsertText", "ShareClose"}
+var commandNames = [...]string{"", "Focus", "Blur", "ListUpdate", "Present", "Haptic", "AnimateBegin", "AnimateEnd", "OpenURL", "Call", "Copy", "Play", "Pause", "Seek", "Eval", "Frames", "Announce", "Share", "ScrollTo", "ScrollToOffset", "Accent", "WebNavigate", "MenuBar", "WindowOptions", "WindowTitle", "ColorScheme", "Locale", "SaveLocale", "Format", "SetLink", "InsertText", "ShareClose", "A11yFocus", "BackExit", "Replace"}
 
 func (c CommandID) String() string {
 	if int(c) < len(commandNames) && c > 0 {
@@ -814,6 +896,23 @@ const (
 	LineJoinMiter LineJoin = iota
 	LineJoinRound
 	LineJoinBevel
+)
+
+type CanvasOp int32
+
+const (
+	CanvasOpEnd CanvasOp = iota
+	CanvasOpSave
+	CanvasOpRestore
+	CanvasOpTranslate
+	CanvasOpScale
+	CanvasOpRotate
+	CanvasOpAlpha
+	CanvasOpClip
+	CanvasOpFill
+	CanvasOpStroke
+	CanvasOpGradient
+	CanvasOpText
 )
 
 type AnimationCurve int32

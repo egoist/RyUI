@@ -89,6 +89,12 @@ func (h *Host) command(n *node, c ops.CommandID, args []byte) {
 		h.setFrames(len(args) > 0 && args[0] != 0)
 	case ops.CmdAnnounce:
 		h.announce(string(args))
+	case ops.CmdReplace:
+		if n.nav != nil {
+			n.nav.instant = true
+		}
+	case ops.CmdA11yFocus:
+		h.a11yFocus(n)
 	case ops.CmdShare:
 		h.share(n, string(args))
 	case ops.CmdScrollTo:
@@ -284,6 +290,14 @@ func (h *Host) beginAnimation(args []byte) {
 		name = "easeOut"
 	}
 	tf := Send(Class("CAMediaTimingFunction"), "functionWithName:", uintptr(String(name)))
+	if a.curve == ops.AnimationCurveSpring && len(args) >= 22 && f32(args, 14) < 0.7 {
+		// A bouncy spring: AppKit's implicit animations have no springs,
+		// so a curve that overshoots its end and comes back, about as far
+		// as the damping says. The delay isn't AppKit's either: it starts
+		// at once.
+		over := 1 + 0.9*(0.7-f32(args, 14))
+		tf = MsgFloat4ID(Class("CAMediaTimingFunction"), Sel("functionWithControlPoints::::"), 0.34, over, 0.64, 1)
+	}
 	Send(ctx, "setTimingFunction:", uintptr(tf))
 }
 
@@ -357,6 +371,15 @@ func (h *Host) announce(s string) {
 		String("AXPriorityKey"), NumberInt(90), // high
 	)
 	post(Send(Class("NSApplication"), "sharedApplication"), String("AXAnnouncementRequested"), info)
+}
+
+// a11yFocus moves VoiceOver's cursor to n's view: a layout change naming it.
+func (h *Host) a11yFocus(n *node) {
+	post := announcer()
+	if post == nil || n.view == 0 {
+		return
+	}
+	post(n.view, String("AXLayoutChanged"), Dict(String("AXUIElementsKey"), Array(n.view)))
 }
 
 func (h *Host) share(n *node, s string) {

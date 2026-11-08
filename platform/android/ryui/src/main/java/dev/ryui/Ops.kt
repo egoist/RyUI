@@ -36,7 +36,13 @@ object RyUIKind {
     const val VIDEO = 26
     const val WEB_VIEW = 27
     const val DATE_PICKER = 28
-    const val WINDOW = 29
+    const val PAGE_CONTROL = 29
+    const val POPOVER = 30
+    const val ACCESSORY = 31
+    const val CANVAS = 32
+    const val SPLIT = 33
+    const val SHADER = 34
+    const val WINDOW = 35
 
     fun name(kind: Int): String = when (kind) {
         1 -> "View"
@@ -67,7 +73,13 @@ object RyUIKind {
         26 -> "Video"
         27 -> "WebView"
         28 -> "DatePicker"
-        29 -> "Window"
+        29 -> "PageControl"
+        30 -> "Popover"
+        31 -> "Accessory"
+        32 -> "Canvas"
+        33 -> "Split"
+        34 -> "Shader"
+        35 -> "Window"
         else -> "Kind($kind)"
     }
 }
@@ -108,6 +120,8 @@ object RyUIProp {
     const val LEADING_SWIPE_ACTIONS = 32
     const val SELECTED = 33
     const val MATCH = 34
+    const val INTERCEPT_BACK = 35
+    const val TOOLTIP = 36
 
     object View {
         const val DROP_ACCEPT = 64
@@ -138,10 +152,12 @@ object RyUIProp {
         const val SELECTION = 74
         const val RICH = 75
         const val PASTE_TYPES = 76
+        const val ACCESSORY = 77
     }
 
     object Toggle {
         const val ON = 64
+        const val CHECKBOX = 65
     }
 
     object Slider {
@@ -154,6 +170,7 @@ object RyUIProp {
         const val HORIZONTAL = 64
         const val REFRESHABLE = 65
         const val REFRESHING = 66
+        const val PAGING = 67
     }
 
     object List {
@@ -286,6 +303,38 @@ object RyUIProp {
         const val INLINE = 68
     }
 
+    object PageControl {
+        const val COUNT = 64
+        const val PAGE = 65
+    }
+
+    object Popover {
+        const val ANCHOR = 64
+        const val WIDTH = 65
+        const val HEIGHT = 66
+    }
+
+    object Accessory {
+        const val WIDTH = 64
+        const val HEIGHT = 65
+    }
+
+    object Canvas {
+        const val COMMANDS = 64
+    }
+
+    object Split {
+        const val ITEMS = 64
+        const val SELECTED = 65
+        const val TITLE = 66
+    }
+
+    object Shader {
+        const val CODE = 64
+        const val UNIFORMS = 65
+        const val ANIMATED = 66
+    }
+
     object Window {
         const val TITLE = 64
         const val WIDTH = 65
@@ -347,6 +396,8 @@ object RyUIEventKind {
     const val ROW_SELECT_BEGIN = 49
     const val ROW_INSET = 50
     const val DRAGGING = 51
+    const val BACK = 52
+    const val PAGED = 53
 }
 
 object RyUICommand {
@@ -381,6 +432,9 @@ object RyUICommand {
     const val SET_LINK = 29
     const val INSERT_TEXT = 30
     const val SHARE_CLOSE = 31
+    const val A11Y_FOCUS = 32
+    const val BACK_EXIT = 33
+    const val REPLACE = 34
 }
 
 object RyUIRole {
@@ -567,6 +621,21 @@ object RyUILineJoin {
     const val BEVEL = 2
 }
 
+object RyUICanvasOp {
+    const val END = 0
+    const val SAVE = 1
+    const val RESTORE = 2
+    const val TRANSLATE = 3
+    const val SCALE = 4
+    const val ROTATE = 5
+    const val ALPHA = 6
+    const val CLIP = 7
+    const val FILL = 8
+    const val STROKE = 9
+    const val GRADIENT = 10
+    const val TEXT = 11
+}
+
 object RyUIAnimationCurve {
     const val EASE_IN_OUT = 0
     const val LINEAR = 1
@@ -706,6 +775,7 @@ data class RyUIEnvironment(
     val fontScale: Float = 1f,
     val dark: Boolean = false,
     val reduceMotion: Boolean = false,
+    val screenReader: Boolean = false,
     /** ops.Platform: this host's, Android. */
     val platform: Int = 2,
     /** ops.SizeClass: 1 compact, 2 medium, 3 expanded; 0 unspecified. */
@@ -739,7 +809,7 @@ class RyUIWriter {
     fun header(id: Int, kind: Int) { u32(id); u16(kind) }
     fun environment(e: RyUIEnvironment) {
         for (f in floatArrayOf(e.width, e.height, e.safeTop, e.safeRight, e.safeBottom, e.safeLeft, e.keyboard, e.scale, e.fontScale)) f32(f)
-        u8((if (e.dark) 1 else 0) or (if (e.reduceMotion) 2 else 0) or ((e.platform and 3) shl 2))
+        u8((if (e.dark) 1 else 0) or (if (e.reduceMotion) 2 else 0) or ((e.platform and 3) shl 2) or (if (e.screenReader) 32 else 0))
         u8((e.widthClass and 3) or ((e.heightClass and 3) shl 2))
         string(e.locale)
         string(e.timeZone)
@@ -818,4 +888,6 @@ object RyUIEvents {
     fun rowSelectBegin(id: Int): ByteArray = RyUIWriter().apply { header(id, 49) }.bytes()
     fun rowInset(id: Int, x: Double, y: Double): ByteArray = RyUIWriter().apply { header(id, 50); f64(x); f64(y) }.bytes()
     fun dragging(id: Int, v: Long): ByteArray = RyUIWriter().apply { header(id, 51); u64(v) }.bytes()
+    fun back(id: Int): ByteArray = RyUIWriter().apply { header(id, 52) }.bytes()
+    fun paged(id: Int, v: Long): ByteArray = RyUIWriter().apply { header(id, 53); u64(v) }.bytes()
 }

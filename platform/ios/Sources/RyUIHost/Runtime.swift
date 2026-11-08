@@ -7,10 +7,19 @@ import AuthenticationServices
 import RyUIOps
 #endif
 #if canImport(CRyUI)
-import CRyUI
+@_implementationOnly import CRyUI
 #endif
 
 /// A native view the core made, or a list cell the host made.
+/// The app's assets/: in the app's bundle, or, for an app embedded in
+/// another (ryui build -xcframework), in the framework that holds its code.
+let ryuiAssets: URL? = {
+    for b in [Bundle(for: RyUIRuntime.self), Bundle.main] {
+        if let u = b.resourceURL?.appendingPathComponent("assets"), FileManager.default.fileExists(atPath: u.path) { return u }
+    }
+    return Bundle.main.resourceURL?.appendingPathComponent("assets")
+}()
+
 @MainActor final class RyUINode {
     let id: UInt32
     let kind: RyUIKind?
@@ -235,6 +244,9 @@ final class RyUITextField: UITextField {
     let gestureDelegate = RyUIGestureDelegate()
     /// Between AnimateBegin and AnimateEnd: the duration and curve.
     var animation: (Double, Int32)?
+    /// The animation's delay, and a spring's damping ratio and initial velocity.
+    var animationDelay: Double = 0
+    var spring: (damping: CGFloat, velocity: CGFloat) = (0.85, 0)
     /// The animation's repeat: times more (-1 forever), and autoreverses.
     var repeating: (Int32, Bool)?
     /// Views with a repeating animation, which a plain change stops.
@@ -424,7 +436,7 @@ final class RyUITextField: UITextField {
             v.tag = Int(id)
             // The core sizes stacks and tabs; screens are sized by their
             // container controller. Never by autoresizing.
-            if kind == .stack || kind == .tabs { v.autoresizingMask = [] }
+            if kind == .stack || kind == .tabs || kind == .split { v.autoresizingMask = [] }
             let node = RyUINode(id: id, kind: kind, view: v)
             vc?.navigationItem.largeTitleDisplayMode = .never // Screen.LargeTitle asks for it
             node.vc = vc
@@ -437,6 +449,12 @@ final class RyUITextField: UITextField {
         switch kind {
         case .view:
             view = RyUIContainerView()
+        case .accessory:
+            view = RyUIAccessoryView(frame: .zero)
+        case .canvas:
+            view = RyUICanvasView(frame: .zero)
+        case .shader:
+            view = makeShader()
         case .text:
             let l = RyUILabel()
             l.numberOfLines = 0
@@ -515,6 +533,18 @@ final class RyUITextField: UITextField {
                 self?.emit(id, .selected) { RyUIEvents.selected(id, i) }
             }, for: .valueChanged)
             view = s
+        case .pageControl:
+            // The system's dots: tapping its sides steps, a scrub moves along, VoiceOver adjusts.
+            let p = UIPageControl()
+            // Its default dots are white, for photos; on the app's own background, the label's.
+            p.currentPageIndicatorTintColor = .label
+            p.pageIndicatorTintColor = .tertiaryLabel
+            p.addAction(UIAction { [weak self, weak p] _ in
+                guard let p else { return }
+                let i = Int64(p.currentPage)
+                self?.emit(id, .selected) { RyUIEvents.selected(id, i) }
+            }, for: .valueChanged)
+            view = p
         case .progress:
             view = UIProgressView(progressViewStyle: .default)
         case .datePicker:
@@ -583,6 +613,7 @@ final class RyUITextField: UITextField {
 
     public func setFrame(_ id: UInt32, x: Float, y: Float, width: Float, height: Float) {
         guard let n = nodes[id] else { return }
+        if n.parent?.vc is RyUISplitController { return } // its column's, which UIKit sizes
         framesApplied = true
         if let cell = n.cell {
             cell.setRowHeight(CGFloat(height))
@@ -637,7 +668,7 @@ final class RyUITextField: UITextField {
     public func listen(_ id: UInt32, event: UInt16) {
         guard let n = nodes[id] else { return }
         n.listens.insert(event)
-        if event == RyUIEventKind.scrolled.rawValue, let s = n.view as? UIScrollView, n.scrolls == nil {
+        if event == RyUIEventKind.scrolled.rawValue || event == RyUIEventKind.paged.rawValue, let s = n.view as? UIScrollView, n.scrolls == nil {
             n.scrolls = RyUIScrollReporter(id, self)
             if n.list == nil { s.delegate = n.scrolls } // a list's own delegate forwards it
         }
@@ -724,6 +755,16 @@ final class RyUITextField: UITextField {
         #endif
         case .announce:
             UIAccessibility.post(notification: .announcement, argument: String(decoding: args, as: UTF8.self))
+        case .replace:
+            (n.vc as? RyUIStackController)?.instant = true
+        case .backExit:
+            break // iOS has no back to leave the app with
+        case .a11yFocus:
+            // After this batch's frames, so VoiceOver finds the view where it shows.
+            DispatchQueue.main.async { [weak v = n.view] in
+                guard let v, v.window != nil else { return }
+                UIAccessibility.post(notification: .screenChanged, argument: v)
+            }
         case .share:
             let s = String(decoding: args, as: UTF8.self)
             // A URL is shared as one (a link preview, Safari's actions).

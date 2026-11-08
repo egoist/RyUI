@@ -9,7 +9,7 @@ import MachO
 import MetricKit
 #endif
 #if canImport(CRyUI)
-import CRyUI
+@_implementationOnly import CRyUI
 #endif
 
 /// ryui/crash's native side. The Go code keeps its own crashes (its crash

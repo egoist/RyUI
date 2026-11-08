@@ -3,7 +3,6 @@ package dev.ryui
 import android.app.KeyguardManager
 import android.content.Context
 import android.content.pm.PackageManager
-import android.os.Build
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK
@@ -23,8 +22,8 @@ fun RyUIRuntime.biometricMethods(): Map<String, RyUIModuleMethod> = mapOf(
         val pm = app.packageManager
         val kind = when {
             pm.hasSystemFeature(PackageManager.FEATURE_FINGERPRINT) -> 1
-            Build.VERSION.SDK_INT >= 29 && pm.hasSystemFeature(PackageManager.FEATURE_FACE) -> 2
-            Build.VERSION.SDK_INT >= 29 && pm.hasSystemFeature(PackageManager.FEATURE_IRIS) -> 3
+            pm.hasSystemFeature(PackageManager.FEATURE_FACE) -> 2
+            pm.hasSystemFeature(PackageManager.FEATURE_IRIS) -> 3
             else -> 0
         }
         val enrolled = BiometricManager.from(app).canAuthenticate(BIOMETRIC_WEAK) == BiometricManager.BIOMETRIC_SUCCESS

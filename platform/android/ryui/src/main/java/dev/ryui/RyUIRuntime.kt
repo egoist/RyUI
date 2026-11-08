@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Context
 import android.net.Uri
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.text.Editable
@@ -146,21 +145,16 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
 
     /** The SaveLocale command: the app's language for its next launches, or "" to follow the system's. */
     private fun saveLocale(tag: String) {
-        if (Build.VERSION.SDK_INT >= 33) {
-            // The system tells the process with a configuration change, which
-            // the Activity handles (configChanges): the language has changed by then.
-            app.getSystemService(android.app.LocaleManager::class.java)?.applicationLocales =
-                if (tag.isEmpty()) android.os.LocaleList.getEmptyLocaleList() else android.os.LocaleList.forLanguageTags(tag)
-            return
-        }
-        saveRegionLocale(tag)
-        regionChanged()
+        // The system tells the process with a configuration change, which
+        // the Activity handles (configChanges): the language has changed by then.
+        app.getSystemService(android.app.LocaleManager::class.java)?.applicationLocales =
+            if (tag.isEmpty()) android.os.LocaleList.getEmptyLocaleList() else android.os.LocaleList.forLanguageTags(tag)
     }
 
     /**
      * The app's Material theme on base: with a color scheme from the
-     * wallpaper or the accent where the system can make one (Android 12
-     * and later), as Material's DynamicColors does.
+     * wallpaper or the accent where the system can make one, as Material's
+     * DynamicColors does.
      */
     private fun theme(base: Context): Context {
         val t = ContextThemeWrapper(base, R.style.Theme_RyUI)
@@ -329,8 +323,11 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
     }
 
     fun updateBack() {
-        back.isEnabled = activeStack() != null
+        back.isEnabled = activeStack() != null || nodes[rootID]?.intercepts == true
     }
+
+    /** Sheets' back callbacks, on while their OnBack intercepts. */
+    val sheetBack = HashMap<Int, androidx.activity.OnBackPressedCallback>()
 
     private var framesOn = false
     private val frame = object : android.view.Choreographer.FrameCallback {
@@ -350,6 +347,22 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
     }
 
     /** Reports a Scroll's offset, in points, as Scrolled (when the core listens). */
+    /**
+     * A scroll view shows its content only inside its frame, as UIKit's does:
+     * RyUI's containers let their children draw outside them, and its parent
+     * would show the content it scrolled out of sight (the next page of a
+     * carousel). Clipped to its background's outline (its corners) if any.
+     */
+    private fun clipsToFrame(v: View) {
+        v.outlineProvider = object : android.view.ViewOutlineProvider() {
+            override fun getOutline(view: View, outline: android.graphics.Outline) {
+                view.background?.getOutline(outline)
+                if (outline.isEmpty) outline.setRect(0, 0, view.width, view.height)
+            }
+        }
+        v.clipToOutline = true
+    }
+
     private fun reportScrolls(v: View, id: Int) {
         val r = RyUIScrollReporter(this, id, v)
         v.setOnScrollChangeListener { _, x, y, _, _ ->
@@ -577,7 +590,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
                     cur.setSelection(old.selectionStart.coerceAtLeast(0), old.selectionEnd.coerceAtLeast(0))
                 }
             }
-            old is MaterialSwitch && cur is MaterialSwitch -> cur.isChecked = old.isChecked
+            old is android.widget.CompoundButton && cur is android.widget.CompoundButton -> cur.isChecked = old.isChecked
             old is Slider && cur is Slider -> { cur.valueFrom = old.valueFrom; cur.valueTo = old.valueTo; cur.value = old.value }
         }
         settingProp = false
@@ -632,6 +645,8 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
         if (kind == RyUIKind.LIST) n.list = (view.tag as RyUIList)
         if (kind == RyUIKind.TEXT_FIELD) n.textStyle = RyUITextStyle.BODY
         if (kind == RyUIKind.STACK) stacks.add(n)
+        if (kind == RyUIKind.POPOVER) n.popover = RyUIPopover(this, n)
+        if (kind == RyUIKind.ACCESSORY) n.accessory = RyUIAccessory(this, n)
         nodes[id] = n
         if (kind == RyUIKind.TEXT || kind == RyUIKind.TEXT_FIELD) applyColor(n)
     }
@@ -655,7 +670,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
             RyUIKind.WEB_VIEW -> RyUIWebView(this, id)
             RyUIKind.SHAPE -> RyUIShape(this)
             RyUIKind.VIDEO -> RyUIVideo(this, id)
-            RyUIKind.SCROLL -> NestedScrollView(ctx).apply { isFillViewport = false; reportScrolls(this, id) }
+            RyUIKind.SCROLL -> NestedScrollView(ctx).apply { isFillViewport = false; clipsToFrame(this); reportScrolls(this, id) }
             RyUIKind.LIST -> RyUIList(id, this).frame
             RyUIKind.ACTIVITY -> CircularProgressIndicator(ctx).apply { isIndeterminate = true }
             RyUIKind.SYMBOL -> RyUISymbol(this)
@@ -664,10 +679,15 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
             RyUIKind.STEPPER -> RyUIStepper(this, id)
             RyUIKind.COLOR_PICKER -> RyUIColorPicker(this, id)
             RyUIKind.PROGRESS -> makeProgress()
+            RyUIKind.PAGE_CONTROL -> RyUIPageDots(this, id)
+            RyUIKind.ACCESSORY -> RyUIContainer(ctx)
+            RyUIKind.CANVAS -> RyUICanvas(this)
+            RyUIKind.SPLIT -> RyUISplit(this, id)
+            RyUIKind.SHADER -> RyUIShaderView(this)
             RyUIKind.DATE_PICKER -> RyUIDatePicker(this, id)
             RyUIKind.STACK -> RyUIStack(ctx, id, this)
             RyUIKind.TABS -> RyUITabs(ctx, id, this)
-            RyUIKind.SCREEN, RyUIKind.SHEET -> RyUIScreen(ctx, id, this)
+            RyUIKind.SCREEN, RyUIKind.SHEET, RyUIKind.POPOVER -> RyUIScreen(ctx, id, this)
             RyUIKind.ALERT -> View(ctx)
             RyUIKind.IMAGE -> androidx.appcompat.widget.AppCompatImageView(ctx).apply { scaleType = android.widget.ImageView.ScaleType.FIT_CENTER }
             RyUIKind.NATIVE -> RyUINativeHost(ctx)
@@ -741,7 +761,11 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
                 true
             } else false
         }
-        setOnFocusChangeListener { _, focused ->
+        setOnFocusChangeListener { v, focused ->
+            // Its Accessory, if it has one, over the keyboard while it's focused.
+            (nodes[id]?.props?.get(RyUIProp.TextField.ACCESSORY) as? Long)?.let { a ->
+                nodes[a.toInt()]?.accessory?.let { if (focused) it.show(v) else it.hide() }
+            }
             if (focused) emit(id, RyUIEventKind.FOCUS) { RyUIEvents.focus(id) }
             else emit(id, RyUIEventKind.BLUR) { RyUIEvents.blur(id) }
         }
@@ -758,6 +782,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
         val v: android.widget.FrameLayout = if (horizontal) RyUIHorizontalScroll(themed).apply { isFillViewport = false }
             else NestedScrollView(themed).apply { isFillViewport = false }
         v.layoutDirection = directionOf(n)
+        clipsToFrame(v)
         reportScrolls(v, n.id)
         while (old.childCount > 0) {
             val c = old.getChildAt(0)
@@ -775,6 +800,28 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
             v.layout(old.left, old.top, old.right, old.bottom)
         }
         n.view = v
+        restyle(n)
+        RyUIPager.apply(this, n)
+    }
+
+    /** Makes a Toggle a checkbox: Material's, in place of its switch. */
+    fun makeCheckbox(n: RyUINode) {
+        val old = n.view as? MaterialSwitch ?: return
+        val id = n.id
+        val c = com.google.android.material.checkbox.MaterialCheckBox(themed).apply {
+            isChecked = old.isChecked
+            isEnabled = old.isEnabled
+            layoutDirection = directionOf(n)
+            setOnCheckedChangeListener { _, on -> if (!settingProp) emit(id, RyUIEventKind.TOGGLED) { RyUIEvents.toggled(id, on) } }
+        }
+        val parent = old.parent as? ViewGroup
+        if (parent != null) {
+            val i = parent.indexOfChild(old)
+            val lp = old.layoutParams
+            parent.removeViewAt(i)
+            parent.addView(c, i, lp)
+        }
+        n.view = c
         restyle(n)
     }
 
@@ -873,7 +920,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
         (n.view as? RyUIVideo)?.release()
         stacks.remove(n)
         if (n.underDying) return // its views leave with the animating screen or sheet
-        if ((n.kind == RyUIKind.SCREEN || n.kind == RyUIKind.SHEET || n.kind == RyUIKind.ALERT) && destroyNav(n)) return
+        if ((n.kind == RyUIKind.SCREEN || n.kind == RyUIKind.SHEET || n.kind == RyUIKind.POPOVER || n.kind == RyUIKind.ALERT) && destroyNav(n)) return
         if (matchOut(n)) {
             n.parent?.children?.remove(n)
             n.parent = null
@@ -913,6 +960,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
         framesApplied = true
         val f = n.frame ?: FloatArray(4).also { n.frame = it }
         f[0] = x; f[1] = y; f[2] = width; f[3] = height
+        if (n.parent?.view is RyUISplit) return // a SplitView's detail: it fills what the drawer leaves
         // A Scroll, or a row of its content, moved: what it takes out is redone.
         if (n.kind == RyUIKind.SCROLL) pendingCulls.add(n)
         n.parent?.parent?.let { if (it.kind == RyUIKind.SCROLL) pendingCulls.add(it) }
@@ -1054,6 +1102,12 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
                 args.get(b)
                 @Suppress("DEPRECATION") // its replacements (live regions, pane titles) describe views, not events
                 activity?.window?.decorView?.announceForAccessibility(String(b, Charsets.UTF_8))
+            }
+            RyUICommand.BACK_EXIT -> backExit()
+            RyUICommand.REPLACE -> (n.view as? RyUIStack)?.instant = true
+            RyUICommand.A11Y_FOCUS -> n.view?.let { v ->
+                // After this batch's frames, so TalkBack finds the view where it shows.
+                v.post { if (v.isAttachedToWindow) v.performAccessibilityAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS, null) }
             }
             RyUICommand.SHARE_CLOSE -> (activity as? RyUIShareActivity)?.close(if (args.hasRemaining()) args.get().toInt() else 0)
             RyUICommand.COPY -> {

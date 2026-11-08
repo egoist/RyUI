@@ -56,7 +56,7 @@ class GoldenTest {
 
     @Test fun encodesGoldenEvents() {
         val env = RyUIEnvironment(width = 402f, height = 874f, safeTop = 62f, safeBottom = 34f, keyboard = 336f,
-            scale = 3f, fontScale = 1.25f, dark = true, reduceMotion = true, platform = 1, widthClass = 1, heightClass = 3, locale = "en_US", timeZone = "Asia/Shanghai",
+            scale = 3f, fontScale = 1.25f, dark = true, reduceMotion = true, screenReader = true, platform = 1, widthClass = 1, heightClass = 3, locale = "en_US", timeZone = "Asia/Shanghai",
             languages = "en-US,zh-Hans", firstWeekday = 2, hourCycle = 24)
         val events = listOf(
             RyUIEvents.press(7),

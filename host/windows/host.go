@@ -11,8 +11,8 @@
 package windows
 
 import (
-	"github.com/egoist/ryui/internal/rtf"
 	"fmt"
+	"github.com/egoist/ryui/internal/rtf"
 	"math"
 	"os"
 	"runtime"
@@ -92,29 +92,32 @@ type node struct {
 	utext          []uint16
 	placeholder    string
 	multiline      bool
-	plain          bool   // TextFieldProps.Plain
-	settingText    bool   // the field's text is being set from the core
-	pasteTypes     []string  // TextFieldProps.PasteTypes
+	plain          bool     // TextFieldProps.Plain
+	settingText    bool     // the field's text is being set from the core
+	pasteTypes     []string // TextFieldProps.PasteTypes
 	// A Rich TextField's (richfield.go): its control is a rich edit, the
 	// styled text the core sent, its runs as last read, and the formats
 	// last reported.
-	richText     bool
-	richContent  []byte
-	richDoc      rtf.Doc                  // the defaults its RTF was written with
-	richColors   map[rtf.Color]ops.Color // the colors its spans were sent with, by what they were drawn in
-	fieldRuns    []fieldRun
-	formatsKnown bool
-	formats      byte
-	formatLink   string
+	richText       bool
+	richContent    []byte
+	richDoc        rtf.Doc                 // the defaults its RTF was written with
+	richColors     map[rtf.Color]ops.Color // the colors its spans were sent with, by what they were drawn in
+	fieldRuns      []fieldRun
+	formatsKnown   bool
+	formats        byte
+	formatLink     string
 	inset          [4]float32 // ContentInset: top, right, bottom, left points
-	selection      [2]uint32 // a TextField's, as last reported or set (UTF-16, the core's text)
-	selQueued      bool      // a report of its selection waits
-	editRTL        bool   // its EDIT was made right to left
-	editSide       uint32 // and with this alignment style
+	selection      [2]uint32  // a TextField's, as last reported or set (UTF-16, the core's text)
+	selQueued      bool       // a report of its selection waits
+	editRTL        bool       // its EDIT was made right to left
+	editSide       uint32     // and with this alignment style
 	secure         bool
 	keyboard       int32
 	items          []string // Segmented, Wheel
 	selected       int
+	pages          int     // a PageControl's
+	paging         bool    // a Scroll that moves by pages
+	wheelSum       int32   // a paging Scroll's wheel, toward a page
 	value          float64 // Slider, Stepper, Progress, DatePicker
 	min, max, step float64
 	on             bool    // Toggle
@@ -143,6 +146,13 @@ type node struct {
 	presented      bool
 	detents        int64
 	dying          bool
+	interceptBack  bool // ui.OnBack: going back asks the core (Back)
+	tooltip        string
+	canvas         []byte     // a Canvas's display list
+	kage           *cpuShader // a Shader's program, on the CPU
+	paneNode       *node      // a SplitView's pane
+	checkbox       bool       // a Toggle drawn as a check box
+	pane           *splitPane // a pane's rows
 	a11yLabel      string
 	colorValue     ops.Color
 	host           func(h *Host, n *node, m uint32, w, l uintptr) (uintptr, bool) // a host-made view's messages
@@ -156,7 +166,9 @@ const (
 	kindTabBar
 	kindSheetWindow
 	kindScrollBar
-	kindWindowFrame // a Window's top-level window
+	kindWindowFrame   // a Window's top-level window
+	kindPopoverWindow // a Popover's popup window
+	kindSidebar       // a SplitView's pane
 )
 
 func (n *node) listening(e ops.EventKind) bool {
@@ -178,6 +190,7 @@ type Host struct {
 	window uintptr // the app's window
 	park   uintptr // a hidden window views wait in until they're inserted
 	msgWin uintptr // a message-only window: Post's wake-ups
+	tips   uintptr // the tooltip control, made with the first tooltip
 	env    host.Environment
 	dpi    int
 	scale  float32 // pixels per point: dpi / 96
@@ -544,6 +557,9 @@ func (h *Host) destroy(id ops.NodeID) {
 	if h.destroyNav(n) {
 		return
 	}
+	if n.tooltip != "" {
+		SetTooltip(h.tips, n.hwnd, "")
+	}
 	if n.parent != nil {
 		h.remove(n.parent, n)
 	}
@@ -565,6 +581,9 @@ func (h *Host) release(n *node) {
 	}
 	if n.image != nil {
 		n.image.release()
+	}
+	if n.kage != nil {
+		n.kage.release()
 	}
 	if n.hwnd != 0 {
 		hw := n.hwnd
@@ -597,6 +616,7 @@ func (h *Host) forgetTree(hwnd uintptr) {
 			KillTimer(w, timerLongPress)
 			KillTimer(w, timerSpin)
 			KillTimer(w, timerBars)
+			KillTimer(w, timerShader)
 			delete(h.byHwnd, w)
 		}
 	}
@@ -725,6 +745,10 @@ func (h *Host) placeFrame(n *node) {
 	if n.hwnd == 0 || n == h.root {
 		return
 	}
+	if p := n.parent; p != nil && p.paneNode != nil {
+		h.layoutSplit(p) // a SplitView's detail: beside its pane
+		return
+	}
 	h.placeAt(n, n.frame)
 }
 
@@ -750,6 +774,8 @@ func (h *Host) resized(n *node) {
 		n.list.resized(h)
 	case n.kind == ops.KindStack || n.kind == ops.KindTabs:
 		h.layoutScreens(n)
+	case n.paneNode != nil:
+		h.layoutSplit(n)
 	case n.kind == ops.KindScroll:
 		h.updateScroll(n)
 	case n.kind == ops.KindStepper:

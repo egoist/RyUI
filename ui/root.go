@@ -33,6 +33,7 @@ type Root struct {
 	batch     *ops.Batch   // where ops go
 	spare     []*ops.Batch // batches for ops written while one is applied
 	el        *element
+	back      *backScope // OnBack's outside screens and sheets
 	env       *signal.Signal[host.Environment]
 	envV      host.Environment
 	scale     float32
@@ -52,7 +53,7 @@ type Root struct {
 
 	anim      Animation // what ui.Animate asked for, for this flush
 	animating bool
-	animArgs  [10]byte
+	animArgs  [22]byte
 
 	menuBars   []*menuBar // MenuBar's, mounted; the last shows
 	menuItems  []MenuItem // the menus' items, in order (Action's index)
@@ -242,6 +243,10 @@ func (r *Root) layout() {
 			continue
 		}
 		live = append(live, e)
+		if e.fits {
+			r.layoutFit(e, p)
+			continue
+		}
 		env := e.env.Peek()
 		size := layout.Size{W: env.Width, H: env.Height}
 		if size.W > 0 && size.H > 0 && (e.box.Dirty() || size != e.laidSize) {
@@ -262,6 +267,53 @@ func (r *Root) layout() {
 	}
 	clear(p.Changed)
 	p.Changed = p.Changed[:0]
+}
+
+// layoutFit lays a content-sized root out at its content's size, no
+// wider than it may be nor taller than the root, and tells the host its
+// size when it changes.
+func (r *Root) layoutFit(e *element, p *layout.Pass) {
+	if e.fullWidth {
+		w := r.envV.Width
+		if w <= 0 || !e.box.Dirty() && e.laidSize.W == w {
+			return
+		}
+		if e.box.Style.Width != layout.Pt(w) {
+			st := e.box.Style
+			st.Width = layout.Pt(w)
+			e.box.SetStyle(st)
+		}
+		s := e.box.Layout(layout.Size{W: w, H: layout.MaxContentSpace}, p)
+		if s != e.laidSize {
+			e.laidSize = s
+			r.batch.SetFloat(e.id, ops.PropAccessoryWidth, float64(s.W))
+			r.batch.SetFloat(e.id, ops.PropAccessoryHeight, float64(s.H))
+		}
+		return
+	}
+	if !e.box.Dirty() && e.laidSize.W > 0 {
+		return
+	}
+	mh := layout.Auto
+	if h := r.envV.Height; h > 0 {
+		mh = layout.Pt(h * 0.8)
+	}
+	if e.box.Style.MaxHeight != mh {
+		st := e.box.Style
+		st.MaxHeight = mh
+		e.box.SetStyle(st)
+	}
+	// Its content's natural width; too wide, laid out again at the widest
+	// it may be, which its text wraps to.
+	s := e.box.Layout(layout.Size{W: layout.MaxContentSpace, H: layout.MaxContentSpace}, p)
+	if s.W > e.maxW {
+		s = e.box.Layout(layout.Size{W: e.maxW, H: layout.MaxContentSpace}, p)
+	}
+	if s != e.laidSize {
+		e.laidSize = s
+		r.batch.SetFloat(e.id, ops.PropPopoverWidth, float64(s.W))
+		r.batch.SetFloat(e.id, ops.PropPopoverHeight, float64(s.H))
+	}
 }
 
 // sendAccent tells the host the app's accent color (ryui.json's), before
@@ -486,6 +538,12 @@ func dispatch(ev ops.Event) {
 		}
 	case ops.EventDismissed:
 		call(h.dismissed)
+	case ops.EventBack:
+		call(h.back)
+	case ops.EventPaged:
+		if h.paged != nil {
+			h.paged(ev.Int)
+		}
 	case ops.EventRefresh:
 		call(h.refresh)
 	case ops.EventPan:

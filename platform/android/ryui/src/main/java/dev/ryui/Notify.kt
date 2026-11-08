@@ -13,7 +13,6 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import androidx.core.app.NotificationCompat
@@ -50,9 +49,9 @@ import java.util.concurrent.TimeUnit
  */
 fun RyUIRuntime.notifyMethods(): Map<String, RyUIModuleMethod> = mapOf(
     "request" to { _, reply ->
-        if (Build.VERSION.SDK_INT >= 33) withPermission(arrayOf(Manifest.permission.POST_NOTIFICATIONS)) { ok ->
+        withPermission(arrayOf(Manifest.permission.POST_NOTIFICATIONS)) { ok ->
             reply(Result.success(byteArrayOf(if (ok) 1 else 0)))
-        } else reply(Result.success(byteArrayOf(if (NotificationManagerCompat.from(app).areNotificationsEnabled()) 1 else 0)))
+        }
     },
     "schedule" to { args, reply ->
         try {

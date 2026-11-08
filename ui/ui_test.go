@@ -793,7 +793,7 @@ func TestRepeatingAnimation(t *testing.T) {
 	ui.AnimateWith(ui.Animation{Duration: 0.8, Repeat: ui.Forever, Autoreverses: true}, func() { on.Set(true) })
 	r.Flush()
 	b := h.Commands(ops.CmdAnimateBegin)[0].Value.Bytes
-	if len(b) != 10 || int32(binary.LittleEndian.Uint32(b[5:])) != -1 || b[9] != 1 {
+	if len(b) != 22 || int32(binary.LittleEndian.Uint32(b[5:])) != -1 || b[9] != 1 {
 		t.Fatalf("args %v", b)
 	}
 }
@@ -1360,5 +1360,113 @@ func TestPlainFieldGlassButton(t *testing.T) {
 	}
 	if b := h.OfKind(ops.KindButton); len(b) != 1 || ops.ButtonVariant(b[0].Int(ops.PropButtonVariant)) != ops.ButtonVariantGlass {
 		t.Fatalf("variant\n%s", h.Log())
+	}
+}
+
+// AccessibilityFocus sends A11yFocus to the node's view (a container
+// with no view of its own: its first); the environment says whether a
+// screen reader is on.
+func TestAccessibilityFocus(t *testing.T) {
+	var reader bool
+	h, r := mount(t, func() ui.Node {
+		err := ui.Text(ui.Val("Wrong password"))
+		env := ui.UseEnvironment()
+		signal.Effect(func() { reader = env.Get().ScreenReader })
+		return ui.Column(ui.Style{},
+			err,
+			ui.Button(ui.ButtonProps{Title: ui.Val("Sign in"), OnPress: func() { ui.AccessibilityFocus(err) }}))
+	})
+	h.Tap(h.One(ops.KindButton, "Sign in"))
+	r.Flush()
+	c := h.Commands(ops.CmdA11yFocus)
+	if len(c) != 1 || c[0].ID != h.One(ops.KindText, "Wrong password").ID {
+		t.Fatalf("a11y focus commands %v", c)
+	}
+	if reader {
+		t.Fatal("a screen reader before one is on")
+	}
+	e := h.Env
+	e.ScreenReader = true
+	h.SetEnvironment(e)
+	r.Flush()
+	if !reader {
+		t.Fatal("ScreenReader didn't follow the environment")
+	}
+}
+
+// A tooltip is a prop of a button, and makes a plain view a real one;
+// it follows its signal.
+func TestTooltip(t *testing.T) {
+	tip := signal.New("Add to favorites")
+	h, r := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{},
+			ui.Button(ui.ButtonProps{Icon: "star", Tooltip: tip}),
+			ui.View(ui.ViewProps{Tooltip: ui.Val("Pinned")}, ui.Symbol("pin")))
+	})
+	b := h.OfKind(ops.KindButton)[0]
+	if b.String(ops.PropTooltip) != "Add to favorites" {
+		t.Fatalf("button tooltip %q", b.String(ops.PropTooltip))
+	}
+	found := false
+	for _, v := range h.OfKind(ops.KindView) {
+		found = found || v.String(ops.PropTooltip) == "Pinned"
+	}
+	if !found {
+		t.Fatal("the view has no tooltip")
+	}
+	tip.Set("Remove from favorites")
+	r.Flush()
+	if b.String(ops.PropTooltip) != "Remove from favorites" {
+		t.Fatal("the tooltip didn't follow its signal")
+	}
+}
+
+// A spring's delay, damping and velocity ride with AnimateBegin, and
+// OnDone comes once it's logically complete.
+func TestSpringAndOnDone(t *testing.T) {
+	x := signal.New(float32(0))
+	h, r := mount(t, func() ui.Node {
+		return ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style {
+			return ui.Style{Transform: ui.Transform{TranslateX: x.Get()}}
+		})})
+	})
+	done := make(chan struct{}, 1)
+	ui.AnimateWith(ui.Animation{Duration: 0.02, Curve: ui.Spring, Delay: 0.01, Damping: 0.6, Velocity: 2.5,
+		OnDone: func() { done <- struct{}{} }}, func() { x.Set(120) })
+	r.Flush()
+	b := h.Commands(ops.CmdAnimateBegin)[0].Value.Bytes
+	f := func(i int) float32 { return math.Float32frombits(binary.LittleEndian.Uint32(b[i:])) }
+	if f(10) != 0.01 || f(14) != 0.6 || f(18) != 2.5 {
+		t.Fatalf("delay %v, damping %v, velocity %v", f(10), f(14), f(18))
+	}
+	// It's posted to the main thread after 30ms: wait for it there.
+	for i := 0; ; i++ {
+		h.RunPosted()
+		select {
+		case <-done:
+			return
+		default:
+		}
+		if i > 2000 {
+			t.Fatal("OnDone never came")
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
+// A checkbox toggle says so before it's measured, and isn't measured as
+// a switch is (the measure cache keeps them apart).
+func TestCheckbox(t *testing.T) {
+	h, _ := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{},
+			ui.Toggle(ui.ToggleProps{Value: signal.New(true)}),
+			ui.Toggle(ui.ToggleProps{Value: signal.New(false), Checkbox: true}))
+	})
+	ts := h.OfKind(ops.KindToggle)
+	if len(ts) != 2 || ts[0].Bool(ops.PropToggleCheckbox) || !ts[1].Bool(ops.PropToggleCheckbox) {
+		t.Fatal("no checkbox")
+	}
+	if h.Measures < 2 {
+		t.Fatalf("%d measures: the checkbox took the switch's", h.Measures)
 	}
 }

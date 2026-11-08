@@ -1,4 +1,5 @@
-// Gallery shows RyUI's components, one section each.
+// Gallery shows RyUI's components, a destination each in a split view's
+// sidebar (a drawer on Android, a list that pushes on an iPhone).
 //
 //	go run ./cmd/ryui dev -ios examples/gallery
 package main
@@ -13,6 +14,7 @@ import (
 	"github.com/egoist/ryui/audio"
 	"github.com/egoist/ryui/camera"
 	"github.com/egoist/ryui/camera/record"
+	"github.com/egoist/ryui/chart"
 	"github.com/egoist/ryui/compose"
 	"github.com/egoist/ryui/crash"
 	"github.com/egoist/ryui/device"
@@ -22,60 +24,76 @@ import (
 	"github.com/egoist/ryui/print"
 	"github.com/egoist/ryui/scan"
 	"github.com/egoist/ryui/secure"
+	"github.com/egoist/ryui/shader"
 	"github.com/egoist/ryui/signal"
 	"github.com/egoist/ryui/store"
 	"github.com/egoist/ryui/ui"
 )
 
 func App() ui.Node {
-	return ui.Stack(func() ui.Node {
-		nav := ui.UseNavigator()
-		toast := signal.New(false) // shown over the screen, at its bottom
-		down := signal.New(false)  // scrolled past the first screen
-		var page ui.Node
-		page = ui.Scroll(ui.ScrollProps{Style: ui.Style{Grow: 1}, OnScroll: func(_, y float32) { down.Set(y > 300) }},
-			ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 28},
-				ui.Button(ui.ButtonProps{Title: ui.Val("Open the inbox (a List)"), Icon: ui.IconMail, Variant: ui.ButtonBordered,
-					OnPress: func() {
-						nav.Push(inbox, ui.ScreenOptions{Title: ui.Val("Inbox"), Actions: []ui.Action{
-							{Title: ui.Val("Top"), Icon: ui.IconUp, OnPress: func() { ui.ScrollToItem(inboxList, 0, true) }},
-						}})
-					}}),
-				ui.Button(ui.ButtonProps{Title: ui.Val("Open the settings (a grouped List)"), Icon: ui.IconSettings, Variant: ui.ButtonBordered,
-					OnPress: func() { nav.Push(settings, ui.ScreenOptions{Title: ui.Val("Settings")}) }}),
-				ui.Button(ui.ButtonProps{Title: ui.Val("Open the photos (a grid)"), Icon: ui.IconPhoto, Variant: ui.ButtonBordered,
-					OnPress: func() { nav.Push(photos, ui.ScreenOptions{Title: ui.Val("Photos")}) }}),
-				ui.Button(ui.ButtonProps{Title: ui.Val("Open the camera"), Icon: ui.IconCamera, Variant: ui.ButtonBordered,
-					OnPress: func() { nav.Push(cameraScreen, ui.ScreenOptions{Title: ui.Val("Camera")}) }}),
-				ui.Button(ui.ButtonProps{Title: ui.Val("Open a web page"), Icon: ui.IconGlobe, Variant: ui.ButtonBordered,
-					OnPress: func() {
-						nav.Push(webPage, ui.ScreenOptions{Title: ui.Val("Web"), Actions: []ui.Action{
-							{Title: ui.Val("Run script"), Icon: "curlybraces", OnPress: func() {
-								ui.EvalJS(webView, `document.getElementById("out").textContent = "Set from Go at " + new Date().toLocaleTimeString()`)
-							}},
-							{Title: ui.Val("Print"), Icon: "printer", OnPress: func() { print.WebView(webView, print.Options{}, nil) }},
-						}})
-					}}),
-				motion(toast),
-				symbols(),
-				fonts(),
-				images(),
-				shapes(),
-				video(),
-				textInput(),
-				controls(),
-				dates(),
-				services(),
-				documents(),
-				platform(),
-				crashes(),
-			),
-		)
-		return ui.View(ui.ViewProps{Style: ui.Style{Grow: 1}}, page, toastOverlay(toast),
-			topButton(down, func() { ui.ScrollTo(page, 0, 0, true) }))
-	}, ui.ScreenOptions{Title: ui.Val("Gallery"), Actions: []ui.Action{
-		{Title: ui.Val("Share"), Icon: ui.IconShare, OnPress: func() {}},
+	// page is a destination's first screen: its examples in a scroll.
+	page := func(kids ...func() ui.Node) func() ui.Node {
+		return func() ui.Node {
+			nodes := make([]ui.Node, len(kids))
+			for i, k := range kids {
+				nodes[i] = k()
+			}
+			return ui.Scroll(ui.ScrollProps{Style: ui.Style{Grow: 1}},
+				ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 28}, nodes...))
+		}
+	}
+	dest := func(title string, icon ui.Icon, content func() ui.Node, actions ...ui.Action) ui.Destination {
+		return ui.Destination{Title: ui.Val(title), Icon: icon, Content: content, Options: ui.ScreenOptions{Actions: actions}}
+	}
+	return ui.SplitView(ui.SplitViewProps{Title: ui.Val("Gallery"), Sections: []ui.SidebarSection{
+		{Title: ui.Val("Views"), Destinations: []ui.Destination{
+			dest("Text and fonts", "textformat", page(fonts, textInput)),
+			dest("Symbols", ui.IconHome, page(symbols)),
+			dest("Images", ui.IconPhoto, page(images)),
+			dest("Video", "play.rectangle", page(video)),
+			dest("Shapes and canvas", "scribble", page(shapes, canvas)),
+			dest("Charts", "chart.bar", page(charts)),
+		}},
+		{Title: ui.Val("Controls"), Destinations: []ui.Destination{
+			dest("Controls", "slider.horizontal.3", page(controls)),
+			dest("Pages", "rectangle.split.3x1", page(pages)),
+			dest("Dates", ui.IconCalendar, page(dates)),
+		}},
+		{Title: ui.Val("Lists and navigation"), Destinations: []ui.Destination{
+			dest("Inbox", ui.IconMail, inbox,
+				ui.Action{Title: ui.Val("Top"), Icon: ui.IconUp, OnPress: func() { ui.ScrollToItem(inboxList, 0, true) }}),
+			dest("Settings", ui.IconSettings, settings),
+			dest("Photos", ui.IconPhoto, photos),
+			dest("Editor", ui.IconCompose, editor),
+			dest("Web", ui.IconGlobe, webPage,
+				ui.Action{Title: ui.Val("Run script"), Icon: "curlybraces", OnPress: func() {
+					ui.EvalJS(webView, `document.getElementById("out").textContent = "Set from Go at " + new Date().toLocaleTimeString()`)
+				}},
+				ui.Action{Title: ui.Val("Print"), Icon: "printer", OnPress: func() { print.WebView(webView, print.Options{}, nil) }}),
+		}},
+		{Title: ui.Val("Motion"), Destinations: []ui.Destination{
+			dest("Motion", "wand.and.stars", motionPage),
+		}},
+		{Title: ui.Val("Device"), Destinations: []ui.Destination{
+			dest("Camera", ui.IconCamera, cameraScreen),
+			dest("Services", "gearshape.2", page(services)),
+			dest("Documents", "doc", page(documents)),
+			dest("Platform", "iphone", page(platform)),
+			dest("Crashes", "exclamationmark.triangle", page(crashes)),
+		}},
 	}})
+}
+
+// motionPage is motion's examples, with the toast they show over the
+// screen's bottom and a button back to the top.
+func motionPage() ui.Node {
+	toast := signal.New(false)
+	down := signal.New(false) // scrolled past the first screen
+	var scroll ui.Node
+	scroll = ui.Scroll(ui.ScrollProps{Style: ui.Style{Grow: 1}, OnScroll: func(_, y float32) { down.Set(y > 300) }},
+		ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 28}, motion(toast)))
+	return ui.View(ui.ViewProps{Style: ui.Style{Grow: 1}}, scroll, toastOverlay(toast),
+		topButton(down, func() { ui.ScrollTo(scroll, 0, 0, true) }))
 }
 
 // section is a titled group of examples.
@@ -227,6 +245,7 @@ func controls() ui.Node {
 	period := store.Signal("period", 1) // kept across launches
 	volume := signal.New(0.4)
 	wifi := signal.New(true)
+	agreed := signal.New(false)
 	sizes := []string{"Extra small", "Small", "Medium", "Large", "Extra large"}
 	size := signal.New(2)
 	cups := signal.New(2.0)
@@ -247,6 +266,10 @@ func controls() ui.Node {
 			ui.Toggle(ui.ToggleProps{Value: wifi}),
 		),
 		ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
+			ui.Toggle(ui.ToggleProps{Value: agreed, Checkbox: true}),
+			ui.Text(ui.Val("I've read the terms"), ui.Style{Grow: 1}),
+		),
+		ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
 			ui.Activity(),
 			ui.StaticText("Loading…", ui.Style{Color: ui.SecondaryLabel}),
 		),
@@ -259,8 +282,145 @@ func controls() ui.Node {
 			ui.StaticText("Tint", ui.Style{Grow: 1}),
 			ui.ColorPicker(ui.ColorPickerProps{Value: tint, Alpha: true, Title: ui.Val("Tint")}),
 		),
+		popover(),
 		ui.Wheel(ui.WheelProps{Items: ui.Val(sizes), Selected: size}),
 		ui.Text(signal.Func(func() string { return "Size: " + sizes[size.Get()] }), ui.Style{Color: ui.SecondaryLabel}),
+	)
+}
+
+// editor asks before going back with unsaved text (ui.OnBack).
+func editor() ui.Node {
+	text := signal.New("")
+	saved := signal.New("")
+	nav := ui.UseNavigator()
+	ui.OnBack(func() bool {
+		if text.Peek() == saved.Peek() {
+			return false
+		}
+		ui.Alert(ui.AlertProps{Title: "Discard your changes?", Actions: []ui.Action{
+			{Title: ui.Val("Keep editing"), Role: ui.ActionCancel},
+			{Title: ui.Val("Discard"), Role: ui.ActionDestructive, OnPress: func() {
+				saved.Set(text.Peek())
+				nav.Pop()
+			}},
+		}})
+		return true
+	})
+	var field ui.Node
+	field = ui.TextField(ui.TextFieldProps{Value: text, Placeholder: ui.Val("Type, then go back"), Multiline: true,
+		// A bar on the keyboard: a count, and Done.
+		Accessory: func() ui.Node {
+			return ui.Row(ui.Style{Padding: ui.Symmetric(6, 16), Align: ui.AlignCenter, Material: ui.MaterialBar},
+				ui.Text(signal.Func(func() string { return fmt.Sprintf("%d characters", len([]rune(text.Get()))) }),
+					ui.Style{Grow: 1, Color: ui.SecondaryLabel, Font: ui.Footnote}),
+				ui.Button(ui.ButtonProps{Title: ui.Val("Done"), OnPress: func() { ui.Blur(field) }}))
+		}})
+	return ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 12},
+		field,
+		ui.Button(ui.ButtonProps{Title: ui.Val("Save"), Variant: ui.ButtonFilled, OnPress: func() { saved.Set(text.Peek()) }}),
+	)
+}
+
+// popover shows a small panel pointing at its button.
+func popover() ui.Node {
+	open := signal.New(false)
+	return ui.Row(ui.Style{Align: ui.AlignCenter, Gap: 12},
+		ui.StaticText("Popover", ui.Style{Grow: 1}),
+		ui.Popover(ui.PopoverProps{Open: open, MaxWidth: 280, Content: func() ui.Node {
+			return ui.Column(ui.Style{Padding: ui.All(16), Gap: 8},
+				ui.StaticText("About this gallery", ui.Style{Font: ui.Headline}),
+				ui.StaticText("Every view here is the platform's own, laid out by RyUI's core and driven by signals.",
+					ui.Style{Color: ui.SecondaryLabel}),
+				ui.Button(ui.ButtonProps{Title: ui.Val("Done"), Variant: ui.ButtonTinted, OnPress: func() { open.Set(false) }}))
+		}}, ui.Button(ui.ButtonProps{Icon: ui.Icon("info.circle"), Label: ui.Val("About"), Tooltip: ui.Val("About"),
+			OnPress: func() { open.Set(true) }})))
+}
+
+// aurora is a Kage shader: a band of light that flows across a night sky.
+var aurora = shader.MustCompile(`package main
+
+var Time float
+var Tint vec4
+
+func Fragment(dst vec4, pos vec2) vec4 {
+	uv := pos / rectSize()
+	t := Time * 0.4
+	wave := sin(uv.x*6+t)*0.5 + sin(uv.x*11-t*1.3)*0.25
+	band := smoothstep(0.35, 0, abs(uv.y-0.5-wave*0.18))
+	sky := mix(vec3(0.02, 0.03, 0.10), vec3(0.05, 0.08, 0.22), uv.y)
+	return vec4(sky+Tint.rgb*band*(0.7+0.3*sin(Time+uv.x*4)), 1)
+}
+`)
+
+// canvas is a gauge drawn by the app, following a slider.
+func canvas() ui.Node {
+	level := signal.New(0.62)
+	return section("Canvas",
+		ui.Canvas(func(g *ui.Graphics) {
+			w, h := g.Size()
+			cx, cy := w/2, h-12
+			r := min(w/2, cy) - 10 // room for half the stroke
+			track := g.Path().Arc(cx, cy, r, math.Pi, 2*math.Pi, true)
+			g.Stroke(track, ui.SecondaryBackground, ui.StrokeStyle{Width: 14, Cap: ui.CapRound})
+			v := float32(level.Get())
+			arc := g.Path().Arc(cx, cy, r, math.Pi, math.Pi*float32(1+v), true)
+			g.Stroke(arc, ui.Accent, ui.StrokeStyle{Width: 14, Cap: ui.CapRound})
+			for i := 0; i <= 10; i++ {
+				a := math.Pi * (1 + float64(i)/10)
+				x0, y0 := cx+float32(math.Cos(a))*(r-22), cy+float32(math.Sin(a))*(r-22)
+				x1, y1 := cx+float32(math.Cos(a))*(r-30), cy+float32(math.Sin(a))*(r-30)
+				g.Stroke(g.Path().MoveTo(x0, y0).LineTo(x1, y1), ui.TertiaryLabel, ui.StrokeStyle{Width: 2, Cap: ui.CapRound})
+			}
+			g.Text(fmt.Sprintf("%.0f%%", v*100), cx, cy-8, ui.TextStyle{Size: 34, Weight: ui.Semibold, Align: ui.TextCenter})
+		}, ui.Style{Height: ui.Pt(170)}),
+		ui.Slider(ui.SliderProps{Value: level}),
+		// A GPU program: an aurora that flows, in the slider's hue.
+		ui.Shader(ui.ShaderProps{
+			Program: aurora,
+			Uniforms: signal.Func(func() []ui.Uniform {
+				return []ui.Uniform{{Name: "Tint", Value: []float32{0.2, float32(0.5 + level.Get()*0.5), 0.6, 1}}}
+			}),
+			Animated: true,
+			Style:    ui.Style{Height: ui.Pt(140), CornerRadius: 16, Clip: true, Background: ui.Hex(0x0b1030)},
+		}),
+	)
+}
+
+// charts are a week's steps as bars, and a smooth line over an area.
+func charts() ui.Node {
+	days := ui.Val([]string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"})
+	return section("Charts",
+		chart.View(chart.Props{
+			Series: ui.Val([]chart.Series{{Name: "Steps", Kind: chart.Bar, Values: []float64{4200, 8100, 6400, 10200, 7300, 12800, 3900}}}),
+			Labels: days, Label: ui.Val("Steps this week"), Style: ui.Style{Height: ui.Pt(180)},
+		}),
+		chart.View(chart.Props{
+			Series: ui.Val([]chart.Series{
+				{Name: "Heart rate", Kind: chart.Area, Smooth: true, Values: []float64{62, 71, 68, 90, 84, 76, 70}},
+				{Name: "Resting", Kind: chart.Line, Color: ui.Hex(0xff9500), Values: []float64{58, 58, 59, 60, 59, 58, 57}},
+			}),
+			Labels: days, Label: ui.Val("Heart rate this week"), Style: ui.Style{Height: ui.Pt(180)},
+		}),
+	)
+}
+
+// pages is a carousel: a paging Scroll and a PageControl sharing a page.
+func pages() ui.Node {
+	page := signal.New(0)
+	colors := []ui.Color{ui.Hex(0x039be5), ui.Hex(0x43a047), ui.Hex(0xfb8c00), ui.Hex(0x8e24aa)}
+	cards := make([]ui.Node, len(colors))
+	for i, c := range colors {
+		cards[i] = ui.View(ui.ViewProps{Style: ui.Style{Background: c, CornerRadius: 16, Margin: ui.Symmetric(0, 4), Justify: ui.JustifyCenter, Align: ui.AlignCenter}},
+			ui.StaticText(fmt.Sprintf("Page %d", i+1), ui.Style{Font: ui.Title2, Color: ui.RGB(255, 255, 255)}))
+	}
+	return section("Pages",
+		ui.Scroll(ui.ScrollProps{Horizontal: true, Paging: true, Page: page, Style: ui.Style{Height: ui.Pt(160)}}, cards...),
+		ui.Row(ui.Style{Justify: ui.JustifyCenter, Align: ui.AlignCenter, Gap: 8},
+			ui.Button(ui.ButtonProps{Icon: ui.Icon("chevron.backward"), Tooltip: ui.Val("Previous page"), Label: ui.Val("Previous page"),
+				OnPress: func() { page.Set(max(page.Peek()-1, 0)) }}),
+			ui.PageControl(ui.PageControlProps{Count: ui.Val(len(colors)), Page: page}),
+			ui.Button(ui.ButtonProps{Icon: ui.Icon("chevron.forward"), Tooltip: ui.Val("Next page"), Label: ui.Val("Next page"),
+				OnPress: func() { page.Set(min(page.Peek()+1, len(colors)-1)) }})),
 	)
 }
 
@@ -533,7 +693,15 @@ func motion(toast *signal.Signal[bool]) ui.Node {
 	puck := ui.View(ui.ViewProps{
 		OnPan: func(g ui.Gesture) {
 			if g.State == ui.GestureEnded || g.State == ui.GestureCancelled {
-				ui.AnimateWith(ui.Animation{Curve: ui.Spring, Duration: 0.45}, func() { drag.Set(ui.Gesture{}) })
+				// Back home on a bouncy spring that carries on the fling: its
+				// speed toward home, as a fraction of the way left per second.
+				d := math.Hypot(float64(g.TranslationX), float64(g.TranslationY))
+				v := 0.0
+				if d > 1 {
+					v = -(float64(g.VelocityX*g.TranslationX) + float64(g.VelocityY*g.TranslationY)) / d / d
+				}
+				ui.AnimateWith(ui.Animation{Curve: ui.Spring, Duration: 0.6, Damping: 0.55, Velocity: float32(v)},
+					func() { drag.Set(ui.Gesture{}) })
 				return
 			}
 			drag.Set(g)
@@ -556,12 +724,11 @@ func motion(toast *signal.Signal[bool]) ui.Node {
 		spinner(),
 		turner(),
 		ui.Button(ui.ButtonProps{Title: ui.Val("Show a toast"), Variant: ui.ButtonGray, OnPress: func() {
-			ui.Animate(func() { toast.Set(true) })
+			// In, then out a while after it's in: a chain of animations.
+			ui.AnimateWith(ui.Animation{OnDone: func() {
+				ui.AnimateWith(ui.Animation{Delay: 1.5}, func() { toast.Set(false) })
+			}}, func() { toast.Set(true) })
 			ui.Announce("Saved") // a screen reader wouldn't notice the toast
-			go func() {
-				time.Sleep(1500 * time.Millisecond)
-				ui.Post(func() { ui.Animate(func() { toast.Set(false) }) })
-			}()
 		}}),
 	)
 }

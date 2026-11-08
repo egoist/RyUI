@@ -249,7 +249,7 @@ func (h *Host) apply(op *ops.Op) {
 			v.Items, v.Sections = decodeListUpdate(op.Value.Bytes)
 		}
 		if op.Cmd == ops.CmdPresent {
-			if v.Kind != ops.KindSheet && v.Kind != ops.KindAlert && v.Kind != ops.KindWindow {
+			if v.Kind != ops.KindSheet && v.Kind != ops.KindPopover && v.Kind != ops.KindAlert && v.Kind != ops.KindWindow {
 				panic(fmt.Sprintf("fake: Present on a %s", v.Kind))
 			}
 			v.presented = true
@@ -325,6 +325,8 @@ func (h *Host) Measure(id ops.NodeID, c layout.Constraints) layout.Size {
 		}
 	case ops.KindToggle:
 		s = layout.Size{W: 51, H: 31}
+	case ops.KindPageControl:
+		s = layout.Size{W: float32(v.Int(ops.PropPageControlCount))*16 + 16, H: 26}
 	case ops.KindSlider:
 		s = layout.Size{W: 200, H: 30}
 		if fin(c.AvailW) {
@@ -656,22 +658,46 @@ func b2i(b bool) int64 {
 }
 
 // Back pops a Stack's top screen as the user's back gesture does: the
-// host removes it, then reports Popped.
+// host removes it, then reports Popped. A screen with InterceptBack is
+// sent Back instead, and stays.
 func (h *Host) Back(stack *View) {
 	if len(stack.Children) < 2 {
 		panic("fake: Back: nothing to pop")
 	}
 	top := stack.Children[len(stack.Children)-1]
+	if top.Bool(ops.PropInterceptBack) {
+		h.listening(top, ops.EventBack)
+		h.dispatch(ops.Event{ID: top.ID, Kind: ops.EventBack})
+		return
+	}
 	stack.removeChild(top)
 	h.listening(stack, ops.EventPopped)
 	h.dispatch(ops.Event{ID: stack.ID, Kind: ops.EventPopped, Int: int64(top.ID)})
 }
 
+// BackFromRoot is Android's back with no screen left to pop: the root
+// is sent Back if it takes it (InterceptBack), and true is returned;
+// false: the system would leave the app.
+func (h *Host) BackFromRoot() bool {
+	r := h.Root()
+	if r == nil || !r.Bool(ops.PropInterceptBack) {
+		return false
+	}
+	h.listening(r, ops.EventBack)
+	h.dispatch(ops.Event{ID: r.ID, Kind: ops.EventBack})
+	return true
+}
+
 // Select selects a tab or a segment, as the user does.
 func (h *Host) Select(tabs *View, index int) {
 	p := ops.PropTabsSelected
-	if tabs.Kind == ops.KindSegmented {
+	switch tabs.Kind {
+	case ops.KindSegmented:
 		p = ops.PropSegmentedSelected
+	case ops.KindSplit:
+		p = ops.PropSplitSelected
+	case ops.KindPageControl:
+		p = ops.PropPageControlPage
 	}
 	tabs.Props[p] = ops.Value{Type: ops.TInt, Int: int64(index)}
 	h.listening(tabs, ops.EventSelected)
@@ -679,8 +705,13 @@ func (h *Host) Select(tabs *View, index int) {
 }
 
 // Dismiss dismisses a sheet or alert as the user does (a swipe, a tap
-// outside).
+// outside). A sheet with InterceptBack is sent Back instead, and stays.
 func (h *Host) Dismiss(v *View) {
+	if v.Bool(ops.PropInterceptBack) {
+		h.listening(v, ops.EventBack)
+		h.dispatch(ops.Event{ID: v.ID, Kind: ops.EventBack})
+		return
+	}
 	h.listening(v, ops.EventDismissed)
 	h.dispatch(ops.Event{ID: v.ID, Kind: ops.EventDismissed})
 }

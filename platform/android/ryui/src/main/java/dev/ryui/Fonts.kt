@@ -5,7 +5,6 @@ import android.graphics.Typeface
 import android.graphics.fonts.Font
 import android.graphics.fonts.FontFamily
 import android.graphics.fonts.FontStyle
-import android.os.Build
 import android.util.Log
 import java.io.File
 import java.net.HttpURLConnection
@@ -50,32 +49,20 @@ object RyUIFonts {
         }
         val faces = src.filterKeys { it.startsWith("$family-") }
         if (faces.isNotEmpty()) {
-            if (Build.VERSION.SDK_INT >= 29) {
-                var b: FontFamily.Builder? = null
-                for (p in faces.values) {
-                    val f = (if (p.startsWith("/")) Font.Builder(File(p)) else Font.Builder(ctx.assets, p)).build()
-                    if (b == null) b = FontFamily.Builder(f)
-                    else try { b.addFont(f) } catch (_: IllegalArgumentException) {} // a style it has
-                }
-                val style = FontStyle(if (weight > 0) weight else 400, if (italic) FontStyle.FONT_SLANT_ITALIC else FontStyle.FONT_SLANT_UPRIGHT)
-                return Typeface.CustomFallbackBuilder(b!!.build()).setSystemFallback("sans-serif").setStyle(style).build()
+            var b: FontFamily.Builder? = null
+            for (p in faces.values) {
+                val f = (if (p.startsWith("/")) Font.Builder(File(p)) else Font.Builder(ctx.assets, p)).build()
+                if (b == null) b = FontFamily.Builder(f)
+                else try { b.addFont(f) } catch (_: IllegalArgumentException) {} // a style it has
             }
-            val p = faces["$family-Regular"] ?: faces.values.first()
-            val t = if (p.startsWith("/")) Typeface.createFromFile(p) else Typeface.createFromAsset(ctx.assets, p)
-            return Typeface.create(t, styleOf(weight, italic))
+            val style = FontStyle(if (weight > 0) weight else 400, if (italic) FontStyle.FONT_SLANT_ITALIC else FontStyle.FONT_SLANT_UPRIGHT)
+            return Typeface.CustomFallbackBuilder(b!!.build()).setSystemFallback("sans-serif").setStyle(style).build()
         }
         // A system family; an unknown one is the default.
         val t = Typeface.create(family, Typeface.NORMAL)
         if (t == Typeface.DEFAULT) return null
-        return if (weight > 0 && Build.VERSION.SDK_INT >= 28) Typeface.create(t, weight, italic)
-        else Typeface.create(t, styleOf(weight, italic))
-    }
-
-    private fun styleOf(weight: Int, italic: Boolean) = when {
-        weight >= 600 && italic -> Typeface.BOLD_ITALIC
-        weight >= 600 -> Typeface.BOLD
-        italic -> Typeface.ITALIC
-        else -> Typeface.NORMAL
+        return if (weight > 0) Typeface.create(t, weight, italic)
+        else Typeface.create(t, if (italic) Typeface.ITALIC else Typeface.NORMAL)
     }
 
     /** A font file's name (no extension) → its path: a pushed file's, or an asset's ("fonts/Inter-Bold.ttf"). */

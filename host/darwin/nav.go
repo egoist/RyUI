@@ -28,6 +28,9 @@ type nav struct {
 	env      ops.Environment
 	reported bool
 
+	// Stack: Replace's, until its next insert: changes happen at once.
+	instant bool
+
 	// Screen.
 	backGesture bool
 	search      string
@@ -64,6 +67,9 @@ func (h *Host) createNav(n *node) bool {
 		n.view = v
 	case ops.KindSheet, ops.KindWindow:
 		n.view = initView("RyUIView")
+	case ops.KindPopover:
+		n.view = initView("RyUIView")
+		n.popover = &popover{}
 	case ops.KindAlert:
 	default:
 		return false
@@ -78,7 +84,7 @@ func (h *Host) createNav(n *node) bool {
 // sizedByHost reports whether the host sizes n (a screen, a sheet's
 // content), not the core.
 func (nv *nav) sizedByHost(n *node) bool {
-	return n.kind == ops.KindScreen || n.kind == ops.KindSheet || n.kind == ops.KindWindow
+	return n.kind == ops.KindScreen || n.kind == ops.KindSheet || n.kind == ops.KindWindow || n.kind == ops.KindPopover
 }
 
 func (h *Host) insertNav(p, c *node, index int) bool {
@@ -99,9 +105,10 @@ func (h *Host) insertNav(p, c *node, index int) bool {
 		}
 		if i == len(p.children)-1 {
 			Send(p.view, "addSubview:", uintptr(c.view))
-			if top != nil {
+			if top != nil && !p.nav.instant {
 				h.slide(p, c, top, true)
 			}
+			p.nav.instant = false
 		} else {
 			// Below the top: shown when the screens above it are popped.
 			Send(c.view, "setHidden:", 1)
@@ -171,7 +178,7 @@ func (h *Host) destroyNav(n *node) bool {
 			if wasTop && below != nil {
 				Send(below.view, "setHidden:", 0)
 			}
-			if wasTop && !n.dying && below != nil && Send(p.view, "window") != 0 {
+			if wasTop && !n.dying && below != nil && !p.nav.instant && Send(p.view, "window") != 0 {
 				// Popped by the app: it slides out, then goes.
 				h.slide(p, below, n, false)
 			} else {
@@ -203,6 +210,14 @@ func (h *Host) destroyNav(n *node) bool {
 			Release(w)
 			n.nav.window = 0
 		}
+		for _, c := range n.children {
+			c.parent = nil
+		}
+		h.release(n)
+		return true
+	case ops.KindPopover:
+		n.dying = true
+		h.closePopover(n)
 		for _, c := range n.children {
 			c.parent = nil
 		}
@@ -402,6 +417,8 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 		if p == ops.PropSheetDetents {
 			n.detents = v.Int
 		}
+	case ops.KindPopover:
+		h.setPopoverProp(n, p, v)
 	case ops.KindWindow:
 		switch p {
 		case ops.PropWindowTitle:
@@ -483,6 +500,8 @@ func (h *Host) present(n *node) {
 		Send(over.window, "beginSheet:completionHandler:", uintptr(w), 0)
 	case ops.KindWindow:
 		h.openWindow(n)
+	case ops.KindPopover:
+		h.presentPopover(n)
 	case ops.KindAlert:
 		a := New("NSAlert")
 		Send(a, "setMessageText:", uintptr(String(n.title)))
@@ -538,6 +557,10 @@ func (h *Host) cancel(view ID) {
 	w := Send(view, "window")
 	for _, n := range h.nodes {
 		if n.kind == ops.KindSheet && n.nav.window == w && !n.dying {
+			if n.interceptBack {
+				h.emit(n, ops.Event{Kind: ops.EventBack})
+				return
+			}
 			h.emit(n, ops.Event{Kind: ops.EventDismissed})
 			return
 		}
@@ -612,7 +635,7 @@ func (h *Host) activeStack(root *node) *node {
 				walk(n.children[n.selected])
 			}
 			return
-		case ops.KindSheet, ops.KindAlert, ops.KindWindow:
+		case ops.KindSheet, ops.KindAlert, ops.KindWindow, ops.KindPopover:
 			if n != root {
 				return
 			}
@@ -872,6 +895,10 @@ func (h *Host) back(w *win) {
 	}
 	top := h.topScreen(stack)
 	if top == nil || h.liveScreens(stack) < 2 {
+		return
+	}
+	if top.interceptBack {
+		h.emit(top, ops.Event{Kind: ops.EventBack})
 		return
 	}
 	top.dying = true

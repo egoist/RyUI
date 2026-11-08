@@ -5,7 +5,6 @@ import android.content.ContentUris
 import android.content.pm.PackageManager
 import android.database.Cursor
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -24,11 +23,9 @@ import java.util.UUID
  * "export" JSON (path, name). Off the main thread where they wait.
  */
 class RyUIPhotoLibrary(private val rt: RyUIRuntime) {
-    private val all = when {
-        Build.VERSION.SDK_INT >= 34 -> arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
-        Build.VERSION.SDK_INT >= 33 -> arrayOf(Manifest.permission.READ_MEDIA_IMAGES)
-        else -> arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-    }
+    private val all =
+        if (Build.VERSION.SDK_INT >= 34) arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
+        else arrayOf(Manifest.permission.READ_MEDIA_IMAGES)
 
     private fun granted(p: String) = ContextCompat.checkSelfPermission(rt.app, p) == PackageManager.PERMISSION_GRANTED
 
@@ -78,14 +75,12 @@ class RyUIPhotoLibrary(private val rt: RyUIRuntime) {
         },
     )
 
-    private fun pathColumn() = if (Build.VERSION.SDK_INT >= 29) MediaStore.Images.Media.RELATIVE_PATH else MediaStore.Images.Media.DATA
-
     private fun list(screenshots: Boolean, offset: Int, limit: Int): JSONArray {
         val projection = arrayOf(
             MediaStore.Images.Media._ID, MediaStore.Images.Media.WIDTH, MediaStore.Images.Media.HEIGHT,
-            MediaStore.Images.Media.DATE_TAKEN, MediaStore.Images.Media.DATE_ADDED, pathColumn(),
+            MediaStore.Images.Media.DATE_TAKEN, MediaStore.Images.Media.DATE_ADDED, MediaStore.Images.Media.RELATIVE_PATH,
         )
-        val where = if (screenshots) "${pathColumn()} LIKE ?" else null
+        val where = if (screenshots) "${MediaStore.Images.Media.RELATIVE_PATH} LIKE ?" else null
         val whereArgs = if (screenshots) arrayOf("%Screenshot%") else null
         val q: Bundle = Bundle().apply {
             putString(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION, where)
@@ -114,25 +109,15 @@ class RyUIPhotoLibrary(private val rt: RyUIRuntime) {
         val f = File(dir, "$id-$size.jpg")
         if (f.isFile) return f.path
         val u = uri(id)
-        val bmp: Bitmap = if (Build.VERSION.SDK_INT >= 29) {
-            // It fits in the box it's given, and the short side is the one
-            // asked for: a long screenshot's box is as long as it is.
-            var long = size
-            rt.app.contentResolver.query(u, arrayOf(MediaStore.Images.Media.WIDTH, MediaStore.Images.Media.HEIGHT), null, null, null)?.use { c ->
-                if (c.moveToFirst() && minOf(c.getInt(0), c.getInt(1)) > 0) {
-                    long = minOf(maxOf(c.getInt(0), c.getInt(1)) * size / minOf(c.getInt(0), c.getInt(1)), size * 8)
-                }
+        // It fits in the box it's given, and the short side is the one
+        // asked for: a long screenshot's box is as long as it is.
+        var long = size
+        rt.app.contentResolver.query(u, arrayOf(MediaStore.Images.Media.WIDTH, MediaStore.Images.Media.HEIGHT), null, null, null)?.use { c ->
+            if (c.moveToFirst() && minOf(c.getInt(0), c.getInt(1)) > 0) {
+                long = minOf(maxOf(c.getInt(0), c.getInt(1)) * size / minOf(c.getInt(0), c.getInt(1)), size * 8)
             }
-            rt.app.contentResolver.loadThumbnail(u, Size(long, long), null)
-        } else {
-            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            rt.app.contentResolver.openInputStream(u)?.use { BitmapFactory.decodeStream(it, null, bounds) }
-            var sample = 1
-            while (minOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= size) sample *= 2
-            rt.app.contentResolver.openInputStream(u)?.use {
-                BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample })
-            } ?: throw Exception("no thumbnail")
         }
+        val bmp: Bitmap = rt.app.contentResolver.loadThumbnail(u, Size(long, long), null)
         val tmp = File(dir, UUID.randomUUID().toString())
         tmp.outputStream().use { bmp.compress(Bitmap.CompressFormat.JPEG, 80, it) }
         bmp.recycle()

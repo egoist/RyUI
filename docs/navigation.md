@@ -165,6 +165,86 @@ Each platform goes back its own way, and RyUI leaves it so:
 Whichever way the user goes back, the screen is disposed, as with
 `nav.Pop()`. Back closes an open sheet or dialog first.
 
+### Taking back yourself
+
+`ui.OnBack` lets a component decide, when the user goes back, whether
+to go: to ask before throwing away a draft, or to close something of
+the screen's own first (a search, an expanded panel). The handler
+returns true when it took the back; when every handler returns false,
+going back goes on.
+
+```go
+func editor() ui.Node {
+	dirty := signal.New(false)
+	nav := ui.UseNavigator()
+	ui.OnBack(func() bool {
+		if !dirty.Peek() {
+			return false // nothing to lose: the screen pops
+		}
+		ui.Alert(ui.AlertProps{
+			Title: "Discard changes?",
+			Actions: []ui.Action{
+				{Title: ui.Val("Keep editing"), Role: ui.ActionCancel},
+				{Title: ui.Val("Discard"), Role: ui.ActionDestructive, OnPress: func() {
+					dirty.Set(false)
+					nav.Pop()
+				}},
+			},
+		})
+		return true
+	})
+	// ...
+}
+```
+
+It belongs to where the component is built, and goes with it:
+
+- **A pushed screen**: its back button, Android's back, the edge swipe
+  on iOS. While the screen has a handler, iOS's swipe is off on it
+  (the swipe can't be asked, only stopped, as with UIKit's own apps)
+  and Android doesn't preview the pop. iOS's back button is the
+  screen's `backAction`.
+- **A sheet**: a swipe down, a tap outside, Android's back. While it
+  has a handler, the sheet can't be swiped away: trying asks the
+  handler (iOS's `isModalInPresentation`; a sheet that isn't cancelable
+  on Android). When the handler lets it go, the sheet closes and
+  `OnDismiss` runs, as if the user had dismissed it.
+- **Elsewhere** (outside any screen or sheet, or on a stack's first
+  screen, which back leaves): Android's back with no screen to pop,
+  where the app would otherwise close. iOS has no such back.
+
+The latest handler is asked first. `nav.Pop()` and closing a sheet from
+code don't ask: only the user's going back does.
+
+## Split views
+
+`ui.SplitView` is an app's top level when it has many destinations:
+a sidebar of them, and the chosen one's screens beside it (SwiftUI's
+`NavigationSplitView`).
+
+```go
+ui.SplitView(ui.SplitViewProps{Title: ui.Val("Mail"), Sections: []ui.SidebarSection{
+	{Destinations: []ui.Destination{
+		{Title: ui.Val("Inbox"), Icon: ui.IconMail, Content: inbox},
+		{Title: ui.Val("Sent"), Icon: "paperplane", Content: sent},
+	}},
+	{Title: ui.Val("Folders"), Destinations: folders},
+}})
+```
+
+Each destination's `Content` is the first screen of a stack: it pushes
+with `ui.UseNavigator`, and choosing another destination replaces the
+stack's screens with its first, at once, disposing them. `Selected` is
+the chosen destination, counted across the sections; the user's choice
+writes it, and writing it shows another.
+
+| | Compact (a phone) | Wide |
+|---|---|---|
+| iOS | the split view collapsed into a stack, as iOS does it: the sidebar is the first screen, an inset grouped list; a row pushes its destination, and back returns to the list | `UISplitViewController`'s sidebar beside the content (Liquid Glass on iOS 26), which the user can hide |
+| Android | Material's modal navigation drawer, opened by the menu button of the destination's first screen (or a swipe from the edge), closed by choosing or by back | a standard drawer, standing open beside the content (840dp and wider) |
+| macOS | | `NSSplitViewController`, its sidebar a source list |
+| Windows | | WinUI's NavigationView pane |
+
 ## Tabs
 
 `ui.Tabs` shows one page at a time, with a tab bar: a
@@ -235,6 +315,31 @@ or a tap outside it. That sets `Open` to false and calls `OnDismiss`.
 Setting `Open` to false from code closes it without calling
 `OnDismiss`. So `OnDismiss` means "closed without your say", such as a
 draft left unsaved.
+
+## Popovers
+
+`ui.Popover` shows content in a bubble pointing at a view, over the
+screen, while `Open` is true: a few options, a detail, a small form.
+Its children are what it points at:
+
+```go
+open := signal.New(false)
+return ui.Popover(ui.PopoverProps{Open: open, MaxWidth: 280, Content: func() ui.Node {
+	return ui.Column(ui.Style{Padding: ui.All(16), Gap: 8},
+		ui.StaticText("Shared with 3 people", ui.Style{Font: ui.Headline}),
+		ui.Button(ui.ButtonProps{Title: ui.Val("Manage"), OnPress: manage}))
+}}, ui.Button(ui.ButtonProps{Icon: "person.2", Label: ui.Val("Sharing"), OnPress: func() { open.Set(true) }}))
+```
+
+It's as big as its content, no wider than `MaxWidth` (320 by default),
+text wrapping to it, and no taller than most of the screen. A tap
+outside dismisses it, setting `Open` false and calling `OnDismiss`, as a
+sheet's; `ui.OnBack` in it can keep it.
+
+| | iOS | Android | macOS | Windows |
+|---|---|---|---|---|
+| The view | `UIPopoverPresentationController`, a popover on iPhone too (not adapted into a sheet), Liquid Glass on iOS 26 | a `PopupWindow` on Material's container surface, 16dp corners, elevated | `NSPopover`, transient | a popup window, light dismissed, Windows 11's corners (WinUI's Flyout) |
+| Where | where UIKit fits it, its arrow on the anchor | below the anchor, centered (above it without room) | below the anchor, where AppKit fits it | below the anchor, centered (above it without room) |
 
 ## Alerts and action sheets
 

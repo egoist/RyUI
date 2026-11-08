@@ -138,6 +138,12 @@ return ui.Row(ui.Style{Gap: 12, Wrap: true},
   the icon alone.
 - `Label` is what VoiceOver and TalkBack read, the title by default.
   Give an icon-only button one.
+- `Tooltip` is a short text shown while a pointer rests on it: an
+  iPad's pointer or a Mac's (`UIToolTipInteraction`), a mouse on
+  Android, where a long press shows it too (`tooltipText`), and on
+  Windows. Give an icon-only button one, its name. `ViewProps.Tooltip`
+  is the same for any view. A touch screen alone never shows it on iOS,
+  so it can't be the only place something is said.
 - `Disabled` disables it, the platform's way.
 - `Style.Font` and `Style.Color` change its text and tint.
 
@@ -208,8 +214,13 @@ return ui.Column(ui.Style{Gap: 12}, em, pw)
 - `ReturnKey` is the return key's label: `ReturnDefault`, `ReturnDone`,
   `ReturnGo`, `ReturnNext`, `ReturnSearch`, `ReturnSend`. Pressing it
   calls `OnSubmit`.
-- `ContentType` is an AutoFill hint: `"username"`, `"password"`,
-  `"email"`, `"name"`...
+- `ContentType` says what it holds, for the system's AutoFill:
+  `ui.ContentUsername`, `ContentPassword`, `ContentNewPassword` (the
+  platform offers a strong password), `ContentOneTimeCode` (the code a
+  message just brought shows above the keyboard: UIKit's `oneTimeCode`,
+  Android's SMS code hint), `ContentEmail`, `ContentPhone`,
+  `ContentName`, `ContentAddress`, `ContentPostalCode`,
+  `ContentCardNumber`... Each host names it as its platform does.
 - `Autocapitalize`: `CapitalizeSentences` (the default),
   `CapitalizeNone`, `CapitalizeWords`, `CapitalizeCharacters`.
   `Autocorrect`: `AutocorrectDefault`, `AutocorrectYes`,
@@ -269,7 +280,10 @@ return ui.Column(ui.Style{Gap: 16},
 )
 ```
 
-- **Toggle** is a switch, `*signal.Signal[bool]`.
+- **Toggle** is a switch, `*signal.Signal[bool]`. With `Checkbox` it's a
+  checkbox: Android's `MaterialCheckBox`, a Mac's and Windows' check
+  box, and on iOS, which has none, a circle that fills with a
+  checkmark, as Reminders' does.
 - **Slider** picks a `float64` from `Min` to `Max`; with both 0, from 0
   to 1.
 - **Segmented** is one of a few options side by side, `Selected` the
@@ -572,6 +586,120 @@ func progressRing(done signal.Accessor[float32]) ui.Node {
 }
 ```
 
+### Canvas
+
+`ui.Canvas` draws what the app draws: a chart, a gauge, a signature, a
+game's board, whatever no view is. Its function draws with a
+`*ui.Graphics`, in points from its top left:
+
+```go
+ui.Canvas(func(g *ui.Graphics) {
+	w, h := g.Size()
+	g.Fill(g.Path().RoundedRect(0, 0, w, h, 12), ui.SecondaryBackground)
+	g.Fill(g.Path().RoundedRect(0, 0, w*level.Get(), h, 12), ui.Accent)
+	g.Text(fmt.Sprintf("%.0f%%", level.Get()*100), w/2, h/2+6, ui.TextStyle{Weight: ui.Semibold, Align: ui.TextCenter})
+}, ui.Style{Height: ui.Pt(36)})
+```
+
+- `g.Path()` is a path to build (as a Shape's), reused from draw to draw.
+- `Fill`, `Stroke` (a `StrokeStyle`: width, caps, joins, dashes) and
+  `FillGradient` paint a path; `Text` draws a line of text, its baseline
+  at y, its left edge, center or right edge at x.
+- `Save` and `Restore` bracket `Translate`, `Scale`, `Rotate` (degrees,
+  clockwise), `Clip` and `Opacity`.
+- Colors can be semantic (`ui.Label`, `ui.Separator`, `ui.Accent`):
+  they follow dark mode.
+
+It draws once it's laid out, and again when its size changes or the
+signals the function read change, like an effect. Each draw records a
+display list, sent only when it differs from the last, and the platform
+replays it: Core Graphics on iOS and macOS, Android's `Canvas`, GDI+ on
+Windows. Recording allocates nothing once the canvas has drawn as much
+before. A canvas has no presses of its own: wrap it in a `ui.View` with
+`OnPress` or `OnPan`, which report points in its coordinates. It isn't
+read by screen readers: give the view around it a `Label`.
+
+### Charts
+
+`ryui/chart` draws charts on a Canvas: bars, lines, areas and points
+over a value axis, with the platform's text for their labels (measured
+by it, scaled with the user's text size).
+
+```go
+chart.View(chart.Props{
+	Series: ui.Val([]chart.Series{
+		{Name: "Steps", Kind: chart.Bar, Values: steps},
+		{Name: "Goal", Kind: chart.Line, Values: goal, Color: ui.Hex(0xff9500)},
+	}),
+	Labels: ui.Val([]string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}),
+	Label:  ui.Val("Steps this week"),
+	Style:  ui.Style{Height: ui.Pt(200)},
+})
+```
+
+- A series has a value per label; `NaN` leaves a gap. Bar series stand
+  side by side; areas, lines and points go over them. `Smooth` draws a
+  monotone curve, which never overshoots its values.
+- The value axis fits the values, rounded out to whole ticks (and down
+  to zero for bars and areas), unless `Min` and `Max` fix it; `Format`
+  writes its labels (`2.5k` by default).
+- Colors default to the app's accent, then the system's.
+- Screen readers read the chart as one image: its `Label`, then each
+  series' values, whole.
+
+### Shaders
+
+`ui.Shader` is a box a GPU program draws, under its children: flowing
+gradients, noise, glows, ripples. The program is a Kage shader
+(Ebitengine's language: Go's syntax), which package `shader` compiles
+once, as a package's variable:
+
+```go
+var glow = shader.MustCompile(`package main
+
+var Time float
+var Tint vec4
+
+func Fragment(dst vec4, pos vec2) vec4 {
+	d := distance(pos/rectSize(), vec2(0.5))
+	g := smoothstep(0.5, 0, d) * (0.8 + 0.2*sin(Time*2))
+	return vec4(Tint.rgb*g, 1) * Tint.a
+}`)
+
+ui.Shader(ui.ShaderProps{
+	Program:  glow,
+	Uniforms: ui.Val([]ui.Uniform{ui.ColorUniform("Tint", ui.Hex(0x38bdf8))}),
+	Animated: true,
+	Style:    ui.Style{Height: ui.Pt(200), CornerRadius: 16, Clip: true, Background: ui.Hex(0x0b1030)},
+})
+```
+
+- `Fragment` returns the color of a pixel, premultiplied, red, green,
+  blue and alpha from 0 to 1. `pos` is the pixel's center in points
+  from the box's top left, `dst` the same in pixels; `rectSize()` is
+  the box's size in points and `pixelScale()` the pixels a point.
+- The language has `bool`, `int`, `float`, `vec2` to `vec4`, `ivec2` to
+  `ivec4`, `mat2` to `mat4` and arrays of them, GLSL's built-in functions
+  (`sin`, `mix`, `smoothstep`, `dot`...), functions of its own, `if` and
+  `for`. Exported variables are uniforms.
+- `Uniforms` sets them by name: a scalar's one number, a vector's
+  components, a matrix's columns in turn. A change draws the box again;
+  a uniform left out is 0.
+- `var Time float` is the seconds since the shader showed. `Animated`
+  runs it: the box draws at every frame the display draws, with nothing
+  running in Go.
+- `shader.Compile` reports a shader's errors with their lines, and what
+  of it Android can't run, on every platform alike: AGSL is GLSL ES
+  1.00's language, so no unsigned integers, bitwise operations or
+  integer remainders (`mod` of floats does), derivatives, or loops
+  between values that aren't constants.
+
+It's Metal on iOS and macOS (a `CAMetalLayer`) and AGSL on Android (a
+`RuntimeShader`). Windows runs the same program on the CPU, across the
+cores and off the main thread: a frame shows when it's ready, and a
+large or animated box renders at a fraction of its resolution, scaled
+up. Give the box a `Background` that stands in until the first frame.
+
 ## Containers
 
 `ui.View` holds other views. `ui.Column` and `ui.Row` are views that
@@ -648,6 +776,30 @@ return ui.View(ui.ViewProps{Style: ui.Style{Grow: 1}}, scroll,
 ui.Scroll(ui.ScrollProps{Horizontal: true, ContentStyle: ui.Style{Gap: 8, Padding: ui.Symmetric(0, 16)}}, kids...)
 ```
 
+**Pages.** `Paging` makes it rest only at whole pages: a carousel, an
+onboarding's steps, a feed of full-screen videos. Each child of its
+content is a page, as big as the scroll view along its axis. `Page` is
+the page shown: a swipe writes it as it settles, and writing it scrolls
+there. `ui.PageControl` shows where it is, a dot per page, and moves it
+too when one is tapped:
+
+```go
+page := signal.New(0)
+return ui.Column(ui.Style{Gap: 8},
+	ui.Scroll(ui.ScrollProps{Horizontal: true, Paging: true, Page: page, Style: ui.Style{Height: ui.Pt(200)}},
+		card(1), card(2), card(3)),
+	ui.PageControl(ui.PageControlProps{Count: ui.Val(3), Page: page}))
+```
+
+| | iOS | Android | macOS | Windows |
+|---|---|---|---|---|
+| Paging | `isPagingEnabled` | each swipe snaps to the next page, or back | settles on the nearest page when a swipe ends | a page per wheel notch (FlipView's) |
+| `PageControl` | `UIPageControl` | dots in the theme's primary color (Material has none) | dots in the accent color | pips (PipsPager's) |
+
+Pages count from the reading start: right to left, the first is the
+rightmost. When the scroll view's size changes (a rotation), it stays on
+its page. Screen readers say "page 2 of 3" on the dots and adjust them.
+
 **Pull to refresh.** `OnRefresh` turns it on (`UIRefreshControl`,
 `SwipeRefreshLayout`). Set `Refreshing` true while you refresh; the
 spinner hides when it turns false. Without `Refreshing`, it hides as
@@ -667,6 +819,27 @@ return ui.Scroll(ui.ScrollProps{
 	},
 }, ui.StaticText("Pull down"))
 ```
+
+**A bar on the keyboard.** `Accessory` is a bar shown on top of the
+keyboard while the field is focused: a count and Done, formatting
+buttons, quick replies (SwiftUI's keyboard toolbar). It's as wide as the
+window and as tall as its content, built with the field and disposed
+with it.
+
+```go
+var field ui.Node
+field = ui.TextField(ui.TextFieldProps{Value: note, Multiline: true, Accessory: func() ui.Node {
+	return ui.Row(ui.Style{Padding: ui.Symmetric(6, 16), Align: ui.AlignCenter, Material: ui.MaterialBar},
+		ui.Text(signal.Func(func() string { return fmt.Sprint(len(note.Get()), " characters") }), ui.Style{Grow: 1}),
+		ui.Button(ui.ButtonProps{Title: ui.Val("Done"), OnPress: func() { ui.Blur(field) }}))
+}})
+```
+
+On iOS it's the field's `inputAccessoryView`: it moves with the
+keyboard, through its interactive dismissal too. Android has none of its
+own: the bar goes in the field's window (a sheet's too) at the top of the
+keyboard, following it frame by frame. A Mac and Windows, with no
+on-screen keyboard, don't show it.
 
 **Styled text.** `Rich` makes a field a text area of styled text, for a
 mail's body or a formatted message: bold, italic, underline,

@@ -120,6 +120,18 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 		}
 		Send(v, "setTarget:", uintptr(h.target))
 		Send(v, "setAction:", uintptr(Sel("act:")))
+	case ops.KindPageControl:
+		v = h.makePageDots(n)
+	case ops.KindCanvas:
+		v = initView("RyUICanvasView")
+	case ops.KindSplit:
+		v = h.makeSplit(n)
+	case ops.KindShader:
+		v = h.makeShader(n)
+	case ops.KindAccessory:
+		// A field's bar over the keyboard: a Mac has no on-screen keyboard,
+		// so it's made and never shown.
+		v = initView("RyUIView")
 	case ops.KindRichText:
 		n.rich = newRich()
 		v = n.rich.makeView()
@@ -216,8 +228,18 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 	case ops.KindTextField:
 		h.setField(n, p, v)
 	case ops.KindToggle:
-		if p == ops.PropToggleOn {
+		switch p {
+		case ops.PropToggleOn:
 			Send(n.view, "setState:", uintptr(v.Int))
+		case ops.PropToggleCheckbox:
+			if v.Int != 0 {
+				// A check box in place of its switch.
+				c := Send(Class("NSButton"), "checkboxWithTitle:target:action:", uintptr(String("")), uintptr(h.target), uintptr(Sel("act:")))
+				Send(c, "retain")
+				Send(c, "setState:", uintptr(SendInt(n.view, "state")))
+				Send(c, "setEnabled:", Bool(SendBool(n.view, "isEnabled")))
+				h.replaceView(n, c)
+			}
 		}
 	case ops.KindSlider:
 		switch p {
@@ -242,8 +264,22 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 	case ops.KindScroll:
 		if p == ops.PropScrollHorizontal {
 			n.horizontal = v.Int != 0
-			Send(n.view, "setHasHorizontalScroller:", Bool(v.Int != 0))
-			Send(n.view, "setHasVerticalScroller:", Bool(v.Int == 0))
+			Send(n.view, "setHasHorizontalScroller:", Bool(v.Int != 0 && !n.paging))
+			Send(n.view, "setHasVerticalScroller:", Bool(v.Int == 0 && !n.paging))
+		}
+		if p == ops.PropScrollPaging {
+			h.setPaging(n, v.Int != 0)
+		}
+	case ops.KindPageControl:
+		h.setPageDots(n, p, v)
+	case ops.KindSplit:
+		h.setSplitProp(n, p, v)
+	case ops.KindShader:
+		h.setShaderProp(n, p, v)
+	case ops.KindCanvas:
+		if p == ops.PropCanvasCommands {
+			n.canvas = append(n.canvas[:0], v.Bytes...)
+			Send(n.view, "setNeedsDisplay:", 1)
 		}
 		// Pull to refresh: not on macOS.
 	case ops.KindList:

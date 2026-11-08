@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
-import android.os.Build
 import android.view.View
 import android.widget.CompoundButton
 import android.widget.TextView
@@ -44,7 +43,7 @@ object RyUIAutomation {
         }
         receiver = r
         val f = IntentFilter("dev.ryui.automation")
-        if (Build.VERSION.SDK_INT >= 33) app.registerReceiver(r, f, Context.RECEIVER_EXPORTED) else app.registerReceiver(r, f)
+        app.registerReceiver(r, f, Context.RECEIVER_EXPORTED)
     }
 
     private fun run(rt: RyUIRuntime, line: String) {

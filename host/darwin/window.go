@@ -219,6 +219,7 @@ func (h *Host) environment() ops.Environment {
 		Scale: float32(scale), FontScale: 1,
 		Dark:         h.isDark(),
 		ReduceMotion: SendBool(ws, "accessibilityDisplayShouldReduceMotion"),
+		ScreenReader: SendBool(ws, "isVoiceOverEnabled"),
 		Platform:     ops.PlatformMacOS,
 		Locale:       locale,
 		TimeZone:     tz,

@@ -4,7 +4,6 @@ import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
-import android.os.Build
 import android.view.textclassifier.TextClassifier
 import android.webkit.MimeTypeMap
 import androidx.core.content.FileProvider
@@ -33,9 +32,9 @@ class RyUIClipboard(private val rt: RyUIRuntime) {
             val d = cm.primaryClipDescription
             val text = d != null && (d.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN) || d.hasMimeType(ClipDescription.MIMETYPE_TEXT_HTML))
             val image = d != null && d.hasMimeType("image/*")
-            // A link: a URI list, or text the system classified as a URL (Android 12).
+            // A link: a URI list, or text the system classified as a URL.
             val url = d != null && (d.hasMimeType(ClipDescription.MIMETYPE_TEXT_URILIST) ||
-                Build.VERSION.SDK_INT >= 31 && d.classificationStatus == ClipDescription.CLASSIFICATION_COMPLETE &&
+                d.classificationStatus == ClipDescription.CLASSIFICATION_COMPLETE &&
                 d.getConfidenceScore(TextClassifier.TYPE_URL) >= 0.5f)
             reply(Result.success(byteArrayOf(if (text) 1 else 0, if (image) 1 else 0, if (url) 1 else 0)))
         },

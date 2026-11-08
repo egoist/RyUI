@@ -30,6 +30,7 @@ what RyUI has for it.
 | Text fields | `TextField`, `SecureField`, `TextEditor` | `TextInput` | ✓ `TextField` (secure, keyboards, return keys, multiline) |
 | The cursor, inserting at it | `TextSelection` | `selection`, `onSelectionChange` | ✓ `TextFieldProps.Selection`, `ui.InsertText` |
 | Rich text editing (a mail's body) | `TextEditor` with `AttributedString` (iOS 26) | community (10tap, pell) | ✓ `TextFieldProps.Rich`, `ToggleFormat`, `SetLink`, `OnFormats` |
+| A bar on the keyboard | `.toolbar { ToolbarItemGroup(placement: .keyboard) }` | `InputAccessoryView` (iOS) | ✓ `TextFieldProps.Accessory` (both) |
 | Pasted images, keyboard GIFs and stickers | `onPasteCommand`, `PasteButton` | community (`onPaste`) | ✓ `TextFieldProps.PasteTypes`, `OnPaste` (Android's `commitContent` too) |
 | Toggle, slider | `Toggle`, `Slider` | community | ✓ `Toggle`, `Slider` |
 | Segmented control | `Picker(.segmented)` | community | ✓ `Segmented` |
@@ -42,8 +43,12 @@ what RyUI has for it.
 | Video | `VideoPlayer` | `expo-video` | ✓ `Video` |
 | Web content | `WKWebView` | `react-native-webview` | ✓ `WebView` (URL, HTML, messages both ways, scripts before the page's, blocked requests, its state and history, downloads, new windows, cookies, a script's value; each request on Android); `ryui/js` runs JavaScript off screen |
 | Maps | `Map` | `expo-maps` | ✓ `ryui/maps` (Apple Maps; Google Maps with an API key: region, markers, the user's location, taps) |
-| Custom drawing | `Shape`, `Path`, `Canvas` | `react-native-svg`, Skia | ◐ `Shape` and `Path` (lines, curves, arcs, rects, ellipses; fill, stroke, caps, joins; an animatable trim); SVG icons drawn natively (`ryui/svg`); no immediate-mode canvas, no gradient fills |
+| Custom drawing | `Shape`, `Path`, `Canvas` | `react-native-svg`, Skia | ✓ `Shape` and `Path` (fill, stroke, caps, joins, dashes, an animatable trim); `Canvas` (paths, gradients, text, transforms, clips, opacity); SVG icons drawn natively (`ryui/svg`) |
+| Charts | Swift Charts | `victory-native`, community | ✓ `ryui/chart` (bars, lines, areas, points) |
+| Shaders | `.colorEffect(ShaderLibrary...)` | Skia's runtime effects | ✓ `Shader` (Kage, Go's syntax: Metal on Apple, AGSL on Android, the CPU on Windows) |
 | Native escape hatch | `UIViewRepresentable` | native modules | ✓ `ui.Native` views, `ui.Call` modules |
+| Paging, page dots | `.scrollTargetBehavior(.paging)`, `TabView(.page)` | `react-native-pager-view` | ✓ `ScrollProps.Paging`, `PageControl` |
+| Checkbox | `Toggle` (`.checkbox`, macOS) | community | ✓ `ToggleProps.Checkbox` |
 
 ## Navigation and presentation
 
@@ -51,8 +56,11 @@ what RyUI has for it.
 |---|---|---|---|
 | Stacks with native push, pop, back gestures | `NavigationStack` | Stack | ✓ `Stack`, `UseNavigator` |
 | Tabs | `TabView` | Tabs | ✓ `Tabs` |
+| Sidebar, drawer | `NavigationSplitView` | Drawer | ✓ `SplitView` (a stack on iPhone, a drawer on Android) |
 | Bar buttons, titles, search | `.toolbar`, `.searchable` | header options | ✓ `ScreenOptions` (`Actions`, `Search`) |
 | Sheets with detents | `.sheet`, `.presentationDetents` | modal | ✓ `Sheet` (`Detents`, `Grabber`) |
+| Taking back, preventing dismissal | `.navigationBarBackButtonHidden`, `.interactiveDismissDisabled` | `BackHandler`, `usePreventRemove` | ✓ `OnBack` (screens, sheets, the app) |
+| Popovers | `.popover` | — | ✓ `Popover` (a popover on iPhone too) |
 | Alerts, action sheets | `.alert`, `.confirmationDialog` | `Alert` | ✓ `Alert` (both styles) |
 | Deep links, universal and app links | `.onOpenURL` | Linking | ✓ `OnOpenURL`, `ryui.json` scheme and links |
 | Pull to refresh, swipe actions | `.refreshable`, `.swipeActions` | `RefreshControl` | ✓ (both edges: `SwipeActions`, `LeadingSwipeActions`) |
@@ -139,6 +147,8 @@ what RyUI has for it.
 | Dynamic Type, font scale | automatic | `allowFontScaling` | ✓ text styles and custom fonts scale |
 | Screen reader labels, roles, hiding | `.accessibilityLabel`... | `accessibilityLabel`... | ✓ `Label`, `Hint`, `Role`, `Decorative`; pressable views are buttons |
 | Announcements | `AccessibilityNotification.Announcement` | `announceForAccessibility` | ✓ `Announce` |
+| Moving a screen reader's focus | `@AccessibilityFocusState` | `setAccessibilityFocus` | ✓ `AccessibilityFocus` |
+| Is a screen reader on | `voiceOverEnabled` | `isScreenReaderEnabled` | ✓ `Environment.ScreenReader` |
 | Custom actions, adjustable | `.accessibilityAction`, `.accessibilityAdjustableAction` | `accessibilityActions` | ✓ `ViewProps.Actions`, `OnAdjust` (and List swipe actions are TalkBack actions) |
 
 ## Tooling
@@ -149,6 +159,7 @@ what RyUI has for it.
 | Release builds and signing | Xcode, EAS Build | ✓ `ryui build -ios` (.ipa), `ryui build -android` (.aab, .apk) |
 | GUI tests | XCUITest, Detox, Maestro | ✓ `e2e/` (both platforms; a CI job for each, not yet run on GitHub) |
 | Benchmarks | Instruments | ✓ `bench/` (against SwiftUI and Compose) |
+| Embedding in an existing app | — | brownfield (React Native's) | ✓ `ryui build -ios -xcframework`, `ryui build -android -aar` |
 | Over-the-air updates | — | EAS Update: ✗ |
 
 ## Not yet

@@ -2,7 +2,6 @@ package dev.ryui
 
 import android.content.Context
 import android.graphics.Color
-import android.os.Build
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
@@ -125,6 +124,7 @@ class RyUIScreen(context: Context, val nodeID: Int, private val rt: RyUIRuntime)
         // the navigation bar; it moves without a layout, so its position
         // says nothing.
         if (n.kind == RyUIKind.SHEET) e = e.copy(safeTop = 0f, safeBottom = 0f)
+        if (n.kind == RyUIKind.POPOVER) e = e.copy(safeTop = 0f, safeRight = 0f, safeBottom = 0f, safeLeft = 0f, keyboard = 0f)
         if (e == lastEnv) return
         lastEnv = e
         rt.send(RyUIEvents.environment(nodeID, e))
@@ -149,6 +149,8 @@ class RyUIStack(context: Context, val nodeID: Int, private val rt: RyUIRuntime) 
     val screens = ArrayList<RyUINode>()
     val top: RyUINode? get() = screens.lastOrNull()
     private var backing = false
+    /** Replace: the screens destroyed next, and the one inserted next, change at once. */
+    var instant = false
 
     init {
         addView(bar)
@@ -156,7 +158,10 @@ class RyUIStack(context: Context, val nodeID: Int, private val rt: RyUIRuntime) 
 
     private fun makeBar(ctx: Context) = MaterialToolbar(ctx).apply {
         setBackgroundColor(MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorSurface, Color.WHITE))
-        setNavigationOnClickListener { rt.userPop(this@RyUIStack) }
+        setNavigationOnClickListener {
+            val split = rt.nodes[nodeID]?.parent?.view as? RyUISplit
+            if (screens.size < 2 && split != null) split.openDrawer() else rt.userPop(this@RyUIStack)
+        }
     }
 
     /** Takes the bar's colors from the current theme. */
@@ -207,6 +212,7 @@ class RyUIStack(context: Context, val nodeID: Int, private val rt: RyUIRuntime) 
     private val slide get() = (if (layoutDirection == LAYOUT_DIRECTION_RTL) -0.08f else 0.08f) * width.coerceAtLeast(1)
 
     fun insert(n: RyUINode, index: Int) {
+        instant = false
         val v = n.view
         v.setBackgroundColor(surface())
         (v.parent as? ViewGroup)?.removeView(v)
@@ -403,10 +409,16 @@ class RyUIStack(context: Context, val nodeID: Int, private val rt: RyUIRuntime) 
         val s = t.view as RyUIScreen
         bar.title = s.title
         bar.setBackgroundColor(if (s.barColor != 0L) rt.color(s.barColor) else surface())
+        val split = rt.nodes[nodeID]?.parent?.view as? RyUISplit
         if (screens.size > 1) {
             bar.setNavigationIcon(R.drawable.ryui_ic_arrow_back)
             bar.setNavigationIconTint(MaterialColors.getColor(bar, com.google.android.material.R.attr.colorOnSurface))
             bar.setNavigationContentDescription(androidx.appcompat.R.string.abc_action_bar_up_description)
+        } else if (split != null && !split.wide) {
+            // A SplitView's destination: its drawer's menu button.
+            bar.navigationIcon = rt.symbol("line.3.horizontal")
+            bar.setNavigationIconTint(MaterialColors.getColor(bar, com.google.android.material.R.attr.colorOnSurface))
+            bar.setNavigationContentDescription(androidx.appcompat.R.string.abc_action_menu_overflow_description)
         } else {
             bar.navigationIcon = null
         }
@@ -609,6 +621,7 @@ fun RyUIRuntime.environment(v: View, keyboardPx: Int? = null): RyUIEnvironment {
         fontScale = c.fontScale,
         dark = isNight(c),
         reduceMotion = !android.animation.ValueAnimator.areAnimatorsEnabled(),
+        screenReader = (app.getSystemService(Context.ACCESSIBILITY_SERVICE) as android.view.accessibility.AccessibilityManager).isTouchExplorationEnabled,
         widthClass = widthClass(win.width / d), heightClass = heightClass(win.height / d),
         locale = region.locale,
         languages = region.languages,
@@ -669,11 +682,12 @@ fun RyUIRuntime.activeStack(): RyUIStack? {
     return best
 }
 
-fun RyUIRuntime.makeBackCallback() = object : OnBackPressedCallback(false) {
+fun RyUIRuntime.makeBackCallback(): OnBackPressedCallback = object : OnBackPressedCallback(false) {
     private var stack: RyUIStack? = null
 
     override fun handleOnBackStarted(backEvent: BackEventCompat) {
-        stack = activeStack()?.also { it.backStarted() }
+        // A screen that takes back itself (ui.OnBack) isn't previewed popping.
+        stack = activeStack()?.takeIf { it.top?.intercepts != true }?.also { it.backStarted() }
     }
 
     override fun handleOnBackProgressed(backEvent: BackEventCompat) {
@@ -689,13 +703,37 @@ fun RyUIRuntime.makeBackCallback() = object : OnBackPressedCallback(false) {
         val s = stack ?: activeStack()
         stack = null
         if (s != null) userPop(s)
+        else nodes[rootID]?.takeIf { it.intercepts }?.let { emit(it.id, RyUIEventKind.BACK) { RyUIEvents.back(it.id) } }
     }
+}
+
+/** The core takes the user's going back from this screen, sheet or root (ui.OnBack). */
+val RyUINode.intercepts: Boolean get() = props[RyUIProp.INTERCEPT_BACK] == true
+
+/** The root's OnBack let Android's back go on: do what the system would have. */
+fun RyUIRuntime.backExit() {
+    val act = activity ?: return
+    back.isEnabled = false
+    act.onBackPressedDispatcher.onBackPressed()
+    updateBack()
+}
+
+/** A sheet's OnBack: Android's back, a tap outside and a swipe down ask the core rather than dismiss it. */
+fun RyUIRuntime.sheetIntercepts(n: RyUINode) {
+    val d = n.dialog as? BottomSheetDialog ?: return
+    val on = n.intercepts
+    d.setCancelable(!on) // not hideable by a swipe either
+    sheetBack[n.id]?.isEnabled = on
 }
 
 /** The user popped a stack's top screen: tell the core, which destroys it. */
 fun RyUIRuntime.userPop(s: RyUIStack) {
     val top = s.top ?: return
     if (s.screens.size < 2) return
+    if (top.intercepts) { // ui.OnBack: the core decides, and pops it if it goes
+        emit(top.id, RyUIEventKind.BACK) { RyUIEvents.back(top.id) }
+        return
+    }
     top.dying = true
     nodes[s.nodeID]?.children?.remove(top)
     s.remove(top, animated = true)
@@ -707,6 +745,12 @@ fun RyUIRuntime.userPop(s: RyUIStack) {
 /** Inserts into a Stack or Tabs; false: an ordinary insert. */
 fun RyUIRuntime.insertNav(p: RyUINode, c: RyUINode, index: Int): Boolean {
     val v = p.view
+    if (v is RyUISplit) {
+        p.children.add(minOf(index, p.children.size), c)
+        c.parent = p
+        v.setDetail(c.view)
+        return true
+    }
     if (v !is RyUIStack && v !is RyUITabs) return false
     val i = minOf(index, p.children.size)
     p.children.add(i, c)
@@ -728,7 +772,7 @@ fun RyUIRuntime.destroyNav(n: RyUINode): Boolean {
             n.dying = true
             p.children.remove(n)
             val s = p.view as RyUIStack
-            s.remove(n, animated = s.top === n && s.isAttachedToWindow)
+            s.remove(n, animated = !s.instant && s.top === n && s.isAttachedToWindow)
             return true
         }
         alive && p!!.view is RyUITabs -> {
@@ -737,10 +781,16 @@ fun RyUIRuntime.destroyNav(n: RyUINode): Boolean {
             (p.view as RyUITabs).remove(n)
             return true
         }
+        n.kind == RyUIKind.POPOVER -> {
+            n.dying = true
+            n.popover?.dismiss()
+            return true
+        }
         n.kind == RyUIKind.SHEET || n.kind == RyUIKind.ALERT -> {
             n.dying = true
             n.dialog?.dismiss()
             n.dialog = null
+            sheetBack.remove(n.id)
             return true
         }
     }
@@ -768,6 +818,36 @@ fun RyUIRuntime.setNavProp(n: RyUINode, prop: Int, v: Any): Boolean {
             }
         }
         RyUIKind.TABS -> if (prop == RyUIProp.Tabs.SELECTED) (n.view as RyUITabs).select((v as Long).toInt()) else return false
+        RyUIKind.SHADER -> (n.view as RyUIShaderView).let {
+            when (prop) {
+                RyUIProp.Shader.CODE -> it.setCode(v as java.nio.ByteBuffer)
+                RyUIProp.Shader.ANIMATED -> it.animated = v as Boolean
+                RyUIProp.Shader.UNIFORMS -> it.setUniforms(v as java.nio.ByteBuffer)
+                else -> return false
+            }
+        }
+        RyUIKind.SPLIT -> (n.view as RyUISplit).let {
+            when (prop) {
+                RyUIProp.Split.ITEMS -> it.setItems(v as java.nio.ByteBuffer)
+                RyUIProp.Split.SELECTED -> it.select((v as Long).toInt())
+                RyUIProp.Split.TITLE -> it.setTitle(v as String)
+                else -> return false
+            }
+        }
+        RyUIKind.CANVAS -> if (prop == RyUIProp.Canvas.COMMANDS) (n.view as RyUICanvas).setCommands(v as java.nio.ByteBuffer) else return false
+        RyUIKind.ACCESSORY -> when (prop) {
+            RyUIProp.Accessory.HEIGHT -> n.accessory?.height = (v as Double).toFloat()
+            RyUIProp.Accessory.WIDTH -> {}
+            else -> return false
+        }
+        RyUIKind.POPOVER -> n.popover?.let {
+            when (prop) {
+                RyUIProp.Popover.ANCHOR -> it.anchor = (v as Long).toInt()
+                RyUIProp.Popover.WIDTH -> { it.width = (v as Double).toFloat(); it.resize() }
+                RyUIProp.Popover.HEIGHT -> { it.height = (v as Double).toFloat(); it.resize() }
+                else -> return false
+            }
+        }
         RyUIKind.SHEET -> when (prop) {
             RyUIProp.Sheet.DETENTS -> n.detents = v as Long
             RyUIProp.Sheet.GRABBER -> n.grabber = v as Boolean
@@ -782,6 +862,7 @@ fun RyUIRuntime.setNavProp(n: RyUINode, prop: Int, v: Any): Boolean {
         }
         RyUIKind.SCROLL -> when (prop) {
             RyUIProp.Scroll.HORIZONTAL -> setHorizontal(n, v as Boolean)
+            RyUIProp.Scroll.PAGING -> RyUIPager.apply(this, n)
             RyUIProp.Scroll.REFRESHABLE -> setRefreshable(n, v as Boolean)
             RyUIProp.Scroll.REFRESHING -> (n.wrapper as? SwipeRefreshLayout)?.isRefreshing = v as Boolean
             else -> return false
@@ -804,6 +885,13 @@ fun RyUIRuntime.setNavProp(n: RyUINode, prop: Int, v: Any): Boolean {
             else -> return false
         }
         RyUIKind.NATIVE -> return setNativeProp(n, prop, v)
+        RyUIKind.PAGE_CONTROL -> (n.view as RyUIPageDots).let {
+            when (prop) {
+                RyUIProp.PageControl.COUNT -> it.count = (v as Long).toInt()
+                RyUIProp.PageControl.PAGE -> it.page = (v as Long).toInt()
+                else -> return false
+            }
+        }
         RyUIKind.SEGMENTED -> if (prop == RyUIProp.Segmented.SEGMENTS) (n.view as RyUISegmented).setSegments(v as ByteBuffer) else return false
         RyUIKind.RICH_TEXT -> when (prop) {
             RyUIProp.RichText.CONTENT -> (n.view as RyUIRichText).setContent(v as ByteBuffer)
@@ -857,7 +945,7 @@ fun RyUIRuntime.showMenu(n: RyUINode) {
                 else com.google.android.material.R.attr.colorOnSurfaceVariant, Color.DKGRAY))
         }
     }
-    if (Build.VERSION.SDK_INT >= 29 && n.actions.any { it.icon.isNotEmpty() }) m.setForceShowIcon(true)
+    if (n.actions.any { it.icon.isNotEmpty() }) m.setForceShowIcon(true)
     val id = n.id
     m.setOnMenuItemClickListener { item ->
         emit(id, RyUIEventKind.ACTION) { RyUIEvents.action(id, item.itemId.toLong()) }
@@ -935,6 +1023,7 @@ fun RyUIRuntime.present(n: RyUINode) {
     val act = activity ?: return
     when (n.kind) {
         RyUIKind.SHEET -> presentSheet(act, n)
+        RyUIKind.POPOVER -> n.popover?.present()
         RyUIKind.ALERT -> presentAlert(act, n)
     }
 }
@@ -997,6 +1086,7 @@ private fun RyUIRuntime.presentSheet(act: RyUIActivity, n: RyUINode) {
     })
     val id = n.id
     d.setOnDismissListener {
+        sheetBack.remove(id)
         if (!n.dying) {
             n.dying = true
             emit(id, RyUIEventKind.DISMISSED) { RyUIEvents.dismissed(id) }
@@ -1011,7 +1101,20 @@ private fun RyUIRuntime.presentSheet(act: RyUIActivity, n: RyUINode) {
         if (shown && large) b.state = BottomSheetBehavior.STATE_EXPANDED
         screen.report()
     }
+    // ui.OnBack: what would dismiss it asks the core while it intercepts.
+    val back = object : androidx.activity.OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() { emit(id, RyUIEventKind.BACK) { RyUIEvents.back(id) } }
+    }
+    d.onBackPressedDispatcher.addCallback(back)
+    sheetBack[id] = back
+    d.setOnShowListener {
+        d.findViewById<View>(com.google.android.material.R.id.touch_outside)?.setOnClickListener {
+            if (n.intercepts) emit(id, RyUIEventKind.BACK) { RyUIEvents.back(id) }
+            else if (d.isShowing) d.cancel()
+        }
+    }
     n.dialog = d
+    sheetIntercepts(n)
     d.show()
 }
 
@@ -1054,15 +1157,14 @@ private fun RyUIRuntime.presentAlert(act: RyUIActivity, n: RyUINode) {
 
 fun RyUIRuntime.haptic(kind: Int) {
     val v = activity?.window?.decorView ?: return
-    val api30 = android.os.Build.VERSION.SDK_INT >= 30
     val c = when (kind) {
         RyUIHaptic.SELECTION -> HapticFeedbackConstants.CLOCK_TICK
         RyUIHaptic.LIGHT -> HapticFeedbackConstants.KEYBOARD_TAP
         RyUIHaptic.MEDIUM -> HapticFeedbackConstants.VIRTUAL_KEY
         RyUIHaptic.HEAVY -> HapticFeedbackConstants.LONG_PRESS
-        RyUIHaptic.SUCCESS -> if (api30) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.VIRTUAL_KEY
-        RyUIHaptic.WARNING -> if (api30) HapticFeedbackConstants.REJECT else HapticFeedbackConstants.LONG_PRESS
-        RyUIHaptic.ERROR -> if (api30) HapticFeedbackConstants.REJECT else HapticFeedbackConstants.LONG_PRESS
+        RyUIHaptic.SUCCESS -> HapticFeedbackConstants.CONFIRM
+        RyUIHaptic.WARNING -> HapticFeedbackConstants.REJECT
+        RyUIHaptic.ERROR -> HapticFeedbackConstants.REJECT
         else -> return
     }
     v.performHapticFeedback(c)

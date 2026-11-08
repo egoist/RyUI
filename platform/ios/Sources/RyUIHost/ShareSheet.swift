@@ -4,7 +4,7 @@ import UIKit
 import RyUIOps
 #endif
 #if canImport(CRyUI)
-import CRyUI
+@_implementationOnly import CRyUI
 #endif
 
 /// The share extension of an app with a share sheet of its own

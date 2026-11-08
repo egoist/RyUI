@@ -56,7 +56,7 @@ final class GoldenTests: XCTestCase {
     func testEncodesGoldenEvents() throws {
         var env = RyUIEnvironment()
         env.width = 402; env.height = 874; env.safeTop = 62; env.safeBottom = 34; env.keyboard = 336
-        env.scale = 3; env.fontScale = 1.25; env.dark = true; env.reduceMotion = true; env.widthClass = 1; env.heightClass = 3; env.locale = "en_US"; env.timeZone = "Asia/Shanghai"; env.languages = "en-US,zh-Hans"; env.firstWeekday = 2; env.hourCycle = 24
+        env.scale = 3; env.fontScale = 1.25; env.dark = true; env.reduceMotion = true; env.screenReader = true; env.widthClass = 1; env.heightClass = 3; env.locale = "en_US"; env.timeZone = "Asia/Shanghai"; env.languages = "en-US,zh-Hans"; env.firstWeekday = 2; env.hourCycle = 24
         var pan = RyUIGesture()
         pan.state = RyUIGestureState.changed.rawValue
         pan.x = 10; pan.y = 20; pan.translationX = 5; pan.translationY = -3; pan.velocityX = 100; pan.velocityY = -50; pan.scale = 1; pan.rotation = 0.5

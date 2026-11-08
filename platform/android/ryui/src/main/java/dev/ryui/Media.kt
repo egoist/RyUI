@@ -540,13 +540,41 @@ fun RyUIRuntime.listenGesture(n: RyUINode, event: Int) {
 // Animation: between AnimateBegin and AnimateEnd, frames, opacity and
 // backgrounds change with animators.
 
-class RyUIAnimation(val millis: Long, val curve: Int, val repeat: Int = 0, val autoreverses: Boolean = false) {
+class RyUIAnimation(
+    val millis: Long, val curve: Int, val repeat: Int = 0, val autoreverses: Boolean = false,
+    /** Before it starts. */
+    val delay: Long = 0,
+    /** A spring's damping ratio (1: no overshoot) and initial velocity (the change's fraction per second). */
+    val damping: Float = 0.85f, val velocity: Float = 0f,
+) {
     fun interpolator(): Interpolator = when (curve) {
         RyUIAnimationCurve.LINEAR -> LinearInterpolator()
         RyUIAnimationCurve.EASE_IN -> PathInterpolator(0.42f, 0f, 1f, 1f)
         RyUIAnimationCurve.EASE_OUT -> PathInterpolator(0f, 0f, 0.58f, 1f)
-        RyUIAnimationCurve.SPRING -> OvershootInterpolator(0.9f)
+        RyUIAnimationCurve.SPRING -> RyUISpring(millis / 1000f, damping, velocity)
         else -> PathInterpolator(0.42f, 0f, 0.58f, 1f)
+    }
+}
+
+/**
+ * A damped spring over the animation's duration, as UIKit's
+ * usingSpringWithDamping: its natural period is the duration, so it has
+ * settled by its end; underdamped, it overshoots and comes back. Its
+ * initial velocity is in the change's fraction per second.
+ */
+class RyUISpring(seconds: Float, damping: Float, private val v0: Float) : Interpolator {
+    private val dur = maxOf(seconds, 0.001f)
+    private val zeta = damping.coerceIn(0.05f, 1f)
+    // Settled to about 0.1% by the end: e^(-zeta*w0*dur) = 0.001.
+    private val w0 = maxOf(6.9f / (zeta * dur), 2f * Math.PI.toFloat() / dur)
+
+    override fun getInterpolation(f: Float): Float {
+        if (f >= 1f) return 1f
+        val t = f * dur
+        val decay = Math.exp((-zeta * w0 * t).toDouble()).toFloat()
+        if (zeta >= 0.999f) return 1f - decay * (1f + (w0 - v0) * t)
+        val wd = w0 * Math.sqrt((1 - zeta * zeta).toDouble()).toFloat()
+        return 1f - decay * (Math.cos((wd * t).toDouble()).toFloat() + (zeta * w0 - v0) / wd * Math.sin((wd * t).toDouble()).toFloat())
     }
 }
 
@@ -560,7 +588,15 @@ fun RyUIRuntime.beginAnimation(args: ByteBuffer) {
         repeat = args.int
         auto = args.get().toInt() != 0
     }
-    animation = RyUIAnimation((seconds * 1000).toLong(), curve, repeat, auto)
+    var delay = 0L
+    var damping = 0.85f
+    var velocity = 0f
+    if (args.remaining() >= 12) {
+        delay = (args.float * 1000).toLong()
+        damping = args.float
+        velocity = args.float
+    }
+    animation = RyUIAnimation((seconds * 1000).toLong(), curve, repeat, auto, delay, damping, velocity)
 }
 
 /** Whether a change to v animates now: an animation is on and v is on screen. */
@@ -578,6 +614,7 @@ fun RyUIRuntime.animateFrame(n: RyUINode, v: View, l: Int, t: Int, r: Int, b: In
     fun lerp(from: Int, to: Int, f: Float) = from + Math.round((to - from) * f)
     n.frameAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
         duration = a.millis
+        startDelay = a.delay
         interpolator = a.interpolator()
         addUpdateListener {
             val f = it.animatedValue as Float
@@ -593,6 +630,7 @@ fun RyUIRuntime.animateBackground(n: RyUINode, d: GradientDrawable, fromColor: I
     n.backgroundAnimator?.cancel()
     n.backgroundAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
         duration = a.millis
+        startDelay = a.delay
         interpolator = a.interpolator()
         val argb = android.animation.ArgbEvaluator()
         addUpdateListener {

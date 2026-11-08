@@ -3,8 +3,6 @@ package dev.ryui.push
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
-import android.os.Build
-import androidx.core.app.NotificationManagerCompat
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
@@ -30,8 +28,7 @@ class RyUIPushPlugin : RyUIPlugin {
                     reply(Result.failure(Exception("Firebase isn't configured: set ryui.json's android.googleServices to the project's google-services.json")))
                 }
             }
-            if (Build.VERSION.SDK_INT >= 33) r.withPermission(arrayOf(Manifest.permission.POST_NOTIFICATIONS)) { tokenFor(it) }
-            else tokenFor(NotificationManagerCompat.from(r.app).areNotificationsEnabled())
+            r.withPermission(arrayOf(Manifest.permission.POST_NOTIFICATIONS)) { tokenFor(it) }
         }
     }
 }

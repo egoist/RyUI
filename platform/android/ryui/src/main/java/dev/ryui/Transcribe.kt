@@ -27,7 +27,7 @@ import java.util.Locale
 class RyUITranscribe(private val rt: RyUIRuntime) {
     private var busy = false
 
-    private fun available() = Build.VERSION.SDK_INT >= 33 && SpeechRecognizer.isOnDeviceRecognitionAvailable(rt.app)
+    private fun available() = SpeechRecognizer.isOnDeviceRecognitionAvailable(rt.app)
 
     fun methods(): Map<String, RyUIModuleMethod> = mapOf(
         "check" to { args, reply ->
@@ -48,7 +48,6 @@ class RyUITranscribe(private val rt: RyUIRuntime) {
     )
 
     private fun run(path: String, language: String, reply: (Result<ByteArray>) -> Unit) {
-        if (Build.VERSION.SDK_INT < 33) return
         busy = true
         val pipe = ParcelFileDescriptor.createPipe()
         val sr = SpeechRecognizer.createOnDeviceSpeechRecognizer(rt.app)

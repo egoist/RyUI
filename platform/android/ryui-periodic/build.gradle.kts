@@ -10,7 +10,7 @@ android {
     namespace = "dev.ryui.periodic"
     compileSdk = 36
     defaultConfig {
-        minSdk = 26
+        minSdk = 33
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

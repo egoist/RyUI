@@ -1,8 +1,6 @@
 package dev.ryui
 
 import android.content.res.Configuration
-import android.content.res.Resources
-import android.os.Build
 import android.os.LocaleList
 import java.util.Locale
 
@@ -18,22 +16,13 @@ data class RyUIRegion(val languages: String, val locale: String, val firstWeekda
  * are the user's whatever language the app shows.
  */
 private fun RyUIRuntime.systemLocales(): LocaleList {
-    val list = if (Build.VERSION.SDK_INT >= 33) app.getSystemService(android.app.LocaleManager::class.java)?.systemLocales
-        else Resources.getSystem().configuration.locales
+    val list = app.getSystemService(android.app.LocaleManager::class.java)?.systemLocales
     return if (list == null || list.isEmpty) app.resources.configuration.locales else list
-}
-
-private fun RyUIRuntime.localePreferences() = app.getSharedPreferences("ryui.locale", android.content.Context.MODE_PRIVATE)
-
-/** Before Android 13 the host keeps the app's language (SaveLocale): "" to follow the system's. */
-fun RyUIRuntime.saveRegionLocale(tag: String) {
-    localePreferences().edit().apply { if (tag.isEmpty()) remove("tag") else putString("tag", tag) }.apply()
 }
 
 fun RyUIRuntime.readRegion(): RyUIRegion {
     val tags = LinkedHashSet<String>()
-    if (Build.VERSION.SDK_INT < 33) localePreferences().getString("tag", null)?.let { tags.add(it) }
-    // From Android 13 the configuration has the app's language first, if it has one.
+    // The configuration has the app's language first, if it has one.
     val config = app.resources.configuration.locales
     for (i in 0 until config.size()) tags.add(config[i].stripExtensions().toLanguageTag())
     val formats = systemLocales()[0]

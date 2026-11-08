@@ -54,9 +54,11 @@ func (s *shape) setProp(h *Host, n *node, p ops.PropID, v *ops.Value) {
 
 // build makes the GDI+ path from the wire format (u8 PathOp, then its
 // f32 arguments), in pixels.
-func (s *shape) build(k float32) Path {
+func (s *shape) build(k float32) Path { return buildPath(s.path, k) }
+
+// buildPath makes a GDI+ path from Shape's path format, in pixels at k.
+func buildPath(b []byte, k float32) Path {
 	p := NewPath()
-	b := s.path
 	i := 0
 	f := func() float32 {
 		if i+4 > len(b) {

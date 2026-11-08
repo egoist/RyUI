@@ -13,6 +13,11 @@ type Owner struct {
 	cleanups    []func()
 	ctx         *ctxEntry
 	comp        *node // the computation this owner belongs to, if any
+	// catcher is the nearest owner, this one or above, that Catch made:
+	// a panic in an effect it owns goes to its handler. Nil for most, so
+	// effects outside a Catch run with no recover.
+	catcher *Owner
+	onError func(err any)
 }
 
 type ctxEntry struct {
@@ -28,6 +33,7 @@ func (o *Owner) attach(parent *Owner) {
 	if parent == nil {
 		return
 	}
+	o.catcher = parent.catcher
 	o.attached = true
 	o.prev = parent.last
 	if parent.last != nil {
@@ -103,6 +109,9 @@ func (o *Owner) Disposed() bool { return o.disposed }
 // returns.
 func Root(f func(dispose func())) {
 	o := &Owner{parent: currentOwner}
+	if currentOwner != nil {
+		o.catcher = currentOwner.catcher
+	}
 	settleAmbient()
 	prevOwner, prevSub := currentOwner, activeSub
 	currentOwner, activeSub = o, nil
@@ -171,4 +180,53 @@ func (c *Context[T]) Use() T {
 		}
 	}
 	return c.def
+}
+
+// Catch runs f under a new owner, disposed with the current one, that
+// catches panics: f's own, and those of the effects f's owner owns, as
+// they run then or later. A panic goes to handler (on the main thread, the
+// effect's or f's state restored), not up the stack, and the panicking
+// effect keeps what it read so far. A panic in handler goes to the Catch
+// around this one, if any. Panics with no Catch around them aren't
+// recovered: the program crashes as before, with its stack.
+//
+// Panics in computations a Catch doesn't own (a memo read from outside,
+// event handlers) aren't caught. Effects outside every Catch pay nothing
+// for it.
+func Catch(f func(), handler func(err any)) {
+	o := NewOwner()
+	o.catcher = o
+	o.onError = handler
+	prevOwner, prevSub := currentOwner, activeSub
+	currentOwner = o
+	defer func() {
+		currentOwner, activeSub = prevOwner, prevSub
+		if err := recover(); err != nil {
+			handleError(o, err)
+		}
+	}()
+	f()
+}
+
+// handleError gives err to the catcher of owner o, or panics with it when
+// there is none.
+func handleError(o *Owner, err any) {
+	c := o.catcher
+	if c == nil {
+		panic(err)
+	}
+	var up *Owner
+	if c.parent != nil && c.parent.catcher != nil {
+		up = c.parent
+	}
+	if up == nil {
+		c.onError(err)
+		return
+	}
+	defer func() {
+		if err := recover(); err != nil {
+			handleError(up, err)
+		}
+	}()
+	c.onError(err)
 }

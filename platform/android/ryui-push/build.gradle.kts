@@ -11,7 +11,7 @@ android {
     namespace = "dev.ryui.push"
     compileSdk = 36
     defaultConfig {
-        minSdk = 26
+        minSdk = 33
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

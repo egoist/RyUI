@@ -22,6 +22,7 @@ type handlers struct {
 	popped, selected    func(int64)
 	action              func(int64)
 	dismissed, refresh  func()
+	back                func() // Back: OnBack's scope
 	pan, pinch, rotate  func(Gesture)
 	swipe               func(SwipeDirection)
 	loaded              func(w, h float32)
@@ -29,6 +30,7 @@ type handlers struct {
 	native              func([]byte)
 	link                func(string)
 	scrolled            func(x, y float32)
+	paged               func(int64)               // a Paging Scroll's
 	rowInset            func(lead, trail float32) // a List's
 	rowSelected         func(bool)                // a List cell's
 	rowSelectBegin      func()                    // a List cell's
@@ -90,12 +92,18 @@ type element struct {
 	h       *handlers
 	list    listImpl
 	text    string // Text's text or Button's title, for the measure cache
+	encoded []byte // a prop encoded, kept to compare or reuse (a SplitView's Items, a Shader's Uniforms)
 	variant int32
 
 	// Host-sized layout roots (screens, tab pages, sheets) have their own
 	// environment, which the host reports.
 	env       *signal.Signal[host.Environment]
 	hostSized bool
+	// fits: a host-sized root the core sizes to its content (a popover),
+	// at most maxW wide, and tells the host.
+	fits      bool
+	fullWidth bool // a fits root as wide as the root (an Accessory)
+	maxW      float32
 	measured  bool       // the host measures its content
 	insets    [4]float32 // a measured view's ContentInset, as last sent
 	laidSize  layout.Size

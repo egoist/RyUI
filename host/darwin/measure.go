@@ -81,10 +81,12 @@ func (h *Host) measure(n *node, c layout.Constraints) layout.Size {
 		if img := Send(v, "image"); img != 0 {
 			s = MsgSize(img, Sel("size"))
 		}
-	case ops.KindWebView, ops.KindVideo, ops.KindShape, ops.KindView, ops.KindSelectable:
+	case ops.KindWebView, ops.KindVideo, ops.KindShape, ops.KindCanvas, ops.KindView, ops.KindSelectable:
 		s = Size{}
 	case ops.KindScroll, ops.KindList:
 		s = Size{}
+	case ops.KindPageControl:
+		s = h.measureDots(n)
 	default:
 		s = MsgSize(v, Sel("intrinsicContentSize"))
 		if s.Width < 0 { // NSViewNoIntrinsicMetric

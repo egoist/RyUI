@@ -72,6 +72,29 @@ func uiTextStyle(_ v: Int32) -> UIFont.TextStyle {
     }
 }
 
+/// A TextField's ContentType (ui.Content...) as UIKit names it; another a
+/// UITextContentType's own.
+func contentType(_ s: String) -> UITextContentType {
+    switch s {
+    case "username": return .username
+    case "password": return .password
+    case "newPassword": return .newPassword
+    case "oneTimeCode": return .oneTimeCode
+    case "email": return .emailAddress
+    case "phone": return .telephoneNumber
+    case "name": return .name
+    case "givenName": return .givenName
+    case "familyName": return .familyName
+    case "address": return .fullStreetAddress
+    case "postalCode": return .postalCode
+    case "city": return .addressCity
+    case "country": return .countryName
+    case "cardNumber": return .creditCardNumber
+    case "url": return .URL
+    default: return UITextContentType(rawValue: s)
+    }
+}
+
 func uiWeight(_ v: Int32) -> UIFont.Weight? {
     switch RyUIFontWeight(rawValue: v) {
     case .ultralight: return .ultraLight
@@ -153,6 +176,7 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
         case let t as UITextField: t.textColor = c ?? .label
         case let t as RyUITextView: t.textColor = c ?? .label
         case let s as UISwitch: s.onTintColor = c
+        case let b as RyUICheckbox: b.tintColor = c
         case let a as UIActivityIndicatorView: a.color = c ?? .secondaryLabel
         case let p as UIProgressView: p.progressTintColor = c
         case let s as UISegmentedControl: s.selectedSegmentTintColor = c
@@ -325,6 +349,12 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             n.leadingSwipeActions = decodeActions(b)
         case RyUIProp.selected:
             if let c = n.cell { c.list?.setSelected(c, v.bool) }
+        case RyUIProp.interceptBack:
+            setInterceptBack(n, v.bool)
+        case RyUIProp.tooltip:
+            // Shown by the pointer (iPadOS, an iPhone app on a Mac).
+            for i in n.view.interactions where i is UIToolTipInteraction { n.view.removeInteraction(i) }
+            if !v.string.isEmpty { n.view.addInteraction(UIToolTipInteraction(defaultToolTip: v.string)) }
         case RyUIProp.menuTrigger:
             n.menuTrigger = v.enumValue
             installMenu(n)
@@ -463,17 +493,38 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             }
             (n.view as? UITextField)?.autocorrectionType = a
             (n.view as? RyUITextView)?.autocorrectionType = a
+        case (.textField, RyUIProp.TextField.accessory):
+            setAccessory(n, UInt32(truncatingIfNeeded: v.int))
+        case (.split, _):
+            setSplitProp(n, prop, v)
+        case (.shader, _):
+            setShaderProp(n, prop, v)
+        case (.canvas, RyUIProp.Canvas.commands):
+            if case .bytes(let b) = v { (n.view as? RyUICanvasView)?.commands = Array(b) }
+        case (.accessory, RyUIProp.Accessory.width):
+            n.view.frame.size.width = CGFloat(v.float)
+        case (.accessory, RyUIProp.Accessory.height):
+            (n.view as? RyUIAccessoryView)?.height = CGFloat(v.float)
         case (.textField, RyUIProp.TextField.contentType):
-            (n.view as? UITextField)?.textContentType = UITextContentType(rawValue: v.string)
-            (n.view as? RyUITextView)?.textContentType = UITextContentType(rawValue: v.string)
+            let t = contentType(v.string)
+            (n.view as? UITextField)?.textContentType = t
+            (n.view as? RyUITextView)?.textContentType = t
         case (.toggle, RyUIProp.Toggle.on):
             (n.view as? UISwitch)?.setOn(v.bool, animated: n.view.window != nil)
+            (n.view as? RyUICheckbox)?.isOn = v.bool
+        case (.toggle, RyUIProp.Toggle.checkbox):
+            if v.bool { makeCheckbox(n) }
         case (.slider, RyUIProp.Slider.value):
             (n.view as? UISlider)?.value = Float(v.float)
         case (.slider, RyUIProp.Slider.min):
             (n.view as? UISlider)?.minimumValue = Float(v.float)
         case (.slider, RyUIProp.Slider.max):
             (n.view as? UISlider)?.maximumValue = Float(v.float)
+        case (.scroll, RyUIProp.Scroll.paging):
+            guard let s = n.view as? UIScrollView else { return }
+            s.isPagingEnabled = v.bool
+            s.showsHorizontalScrollIndicator = !v.bool
+            s.showsVerticalScrollIndicator = !v.bool
         case (.scroll, RyUIProp.Scroll.horizontal):
             guard let s = n.view as? UIScrollView else { return }
             s.alwaysBounceVertical = !v.bool
