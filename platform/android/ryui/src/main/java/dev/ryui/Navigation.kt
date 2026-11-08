@@ -150,6 +150,8 @@ class RyUIStack(context: Context, val nodeID: Int, private val rt: RyUIRuntime) 
     val screens = ArrayList<RyUINode>()
     val top: RyUINode? get() = screens.lastOrNull()
     private var backing = false
+    /** Replace: the screens destroyed next, and the one inserted next, change at once. */
+    var instant = false
 
     init {
         addView(bar)
@@ -157,7 +159,10 @@ class RyUIStack(context: Context, val nodeID: Int, private val rt: RyUIRuntime) 
 
     private fun makeBar(ctx: Context) = MaterialToolbar(ctx).apply {
         setBackgroundColor(MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorSurface, Color.WHITE))
-        setNavigationOnClickListener { rt.userPop(this@RyUIStack) }
+        setNavigationOnClickListener {
+            val split = rt.nodes[nodeID]?.parent?.view as? RyUISplit
+            if (screens.size < 2 && split != null) split.openDrawer() else rt.userPop(this@RyUIStack)
+        }
     }
 
     /** Takes the bar's colors from the current theme. */
@@ -208,6 +213,7 @@ class RyUIStack(context: Context, val nodeID: Int, private val rt: RyUIRuntime) 
     private val slide get() = (if (layoutDirection == LAYOUT_DIRECTION_RTL) -0.08f else 0.08f) * width.coerceAtLeast(1)
 
     fun insert(n: RyUINode, index: Int) {
+        instant = false
         val v = n.view
         v.setBackgroundColor(surface())
         (v.parent as? ViewGroup)?.removeView(v)
@@ -404,10 +410,16 @@ class RyUIStack(context: Context, val nodeID: Int, private val rt: RyUIRuntime) 
         val s = t.view as RyUIScreen
         bar.title = s.title
         bar.setBackgroundColor(if (s.barColor != 0L) rt.color(s.barColor) else surface())
+        val split = rt.nodes[nodeID]?.parent?.view as? RyUISplit
         if (screens.size > 1) {
             bar.setNavigationIcon(R.drawable.ryui_ic_arrow_back)
             bar.setNavigationIconTint(MaterialColors.getColor(bar, com.google.android.material.R.attr.colorOnSurface))
             bar.setNavigationContentDescription(androidx.appcompat.R.string.abc_action_bar_up_description)
+        } else if (split != null && !split.wide) {
+            // A SplitView's destination: its drawer's menu button.
+            bar.navigationIcon = rt.symbol("line.3.horizontal")
+            bar.setNavigationIconTint(MaterialColors.getColor(bar, com.google.android.material.R.attr.colorOnSurface))
+            bar.setNavigationContentDescription(androidx.appcompat.R.string.abc_action_menu_overflow_description)
         } else {
             bar.navigationIcon = null
         }
@@ -734,6 +746,12 @@ fun RyUIRuntime.userPop(s: RyUIStack) {
 /** Inserts into a Stack or Tabs; false: an ordinary insert. */
 fun RyUIRuntime.insertNav(p: RyUINode, c: RyUINode, index: Int): Boolean {
     val v = p.view
+    if (v is RyUISplit) {
+        p.children.add(minOf(index, p.children.size), c)
+        c.parent = p
+        v.setDetail(c.view)
+        return true
+    }
     if (v !is RyUIStack && v !is RyUITabs) return false
     val i = minOf(index, p.children.size)
     p.children.add(i, c)
@@ -755,7 +773,7 @@ fun RyUIRuntime.destroyNav(n: RyUINode): Boolean {
             n.dying = true
             p.children.remove(n)
             val s = p.view as RyUIStack
-            s.remove(n, animated = s.top === n && s.isAttachedToWindow)
+            s.remove(n, animated = !s.instant && s.top === n && s.isAttachedToWindow)
             return true
         }
         alive && p!!.view is RyUITabs -> {
@@ -801,6 +819,14 @@ fun RyUIRuntime.setNavProp(n: RyUINode, prop: Int, v: Any): Boolean {
             }
         }
         RyUIKind.TABS -> if (prop == RyUIProp.Tabs.SELECTED) (n.view as RyUITabs).select((v as Long).toInt()) else return false
+        RyUIKind.SPLIT -> (n.view as RyUISplit).let {
+            when (prop) {
+                RyUIProp.Split.ITEMS -> it.setItems(v as java.nio.ByteBuffer)
+                RyUIProp.Split.SELECTED -> it.select((v as Long).toInt())
+                RyUIProp.Split.TITLE -> it.setTitle(v as String)
+                else -> return false
+            }
+        }
         RyUIKind.CANVAS -> if (prop == RyUIProp.Canvas.COMMANDS) (n.view as RyUICanvas).setCommands(v as java.nio.ByteBuffer) else return false
         RyUIKind.ACCESSORY -> when (prop) {
             RyUIProp.Accessory.HEIGHT -> n.accessory?.height = (v as Double).toFloat()

@@ -34,7 +34,7 @@ func (h *Host) paintWindow(n *node, hwnd uintptr) {
 // opaque reports whether n's own drawing covers all of it.
 func (h *Host) opaque(n *node) bool {
 	switch n.kind {
-	case ops.KindScreen, ops.KindSheet, ops.KindWindow, kindHeader, kindTabBar:
+	case ops.KindScreen, ops.KindSheet, ops.KindWindow, kindHeader, kindTabBar, kindSidebar:
 		return n.cornerRadius == 0
 	}
 	c, ok := h.resolve(n.background)
@@ -63,7 +63,7 @@ func (h *Host) paintOwn(n *node, hwnd, dc uintptr, r Rect) {
 	case hasBg:
 	case n.kind == ops.KindScreen || n.kind == ops.KindSheet || n.kind == ops.KindWindow:
 		bg, hasBg = h.theme.bg, true
-	case n.kind == kindHeader || n.kind == kindTabBar:
+	case n.kind == kindHeader || n.kind == kindTabBar || n.kind == kindSidebar:
 		bg, hasBg = h.theme.bg, true
 	}
 	if n.opacity < 1 {
@@ -126,6 +126,8 @@ func (h *Host) paintOwn(n *node, hwnd, dc uintptr, r Rect) {
 		h.paintHeader(n, 0, g, r)
 	case kindTabBar:
 		h.paintTabBar(n, 0, g, r)
+	case kindSidebar:
+		h.paintPane(n, 0, g, r)
 	case kindRow:
 		if n.row != nil {
 			n.row.paint(h, g, w, ht)
@@ -143,6 +145,8 @@ func (h *Host) paintOwn(n *node, hwnd, dc uintptr, r Rect) {
 		h.paintHeader(n, dc, 0, r)
 	case kindTabBar:
 		h.paintTabBar(n, dc, 0, r)
+	case kindSidebar:
+		h.paintPane(n, dc, 0, r)
 	}
 	if n.focused && (n.pressable() || n.kind == ops.KindSegmented) && h.keyboardCues(hwnd) {
 		g := NewGraphics(dc)
@@ -164,7 +168,7 @@ func (n *node) interactive() bool {
 		return true
 	}
 	switch n.kind {
-	case ops.KindScroll, ops.KindList, ops.KindSegmented, ops.KindTextField, kindHeader, kindTabBar,
+	case ops.KindScroll, ops.KindList, ops.KindSegmented, ops.KindTextField, kindHeader, kindTabBar, kindSidebar,
 		ops.KindButton, ops.KindToggle, ops.KindSlider, ops.KindStepper, ops.KindWheel, ops.KindDatePicker,
 		ops.KindColorPicker, ops.KindWebView, ops.KindVideo:
 		return true

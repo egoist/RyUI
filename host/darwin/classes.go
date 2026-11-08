@@ -132,6 +132,7 @@ func registerClasses() {
 	registerShapeClass(flipped)
 	registerPageDotsClass(flipped)
 	registerCanvasClass(flipped)
+	registerSplitClasses()
 	registerTarget()
 }
 

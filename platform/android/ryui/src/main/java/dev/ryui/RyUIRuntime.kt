@@ -688,6 +688,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
             RyUIKind.PAGE_CONTROL -> RyUIPageDots(this, id)
             RyUIKind.ACCESSORY -> RyUIContainer(ctx)
             RyUIKind.CANVAS -> RyUICanvas(this)
+            RyUIKind.SPLIT -> RyUISplit(this, id)
             RyUIKind.DATE_PICKER -> RyUIDatePicker(this, id)
             RyUIKind.STACK -> RyUIStack(ctx, id, this)
             RyUIKind.TABS -> RyUITabs(ctx, id, this)
@@ -943,6 +944,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
         framesApplied = true
         val f = n.frame ?: FloatArray(4).also { n.frame = it }
         f[0] = x; f[1] = y; f[2] = width; f[3] = height
+        if (n.parent?.view is RyUISplit) return // a SplitView's detail: it fills what the drawer leaves
         // A Scroll, or a row of its content, moved: what it takes out is redone.
         if (n.kind == RyUIKind.SCROLL) pendingCulls.add(n)
         n.parent?.parent?.let { if (it.kind == RyUIKind.SCROLL) pendingCulls.add(it) }
@@ -1086,6 +1088,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
                 activity?.window?.decorView?.announceForAccessibility(String(b, Charsets.UTF_8))
             }
             RyUICommand.BACK_EXIT -> backExit()
+            RyUICommand.REPLACE -> (n.view as? RyUIStack)?.instant = true
             RyUICommand.A11Y_FOCUS -> n.view?.let { v ->
                 // After this batch's frames, so TalkBack finds the view where it shows.
                 v.post { if (v.isAttachedToWindow) v.performAccessibilityAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS, null) }

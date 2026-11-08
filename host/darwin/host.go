@@ -110,6 +110,7 @@ type node struct {
 	dots       *pageDots           // a PageControl's
 	popover    *popover            // a Popover's
 	canvas     []byte              // a Canvas's display list
+	split      *split              // a SplitView's
 
 	// Interaction states and drag and drop (interaction.go).
 	hovered    bool
@@ -159,24 +160,26 @@ type Host struct {
 	posted []func()
 	source *MainSource
 
-	animating    bool
-	anim         animation
-	accent       ops.Color
-	nextCell     ops.NodeID
-	frames       *frameClock
-	modules      map[string]map[string]method
-	assets       string
-	appName      string
-	dark         bool
-	lists        map[ID]*list
-	editors      map[ID]ID         // each window's field editor (RyUIFieldEditor)
-	videos       map[ID]ops.NodeID // by AVPlayerItem
-	main         *win              // the main window, holding the root
-	wins         map[ID]*win       // the Windows' windows, by NSWindow
-	appMenus     []appMenu         // MenuBar's
-	chromeQueued bool
-	a11yActions  map[ID]a11yAction
-	exiting      map[ID]bool // views going out with a transition
+	animating     bool
+	anim          animation
+	accent        ops.Color
+	nextCell      ops.NodeID
+	frames        *frameClock
+	modules       map[string]map[string]method
+	assets        string
+	appName       string
+	dark          bool
+	lists         map[ID]*list
+	splits        map[ID]*node // SplitViews, by their sidebar's table
+	sidebarSource ID
+	editors       map[ID]ID         // each window's field editor (RyUIFieldEditor)
+	videos        map[ID]ops.NodeID // by AVPlayerItem
+	main          *win              // the main window, holding the root
+	wins          map[ID]*win       // the Windows' windows, by NSWindow
+	appMenus      []appMenu         // MenuBar's
+	chromeQueued  bool
+	a11yActions   map[ID]a11yAction
+	exiting       map[ID]bool // views going out with a transition
 
 	mouse       mouseState  // the primary button's press
 	over        dropState   // a drag over the app's drop targets
@@ -205,6 +208,7 @@ func newHost() *Host {
 		byView:      map[ID]*node{},
 		byMenu:      map[ID]*node{},
 		lists:       map[ID]*list{},
+		splits:      map[ID]*node{},
 		editors:     map[ID]ID{},
 		videos:      map[ID]ops.NodeID{},
 		a11yActions: map[ID]a11yAction{},
@@ -419,6 +423,9 @@ func (h *Host) destroy(id ops.NodeID) {
 	if n.paging {
 		h.setPaging(n, false) // its observer goes
 	}
+	if n.split != nil {
+		delete(h.splits, n.split.table)
+	}
 	for _, c := range n.children {
 		c.parent = nil
 	}
@@ -478,7 +485,7 @@ func (h *Host) release(n *node) {
 }
 
 func (h *Host) insert(p, c *node, index int) {
-	if h.insertNav(p, c, index) {
+	if h.insertNav(p, c, index) || h.insertSplit(p, c, index) {
 		return
 	}
 	i := min(index, len(p.children))
@@ -558,6 +565,9 @@ func (h *Host) setRoot(n *node) {
 }
 
 func (h *Host) setFrame(n *node, f [4]float32) {
+	if n.parent != nil && n.parent.split != nil {
+		return // a SplitView's detail: its content item sizes it
+	}
 	if h.animating && !n.placed && !n.entering {
 		// A view's first frame doesn't animate: it wasn't on screen. The
 		// batch's implicit animations would grow it, its layers and its

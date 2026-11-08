@@ -132,6 +132,8 @@ final class RyUIPopoverController: RyUIScreenController, UIPopoverPresentationCo
 /// user makes (back button, swipe) are reported as Popped.
 final class RyUIStackController: UINavigationController, UINavigationControllerDelegate, UIGestureRecognizerDelegate {
     let nodeID: UInt32
+    /// Replace: the screens destroyed next, and the one inserted next, change at once.
+    var instant = false
     /// What the stack is to become when the transition under way ends: UIKit
     /// drops a push or pop made during one, as a pop then a push would be.
     private var queued: [UIViewController]?
@@ -301,7 +303,7 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
     /// have been attached before their screen existed).
     func adoptControllers(in vc: UIViewController) {
         for n in nodes.values {
-            guard let child = n.vc, child is RyUIStackController || child is RyUITabsController,
+            guard let child = n.vc, child is RyUIStackController || child is RyUITabsController || child is RyUISplitController,
                   child.parent !== vc, child.view.isDescendant(of: vc.view) else { continue }
             if let owner = hostController(of: n), owner !== vc, child.parent === owner { continue }
             child.willMove(toParent: nil)
@@ -328,6 +330,9 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
         case .popover:
             let p = RyUIPopoverController(nodeID: id)
             return (p.content, p)
+        case .split:
+            let s = RyUISplitController(nodeID: id)
+            return (s.view, s)
         case .alert:
             return (UIView(), nil)
         default:
@@ -337,6 +342,12 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
 
     /// Handles inserting into a Stack or Tabs; false: an ordinary insert.
     func insertController(_ p: RyUINode, _ c: RyUINode, _ index: Int) -> Bool {
+        if let split = p.vc as? RyUISplitController, let stack = c.vc as? RyUIStackController {
+            p.children.insert(c, at: min(index, p.children.count))
+            c.parent = p
+            split.setViewController(stack, for: .secondary)
+            return true
+        }
         if let nav = p.vc as? RyUIStackController, let screen = c.vc {
             let i = min(index, p.children.count)
             p.children.insert(c, at: i)
@@ -357,8 +368,9 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
                 if nav.mustQueue {
                     nav.enqueue(nav.target + [screen])
                 } else {
-                    nav.pushViewController(screen, animated: !nav.viewControllers.isEmpty && nav.view.window != nil)
+                    nav.pushViewController(screen, animated: !nav.instant && !nav.viewControllers.isEmpty && nav.view.window != nil)
                 }
+                nav.instant = false
             } else {
                 var vcs = nav.viewControllers
                 vcs.insert(screen, at: min(i, vcs.count))
@@ -374,7 +386,7 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
             if let sel = p.selected { tabs.selectedIndex = sel }
             return true
         }
-        if let child = c.vc, child is RyUIStackController || child is RyUITabsController {
+        if let child = c.vc, child is RyUIStackController || child is RyUITabsController || child is RyUISplitController {
             let owner = hostController(of: p) ?? controller
             owner?.addChild(child)
             p.insert(c, at: index)
@@ -396,6 +408,10 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
             n.parent?.children.removeAll { $0 === n }
             if nav.mustQueue {
                 nav.enqueue(nav.target.filter { $0 !== vc })
+            } else if nav.instant {
+                // A SplitView's destination changing: gone at once, the
+                // stack's first screen too.
+                nav.setViewControllers(nav.viewControllers.filter { $0 !== vc }, animated: false)
             } else if nav.topViewController === vc {
                 nav.popViewController(animated: nav.view.window != nil)
             } else if nav.viewControllers.contains(vc) {

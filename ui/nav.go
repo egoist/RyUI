@@ -282,8 +282,13 @@ type stackState struct {
 // screen is an owner: popping it, by code or by the user's back gesture,
 // disposes it.
 func Stack(root func() Node, o ScreenOptions, style ...Styler) Node {
+	n, _ := newStack(root, o, firstStyle(style))
+	return n
+}
+
+func newStack(root func() Node, o ScreenOptions, style Styler) (Node, *stackState) {
 	e := newElement(ops.KindStack, true)
-	e.setStyle(firstStyle(style), false)
+	e.setStyle(style, false)
 	growByDefault(e)
 	st := &stackState{e: e, owner: signal.CurrentOwner()}
 	st.nav = &Navigator{st}
@@ -293,13 +298,26 @@ func Stack(root func() Node, o ScreenOptions, style ...Styler) Node {
 		}
 	}
 	e.listen(ops.EventPopped)
-	st.push(root, o)
+	if root != nil {
+		st.push(root, o)
+	}
 	signal.OnCleanup(func() {
 		for _, s := range st.screens {
 			s.dispose()
 		}
 	})
-	return Node{e}
+	return Node{e}, st
+}
+
+// reset makes root the stack's only screen: its screens are disposed, the
+// last first, and root is pushed in an empty stack, which the host shows
+// with no push.
+func (st *stackState) reset(root func() Node, o ScreenOptions) {
+	st.e.r.batch.Command(st.e.id, ops.CmdReplace, nil)
+	for len(st.screens) > 0 {
+		st.remove(st.screens[len(st.screens)-1])
+	}
+	st.push(root, o)
 }
 
 func (st *stackState) push(build func() Node, o ScreenOptions) {

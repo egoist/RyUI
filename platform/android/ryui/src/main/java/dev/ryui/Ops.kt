@@ -40,7 +40,8 @@ object RyUIKind {
     const val POPOVER = 30
     const val ACCESSORY = 31
     const val CANVAS = 32
-    const val WINDOW = 33
+    const val SPLIT = 33
+    const val WINDOW = 34
 
     fun name(kind: Int): String = when (kind) {
         1 -> "View"
@@ -75,7 +76,8 @@ object RyUIKind {
         30 -> "Popover"
         31 -> "Accessory"
         32 -> "Canvas"
-        33 -> "Window"
+        33 -> "Split"
+        34 -> "Window"
         else -> "Kind($kind)"
     }
 }
@@ -318,6 +320,12 @@ object RyUIProp {
         const val COMMANDS = 64
     }
 
+    object Split {
+        const val ITEMS = 64
+        const val SELECTED = 65
+        const val TITLE = 66
+    }
+
     object Window {
         const val TITLE = 64
         const val WIDTH = 65
@@ -417,6 +425,7 @@ object RyUICommand {
     const val SHARE_CLOSE = 31
     const val A11Y_FOCUS = 32
     const val BACK_EXIT = 33
+    const val REPLACE = 34
 }
 
 object RyUIRole {

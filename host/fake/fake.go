@@ -691,8 +691,13 @@ func (h *Host) BackFromRoot() bool {
 // Select selects a tab or a segment, as the user does.
 func (h *Host) Select(tabs *View, index int) {
 	p := ops.PropTabsSelected
-	if tabs.Kind == ops.KindSegmented {
+	switch tabs.Kind {
+	case ops.KindSegmented:
 		p = ops.PropSegmentedSelected
+	case ops.KindSplit:
+		p = ops.PropSplitSelected
+	case ops.KindPageControl:
+		p = ops.PropPageControlPage
 	}
 	tabs.Props[p] = ops.Value{Type: ops.TInt, Int: int64(index)}
 	h.listening(tabs, ops.EventSelected)

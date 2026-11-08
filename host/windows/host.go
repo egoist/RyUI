@@ -148,7 +148,9 @@ type node struct {
 	dying          bool
 	interceptBack  bool // ui.OnBack: going back asks the core (Back)
 	tooltip        string
-	canvas         []byte // a Canvas\'s display list
+	canvas         []byte     // a Canvas\'s display list
+	paneNode       *node      // a SplitView\'s pane
+	pane           *splitPane // a pane\'s rows
 	a11yLabel      string
 	colorValue     ops.Color
 	host           func(h *Host, n *node, m uint32, w, l uintptr) (uintptr, bool) // a host-made view's messages
@@ -164,6 +166,7 @@ const (
 	kindScrollBar
 	kindWindowFrame   // a Window's top-level window
 	kindPopoverWindow // a Popover's popup window
+	kindSidebar       // a SplitView's pane
 )
 
 func (n *node) listening(e ops.EventKind) bool {
@@ -736,6 +739,10 @@ func (h *Host) placeFrame(n *node) {
 	if n.hwnd == 0 || n == h.root {
 		return
 	}
+	if p := n.parent; p != nil && p.paneNode != nil {
+		h.layoutSplit(p) // a SplitView's detail: beside its pane
+		return
+	}
 	h.placeAt(n, n.frame)
 }
 
@@ -761,6 +768,8 @@ func (h *Host) resized(n *node) {
 		n.list.resized(h)
 	case n.kind == ops.KindStack || n.kind == ops.KindTabs:
 		h.layoutScreens(n)
+	case n.paneNode != nil:
+		h.layoutSplit(n)
 	case n.kind == ops.KindScroll:
 		h.updateScroll(n)
 	case n.kind == ops.KindStepper:

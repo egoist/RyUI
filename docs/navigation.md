@@ -216,6 +216,35 @@ It belongs to where the component is built, and goes with it:
 The latest handler is asked first. `nav.Pop()` and closing a sheet from
 code don't ask: only the user's going back does.
 
+## Split views
+
+`ui.SplitView` is an app's top level when it has many destinations:
+a sidebar of them, and the chosen one's screens beside it (SwiftUI's
+`NavigationSplitView`).
+
+```go
+ui.SplitView(ui.SplitViewProps{Title: ui.Val("Mail"), Sections: []ui.SidebarSection{
+	{Destinations: []ui.Destination{
+		{Title: ui.Val("Inbox"), Icon: ui.IconMail, Content: inbox},
+		{Title: ui.Val("Sent"), Icon: "paperplane", Content: sent},
+	}},
+	{Title: ui.Val("Folders"), Destinations: folders},
+}})
+```
+
+Each destination's `Content` is the first screen of a stack: it pushes
+with `ui.UseNavigator`, and choosing another destination replaces the
+stack's screens with its first, at once, disposing them. `Selected` is
+the chosen destination, counted across the sections; the user's choice
+writes it, and writing it shows another.
+
+| | Compact (a phone) | Wide |
+|---|---|---|
+| iOS | the split view collapsed into a stack, as iOS does it: the sidebar is the first screen, an inset grouped list; a row pushes its destination, and back returns to the list | `UISplitViewController`'s sidebar beside the content (Liquid Glass on iOS 26), which the user can hide |
+| Android | Material's modal navigation drawer, opened by the menu button of the destination's first screen (or a swipe from the edge), closed by choosing or by back | a standard drawer, standing open beside the content (840dp and wider) |
+| macOS | | `NSSplitViewController`, its sidebar a source list |
+| Windows | | WinUI's NavigationView pane |
+
 ## Tabs
 
 `ui.Tabs` shows one page at a time, with a tab bar: a

@@ -89,6 +89,10 @@ func (h *Host) command(n *node, c ops.CommandID, args []byte) {
 		h.setFrames(len(args) > 0 && args[0] != 0)
 	case ops.CmdAnnounce:
 		h.announce(string(args))
+	case ops.CmdReplace:
+		if n.nav != nil {
+			n.nav.instant = true
+		}
 	case ops.CmdA11yFocus:
 		h.a11yFocus(n)
 	case ops.CmdShare:

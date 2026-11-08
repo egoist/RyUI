@@ -424,7 +424,7 @@ final class RyUITextField: UITextField {
             v.tag = Int(id)
             // The core sizes stacks and tabs; screens are sized by their
             // container controller. Never by autoresizing.
-            if kind == .stack || kind == .tabs { v.autoresizingMask = [] }
+            if kind == .stack || kind == .tabs || kind == .split { v.autoresizingMask = [] }
             let node = RyUINode(id: id, kind: kind, view: v)
             vc?.navigationItem.largeTitleDisplayMode = .never // Screen.LargeTitle asks for it
             node.vc = vc
@@ -599,6 +599,7 @@ final class RyUITextField: UITextField {
 
     public func setFrame(_ id: UInt32, x: Float, y: Float, width: Float, height: Float) {
         guard let n = nodes[id] else { return }
+        if n.parent?.vc is RyUISplitController { return } // its column's, which UIKit sizes
         framesApplied = true
         if let cell = n.cell {
             cell.setRowHeight(CGFloat(height))
@@ -740,6 +741,8 @@ final class RyUITextField: UITextField {
         #endif
         case .announce:
             UIAccessibility.post(notification: .announcement, argument: String(decoding: args, as: UTF8.self))
+        case .replace:
+            (n.vc as? RyUIStackController)?.instant = true
         case .backExit:
             break // iOS has no back to leave the app with
         case .a11yFocus:

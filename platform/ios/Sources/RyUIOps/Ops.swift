@@ -35,7 +35,8 @@ public enum RyUIKind: UInt16 {
     case popover = 30
     case accessory = 31
     case canvas = 32
-    case window = 33
+    case split = 33
+    case window = 34
 
     public var name: String {
         switch self {
@@ -71,6 +72,7 @@ public enum RyUIKind: UInt16 {
         case .popover: return "Popover"
         case .accessory: return "Accessory"
         case .canvas: return "Canvas"
+        case .split: return "Split"
         case .window: return "Window"
         }
     }
@@ -315,6 +317,12 @@ public enum RyUIProp {
         public static let commands: UInt16 = 64
     }
 
+    public enum Split {
+        public static let items: UInt16 = 64
+        public static let selected: UInt16 = 65
+        public static let title: UInt16 = 66
+    }
+
     public enum Window {
         public static let title: UInt16 = 64
         public static let width: UInt16 = 65
@@ -414,6 +422,7 @@ public enum RyUICommand: UInt16 {
     case shareClose = 31
     case a11yFocus = 32
     case backExit = 33
+    case replace = 34
 }
 
 public enum RyUIRole: Int32 {

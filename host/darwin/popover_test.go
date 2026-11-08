@@ -133,3 +133,38 @@ func TestCanvas(t *testing.T) {
 		}
 	})
 }
+
+// A split view is a split view controller: its sidebar lists the
+// destinations under their sections, the detail Stack fills its content,
+// and choosing a row shows that destination.
+func TestSplitView(t *testing.T) {
+	h, _ := mount(t, func() ui.Node {
+		return ui.SplitView(ui.SplitViewProps{Title: ui.Val("Gallery"), Sections: []ui.SidebarSection{
+			{Title: ui.Val("Views"), Destinations: []ui.Destination{
+				{Title: ui.Val("Text"), Icon: "textformat", Content: func() ui.Node { return ui.StaticText("text page") }},
+				{Title: ui.Val("Charts"), Icon: "chart.bar", Content: func() ui.Node { return ui.StaticText("charts page") }},
+			}},
+		}})
+	})
+	onMain(func() {
+		sp := find(h, ops.KindSplit)
+		if len(sp) != 1 {
+			fatal(t, "no split")
+		}
+		s := sp[0].split
+		if SendInt(s.table, "numberOfRows") != 3 || SendInt(s.table, "selectedRow") != 1 {
+			fatalf(t, "rows %d, selected %d", SendInt(s.table, "numberOfRows"), SendInt(s.table, "selectedRow"))
+		}
+		set := Send(Class("NSIndexSet"), "indexSetWithIndex:", 2)
+		h.enter(func() { Send(s.table, "selectRowIndexes:byExtendingSelection:", uintptr(set), 0) })
+		found := false
+		for _, n := range find(h, ops.KindText) {
+			if text(n) == "charts page" {
+				found = true
+			}
+		}
+		if !found {
+			fatal(t, "choosing Charts didn't show it")
+		}
+	})
+}

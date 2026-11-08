@@ -1,4 +1,5 @@
-// Gallery shows RyUI's components, one section each.
+// Gallery shows RyUI's components, a destination each in a split view's
+// sidebar (a drawer on Android, a list that pushes on an iPhone).
 //
 //	go run ./cmd/ryui dev -ios examples/gallery
 package main
@@ -6,7 +7,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/egoist/ryui/chart"
 	"math"
 	"time"
 
@@ -14,6 +14,7 @@ import (
 	"github.com/egoist/ryui/audio"
 	"github.com/egoist/ryui/camera"
 	"github.com/egoist/ryui/camera/record"
+	"github.com/egoist/ryui/chart"
 	"github.com/egoist/ryui/compose"
 	"github.com/egoist/ryui/crash"
 	"github.com/egoist/ryui/device"
@@ -29,59 +30,69 @@ import (
 )
 
 func App() ui.Node {
-	return ui.Stack(func() ui.Node {
-		nav := ui.UseNavigator()
-		toast := signal.New(false) // shown over the screen, at its bottom
-		down := signal.New(false)  // scrolled past the first screen
-		var page ui.Node
-		page = ui.Scroll(ui.ScrollProps{Style: ui.Style{Grow: 1}, OnScroll: func(_, y float32) { down.Set(y > 300) }},
-			ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 28},
-				ui.Button(ui.ButtonProps{Title: ui.Val("Open the inbox (a List)"), Icon: ui.IconMail, Variant: ui.ButtonBordered,
-					OnPress: func() {
-						nav.Push(inbox, ui.ScreenOptions{Title: ui.Val("Inbox"), Actions: []ui.Action{
-							{Title: ui.Val("Top"), Icon: ui.IconUp, OnPress: func() { ui.ScrollToItem(inboxList, 0, true) }},
-						}})
-					}}),
-				ui.Button(ui.ButtonProps{Title: ui.Val("Open the settings (a grouped List)"), Icon: ui.IconSettings, Variant: ui.ButtonBordered,
-					OnPress: func() { nav.Push(settings, ui.ScreenOptions{Title: ui.Val("Settings")}) }}),
-				ui.Button(ui.ButtonProps{Title: ui.Val("Open the photos (a grid)"), Icon: ui.IconPhoto, Variant: ui.ButtonBordered,
-					OnPress: func() { nav.Push(photos, ui.ScreenOptions{Title: ui.Val("Photos")}) }}),
-				ui.Button(ui.ButtonProps{Title: ui.Val("Open an editor (asks before leaving)"), Icon: ui.IconCompose, Variant: ui.ButtonBordered,
-					OnPress: func() { nav.Push(editor, ui.ScreenOptions{Title: ui.Val("Editor")}) }}),
-				ui.Button(ui.ButtonProps{Title: ui.Val("Open the camera"), Icon: ui.IconCamera, Variant: ui.ButtonBordered,
-					OnPress: func() { nav.Push(cameraScreen, ui.ScreenOptions{Title: ui.Val("Camera")}) }}),
-				ui.Button(ui.ButtonProps{Title: ui.Val("Open a web page"), Icon: ui.IconGlobe, Variant: ui.ButtonBordered,
-					OnPress: func() {
-						nav.Push(webPage, ui.ScreenOptions{Title: ui.Val("Web"), Actions: []ui.Action{
-							{Title: ui.Val("Run script"), Icon: "curlybraces", OnPress: func() {
-								ui.EvalJS(webView, `document.getElementById("out").textContent = "Set from Go at " + new Date().toLocaleTimeString()`)
-							}},
-							{Title: ui.Val("Print"), Icon: "printer", OnPress: func() { print.WebView(webView, print.Options{}, nil) }},
-						}})
-					}}),
-				motion(toast),
-				symbols(),
-				fonts(),
-				images(),
-				shapes(),
-				canvas(),
-				charts(),
-				video(),
-				textInput(),
-				controls(),
-				pages(),
-				dates(),
-				services(),
-				documents(),
-				platform(),
-				crashes(),
-			),
-		)
-		return ui.View(ui.ViewProps{Style: ui.Style{Grow: 1}}, page, toastOverlay(toast),
-			topButton(down, func() { ui.ScrollTo(page, 0, 0, true) }))
-	}, ui.ScreenOptions{Title: ui.Val("Gallery"), Actions: []ui.Action{
-		{Title: ui.Val("Share"), Icon: ui.IconShare, OnPress: func() {}},
+	// page is a destination's first screen: its examples in a scroll.
+	page := func(kids ...func() ui.Node) func() ui.Node {
+		return func() ui.Node {
+			nodes := make([]ui.Node, len(kids))
+			for i, k := range kids {
+				nodes[i] = k()
+			}
+			return ui.Scroll(ui.ScrollProps{Style: ui.Style{Grow: 1}},
+				ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 28}, nodes...))
+		}
+	}
+	dest := func(title string, icon ui.Icon, content func() ui.Node, actions ...ui.Action) ui.Destination {
+		return ui.Destination{Title: ui.Val(title), Icon: icon, Content: content, Options: ui.ScreenOptions{Actions: actions}}
+	}
+	return ui.SplitView(ui.SplitViewProps{Title: ui.Val("Gallery"), Sections: []ui.SidebarSection{
+		{Title: ui.Val("Views"), Destinations: []ui.Destination{
+			dest("Text and fonts", "textformat", page(fonts, textInput)),
+			dest("Symbols", ui.IconHome, page(symbols)),
+			dest("Images", ui.IconPhoto, page(images)),
+			dest("Video", "play.rectangle", page(video)),
+			dest("Shapes and canvas", "scribble", page(shapes, canvas)),
+			dest("Charts", "chart.bar", page(charts)),
+		}},
+		{Title: ui.Val("Controls"), Destinations: []ui.Destination{
+			dest("Controls", "slider.horizontal.3", page(controls)),
+			dest("Pages", "rectangle.split.3x1", page(pages)),
+			dest("Dates", ui.IconCalendar, page(dates)),
+		}},
+		{Title: ui.Val("Lists and navigation"), Destinations: []ui.Destination{
+			dest("Inbox", ui.IconMail, inbox,
+				ui.Action{Title: ui.Val("Top"), Icon: ui.IconUp, OnPress: func() { ui.ScrollToItem(inboxList, 0, true) }}),
+			dest("Settings", ui.IconSettings, settings),
+			dest("Photos", ui.IconPhoto, photos),
+			dest("Editor", ui.IconCompose, editor),
+			dest("Web", ui.IconGlobe, webPage,
+				ui.Action{Title: ui.Val("Run script"), Icon: "curlybraces", OnPress: func() {
+					ui.EvalJS(webView, `document.getElementById("out").textContent = "Set from Go at " + new Date().toLocaleTimeString()`)
+				}},
+				ui.Action{Title: ui.Val("Print"), Icon: "printer", OnPress: func() { print.WebView(webView, print.Options{}, nil) }}),
+		}},
+		{Title: ui.Val("Motion"), Destinations: []ui.Destination{
+			dest("Motion", "wand.and.stars", motionPage),
+		}},
+		{Title: ui.Val("Device"), Destinations: []ui.Destination{
+			dest("Camera", ui.IconCamera, cameraScreen),
+			dest("Services", "gearshape.2", page(services)),
+			dest("Documents", "doc", page(documents)),
+			dest("Platform", "iphone", page(platform)),
+			dest("Crashes", "exclamationmark.triangle", page(crashes)),
+		}},
 	}})
+}
+
+// motionPage is motion's examples, with the toast they show over the
+// screen's bottom and a button back to the top.
+func motionPage() ui.Node {
+	toast := signal.New(false)
+	down := signal.New(false) // scrolled past the first screen
+	var scroll ui.Node
+	scroll = ui.Scroll(ui.ScrollProps{Style: ui.Style{Grow: 1}, OnScroll: func(_, y float32) { down.Set(y > 300) }},
+		ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 28}, motion(toast)))
+	return ui.View(ui.ViewProps{Style: ui.Style{Grow: 1}}, scroll, toastOverlay(toast),
+		topButton(down, func() { ui.ScrollTo(scroll, 0, 0, true) }))
 }
 
 // section is a titled group of examples.

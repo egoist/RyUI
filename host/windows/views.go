@@ -63,6 +63,8 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 		}
 	case ops.KindSegmented, ops.KindPageControl:
 		n.hwnd = h.makeView(WS_TABSTOP)
+	case ops.KindSplit:
+		h.makeSplit(n)
 	case ops.KindAccessory:
 		// A field's bar over the keyboard: never shown, with no on-screen
 		// keyboard to put it on (it waits in the parking window).
@@ -262,6 +264,8 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 			n.paging = v.Int != 0
 			h.hideBars(n)
 		}
+	case ops.KindSplit:
+		h.setSplitProp(n, p, v)
 	case ops.KindCanvas:
 		if p == ops.PropCanvasCommands {
 			n.canvas = append(n.canvas[:0], v.Bytes...)

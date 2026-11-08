@@ -54,6 +54,7 @@ what RyUI has for it.
 |---|---|---|---|
 | Stacks with native push, pop, back gestures | `NavigationStack` | Stack | ✓ `Stack`, `UseNavigator` |
 | Tabs | `TabView` | Tabs | ✓ `Tabs` |
+| Sidebar, drawer | `NavigationSplitView` | Drawer | ✓ `SplitView` (a stack on iPhone, a drawer on Android) |
 | Bar buttons, titles, search | `.toolbar`, `.searchable` | header options | ✓ `ScreenOptions` (`Actions`, `Search`) |
 | Sheets with detents | `.sheet`, `.presentationDetents` | modal | ✓ `Sheet` (`Detents`, `Grabber`) |
 | Taking back, preventing dismissal | `.navigationBarBackButtonHidden`, `.interactiveDismissDisabled` | `BackHandler`, `usePreventRemove` | ✓ `OnBack` (screens, sheets, the app) |

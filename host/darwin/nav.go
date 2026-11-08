@@ -28,6 +28,9 @@ type nav struct {
 	env      ops.Environment
 	reported bool
 
+	// Stack: Replace's, until its next insert: changes happen at once.
+	instant bool
+
 	// Screen.
 	backGesture bool
 	search      string
@@ -102,9 +105,10 @@ func (h *Host) insertNav(p, c *node, index int) bool {
 		}
 		if i == len(p.children)-1 {
 			Send(p.view, "addSubview:", uintptr(c.view))
-			if top != nil {
+			if top != nil && !p.nav.instant {
 				h.slide(p, c, top, true)
 			}
+			p.nav.instant = false
 		} else {
 			// Below the top: shown when the screens above it are popped.
 			Send(c.view, "setHidden:", 1)
@@ -174,7 +178,7 @@ func (h *Host) destroyNav(n *node) bool {
 			if wasTop && below != nil {
 				Send(below.view, "setHidden:", 0)
 			}
-			if wasTop && !n.dying && below != nil && Send(p.view, "window") != 0 {
+			if wasTop && !n.dying && below != nil && !p.nav.instant && Send(p.view, "window") != 0 {
 				// Popped by the app: it slides out, then goes.
 				h.slide(p, below, n, false)
 			} else {
