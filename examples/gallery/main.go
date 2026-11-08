@@ -6,6 +6,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/egoist/ryui/chart"
 	"math"
 	"time"
 
@@ -64,6 +65,7 @@ func App() ui.Node {
 				images(),
 				shapes(),
 				canvas(),
+				charts(),
 				video(),
 				textInput(),
 				controls(),
@@ -339,6 +341,24 @@ func canvas() ui.Node {
 			g.Text(fmt.Sprintf("%.0f%%", v*100), cx, cy-8, ui.TextStyle{Size: 34, Weight: ui.Semibold, Align: ui.TextCenter})
 		}, ui.Style{Height: ui.Pt(170)}),
 		ui.Slider(ui.SliderProps{Value: level}),
+	)
+}
+
+// charts are a week's steps as bars, and a smooth line over an area.
+func charts() ui.Node {
+	days := ui.Val([]string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"})
+	return section("Charts",
+		chart.View(chart.Props{
+			Series: ui.Val([]chart.Series{{Name: "Steps", Kind: chart.Bar, Values: []float64{4200, 8100, 6400, 10200, 7300, 12800, 3900}}}),
+			Labels: days, Label: ui.Val("Steps this week"), Style: ui.Style{Height: ui.Pt(180)},
+		}),
+		chart.View(chart.Props{
+			Series: ui.Val([]chart.Series{
+				{Name: "Heart rate", Kind: chart.Area, Smooth: true, Values: []float64{62, 71, 68, 90, 84, 76, 70}},
+				{Name: "Resting", Kind: chart.Line, Color: ui.Hex(0xff9500), Values: []float64{58, 58, 59, 60, 59, 58, 57}},
+			}),
+			Labels: days, Label: ui.Val("Heart rate this week"), Style: ui.Style{Height: ui.Pt(180)},
+		}),
 	)
 }
 

@@ -611,6 +611,34 @@ before. A canvas has no presses of its own: wrap it in a `ui.View` with
 `OnPress` or `OnPan`, which report points in its coordinates. It isn't
 read by screen readers: give the view around it a `Label`.
 
+### Charts
+
+`ryui/chart` draws charts on a Canvas: bars, lines, areas and points
+over a value axis, with the platform's text for their labels (measured
+by it, scaled with the user's text size).
+
+```go
+chart.View(chart.Props{
+	Series: ui.Val([]chart.Series{
+		{Name: "Steps", Kind: chart.Bar, Values: steps},
+		{Name: "Goal", Kind: chart.Line, Values: goal, Color: ui.Hex(0xff9500)},
+	}),
+	Labels: ui.Val([]string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}),
+	Label:  ui.Val("Steps this week"),
+	Style:  ui.Style{Height: ui.Pt(200)},
+})
+```
+
+- A series has a value per label; `NaN` leaves a gap. Bar series stand
+  side by side; areas, lines and points go over them. `Smooth` draws a
+  monotone curve, which never overshoots its values.
+- The value axis fits the values, rounded out to whole ticks (and down
+  to zero for bars and areas), unless `Min` and `Max` fix it; `Format`
+  writes its labels (`2.5k` by default).
+- Colors default to the app's accent, then the system's.
+- Screen readers read the chart as one image: its `Label`, then each
+  series' values, whole.
+
 ## Containers
 
 `ui.View` holds other views. `ui.Column` and `ui.Row` are views that
