@@ -11,7 +11,7 @@ platform's own widgets. **Mobile comes first: iOS and Android.** Desktop
    changes, and crosses into native code once per batch.
 
 Non-goals: drawing widgets ourselves (that is MyGo's native UI; the one
-planned exception is rich text, see "Rich text"), web views, pixel-identical looks across platforms, stability across a
+planned exception is rich text, see "Rich text"), web views (an app in a phone's web view; the browser is a platform of its own, see "The web"), pixel-identical looks across platforms, stability across a
 large audience before 1.0. Desktop is not a non-goal, only later: no
 core API may assume a phone (one window, touch only) where desktop would
 need something else; such APIs get a desktop-shaped extension point now
@@ -25,12 +25,13 @@ and an implementation later.
 | Language | Go | Fast compiles; GC and closures make UI code quick to write; MyGo's purego/Objective-C experience carries over. The cost per frame is in the platform toolkits, so a faster core language would not show. |
 | Retained or immediate | Retained | Native widgets are retained objects that own focus, selection, IME, scroll and accessibility state. Rebuilding a description every frame would mean diffing it against them. |
 | Reactivity | Fine-grained signals (Solid-like), no virtual tree | A signal write re-runs only the effects that read it, and each effect emits exactly the property change it causes. |
-| Threads | Core runs on the platform's main thread | Native callbacks that need answers synchronously (list data sources, text field delegates, measurement, layout inside the keyboard's animation) call straight into the core. Frameworks that run logic and layout off the main thread (React Native, Texture, Litho, NSH) do it so slow or garbage-collected app logic can't drop frames, and pay with asynchronous interop: blank cells, input races, layout a frame late. Fabric added synchronous layout and Flutter merged its UI and platform threads (3.29) for that reason; SwiftUI and Compose stay on main. RyUI's logic is compiled Go with fine-grained updates, so the main thread suffices; slow work runs on goroutines that post results back. The place off-main work does pay, preparing long, rich or streaming text, is handled without moving the core (see "Rich text"). |
+| Threads | Core runs on the platform's main thread | Native callbacks that need answers synchronously (list data sources, text field delegates, measurement, layout inside the keyboard's animation) call straight into the core. Frameworks that run logic and layout off the main thread (React Native, Texture, Litho) do it so slow or garbage-collected app logic can't drop frames, and pay with asynchronous interop: blank cells, input races, layout a frame late. Fabric added synchronous layout and Flutter merged its UI and platform threads (3.29) for that reason; SwiftUI and Compose stay on main. RyUI's logic is compiled Go with fine-grained updates, so the main thread suffices; slow work runs on goroutines that post results back. The place off-main work does pay, preparing long, rich or streaming text, is handled without moving the core (see "Rich text"). |
 | Core ↔ native contract | Batched mount operations (`ops`) | One crossing per batch. The same stream works in process and over a socket. |
 | Layout | Our own engine in Go: CSS block, flexbox and grid (Taffy-like, checked against Chrome), measured by the host | One layout engine for every platform, with the semantics web and React Native developers know; native widgets report their own sizes. Designed for our tree and for zero allocation, not ported from Yoga or Taffy. |
 | iOS host | Swift + UIKit, with Go linked as a `c-archive` | UIKit subclasses and delegates are trivial in Swift. Not SwiftUI: it is a second reconciler. |
 | Android host | Kotlin + Android Views (Material Components 3), with Go loaded as a `c-shared` library | Views are imperative targets for mount ops; JNI is crossed once per batch. Not Compose: it is a second reconciler, it measures only inside its own layout pass (the core measures synchronously during a flush), and it applies changes on the next frame. Views aren't deprecated, but new Material and Jetpack UI (Material 3 Expressive, adaptive scaffolds) often lands in Compose first or only. A component that exists only in Compose is mounted as a `ComposeView` for that one node, driven by the node's props and measured with `ComposeView.measure`; the core and the ops don't change. Not in list rows: each `ComposeView` is its own composition. Revisit only if Material Components is deprecated. |
-| Text and controls | The platform's own views (`UILabel`, `TextView`, ...), measured by the real widget on the main thread | Native behavior for free: accessibility, Dynamic Type and font scale, selection, truncation, line breaking. What's measured is what's drawn. The alternative, laying text out off the main thread with CoreText / `StaticLayout` and drawing it in a custom view (as NSH does, because its core runs off the main thread), would re-implement all of that. The cost: text is measured on the main thread, and each widget's measuring quirks are ours. Mitigations: per-node layout caches, and a shared measure cache keyed by content (below). If profiling ever shows main-thread text measuring hurting (List cells), measure with CoreText / `StaticLayout` while still drawing with the platform view. |
+| Text and controls | The platform's own views (`UILabel`, `TextView`, ...), measured by the real widget on the main thread | Native behavior for free: accessibility, Dynamic Type and font scale, selection, truncation, line breaking. What's measured is what's drawn. The alternative, laying text out off the main thread with CoreText / `StaticLayout` and drawing it in a custom view (as frameworks whose core runs off the main thread do), would re-implement all of that. The cost: text is measured on the main thread, and each widget's measuring quirks are ours. Mitigations: per-node layout caches, and a shared measure cache keyed by content (below). If profiling ever shows main-thread text measuring hurting (List cells), measure with CoreText / `StaticLayout` while still drawing with the platform view. |
+| Web | The DOM, from a JavaScript host (`platform/web`) the app's Go code drives as WebAssembly (`host/web`) | As the mobile hosts: the core hands over each batch encoded, decoded in place out of the WebAssembly memory by a generated decoder, one crossing per batch; driving the DOM from Go through `syscall/js` would cross per property. Each view is an element at the frame the core laid out, so layout is RyUI's, as on every platform; leaves are measured by the real elements. Not a canvas: the browser's text, controls, focus, autofill and accessibility come with its elements. |
 | cgo | Allowed only in `mobile/` (build tags `ios`, `android`) | Go's `c-archive` and `c-shared` build modes need it. Everything else builds with `CGO_ENABLED=0`, so desktop hosts can stay cgo-free later. |
 
 Open decisions, with the default to use until they are settled:
@@ -54,6 +55,7 @@ mobile/ (C ABI, cgo) ──► platform/ios (Swift)   platform/android (Kotlin)
 host/fake                                  tests: records ops
 host/darwin                                macOS: AppKit in process, Go (purego)
 host/windows                               Windows: Win32 in process, Go (syscall)
+host/web (js/wasm) ──► platform/web (JavaScript)   the browser: the DOM
 host/linux                                 later: desktop, in process, Go
 ```
 
@@ -645,8 +647,9 @@ layout (in the spirit of Taffy, not a port of it or of Yoga), in points
 
 The only contract between core and hosts. Its schema is written once in
 Go (`ops/schema.go`); `go generate ./ops` writes the Go constants, the
-Swift decoder (`platform/ios`) and the Kotlin decoder (`platform/android`),
-each with event encoders.
+Swift decoder (`platform/ios`), the Kotlin decoder (`platform/android`)
+and the JavaScript decoder (`platform/web/src/ops.js`), each with event
+encoders.
 Mobile hosts read the binary encoding; `host/fake` (and desktop hosts
 later) read the batch's Go structs directly.
 
@@ -898,6 +901,8 @@ ryui dev -mac <dir>                build and run on this Mac, rerun on save
 ryui build -mac <dir>              a universal .app, signed (-sign; default ad hoc)
 ryui dev -windows <dir>            build and run on this PC, rerun on save
 ryui build -windows <dir>          a folder: the .exe (icon, manifest, version) and its assets
+ryui dev -web <dir>                serve it to the browser, rebuild and reload on save
+ryui build -web <dir>              a static site: WebAssembly, the web host, a manifest
 ryui generate <dir>                the typed functions of the app's catalogs
 ryui i18n init|add|check           start, add languages to, and check the catalogs
 ryui vet [packages]                what builds but runs wrong: a signal read once, written off the main thread
@@ -1021,6 +1026,10 @@ ryui/
   examples/counter/  examples/todo/  examples/list10k/  examples/navigation/
 ```
 
+The web adds `host/web` (the Go side, `js && wasm`) and `platform/web`
+(the JavaScript host: `src/`, with the generated `ops.js` and
+`symbols.js`, `gen_symbols.go`, and the decoder's tests).
+
 Desktop adds `host/darwin` and `internal/darwin` (macOS),
 `host/windows` and `internal/windows` (Windows), and `host/linux` later.
 
@@ -1049,9 +1058,10 @@ Desktop adds `host/darwin` and `internal/darwin` (macOS),
   through the BUTTON's `BM_CLICK`, typing into the EDIT, a 10,000-row
   list binding only what shows, a stack's back button disposing the
   screen, and disposal destroying every window.
-- `ops`: the Go encoder and the generated Swift and Kotlin decoders
-  round-trip the same golden batches (`swift test --package-path
-  platform/ios`; `./gradlew :ryui:testDebugUnitTest` in `platform/android`).
+- `ops`: the Go encoder and the generated Swift, Kotlin and JavaScript
+  decoders round-trip the same golden batches (`swift test --package-path
+  platform/ios`; `./gradlew :ryui:testDebugUnitTest` in `platform/android`;
+  `node --test platform/web`).
 - Hosts: GUI tests (`e2e/`, build tag `e2e`, in CI on a simulator and
   an emulator) build `examples/` with `ryui dev -once` and drive them
   through the native views. Debug builds take automation commands (tap,
@@ -1305,6 +1315,20 @@ Each one ends with its examples running and its tests in CI.
   `ScreenOptions.Search`, a dark date
   picker, the share sheet (Share copies the text), arm64 builds, code
   signing.
+- **Web** (in progress): `host/web` and `platform/web` (below); `app.Run`
+  runs it on `js/wasm`. `ryui dev -web` (serve, rebuild and reload on
+  save, signals' state kept; the app's output and the page's errors in
+  the terminal) and `ryui build -web` (a static site). The examples run
+  (all but `notes` and `bookmarks`, whose SQLite has no WebAssembly
+  build), light and dark, left to right and right to left, at any size;
+  GUI tests (`e2e`, `-run Web`) drive them in headless Chrome. Done: the
+  v0 components, navigation (the browser's back included), rich text and rich text fields (an editable element; formatting through the browser's editing, so its undo covers it),
+  shapes, canvas, shaders (WebGL 2), images, symbols, video, web views,
+  gestures, drag and drop, menus, animation, transitions, matched views,
+  the app's files kept (IndexedDB), the app's own native views and
+  modules (`web/*.js`), several apps on one page. Not yet: SQLite, most
+  native modules (`ui.Call` answers that the host has none), a web
+  view of another site beyond loading it.
 
 ## Rich text
 
@@ -1799,6 +1823,71 @@ and never assumes a single root in its own data structures.
   before. Shortcuts are menu items' because that's how both platforms
   route them (key equivalents, accelerators), and how users find them.
   Mobile hosts ignore it.
+
+## The web
+
+The app's Go code is a WebAssembly program (`GOOS=js GOARCH=wasm`,
+no cgo), the page's DOM its views. As the mobile hosts, the host is the
+platform's language, JavaScript (`platform/web/src`, plain ES modules the
+CLI ships as they are), and Go's side (`host/web`) carries batches and
+calls:
+
+- `Apply` encodes the batch (`ops.Batch.Encode`) and calls the host once;
+  the host copies it out of the WebAssembly memory (a call back into Go
+  meanwhile may grow the memory, which detaches the old buffer) and
+  decodes it with `ops.js`. `Measure` and `Apply` pass their arguments in
+  a buffer the two sides share (its address given once), so they
+  allocate nothing. Events come back encoded, as the mobile hosts send
+  them. `Post` queues the function and asks the page for a task
+  (`MessageChannel`).
+- The page has one thread: the core runs in the callbacks the page makes
+  into Go (events, list requests, posted work), and `Run` keeps the
+  program alive between them. The goroutine a callback runs on is the
+  main thread while it does (`signal.BindThread`). The host never calls
+  into Go while Go is calling it: events raised meanwhile (a field's
+  focus as the core focuses it) and work that would call back (a list
+  tiling) wait until Go returns, as on the other hosts.
+- Each view is an absolutely positioned element at its frame; children
+  are placed from the frame's corner, so a border is drawn inside the
+  frame over the content (an inset outline), as a layer's is. A measured
+  leaf is measured by its own element at the constraints (max-content,
+  min-content, or wrapped at the width; a wrapped text as wide as its
+  widest line, as UIKit and Android measure), moved into a measuring
+  element when it's in a part of the page that isn't displayed.
+- Semantic colors are CSS variables with light and dark values; the
+  app's accent is the controls' `accent-color`. Text sizes are in `rem`,
+  so they follow the browser's text size (`FontScale`).
+- Navigation draws its own bars, as the Windows host's: a `Stack`'s
+  header (back, title, bar buttons, search), `Tabs`' bottom bar, a
+  `SplitView`'s sidebar (a drawer below 700 points). Sheets and alerts
+  are modal `<dialog>`s (the top layer, what's under them inert);
+  popovers and menus are `popover` elements. The browser's back goes
+  back in the app: a history entry stands for it while there's a dialog
+  to close or a stack to pop, and its `popstate` goes back (closing the
+  newest dialog, or popping the innermost stack, or `ui.OnBack`'s Back).
+- `List` is core-virtualized, as on the desktop hosts, in a scrolling
+  element: rows placed by the host with transforms, bound through
+  `ListBind` as they come into view, recycled as they leave; a row's
+  height from its cells' frames, estimated until bound; a chat's list
+  kept at its end; swipe actions as the row's context menu.
+- `Shader`: the core's code carries no GLSL, so the host asks Go for it
+  (`internal/shadercode`'s `GLSL`, linked only in apps with a shader,
+  through `boot.ShaderGLSL`), compiles it with WebGL 2, and sets the
+  uniforms' lanes by their GLSL types.
+- Files: Go's `os` on `js/wasm` calls Node's `fs` API; the page gives
+  it a file system in memory that answers at once (Go waits for each
+  callback), the app's data directory (`/data/<name>`, `RYUI_DATA`)
+  loaded from IndexedDB before Go starts and written back as it changes.
+- Symbols are the Android host's Material Symbols, as SVG paths
+  (`platform/web/gen_symbols.go` reads its drawables).
+- `ryui dev -web` serves the page, the host's files (a checkout's, so
+  changing them reloads the page too), the build and the assets, and
+  keeps a connection to the page (server-sent events): a new build
+  reloads it (the signals' values saved in its session storage first),
+  a failed one shows its errors over it, and the GUI tests' automation
+  commands go through it. `ryui build -web` names the files by their
+  content's digest, so only `index.html` and the manifest need fetching
+  again.
 
 ## References
 

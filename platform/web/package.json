@@ -1,0 +1,9 @@
+{
+  "name": "@ryui/web",
+  "private": true,
+  "type": "module",
+  "description": "RyUI's web host: the DOM, driven by the app's Go code compiled to WebAssembly",
+  "scripts": {
+    "test": "node --test test/"
+  }
+}

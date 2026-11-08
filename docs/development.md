@@ -28,6 +28,9 @@ package that calls `app.Run`. The flags:
 - `-v`: print the commands RyUI runs.
 - `-vet=false`: don't run [`ryui vet`](#ryui-vet) beside the builds.
 
+`ryui dev -web` runs the app in your browser instead: see
+[the web](web.md#ryui-dev--web).
+
 ## The player and built apps
 
 By default, `ryui dev` runs your Go code on your Mac, and its views in
@@ -235,6 +238,7 @@ through the platform's views, in `e2e/`:
 ```sh
 go test -tags e2e ./e2e -run IOS       # the booted simulator, else a recent iPhone
 go test -tags e2e ./e2e -run Android   # the device ryui dev picks
+go test -tags e2e ./e2e -run Web       # headless Chrome (RYUI_CHROME: its path)
 ```
 
 Each test builds an example with `ryui dev -once` (a debug build, with
@@ -247,6 +251,12 @@ minute, never for a set time.
 The iOS tests need Xcode (`xcrun`); the Android ones need `adb` on your
 `PATH`, and the SDK and NDK that `ryui dev -android` needs. Without
 them, the tests are skipped.
+
+The web tests run the examples with `ryui dev -web` in headless Chrome
+(or Chromium); the page takes the same commands as the mobile hosts'
+debug builds, sent through the dev server
+(`platform/web/src/automation.js`). The counter, chat, navigation and
+languages tests run there too.
 
 ## Benchmarks
 

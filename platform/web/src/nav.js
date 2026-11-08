@@ -1,0 +1,1178 @@
+// Navigation in a browser:
+//
+//   - A Stack shows its top Screen under a header bar of its own (as the
+//     Windows host's): a back button while there's a screen to go back
+//     to, the screen's title, its bar buttons, its search field. Pushes
+//     and pops slide (they cross-fade with reduced motion).
+//   - Tabs are a bar of tabs at the bottom, the selected page above it.
+//   - A Sheet is a modal <dialog> (the top layer: what's under it is
+//     inert): a bottom sheet on a narrow window, a centered card on a
+//     wide one. Escape, a click outside or a swipe down dismisses it.
+//   - An Alert is a modal <dialog> too; an action sheet's buttons a list.
+//   - A Popover is a popover element next to what it points at.
+//   - A SplitView is a sidebar beside its detail Stack; on a narrow
+//     window, a drawer the detail's header opens.
+//   - A Window is a panel in the page the user can move and resize.
+//
+// Going back is the browser's: its back button (a history entry stands
+// for the app's back while there's somewhere to go back to), Escape,
+// Alt+Left (⌘[ on a Mac) and a swipe from the leading edge on touch
+// screens: it closes the newest dialog, or pops the innermost stack.
+//
+// Screens, sheets, popovers and windows are sized by the host, which
+// reports each one's Environment.
+
+import { Kind, KindProp as P, Event, Events, Command, Reader, environment as newEnv } from "./ops.js";
+import { own } from "./views.js";
+import { decodeActions } from "./host.js";
+import { symbolSVG } from "./media.js";
+import * as text from "./text.js";
+
+const headerHeight = 52;
+const searchHeight = 48;
+const tabBarHeight = 56;
+const sidebarWidth = 280;
+
+function div(cls) {
+  const d = document.createElement("div");
+  if (cls) d.className = cls;
+  return d;
+}
+
+function iconButton(symbol, label, rtl) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "ryui-bar-button ryui-control";
+  b.setAttribute("aria-label", label);
+  const s = symbolSVG(symbol, rtl);
+  if (s) b.appendChild(s);
+  return b;
+}
+
+export class Navigation {
+  constructor(h) {
+    this.h = h;
+    this.dialogs = []; // shown sheets, alerts, popovers and windows, oldest first
+    this.guard = false; // a history entry stands for the app's back
+    this.words = {};
+    addEventListener("popstate", () => this.popstate());
+    addEventListener("keydown", (e) => this.key(e));
+    this.edgeSwipe();
+  }
+
+  word(key) {
+    const loc = this.h.locale || navigator.language;
+    let w = this.words[loc];
+    if (!w) {
+      try { w = this.words[loc] = JSON.parse(this.h.core.words(loc)); } catch { w = { back: "Back", ok: "OK", search: "Search", increase: "Increase", decrease: "Decrease" }; }
+    }
+    return w[key] || key;
+  }
+
+  rootChanged() { this.updateGuard(); }
+
+  directionChanged() {
+    for (const n of this.h.nodes.values()) if (n.kind === Kind.Stack && n.stack) this.updateHeader(n);
+  }
+
+  /** layout sizes the host-sized views again (the window or a stack resized). */
+  layout() {
+    for (const n of this.h.nodes.values()) {
+      if (n.kind === Kind.Stack || n.kind === Kind.Tabs || n.kind === Kind.Split) this.layoutScreens(n);
+      else if ((n.kind === Kind.Sheet || n.kind === Kind.Window) && n.shown) this.sizeDialog(n);
+      else if (n.kind === Kind.Popover && n.shown) this.placePopover(n);
+    }
+  }
+
+  // --- Screens' environments ---
+
+  /** report sends a screen's, sheet's or popover's environment if it changed. */
+  report(n, w, h, el) {
+    if (w <= 0 || h <= 0) return;
+    const e = this.h.env();
+    e.width = w;
+    e.height = h;
+    // The safe area it overlaps: the root's insets less how far it is from each edge.
+    const c = this.h.container.getBoundingClientRect();
+    const r = (el || n.el).getBoundingClientRect();
+    const dt = r.top - c.top, dl = r.left - c.left, db = c.bottom - (r.top + h), dr = c.right - (r.left + w);
+    e.safeTop = Math.max(0, e.safeTop - dt);
+    e.safeLeft = Math.max(0, e.safeLeft - dl);
+    e.safeBottom = Math.max(0, e.safeBottom - db);
+    e.safeRight = Math.max(0, e.safeRight - dr);
+    if (e.keyboard) e.keyboard = Math.max(0, e.keyboard - db);
+    const key = JSON.stringify(e);
+    if (n.envKey === key) return;
+    n.envKey = key;
+    this.h.dispatch(Events.environment(n.id, e));
+  }
+
+  layoutScreens(n) {
+    if (!n.placed) return;
+    const [, , w, h] = n.frame;
+    if (n.kind === Kind.Stack) {
+      const bar = this.barHeight(n);
+      n.stack.bar.style.height = bar + "px";
+      n.stack.bar.hidden = bar === 0;
+      for (const s of n.children) this.placeScreen(s, 0, bar, w, h - bar);
+    } else if (n.kind === Kind.Tabs) {
+      const bar = tabBarHeight + this.h.safeArea()[2] * (this.touchesBottom(n) ? 1 : 0);
+      n.tabs.bar.style.height = bar + "px";
+      for (const s of n.children) this.placeScreen(s, 0, 0, w, h - bar);
+    } else if (n.kind === Kind.Split) {
+      this.layoutSplit(n);
+    }
+  }
+
+  touchesBottom(n) {
+    const c = this.h.container.getBoundingClientRect(), r = n.el.getBoundingClientRect();
+    return Math.abs(c.bottom - r.bottom) < 1;
+  }
+
+  touchesTop(n) {
+    const c = this.h.container.getBoundingClientRect(), r = n.el.getBoundingClientRect();
+    return Math.abs(r.top - c.top) < 1;
+  }
+
+  placeScreen(s, x, y, w, h) {
+    if (s.leaving) return;
+    const st = s.el.style;
+    st.left = x + "px";
+    st.top = y + "px";
+    st.width = w + "px";
+    st.height = Math.max(h, 0) + "px";
+    s.frame = [x, y, w, h];
+    this.report(s, w, h);
+  }
+
+  // --- Stack ---
+
+  barHeight(stack) {
+    const top = this.topScreen(stack);
+    if (!top) return 0;
+    const shown = top.title || top.actions?.length || top.search != null || this.live(stack) > 1 || this.drawerButton(stack);
+    if (!shown) return 0;
+    const safe = this.touchesTop(stack) ? this.h.safeArea()[0] : 0;
+    return headerHeight + safe + (top.search != null && !top.searchButton ? searchHeight : 0);
+  }
+
+  live(stack) { return stack.children.filter((s) => !s.leaving).length; }
+
+  topScreen(stack) {
+    for (let i = stack.children.length - 1; i >= 0; i--) if (!stack.children[i].leaving) return stack.children[i];
+    return null;
+  }
+
+  updateHeader(stack) {
+    const s = stack.stack;
+    const top = this.topScreen(stack);
+    const bar = s.bar;
+    const rtl = getComputedStyle(stack.el).direction === "rtl";
+    bar.style.paddingTop = (this.touchesTop(stack) ? this.h.safeArea()[0] : 0) + "px";
+    s.leading.textContent = "";
+    s.trailing.textContent = "";
+    s.title.textContent = top?.title || "";
+    if (top && this.live(stack) > 1) {
+      const b = iconButton("chevron.backward", this.word("back"), rtl);
+      b.classList.add("ryui-back");
+      b.addEventListener("click", () => this.goBack(stack));
+      s.leading.appendChild(b);
+    } else if (this.drawerButton(stack)) {
+      const b = iconButton("sidebar.left", stack.parent.title || "Sidebar", rtl);
+      b.addEventListener("click", () => this.openDrawer(stack.parent));
+      s.leading.appendChild(b);
+    }
+    (top?.actions || []).forEach((a, i) => {
+      const b = a.icon ? iconButton(a.icon, a.title, rtl) : document.createElement("button");
+      if (!a.icon) {
+        b.type = "button";
+        b.className = "ryui-bar-button ryui-bar-text ryui-control";
+        b.textContent = a.title;
+      }
+      if (a.role === 2) b.classList.add("ryui-destructive");
+      b.addEventListener("click", () => this.h.emit(top, Event.Action, (id) => Events.action(id, i)));
+      s.trailing.appendChild(b);
+    });
+    s.search.hidden = top?.search == null || top.searchButton;
+    if (top && top.search != null) {
+      s.searchInput.placeholder = top.search || this.word("search");
+      if (s.searchInput.value !== (top.searchText || "")) s.searchInput.value = top.searchText || "";
+    }
+    if (top?.barColor) bar.style.backgroundColor = this.h.css(top.barColor);
+    else bar.style.backgroundColor = "";
+    this.layoutScreens(stack);
+    this.updateTitle();
+    this.updateGuard();
+  }
+
+  /** updateTitle makes the page's title the innermost shown stack's top screen's, or the window's. */
+  updateTitle() {
+    let title = "";
+    const visit = (n) => {
+      if (!n || (n.el && n.el.closest(".ryui-hidden-page"))) return;
+      if (n.kind === Kind.Stack) {
+        const t = this.topScreen(n);
+        if (t?.title) title = t.title;
+      }
+      if (n.kind === Kind.Tabs) {
+        visit(n.children[n.tabs.selected]);
+        return;
+      }
+      for (const c of n.children) visit(c);
+    };
+    visit(this.h.root);
+    if (!this.baseTitle) this.baseTitle = document.title;
+    const app = this.h.windowTitle || this.h.options.title || this.baseTitle;
+    document.title = title && title !== app ? `${title} · ${app}` : app || title;
+  }
+
+  /** slide animates a push (in comes from the trailing edge over out) or a pop (out leaves to it). */
+  slide(stack, inS, outS, push, done) {
+    const rtl = getComputedStyle(stack.el).direction === "rtl";
+    const w = stack.frame[2] || 1;
+    const away = rtl ? -w : w;
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const opts = { duration: reduce ? 150 : 350, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" };
+    const finish = () => done?.();
+    if (!stack.el.isConnected) { finish(); return; }
+    if (reduce) {
+      (push ? inS : outS).el.animate([{ opacity: push ? 0 : 1 }, { opacity: push ? 1 : 0 }], opts).onfinish = finish;
+      return;
+    }
+    if (push) {
+      inS.el.animate([{ transform: `translateX(${away}px)` }, { transform: "none" }], opts).onfinish = finish;
+      outS?.el.animate([{ transform: "none" }, { transform: `translateX(${-away / 3}px)` }], opts);
+    } else {
+      outS.el.animate([{ transform: "none" }, { transform: `translateX(${away}px)` }], opts).onfinish = finish;
+      inS?.el.animate([{ transform: `translateX(${-away / 3}px)` }, { transform: "none" }], opts);
+    }
+  }
+
+  /** goBack is the user's back on a stack: the top screen asks the core (ui.OnBack), or slides out, then the core hears it was popped. */
+  goBack(stack) {
+    const top = this.topScreen(stack);
+    if (!top || this.live(stack) < 2) return false;
+    if (top.interceptBack) {
+      this.h.dispatch(Events.back(top.id));
+      return true;
+    }
+    if (!top.backGesture && top.backGesture !== undefined) {
+      // No interactive back: the back button still goes back.
+    }
+    this.popScreen(stack, top);
+    this.h.emit(stack, Event.Popped, (id) => Events.popped(id, top.id));
+    return true;
+  }
+
+  popScreen(stack, top) {
+    top.leaving = true;
+    top.el.classList.add("ryui-exiting");
+    top.el.setAttribute("inert", "");
+    const below = this.topScreen(stack);
+    if (below) this.showScreen(below, true);
+    this.updateHeader(stack);
+    this.slide(stack, below, top, false, () => this.release(top));
+  }
+
+  showScreen(s, on) {
+    s.el.classList.toggle("ryui-covered", !on);
+    if (on) s.el.removeAttribute("inert"); else s.el.setAttribute("inert", "");
+  }
+
+  release(s) {
+    s.el.remove();
+    s.released = true;
+  }
+
+  // --- Sheets, alerts, popovers, windows ---
+
+  present(n) {
+    switch (n.kind) {
+      case Kind.Sheet: this.presentSheet(n); break;
+      case Kind.Alert: this.presentAlert(n); break;
+      case Kind.Popover: this.h.afterCore(() => { if (!n.dying) this.presentPopover(n); }); break;
+      case Kind.Window: this.presentWindow(n); break;
+    }
+  }
+
+  wide() { return this.h.container.getBoundingClientRect().width >= 600; }
+
+  presentSheet(n) {
+    if (n.shown) return;
+    const d = document.createElement("dialog");
+    d.className = "ryui-sheet-dialog";
+    this.h.container.appendChild(d);
+    d.appendChild(n.el);
+    if (n.grabber) {
+      const g = div("ryui-grabber");
+      d.appendChild(g);
+      this.swipeDown(n, g);
+    }
+    n.dialog = d;
+    n.shown = true;
+    this.dialogs.push(n);
+    d.addEventListener("cancel", (e) => { e.preventDefault(); this.dismiss(n); });
+    d.addEventListener("click", (e) => { if (e.target === d) this.dismiss(n); });
+    d.showModal();
+    this.sizeDialog(n);
+    const wide = this.wide();
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      d.animate(wide ? [{ opacity: 0, transform: "scale(0.96)" }, { opacity: 1, transform: "none" }] : [{ transform: "translateY(100%)" }, { transform: "none" }], { duration: 300, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" });
+    }
+    this.updateGuard();
+  }
+
+  sizeDialog(n) {
+    const c = this.h.container.getBoundingClientRect();
+    const d = n.dialog;
+    if (!d) return;
+    let w, h;
+    if (n.kind === Kind.Window) {
+      w = n.win.w; h = n.win.h;
+      d.style.left = n.win.x + "px";
+      d.style.top = n.win.y + "px";
+    } else {
+      const wide = this.wide();
+      d.classList.toggle("ryui-wide", wide);
+      // It opens at its smallest detent, as iOS's sheets do; the keyboard expands it.
+      const medium = (n.detents & 1) !== 0 && !n.expanded;
+      if (wide) {
+        w = Math.min(c.width - 80, 560);
+        // A card over a wide window, as iPad's form sheets: half height only for a medium-only sheet.
+        h = Math.min(c.height - 80, n.detents === 1 ? Math.max(c.height / 2, 320) : 720);
+      } else {
+        w = c.width;
+        const top = this.h.safeArea()[0] + 10;
+        h = medium ? Math.max(c.height / 2, 300) : c.height - top;
+        if (medium && (this.h.env().keyboard || n.el.contains(document.activeElement) && matchMedia("(pointer: coarse)").matches)) {
+          n.expanded = true;
+          h = c.height - top;
+        }
+      }
+    }
+    d.style.width = w + "px";
+    d.style.height = h + "px";
+    const s = n.el.style;
+    const top = n.kind === Kind.Window ? n.win.bar : 0;
+    s.left = "0px"; s.top = top + "px"; s.width = w + "px"; s.height = h - top + "px";
+    n.frame = [0, top, w, h - top];
+    n.placed = true;
+    this.report(n, w, h - top, n.el);
+  }
+
+  /** dismiss is the user's: the sheet's ui.OnBack asks the core, or the core hears it was dismissed. */
+  dismiss(n) {
+    if (n.interceptBack) {
+      this.h.dispatch(Events.back(n.id));
+      return;
+    }
+    this.h.emit(n, Event.Dismissed, Events.dismissed);
+  }
+
+  closeDialog(n) {
+    const d = n.dialog;
+    if (!d) return;
+    n.shown = false;
+    n.dialog = null;
+    this.dialogs = this.dialogs.filter((x) => x !== n);
+    d.classList.add("ryui-exiting");
+    const done = () => { d.close(); d.remove(); };
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches || !d.isConnected) done();
+    else {
+      const wide = d.classList.contains("ryui-wide") || n.kind !== Kind.Sheet;
+      d.animate(wide ? [{ opacity: 1 }, { opacity: 0 }] : [{ transform: "none" }, { transform: "translateY(100%)" }], { duration: 220, easing: "ease-in", fill: "forwards" }).onfinish = done;
+    }
+    this.updateGuard();
+  }
+
+  swipeDown(n, handle) {
+    let y0 = null;
+    handle.addEventListener("pointerdown", (e) => { y0 = e.clientY; handle.setPointerCapture(e.pointerId); });
+    handle.addEventListener("pointermove", (e) => {
+      if (y0 == null || !n.dialog) return;
+      n.dialog.style.translate = `0 ${Math.max(0, e.clientY - y0)}px`;
+    });
+    handle.addEventListener("pointerup", (e) => {
+      if (y0 == null) return;
+      const dy = e.clientY - y0;
+      y0 = null;
+      if (n.dialog) n.dialog.style.translate = "";
+      if (dy > 80) this.dismiss(n);
+      else if (dy < -60 && n.detents & 2 && !n.expanded) {
+        // Pulled up from medium: large.
+        n.expanded = true;
+        this.sizeDialog(n);
+      }
+    });
+  }
+
+  presentAlert(n) {
+    if (n.shown) return;
+    const d = document.createElement("dialog");
+    const sheet = n.alertStyle === 1;
+    d.className = sheet ? "ryui-alert ryui-action-sheet" : "ryui-alert";
+    d.setAttribute("role", "alertdialog");
+    const body = div("ryui-alert-body");
+    if (n.title) { const t = div("ryui-alert-title"); t.textContent = n.title; body.appendChild(t); d.setAttribute("aria-label", n.title); }
+    if (n.message) { const m = div("ryui-alert-message"); m.textContent = n.message; body.appendChild(m); }
+    d.appendChild(body);
+    const buttons = div("ryui-alert-buttons");
+    const actions = n.actions?.length ? n.actions : [{ role: 0, title: this.word("ok"), icon: "", ok: true }];
+    // The cancel button goes last in a sheet's list and first in a row of two, as platforms place it.
+    const order = actions.map((a, i) => i);
+    order.sort((a, b) => (actions[a].role === 1) - (actions[b].role === 1));
+    if (!sheet && actions.length <= 2) order.sort((a, b) => (actions[b].role === 1) - (actions[a].role === 1));
+    buttons.classList.toggle("ryui-stacked", sheet || actions.length > 2);
+    for (const i of order) {
+      const a = actions[i];
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "ryui-control";
+      b.textContent = a.title;
+      if (a.role === 1) b.classList.add("ryui-cancel");
+      if (a.role === 2) b.classList.add("ryui-destructive");
+      b.addEventListener("click", () => {
+        if (!n.shown) return;
+        this.closeDialog(n);
+        if (a.ok) this.h.emit(n, Event.Dismissed, Events.dismissed);
+        else this.h.emit(n, Event.Action, (id) => Events.action(id, i));
+      });
+      buttons.appendChild(b);
+    }
+    d.appendChild(buttons);
+    this.h.container.appendChild(d);
+    n.dialog = d;
+    n.shown = true;
+    this.dialogs.push(n);
+    const cancelIdx = actions.findIndex((a) => a.role === 1);
+    const cancel = () => {
+      if (!n.shown) return;
+      this.closeDialog(n);
+      if (cancelIdx >= 0 && !actions[cancelIdx].ok) this.h.emit(n, Event.Action, (id) => Events.action(id, cancelIdx));
+      else this.h.emit(n, Event.Dismissed, Events.dismissed);
+    };
+    d.addEventListener("cancel", (e) => { e.preventDefault(); cancel(); });
+    d.addEventListener("click", (e) => { if (e.target === d && sheet) cancel(); });
+    d.showModal();
+    const def = buttons.querySelector("button:not(.ryui-cancel)") || buttons.querySelector("button");
+    def?.focus();
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      d.animate([{ opacity: 0, transform: sheet && !this.wide() ? "translateY(40px)" : "scale(1.08)" }, { opacity: 1, transform: "none" }], { duration: 200, easing: "ease-out" });
+    }
+    this.updateGuard();
+  }
+
+  presentPopover(n) {
+    if (n.shown) return;
+    const p = div("ryui-popover");
+    p.popover = "auto";
+    p.appendChild(n.el);
+    this.h.container.appendChild(p);
+    n.dialog = p;
+    n.shown = true;
+    this.dialogs.push(n);
+    p.addEventListener("toggle", (e) => {
+      if (e.newState === "closed" && n.shown) {
+        // A click outside or Escape: light dismissed.
+        n.shown = false;
+        this.dialogs = this.dialogs.filter((x) => x !== n);
+        if (n.interceptBack) {
+          this.h.dispatch(Events.back(n.id));
+          p.showPopover();
+          n.shown = true;
+          this.dialogs.push(n);
+          return;
+        }
+        this.h.emit(n, Event.Dismissed, Events.dismissed);
+      }
+    });
+    p.showPopover();
+    this.placePopover(n);
+    this.updateGuard();
+  }
+
+  placePopover(n) {
+    const p = n.dialog;
+    if (!p) return;
+    const w = n.pop.w, h = n.pop.h;
+    const c = this.h.container.getBoundingClientRect();
+    const a = this.h.nodes.get(n.pop.anchor);
+    const r = a?.el?.getBoundingClientRect() || { left: c.left + c.width / 2, right: c.left + c.width / 2, top: c.top + c.height / 3, bottom: c.top + c.height / 3, width: 0 };
+    let x = r.left + r.width / 2 - w / 2;
+    x = Math.min(Math.max(x, c.left + 8), c.right - w - 8);
+    let y = r.bottom + 8;
+    if (y + h > c.bottom - 8 && r.top - 8 - h >= c.top + 8) y = r.top - 8 - h;
+    p.style.left = x + "px";
+    p.style.top = y + "px";
+    p.style.width = w + "px";
+    p.style.height = h + "px";
+    const s = n.el.style;
+    s.left = "0px"; s.top = "0px"; s.width = w + "px"; s.height = h + "px";
+    n.frame = [0, 0, w, h];
+    n.placed = true;
+    this.report(n, w, h, p);
+  }
+
+  presentWindow(n) {
+    if (n.shown) return;
+    const c = this.h.container.getBoundingClientRect();
+    const bar = 36;
+    const w = Math.min(n.win.width || 480, c.width - 16), h = Math.min((n.win.height || 600) + bar, c.height - 16);
+    const open = this.dialogs.filter((x) => x.kind === Kind.Window).length;
+    n.win = { ...n.win, w, h, x: Math.max(8, (c.width - w) / 2 + open * 24), y: Math.max(8, (c.height - h) / 2 + open * 24), bar };
+    const d = div("ryui-window");
+    d.setAttribute("role", "dialog");
+    const title = div("ryui-window-bar");
+    const name = div("ryui-window-title");
+    name.textContent = n.title || "";
+    const close = iconButton("xmark", "Close", false);
+    close.addEventListener("click", () => this.h.emit(n, Event.Dismissed, Events.dismissed));
+    title.append(name, close);
+    d.append(title, n.el);
+    const grip = div("ryui-window-grip");
+    d.appendChild(grip);
+    this.h.container.appendChild(d);
+    n.dialog = d;
+    n.winTitle = name;
+    n.shown = true;
+    this.dialogs.push(n);
+    this.drag(title, (dx, dy) => { n.win.x += dx; n.win.y += dy; this.sizeDialog(n); });
+    this.drag(grip, (dx, dy) => {
+      n.win.w = Math.max(n.win.w + dx, (n.win.minWidth || 200));
+      n.win.h = Math.max(n.win.h + dy, (n.win.minHeight || 120) + bar);
+      this.sizeDialog(n);
+    });
+    d.addEventListener("pointerdown", () => {
+      // The window clicked comes to the front.
+      this.h.container.appendChild(d);
+    });
+    this.sizeDialog(n);
+    this.updateGuard();
+  }
+
+  drag(handle, move) {
+    let last = null;
+    handle.addEventListener("pointerdown", (e) => {
+      if (e.target.closest("button")) return;
+      last = [e.clientX, e.clientY];
+      handle.setPointerCapture(e.pointerId);
+    });
+    handle.addEventListener("pointermove", (e) => {
+      if (!last) return;
+      move(e.clientX - last[0], e.clientY - last[1]);
+      last = [e.clientX, e.clientY];
+    });
+    handle.addEventListener("pointerup", () => { last = null; });
+  }
+
+  // --- SplitView ---
+
+  drawerButton(stack) {
+    const p = stack.parent;
+    return p?.kind === Kind.Split && !p.split.beside && this.live(stack) <= 1;
+  }
+
+  layoutSplit(n) {
+    const [, , w, h] = n.frame;
+    const s = n.split;
+    const beside = w >= 700;
+    if (beside !== s.beside) {
+      s.beside = beside;
+      n.el.classList.toggle("ryui-split-beside", beside);
+      this.closeDrawer(n);
+      for (const c of n.children) if (c.kind === Kind.Stack && c.stack) this.updateHeader(c);
+    }
+    const side = beside ? sidebarWidth : 0;
+    s.sidebar.style.width = (beside ? sidebarWidth : Math.min(sidebarWidth + 40, w - 56)) + "px";
+    const rtl = getComputedStyle(n.el).direction === "rtl";
+    for (const c of n.children) {
+      if (!c.el) continue;
+      const st = c.el.style;
+      st.left = (rtl ? 0 : side) + "px";
+      st.top = "0px";
+      st.width = w - side + "px";
+      st.height = h + "px";
+      c.frame = [rtl ? 0 : side, 0, w - side, h];
+      c.placed = true;
+      if (c.kind === Kind.Stack) this.layoutScreens(c);
+    }
+  }
+
+  openDrawer(n) {
+    n.el.classList.add("ryui-drawer-open");
+    n.split.sidebar.removeAttribute("inert");
+    this.dialogs.push(n);
+    this.updateGuard();
+  }
+
+  closeDrawer(n) {
+    n.el.classList.remove("ryui-drawer-open");
+    const i = this.dialogs.indexOf(n);
+    if (i >= 0) this.dialogs.splice(i, 1);
+    this.updateGuard();
+  }
+
+  // --- Back ---
+
+  /** canGoBack: there's a dialog to close or a stack to pop. */
+  canGoBack() {
+    if (this.dialogs.length) return true;
+    return !!this.innermostStack();
+  }
+
+  /** innermostStack is the innermost shown stack that can pop. */
+  innermostStack() {
+    let found = null;
+    const visit = (n) => {
+      if (!n) return;
+      if (n.kind === Kind.Tabs) { visit(n.children[n.tabs.selected]); return; }
+      if (n.kind === Kind.Stack) {
+        if (this.live(n) > 1) found = n;
+        visit(this.topScreen(n));
+        return;
+      }
+      for (const c of n.children) visit(c);
+    };
+    const top = this.dialogs[this.dialogs.length - 1];
+    visit(top ? top : this.h.root);
+    return found;
+  }
+
+  /** back is the user's back: the newest dialog closes, or the innermost stack pops. */
+  back() {
+    const top = this.dialogs[this.dialogs.length - 1];
+    const stack = this.innermostStack();
+    if (stack) return this.goBack(stack);
+    if (top) {
+      if (top.kind === Kind.Split) this.closeDrawer(top);
+      else if (top.kind === Kind.Alert) top.dialog?.dispatchEvent(new window.Event("cancel"));
+      else if (top.kind === Kind.Popover) top.dialog?.hidePopover();
+      else this.dismiss(top);
+      return true;
+    }
+    if (this.h.root?.interceptBack) {
+      this.h.dispatch(Events.back(this.h.root.id));
+      return true;
+    }
+    return false;
+  }
+
+  /** backExit: the app's OnBack let the user's back go on from the root: the page goes back. */
+  backExit() {
+    this.leaving = true;
+    history.back();
+  }
+
+  key(e) {
+    if (e.defaultPrevented) return;
+    // An app in an element of a page (not the whole page) takes the keys typed in it.
+    if (!this.h.options.fullPage && !this.h.container.contains(e.target)) return;
+    const mac = /Mac|iPhone|iPad/.test(navigator.platform);
+    const backKey = (e.altKey && e.key === "ArrowLeft" && !mac) || (e.metaKey && e.key === "[" && mac) || e.key === "BrowserBack";
+    const escape = e.key === "Escape" && !this.dialogs.some((d) => d.dialog?.tagName === "DIALOG" || d.kind === Kind.Popover);
+    if (escape && e.target.closest?.("input, textarea")) { e.target.blur(); return; }
+    if (backKey || escape) {
+      if (this.back()) e.preventDefault();
+    }
+  }
+
+  /**
+   * updateGuard keeps a history entry for the app's back while there's
+   * somewhere to go back to, so the browser's back button (and a phone's
+   * back gesture) goes back in the app.
+   */
+  updateGuard() {
+    if (!this.h.options.fullPage) return;
+    queueMicrotask(() => {
+      const want = this.canGoBack() || !!this.h.root?.interceptBack;
+      if (want && !this.guard && !this.dropping) {
+        history.pushState({ ryui: true }, "");
+        this.guard = true;
+      } else if (!want && this.guard && history.state?.ryui && !this.dropping) {
+        // Once: the guard is gone as this back's popstate comes.
+        this.guard = false;
+        this.dropping = true;
+        history.back();
+      }
+    });
+  }
+
+  popstate() {
+    if (this.dropping) {
+      this.dropping = false;
+      this.updateGuard(); // something to go back to came meanwhile
+      return;
+    }
+    if (this.leaving) return;
+    if (!this.guard) return;
+    this.guard = false;
+    this.h.afterCore(() => {
+      this.back();
+      this.updateGuard();
+    });
+  }
+
+  /** edgeSwipe: a touch from the leading edge, moving across, goes back in the innermost stack. */
+  edgeSwipe() {
+    let start = null;
+    const c = this.h.container;
+    c.addEventListener("pointerdown", (e) => {
+      if (e.pointerType !== "touch") return;
+      const r = c.getBoundingClientRect();
+      const rtl = this.h.rtl;
+      const edge = rtl ? r.right - e.clientX : e.clientX - r.left;
+      start = edge < 20 ? { x: e.clientX, y: e.clientY, rtl } : null;
+    });
+    c.addEventListener("pointerup", (e) => {
+      if (!start) return;
+      const dx = (e.clientX - start.x) * (start.rtl ? -1 : 1), dy = Math.abs(e.clientY - start.y);
+      start = null;
+      if (dx > 80 && dy < dx / 2) {
+        const stack = this.innermostStack();
+        const top = stack && this.topScreen(stack);
+        if (top && top.backGesture !== false) this.goBack(stack);
+      }
+    });
+  }
+
+  fieldFocused(n, on) {
+    if (on) for (const d of this.dialogs) if (d.kind === Kind.Sheet && d.el.contains(n.el) && !d.expanded) this.h.afterCore(() => this.sizeDialog(d));
+    if (n.accessory) {
+      const a = this.h.nodes.get(n.accessory);
+      if (a) showAccessory(this.h, a, on);
+    }
+  }
+}
+
+function showAccessory(h, a, on) {
+  if (!matchMedia("(pointer: coarse)").matches) return; // no on-screen keyboard
+  a.el.classList.toggle("ryui-accessory-shown", on);
+  if (!a.el.isConnected) h.container.appendChild(a.el);
+  const place = () => {
+    const vv = window.visualViewport;
+    const bottom = vv ? window.innerHeight - (vv.height + vv.offsetTop) : 0;
+    a.el.style.bottom = Math.max(0, bottom) + "px";
+  };
+  place();
+  if (on) {
+    a.place = place;
+    window.visualViewport?.addEventListener("resize", place);
+  } else if (a.place) {
+    window.visualViewport?.removeEventListener("resize", a.place);
+  }
+}
+
+// --- The kinds ---
+
+const stack = {
+  create(h, n) {
+    const el = own(n, div("ryui-stack"));
+    const bar = div("ryui-bar");
+    const row = div("ryui-bar-row");
+    const leading = div("ryui-bar-leading");
+    const title = div("ryui-bar-title");
+    title.setAttribute("role", "heading");
+    title.setAttribute("aria-level", "1");
+    const trailing = div("ryui-bar-trailing");
+    row.append(leading, title, trailing);
+    const search = div("ryui-bar-search");
+    const input = document.createElement("input");
+    input.type = "search";
+    input.className = "ryui-search ryui-control";
+    input.enterKeyHint = "search";
+    search.appendChild(input);
+    search.hidden = true;
+    bar.append(row, search);
+    bar.hidden = true;
+    el.appendChild(bar);
+    n.stack = { bar, leading, title, trailing, search, searchInput: input };
+    input.addEventListener("input", () => {
+      const top = h.nav.topScreen(n);
+      if (!top) return;
+      top.searchText = input.value;
+      h.emit(top, Event.TextChanged, (id) => Events.textChanged(id, input.value));
+    });
+    input.addEventListener("keydown", (e) => {
+      const top = h.nav.topScreen(n);
+      if (e.key === "Enter" && !e.isComposing && top) h.emit(top, Event.Submit, Events.submit);
+    });
+  },
+  insert(h, p, c, i) {
+    c.leaving = false;
+    const top = h.nav.topScreen(p) === c ? null : null;
+    const below = p.children.filter((s) => s !== c && !s.leaving);
+    const isTop = p.children.indexOf(c) === p.children.length - 1;
+    const prevTop = isTop ? below[below.length - 1] : null;
+    // Above the screens before it, below the bar.
+    let next = null;
+    for (let k = i + 1; k < p.children.length; k++) if (p.children[k].el?.parentNode === p.el) { next = p.children[k].el; break; }
+    p.el.insertBefore(c.el, next || p.stack.bar);
+    h.nav.updateHeader(p);
+    if (isTop) {
+      if (prevTop) {
+        h.nav.showScreen(prevTop, true);
+        const instant = p.instant || !p.shownOnce;
+        if (!instant) h.nav.slide(p, c, prevTop, true, () => { if (h.nav.topScreen(p) !== prevTop) h.nav.showScreen(prevTop, false); });
+        else h.nav.showScreen(prevTop, false);
+      }
+      p.instant = false;
+    } else {
+      h.nav.showScreen(c, false);
+    }
+    p.shownOnce = true;
+    return true;
+  },
+  remove(h, p, c) {
+    c.el?.remove();
+    h.nav.updateHeader(p);
+    return true;
+  },
+  frame(h, n, x, y, w, hh) {
+    h.place(n, x, y, w, hh);
+    h.nav.layoutScreens(n);
+    return true;
+  },
+  command(h, n, cmd) {
+    if (cmd === Command.Replace) { n.instant = true; return true; }
+    return false;
+  },
+  measure() { return [0, 0]; },
+};
+
+const screen = {
+  create(h, n) {
+    own(n, div("ryui-screen"));
+    n.title = "";
+    n.actions = [];
+    n.search = null;
+    n.backGesture = true;
+  },
+  prop(h, n, p, v) {
+    switch (p) {
+      case P.Screen.Title: n.title = v; break;
+      case P.Screen.Actions: n.actions = decodeActions(v); break;
+      case P.Screen.BackGesture: n.backGesture = !!v; return;
+      case P.Screen.Icon: n.icon = v; break;
+      case P.Screen.Search: n.search = v; break;
+      case P.Screen.SearchText: n.searchText = v; break;
+      case P.Screen.SearchButton: n.searchButton = !!v; break;
+      case P.Screen.BarColor: n.barColor = v; break;
+      default: return;
+    }
+    const parent = n.parent;
+    if (parent?.kind === Kind.Stack) h.nav.updateHeader(parent);
+    if (parent?.kind === Kind.Tabs) parent.tabs.render(h, parent);
+  },
+  frame() { return true; }, // sized by the host
+  destroy(h, n) {
+    const p = n.parent;
+    if (p?.kind === Kind.Stack) {
+      const wasTop = h.nav.topScreen(p) === n;
+      if (n.leaving) {
+        // The user popped it: it's sliding out already.
+        p.children.splice(p.children.indexOf(n), 1);
+        n.parent = null;
+        h.nav.updateHeader(p);
+        return true;
+      }
+      p.children.splice(p.children.indexOf(n), 1);
+      n.parent = null;
+      if (wasTop && !p.instant && p.el.isConnected && h.nav.topScreen(p)) {
+        // Popped by the app: it slides out, then goes.
+        n.leaving = true;
+        p.children.push(n);
+        n.parent = p;
+        h.nav.popScreen(p, n);
+        p.children.splice(p.children.indexOf(n), 1);
+        n.parent = null;
+        h.nav.updateHeader(p);
+        return true;
+      }
+      const below = h.nav.topScreen(p);
+      if (below) h.nav.showScreen(below, true);
+      n.el.remove();
+      h.nav.updateHeader(p);
+      return true;
+    }
+    if (p?.kind === Kind.Tabs) {
+      p.children.splice(p.children.indexOf(n), 1);
+      n.parent = null;
+      n.el.remove();
+      p.tabs.render(h, p);
+      return true;
+    }
+    return false;
+  },
+  measure() { return [0, 0]; },
+};
+
+const tabs = {
+  create(h, n) {
+    const el = own(n, div("ryui-tabs"));
+    const bar = div("ryui-tabbar");
+    bar.setAttribute("role", "tablist");
+    el.appendChild(bar);
+    n.tabs = {
+      bar,
+      selected: 0,
+      render(h, n) {
+        bar.textContent = "";
+        const rtl = getComputedStyle(n.el).direction === "rtl";
+        n.children.forEach((s, i) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "ryui-tab ryui-control";
+          b.setAttribute("role", "tab");
+          b.setAttribute("aria-selected", String(i === this.selected));
+          if (s.icon) {
+            const sym = symbolSVG(this.selected === i ? s.icon + ".fill" : s.icon, rtl) || symbolSVG(s.icon, rtl);
+            if (sym) b.appendChild(sym);
+          }
+          const t = document.createElement("span");
+          t.textContent = s.title;
+          b.appendChild(t);
+          b.addEventListener("click", () => {
+            if (this.selected === i) {
+              // Tapping the selected tab again pops its stack to its root, as UIKit's does.
+              return;
+            }
+            this.selected = i;
+            this.show(h, n);
+            h.emit(n, Event.Selected, (id) => Events.selected(id, i));
+          });
+          bar.appendChild(b);
+        });
+        bar.style.paddingBottom = (h.nav.touchesBottom(n) ? h.safeArea()[2] : 0) + "px";
+        this.show(h, n);
+      },
+      show(h, n) {
+        n.children.forEach((s, i) => {
+          s.el.classList.toggle("ryui-hidden-page", i !== this.selected);
+          if (i !== this.selected) s.el.setAttribute("inert", ""); else s.el.removeAttribute("inert");
+        });
+        [...bar.children].forEach((b, i) => b.setAttribute("aria-selected", String(i === this.selected)));
+        h.nav.updateTitle();
+        h.nav.updateGuard();
+      },
+    };
+  },
+  prop(h, n, p, v) {
+    if (p === P.Tabs.Selected) {
+      n.tabs.selected = v;
+      n.tabs.render(h, n);
+    }
+  },
+  insert(h, p, c, i) {
+    let next = null;
+    for (let k = i + 1; k < p.children.length; k++) if (p.children[k].el?.parentNode === p.el) { next = p.children[k].el; break; }
+    p.el.insertBefore(c.el, next || p.tabs.bar);
+    p.tabs.render(h, p);
+    h.nav.layoutScreens(p);
+    return true;
+  },
+  remove(h, p, c) {
+    c.el.remove();
+    p.tabs.render(h, p);
+    return true;
+  },
+  frame(h, n, x, y, w, hh) {
+    h.place(n, x, y, w, hh);
+    h.nav.layoutScreens(n);
+    n.tabs.bar.style.paddingBottom = (h.nav.touchesBottom(n) ? h.safeArea()[2] : 0) + "px";
+    return true;
+  },
+  measure() { return [0, 0]; },
+};
+
+const sheet = {
+  create(h, n) {
+    own(n, div("ryui-sheet"));
+    n.detents = 0;
+  },
+  prop(h, n, p, v) {
+    if (p === P.Sheet.Detents) n.detents = v;
+    if (p === P.Sheet.Grabber) n.grabber = !!v;
+  },
+  frame() { return true; },
+  destroy(h, n) {
+    h.nav.closeDialog(n);
+    return true;
+  },
+  measure() { return [0, 0]; },
+};
+
+const alert = {
+  create(h, n) {
+    n.el = null;
+    n.title = "";
+    n.message = "";
+    n.actions = [];
+    n.alertStyle = 0;
+  },
+  prop(h, n, p, v) {
+    if (p === P.Alert.Title) n.title = v;
+    if (p === P.Alert.Message) n.message = v;
+    if (p === P.Alert.Buttons) n.actions = decodeActions(v);
+    if (p === P.Alert.Style) n.alertStyle = v;
+  },
+  common() { return true; },
+  destroy(h, n) {
+    if (n.shown) h.nav.closeDialog(n);
+    return true;
+  },
+  measure() { return [0, 0]; },
+};
+
+const popover = {
+  create(h, n) {
+    own(n, div("ryui-popover-content"));
+    n.pop = { anchor: 0, w: 0, h: 0 };
+  },
+  prop(h, n, p, v) {
+    if (p === P.Popover.Anchor) n.pop.anchor = v;
+    if (p === P.Popover.Width) n.pop.w = v;
+    if (p === P.Popover.Height) n.pop.h = v;
+    if (n.shown) h.nav.placePopover(n);
+  },
+  frame() { return true; },
+  destroy(h, n) {
+    if (n.shown) {
+      n.shown = false;
+      h.nav.dialogs = h.nav.dialogs.filter((x) => x !== n);
+      n.dialog.hidePopover();
+      n.dialog.remove();
+      h.nav.updateGuard();
+    }
+    return true;
+  },
+  measure() { return [0, 0]; },
+};
+
+const windowKind = {
+  create(h, n) {
+    own(n, div("ryui-window-content"));
+    n.win = {};
+    n.title = "";
+  },
+  prop(h, n, p, v) {
+    switch (p) {
+      case P.Window.Title: n.title = v; if (n.winTitle) n.winTitle.textContent = v; break;
+      case P.Window.Width: n.win.width = v; break;
+      case P.Window.Height: n.win.height = v; break;
+      case P.Window.MinWidth: n.win.minWidth = v; break;
+      case P.Window.MinHeight: n.win.minHeight = v; break;
+    }
+  },
+  frame() { return true; },
+  destroy(h, n) {
+    if (n.shown) {
+      n.shown = false;
+      h.nav.dialogs = h.nav.dialogs.filter((x) => x !== n);
+      n.dialog.remove();
+      h.nav.updateGuard();
+    }
+    return true;
+  },
+  measure() { return [0, 0]; },
+};
+
+const accessory = {
+  create(h, n) {
+    own(n, div("ryui-accessory"));
+  },
+  prop(h, n, p, v) {
+    if (p === P.Accessory.Width) n.el.style.width = v + "px";
+    if (p === P.Accessory.Height) n.el.style.height = v + "px";
+  },
+  frame() { return true; },
+  measure() { return [0, 0]; },
+};
+
+const split = {
+  create(h, n) {
+    const el = own(n, div("ryui-split"));
+    const sidebar = div("ryui-sidebar");
+    sidebar.setAttribute("role", "navigation");
+    const head = div("ryui-sidebar-title");
+    const list = div("ryui-sidebar-list");
+    sidebar.append(head, list);
+    const scrim = div("ryui-scrim");
+    scrim.addEventListener("click", () => h.nav.closeDrawer(n));
+    el.append(sidebar, scrim);
+    n.split = { sidebar, head, list, scrim, sections: [], selected: -1, beside: null };
+  },
+  prop(h, n, p, v) {
+    const s = n.split;
+    if (p === P.Split.Items) {
+      const r = new Reader(v);
+      const count = r.u32();
+      s.sections = [];
+      for (let i = 0; i < count; i++) {
+        const title = r.string();
+        const k = r.u32();
+        const items = [];
+        for (let j = 0; j < k; j++) items.push({ title: r.string(), icon: r.string() });
+        s.sections.push({ title, items });
+      }
+    }
+    if (p === P.Split.Selected) s.selected = v;
+    if (p === P.Split.Title) { n.title = v; s.head.textContent = v; s.head.hidden = !v; }
+    renderSidebar(h, n);
+  },
+  insert(h, p, c, i) {
+    p.el.insertBefore(c.el, p.split.sidebar);
+    h.nav.layoutSplit(p);
+    if (c.kind === Kind.Stack) h.nav.updateHeader(c);
+    return true;
+  },
+  frame(h, n, x, y, w, hh) {
+    h.place(n, x, y, w, hh);
+    h.nav.layoutSplit(n);
+    return true;
+  },
+  measure() { return [0, 0]; },
+};
+
+function renderSidebar(h, n) {
+  const s = n.split;
+  s.list.textContent = "";
+  let index = 0;
+  for (const sec of s.sections) {
+    if (sec.title) {
+      const t = div("ryui-sidebar-section");
+      t.textContent = sec.title;
+      s.list.appendChild(t);
+    }
+    for (const it of sec.items) {
+      const i = index++;
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "ryui-sidebar-item ryui-control";
+      b.setAttribute("aria-current", String(i === s.selected));
+      if (it.icon) { const sym = symbolSVG(it.icon, h.rtl); if (sym) b.appendChild(sym); }
+      const t = document.createElement("span");
+      t.textContent = it.title;
+      b.appendChild(t);
+      b.addEventListener("click", () => {
+        h.nav.closeDrawer(n);
+        if (i === s.selected) return;
+        s.selected = i;
+        renderSidebar(h, n);
+        h.emit(n, Event.Selected, (id) => Events.selected(id, i));
+      });
+      s.list.appendChild(b);
+    }
+  }
+}
+
+export const navKinds = {
+  [Kind.Stack]: stack,
+  [Kind.Screen]: screen,
+  [Kind.Tabs]: tabs,
+  [Kind.Sheet]: sheet,
+  [Kind.Alert]: alert,
+  [Kind.Popover]: popover,
+  [Kind.Window]: windowKind,
+  [Kind.Accessory]: accessory,
+  [Kind.Split]: split,
+};

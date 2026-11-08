@@ -222,3 +222,42 @@ func Decode(b []byte) (*Code, error) {
 	}
 	return c, nil
 }
+
+// GLSL is a compiled shader as a whole GLSL ES 3.00 fragment shader, which
+// the web host draws with WebGL 2: its Kage source compiled again, the
+// uniforms U0, U1... in the order of Code.Uniforms, its entry point given
+// the pixel's position from the top of the box (GL's counts from the
+// bottom) and the position in points.
+func GLSL(code []byte) (string, error) {
+	c, err := Decode(code)
+	if err != nil {
+		return "", err
+	}
+	p, err := shader.CompileFragment([]byte(c.Source))
+	if err != nil {
+		return "", err
+	}
+	size, scale := -1, -1
+	for i, u := range c.Uniforms {
+		switch u.Name {
+		case shader.RectSizeUniform:
+			size = i
+		case shader.ScaleUniform:
+			scale = i
+		}
+	}
+	if size < 0 || scale < 0 {
+		return "", errors.New("shader: no size or scale uniform in the bridge")
+	}
+	lib := glsl.Fragment(p, "ryui_shade", glsl.Options{FlipY: "true"})
+	return "#version 300 es\nprecision highp float;\nprecision highp int;\n\n" + lib + fmt.Sprintf(glslEntry, size, scale), nil
+}
+
+const glslEntry = `
+out vec4 ryui_color;
+
+void main() {
+	vec4 p = vec4(gl_FragCoord.x, U%[1]d.y * U%[2]d - gl_FragCoord.y, gl_FragCoord.z, gl_FragCoord.w);
+	ryui_color = ryui_shade(p, p.xy / U%[2]d);
+}
+`
