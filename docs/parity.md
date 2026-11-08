@@ -158,6 +158,7 @@ what RyUI has for it.
 | Release builds and signing | Xcode, EAS Build | ✓ `ryui build -ios` (.ipa), `ryui build -android` (.aab, .apk) |
 | GUI tests | XCUITest, Detox, Maestro | ✓ `e2e/` (both platforms; a CI job for each, not yet run on GitHub) |
 | Benchmarks | Instruments | ✓ `bench/` (against SwiftUI and Compose) |
+| Embedding in an existing app | — | brownfield (React Native's) | ✓ `ryui build -ios -xcframework`, `ryui build -android -aar` |
 | Over-the-air updates | — | EAS Update: ✗ |
 
 ## Not yet

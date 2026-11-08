@@ -70,7 +70,7 @@ enum RyUIImageEdit {
     static func url(_ source: String) -> URL? {
         if source.hasPrefix("http://") || source.hasPrefix("https://") || source.hasPrefix("file://") { return URL(string: source) }
         if source.hasPrefix("/") { return URL(fileURLWithPath: source) }
-        return Bundle.main.resourceURL?.appendingPathComponent("assets").appendingPathComponent(source)
+        return ryuiAssets?.appendingPathComponent(source)
     }
 
     static func imageSource(_ source: String) throws -> CGImageSource {

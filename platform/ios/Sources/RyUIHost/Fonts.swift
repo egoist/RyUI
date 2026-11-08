@@ -43,7 +43,7 @@ enum RyUIFonts {
         defer { lock.unlock() }
         if let files { return files }
         var out: [String: String] = [:]
-        if let dir = Bundle.main.resourceURL?.appendingPathComponent("assets/fonts"),
+        if let dir = ryuiAssets?.appendingPathComponent("fonts"),
            let list = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) {
             for url in list where ["ttf", "otf"].contains(url.pathExtension.lowercased()) {
                 if let d = try? Data(contentsOf: url), let ps = register(d) {

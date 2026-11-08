@@ -46,29 +46,9 @@ and give its password in RYUI_KEYSTORE_PASSWORD (and RYUI_KEY_PASSWORD if the ke
 	}
 	fmt.Printf("ryui: building %s %s (%d) for Android\n", cfg.Name, cfg.Version, cfg.Build)
 
-	jni := filepath.Join(work, "jniLibs")
-	os.RemoveAll(jni)
-	ov, err := writeOverlay(app, work)
+	jni, err := buildAndroidLibs(app, tc, work)
 	if err != nil {
 		return err
-	}
-	for _, a := range androidABIs {
-		out := filepath.Join(jni, a.abi, "libryui.so")
-		env := []string{"GOOS=android", "GOARCH=" + a.goarch, "CGO_ENABLED=1",
-			"CC=" + filepath.Join(tc.ndkBin, a.clang+androidMinAPI+"-clang"),
-			"CGO_LDFLAGS=-Wl,-z,max-page-size=16384"}
-		if a.goarm != "" {
-			env = append(env, "GOARM="+a.goarm)
-		}
-		// The symbol table stays, for the native debug symbols: Gradle
-		// strips the libraries it packages (with the NDK the build names).
-		if err := tc.run(app.dir, env, "go", "build", "-buildmode=c-shared", "-trimpath", app.cfg.ldflagsStrip("-w"),
-			"-overlay", ov, "-o", out, "."); err != nil {
-			return fmt.Errorf("%s: %v", a.abi, err)
-		}
-		os.Remove(strings.TrimSuffix(out, ".so") + ".h")
-		cfg.shareSheet = hasSheet(out)
-		cfg.pushRewrite = hasSymbol(out, rewriteSymbol)
 	}
 
 	res := filepath.Join(work, "res")
@@ -208,4 +188,35 @@ func androidIcons(path, res string) error {
     <foreground android:drawable="@mipmap/ic_launcher_foreground" />
 </adaptive-icon>
 `), 0o644)
+}
+
+// buildAndroidLibs builds the app's Go code as a shared library for each
+// ABI a release carries, in work/jniLibs/<abi>/libryui.so.
+func buildAndroidLibs(app *goApp, tc *androidToolchain, work string) (string, error) {
+	cfg := app.cfg
+	jni := filepath.Join(work, "jniLibs")
+	os.RemoveAll(jni)
+	ov, err := writeOverlay(app, work)
+	if err != nil {
+		return "", err
+	}
+	for _, a := range androidABIs {
+		out := filepath.Join(jni, a.abi, "libryui.so")
+		env := []string{"GOOS=android", "GOARCH=" + a.goarch, "CGO_ENABLED=1",
+			"CC=" + filepath.Join(tc.ndkBin, a.clang+androidMinAPI+"-clang"),
+			"CGO_LDFLAGS=-Wl,-z,max-page-size=16384"}
+		if a.goarm != "" {
+			env = append(env, "GOARM="+a.goarm)
+		}
+		// The symbol table stays, for the native debug symbols: Gradle
+		// strips the libraries it packages (with the NDK the build names).
+		if err := tc.run(app.dir, env, "go", "build", "-buildmode=c-shared", "-trimpath", cfg.ldflagsStrip("-w"),
+			"-overlay", ov, "-o", out, "."); err != nil {
+			return "", fmt.Errorf("%s: %v", a.abi, err)
+		}
+		os.Remove(strings.TrimSuffix(out, ".so") + ".h")
+		cfg.shareSheet = hasSheet(out)
+		cfg.pushRewrite = hasSymbol(out, rewriteSymbol)
+	}
+	return jni, nil
 }

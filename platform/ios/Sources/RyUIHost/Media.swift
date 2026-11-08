@@ -61,7 +61,7 @@ final class RyUIImageLoader: @unchecked Sendable {
             // A file (a picked photo), or one of the app's assets.
             let url = source.hasPrefix("/") ? URL(fileURLWithPath: source)
                 : source.hasPrefix("file://") ? URL(string: source)
-                : Bundle.main.resourceURL?.appendingPathComponent("assets").appendingPathComponent(source)
+                : ryuiAssets?.appendingPathComponent(source)
             finish(Self.decode(url.flatMap { try? Data(contentsOf: $0) }))
         }
     }

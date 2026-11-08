@@ -127,6 +127,44 @@ RYUI_KEYSTORE_PASSWORD=... ryui build -android
 an `.apk` to install yourself, for 64-bit and 32-bit ARM phones and
 x86_64 (emulators, Chromebooks), Android 8 and later.
 
+## In an existing app
+
+A RyUI app can live inside an app made in Xcode or Android Studio: a
+feature written once in Go, shown from a native app.
+
+**iOS.** `ryui build -ios -xcframework` makes `dist/RyUIApp.xcframework`:
+the app's Go code and the UIKit host, for devices and the simulator, with
+a Swift module interface and the app's assets. Add it to your target
+(Embed & Sign), then show the RyUI app as any view controller:
+
+```swift
+import RyUIApp
+
+present(RyUIViewController(), animated: true)
+// or push it, or make it a tab, or a window's root
+```
+
+**Android.** `ryui build -android -aar` makes a Maven repository in
+`dist/maven`: the host library with the app's Go code for each ABI, its
+assets, and `RyUIActivity` declared, with its dependencies (Material,
+AndroidX) in its POM, and the optional modules the app uses (`ryui/push`,
+`ryui/maps`) beside it. Add the repository and the dependency the
+command prints, then start the activity:
+
+```kotlin
+// settings.gradle.kts
+dependencyResolutionManagement { repositories { maven { url = uri("path/to/dist/maven") } } }
+// app/build.gradle.kts
+dependencies { implementation("dev.ryui.counter:counter:1.0.0") }
+// anywhere
+startActivity(Intent(this, dev.ryui.RyUIActivity::class.java))
+```
+
+The embedded app is one RyUI app, mounted once, as in a standalone
+build. What `ryui.json` sets for a whole app (its icon, URL scheme,
+share target, widgets, permissions' texts) is the embedding app's to
+set in its own project.
+
 ## Symbols for crash reports
 
 A native crash's frames are addresses in the app's binaries; a crash

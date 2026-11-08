@@ -1,7 +1,16 @@
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
+    `maven-publish`
 }
+
+fun prop(name: String) = providers.gradleProperty(name).orNull
+
+// ryui build -android -aar: an app to embed in another, this library with
+// the app's Go code (ryuiJniLibs) and assets, and RyUIActivity declared,
+// published to a Maven repository (ryuiMavenRepo) so its dependencies come
+// with it.
+val embed = prop("ryuiMavenRepo") != null
 
 android {
     namespace = "dev.ryui"
@@ -15,6 +24,28 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     testOptions.unitTests.isReturnDefaultValues = true
+    if (embed) {
+        sourceSets.getByName("main") {
+            prop("ryuiJniLibs")?.let { jniLibs.srcDir(it) }
+            prop("ryuiAssets")?.let { assets.srcDir(it) }
+            prop("ryuiManifest")?.let { manifest.srcFile(it) }
+        }
+        publishing { singleVariant("release") }
+    }
+}
+
+if (embed) afterEvaluate {
+    publishing {
+        publications {
+            create<MavenPublication>("release") {
+                from(components["release"])
+                groupId = prop("ryuiGroup") ?: "dev.ryui"
+                artifactId = prop("ryuiArtifact") ?: "app"
+                version = prop("ryuiVersion") ?: "1.0"
+            }
+        }
+        repositories { maven { name = "embed"; url = uri(prop("ryuiMavenRepo")!!) } }
+    }
 }
 
 kotlin { jvmToolchain(17) }

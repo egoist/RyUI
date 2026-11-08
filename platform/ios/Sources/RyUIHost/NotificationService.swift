@@ -2,7 +2,7 @@
 import UIKit
 import UserNotifications
 #if canImport(CRyUI)
-import CRyUI
+@_implementationOnly import CRyUI
 #endif
 
 /// The Notification Service Extension of an app with a push rewrite

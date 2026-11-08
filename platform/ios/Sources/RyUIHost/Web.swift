@@ -60,7 +60,7 @@ import RyUIOps
         }
         let file: URL? = source.hasPrefix("file://") ? URL(string: source)
             : source.hasPrefix("/") ? URL(fileURLWithPath: source)
-            : Bundle.main.resourceURL?.appendingPathComponent("assets").appendingPathComponent(source)
+            : ryuiAssets?.appendingPathComponent(source)
         guard let file else { return }
         loadFileURL(file, allowingReadAccessTo: file.deletingLastPathComponent())
     }

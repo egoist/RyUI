@@ -4,7 +4,7 @@ import UIKit
 import RyUIOps
 #endif
 #if canImport(CRyUI)
-import CRyUI
+@_implementationOnly import CRyUI
 #endif
 
 /// A list cell, or a section's header: its content view holds a row the

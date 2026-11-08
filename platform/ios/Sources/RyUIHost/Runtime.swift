@@ -7,10 +7,19 @@ import AuthenticationServices
 import RyUIOps
 #endif
 #if canImport(CRyUI)
-import CRyUI
+@_implementationOnly import CRyUI
 #endif
 
 /// A native view the core made, or a list cell the host made.
+/// The app's assets/: in the app's bundle, or, for an app embedded in
+/// another (ryui build -xcframework), in the framework that holds its code.
+let ryuiAssets: URL? = {
+    for b in [Bundle(for: RyUIRuntime.self), Bundle.main] {
+        if let u = b.resourceURL?.appendingPathComponent("assets"), FileManager.default.fileExists(atPath: u.path) { return u }
+    }
+    return Bundle.main.resourceURL?.appendingPathComponent("assets")
+}()
+
 @MainActor final class RyUINode {
     let id: UInt32
     let kind: RyUIKind?
