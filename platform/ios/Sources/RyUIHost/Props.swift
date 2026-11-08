@@ -469,6 +469,12 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             }
             (n.view as? UITextField)?.autocorrectionType = a
             (n.view as? RyUITextView)?.autocorrectionType = a
+        case (.textField, RyUIProp.TextField.accessory):
+            setAccessory(n, UInt32(truncatingIfNeeded: v.int))
+        case (.accessory, RyUIProp.Accessory.width):
+            n.view.frame.size.width = CGFloat(v.float)
+        case (.accessory, RyUIProp.Accessory.height):
+            (n.view as? RyUIAccessoryView)?.height = CGFloat(v.float)
         case (.textField, RyUIProp.TextField.contentType):
             (n.view as? UITextField)?.textContentType = UITextContentType(rawValue: v.string)
             (n.view as? RyUITextView)?.textContentType = UITextContentType(rawValue: v.string)

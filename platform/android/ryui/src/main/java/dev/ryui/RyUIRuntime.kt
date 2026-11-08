@@ -652,6 +652,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
         if (kind == RyUIKind.TEXT_FIELD) n.textStyle = RyUITextStyle.BODY
         if (kind == RyUIKind.STACK) stacks.add(n)
         if (kind == RyUIKind.POPOVER) n.popover = RyUIPopover(this, n)
+        if (kind == RyUIKind.ACCESSORY) n.accessory = RyUIAccessory(this, n)
         nodes[id] = n
         if (kind == RyUIKind.TEXT || kind == RyUIKind.TEXT_FIELD) applyColor(n)
     }
@@ -685,6 +686,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
             RyUIKind.COLOR_PICKER -> RyUIColorPicker(this, id)
             RyUIKind.PROGRESS -> makeProgress()
             RyUIKind.PAGE_CONTROL -> RyUIPageDots(this, id)
+            RyUIKind.ACCESSORY -> RyUIContainer(ctx)
             RyUIKind.DATE_PICKER -> RyUIDatePicker(this, id)
             RyUIKind.STACK -> RyUIStack(ctx, id, this)
             RyUIKind.TABS -> RyUITabs(ctx, id, this)
@@ -762,7 +764,11 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
                 true
             } else false
         }
-        setOnFocusChangeListener { _, focused ->
+        setOnFocusChangeListener { v, focused ->
+            // Its Accessory, if it has one, over the keyboard while it's focused.
+            (nodes[id]?.props?.get(RyUIProp.TextField.ACCESSORY) as? Long)?.let { a ->
+                nodes[a.toInt()]?.accessory?.let { if (focused) it.show(v) else it.hide() }
+            }
             if (focused) emit(id, RyUIEventKind.FOCUS) { RyUIEvents.focus(id) }
             else emit(id, RyUIEventKind.BLUR) { RyUIEvents.blur(id) }
         }

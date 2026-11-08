@@ -286,8 +286,17 @@ func editor() ui.Node {
 		}})
 		return true
 	})
+	var field ui.Node
+	field = ui.TextField(ui.TextFieldProps{Value: text, Placeholder: ui.Val("Type, then go back"), Multiline: true,
+			// A bar on the keyboard: a count, and Done.
+			Accessory: func() ui.Node {
+				return ui.Row(ui.Style{Padding: ui.Symmetric(6, 16), Align: ui.AlignCenter, Material: ui.MaterialBar},
+					ui.Text(signal.Func(func() string { return fmt.Sprintf("%d characters", len([]rune(text.Get()))) }),
+						ui.Style{Grow: 1, Color: ui.SecondaryLabel, Font: ui.Footnote}),
+					ui.Button(ui.ButtonProps{Title: ui.Val("Done"), OnPress: func() { ui.Blur(field) }}))
+			}})
 	return ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 12},
-		ui.TextField(ui.TextFieldProps{Value: text, Placeholder: ui.Val("Type, then go back"), Multiline: true}),
+		field,
 		ui.Button(ui.ButtonProps{Title: ui.Val("Save"), Variant: ui.ButtonFilled, OnPress: func() { saved.Set(text.Peek()) }}),
 	)
 }

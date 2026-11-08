@@ -122,6 +122,10 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 		Send(v, "setAction:", uintptr(Sel("act:")))
 	case ops.KindPageControl:
 		v = h.makePageDots(n)
+	case ops.KindAccessory:
+		// A field's bar over the keyboard: a Mac has no on-screen keyboard,
+		// so it's made and never shown.
+		v = initView("RyUIView")
 	case ops.KindRichText:
 		n.rich = newRich()
 		v = n.rich.makeView()

@@ -437,6 +437,8 @@ final class RyUITextField: UITextField {
         switch kind {
         case .view:
             view = RyUIContainerView()
+        case .accessory:
+            view = RyUIAccessoryView(frame: .zero)
         case .text:
             let l = RyUILabel()
             l.numberOfLines = 0

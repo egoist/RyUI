@@ -61,6 +61,7 @@ class RyUINode(val id: Int, val kind: Int, var view: View) {
     var menuTrigger = RyUIMenuTrigger.TAP
     var dialog: android.app.Dialog? = null
     var popover: RyUIPopover? = null
+    var accessory: RyUIAccessory? = null
     var alertTitle = ""
     var alertMessage = ""
     var alertStyle = RyUIAlertStyle.ALERT

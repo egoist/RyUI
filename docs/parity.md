@@ -30,6 +30,7 @@ what RyUI has for it.
 | Text fields | `TextField`, `SecureField`, `TextEditor` | `TextInput` | ✓ `TextField` (secure, keyboards, return keys, multiline) |
 | The cursor, inserting at it | `TextSelection` | `selection`, `onSelectionChange` | ✓ `TextFieldProps.Selection`, `ui.InsertText` |
 | Rich text editing (a mail's body) | `TextEditor` with `AttributedString` (iOS 26) | community (10tap, pell) | ✓ `TextFieldProps.Rich`, `ToggleFormat`, `SetLink`, `OnFormats` |
+| A bar on the keyboard | `.toolbar { ToolbarItemGroup(placement: .keyboard) }` | `InputAccessoryView` (iOS) | ✓ `TextFieldProps.Accessory` (both) |
 | Pasted images, keyboard GIFs and stickers | `onPasteCommand`, `PasteButton` | community (`onPaste`) | ✓ `TextFieldProps.PasteTypes`, `OnPaste` (Android's `commitContent` too) |
 | Toggle, slider | `Toggle`, `Slider` | community | ✓ `Toggle`, `Slider` |
 | Segmented control | `Picker(.segmented)` | community | ✓ `Segmented` |

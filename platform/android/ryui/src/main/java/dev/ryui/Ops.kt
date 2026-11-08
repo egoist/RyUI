@@ -38,7 +38,8 @@ object RyUIKind {
     const val DATE_PICKER = 28
     const val PAGE_CONTROL = 29
     const val POPOVER = 30
-    const val WINDOW = 31
+    const val ACCESSORY = 31
+    const val WINDOW = 32
 
     fun name(kind: Int): String = when (kind) {
         1 -> "View"
@@ -71,7 +72,8 @@ object RyUIKind {
         28 -> "DatePicker"
         29 -> "PageControl"
         30 -> "Popover"
-        31 -> "Window"
+        31 -> "Accessory"
+        32 -> "Window"
         else -> "Kind($kind)"
     }
 }
@@ -144,6 +146,7 @@ object RyUIProp {
         const val SELECTION = 74
         const val RICH = 75
         const val PASTE_TYPES = 76
+        const val ACCESSORY = 77
     }
 
     object Toggle {
@@ -302,6 +305,11 @@ object RyUIProp {
         const val ANCHOR = 64
         const val WIDTH = 65
         const val HEIGHT = 66
+    }
+
+    object Accessory {
+        const val WIDTH = 64
+        const val HEIGHT = 65
     }
 
     object Window {

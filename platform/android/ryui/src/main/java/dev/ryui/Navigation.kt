@@ -801,6 +801,11 @@ fun RyUIRuntime.setNavProp(n: RyUINode, prop: Int, v: Any): Boolean {
             }
         }
         RyUIKind.TABS -> if (prop == RyUIProp.Tabs.SELECTED) (n.view as RyUITabs).select((v as Long).toInt()) else return false
+        RyUIKind.ACCESSORY -> when (prop) {
+            RyUIProp.Accessory.HEIGHT -> n.accessory?.height = (v as Double).toFloat()
+            RyUIProp.Accessory.WIDTH -> {}
+            else -> return false
+        }
         RyUIKind.POPOVER -> n.popover?.let {
             when (prop) {
                 RyUIProp.Popover.ANCHOR -> it.anchor = (v as Long).toInt()

@@ -63,6 +63,10 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 		}
 	case ops.KindSegmented, ops.KindPageControl:
 		n.hwnd = h.makeView(WS_TABSTOP)
+	case ops.KindAccessory:
+		// A field's bar over the keyboard: never shown, with no on-screen
+		// keyboard to put it on (it waits in the parking window).
+		n.hwnd = h.makeView(0)
 	case ops.KindButton:
 		h.makeControl(n, "BUTTON", BS_PUSHBUTTON|WS_TABSTOP, 0)
 	case ops.KindToggle:

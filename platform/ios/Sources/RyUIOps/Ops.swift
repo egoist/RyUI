@@ -33,7 +33,8 @@ public enum RyUIKind: UInt16 {
     case datePicker = 28
     case pageControl = 29
     case popover = 30
-    case window = 31
+    case accessory = 31
+    case window = 32
 
     public var name: String {
         switch self {
@@ -67,6 +68,7 @@ public enum RyUIKind: UInt16 {
         case .datePicker: return "DatePicker"
         case .pageControl: return "PageControl"
         case .popover: return "Popover"
+        case .accessory: return "Accessory"
         case .window: return "Window"
         }
     }
@@ -141,6 +143,7 @@ public enum RyUIProp {
         public static let selection: UInt16 = 74
         public static let rich: UInt16 = 75
         public static let pasteTypes: UInt16 = 76
+        public static let accessory: UInt16 = 77
     }
 
     public enum Toggle {
@@ -299,6 +302,11 @@ public enum RyUIProp {
         public static let anchor: UInt16 = 64
         public static let width: UInt16 = 65
         public static let height: UInt16 = 66
+    }
+
+    public enum Accessory {
+        public static let width: UInt16 = 64
+        public static let height: UInt16 = 65
     }
 
     public enum Window {

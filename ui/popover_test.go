@@ -62,4 +62,3 @@ func TestPopoverMaxWidth(t *testing.T) {
 		t.Fatalf("height %v: the text didn't wrap", ht)
 	}
 }
-

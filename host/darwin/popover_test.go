@@ -82,3 +82,19 @@ func TestPageControlAndPaging(t *testing.T) {
 		t.Fatalf("page %d", page.Peek())
 	}
 }
+
+// A field's accessory is made, and never shown: a Mac has no on-screen
+// keyboard.
+func TestAccessoryOnMac(t *testing.T) {
+	h, _ := mount(t, func() ui.Node {
+		return ui.TextField(ui.TextFieldProps{Value: signal.New(""), Accessory: func() ui.Node {
+			return ui.Button(ui.ButtonProps{Title: ui.Val("Done")})
+		}})
+	})
+	onMain(func() {
+		a := find(h, ops.KindAccessory)
+		if len(a) != 1 || Send(a[0].view, "window") != 0 {
+			fatal(t, "an accessory in the window")
+		}
+	})
+}

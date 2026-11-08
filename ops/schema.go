@@ -147,6 +147,7 @@ var Schema = SchemaDef{
 			{Name: "Selection", Type: TBytes, Doc: "u32 start, u32 end, in UTF-16 code units of the text (as UIKit and Android count): set from code, the cursor (start = end) or the selection goes there. Listened for, the user's changes are reported with SelectionChanged"},
 			{Name: "Rich", Type: TBytes, Doc: "styled text, as RichText's Content (without inline components), for a Multiline field: bold (a FontWeight of Semibold or more), italic, underline, strikethrough, monospaced, links and colors, which the user can edit (iOS's B/I/U menu, the Format command). The user's edits are reported with RichChanged, in the same encoding: its styles in the order its runs first use them, runs of one style merged"},
 			{Name: "PasteTypes", Type: TBytes, Doc: "u32 count, then u32-length MIME type patterns (image/*, */*: as DropAccept's): content of these types pasted, or put in by the keyboard (GIFs, stickers: Android's commitContent, iOS's pasteboard), is reported with Pasted instead of going into the text; the edit menu offers Paste for it. Empty: the platform's own paste"},
+			{Name: "Accessory", Type: TInt, Doc: "its Accessory's node ID (0: none)"},
 		}},
 		{Name: "Toggle", Props: []PropDef{
 			{Name: "On", Type: TBool},
@@ -284,6 +285,10 @@ var Schema = SchemaDef{
 			{Name: "Width", Type: TFloat, Doc: "its content's size, in points, as the core laid it out: the host makes the popover this big"},
 			{Name: "Height", Type: TFloat},
 		}, Doc: "content shown in a bubble pointing at a view, over the screen, until it's dismissed (UIPopoverPresentationController, a popover on iPhone too; a PopupWindow on Android; NSPopover; a popup window on Windows); a layout root of its own, presented with Present and destroyed to close. Tapping outside dismisses it: Dismissed"},
+		{Name: "Accessory", Props: []PropDef{
+			{Name: "Width", Type: TFloat, Doc: "its content's size, in points, as the core laid it out (as wide as the root)"},
+			{Name: "Height", Type: TFloat},
+		}, Doc: "a TextField's bar over the keyboard (TextField's Accessory), a layout root of its own: UIKit's inputAccessoryView, moving with the keyboard and its interactive dismissal; on Android a bar on top of the keyboard, following it frame by frame, while the field is focused; desktops, with no on-screen keyboard, don't show it"},
 		{Name: "Window", Props: []PropDef{
 			{Name: "Title", Type: TString},
 			{Name: "Width", Type: TFloat, Doc: "its content's width when it opens, in points (0: the host's default)"},

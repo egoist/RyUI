@@ -541,6 +541,14 @@ type TextFieldProps struct {
 	// all the selection has, as they change: a toolbar's buttons show
 	// them.
 	OnFormats func(TextFormats)
+	// Accessory is a bar shown on top of the keyboard while the field is
+	// focused: a character count and Done, formatting buttons, quick
+	// replies (UIKit's inputAccessoryView, SwiftUI's keyboard toolbar). It's
+	// as wide as the window and as tall as its content, moves with the
+	// keyboard (on iOS with its interactive dismissal too), and is built
+	// with the field and disposed with it. Desktops, with no on-screen
+	// keyboard, don't show it.
+	Accessory func() Node
 }
 
 // TextRange is a span of a TextField's text, as byte offsets into it
@@ -700,6 +708,9 @@ func TextField(p TextFieldProps) Node {
 	if p.OnBlur != nil {
 		h.blur = p.OnBlur
 		e.listen(ops.EventBlur)
+	}
+	if p.Accessory != nil {
+		accessory(e, p.Accessory) // after Multiline, which can make the field's view again
 	}
 	return Node{e}
 }
@@ -1311,4 +1322,25 @@ func Stepper(p StepperProps) Node {
 		e.listen(ops.EventValueChanged)
 	}
 	return Node{e}
+}
+
+// accessory builds a field's bar over the keyboard: a layout root of its
+// own, as wide as the root and as tall as its content, in the root's
+// environment.
+func accessory(field *element, build func() Node) {
+	r := field.r
+	a := newElement(ops.KindAccessory, true)
+	a.hostSized, a.fits, a.fullWidth = true, true, true
+	a.env = r.env
+	st := layout.DefaultStyle
+	st.FlexDirection = layout.Column
+	st.Direction = a.layoutDirection()
+	a.box.SetStyle(st)
+	r.provs = append(r.provs, a)
+	// Built under the field's owner, and gone with it.
+	if n := build(); n.e != nil {
+		a.appendKid(n.e)
+	}
+	r.batch.SetInt(field.id, ops.PropTextFieldAccessory, int64(a.id))
+	signal.OnCleanup(a.destroy)
 }

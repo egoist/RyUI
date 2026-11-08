@@ -273,6 +273,24 @@ func (r *Root) layout() {
 // wider than it may be nor taller than the root, and tells the host its
 // size when it changes.
 func (r *Root) layoutFit(e *element, p *layout.Pass) {
+	if e.fullWidth {
+		w := r.envV.Width
+		if w <= 0 || !e.box.Dirty() && e.laidSize.W == w {
+			return
+		}
+		if e.box.Style.Width != layout.Pt(w) {
+			st := e.box.Style
+			st.Width = layout.Pt(w)
+			e.box.SetStyle(st)
+		}
+		s := e.box.Layout(layout.Size{W: w, H: layout.MaxContentSpace}, p)
+		if s != e.laidSize {
+			e.laidSize = s
+			r.batch.SetFloat(e.id, ops.PropAccessoryWidth, float64(s.W))
+			r.batch.SetFloat(e.id, ops.PropAccessoryHeight, float64(s.H))
+		}
+		return
+	}
 	if !e.box.Dirty() && e.laidSize.W > 0 {
 		return
 	}

@@ -171,6 +171,7 @@ final class RyUITextView: UITextView {
         t.autocapitalizationType = old.autocapitalizationType
         t.autocorrectionType = old.autocorrectionType
         t.textContentType = old.textContentType
+        t.inputAccessoryView = old.inputAccessoryView
         t.plain = old.plain
         if let p = old.superview {
             p.insertSubview(t, aboveSubview: old)

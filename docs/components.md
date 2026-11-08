@@ -698,6 +698,27 @@ return ui.Scroll(ui.ScrollProps{
 }, ui.StaticText("Pull down"))
 ```
 
+**A bar on the keyboard.** `Accessory` is a bar shown on top of the
+keyboard while the field is focused: a count and Done, formatting
+buttons, quick replies (SwiftUI's keyboard toolbar). It's as wide as the
+window and as tall as its content, built with the field and disposed
+with it.
+
+```go
+var field ui.Node
+field = ui.TextField(ui.TextFieldProps{Value: note, Multiline: true, Accessory: func() ui.Node {
+	return ui.Row(ui.Style{Padding: ui.Symmetric(6, 16), Align: ui.AlignCenter, Material: ui.MaterialBar},
+		ui.Text(signal.Func(func() string { return fmt.Sprint(len(note.Get()), " characters") }), ui.Style{Grow: 1}),
+		ui.Button(ui.ButtonProps{Title: ui.Val("Done"), OnPress: func() { ui.Blur(field) }}))
+}})
+```
+
+On iOS it's the field's `inputAccessoryView`: it moves with the
+keyboard, through its interactive dismissal too. Android has none of its
+own: the bar goes in the field's window (a sheet's too) at the top of the
+keyboard, following it frame by frame. A Mac and Windows, with no
+on-screen keyboard, don't show it.
+
 **Styled text.** `Rich` makes a field a text area of styled text, for a
 mail's body or a formatted message: bold, italic, underline,
 strikethrough, monospaced code and links (colors and text styles a span
