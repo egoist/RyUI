@@ -158,6 +158,11 @@ R8.
 There is one `RyUIAppNatives` an app: it registers every view and
 module. The views and modules themselves can be in other files.
 
+In a browser, an app's native views and modules are JavaScript in
+`web/*.js`, which the page loads before the app starts; they register
+with `ryui.registerNative(kind, factory)` and `ryui.registerModule(name,
+methods)`. See [the web](web.md#native-code).
+
 ## Native modules
 
 `ui.Call` runs a method of a native module: the host's own, or one the

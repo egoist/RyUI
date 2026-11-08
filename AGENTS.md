@@ -4,7 +4,9 @@ RyUI is a UI framework in Go that renders with each platform's own
 widgets, driven by fine-grained signals. **Mobile first: iOS and
 Android.** Desktop comes later on the same core; the macOS host (`host/darwin`,
 AppKit through purego) and the Windows host (`host/windows`, Win32
-through syscall) are under way, Linux isn't started. **Read
+through syscall) are under way, as is the web (`host/web`, the app as
+WebAssembly, and `platform/web`, the DOM from JavaScript); Linux isn't
+started. **Read
 [DESIGN.md](DESIGN.md) before changing code**; it is the source of truth
 for the architecture, the APIs and the milestones. Work milestone by
 milestone, in order.
@@ -19,8 +21,8 @@ milestone, in order.
   talk to hosts only through `host.Host` and `ops`. Adding a component
   means: its kind and props in `ops/schema.go`, `go generate ./ops`, the
   component in `ui`, and its view in every host (`fake` first, then iOS
-  and Android, then macOS in `host/darwin` and Windows in
-  `host/windows`).
+  and Android, then macOS in `host/darwin`, Windows in `host/windows`
+  and the web in `platform/web/src`).
 - **Nothing phone-only in the core's data structures**: no single global
   root, no assumption that the screen size never changes, so desktop
   windows can be added later without rewriting the core.
@@ -46,8 +48,10 @@ go test ./...                       # signal, layout, ui with host/fake, ops, CL
 go test ./layout -run CSS -update-known  # after fixing layout: refresh known_failures.txt
 go test ./ops -update               # after changing the wire format: refresh golden files
 swift test --package-path platform/ios # the Swift decoder against the golden files (macOS)
+node --test platform/web                # the JavaScript decoder, likewise
 (cd platform/android && ./gradlew :ryui:testDebugUnitTest)  # the Kotlin decoder, likewise (ANDROID_HOME set)
-go generate ./ops                   # Go constants, Swift and Kotlin decoders
+go generate ./ops                   # Go constants, Swift, Kotlin and JavaScript decoders
+go run platform/web/gen_symbols.go  # the web host's symbols, from the Android host's
 go generate ./i18n                  # CLDR's tables, from the pinned release
 go run ./cmd/ryui generate examples/i18n  # an app's catalog functions (dev and build do it too)
 go run ./cmd/ryui vet ./...                # the analyzers (package vet): a signal read once, written off the main thread
@@ -67,6 +71,10 @@ go run ./cmd/ryui dev -windows examples/counter   # Windows: the app and its Win
 go run ./cmd/ryui build -windows examples/counter # a folder: the .exe (icon, manifest, version) and its assets; from any system
 go test ./host/windows                           # the Windows host, driving real Win32 windows (Windows)
 (cd examples/counter && RYUI_SNAPSHOT=c.png RYUI_DUMP=1 RYUI_SCRIPT="tap:Add" go run .)  # Windows: steps, then the window as a PNG and its view tree
+go run ./cmd/ryui dev -web examples/counter       # the web: served to the browser, reloaded on save (-lan: to a phone)
+go run ./cmd/ryui build -web examples/counter     # a static site, in examples/counter/dist/web
+GOOS=js GOARCH=wasm go vet ./host/web ./app       # the web host's Go side
+go test -tags e2e ./e2e -run Web                  # GUI tests: the examples in headless Chrome
 ```
 
 ## Conventions
@@ -84,7 +92,11 @@ go test ./host/windows                           # the Windows host, driving rea
   through `internal/darwin` (purego), no cgo, no SwiftUI. Windows host:
   Win32 and the common controls, from Go through `internal/windows`
   (syscall), no cgo, no WinUI; the controls drawn as Fluent's in custom
-  draw, so an app that sets no style looks like Windows 11.
+  draw, so an app that sets no style looks like Windows 11. Web host:
+  the DOM from plain JavaScript modules in `platform/web/src` (no build
+  step, no framework), the browser's own elements for controls and
+  dialogs; its Go side (`host/web`) only carries batches, measures and
+  events.
 - Every prop that shows text is an accessor, so it can follow the app's
   language (`locales.Live.Title()`); only what's shown once (an alert) takes a
   string. Frames are always physical: a host never mirrors what the core places.

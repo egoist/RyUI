@@ -312,6 +312,7 @@ const (
 	PlatformAndroid = ops.PlatformAndroid
 	PlatformMacOS   = ops.PlatformMacOS
 	PlatformWindows = ops.PlatformWindows
+	PlatformWeb     = ops.PlatformWeb
 )
 
 // SizeClass is how much room the window gives the app along one axis, as

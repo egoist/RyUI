@@ -51,6 +51,7 @@ const (
 	PlatformAndroid
 	PlatformMacOS
 	PlatformWindows
+	PlatformWeb // a browser (host/web: the DOM)
 )
 
 func (p Platform) String() string {
@@ -63,6 +64,8 @@ func (p Platform) String() string {
 		return "macOS"
 	case PlatformWindows:
 		return "Windows"
+	case PlatformWeb:
+		return "web"
 	}
 	return "unknown"
 }

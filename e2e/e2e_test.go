@@ -5,10 +5,12 @@
 // with `ryui dev -once` (its Go code embedded, a debug build), then tap
 // and read the screen through the debug hosts' automation
 // (platform/ios/Sources/RyUIHost/Automation.swift, a notification;
-// platform/android/ryui/src/main/java/dev/ryui/Automation.kt, a broadcast).
+// platform/android/ryui/src/main/java/dev/ryui/Automation.kt, a broadcast;
+// platform/web/src/automation.js, through ryui dev -web's server).
 //
 //	go test -tags e2e ./e2e -run IOS      # a booted simulator, else the newest iPhone
 //	go test -tags e2e ./e2e -run Android  # a running emulator or a device
+//	go test -tags e2e ./e2e -run Web      # headless Chrome (RYUI_CHROME: its path)
 //	RYUI_DEVICE=emulator-5556 go test -tags e2e ./e2e -run Android  # one of several
 //
 // They wait for what they expect (bounded, so a broken app fails rather
@@ -16,7 +18,11 @@
 package e2e
 
 import (
+	"bufio"
 	"fmt"
+	"io"
+	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -373,3 +379,128 @@ func TestLanguagesAndroid(t *testing.T) {
 	s.relaunch()
 	languages(t, s)
 }
+
+// Web
+
+// webScreen is a page ryui dev -web serves, open in headless Chrome; the
+// automation's commands go through the dev server to the page.
+type webScreen struct {
+	t   *testing.T
+	url string
+}
+
+func (s *webScreen) post(cmds string) (string, error) {
+	resp, err := http.Post(s.url+"__ryui/automation", "text/plain", strings.NewReader(cmds))
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	b, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("%s: %s", resp.Status, b)
+	}
+	return string(b), nil
+}
+
+func (s *webScreen) command(cmds string) {
+	// The page may not be listening yet (just loaded): tried again.
+	var err error
+	for range 50 {
+		if _, err = s.post(cmds); err == nil {
+			return
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	s.t.Fatalf("%q: %v", cmds, err)
+}
+
+func (s *webScreen) texts() []string {
+	out, err := s.post("dump")
+	if err != nil {
+		return nil
+	}
+	return strings.Split(strings.TrimSpace(out), "\n")
+}
+
+func (s *webScreen) tap(text string) { s.command("tap " + text) }
+
+func (s *webScreen) relaunch() {
+	s.command("reload")
+	time.Sleep(time.Second) // the page goes; the next command waits for the new one
+}
+
+// chrome is Chrome's (or Chromium's) executable.
+func chrome() string {
+	if p := os.Getenv("RYUI_CHROME"); p != "" {
+		return p
+	}
+	for _, p := range []string{"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/Applications/Chromium.app/Contents/MacOS/Chromium"} {
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+	for _, n := range []string{"google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "chrome"} {
+		if p, err := exec.LookPath(n); err == nil {
+			return p
+		}
+	}
+	return ""
+}
+
+func webApp(t *testing.T, example string) *webScreen {
+	browser := chrome()
+	if browser == "" {
+		t.Skip("no Chrome (RYUI_CHROME)")
+	}
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := l.Addr().(*net.TCPAddr).Port
+	l.Close()
+	// The CLI built, not go run: killing it then stops the server it is.
+	cli := filepath.Join(t.TempDir(), "ryui")
+	build := exec.Command("go", "build", "-o", cli, "./cmd/ryui")
+	build.Dir = root(t)
+	if b, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("building the CLI: %v\n%s", err, b)
+	}
+	dev := exec.Command(cli, "dev", "-web", "-no-open", "-vet=false", "-port", fmt.Sprint(port), "examples/"+example)
+	dev.Dir = root(t)
+	out, _ := dev.StdoutPipe()
+	var logs strings.Builder
+	dev.Stderr = &logs
+	t.Cleanup(func() {
+		if t.Failed() {
+			t.Logf("ryui dev -web:\n%s", logs.String())
+		}
+	})
+	if err := dev.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { dev.Process.Kill(); dev.Wait() })
+	url := ""
+	sc := bufio.NewScanner(out)
+	for sc.Scan() {
+		if m := regexp.MustCompile(`at (http://\S+/)`).FindStringSubmatch(sc.Text()); m != nil {
+			url = m[1]
+			break
+		}
+	}
+	if url == "" {
+		t.Fatal("ryui dev -web printed no URL")
+	}
+	go io.Copy(io.Discard, out)
+	page := exec.Command(browser, "--headless=new", "--no-first-run", "--no-default-browser-check", "--disable-gpu",
+		"--user-data-dir="+t.TempDir(), "--window-size=430,932", url)
+	if err := page.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { page.Process.Kill(); page.Wait() })
+	return &webScreen{t: t, url: url}
+}
+
+func TestCounterWeb(t *testing.T)    { counter(t, webApp(t, "counter")) }
+func TestChatWeb(t *testing.T)       { chat(t, webApp(t, "chat")) }
+func TestNavigationWeb(t *testing.T) { navigation(t, webApp(t, "navigation")) }
+func TestLanguagesWeb(t *testing.T)  { languages(t, webApp(t, "i18n")) }

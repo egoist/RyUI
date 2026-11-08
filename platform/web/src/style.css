@@ -1,0 +1,489 @@
+/* RyUI's web host: the views' base styles, the semantic colors (light and
+   dark) and the look of what the host draws itself (bars, sheets, alerts,
+   menus, lists). Controls are the browser's, in the app's accent. */
+
+.ryui {
+  --ryui-accent: #0a66e0;
+  --ryui-accent-dark: #3d8bff;
+  --ryui-label: #000;
+  --ryui-secondary-label: rgb(60 60 67 / 0.62);
+  --ryui-tertiary-label: rgb(60 60 67 / 0.32);
+  --ryui-background: #fff;
+  --ryui-secondary-background: #f2f2f7;
+  --ryui-grouped-background: #f2f2f7;
+  --ryui-secondary-grouped-background: #fff;
+  --ryui-separator: rgb(60 60 67 / 0.22);
+  --ryui-red: #ff3b30;
+  --ryui-orange: #ff9500;
+  --ryui-yellow: #ffcc00;
+  --ryui-green: #34c759;
+  --ryui-blue: #007aff;
+  --ryui-purple: #af52de;
+  --ryui-pink: #ff2d55;
+  --ryui-gray: #8e8e93;
+  --ryui-clear: transparent;
+  --ryui-on-accent: #fff;
+  --ryui-bar: rgb(249 249 249 / 0.86);
+  --ryui-fill: rgb(120 120 128 / 0.12);
+  --ryui-fill-strong: rgb(120 120 128 / 0.2);
+  --ryui-scrim: rgb(0 0 0 / 0.32);
+  --ryui-card: #fff;
+  --ryui-shadow: 0 10px 40px rgb(0 0 0 / 0.18), 0 1px 3px rgb(0 0 0 / 0.08);
+  color-scheme: light;
+  position: relative;
+  overflow: hidden;
+  background: var(--ryui-background);
+  color: var(--ryui-label);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", Roboto, "Noto Sans", Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
+  font-size: 1rem;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+  accent-color: var(--ryui-accent);
+  overscroll-behavior: none;
+}
+
+.ryui.ryui-dark {
+  --ryui-accent: var(--ryui-accent-dark);
+  --ryui-label: #fff;
+  --ryui-secondary-label: rgb(235 235 245 / 0.62);
+  --ryui-tertiary-label: rgb(235 235 245 / 0.32);
+  --ryui-background: #121212;
+  --ryui-secondary-background: #1f1f21;
+  --ryui-grouped-background: #121212;
+  --ryui-secondary-grouped-background: #1f1f21;
+  --ryui-separator: rgb(84 84 88 / 0.6);
+  --ryui-red: #ff453a;
+  --ryui-orange: #ff9f0a;
+  --ryui-yellow: #ffd60a;
+  --ryui-green: #30d158;
+  --ryui-blue: #0a84ff;
+  --ryui-purple: #bf5af2;
+  --ryui-pink: #ff375f;
+  --ryui-gray: #98989d;
+  --ryui-bar: rgb(30 30 32 / 0.86);
+  --ryui-fill: rgb(120 120 128 / 0.26);
+  --ryui-fill-strong: rgb(120 120 128 / 0.38);
+  --ryui-scrim: rgb(0 0 0 / 0.5);
+  --ryui-card: #2a2a2c;
+  --ryui-shadow: 0 10px 40px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.08);
+  color-scheme: dark;
+}
+
+.ryui *, .ryui *::before, .ryui *::after { box-sizing: border-box; }
+
+/* Every view sits at the frame the core laid out. */
+.ryui-view {
+  position: absolute;
+  left: 0;
+  top: 0;
+  margin: 0;
+  min-width: 0;
+  min-height: 0;
+}
+
+.ryui-root { overflow: hidden; }
+.ryui-hidden { visibility: hidden !important; }
+.ryui-clip { overflow: hidden; }
+.ryui-disabled { opacity: 0.5; pointer-events: none; }
+.ryui-exiting { pointer-events: none; }
+
+.ryui-measurer {
+  position: absolute;
+  left: -100000px;
+  top: 0;
+  width: 100000px;
+  height: 0;
+  visibility: hidden;
+  pointer-events: none;
+  contain: layout style size;
+}
+
+.ryui-safe-probe {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.ryui-color-probe, .ryui-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.ryui-pressable { cursor: pointer; }
+.ryui-gesture { touch-action: none; }
+.ryui-view:focus-visible, .ryui-control:not(.ryui-field, .ryui-search):focus-visible {
+  outline: 2px solid var(--ryui-accent);
+  outline-offset: 2px;
+}
+
+[data-material] { -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%); }
+[data-material="1"] { -webkit-backdrop-filter: blur(8px) saturate(160%); backdrop-filter: blur(8px) saturate(160%); }
+[data-material="2"] { -webkit-backdrop-filter: blur(14px) saturate(170%); backdrop-filter: blur(14px) saturate(170%); }
+[data-material="4"] { -webkit-backdrop-filter: blur(30px) saturate(190%); backdrop-filter: blur(30px) saturate(190%); }
+
+/* Text */
+
+.ryui-text {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  color: var(--ryui-label);
+}
+.ryui-one-line { white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.ryui-clamp { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
+
+.ryui-rich { color: var(--ryui-label); }
+.ryui-rich-text { white-space: pre-wrap; overflow-wrap: break-word; }
+.ryui-rich a { color: var(--ryui-accent); text-decoration: none; cursor: pointer; }
+.ryui-rich a:hover { text-decoration: underline; }
+.ryui-marked { border-radius: 4px; padding: 0 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.ryui-inline { display: inline-block; vertical-align: baseline; }
+.ryui-selectable .ryui-rich, .ryui-selectable .ryui-text { user-select: text; -webkit-user-select: text; cursor: text; }
+
+/* Buttons */
+
+.ryui-button {
+  --tint: var(--ryui-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: none;
+  border-radius: 9px;
+  font: inherit;
+  white-space: nowrap;
+  color: var(--tint);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.15s, opacity 0.15s, filter 0.15s;
+}
+.ryui-button .ryui-symbol { width: 1.2em; height: 1.2em; flex: none; }
+.ryui-button[data-variant="plain"] { padding: 7px 8px; background: var(--fill, transparent); }
+.ryui-button[data-variant="plain"]:hover { background: var(--fill, var(--ryui-fill)); }
+.ryui-button[data-variant="filled"], .ryui-button[data-variant="glass-prominent"] { background: var(--fill, var(--tint)); color: var(--ryui-on-accent); }
+.ryui-button[data-variant="filled"]:hover, .ryui-button[data-variant="glass-prominent"]:hover { filter: brightness(1.08); }
+.ryui-button[data-variant="tinted"] { background: var(--fill, color-mix(in srgb, var(--tint) 15%, transparent)); }
+.ryui-button[data-variant="tinted"]:hover { background: var(--fill, color-mix(in srgb, var(--tint) 22%, transparent)); }
+.ryui-button[data-variant="gray"], .ryui-button[data-variant="glass"] { background: var(--fill, var(--ryui-fill)); }
+.ryui-button[data-variant="gray"]:hover, .ryui-button[data-variant="glass"]:hover { background: var(--fill, var(--ryui-fill-strong)); }
+.ryui-button[data-variant="bordered"] { background: var(--fill, var(--ryui-background)); box-shadow: inset 0 0 0 1px var(--ryui-separator); }
+.ryui-button[data-variant="bordered"]:hover { background: var(--fill, var(--ryui-fill)); }
+.ryui-button:active { opacity: 0.7; }
+.ryui-button:disabled { opacity: 0.4; cursor: default; filter: none; }
+
+/* Fields */
+
+.ryui-field-box { display: flex; }
+.ryui-field {
+  width: 100%;
+  height: auto;
+  margin: 0;
+  padding: 8px 10px;
+  font: inherit;
+  color: var(--ryui-label);
+  background: var(--ryui-fill);
+  border: 1px solid transparent;
+  border-radius: 9px;
+  outline: none;
+  resize: none;
+  user-select: text;
+  -webkit-user-select: text;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+textarea.ryui-field { overflow-y: auto; display: block; }
+.ryui-field:focus { border-color: var(--ryui-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ryui-accent) 22%, transparent); }
+.ryui-field::placeholder { color: var(--ryui-tertiary-label); }
+.ryui-plain .ryui-field { padding: 0; background: none; border: none; border-radius: 0; box-shadow: none; }
+.ryui-field:disabled { opacity: 0.5; }
+
+/* Switches and check boxes */
+
+.ryui-toggle-box, .ryui-slider-box, .ryui-select-box, .ryui-color-box, .ryui-date-box, .ryui-progress-box { display: flex; align-items: center; }
+.ryui-switch {
+  --tint: var(--ryui-green);
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 51px;
+  height: 31px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--ryui-fill-strong);
+  cursor: pointer;
+  transition: background-color 0.2s;
+  flex: none;
+}
+.ryui-switch::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 3px 8px rgb(0 0 0 / 0.15), 0 1px 1px rgb(0 0 0 / 0.16);
+  transition: transform 0.2s cubic-bezier(0.3, 0.7, 0.4, 1.2);
+}
+.ryui-switch:checked { background: var(--tint, var(--ryui-green)); }
+.ryui-switch:checked::before { transform: translateX(20px); }
+[dir="rtl"] .ryui-switch:checked::before { transform: translateX(-20px); }
+[dir="rtl"] .ryui-switch::before { left: auto; right: 2px; }
+.ryui-switch:disabled { opacity: 0.4; cursor: default; }
+.ryui-checkbox { width: 20px; height: 20px; margin: 2px; accent-color: var(--tint, var(--ryui-accent)); cursor: pointer; }
+
+.ryui-slider { width: 100%; margin: 0; height: 28px; cursor: pointer; }
+.ryui-select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--ryui-separator); background: var(--ryui-background); color: var(--ryui-label); max-width: 100%; }
+.ryui-color { width: 32px; height: 32px; padding: 0; border: none; border-radius: 50%; background: none; cursor: pointer; }
+.ryui-color::-webkit-color-swatch-wrapper { padding: 0; }
+.ryui-color::-webkit-color-swatch { border: 1px solid var(--ryui-separator); border-radius: 50%; }
+.ryui-color::-moz-color-swatch { border: 1px solid var(--ryui-separator); border-radius: 50%; }
+.ryui-date { font: inherit; padding: 6px 10px; border: none; border-radius: 8px; background: var(--ryui-fill); color: var(--ryui-label); }
+.ryui-progress { width: 100%; height: 4px; -webkit-appearance: none; appearance: none; border: none; border-radius: 2px; background: var(--ryui-fill-strong); overflow: hidden; }
+.ryui-progress::-webkit-progress-bar { background: var(--ryui-fill-strong); }
+.ryui-progress::-webkit-progress-value { background: var(--tint, var(--ryui-accent)); transition: width 0.2s; }
+.ryui-progress::-moz-progress-bar { background: var(--tint, var(--ryui-accent)); }
+
+.ryui-stepper { display: inline-flex; border-radius: 9px; background: var(--ryui-fill); overflow: hidden; }
+.ryui-stepper button { width: 46px; height: 32px; border: none; background: none; font: inherit; font-size: 20px; line-height: 1; color: var(--ryui-label); cursor: pointer; }
+.ryui-stepper button + button { box-shadow: inset 1px 0 0 var(--ryui-separator); }
+.ryui-stepper button:hover:not(:disabled) { background: var(--ryui-fill); }
+.ryui-stepper button:disabled { opacity: 0.35; cursor: default; }
+
+.ryui-segmented { --tint: var(--ryui-label); display: inline-flex; padding: 2px; gap: 2px; border-radius: 9px; background: var(--ryui-fill); white-space: nowrap; }
+.ryui-segmented button { flex: 1 1 0; padding: 5px 14px; border: none; border-radius: 7px; background: none; font: inherit; color: var(--ryui-label); cursor: pointer; transition: background-color 0.15s; }
+.ryui-segmented button[aria-checked="true"] { background: var(--ryui-card); box-shadow: 0 1px 3px rgb(0 0 0 / 0.12), 0 0 0 0.5px rgb(0 0 0 / 0.04); font-weight: 600; }
+.ryui-segmented button:disabled { opacity: 0.4; }
+
+.ryui-dots { --tint: var(--ryui-label); display: inline-flex; gap: 0; padding: 4px 8px; }
+.ryui-dots button { width: 16px; height: 18px; padding: 0; border: none; background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.ryui-dots button::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: color-mix(in srgb, var(--tint) 30%, transparent); }
+.ryui-dots button[aria-selected="true"]::before { background: var(--tint); }
+
+.ryui-activity { color: var(--ryui-secondary-label); display: flex; }
+.ryui-activity:not(.ryui-animating) { visibility: hidden; }
+.ryui-activity svg, .ryui-refresher svg { width: 100%; height: 100%; animation: ryui-spin 0.8s linear infinite; }
+@keyframes ryui-spin { to { transform: rotate(360deg); } }
+
+/* Images and symbols */
+
+.ryui-image img, .ryui-video video, .ryui-webview iframe, .ryui-canvas canvas, .ryui-shader canvas, .ryui-shape svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+.ryui-image, .ryui-video, .ryui-webview, .ryui-canvas, .ryui-shader { overflow: hidden; }
+.ryui-image { background-repeat: no-repeat; background-position: center; }
+.ryui-image img { object-fit: contain; }
+.ryui-shape svg { overflow: visible; }
+.ryui-symbol-box { display: flex; align-items: center; justify-content: center; color: var(--ryui-label); }
+.ryui-symbol-box .ryui-symbol { width: 100%; height: 100%; }
+.ryui-symbol { display: block; flex: none; }
+.ryui-mirror { transform: scaleX(-1); }
+
+/* Scrolling */
+
+.ryui-scroller { overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.ryui-vertical { overflow-x: hidden; overflow-y: auto; }
+.ryui-horizontal { overflow-x: auto; overflow-y: hidden; }
+.ryui-paging.ryui-horizontal { scroll-snap-type: x mandatory; scrollbar-width: none; }
+.ryui-paging.ryui-vertical { scroll-snap-type: y mandatory; scrollbar-width: none; }
+.ryui-paging::-webkit-scrollbar { display: none; }
+.ryui-snap { position: absolute; top: 0; left: 0; scroll-snap-align: start; scroll-snap-stop: always; pointer-events: none; }
+.ryui-refresher { position: absolute; left: calc(50% - 14px); top: 10px; width: 28px; height: 28px; color: var(--ryui-secondary-label); opacity: 0; pointer-events: none; z-index: 5; }
+.ryui-refresher.ryui-refreshing { opacity: 1; position: sticky; }
+
+/* Lists */
+
+.ryui-list { background: var(--ryui-background); }
+.ryui-list[data-appearance="grouped"] { background: var(--ryui-grouped-background); }
+.ryui-list[data-appearance="bare"] { background: transparent; }
+.ryui-list-spacer { position: absolute; left: 0; top: 0; width: 1px; pointer-events: none; }
+.ryui-row { position: absolute; left: 0; top: 0; will-change: transform; }
+.ryui-cell { position: absolute; left: 0; top: 0; }
+.ryui-row.ryui-sep::after { content: ""; position: absolute; left: 16px; right: 0; bottom: 0; height: 1px; transform: scaleY(0.5); transform-origin: bottom; background: var(--ryui-separator); pointer-events: none; }
+[dir="rtl"] .ryui-row.ryui-sep::after { left: 0; right: 16px; }
+.ryui-row.ryui-pinned { z-index: 2; background: var(--ryui-background); }
+.ryui-list[data-appearance="grouped"] .ryui-row:not(.ryui-header) { background: var(--ryui-secondary-grouped-background); }
+.ryui-list[data-appearance="grouped"] .ryui-row.ryui-first { border-top-left-radius: 10px; border-top-right-radius: 10px; }
+.ryui-list[data-appearance="grouped"] .ryui-row.ryui-last { border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; }
+.ryui-list.ryui-selecting .ryui-row:not(.ryui-header) { cursor: pointer; }
+.ryui-list.ryui-selecting .ryui-row:not(.ryui-header)::before { content: ""; position: absolute; left: 12px; top: calc(50% - 11px); width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--ryui-tertiary-label); z-index: 1; pointer-events: none; }
+.ryui-list.ryui-selecting .ryui-row.ryui-selected::before { background: var(--ryui-accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 12.5l4 4 8-9' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 16px no-repeat; box-shadow: none; }
+.ryui-row.ryui-selected { background: color-mix(in srgb, var(--ryui-accent) 12%, transparent) !important; }
+@media (hover: hover) {
+  .ryui-list:not([data-appearance="bare"]) .ryui-row:not(.ryui-header):has(.ryui-pressable):hover { background-color: var(--ryui-fill); }
+}
+
+/* Navigation */
+
+.ryui-stack, .ryui-tabs, .ryui-split { overflow: hidden; background: var(--ryui-background); }
+.ryui-screen { position: absolute; background: var(--ryui-background); overflow: hidden; }
+.ryui-screen.ryui-covered, .ryui-hidden-page { visibility: hidden; }
+.ryui-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  background: var(--ryui-bar);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: 0 0.5px 0 var(--ryui-separator);
+}
+.ryui-bar[hidden] { display: none; }
+.ryui-bar-row { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; height: 52px; padding: 0 8px; gap: 8px; flex: none; }
+.ryui-bar-leading { display: flex; align-items: center; justify-content: flex-start; min-width: 0; }
+.ryui-bar-trailing { display: flex; align-items: center; justify-content: flex-end; gap: 2px; min-width: 0; }
+.ryui-bar-title { font-size: 1.0625rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; max-width: 60vw; }
+.ryui-bar-button { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; height: 36px; padding: 0 8px; border: none; border-radius: 18px; background: none; color: var(--ryui-accent); font: inherit; font-size: 1.0625rem; cursor: pointer; }
+.ryui-bar-button:hover { background: var(--ryui-fill); }
+.ryui-bar-button .ryui-symbol { width: 24px; height: 24px; }
+.ryui-bar-button.ryui-destructive { color: var(--ryui-red); }
+.ryui-bar-search { padding: 0 12px 10px; flex: none; }
+.ryui-bar-search[hidden] { display: none; }
+.ryui-search { width: 100%; height: 36px; padding: 0 12px; border: none; border-radius: 10px; background: var(--ryui-fill); color: var(--ryui-label); font: inherit; outline: none; user-select: text; -webkit-user-select: text; }
+.ryui-search:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--ryui-accent) 40%, transparent); }
+
+.ryui-tabbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  background: var(--ryui-bar);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: 0 -0.5px 0 var(--ryui-separator);
+}
+.ryui-tab { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: 56px; padding: 4px 0; border: none; background: none; color: var(--ryui-secondary-label); font: inherit; font-size: 0.6875rem; font-weight: 500; cursor: pointer; min-width: 0; }
+.ryui-tab .ryui-symbol { width: 26px; height: 26px; }
+.ryui-tab span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 4px; }
+.ryui-tab[aria-selected="true"] { color: var(--ryui-accent); }
+
+.ryui-sidebar { position: absolute; top: 0; bottom: 0; left: 0; z-index: 4; display: flex; flex-direction: column; background: var(--ryui-secondary-background); box-shadow: 0.5px 0 0 var(--ryui-separator); overflow-y: auto; padding: 12px 10px; }
+[dir="rtl"] .ryui-sidebar { left: auto; right: 0; }
+.ryui-split:not(.ryui-split-beside) .ryui-sidebar { transform: translateX(-102%); transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1); box-shadow: var(--ryui-shadow); background: var(--ryui-background); }
+[dir="rtl"] .ryui-split:not(.ryui-split-beside) .ryui-sidebar { transform: translateX(102%); }
+.ryui-split.ryui-drawer-open .ryui-sidebar { transform: none !important; }
+.ryui-scrim { position: absolute; inset: 0; z-index: 3; background: var(--ryui-scrim); opacity: 0; pointer-events: none; transition: opacity 0.28s; }
+.ryui-split.ryui-drawer-open:not(.ryui-split-beside) .ryui-scrim { opacity: 1; pointer-events: auto; }
+.ryui-sidebar-title { font-size: 1.375rem; font-weight: 700; padding: 8px 10px 12px; }
+.ryui-sidebar-section { font-size: 0.75rem; font-weight: 600; color: var(--ryui-secondary-label); padding: 14px 10px 4px; }
+.ryui-sidebar-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: none; border-radius: 9px; background: none; color: var(--ryui-label); font: inherit; text-align: start; cursor: pointer; }
+.ryui-sidebar-item .ryui-symbol { width: 22px; height: 22px; color: var(--ryui-accent); }
+.ryui-sidebar-item:hover { background: var(--ryui-fill); }
+.ryui-sidebar-item[aria-current="true"] { background: color-mix(in srgb, var(--ryui-accent) 16%, transparent); font-weight: 600; }
+
+/* Sheets, alerts, popovers, menus, windows */
+
+.ryui dialog { color: var(--ryui-label); font: inherit; }
+.ryui-sheet-dialog {
+  position: fixed;
+  inset: auto 0 0 0;
+  margin: 0 auto;
+  padding: 0;
+  max-width: none;
+  max-height: none;
+  border: none;
+  border-radius: 14px 14px 0 0;
+  overflow: hidden;
+  background: var(--ryui-background);
+  box-shadow: var(--ryui-shadow);
+}
+.ryui-sheet-dialog.ryui-wide { inset: 0; margin: auto; border-radius: 14px; }
+.ryui-sheet-dialog::backdrop, .ryui-alert::backdrop { background: var(--ryui-scrim); }
+.ryui-sheet { position: absolute; }
+.ryui-grabber { position: absolute; top: 5px; left: calc(50% - 18px); width: 36px; height: 5px; border-radius: 3px; background: var(--ryui-tertiary-label); z-index: 5; cursor: grab; touch-action: none; }
+.ryui-grabber::before { content: ""; position: absolute; inset: -12px -40px; }
+
+.ryui-alert {
+  width: min(300px, calc(100vw - 48px));
+  padding: 0;
+  border: none;
+  border-radius: 16px;
+  background: var(--ryui-card);
+  box-shadow: var(--ryui-shadow);
+  overflow: hidden;
+  text-align: center;
+}
+.ryui-alert-body { padding: 20px 18px 16px; }
+.ryui-alert-title { font-size: 1.0625rem; font-weight: 600; }
+.ryui-alert-message { font-size: 0.875rem; margin-top: 4px; color: var(--ryui-secondary-label); white-space: pre-wrap; }
+.ryui-alert-buttons { display: flex; box-shadow: 0 -0.5px 0 var(--ryui-separator); }
+.ryui-alert-buttons button { flex: 1 1 0; min-height: 44px; padding: 10px; border: none; background: none; color: var(--ryui-accent); font: inherit; font-size: 1.0625rem; cursor: pointer; }
+.ryui-alert-buttons button + button { box-shadow: -0.5px 0 0 var(--ryui-separator); }
+.ryui-alert-buttons button:hover { background: var(--ryui-fill); }
+.ryui-alert-buttons button:focus-visible, .ryui-menu-item:focus-visible, .ryui-tab:focus-visible, .ryui-sidebar-item:focus-visible { outline-offset: -3px; }
+.ryui-alert-buttons button:not(.ryui-cancel) { font-weight: 600; }
+.ryui-alert-buttons .ryui-cancel { font-weight: 400; }
+.ryui-alert-buttons .ryui-destructive { color: var(--ryui-red); }
+.ryui-alert-buttons.ryui-stacked { flex-direction: column; }
+.ryui-alert-buttons.ryui-stacked button + button { box-shadow: 0 -0.5px 0 var(--ryui-separator); }
+.ryui-action-sheet { width: min(400px, calc(100vw - 16px)); }
+@media (max-width: 599px) {
+  .ryui-action-sheet { margin: auto auto 8px; }
+}
+
+.ryui-popover, .ryui-menu {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 12px;
+  background: var(--ryui-card);
+  color: var(--ryui-label);
+  box-shadow: var(--ryui-shadow);
+  overflow: hidden;
+}
+.ryui-menu { min-width: 200px; max-width: 320px; padding: 5px; }
+.ryui-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px; border: none; border-radius: 7px; background: none; color: var(--ryui-label); font: inherit; font-size: 0.9375rem; text-align: start; cursor: pointer; }
+.ryui-menu-item .ryui-symbol { width: 20px; height: 20px; }
+.ryui-menu-item:hover, .ryui-menu-item:focus-visible { background: var(--ryui-accent); color: var(--ryui-on-accent); outline: none; }
+.ryui-menu-item.ryui-destructive { color: var(--ryui-red); }
+.ryui-menu-item.ryui-destructive:hover { background: var(--ryui-red); color: #fff; }
+
+.ryui-window { position: absolute; z-index: 20; border-radius: 12px; background: var(--ryui-background); box-shadow: var(--ryui-shadow); overflow: hidden; }
+.ryui-window-bar { position: absolute; left: 0; right: 0; top: 0; height: 36px; display: flex; align-items: center; padding: 0 4px 0 14px; background: var(--ryui-secondary-background); box-shadow: 0 0.5px 0 var(--ryui-separator); cursor: grab; touch-action: none; }
+.ryui-window-title { flex: 1; font-size: 0.8125rem; font-weight: 600; text-align: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ryui-window-bar .ryui-bar-button { height: 28px; min-width: 28px; color: var(--ryui-secondary-label); }
+.ryui-window-bar .ryui-bar-button .ryui-symbol { width: 18px; height: 18px; }
+.ryui-window-grip { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; touch-action: none; z-index: 2; }
+
+.ryui-accessory { position: fixed; left: 0; z-index: 30; display: none; }
+.ryui-accessory.ryui-accessory-shown { display: block; }
+
+/* The page an app fills, and what shows when it can't run. */
+
+html:has(> body > .ryui-page), body:has(> .ryui-page) { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; }
+.ryui-page { position: fixed; inset: 0; }
+.ryui-error { position: fixed; inset: auto 12px 12px 12px; z-index: 1000; max-height: 60vh; overflow: auto; margin: 0; padding: 14px 16px; border-radius: 12px; background: #2b0d0d; color: #ffd7d7; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; box-shadow: 0 10px 40px rgb(0 0 0 / 0.4); user-select: text; }
+
+/* An indeterminate progress bar: under way, how far unknown. */
+.ryui-progress:indeterminate { background: var(--ryui-fill-strong) linear-gradient(90deg, transparent, var(--tint, var(--ryui-accent)) 30% 70%, transparent) no-repeat; background-size: 40% 100%; animation: ryui-indeterminate 1.4s ease-in-out infinite; }
+.ryui-progress:indeterminate::-webkit-progress-bar { background: transparent; }
+.ryui-progress:indeterminate::-moz-progress-bar { background: transparent; }
+@keyframes ryui-indeterminate { from { background-position: -60% 0; } to { background-position: 160% 0; } }
+@media (prefers-reduced-motion: reduce) { .ryui-progress:indeterminate { animation-duration: 4s; } }
+
+/* A Rich TextField's editor: styled text the user edits. */
+.ryui-richfield { display: block; white-space: pre-wrap; overflow-wrap: break-word; overflow-y: auto; cursor: text; -webkit-user-modify: read-write; }
+.ryui-richfield a { color: var(--ryui-accent); text-decoration: none; }
+.ryui-richfield.ryui-empty::before { content: attr(data-placeholder); position: absolute; color: var(--ryui-tertiary-label); pointer-events: none; }
+.ryui-richfield[contenteditable="false"] { opacity: 0.5; cursor: default; }

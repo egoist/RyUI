@@ -1,7 +1,8 @@
 # Shipping
 
 `ryui build` makes the builds the stores take, from the app's directory
-(or the one given), into its `dist`.
+(or the one given), into its `dist`. `ryui build -web` makes a static
+site instead, to serve from any web server: see [the web](web.md#ryui-build--web).
 
 ## ryui.json
 

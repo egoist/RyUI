@@ -1,8 +1,9 @@
 // Command gen writes the code generated from ops.Schema: the Go
 // constants (ops/schema_gen.go) and the Swift decoder and event encoder
 // (platform/ios/Sources/RyUIOps/Ops.swift) and the Kotlin decoder and event
-// encoder (platform/android/ryui/src/main/java/dev/ryui/Ops.kt). Run it with
-// go generate ./ops.
+// encoder (platform/android/ryui/src/main/java/dev/ryui/Ops.kt) and the
+// JavaScript decoder and event encoder of the web host
+// (platform/web/src/ops.js). Run it with go generate ./ops.
 package main
 
 import (
@@ -29,6 +30,7 @@ func main() {
 	write(filepath.Join(".", "schema_gen.go"), goFile(s), true)
 	write(filepath.Join(root, "platform", "ios", "Sources", "RyUIOps", "Ops.swift"), swiftFile(s), false)
 	write(filepath.Join(root, "platform", "android", "ryui", "src", "main", "java", "dev", "ryui", "Ops.kt"), kotlinFile(s), false)
+	write(filepath.Join(root, "platform", "web", "src", "ops.js"), jsFile(s), false)
 }
 
 func write(path string, src []byte, gofmt bool) {

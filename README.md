@@ -43,6 +43,10 @@ func main() { app.Run(Counter) }
 - **Windows, early**: the same app on Win32 and the common controls,
   drawn as Windows 11's, in one Go process (`ryui dev -windows`,
   `ryui build -windows`).
+- **The web, early**: the same app in a browser, its Go code compiled to
+  WebAssembly and its views the page's DOM, placed where RyUI's layout
+  puts them (`ryui dev -web`, `ryui build -web`: a static site). See
+  [the web](docs/web.md).
 
 ## Quick start
 
