@@ -151,6 +151,7 @@ var Schema = SchemaDef{
 		}},
 		{Name: "Toggle", Props: []PropDef{
 			{Name: "On", Type: TBool},
+			{Name: "Checkbox", Type: TBool, Doc: "a checkbox, not a switch: Android's MaterialCheckBox, a Mac's and Windows' check box; iOS, which has none, a circle that fills with a checkmark (Reminders' and Notes')"},
 		}},
 		{Name: "Slider", Props: []PropDef{
 			{Name: "Value", Type: TFloat},

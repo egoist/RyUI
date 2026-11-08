@@ -255,6 +255,9 @@ fun RyUIRuntime.applyColor(n: RyUINode) {
         is RyUISymbol -> { v.tint = n.color; v.applyTint() }
         is com.google.android.material.progressindicator.LinearProgressIndicator -> if (n.color != 0L) v.setIndicatorColor(color(n.color))
         is MaterialButton -> if (n.color != 0L) v.setTextColor(color(n.color))
+        is com.google.android.material.checkbox.MaterialCheckBox -> if (n.color != 0L) v.buttonTintList = ColorStateList(
+            arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
+            intArrayOf(color(n.color), MaterialColors.getColor(themed, com.google.android.material.R.attr.colorOnSurfaceVariant, Color.GRAY)))
         is TextView -> v.setTextColor(if (n.color != 0L) color(n.color) else MaterialColors.getColor(themed, com.google.android.material.R.attr.colorOnSurface, Color.BLACK))
         is MaterialSwitch -> if (n.color != 0L) v.trackTintList = ColorStateList(
             arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
@@ -351,10 +354,13 @@ fun RyUIRuntime.propBool(id: Int, prop: Int, v: Boolean) {
             RyUIKind.PROGRESS -> if (prop == RyUIProp.Progress.INDETERMINATE) {
                 (view as com.google.android.material.progressindicator.LinearProgressIndicator).isIndeterminate = v
             }
-            RyUIKind.TOGGLE -> if (prop == RyUIProp.Toggle.ON) {
-                settingProp = true
-                (view as MaterialSwitch).isChecked = v
-                settingProp = false
+            RyUIKind.TOGGLE -> when (prop) {
+                RyUIProp.Toggle.ON -> {
+                    settingProp = true
+                    (view as android.widget.CompoundButton).isChecked = v
+                    settingProp = false
+                }
+                RyUIProp.Toggle.CHECKBOX -> if (v) makeCheckbox(n)
             }
             // Material starts and stops its animation in show and hide.
             RyUIKind.ACTIVITY -> if (prop == RyUIProp.Activity.ANIMATING) (view as CircularProgressIndicator).let {

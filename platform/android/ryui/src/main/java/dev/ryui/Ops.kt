@@ -155,6 +155,7 @@ object RyUIProp {
 
     object Toggle {
         const val ON = 64
+        const val CHECKBOX = 65
     }
 
     object Slider {

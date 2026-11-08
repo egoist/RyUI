@@ -206,6 +206,51 @@ func (h *Host) fontScale() float32 {
 	return 1
 }
 
+// drawCheckbox draws Fluent's check box: a 20 by 20 square, rounded 4,
+// outlined and empty off, filled with the accent and a checkmark on.
+func (h *Host) drawCheckbox(n *node, g Graphics, r Rect, on, hot, pressed, disabled bool) {
+	k := h.scaleOf(n)
+	p := &h.theme
+	s := 20 * k
+	x, y := float32(0), (float32(r.H())-s)/2
+	if h.isRTL(n) {
+		x = float32(r.W()) - s
+	}
+	accent := p.accent
+	if c, ok := h.resolve(n.color); ok {
+		accent = c
+	}
+	if on {
+		fill := accent
+		switch {
+		case disabled:
+			fill = p.disabled
+		case pressed:
+			fill = p.accentPressed.over(h.backdrop(n))
+		case hot:
+			fill = p.accentHot.over(h.backdrop(n))
+		}
+		g.FillRoundRect(fill.argb(), x, y, s, s, 4*k)
+		pen := NewPen(p.onAccent.argb(), 1.5*k)
+		pen.SetCaps(2, 2) // round
+		path := NewPath()
+		path.Line(x+5*k, y+10.5*k, x+8.5*k, y+14*k)
+		path.Line(x+8.5*k, y+14*k, x+15*k, y+6.5*k)
+		g.DrawPath(pen, path)
+		path.Close()
+		pen.Close()
+		return
+	}
+	strong := p.secondary
+	if disabled {
+		strong = p.disabled
+	}
+	if hot || pressed {
+		g.FillRoundRect(p.subtleHot.argb(), x, y, s, s, 4*k)
+	}
+	g.StrokeRoundRect(strong.argb(), max(k, 1), x, y, s, s, 4*k)
+}
+
 // drawToggle draws a check box as Fluent's toggle switch: a 40 by 20
 // pill, outlined and empty off, filled with the accent on, its knob
 // sliding to the end (the left, right to left).
@@ -224,6 +269,18 @@ func (h *Host) drawToggle(n *node, cd *NMCustomDraw) uintptr {
 	pressed := cd.ItemState&CDIS_SELECTED != 0
 	disabled := cd.ItemState&CDIS_DISABLED != 0 || n.disabled
 	on := SendMessage(cd.Hdr.HwndFrom, BM_GETCHECK, 0, 0) == 1
+	if n.checkbox {
+		h.drawCheckbox(n, g, r, on, hot, pressed, disabled)
+		if cd.ItemState&CDIS_FOCUS != 0 && cd.ItemState&CDIS_SHOWKEYBOARDCUES != 0 {
+			s := 20 * k
+			x := float32(0)
+			if h.isRTL(n) {
+				x = float32(r.W()) - s
+			}
+			g.StrokeRoundRect(p.label.argb(), 2*k, x-3*k, (float32(r.H())-s)/2-3*k, s+6*k, s+6*k, 7*k)
+		}
+		return CDRF_SKIPDEFAULT
+	}
 	tw, th := 40*k, 20*k
 	x, y := float32(0), (float32(r.H())-th)/2
 	// The knob at its start and its end.

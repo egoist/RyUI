@@ -244,6 +244,7 @@ func controls() ui.Node {
 	period := store.Signal("period", 1) // kept across launches
 	volume := signal.New(0.4)
 	wifi := signal.New(true)
+	agreed := signal.New(false)
 	sizes := []string{"Extra small", "Small", "Medium", "Large", "Extra large"}
 	size := signal.New(2)
 	cups := signal.New(2.0)
@@ -262,6 +263,10 @@ func controls() ui.Node {
 		ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
 			ui.Text(ui.Val("Wi-Fi"), ui.Style{Grow: 1}),
 			ui.Toggle(ui.ToggleProps{Value: wifi}),
+		),
+		ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
+			ui.Toggle(ui.ToggleProps{Value: agreed, Checkbox: true}),
+			ui.Text(ui.Val("I've read the terms"), ui.Style{Grow: 1}),
 		),
 		ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
 			ui.Activity(),

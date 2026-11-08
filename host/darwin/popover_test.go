@@ -168,3 +168,19 @@ func TestSplitView(t *testing.T) {
 		}
 	})
 }
+
+// A checkbox toggle is a check box, and a click toggles its value.
+func TestCheckbox(t *testing.T) {
+	on := signal.New(false)
+	h, _ := mount(t, func() ui.Node { return ui.Toggle(ui.ToggleProps{Value: on, Checkbox: true}) })
+	onMain(func() {
+		n := find(h, ops.KindToggle)[0]
+		if GoString(Send(Send(n.view, "class"), "description")) != "NSButton" {
+			fatalf(t, "a %s", GoString(Send(Send(n.view, "class"), "description")))
+		}
+		h.enter(func() { Send(n.view, "performClick:", 0) })
+	})
+	if !on.Peek() {
+		t.Fatal("a click didn't check it")
+	}
+}

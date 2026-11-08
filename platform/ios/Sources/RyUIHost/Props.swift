@@ -153,6 +153,7 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
         case let t as UITextField: t.textColor = c ?? .label
         case let t as RyUITextView: t.textColor = c ?? .label
         case let s as UISwitch: s.onTintColor = c
+        case let b as RyUICheckbox: b.tintColor = c
         case let a as UIActivityIndicatorView: a.color = c ?? .secondaryLabel
         case let p as UIProgressView: p.progressTintColor = c
         case let s as UISegmentedControl: s.selectedSegmentTintColor = c
@@ -484,6 +485,9 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             (n.view as? RyUITextView)?.textContentType = UITextContentType(rawValue: v.string)
         case (.toggle, RyUIProp.Toggle.on):
             (n.view as? UISwitch)?.setOn(v.bool, animated: n.view.window != nil)
+            (n.view as? RyUICheckbox)?.isOn = v.bool
+        case (.toggle, RyUIProp.Toggle.checkbox):
+            if v.bool { makeCheckbox(n) }
         case (.slider, RyUIProp.Slider.value):
             (n.view as? UISlider)?.value = Float(v.float)
         case (.slider, RyUIProp.Slider.min):

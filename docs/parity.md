@@ -47,6 +47,7 @@ what RyUI has for it.
 | Charts | Swift Charts | `victory-native`, community | ✓ `ryui/chart` (bars, lines, areas, points) |
 | Native escape hatch | `UIViewRepresentable` | native modules | ✓ `ui.Native` views, `ui.Call` modules |
 | Paging, page dots | `.scrollTargetBehavior(.paging)`, `TabView(.page)` | `react-native-pager-view` | ✓ `ScrollProps.Paging`, `PageControl` |
+| Checkbox | `Toggle` (`.checkbox`, macOS) | community | ✓ `ToggleProps.Checkbox` |
 
 ## Navigation and presentation
 

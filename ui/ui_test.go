@@ -1453,3 +1453,20 @@ func TestSpringAndOnDone(t *testing.T) {
 		time.Sleep(time.Millisecond)
 	}
 }
+
+// A checkbox toggle says so before it's measured, and isn't measured as
+// a switch is (the measure cache keeps them apart).
+func TestCheckbox(t *testing.T) {
+	h, _ := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{},
+			ui.Toggle(ui.ToggleProps{Value: signal.New(true)}),
+			ui.Toggle(ui.ToggleProps{Value: signal.New(false), Checkbox: true}))
+	})
+	ts := h.OfKind(ops.KindToggle)
+	if len(ts) != 2 || ts[0].Bool(ops.PropToggleCheckbox) || !ts[1].Bool(ops.PropToggleCheckbox) {
+		t.Fatal("no checkbox")
+	}
+	if h.Measures < 2 {
+		t.Fatalf("%d measures: the checkbox took the switch's", h.Measures)
+	}
+}

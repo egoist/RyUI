@@ -150,6 +150,7 @@ type node struct {
 	tooltip        string
 	canvas         []byte     // a Canvas\'s display list
 	paneNode       *node      // a SplitView\'s pane
+	checkbox       bool       // a Toggle drawn as a check box
 	pane           *splitPane // a pane\'s rows
 	a11yLabel      string
 	colorValue     ops.Color

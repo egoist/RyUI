@@ -51,6 +51,9 @@ func (h *Host) measure(n *node, c layout.Constraints) layout.Size {
 		}
 	case ops.KindToggle:
 		w, ht = 40, 20
+		if n.checkbox {
+			w = 20
+		}
 	case ops.KindSlider:
 		w, ht = 200, 32
 		if finite(c.AvailW) {

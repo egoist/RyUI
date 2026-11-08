@@ -275,7 +275,10 @@ return ui.Column(ui.Style{Gap: 16},
 )
 ```
 
-- **Toggle** is a switch, `*signal.Signal[bool]`.
+- **Toggle** is a switch, `*signal.Signal[bool]`. With `Checkbox` it's a
+  checkbox: Android's `MaterialCheckBox`, a Mac's and Windows' check
+  box, and on iOS, which has none, a circle that fills with a
+  checkmark, as Reminders' does.
 - **Slider** picks a `float64` from `Min` to `Max`; with both 0, from 0
   to 1.
 - **Segmented** is one of a few options side by side, `Selected` the

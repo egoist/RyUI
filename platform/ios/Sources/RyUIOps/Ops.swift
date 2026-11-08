@@ -152,6 +152,7 @@ public enum RyUIProp {
 
     public enum Toggle {
         public static let on: UInt16 = 64
+        public static let checkbox: UInt16 = 65
     }
 
     public enum Slider {

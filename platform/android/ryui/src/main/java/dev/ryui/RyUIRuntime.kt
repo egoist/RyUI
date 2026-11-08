@@ -596,7 +596,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
                     cur.setSelection(old.selectionStart.coerceAtLeast(0), old.selectionEnd.coerceAtLeast(0))
                 }
             }
-            old is MaterialSwitch && cur is MaterialSwitch -> cur.isChecked = old.isChecked
+            old is android.widget.CompoundButton && cur is android.widget.CompoundButton -> cur.isChecked = old.isChecked
             old is Slider && cur is Slider -> { cur.valueFrom = old.valueFrom; cur.valueTo = old.valueTo; cur.value = old.value }
         }
         settingProp = false
@@ -807,6 +807,27 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
         n.view = v
         restyle(n)
         RyUIPager.apply(this, n)
+    }
+
+    /** Makes a Toggle a checkbox: Material's, in place of its switch. */
+    fun makeCheckbox(n: RyUINode) {
+        val old = n.view as? MaterialSwitch ?: return
+        val id = n.id
+        val c = com.google.android.material.checkbox.MaterialCheckBox(themed).apply {
+            isChecked = old.isChecked
+            isEnabled = old.isEnabled
+            layoutDirection = directionOf(n)
+            setOnCheckedChangeListener { _, on -> if (!settingProp) emit(id, RyUIEventKind.TOGGLED) { RyUIEvents.toggled(id, on) } }
+        }
+        val parent = old.parent as? ViewGroup
+        if (parent != null) {
+            val i = parent.indexOfChild(old)
+            val lp = old.layoutParams
+            parent.removeViewAt(i)
+            parent.addView(c, i, lp)
+        }
+        n.view = c
+        restyle(n)
     }
 
     /** Replaces a button with one of another variant (a style is fixed when a view is made). */

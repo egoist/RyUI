@@ -771,12 +771,22 @@ func Blur(n Node) {
 type ToggleProps struct {
 	Value    *signal.Signal[bool]
 	Disabled signal.Accessor[bool]
+	// Checkbox makes it a checkbox: an item of a list to tick, an
+	// agreement, a choice among several that aren't exclusive. Android's
+	// MaterialCheckBox, a Mac's and Windows' check box; iOS has none of its
+	// own, and shows a circle that fills with a checkmark, as Reminders'
+	// and Notes' lists do. Its Style's Color tints it.
+	Checkbox bool
 	Style    Styler
 }
 
-// Toggle is a switch.
+// Toggle is a switch, or a checkbox.
 func Toggle(p ToggleProps) Node {
 	e := newElement(ops.KindToggle, true)
+	if p.Checkbox {
+		e.r.batch.SetBool(e.id, ops.PropToggleCheckbox, true) // before it's measured: its view is made again
+		e.variant = 1                                         // measured apart from switches
+	}
 	e.measure()
 	e.setStyle(p.Style, false)
 	bind(p.Disabled, func(v bool) { e.r.batch.SetBool(e.id, ops.PropDisabled, v) })

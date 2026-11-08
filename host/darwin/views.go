@@ -226,8 +226,18 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 	case ops.KindTextField:
 		h.setField(n, p, v)
 	case ops.KindToggle:
-		if p == ops.PropToggleOn {
+		switch p {
+		case ops.PropToggleOn:
 			Send(n.view, "setState:", uintptr(v.Int))
+		case ops.PropToggleCheckbox:
+			if v.Int != 0 {
+				// A check box in place of its switch.
+				c := Send(Class("NSButton"), "checkboxWithTitle:target:action:", uintptr(String("")), uintptr(h.target), uintptr(Sel("act:")))
+				Send(c, "retain")
+				Send(c, "setState:", uintptr(SendInt(n.view, "state")))
+				Send(c, "setEnabled:", Bool(SendBool(n.view, "isEnabled")))
+				h.replaceView(n, c)
+			}
 		}
 	case ops.KindSlider:
 		switch p {

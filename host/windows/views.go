@@ -229,11 +229,14 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 	case ops.KindTextField:
 		h.setField(n, p, v)
 	case ops.KindToggle:
-		if p == ops.PropToggleOn {
+		switch p {
+		case ops.PropToggleOn:
 			n.on = v.Int != 0
 			SendMessage(n.ctl, BM_SETCHECK, uintptr(v.Int), 0)
-			h.redrawControl(n)
+		case ops.PropToggleCheckbox:
+			n.checkbox = v.Int != 0
 		}
+		h.redrawControl(n)
 	case ops.KindSlider:
 		switch p {
 		case ops.PropSliderValue:
