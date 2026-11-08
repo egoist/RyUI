@@ -269,6 +269,8 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 		}
 	case ops.KindSplit:
 		h.setSplitProp(n, p, v)
+	case ops.KindShader:
+		h.setShaderProp(n, p, v)
 	case ops.KindCanvas:
 		if p == ops.PropCanvasCommands {
 			n.canvas = append(n.canvas[:0], v.Bytes...)
@@ -711,6 +713,8 @@ func (h *Host) viewMessage(n *node, hwnd uintptr, m uint32, wp, lp uintptr) (uin
 		case timerSpin:
 			n.phase += 1.0 / 60 / 1.5
 			Invalidate(hwnd)
+		case timerShader:
+			h.renderShader(n)
 		}
 		return 0, true
 	case WM_SETFOCUS:

@@ -24,6 +24,7 @@ import (
 	"github.com/egoist/ryui/print"
 	"github.com/egoist/ryui/scan"
 	"github.com/egoist/ryui/secure"
+	"github.com/egoist/ryui/shader"
 	"github.com/egoist/ryui/signal"
 	"github.com/egoist/ryui/store"
 	"github.com/egoist/ryui/ui"
@@ -335,6 +336,22 @@ func popover() ui.Node {
 			OnPress: func() { open.Set(true) }})))
 }
 
+// aurora is a Kage shader: a band of light that flows across a night sky.
+var aurora = shader.MustCompile(`package main
+
+var Time float
+var Tint vec4
+
+func Fragment(dst vec4, pos vec2) vec4 {
+	uv := pos / rectSize()
+	t := Time * 0.4
+	wave := sin(uv.x*6+t)*0.5 + sin(uv.x*11-t*1.3)*0.25
+	band := smoothstep(0.35, 0, abs(uv.y-0.5-wave*0.18))
+	sky := mix(vec3(0.02, 0.03, 0.10), vec3(0.05, 0.08, 0.22), uv.y)
+	return vec4(sky+Tint.rgb*band*(0.7+0.3*sin(Time+uv.x*4)), 1)
+}
+`)
+
 // canvas is a gauge drawn by the app, following a slider.
 func canvas() ui.Node {
 	level := signal.New(0.62)
@@ -359,16 +376,9 @@ func canvas() ui.Node {
 		ui.Slider(ui.SliderProps{Value: level}),
 		// A GPU program: an aurora that flows, in the slider's hue.
 		ui.Shader(ui.ShaderProps{
-			Source: `
-float4 shade(float2 uv) {
-	float t = time * 0.4;
-	float wave = sin(uv.x * 6.0 + t) * 0.5 + sin(uv.x * 11.0 - t * 1.3) * 0.25;
-	float band = smoothstep(0.35, 0.0, abs(uv.y - 0.5 - wave * 0.18));
-	float3 sky = mix(float3(0.02, 0.03, 0.10), float3(0.05, 0.08, 0.22), uv.y);
-	return float4(sky + tint.rgb * band * (0.7 + 0.3 * sin(time + uv.x * 4.0)), 1.0);
-}`,
+			Program: aurora,
 			Uniforms: signal.Func(func() []ui.Uniform {
-				return []ui.Uniform{{Name: "tint", Value: [4]float32{0.2, float32(0.5 + level.Get()*0.5), 0.6, 1}}}
+				return []ui.Uniform{{Name: "Tint", Value: []float32{0.2, float32(0.5 + level.Get()*0.5), 0.6, 1}}}
 			}),
 			Animated: true,
 			Style:    ui.Style{Height: ui.Pt(140), CornerRadius: 16, Clip: true, Background: ui.Hex(0x0b1030)},

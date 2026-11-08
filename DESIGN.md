@@ -1239,8 +1239,10 @@ Each one ends with its examples running and its tests in CI.
     content-sized layout root, `fits`); `TextFieldProps.Accessory` (a
     full-width content-sized root: `inputAccessoryView`, and a bar on the
     keyboard on Android); `ui.Canvas` (a display list, re-recorded with no
-    allocation) and `ryui/chart` on it; `ui.Shader` (one `shade` function
-    in what Metal's language and AGSL share); `ui.SplitView`
+    allocation) and `ryui/chart` on it; `ui.Shader` (a Kage shader, Go's
+    syntax, compiled in Go by package `shader`: Metal on iOS and macOS,
+    AGSL on Android, package interp's CPU on Windows, and GLSL kept for
+    Linux); `ui.SplitView`
     (`UISplitViewController`, collapsing into a stack on iPhone; Material's
     navigation drawer; `Replace` resets a stack at once); springs with
     `Damping` and `Velocity`, `Delay` and `OnDone`; `ToggleProps.Checkbox`;

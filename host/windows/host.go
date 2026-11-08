@@ -148,10 +148,11 @@ type node struct {
 	dying          bool
 	interceptBack  bool // ui.OnBack: going back asks the core (Back)
 	tooltip        string
-	canvas         []byte     // a Canvas\'s display list
-	paneNode       *node      // a SplitView\'s pane
+	canvas         []byte     // a Canvas's display list
+	kage           *cpuShader // a Shader's program, on the CPU
+	paneNode       *node      // a SplitView's pane
 	checkbox       bool       // a Toggle drawn as a check box
-	pane           *splitPane // a pane\'s rows
+	pane           *splitPane // a pane's rows
 	a11yLabel      string
 	colorValue     ops.Color
 	host           func(h *Host, n *node, m uint32, w, l uintptr) (uintptr, bool) // a host-made view's messages
@@ -581,6 +582,9 @@ func (h *Host) release(n *node) {
 	if n.image != nil {
 		n.image.release()
 	}
+	if n.kage != nil {
+		n.kage.release()
+	}
 	if n.hwnd != 0 {
 		hw := n.hwnd
 		h.forgetTree(hw)
@@ -612,6 +616,7 @@ func (h *Host) forgetTree(hwnd uintptr) {
 			KillTimer(w, timerLongPress)
 			KillTimer(w, timerSpin)
 			KillTimer(w, timerBars)
+			KillTimer(w, timerShader)
 			delete(h.byHwnd, w)
 		}
 	}

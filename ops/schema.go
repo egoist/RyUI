@@ -299,10 +299,10 @@ var Schema = SchemaDef{
 			{Name: "Title", Type: TString, Doc: "the sidebar's title"},
 		}, Doc: "destinations in a sidebar and the selected one's screens beside it (UISplitViewController's sidebar on iPad, collapsing into a stack on iPhone, the list its first screen; Material's navigation drawer on Android, modal on a phone and standing beside the content on a wide screen; a source list on macOS; a navigation pane on Windows). Its one child is a Stack, the detail, which the host places; choosing a destination sends Selected"},
 		{Name: "Shader", Props: []PropDef{
-			{Name: "Source", Type: TString, Doc: "the shading function, float4 shade(float2 uv), uv from 0,0 (the top left) to 1,1, in the subset of Metal's and AGSL's languages they share; it reads time (seconds), size (points) and the Uniforms by name"},
-			{Name: "Uniforms", Type: TBytes, Doc: "the source's values: u32 count, per value a string name and 4 f32 (each a float4 to the source)"},
-			{Name: "Animated", Type: TBool, Doc: "time runs: drawn again every frame the display draws"},
-		}, Doc: "a box a GPU program draws, under its children: Metal on iOS and macOS (MTKView), AGSL on Android 13 and later (RuntimeShader); Android before 13 and Windows show its background alone"},
+			{Name: "Code", Type: TBytes, Doc: "the compiled shader (package shader; internal/shadercode's Encode): its Kage source, its Metal and AGSL programs, and where its uniforms' lanes go"},
+			{Name: "Uniforms", Type: TBytes, Doc: "the uniforms' values: u32 lanes, in package interp's order (a float's bits, an int's, a uint's, a bool's 0 or 1); the host sets the size, the scale and Time itself"},
+			{Name: "Animated", Type: TBool, Doc: "Time runs: drawn again every frame the display draws"},
+		}, Doc: "a box a GPU program draws, under its children: a Kage shader, as Metal on iOS and macOS (a CAMetalLayer), AGSL on Android (RuntimeShader), on the CPU on Windows (package interp)"},
 		{Name: "Window", Props: []PropDef{
 			{Name: "Title", Type: TString},
 			{Name: "Width", Type: TFloat, Doc: "its content's width when it opens, in points (0: the host's default)"},

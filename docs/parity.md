@@ -45,7 +45,7 @@ what RyUI has for it.
 | Maps | `Map` | `expo-maps` | ✓ `ryui/maps` (Apple Maps; Google Maps with an API key: region, markers, the user's location, taps) |
 | Custom drawing | `Shape`, `Path`, `Canvas` | `react-native-svg`, Skia | ✓ `Shape` and `Path` (fill, stroke, caps, joins, dashes, an animatable trim); `Canvas` (paths, gradients, text, transforms, clips, opacity); SVG icons drawn natively (`ryui/svg`) |
 | Charts | Swift Charts | `victory-native`, community | ✓ `ryui/chart` (bars, lines, areas, points) |
-| Shaders | `.colorEffect(ShaderLibrary...)` | Skia's runtime effects | ✓ `Shader` (Metal; AGSL on Android 13+) |
+| Shaders | `.colorEffect(ShaderLibrary...)` | Skia's runtime effects | ✓ `Shader` (Kage, Go's syntax: Metal on Apple, AGSL on Android, the CPU on Windows) |
 | Native escape hatch | `UIViewRepresentable` | native modules | ✓ `ui.Native` views, `ui.Call` modules |
 | Paging, page dots | `.scrollTargetBehavior(.paging)`, `TabView(.page)` | `react-native-pager-view` | ✓ `ScrollProps.Paging`, `PageControl` |
 | Checkbox | `Toggle` (`.checkbox`, macOS) | community | ✓ `ToggleProps.Checkbox` |

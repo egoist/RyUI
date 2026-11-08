@@ -7,6 +7,7 @@ import (
 
 	. "github.com/egoist/ryui/internal/darwin"
 	"github.com/egoist/ryui/ops"
+	kage "github.com/egoist/ryui/shader"
 	"github.com/egoist/ryui/signal"
 	"github.com/egoist/ryui/ui"
 )
@@ -185,21 +186,27 @@ func TestCheckbox(t *testing.T) {
 	}
 }
 
-// A shader compiles with Metal and draws: its layer gets a drawable.
+// A shader's Metal library compiles and draws: its pipeline is made.
 func TestShader(t *testing.T) {
+	prog := kage.MustCompile(`package main
+
+var Time float
+var Tint vec4
+
+func Fragment(dst vec4, pos vec2) vec4 {
+	return vec4(Tint.rgb*pos.x/rectSize().x, 1) + vec4(sin(Time)*0)
+}
+`)
 	h, _ := mount(t, func() ui.Node {
-		return ui.Shader(ui.ShaderProps{
-			Source:   "float4 shade(float2 uv) { return float4(tint.rgb * uv.x, 1.0) + float4(mod(time, 1.0) * 0.0); }",
-			Uniforms: ui.Val([]ui.Uniform{{Name: "tint", Value: [4]float32{1, 0, 0, 1}}}),
-			Style:    ui.Style{Width: ui.Pt(80), Height: ui.Pt(40)},
-		})
+		return ui.Shader(ui.ShaderProps{Program: prog,
+			Uniforms: ui.Val([]ui.Uniform{{Name: "Tint", Value: []float32{1, 0, 0, 1}}}),
+			Style:    ui.Style{Width: ui.Pt(80), Height: ui.Pt(40)}})
 	})
 	onMain(func() {
-		n := find(h, ops.KindShader)[0]
-		s := n.shader
 		if mtlDevice == 0 {
-			t.Skip("no Metal device")
+			return // no Metal device
 		}
+		s := find(h, ops.KindShader)[0].shader
 		if s.layer == 0 || s.pipeline == 0 {
 			fatalf(t, "layer %v, pipeline %v (failed %v)", s.layer, s.pipeline, s.failed)
 		}

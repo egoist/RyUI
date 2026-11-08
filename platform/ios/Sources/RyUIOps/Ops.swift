@@ -327,7 +327,7 @@ public enum RyUIProp {
     }
 
     public enum Shader {
-        public static let source: UInt16 = 64
+        public static let code: UInt16 = 64
         public static let uniforms: UInt16 = 65
         public static let animated: UInt16 = 66
     }

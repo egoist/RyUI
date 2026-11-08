@@ -118,6 +118,8 @@ func (h *Host) paintOwn(n *node, hwnd, dc uintptr, r Rect) {
 		h.paintPips(n, g, w, ht)
 	case ops.KindCanvas:
 		h.paintCanvas(n, g)
+	case ops.KindShader:
+		h.paintShader(n, g, w, ht, radius)
 	case ops.KindActivity:
 		h.paintActivity(n, g, w, ht)
 	case ops.KindTextField:

@@ -309,6 +309,8 @@ var (
 	gdipCreateBitmap      = gdiplus.NewProc("GdipCreateBitmapFromScan0")
 	gdipDisposeImage      = gdiplus.NewProc("GdipDisposeImage")
 	gdipDrawImageRectRect = gdiplus.NewProc("GdipDrawImageRectRect")
+	gdipCreateImageAttrs  = gdiplus.NewProc("GdipCreateImageAttributes")
+	gdipSetImageAttrsWrap = gdiplus.NewProc("GdipSetImageAttributesWrapMode")
 	gdipSetClipPath       = gdiplus.NewProc("GdipSetClipPath")
 	gdipResetClip         = gdiplus.NewProc("GdipResetClip")
 	gdipTranslate         = gdiplus.NewProc("GdipTranslateWorldTransform")
@@ -566,6 +568,27 @@ func (g Graphics) DrawImage(b *Bitmap, x, y, w, h, sx, sy, sw, sh float32) {
 		return
 	}
 	gdipDrawImageRectRect.Call(uintptr(g), b.h, f(x), f(y), f(w), f(h), f(sx), f(sy), f(sw), f(sh), 2, 0, 0, 0) // UnitPixel
+}
+
+// clampAttrs are image attributes that extend an image's edge pixels
+// past it (WrapModeTileFlipXY), so that scaling it up doesn't fade its
+// edges into the transparent pixels around it.
+var clampAttrs uintptr
+
+// DrawImageClamped is DrawImage with the image's edge pixels extended
+// past it: an image scaled up to fill the whole box keeps its edges
+// opaque.
+func (g Graphics) DrawImageClamped(b *Bitmap, x, y, w, h, sx, sy, sw, sh float32) {
+	if b == nil || b.h == 0 {
+		return
+	}
+	if clampAttrs == 0 {
+		gdipCreateImageAttrs.Call(uintptr(unsafe.Pointer(&clampAttrs)))
+		if clampAttrs != 0 {
+			gdipSetImageAttrsWrap.Call(clampAttrs, 3, 0, 0) // WrapModeTileFlipXY
+		}
+	}
+	gdipDrawImageRectRect.Call(uintptr(g), b.h, f(x), f(y), f(w), f(h), f(sx), f(sy), f(sw), f(sh), 2, clampAttrs, 0, 0) // UnitPixel
 }
 
 // FlattenedPoints flattens a path's curves into lines (in place) and

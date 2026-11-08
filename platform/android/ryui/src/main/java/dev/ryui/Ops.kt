@@ -330,7 +330,7 @@ object RyUIProp {
     }
 
     object Shader {
-        const val SOURCE = 64
+        const val CODE = 64
         const val UNIFORMS = 65
         const val ANIMATED = 66
     }

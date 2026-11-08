@@ -650,41 +650,55 @@ chart.View(chart.Props{
 ### Shaders
 
 `ui.Shader` is a box a GPU program draws, under its children: flowing
-gradients, noise, glows, ripples. Its `Source` is one function, the
-color of each point:
+gradients, noise, glows, ripples. The program is a Kage shader
+(Ebitengine's language: Go's syntax), which package `shader` compiles
+once, as a package's variable:
 
 ```go
+var glow = shader.MustCompile(`package main
+
+var Time float
+var Tint vec4
+
+func Fragment(dst vec4, pos vec2) vec4 {
+	d := distance(pos/rectSize(), vec2(0.5))
+	g := smoothstep(0.5, 0, d) * (0.8 + 0.2*sin(Time*2))
+	return vec4(Tint.rgb*g, 1) * Tint.a
+}`)
+
 ui.Shader(ui.ShaderProps{
-	Source: `
-float4 shade(float2 uv) {
-	float d = distance(uv, float2(0.5, 0.5));
-	float glow = smoothstep(0.5, 0.0, d) * (0.8 + 0.2 * sin(time * 2.0));
-	return float4(tint.rgb * glow, 1.0);
-}`,
-	Uniforms: ui.Val([]ui.Uniform{ui.ColorUniform("tint", ui.Hex(0x38bdf8))}),
+	Program:  glow,
+	Uniforms: ui.Val([]ui.Uniform{ui.ColorUniform("Tint", ui.Hex(0x38bdf8))}),
 	Animated: true,
 	Style:    ui.Style{Height: ui.Pt(200), CornerRadius: 16, Clip: true, Background: ui.Hex(0x0b1030)},
 })
 ```
 
-- `uv` goes from 0,0 at the top left to 1,1 at the bottom right; the
-  function returns red, green, blue and alpha, 0 to 1.
-- It reads `time` (seconds since it was shown), `size` (points) and its
-  `Uniforms` by name, each a `float4`. A uniform's change draws it again.
-- `Animated` runs `time`: it's drawn at every frame the display draws,
-  on the GPU, with nothing running in Go.
-- The source is written in what Metal's language and AGSL share:
-  `float`, `float2`, `float3`, `float4`, their constructors and swizzles,
-  `mix`, `smoothstep`, `step`, `clamp`, `fract`, `floor`, `mod`, `sin`,
-  `cos`, `atan(y, x)`, `pow`, `length`, `distance`, `dot`, `normalize`,
-  functions of its own. Write numbers with a point (`2.0`): AGSL doesn't
-  turn integers into floats.
+- `Fragment` returns the color of a pixel, premultiplied, red, green,
+  blue and alpha from 0 to 1. `pos` is the pixel's center in points
+  from the box's top left, `dst` the same in pixels; `rectSize()` is
+  the box's size in points and `pixelScale()` the pixels a point.
+- The language has `bool`, `int`, `float`, `vec2` to `vec4`, `ivec2` to
+  `ivec4`, `mat2` to `mat4` and arrays of them, GLSL's built-in functions
+  (`sin`, `mix`, `smoothstep`, `dot`...), functions of its own, `if` and
+  `for`. Exported variables are uniforms.
+- `Uniforms` sets them by name: a scalar's one number, a vector's
+  components, a matrix's columns in turn. A change draws the box again;
+  a uniform left out is 0.
+- `var Time float` is the seconds since the shader showed. `Animated`
+  runs it: the box draws at every frame the display draws, with nothing
+  running in Go.
+- `shader.Compile` reports a shader's errors with their lines, and what
+  of it Android can't run, on every platform alike: AGSL is GLSL ES
+  1.00's language, so no unsigned integers, bitwise operations or
+  integer remainders (`mod` of floats does), derivatives, or loops
+  between values that aren't constants.
 
-It's Metal on iOS and macOS (a `CAMetalLayer`), and AGSL on Android 13
-and later (a `RuntimeShader`). Android before 13 and Windows have no
-shader to run it with: they show the box's `Background` alone, so give
-it one that stands in. A source that doesn't compile is logged, and
-shows the background too.
+It's Metal on iOS and macOS (a `CAMetalLayer`) and AGSL on Android (a
+`RuntimeShader`). Windows runs the same program on the CPU, across the
+cores and off the main thread: a frame shows when it's ready, and a
+large or animated box renders at a fraction of its resolution, scaled
+up. Give the box a `Background` that stands in until the first frame.
 
 ## Containers
 

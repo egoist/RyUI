@@ -10,60 +10,67 @@ import (
 	"github.com/egoist/ryui/signal"
 )
 
-// Uniform is a value a shader reads by name: a float4 to its source (a
-// color's components, a point, up to four numbers).
-type Uniform struct {
-	Name  string
-	Value [4]float32
+// ShaderProgram is a compiled shader: package shader's *Program, which
+// compiles Kage's Go-syntax shaders (shader.MustCompile).
+type ShaderProgram interface {
+	// ShaderCode is the program as the hosts take it.
+	ShaderCode() []byte
+	// ShaderLanes is how many 32-bit lanes its uniforms' values take.
+	ShaderLanes() int
+	// ShaderUniform says where a uniform variable's lanes are, and their
+	// kind: 0 float, 1 int, 2 uint, 3 bool.
+	ShaderUniform(name string) (lane, lanes, kind int, ok bool)
 }
 
-// ColorUniform is a color as a uniform: its red, green, blue and alpha,
-// 0 to 1 (an RGB color; a semantic one reads as black).
+// Uniform is the value of a shader's uniform variable, by its name: a
+// scalar's one number, a vector's components, a matrix's columns in
+// turn, an array's elements in order. An int's, a uint's and a bool's
+// are their numbers too (a bool true when not 0).
+type Uniform struct {
+	Name  string
+	Value []float32
+}
+
+// ColorUniform is a color as a uniform vec4: its red, green, blue and
+// alpha, 0 to 1, not premultiplied (an RGB color; a semantic one reads as
+// black).
 func ColorUniform(name string, c Color) Uniform {
 	r, g, b, a, _ := c.RGBA()
-	return Uniform{name, [4]float32{float32(r) / 255, float32(g) / 255, float32(b) / 255, float32(a) / 255}}
+	return Uniform{name, []float32{float32(r) / 255, float32(g) / 255, float32(b) / 255, float32(a) / 255}}
 }
 
 // ShaderProps configures a Shader.
 type ShaderProps struct {
-	// Source is the shading function: the color of each point of the box,
-	//
-	//	float4 shade(float2 uv) { ... }
-	//
-	// uv going from 0,0 at its top left to 1,1 at its bottom right, the
-	// color's red, green, blue and alpha from 0 to 1. It's written in what
-	// Metal's language and AGSL share: float, float2, float3, float4,
-	// their constructors and swizzles; mix, smoothstep, step, clamp,
-	// fract, floor, mod, sin, cos, atan(y, x), pow, exp, length, distance,
-	// dot, normalize, abs, min, max; functions of its own. Numbers are
-	// written with a point (2.0, not 2): AGSL doesn't turn integers into
-	// floats. It reads time (seconds since it was shown), size (its size
-	// in points, a float2) and its Uniforms by name.
-	Source string
-	// Uniforms are the values the source reads by name, each a float4. A
-	// change draws it again; the names are fixed once it's made.
+	// Program is the shader (package shader: shader.MustCompile(src)).
+	Program ShaderProgram
+	// Uniforms are its uniform variables' values. A change draws it
+	// again; a name it hasn't is left out, and a variable left out is 0.
 	Uniforms signal.Accessor[[]Uniform]
-	// Animated runs time: it's drawn again every frame the display draws
-	// (nothing in Go runs for it), for motion the source computes.
+	// Animated runs the shader's Time (var Time float): it's drawn again
+	// every frame the display draws, with nothing running in Go.
 	Animated bool
 	Style    Styler
 }
 
-// Shader is a box a GPU program draws (SwiftUI's Shader, Android's
-// RuntimeShader): flowing gradients, noise, glows, ripples, under its
-// children, over its background. Metal on iOS and macOS; AGSL on Android
-// 13 and later. Android before 13 and Windows have no shader to run it
-// with: they show the box's background alone, so give it one that
-// stands in.
+// Shader is a box a GPU program draws, under its children, over its
+// background: flowing gradients, noise, glows, ripples (SwiftUI's
+// Shader, Android's RuntimeShader). The program is a Kage shader, Go's
+// syntax, which package shader compiles: Metal on iOS and macOS, AGSL on
+// Android, and on Windows the same program run on the CPU.
 //
-//	ui.Shader(ui.ShaderProps{Source: `
-//		float4 shade(float2 uv) {
-//			float d = distance(uv, float2(0.5, 0.5));
-//			float glow = smoothstep(0.5, 0.0, d) * (0.8 + 0.2 * sin(time * 2.0));
-//			return float4(tint.rgb * glow, 1.0);
-//		}`,
-//		Uniforms: ui.Val([]ui.Uniform{ui.ColorUniform("tint", ui.Hex(0x38bdf8))}),
-//		Animated: true,
+//	var glow = shader.MustCompile(`package main
+//
+//	var Time float
+//	var Tint vec4
+//
+//	func Fragment(dst vec4, pos vec2) vec4 {
+//		d := distance(pos/rectSize(), vec2(0.5))
+//		g := smoothstep(0.5, 0, d) * (0.8 + 0.2*sin(Time*2))
+//		return vec4(Tint.rgb*g, 1) * Tint.a
+//	}`)
+//
+//	ui.Shader(ui.ShaderProps{Program: glow, Animated: true,
+//		Uniforms: ui.Val([]ui.Uniform{ui.ColorUniform("Tint", ui.Hex(0x38bdf8))}),
 //		Style:    ui.Style{Height: ui.Pt(200), CornerRadius: 16, Clip: true}})
 //
 //go:noinline
@@ -71,21 +78,43 @@ func Shader(p ShaderProps, children ...Node) Node {
 	e := newElement(ops.KindShader, true)
 	e.setStyle(p.Style, false)
 	b := e.r.batch
-	b.SetString(e.id, ops.PropShaderSource, p.Source)
+	if p.Program != nil {
+		b.SetBytes(e.id, ops.PropShaderCode, p.Program.ShaderCode())
+	}
 	if p.Animated {
 		b.SetBool(e.id, ops.PropShaderAnimated, true)
 	}
-	if p.Uniforms != nil {
+	if p.Program != nil && p.Uniforms != nil {
+		prog := p.Program
+		lanes := make([]uint32, prog.ShaderLanes())
 		var sent []byte
 		signal.RenderEffect(func() {
-			us := p.Uniforms.Get()
-			enc := binary.LittleEndian.AppendUint32(e.encoded[:0], uint32(len(us)))
-			for _, u := range us {
-				enc = binary.LittleEndian.AppendUint32(enc, uint32(len(u.Name)))
-				enc = append(enc, u.Name...)
-				for _, v := range u.Value {
-					enc = binary.LittleEndian.AppendUint32(enc, math.Float32bits(v))
+			clear(lanes)
+			for _, u := range p.Uniforms.Get() {
+				at, n, kind, ok := prog.ShaderUniform(u.Name)
+				if !ok {
+					continue
 				}
+				for i, v := range u.Value[:min(n, len(u.Value))] {
+					var w uint32
+					switch kind {
+					case 1:
+						w = uint32(int32(v))
+					case 2:
+						w = uint32(v)
+					case 3:
+						if v != 0 {
+							w = 1
+						}
+					default:
+						w = math.Float32bits(v)
+					}
+					lanes[at+i] = w
+				}
+			}
+			enc := e.encoded[:0]
+			for _, w := range lanes {
+				enc = binary.LittleEndian.AppendUint32(enc, w)
 			}
 			e.encoded = enc // reused from change to change
 			if bytes.Equal(enc, sent) {

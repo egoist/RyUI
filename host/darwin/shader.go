@@ -7,27 +7,29 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"strings"
 	"time"
 	"unsafe"
 
 	"github.com/ebitengine/purego"
+
+	"github.com/egoist/ryui/internal/shadercode"
 
 	. "github.com/egoist/ryui/internal/darwin"
 	"github.com/egoist/ryui/ops"
 )
 
 // A Shader is a view whose layer holds a CAMetalLayer, under its
-// subviews, drawn by the app's shade(uv) in the Metal program iOS's host
-// makes too (the source inside a struct whose members are time, size and
-// the uniforms). Animated shaders draw at each tick of a 60 Hz clock of
-// their own; the others when their size or uniforms change.
+// subviews, drawn by the shader's Metal library (package shadercode's), a
+// triangle over the whole box, its uniforms in a buffer as the code lays
+// them out; the host sets the size, the scale and Time. Animated shaders
+// draw at each tick of a display link of their own; the others when their
+// size or uniforms change.
 
 type shader struct {
 	layer    ID
-	source   string
-	names    []string
-	values   []float32
+	code     *shadercode.Code
+	words    []uint32 // the uniforms' lanes
+	buf      []byte   // the Metal buffer
 	animated bool
 	pipeline ID
 	failed   bool
@@ -78,96 +80,36 @@ func (h *Host) makeShader(n *node) ID {
 func (h *Host) setShaderProp(n *node, p ops.PropID, v *ops.Value) {
 	s := n.shader
 	switch p {
-	case ops.PropShaderSource:
-		s.source, s.pipeline, s.failed = v.Str, 0, false
+	case ops.PropShaderCode:
+		c, err := shadercode.Decode(v.Bytes)
+		if err != nil {
+			return
+		}
+		s.code, s.pipeline, s.failed = c, 0, false
+		if len(s.words) != c.Lanes {
+			s.words = make([]uint32, c.Lanes)
+		}
 	case ops.PropShaderAnimated:
 		s.animated = v.Int != 0
 		h.updateShaderClock()
 	case ops.PropShaderUniforms:
-		names, values := decodeUniforms(v.Bytes)
-		if strings.Join(names, ",") != strings.Join(s.names, ",") {
-			s.pipeline, s.failed = 0, false
+		s.words = s.words[:0]
+		for i := 0; i+4 <= len(v.Bytes); i += 4 {
+			s.words = append(s.words, binary.LittleEndian.Uint32(v.Bytes[i:]))
 		}
-		s.names, s.values = names, values
 	}
 	h.drawShader(n)
 }
 
-func decodeUniforms(b []byte) (names []string, values []float32) {
-	le := binary.LittleEndian
-	if len(b) < 4 {
-		return
-	}
-	i := 4
-	for range le.Uint32(b) {
-		if i+4 > len(b) {
-			break
-		}
-		l := int(le.Uint32(b[i:]))
-		i += 4
-		if i+l+16 > len(b) {
-			break
-		}
-		names = append(names, string(b[i:i+l]))
-		i += l
-		for range 4 {
-			values = append(values, math.Float32frombits(le.Uint32(b[i:])))
-			i += 4
-		}
-	}
-	return
-}
-
-// shaderProgram is the Metal source around the app's function (as iOS's
-// host makes it).
-func shaderProgram(source string, names []string) string {
-	var members, loads strings.Builder
-	for i, n := range names {
-		fmt.Fprintf(&members, "    float4 %s;\n", n)
-		fmt.Fprintf(&loads, "    s.%s = float4(u[%d], u[%d], u[%d], u[%d]);\n", n, 4+4*i, 5+4*i, 6+4*i, 7+4*i)
-	}
-	return `#include <metal_stdlib>
-using namespace metal;
-float mod(float x, float y) { return x - y * floor(x / y); }
-float2 mod(float2 x, float2 y) { return x - y * floor(x / y); }
-float3 mod(float3 x, float3 y) { return x - y * floor(x / y); }
-float4 mod(float4 x, float4 y) { return x - y * floor(x / y); }
-float2 mod(float2 x, float y) { return x - y * floor(x / y); }
-float3 mod(float3 x, float y) { return x - y * floor(x / y); }
-float4 mod(float4 x, float y) { return x - y * floor(x / y); }
-float atan(float y, float x) { return atan2(y, x); }
-struct RyUIShader {
-    float time;
-    float2 size;
-` + members.String() + source + `
-};
-struct RyUIVertex { float4 position [[position]]; float2 uv; };
-vertex RyUIVertex ryui_vertex(uint id [[vertex_id]]) {
-    float2 p = float2((id << 1) & 2, id & 2);
-    RyUIVertex v;
-    v.position = float4(p * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
-    v.uv = p;
-    return v;
-}
-fragment float4 ryui_fragment(RyUIVertex in [[stage_in]], constant float *u [[buffer(0)]]) {
-    RyUIShader s;
-    s.time = u[0];
-    s.size = float2(u[1], u[2]);
-` + loads.String() + `    float4 c = s.shade(in.uv);
-    return float4(c.rgb * c.a, c.a);
-}
-`
-}
-
 func (s *shader) makePipeline() ID {
-	key := s.source + "\x00" + strings.Join(s.names, ",")
-	if p, ok := mtlPipelines[key]; ok {
+	src := s.code.Metal
+	if p, ok := mtlPipelines[src]; ok {
 		return p
 	}
 	var errID ID
-	lib := Send(mtlDevice, "newLibraryWithSource:options:error:", uintptr(String(shaderProgram(s.source, s.names))), 0, uintptr(unsafe.Pointer(&errID)))
+	lib := Send(mtlDevice, "newLibraryWithSource:options:error:", uintptr(String(src)), 0, uintptr(unsafe.Pointer(&errID)))
 	if lib == 0 {
-		fmt.Fprintf(os.Stderr, "ryui: ui.Shader's source doesn't compile with Metal: %s\n", GoString(Send(errID, "localizedDescription")))
+		fmt.Fprintf(os.Stderr, "ryui: a ui.Shader's Metal library doesn't compile: %s\n", GoString(Send(errID, "localizedDescription")))
 		return 0
 	}
 	d := New("MTLRenderPipelineDescriptor")
@@ -178,7 +120,7 @@ func (s *shader) makePipeline() ID {
 	Release(d)
 	Release(lib)
 	if p != 0 {
-		mtlPipelines[key] = p
+		mtlPipelines[src] = p
 	}
 	return p
 }
@@ -205,7 +147,7 @@ func (h *Host) layoutShader(n *node) {
 
 func (h *Host) drawShader(n *node) {
 	s := n.shader
-	if s == nil || s.layer == 0 || s.source == "" || mtlQueue == 0 {
+	if s == nil || s.layer == 0 || s.code == nil || mtlQueue == 0 {
 		return
 	}
 	b := MsgRect(n.view, Sel("bounds"))
@@ -219,6 +161,26 @@ func (h *Host) drawShader(n *node) {
 	if s.pipeline == 0 {
 		return
 	}
+	c := s.code
+	if len(s.words) < c.Lanes {
+		s.words = append(s.words, make([]uint32, c.Lanes-len(s.words))...)
+	}
+	s.words[c.Size] = math.Float32bits(float32(b.Size.Width))
+	s.words[c.Size+1] = math.Float32bits(float32(b.Size.Height))
+	s.words[c.Scale] = math.Float32bits(float32(MsgFloat(s.layer, Sel("contentsScale"))))
+	if c.Time >= 0 {
+		s.words[c.Time] = math.Float32bits(float32(time.Since(s.start).Seconds()))
+	}
+	if len(s.buf) != max(c.MetalSize, 16) {
+		s.buf = make([]byte, max(c.MetalSize, 16))
+	}
+	for i, o := range c.MetalOffsets {
+		if c.MetalBool[i] {
+			s.buf[o] = byte(min(s.words[i], 1))
+		} else {
+			binary.LittleEndian.PutUint32(s.buf[o:], s.words[i])
+		}
+	}
 	WithPool(func() {
 		drawable := Send(s.layer, "nextDrawable")
 		if drawable == 0 {
@@ -231,14 +193,28 @@ func (h *Host) drawShader(n *node) {
 		Send(att, "setStoreAction:", 1)
 		buf := Send(mtlQueue, "commandBuffer")
 		enc := Send(buf, "renderCommandEncoderWithDescriptor:", uintptr(pass))
-		u := append([]float32{float32(time.Since(s.start).Seconds()), float32(b.Size.Width), float32(b.Size.Height), 0}, s.values...)
 		Send(enc, "setRenderPipelineState:", uintptr(s.pipeline))
-		Send(enc, "setFragmentBytes:length:atIndex:", uintptr(unsafe.Pointer(&u[0])), uintptr(4*len(u)), 0)
+		Send(enc, "setFragmentBytes:length:atIndex:", uintptr(unsafe.Pointer(&s.buf[0])), uintptr(len(s.buf)), 0)
+		for i := range 4 {
+			Send(enc, "setFragmentTexture:atIndex:", uintptr(blankTexture()), uintptr(i))
+		}
 		Send(enc, "drawPrimitives:vertexStart:vertexCount:", 3, 0, 3) // triangles
 		Send(enc, "endEncoding")
 		Send(buf, "presentDrawable:", uintptr(drawable))
 		Send(buf, "commit")
 	})
+}
+
+var blank ID
+
+// blankTexture is what the library's image parameters take: ui.Shader
+// reads no images.
+func blankTexture() ID {
+	if blank == 0 && mtlDevice != 0 {
+		d := Send(Class("MTLTextureDescriptor"), "texture2DDescriptorWithPixelFormat:width:height:mipmapped:", 70, 1, 1, 0) // RGBA8Unorm
+		blank = Send(mtlDevice, "newTextureWithDescriptor:", uintptr(d))
+	}
+	return blank
 }
 
 // updateShaderClock runs the animated shaders' clock while any is shown.
