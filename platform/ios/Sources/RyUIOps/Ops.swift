@@ -36,7 +36,8 @@ public enum RyUIKind: UInt16 {
     case accessory = 31
     case canvas = 32
     case split = 33
-    case window = 34
+    case shader = 34
+    case window = 35
 
     public var name: String {
         switch self {
@@ -73,6 +74,7 @@ public enum RyUIKind: UInt16 {
         case .accessory: return "Accessory"
         case .canvas: return "Canvas"
         case .split: return "Split"
+        case .shader: return "Shader"
         case .window: return "Window"
         }
     }
@@ -322,6 +324,12 @@ public enum RyUIProp {
         public static let items: UInt16 = 64
         public static let selected: UInt16 = 65
         public static let title: UInt16 = 66
+    }
+
+    public enum Shader {
+        public static let source: UInt16 = 64
+        public static let uniforms: UInt16 = 65
+        public static let animated: UInt16 = 66
     }
 
     public enum Window {

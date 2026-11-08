@@ -474,6 +474,8 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             setAccessory(n, UInt32(truncatingIfNeeded: v.int))
         case (.split, _):
             setSplitProp(n, prop, v)
+        case (.shader, _):
+            setShaderProp(n, prop, v)
         case (.canvas, RyUIProp.Canvas.commands):
             if case .bytes(let b) = v { (n.view as? RyUICanvasView)?.commands = Array(b) }
         case (.accessory, RyUIProp.Accessory.width):

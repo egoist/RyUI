@@ -85,6 +85,7 @@ var (
 	MsgFloatID      func(obj ID, sel SEL, v float64) ID
 	MsgFloat2ID     func(obj ID, sel SEL, a, b float64) ID
 	MsgFloat4ID     func(obj ID, sel SEL, a, b, c, d float32) ID
+	MsgTargetTimer  func(cls ID, sel SEL, interval float64, target ID, action SEL, info ID, repeats bool) ID
 	MsgIDFloatID    func(obj ID, sel SEL, a ID, v float64) ID
 	MsgFloatIDID    func(obj ID, sel SEL, v float64, a ID) ID
 	MsgSetFloatInt  func(obj ID, sel SEL, v float64, i int)
@@ -175,7 +176,7 @@ func Load() {
 			{&MsgPointFromInt, msgSendAddr}, {&MsgLineFragment, stret}, {&MsgGlyphAtPoint, msgSendAddr}, {&msgSuperPoint, msgSendSuperAddr}, {&msgSuperRect, superStret},
 			{&MsgRangeToRect, stret}, {&MsgRangeRange, msgSendAddr}, {&MsgRange, msgSendAddr},
 			{&MsgInitRect, msgSendAddr}, {&MsgInitRectID, msgSendAddr}, {&MsgRectToID, msgSendAddr}, {&MsgRectIDVoid, msgSendAddr}, {&MsgRectIDUint, msgSendAddr}, {&MsgInitWindow, msgSendAddr}, {&MsgColor, msgSendAddr},
-			{&MsgFloatID, msgSendAddr}, {&MsgFloat2ID, msgSendAddr}, {&MsgFloat4ID, msgSendAddr}, {&MsgIDFloatID, msgSendAddr}, {&MsgFloatIDID, msgSendAddr},
+			{&MsgFloatID, msgSendAddr}, {&MsgFloat2ID, msgSendAddr}, {&MsgFloat4ID, msgSendAddr}, {&MsgTargetTimer, msgSendAddr}, {&MsgIDFloatID, msgSendAddr}, {&MsgFloatIDID, msgSendAddr},
 			{&MsgSetFloatInt, msgSendAddr}, {&MsgFloatInt, msgSendAddr},
 			{&MsgSetEdges, msgSendAddr}, {&MsgSetTransform, msgSendAddr},
 			{&MsgOtherEvent, msgSendAddr}, {&MsgPopUpMenu, msgSendAddr}, {&MsgMouseEvent, msgSendAddr},

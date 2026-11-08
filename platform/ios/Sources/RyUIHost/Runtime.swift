@@ -453,6 +453,8 @@ final class RyUITextField: UITextField {
             view = RyUIAccessoryView(frame: .zero)
         case .canvas:
             view = RyUICanvasView(frame: .zero)
+        case .shader:
+            view = makeShader()
         case .text:
             let l = RyUILabel()
             l.numberOfLines = 0

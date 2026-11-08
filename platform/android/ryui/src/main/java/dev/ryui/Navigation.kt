@@ -819,6 +819,14 @@ fun RyUIRuntime.setNavProp(n: RyUINode, prop: Int, v: Any): Boolean {
             }
         }
         RyUIKind.TABS -> if (prop == RyUIProp.Tabs.SELECTED) (n.view as RyUITabs).select((v as Long).toInt()) else return false
+        RyUIKind.SHADER -> (n.view as RyUIShaderView).let {
+            when (prop) {
+                RyUIProp.Shader.SOURCE -> it.source = v as String
+                RyUIProp.Shader.ANIMATED -> it.animated = v as Boolean
+                RyUIProp.Shader.UNIFORMS -> it.setUniforms(v as java.nio.ByteBuffer)
+                else -> return false
+            }
+        }
         RyUIKind.SPLIT -> (n.view as RyUISplit).let {
             when (prop) {
                 RyUIProp.Split.ITEMS -> it.setItems(v as java.nio.ByteBuffer)

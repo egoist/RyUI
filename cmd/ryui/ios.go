@@ -230,6 +230,7 @@ func (t *iosToolchain) buildHost(work string, app *goApp, features []string) (st
 var iosFeatures = []struct{ flag, symbol string }{
 	{"RYUI_WEBVIEW", "github.com/egoist/ryui/ui.WebView"},
 	{"RYUI_VIDEO", "github.com/egoist/ryui/ui.Video"},
+	{"RYUI_SHADER", "github.com/egoist/ryui/ui.Shader"},
 	{"RYUI_PHOTOS", "github.com/egoist/ryui/device.PickPhotos"},
 	{"RYUI_BROWSER", "github.com/egoist/ryui/device.Browse"},
 	{"RYUI_WEBAUTH", "github.com/egoist/ryui/webauth.Start"},

@@ -68,8 +68,8 @@ func SplitView(p SplitViewProps) Node {
 	}
 	signal.RenderEffect(func() {
 		b := encodeSidebar(p.Sections)
-		if !bytes.Equal(b, e.sidebar) {
-			e.sidebar = b
+		if !bytes.Equal(b, e.encoded) {
+			e.encoded = b
 			r.batch.SetBytes(e.id, ops.PropSplitItems, b)
 		}
 	})

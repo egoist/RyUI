@@ -50,7 +50,7 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 		return
 	}
 	switch kind {
-	case ops.KindView, ops.KindSelectable, ops.KindText, ops.KindSymbol, ops.KindShape, ops.KindCanvas,
+	case ops.KindView, ops.KindSelectable, ops.KindText, ops.KindSymbol, ops.KindShape, ops.KindCanvas, ops.KindShader,
 		ops.KindProgress, ops.KindActivity, ops.KindImage:
 		n.hwnd = h.makeView(0)
 		switch kind {

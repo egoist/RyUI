@@ -92,7 +92,7 @@ type element struct {
 	h       *handlers
 	list    listImpl
 	text    string // Text's text or Button's title, for the measure cache
-	sidebar []byte // a SplitView's Items, as last sent
+	encoded []byte // a prop encoded, kept to compare or reuse (a SplitView's Items, a Shader's Uniforms)
 	variant int32
 
 	// Host-sized layout roots (screens, tab pages, sheets) have their own

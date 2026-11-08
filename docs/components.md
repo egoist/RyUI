@@ -642,6 +642,45 @@ chart.View(chart.Props{
 - Screen readers read the chart as one image: its `Label`, then each
   series' values, whole.
 
+### Shaders
+
+`ui.Shader` is a box a GPU program draws, under its children: flowing
+gradients, noise, glows, ripples. Its `Source` is one function, the
+color of each point:
+
+```go
+ui.Shader(ui.ShaderProps{
+	Source: `
+float4 shade(float2 uv) {
+	float d = distance(uv, float2(0.5, 0.5));
+	float glow = smoothstep(0.5, 0.0, d) * (0.8 + 0.2 * sin(time * 2.0));
+	return float4(tint.rgb * glow, 1.0);
+}`,
+	Uniforms: ui.Val([]ui.Uniform{ui.ColorUniform("tint", ui.Hex(0x38bdf8))}),
+	Animated: true,
+	Style:    ui.Style{Height: ui.Pt(200), CornerRadius: 16, Clip: true, Background: ui.Hex(0x0b1030)},
+})
+```
+
+- `uv` goes from 0,0 at the top left to 1,1 at the bottom right; the
+  function returns red, green, blue and alpha, 0 to 1.
+- It reads `time` (seconds since it was shown), `size` (points) and its
+  `Uniforms` by name, each a `float4`. A uniform's change draws it again.
+- `Animated` runs `time`: it's drawn at every frame the display draws,
+  on the GPU, with nothing running in Go.
+- The source is written in what Metal's language and AGSL share:
+  `float`, `float2`, `float3`, `float4`, their constructors and swizzles,
+  `mix`, `smoothstep`, `step`, `clamp`, `fract`, `floor`, `mod`, `sin`,
+  `cos`, `atan(y, x)`, `pow`, `length`, `distance`, `dot`, `normalize`,
+  functions of its own. Write numbers with a point (`2.0`): AGSL doesn't
+  turn integers into floats.
+
+It's Metal on iOS and macOS (a `CAMetalLayer`), and AGSL on Android 13
+and later (a `RuntimeShader`). Android before 13 and Windows have no
+shader to run it with: they show the box's `Background` alone, so give
+it one that stands in. A source that doesn't compile is logged, and
+shows the background too.
+
 ## Containers
 
 `ui.View` holds other views. `ui.Column` and `ui.Row` are views that

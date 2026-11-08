@@ -203,6 +203,7 @@ func registerTarget() {
 		Method("validateMenuItem:", func(self ID, _ SEL, item ID) bool { return h().validateMenuItem(item) }),
 		Method("boundsChanged:", func(self ID, _ SEL, n ID) { h().scrolled(Send(n, "object")) }),
 		Method("liveScrollEnded:", func(self ID, _ SEL, n ID) { h().settlePage(Send(n, "object")) }),
+		Method("shaderTick:", func(self ID, _ SEL, t ID) { h().shaderTick() }),
 		Method("popoverShouldClose:", func(self ID, _ SEL, p ID) bool { return h().popoverShouldClose(p) }),
 		Method("popoverDidClose:", func(self ID, _ SEL, n ID) { h().popoverClosed(Send(n, "object")) }),
 		Method("frameTick:", func(self ID, _ SEL, t ID) { h().tick() }),

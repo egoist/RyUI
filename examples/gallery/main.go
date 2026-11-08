@@ -357,6 +357,22 @@ func canvas() ui.Node {
 			g.Text(fmt.Sprintf("%.0f%%", v*100), cx, cy-8, ui.TextStyle{Size: 34, Weight: ui.Semibold, Align: ui.TextCenter})
 		}, ui.Style{Height: ui.Pt(170)}),
 		ui.Slider(ui.SliderProps{Value: level}),
+		// A GPU program: an aurora that flows, in the slider's hue.
+		ui.Shader(ui.ShaderProps{
+			Source: `
+float4 shade(float2 uv) {
+	float t = time * 0.4;
+	float wave = sin(uv.x * 6.0 + t) * 0.5 + sin(uv.x * 11.0 - t * 1.3) * 0.25;
+	float band = smoothstep(0.35, 0.0, abs(uv.y - 0.5 - wave * 0.18));
+	float3 sky = mix(float3(0.02, 0.03, 0.10), float3(0.05, 0.08, 0.22), uv.y);
+	return float4(sky + tint.rgb * band * (0.7 + 0.3 * sin(time + uv.x * 4.0)), 1.0);
+}`,
+			Uniforms: signal.Func(func() []ui.Uniform {
+				return []ui.Uniform{{Name: "tint", Value: [4]float32{0.2, float32(0.5 + level.Get()*0.5), 0.6, 1}}}
+			}),
+			Animated: true,
+			Style:    ui.Style{Height: ui.Pt(140), CornerRadius: 16, Clip: true, Background: ui.Hex(0x0b1030)},
+		}),
 	)
 }
 

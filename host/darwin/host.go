@@ -111,6 +111,7 @@ type node struct {
 	popover    *popover            // a Popover's
 	canvas     []byte              // a Canvas's display list
 	split      *split              // a SplitView's
+	shader     *shader             // a Shader's
 
 	// Interaction states and drag and drop (interaction.go).
 	hovered    bool
@@ -171,6 +172,7 @@ type Host struct {
 	dark          bool
 	lists         map[ID]*list
 	splits        map[ID]*node // SplitViews, by their sidebar's table
+	shaderTimer   ID           // animated Shaders' clock, while there are any
 	sidebarSource ID
 	editors       map[ID]ID         // each window's field editor (RyUIFieldEditor)
 	videos        map[ID]ops.NodeID // by AVPlayerItem
@@ -426,6 +428,10 @@ func (h *Host) destroy(id ops.NodeID) {
 	if n.split != nil {
 		delete(h.splits, n.split.table)
 	}
+	if n.shader != nil && n.shader.animated {
+		n.shader.animated = false
+		defer h.updateShaderClock() // once it's gone from the nodes
+	}
 	for _, c := range n.children {
 		c.parent = nil
 	}
@@ -626,6 +632,9 @@ func (h *Host) place(n *node, f [4]float32) {
 		h.scrollFromStart(keep, gap)
 	}
 	n.placed = true
+	if n.shader != nil {
+		h.layoutShader(n)
+	}
 	if n.hoverArea != 0 {
 		h.checkHover(n) // moved under the pointer
 	}

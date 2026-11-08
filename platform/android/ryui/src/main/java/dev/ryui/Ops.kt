@@ -41,7 +41,8 @@ object RyUIKind {
     const val ACCESSORY = 31
     const val CANVAS = 32
     const val SPLIT = 33
-    const val WINDOW = 34
+    const val SHADER = 34
+    const val WINDOW = 35
 
     fun name(kind: Int): String = when (kind) {
         1 -> "View"
@@ -77,7 +78,8 @@ object RyUIKind {
         31 -> "Accessory"
         32 -> "Canvas"
         33 -> "Split"
-        34 -> "Window"
+        34 -> "Shader"
+        35 -> "Window"
         else -> "Kind($kind)"
     }
 }
@@ -325,6 +327,12 @@ object RyUIProp {
         const val ITEMS = 64
         const val SELECTED = 65
         const val TITLE = 66
+    }
+
+    object Shader {
+        const val SOURCE = 64
+        const val UNIFORMS = 65
+        const val ANIMATED = 66
     }
 
     object Window {
