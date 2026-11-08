@@ -1,6 +1,7 @@
 package signal
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -337,4 +338,56 @@ func equalInts(a, b []int) bool {
 		}
 	}
 	return true
+}
+
+// Catch takes f's panic and its effects' panics, then and later; the
+// effect keeps running when what it read changes. Without a Catch, a
+// panic goes up.
+func TestCatch(t *testing.T) {
+	n := New(0)
+	var errs []any
+	var stop func()
+	Root(func(dispose func()) {
+		stop = dispose
+		Catch(func() {
+			Effect(func() {
+				if v := n.Get(); v%2 == 1 {
+					panic(v)
+				}
+			})
+		}, func(err any) { errs = append(errs, err) })
+	})
+	n.Set(1)
+	n.Set(2)
+	n.Set(3)
+	Root(func(dispose func()) {
+		defer dispose()
+		Catch(func() { panic("build") }, func(err any) { errs = append(errs, err) })
+		// A handler that panics hands it to the Catch around it.
+		Catch(func() {
+			Catch(func() { panic("inner") }, func(err any) { panic(fmt.Sprint("handler: ", err)) })
+		}, func(err any) { errs = append(errs, err) })
+	})
+	stop()
+	if fmt.Sprint(errs) != "[1 3 build handler: inner]" {
+		t.Fatalf("caught %v", errs)
+	}
+	defer func() {
+		if recover() != "up" {
+			t.Fatal("a panic outside Catch was caught")
+		}
+	}()
+	Effect(func() { panic("up") })
+}
+
+// An effect outside a Catch still allocates nothing to re-run.
+func TestCatchCostsNothingOutside(t *testing.T) {
+	n := New(0)
+	Root(func(dispose func()) {
+		defer dispose()
+		Effect(func() { n.Get() })
+		if a := testing.AllocsPerRun(100, func() { n.Set(n.Peek() + 1) }); a != 0 {
+			t.Fatalf("%v allocations per run", a)
+		}
+	})
 }
