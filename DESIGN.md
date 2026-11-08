@@ -1229,6 +1229,24 @@ Each one ends with its examples running and its tests in CI.
   - A text's and a field's padding inside their frames (`ContentInset`).
   - `examples/chat` and `examples/mail`.
 
+  - More mobile APIs: `ui.OnBack` (screens, sheets, popovers and
+    the app take the user's going back: `navigationItem.backAction`,
+    `isModalInPresentation`, Android's back callbacks, `BackExit`);
+    `Environment.ScreenReader` and `ui.AccessibilityFocus`; `ui.Catch`
+    (an error boundary: `signal.Catch` owners recover their effects'
+    panics, effects outside every Catch run with no recover); tooltips;
+    `ScrollProps.Paging` and `ui.PageControl`; `ui.Popover` (a
+    content-sized layout root, `fits`); `TextFieldProps.Accessory` (a
+    full-width content-sized root: `inputAccessoryView`, and a bar on the
+    keyboard on Android); `ui.Canvas` (a display list, re-recorded with no
+    allocation) and `ryui/chart` on it; `ui.Shader` (one `shade` function
+    in what Metal's language and AGSL share); `ui.SplitView`
+    (`UISplitViewController`, collapsing into a stack on iPhone; Material's
+    navigation drawer; `Replace` resets a stack at once); springs with
+    `Damping` and `Velocity`, `Delay` and `OnDone`; `ToggleProps.Checkbox`;
+    named `ContentType`s; and embedding in an existing app
+    (`ryui build -ios -xcframework`, `ryui build -android -aar`).
+
   docs/parity.md has what RyUI has against SwiftUI and Expo;
   docs/device-checklist.md, what's left to check on real devices.
 
