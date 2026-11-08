@@ -45,6 +45,8 @@ func App() ui.Node {
 					OnPress: func() { nav.Push(settings, ui.ScreenOptions{Title: ui.Val("Settings")}) }}),
 				ui.Button(ui.ButtonProps{Title: ui.Val("Open the photos (a grid)"), Icon: ui.IconPhoto, Variant: ui.ButtonBordered,
 					OnPress: func() { nav.Push(photos, ui.ScreenOptions{Title: ui.Val("Photos")}) }}),
+				ui.Button(ui.ButtonProps{Title: ui.Val("Open an editor (asks before leaving)"), Icon: ui.IconCompose, Variant: ui.ButtonBordered,
+					OnPress: func() { nav.Push(editor, ui.ScreenOptions{Title: ui.Val("Editor")}) }}),
 				ui.Button(ui.ButtonProps{Title: ui.Val("Open the camera"), Icon: ui.IconCamera, Variant: ui.ButtonBordered,
 					OnPress: func() { nav.Push(cameraScreen, ui.ScreenOptions{Title: ui.Val("Camera")}) }}),
 				ui.Button(ui.ButtonProps{Title: ui.Val("Open a web page"), Icon: ui.IconGlobe, Variant: ui.ButtonBordered,
@@ -262,6 +264,30 @@ func controls() ui.Node {
 		),
 		ui.Wheel(ui.WheelProps{Items: ui.Val(sizes), Selected: size}),
 		ui.Text(signal.Func(func() string { return "Size: " + sizes[size.Get()] }), ui.Style{Color: ui.SecondaryLabel}),
+	)
+}
+
+// editor asks before going back with unsaved text (ui.OnBack).
+func editor() ui.Node {
+	text := signal.New("")
+	saved := signal.New("")
+	nav := ui.UseNavigator()
+	ui.OnBack(func() bool {
+		if text.Peek() == saved.Peek() {
+			return false
+		}
+		ui.Alert(ui.AlertProps{Title: "Discard your changes?", Actions: []ui.Action{
+			{Title: ui.Val("Keep editing"), Role: ui.ActionCancel},
+			{Title: ui.Val("Discard"), Role: ui.ActionDestructive, OnPress: func() {
+				saved.Set(text.Peek())
+				nav.Pop()
+			}},
+		}})
+		return true
+	})
+	return ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 12},
+		ui.TextField(ui.TextFieldProps{Value: text, Placeholder: ui.Val("Type, then go back"), Multiline: true}),
+		ui.Button(ui.ButtonProps{Title: ui.Val("Save"), Variant: ui.ButtonFilled, OnPress: func() { saved.Set(text.Peek()) }}),
 	)
 }
 
