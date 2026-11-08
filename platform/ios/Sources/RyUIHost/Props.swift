@@ -471,6 +471,8 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             (n.view as? RyUITextView)?.autocorrectionType = a
         case (.textField, RyUIProp.TextField.accessory):
             setAccessory(n, UInt32(truncatingIfNeeded: v.int))
+        case (.canvas, RyUIProp.Canvas.commands):
+            if case .bytes(let b) = v { (n.view as? RyUICanvasView)?.commands = Array(b) }
         case (.accessory, RyUIProp.Accessory.width):
             n.view.frame.size.width = CGFloat(v.float)
         case (.accessory, RyUIProp.Accessory.height):

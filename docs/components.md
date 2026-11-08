@@ -578,6 +578,39 @@ func progressRing(done signal.Accessor[float32]) ui.Node {
 }
 ```
 
+### Canvas
+
+`ui.Canvas` draws what the app draws: a chart, a gauge, a signature, a
+game's board, whatever no view is. Its function draws with a
+`*ui.Graphics`, in points from its top left:
+
+```go
+ui.Canvas(func(g *ui.Graphics) {
+	w, h := g.Size()
+	g.Fill(g.Path().RoundedRect(0, 0, w, h, 12), ui.SecondaryBackground)
+	g.Fill(g.Path().RoundedRect(0, 0, w*level.Get(), h, 12), ui.Accent)
+	g.Text(fmt.Sprintf("%.0f%%", level.Get()*100), w/2, h/2+6, ui.TextStyle{Weight: ui.Semibold, Align: ui.TextCenter})
+}, ui.Style{Height: ui.Pt(36)})
+```
+
+- `g.Path()` is a path to build (as a Shape's), reused from draw to draw.
+- `Fill`, `Stroke` (a `StrokeStyle`: width, caps, joins, dashes) and
+  `FillGradient` paint a path; `Text` draws a line of text, its baseline
+  at y, its left edge, center or right edge at x.
+- `Save` and `Restore` bracket `Translate`, `Scale`, `Rotate` (degrees,
+  clockwise), `Clip` and `Opacity`.
+- Colors can be semantic (`ui.Label`, `ui.Separator`, `ui.Accent`):
+  they follow dark mode.
+
+It draws once it's laid out, and again when its size changes or the
+signals the function read change, like an effect. Each draw records a
+display list, sent only when it differs from the last, and the platform
+replays it: Core Graphics on iOS and macOS, Android's `Canvas`, GDI+ on
+Windows. Recording allocates nothing once the canvas has drawn as much
+before. A canvas has no presses of its own: wrap it in a `ui.View` with
+`OnPress` or `OnPan`, which report points in its coordinates. It isn't
+read by screen readers: give the view around it a `Label`.
+
 ## Containers
 
 `ui.View` holds other views. `ui.Column` and `ui.Row` are views that

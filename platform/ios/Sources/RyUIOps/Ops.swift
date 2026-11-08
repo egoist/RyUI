@@ -34,7 +34,8 @@ public enum RyUIKind: UInt16 {
     case pageControl = 29
     case popover = 30
     case accessory = 31
-    case window = 32
+    case canvas = 32
+    case window = 33
 
     public var name: String {
         switch self {
@@ -69,6 +70,7 @@ public enum RyUIKind: UInt16 {
         case .pageControl: return "PageControl"
         case .popover: return "Popover"
         case .accessory: return "Accessory"
+        case .canvas: return "Canvas"
         case .window: return "Window"
         }
     }
@@ -307,6 +309,10 @@ public enum RyUIProp {
     public enum Accessory {
         public static let width: UInt16 = 64
         public static let height: UInt16 = 65
+    }
+
+    public enum Canvas {
+        public static let commands: UInt16 = 64
     }
 
     public enum Window {
@@ -592,6 +598,21 @@ public enum RyUILineJoin: Int32 {
     case miter = 0
     case round = 1
     case bevel = 2
+}
+
+public enum RyUICanvasOp: Int32 {
+    case end = 0
+    case save = 1
+    case restore = 2
+    case translate = 3
+    case scale = 4
+    case rotate = 5
+    case alpha = 6
+    case clip = 7
+    case fill = 8
+    case stroke = 9
+    case gradient = 10
+    case text = 11
 }
 
 public enum RyUIAnimationCurve: Int32 {

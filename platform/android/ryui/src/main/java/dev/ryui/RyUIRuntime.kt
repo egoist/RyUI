@@ -687,6 +687,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
             RyUIKind.PROGRESS -> makeProgress()
             RyUIKind.PAGE_CONTROL -> RyUIPageDots(this, id)
             RyUIKind.ACCESSORY -> RyUIContainer(ctx)
+            RyUIKind.CANVAS -> RyUICanvas(this)
             RyUIKind.DATE_PICKER -> RyUIDatePicker(this, id)
             RyUIKind.STACK -> RyUIStack(ctx, id, this)
             RyUIKind.TABS -> RyUITabs(ctx, id, this)

@@ -98,3 +98,38 @@ func TestAccessoryOnMac(t *testing.T) {
 		}
 	})
 }
+
+// A canvas draws its display list: a red fill on its left half, green on
+// its right, read back from the view rendered into a bitmap.
+func TestCanvas(t *testing.T) {
+	h, _ := mount(t, func() ui.Node {
+		return ui.Canvas(func(g *ui.Graphics) {
+			w, ht := g.Size()
+			g.Fill(g.Path().Rect(0, 0, w/2, ht), ui.RGB(255, 0, 0))
+			g.Save()
+			g.Translate(w/2, 0)
+			g.Fill(g.Path().Rect(0, 0, w/2, ht), ui.RGB(0, 255, 0))
+			g.Restore()
+			g.Text("Hi", w/2, ht/2, ui.TextStyle{Align: ui.TextCenter})
+		}, ui.Style{Width: ui.Pt(100), Height: ui.Pt(40)})
+	})
+	onMain(func() {
+		c := find(h, ops.KindCanvas)[0]
+		if len(c.canvas) == 0 {
+			fatal(t, "no display list")
+		}
+		b := MsgRect(c.view, Sel("bounds"))
+		rep := MsgRectToID(c.view, Sel("bitmapImageRepForCachingDisplayInRect:"), b)
+		MsgRectIDVoid(c.view, Sel("cacheDisplayInRect:toBitmapImageRep:"), b, rep)
+		px := func(x, y int) ops.Color {
+			return h.goColor(Send(rep, "colorAtX:y:", uintptr(x), uintptr(y)))
+		}
+		k := int(SendInt(rep, "pixelsWide")) / 100
+		if r, g, _, _, _ := px(10*k, 35*k).RGBA(); r < 200 || int(r)-int(g) < 100 { // a color space away from pure red
+			fatalf(t, "left %v", px(10*k, 35*k))
+		}
+		if r, g, _, _, _ := px(90*k, 35*k).RGBA(); g < 200 || int(g)-int(r) < 100 {
+			fatalf(t, "right %v", px(90*k, 35*k))
+		}
+	})
+}

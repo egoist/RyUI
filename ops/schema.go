@@ -289,6 +289,9 @@ var Schema = SchemaDef{
 			{Name: "Width", Type: TFloat, Doc: "its content's size, in points, as the core laid it out (as wide as the root)"},
 			{Name: "Height", Type: TFloat},
 		}, Doc: "a TextField's bar over the keyboard (TextField's Accessory), a layout root of its own: UIKit's inputAccessoryView, moving with the keyboard and its interactive dismissal; on Android a bar on top of the keyboard, following it frame by frame, while the field is focused; desktops, with no on-screen keyboard, don't show it"},
+		{Name: "Canvas", Props: []PropDef{
+			{Name: "Commands", Type: TBytes, Doc: "what it draws, in points from its top left, in order: per command a u8 CanvasOp and its arguments. Save, Restore: none; Translate, Scale: f32 x, y; Rotate: f32 degrees, clockwise; Alpha: f32 (multiplies what's drawn after); Clip: a path; Fill: u64 color, a path; Stroke: u64 color, f32 width, u8 LineCap, u8 LineJoin, u32 dash count, f32 dash phase, f32 each dash, a path; Gradient: u32 stop count, per stop u64 color and f32 location, f32 start x, y, end x, y, a path (filled); Text: u64 color, f32 size, u8 FontWeight, u8 TextAlign (Start: its left edge at x, Center, End: its right edge at x), f32 x, y (its baseline), u32-length string. A path is u32 length, then Shape's Path format. Colors may be semantic, resolved in the view's appearance"},
+		}, Doc: "drawn by the app (SwiftUI's Canvas; Compose's and Android's Canvas): a display list replayed with Core Graphics, Android's Canvas, GDI+; it takes the size its style gives it"},
 		{Name: "Window", Props: []PropDef{
 			{Name: "Title", Type: TString},
 			{Name: "Width", Type: TFloat, Doc: "its content's width when it opens, in points (0: the host's default)"},
@@ -411,6 +414,7 @@ var Schema = SchemaDef{
 		{Name: "PathOp", Values: []string{"End", "Move", "Line", "Quad", "Cubic", "Close", "Rect", "RoundedRect", "Ellipse", "Arc"}},
 		{Name: "LineCap", Values: []string{"Butt", "Round", "Square"}},
 		{Name: "LineJoin", Values: []string{"Miter", "Round", "Bevel"}},
+		{Name: "CanvasOp", Values: []string{"End", "Save", "Restore", "Translate", "Scale", "Rotate", "Alpha", "Clip", "Fill", "Stroke", "Gradient", "Text"}},
 		{Name: "AnimationCurve", Values: []string{"EaseInOut", "Linear", "EaseIn", "EaseOut", "Spring"}},
 		{Name: "ColorScheme", Values: []string{"System", "Light", "Dark"}},
 		{Name: "SemanticColor", Values: []string{"None", "Label", "SecondaryLabel", "TertiaryLabel", "Background", "SecondaryBackground", "GroupedBackground", "Separator", "Accent", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink", "Gray", "Clear", "SecondaryGroupedBackground", "OnAccent"}},

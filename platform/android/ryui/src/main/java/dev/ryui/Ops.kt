@@ -39,7 +39,8 @@ object RyUIKind {
     const val PAGE_CONTROL = 29
     const val POPOVER = 30
     const val ACCESSORY = 31
-    const val WINDOW = 32
+    const val CANVAS = 32
+    const val WINDOW = 33
 
     fun name(kind: Int): String = when (kind) {
         1 -> "View"
@@ -73,7 +74,8 @@ object RyUIKind {
         29 -> "PageControl"
         30 -> "Popover"
         31 -> "Accessory"
-        32 -> "Window"
+        32 -> "Canvas"
+        33 -> "Window"
         else -> "Kind($kind)"
     }
 }
@@ -310,6 +312,10 @@ object RyUIProp {
     object Accessory {
         const val WIDTH = 64
         const val HEIGHT = 65
+    }
+
+    object Canvas {
+        const val COMMANDS = 64
     }
 
     object Window {
@@ -595,6 +601,21 @@ object RyUILineJoin {
     const val MITER = 0
     const val ROUND = 1
     const val BEVEL = 2
+}
+
+object RyUICanvasOp {
+    const val END = 0
+    const val SAVE = 1
+    const val RESTORE = 2
+    const val TRANSLATE = 3
+    const val SCALE = 4
+    const val ROTATE = 5
+    const val ALPHA = 6
+    const val CLIP = 7
+    const val FILL = 8
+    const val STROKE = 9
+    const val GRADIENT = 10
+    const val TEXT = 11
 }
 
 object RyUIAnimationCurve {

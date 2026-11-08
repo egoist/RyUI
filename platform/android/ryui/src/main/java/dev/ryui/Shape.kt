@@ -78,46 +78,8 @@ class RyUIShape(private val rt: RyUIRuntime) : View(rt.themed) {
 
     /** The path from its wire format: u8 PathOp, then its f32 arguments, in points. */
     fun setPath(b: ByteBuffer) {
-        val r = b.duplicate().order(ByteOrder.LITTLE_ENDIAN)
-        val d = rt.density
-        fun f() = r.float * d
         path.reset()
-        while (r.remaining() > 0) {
-            when (r.get().toInt()) {
-                RyUIPathOp.MOVE -> path.moveTo(f(), f())
-                RyUIPathOp.LINE -> path.lineTo(f(), f())
-                RyUIPathOp.QUAD -> path.quadTo(f(), f(), f(), f())
-                RyUIPathOp.CUBIC -> path.cubicTo(f(), f(), f(), f(), f(), f())
-                RyUIPathOp.CLOSE -> path.close()
-                RyUIPathOp.RECT -> { val x = f(); val y = f(); path.addRect(x, y, x + f(), y + f(), Path.Direction.CW) }
-                RyUIPathOp.ROUNDED_RECT -> {
-                    val x = f(); val y = f(); val w = f(); val h = f()
-                    val rad = minOf(f(), w / 2, h / 2)
-                    path.addRoundRect(RectF(x, y, x + w, y + h), rad, rad, Path.Direction.CW)
-                }
-                RyUIPathOp.ELLIPSE -> { val x = f(); val y = f(); path.addOval(RectF(x, y, x + f(), y + f()), Path.Direction.CW) }
-                RyUIPathOp.ARC -> {
-                    val cx = f(); val cy = f(); val rad = f()
-                    val s = Math.toDegrees(r.float.toDouble()).toFloat()
-                    val e = Math.toDegrees(r.float.toDouble()).toFloat()
-                    val cw = r.float != 0f
-                    // Degrees, clockwise on the screen, from the start; going
-                    // the other way, the sweep is negative.
-                    var sweep = e - s
-                    if (cw && sweep < 0) sweep += 360f
-                    if (!cw && sweep > 0) sweep -= 360f
-                    val oval = RectF(cx - rad, cy - rad, cx + rad, cy + rad)
-                    if (kotlin.math.abs(sweep) >= 360f) {
-                        // A whole circle: arcTo takes 360° for none, so two halves.
-                        path.arcTo(oval, s, sweep / 2, false)
-                        path.arcTo(oval, s + sweep / 2, sweep / 2, false)
-                    } else {
-                        path.arcTo(oval, s, sweep, false)
-                    }
-                }
-                else -> break
-            }
-        }
+        readPath(b.duplicate().order(ByteOrder.LITTLE_ENDIAN), path, rt.density)
         invalidate()
     }
 
@@ -169,4 +131,45 @@ fun RyUIRuntime.setShapeProp(n: RyUINode, prop: Int, v: Any): Boolean {
         else -> return false
     }
     return true
+}
+
+/** Reads a path in its wire format (u8 PathOp, then its f32 arguments, in points) into path, in pixels, to r's end. */
+fun readPath(r: ByteBuffer, path: Path, d: Float) {
+    fun f() = r.float * d
+    while (r.remaining() > 0) {
+        when (r.get().toInt()) {
+            RyUIPathOp.MOVE -> path.moveTo(f(), f())
+            RyUIPathOp.LINE -> path.lineTo(f(), f())
+            RyUIPathOp.QUAD -> path.quadTo(f(), f(), f(), f())
+            RyUIPathOp.CUBIC -> path.cubicTo(f(), f(), f(), f(), f(), f())
+            RyUIPathOp.CLOSE -> path.close()
+            RyUIPathOp.RECT -> { val x = f(); val y = f(); path.addRect(x, y, x + f(), y + f(), Path.Direction.CW) }
+            RyUIPathOp.ROUNDED_RECT -> {
+                val x = f(); val y = f(); val w = f(); val h = f()
+                val rad = minOf(f(), w / 2, h / 2)
+                path.addRoundRect(RectF(x, y, x + w, y + h), rad, rad, Path.Direction.CW)
+            }
+            RyUIPathOp.ELLIPSE -> { val x = f(); val y = f(); path.addOval(RectF(x, y, x + f(), y + f()), Path.Direction.CW) }
+            RyUIPathOp.ARC -> {
+                val cx = f(); val cy = f(); val rad = f()
+                val s = Math.toDegrees(r.float.toDouble()).toFloat()
+                val e = Math.toDegrees(r.float.toDouble()).toFloat()
+                val cw = r.float != 0f
+                // Degrees, clockwise on the screen, from the start; going
+                // the other way, the sweep is negative.
+                var sweep = e - s
+                if (cw && sweep < 0) sweep += 360f
+                if (!cw && sweep > 0) sweep -= 360f
+                val oval = RectF(cx - rad, cy - rad, cx + rad, cy + rad)
+                if (kotlin.math.abs(sweep) >= 360f) {
+                    // A whole circle: arcTo takes 360° for none, so two halves.
+                    path.arcTo(oval, s, sweep / 2, false)
+                    path.arcTo(oval, s + sweep / 2, sweep / 2, false)
+                } else {
+                    path.arcTo(oval, s, sweep, false)
+                }
+            }
+            else -> break
+        }
+    }
 }

@@ -63,6 +63,7 @@ func App() ui.Node {
 				fonts(),
 				images(),
 				shapes(),
+				canvas(),
 				video(),
 				textInput(),
 				controls(),
@@ -288,13 +289,13 @@ func editor() ui.Node {
 	})
 	var field ui.Node
 	field = ui.TextField(ui.TextFieldProps{Value: text, Placeholder: ui.Val("Type, then go back"), Multiline: true,
-			// A bar on the keyboard: a count, and Done.
-			Accessory: func() ui.Node {
-				return ui.Row(ui.Style{Padding: ui.Symmetric(6, 16), Align: ui.AlignCenter, Material: ui.MaterialBar},
-					ui.Text(signal.Func(func() string { return fmt.Sprintf("%d characters", len([]rune(text.Get()))) }),
-						ui.Style{Grow: 1, Color: ui.SecondaryLabel, Font: ui.Footnote}),
-					ui.Button(ui.ButtonProps{Title: ui.Val("Done"), OnPress: func() { ui.Blur(field) }}))
-			}})
+		// A bar on the keyboard: a count, and Done.
+		Accessory: func() ui.Node {
+			return ui.Row(ui.Style{Padding: ui.Symmetric(6, 16), Align: ui.AlignCenter, Material: ui.MaterialBar},
+				ui.Text(signal.Func(func() string { return fmt.Sprintf("%d characters", len([]rune(text.Get()))) }),
+					ui.Style{Grow: 1, Color: ui.SecondaryLabel, Font: ui.Footnote}),
+				ui.Button(ui.ButtonProps{Title: ui.Val("Done"), OnPress: func() { ui.Blur(field) }}))
+		}})
 	return ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 12},
 		field,
 		ui.Button(ui.ButtonProps{Title: ui.Val("Save"), Variant: ui.ButtonFilled, OnPress: func() { saved.Set(text.Peek()) }}),
@@ -314,6 +315,31 @@ func popover() ui.Node {
 				ui.Button(ui.ButtonProps{Title: ui.Val("Done"), Variant: ui.ButtonTinted, OnPress: func() { open.Set(false) }}))
 		}}, ui.Button(ui.ButtonProps{Icon: ui.Icon("info.circle"), Label: ui.Val("About"), Tooltip: ui.Val("About"),
 			OnPress: func() { open.Set(true) }})))
+}
+
+// canvas is a gauge drawn by the app, following a slider.
+func canvas() ui.Node {
+	level := signal.New(0.62)
+	return section("Canvas",
+		ui.Canvas(func(g *ui.Graphics) {
+			w, h := g.Size()
+			cx, cy := w/2, h-12
+			r := min(w/2, cy) - 10 // room for half the stroke
+			track := g.Path().Arc(cx, cy, r, math.Pi, 2*math.Pi, true)
+			g.Stroke(track, ui.SecondaryBackground, ui.StrokeStyle{Width: 14, Cap: ui.CapRound})
+			v := float32(level.Get())
+			arc := g.Path().Arc(cx, cy, r, math.Pi, math.Pi*float32(1+v), true)
+			g.Stroke(arc, ui.Accent, ui.StrokeStyle{Width: 14, Cap: ui.CapRound})
+			for i := 0; i <= 10; i++ {
+				a := math.Pi * (1 + float64(i)/10)
+				x0, y0 := cx+float32(math.Cos(a))*(r-22), cy+float32(math.Sin(a))*(r-22)
+				x1, y1 := cx+float32(math.Cos(a))*(r-30), cy+float32(math.Sin(a))*(r-30)
+				g.Stroke(g.Path().MoveTo(x0, y0).LineTo(x1, y1), ui.TertiaryLabel, ui.StrokeStyle{Width: 2, Cap: ui.CapRound})
+			}
+			g.Text(fmt.Sprintf("%.0f%%", v*100), cx, cy-8, ui.TextStyle{Size: 34, Weight: ui.Semibold, Align: ui.TextCenter})
+		}, ui.Style{Height: ui.Pt(170)}),
+		ui.Slider(ui.SliderProps{Value: level}),
+	)
 }
 
 // pages is a carousel: a paging Scroll and a PageControl sharing a page.

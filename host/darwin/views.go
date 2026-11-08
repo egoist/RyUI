@@ -122,6 +122,8 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 		Send(v, "setAction:", uintptr(Sel("act:")))
 	case ops.KindPageControl:
 		v = h.makePageDots(n)
+	case ops.KindCanvas:
+		v = initView("RyUICanvasView")
 	case ops.KindAccessory:
 		// A field's bar over the keyboard: a Mac has no on-screen keyboard,
 		// so it's made and never shown.
@@ -256,6 +258,11 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 		}
 	case ops.KindPageControl:
 		h.setPageDots(n, p, v)
+	case ops.KindCanvas:
+		if p == ops.PropCanvasCommands {
+			n.canvas = append(n.canvas[:0], v.Bytes...)
+			Send(n.view, "setNeedsDisplay:", 1)
+		}
 		// Pull to refresh: not on macOS.
 	case ops.KindList:
 		n.list.setProp(h, n, p, v)

@@ -148,6 +148,7 @@ type node struct {
 	dying          bool
 	interceptBack  bool // ui.OnBack: going back asks the core (Back)
 	tooltip        string
+	canvas         []byte // a Canvas\'s display list
 	a11yLabel      string
 	colorValue     ops.Color
 	host           func(h *Host, n *node, m uint32, w, l uintptr) (uintptr, bool) // a host-made view's messages

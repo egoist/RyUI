@@ -801,6 +801,7 @@ fun RyUIRuntime.setNavProp(n: RyUINode, prop: Int, v: Any): Boolean {
             }
         }
         RyUIKind.TABS -> if (prop == RyUIProp.Tabs.SELECTED) (n.view as RyUITabs).select((v as Long).toInt()) else return false
+        RyUIKind.CANVAS -> if (prop == RyUIProp.Canvas.COMMANDS) (n.view as RyUICanvas).setCommands(v as java.nio.ByteBuffer) else return false
         RyUIKind.ACCESSORY -> when (prop) {
             RyUIProp.Accessory.HEIGHT -> n.accessory?.height = (v as Double).toFloat()
             RyUIProp.Accessory.WIDTH -> {}

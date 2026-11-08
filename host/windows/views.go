@@ -50,7 +50,7 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 		return
 	}
 	switch kind {
-	case ops.KindView, ops.KindSelectable, ops.KindText, ops.KindSymbol, ops.KindShape,
+	case ops.KindView, ops.KindSelectable, ops.KindText, ops.KindSymbol, ops.KindShape, ops.KindCanvas,
 		ops.KindProgress, ops.KindActivity, ops.KindImage:
 		n.hwnd = h.makeView(0)
 		switch kind {
@@ -261,6 +261,11 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 		if p == ops.PropScrollPaging {
 			n.paging = v.Int != 0
 			h.hideBars(n)
+		}
+	case ops.KindCanvas:
+		if p == ops.PropCanvasCommands {
+			n.canvas = append(n.canvas[:0], v.Bytes...)
+			h.redraw(n)
 		}
 	case ops.KindPageControl:
 		switch p {
