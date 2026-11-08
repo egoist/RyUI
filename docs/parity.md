@@ -53,6 +53,7 @@ what RyUI has for it.
 | Tabs | `TabView` | Tabs | ✓ `Tabs` |
 | Bar buttons, titles, search | `.toolbar`, `.searchable` | header options | ✓ `ScreenOptions` (`Actions`, `Search`) |
 | Sheets with detents | `.sheet`, `.presentationDetents` | modal | ✓ `Sheet` (`Detents`, `Grabber`) |
+| Taking back, preventing dismissal | `.navigationBarBackButtonHidden`, `.interactiveDismissDisabled` | `BackHandler`, `usePreventRemove` | ✓ `OnBack` (screens, sheets, the app) |
 | Alerts, action sheets | `.alert`, `.confirmationDialog` | `Alert` | ✓ `Alert` (both styles) |
 | Deep links, universal and app links | `.onOpenURL` | Linking | ✓ `OnOpenURL`, `ryui.json` scheme and links |
 | Pull to refresh, swipe actions | `.refreshable`, `.swipeActions` | `RefreshControl` | ✓ (both edges: `SwipeActions`, `LeadingSwipeActions`) |

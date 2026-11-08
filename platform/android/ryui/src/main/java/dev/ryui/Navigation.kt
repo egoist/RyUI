@@ -670,11 +670,12 @@ fun RyUIRuntime.activeStack(): RyUIStack? {
     return best
 }
 
-fun RyUIRuntime.makeBackCallback() = object : OnBackPressedCallback(false) {
+fun RyUIRuntime.makeBackCallback(): OnBackPressedCallback = object : OnBackPressedCallback(false) {
     private var stack: RyUIStack? = null
 
     override fun handleOnBackStarted(backEvent: BackEventCompat) {
-        stack = activeStack()?.also { it.backStarted() }
+        // A screen that takes back itself (ui.OnBack) isn't previewed popping.
+        stack = activeStack()?.takeIf { it.top?.intercepts != true }?.also { it.backStarted() }
     }
 
     override fun handleOnBackProgressed(backEvent: BackEventCompat) {
@@ -690,13 +691,37 @@ fun RyUIRuntime.makeBackCallback() = object : OnBackPressedCallback(false) {
         val s = stack ?: activeStack()
         stack = null
         if (s != null) userPop(s)
+        else nodes[rootID]?.takeIf { it.intercepts }?.let { emit(it.id, RyUIEventKind.BACK) { RyUIEvents.back(it.id) } }
     }
+}
+
+/** The core takes the user's going back from this screen, sheet or root (ui.OnBack). */
+val RyUINode.intercepts: Boolean get() = props[RyUIProp.INTERCEPT_BACK] == true
+
+/** The root's OnBack let Android's back go on: do what the system would have. */
+fun RyUIRuntime.backExit() {
+    val act = activity ?: return
+    back.isEnabled = false
+    act.onBackPressedDispatcher.onBackPressed()
+    updateBack()
+}
+
+/** A sheet's OnBack: Android's back, a tap outside and a swipe down ask the core rather than dismiss it. */
+fun RyUIRuntime.sheetIntercepts(n: RyUINode) {
+    val d = n.dialog as? BottomSheetDialog ?: return
+    val on = n.intercepts
+    d.setCancelable(!on) // not hideable by a swipe either
+    sheetBack[n.id]?.isEnabled = on
 }
 
 /** The user popped a stack's top screen: tell the core, which destroys it. */
 fun RyUIRuntime.userPop(s: RyUIStack) {
     val top = s.top ?: return
     if (s.screens.size < 2) return
+    if (top.intercepts) { // ui.OnBack: the core decides, and pops it if it goes
+        emit(top.id, RyUIEventKind.BACK) { RyUIEvents.back(top.id) }
+        return
+    }
     top.dying = true
     nodes[s.nodeID]?.children?.remove(top)
     s.remove(top, animated = true)
@@ -742,6 +767,7 @@ fun RyUIRuntime.destroyNav(n: RyUINode): Boolean {
             n.dying = true
             n.dialog?.dismiss()
             n.dialog = null
+            sheetBack.remove(n.id)
             return true
         }
     }
@@ -998,6 +1024,7 @@ private fun RyUIRuntime.presentSheet(act: RyUIActivity, n: RyUINode) {
     })
     val id = n.id
     d.setOnDismissListener {
+        sheetBack.remove(id)
         if (!n.dying) {
             n.dying = true
             emit(id, RyUIEventKind.DISMISSED) { RyUIEvents.dismissed(id) }
@@ -1012,7 +1039,20 @@ private fun RyUIRuntime.presentSheet(act: RyUIActivity, n: RyUINode) {
         if (shown && large) b.state = BottomSheetBehavior.STATE_EXPANDED
         screen.report()
     }
+    // ui.OnBack: what would dismiss it asks the core while it intercepts.
+    val back = object : androidx.activity.OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() { emit(id, RyUIEventKind.BACK) { RyUIEvents.back(id) } }
+    }
+    d.onBackPressedDispatcher.addCallback(back)
+    sheetBack[id] = back
+    d.setOnShowListener {
+        d.findViewById<View>(com.google.android.material.R.id.touch_outside)?.setOnClickListener {
+            if (n.intercepts) emit(id, RyUIEventKind.BACK) { RyUIEvents.back(id) }
+            else if (d.isShowing) d.cancel()
+        }
+    }
     n.dialog = d
+    sheetIntercepts(n)
     d.show()
 }
 

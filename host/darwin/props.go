@@ -303,6 +303,8 @@ func (h *Host) setCommon(n *node, p ops.PropID, v *ops.Value) {
 		if n.cell != nil {
 			n.cell.setSelected(v.Int != 0)
 		}
+	case ops.PropInterceptBack:
+		n.interceptBack = v.Int != 0 // ui.OnBack: the back button and Escape ask the core
 	case ops.PropTransition:
 		n.transition = nil
 		if len(v.Bytes) >= 13 {

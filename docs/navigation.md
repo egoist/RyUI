@@ -165,6 +165,57 @@ Each platform goes back its own way, and RyUI leaves it so:
 Whichever way the user goes back, the screen is disposed, as with
 `nav.Pop()`. Back closes an open sheet or dialog first.
 
+### Taking back yourself
+
+`ui.OnBack` lets a component decide, when the user goes back, whether
+to go: to ask before throwing away a draft, or to close something of
+the screen's own first (a search, an expanded panel). The handler
+returns true when it took the back; when every handler returns false,
+going back goes on.
+
+```go
+func editor() ui.Node {
+	dirty := signal.New(false)
+	nav := ui.UseNavigator()
+	ui.OnBack(func() bool {
+		if !dirty.Peek() {
+			return false // nothing to lose: the screen pops
+		}
+		ui.Alert(ui.AlertProps{
+			Title: "Discard changes?",
+			Actions: []ui.Action{
+				{Title: ui.Val("Keep editing"), Role: ui.ActionCancel},
+				{Title: ui.Val("Discard"), Role: ui.ActionDestructive, OnPress: func() {
+					dirty.Set(false)
+					nav.Pop()
+				}},
+			},
+		})
+		return true
+	})
+	// ...
+}
+```
+
+It belongs to where the component is built, and goes with it:
+
+- **A pushed screen**: its back button, Android's back, the edge swipe
+  on iOS. While the screen has a handler, iOS's swipe is off on it
+  (the swipe can't be asked, only stopped, as with UIKit's own apps)
+  and Android doesn't preview the pop. iOS's back button is the
+  screen's `backAction`.
+- **A sheet**: a swipe down, a tap outside, Android's back. While it
+  has a handler, the sheet can't be swiped away: trying asks the
+  handler (iOS's `isModalInPresentation`; a sheet that isn't cancelable
+  on Android). When the handler lets it go, the sheet closes and
+  `OnDismiss` runs, as if the user had dismissed it.
+- **Elsewhere** (outside any screen or sheet, or on a stack's first
+  screen, which back leaves): Android's back with no screen to pop,
+  where the app would otherwise close. iOS has no such back.
+
+The latest handler is asked first. `nav.Pop()` and closing a sheet from
+code don't ask: only the user's going back does.
+
 ## Tabs
 
 `ui.Tabs` shows one page at a time, with a tab bar: a

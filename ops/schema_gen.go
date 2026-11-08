@@ -123,6 +123,8 @@ const (
 	PropSelected PropID = 33
 	// PropMatch: a key it shares with another view: when one with the key is destroyed during an animation and another inserted, the new one comes in from the old one's place and size, and the old one goes out to the new one's, fading (SwiftUI's matchedGeometryEffect). The host notes where the views with keys are as an animated batch starts destroying, and matches them once the batch's frames are applied.
 	PropMatch PropID = 34
+	// PropInterceptBack: a Screen, Sheet or the root takes the user's going back itself (ui.OnBack): the host sends Back to it instead of popping the screen (its back button, Android's back; iOS's edge swipe is off while it's on top), dismissing the sheet (a swipe down, a tap outside, Android's back) or, for the root, leaving the app (Android's back with no screen to pop). Predictive back doesn't animate it.
+	PropInterceptBack PropID = 35
 )
 
 // View props.
@@ -397,7 +399,7 @@ const (
 	PropWindowMinHeight PropID = 68
 )
 
-var commonProps = [...]propInfo{{}, {"Background", TColor}, {"CornerRadius", TFloat}, {"BorderWidth", TFloat}, {"BorderColor", TColor}, {"Opacity", TFloat}, {"Hidden", TBool}, {"Clip", TBool}, {"A11yLabel", TString}, {"A11yHint", TString}, {"A11yRole", TEnum}, {"A11yActions", TBytes}, {"A11yAdjustable", TBool}, {"A11yHidden", TBool}, {"Color", TColor}, {"TextStyle", TEnum}, {"FontSize", TFloat}, {"FontWeight", TEnum}, {"TextAlign", TEnum}, {"LineLimit", TInt}, {"Disabled", TBool}, {"Menu", TBytes}, {"MenuTrigger", TEnum}, {"Transform", TBytes}, {"Shadow", TBytes}, {"Gradient", TBytes}, {"Transition", TBytes}, {"Material", TEnum}, {"FontFamily", TString}, {"SwipeActions", TBytes}, {"LayoutDirection", TEnum}, {"ContentInset", TEdges}, {"LeadingSwipeActions", TBytes}, {"Selected", TBool}, {"Match", TString}}
+var commonProps = [...]propInfo{{}, {"Background", TColor}, {"CornerRadius", TFloat}, {"BorderWidth", TFloat}, {"BorderColor", TColor}, {"Opacity", TFloat}, {"Hidden", TBool}, {"Clip", TBool}, {"A11yLabel", TString}, {"A11yHint", TString}, {"A11yRole", TEnum}, {"A11yActions", TBytes}, {"A11yAdjustable", TBool}, {"A11yHidden", TBool}, {"Color", TColor}, {"TextStyle", TEnum}, {"FontSize", TFloat}, {"FontWeight", TEnum}, {"TextAlign", TEnum}, {"LineLimit", TInt}, {"Disabled", TBool}, {"Menu", TBytes}, {"MenuTrigger", TEnum}, {"Transform", TBytes}, {"Shadow", TBytes}, {"Gradient", TBytes}, {"Transition", TBytes}, {"Material", TEnum}, {"FontFamily", TString}, {"SwipeActions", TBytes}, {"LayoutDirection", TEnum}, {"ContentInset", TEdges}, {"LeadingSwipeActions", TBytes}, {"Selected", TBool}, {"Match", TString}, {"InterceptBack", TBool}}
 
 var kindProps = [...][]propInfo{nil, {{"DropAccept", TBytes}, {"DragItems", TBytes}}, {{"Text", TString}}, {{"Title", TString}, {"Variant", TEnum}, {"Icon", TString}}, {{"Value", TString}, {"Placeholder", TString}, {"Keyboard", TEnum}, {"ReturnKey", TEnum}, {"Secure", TBool}, {"Autocapitalize", TEnum}, {"Autocorrect", TEnum}, {"ContentType", TString}, {"Multiline", TBool}, {"Plain", TBool}, {"Selection", TBytes}, {"Rich", TBytes}, {"PasteTypes", TBytes}}, {{"On", TBool}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}}, {{"Horizontal", TBool}, {"Refreshable", TBool}, {"Refreshing", TBool}}, {{"Refreshable", TBool}, {"Refreshing", TBool}, {"Columns", TInt}, {"Gap", TFloat}, {"Appearance", TEnum}, {"Inset", TFloat}, {"Anchor", TEnum}, {"Selecting", TBool}}, {{"Animating", TBool}}, {}, {{"Title", TString}, {"Actions", TBytes}, {"BackGesture", TBool}, {"Icon", TString}, {"Search", TString}, {"SearchText", TString}, {"SearchButton", TBool}, {"ZoomFrom", TString}, {"LargeTitle", TBool}, {"BarColor", TColor}}, {{"Selected", TInt}}, {{"Detents", TInt}, {"Grabber", TBool}}, {{"Title", TString}, {"Message", TString}, {"Buttons", TBytes}, {"Style", TEnum}}, {{"Source", TString}, {"Mode", TEnum}, {"Placeholder", TString}}, {{"Type", TString}, {"Prop", TBytes}}, {{"Content", TBytes}, {"Inlines", TBytes}}, {}, {{"Name", TString}}, {{"Segments", TBytes}, {"Selected", TInt}}, {{"Items", TBytes}, {"Selected", TInt}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}, {"Step", TFloat}}, {{"Value", TColor}, {"Alpha", TBool}, {"Title", TString}}, {{"Value", TFloat}, {"Indeterminate", TBool}}, {{"Path", TBytes}, {"Fill", TColor}, {"Stroke", TColor}, {"LineWidth", TFloat}, {"LineCap", TEnum}, {"LineJoin", TEnum}, {"TrimStart", TFloat}, {"TrimEnd", TFloat}, {"Dash", TBytes}}, {{"Source", TString}, {"Mode", TEnum}, {"HideControls", TBool}, {"AutoPlay", TBool}, {"Loop", TBool}, {"Muted", TBool}}, {{"URL", TString}, {"HTML", TString}, {"Preload", TString}, {"UserAgent", TString}, {"Block", TBytes}, {"Requests", TBool}}, {{"Value", TInt}, {"Mode", TEnum}, {"Min", TInt}, {"Max", TInt}, {"Inline", TBool}}, {{"Title", TString}, {"Width", TFloat}, {"Height", TFloat}, {"MinWidth", TFloat}, {"MinHeight", TFloat}}}
 
@@ -493,11 +495,13 @@ const (
 	EventRowInset EventKind = 50
 	// EventDragging: the view's drag (DragItems): a DragPhase. Began as it lifts, then Dropped (a target took it, the app's or another app's) or Cancelled.
 	EventDragging EventKind = 51
+	// EventBack: the user went back from a Screen, Sheet or the root with InterceptBack, which the host didn't do.
+	EventBack EventKind = 52
 )
 
-var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh", "Pan", "Pinch", "Rotate", "Swipe", "Loaded", "Failed", "Native", "Link", "A11yAction", "Adjust", "Ended", "Navigated", "Message", "IncomingURL", "FontLoaded", "Frame", "Result", "ColorChanged", "WebState", "Request", "Download", "NewWindow", "Shared", "Pressed", "Hover", "DragOver", "Drop", "SelectionChanged", "RichChanged", "Formats", "Pasted", "RowSelected", "RowSelectBegin", "RowInset", "Dragging"}
+var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh", "Pan", "Pinch", "Rotate", "Swipe", "Loaded", "Failed", "Native", "Link", "A11yAction", "Adjust", "Ended", "Navigated", "Message", "IncomingURL", "FontLoaded", "Frame", "Result", "ColorChanged", "WebState", "Request", "Download", "NewWindow", "Shared", "Pressed", "Hover", "DragOver", "Drop", "SelectionChanged", "RichChanged", "Formats", "Pasted", "RowSelected", "RowSelectBegin", "RowInset", "Dragging", "Back"}
 
-var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone, PGesture, PGesture, PGesture, PInt, PPoint, PString, PBytes, PString, PInt, PInt, PNone, PString, PString, PString, PString, PFloat, PBytes, PInt, PBytes, PString, PBytes, PString, PBytes, PBool, PBool, PGesture, PBytes, PBytes, PBytes, PBytes, PBytes, PBool, PNone, PPoint, PInt}
+var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone, PGesture, PGesture, PGesture, PInt, PPoint, PString, PBytes, PString, PInt, PInt, PNone, PString, PString, PString, PString, PFloat, PBytes, PInt, PBytes, PString, PBytes, PString, PBytes, PBool, PBool, PGesture, PBytes, PBytes, PBytes, PBytes, PBytes, PBool, PNone, PPoint, PInt, PNone}
 
 func (e EventKind) String() string {
 	if int(e) < len(eventNames) && e > 0 {
@@ -577,9 +581,11 @@ const (
 	CmdShareClose CommandID = 31
 	// CmdA11yFocus: sent to a view: a screen reader, if one is on, moves its focus there (UIAccessibility's screenChanged with the view; Android's ACTION_ACCESSIBILITY_FOCUS).
 	CmdA11yFocus CommandID = 32
+	// CmdBackExit: sent to the root: the app's OnBack handlers let the user's back go on from the root, so the host does what the system would have (Android's back: the activity finishes or goes to the background).
+	CmdBackExit CommandID = 33
 )
 
-var commandNames = [...]string{"", "Focus", "Blur", "ListUpdate", "Present", "Haptic", "AnimateBegin", "AnimateEnd", "OpenURL", "Call", "Copy", "Play", "Pause", "Seek", "Eval", "Frames", "Announce", "Share", "ScrollTo", "ScrollToOffset", "Accent", "WebNavigate", "MenuBar", "WindowOptions", "WindowTitle", "ColorScheme", "Locale", "SaveLocale", "Format", "SetLink", "InsertText", "ShareClose", "A11yFocus"}
+var commandNames = [...]string{"", "Focus", "Blur", "ListUpdate", "Present", "Haptic", "AnimateBegin", "AnimateEnd", "OpenURL", "Call", "Copy", "Play", "Pause", "Seek", "Eval", "Frames", "Announce", "Share", "ScrollTo", "ScrollToOffset", "Accent", "WebNavigate", "MenuBar", "WindowOptions", "WindowTitle", "ColorScheme", "Locale", "SaveLocale", "Format", "SetLink", "InsertText", "ShareClose", "A11yFocus", "BackExit"}
 
 func (c CommandID) String() string {
 	if int(c) < len(commandNames) && c > 0 {

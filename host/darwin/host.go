@@ -92,6 +92,7 @@ type node struct {
 	min, max       float64
 	scroll         bool // observes its scroll position
 	dying          bool
+	interceptBack  bool // ui.OnBack: going back asks the core (Back)
 	presented      bool
 	detents        int64
 	tracking       ID // a TextField's text view (Multiline)

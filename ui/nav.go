@@ -3,6 +3,7 @@ package ui
 import (
 	"bytes"
 	"encoding/binary"
+	"slices"
 
 	"github.com/egoist/ryui/internal/l10n"
 	"github.com/egoist/ryui/layout"
@@ -330,13 +331,24 @@ func (st *stackState) push(build func() Node, o ScreenOptions) {
 				bind(o.Title, func(v string) { r.batch.SetString(id, ops.PropScreenTitle, v) })
 				bind(o.BarColor, func(v Color) { r.batch.SetColor(id, ops.PropScreenBarColor, v) })
 				search(s.el, o.Search)
-				navCtx.Provide(st.nav, func() {
+				content := func() {
 					envCtx.Provide(s.el.env, func() {
 						if n := build(); n.e != nil {
 							fill(n)
 							s.el.appendKid(n.e)
 						}
 					})
+				}
+				navCtx.Provide(st.nav, func() {
+					if len(st.screens) == 0 {
+						content() // going back from the first screen leaves the stack: the scope around it
+						return
+					}
+					backCtx.Provide(newBackScope(s.el, func() {
+						if slices.Contains(st.screens, s) {
+							st.remove(s)
+						}
+					}), content)
 				})
 			})
 		})
@@ -498,11 +510,18 @@ func Sheet(p SheetProps) Node {
 			signal.RunWithOwner(owner, func() {
 				signal.Root(func(d func()) {
 					dispose = d
-					envCtx.Provide(s.env, func() {
-						if n := p.Content(); n.e != nil {
-							fill(n)
-							s.appendKid(n.e)
+					scope := newBackScope(s, func() {
+						if sheet == s {
+							s.h.dismissed() // as if the user dismissed it
 						}
+					})
+					backCtx.Provide(scope, func() {
+						envCtx.Provide(s.env, func() {
+							if n := p.Content(); n.e != nil {
+								fill(n)
+								s.appendKid(n.e)
+							}
+						})
 					})
 				})
 			})

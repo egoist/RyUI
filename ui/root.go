@@ -33,6 +33,7 @@ type Root struct {
 	batch     *ops.Batch   // where ops go
 	spare     []*ops.Batch // batches for ops written while one is applied
 	el        *element
+	back      *backScope // OnBack's outside screens and sheets
 	env       *signal.Signal[host.Environment]
 	envV      host.Environment
 	scale     float32
@@ -486,6 +487,8 @@ func dispatch(ev ops.Event) {
 		}
 	case ops.EventDismissed:
 		call(h.dismissed)
+	case ops.EventBack:
+		call(h.back)
 	case ops.EventRefresh:
 		call(h.refresh)
 	case ops.EventPan:

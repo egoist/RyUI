@@ -108,6 +108,7 @@ object RyUIProp {
     const val LEADING_SWIPE_ACTIONS = 32
     const val SELECTED = 33
     const val MATCH = 34
+    const val INTERCEPT_BACK = 35
 
     object View {
         const val DROP_ACCEPT = 64
@@ -347,6 +348,7 @@ object RyUIEventKind {
     const val ROW_SELECT_BEGIN = 49
     const val ROW_INSET = 50
     const val DRAGGING = 51
+    const val BACK = 52
 }
 
 object RyUICommand {
@@ -382,6 +384,7 @@ object RyUICommand {
     const val INSERT_TEXT = 30
     const val SHARE_CLOSE = 31
     const val A11Y_FOCUS = 32
+    const val BACK_EXIT = 33
 }
 
 object RyUIRole {
@@ -820,4 +823,5 @@ object RyUIEvents {
     fun rowSelectBegin(id: Int): ByteArray = RyUIWriter().apply { header(id, 49) }.bytes()
     fun rowInset(id: Int, x: Double, y: Double): ByteArray = RyUIWriter().apply { header(id, 50); f64(x); f64(y) }.bytes()
     fun dragging(id: Int, v: Long): ByteArray = RyUIWriter().apply { header(id, 51); u64(v) }.bytes()
+    fun back(id: Int): ByteArray = RyUIWriter().apply { header(id, 52) }.bytes()
 }

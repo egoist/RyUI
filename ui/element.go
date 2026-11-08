@@ -22,6 +22,7 @@ type handlers struct {
 	popped, selected    func(int64)
 	action              func(int64)
 	dismissed, refresh  func()
+	back                func() // Back: OnBack's scope
 	pan, pinch, rotate  func(Gesture)
 	swipe               func(SwipeDirection)
 	loaded              func(w, h float32)

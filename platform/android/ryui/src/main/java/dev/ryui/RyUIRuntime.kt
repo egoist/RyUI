@@ -329,8 +329,11 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
     }
 
     fun updateBack() {
-        back.isEnabled = activeStack() != null
+        back.isEnabled = activeStack() != null || nodes[rootID]?.intercepts == true
     }
+
+    /** Sheets' back callbacks, on while their OnBack intercepts. */
+    val sheetBack = HashMap<Int, androidx.activity.OnBackPressedCallback>()
 
     private var framesOn = false
     private val frame = object : android.view.Choreographer.FrameCallback {
@@ -1055,6 +1058,7 @@ class RyUIRuntime private constructor(val app: Application) : RyUIOpHandler {
                 @Suppress("DEPRECATION") // its replacements (live regions, pane titles) describe views, not events
                 activity?.window?.decorView?.announceForAccessibility(String(b, Charsets.UTF_8))
             }
+            RyUICommand.BACK_EXIT -> backExit()
             RyUICommand.A11Y_FOCUS -> n.view?.let { v ->
                 // After this batch's frames, so TalkBack finds the view where it shows.
                 v.post { if (v.isAttachedToWindow) v.performAccessibilityAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS, null) }

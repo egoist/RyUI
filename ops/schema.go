@@ -117,6 +117,7 @@ var Schema = SchemaDef{
 		{Name: "LeadingSwipeActions", Type: TBytes, Doc: "a List cell's swipe actions from its leading edge (Mail's Unread), encoded as Menu; Action events on the cell carry -1 - the index"},
 		{Name: "Selected", Type: TBool, Doc: "a List cell's row is selected: in a selecting list, its selection control is checked and the row is highlighted"},
 		{Name: "Match", Type: TString, Doc: "a key it shares with another view: when one with the key is destroyed during an animation and another inserted, the new one comes in from the old one's place and size, and the old one goes out to the new one's, fading (SwiftUI's matchedGeometryEffect). The host notes where the views with keys are as an animated batch starts destroying, and matches them once the batch's frames are applied"},
+		{Name: "InterceptBack", Type: TBool, Doc: "a Screen, Sheet or the root takes the user's going back itself (ui.OnBack): the host sends Back to it instead of popping the screen (its back button, Android's back; iOS's edge swipe is off while it's on top), dismissing the sheet (a swipe down, a tap outside, Android's back) or, for the root, leaving the app (Android's back with no screen to pop). Predictive back doesn't animate it"},
 	},
 	Kinds: []KindDef{
 		{Name: "View", Props: []PropDef{
@@ -332,6 +333,7 @@ var Schema = SchemaDef{
 		{Name: "RowSelectBegin", Payload: PNone, Doc: "the user began selecting rows at this one, the list not selecting: a two-finger pan over rows (iOS), a long press (Android); to its cell"},
 		{Name: "RowInset", Payload: PPoint, Doc: "a List's rows' content is narrower than the core lays it out by X points at the leading edge and Y at the trailing (a selection control's room); to the list. The core lays its rows out again"},
 		{Name: "Dragging", Payload: PInt, Doc: "the view's drag (DragItems): a DragPhase. Began as it lifts, then Dropped (a target took it, the app's or another app's) or Cancelled"},
+		{Name: "Back", Payload: PNone, Doc: "the user went back from a Screen, Sheet or the root with InterceptBack, which the host didn't do"},
 	},
 	Commands: []CommandDef{
 		{Name: "Focus"},
@@ -366,6 +368,7 @@ var Schema = SchemaDef{
 		{Name: "InsertText", Doc: "args: the text; sent to a TextField: it replaces the selection (or goes in at the cursor) as if typed, undoably, and is reported with TextChanged and SelectionChanged"},
 		{Name: "ShareClose", Doc: "args: u8 how (0 done, 1 cancelled, 2 open the app with what was shared); sent to a share sheet's root (app.ShareSheet): it closes"},
 		{Name: "A11yFocus", Doc: "sent to a view: a screen reader, if one is on, moves its focus there (UIAccessibility's screenChanged with the view; Android's ACTION_ACCESSIBILITY_FOCUS)"},
+		{Name: "BackExit", Doc: "sent to the root: the app's OnBack handlers let the user's back go on from the root, so the host does what the system would have (Android's back: the activity finishes or goes to the background)"},
 	},
 	Enums: []EnumDef{
 		{Name: "Role", Values: []string{"None", "Button", "Header", "Image", "Link", "Text", "Search"}},

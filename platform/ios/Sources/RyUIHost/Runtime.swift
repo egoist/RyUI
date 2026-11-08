@@ -724,6 +724,8 @@ final class RyUITextField: UITextField {
         #endif
         case .announce:
             UIAccessibility.post(notification: .announcement, argument: String(decoding: args, as: UTF8.self))
+        case .backExit:
+            break // iOS has no back to leave the app with
         case .a11yFocus:
             // After this batch's frames, so VoiceOver finds the view where it shows.
             DispatchQueue.main.async { [weak v = n.view] in

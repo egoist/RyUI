@@ -538,6 +538,10 @@ func (h *Host) cancel(view ID) {
 	w := Send(view, "window")
 	for _, n := range h.nodes {
 		if n.kind == ops.KindSheet && n.nav.window == w && !n.dying {
+			if n.interceptBack {
+				h.emit(n, ops.Event{Kind: ops.EventBack})
+				return
+			}
 			h.emit(n, ops.Event{Kind: ops.EventDismissed})
 			return
 		}
@@ -872,6 +876,10 @@ func (h *Host) back(w *win) {
 	}
 	top := h.topScreen(stack)
 	if top == nil || h.liveScreens(stack) < 2 {
+		return
+	}
+	if top.interceptBack {
+		h.emit(top, ops.Event{Kind: ops.EventBack})
 		return
 	}
 	top.dying = true

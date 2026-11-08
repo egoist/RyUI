@@ -318,6 +318,10 @@ fun RyUIRuntime.propBool(id: Int, prop: Int, v: Boolean) {
         RyUIProp.DISABLED -> view.isEnabled = !v
         RyUIProp.SELECTED -> (view as? RyUICell)?.row?.setChosen(v)
         RyUIProp.A11Y_ADJUSTABLE -> if (v) setAdjustable(n)
+        RyUIProp.INTERCEPT_BACK -> {
+            if (n.kind == RyUIKind.SHEET) sheetIntercepts(n)
+            updateBack()
+        }
         RyUIProp.A11Y_HIDDEN -> view.importantForAccessibility =
             if (v) View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS else View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
         else -> if (!setNavProp(n, prop, v)) when (n.kind) {

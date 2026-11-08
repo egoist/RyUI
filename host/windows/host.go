@@ -11,8 +11,8 @@
 package windows
 
 import (
-	"github.com/egoist/ryui/internal/rtf"
 	"fmt"
+	"github.com/egoist/ryui/internal/rtf"
 	"math"
 	"os"
 	"runtime"
@@ -92,25 +92,25 @@ type node struct {
 	utext          []uint16
 	placeholder    string
 	multiline      bool
-	plain          bool   // TextFieldProps.Plain
-	settingText    bool   // the field's text is being set from the core
-	pasteTypes     []string  // TextFieldProps.PasteTypes
+	plain          bool     // TextFieldProps.Plain
+	settingText    bool     // the field's text is being set from the core
+	pasteTypes     []string // TextFieldProps.PasteTypes
 	// A Rich TextField's (richfield.go): its control is a rich edit, the
 	// styled text the core sent, its runs as last read, and the formats
 	// last reported.
-	richText     bool
-	richContent  []byte
-	richDoc      rtf.Doc                  // the defaults its RTF was written with
-	richColors   map[rtf.Color]ops.Color // the colors its spans were sent with, by what they were drawn in
-	fieldRuns    []fieldRun
-	formatsKnown bool
-	formats      byte
-	formatLink   string
+	richText       bool
+	richContent    []byte
+	richDoc        rtf.Doc                 // the defaults its RTF was written with
+	richColors     map[rtf.Color]ops.Color // the colors its spans were sent with, by what they were drawn in
+	fieldRuns      []fieldRun
+	formatsKnown   bool
+	formats        byte
+	formatLink     string
 	inset          [4]float32 // ContentInset: top, right, bottom, left points
-	selection      [2]uint32 // a TextField's, as last reported or set (UTF-16, the core's text)
-	selQueued      bool      // a report of its selection waits
-	editRTL        bool   // its EDIT was made right to left
-	editSide       uint32 // and with this alignment style
+	selection      [2]uint32  // a TextField's, as last reported or set (UTF-16, the core's text)
+	selQueued      bool       // a report of its selection waits
+	editRTL        bool       // its EDIT was made right to left
+	editSide       uint32     // and with this alignment style
 	secure         bool
 	keyboard       int32
 	items          []string // Segmented, Wheel
@@ -143,6 +143,7 @@ type node struct {
 	presented      bool
 	detents        int64
 	dying          bool
+	interceptBack  bool // ui.OnBack: going back asks the core (Back)
 	a11yLabel      string
 	colorValue     ops.Color
 	host           func(h *Host, n *node, m uint32, w, l uintptr) (uintptr, bool) // a host-made view's messages

@@ -12,6 +12,8 @@ class RyUIScreenController: UIViewController {
     let content = RyUIContainerView()
     var lastEnv: RyUIEnvironment?
     var backGesture = true
+    /// ui.OnBack: the core decides whether going back pops it.
+    var interceptsBack = false
 
     init(nodeID: UInt32) {
         self.nodeID = nodeID
@@ -87,6 +89,13 @@ final class RyUISheetController: RyUIScreenController, UIAdaptivePresentationCon
         guard let n = RyUIRuntime.shared.nodes[nodeID], !n.dying else { return }
         RyUIRuntime.shared.emit(nodeID, .dismissed) { RyUIEvents.dismissed(nodeID) }
     }
+
+    /// A swipe down or a tap outside while it intercepts (isModalInPresentation): ui.OnBack decides.
+    func presentationControllerDidAttemptToDismiss(_ presentationController: UIPresentationController) {
+        guard let n = RyUIRuntime.shared.nodes[nodeID], !n.dying else { return }
+        let id = nodeID
+        RyUIRuntime.shared.emit(id, .back) { RyUIEvents.back(id) }
+    }
 }
 
 /// A Stack: screens are pushed by Insert and popped by Destroy; pops the
@@ -115,12 +124,14 @@ final class RyUIStackController: UINavigationController, UINavigationControllerD
         super.viewDidLoad()
         delegate = self
         interactivePopGestureRecognizer?.delegate = self
+        if #available(iOS 26.0, *) { interactiveContentPopGestureRecognizer?.delegate = self }
         navigationBar.prefersLargeTitles = true // each screen's largeTitleDisplayMode decides
     }
 
     func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
         guard viewControllers.count > 1 else { return false }
-        return (topViewController as? RyUIScreenController)?.backGesture ?? true
+        guard let top = topViewController as? RyUIScreenController else { return true }
+        return top.backGesture && !top.interceptsBack
     }
 
     func navigationController(_ nav: UINavigationController, didShow vc: UIViewController, animated: Bool) {
@@ -474,6 +485,25 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [RyUIAction] {
         b.showsMenuAsPrimaryAction = true
         n.view.addSubview(b)
         n.menuOverlay = b
+    }
+
+    /// ui.OnBack on a screen (its back button asks the core, its edge swipe
+    /// is off) or a sheet (it can't be swiped away; trying asks the core).
+    /// The root has no back on iOS.
+    func setInterceptBack(_ n: RyUINode, _ on: Bool) {
+        let id = n.id
+        switch n.kind {
+        case .screen:
+            guard let vc = n.vc as? RyUIScreenController else { return }
+            vc.interceptsBack = on
+            vc.navigationItem.backAction = on ? UIAction { [weak self] _ in
+                self?.emit(id, .back) { RyUIEvents.back(id) }
+            } : nil
+        case .sheet:
+            n.vc?.isModalInPresentation = on
+        default:
+            break
+        }
     }
 
     func setNavProp(_ n: RyUINode, _ prop: UInt16, _ v: RyUIValue) {

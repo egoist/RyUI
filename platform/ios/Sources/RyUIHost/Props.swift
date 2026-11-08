@@ -325,6 +325,8 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             n.leadingSwipeActions = decodeActions(b)
         case RyUIProp.selected:
             if let c = n.cell { c.list?.setSelected(c, v.bool) }
+        case RyUIProp.interceptBack:
+            setInterceptBack(n, v.bool)
         case RyUIProp.menuTrigger:
             n.menuTrigger = v.enumValue
             installMenu(n)

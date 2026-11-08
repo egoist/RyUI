@@ -105,6 +105,7 @@ public enum RyUIProp {
     public static let leadingSwipeActions: UInt16 = 32
     public static let selected: UInt16 = 33
     public static let match: UInt16 = 34
+    public static let interceptBack: UInt16 = 35
 
     public enum View {
         public static let dropAccept: UInt16 = 64
@@ -344,6 +345,7 @@ public enum RyUIEventKind: UInt16 {
     case rowSelectBegin = 49
     case rowInset = 50
     case dragging = 51
+    case back = 52
 }
 
 public enum RyUICommand: UInt16 {
@@ -379,6 +381,7 @@ public enum RyUICommand: UInt16 {
     case insertText = 30
     case shareClose = 31
     case a11yFocus = 32
+    case backExit = 33
 }
 
 public enum RyUIRole: Int32 {
@@ -935,5 +938,8 @@ public enum RyUIEvents {
     }
     public static func dragging(_ id: UInt32, _ v: Int64) -> [UInt8] {
         var w = RyUIWriter(); w.header(id, 51); w.u64(UInt64(bitPattern: v)); return w.bytes
+    }
+    public static func back(_ id: UInt32) -> [UInt8] {
+        var w = RyUIWriter(); w.header(id, 52); return w.bytes
     }
 }
