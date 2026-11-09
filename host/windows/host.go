@@ -618,9 +618,6 @@ func (h *Host) release(n *node) {
 	if n.list != nil {
 		n.list.release(h)
 	}
-	if n.web != nil {
-		n.web.close()
-	}
 	if n.image != nil {
 		n.image.release()
 	}
@@ -630,7 +627,13 @@ func (h *Host) release(n *node) {
 	if n.hwnd != 0 {
 		hw := n.hwnd
 		h.forgetTree(hw)
-		DestroyWindow(hw)
+		if n.web != nil {
+			n.web.close(hw) // its window goes after its controller
+		} else {
+			DestroyWindow(hw)
+		}
+	} else if n.web != nil {
+		n.web.close(0)
 	}
 	n.hwnd, n.ctl = 0, 0
 }

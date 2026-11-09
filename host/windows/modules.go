@@ -239,11 +239,16 @@ func devTools(view uintptr, method string, params any, done func(json.RawMessage
 		return
 	}
 	hr := WithHandler(func(hr, result uintptr) {
+		// Answered on a later turn: what the answer does (closing the
+		// view) mustn't happen inside WebView2's callback.
+		var err error
+		var r json.RawMessage
 		if Failed(hr) {
-			done(nil, fmt.Errorf("WebView2: %s failed (0x%x)", method, uint32(hr)))
-			return
+			err = fmt.Errorf("WebView2: %s failed (0x%x)", method, uint32(hr))
+		} else {
+			r = json.RawMessage(GoStr(result))
 		}
-		done(json.RawMessage(GoStr(result)), nil)
+		theHost.Post(func() { done(r, err) })
 	}, func(handler uintptr) uintptr {
 		return ComCall(view, wvCallDevToolsProtocolMethod, Str(method), Str(string(p)), handler)
 	})

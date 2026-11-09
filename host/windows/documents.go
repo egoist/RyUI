@@ -248,17 +248,25 @@ func (h *Host) loadPrintPage(html string, done func(*printPage, error)) {
 	})
 }
 
+// close lets the page go on a later turn of the message loop: it's often
+// closed from one of its own callbacks (its PDF made, its script run),
+// and a controller closed there is freed under WebView2.
 func (p *printPage) close() {
-	if p.controller != 0 {
-		ComCall(p.controller, ctlClose)
-		Release(p.view)
-		Release(p.controller)
-		p.controller, p.view = 0, 0
+	controller, view, hwnd := p.controller, p.view, p.hwnd
+	p.controller, p.view, p.hwnd = 0, 0, 0
+	if controller == 0 && hwnd == 0 {
+		return
 	}
-	if p.hwnd != 0 {
-		DestroyWindow(p.hwnd)
-		p.hwnd = 0
-	}
+	theHost.Post(func() {
+		if controller != 0 {
+			ComCall(controller, ctlClose)
+			Release(view)
+			Release(controller)
+		}
+		if hwnd != 0 {
+			DestroyWindow(hwnd)
+		}
+	})
 }
 
 // printHTML shows the system's print dialog for the markup, printed by

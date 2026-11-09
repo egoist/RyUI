@@ -497,7 +497,9 @@ func (w *web) resized(h *Host, n *node) {
 	ComCall(w.controller, ctlPutBounds, uintptr(unsafe.Pointer(&r))) // a RECT goes by reference on x64
 }
 
-func (w *web) close() {
+// closeNow lets the controller go at once: as the process exits, not
+// from WebView2's callbacks.
+func (w *web) closeNow() {
 	w.closed = true
 	if w.controller != 0 {
 		ComCall(w.controller, ctlClose)
@@ -506,6 +508,34 @@ func (w *web) close() {
 		Release(w.controller)
 		w.controller, w.view, w.settings = 0, 0, 0
 	}
+}
+
+// close lets the view's controller go, and then hwnd (its window, 0 for
+// none), on a later turn of the message loop: never inside one of
+// WebView2's callbacks, which an event the page raised can be (a
+// controller closed in its own callback is freed under it).
+func (w *web) close(hwnd uintptr) {
+	w.closed = true
+	controller, view, settings := w.controller, w.view, w.settings
+	w.controller, w.view, w.settings = 0, 0, 0
+	if hwnd != 0 {
+		ShowWindow(hwnd, SW_HIDE)
+		SetParent(hwnd, theHost.park) // out of its window, until it goes
+	}
+	if controller == 0 && hwnd == 0 {
+		return
+	}
+	theHost.Post(func() {
+		if controller != 0 {
+			ComCall(controller, ctlClose)
+			Release(settings)
+			Release(view)
+			Release(controller)
+		}
+		if hwnd != 0 {
+			DestroyWindow(hwnd)
+		}
+	})
 }
 
 func (h *Host) webState(w *web) {
