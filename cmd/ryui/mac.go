@@ -18,8 +18,10 @@ import (
 // macOS: the app's Go code and its host (host/darwin, AppKit through
 // purego) are one Go program, built for this Mac with CGO_ENABLED=0.
 //
-// ryui dev -platform mac runs it here and, on each change, rebuilds it and runs it
-// again (its signals' state kept, as with the player). ryui build -platform mac
+// ryui dev -platform mac runs it here, from an .app like a release's (its
+// Info.plist, icon and languages, signed ad hoc, answering for its own
+// privacy prompts), and on each change rebuilds it and runs it again (its
+// signals' state kept, as with the player). ryui build -platform mac
 // makes an .app: a universal binary (arm64 and x86_64), its Info.plist,
 // icon and assets, signed (ad hoc unless -sign names an identity).
 
@@ -43,12 +45,31 @@ func devMac(dir string, o *devOptions, stop <-chan os.Signal) error {
 		return err
 	}
 	fmt.Printf("ryui: %s on this Mac\n", app.name)
+	start := time.Now()
+	// The app runs from an .app, as built: its Info.plist (the bundle's
+	// identifier, which notifications and the Dock need; its URL schemes,
+	// purpose strings and languages) and its icon. Its assets stay where
+	// they are, read from the app's directory, so changing one needs no
+	// rebuild.
+	run := macRunner(o.verbose)
+	bundle := filepath.Join(work, app.displayName()+".app")
+	exe, err := writeMacBundle(app, bundle, work, false, run)
+	if err != nil {
+		return err
+	}
 	proc := &hostProcess{app: app, work: work, flags: macLdflags(app, false), env: []string{
 		"RYUI_STATE=" + filepath.Join(work, "state.json"),
 		"RYUI_DATA=" + filepath.Join(work, "data"),
+		"RYUI_ASSETS=" + filepath.Join(app.dir, "assets"),
 	}}
+	proc.bin = filepath.Join(bundle, "Contents", "MacOS", exe)
+	// Signed as a whole, so that the bundle's identity is the app's.
+	proc.afterBuild = func() error { return signMac(bundle, "-", run) }
+	// It answers for itself, as when it's opened from the Finder: its
+	// privacy prompts (camera, location...) are its own, with its purpose
+	// strings, not the terminal's.
+	proc.own = true
 	os.MkdirAll(filepath.Join(work, "data"), 0o755)
-	start := time.Now()
 	if err := proc.build(); err != nil {
 		return err
 	}
@@ -63,24 +84,11 @@ func devMac(dir string, o *devOptions, stop <-chan os.Signal) error {
 	return watchHost(proc, stop, func() {})
 }
 
-func buildMac(app *goApp, o *buildOptions) error {
-	name := app.displayName()
-	work, err := workDir(app, "mac-release")
-	if err != nil {
-		return err
-	}
-	bundle := filepath.Join(o.out, name+".app")
-	os.RemoveAll(bundle)
-	contents := filepath.Join(bundle, "Contents")
-	macos := filepath.Join(contents, "MacOS")
-	res := filepath.Join(contents, "Resources")
-	for _, d := range []string{macos, res} {
-		if err := os.MkdirAll(d, 0o755); err != nil {
-			return err
-		}
-	}
-	run := func(dir string, env []string, cmd string, args ...string) error {
-		if o.verbose {
+// macRunner runs a tool for a Mac build, its output shown only when it
+// fails (or with -v).
+func macRunner(verbose bool) func(dir string, env []string, cmd string, args ...string) error {
+	return func(dir string, env []string, cmd string, args ...string) error {
+		if verbose {
 			fmt.Println("+", cmd, strings.Join(args, " "))
 		}
 		c := exec.Command(cmd, args...)
@@ -92,23 +100,22 @@ func buildMac(app *goApp, o *buildOptions) error {
 		}
 		return nil
 	}
+}
 
-	// A universal binary: one per architecture, joined by lipo.
-	exe := sanitizeExe(name)
-	var parts []string
-	for _, arch := range []string{"arm64", "amd64"} {
-		out := filepath.Join(work, "app-"+arch)
-		env := []string{"GOOS=darwin", "GOARCH=" + arch, "CGO_ENABLED=0", "MACOSX_DEPLOYMENT_TARGET=" + macMin}
-		if err := run(app.dir, env, "go", "build", "-trimpath", macLdflags(app, true), "-o", out, "."); err != nil {
-			return err
+// writeMacBundle makes the .app at bundle, all but its executable: its
+// Info.plist, icon and languages, and for a release its assets. It
+// returns the executable's name, in Contents/MacOS.
+func writeMacBundle(app *goApp, bundle, work string, release bool, run func(dir string, env []string, cmd string, args ...string) error) (string, error) {
+	name := app.displayName()
+	os.RemoveAll(bundle)
+	contents := filepath.Join(bundle, "Contents")
+	res := filepath.Join(contents, "Resources")
+	for _, d := range []string{filepath.Join(contents, "MacOS"), res} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			return "", err
 		}
-		parts = append(parts, out)
 	}
-	bin := filepath.Join(macos, exe)
-	if err := run(work, nil, "lipo", append([]string{"-create", "-output", bin}, parts...)...); err != nil {
-		return err
-	}
-
+	exe := sanitizeExe(name)
 	info := map[string]any{
 		"CFBundleExecutable":                   exe,
 		"CFBundleIdentifier":                   app.bundleID,
@@ -133,21 +140,65 @@ func buildMac(app *goApp, o *buildOptions) error {
 	}
 	if app.cfg.Icon != "" {
 		if err := macIcon(app.cfg.Icon, work, filepath.Join(res, "AppIcon.icns"), run); err != nil {
-			return err
+			return "", err
 		}
 		info["CFBundleIconFile"] = "AppIcon"
 	}
 	app.cfg.plistLocalizations(info)
 	if err := app.cfg.writeLprojs(res); err != nil {
-		return err
+		return "", err
 	}
 	if err := os.WriteFile(filepath.Join(contents, "Info.plist"), []byte(plist(info)), 0o644); err != nil {
-		return err
+		return "", err
 	}
 	if err := os.WriteFile(filepath.Join(contents, "PkgInfo"), []byte("APPL????"), 0o644); err != nil {
+		return "", err
+	}
+	if release {
+		if err := copyDir(filepath.Join(app.dir, "assets"), filepath.Join(res, "assets")); err != nil {
+			return "", err
+		}
+	}
+	return exe, nil
+}
+
+// signMac signs the bundle with identity ("-": ad hoc), and checks it.
+func signMac(bundle, identity string, run func(dir string, env []string, cmd string, args ...string) error) error {
+	args := []string{"--force", "--sign", identity}
+	if identity != "-" {
+		args = append(args, "--options", "runtime", "--timestamp")
+	}
+	dir := filepath.Dir(bundle)
+	if err := run(dir, nil, "codesign", append(args, bundle)...); err != nil {
 		return err
 	}
-	if err := copyDir(filepath.Join(app.dir, "assets"), filepath.Join(res, "assets")); err != nil {
+	return run(dir, nil, "codesign", "--verify", "--strict", bundle)
+}
+
+func buildMac(app *goApp, o *buildOptions) error {
+	work, err := workDir(app, "mac-release")
+	if err != nil {
+		return err
+	}
+	run := macRunner(o.verbose)
+	bundle := filepath.Join(o.out, app.displayName()+".app")
+	exe, err := writeMacBundle(app, bundle, work, true, run)
+	if err != nil {
+		return err
+	}
+
+	// A universal binary: one per architecture, joined by lipo.
+	var parts []string
+	for _, arch := range []string{"arm64", "amd64"} {
+		out := filepath.Join(work, "app-"+arch)
+		env := []string{"GOOS=darwin", "GOARCH=" + arch, "CGO_ENABLED=0", "MACOSX_DEPLOYMENT_TARGET=" + macMin}
+		if err := run(app.dir, env, "go", "build", "-trimpath", macLdflags(app, true), "-o", out, "."); err != nil {
+			return err
+		}
+		parts = append(parts, out)
+	}
+	bin := filepath.Join(bundle, "Contents", "MacOS", exe)
+	if err := run(work, nil, "lipo", append([]string{"-create", "-output", bin}, parts...)...); err != nil {
 		return err
 	}
 
@@ -155,14 +206,7 @@ func buildMac(app *goApp, o *buildOptions) error {
 	if identity == "" {
 		identity = "-" // ad hoc: runs on this Mac; others need a Developer ID and notarization
 	}
-	args := []string{"--force", "--sign", identity}
-	if identity != "-" {
-		args = append(args, "--options", "runtime", "--timestamp")
-	}
-	if err := run(work, nil, "codesign", append(args, bundle)...); err != nil {
-		return err
-	}
-	if err := run(work, nil, "codesign", "--verify", "--strict", bundle); err != nil {
+	if err := signMac(bundle, identity, run); err != nil {
 		return err
 	}
 	if o.notarize != "" {

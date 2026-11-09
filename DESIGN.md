@@ -1300,8 +1300,9 @@ Each one ends with its examples running and its tests in CI.
   work is maturing iOS and Android.
 - **macOS** (in progress): `host/darwin`, AppKit in the app's process
   through purego (`internal/darwin`, MyGo's Objective-C runtime layer),
-  no cgo; `app.Run` runs it on macOS. `ryui dev -platform mac` (rebuild and rerun
-  on save, signals' state kept) and `ryui build -platform mac` (a universal,
+  no cgo; `app.Run` runs it on macOS. `ryui dev -platform mac` (an `.app` like a
+  release's, its assets read in place, its privacy prompts its own;
+  rebuild and rerun on save, signals' state kept) and `ryui build -platform mac` (a universal,
   signed `.app` with its icon and assets). The examples run. Done: the
   v0 components, navigation (below), rich text (an `NSTextView`), shapes,
   images, symbols, gestures, menus, animation, `WebView`, `Video`; tests

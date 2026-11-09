@@ -65,8 +65,10 @@ type hostProcess struct {
 	app  *goApp
 	work string
 	env  []string
+	// bin is the built executable (default: app-host in the work
+	// directory).
 	bin  string
-	cmd  *exec.Cmd
+	proc *os.Process
 	done chan struct{}
 	v    bool
 	// flags is the build's -ldflags (default: ryui.json's).
@@ -76,12 +78,19 @@ type hostProcess struct {
 	// stdin, when the process is told to stop by closing it (Windows,
 	// which can't send it SIGINT).
 	stdin io.WriteCloser
+	// afterBuild, when set, runs after each build (macOS: signs the app).
+	afterBuild func() error
+	// own: the process answers for itself, not for ryui (macOS: its
+	// privacy prompts are its own, as when it's opened from the Finder).
+	own bool
 }
 
 func (p *hostProcess) build() error {
-	p.bin = filepath.Join(p.work, "app-host")
-	if runtime.GOOS == "windows" {
-		p.bin += ".exe" // CreateProcess runs only a name with its extension
+	if p.bin == "" {
+		p.bin = filepath.Join(p.work, "app-host")
+		if runtime.GOOS == "windows" {
+			p.bin += ".exe" // CreateProcess runs only a name with its extension
+		}
 	}
 	flags := p.flags
 	if flags == "" {
@@ -93,6 +102,9 @@ func (p *hostProcess) build() error {
 	if out, err := c.CombinedOutput(); err != nil {
 		return fmt.Errorf("go build failed:\n%s", out)
 	}
+	if p.afterBuild != nil {
+		return p.afterBuild()
+	}
 	return nil
 }
 
@@ -100,46 +112,58 @@ func (p *hostProcess) build() error {
 // the way out) and starts the new build.
 func (p *hostProcess) restart() error {
 	p.stop()
-	c := exec.Command(p.bin)
-	c.Dir = p.app.dir // assets/ is served from here
-	c.Env = append(os.Environ(), p.env...)
-	c.Stdout, c.Stderr = os.Stdout, os.Stderr
+	env := append(os.Environ(), p.env...)
 	p.stdin = nil
-	if slices.Contains(p.env, "RYUI_STOP=stdin") {
-		in, err := c.StdinPipe()
+	var wait func()
+	if p.own {
+		proc, err := spawnOwn(p.bin, p.app.dir, env) // assets/ is served from here
 		if err != nil {
 			return err
 		}
-		p.stdin = in
+		p.proc = proc
+		wait = func() { proc.Wait() }
+	} else {
+		c := exec.Command(p.bin)
+		c.Dir = p.app.dir // assets/ is served from here
+		c.Env = env
+		c.Stdout, c.Stderr = os.Stdout, os.Stderr
+		if slices.Contains(p.env, "RYUI_STOP=stdin") {
+			in, err := c.StdinPipe()
+			if err != nil {
+				return err
+			}
+			p.stdin = in
+		}
+		if err := c.Start(); err != nil {
+			return err
+		}
+		p.proc = c.Process
+		wait = func() { c.Wait() }
 	}
-	if err := c.Start(); err != nil {
-		return err
-	}
-	p.cmd = c
 	p.done = make(chan struct{})
 	go func(done chan struct{}) {
-		c.Wait()
+		wait()
 		close(done)
 	}(p.done)
 	return nil
 }
 
 func (p *hostProcess) stop() {
-	if p.cmd == nil {
+	if p.proc == nil {
 		return
 	}
 	if p.stdin != nil {
 		p.stdin.Close() // it saves its state and quits
 	} else {
-		p.cmd.Process.Signal(syscall.SIGINT)
+		p.proc.Signal(syscall.SIGINT)
 	}
 	select {
 	case <-p.done:
 	case <-time.After(3 * time.Second):
-		p.cmd.Process.Kill()
+		p.proc.Kill()
 		<-p.done
 	}
-	p.cmd = nil
+	p.proc = nil
 }
 
 // watchHost rebuilds and restarts the app's process on each change.
