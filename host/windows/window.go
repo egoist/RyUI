@@ -138,15 +138,22 @@ func (h *Host) parentMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
 	return 0, false
 }
 
-// makeWindow makes the app's window, 480 by 760 points, centered in the
-// work area.
+// A window's client size, in points, when the app gives none: a desktop
+// window's, as Electron's are.
+const (
+	defaultWindowWidth  = 800
+	defaultWindowHeight = 600
+)
+
+// makeWindow makes the app's window, 800 by 600 points (no taller than
+// the work area), centered in the work area.
 func (h *Host) makeWindow() {
 	style := uint32(WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN)
 	h.window = CreateWindow(0, classWindow, h.appName, style, 0, 0, 100, 100, 0, 0)
 	h.dpi = DPI(h.window)
 	h.scale = dpiScale(h.dpi)
 	SetDarkTitleBar(h.window, h.dark)
-	r := Rect{Right: h.px(nil, 480), Bottom: h.px(nil, 760)}
+	r := Rect{Right: h.px(nil, defaultWindowWidth), Bottom: h.px(nil, defaultWindowHeight)}
 	AdjustWindowRect(&r, style, 0, h.dpi)
 	work := WorkArea(h.window)
 	w, ht := r.W(), min(r.H(), work.H())

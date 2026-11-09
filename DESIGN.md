@@ -1717,7 +1717,7 @@ How the Windows host maps RyUI (`host/windows`):
   popup menu: a button's drops below it, a view's `LongPress` menu is
   its context menu (a right-click, or a long press).
 - A `Window` is a top-level window of its own (resizable, its own title
-  and taskbar button; 480 by 600 points if the app gives no size),
+  and taskbar button; 800 by 600 points if the app gives no size),
   placed cascaded from the window in use. Its content, the node's
   child, is laid out at its client size, reported as its
   `Environment` when it opens and as it's resized; its least size is
@@ -1790,8 +1790,8 @@ How the Windows host maps RyUI (`host/windows`):
   work as in any menu; a key no item takes leaves it open
   (`WM_MENUCHAR`, `MNC_IGNORE`).
 - `WindowOptions` set the main window's title, its client size
-  (centered in the work area) and its least size (320 points square if
-  the app gives none).
+  (centered in the work area; 800 by 600 points if the app gives none)
+  and its least size (320 points square if the app gives none).
 - The main window comes back where the user left it, as macOS's frame
   autosave has it: its normal rectangle (screen pixels, and the DPI it
   was at) and whether it was maximized, in `ryui-window.json` in the
@@ -1901,8 +1901,9 @@ and never assumes a single root in its own data structures.
 - The main window holds the root (`app.Run`); `app.RunWindow(opts,
   root)` gives it a title and a size and least size
   (`ui.WindowOptions`, sent to the root as `WindowOptions` when it
-  mounts). A size the user chose, remembered by the host (macOS, Windows), wins
-  over it.
+  mounts). With none, a desktop host opens it at 800 by 600 points, a
+  desktop window's size (Electron's default), not a phone's. A size the
+  user chose, remembered by the host (macOS, Windows), wins over it.
 
 - `ui.Window(WindowProps{Open, Title, Width, Height, MinWidth,
   MinHeight, Content, OnClose})` is a window of its own while `Open` is

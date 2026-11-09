@@ -17,8 +17,8 @@ import (
 // monitor of another DPI takes the size Windows suggests and draws its
 // views at the new scale (WM_DPICHANGED), its Environment reported again.
 
-// openWindow opens a Window's window: its content's size (480 by 600
-// points if the app gives none), placed down and right of the window in
+// openWindow opens a Window's window: its content's size (the main
+// window's default if the app gives none), placed down and right of the window in
 // use, as new windows cascade. It shows once the main window does.
 func (h *Host) openWindow(n *node) {
 	if n.nav.window != 0 {
@@ -26,10 +26,10 @@ func (h *Host) openWindow(n *node) {
 	}
 	w, ht := n.nav.size[0], n.nav.size[1]
 	if w <= 0 {
-		w = 480
+		w = defaultWindowWidth
 	}
 	if ht <= 0 {
-		ht = 600
+		ht = defaultWindowHeight
 	}
 	style := uint32(WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN)
 	dpi := DPI(h.windowInUse())

@@ -20,10 +20,17 @@ const (
 	backingBuffered     = 2
 )
 
+// A window's content size, in points, when the app gives none.
+const (
+	defaultWindowWidth  = 800
+	defaultWindowHeight = 600
+)
+
 // makeWindow makes the app's window, its content a flipped container the
-// root goes in.
+// root goes in: 800 by 600 points if the app gives no size, as desktop
+// frameworks' windows are (Electron's), centered.
 func (h *Host) makeWindow() {
-	r := Rect{Size: Size{Width: 480, Height: 760}}
+	r := Rect{Size: Size{Width: defaultWindowWidth, Height: defaultWindowHeight}}
 	w := MsgInitWindow(Send(Class("NSWindow"), "alloc"), Sel("initWithContentRect:styleMask:backing:defer:"),
 		r, styleTitled|styleClosable|styleMiniaturizable|styleResizable, backingBuffered, false)
 	Send(w, "setReleasedWhenClosed:", 0)
@@ -297,8 +304,8 @@ func (h *Host) openURL(u string) {
 	h.dispatch(ops.Event{ID: h.root.id, Kind: ops.EventIncomingURL, Str: u})
 }
 
-// openWindow opens a Window's window: its content's size, its least, its
-// title; placed down and right of the window in use, as new windows
+// openWindow opens a Window's window: its content's size (the main
+// window's default if the app gives none), its least, its title; placed down and right of the window in use, as new windows
 // cascade.
 func (h *Host) openWindow(n *node) {
 	if n.nav.window != 0 {
@@ -306,10 +313,10 @@ func (h *Host) openWindow(n *node) {
 	}
 	size := n.nav.size
 	if size.Width <= 0 {
-		size.Width = 480
+		size.Width = defaultWindowWidth
 	}
 	if size.Height <= 0 {
-		size.Height = 600
+		size.Height = defaultWindowHeight
 	}
 	w := MsgInitWindow(Send(Class("NSWindow"), "alloc"), Sel("initWithContentRect:styleMask:backing:defer:"),
 		Rect{Size: size}, styleTitled|styleClosable|styleMiniaturizable|styleResizable, backingBuffered, false)
