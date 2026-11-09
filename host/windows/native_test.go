@@ -172,6 +172,7 @@ func TestTransitions(t *testing.T) {
 			}))
 	})
 	onMain(t, func() {
+		h.env.ReduceMotion = false // animations on, whatever the machine's setting
 		showHost(h)
 		toggle := func(v bool) {
 			h.enter(func() { ui.Post(func() { ui.Animate(func() { shown.Set(v) }) }) })
@@ -221,6 +222,7 @@ func TestMatch(t *testing.T) {
 			}))
 	})
 	onMain(t, func() {
+		h.env.ReduceMotion = false // animations on, whatever the machine's setting
 		showHost(h)
 		var small *node
 		for _, n := range find(h, ops.KindView) {

@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/egoist/ryui/internal/windows"
 	"github.com/egoist/ryui/ui"
 )
 
@@ -23,13 +22,7 @@ func await(h *Host, module, m string, args []byte) ([]byte, error, bool) {
 	var err error
 	answered := false
 	h.asyncModule(module)[m](args, func(b []byte, e error) { out, err, answered = b, e, true })
-	var msg Msg
-	for i := 0; !answered && i < 2_000_000; i++ { // a safety net, not what passes
-		if PeekMessage(&msg) {
-			TranslateMessage(&msg)
-			DispatchMessage(&msg)
-		}
-	}
+	pumpUntil(func() bool { return answered })
 	return out, err, answered
 }
 
