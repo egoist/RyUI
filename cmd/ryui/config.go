@@ -81,6 +81,16 @@ type appConfig struct {
 		// in a phone-sized window. By default it's an iPad app too, in
 		// Split View and Stage Manager, at any size the user gives it.
 		IPhoneOnly bool `json:"iphoneOnly"`
+		// AppStoreConnect is the App Store Connect API key ryui publish
+		// uploads with: its ID, its issuer's (none for an individual key)
+		// and its .p8's path (default: AuthKey_<id>.p8 in a private_keys
+		// directory, as altool looks). RYUI_ASC_KEY_ID, RYUI_ASC_ISSUER_ID
+		// and RYUI_ASC_KEY (the path or the key's text) override them.
+		AppStoreConnect struct {
+			KeyID    string `json:"keyId"`
+			IssuerID string `json:"issuerId"`
+			Key      string `json:"key"`
+		} `json:"appStoreConnect"`
 	} `json:"ios"`
 	// Accent is the app's accent color, "#rrggbb" or "#rrggbbaa": the
 	// tint color on iOS; on Android, the seed of the Material 3 color
@@ -158,6 +168,10 @@ type appConfig struct {
 		// MapsKey is a Google Maps Platform API key (Maps SDK for Android),
 		// for ryui/maps.
 		MapsKey string `json:"mapsKey"`
+		// ServiceAccount is the JSON key of the Google Cloud service
+		// account ryui publish uploads with (RYUI_PLAY_SERVICE_ACCOUNT, the
+		// path or the JSON, overrides it).
+		ServiceAccount string `json:"serviceAccount"`
 	} `json:"android"`
 }
 
@@ -225,6 +239,12 @@ func loadConfig(dir string) (*appConfig, error) {
 	}
 	if c.Android.Keystore != "" && !filepath.IsAbs(c.Android.Keystore) {
 		c.Android.Keystore = filepath.Join(dir, c.Android.Keystore)
+	}
+	if k := &c.IOS.AppStoreConnect.Key; *k != "" && !filepath.IsAbs(*k) && !strings.Contains(*k, "-----BEGIN") {
+		*k = filepath.Join(dir, *k)
+	}
+	if c.Android.ServiceAccount != "" && !filepath.IsAbs(c.Android.ServiceAccount) {
+		c.Android.ServiceAccount = filepath.Join(dir, c.Android.ServiceAccount)
 	}
 	if c.Android.GoogleServices != "" && !filepath.IsAbs(c.Android.GoogleServices) {
 		c.Android.GoogleServices = filepath.Join(dir, c.Android.GoogleServices)

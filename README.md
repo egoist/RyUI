@@ -37,7 +37,8 @@ func main() { app.Run(Counter) }
 - **`ryui dev`**: your Go code runs on your Mac and reloads on save, the
   app's state kept, on the simulator, an emulator or a phone.
 - **`ryui build`**: a signed `.ipa` for the App Store, and an `.aab` for
-  Google Play.
+  Google Play; **`ryui publish`** uploads them, numbered after the store's
+  last build, to TestFlight (its groups, App Review) or a Play track.
 - **macOS, early**: the same app on AppKit, in one Go process
   (`ryui dev -mac`, `ryui build -mac`).
 - **Windows, early**: the same app on Win32 and the common controls,

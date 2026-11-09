@@ -1,7 +1,9 @@
 # Shipping
 
 `ryui build` makes the builds the stores take, from the app's directory
-(or the one given), into its `dist`. `ryui build -web` makes a static
+(or the one given), into its `dist`, and `ryui publish` uploads them:
+to TestFlight and App Review, or a Google Play track (see
+[Publishing](#publishing)). `ryui build -web` makes a static
 site instead, to serve from any web server: see [the web](web.md#ryui-build--web).
 
 ## ryui.json
@@ -20,7 +22,8 @@ site instead, to serve from any web server: see [the web](web.md#ryui-build--web
 
 - `name` is under the icon; `id` is the bundle ID and application ID.
 - `version` is what users see; `build` counts the builds uploaded, and
-  must grow with each.
+  must grow with each. `ryui publish` numbers each build after the
+  store's highest itself, so `build` is only where it starts.
 - `icon` is a square PNG, 1024×1024, without transparency for iOS.
 - `orientations`: `portrait`, `landscape` (both by default), on phones.
   On iPad the app takes every orientation, as Split View, Slide Over
@@ -94,11 +97,8 @@ stops, saying so, if a profile lacks the group. The simulator needs
 none of this. An app with its own share sheet (`app.ShareSheet`) needs
 the group too, for its data, whatever it takes.
 
-Upload it with Apple's Transporter, or:
-
-```sh
-xcrun altool --upload-app -f dist/Notes.ipa -t ios --apiKey KEY --apiIssuer ISSUER
-```
+`ryui publish -ios` makes it and uploads it to App Store Connect (see
+[Publishing](#publishing)); Apple's Transporter uploads one too.
 
 **Privacy manifest.** The App Store requires one, giving a reason for
 each API of Apple's list the app uses. RyUI writes it, from what the
@@ -126,7 +126,92 @@ RYUI_KEYSTORE_PASSWORD=... ryui build -android
 (`RYUI_KEY_PASSWORD` too if the key's differs; `RYUI_KEYSTORE` and
 `RYUI_KEY_ALIAS` name them in CI.) It makes an `.aab` for Google Play and
 an `.apk` to install yourself, for 64-bit and 32-bit ARM phones and
-x86_64 (emulators, Chromebooks), Android 13 and later.
+x86_64 (emulators, Chromebooks), Android 13 and later. `ryui publish
+-android` makes it and uploads it to Google Play (see
+[Publishing](#publishing)).
+
+## Publishing
+
+`ryui publish` makes the release build, as `ryui build` does, and
+uploads it through the store's API. It asks the store first what could
+stop it (that the app is there and the key may upload to it, that the
+version still takes builds, that the TestFlight groups exist), so
+nothing is built for an upload that would fail. Each build is numbered
+one above the store's highest (and at least `ryui.json`'s `build`):
+there's nothing to bump between releases. `-build 42` gives one.
+
+**App Store Connect.** Make an API key in App Store Connect (Users and
+Access › Integrations › App Store Connect API) with the App Manager
+role, download its `.p8`, and name it in `ryui.json`, or in the
+environment (`RYUI_ASC_KEY_ID`, `RYUI_ASC_ISSUER_ID`, and
+`RYUI_ASC_KEY`, the `.p8`'s path or its text). Without a `key`, it's
+looked for as `altool` does, `AuthKey_<id>.p8` in
+`~/.appstoreconnect/private_keys`. Keep the `.p8` out of your
+repository. Add the app in App Store Connect first (Apps › + › New
+App), with its bundle ID.
+
+```json
+"ios": {
+  "appStoreConnect": { "keyId": "ABC123DEF4", "issuerId": "57246542-96fe-1a63-e053-0824d011072a" }
+}
+```
+
+```sh
+ryui publish -ios                                  # to TestFlight: the team's testers
+ryui publish -ios -groups "Friends, QA" -notes "Try the new sync."
+ryui publish -ios -review -notes @release-notes/ios -release manual
+```
+
+It uploads the `.ipa`, waits for Apple to process it (minutes, usually;
+at times an hour or more), printing what Apple warns of or turns down,
+then:
+
+- `-notes` is TestFlight's What to Test and, with `-review`, the App
+  Store's What's New: text, or `@file`, in the app's primary language;
+  or `@dir`, a file per language, named as App Store Connect names it
+  (`en-US.txt`, `ja.txt`). An update needs What's New in each of the
+  version's languages.
+- `-groups` gives the build to TestFlight groups, by name. With an
+  external group (testers outside your team), the build goes to beta
+  review; fill in the test information in TestFlight first.
+- `-review` makes the App Store version (`ryui.json`'s `version`) if
+  there isn't one, gives it the build, and submits it for review. A
+  first submission needs its listing, screenshots and privacy answers
+  filled in App Store Connect first; what's missing is printed.
+  `-release auto` releases it once approved, `-release manual` waits for
+  you.
+- `-no-wait` stops once Apple has the upload.
+
+**Google Play.** Make a service account in Google Cloud, with a JSON key
+(IAM › Service accounts › Keys), in a project with the Google Play
+Android Developer API turned on. Invite its email in the Play Console
+(Users and permissions), with the rights to release the app. Name its
+key in `ryui.json` (`"android": {"serviceAccount": "play.json"}`) or in
+`RYUI_PLAY_SERVICE_ACCOUNT` (its path or its JSON). Play takes an app's
+first `.aab` only in the Play Console: create the app there and upload
+its first build by hand; `ryui publish` uploads the ones after.
+
+```sh
+ryui publish -android                              # the internal test track
+ryui publish -android -track beta -notes @release-notes/android
+ryui publish -android -track production -rollout 0.1
+```
+
+- `-track` is `internal` (default), `alpha` (closed testing), `beta`
+  (open testing), `production`, or a closed track's name.
+- `-rollout 0.1` rolls the release out to a tenth of users; raise it in
+  the Play Console. `-draft` makes a draft, to roll out there. Until the
+  app is published, Play takes drafts only: the release becomes one.
+- `-notes` are the release notes (at most 500 characters): text or
+  `@file` in the listing's default language, or `@dir` with a file per
+  language as Play names it (`en-US.txt`, `ja-JP.txt`).
+- If the app has changes in review, it stops; `-cancel-review` cancels
+  that review and sends them with this release. If Play holds the app's
+  changes for you to send (after a rejection), they're saved, and you
+  send them in the Play Console.
+
+`-file dist/Notes.ipa` (or `.aab`) uploads a build `ryui build` made,
+instead of making one.
 
 ## macOS
 
@@ -234,8 +319,9 @@ Play internal test, which check what a simulator can't.
 
 This GitHub Actions workflow builds both apps when you push a tag like
 `v1.2`, uploads the iOS build to TestFlight and the Android build to
-Play's internal test track, and attaches the `.ipa` and the `.apk` to a
-draft GitHub release for the tag, each as soon as it's built; publish
+Play's internal test track with `ryui publish`, and attaches the `.ipa`
+and the `.apk` to a draft GitHub release for the tag, each as soon as
+it's uploaded; publish
 the draft when you're ready. (Run by hand, it keeps them as the run's
 artifacts only.) It expects the app at the root of its repository. Do
 your first uploads by hand: Play won't take one through its API until
@@ -290,7 +376,12 @@ jobs:
           # With shareTarget, the extension's profile, installed where ryui looks:
           # mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           # echo "$SHARE_PROFILE" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/share.mobileprovision
-      - run: ryui build -ios -profile $RUNNER_TEMP/app.mobileprovision
+      - name: build, and upload to TestFlight
+        env:
+          RYUI_ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          RYUI_ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          RYUI_ASC_KEY: ${{ secrets.ASC_KEY }}
+        run: ryui publish -ios -profile $RUNNER_TEMP/app.mobileprovision -no-wait
       - uses: actions/upload-artifact@v4
         with: { name: ios, path: dist/*.ipa }
       - name: attach to the tag's release
@@ -299,15 +390,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: gh release upload "$GITHUB_REF_NAME" dist/*.ipa --clobber
-      - name: upload to TestFlight
-        env:
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          ASC_KEY: ${{ secrets.ASC_KEY }}
-        run: |
-          mkdir -p ~/.appstoreconnect/private_keys
-          echo "$ASC_KEY" > ~/.appstoreconnect/private_keys/AuthKey_$ASC_KEY_ID.p8
-          xcrun altool --upload-app -f dist/*.ipa -t ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
 
   android:
     needs: release
@@ -329,10 +411,12 @@ jobs:
         env:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
         run: echo "$KEYSTORE" | base64 --decode > $RUNNER_TEMP/upload.jks
-      - run: ryui build -android
+      - name: build, and upload to Play's internal test track
+        run: ryui publish -android -track internal
         env:
           RYUI_KEYSTORE: ${{ runner.temp }}/upload.jks
           RYUI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          RYUI_PLAY_SERVICE_ACCOUNT: ${{ secrets.PLAY_SERVICE_ACCOUNT }}
       - uses: actions/upload-artifact@v4
         with:
           name: android
@@ -345,12 +429,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: gh release upload "$GITHUB_REF_NAME" dist/*.apk --clobber
-      - uses: r0adkll/upload-google-play@v1
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT }}
-          packageName: com.example.notes
-          releaseFiles: dist/*.aab
-          track: internal
 ```
 
 Its secrets (Settings › Secrets and variables › Actions), the files in
@@ -372,8 +450,9 @@ base64 (`base64 -i file | pbcopy`):
   release to testing tracks.
 
 The CLI carries the iOS and Android hosts, so it's installed at the
-version of RyUI in the app's `go.mod`. `build` in `ryui.json` must still
-grow with each upload: bump it before you tag. The App Store takes builds
+version of RyUI in the app's `go.mod`. Each build is numbered after the
+store's highest, so nothing is bumped before you tag; `-no-wait` ends
+the iOS job once Apple has the upload, not once it's processed. The App Store takes builds
 made with a recent Xcode only; if the runner's default is older, pick
 one with `sudo xcode-select -s /Applications/Xcode_<version>.app`.
 

@@ -897,6 +897,7 @@ The CLI does these builds itself (no gomobile).
 ryui new <dir>                     a project from the template
 ryui dev -ios|-android <dir>       build, run, rebuild and restart on save
 ryui build -ios|-android <dir>     a release build for the stores
+ryui publish -ios|-android <dir>   the release build, uploaded: TestFlight, App Review; a Play track
 ryui dev -mac <dir>                build and run on this Mac, rerun on save
 ryui build -mac <dir>              a universal .app, signed (-sign; default ad hoc)
 ryui dev -windows <dir>            build and run on this PC, rerun on save
@@ -943,8 +944,8 @@ profile that fits the app ID best (exact before prefix before `*`) for
 the distribution (`app-store` by default, `ad-hoc`, `development`),
 unexpired, whose certificate's identity is in the keychain; its
 entitlements, with a wildcard app ID made the app's; `codesign` with
-the identity's SHA-1, verified. Uploading is Transporter's or `altool`'s.
-`-simulator` makes the same release build for the simulator.
+the identity's SHA-1, verified. `-simulator` makes the same release build
+for the simulator.
 
 **`ryui build -android`** makes an `.aab` for Google Play and an `.apk`:
 the Go code as a stripped `.so` for arm64-v8a, armeabi-v7a and x86_64,
@@ -956,6 +957,32 @@ its passwords from the environment (never on a command line). A
 release build never loads a library from the app's files, as debug
 builds do in development; cleartext HTTP (the player's assets) is
 debug-only, as is iOS's local networking exception.
+
+**`ryui publish -ios`** and **`-android`** make the release build and
+upload it, through the stores' APIs from Go (no altool, no Gradle
+plugin), so a release is one command, in CI too. Everything the store
+can refuse is asked first, before the build: the app (App Store Connect
+by bundle ID; Play by package, in an edit opened to look and deleted),
+whether the version still takes builds (approved or released: no), the
+TestFlight groups by name, and the store's highest build number. The
+build is numbered one above it (and at least `ryui.json`'s `build`), so
+`build` needn't be raised by hand; `-build` sets one. iOS: a JWT signed
+with the App Store Connect API key (ES256, renewed every 10 minutes);
+the `.ipa` sent as `buildUploads` says, in parts, a few at a time, each
+retried; then the upload and the build polled until Apple has processed
+it (its warnings and errors printed), What to Test set, the build given
+to the groups (an internal group with every build skipped; an external
+one sends it to beta review), and with `-review` the App Store version
+made or found, given the build, its What's New (each language's, which
+an update needs) and submitted. Android: an OAuth token from the service
+account's signed assertion (RS256); the `.aab` in a resumable upload,
+chunk by chunk, resumed from where Play says it got to; a release on the
+track (`completed`, `inProgress` with `-rollout`, or a draft, which an
+app never published takes only); the edit committed without cancelling
+changes in review unless asked, and, if Play holds changes for the
+Console, committed unsent. Requests are retried when rate limited
+(`Retry-After`) and, where safe to repeat, when the server or the
+network fails.
 
 **`ryui dev` runs the app's Go code on the Mac, and its views in a
 player** (`internal/remote`): the platform host with a small Go library
@@ -1107,9 +1134,11 @@ Each one ends with its examples running and its tests in CI.
   survives a reload with no code. Not yet: physical iOS devices (the
   player would need signing and the Mac's address).
 - **M6, shipping** (done): `ryui.json`, `ryui build -ios` (signed `.ipa`;
-  `-simulator`), `ryui build -android` (`.aab` and `.apk`). Not yet:
-  uploading, screenshots and store listings (Transporter and the Play
-  Console do those).
+  `-simulator`), `ryui build -android` (`.aab` and `.apk`), `ryui
+  publish` (the build uploaded through the stores' APIs: TestFlight's
+  groups and beta review, App Review; a Play track, staged). Not yet:
+  screenshots and store listings (App Store Connect and the Play Console
+  do those).
 - **Split screen** (done): an iOS build is an iPad app too
   (`UIDeviceFamily` 1 and 2; `ios.iphoneOnly` leaves iPad out), in every
   orientation there, as Split View, Slide Over and Stage Manager need;

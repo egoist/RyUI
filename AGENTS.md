@@ -63,6 +63,8 @@ go test ./internal/remote                        # the dev transport, against th
 go test -tags e2e ./e2e -run IOS                 # GUI tests: the examples on the simulator (Android: -run Android, an emulator running)
 go run ./cmd/ryui build -ios -simulator examples/counter    # a release build (-ios alone: a signed .ipa)
 go run ./cmd/ryui build -android examples/counter           # .aab and .apk (RYUI_KEYSTORE, RYUI_KEY_ALIAS, RYUI_KEYSTORE_PASSWORD)
+go run ./cmd/ryui publish -ios -groups Friends examples/counter  # build and upload to TestFlight (RYUI_ASC_KEY_ID, RYUI_ASC_ISSUER_ID, RYUI_ASC_KEY)
+go run ./cmd/ryui publish -android -track internal examples/counter  # build and upload to Google Play (RYUI_PLAY_SERVICE_ACCOUNT)
 go run ./cmd/ryui dev -mac examples/counter       # macOS: the app and its AppKit host in one process, rerun on save
 go run ./cmd/ryui build -mac examples/counter     # a universal .app (-sign "Developer ID Application: ..."; default ad hoc)
 go test ./host/darwin                            # the macOS host, driving real AppKit views (macOS)

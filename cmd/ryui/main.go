@@ -29,6 +29,7 @@ func usage() {
   ryui dev -windows [flags] [dir] run on this PC, rebuilding on save
   ryui dev -web [flags] [dir]     run in the browser, rebuilding on save
   ryui build -ios|-android|-mac|-windows|-web [flags] [dir]   a release build
+  ryui publish -ios|-android [flags] [dir]   a release build, uploaded to TestFlight or Google Play (ryui publish -h)
   ryui generate [dir]             write the functions of the app's catalogs
   ryui i18n init|add|check        start, add languages to, and check the catalogs
   ryui vet [flags] [packages]     report what builds but runs wrong, as a signal read once
@@ -54,6 +55,8 @@ func main() {
 		err = cmdDev(os.Args[2:])
 	case "build":
 		err = cmdBuild(os.Args[2:])
+	case "publish":
+		err = cmdPublish(os.Args[2:])
 	case "generate":
 		err = cmdGenerate(os.Args[2:])
 	case "i18n":

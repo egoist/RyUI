@@ -232,7 +232,7 @@ func buildIOS(app *goApp, o *buildOptions) error {
 	if err := prof.sign(tc, work, bundle, cfg.ID, cfg.associatedDomains(false), cfg.appGroup(), cfg.keychainGroup(prof.team), cfg); err != nil {
 		return err
 	}
-	ipa := filepath.Join(o.out, safeName(cfg.Name)+".ipa")
+	ipa := ipaPath(cfg, o)
 	if err := packIPA(tc, work, bundle, ipa); err != nil {
 		return err
 	}
@@ -245,7 +245,7 @@ func buildIOS(app *goApp, o *buildOptions) error {
 	}
 	fmt.Printf("ryui: %s in %.0fs\n", ipa, time.Since(start).Seconds())
 	if prof.kind == "app-store" {
-		fmt.Println("ryui: upload it with Transporter, or: xcrun altool --upload-app -f " + ipa + " -t ios --apiKey KEY --apiIssuer ISSUER")
+		fmt.Println("ryui: ryui publish -ios builds and uploads it to App Store Connect (or upload this one: ryui publish -ios -file " + ipa + ")")
 	}
 	return nil
 }

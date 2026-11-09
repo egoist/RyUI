@@ -103,7 +103,7 @@ and give its password in RYUI_KEYSTORE_PASSWORD (and RYUI_KEY_PASSWORD if the ke
 		from, to string
 		optional bool
 	}{
-		{filepath.Join(built, "bundle", "release", "app-release.aab"), name + ".aab", false},
+		{filepath.Join(built, "bundle", "release", "app-release.aab"), filepath.Base(aabPath(cfg, o)), false},
 		{filepath.Join(built, "apk", "release", "app-release.apk"), name + ".apk", false},
 		// For a crash service (the .aab has both for Google Play): the Go
 		// code's and the host's native symbols, and R8's map of the
@@ -125,7 +125,7 @@ and give its password in RYUI_KEYSTORE_PASSWORD (and RYUI_KEY_PASSWORD if the ke
 		}
 		fmt.Println("ryui:", to)
 	}
-	fmt.Printf("ryui: built in %.0fs; upload the .aab in the Play Console (or with the Play Developer API)\n", time.Since(start).Seconds())
+	fmt.Printf("ryui: built in %.0fs; ryui publish -android builds and uploads it to Google Play\n", time.Since(start).Seconds())
 	return nil
 }
 
