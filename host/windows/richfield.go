@@ -36,11 +36,16 @@ const (
 	stSelection     = 0x0002
 )
 
-// editStream is EDITSTREAM.
+// editStream is EDITSTREAM, as richedit.h packs it (#pragma pack(4)):
+// on amd64 the callback is at byte 12, not 16 where Go would put it.
 type editStream struct {
 	cookie   uintptr
 	err      uint32
-	callback uintptr
+	callback [2]uint32 // EDITSTREAMCALLBACK, unaligned
+}
+
+func (es *editStream) setCallback(cb uintptr) {
+	es.callback = [2]uint32{uint32(cb), uint32(uint64(cb) >> 32)}
 }
 
 // streamed is what EM_STREAMOUT's callback is writing (main thread).
@@ -62,7 +67,8 @@ func streamOutFn(cookie, buf, cb, pcb uintptr) uintptr {
 // streamOut is the control's RTF: all of it, or its selection's.
 func streamOut(ctl uintptr, selection bool) []byte {
 	streamed = streamed[:0]
-	es := editStream{callback: streamOutCB}
+	var es editStream
+	es.setCallback(streamOutCB)
 	flags := uintptr(sfRTF)
 	if selection {
 		flags |= sffSelection
@@ -383,4 +389,13 @@ func (h *Host) setRichLink(n *node, url string) {
 	SendMessage(n.ctl, emSetTextEx, uintptr(unsafe.Pointer(&settext)), uintptr(unsafe.Pointer(&data[0])))
 	SendMessage(n.ctl, emExSetSel, 0, Ptr(&sel))
 	h.richEdited(n)
+}
+
+func init() {
+	// EDITSTREAM's layout (richedit.h's pack(4)): 20 bytes, the callback
+	// at 12.
+	var es editStream
+	if unsafe.Sizeof(es) != 20 || unsafe.Offsetof(es.callback) != 12 {
+		panic("ryui: EDITSTREAM's layout")
+	}
 }
