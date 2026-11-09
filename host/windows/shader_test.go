@@ -70,7 +70,8 @@ func TestShader(t *testing.T) {
 		if got := px(s.pw-1, s.ph-1); got != [4]byte{} {
 			fatalf("right pixel %v", got)
 		}
-		h.enter(func() { color.Set(ui.Hex(0x0000ff)) })
+		h.enter(func() { ui.Post(func() { color.Set(ui.Hex(0x0000ff)) }) }) // flushed as the app's code is
+		h.runPosted()
 		if !pumpUntil(func() bool { return px(0, 0) == [4]byte{255, 0, 0, 255} }) {
 			fatalf("after a change: %v", px(0, 0))
 		}
