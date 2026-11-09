@@ -12,10 +12,7 @@ import (
 )
 
 type buildOptions struct {
-	ios, android bool
-	mac          bool
-	windows      bool
-	web          bool
+	platform     string
 	sign         string // macOS: a signing identity (default: ad hoc)
 	notarize     string // macOS: notarytool's keychain profile ("env": RYUI_APPLE_ID...)
 	simulator    bool   // iOS: a release build for the simulator, unsigned
@@ -30,11 +27,8 @@ type buildOptions struct {
 
 func buildFlags(o *buildOptions) *flag.FlagSet {
 	fs := flag.NewFlagSet("build", flag.ContinueOnError)
-	fs.BoolVar(&o.ios, "ios", false, "build an .ipa for the App Store (or -distribution)")
-	fs.BoolVar(&o.android, "android", false, "build an .aab for Google Play, and an .apk")
-	fs.BoolVar(&o.mac, "mac", false, "build a macOS .app (universal: arm64 and x86_64)")
-	fs.BoolVar(&o.windows, "windows", false, "build a Windows app: a folder with the .exe (its icon and version built in) and its assets")
-	fs.BoolVar(&o.web, "web", false, "build a web app: a static site (WebAssembly and the web host), in dist/web")
+	platformFlag(fs, &o.platform, []string{platformIOS, platformAndroid, platformMac, platformWindows, platformWeb},
+		"the `platform` to build for: ios, an .ipa for the App Store (or -distribution); android, an .aab for Google Play and an .apk; mac, a universal .app (arm64 and x86_64); windows, a folder with the .exe (its icon and version built in) and its assets; web, a static site (WebAssembly and the web host) in dist/web. Default on macOS and Windows: this computer's")
 	fs.StringVar(&o.sign, "sign", "", "macOS: a signing identity, e.g. \"Developer ID Application: ...\" (default: ad hoc)")
 	fs.StringVar(&o.notarize, "notarize", "", "macOS: notarize the signed app and staple the ticket: a notarytool keychain profile (xcrun notarytool store-credentials), or \"env\" for RYUI_APPLE_ID, RYUI_APPLE_PASSWORD (app-specific) and RYUI_TEAM_ID")
 	fs.BoolVar(&o.simulator, "simulator", false, "iOS: a release .app for the simulator instead (not signed for devices)")
@@ -58,8 +52,10 @@ func cmdBuild(args []string) error {
 	if fs.NArg() > 0 {
 		dir = fs.Arg(0)
 	}
-	if n := btoi(o.ios) + btoi(o.android) + btoi(o.mac) + btoi(o.windows) + btoi(o.web); n != 1 {
-		return errors.New("usage: ryui build -ios|-android|-mac|-windows|-web [flags] [dir]")
+	if o.platform == "" {
+		if o.platform = thisComputer(); o.platform == "" {
+			return errors.New("usage: ryui build -platform ios|android|mac|windows|web [flags] [dir]")
+		}
 	}
 	app, err := loadApp(dir)
 	if err != nil {
@@ -72,23 +68,21 @@ func cmdBuild(args []string) error {
 	if err := os.MkdirAll(o.out, 0o755); err != nil {
 		return err
 	}
-	if o.android && o.aar {
-		return buildAndroidAAR(app, &o)
-	}
-	if o.ios && o.xcframework {
-		return buildIOSFramework(app, &o)
-	}
-	if o.ios {
+	switch o.platform {
+	case platformIOS:
+		if o.xcframework {
+			return buildIOSFramework(app, &o)
+		}
 		return buildIOS(app, &o)
-	}
-	if o.mac {
+	case platformMac:
 		return buildMac(app, &o)
-	}
-	if o.windows {
+	case platformWindows:
 		return buildWindows(app, &o)
-	}
-	if o.web {
+	case platformWeb:
 		return buildWeb(app, &o)
+	}
+	if o.aar {
+		return buildAndroidAAR(app, &o)
 	}
 	return buildAndroid(app, &o)
 }
@@ -150,11 +144,4 @@ func writePlist(b *strings.Builder, v any, depth int) {
 	default:
 		fmt.Fprintf(b, "%s<string>%s</string>\n", ind, html.EscapeString(fmt.Sprint(x)))
 	}
-}
-
-func btoi(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
 }

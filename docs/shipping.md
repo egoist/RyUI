@@ -3,8 +3,8 @@
 `ryui build` makes the builds the stores take, from the app's directory
 (or the one given), into its `dist`, and `ryui publish` uploads them:
 to TestFlight and App Review, or a Google Play track (see
-[Publishing](#publishing)). `ryui build -web` makes a static
-site instead, to serve from any web server: see [the web](web.md#ryui-build--web).
+[Publishing](#publishing)). `ryui build -platform web` makes a static
+site instead, to serve from any web server: see [the web](web.md#ryui-build--platform-web).
 
 ## ryui.json
 
@@ -66,13 +66,13 @@ Write your own in `ios.usage`: the default is generic. Some need a
 capability on the App ID too (Push Notifications for `ryui/push`, Sign
 in with Apple for `ryui/appleauth`, App Attest for `ryui/integrity`,
 Declared Age Range for `ryui/agerange`): turn it on at
-developer.apple.com, then make the profile again. `ryui build -ios` says
+developer.apple.com, then make the profile again. `ryui build -platform ios` says
 which a profile lacks.
 
 ## iOS
 
 ```sh
-ryui build -ios
+ryui build -platform ios
 ```
 
 makes a `.ipa` signed for the App Store, with the team's distribution
@@ -97,7 +97,7 @@ stops, saying so, if a profile lacks the group. The simulator needs
 none of this. An app with its own share sheet (`app.ShareSheet`) needs
 the group too, for its data, whatever it takes.
 
-`ryui publish -ios` makes it and uploads it to App Store Connect (see
+`ryui publish -platform ios` makes it and uploads it to App Store Connect (see
 [Publishing](#publishing)); Apple's Transporter uploads one too.
 
 **Privacy manifest.** The App Store requires one, giving a reason for
@@ -120,7 +120,7 @@ Name it in `ryui.json` (`android.keystore`, `android.keyAlias`), and give
 its password in the environment:
 
 ```sh
-RYUI_KEYSTORE_PASSWORD=... ryui build -android
+RYUI_KEYSTORE_PASSWORD=... ryui build -platform android
 ```
 
 (`RYUI_KEY_PASSWORD` too if the key's differs; `RYUI_KEYSTORE` and
@@ -157,9 +157,9 @@ App), with its bundle ID.
 ```
 
 ```sh
-ryui publish -ios                                  # to TestFlight: the team's testers
-ryui publish -ios -groups "Friends, QA" -notes "Try the new sync."
-ryui publish -ios -review -notes @release-notes/ios -release manual
+ryui publish -platform ios                                  # to TestFlight: the team's testers
+ryui publish -platform ios -groups "Friends, QA" -notes "Try the new sync."
+ryui publish -platform ios -review -notes @release-notes/ios -release manual
 ```
 
 It uploads the `.ipa`, waits for Apple to process it (minutes, usually;
@@ -192,9 +192,9 @@ first `.aab` only in the Play Console: create the app there and upload
 its first build by hand; `ryui publish` uploads the ones after.
 
 ```sh
-ryui publish -android                              # the internal test track
-ryui publish -android -track beta -notes @release-notes/android
-ryui publish -android -track production -rollout 0.1
+ryui publish -platform android                              # the internal test track
+ryui publish -platform android -track beta -notes @release-notes/android
+ryui publish -platform android -track production -rollout 0.1
 ```
 
 - `-track` is `internal` (default), `alpha` (closed testing), `beta`
@@ -215,14 +215,14 @@ instead of making one.
 
 ## macOS
 
-`ryui build -mac` makes a universal `.app` (Apple silicon and Intel),
+`ryui build -platform mac` makes a universal `.app` (Apple silicon and Intel),
 signed ad hoc: it runs on your Mac. To give it to others outside the
 Mac App Store, sign it with your Developer ID and have Apple notarize
 it, so Gatekeeper opens it:
 
 ```sh
 xcrun notarytool store-credentials ryui   # once: your Apple ID, team and an app-specific password
-ryui build -mac -sign "Developer ID Application: Your Name (TEAMID)" -notarize ryui
+ryui build -platform mac -sign "Developer ID Application: Your Name (TEAMID)" -notarize ryui
 ```
 
 `-notarize` sends the signed app to Apple's notary service, waits for
@@ -237,7 +237,7 @@ of a keychain profile.
 A RyUI app can live inside an app made in Xcode or Android Studio: a
 feature written once in Go, shown from a native app.
 
-**iOS.** `ryui build -ios -xcframework` makes `dist/RyUIApp.xcframework`:
+**iOS.** `ryui build -platform ios -xcframework` makes `dist/RyUIApp.xcframework`:
 the app's Go code and the UIKit host, for devices and the simulator, with
 a Swift module interface and the app's assets. Add it to your target
 (Embed & Sign), then show the RyUI app as any view controller:
@@ -249,7 +249,7 @@ present(RyUIViewController(), animated: true)
 // or push it, or make it a tab, or a window's root
 ```
 
-**Android.** `ryui build -android -aar` makes a Maven repository in
+**Android.** `ryui build -platform android -aar` makes a Maven repository in
 `dist/maven`: the host library with the app's Go code for each ABI, its
 assets, and `RyUIActivity` declared, with its dependencies (Material,
 AndroidX) in its POM, and the optional modules the app uses (`ryui/push`,
@@ -278,7 +278,7 @@ functions and lines with the build's symbols. Go's own stack traces
 need none (their tables are in the binary), so a Go panic reads as it
 is.
 
-**iOS.** `ryui build -ios` compiles the host with debug information,
+**iOS.** `ryui build -platform ios` compiles the host with debug information,
 keeps the Go code's, and makes a dSYM of each binary (the app, its
 framework when it has a share sheet, its extensions), as Xcode's archive
 does, then strips the binaries. They're in `dist/<Name>.dSYMs`, beside
@@ -292,7 +292,7 @@ sentry-cli debug-files upload --org ORG --project PROJECT dist/Notes.dSYMs
 upload-symbols -gsp GoogleService-Info.plist -p ios dist/Notes.dSYMs
 ```
 
-**Android.** `ryui build -android` keeps the Go libraries' symbol tables
+**Android.** `ryui build -platform android` keeps the Go libraries' symbol tables
 for Gradle, which strips the libraries it packages and puts their
 symbols in the `.aab`, with R8's map of the Kotlin it renamed: Google
 Play symbolicates native crashes and ANRs, and deobfuscates stack
@@ -381,7 +381,7 @@ jobs:
           RYUI_ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           RYUI_ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           RYUI_ASC_KEY: ${{ secrets.ASC_KEY }}
-        run: ryui publish -ios -profile $RUNNER_TEMP/app.mobileprovision -no-wait
+        run: ryui publish -platform ios -profile $RUNNER_TEMP/app.mobileprovision -no-wait
       - uses: actions/upload-artifact@v4
         with: { name: ios, path: dist/*.ipa }
       - name: attach to the tag's release
@@ -412,7 +412,7 @@ jobs:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
         run: echo "$KEYSTORE" | base64 --decode > $RUNNER_TEMP/upload.jks
       - name: build, and upload to Play's internal test track
-        run: ryui publish -android -track internal
+        run: ryui publish -platform android -track internal
         env:
           RYUI_KEYSTORE: ${{ runner.temp }}/upload.jks
           RYUI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}

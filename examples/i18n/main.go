@@ -2,8 +2,8 @@
 // their catalogs (locales), a menu of its languages that changes them at
 // once, and a layout that mirrors in Arabic. Try it in a language with
 //
-//	ryui dev -ios -lang ar examples/i18n
-//	ryui dev -ios -lang en-XA examples/i18n   (a pseudo locale)
+//	ryui dev -platform ios -lang ar examples/i18n
+//	ryui dev -platform ios -lang en-XA examples/i18n   (a pseudo locale)
 package main
 
 import (

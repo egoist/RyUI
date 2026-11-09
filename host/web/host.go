@@ -75,7 +75,7 @@ func newHost() *Host {
 	}
 	jh := js.Global().Get(name)
 	if jh.IsUndefined() {
-		panic("ryui: no web host on this page (" + name + "); load the app with platform/web's loader, as ryui dev -web and ryui build -web do")
+		panic("ryui: no web host on this page (" + name + "); load the app with platform/web's loader, as ryui dev -platform web and ryui build -platform web do")
 	}
 	h := &Host{js: jh}
 	theHost = h

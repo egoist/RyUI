@@ -27,7 +27,7 @@ import (
 // lacks of it: Android's channels (ignored, as on iOS), communication
 // notifications (a message shows as a notification, its sender's name its
 // title) and pushes (ryui/push isn't on macOS). The center needs the
-// app's bundle (ryui build -mac): an executable run on its own (go run,
+// app's bundle (ryui build -platform mac): an executable run on its own (go run,
 // ryui dev) has no bundle ID, and gets an error.
 
 // Presentation options (UNNotificationPresentationOptions).
@@ -100,7 +100,7 @@ func bundled() bool {
 	return Send(Send(Class("NSBundle"), "mainBundle"), "bundleIdentifier") != 0
 }
 
-var errNoBundle = errors.New("ryui/notify: macOS's notifications need the app's bundle: build it with ryui build -mac")
+var errNoBundle = errors.New("ryui/notify: macOS's notifications need the app's bundle: build it with ryui build -platform mac")
 
 // installNotifications makes the center's delegate, if the app is a
 // bundle: before it finishes launching, to see a response that launched

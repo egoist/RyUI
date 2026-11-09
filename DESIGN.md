@@ -894,19 +894,20 @@ The CLI does these builds itself (no gomobile).
 ## CLI (`cmd/ryui`)
 
 ```
-ryui new <dir>                     a project from the template
-ryui dev -ios|-android <dir>       build, run, rebuild and restart on save
-ryui build -ios|-android <dir>     a release build for the stores
-ryui publish -ios|-android <dir>   the release build, uploaded: TestFlight, App Review; a Play track
-ryui dev -mac <dir>                build and run on this Mac, rerun on save
-ryui build -mac <dir>              a universal .app, signed (-sign; default ad hoc)
-ryui dev -windows <dir>            build and run on this PC, rerun on save
-ryui build -windows <dir>          a folder: the .exe (icon, manifest, version) and its assets
-ryui dev -web <dir>                serve it to the browser, rebuild and reload on save
-ryui build -web <dir>              a static site: WebAssembly, the web host, a manifest
-ryui generate <dir>                the typed functions of the app's catalogs
-ryui i18n init|add|check           start, add languages to, and check the catalogs
-ryui vet [packages]                what builds but runs wrong: a signal read once, written off the main thread
+ryui new <dir>                             a project from the template
+ryui dev -platform ios|android <dir>       build, run, rebuild and restart on save
+ryui build -platform ios|android <dir>     a release build for the stores
+ryui publish -platform ios|android <dir>   the release build, uploaded: TestFlight, App Review; a Play track
+ryui dev -platform mac <dir>               build and run on this Mac, rerun on save
+ryui build -platform mac <dir>             a universal .app, signed (-sign; default ad hoc)
+ryui dev -platform windows <dir>           build and run on this PC, rerun on save
+ryui build -platform windows <dir>         a folder: the .exe (icon, manifest, version) and its assets
+ryui dev -platform web <dir>               serve it to the browser, rebuild and reload on save
+ryui build -platform web <dir>             a static site: WebAssembly, the web host, a manifest
+ryui dev|build <dir>                       no -platform: this computer's, on macOS (mac) and Windows (windows)
+ryui generate <dir>                        the typed functions of the app's catalogs
+ryui i18n init|add|check                   start, add languages to, and check the catalogs
+ryui vet [packages]                        what builds but runs wrong: a signal read once, written off the main thread
 ```
 
 **An app's metadata** is `ryui.json` beside its Go code, all optional:
@@ -934,7 +935,7 @@ instead, where the system has them. The theme context is made again
 and the views that resolved theme colors are rebuilt, as on a dark mode
 change.
 
-**`ryui build -ios`** makes an `.ipa`, still without an Xcode project:
+**`ryui build -platform ios`** makes an `.ipa`, still without an Xcode project:
 the host compiled optimized (no debug automation), the Go archive for
 `arm64` devices, linked with dead stripping; an Info.plist with the
 keys App Store validation checks (`DT*` from the SDK and Xcode,
@@ -947,7 +948,7 @@ entitlements, with a wildcard app ID made the app's; `codesign` with
 the identity's SHA-1, verified. `-simulator` makes the same release build
 for the simulator.
 
-**`ryui build -android`** makes an `.aab` for Google Play and an `.apk`:
+**`ryui build -platform android`** makes an `.aab` for Google Play and an `.apk`:
 the Go code as a stripped `.so` for arm64-v8a, armeabi-v7a and x86_64,
 the assets, launcher icons (legacy per density, and adaptive: the icon
 inside the safe zone over its corner color), the permissions, the
@@ -958,7 +959,7 @@ release build never loads a library from the app's files, as debug
 builds do in development; cleartext HTTP (the player's assets) is
 debug-only, as is iOS's local networking exception.
 
-**`ryui publish -ios`** and **`-android`** make the release build and
+**`ryui publish -platform ios`** and **`-platform android`** make the release build and
 upload it, through the stores' APIs from Go (no altool, no Gradle
 plugin), so a release is one command, in CI too. Everything the store
 can refuse is asked first, before the build: the app (App Store Connect
@@ -1110,11 +1111,11 @@ Each one ends with its examples running and its tests in CI.
 - **M0, core without UI** (done): `signal`, `ui` with `host/fake`,
   `layout`, `ops` with the Go encoder. Everything above under `go test`.
 - **M1, iOS** (done): Swift codegen for `ops`, `mobile/`, `platform/ios`,
-  `ryui new`, `ryui dev -ios` on the simulator. Counter, todo (`For`,
+  `ryui new`, `ryui dev -platform ios` on the simulator. Counter, todo (`For`,
   `TextField`, `Toggle`, `SafeArea` with the keyboard) and list10k
   (`List`) run. Not yet: XCUITest GUI tests and CI on macOS runners.
 - **M2, Android** (done): Kotlin codegen, `platform/android`,
-  `ryui dev -android` on the emulator, Activity recreation
+  `ryui dev -platform android` on the emulator, Activity recreation
   (`ryui_attach`). The same examples run unchanged; live rotation, dark
   mode, font scale and the keyboard (insets, animated) work. Not yet:
   Espresso GUI tests.
@@ -1133,8 +1134,8 @@ Each one ends with its examples running and its tests in CI.
   player apps (iOS simulator, Android emulator and devices); app state
   survives a reload with no code. Not yet: physical iOS devices (the
   player would need signing and the Mac's address).
-- **M6, shipping** (done): `ryui.json`, `ryui build -ios` (signed `.ipa`;
-  `-simulator`), `ryui build -android` (`.aab` and `.apk`), `ryui
+- **M6, shipping** (done): `ryui.json`, `ryui build -platform ios` (signed `.ipa`;
+  `-simulator`), `ryui build -platform android` (`.aab` and `.apk`), `ryui
   publish` (the build uploaded through the stores' APIs: TestFlight's
   groups and beta review, App Review; a Play track, staged). Not yet:
   screenshots and store listings (App Store Connect and the Play Console
@@ -1286,7 +1287,7 @@ Each one ends with its examples running and its tests in CI.
     navigation drawer; `Replace` resets a stack at once); springs with
     `Damping` and `Velocity`, `Delay` and `OnDone`; `ToggleProps.Checkbox`;
     named `ContentType`s; and embedding in an existing app
-    (`ryui build -ios -xcframework`, `ryui build -android -aar`).
+    (`ryui build -platform ios -xcframework`, `ryui build -platform android -aar`).
 
   docs/parity.md has what RyUI has against SwiftUI and Expo;
   docs/device-checklist.md, what's left to check on real devices.
@@ -1299,8 +1300,8 @@ Each one ends with its examples running and its tests in CI.
   work is maturing iOS and Android.
 - **macOS** (in progress): `host/darwin`, AppKit in the app's process
   through purego (`internal/darwin`, MyGo's Objective-C runtime layer),
-  no cgo; `app.Run` runs it on macOS. `ryui dev -mac` (rebuild and rerun
-  on save, signals' state kept) and `ryui build -mac` (a universal,
+  no cgo; `app.Run` runs it on macOS. `ryui dev -platform mac` (rebuild and rerun
+  on save, signals' state kept) and `ryui build -platform mac` (a universal,
   signed `.app` with its icon and assets). The examples run. Done: the
   v0 components, navigation (below), rich text (an `NSTextView`), shapes,
   images, symbols, gestures, menus, animation, `WebView`, `Video`; tests
@@ -1323,13 +1324,13 @@ Each one ends with its examples running and its tests in CI.
   (AVSpeechSynthesizer), audio (AVPlayer), biometric (Touch ID), review;
   matched views (`Match`); pull to refresh (a trackpad's elastic pull
   past the top); `ui.Native` and the app's modules in Go (package
-  `native`, below); notarization (`ryui build -mac -notarize`). Not yet:
+  `native`, below); notarization (`ryui build -platform mac -notarize`). Not yet:
   the other modules (camera, audio recording, contacts, calendar…).
 - **Windows** (in progress): `host/windows`, Win32 and the common
   controls (version 6) in the app's process through `syscall`
   (`internal/windows`, much of it MyGo's), no cgo, no WinUI; `app.Run`
-  runs it on Windows (amd64). `ryui dev -windows` (rebuild and rerun on
-  save, signals' state kept) and `ryui build -windows` (a folder of the
+  runs it on Windows (amd64). `ryui dev -platform windows` (rebuild and rerun on
+  save, signals' state kept) and `ryui build -platform windows` (a folder of the
   `.exe`, with its icon, manifest and version built in, and its
   assets; from any system). The examples run (counter, todo, list10k,
   navigation, gallery, richtext, markdown, notes, media but its native
@@ -1354,9 +1355,9 @@ Each one ends with its examples running and its tests in CI.
   children, a dark date picker, the share sheet (Share copies the
   text), arm64 builds, code signing.
 - **Web** (in progress): `host/web` and `platform/web` (below); `app.Run`
-  runs it on `js/wasm`. `ryui dev -web` (serve, rebuild and reload on
+  runs it on `js/wasm`. `ryui dev -platform web` (serve, rebuild and reload on
   save, signals' state kept; the app's output and the page's errors in
-  the terminal) and `ryui build -web` (a static site). The examples run
+  the terminal) and `ryui build -platform web` (a static site). The examples run
   (all but `notes` and `bookmarks`, whose SQLite has no WebAssembly
   build), light and dark, left to right and right to left, at any size;
   GUI tests (`e2e`, `-run Web`) drive them in headless Chrome. Done: the
@@ -1981,12 +1982,12 @@ calls:
   loaded from IndexedDB before Go starts and written back as it changes.
 - Symbols are the Android host's Material Symbols, as SVG paths
   (`platform/web/gen_symbols.go` reads its drawables).
-- `ryui dev -web` serves the page, the host's files (a checkout's, so
+- `ryui dev -platform web` serves the page, the host's files (a checkout's, so
   changing them reloads the page too), the build and the assets, and
   keeps a connection to the page (server-sent events): a new build
   reloads it (the signals' values saved in its session storage first),
   a failed one shows its errors over it, and the GUI tests' automation
-  commands go through it. `ryui build -web` names the files by their
+  commands go through it. `ryui build -platform web` names the files by their
   content's digest, so only `index.html` and the manifest need fetching
   again.
 

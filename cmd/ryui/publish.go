@@ -41,8 +41,8 @@ type publishOptions struct {
 
 func publishFlags(o *publishOptions) *flag.FlagSet {
 	fs := flag.NewFlagSet("publish", flag.ContinueOnError)
-	fs.BoolVar(&o.ios, "ios", false, "build the app and upload it to App Store Connect, for TestFlight and the App Store")
-	fs.BoolVar(&o.android, "android", false, "build the app and upload it to Google Play")
+	platformFlag(fs, &o.platform, []string{platformIOS, platformAndroid},
+		"the `platform` whose store to upload to: ios, App Store Connect (TestFlight and the App Store); android, Google Play")
 	fs.StringVar(&o.file, "file", "", "upload this .ipa or .aab (from ryui build) instead of building one")
 	fs.IntVar(&o.build, "build", 0, "the build number (default: one more than the store's highest, at least ryui.json's build)")
 	fs.StringVar(&o.notes, "notes", "", "what's new: text in the store's default language, @file likewise, or @dir with a file per language as the store names it (en-US.txt); TestFlight's What to Test and, with -review, the App Store's What's New; Play's release notes")
@@ -84,7 +84,7 @@ func cmdPublish(args []string) error {
 	if err != nil {
 		return err
 	}
-	if o.ios {
+	if o.platform == platformIOS {
 		key, err := loadASCKey(app.cfg)
 		if err != nil {
 			return err
@@ -100,25 +100,26 @@ func cmdPublish(args []string) error {
 
 // check refuses flags that don't go together, before anything is built.
 func (o *publishOptions) check(set map[string]bool) error {
-	if btoi(o.ios)+btoi(o.android) != 1 {
-		return errors.New("usage: ryui publish -ios|-android [flags] [dir]")
+	if o.platform == "" {
+		return errors.New("usage: ryui publish -platform ios|android [flags] [dir]")
 	}
+	ios := o.platform == platformIOS
 	only := func(platform string, names ...string) error {
 		for _, n := range names {
 			if set[n] {
-				return fmt.Errorf("-%s is for -%s", n, platform)
+				return fmt.Errorf("-%s is for -platform %s", n, platform)
 			}
 		}
 		return nil
 	}
-	if o.ios {
+	if ios {
 		if err := only("android", "track", "rollout", "draft", "cancel-review"); err != nil {
 			return err
 		}
 	} else if err := only("ios", "groups", "review", "release", "no-wait", "profile"); err != nil {
 		return err
 	}
-	if want := map[bool]string{true: ".ipa", false: ".aab"}[o.ios]; o.file != "" && !strings.EqualFold(filepath.Ext(o.file), want) {
+	if want := map[bool]string{true: ".ipa", false: ".aab"}[ios]; o.file != "" && !strings.EqualFold(filepath.Ext(o.file), want) {
 		return fmt.Errorf("-file %s: a %s", o.file, want)
 	}
 	if o.file != "" && set["build"] {
@@ -156,7 +157,7 @@ func buildForStore(app *goApp, o *buildOptions) (string, error) {
 		return "", err
 	}
 	vetBuild(app.dir, o.vet)
-	if o.ios {
+	if o.platform == platformIOS {
 		o.distribution = "app-store"
 		return ipaPath(app.cfg, o), buildIOS(app, o)
 	}

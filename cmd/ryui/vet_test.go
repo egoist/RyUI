@@ -18,7 +18,7 @@ func TestIsVetTool(t *testing.T) {
 		{nil, false},
 		{[]string{"vet"}, false},
 		{[]string{"vet", "./..."}, false},
-		{[]string{"dev", "-ios", "x.cfg"}, false},
+		{[]string{"dev", "-platform", "ios", "x.cfg"}, false},
 		{[]string{"-h"}, false},
 	} {
 		if got := isVetTool(c.args); got != c.want {

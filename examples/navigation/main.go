@@ -2,8 +2,8 @@
 // (native push, pop and back gestures), a refreshable List, bar buttons,
 // a Sheet with detents, an Alert, menus and haptics.
 //
-//	go run ./cmd/ryui dev -ios examples/navigation
-//	go run ./cmd/ryui dev -android examples/navigation
+//	go run ./cmd/ryui dev -platform ios examples/navigation
+//	go run ./cmd/ryui dev -platform android examples/navigation
 package main
 
 import (

@@ -4,7 +4,7 @@
 // from it, a note, a collection and tags. Save, and the sheet closes back
 // to the app you were in; the bookmark is in the app's list.
 //
-//	go run ./cmd/ryui dev -ios examples/bookmarks
+//	go run ./cmd/ryui dev -platform ios examples/bookmarks
 package main
 
 import (

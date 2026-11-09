@@ -330,27 +330,27 @@ func TestPublishFlags(t *testing.T) {
 		err  string
 	}{
 		{[]string{}, "usage"},
-		{[]string{"-ios", "-android"}, "usage"},
-		{[]string{"-ios", "-track", "beta"}, "-track is for -android"},
-		{[]string{"-android", "-groups", "x"}, "-groups is for -ios"},
-		{[]string{"-ios", "-file", "a.ipa", "-build", "3"}, "-file's number"},
-		{[]string{"-ios", "-release", "later"}, "auto or manual"},
-		{[]string{"-ios", "-release", "auto"}, "goes with -review"},
-		{[]string{"-ios", "-no-wait", "-groups", "x"}, "-no-wait"},
-		{[]string{"-android", "-rollout", "1"}, "above 0 and below 1"},
-		{[]string{"-android", "-rollout", "0.2", "-draft"}, "a draft isn't rolled out"},
-		{[]string{"-ios", "-groups", "a", "-review", "-release", "manual"}, ""},
-		{[]string{"-android", "-track", "beta", "-rollout", "0.5"}, ""},
+		{[]string{"-platform", "mac"}, "one of ios, android"},
+		{[]string{"-platform", "ios", "-track", "beta"}, "-track is for -platform android"},
+		{[]string{"-platform", "android", "-groups", "x"}, "-groups is for -platform ios"},
+		{[]string{"-platform", "ios", "-file", "a.ipa", "-build", "3"}, "-file's number"},
+		{[]string{"-platform", "ios", "-release", "later"}, "auto or manual"},
+		{[]string{"-platform", "ios", "-release", "auto"}, "goes with -review"},
+		{[]string{"-platform", "ios", "-no-wait", "-groups", "x"}, "-no-wait"},
+		{[]string{"-platform", "android", "-rollout", "1"}, "above 0 and below 1"},
+		{[]string{"-platform", "android", "-rollout", "0.2", "-draft"}, "a draft isn't rolled out"},
+		{[]string{"-platform", "ios", "-groups", "a", "-review", "-release", "manual"}, ""},
+		{[]string{"-platform", "android", "-track", "beta", "-rollout", "0.5"}, ""},
 	} {
 		var o publishOptions
 		fs := publishFlags(&o)
 		fs.SetOutput(io.Discard)
-		if err := fs.Parse(c.args); err != nil {
-			t.Fatal(err)
+		err := fs.Parse(c.args)
+		if err == nil {
+			set := map[string]bool{}
+			fs.Visit(func(f *flag.Flag) { set[f.Name] = true })
+			err = o.check(set)
 		}
-		set := map[string]bool{}
-		fs.Visit(func(f *flag.Flag) { set[f.Name] = true })
-		err := o.check(set)
 		if (err == nil) != (c.err == "") || (err != nil && !strings.Contains(err.Error(), c.err)) {
 			t.Errorf("%v: %v, want %q", c.args, err, c.err)
 		}

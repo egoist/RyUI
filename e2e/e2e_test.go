@@ -465,7 +465,7 @@ func webApp(t *testing.T, example string) *webScreen {
 	if b, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("building the CLI: %v\n%s", err, b)
 	}
-	dev := exec.Command(cli, "dev", "-web", "-no-open", "-vet=false", "-port", fmt.Sprint(port), "examples/"+example)
+	dev := exec.Command(cli, "dev", "-platform", "web", "-no-open", "-vet=false", "-port", fmt.Sprint(port), "examples/"+example)
 	dev.Dir = root(t)
 	out, _ := dev.StdoutPipe()
 	var logs strings.Builder

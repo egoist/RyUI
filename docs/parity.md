@@ -156,10 +156,10 @@ what RyUI has for it.
 | | Xcode / Expo | RyUI |
 |---|---|---|
 | Live reload, keeping state | previews, Fast Refresh | ✓ `ryui dev`: the Go code runs on the Mac, reloads on save, keeps signals' values |
-| Release builds and signing | Xcode, EAS Build | ✓ `ryui build -ios` (.ipa), `ryui build -android` (.aab, .apk) |
+| Release builds and signing | Xcode, EAS Build | ✓ `ryui build -platform ios` (.ipa), `ryui build -platform android` (.aab, .apk) |
 | GUI tests | XCUITest, Detox, Maestro | ✓ `e2e/` (both platforms; a CI job for each, not yet run on GitHub) |
 | Benchmarks | Instruments | ✓ `bench/` (against SwiftUI and Compose) |
-| Embedding in an existing app | — | brownfield (React Native's) | ✓ `ryui build -ios -xcframework`, `ryui build -android -aar` |
+| Embedding in an existing app | — | brownfield (React Native's) | ✓ `ryui build -platform ios -xcframework`, `ryui build -platform android -aar` |
 | Over-the-air updates | — | EAS Update: ✗ |
 
 ## Not yet

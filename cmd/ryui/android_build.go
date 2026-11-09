@@ -125,7 +125,7 @@ and give its password in RYUI_KEYSTORE_PASSWORD (and RYUI_KEY_PASSWORD if the ke
 		}
 		fmt.Println("ryui:", to)
 	}
-	fmt.Printf("ryui: built in %.0fs; ryui publish -android builds and uploads it to Google Play\n", time.Since(start).Seconds())
+	fmt.Printf("ryui: built in %.0fs; ryui publish -platform android builds and uploads it to Google Play\n", time.Since(start).Seconds())
 	return nil
 }
 

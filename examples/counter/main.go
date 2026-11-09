@@ -1,7 +1,7 @@
 // Counter is the smallest RyUI app: a signal, a Text that reads it and a
 // Button that writes it.
 //
-//	go run ./cmd/ryui dev -ios examples/counter
+//	go run ./cmd/ryui dev -platform ios examples/counter
 package main
 
 import (

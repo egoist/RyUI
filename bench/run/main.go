@@ -303,7 +303,7 @@ func simulator() (string, error) {
 }
 
 func buildRyUIIOS() (string, error) {
-	out, err := output(root, nil, "go", "run", "./cmd/ryui", "build", "-ios", "-simulator", "bench/ryui")
+	out, err := output(root, nil, "go", "run", "./cmd/ryui", "build", "-platform", "ios", "-simulator", "bench/ryui")
 	if err != nil {
 		return "", err
 	}
@@ -444,7 +444,7 @@ func buildRyUIAndroid() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	out, err := output(root, env, "go", "run", "./cmd/ryui", "build", "-android", "bench/ryui")
+	out, err := output(root, env, "go", "run", "./cmd/ryui", "build", "-platform", "android", "bench/ryui")
 	if err != nil {
 		return "", err
 	}

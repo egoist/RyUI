@@ -4,7 +4,7 @@ plugins {
     id("org.jetbrains.kotlin.android") version "2.1.20" apply false
 }
 
-// ryui build -android -aar: the optional modules (ryui-*) an embedded app
+// ryui build -platform android -aar: the optional modules (ryui-*) an embedded app
 // uses are published beside it, their dependency on :ryui as the app's
 // coordinates.
 providers.gradleProperty("ryuiMavenRepo").orNull?.let { repo ->

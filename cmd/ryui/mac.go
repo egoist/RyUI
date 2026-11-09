@@ -18,8 +18,8 @@ import (
 // macOS: the app's Go code and its host (host/darwin, AppKit through
 // purego) are one Go program, built for this Mac with CGO_ENABLED=0.
 //
-// ryui dev -mac runs it here and, on each change, rebuilds it and runs it
-// again (its signals' state kept, as with the player). ryui build -mac
+// ryui dev -platform mac runs it here and, on each change, rebuilds it and runs it
+// again (its signals' state kept, as with the player). ryui build -platform mac
 // makes an .app: a universal binary (arm64 and x86_64), its Info.plist,
 // icon and assets, signed (ad hoc unless -sign names an identity).
 

@@ -33,11 +33,11 @@ import (
 // GOARCH=wasm) and the web host (platform/web: the DOM, in JavaScript),
 // which the page loads together.
 //
-// ryui dev -web serves the app on this machine and opens it in the
+// ryui dev -platform web serves the app on this machine and opens it in the
 // browser; each change rebuilds it and reloads the page, the app's
 // signals' state kept (the page keeps it in its session storage across
 // the reload). The app's output and the page's errors are printed here.
-// ryui build -web makes a static site: its files named by their content's
+// ryui build -platform web makes a static site: its files named by their content's
 // digest (cache them for good; index.html no-cache), gzipped copies,
 // a web app manifest and its icons.
 

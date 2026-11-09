@@ -36,8 +36,9 @@ cd hello
 ## Run it
 
 ```sh
-ryui dev -ios        # the iOS simulator
-ryui dev -android    # an Android emulator or phone
+ryui dev -platform ios        # the iOS simulator
+ryui dev -platform android    # an Android emulator or phone
+ryui dev                      # on a Mac or a PC: this computer (-platform mac, -platform windows)
 ```
 
 The first run builds and installs RyUI's player app, which shows your
@@ -51,7 +52,7 @@ terminal.
 - `-embed` builds your Go code into the app instead, as a release build
   has it; `-once` builds it in and launches it once.
 
-To run on an iPhone, make a build signed for it: `ryui build -ios
+To run on an iPhone, make a build signed for it: `ryui build -platform ios
 -distribution development`, then install the `.ipa` with Xcode's Devices
 window.
 

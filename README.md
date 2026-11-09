@@ -40,13 +40,13 @@ func main() { app.Run(Counter) }
   Google Play; **`ryui publish`** uploads them, numbered after the store's
   last build, to TestFlight (its groups, App Review) or a Play track.
 - **macOS, early**: the same app on AppKit, in one Go process
-  (`ryui dev -mac`, `ryui build -mac`).
+  (`ryui dev -platform mac`, `ryui build -platform mac`).
 - **Windows, early**: the same app on Win32 and the common controls,
-  drawn as Windows 11's, in one Go process (`ryui dev -windows`,
-  `ryui build -windows`).
+  drawn as Windows 11's, in one Go process (`ryui dev -platform windows`,
+  `ryui build -platform windows`).
 - **The web, early**: the same app in a browser, its Go code compiled to
   WebAssembly and its views the page's DOM, placed where RyUI's layout
-  puts them (`ryui dev -web`, `ryui build -web`: a static site). See
+  puts them (`ryui dev -platform web`, `ryui build -platform web`: a static site). See
   [the web](docs/web.md).
 
 ## Quick start
@@ -58,7 +58,7 @@ You need Go 1.26 or later, and Xcode (iOS) or Android Studio with an NDK
 go install github.com/egoist/ryui/cmd/ryui@latest
 ryui new hello
 cd hello
-ryui dev -ios        # or: ryui dev -android
+ryui dev -platform ios     # or android, web; on a Mac or PC, ryui dev alone runs it there
 ```
 
 See [the documentation](docs/README.md) for the guides, and

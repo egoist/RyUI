@@ -78,7 +78,7 @@ reloads it as you save, on the simulator, an emulator or a phone.
 - [Shipping](shipping.md): builds for the App Store and Google Play, and
   what `ryui.json` says of the app.
 - [The web](web.md): the same app in a browser, as WebAssembly and the
-  page's DOM; `ryui dev -web`, a static site to deploy, embedding, and
+  page's DOM; `ryui dev -platform web`, a static site to deploy, embedding, and
   what it doesn't do yet.
 
 ## Reference

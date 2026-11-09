@@ -55,26 +55,26 @@ go run platform/web/gen_symbols.go  # the web host's symbols, from the Android h
 go generate ./i18n                  # CLDR's tables, from the pinned release
 go run ./cmd/ryui generate examples/i18n  # an app's catalog functions (dev and build do it too)
 go run ./cmd/ryui vet ./...                # the analyzers (package vet): a signal read once, written off the main thread
-go run ./cmd/ryui dev -ios -lang ar examples/i18n  # a language for one run; -lang ar-XB, en-XA: pseudo locales; -dir rtl: any app right to left
-go run ./cmd/ryui dev -ios examples/counter       # iOS simulator (Xcode): the Go code runs here, in the player
-go run ./cmd/ryui dev -android examples/counter   # Android emulator (SDK + NDK), likewise
-go run ./cmd/ryui dev -ios -once examples/counter # build the app with its Go code, launch once (-embed: and watch)
+go run ./cmd/ryui dev -platform ios -lang ar examples/i18n  # a language for one run; -lang ar-XB, en-XA: pseudo locales; -dir rtl: any app right to left
+go run ./cmd/ryui dev -platform ios examples/counter       # iOS simulator (Xcode): the Go code runs here, in the player
+go run ./cmd/ryui dev -platform android examples/counter   # Android emulator (SDK + NDK), likewise
+go run ./cmd/ryui dev -platform ios -once examples/counter # build the app with its Go code, launch once (-embed: and watch)
 go test ./internal/remote                        # the dev transport, against the fake host
 go test -tags e2e ./e2e -run IOS                 # GUI tests: the examples on the simulator (Android: -run Android, an emulator running)
-go run ./cmd/ryui build -ios -simulator examples/counter    # a release build (-ios alone: a signed .ipa)
-go run ./cmd/ryui build -android examples/counter           # .aab and .apk (RYUI_KEYSTORE, RYUI_KEY_ALIAS, RYUI_KEYSTORE_PASSWORD)
-go run ./cmd/ryui publish -ios -groups Friends examples/counter  # build and upload to TestFlight (RYUI_ASC_KEY_ID, RYUI_ASC_ISSUER_ID, RYUI_ASC_KEY)
-go run ./cmd/ryui publish -android -track internal examples/counter  # build and upload to Google Play (RYUI_PLAY_SERVICE_ACCOUNT)
-go run ./cmd/ryui dev -mac examples/counter       # macOS: the app and its AppKit host in one process, rerun on save
-go run ./cmd/ryui build -mac examples/counter     # a universal .app (-sign "Developer ID Application: ..."; default ad hoc)
+go run ./cmd/ryui build -platform ios -simulator examples/counter    # a release build (-platform ios alone: a signed .ipa)
+go run ./cmd/ryui build -platform android examples/counter           # .aab and .apk (RYUI_KEYSTORE, RYUI_KEY_ALIAS, RYUI_KEYSTORE_PASSWORD)
+go run ./cmd/ryui publish -platform ios -groups Friends examples/counter  # build and upload to TestFlight (RYUI_ASC_KEY_ID, RYUI_ASC_ISSUER_ID, RYUI_ASC_KEY)
+go run ./cmd/ryui publish -platform android -track internal examples/counter  # build and upload to Google Play (RYUI_PLAY_SERVICE_ACCOUNT)
+go run ./cmd/ryui dev examples/counter            # macOS (on a Mac, no -platform: mac): the app and its AppKit host in one process, rerun on save
+go run ./cmd/ryui build examples/counter          # likewise: a universal .app (-sign "Developer ID Application: ..."; default ad hoc)
 go test ./host/darwin                            # the macOS host, driving real AppKit views (macOS)
 (cd examples/counter && RYUI_SNAPSHOT=/tmp/c.png RYUI_DUMP=1 go run .)  # macOS: the window as a PNG and its view tree, then quit
-go run ./cmd/ryui dev -windows examples/counter   # Windows: the app and its Win32 host in one process, rerun on save
-go run ./cmd/ryui build -windows examples/counter # a folder: the .exe (icon, manifest, version) and its assets; from any system
+go run ./cmd/ryui dev examples/counter            # Windows (on a PC, no -platform: windows): the app and its Win32 host in one process, rerun on save
+go run ./cmd/ryui build -platform windows examples/counter  # a folder: the .exe (icon, manifest, version) and its assets; from any system
 go test ./host/windows                           # the Windows host, driving real Win32 windows (Windows)
 (cd examples/counter && RYUI_SNAPSHOT=c.png RYUI_DUMP=1 RYUI_SCRIPT="tap:Add" go run .)  # Windows: steps, then the window as a PNG and its view tree
-go run ./cmd/ryui dev -web examples/counter       # the web: served to the browser, reloaded on save (-lan: to a phone)
-go run ./cmd/ryui build -web examples/counter     # a static site, in examples/counter/dist/web
+go run ./cmd/ryui dev -platform web examples/counter       # the web: served to the browser, reloaded on save (-lan: to a phone)
+go run ./cmd/ryui build -platform web examples/counter     # a static site, in examples/counter/dist/web
 GOOS=js GOARCH=wasm go vet ./host/web ./app       # the web host's Go side
 go test -tags e2e ./e2e -run Web                  # GUI tests: the examples in headless Chrome
 ```

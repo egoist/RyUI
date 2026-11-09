@@ -9,7 +9,7 @@
 // with semantic colors at an opacity (Color.Opacity), and has an
 // appearance setting (ui.SetColorScheme).
 //
-//	go run ./cmd/ryui dev -android examples/usage
+//	go run ./cmd/ryui dev -platform android examples/usage
 package main
 
 import (

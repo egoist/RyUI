@@ -405,7 +405,7 @@ func (h *Host) module(name string) func(method string, args []byte) ([]byte, err
 			},
 			// ryui/notify: Windows's toasts need the app registered with
 			// the shell (an AppUserModelID, a COM activator for actions),
-			// which ryui build -windows doesn't do yet. Channels are
+			// which ryui build -platform windows doesn't do yet. Channels are
 			// Android's, ignored as on iOS.
 			"notify": func(method string, args []byte) ([]byte, error) {
 				switch method {

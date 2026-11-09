@@ -17,10 +17,10 @@ import (
 // runs on arm64 Windows too, emulated: the host's GDI+ calls pass floats
 // in the registers amd64 has).
 //
-// ryui dev -windows runs it here and, on each change, rebuilds it and runs
+// ryui dev -platform windows runs it here and, on each change, rebuilds it and runs
 // it again (its signals' state kept, as with the player: Windows can't
 // send a process SIGINT, so RyUI closes its standard input, RYUI_STOP=stdin,
-// and it saves its state and quits). ryui build -windows makes a folder
+// and it saves its state and quits). ryui build -platform windows makes a folder
 // with the .exe, its icon, manifest and version information built in
 // (a .syso written beside the app's Go code for the build), and its
 // assets beside it; it builds from any system.
@@ -43,7 +43,7 @@ func windowsLdflags(app *goApp, release bool) string {
 
 func devWindows(dir string, o *devOptions, stop <-chan os.Signal) error {
 	if runtime.GOOS != "windows" {
-		return errors.New("ryui dev -windows runs the app on this PC: run it on Windows (ryui build -windows builds from anywhere)")
+		return errors.New("ryui dev -platform windows runs the app on this PC: run it on Windows (ryui build -platform windows builds from anywhere)")
 	}
 	app, err := loadApp(dir)
 	if err != nil {

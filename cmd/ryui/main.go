@@ -1,11 +1,12 @@
 // Command RyUI makes, runs and builds RyUI apps.
 //
-//	RyUI new <dir>                  a project from the template
-//	ryui dev -ios <dir>             build, run on the iOS simulator, rebuild on save
-//	ryui dev -android <dir>         build, run on an Android emulator or device, rebuild on save
-//	ryui dev -mac <dir>             build, run on this Mac, rebuild on save
-//	ryui dev -windows <dir>         build, run on this PC, rebuild on save
-//	ryui dev -web <dir>             build, serve and open in the browser, rebuild on save
+//	ryui new <dir>                         a project from the template
+//	ryui dev -platform ios <dir>           build, run on the iOS simulator, rebuild on save
+//	ryui dev -platform android <dir>       build, run on an Android emulator or device, rebuild on save
+//	ryui dev -platform mac <dir>           build, run on this Mac, rebuild on save
+//	ryui dev -platform windows <dir>       build, run on this PC, rebuild on save
+//	ryui dev -platform web <dir>           build, serve and open in the browser, rebuild on save
+//	ryui dev <dir>                         on macOS or Windows: run on this computer
 package main
 
 import (
@@ -23,13 +24,11 @@ import (
 func usage() {
 	fmt.Fprint(os.Stderr, `usage:
   ryui new <dir>                  make a project from the template
-  ryui dev -ios [flags] [dir]     run on the iOS simulator, rebuilding on save
-  ryui dev -android [flags] [dir] run on an Android device or emulator, rebuilding on save
-  ryui dev -mac [flags] [dir]     run on this Mac, rebuilding on save
-  ryui dev -windows [flags] [dir] run on this PC, rebuilding on save
-  ryui dev -web [flags] [dir]     run in the browser, rebuilding on save
-  ryui build -ios|-android|-mac|-windows|-web [flags] [dir]   a release build
-  ryui publish -ios|-android [flags] [dir]   a release build, uploaded to TestFlight or Google Play (ryui publish -h)
+  ryui dev [-platform p] [flags] [dir]     run, rebuilding on save, on p: ios (the simulator), android (an
+                                           emulator or device), mac, windows or web (the browser);
+                                           default on macOS and Windows: this computer
+  ryui build [-platform p] [flags] [dir]   a release build for p, likewise (ryui build -h)
+  ryui publish -platform ios|android [flags] [dir]   a release build, uploaded to TestFlight or Google Play (ryui publish -h)
   ryui generate [dir]             write the functions of the app's catalogs
   ryui i18n init|add|check        start, add languages to, and check the catalogs
   ryui vet [flags] [packages]     report what builds but runs wrong, as a signal read once
@@ -78,28 +77,22 @@ func main() {
 }
 
 type devOptions struct {
-	ios, android bool
-	mac          bool
-	windows      bool
-	web          bool
-	port         int  // web: the dev server's port
-	lan          bool // web: served to the network too, for phones
-	noOpen       bool // web: don't open the browser
-	device       string
-	once         bool
-	embed        bool
-	verbose      bool
-	lang, dir    string
-	vet          bool
+	platform  string
+	port      int  // web: the dev server's port
+	lan       bool // web: served to the network too, for phones
+	noOpen    bool // web: don't open the browser
+	device    string
+	once      bool
+	embed     bool
+	verbose   bool
+	lang, dir string
+	vet       bool
 }
 
 func devFlags(o *devOptions) *flag.FlagSet {
 	fs := flag.NewFlagSet("dev", flag.ContinueOnError)
-	fs.BoolVar(&o.ios, "ios", false, "run on the iOS simulator")
-	fs.BoolVar(&o.android, "android", false, "run on an Android device or emulator")
-	fs.BoolVar(&o.mac, "mac", false, "run on this Mac")
-	fs.BoolVar(&o.windows, "windows", false, "run on this PC (Windows)")
-	fs.BoolVar(&o.web, "web", false, "run in the browser: the Go code as WebAssembly, the views the page's DOM")
+	platformFlag(fs, &o.platform, []string{platformIOS, platformAndroid, platformMac, platformWindows, platformWeb},
+		"the `platform` to run on: ios (the simulator), android (a device or emulator), mac (this Mac), windows (this PC), or web (the browser: the Go code as WebAssembly, the views the page's DOM); default on macOS and Windows: this computer")
 	fs.IntVar(&o.port, "port", 0, "web: the dev server's port (default 8790, or a free one)")
 	fs.BoolVar(&o.lan, "lan", false, "web: serve to this network too (a phone's browser), not only this machine")
 	fs.BoolVar(&o.noOpen, "no-open", false, "web: don't open the page in the browser")
@@ -127,27 +120,22 @@ func cmdDev(args []string) error {
 	if fs.NArg() > 0 {
 		dir = fs.Arg(0)
 	}
-	switch {
-	case o.web:
-		stop := make(chan os.Signal, 1)
-		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-		return devWeb(dir, &o, stop)
-	case o.mac:
-		stop := make(chan os.Signal, 1)
-		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-		return devMac(dir, &o, stop)
-	case o.windows:
-		stop := make(chan os.Signal, 1)
-		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-		return devWindows(dir, &o, stop)
-	case o.android:
-		stop := make(chan os.Signal, 1)
-		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-		return devAndroid(dir, &o, stop)
-	case !o.ios:
-		return errors.New("pick a platform: ryui dev -ios|-android|-mac|-windows|-web <dir>")
+	if o.platform == "" {
+		if o.platform = thisComputer(); o.platform == "" {
+			return errors.New("pick a platform: ryui dev -platform ios|android|web <dir>")
+		}
 	}
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	switch o.platform {
+	case platformWeb:
+		return devWeb(dir, &o, stop)
+	case platformMac:
+		return devMac(dir, &o, stop)
+	case platformWindows:
+		return devWindows(dir, &o, stop)
+	case platformAndroid:
+		return devAndroid(dir, &o, stop)
+	}
 	return devIOS(dir, &o, stop)
 }

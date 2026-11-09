@@ -6,7 +6,7 @@ plugins {
 
 fun prop(name: String) = providers.gradleProperty(name).orNull
 
-// ryui build -android -aar: an app to embed in another, this library with
+// ryui build -platform android -aar: an app to embed in another, this library with
 // the app's Go code (ryuiJniLibs) and assets, and RyUIActivity declared,
 // published to a Maven repository (ryuiMavenRepo) so its dependencies come
 // with it.

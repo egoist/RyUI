@@ -10,16 +10,16 @@ measure theirs. Controls are the browser's own (`<button>`, `<input>`,
 autofill, spelling and screen readers come with them.
 
 ```sh
-ryui dev -web examples/counter       # serves it and opens it in your browser; reloads as you save
-ryui build -web examples/counter     # a static site, in examples/counter/dist/web
+ryui dev -platform web examples/counter       # serves it and opens it in your browser; reloads as you save
+ryui build -platform web examples/counter     # a static site, in examples/counter/dist/web
 ```
 
 The web is early, like macOS and Windows: what follows says what it does
 and what it doesn't yet.
 
-## ryui dev -web
+## ryui dev -platform web
 
-`ryui dev -web` builds the app for the browser (`GOOS=js GOARCH=wasm`),
+`ryui dev -platform web` builds the app for the browser (`GOOS=js GOARCH=wasm`),
 serves it at `http://localhost:8790/` (or a free port) and opens it. Each
 save rebuilds it, in well under a second for the examples, and the page
 loads the new build with the app's signals' values kept, as the other
@@ -35,9 +35,9 @@ The flags, beside `ryui dev`'s own (`-lang`, `-dir`, `-vet`, `-v`):
 - `-no-open`: don't open the browser.
 - `-once`: build and serve, without watching.
 
-## ryui build -web
+## ryui build -platform web
 
-`ryui build -web` makes a static site in `dist/web`:
+`ryui build -platform web` makes a static site in `dist/web`:
 
 - `index.html` and `manifest.webmanifest` (a web app manifest, so a
   browser offers to install the app; its icons from `ryui.json`'s
@@ -155,7 +155,7 @@ ryui.registerModule("greeter", {
 
 ## Embedding
 
-The page `ryui build -web` makes runs the app full page. To run it in an
+The page `ryui build -platform web` makes runs the app full page. To run it in an
 element of a page of your own, load the host's loader and start the app
 in it; it then follows the element's size:
 

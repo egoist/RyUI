@@ -5,8 +5,8 @@
 // columns, carrying Go values) and with other apps (files, photos,
 // links, text).
 //
-//	go run ./cmd/ryui dev -ios examples/interaction
-//	go run ./cmd/ryui dev -mac examples/interaction
+//	go run ./cmd/ryui dev -platform ios examples/interaction
+//	go run ./cmd/ryui dev -platform mac examples/interaction
 package main
 
 import (

@@ -6,7 +6,7 @@
 // before the page's own (WebViewProps.Preload), and blocks ads; its icons
 // are SVG (ryui/svg); ryui/js runs a script off screen.
 //
-//	go run ./cmd/ryui dev -android -once examples/downloader
+//	go run ./cmd/ryui dev -platform android -once examples/downloader
 package main
 
 import (

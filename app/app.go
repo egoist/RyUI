@@ -49,7 +49,7 @@ func Run(root func() ui.Node) {
 		desktop(root)
 		return
 	}
-	panic("ryui: no host on this platform yet; run the app with `ryui dev -ios` (or -android)")
+	panic("ryui: no host on this platform yet; run the app with `ryui dev -platform ios` (or -platform android)")
 }
 
 var shareScreen func(*ui.ShareSheet) ui.Node

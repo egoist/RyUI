@@ -9,15 +9,20 @@ benchmarks.
 ## ryui dev
 
 ```sh
-ryui dev -ios [flags] [dir]
-ryui dev -android [flags] [dir]
+ryui dev -platform ios [flags] [dir]
+ryui dev -platform android [flags] [dir]
+ryui dev [flags] [dir]       # on macOS or Windows: this computer (-platform mac or windows)
 ```
+
+`-platform` is one of `ios`, `android`, `mac`, `windows` and `web`; `ryui
+build` takes it likewise. Without it, on macOS or Windows, the app runs (or
+builds) for the computer you're on.
 
 `dir` is the app's directory, the current one by default: a `main`
 package that calls `app.Run`. The flags:
 
-- `-ios`, `-android`: the platform. One per run; run two terminals for
-  both.
+- `-platform`: `ios` or `android` (or `mac`, `windows`, `web`). One per
+  run; run two terminals for both.
 - `-device`: on iOS, a simulator's name or UDID (by default the booted
   iPhone, else a recent iPhone Pro, which it boots); on Android, an adb
   serial or an AVD's name (by default the first device adb lists, else
@@ -28,8 +33,8 @@ package that calls `app.Run`. The flags:
 - `-v`: print the commands RyUI runs.
 - `-vet=false`: don't run [`ryui vet`](#ryui-vet) beside the builds.
 
-`ryui dev -web` runs the app in your browser instead: see
-[the web](web.md#ryui-dev--web).
+`ryui dev -platform web` runs the app in your browser instead: see
+[the web](web.md#ryui-dev--platform-web).
 
 ## The player and built apps
 
@@ -118,14 +123,14 @@ connects there.
 
 **An Android phone over USB**: turn on USB debugging in its developer
 options, plug it in and accept the prompt, and check that `adb devices`
-lists it. `ryui dev -android` takes the first device adb lists, phone or
+lists it. `ryui dev -platform android` takes the first device adb lists, phone or
 emulator; with several, name it with `-device` and its serial. The phone reaches the Mac through
 `adb reverse`, which RyUI sets up for ports 7461 (the app) and 7462 (its
 assets). In development RyUI builds for 64-bit phones and emulators
 (arm64-v8a, x86_64).
 
 **An iPhone**: `ryui dev` runs on the simulator only. To run on an
-iPhone, make a build signed for it, `ryui build -ios -distribution
+iPhone, make a build signed for it, `ryui build -platform ios -distribution
 development` (see [Shipping](shipping.md#ios)), and install the `.ipa`
 with Xcode's Devices window.
 
@@ -249,10 +254,10 @@ platforms. They wait for the screen to show what they expect, up to a
 minute, never for a set time.
 
 The iOS tests need Xcode (`xcrun`); the Android ones need `adb` on your
-`PATH`, and the SDK and NDK that `ryui dev -android` needs. Without
+`PATH`, and the SDK and NDK that `ryui dev -platform android` needs. Without
 them, the tests are skipped.
 
-The web tests run the examples with `ryui dev -web` in headless Chrome
+The web tests run the examples with `ryui dev -platform web` in headless Chrome
 (or Chromium); the page takes the same commands as the mobile hosts'
 debug builds, sent through the dev server
 (`platform/web/src/automation.js`). The counter, chat, navigation and

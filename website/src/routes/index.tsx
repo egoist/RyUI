@@ -80,9 +80,9 @@ function Home() {
             <span className="text-gopher-ink select-none">$ </span>
             {"ryui new hello && cd hello\n"}
             <span className="text-gopher-ink select-none">$ </span>
-            {"ryui dev -ios      # the iOS simulator\n"}
+            {"ryui dev -platform ios      # the iOS simulator\n"}
             <span className="text-gopher-ink select-none">$ </span>
-            {"ryui dev -android  # an emulator or a phone\n"}
+            {"ryui dev -platform android  # an emulator or a phone\n"}
           </pre>
           <p className="mt-auto border-t px-4 py-4 text-sm leading-6 text-muted-foreground sm:px-6">
             Save a Go file and the app reloads in a moment, its state kept. See{" "}

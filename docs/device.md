@@ -52,7 +52,7 @@ photo app doesn't ask for the microphone.
 
 An entitlement needs its capability on the app's App ID
 (developer.apple.com, Identifiers) for a release build: the provisioning
-profile has it then. `ryui build -ios` stops with what's missing if the
+profile has it then. `ryui build -platform ios` stops with what's missing if the
 profile lacks one; simulator builds have them all.
 
 The purpose strings RyUI writes are generic ("To take a photo."). iOS
@@ -911,11 +911,11 @@ count.
 | Showing, removing | ✓ | ✓ | ✓ | ✗ |
 | Present | ✓ | ✓ | ✓ | ✗ |
 
-**macOS** needs the app's bundle (`ryui build -mac`): an executable run on
-its own (`go run`, `ryui dev -mac`) has no bundle ID, and its calls fail
+**macOS** needs the app's bundle (`ryui build -platform mac`): an executable run on
+its own (`go run`, `ryui dev -platform mac`) has no bundle ID, and its calls fail
 with an error that says so. **Windows** has no notifications yet: its
 toasts need the app registered with the shell (an AppUserModelID, a COM
-activator for actions), which `ryui build -windows` doesn't do; the calls
+activator for actions), which `ryui build -platform windows` doesn't do; the calls
 fail with an error that says so.
 
 ## Sound: ryui/audio
@@ -1184,7 +1184,7 @@ go from the extension to the app through an App Group,
 
 Under `ryui dev`, the player takes shares of anything, whatever the
 app's `shareTarget`. On Android the files' paths are on the device, not
-the Mac the Go code runs on: try files with `ryui dev -android -once`.
+the Mac the Go code runs on: try files with `ryui dev -platform android -once`.
 
 What a link leads to (a page, an image, a video) is the app's to find
 out, with `net/http`: expo-sharing's "resolved" payloads, in Go.
@@ -1396,7 +1396,7 @@ about ten seconds, and the notification shows. A data message whose
 rewrite leaves no title or body doesn't show.
 
 Under `ryui dev`'s player there's no extension (the app's Go code runs on
-the computer): pushes show as they came. `ryui dev -ios -once` and a
+the computer): pushes show as they came. `ryui dev -platform ios -once` and a
 build have it. The simulator runs the extension only for pushes that
 come from APNs, not for `xcrun simctl push`.
 

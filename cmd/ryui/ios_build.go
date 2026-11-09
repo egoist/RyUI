@@ -245,7 +245,7 @@ func buildIOS(app *goApp, o *buildOptions) error {
 	}
 	fmt.Printf("ryui: %s in %.0fs\n", ipa, time.Since(start).Seconds())
 	if prof.kind == "app-store" {
-		fmt.Println("ryui: ryui publish -ios builds and uploads it to App Store Connect (or upload this one: ryui publish -ios -file " + ipa + ")")
+		fmt.Println("ryui: ryui publish -platform ios builds and uploads it to App Store Connect (or upload this one: ryui publish -platform ios -file " + ipa + ")")
 	}
 	return nil
 }

@@ -1,7 +1,7 @@
 // Gallery shows RyUI's components, a destination each in a split view's
 // sidebar (a drawer on Android, a list that pushes on an iPhone).
 //
-//	go run ./cmd/ryui dev -ios examples/gallery
+//	go run ./cmd/ryui dev -platform ios examples/gallery
 package main
 
 import (

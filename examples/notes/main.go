@@ -2,7 +2,7 @@
 // checking off and deleting (swipe a note) show as soon as they're
 // written.
 //
-//	go run ./cmd/ryui dev -ios examples/notes
+//	go run ./cmd/ryui dev -platform ios examples/notes
 package main
 
 import (

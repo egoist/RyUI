@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// An app embedded in another (ryui build -android -aar): the host library
+// An app embedded in another (ryui build -platform android -aar): the host library
 // with the app's Go code for every ABI and its assets, RyUIActivity
 // declared in its manifest, published to a Maven repository in dist/maven
 // with the optional modules the app uses, so an app made in Android Studio
