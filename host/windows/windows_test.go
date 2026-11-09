@@ -67,6 +67,9 @@ func mount(t *testing.T, root func() ui.Node) (*Host, *ui.Root) {
 	t.Cleanup(func() {
 		onMain(t, func() {
 			h.enter(r.Dispose)
+			// What the host deferred (WebView2 controllers it closes on a
+			// later turn) runs before its windows go.
+			h.runPosted()
 			DestroyWindow(h.window)
 			DestroyWindow(h.park)
 			DestroyWindow(h.msgWin)
