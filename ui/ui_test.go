@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -1253,7 +1254,10 @@ func TestShareFiles(t *testing.T) {
 	str := func(b []byte, s string) []byte { return append(le.AppendUint32(b, uint32(len(s))), s...) }
 	want := le.AppendUint32(nil, uint32(h.One(ops.KindButton, "Share").ID))
 	want = str(str(str(want, "application/pdf"), ""), "Send")
-	want = str(str(le.AppendUint32(want, 2), "/tmp/a.pdf"), "/tmp/b.pdf")
+	// The paths as the host gets them: absolute, the platform's way
+	// (D:\tmp\a.pdf on Windows).
+	abs := func(p string) string { a, _ := filepath.Abs(p); return a }
+	want = str(str(le.AppendUint32(want, 2), abs("/tmp/a.pdf")), abs("/tmp/b.pdf"))
 	if string(args) != string(want) {
 		t.Fatalf("args\n%q\nwant\n%q", args, want)
 	}

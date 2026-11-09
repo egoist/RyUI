@@ -232,6 +232,12 @@ type SystemTime struct {
 	Year, Month, DayOfWeek, Day, Hour, Minute, Second, Milliseconds uint16
 }
 
+// NMSelChange is a month calendar's MCN_SELCHANGE: the days chosen.
+type NMSelChange struct {
+	Hdr        NMHdr
+	Start, End SystemTime
+}
+
 type NMDateTimeChange struct {
 	Hdr   NMHdr
 	Flags uint32
@@ -618,9 +624,10 @@ const (
 	SPI_GETCLIENTAREAANIMATION = 0x1042
 	SPI_GETSCREENREADER        = 0x0046
 
-	EVENT_OBJECT_FOCUS = 0x8005
-	OBJID_CLIENT       = -4
-	CHILDID_SELF       = 0
+	EVENT_OBJECT_FOCUS      = 0x8005
+	EVENT_OBJECT_NAMECHANGE = 0x800C
+	OBJID_CLIENT            = -4
+	CHILDID_SELF            = 0
 
 	MONITOR_DEFAULTTONEAREST = 2
 
@@ -711,6 +718,13 @@ const (
 	GDTR_MIN            = 1
 	GDTR_MAX            = 2
 	DTN_DATETIMECHANGE  = -759
+
+	// The month calendar (SysMonthCal32).
+	MCS_NOTODAY       = 0x0010
+	MCM_SETCURSEL     = 0x1002
+	MCM_GETMINREQRECT = 0x1009
+	MCM_SETRANGE      = 0x1012
+	MCN_SELCHANGE     = -749
 
 	NM_CUSTOMDRAW = -12
 	NM_CLICK      = -2

@@ -13,6 +13,7 @@ import (
 
 	"github.com/egoist/ryui/internal/localfile"
 	. "github.com/egoist/ryui/internal/windows"
+	"github.com/egoist/ryui/native"
 	"github.com/egoist/ryui/ops"
 )
 
@@ -25,6 +26,22 @@ type asyncMethod func(args []byte, reply func([]byte, error))
 
 func (h *Host) asyncModule(name string) map[string]asyncMethod {
 	switch name {
+	case "photos", "files":
+		return h.pickerModules(name)
+	case "web", "js":
+		return h.webModules(name)
+	default:
+		// The app's own (package native), unless the host has its own.
+		if h.module(name) != nil {
+			return nil
+		}
+		if am := native.ModuleNamed(name); am != nil {
+			m := make(map[string]asyncMethod, len(am))
+			for k, f := range am {
+				m[k] = f
+			}
+			return m
+		}
 	case "preview":
 		return map[string]asyncMethod{"show": h.preview}
 	case "print":
@@ -231,17 +248,25 @@ func (h *Host) loadPrintPage(html string, done func(*printPage, error)) {
 	})
 }
 
+// close lets the page go on a later turn of the message loop: it's often
+// closed from one of its own callbacks (its PDF made, its script run),
+// and a controller closed there is freed under WebView2.
 func (p *printPage) close() {
-	if p.controller != 0 {
-		ComCall(p.controller, ctlClose)
-		Release(p.view)
-		Release(p.controller)
-		p.controller, p.view = 0, 0
+	controller, view, hwnd := p.controller, p.view, p.hwnd
+	p.controller, p.view, p.hwnd = 0, 0, 0
+	if controller == 0 && hwnd == 0 {
+		return
 	}
-	if p.hwnd != 0 {
-		DestroyWindow(p.hwnd)
-		p.hwnd = 0
-	}
+	theHost.Post(func() {
+		if controller != 0 {
+			ComCall(controller, ctlClose)
+			Release(view)
+			Release(controller)
+		}
+		if hwnd != 0 {
+			DestroyWindow(hwnd)
+		}
+	})
 }
 
 // printHTML shows the system's print dialog for the markup, printed by

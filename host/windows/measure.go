@@ -91,9 +91,7 @@ func (h *Host) measure(n *node, c layout.Constraints) layout.Size {
 		SelectObject(dc, old)
 		w, ht = max(widest+48, 120), 32
 	case ops.KindDatePicker:
-		var sz struct{ Cx, Cy int32 }
-		SendMessage(n.ctl, DTM_GETIDEALSIZE, 0, Ptr(&sz))
-		w, ht = max(h.pt(n, sz.Cx)+8, 100), max(h.pt(n, sz.Cy), 32)
+		w, ht = h.measureDate(n)
 	case ops.KindColorPicker:
 		w, ht = 44, 32
 	case ops.KindSymbol:
@@ -105,6 +103,12 @@ func (h *Host) measure(n *node, c layout.Constraints) layout.Size {
 		}
 	case ops.KindRichText:
 		w, ht = n.rich.measure(h, n, c)
+	case ops.KindNative:
+		cw := c.Width
+		if cw != cw {
+			cw = c.AvailW
+		}
+		w, ht = h.measureNative(n, cw, c.Height)
 	}
 	if c.Width == c.Width {
 		w = c.Width

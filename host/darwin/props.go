@@ -313,7 +313,7 @@ func (h *Host) setCommon(n *node, p ops.PropID, v *ops.Value) {
 			n.transition = append([]byte(nil), v.Bytes...)
 		}
 	case ops.PropMatch:
-		// Matched views: not yet on macOS.
+		h.setMatch(n, v.Str)
 	}
 }
 

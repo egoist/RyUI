@@ -3,6 +3,7 @@
 package windows
 
 import (
+	"bytes"
 	"strings"
 	"syscall"
 	"unicode/utf16"
@@ -36,11 +37,16 @@ const (
 	stSelection     = 0x0002
 )
 
-// editStream is EDITSTREAM.
+// editStream is EDITSTREAM, as richedit.h packs it (#pragma pack(4)):
+// on amd64 the callback is at byte 12, not 16 where Go would put it.
 type editStream struct {
 	cookie   uintptr
 	err      uint32
-	callback uintptr
+	callback [2]uint32 // EDITSTREAMCALLBACK, unaligned
+}
+
+func (es *editStream) setCallback(cb uintptr) {
+	es.callback = [2]uint32{uint32(cb), uint32(uint64(cb) >> 32)}
 }
 
 // streamed is what EM_STREAMOUT's callback is writing (main thread).
@@ -62,13 +68,15 @@ func streamOutFn(cookie, buf, cb, pcb uintptr) uintptr {
 // streamOut is the control's RTF: all of it, or its selection's.
 func streamOut(ctl uintptr, selection bool) []byte {
 	streamed = streamed[:0]
-	es := editStream{callback: streamOutCB}
+	var es editStream
+	es.setCallback(streamOutCB)
 	flags := uintptr(sfRTF)
 	if selection {
 		flags |= sffSelection
 	}
 	SendMessage(ctl, emStreamOut, flags, uintptr(unsafe.Pointer(&es)))
-	return append([]byte(nil), streamed...)
+	// Some versions of msftedit end the stream with a NUL.
+	return bytes.TrimRight(append([]byte(nil), streamed...), "\x00")
 }
 
 // richDoc is the field's defaults as RTF has them: its font, size and
@@ -210,8 +218,25 @@ func coreRun(n *node, r rtf.Run) ops.RichRun {
 // richPlain is the field's text, its lines ended by \n (a rich edit's
 // end in \r).
 func (h *Host) richPlain(n *node) string {
-	s := WindowText(n.ctl)
+	s := visibleText(n.ctl)
 	return strings.ReplaceAll(strings.ReplaceAll(s, "\r\n", "\n"), "\r", "\n")
+}
+
+// visibleText is a rich edit's text without its hidden text: a link's
+// field instruction (HYPERLINK "url"), which WM_GETTEXT includes.
+func visibleText(ctl uintptr) string {
+	n := len([]rune(WindowText(ctl))) + 1 // at least as long, hidden text and all
+	buf := make([]uint16, 2*n)
+	// GETTEXTEX, as richedit.h packs it: cb, flags, codepage, then two
+	// null pointers (Unicode takes no default character).
+	var gt struct {
+		cb, flags, codepage uint32
+		_                   [4]uint32
+	}
+	const gtNoHiddenText, utf16CodePage = 8, 1200
+	gt.cb, gt.flags, gt.codepage = uint32(len(buf)*2), gtNoHiddenText, utf16CodePage
+	got := SendMessage(ctl, WM_USER+94, Ptr(&gt), Ptr(&buf[0])) // EM_GETTEXTEX
+	return string(utf16.Decode(buf[:min(int(got), len(buf))]))
 }
 
 // fieldRun is a run of the field's text and where it is (UTF-16).
@@ -224,6 +249,9 @@ type fieldRun struct {
 // places, for its formats.
 func (h *Host) richRuns(n *node) []rtf.Run {
 	runs := rtf.Parse(streamOut(n.ctl, false), n.richDoc)
+	// A rich edit's document ends with a paragraph mark of its own, which
+	// isn't the field's text: the runs end where its visible text does.
+	runs = trimRuns(runs, len(utf16.Encode([]rune(h.richPlain(n)))))
 	n.fieldRuns = n.fieldRuns[:0]
 	var at int32
 	for _, r := range runs {
@@ -383,4 +411,30 @@ func (h *Host) setRichLink(n *node, url string) {
 	SendMessage(n.ctl, emSetTextEx, uintptr(unsafe.Pointer(&settext)), uintptr(unsafe.Pointer(&data[0])))
 	SendMessage(n.ctl, emExSetSel, 0, Ptr(&sel))
 	h.richEdited(n)
+}
+
+func init() {
+	// EDITSTREAM's layout (richedit.h's pack(4)): the callback at 12. Go
+	// pads the struct to 24 bytes, past the 20 the control reads.
+	var es editStream
+	if unsafe.Offsetof(es.callback) != 12 {
+		panic("ryui: EDITSTREAM's layout")
+	}
+}
+
+// trimRuns cuts runs to n UTF-16 units of text, dropping the empty ones
+// at the end.
+func trimRuns(runs []rtf.Run, n int) []rtf.Run {
+	at := 0
+	for i := range runs {
+		u := utf16.Encode([]rune(runs[i].Text))
+		if at+len(u) > n {
+			runs[i].Text = string(utf16.Decode(u[:max(n-at, 0)]))
+		}
+		at += len(u)
+	}
+	for len(runs) > 0 && runs[len(runs)-1].Text == "" {
+		runs = runs[:len(runs)-1]
+	}
+	return runs
 }

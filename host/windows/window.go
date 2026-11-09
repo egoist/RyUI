@@ -87,6 +87,11 @@ func (h *Host) message(hwnd uintptr, m uint32, wp, lp uintptr) (uintptr, bool) {
 	if n == nil {
 		return 0, false
 	}
+	if n.kind == ops.KindNative {
+		if r, ok := h.nativeMessage(n, m, wp, lp); ok {
+			return r, true
+		}
+	}
 	if r, ok := h.parentMessage(m, wp, lp); ok {
 		return r, true
 	}
@@ -390,6 +395,10 @@ func (h *Host) keyMessage(m *Msg) bool {
 		return false
 	}
 	switch m.WParam {
+	case vkF5:
+		if m.Message == WM_KEYDOWN && !KeyDown(VK_CONTROL) && !KeyDown(VK_SHIFT) {
+			return h.refreshKey(m)
+		}
 	case VK_ESCAPE:
 		if w := RootWindow(m.Hwnd); w != h.window {
 			if n := h.byHwnd[w]; n != nil && n.kind == kindSheetWindow {

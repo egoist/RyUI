@@ -163,6 +163,65 @@ In a browser, an app's native views and modules are JavaScript in
 with `ryui.registerNative(kind, factory)` and `ryui.registerModule(name,
 methods)`. See [the web](web.md#native-code).
 
+## macOS and Windows
+
+The desktop hosts run the app's Go in their own process, so an app's
+native code there is Go too: AppKit through purego's `objc` package on
+macOS, Win32 through `syscall` on Windows. Register views and modules
+with package `native`, in an `init` of a file built for the platform:
+
+```go
+//go:build darwin && !ios
+
+package main
+
+import (
+	"github.com/ebitengine/purego/objc"
+	"github.com/egoist/ryui/native"
+)
+
+type stepper struct {
+	ctx  native.Context
+	view objc.ID // an NSStepper
+}
+
+func (s *stepper) Handle() uintptr { return uintptr(s.view) }
+
+func (s *stepper) Set(name string, v any) {
+	if n, ok := v.(int64); ok && name == "value" {
+		s.view.Send(objc.RegisterName("setIntegerValue:"), n)
+	}
+}
+
+func init() {
+	native.RegisterView("Stepper", func(ctx native.Context) native.View {
+		v := objc.ID(objc.GetClass("NSStepper")).Send(objc.RegisterName("new"))
+		return &stepper{ctx: ctx, view: v}
+	})
+	native.RegisterModule("haptics", native.Module{
+		"tap": func(args []byte, reply func([]byte, error)) { reply(nil, nil) },
+	})
+}
+```
+
+- `Handle` is the platform's view: an `NSView` on macOS, a child window
+  (`HWND`) on Windows, made in the context's `Parent` (a child window
+  needs its parent as it's made). The host puts it in a view of its own,
+  which the core places, and keeps it filling it.
+- `Set` gets each prop (`NativeProps.Props`): a `bool`, `int64`,
+  `float64` or `string`, as the view is made and as each changes.
+- `ctx.Emit(name, values)` sends an event to `NativeProps.On`.
+- A view with a natural size implements `native.Measurer`; on macOS one
+  that doesn't is measured by its `fittingSize`, on Windows it takes its
+  size from its style.
+- `native.Destroyer` frees what a view holds when the core destroys it.
+- On Windows, a view whose window holds controls implements
+  `native.ParentMessenger`: the controls' notifications to their parent
+  (`WM_COMMAND`, `WM_NOTIFY`, `WM_HSCROLL`...) go to it.
+
+A module's methods answer once, now or later, on the main thread. The
+host's own modules of a name win over the app's.
+
 ## Native modules
 
 `ui.Call` runs a method of a native module: the host's own, or one the

@@ -964,8 +964,10 @@ type DatePickerProps struct {
 	// Min and Max bound the choice (zero: no bound).
 	Min, Max time.Time
 	// Inline shows iOS's calendar and time in place, for a sheet of its
-	// own, rather than behind compact buttons. Android keeps its buttons,
-	// which open Material's pickers.
+	// own, rather than behind compact buttons: the Mac's calendar and
+	// clock, a month calendar on Windows (a time picker under it for a
+	// date and time). Android keeps its buttons, which open Material's
+	// pickers.
 	Inline   bool
 	Disabled signal.Accessor[bool]
 	Style    Styler

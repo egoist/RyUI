@@ -118,6 +118,11 @@ type node struct {
 	hoverArea  ID         // its NSTrackingArea (listening for Hover)
 	dropAccept []string   // DropAccept's MIME type patterns
 	dragItems  []ops.Item // DragItems
+
+	panGesture ID          // its NSPanGestureRecognizer (Pan, Swipe)
+	match      string      // Style.Match's key (match.go)
+	native     *nativeView // a Native's: the app's view (native.go)
+	refresh    *refresher  // a refreshable Scroll's or List's (refresh.go)
 }
 
 func (n *node) listening(e ops.EventKind) bool {
@@ -171,8 +176,17 @@ type Host struct {
 	appName       string
 	dark          bool
 	lists         map[ID]*list
-	splits        map[ID]*node // SplitViews, by their sidebar's table
-	shaderTimer   ID           // animated Shaders' clock, while there are any
+	splits        map[ID]*node            // SplitViews, by their sidebar's table
+	shaderTimer   ID                      // animated Shaders' clock, while there are any
+	wheelSwipe    wheelSwipe              // a trackpad's scroll that may be a swipe
+	scripts       map[ID]*script          // ryui/js runs, by their web view
+	clip          clipboard               // the clipboard module's watching
+	match         matching                // Style.Match (match.go)
+	net           netMonitor              // ryui/network (services.go)
+	speech        speech                  // ryui/speech
+	loc           locator                 // ryui/location
+	refreshTarget ID                      // the observer of refreshable scroll views (refresh.go)
+	players       map[string]*audioPlayer // ryui/audio's, by ID
 	sidebarSource ID
 	editors       map[ID]ID         // each window's field editor (RyUIFieldEditor)
 	videos        map[ID]ops.NodeID // by AVPlayerItem
@@ -351,9 +365,12 @@ func (h *Host) Apply(b *ops.Batch) {
 	WithPool(func() {
 		h.depth++
 		defer func() { h.depth-- }()
+		frames := false
 		for i := range b.Ops {
+			frames = frames || b.Ops[i].Code == ops.OpSetFrame
 			h.apply(&b.Ops[i])
 		}
+		h.batchApplied(frames)
 	})
 }
 
@@ -419,6 +436,7 @@ func (h *Host) destroy(id ops.NodeID) {
 		return
 	}
 	delete(h.nodes, id)
+	h.destroyNative(n)
 	if h.destroyNav(n) {
 		return
 	}
@@ -435,9 +453,9 @@ func (h *Host) destroy(id ops.NodeID) {
 	for _, c := range n.children {
 		c.parent = nil
 	}
-	// Going out with a transition, or inside a view that is: shown until
-	// it's gone.
-	if h.exit(n) || h.inExiting(n.view) {
+	// Going out with a transition or to its match, or inside a view that
+	// is: shown until it's gone.
+	if h.matchOut(n) || h.exit(n) || h.inExiting(n.view) {
 		if n.parent != nil {
 			for i, x := range n.parent.children {
 				if x == n {
@@ -465,6 +483,7 @@ func (h *Host) release(n *node) {
 			Release(a)
 		}
 	}
+	h.releaseRefresh(n)
 	if n.view != 0 {
 		Send(n.view, "removeFromSuperview")
 		delete(h.byView, n.view)
@@ -502,6 +521,7 @@ func (h *Host) insert(p, c *node, index int) {
 	if h.animating && c.transition != nil && !c.placed {
 		c.entering = true
 	}
+	h.matchIn(c)
 	if p.kind == ops.KindScroll {
 		Send(p.view, "setDocumentView:", uintptr(c.view))
 		return

@@ -60,7 +60,7 @@ func (h *Host) automation() {
 				saveState()
 				for _, n := range h.nodes {
 					if n.web != nil {
-						n.web.close() // WebView2's browser goes quietly
+						n.web.closeNow() // WebView2's browser goes quietly
 					}
 				}
 				os.Exit(0)

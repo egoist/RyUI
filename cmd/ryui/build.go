@@ -17,6 +17,7 @@ type buildOptions struct {
 	windows      bool
 	web          bool
 	sign         string // macOS: a signing identity (default: ad hoc)
+	notarize     string // macOS: notarytool's keychain profile ("env": RYUI_APPLE_ID...)
 	simulator    bool   // iOS: a release build for the simulator, unsigned
 	distribution string // iOS: app-store, ad-hoc, development
 	profile      string // iOS: a provisioning profile (path, name or UUID)
@@ -35,6 +36,7 @@ func buildFlags(o *buildOptions) *flag.FlagSet {
 	fs.BoolVar(&o.windows, "windows", false, "build a Windows app: a folder with the .exe (its icon and version built in) and its assets")
 	fs.BoolVar(&o.web, "web", false, "build a web app: a static site (WebAssembly and the web host), in dist/web")
 	fs.StringVar(&o.sign, "sign", "", "macOS: a signing identity, e.g. \"Developer ID Application: ...\" (default: ad hoc)")
+	fs.StringVar(&o.notarize, "notarize", "", "macOS: notarize the signed app and staple the ticket: a notarytool keychain profile (xcrun notarytool store-credentials), or \"env\" for RYUI_APPLE_ID, RYUI_APPLE_PASSWORD (app-specific) and RYUI_TEAM_ID")
 	fs.BoolVar(&o.simulator, "simulator", false, "iOS: a release .app for the simulator instead (not signed for devices)")
 	fs.BoolVar(&o.xcframework, "xcframework", false, "iOS: RyUIApp.xcframework, the app to embed in an app made in Xcode (import RyUIApp; RyUIViewController())")
 	fs.BoolVar(&o.aar, "aar", false, "Android: an .aar, the app to embed in an app made in Android Studio (start dev.ryui.RyUIActivity)")

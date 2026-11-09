@@ -30,13 +30,13 @@ type list struct {
 	rows     []lrow            // the rows shown: headers and items
 	sections []lsection
 	tops     []float32 // each row's top, then the total height
-	shown   map[int]*rowView
-	free    []*rowView
-	columns int
-	gap     float32
-	width   float32
-	est     float32
-	offset  float32 // the scroll position, in points
+	shown    map[int]*rowView
+	free     []*rowView
+	columns  int
+	gap      float32
+	width    float32
+	est      float32
+	offset   float32 // the scroll position, in points
 	// An inset grouped list's: its look and its rows' inset from each
 	// side (and from its top and bottom).
 	appearance ops.ListAppearance
@@ -87,9 +87,9 @@ type rowView struct {
 
 // cell is a host-made view a row is bound into.
 type cell struct {
-	n      *node
-	l      *list
-	item   int64
+	n        *node
+	l        *list
+	item     int64
 	height   float32
 	swipe    []action
 	leading  []action
@@ -106,6 +106,12 @@ func newList(h *Host, n *node) *list {
 
 func (l *list) setProp(h *Host, n *node, p ops.PropID, v *ops.Value) {
 	switch p {
+	case ops.PropListRefreshable:
+		h.setRefreshable(n, v.Int != 0)
+		return
+	case ops.PropListRefreshing:
+		h.setRefreshing(n, v.Int != 0)
+		return
 	case ops.PropListColumns:
 		l.columns = max(int(v.Int), 1)
 	case ops.PropListGap:

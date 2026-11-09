@@ -4,6 +4,7 @@ package windows
 
 import (
 	"testing"
+	"time"
 
 	. "github.com/egoist/ryui/internal/windows"
 	"github.com/egoist/ryui/ops"
@@ -28,10 +29,15 @@ func Fragment(dst vec4, pos vec2) vec4 {
 // goroutines post back).
 func pumpUntil(ok func() bool) bool {
 	var msg Msg
-	for i := 0; !ok() && i < 5_000_000; i++ { // a safety net, not what passes
+	// A safety net, not what passes: long enough for a slow machine (a CI
+	// runner's two cores) to render off the main thread.
+	deadline := time.Now().Add(60 * time.Second)
+	for !ok() && time.Now().Before(deadline) {
 		if PeekMessage(&msg) {
 			TranslateMessage(&msg)
 			DispatchMessage(&msg)
+		} else {
+			time.Sleep(time.Millisecond) // the work comes from another thread
 		}
 	}
 	return ok()
@@ -64,7 +70,8 @@ func TestShader(t *testing.T) {
 		if got := px(s.pw-1, s.ph-1); got != [4]byte{} {
 			fatalf("right pixel %v", got)
 		}
-		h.enter(func() { color.Set(ui.Hex(0x0000ff)) })
+		h.enter(func() { ui.Post(func() { color.Set(ui.Hex(0x0000ff)) }) }) // flushed as the app's code is
+		h.runPosted()
 		if !pumpUntil(func() bool { return px(0, 0) == [4]byte{255, 0, 0, 255} }) {
 			fatalf("after a change: %v", px(0, 0))
 		}

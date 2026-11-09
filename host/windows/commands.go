@@ -43,6 +43,9 @@ func (h *Host) command(n *node, c ops.CommandID, args []byte) {
 	case ops.CmdAnimateBegin:
 		h.beginAnimation(args)
 	case ops.CmdAnimateEnd:
+		if h.batchFrames {
+			h.runMatches() // the frames are applied: they step with the rest
+		}
 		h.endAnimation()
 	case ops.CmdOpenURL:
 		OpenURL(string(args))
@@ -73,7 +76,7 @@ func (h *Host) command(n *node, c ops.CommandID, args []byte) {
 	case ops.CmdFrames:
 		h.setFrames(len(args) > 0 && args[0] != 0)
 	case ops.CmdAnnounce:
-		// Not yet on Windows (UI Automation's notifications).
+		h.announce(string(args))
 	case ops.CmdA11yFocus:
 		// Narrator follows the focus event to the view.
 		if n.hwnd != 0 {
@@ -197,7 +200,13 @@ type animation struct {
 	running  bool
 }
 
-type tween struct{ from, to [4]float32 }
+type tween struct {
+	from, to [4]float32
+	// A transition's (transition.go): the view's own drawing fades in or
+	// out from its opacity; one going out is let go of at the end.
+	fade, enter, exit bool
+	opacity           float32
+}
 
 func (h *Host) beginAnimation(args []byte) {
 	if len(args) < 5 {
@@ -264,8 +273,14 @@ func (a *animation) step(h *Host) {
 			f[i] = tw.from[i] + (tw.to[i]-tw.from[i])*float32(e)
 		}
 		h.placeAt(n, f)
+		h.stepFade(n, tw, float32(min(max(e, 0), 1)))
 	}
 	if t >= 1 {
+		for n, tw := range a.tweens {
+			if tw.exit {
+				h.exited(n)
+			}
+		}
 		KillTimer(h.msgWin, timerAnimate)
 		a.running = false
 		if !a.active {
@@ -382,7 +397,8 @@ func (h *Host) call(root *node, args []byte) {
 // Windows host has.
 func (h *Host) module(name string) func(method string, args []byte) ([]byte, error) {
 	if h.modules == nil {
-		h.modules = map[string]func(method string, args []byte) ([]byte, error){
+		h.modules = h.syncModules()
+		for name, m := range map[string]func(method string, args []byte) ([]byte, error){
 			// Windows's share sheet needs a WinRT DataTransferManager.
 			"share": func(method string, args []byte) ([]byte, error) {
 				return nil, errors.New("ui: Windows has no share sheet for files yet")
@@ -398,6 +414,8 @@ func (h *Host) module(name string) func(method string, args []byte) ([]byte, err
 				}
 				return nil, errors.New("ryui/notify: Windows has no notifications yet")
 			},
+		} {
+			h.modules[name] = m
 		}
 	}
 	return h.modules[name]

@@ -4,6 +4,7 @@ package darwin
 
 import (
 	"testing"
+	"time"
 
 	. "github.com/egoist/ryui/internal/darwin"
 	"github.com/egoist/ryui/ops"
@@ -209,6 +210,35 @@ func Fragment(dst vec4, pos vec2) vec4 {
 		s := find(h, ops.KindShader)[0].shader
 		if s.layer == 0 || s.pipeline == 0 {
 			fatalf(t, "layer %v, pipeline %v (failed %v)", s.layer, s.pipeline, s.failed)
+		}
+	})
+}
+
+// An inline date picker is the Mac's calendar and clock, sized by it.
+func TestDatePickerInline(t *testing.T) {
+	v := signal.New(time.Date(2026, 3, 14, 9, 30, 0, 0, time.Local))
+	h, _ := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{},
+			ui.DatePicker(ui.DatePickerProps{Value: v}),
+			ui.DatePicker(ui.DatePickerProps{Value: v, Inline: true, Mode: ui.DateAndTime}),
+		)
+	})
+	onMain(func() {
+		ps := find(h, ops.KindDatePicker)
+		var compact, inline *node
+		for _, n := range ps {
+			if SendInt(n.view, "datePickerStyle") == 1 {
+				inline = n
+			} else {
+				compact = n
+			}
+		}
+		if compact == nil || inline == nil {
+			fatal(t, "no compact and inline pickers")
+		}
+		c, i := MsgRect(compact.view, Sel("frame")), MsgRect(inline.view, Sel("frame"))
+		if i.Size.Height < 5*c.Size.Height {
+			fatalf(t, "inline %+v, compact %+v", i.Size, c.Size)
 		}
 	})
 }

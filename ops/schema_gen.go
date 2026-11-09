@@ -389,9 +389,9 @@ const (
 	PropWebViewPreload PropID = 66
 	// PropWebViewUserAgent: the User-Agent the page is fetched with, and navigator.userAgent (empty: the platform's).
 	PropWebViewUserAgent PropID = 67
-	// PropWebViewBlock: requests to block: u32 count, then u32-length patterns, each a host (which matches its subdomains too) or, with a /, a part of the URL (iOS: a content rule list; Android: shouldInterceptRequest).
+	// PropWebViewBlock: requests to block: u32 count, then u32-length patterns, each a host (which matches its subdomains too) or, with a /, a part of the URL (iOS and macOS: a content rule list, the page loading once it's compiled; Android: shouldInterceptRequest; Windows: WebView2's resource filter).
 	PropWebViewBlock PropID = 68
-	// PropWebViewRequests: report each request the page makes with Request (Android; iOS can't see them).
+	// PropWebViewRequests: report each request the page makes with Request (Android, Windows; iOS and macOS can't see them).
 	PropWebViewRequests PropID = 69
 )
 

@@ -55,6 +55,8 @@ var (
 	MsgRectIDToRect func(obj ID, sel SEL, r Rect, a ID) Rect
 	MsgFloat        func(obj ID, sel SEL) float64
 	MsgSetFloat     func(obj ID, sel SEL, v float64)
+	MsgFloat32      func(obj ID, sel SEL) float32
+	MsgSetFloat32   func(obj ID, sel SEL, v float32)
 	MsgSize         func(obj ID, sel SEL) Size
 	MsgSetSize      func(obj ID, sel SEL, s Size)
 	MsgSizeToSize   func(obj ID, sel SEL, s Size) Size
@@ -170,7 +172,7 @@ func Load() {
 		}{
 			{&MsgRect, stret}, {&MsgRectToRect, stret}, {&MsgRectIDToRect, stret}, {&MsgSizeUintRect, stret}, {&MsgRectRowCol, stret},
 			{&MsgSetRect, msgSendAddr}, {&MsgSetRectBool, msgSendAddr}, {&MsgRectToSize, msgSendAddr},
-			{&MsgFloat, msgSendAddr}, {&MsgSetFloat, msgSendAddr},
+			{&MsgFloat, msgSendAddr}, {&MsgSetFloat, msgSendAddr}, {&MsgFloat32, msgSendAddr}, {&MsgSetFloat32, msgSendAddr},
 			{&MsgSize, msgSendAddr}, {&MsgSetSize, msgSendAddr}, {&MsgSizeToSize, msgSendAddr},
 			{&MsgPoint, msgSendAddr}, {&MsgSetPoint, msgSendAddr}, {&MsgPointID, msgSendAddr}, {&MsgPointFromID, msgSendAddr}, {&MsgIDToPoint, msgSendAddr}, {&MsgIDToSize, msgSendAddr}, {&MsgIDToRect, stret}, {&MsgFloatFromID, msgSendAddr},
 			{&MsgPointFromInt, msgSendAddr}, {&MsgLineFragment, stret}, {&MsgGlyphAtPoint, msgSendAddr}, {&msgSuperPoint, msgSendSuperAddr}, {&msgSuperRect, superStret},
@@ -337,6 +339,16 @@ func SuperAddr() uintptr { return msgSendSuperAddr }
 
 // MsgSendAddr is objc_msgSend, for typed calls.
 func MsgSendAddr() uintptr { return msgSendAddr }
+
+// MsgSendStretAddr is the objc_msgSend for methods returning structs
+// larger than 16 bytes: objc_msgSend_stret on amd64, objc_msgSend on
+// arm64.
+func MsgSendStretAddr() uintptr {
+	if runtime.GOARCH == "amd64" {
+		return mustDlsym(libObjC, "objc_msgSend_stret")
+	}
+	return msgSendAddr
+}
 
 // RespondsTo reports whether obj answers selector.
 func RespondsTo(obj ID, selector string) bool {

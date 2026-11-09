@@ -102,8 +102,8 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 	case ops.KindWheel:
 		h.makeControl(n, "COMBOBOX", wheelStyle, h.wheelExStyle(n))
 	case ops.KindDatePicker:
-		h.makeControl(n, "SysDateTimePick32", WS_TABSTOP|DTS_SHORTDATEFORMAT, 0)
-		h.dateFormat(n)
+		n.hwnd = h.makeView(0)
+		h.makeDateControls(n)
 	case ops.KindTextField:
 		h.makeField(n)
 	case ops.KindScroll:
@@ -115,7 +115,7 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 	case ops.KindWebView, ops.KindVideo:
 		h.makeWeb(n)
 	case ops.KindNative:
-		fail("can't show native views (ui.Native) yet: they're the app's Swift and Kotlin")
+		n.hwnd = h.makeView(0) // the app's window goes in it (native.go)
 	default:
 		fail("can't show %s yet", kind)
 	}
@@ -267,6 +267,12 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 			n.paging = v.Int != 0
 			h.hideBars(n)
 		}
+		switch p {
+		case ops.PropScrollRefreshable:
+			h.setRefreshable(n, v.Int != 0)
+		case ops.PropScrollRefreshing:
+			h.setRefreshing(n, v.Int != 0)
+		}
 	case ops.KindSplit:
 		h.setSplitProp(n, p, v)
 	case ops.KindShader:
@@ -337,26 +343,20 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 		switch p {
 		case ops.PropDatePickerValue:
 			n.value = float64(v.Int)
-			st := systemTime(v.Int)
-			SendMessage(n.ctl, DTM_SETSYSTEMTIME, GDT_VALID, Ptr(&st))
+			h.applyDate(n)
 		case ops.PropDatePickerMode:
 			n.dateMode = int32(v.Int)
-			h.dateFormat(n)
+			h.makeDateControls(n)
+		case ops.PropDatePickerInline:
+			n.dateInline = v.Int != 0
+			h.makeDateControls(n)
 		case ops.PropDatePickerMin, ops.PropDatePickerMax:
 			if p == ops.PropDatePickerMin {
 				n.min = float64(v.Int)
 			} else {
 				n.max = float64(v.Int)
 			}
-			var r [2]SystemTime
-			flags := uintptr(0)
-			if n.min != 0 {
-				r[0], flags = systemTime(int64(n.min)), flags|GDTR_MIN
-			}
-			if n.max != 0 {
-				r[1], flags = systemTime(int64(n.max)), flags|GDTR_MAX
-			}
-			SendMessage(n.ctl, DTM_SETRANGE, flags, Ptr(&r[0]))
+			h.applyDateRange(n)
 		}
 	case ops.KindColorPicker:
 		switch p {
@@ -372,6 +372,8 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 		n.shape.setProp(h, n, p, v)
 	case ops.KindWebView, ops.KindVideo:
 		n.web.setProp(h, n, p, v)
+	case ops.KindNative:
+		h.setNativeProp(n, p, v)
 	default:
 		h.setNavProp(n, p, v)
 	}
@@ -430,8 +432,9 @@ func (h *Host) sliderMessage(hwnd uintptr, m uint32, w, l uintptr) uintptr {
 
 // dateFormat sets a date picker's format: the locale's short date, its
 // time without seconds, or both.
+const localeSShortDate, localeSShortTime = 0x1F, 0x79
+
 func (h *Host) dateFormat(n *node) {
-	const localeSShortDate, localeSShortTime = 0x1F, 0x79
 	date := LocaleInfo("", localeSShortDate)
 	tm := LocaleInfo("", localeSShortTime)
 	var f string
@@ -500,6 +503,9 @@ func (h *Host) controlCommand(n *node, ctl uintptr, code uint32) {
 				return
 			}
 			s := WindowText(ctl)
+			if n.richText {
+				s = visibleText(ctl) // not a link's hidden field instruction
+			}
 			if n.multiline {
 				s = strings.ReplaceAll(s, "\r\n", "\n")
 			}
@@ -554,10 +560,13 @@ func (h *Host) notify(n *node, hdr *NMHdr, lp uintptr) (uintptr, bool) {
 		if n.kind == ops.KindDatePicker {
 			ch := Native[NMDateTimeChange](lp)
 			if ch.Flags == GDT_VALID {
-				ms := fromSystemTime(ch.St)
-				n.value = float64(ms)
-				h.emit(n, ops.Event{Kind: ops.EventValueChanged, Float: float64(ms)})
+				h.datePicked(n, hdr.HwndFrom, ch.St)
 			}
+			return 0, true
+		}
+	case MCN_SELCHANGE:
+		if n.kind == ops.KindDatePicker {
+			h.datePicked(n, hdr.HwndFrom, Native[NMSelChange](lp).Start)
 			return 0, true
 		}
 	case enRequestResize:
@@ -613,6 +622,9 @@ func (h *Host) listen(n *node, e ops.EventKind) {
 			// A pressable view is a tab stop that Enter and Space press.
 			SetWindowLong(n.hwnd, GWL_STYLE, WindowLong(n.hwnd, GWL_STYLE)|WS_TABSTOP)
 		}
+	case ops.EventPinch, ops.EventRotate:
+		// A touch screen's zoom and rotate (rotate is off by default).
+		AllowGestures(n.hwnd, true, n.listening(ops.EventRotate))
 	}
 }
 
@@ -624,6 +636,10 @@ func (h *Host) viewMessage(n *node, hwnd uintptr, m uint32, wp, lp uintptr) (uin
 		}
 	}
 	switch m {
+	case WM_GETOBJECT:
+		if r, ok := h.getObject(n, hwnd, wp, lp); ok {
+			return r, true
+		}
 	case wmNCHitTest:
 		if !n.interactive() {
 			return htTransparent, true
@@ -643,7 +659,14 @@ func (h *Host) viewMessage(n *node, hwnd uintptr, m uint32, wp, lp uintptr) (uin
 			h.layoutField(n)
 		}
 		return 0, false
+	case WM_GESTURE:
+		if h.touchGesture(n, hwnd, lp) {
+			return 0, true
+		}
 	case WM_MOUSEWHEEL, WM_MOUSEHWHEEL:
+		if m == WM_MOUSEWHEEL && wp&MK_CONTROL != 0 && h.wheelPinch(n, hwnd, int32(int16(HiWord(wp))), lp) {
+			return 0, true
+		}
 		if n.kind == ops.KindScroll && n.paging {
 			if h.pageWheel(n, m == WM_MOUSEHWHEEL, int32(int16(HiWord(wp)))) {
 				return 0, true
@@ -692,6 +715,9 @@ func (h *Host) viewMessage(n *node, hwnd uintptr, m uint32, wp, lp uintptr) (uin
 			return 0, true
 		}
 	case WM_CONTEXTMENU:
+		if len(n.menu) == 0 && h.actionsMenu(n, hwnd, lp) {
+			return 0, true // its screen reader actions
+		}
 		if n.pressable() {
 			h.secondaryClick(n, hwnd)
 			return 0, true
@@ -715,6 +741,8 @@ func (h *Host) viewMessage(n *node, hwnd uintptr, m uint32, wp, lp uintptr) (uin
 			Invalidate(hwnd)
 		case timerShader:
 			h.renderShader(n)
+		case timerPinch:
+			h.endWheelPinch(n, hwnd)
 		}
 		return 0, true
 	case WM_SETFOCUS:
@@ -732,7 +760,7 @@ func (h *Host) viewMessage(n *node, hwnd uintptr, m uint32, wp, lp uintptr) (uin
 		return 0, false
 	case WM_GETDLGCODE:
 		code := uintptr(0)
-		if n.kind == ops.KindSegmented {
+		if n.kind == ops.KindSegmented || n.adjustable {
 			code |= DLGC_WANTARROWS
 		}
 		if lp != 0 {
@@ -773,6 +801,9 @@ const (
 )
 
 func (h *Host) key(n *node, hwnd uintptr, vk uintptr) bool {
+	if h.adjustKey(n, vk) {
+		return true
+	}
 	switch {
 	case n.kind == ops.KindSegmented:
 		if h.isRTL(n) && (vk == VK_LEFT || vk == VK_RIGHT) {

@@ -67,6 +67,9 @@ func mount(t *testing.T, root func() ui.Node) (*Host, *ui.Root) {
 	t.Cleanup(func() {
 		onMain(t, func() {
 			h.enter(r.Dispose)
+			// What the host deferred (WebView2 controllers it closes on a
+			// later turn) runs before its windows go.
+			h.runPosted()
 			DestroyWindow(h.window)
 			DestroyWindow(h.park)
 			DestroyWindow(h.msgWin)
@@ -1244,6 +1247,39 @@ func TestMenuBarMirrors(t *testing.T) {
 		}
 		if MenuItemType(SubMenu(now, 0), 0)&MF_RIGHTORDER == 0 {
 			fatalf("its item's type is %#x", MenuItemType(SubMenu(now, 0), 0))
+		}
+	})
+}
+
+// A screen's search field is in its stack's header: typing writes the
+// screen's Text, Enter submits, and code's text shows in it.
+func TestHeaderSearch(t *testing.T) {
+	q := signal.New("")
+	submitted := 0
+	h, _ := mount(t, func() ui.Node {
+		return ui.Stack(func() ui.Node { return ui.StaticText("Home") }, ui.ScreenOptions{
+			Title:  ui.Val("Home"),
+			Search: &ui.Search{Text: q, OnSubmit: func() { submitted++ }},
+		})
+	})
+	onMain(t, func() {
+		header := find(h, ops.KindStack)[0].nav.bar
+		f := header.nav.field
+		if f == nil || !shown(f.hwnd) {
+			fatalf("no search field in the header")
+		}
+		SetWindowText(f.ctl, "cats")
+		if q.Peek() != "cats" {
+			fatalf("typed: Text %q", q.Peek())
+		}
+		SendMessage(f.ctl, WM_KEYDOWN, VK_RETURN, 0)
+		if submitted != 1 {
+			fatalf("Enter: submitted %d times", submitted)
+		}
+		h.enter(func() { ui.Post(func() { q.Set("dogs") }) }) // flushed as the app's code is
+		h.runPosted()
+		if WindowText(f.ctl) != "dogs" {
+			fatalf("code's text: %q", WindowText(f.ctl))
 		}
 	})
 }
