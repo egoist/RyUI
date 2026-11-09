@@ -1825,6 +1825,11 @@ How the Windows host maps RyUI (`host/windows`):
 - Pull to refresh is F5, the Windows way: the refreshable Scroll or List
   the focus is in, or else the innermost one on screen; a spinner floats
   at the top of its content while it refreshes.
+- A WebView2 controller is closed, and its window destroyed, on a later
+  turn of the message loop, never inside one of its own callbacks (a
+  DevTools call's answer, a page's event the app destroys the view in):
+  WebView2 frees what the callback is running in (seen with the Runtime
+  156's `CdpHelper`). DevTools answers come on a later turn too.
 - `WebView` is WebView2 (the runtime found in EdgeUpdate's registry
   keys, as its loader finds it, so no loader DLL ships); the app's
   assets are served from `https://ryui.assets/`; pages follow the app's
