@@ -503,6 +503,9 @@ func (h *Host) controlCommand(n *node, ctl uintptr, code uint32) {
 				return
 			}
 			s := WindowText(ctl)
+			if n.richText {
+				s = visibleText(ctl) // not a link's hidden field instruction
+			}
 			if n.multiline {
 				s = strings.ReplaceAll(s, "\r\n", "\n")
 			}

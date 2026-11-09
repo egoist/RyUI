@@ -1276,7 +1276,8 @@ func TestHeaderSearch(t *testing.T) {
 		if submitted != 1 {
 			fatalf("Enter: submitted %d times", submitted)
 		}
-		h.enter(func() { q.Set("dogs") })
+		h.enter(func() { ui.Post(func() { q.Set("dogs") }) }) // flushed as the app's code is
+		h.runPosted()
 		if WindowText(f.ctl) != "dogs" {
 			fatalf("code's text: %q", WindowText(f.ctl))
 		}

@@ -216,8 +216,25 @@ func coreRun(n *node, r rtf.Run) ops.RichRun {
 // richPlain is the field's text, its lines ended by \n (a rich edit's
 // end in \r).
 func (h *Host) richPlain(n *node) string {
-	s := WindowText(n.ctl)
+	s := visibleText(n.ctl)
 	return strings.ReplaceAll(strings.ReplaceAll(s, "\r\n", "\n"), "\r", "\n")
+}
+
+// visibleText is a rich edit's text without its hidden text: a link's
+// field instruction (HYPERLINK "url"), which WM_GETTEXT includes.
+func visibleText(ctl uintptr) string {
+	n := len([]rune(WindowText(ctl))) + 1 // at least as long, hidden text and all
+	buf := make([]uint16, 2*n)
+	// GETTEXTEX, as richedit.h packs it: cb, flags, codepage, then two
+	// null pointers (Unicode takes no default character).
+	var gt struct {
+		cb, flags, codepage uint32
+		_                   [4]uint32
+	}
+	const gtNoHiddenText, utf16CodePage = 8, 1200
+	gt.cb, gt.flags, gt.codepage = uint32(len(buf)*2), gtNoHiddenText, utf16CodePage
+	got := SendMessage(ctl, WM_USER+94, Ptr(&gt), Ptr(&buf[0])) // EM_GETTEXTEX
+	return string(utf16.Decode(buf[:min(int(got), len(buf))]))
 }
 
 // fieldRun is a run of the field's text and where it is (UTF-16).
