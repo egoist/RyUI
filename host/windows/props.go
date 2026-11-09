@@ -55,7 +55,7 @@ func (h *Host) setCommon(n *node, p ops.PropID, v *ops.Value) {
 			SetWindowText(n.hwnd, v.Str)
 		}
 	case ops.PropA11yHint, ops.PropA11yRole, ops.PropA11yHidden, ops.PropA11yActions, ops.PropA11yAdjustable:
-		// Not yet on Windows: the controls' own accessibility only.
+		h.setA11y(n, p, v) // a11y.go
 	case ops.PropColor:
 		n.color = ops.Color(v.Int)
 		h.redraw(n)
@@ -96,6 +96,9 @@ func (h *Host) setCommon(n *node, p ops.PropID, v *ops.Value) {
 		if n.ctl != 0 {
 			EnableWindow(n.ctl, !n.disabled)
 		}
+		if n.kind == ops.KindDatePicker && n.ctl2 != 0 {
+			EnableWindow(n.ctl2, !n.disabled)
+		}
 		if n.kind == ops.KindStepper {
 			for _, b := range n.stepButtons() {
 				EnableWindow(b, !n.disabled)
@@ -113,12 +116,24 @@ func (h *Host) setCommon(n *node, p ops.PropID, v *ops.Value) {
 			n.gradient = append(n.gradient[:0], v.Bytes...)
 		}
 		h.redraw(n)
-	case ops.PropShadow, ops.PropTransform, ops.PropMaterial, ops.PropTransition, ops.PropMatch:
-		// Shadows, transforms, materials, transitions and matched views:
-		// not yet on Windows (child windows draw in place, opaque).
-		if p == ops.PropShadow {
-			n.shadow = append(n.shadow[:0], v.Bytes...)
+	case ops.PropShadow:
+		// Drawn by its parent, around its window (shadow.go).
+		h.invalidateShadow(n)
+		n.shadow = append(n.shadow[:0], v.Bytes...)
+		if _, ok := readShadow(n.shadow); !ok {
+			n.shadow = n.shadow[:0]
 		}
+		h.invalidateShadow(n)
+	case ops.PropTransition:
+		n.transition = nil
+		if len(v.Bytes) >= 13 {
+			n.transition = append([]byte(nil), v.Bytes...)
+		}
+	case ops.PropMatch:
+		h.setMatch(n, v.Str)
+	case ops.PropTransform, ops.PropMaterial:
+		// Transforms and materials: not yet on Windows (child windows draw
+		// in place, opaque).
 	case ops.PropSwipeActions:
 		if n.cell != nil {
 			n.cell.swipe = decodeActions(v.Bytes)
@@ -177,6 +192,9 @@ func (h *Host) applyFont(n *node) {
 	case n.kind == ops.KindTextField || n.kind == ops.KindWheel || n.kind == ops.KindDatePicker:
 		if n.ctl != 0 {
 			SendMessage(n.ctl, WM_SETFONT, h.nodeFont(n), 1)
+			if n.ctl2 != 0 {
+				SendMessage(n.ctl2, WM_SETFONT, h.nodeFont(n), 1)
+			}
 			h.layoutField(n)
 		}
 	case n.kind == ops.KindButton:

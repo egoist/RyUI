@@ -87,6 +87,12 @@ func (h *Host) measure(n *node, c layout.Constraints) layout.Size {
 		s = Size{}
 	case ops.KindPageControl:
 		s = h.measureDots(n)
+	case ops.KindNative:
+		w, ht := c.Width, c.Height
+		if w != w && finite(c.AvailW) {
+			w = c.AvailW
+		}
+		s = h.measureNative(n, nanIfUnbounded(w), nanIfUnbounded(ht))
 	default:
 		s = MsgSize(v, Sel("intrinsicContentSize"))
 		if s.Width < 0 { // NSViewNoIntrinsicMetric

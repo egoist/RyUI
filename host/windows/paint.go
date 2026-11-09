@@ -82,6 +82,7 @@ func (h *Host) paintOwn(n *node, hwnd, dc uintptr, r Rect) {
 			b.Close()
 		}
 	}
+	h.paintShadows(n, hwnd, g) // its children's, under them
 	if n.pressable() && !n.disabled && (n.hot || n.pressed) && !n.drawsStates() {
 		c := h.theme.subtleHot
 		if n.pressed {
@@ -149,6 +150,10 @@ func (h *Host) paintOwn(n *node, hwnd, dc uintptr, r Rect) {
 		h.paintTabBar(n, dc, 0, r)
 	case kindSidebar:
 		h.paintPane(n, dc, 0, r)
+	case ops.KindTextField:
+		if n.searchOf != nil {
+			h.paintSearchIcon(n, dc, r)
+		}
 	}
 	if n.focused && (n.pressable() || n.kind == ops.KindSegmented) && h.keyboardCues(hwnd) {
 		g := NewGraphics(dc)
@@ -166,7 +171,7 @@ func (n *node) pressable() bool {
 // interactive views take the mouse; the others let it through to what's
 // under them (a text in a pressable row).
 func (n *node) interactive() bool {
-	if n.tracksPress() || n.draggable() || n.listening(ops.EventPan) || n.listening(ops.EventPinch) || n.listening(ops.EventSwipe) {
+	if n.tracksPress() || n.draggable() || n.listening(ops.EventPan) || n.listening(ops.EventPinch) || n.listening(ops.EventRotate) || n.listening(ops.EventSwipe) {
 		return true
 	}
 	switch n.kind {
@@ -364,6 +369,10 @@ func (h *Host) paintActivity(n *node, g Graphics, w, ht float32) {
 	if !ok {
 		c = h.theme.accent
 	}
+	// Inside its padding (a refresh's spinner on its disc).
+	in := n.inset
+	ox, oy := in[3]*k, in[0]*k
+	w, ht = max(w-(in[1]+in[3])*k, 1), max(ht-(in[0]+in[2])*k, 1)
 	d := min(w, ht)
 	stroke := max(d/8, 2*k)
 	pen := NewPen(c.argb(), stroke)
@@ -371,7 +380,7 @@ func (h *Host) paintActivity(n *node, g Graphics, w, ht float32) {
 	t := n.phase
 	start := float32(math.Mod(t*360*1.5, 360))
 	sweep := float32(60 + 200*(0.5-0.5*math.Cos(t*math.Pi)))
-	x, y := (w-d)/2+stroke/2, (ht-d)/2+stroke/2
+	x, y := ox+(w-d)/2+stroke/2, oy+(ht-d)/2+stroke/2
 	g.DrawArc(pen, x, y, d-stroke, d-stroke, start, sweep)
 	pen.Close()
 }

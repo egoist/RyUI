@@ -13,6 +13,7 @@ import (
 
 	"github.com/egoist/ryui/internal/localfile"
 	. "github.com/egoist/ryui/internal/windows"
+	"github.com/egoist/ryui/native"
 	"github.com/egoist/ryui/ops"
 )
 
@@ -25,6 +26,22 @@ type asyncMethod func(args []byte, reply func([]byte, error))
 
 func (h *Host) asyncModule(name string) map[string]asyncMethod {
 	switch name {
+	case "photos", "files":
+		return h.pickerModules(name)
+	case "web", "js":
+		return h.webModules(name)
+	default:
+		// The app's own (package native), unless the host has its own.
+		if h.module(name) != nil {
+			return nil
+		}
+		if am := native.ModuleNamed(name); am != nil {
+			m := make(map[string]asyncMethod, len(am))
+			for k, f := range am {
+				m[k] = f
+			}
+			return m
+		}
 	case "preview":
 		return map[string]asyncMethod{"show": h.preview}
 	case "print":

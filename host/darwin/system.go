@@ -15,6 +15,7 @@ import (
 	"github.com/ebitengine/purego/objc"
 
 	. "github.com/egoist/ryui/internal/darwin"
+	"github.com/egoist/ryui/native"
 )
 
 var msgShowPicker func(obj ID, sel SEL, r Rect, view ID, edge uint)
@@ -39,7 +40,18 @@ func (h *Host) module(name string) map[string]method {
 	if h.modules == nil {
 		h.modules = h.builtinModules()
 	}
-	return h.modules[name]
+	if m := h.modules[name]; m != nil {
+		return m
+	}
+	// The app's own (package native).
+	if am := native.ModuleNamed(name); am != nil {
+		m := make(map[string]method, len(am))
+		for k, f := range am {
+			m[k] = f
+		}
+		return m
+	}
+	return nil
 }
 
 func (h *Host) builtinModules() map[string]map[string]method {
@@ -134,7 +146,17 @@ func (h *Host) builtinModules() map[string]map[string]method {
 			"mail":    func(args []byte, reply func([]byte, error)) { h.compose("mail", args, reply) },
 			"message": func(args []byte, reply func([]byte, error)) { h.compose("message", args, reply) },
 		},
-		"notify": h.notifyModule(),
+		"notify":    h.notifyModule(),
+		"web":       h.webModule(),
+		"files":     h.filesModule(),
+		"network":   h.networkModule(),
+		"location":  h.locationModule(),
+		"speech":    h.speechModule(),
+		"audio":     h.audioModule(),
+		"biometric": h.biometricModule(),
+		"review":    reviewModule(),
+		"clipboard": h.clipboardModule(),
+		"js":        h.jsModule(),
 	}
 }
 

@@ -73,6 +73,13 @@ type node struct {
 	panning      bool
 	panLast      Point
 	panTime      int64
+	twoFinger    *twoFinger  // a pinch or rotate under way (gesture.go)
+	searchOf     *node       // the header whose search field it is (search.go)
+	native       *nativeView // a Native's: the app's view (native.go)
+	refresh      *refresher  // a refreshable Scroll's or List's (refresh.go)
+	transition   []byte      // Style.Transition's (transition.go)
+	placed       bool        // has had a frame
+	match        string      // Style.Match's key (match.go)
 	focused      bool
 	tracking     bool // a press of the mouse on it is under way (pressed while over it)
 	releasing    bool // its capture is let go of by the host: not a cancel
@@ -125,6 +132,7 @@ type node struct {
 	animating      bool    // Activity
 	phase          float64 // Activity, indeterminate Progress
 	dateMode       int32
+	dateInline     bool // a calendar in place (datepicker.go)
 	horizontal     bool // Scroll
 	scrollX        float32
 	scrollY        float32
@@ -154,6 +162,12 @@ type node struct {
 	checkbox       bool       // a Toggle drawn as a check box
 	pane           *splitPane // a pane's rows
 	a11yLabel      string
+	a11yHint       string // the screen reader props (a11y.go)
+	a11yRole       int32
+	a11yHidden     bool
+	a11yActions    []string
+	adjustable     bool
+	uia            uintptr // its UI Automation provider, once asked for
 	colorValue     ops.Color
 	host           func(h *Host, n *node, m uint32, w, l uintptr) (uintptr, bool) // a host-made view's messages
 }
@@ -205,21 +219,24 @@ type Host struct {
 	posted   []func()
 	postSent bool
 
-	accent    ops.Color
-	nextCell  ops.NodeID
-	frames    bool
-	modules   map[string]func(method string, args []byte) ([]byte, error)
-	assets    string
-	appName   string
-	locale    string // the language the app shows
-	rtl       bool   // and its direction
-	fonts     map[fontKey]uintptr
-	measureDC uintptr
-	brushes   map[uint32]uintptr
-	anim      *animation
-	modal     int // modal loops (menus, dialogs) running
-	sheets    []*node
-	quitting  bool
+	accent      ops.Color
+	nextCell    ops.NodeID
+	frames      bool
+	modules     map[string]func(method string, args []byte) ([]byte, error)
+	assets      string
+	appName     string
+	locale      string // the language the app shows
+	rtl         bool   // and its direction
+	fonts       map[fontKey]uintptr
+	measureDC   uintptr
+	brushes     map[uint32]uintptr
+	anim        *animation
+	exiting     map[uintptr]*node // views going out with a transition, by window (transition.go)
+	match       matching          // Style.Match (match.go)
+	batchFrames bool              // the batch being applied sets frames
+	modal       int               // modal loops (menus, dialogs) running
+	sheets      []*node
+	quitting    bool
 
 	wins     []*node          // the Windows open, in the order they opened
 	inUse    uintptr          // the app's window activated last
@@ -456,6 +473,10 @@ func (h *Host) dispatch(ev ops.Event) {
 
 // emit sends the event if the core listens for it on n.
 func (h *Host) emit(n *node, ev ops.Event) {
+	if n != nil && n.searchOf != nil {
+		h.searchEvent(n, ev) // a header's search field: its screen's
+		return
+	}
 	if n == nil || !n.listening(ev.Kind) {
 		return
 	}
@@ -477,9 +498,12 @@ func (h *Host) afterCore(f func()) {
 func (h *Host) Apply(b *ops.Batch) {
 	h.depth++
 	defer func() { h.depth-- }()
+	h.batchFrames = false
 	for i := range b.Ops {
+		h.batchFrames = h.batchFrames || b.Ops[i].Code == ops.OpSetFrame
 		h.apply(&b.Ops[i])
 	}
+	h.match.frames = nil // what the destroying noted
 	h.refreshHover()
 }
 
@@ -553,12 +577,30 @@ func (h *Host) destroy(id ops.NodeID) {
 		return
 	}
 	delete(h.nodes, id)
+	h.destroyNative(n)
 	h.forgetInteraction(n)
 	if h.destroyNav(n) {
 		return
 	}
 	if n.tooltip != "" {
 		SetTooltip(h.tips, n.hwnd, "")
+	}
+	// Going out to its match or with a transition, or inside a view that
+	// is: on screen until it's gone.
+	if h.matchOut(n) || h.exitTransition(n) {
+		return
+	}
+	if h.inExiting(n.hwnd) {
+		if n.parent != nil {
+			for i, x := range n.parent.children {
+				if x == n {
+					n.parent.children = append(n.parent.children[:i], n.parent.children[i+1:]...)
+					break
+				}
+			}
+			n.parent = nil
+		}
+		return // its window goes with the one it's in
 	}
 	if n.parent != nil {
 		h.remove(n.parent, n)
@@ -606,8 +648,10 @@ func (h *Host) forgetTree(hwnd uintptr) {
 	list = append(list, hwnd)
 	for _, w := range list {
 		Unsubclass(w)
+		delete(h.exiting, w) // a handle goes with its window
 		if n := h.byHwnd[w]; n != nil {
 			if n.hwnd == w {
+				h.dropProvider(n, w)
 				n.hwnd = 0
 			}
 			if n.ctl == w {
@@ -635,6 +679,7 @@ func (h *Host) insert(p, c *node, index int) {
 		return
 	}
 	SetParent(c.hwnd, p.hwnd)
+	h.matchIn(c)
 	h.adopt(p, c)
 	h.placeFrame(c)
 	// Above the windows of the children before it, below those after.
@@ -727,12 +772,16 @@ func (h *Host) setFrame(n *node, f [4]float32) {
 		n.parent.rich.placeInlines(h, n.parent)
 		return
 	}
+	if h.enterTransition(n, f) {
+		return
+	}
 	if h.anim != nil && h.anim.active && n.hwnd != 0 && n.frame != f && IsWindowVisible(n.hwnd) && n.frame[2] > 0 {
 		h.anim.add(n, n.frame, f)
 		n.frame = f
 		return
 	}
 	n.frame = f
+	n.placed = true
 	h.placeFrame(n)
 	if p := n.parent; p != nil && p.kind == ops.KindScroll {
 		h.updateScroll(p)
@@ -760,7 +809,14 @@ func (h *Host) placeAt(n *node, f [4]float32) {
 	}
 	x0, y0 := h.px(n, x), h.px(n, y)
 	w, ht := h.px(n, x+f[2])-x0, h.px(n, y+f[3])-y0
+	shadow := len(n.shadow) > 0
+	if shadow {
+		h.invalidateShadow(n) // where it was
+	}
 	SetWindowPos(n.hwnd, 0, x0, y0, w, ht, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOOWNERZORDER|SWP_NOCOPYBITS)
+	if shadow {
+		h.invalidateShadow(n)
+	}
 	h.resized(n)
 }
 

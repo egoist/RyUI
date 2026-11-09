@@ -435,6 +435,7 @@ func dates() ui.Node {
 		row("Date", ui.DateOnly),
 		row("Time", ui.TimeOnly),
 		row("Starts", ui.DateAndTime),
+		ui.DatePicker(ui.DatePickerProps{Value: when, Inline: true, Min: time.Now()}),
 		ui.Text(signal.Func(func() string { return when.Get().Format("Mon Jan 2, 15:04") }),
 			ui.Style{Color: ui.SecondaryLabel, Font: ui.Footnote}),
 	)

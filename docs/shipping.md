@@ -128,6 +128,25 @@ RYUI_KEYSTORE_PASSWORD=... ryui build -android
 an `.apk` to install yourself, for 64-bit and 32-bit ARM phones and
 x86_64 (emulators, Chromebooks), Android 13 and later.
 
+## macOS
+
+`ryui build -mac` makes a universal `.app` (Apple silicon and Intel),
+signed ad hoc: it runs on your Mac. To give it to others outside the
+Mac App Store, sign it with your Developer ID and have Apple notarize
+it, so Gatekeeper opens it:
+
+```sh
+xcrun notarytool store-credentials ryui   # once: your Apple ID, team and an app-specific password
+ryui build -mac -sign "Developer ID Application: Your Name (TEAMID)" -notarize ryui
+```
+
+`-notarize` sends the signed app to Apple's notary service, waits for
+its verdict (a few minutes, usually), prints the service's log if it's
+rejected, and staples the ticket to the app, so it opens offline too.
+In CI, `-notarize env` takes `RYUI_APPLE_ID`, `RYUI_APPLE_PASSWORD` (an
+app-specific password) and `RYUI_TEAM_ID` from the environment instead
+of a keychain profile.
+
 ## In an existing app
 
 A RyUI app can live inside an app made in Xcode or Android Studio: a

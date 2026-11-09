@@ -583,3 +583,52 @@ func TestNotifyWithoutBundle(t *testing.T) {
 		}
 	})
 }
+
+// A view with a key destroyed during an animation waits in the window's
+// content view, where it was, for the view inserted with its key, which
+// starts at its place and grows to its own; the old one then goes.
+func TestMatch(t *testing.T) {
+	big := signal.New(false)
+	h, _ := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{Padding: ui.All(10), Align: ui.AlignStart},
+			ui.Show(big, func() ui.Node {
+				return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(200), Height: ui.Pt(150), Background: ui.Blue, Match: "card"}})
+			}, func() ui.Node {
+				return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(40), Height: ui.Pt(30), Background: ui.Blue, Match: "card"}})
+			}))
+	})
+	onMain(func() {
+		var small *node
+		for _, n := range find(h, ops.KindView) {
+			if n.match == "card" {
+				small = n
+			}
+		}
+		if small == nil {
+			fatal(t, "no keyed view")
+		}
+		old := Retain(small.view)
+		defer Release(old)
+		h.enter(func() { ui.Post(func() { ui.Animate(func() { big.Set(true) }) }) })
+		h.runPosted()
+		content := Send(h.window, "contentView")
+		if Send(old, "superview") != content || !h.exiting[old] {
+			fatal(t, "the old view didn't wait in the content view")
+		}
+		var large *node
+		for _, n := range find(h, ops.KindView) {
+			if n.match == "card" {
+				large = n
+			}
+		}
+		if large == nil || len(h.match.outs) != 0 {
+			fatalf(t, "not matched: %v, %d waiting", large, len(h.match.outs))
+		}
+		if !runUntil(func() bool { return Send(old, "superview") == 0 }) {
+			fatal(t, "the old view stayed")
+		}
+		if f := MsgRect(large.view, Sel("frame")); f.Size.Width != 200 || f.Size.Height != 150 || f.Origin.X != 10 {
+			fatalf(t, "the new view ended at %+v", f)
+		}
+	})
+}

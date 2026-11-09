@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
@@ -163,11 +165,95 @@ func buildMac(app *goApp, o *buildOptions) error {
 	if err := run(work, nil, "codesign", "--verify", "--strict", bundle); err != nil {
 		return err
 	}
+	if o.notarize != "" {
+		if identity == "-" {
+			return errors.New("ryui: -notarize needs -sign \"Developer ID Application: ...\": Apple notarizes only apps signed with a Developer ID")
+		}
+		if err := notarize(work, bundle, o.notarize, o.verbose); err != nil {
+			return err
+		}
+	}
 	fmt.Printf("ryui: %s\n", bundle)
 	if identity == "-" {
-		fmt.Println("ryui: signed ad hoc; to distribute it, sign with -sign \"Developer ID Application: ...\" and notarize it (xcrun notarytool)")
+		fmt.Println("ryui: signed ad hoc; to distribute it, sign with -sign \"Developer ID Application: ...\" and -notarize")
 	}
 	return nil
+}
+
+// notarize sends the signed app to Apple's notary service, waits for its
+// verdict, and staples the ticket to the app, so Gatekeeper opens it
+// offline too. profile is notarytool's keychain profile, or "env" for an
+// Apple ID's app-specific password from the environment (CI).
+func notarize(work, bundle, profile string, verbose bool) error {
+	zip := filepath.Join(work, "notarize.zip")
+	os.Remove(zip)
+	if out, err := exec.Command("ditto", "-c", "-k", "--keepParent", bundle, zip).CombinedOutput(); err != nil {
+		return fmt.Errorf("ditto failed: %v\n%s", err, out)
+	}
+	defer os.Remove(zip)
+	creds, err := notaryCredentials(profile, os.Getenv)
+	if err != nil {
+		return err
+	}
+	fmt.Println("ryui: notarizing (Apple's notary service; usually a few minutes)...")
+	args := append([]string{"notarytool", "submit", zip, "--wait", "--output-format", "json"}, creds...)
+	if verbose {
+		fmt.Println("+ xcrun", strings.Join(redacted(args), " "))
+	}
+	out, err := exec.Command("xcrun", args...).Output()
+	id, status := notaryResult(out)
+	if err != nil && status == "" {
+		var stderr []byte
+		if ee, ok := err.(*exec.ExitError); ok {
+			stderr = ee.Stderr
+		}
+		return fmt.Errorf("xcrun notarytool submit failed: %v\n%s%s", err, out, stderr)
+	}
+	if status != "Accepted" {
+		log, _ := exec.Command("xcrun", append([]string{"notarytool", "log", id}, creds...)...).CombinedOutput()
+		return fmt.Errorf("ryui: notarization %s (submission %s):\n%s", strings.ToLower(status), id, log)
+	}
+	if out, err := exec.Command("xcrun", "stapler", "staple", bundle).CombinedOutput(); err != nil {
+		return fmt.Errorf("xcrun stapler staple failed: %v\n%s", err, out)
+	}
+	fmt.Println("ryui: notarized, and the ticket stapled")
+	return nil
+}
+
+// notaryCredentials are notarytool's credential flags for -notarize.
+func notaryCredentials(profile string, getenv func(string) string) ([]string, error) {
+	if profile != "env" {
+		return []string{"--keychain-profile", profile}, nil
+	}
+	id, pw, team := getenv("RYUI_APPLE_ID"), getenv("RYUI_APPLE_PASSWORD"), getenv("RYUI_TEAM_ID")
+	if id == "" || pw == "" || team == "" {
+		return nil, errors.New("ryui: -notarize env needs RYUI_APPLE_ID, RYUI_APPLE_PASSWORD (an app-specific password) and RYUI_TEAM_ID")
+	}
+	return []string{"--apple-id", id, "--password", pw, "--team-id", team}, nil
+}
+
+// redacted is args with the password after --password hidden.
+func redacted(args []string) []string {
+	out := append([]string(nil), args...)
+	for i := range out {
+		if out[i] == "--password" && i+1 < len(out) {
+			out[i+1] = "***"
+		}
+	}
+	return out
+}
+
+// notaryResult reads notarytool's JSON: the submission's id and status
+// (Accepted, Invalid, Rejected...).
+func notaryResult(out []byte) (id, status string) {
+	var r struct {
+		ID     string `json:"id"`
+		Status string `json:"status"`
+	}
+	if i := strings.IndexByte(string(out), '{'); i >= 0 {
+		json.Unmarshal(out[i:], &r)
+	}
+	return r.ID, r.Status
 }
 
 // sanitizeExe is the executable's name: the app's, without slashes.

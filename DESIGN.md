@@ -1287,9 +1287,15 @@ Each one ends with its examples running and its tests in CI.
   app's menus join the Mac's own: one titled File, Edit, View, Window or
   Help adds its items to it, the others go between View and Window; a
   disabled item is off through `validateMenuItem:`, as is Back with no
-  screen to go back from. Not yet: `ui.Native`, the other modules (network,
-  location, notifications, camera, audio…), matched views (`Match`),
-  notarization.
+  screen to go back from. Swipes, the inline date picker; the WebView's
+  blocked requests, downloads and state, `EvalJSResult`, `WebCookies`
+  and ryui/js; device's files and clipboard modules; network
+  (NWPathMonitor), location (Core Location), speech
+  (AVSpeechSynthesizer), audio (AVPlayer), biometric (Touch ID), review;
+  matched views (`Match`); pull to refresh (a trackpad's elastic pull
+  past the top); `ui.Native` and the app's modules in Go (package
+  `native`, below); notarization (`ryui build -mac -notarize`). Not yet:
+  the other modules (camera, audio recording, contacts, calendar…).
 - **Windows** (in progress): `host/windows`, Win32 and the common
   controls (version 6) in the app's process through `syscall`
   (`internal/windows`, much of it MyGo's), no cgo, no WinUI; `app.Run`
@@ -1307,14 +1313,17 @@ Each one ends with its examples running and its tests in CI.
   own, the app's menus an `HMENU` on the main window with an
   accelerator table that works in all of them, `WindowOptions` the main
   window's title, client size and least size; tests in `host/windows`
-  drive real windows. Not yet: `ui.Native`, the native modules (`ui.Call`),
-  screen reader props beyond the controls' own (labels, roles,
-  actions, announcements: UI Automation), shadows, transforms,
-  materials, opacity between 0 and 1 for a view's children, enter/exit
-  transitions and matched views, pinch and rotate, pull to refresh,
-  `ScreenOptions.Search`, a dark date
-  picker, the share sheet (Share copies the text), arm64 builds, code
-  signing.
+  drive real windows. Pinch and rotate (touch, the touchpad, Ctrl and
+  the wheel), the header's search field, the inline date picker, the
+  native modules secureStore, device, browser, photos, files, web and js;
+  `ui.Native` and the app's modules in Go (package `native`); screen
+  readers through UI Automation (below); shadows (drawn by the parent);
+  enter and exit transitions and matched views (the frame carries them,
+  a fade the view's own drawing); pull to refresh (F5). Not yet: the
+  other native modules (notifications, network, location, camera,
+  audio…), transforms, materials, opacity between 0 and 1 for a view's
+  children, a dark date picker, the share sheet (Share copies the
+  text), arm64 builds, code signing.
 - **Web** (in progress): `host/web` and `platform/web` (below); `app.Run`
   runs it on `js/wasm`. `ryui dev -web` (serve, rebuild and reload on
   save, signals' state kept; the app's output and the page's errors in
@@ -1560,11 +1569,15 @@ How the macOS host maps RyUI (`host/darwin`):
   swap to `NSSecureTextField`, multiline ones to an `NSTextView`),
   `NSButton` (Plain is borderless text in the accent color, Filled the
   accent bezel), `NSSwitch`, `NSSlider`, `NSStepper`,
-  `NSSegmentedControl`, `NSPopUpButton` for `Wheel`, `NSDatePicker`,
+  `NSSegmentedControl`, `NSPopUpButton` for `Wheel`, `NSDatePicker`
+  (its calendar and clock in place for `Inline`),
   `NSColorWell`, `NSProgressIndicator`, `NSImageView`, `NSScrollView`.
   Menus are `NSMenu`s: a button's pops up, a view's `LongPress` menu is
   its context menu (a secondary click). A secondary click is also a
-  long press.
+  long press. A swipe is a pan that ends fast (a drag with the mouse), a
+  trackpad's two-finger flick (across always; up and down where no
+  scroll view around scrolls that way, the scroll still going to it), or
+  a three-finger swipe where the system leaves those to apps.
 - A `Stack` shows its top screen and slides on push and pop; the
   window's toolbar belongs to the innermost stack on screen (a back
   button, the top screen's bar buttons and search field) and its title
@@ -1575,6 +1588,12 @@ How the macOS host maps RyUI (`host/darwin`):
   scrolls, heights from the cells' frames (estimated until bound).
   `NSTableView` would want row heights from a callback returning a
   float, which purego can't make.
+- `WebView` is a `WKWebView`, as on iOS: `Block` a content rule list
+  (the page loads once it's compiled, so its first requests are blocked
+  too), a response it can't show a `Download`, its state observed (KVO)
+  and reported once a turn; the `web` module runs script for its value
+  (`callAsyncJavaScript`) and reads the cookies, the `js` module runs
+  ryui/js's scripts in a web view that's never shown.
 - `RichText` is a non-editable `NSTextView` (TextKit lays it out and
   draws it, links, selection and accessibility come with it); outside
   a `Selectable` it takes clicks only on links. Inline components are
@@ -1582,6 +1601,17 @@ How the macOS host maps RyUI (`host/darwin`):
 - Messages with float or struct arguments go through purego's typed
   functions (`internal/darwin`'s `Msg*`), which use reflection: setting a
   frame allocates. The rest go through `SyscallN`.
+- Pull to refresh: a trackpad's (or Magic Mouse's) scroll pulled past
+  a Scroll's or List's top, as its elastic overscroll lets it, and let
+  go of beyond 60 points; a spinner above the content (the scroll view's
+  top content inset) while it refreshes. Matched views move the old view
+  into its window's content view and the frames carry the motion.
+- `ui.Native` and the app's modules: the app's Go registers them with
+  package `native` (`RegisterView`, `RegisterModule`): a view is an
+  `NSView` the app makes through purego's objc package, put in the
+  node's view and filling it; on Windows a child window made in the
+  context's `Parent`, its controls' notifications given to it. The mobile
+  hosts keep Swift and Kotlin, the web JavaScript.
 - Debug automation: `RYUI_SNAPSHOT=file.png` renders the window to a PNG
   once it has shown, without taking focus (`RYUI_DUMP=1` writes the view
   tree beside it), then quits.
@@ -1624,7 +1654,8 @@ How the Windows host maps RyUI (`host/windows`):
   drawn as Fluent's toggle switch (Win32 has no switch), the trackbar
   as Fluent's slider, `EDIT` in a frame the host draws (secure with a
   password character, multiline with return, Number with `ES_NUMBER`),
-  `COMBOBOX` for `Wheel`, the date and time picker, two buttons for
+  `COMBOBOX` for `Wheel`, the date and time picker (inline, a month
+  calendar, with a time picker under it for a date and time), two buttons for
   `Stepper`, a swatch opening the color dialog for `ColorPicker`. The
   segmented control, progress bar and ring are the host's own views,
   drawn as Fluent's. Each control sits in a view of the host's, which
@@ -1642,7 +1673,11 @@ How the Windows host maps RyUI (`host/windows`):
   with no glyph shows nothing and is reported once).
 - A `Stack` shows its top screen under a header bar of its own: a back
   button (Alt+Left too) while there's a screen to go back to, the
-  screen's title, its bar buttons. `Tabs` are a bar on top, as WinUI's
+  screen's title, its bar buttons, and its search field
+  (`ScreenOptions.Search`: a Fluent text box with the search glyph
+  before the buttons, up to 280 points wide, as WinUI puts an
+  AutoSuggestBox in a command bar; typing is the screen's TextChanged,
+  Enter its Submit). `Tabs` are a bar on top, as WinUI's
   top `NavigationView`. A `Sheet` is a modal window over the window in
   use (the one activated last: the main one, a `Window`, a sheet; the
   owner disabled meanwhile; closing it or Escape dismisses it), half
@@ -1758,6 +1793,38 @@ How the Windows host maps RyUI (`host/windows`):
   their views placed on them; its background is sampled from what's
   behind it (a rich edit can't be transparent). Selection across texts
   in a `Selectable` isn't one selection yet: each text selects its own.
+- Pinches and rotations: a touch screen's two fingers (`WM_GESTURE`'s
+  zoom and rotate, rotate asked for with `SetGestureConfig` as a view
+  listens), and a precision touchpad's pinch, which Windows sends as the
+  wheel with Ctrl (so is a mouse's Ctrl and wheel, 10% a notch: began
+  with the first, ended once the wheel rests for 250 ms).
+- The native modules (`ui.Call`): `secureStore` in the Credential
+  Manager (the user's generic credentials, `<app>/<key>`, up to 2560
+  bytes a value), `device` (info, the clipboard's text, keeping the
+  display on), `browser`, `photos` and `files` (the open file dialog,
+  the files copied to the caches), `web` (`Runtime.evaluate` through
+  WebView2's DevTools protocol, awaiting a promise; `Network.getCookies`)
+  and `js` (a blank page in a WebView2 that's never shown).
+- Screen readers (Narrator, NVDA) read the host's views through UI
+  Automation: each view of the host's own drawing answers `WM_GETOBJECT`
+  with a provider of Go's (`IRawElementProviderSimple`, made once per
+  view, on top of its window's host provider) giving its name (Label; a
+  text's text; a pressable view's texts), help text (Hint, else
+  Tooltip), control type (Role; a pressable view a button; a header a
+  heading), whether it's skipped (Decorative, with what's in it), and the
+  Invoke pattern for a view that presses. `Announce` raises a UI
+  Automation notification. A view's screen reader actions are its
+  context menu (Shift+F10, the menu key, a right-click); an adjustable
+  view takes the arrow keys: UI Automation's RangeValue pattern sets a
+  double, which a callback of Go's (`syscall.NewCallback`) can't take.
+- Shadows are drawn by the view a view's window is in, under its
+  children, around the view's shape: a child window can't draw outside
+  itself. Transitions and matched views move the frame, as on macOS,
+  stepped with the animation; their fades fade the view's own drawing.
+  A view going out keeps its window, and those in it, until it's gone.
+- Pull to refresh is F5, the Windows way: the refreshable Scroll or List
+  the focus is in, or else the innermost one on screen; a spinner floats
+  at the top of its content while it refreshes.
 - `WebView` is WebView2 (the runtime found in EdgeUpdate's registry
   keys, as its loader finds it, so no loader DLL ships); the app's
   assets are served from `https://ryui.assets/`; pages follow the app's

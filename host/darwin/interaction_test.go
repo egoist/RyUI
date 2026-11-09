@@ -29,13 +29,19 @@ const (
 // sendMouse sends the window a mouse event at x, y in n's view, as the
 // window server would.
 func sendMouse(h *Host, typ uint, n *node, x, y float64) {
+	sendMouseAt(h, typ, n, x, y, float64(time.Now().UnixNano())/1e9)
+}
+
+// sendMouseAt sends a mouse event with a timestamp (seconds since the
+// system started, as AppKit's).
+func sendMouseAt(h *Host, typ uint, n *node, x, y, at float64) {
 	p := MsgPointFromID(n.view, Sel("convertPoint:toView:"), Point{X: x, Y: y}, 0)
 	w := Send(n.view, "window")
 	if !SendBool(w, "isVisible") {
 		Send(w, "orderFront:", 0) // a window off screen takes no clicks
 	}
 	ev := MsgMouseEvent(Class("NSEvent"), Sel("mouseEventWithType:location:modifierFlags:timestamp:windowNumber:context:eventNumber:clickCount:pressure:"),
-		typ, p, 0, float64(time.Now().UnixNano())/1e9, SendInt(w, "windowNumber"), 0, 0, 1, 1)
+		typ, p, 0, at, SendInt(w, "windowNumber"), 0, 0, 1, 1)
 	Send(w, "sendEvent:", uintptr(ev))
 }
 
@@ -448,6 +454,44 @@ func TestDragSource(t *testing.T) {
 		sendMouse(h, evLeftUp, v, 15, 10)
 		if len(log) != 0 {
 			fatalf(t, "after the drag: %q", log)
+		}
+	})
+}
+
+// A quick drag with the mouse is a swipe, on a view that takes swipes and
+// no pans; a slow one isn't.
+func TestSwipeWithMouse(t *testing.T) {
+	var swipes []ui.SwipeDirection
+	h, _ := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{Padding: ui.All(20), Align: ui.AlignStart},
+			ui.View(ui.ViewProps{
+				OnSwipe: func(d ui.SwipeDirection) { swipes = append(swipes, d) },
+				Style:   ui.Style{Width: ui.Pt(300), Height: ui.Pt(100)},
+			}),
+		)
+	})
+	onMain(func() {
+		v := viewSized(t, h, 300, 100)
+		at := MsgFloat(Send(Class("NSProcessInfo"), "processInfo"), Sel("systemUptime"))
+		// 160 points in 80 ms.
+		sendMouseAt(h, evLeftDown, v, 250, 50, at)
+		for i := 1; i <= 8; i++ {
+			sendMouseAt(h, evLeftDragged, v, 250-float64(i)*20, 50, at+float64(i)*0.01)
+		}
+		sendMouseAt(h, evLeftUp, v, 90, 50, at+0.09)
+		if !slices.Equal(swipes, []ui.SwipeDirection{ui.SwipeLeft}) {
+			t.Errorf("a quick drag left: %v", swipes)
+		}
+		swipes = nil
+		// Down, but too short to be a swipe.
+		at += 1
+		sendMouseAt(h, evLeftDown, v, 50, 20, at)
+		for i := 1; i <= 4; i++ {
+			sendMouseAt(h, evLeftDragged, v, 50, 20+float64(i)*4, at+float64(i)*0.01)
+		}
+		sendMouseAt(h, evLeftUp, v, 50, 36, at+0.05)
+		if len(swipes) != 0 {
+			t.Errorf("a short drag: %v", swipes)
 		}
 	})
 }

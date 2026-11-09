@@ -42,6 +42,7 @@ type nav struct {
 	back    uintptr
 	buttons []uintptr // the screen's bar buttons
 	screen  *node     // the screen whose title and buttons it shows
+	field   *node     // its search field (search.go), once a screen had one
 
 	// A tab bar.
 	tabs *node
@@ -377,7 +378,7 @@ func (h *Host) headerShown(stack *node) bool {
 	if s == nil {
 		return false
 	}
-	return s.title != "" || len(s.actions) > 0 || h.liveScreens(stack) > 1
+	return s.title != "" || len(s.actions) > 0 || s.nav.search != "" || h.liveScreens(stack) > 1
 }
 
 func (h *Host) liveScreens(stack *node) int {
@@ -425,6 +426,7 @@ func (h *Host) updateHeader(stack *node) {
 		SetWindowText(b.nav.buttons[i], a.title)
 		Invalidate(b.nav.buttons[i])
 	}
+	h.updateSearch(b, screen)
 	if h.liveScreens(stack) > 1 {
 		ShowWindow(b.nav.back, SW_SHOWNA)
 	} else {
@@ -469,6 +471,7 @@ func (h *Host) layoutHeader(b *node) {
 		SetWindowPos(b.nav.buttons[i], 0, across(x, w), y, w, size, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 		x -= h.px(b, 4)
 	}
+	h.layoutSearch(b, x, across)
 }
 
 // headerButton is what a header's button shows: the back arrow, or a
@@ -531,7 +534,11 @@ func (h *Host) paintHeader(b *node, dc uintptr, g Graphics, r Rect) {
 	if rtl {
 		tr = flipIn(tr, r)
 	}
-	for _, btn := range b.nav.buttons {
+	edges := b.nav.buttons
+	if f := b.nav.field; f != nil && f.hwnd != 0 && IsWindowVisible(f.hwnd) {
+		edges = append(edges[:len(edges):len(edges)], f.hwnd)
+	}
+	for _, btn := range edges {
 		br := WindowRectIn(btn, b.hwnd)
 		if rtl {
 			tr.Left = max(tr.Left, br.Right+h.px(b, 8))

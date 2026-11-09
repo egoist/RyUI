@@ -1247,3 +1247,35 @@ func TestMenuBarMirrors(t *testing.T) {
 		}
 	})
 }
+
+// A screen's search field is in its stack's header: typing writes the
+// screen's Text, Enter submits, and code's text shows in it.
+func TestHeaderSearch(t *testing.T) {
+	q := signal.New("")
+	submitted := 0
+	h, _ := mount(t, func() ui.Node {
+		return ui.Stack(func() ui.Node { return ui.StaticText("Home") }, ui.ScreenOptions{
+			Title:  ui.Val("Home"),
+			Search: &ui.Search{Text: q, OnSubmit: func() { submitted++ }},
+		})
+	})
+	onMain(t, func() {
+		header := find(h, ops.KindStack)[0].nav.bar
+		f := header.nav.field
+		if f == nil || !shown(f.hwnd) {
+			fatalf("no search field in the header")
+		}
+		SetWindowText(f.ctl, "cats")
+		if q.Peek() != "cats" {
+			fatalf("typed: Text %q", q.Peek())
+		}
+		SendMessage(f.ctl, WM_KEYDOWN, VK_RETURN, 0)
+		if submitted != 1 {
+			fatalf("Enter: submitted %d times", submitted)
+		}
+		h.enter(func() { q.Set("dogs") })
+		if WindowText(f.ctl) != "dogs" {
+			fatalf("code's text: %q", WindowText(f.ctl))
+		}
+	})
+}

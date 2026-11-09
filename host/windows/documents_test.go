@@ -3,11 +3,14 @@
 package windows
 
 import (
+	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	. "github.com/egoist/ryui/internal/windows"
 	"github.com/egoist/ryui/ui"
@@ -65,4 +68,64 @@ func TestDocuments(t *testing.T) {
 			fatalf("print.pdf wrote %q: %v, %d bytes", b, err, len(data))
 		}
 	})
+}
+
+// The modules: secureStore keeps a value in the Credential Manager and
+// deletes it; device.info says Windows; ryui/js runs a script (its value,
+// a promise's, what it threw) in a WebView2 of its own.
+func TestModules(t *testing.T) {
+	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })
+	onMain(t, func() {
+		sync := func(module, m string, args []byte) ([]byte, error) { return h.module(module)(m, args) }
+		key := fmt.Sprintf("ryui-test-%d", time.Now().UnixNano())
+		if b, err := sync("secureStore", "get", []byte(key)); err != nil || len(b) != 1 || b[0] != 0 {
+			fatalf("a missing key: %v, %v", b, err)
+		}
+		args := binary.LittleEndian.AppendUint32(nil, uint32(len(key)))
+		args = append(append(args, key...), "secret"...)
+		if _, err := sync("secureStore", "set", args); err != nil {
+			fatalf("set: %v", err)
+		}
+		if b, err := sync("secureStore", "get", []byte(key)); err != nil || string(b) != "\x01secret" {
+			fatalf("get after set: %q, %v", b, err)
+		}
+		if _, err := sync("secureStore", "delete", []byte(key)); err != nil {
+			fatalf("delete: %v", err)
+		}
+		if b, _ := sync("secureStore", "get", []byte(key)); len(b) != 1 || b[0] != 0 {
+			fatalf("after delete: %q", b)
+		}
+		if b, err := sync("device", "info", nil); err != nil || !strings.Contains(string(b), `"system":"Windows"`) {
+			fatalf("device.info: %s, %v", b, err)
+		}
+		run := func(src string) ([]byte, error) {
+			b, err, _ := await(h, "js", "eval", append(binary.LittleEndian.AppendUint32(nil, 20000), src...))
+			return b, err
+		}
+		if b, err := run("1 + 2"); webEnvErr == nil && (err != nil || string(b) != "3") {
+			fatalf("1 + 2: %s, %v", b, err)
+		}
+		if webEnvErr != nil {
+			return // no WebView2 runtime
+		}
+		if b, err := run("Promise.resolve({a: [1, 'x']})"); err != nil || string(b) != `{"a":[1,"x"]}` {
+			fatalf("a promise: %s, %v", b, err)
+		}
+		if _, err := run("null.x"); err == nil || !strings.Contains(err.Error(), "TypeError") {
+			fatalf("a throw: %v", err)
+		}
+	})
+}
+
+// fileFilters: a family's extensions, a MIME type's, any file.
+func TestFileFilters(t *testing.T) {
+	if f := fileFilters(nil); f != nil {
+		t.Errorf("no types: %v", f)
+	}
+	if f := fileFilters([]string{"image/*", "application/pdf"}); len(f) != 2 || !strings.Contains(f[0].Patterns, "*.png") || !strings.Contains(f[0].Patterns, "*.pdf") {
+		t.Errorf("image/*, application/pdf: %v", f)
+	}
+	if f := fileFilters([]string{"*/*"}); f != nil {
+		t.Errorf("*/*: %v", f)
+	}
 }

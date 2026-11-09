@@ -7,10 +7,12 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
+	"time"
 	"unsafe"
 
 	. "github.com/egoist/ryui/internal/windows"
 	"github.com/egoist/ryui/ops"
+	"github.com/egoist/ryui/signal"
 	"github.com/egoist/ryui/ui"
 )
 
@@ -536,4 +538,60 @@ func TestDragCancelled(t *testing.T) {
 			fatalf("phases %v", phases)
 		}
 	})
+}
+
+// Ctrl and the wheel (a precision touchpad's pinch) over a view that
+// takes pinches is a pinch: began, a step per notch, ended once the
+// wheel rests; without Ctrl the wheel isn't one.
+func TestWheelPinch(t *testing.T) {
+	var log []ui.Gesture
+	h, _ := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{Padding: ui.All(20)}, ui.View(ui.ViewProps{
+			OnPinch: func(g ui.Gesture) { log = append(log, g) },
+			Style:   box(100, 60),
+		}))
+	})
+	onMain(t, func() {
+		showHost(h)
+		v := viewListening(h, ops.EventPinch)
+		p := ClientToScreen(v.hwnd, Point{X: 10, Y: 10})
+		wheel := func(mods uintptr, delta int16) {
+			SendMessage(v.hwnd, WM_MOUSEWHEEL, uintptr(uint16(delta))<<16|mods, at(p.X, p.Y))
+		}
+		wheel(MK_CONTROL, 120)
+		wheel(MK_CONTROL, 120)
+		wheel(0, 120)
+		SendMessage(v.hwnd, WM_TIMER, timerPinch, 0)
+		if len(log) != 4 || log[0].State != ui.GestureBegan || log[3].State != ui.GestureEnded {
+			fatalf("pinch: %+v", log)
+		}
+		if s := log[2].Scale; s < 1.2 || s > 1.22 {
+			fatalf("two notches: scale %v, want 1.21", s)
+		}
+	})
+}
+
+// An inline date picker is a month calendar, with a time picker under it
+// for a date and time; picking a day keeps the time of day.
+func TestDatePickerInline(t *testing.T) {
+	v := signal.New(time.Date(2026, 3, 14, 9, 30, 0, 0, time.Local))
+	h, _ := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{Padding: ui.All(20), Align: ui.AlignStart},
+			ui.DatePicker(ui.DatePickerProps{Value: v, Inline: true, Mode: ui.DateAndTime}),
+		)
+	})
+	onMain(t, func() {
+		n := find(h, ops.KindDatePicker)[0]
+		if ClassName(n.ctl) != "SysMonthCal32" || n.ctl2 == 0 || ClassName(n.ctl2) != "SysDateTimePick32" {
+			fatalf("controls %q, %v", ClassName(n.ctl), n.ctl2)
+		}
+		if f := frame(h, n); f[3] < 150 {
+			fatalf("frame %v: no room for a month", f)
+		}
+		st := systemTime(time.Date(2026, 3, 20, 0, 0, 0, 0, time.Local).UnixMilli())
+		h.datePicked(n, n.ctl, st)
+	})
+	if got := v.Peek(); !got.Equal(time.Date(2026, 3, 20, 9, 30, 0, 0, time.Local)) {
+		t.Fatalf("picked %v", got)
+	}
 }

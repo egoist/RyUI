@@ -143,7 +143,7 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 	case ops.KindVideo:
 		v = h.makeVideo(n)
 	case ops.KindNative:
-		fail("can't show native views (ui.Native) yet: they're the app's Swift and Kotlin")
+		v = initView("RyUIView") // the app's view goes in it (native.go)
 	default:
 		fail("can't show %s yet", kind)
 	}
@@ -270,6 +270,12 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 		if p == ops.PropScrollPaging {
 			h.setPaging(n, v.Int != 0)
 		}
+		switch p {
+		case ops.PropScrollRefreshable:
+			h.setRefreshable(n, v.Int != 0)
+		case ops.PropScrollRefreshing:
+			h.setRefreshing(n, v.Int != 0)
+		}
 	case ops.KindPageControl:
 		h.setPageDots(n, p, v)
 	case ops.KindSplit:
@@ -281,9 +287,15 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 			n.canvas = append(n.canvas[:0], v.Bytes...)
 			Send(n.view, "setNeedsDisplay:", 1)
 		}
-		// Pull to refresh: not on macOS.
 	case ops.KindList:
-		n.list.setProp(h, n, p, v)
+		switch p {
+		case ops.PropListRefreshable:
+			h.setRefreshable(n, v.Int != 0)
+		case ops.PropListRefreshing:
+			h.setRefreshing(n, v.Int != 0)
+		default:
+			n.list.setProp(h, n, p, v)
+		}
 	case ops.KindActivity:
 		if p == ops.PropActivityAnimating {
 			if v.Int != 0 {
@@ -352,6 +364,15 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 				el = 0xec
 			}
 			Send(n.view, "setDatePickerElements:", el)
+		case ops.PropDatePickerInline:
+			// The Mac's calendar and clock in place
+			// (NSDatePickerStyleClockAndCalendar): a month to pick a day
+			// from, an analog clock for the time.
+			style := uintptr(0) // text field and stepper
+			if v.Int != 0 {
+				style = 1
+			}
+			Send(n.view, "setDatePickerStyle:", style)
 		case ops.PropDatePickerMin:
 			if v.Int != 0 {
 				Send(n.view, "setMinDate:", uintptr(dateMillis(v.Int)))
@@ -378,6 +399,8 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 		n.rich.setProp(h, n, p, v)
 	case ops.KindShape:
 		n.shape.setProp(h, n, p, v)
+	case ops.KindNative:
+		h.setNativeProp(n, p, v)
 	case ops.KindWebView:
 		n.web.setProp(h, n, p, v)
 	case ops.KindVideo:
@@ -702,9 +725,13 @@ func (h *Host) listen(n *node, e ops.EventKind) {
 		// A secondary click is a Mac's long press.
 		r := add("NSClickGestureRecognizer", "longPress:")
 		Send(r, "setButtonMask:", 2)
-	case ops.EventPan:
-		g := add("NSPanGestureRecognizer", "pan:")
-		Send(g, "setDelegate:", uintptr(h.target))
+	case ops.EventPan, ops.EventSwipe:
+		// A swipe is a quick pan (a drag with the mouse) or a trackpad's
+		// flick (swipe.go).
+		if n.panGesture == 0 {
+			n.panGesture = add("NSPanGestureRecognizer", "pan:")
+			Send(n.panGesture, "setDelegate:", uintptr(h.target))
+		}
 	case ops.EventHover:
 		h.listenHover(n)
 	case ops.EventPinch:
@@ -758,6 +785,13 @@ func (h *Host) gesture(g ID, e ops.EventKind) {
 		vel := MsgIDToPoint(g, Sel("velocityInView:"), view)
 		gs.TranslationX, gs.TranslationY = float32(t.X), float32(t.Y)
 		gs.VelocityX, gs.VelocityY = float32(vel.X), float32(vel.Y)
+		h.emit(n, ops.Event{Kind: e, G: gs})
+		if gs.State == ops.GestureStateEnded {
+			if dir := swipeDirection(gs.TranslationX, gs.TranslationY, gs.VelocityX, gs.VelocityY); dir != 0 {
+				h.emit(n, ops.Event{Kind: ops.EventSwipe, Int: dir})
+			}
+		}
+		return
 	case ops.EventPinch:
 		gs.Scale = float32(1 + MsgFloat(g, Sel("magnification")))
 	case ops.EventRotate:

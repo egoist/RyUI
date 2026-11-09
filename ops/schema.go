@@ -267,8 +267,8 @@ var Schema = SchemaDef{
 			{Name: "HTML", Type: TString, Doc: "markup to show instead of URL"},
 			{Name: "Preload", Type: TString, Doc: "a script run before each page's own, in every frame (WKUserScript at document start; WebViewCompat.addDocumentStartJavaScript); set before URL"},
 			{Name: "UserAgent", Type: TString, Doc: "the User-Agent the page is fetched with, and navigator.userAgent (empty: the platform's)"},
-			{Name: "Block", Type: TBytes, Doc: "requests to block: u32 count, then u32-length patterns, each a host (which matches its subdomains too) or, with a /, a part of the URL (iOS: a content rule list; Android: shouldInterceptRequest)"},
-			{Name: "Requests", Type: TBool, Doc: "report each request the page makes with Request (Android; iOS can't see them)"},
+			{Name: "Block", Type: TBytes, Doc: "requests to block: u32 count, then u32-length patterns, each a host (which matches its subdomains too) or, with a /, a part of the URL (iOS and macOS: a content rule list, the page loading once it's compiled; Android: shouldInterceptRequest; Windows: WebView2's resource filter)"},
+			{Name: "Requests", Type: TBool, Doc: "report each request the page makes with Request (Android, Windows; iOS and macOS can't see them)"},
 		}, Doc: "a web page (WKWebView, android.webkit.WebView). Navigated reports each page loaded (its URL), Failed a page that couldn't load, Message what the page posts with window.ryui.postMessage(text), WebState its URL, title, progress and history, Download a response the page can't show (a file to save), NewWindow a page it would open in a new window (window.open, target=_blank: without a listener, it loads in this view), Request each request (with Requests); the Eval command runs script in it, WebNavigate goes back, forward, reloads or stops"},
 		{Name: "DatePicker", Props: []PropDef{
 			{Name: "Value", Type: TInt, Doc: "the instant, in Unix milliseconds"},

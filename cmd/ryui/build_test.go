@@ -135,3 +135,20 @@ func TestPlistKeyEntitlement(t *testing.T) {
 		t.Fatalf("got %s", got)
 	}
 }
+
+func TestNotaryCredentials(t *testing.T) {
+	if got, _ := notaryCredentials("ryui", func(string) string { return "" }); strings.Join(got, " ") != "--keychain-profile ryui" {
+		t.Errorf("a profile: %v", got)
+	}
+	if _, err := notaryCredentials("env", func(string) string { return "" }); err == nil {
+		t.Error("env without the variables: no error")
+	}
+	env := map[string]string{"RYUI_APPLE_ID": "a@b.c", "RYUI_APPLE_PASSWORD": "pw", "RYUI_TEAM_ID": "T"}
+	got, err := notaryCredentials("env", func(k string) string { return env[k] })
+	if err != nil || strings.Join(redacted(got), " ") != "--apple-id a@b.c --password *** --team-id T" {
+		t.Errorf("env: %v, %v", got, err)
+	}
+	if id, st := notaryResult([]byte("Conducting pre-submission checks...\n{\"id\":\"abc\",\"status\":\"Invalid\",\"message\":\"x\"}")); id != "abc" || st != "Invalid" {
+		t.Errorf("result: %q %q", id, st)
+	}
+}

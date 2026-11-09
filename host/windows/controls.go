@@ -668,6 +668,8 @@ func (h *Host) layoutField(n *node) {
 		// The selection field fills the view; the list drops below it.
 		SendMessage(n.ctl, CB_SETITEMHEIGHT, ^uintptr(0), uintptr(max(r.H()-h.px(n, 8), 1)))
 		SetWindowPos(n.ctl, 0, 0, 0, r.W(), r.H()+h.px(n, 300), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
+	case ops.KindDatePicker:
+		h.layoutDate(n, r)
 	case ops.KindSlider:
 		SendMessage(n.ctl, TBM_SETTHUMBLENGTH, uintptr(h.px(n, 20)), 0)
 		SetWindowPos(n.ctl, 0, 0, 0, r.W(), r.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)

@@ -70,6 +70,18 @@ func registerClasses() {
 			}
 			return n.menu
 		}),
+		// A trackpad's swipes: three fingers (swipeWithEvent:, when the
+		// system leaves them to apps), or a two-finger flick (swipe.go).
+		Method("swipeWithEvent:", func(self ID, _ SEL, ev ID) {
+			if !theHost.swipeEvent(self, ev) {
+				SendSuper(self, "RyUIView", "swipeWithEvent:", uintptr(ev))
+			}
+		}),
+		Method("scrollWheel:", func(self ID, _ SEL, ev ID) {
+			if !theHost.wheel(self, ev) {
+				SendSuper(self, "RyUIView", "scrollWheel:", uintptr(ev))
+			}
+		}),
 		Method("cancelOperation:", func(self ID, _ SEL, sender ID) {
 			// Escape in a sheet's content dismisses it.
 			theHost.cancel(self)
@@ -164,8 +176,12 @@ func registerTarget() {
 		Method("windowDidMiniaturize:", func(self ID, _ SEL, n ID) { h().lifecycle(ops.LifecycleBackground) }),
 		Method("windowDidDeminiaturize:", func(self ID, _ SEL, n ID) { h().lifecycle(ops.LifecycleForeground) }),
 		Method("observeValueForKeyPath:ofObject:change:context:", func(self ID, _ SEL, keyPath, object, change ID, ctx uintptr) {
-			if GoString(keyPath) == "presentationSize" {
+			switch GoString(keyPath) {
+			case "presentationSize":
 				h().videoSized(object)
+				return
+			case "URL", "title", "loading", "estimatedProgress", "canGoBack", "canGoForward":
+				h().queueWebState(object)
 				return
 			}
 			h().appearanceChanged()
@@ -202,8 +218,17 @@ func registerTarget() {
 		Method("appMenuItem:", func(self ID, _ SEL, item ID) { h().appMenuItem(item) }),
 		Method("validateMenuItem:", func(self ID, _ SEL, item ID) bool { return h().validateMenuItem(item) }),
 		Method("boundsChanged:", func(self ID, _ SEL, n ID) { h().scrolled(Send(n, "object")) }),
+		Method("refreshScrolled:", func(self ID, _ SEL, n ID) { h().refreshScrolled(Send(n, "object")) }),
+		Method("refreshScrollEnded:", func(self ID, _ SEL, n ID) { h().refreshScrollEnded(Send(n, "object")) }),
 		Method("liveScrollEnded:", func(self ID, _ SEL, n ID) { h().settlePage(Send(n, "object")) }),
 		Method("shaderTick:", func(self ID, _ SEL, t ID) { h().shaderTick() }),
+		Method("clipboardTick:", func(self ID, _ SEL, t ID) { h().clipboardTick() }),
+		Method("locationManagerDidChangeAuthorization:", func(self ID, _ SEL, m ID) { h().locationAuthorized() }),
+		Method("locationManager:didUpdateLocations:", func(self ID, _ SEL, m, ls ID) { h().locationsUpdated(ls) }),
+		Method("locationManager:didFailWithError:", func(self ID, _ SEL, m, err ID) { h().locationFailed(err) }),
+		Method("audioEnded:", func(self ID, _ SEL, n ID) { h().audioEnded(Send(n, "object")) }),
+		Method("speechSynthesizer:didFinishSpeechUtterance:", func(self ID, _ SEL, s, u ID) { h().spoken(u, true) }),
+		Method("speechSynthesizer:didCancelSpeechUtterance:", func(self ID, _ SEL, s, u ID) { h().spoken(u, false) }),
 		Method("popoverShouldClose:", func(self ID, _ SEL, p ID) bool { return h().popoverShouldClose(p) }),
 		Method("popoverDidClose:", func(self ID, _ SEL, n ID) { h().popoverClosed(Send(n, "object")) }),
 		Method("frameTick:", func(self ID, _ SEL, t ID) { h().tick() }),
