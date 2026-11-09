@@ -392,10 +392,10 @@ func (h *Host) setRichLink(n *node, url string) {
 }
 
 func init() {
-	// EDITSTREAM's layout (richedit.h's pack(4)): 20 bytes, the callback
-	// at 12.
+	// EDITSTREAM's layout (richedit.h's pack(4)): the callback at 12. Go
+	// pads the struct to 24 bytes, past the 20 the control reads.
 	var es editStream
-	if unsafe.Sizeof(es) != 20 || unsafe.Offsetof(es.callback) != 12 {
+	if unsafe.Offsetof(es.callback) != 12 {
 		panic("ryui: EDITSTREAM's layout")
 	}
 }
