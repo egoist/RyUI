@@ -172,8 +172,10 @@ func TestTransitions(t *testing.T) {
 			}))
 	})
 	onMain(t, func() {
-		h.env.ReduceMotion = false // animations on, whatever the machine's setting
 		showHost(h)
+		// Animations on, whatever the machine's setting (a CI runner's are off),
+		// once showing the window has read it.
+		h.env.ReduceMotion = false
 		toggle := func(v bool) {
 			h.enter(func() { ui.Post(func() { ui.Animate(func() { shown.Set(v) }) }) })
 			h.runPosted()
@@ -222,8 +224,10 @@ func TestMatch(t *testing.T) {
 			}))
 	})
 	onMain(t, func() {
-		h.env.ReduceMotion = false // animations on, whatever the machine's setting
 		showHost(h)
+		// Animations on, whatever the machine's setting (a CI runner's are off),
+		// once showing the window has read it.
+		h.env.ReduceMotion = false
 		var small *node
 		for _, n := range find(h, ops.KindView) {
 			if n.match == "card" {

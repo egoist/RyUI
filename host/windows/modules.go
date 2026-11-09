@@ -266,7 +266,7 @@ func (w *web) evaluate(script string, done func([]byte, error)) {
 // statement's value, a promise's awaited) and answers with its value as
 // JSON, or what it threw.
 func evaluate(view uintptr, script string, done func([]byte, error)) {
-	devTools(view, "Runtime.evaluate", map[string]any{"expression": script, "awaitPromise": true, "returnByValue": true, "replMode": true},
+	devTools(view, "Runtime.evaluate", map[string]any{"expression": script, "awaitPromise": true, "returnByValue": true},
 		func(r json.RawMessage, err error) {
 			if err != nil {
 				done(nil, err)

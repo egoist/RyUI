@@ -843,6 +843,8 @@ func (h *Host) resized(n *node) {
 		n.rich.resized(h, n)
 	case n.web != nil:
 		n.web.resized(h, n)
+	case n.kage != nil:
+		h.renderShader(n) // a frame for its size, before it paints
 	}
 	if n.cornerRadius > 0 || n.gradient != nil || n.borderWidth > 0 {
 		Invalidate(n.hwnd)
