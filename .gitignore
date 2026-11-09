@@ -21,3 +21,6 @@ bench/compose/local.properties
 
 # The website (bun)
 node_modules/
+
+# Claude Code worktrees
+.claude/worktrees/
