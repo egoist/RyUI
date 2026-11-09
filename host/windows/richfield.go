@@ -3,6 +3,7 @@
 package windows
 
 import (
+	"bytes"
 	"strings"
 	"syscall"
 	"unicode/utf16"
@@ -74,7 +75,8 @@ func streamOut(ctl uintptr, selection bool) []byte {
 		flags |= sffSelection
 	}
 	SendMessage(ctl, emStreamOut, flags, uintptr(unsafe.Pointer(&es)))
-	return append([]byte(nil), streamed...)
+	// Some versions of msftedit end the stream with a NUL.
+	return bytes.TrimRight(append([]byte(nil), streamed...), "\x00")
 }
 
 // richDoc is the field's defaults as RTF has them: its font, size and
@@ -247,6 +249,9 @@ type fieldRun struct {
 // places, for its formats.
 func (h *Host) richRuns(n *node) []rtf.Run {
 	runs := rtf.Parse(streamOut(n.ctl, false), n.richDoc)
+	// A rich edit's document ends with a paragraph mark of its own, which
+	// isn't the field's text: the runs end where its visible text does.
+	runs = trimRuns(runs, len(utf16.Encode([]rune(h.richPlain(n)))))
 	n.fieldRuns = n.fieldRuns[:0]
 	var at int32
 	for _, r := range runs {
@@ -415,4 +420,21 @@ func init() {
 	if unsafe.Offsetof(es.callback) != 12 {
 		panic("ryui: EDITSTREAM's layout")
 	}
+}
+
+// trimRuns cuts runs to n UTF-16 units of text, dropping the empty ones
+// at the end.
+func trimRuns(runs []rtf.Run, n int) []rtf.Run {
+	at := 0
+	for i := range runs {
+		u := utf16.Encode([]rune(runs[i].Text))
+		if at+len(u) > n {
+			runs[i].Text = string(utf16.Decode(u[:max(n-at, 0)]))
+		}
+		at += len(u)
+	}
+	for len(runs) > 0 && runs[len(runs)-1].Text == "" {
+		runs = runs[:len(runs)-1]
+	}
+	return runs
 }
