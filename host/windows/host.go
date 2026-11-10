@@ -211,6 +211,8 @@ type Host struct {
 	dark   bool
 	theme  palette
 
+	shadowBuf []shadowStep // paintShadows', reused
+
 	depth   int // calls into the core in progress
 	pending []ops.Event
 	later   []func() // work to do once the core has returned (list tiling, modal loops)

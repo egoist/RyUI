@@ -12,8 +12,9 @@ import (
 // Shadows (Style.Shadow) on Windows: a child window can't draw outside
 // itself, so a view's shadow is drawn by the view its window is in, under
 // its children, around the view's shape (its corner radius), offset and
-// blurred: concentric rounded rectangles, each a little more opaque toward
-// the shape, whose sum falls off as a blur's does. The view's own window
+// blurred: concentric rounded rectangles from 3σ outside the shape to 3σ
+// inside it, whose compounded alpha follows a Gaussian-blurred edge as
+// the other platforms' shadows do (shadowSteps). The view's own window
 // covers the part under it. Moving or resizing a view with a shadow
 // repaints its parent around both its places.
 
@@ -51,17 +52,13 @@ func (h *Host) paintShadows(n *node, hwnd uintptr, g Graphics) {
 		x, y := float32(r.Left)+s.dx*k, float32(r.Top)+s.dy*k
 		w, ht := float32(r.W()), float32(r.H())
 		radius := min(c.cornerRadius*k, w/2, ht/2)
-		blur := s.blur * k
-		steps := int(min(max(blur/1.5, 1), 24))
-		// Each layer's alpha, so that steps of them make the color's.
+		// Radius is a blur radius, as CSS and SwiftUI mean it: 2σ.
 		a := float64(col.a) / 255 * float64(c.opacity)
-		layer := 1 - math.Pow(1-min(a, 0.999), 1/float64(steps))
-		for i := steps; i >= 1; i-- {
-			// From the blur's edge in to half of it inside the shape, as a
-			// Gaussian's spread is centered on the edge.
-			spread := blur * (float32(i)/float32(steps) - 0.5)
+		h.shadowBuf = shadowSteps(float64(s.blur*k)/2, a, h.shadowBuf)
+		for _, st := range h.shadowBuf {
+			spread := max(float32(st.spread), -min(w, ht)/2)
 			lc := col
-			lc.a = uint8(math.Round(layer * 255))
+			lc.a = uint8(math.Round(st.alpha * 255))
 			if lc.a == 0 {
 				continue
 			}
@@ -78,7 +75,8 @@ func (h *Host) shadowArea(n *node) (Rect, bool) {
 	}
 	k := h.scaleOf(n)
 	r := WindowRectIn(n.hwnd, Parent(n.hwnd))
-	pad := int32(math.Ceil(float64((s.blur + max(abs(s.dx), abs(s.dy))) * k)))
+	// 3σ, Radius being 2σ.
+	pad := int32(math.Ceil(float64((1.5*s.blur + max(abs(s.dx), abs(s.dy))) * k)))
 	return Rect{Left: r.Left - pad, Top: r.Top - pad, Right: r.Right + pad, Bottom: r.Bottom + pad}, true
 }
 

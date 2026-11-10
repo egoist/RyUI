@@ -276,9 +276,11 @@ type Style struct {
 	// Transform moves, scales and rotates the view as it's drawn; layout
 	// doesn't see it. ui.Animate animates it.
 	Transform Transform
-	// Shadow is drawn under the view, from its shape (a clipped view's
-	// isn't seen, as on iOS). Android draws its elevation shadow: the
-	// radius is the elevation, the color tints it, and the light sets
+	// Shadow is drawn under the view, cast by its shape (its bounds,
+	// rounded by CornerRadius), not by what's drawn in it; a view that
+	// clips its children still casts it. Its Radius is a blur radius, as
+	// CSS and SwiftUI mean it (2σ). Android draws its elevation shadow:
+	// the radius is the elevation, the color tints it, and the light sets
 	// the offset.
 	Shadow Shadow
 	// Gradient fills the background (over Background).

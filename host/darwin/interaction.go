@@ -1022,6 +1022,7 @@ func interactionMethods() []objc.MethodDef {
 				h().viewLeft(n)
 			} else {
 				h().checkHover(n)
+				h().reassertShadow(n)
 			}
 		}),
 		Method("viewDidHide", func(self ID, _ SEL) {

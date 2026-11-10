@@ -1052,6 +1052,7 @@ ryui/
   cmd/ryui/           CLI
   template/          what `ryui new` copies
   examples/counter/  examples/todo/  examples/list10k/  examples/navigation/
+  conformance/       what every host draws for a Style, measured on its pixels
 ```
 
 The web adds `host/web` (the Go side, `js && wasm`) and `platform/web`
@@ -1101,6 +1102,21 @@ Desktop adds `host/darwin` and `internal/darwin` (macOS),
   UI Automator's single connection, which device tools hold. Each test
   waits for the screen to show what it expects, bounded so a broken app
   fails.
+- Rendering (`conformance`): each host draws one sheet of cases
+  (a background's edges, rounded corners, borders, opacity and group
+  opacity, clips, shadows, gradients, transforms) between two
+  registration markers; its runner captures the screen, and the cases
+  measure the pixels: where an edge is to the device pixel, a shadow's
+  Gaussian σ, a color's mix. They assert measurements with tolerances,
+  not pixels against a reference, so one set holds for every host at
+  any scale, as Graphite's backend conformance suite does. Runners:
+  `host/darwin` (Core Animation's own renderer, `CARenderer`, into a
+  Metal texture: NSView's `cacheDisplayInRect` leaves out transforms and
+  shadows), `host/windows` (`PrintWindow`), and `e2e` on the simulator,
+  the emulator and headless Chrome at 1×, 1.5× and 2× (the DevTools
+  protocol's screenshots). A host that documents lacking a feature
+  (Android's elevation shadows, Windows' transforms and group opacity)
+  skips its cases, with the reason.
 - Tests never pass or fail on wall-clock time: wait for the condition,
   count the work.
 
@@ -1643,6 +1659,17 @@ How the macOS host maps RyUI (`host/darwin`):
   node's view and filling it; on Windows a child window made in the
   context's `Parent`, its controls' notifications given to it. The mobile
   hosts keep Swift and Kotlin, the web JavaScript.
+- Visual props are the views' layers'. The layers under the window's
+  flipped content view have y down: gradients' points, shadows' offsets
+  and transforms are given so. AppKit owns a layer-backed view's
+  layer's transform and shadow: it sets the transform to the identity
+  as the window displays, so `Style.Transform` is held by an animation
+  that never ends (from what's drawn, so `ui.Animate` animates it), and
+  it sets the shadow from the view's own (none) as the view moves into
+  a window, so the host sets it again then. A shadow is cast by the
+  view's shape (`shadowPath`), as on iOS; a view that clips and casts
+  one clips its children in a view of their own that fills it, as on
+  iOS: a layer that masks to its bounds masks its own shadow too.
 - Debug automation: `RYUI_SNAPSHOT=file.png` renders the window to a PNG
   once it has shown, without taking focus (`RYUI_DUMP=1` writes the view
   tree beside it), then quits.
@@ -1850,7 +1877,10 @@ How the Windows host maps RyUI (`host/windows`):
   double, which a callback of Go's (`syscall.NewCallback`) can't take.
 - Shadows are drawn by the view a view's window is in, under its
   children, around the view's shape: a child window can't draw outside
-  itself. Transitions and matched views move the frame, as on macOS,
+  itself. They're concentric rounded rectangles from 3σ outside the
+  shape to 3σ inside it, whose compounded alpha follows a
+  Gaussian-blurred edge of σ half the Radius, as the other platforms'
+  shadows. Transitions and matched views move the frame, as on macOS,
   stepped with the animation; their fades fade the view's own drawing.
   A view going out keeps its window, and those in it, until it's gone.
 - Pull to refresh is F5, the Windows way: the refreshable Scroll or List

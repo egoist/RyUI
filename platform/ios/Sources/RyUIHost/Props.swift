@@ -246,7 +246,9 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
         case RyUIProp.a11yHidden:
             view.accessibilityElementsHidden = v.bool
             if v.bool { view.isAccessibilityElement = false }
-        case RyUIProp.clip: view.clipsToBounds = v.bool
+        case RyUIProp.clip:
+            n.clips = v.bool
+            n.updateClip()
         case RyUIProp.transform:
             guard case .bytes(let b) = v, b.count >= 20 else { return }
             var r = RyUIReader(b)
@@ -265,6 +267,7 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             view.layer.shadowOpacity = c == nil ? 0 : 1
             view.layer.shadowRadius = radius / 2 // a blur radius, as CSS and SwiftUI mean it
             view.layer.shadowOffset = CGSize(width: x, height: y)
+            n.updateClip()
             n.updateLayers()
         case RyUIProp.material:
             n.setMaterial(RyUIMaterial(rawValue: v.enumValue) ?? .none)

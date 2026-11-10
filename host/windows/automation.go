@@ -418,11 +418,26 @@ func (h *Host) pressKeys(spec string) {
 }
 
 func writeWindowPNG(hwnd uintptr, path string) {
+	img := windowImage(hwnd)
+	if img == nil {
+		return
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		return
+	}
+	png.Encode(f, img)
+	f.Close()
+}
+
+// windowImage is what a window shows (PrintWindow): only what shows, not
+// its invisible resize borders. Nil for a window of no size.
+func windowImage(hwnd uintptr) *stdimage.NRGBA {
 	r := WindowRect(hwnd)
 	vis := FrameBounds(hwnd)
 	w, ht := r.W(), r.H()
 	if w <= 0 || ht <= 0 {
-		return
+		return nil
 	}
 	screen := GetDC(0)
 	dc := CreateCompatibleDC(screen)
@@ -430,7 +445,6 @@ func writeWindowPNG(hwnd uintptr, path string) {
 	bmp, pixels := DIB(w, ht)
 	old := SelectObject(dc, bmp)
 	PrintWindow(hwnd, dc)
-	// Only what shows: not the invisible resize borders.
 	x0, y0 := int(vis.Left-r.Left), int(vis.Top-r.Top)
 	vw, vh := int(vis.W()), int(vis.H())
 	img := stdimage.NewNRGBA(stdimage.Rect(0, 0, vw, vh))
@@ -445,12 +459,7 @@ func writeWindowPNG(hwnd uintptr, path string) {
 	SelectObject(dc, old)
 	DeleteObject(bmp)
 	DeleteDC(dc)
-	f, err := os.Create(path)
-	if err != nil {
-		return
-	}
-	png.Encode(f, img)
-	f.Close()
+	return img
 }
 
 // dump describes the native view tree: each node's kind, frame (points)

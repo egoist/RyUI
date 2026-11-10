@@ -44,20 +44,30 @@ func root(t *testing.T) string {
 	return dir
 }
 
-// launch builds and launches example on the platform with ryui dev -once,
-// and returns what it printed. RYUI_DEVICE picks the simulator, emulator
-// or device (ryui dev's -device), when there's more than one.
-func launch(t *testing.T, platform, example string) string {
+// appDir is an app's directory from the repository's root: an example's
+// name, or a path (conformance/app).
+func appDir(app string) string {
+	if strings.Contains(app, "/") {
+		return app
+	}
+	return "examples/" + app
+}
+
+// launch builds and launches an app (appDir) on the platform with ryui
+// dev -once, and returns what it printed. RYUI_DEVICE picks the
+// simulator, emulator or device (ryui dev's -device), when there's more
+// than one.
+func launch(t *testing.T, platform, app string) string {
 	t.Helper()
-	args := []string{"run", "./cmd/ryui", "dev", "-" + platform, "-once"}
+	args := []string{"run", "./cmd/ryui", "dev", "-platform", platform, "-once"}
 	if d := os.Getenv("RYUI_DEVICE"); d != "" {
 		args = append(args, "-device", d)
 	}
-	c := exec.Command("go", append(args, "examples/"+example)...)
+	c := exec.Command("go", append(args, appDir(app))...)
 	c.Dir = root(t)
 	out, err := c.CombinedOutput()
 	if err != nil {
-		t.Fatalf("ryui dev -%s -once examples/%s: %v\n%s", platform, example, err, out)
+		t.Fatalf("ryui dev -platform %s -once %s: %v\n%s", platform, appDir(app), err, out)
 	}
 	return string(out)
 }
@@ -452,6 +462,19 @@ func webApp(t *testing.T, example string) *webScreen {
 	if browser == "" {
 		t.Skip("no Chrome (RYUI_CHROME)")
 	}
+	url := webServer(t, example)
+	page := exec.Command(browser, "--headless=new", "--no-first-run", "--no-default-browser-check", "--disable-gpu",
+		"--user-data-dir="+t.TempDir(), "--window-size=430,932", url)
+	if err := page.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { page.Process.Kill(); page.Wait() })
+	return &webScreen{t: t, url: url}
+}
+
+// webServer serves an app (appDir) with ryui dev -platform web, and
+// returns its URL.
+func webServer(t *testing.T, example string) string {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -465,7 +488,7 @@ func webApp(t *testing.T, example string) *webScreen {
 	if b, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("building the CLI: %v\n%s", err, b)
 	}
-	dev := exec.Command(cli, "dev", "-platform", "web", "-no-open", "-vet=false", "-port", fmt.Sprint(port), "examples/"+example)
+	dev := exec.Command(cli, "dev", "-platform", "web", "-no-open", "-vet=false", "-port", fmt.Sprint(port), appDir(example))
 	dev.Dir = root(t)
 	out, _ := dev.StdoutPipe()
 	var logs strings.Builder
@@ -491,13 +514,7 @@ func webApp(t *testing.T, example string) *webScreen {
 		t.Fatal("ryui dev -web printed no URL")
 	}
 	go io.Copy(io.Discard, out)
-	page := exec.Command(browser, "--headless=new", "--no-first-run", "--no-default-browser-check", "--disable-gpu",
-		"--user-data-dir="+t.TempDir(), "--window-size=430,932", url)
-	if err := page.Start(); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { page.Process.Kill(); page.Wait() })
-	return &webScreen{t: t, url: url}
+	return url
 }
 
 func TestCounterWeb(t *testing.T)    { counter(t, webApp(t, "counter")) }

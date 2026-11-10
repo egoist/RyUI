@@ -59,7 +59,7 @@ func loadCGContext() {
 
 func registerCanvasClass(flipped objc.MethodDef) {
 	DefineClass("RyUICanvasView", "NSView", nil, []objc.MethodDef{
-		flipped,
+		flipped, keepsShadow("RyUICanvasView"),
 		Method("hitTest:", func(self ID, _ SEL, p Point) ID { return 0 }),
 		Method("drawRect:", func(self ID, _ SEL, dirty Rect) {
 			if n := theHost.byView[self]; n != nil {

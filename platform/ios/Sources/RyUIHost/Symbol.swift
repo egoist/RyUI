@@ -107,6 +107,32 @@ final class RyUIDatePickerView: UIView {
         if let c = shadowColor { view.layer.shadowColor = c.resolvedColor(with: t).cgColor }
     }
 
+    /// Clips the children to the view's bounds, rounded, while Style.Clip
+    /// is set. A layer that clips to its bounds clips its own shadow too,
+    /// so a view that casts one clips its children in a view of their own
+    /// that fills it, and keeps its shadow (SwiftUI's
+    /// .clipShape().shadow(), CSS's overflow: hidden with a box-shadow).
+    func updateClip() {
+        let split = clips && shadowColor != nil && kind == .view && cell == nil
+        if split, clipView == nil {
+            let c = UIView(frame: view.bounds)
+            c.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            c.clipsToBounds = true
+            c.layer.cornerCurve = view.layer.cornerCurve
+            // Above its material and gradient, its children in it in order.
+            view.addSubview(c)
+            for child in children where child.view.superview === view { c.addSubview(child.view) }
+            if let o = menuOverlay { view.bringSubviewToFront(o) }
+            clipView = c
+        } else if !split, let c = clipView {
+            for child in children where child.view.superview === c { view.insertSubview(child.view, belowSubview: c) }
+            c.removeFromSuperview()
+            clipView = nil
+        }
+        view.clipsToBounds = clips && clipView == nil
+        clipView?.layer.cornerRadius = view.layer.cornerRadius
+    }
+
     /// Fits the shadow's path and the gradient to the view's bounds.
     /// The corner radius drawn: no more than half the shorter side.
     var clampedRadius: CGFloat {
@@ -128,8 +154,9 @@ final class RyUIDatePickerView: UIView {
         }
         if let m = material {
             m.layer.cornerRadius = view.layer.cornerRadius
-            container.sendSubviewToBack(m)
+            m.superview?.sendSubviewToBack(m)
         }
+        clipView?.layer.cornerRadius = view.layer.cornerRadius
         if view.layer.shadowOpacity > 0 {
             view.layer.shadowPath = UIBezierPath(roundedRect: b, cornerRadius: view.layer.cornerRadius).cgPath
         }

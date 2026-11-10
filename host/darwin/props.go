@@ -7,6 +7,7 @@ import (
 	"math"
 
 	"github.com/ebitengine/purego"
+	"github.com/ebitengine/purego/objc"
 
 	. "github.com/egoist/ryui/internal/darwin"
 	"github.com/egoist/ryui/ops"
@@ -207,11 +208,8 @@ func (h *Host) setCommon(n *node, p ops.PropID, v *ops.Value) {
 	case ops.PropHidden:
 		Send(n.view, "setHidden:", Bool(v.Int != 0))
 	case ops.PropClip:
-		h.layer(n)
-		if RespondsTo(n.view, "setClipsToBounds:") {
-			Send(n.view, "setClipsToBounds:", Bool(v.Int != 0))
-		}
-		Send(Send(n.view, "layer"), "setMasksToBounds:", Bool(v.Int != 0))
+		n.clip = v.Int != 0
+		h.updateClip(n)
 	case ops.PropA11yLabel:
 		n.a11yLabel = v.Str
 		Send(n.view, "setAccessibilityLabel:", uintptr(String(v.Str)))
@@ -348,12 +346,13 @@ func (h *Host) applyCorner(n *node) {
 	if n.view == 0 || n.cornerRadius == 0 && !SendBool(n.view, "wantsLayer") {
 		return
 	}
-	r := min(n.cornerRadius, n.frame.Size.Width/2, n.frame.Size.Height/2)
-	if n.frame.Size.Width == 0 {
-		r = n.cornerRadius
-	}
+	r := n.cornerOf()
 	l := h.layer(n)
 	MsgSetFloat(l, Sel("setCornerRadius:"), r)
+	if n.clipView != 0 {
+		MsgSetFloat(Send(n.clipView, "layer"), Sel("setCornerRadius:"), r)
+	}
+	h.updateShadowPath(n)
 	if n.effect != 0 {
 		Send(n.effect, "setWantsLayer:", 1)
 		MsgSetFloat(Send(n.effect, "layer"), Sel("setCornerRadius:"), r)
@@ -519,51 +518,193 @@ func (h *Host) applyLineLimit(n *node) {
 	}
 }
 
-// setTransform applies Style.Transform (translate, scale, rotate, around
-// the center) to the view's layer.
+// transformKey names the animation that holds a view's Style.Transform.
+func transformKey() ID { return String("ryui.transform") }
+
+// caTransform3D is Core Animation's CATransform3D.
+type caTransform3D struct {
+	M11, M12, M13, M14, M21, M22, M23, M24, M31, M32, M33, M34, M41, M42, M43, M44 float64
+}
+
+var msgValueWithTransform func(cls ID, sel SEL, t caTransform3D) ID
+
+// setTransform shows Style.Transform (translate, scale, rotate, around
+// the center) on the view's layer.
+//
+// AppKit sets a layer-backed view's layer's own transform from the view,
+// to the identity, whenever the window displays, so the transform is
+// held by an animation that never ends: what's drawn is its value. It
+// goes from what's drawn now, so ui.Animate animates it. Layout and
+// clicks don't see it, as on the other platforms.
 func (h *Host) setTransform(n *node, b []byte) {
 	l := h.layer(n)
-	f := n.frame
-	if len(b) < 20 {
-		MsgSetTransform(l, Sel("setAffineTransform:"), AffineTransform{A: 1, D: 1})
+	t := caTransform3D{M11: 1, M22: 1, M33: 1, M44: 1}
+	if len(b) >= 20 {
+		tx, ty := float64(f32(b, 0)), float64(f32(b, 4))
+		sx, sy := float64(f32(b, 8)), float64(f32(b, 12))
+		rot := float64(f32(b, 16)) * math.Pi / 180
+		// AppKit puts a layer's anchor at its origin: turn around the center.
+		cx, cy := n.frame.Size.Width/2, n.frame.Size.Height/2
+		cos, sin := math.Cos(rot), math.Sin(rot)
+		// M = T(c + t) · R · S · T(-c), with y down, as the layers under
+		// the window's flipped content view have it: a clockwise turn on
+		// screen is a positive angle.
+		a, bb := cos*sx, sin*sx
+		c, d := -sin*sy, cos*sy
+		t.M11, t.M12, t.M21, t.M22 = a, bb, c, d
+		t.M41 = cx + tx - (a*cx + c*cy)
+		t.M42 = cy + ty - (bb*cx + d*cy)
+	}
+	held := Send(l, "animationForKey:", uintptr(transformKey())) != 0
+	if t == n.held && (held || len(b) < 20) {
 		return
 	}
-	tx, ty := float64(f32(b, 0)), float64(f32(b, 4))
-	sx, sy := float64(f32(b, 8)), float64(f32(b, 12))
-	rot := float64(f32(b, 16)) * math.Pi / 180
-	// AppKit puts a layer's anchor at its origin: turn around the center.
-	cx, cy := f.Size.Width/2, f.Size.Height/2
-	cos, sin := math.Cos(rot), math.Sin(rot)
-	// M = T(c + t) · R · S · T(-c), in the layer's (unflipped) space,
-	// where a clockwise turn on screen is a negative angle.
-	sin = -sin
-	ty = -ty
-	a, bb := cos*sx, sin*sx
-	c, d := -sin*sy, cos*sy
-	t := AffineTransform{A: a, B: bb, C: c, D: d}
-	t.Tx = cx + tx - (a*cx + c*cy)
-	t.Ty = cy + ty - (bb*cx + d*cy)
-	MsgSetTransform(l, Sel("setAffineTransform:"), t)
+	n.held = t
+	if msgValueWithTransform == nil {
+		purego.RegisterFunc(&msgValueWithTransform, MsgSendAddr())
+	}
+	to := msgValueWithTransform(Class("NSValue"), Sel("valueWithCATransform3D:"), t)
+	if len(b) < 20 && !h.animating {
+		Send(l, "removeAnimationForKey:", uintptr(transformKey()))
+		return
+	}
+	from := to
+	if p := Send(l, "presentationLayer"); h.animating && p != 0 {
+		from = Send(p, "valueForKey:", uintptr(String("transform")))
+	}
+	anim := Send(Class("CABasicAnimation"), "animationWithKeyPath:", uintptr(String("transform")))
+	Send(anim, "setFromValue:", uintptr(from))
+	Send(anim, "setToValue:", uintptr(to))
+	if h.animating {
+		ctx := Send(Class("NSAnimationContext"), "currentContext")
+		MsgSetFloat(anim, Sel("setDuration:"), h.anim.duration)
+		Send(anim, "setTimingFunction:", uintptr(Send(ctx, "timingFunction")))
+	}
+	Send(anim, "setRemovedOnCompletion:", 0)
+	Send(anim, "setFillMode:", uintptr(String("forwards")))
+	Send(l, "addAnimation:forKey:", uintptr(anim), uintptr(transformKey()))
 }
 
 func f32(b []byte, i int) float32 { return math.Float32frombits(le.Uint32(b[i:])) }
 
-// setShadow sets a layer shadow: color, blur radius, offset.
+// hasShadow is whether n sets a shadow of a color.
+func (n *node) hasShadow() bool { return len(n.shadow) >= 20 && le.Uint64(n.shadow) != 0 }
+
+// setShadow sets a layer shadow: color, blur radius, offset. It's cast
+// by the view's shape (its bounds, rounded), as on iOS, not by what's
+// drawn in it, which Core Animation would render offscreen to find.
 func (h *Host) setShadow(n *node, b []byte) {
 	l := h.layer(n)
-	if len(b) < 20 || le.Uint64(b) == 0 {
+	if !n.hasShadow() {
 		MsgSetFloat(l, Sel("setShadowOpacity:"), 0)
+		Send(l, "setShadowPath:", 0)
+		h.updateClip(n)
 		return
 	}
 	c := h.nsColor(ops.Color(le.Uint64(b)))
 	Send(l, "setShadowColor:", cgColor(c))
 	msgSetFloat32(l, Sel("setShadowOpacity:"), 1)
+	// Radius is a blur radius, as CSS and SwiftUI mean it: 2σ. Core
+	// Animation's is σ.
 	MsgSetFloat(l, Sel("setShadowRadius:"), float64(f32(b, 8))/2)
-	// The layer's y axis points up.
-	MsgSetSize(l, Sel("setShadowOffset:"), Size{Width: float64(f32(b, 12)), Height: -float64(f32(b, 16))})
-	Send(l, "setMasksToBounds:", 0)
+	// y down: the layers under the window's flipped content view have it.
+	MsgSetSize(l, Sel("setShadowOffset:"), Size{Width: float64(f32(b, 12)), Height: float64(f32(b, 16))})
+	h.updateShadowPath(n)
+	h.updateClip(n)
+}
+
+// keepsShadow is the viewDidMoveToWindow of a class of the host's views
+// (RyUIView's has its own, which does the same).
+func keepsShadow(class string) objc.MethodDef {
+	return Method("viewDidMoveToWindow", func(self ID, _ SEL) {
+		SendSuper(self, class, "viewDidMoveToWindow")
+		if n := theHost.byView[self]; n != nil && Send(self, "window") != 0 {
+			theHost.reassertShadow(n)
+		}
+	})
+}
+
+// reassertShadow sets n's shadow on its layer again as its view moves
+// into a window: AppKit owns a layer-backed view's layer's shadow, and
+// sets it from the view's own (none) then.
+func (h *Host) reassertShadow(n *node) {
+	if n.hasShadow() {
+		h.withAppearance(func() { h.setShadow(n, n.shadow) })
+	}
+}
+
+// cornerOf is n's corner radius as drawn: no more than half its sides.
+func (n *node) cornerOf() float64 {
+	if n.frame.Size.Width == 0 {
+		return n.cornerRadius
+	}
+	return min(n.cornerRadius, n.frame.Size.Width/2, n.frame.Size.Height/2)
+}
+
+// updateShadowPath sets the shape n's shadow is cast by: its bounds,
+// rounded by its corner radius.
+func (h *Host) updateShadowPath(n *node) {
+	if !n.hasShadow() {
+		return
+	}
+	loadCG()
+	p := cgPathCreateMutable()
+	b := Rect{Size: n.frame.Size}
+	if r := n.cornerOf(); r > 0 && b.Size.Width > 0 && b.Size.Height > 0 {
+		cgPathRoundedRect(p, 0, b, r, r)
+	} else {
+		cgPathRect(p, 0, b)
+	}
+	Send(h.layer(n), "setShadowPath:", p)
+	cgPathRelease(p)
+}
+
+// updateClip clips n's children to its bounds, rounded by its corner
+// radius, while Clip is set. A layer that masks to its bounds masks its
+// own shadow too, so a view with a shadow clips its children in a view
+// of their own that fills it, and keeps its shadow (as SwiftUI's
+// .clipShape().shadow() and CSS's overflow: hidden with a box-shadow).
+func (h *Host) updateClip(n *node) {
+	if n.view == 0 {
+		return
+	}
+	split := n.clip && n.hasShadow() && n.kind == ops.KindView && n.cell == nil
+	switch {
+	case split && n.clipView == 0:
+		cv := initView("RyUIView")
+		Send(cv, "setWantsLayer:", 1)
+		MsgSetRect(cv, selSetFrame, Rect{Size: n.frame.Size})
+		// Above the view's material and gradient, its children in it in
+		// their order.
+		Send(n.view, "addSubview:", uintptr(cv))
+		for _, c := range n.children {
+			if c.view != 0 && Send(c.view, "superview") == n.view {
+				Send(cv, "addSubview:", uintptr(c.view))
+			}
+		}
+		n.clipView = cv
+	case !split && n.clipView != 0:
+		for _, c := range n.children {
+			if c.view != 0 && Send(c.view, "superview") == n.clipView {
+				Send(n.view, "addSubview:", uintptr(c.view))
+			}
+		}
+		Send(n.clipView, "removeFromSuperview")
+		Release(n.clipView)
+		n.clipView = 0
+	}
+	l := h.layer(n)
+	own := n.clip && n.clipView == 0
 	if RespondsTo(n.view, "setClipsToBounds:") {
-		Send(n.view, "setClipsToBounds:", 0)
+		Send(n.view, "setClipsToBounds:", Bool(own))
+	}
+	if n.kind != ops.KindImage && n.kind != ops.KindVideo { // which mask to their corners
+		Send(l, "setMasksToBounds:", Bool(own))
+	}
+	if n.clipView != 0 {
+		cl := Send(n.clipView, "layer")
+		Send(cl, "setMasksToBounds:", 1)
+		MsgSetFloat(cl, Sel("setCornerRadius:"), n.cornerOf())
 	}
 }
 
@@ -606,9 +747,10 @@ func (h *Host) setGradient(n *node, b []byte) {
 	g := n.gradientLayer
 	Send(g, "setColors:", uintptr(colors))
 	Send(g, "setLocations:", uintptr(locs))
-	// The layer's unit space has y up.
-	MsgSetPoint(g, Sel("setStartPoint:"), Point{X: float64(f32(b, o)), Y: 1 - float64(f32(b, o+4))})
-	MsgSetPoint(g, Sel("setEndPoint:"), Point{X: float64(f32(b, o+8)), Y: 1 - float64(f32(b, o+12))})
+	// The layer's unit space has y down, as the layers under the window's
+	// flipped content view do.
+	MsgSetPoint(g, Sel("setStartPoint:"), Point{X: float64(f32(b, o)), Y: float64(f32(b, o+4))})
+	MsgSetPoint(g, Sel("setEndPoint:"), Point{X: float64(f32(b, o+8)), Y: float64(f32(b, o+12))})
 	h.layoutGradient(n)
 }
 

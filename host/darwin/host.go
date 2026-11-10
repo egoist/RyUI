@@ -53,6 +53,9 @@ type node struct {
 	gradient                []byte
 	gradientLayer           ID
 	transform               []byte
+	held                    caTransform3D // the transform its layer's animation holds
+	clip                    bool
+	clipView                ID // its children's, clipped, when it clips and casts a shadow
 	effect                  ID // an NSVisualEffectView behind its content (Material)
 	frame                   Rect
 
@@ -136,6 +139,8 @@ func (n *node) container() ID {
 		return n.view
 	case n.kind == ops.KindScroll:
 		return 0 // its child is the document view
+	case n.clipView != 0:
+		return n.clipView
 	}
 	return n.view
 }
@@ -502,6 +507,10 @@ func (h *Host) release(n *node) {
 		Release(n.view)
 		n.view = 0
 	}
+	if n.clipView != 0 {
+		Release(n.clipView) // its view had it
+		n.clipView = 0
+	}
 	if n.menu != 0 {
 		delete(h.byMenu, n.menu)
 		Release(n.menu)
@@ -625,11 +634,6 @@ func (h *Host) place(n *node, f [4]float32) {
 		return
 	}
 	n.frame = r
-	if n.transform != nil {
-		// A transformed view's frame isn't its layout's: set the identity
-		// first, then transform again.
-		h.setTransform(n, nil)
-	}
 	v := n.view
 	// A horizontal Scroll keeps its distance from the end it starts at as its
 	// content or its width changes.
@@ -666,6 +670,12 @@ func (h *Host) place(n *node, f [4]float32) {
 	}
 	if n.effect != 0 {
 		MsgSetRect(n.effect, selSetFrame, Rect{Size: r.Size})
+	}
+	if n.clipView != 0 {
+		MsgSetRect(n.clipView, selSetFrame, Rect{Size: r.Size})
+	}
+	if n.cornerRadius == 0 {
+		h.updateShadowPath(n) // applyCorner does when it's rounded
 	}
 	if n.list != nil {
 		n.list.resized(h)

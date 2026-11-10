@@ -98,7 +98,7 @@ func registerClasses() {
 			return ok
 		})
 	}
-	DefineClass("RyUITextField", "NSTextField", nil, []objc.MethodDef{focus("RyUITextField")})
+	DefineClass("RyUITextField", "NSTextField", nil, []objc.MethodDef{focus("RyUITextField"), keepsShadow("RyUITextField")})
 	// A one-line field's cell: its text, placeholder and field editor
 	// inside the field's padding (ContentInset), as AppKit lays them out
 	// in what this returns.
@@ -116,8 +116,9 @@ func registerClasses() {
 		}),
 	})
 	DefineClass("RyUIFieldEditor", "NSTextView", nil, fieldEditorMethods())
-	DefineClass("RyUISecureField", "NSSecureTextField", nil, []objc.MethodDef{focus("RyUISecureField")})
+	DefineClass("RyUISecureField", "NSSecureTextField", nil, []objc.MethodDef{focus("RyUISecureField"), keepsShadow("RyUISecureField")})
 	DefineClass("RyUILabel", "NSTextField", nil, []objc.MethodDef{
+		keepsShadow("RyUILabel"),
 		// Clicks go to the view under the label (a pressable row).
 		Method("hitTest:", func(self ID, _ SEL, p Point) ID { return 0 }),
 		// Its text inside its padding (ContentInset), as NSTextField draws
@@ -138,6 +139,7 @@ func registerClasses() {
 		}),
 	})
 	DefineClass("RyUIImageView", "NSImageView", nil, []objc.MethodDef{
+		keepsShadow("RyUIImageView"),
 		Method("hitTest:", func(self ID, _ SEL, p Point) ID { return 0 }),
 	})
 	registerRichClass(flipped)

@@ -48,6 +48,9 @@ let ryuiAssets: URL? = {
     var swipeActions: [RyUIAction] = [] // a list cell's
     var leadingSwipeActions: [RyUIAction] = [] // a list cell's
     var shadowColor: UIColor?
+    var clips = false // Style.Clip
+    /// Its children's view, clipped, while it clips and casts a shadow.
+    var clipView: UIView?
     var transition: RyUITransition?
     var match: String? // Style.Match's key
     var zoomFrom: String? // a screen's ZoomFrom
@@ -96,7 +99,7 @@ let ryuiAssets: URL? = {
     }
 
     /// Where children's views go.
-    var container: UIView { cell?.contentView ?? view }
+    var container: UIView { cell?.contentView ?? clipView ?? view }
 
     func insert(_ child: RyUINode, at index: Int) {
         let i = min(index, children.count)
@@ -108,7 +111,7 @@ let ryuiAssets: URL? = {
         } else {
             c.addSubview(child.view)
         }
-        if let o = menuOverlay { c.bringSubviewToFront(o) }
+        if let o = menuOverlay { o.superview?.bringSubviewToFront(o) }
     }
 
     func remove(_ child: RyUINode) {

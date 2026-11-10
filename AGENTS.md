@@ -47,6 +47,8 @@ go build ./... && go vet ./...      # CGO_ENABLED=0: everything but mobile/
 go test ./...                       # signal, layout, ui with host/fake, ops, CLI
 go test ./layout -run CSS -update-known  # after fixing layout: refresh known_failures.txt
 go test ./ops -update               # after changing the wire format: refresh golden files
+go test ./host/darwin -run Conformance   # what the macOS host draws for a Style, measured (package conformance)
+go test -tags e2e ./e2e -run Conformance # likewise on the simulator, the emulator and headless Chrome (RYUI_CONFORMANCE_OUT=dir: the captures)
 swift test --package-path platform/ios # the Swift decoder against the golden files (macOS)
 node --test platform/web                # the JavaScript decoder, likewise
 (cd platform/android && ./gradlew :ryui:testDebugUnitTest)  # the Kotlin decoder, likewise (ANDROID_HOME set)

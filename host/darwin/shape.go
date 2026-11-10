@@ -20,7 +20,7 @@ type shape struct {
 
 func registerShapeClass(flipped objc.MethodDef) {
 	DefineClass("RyUIShapeView", "NSView", nil, []objc.MethodDef{
-		flipped,
+		flipped, keepsShadow("RyUIShapeView"),
 		Method("hitTest:", func(self ID, _ SEL, p Point) ID { return 0 }),
 	})
 }

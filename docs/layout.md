@@ -262,11 +262,13 @@ alike: a chip's background, a chart's fill, a track.
 - **`CornerRadius`**: rounds its corners, in points.
 - **`BorderWidth`** and **`BorderColor`**: a border, drawn inside the
   box. It insets the content, as padding does.
-- **`Shadow`**: a drop shadow, from the view's shape: `Color` (none
-  without one), `Radius`, and an offset, `X` and `Y`. A clipped view's
-  shadow isn't seen. Android draws its elevation shadow instead: the
-  radius is the elevation, the color tints it, and the light sets the
-  offset.
+- **`Shadow`**: a drop shadow, cast by the view's shape (its bounds,
+  rounded by `CornerRadius`), not by what's drawn in it: `Color` (none
+  without one), `Radius` (a blur radius, as CSS's and SwiftUI's: twice
+  the blur's σ), and an offset, `X` and `Y`. A view that clips its
+  children (`Clip`) still casts it, as a rounded card that clips its
+  image does. Android draws its elevation shadow instead: the radius is
+  the elevation, the color tints it, and the light sets the offset.
 - **`Gradient`**: a linear gradient over the background.
   `ui.LinearGradient(colors...)` goes from top to bottom; a
   `ui.Gradient` sets `Start` and `End` as `ui.Point`s, in units of the
