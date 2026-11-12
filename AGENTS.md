@@ -64,7 +64,7 @@ go run ./cmd/ryui dev -platform ios -once examples/counter # build the app with 
 go test ./internal/remote                        # the dev transport, against the fake host
 go test -tags e2e ./e2e -run IOS                 # GUI tests: the examples on the simulator (Android: -run Android, an emulator running)
 go run ./cmd/ryui build -platform ios -simulator examples/counter    # a release build (-platform ios alone: a signed .ipa)
-go run ./cmd/ryui build -platform android examples/counter           # .aab and .apk (RYUI_KEYSTORE, RYUI_KEY_ALIAS, RYUI_KEYSTORE_PASSWORD)
+go run ./cmd/ryui build -platform android examples/counter           # an .aab (RYUI_KEYSTORE, RYUI_KEY_ALIAS, RYUI_KEYSTORE_PASSWORD)
 go run ./cmd/ryui publish -platform ios -groups Friends examples/counter  # build and upload to TestFlight (RYUI_ASC_KEY_ID, RYUI_ASC_ISSUER_ID, RYUI_ASC_KEY)
 go run ./cmd/ryui publish -platform android -track internal examples/counter  # build and upload to Google Play (RYUI_PLAY_SERVICE_ACCOUNT)
 go run ./cmd/ryui dev examples/counter            # macOS (on a Mac, no -platform: mac): the app and its AppKit host in one process, rerun on save

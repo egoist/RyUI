@@ -124,10 +124,10 @@ RYUI_KEYSTORE_PASSWORD=... ryui build -platform android
 ```
 
 (`RYUI_KEY_PASSWORD` too if the key's differs; `RYUI_KEYSTORE` and
-`RYUI_KEY_ALIAS` name them in CI.) It makes an `.aab` for Google Play and
-an `.apk` to install yourself, for 64-bit and 32-bit ARM phones and
-x86_64 (emulators, Chromebooks), Android 13 and later. `ryui publish
--android` makes it and uploads it to Google Play (see
+`RYUI_KEY_ALIAS` name them in CI.) It makes an `.aab` for Google Play, for
+64-bit and 32-bit ARM phones and x86_64 (emulators, Chromebooks),
+Android 13 and later; Play makes each phone's APK from it, with only
+that phone's architecture. `ryui publish -platform android` makes it and uploads it to Google Play (see
 [Publishing](#publishing)).
 
 ## Publishing
@@ -310,17 +310,18 @@ for the reports themselves.
 
 ## What the stores check
 
-Run the release build on a phone before you upload it: `ryui build
--android`'s `.apk` with `adb install`, and an iOS build with
-`-distribution development`. Then a first upload through TestFlight and a
-Play internal test, which check what a simulator can't.
+Run the release build on a phone before you release it: an iOS build
+with `-distribution development`, and the Android build from Play's
+internal test track (`ryui publish -platform android -track internal`),
+which installs the APK Play makes from the `.aab`. TestFlight and a Play
+internal test also check what a simulator can't.
 
 ## In CI
 
 This GitHub Actions workflow builds both apps when you push a tag like
 `v1.2`, uploads the iOS build to TestFlight and the Android build to
 Play's internal test track with `ryui publish`, and attaches the `.ipa`
-and the `.apk` to a draft GitHub release for the tag, each as soon as
+and the `.aab` to a draft GitHub release for the tag, each as soon as
 it's uploaded; publish
 the draft when you're ready. (Run by hand, it keeps them as the run's
 artifacts only.) It expects the app at the root of its repository. Do
@@ -420,15 +421,13 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: android
-          path: |
-            dist/*.aab
-            dist/*.apk
+          path: dist/*.aab
       - name: attach to the tag's release
         if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: gh release upload "$GITHUB_REF_NAME" dist/*.apk --clobber
+        run: gh release upload "$GITHUB_REF_NAME" dist/*.aab --clobber
 ```
 
 Its secrets (Settings › Secrets and variables › Actions), the files in

@@ -19,10 +19,10 @@ var androidABIs = []struct{ abi, goarch, goarm, clang string }{
 	{"x86_64", "amd64", "", "x86_64-linux-android"},
 }
 
-// buildAndroid makes a release build: an .aab for Google Play and an
-// .apk to install directly, both signed with the upload key, the Go code
-// built for every ABI, the assets and icons packaged, and the Kotlin
-// shrunk by R8.
+// buildAndroid makes a release build: an .aab for Google Play, signed
+// with the upload key, the Go code built for every ABI, the assets and
+// icons packaged, and the Kotlin shrunk by R8. No .apk: Google Play makes
+// each device's from the .aab, with only that device's ABI and density.
 func buildAndroid(app *goApp, o *buildOptions) error {
 	start := time.Now()
 	cfg := app.cfg
@@ -80,7 +80,7 @@ and give its password in RYUI_KEYSTORE_PASSWORD (and RYUI_KEY_PASSWORD if the ke
 	if err != nil {
 		return err
 	}
-	args := []string{":app:bundleRelease", ":app:assembleRelease",
+	args := []string{":app:bundleRelease",
 		"-PryuiApplicationId=" + androidPackage(cfg.ID), "-PryuiAppName=" + cfg.androidLabel(),
 		"-PryuiVersionCode=" + strconv.Itoa(cfg.Build), "-PryuiVersionName=" + cfg.Version,
 		"-PryuiIcon=" + icon, "-PryuiJniLibs=" + jni, "-PryuiRes=" + res, "-PryuiManifest=" + manifest,
@@ -104,7 +104,6 @@ and give its password in RYUI_KEYSTORE_PASSWORD (and RYUI_KEY_PASSWORD if the ke
 		optional bool
 	}{
 		{filepath.Join(built, "bundle", "release", "app-release.aab"), filepath.Base(aabPath(cfg, o)), false},
-		{filepath.Join(built, "apk", "release", "app-release.apk"), name + ".apk", false},
 		// For a crash service (the .aab has both for Google Play): the Go
 		// code's and the host's native symbols, and R8's map of the
 		// Kotlin it renamed.

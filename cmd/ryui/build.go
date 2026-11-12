@@ -28,7 +28,7 @@ type buildOptions struct {
 func buildFlags(o *buildOptions) *flag.FlagSet {
 	fs := flag.NewFlagSet("build", flag.ContinueOnError)
 	platformFlag(fs, &o.platform, []string{platformIOS, platformAndroid, platformMac, platformWindows, platformWeb},
-		"the `platform` to build for: ios, an .ipa for the App Store (or -distribution); android, an .aab for Google Play and an .apk; mac, a universal .app (arm64 and x86_64); windows, a folder with the .exe (its icon and version built in) and its assets; web, a static site (WebAssembly and the web host) in dist/web. Default on macOS and Windows: this computer's")
+		"the `platform` to build for: ios, an .ipa for the App Store (or -distribution); android, an .aab for Google Play; mac, a universal .app (arm64 and x86_64); windows, a folder with the .exe (its icon and version built in) and its assets; web, a static site (WebAssembly and the web host) in dist/web. Default on macOS and Windows: this computer's")
 	fs.StringVar(&o.sign, "sign", "", "macOS: a signing identity, e.g. \"Developer ID Application: ...\" (default: ad hoc)")
 	fs.StringVar(&o.notarize, "notarize", "", "macOS: notarize the signed app and staple the ticket: a notarytool keychain profile (xcrun notarytool store-credentials), or \"env\" for RYUI_APPLE_ID, RYUI_APPLE_PASSWORD (app-specific) and RYUI_TEAM_ID")
 	fs.BoolVar(&o.simulator, "simulator", false, "iOS: a release .app for the simulator instead (not signed for devices)")

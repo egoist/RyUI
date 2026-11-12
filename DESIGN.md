@@ -948,7 +948,8 @@ entitlements, with a wildcard app ID made the app's; `codesign` with
 the identity's SHA-1, verified. `-simulator` makes the same release build
 for the simulator.
 
-**`ryui build -platform android`** makes an `.aab` for Google Play and an `.apk`:
+**`ryui build -platform android`** makes an `.aab` for Google Play (no
+`.apk`: Play makes each device's from it, with only that device's ABI):
 the Go code as a stripped `.so` for arm64-v8a, armeabi-v7a and x86_64,
 the assets, launcher icons (legacy per density, and adaptive: the icon
 inside the safe zone over its corner color), the permissions, the
@@ -1159,7 +1160,7 @@ Each one ends with its examples running and its tests in CI.
   survives a reload with no code. Not yet: physical iOS devices (the
   player would need signing and the Mac's address).
 - **M6, shipping** (done): `ryui.json`, `ryui build -platform ios` (signed `.ipa`;
-  `-simulator`), `ryui build -platform android` (`.aab` and `.apk`), `ryui
+  `-simulator`), `ryui build -platform android` (`.aab`), `ryui
   publish` (the build uploaded through the stores' APIs: TestFlight's
   groups and beta review, App Review; a Play track, staged). Not yet:
   screenshots and store listings (App Store Connect and the Play Console
