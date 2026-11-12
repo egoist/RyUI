@@ -11,7 +11,7 @@ import (
 
 	"github.com/egoist/ryui/internal/boot"
 	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/internal/remote"
+	"github.com/egoist/ryui/internal/devstate"
 )
 
 func init() {
@@ -36,7 +36,7 @@ func restoreState() {
 	if path == "" {
 		return
 	}
-	if err := remote.KeepState(path); err != nil {
+	if err := devstate.Keep(path); err != nil {
 		fmt.Fprintln(os.Stderr, "ryui: restoring state:", err)
 	}
 	stop := make(chan os.Signal, 1)
@@ -55,7 +55,7 @@ func saveState() {
 	if path == "" {
 		return
 	}
-	if err := remote.SaveState(path); err != nil {
+	if err := devstate.Save(path); err != nil {
 		fmt.Fprintln(os.Stderr, "ryui: saving state:", err)
 	}
 }

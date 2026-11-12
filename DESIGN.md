@@ -992,6 +992,13 @@ shared by every app. A change rebuilds the Go code for the Mac and
 restarts that process, under a second; the player reconnects and shows
 the new code, with no install. The app's logs are the process's output.
 
+- **Only in that process**: `ryui dev` links `app/remote` into it (an
+  `-overlay` file in the app's main package), and with it the socket
+  and the assets' HTTP server. An app's own builds (on the device, for
+  release, on a desktop) carry none of that code, which is half of a
+  small app's binary. The desktop hosts keep state across reloads with
+  `internal/devstate`, which needs no network.
+
 - **The protocol** is the host interface over a socket, synchronous both
   ways, with calls nesting as they do in process: while a side waits
   for its reply it serves the other's requests (a list binding cells in
@@ -1049,6 +1056,7 @@ ryui/
   platform/ios/      Swift package
   platform/android/  Kotlin/Gradle library
   app/               app.Root, lifecycle
+    remote/          what ryui dev links in to serve a player
   cmd/ryui/           CLI
   template/          what `ryui new` copies
   examples/counter/  examples/todo/  examples/list10k/  examples/navigation/

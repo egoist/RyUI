@@ -13,6 +13,7 @@ import (
 
 	"github.com/egoist/ryui/host"
 	"github.com/egoist/ryui/internal/boot"
+	"github.com/egoist/ryui/internal/devstate"
 	"github.com/egoist/ryui/layout"
 	"github.com/egoist/ryui/ops"
 	sig "github.com/egoist/ryui/signal"
@@ -359,7 +360,7 @@ func Run(addr string, root, sheet func() ui.Node) error {
 		return err
 	}
 	store := os.Getenv("RYUI_STATE")
-	if err := keepState(store); err != nil {
+	if err := devstate.Keep(store); err != nil {
 		fmt.Fprintln(os.Stderr, "ryui: restoring state:", err)
 	}
 	keepDevLocale()
@@ -372,7 +373,7 @@ func Run(addr string, root, sheet func() ui.Node) error {
 	save := func() {
 		sig.KeptState() // also for a player reconnecting to this run
 		if store != "" {
-			if err := saveState(store); err != nil {
+			if err := devstate.Save(store); err != nil {
 				fmt.Fprintln(os.Stderr, "ryui: saving state:", err)
 			}
 		}

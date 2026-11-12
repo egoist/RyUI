@@ -8,6 +8,11 @@ import "sync"
 // component (a func() ui.Node).
 var Runner func(root any)
 
+// Remote, set by app/remote (which ryui dev links into the app it runs
+// on this machine for a player), serves the app's root and share sheet
+// (each a func() ui.Node) to ryui dev's players at addr.
+var Remote func(addr string, root, sheet any) error
+
 // Lifecycle handlers get app.State values.
 var Lifecycle []func(state int)
 

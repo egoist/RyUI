@@ -34,11 +34,12 @@ func Run(root func() ui.Node) {
 		boot.Runner(root)
 		return
 	}
-	// `ryui dev` runs the app here and its views in a player app: its Go
-	// crashes are kept on this machine.
-	if addr := os.Getenv("RYUI_REMOTE"); addr != "" && remoteRun != nil {
+	// `ryui dev` runs the app here and its views in a player app
+	// (app/remote, which it links in): its Go crashes are kept on this
+	// machine.
+	if addr := os.Getenv("RYUI_REMOTE"); addr != "" && boot.Remote != nil {
 		crashrun.Start(crashrun.Info{System: "ryui dev"})
-		if err := remoteRun(addr, root, sheet); err != nil {
+		if err := boot.Remote(addr, root, sheet); err != nil {
 			fmt.Fprintln(os.Stderr, "ryui:", err)
 			os.Exit(1)
 		}
@@ -70,10 +71,6 @@ var shareScreen func(*ui.ShareSheet) ui.Node
 //
 //go:noinline
 func ShareSheet(screen func(s *ui.ShareSheet) ui.Node) { shareScreen = screen }
-
-// remoteRun serves the app to ryui dev's players (internal/remote): not
-// in a browser, which has no sockets to serve them on.
-var remoteRun func(addr string, root, sheet func() ui.Node) error
 
 // desktop runs the app on a host in its own process (macOS, Windows, a
 // browser).

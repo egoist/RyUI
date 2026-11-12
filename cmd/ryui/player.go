@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -83,6 +84,22 @@ type hostProcess struct {
 	// own: the process answers for itself, not for ryui (macOS: its
 	// privacy prompts are its own, as when it's opened from the Finder).
 	own bool
+	// remote: the process serves the app to a player (app/remote, linked
+	// in only here, so the app's own builds carry no network code).
+	remote bool
+}
+
+// remoteOverlay writes the -overlay that links app/remote into the app's
+// main package.
+func remoteOverlay(app *goApp, work string) (string, error) {
+	stub := filepath.Join(work, "zz_ryui_remote.go")
+	code := "package main\n\nimport _ \"github.com/egoist/ryui/app/remote\"\n"
+	if err := os.WriteFile(stub, []byte(code), 0o644); err != nil {
+		return "", err
+	}
+	overlay, _ := json.Marshal(map[string]map[string]string{"Replace": {filepath.Join(app.dir, "zz_ryui_remote.go"): stub}})
+	ovPath := filepath.Join(work, "remote-overlay.json")
+	return ovPath, os.WriteFile(ovPath, overlay, 0o644)
 }
 
 func (p *hostProcess) build() error {
@@ -96,7 +113,15 @@ func (p *hostProcess) build() error {
 	if flags == "" {
 		flags = p.app.cfg.ldflags(false)
 	}
-	c := exec.Command("go", "build", flags, "-o", p.bin, ".")
+	args := []string{"build", flags, "-o", p.bin}
+	if p.remote {
+		ov, err := remoteOverlay(p.app, p.work)
+		if err != nil {
+			return err
+		}
+		args = append(args, "-overlay", ov)
+	}
+	c := exec.Command("go", append(args, ".")...)
 	c.Dir = p.app.dir
 	c.Env = append(os.Environ(), "CGO_ENABLED=0")
 	if out, err := c.CombinedOutput(); err != nil {
@@ -218,7 +243,7 @@ func playerDir(work, platform string) string {
 func devIOSPlayer(app *goApp, tc *iosToolchain, work string, sim *simDevice, stop <-chan os.Signal) error {
 	start := time.Now()
 	port := freePort(devicePort)
-	proc := &hostProcess{app: app, work: work, env: []string{
+	proc := &hostProcess{app: app, work: work, remote: true, env: []string{
 		fmt.Sprintf("RYUI_REMOTE=127.0.0.1:%d", port),
 		"RYUI_STATE=" + filepath.Join(work, "state.json"),
 		"RYUI_DATA=" + filepath.Join(work, "data"), // the app's own: store.Dir, sqlite files
@@ -297,7 +322,7 @@ func devAndroidPlayer(app *goApp, tc *androidToolchain, work, serial string, sto
 		remote = fmt.Sprintf("10.0.2.2:%d", port)
 		assets = fmt.Sprintf("http://10.0.2.2:%d/", port+1)
 	}
-	proc := &hostProcess{app: app, work: work, env: []string{
+	proc := &hostProcess{app: app, work: work, remote: true, env: []string{
 		fmt.Sprintf("RYUI_REMOTE=127.0.0.1:%d", port),
 		"RYUI_STATE=" + filepath.Join(work, "state.json"),
 		"RYUI_DATA=" + filepath.Join(work, "data"), // the app's own: store.Dir, sqlite files
