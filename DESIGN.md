@@ -2363,6 +2363,72 @@ and never assumes a single root in its own data structures.
   route them (key equivalents, accelerators), and how users find them.
   Mobile hosts ignore it.
 
+**File dialogs and the file manager** (`dialog`, `shell`):
+
+- `dialog.Open`, `dialog.Save` and `dialog.Folder` give the user's own
+  paths, not copies (`device.PickFiles` gives copies, as a phone's
+  document picker does): the app reads and writes the files where they
+  are. Their options are a title, the button's label, where the dialog
+  starts (a folder, or a file in it: selected, or its name suggested),
+  filters (`dialog.Filter`: MIME types as an input's accept takes them,
+  `image/*` a family, or extensions, or both), several files or
+  folders, hidden files, and `From`, a view in the window the dialog
+  belongs to (default: the one in use). They're module calls (`dialog`:
+  `open`, `save`, `folder`, the options as JSON), answered with the
+  paths (JSON) or the path once the user has chosen; nothing is a
+  cancel.
+- macOS: `NSOpenPanel` and `NSSavePanel` as sheets on the window (on
+  the sheet it has, if it has one: a sheet on a window with one waits
+  for it to close), the title the panel's message (a sheet has no
+  title bar), the filters `UTType`s (a Mac's panel has no type menu: it
+  takes any of them; an extension no app declares is a dynamic type of
+  its own); with no window on screen, a panel of its own. Windows:
+  `IFileOpenDialog` and `IFileSaveDialog` (`FOS_PICKFOLDERS` for
+  folders), modal to the window, run once the core has returned (a
+  modal loop); a filter's types are its extensions and its MIME types'
+  (the registry's; a family's are the ones Windows's own apps open),
+  and a name typed without an extension gets the chosen filter's.
+  Linux: `GtkFileDialog` (`open`, `open_multiple`, `save`,
+  `select_folder`, `select_multiple_folders`), modal to the window; in
+  a sandbox it's the desktop's file chooser portal, and the paths are
+  the document portal's. Each asks before Save replaces a file.
+- The web has no paths: a browser gives a page files, never where they
+  are. `Open` and `Folder` copy what's picked into the app's caches
+  (`/tmp/shared`, `/tmp/folders`: a folder with all it holds), through
+  the File System Access API's dialogs (`showOpenFilePicker`,
+  `showDirectoryPicker`: Chrome, Edge) or, without them, the file input
+  (`webkitdirectory` for a folder). `Save` gives a path in the caches
+  (`/tmp/saved/<n>/<name>`) whose file, each time the app has written
+  it (closed a file it opened to write, or renamed one over it: fs.js's
+  `onWritten`), goes to the file the user chose with
+  `showSaveFilePicker`, or is downloaded by its name where the browser
+  has no such dialog. A path a dialog gave is where a later one starts
+  (`startIn`, the handle behind it).
+- Phones: iOS and Android have no such dialogs. `Open` is the document
+  picker, through `device.PickFiles` (a phone's host has no `dialog`
+  module: its "no module method" answer sends the package there), and
+  gives its copies; `Save` and `Folder` are `dialog.ErrUnsupported`.
+- `shell.Reveal` shows a file selected in its folder: Finder
+  (`activateFileViewerSelectingURLs:`), Explorer
+  (`SHOpenFolderAndSelectItems`, on a thread of its own: a window already
+  showing the folder is used), the file manager's
+  `org.freedesktop.FileManager1.ShowItems` over D-Bus (Files, Dolphin,
+  Nemo, Thunar; without one, the folder opens). `shell.Open` opens a
+  file in its app and a folder in the file manager (`NSWorkspace`,
+  `ShellExecuteEx`, `GtkFileLauncher`; `ErrNoApp` for a type no app
+  opens, though Windows asks first, as Explorer does); on the web,
+  preview's new tab. `shell.Trash` moves an item to the trash and never
+  deletes: `NSFileManager`'s `trashItemAtURL:` (off the main thread),
+  GIO's `g_file_trash_async`, which fail on a volume without a trash,
+  and on Windows `IFileOperation` with `FOFX_RECYCLEONDELETE` (on a
+  thread of its own) and a progress sink whose `PreDeleteItem` refuses a
+  delete that wouldn't recycle (too big for the Recycle Bin, a drive
+  without one), which Windows would otherwise do without asking.
+  `shell.Beep` is `NSBeep`, `MessageBeep(MB_OK)`, `gdk_display_beep`.
+  Phones and the web have no file manager: Reveal and Trash are
+  `shell.ErrUnsupported` there (Open too on phones: `preview.Show`
+  shows a file), Beep nothing.
+
 ## The web
 
 The app's Go code is a WebAssembly program (`GOOS=js GOARCH=wasm`,
