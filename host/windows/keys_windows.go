@@ -19,8 +19,9 @@ import (
 // the root of the top-level window that has the keyboard with nothing in
 // it focused (the main window's root, a Window's, a sheet's, a
 // popover's), and goes out through the nodes' parents (keyParent): a
-// list's cell on to its list, a sheet's or a popover's node to the
-// window it covers, ending at the root of a main window or a Window. The
+// list's cell on to its list, a sheet's node to the window it's declared
+// in, a popover's to its anchor's window, ending at the root of a main
+// window or a Window. The
 // nearest node whose keys match takes the key, which is consumed, and the
 // core gets Key with its index. The key's letting go is consumed with it,
 // and Alt's, if the key took Alt (or DefWindowProc would open the menu
@@ -102,8 +103,9 @@ func (h *Host) keyStart(hwnd uintptr) *node {
 
 // keyParent is the node a key goes out to from n: its parent in the
 // tree; from a node the core leaves without one, where it shows: a list's
-// cell its list, a sheet's or a popover's node the root of the window it
-// covers (its owner: the main window's root, a Window, a sheet, a
+// cell its list, a sheet's node the window it's declared in (its Window
+// prop: the root, a Window node), a popover's the root of the window its
+// anchor is in (its owner: the main window's root, a Window, a sheet, a
 // popover), so its way ends at that window's root, with its UseKeys'. The
 // root and a Window are ends: a Window's keys are its own. A header's
 // search field goes to the screen it searches; another view the host
@@ -124,7 +126,12 @@ func (h *Host) keyParent(n *node) *node {
 			return l
 		}
 		return nil
-	case n.kind == ops.KindSheet, n.kind == ops.KindPopover:
+	case n.kind == ops.KindSheet:
+		if w := h.nodes[n.nav.on]; w != nil && w.kind == ops.KindWindow && !w.dying {
+			return w
+		}
+		return h.root
+	case n.kind == ops.KindPopover:
 		if r := h.windowRoot(n.nav.owner); r != nil && r != n {
 			return r
 		}

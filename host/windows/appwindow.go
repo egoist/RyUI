@@ -203,6 +203,12 @@ func (h *Host) windowInUse() uintptr {
 	if u := h.inUse; u != 0 && IsWindow(u) && h.keyWindow(u) == u {
 		w = u
 	}
+	return h.topSheet(w)
+}
+
+// topSheet is the top sheet shown over window w (a sheet's over another's
+// over it...), else w: what takes the user's input there.
+func (h *Host) topSheet(w uintptr) uintptr {
 	for over := true; over; {
 		over = false
 		for i := len(h.sheets) - 1; i >= 0; i-- {

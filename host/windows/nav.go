@@ -48,9 +48,12 @@ type nav struct {
 	tabs *node
 	hot  int
 
-	// Sheet, Window: its window; a sheet's owner.
+	// Sheet, Window: its window; a sheet's owner. Sheet, Alert: the
+	// window it's declared in (its Window prop: the root's or a Window
+	// node's ID), which it goes on.
 	window uintptr
 	owner  uintptr
+	on     ops.NodeID
 
 	// Popover: what it points at, and its content's size (points).
 	anchor     ops.NodeID
@@ -333,8 +336,11 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 			Invalidate(n.nav.bar.hwnd)
 		}
 	case ops.KindSheet:
-		if p == ops.PropSheetDetents {
+		switch p {
+		case ops.PropSheetDetents:
 			n.detents = v.Int
+		case ops.PropSheetWindow:
+			n.nav.on = ops.NodeID(v.Int)
 		}
 	case ops.KindPopover:
 		h.setPopoverProp(n, p, v)
@@ -373,6 +379,8 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 			n.actions = decodeActions(v.Bytes)
 		case ops.PropAlertStyle:
 			n.alertStyle = int32(v.Int)
+		case ops.PropAlertWindow:
+			n.nav.on = ops.NodeID(v.Int)
 		}
 	}
 }
@@ -808,6 +816,17 @@ func (h *Host) present(n *node) {
 		if n.nav.window != 0 {
 			return
 		}
+		if h.presentOn(n.nav.on) == 0 {
+			// Its Window opens once the batch is applied (a child
+			// Window, after its parent): the sheet goes on it then.
+			id := n.id
+			h.afterCore(func() {
+				if p := h.nodes[id]; p != nil && !p.dying && p.nav.window == 0 {
+					h.openSheet(p)
+				}
+			})
+			return
+		}
 		h.openSheet(n)
 	case ops.KindWindow:
 		// A child of a Window comes before its parent in the batch that
@@ -837,12 +856,30 @@ func (h *Host) present(n *node) {
 	}
 }
 
-// openSheet shows a sheet as a modal window centered over the window in
-// use (the main one, a Window, a sheet): as wide as fits (320 to 560
-// points), as tall as it less a margin, or half of it for a medium
-// sheet.
+// presentOn is the window a sheet or an alert declared in window node
+// id (its Window prop) goes on: the main window's for the root, a Window
+// node's own; over that, the top sheet shown on it, which is what takes
+// the user's input there. 0: a Window not open yet. An ID of no Window
+// (the root's, none): the main window.
+func (h *Host) presentOn(id ops.NodeID) uintptr {
+	w := h.window
+	if t := h.nodes[id]; t != nil && t.kind == ops.KindWindow && !t.dying {
+		if w = t.nav.window; w == 0 {
+			return 0
+		}
+	}
+	return h.topSheet(w)
+}
+
+// openSheet shows a sheet as a modal window centered over the window
+// it's declared in (presentOn: the main one, a Window, or the sheet
+// shown over it): as wide as fits (320 to 560 points), as tall as it
+// less a margin, or half of it for a medium sheet.
 func (h *Host) openSheet(n *node) {
-	owner := h.windowInUse()
+	owner := h.presentOn(n.nav.on)
+	if owner == 0 {
+		owner = h.window // its Window never opened
+	}
 	dpi := DPI(owner)
 	k := dpiScale(dpi)
 	cr := ClientRect(owner)
@@ -950,6 +987,9 @@ func (h *Host) closeSheet(n *node) {
 	n.nav.window = 0
 }
 
+// taskDialog runs a task dialog (a test's own, which doesn't wait).
+var taskDialog = TaskDialog
+
 // showAlert shows an alert as a task dialog and reports the button
 // chosen. It's a modal loop, so it runs once the core has returned.
 func (h *Host) showAlert(id ops.NodeID) {
@@ -979,10 +1019,13 @@ func (h *Host) showAlert(id ops.NodeID) {
 	if h.rtl {
 		flags |= TDF_RTL_LAYOUT
 	}
-	owner := h.windowInUse()
+	owner := h.presentOn(n.nav.on) // the window it's declared in
+	if owner == 0 {
+		owner = h.window
+	}
 	title, content := n.title, n.message
 	h.modal++
-	got := TaskDialog(owner, h.appName, title, content, buttons, buttons[0].ID, flags)
+	got := taskDialog(owner, h.appName, title, content, buttons, buttons[0].ID, flags)
 	h.modal--
 	n = h.nodes[id]
 	if n == nil || n.dying {

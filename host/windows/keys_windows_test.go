@@ -306,6 +306,97 @@ func TestKeysInSheetPopover(t *testing.T) {
 	})
 }
 
+// A sheet and an alert go on the window they're declared in (their
+// Window prop), whichever window is in use: a sheet opened with its
+// Window, in the batch that opens it, is the Window's, and a key in it
+// goes on to the Window's UseKeys, not the main window's; a sheet of the
+// main window's, with the Window in use, is the main window's; an alert
+// from a button in the Window goes on the Window.
+func TestSheetAlertOnTheirWindow(t *testing.T) {
+	win, mainSheet := signal.New(false), signal.New(false)
+	var got []string
+	rec := func(s string) func() { return func() { got = append(got, s) } }
+	alert := func(title string) ui.Node {
+		return ui.Button(ui.ButtonProps{Title: ui.Val(title), OnPress: func() { ui.Alert(ui.AlertProps{Title: title}) }})
+	}
+	h, _ := mount(t, func() ui.Node {
+		ui.UseKeys(ui.KeyMap{{Key: "escape"}: rec("main escape"), {Key: "left"}: rec("main left")})
+		return ui.Column(ui.Style{},
+			alert("main alert"),
+			ui.Sheet(ui.SheetProps{Open: mainSheet, Content: func() ui.Node {
+				return ui.View(ui.ViewProps{Keys: ui.KeyMap{{Key: "f1"}: rec("main sheet f1")}}, ui.StaticText("main sheet"))
+			}}),
+			ui.Window(ui.WindowProps{Open: win, Content: func() ui.Node {
+				ui.UseKeys(ui.KeyMap{{Key: "escape"}: rec("window escape")})
+				return ui.View(ui.ViewProps{Keys: ui.KeyMap{{Key: "f1"}: rec("window f1")}},
+					alert("window alert"),
+					ui.Sheet(ui.SheetProps{Open: signal.New(true), Content: func() ui.Node {
+						return ui.View(ui.ViewProps{Keys: ui.KeyMap{{Key: "f2"}: rec("sheet f2")}},
+							ui.TextField(ui.TextFieldProps{Value: signal.New("")}))
+					}}))
+			}}),
+		)
+	})
+	onMain(t, func() {
+		act(h, func() { win.Set(true) }) // the Window and its sheet, in one batch
+		wn := find(h, ops.KindWindow)[0]
+		if wn.nav.window == 0 {
+			fatalf("the Window isn't open")
+		}
+		s := find(h, ops.KindSheet)[0]
+		if s.nav.window == 0 || s.nav.owner != wn.nav.window {
+			fatalf("the Window's sheet is over %x, not the Window's %x (main %x)", s.nav.owner, wn.nav.window, h.window)
+		}
+		f := find(h, ops.KindTextField)[0]
+		pressKey(h, f.ctl, VK_ESCAPE, 0, 0)
+		if pressKey(h, f.ctl, VK_LEFT, 0, 0) != 0 {
+			fatalf("the main window's key taken in the Window's sheet")
+		}
+		if len(got) != 1 || got[0] != "window escape" {
+			fatalf("got %q", got)
+		}
+
+		// The main window's sheet, with the Window (its sheet) in use.
+		h.inUse = s.nav.window
+		act(h, func() { mainSheet.Set(true) })
+		var ms *node
+		for _, x := range find(h, ops.KindSheet) {
+			if x != s {
+				ms = x
+			}
+		}
+		if ms == nil || ms.nav.owner != h.window {
+			fatalf("the main window's sheet isn't over the main window")
+		}
+		act(h, func() { mainSheet.Set(false) })
+
+		// Alerts: on the window of the button that shows them (over the
+		// sheet shown on it, which takes its input).
+		var owners []uintptr
+		saved := taskDialog
+		taskDialog = func(owner uintptr, _, _, _ string, _ []TaskButton, _ int, _ uint32) int {
+			owners = append(owners, owner)
+			return IDCANCEL
+		}
+		defer func() { taskDialog = saved }()
+		for _, b := range find(h, ops.KindButton) {
+			if b.title == "window alert" || b.title == "main alert" {
+				h.enter(func() { h.emit(b, ops.Event{Kind: ops.EventPress}) })
+				want := s.nav.window // the Window's sheet, over the Window
+				if b.title == "main alert" {
+					want = h.window
+				}
+				if len(owners) == 0 || owners[len(owners)-1] != want {
+					fatalf("%s: over %x, want %x", b.title, owners, want)
+				}
+			}
+		}
+		if len(owners) != 2 {
+			fatalf("%d alerts shown", len(owners))
+		}
+	})
+}
+
 // A panel's Escape is the app's when it declares it: the panel stays.
 func TestKeysEscapeInPanel(t *testing.T) {
 	boot.KeepRunning = true
