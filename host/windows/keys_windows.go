@@ -18,7 +18,9 @@ import (
 // control, a combo box's EDIT, its nearest window the host knows), or at
 // the root of the top-level window that has the keyboard with nothing in
 // it focused (the main window's root, a Window's, a sheet's, a
-// popover's), and goes out through the nodes' parents to that root: the
+// popover's), and goes out through the nodes' parents (keyParent): a
+// list's cell on to its list, a sheet's or a popover's node to the
+// window it covers, ending at the root of a main window or a Window. The
 // nearest node whose keys match takes the key, which is consumed, and the
 // core gets Key with its index. The key's letting go is consumed with it,
 // and Alt's, if the key took Alt (or DefWindowProc would open the menu
@@ -99,11 +101,13 @@ func (h *Host) keyStart(hwnd uintptr) *node {
 }
 
 // keyParent is the node a key goes out to from n: its parent in the
-// tree, up to the root of the window it's in (the main window's root, a
-// Window, a sheet, a popover: each reached last, with its UseKeys'). A
-// header's search field goes to the screen it searches; a view the host
-// made (a list's cells and rows, a stack's header) to the view its window
-// is in.
+// tree; from a node the core leaves without one, where it shows: a list's
+// cell its list, a sheet's or a popover's node the root of the window it
+// covers (its owner: the main window's root, a Window, a sheet, a
+// popover), so its way ends at that window's root, with its UseKeys'. The
+// root and a Window are ends: a Window's keys are its own. A header's
+// search field goes to the screen it searches; another view the host
+// made (a stack's header) to the view its window is in.
 func (h *Host) keyParent(n *node) *node {
 	switch {
 	case n == h.root:
@@ -115,7 +119,17 @@ func (h *Host) keyParent(n *node) *node {
 		return n.searchOf
 	case n.parent != nil:
 		return n.parent
-	case n.kind == ops.KindWindow, n.kind == ops.KindSheet, n.kind == ops.KindPopover, n.hwnd == 0:
+	case n.cell != nil:
+		if l := n.cell.l.n; h.nodes[l.id] == l {
+			return l
+		}
+		return nil
+	case n.kind == ops.KindSheet, n.kind == ops.KindPopover:
+		if r := h.windowRoot(n.nav.owner); r != nil && r != n {
+			return r
+		}
+		return h.root
+	case n.kind == ops.KindWindow, n.hwnd == 0:
 		return nil
 	}
 	top := RootWindow(n.hwnd)
@@ -127,6 +141,21 @@ func (h *Host) keyParent(n *node) *node {
 	}
 	if top == h.window && top != n.hwnd {
 		return h.root
+	}
+	return nil
+}
+
+// windowRoot is the node a top-level window of the app's shows (the
+// root, a Window, a sheet, a popover), or nil.
+func (h *Host) windowRoot(w uintptr) *node {
+	if w == 0 {
+		return nil
+	}
+	if r := h.rootOf(w); r != nil {
+		return r
+	}
+	if f := h.byHwnd[w]; f != nil && f.kind == kindPopoverWindow {
+		return f.parent
 	}
 	return nil
 }

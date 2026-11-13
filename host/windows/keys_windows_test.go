@@ -246,6 +246,66 @@ func TestKeysInWindow(t *testing.T) {
 	})
 }
 
+// A sheet's and a popover's node has no parent in the tree: a key in
+// them goes on to the window they cover, the main window, whose UseKeys
+// (a sheet's content's UseKeys too) come after what the content
+// declared, from a field or with nothing focused in their window.
+func TestKeysInSheetPopover(t *testing.T) {
+	var got []string
+	rec := func(s string) func() { return func() { got = append(got, s) } }
+	h, _ := mount(t, func() ui.Node {
+		ui.UseKeys(ui.KeyMap{{Key: "up"}: rec("main up"), {Key: "down"}: rec("main down")})
+		return ui.Column(ui.Style{Padding: ui.All(20)},
+			ui.Sheet(ui.SheetProps{Open: signal.New(true), Content: func() ui.Node {
+				ui.UseKeys(ui.KeyMap{ui.Cmd("d"): rec("sheet usekeys")})
+				return ui.View(ui.ViewProps{Keys: ui.KeyMap{{Key: "down"}: rec("sheet down")}},
+					ui.TextField(ui.TextFieldProps{Value: signal.New("")}))
+			}}),
+			ui.Popover(ui.PopoverProps{Open: signal.New(true), Content: func() ui.Node {
+				return ui.View(ui.ViewProps{Keys: ui.KeyMap{{Key: "down"}: rec("popover down")}},
+					ui.TextField(ui.TextFieldProps{Value: signal.New("")}))
+			}}, ui.Button(ui.ButtonProps{Title: ui.Val("Info")})))
+	})
+	onMain(t, func() {
+		in := func(top *node) *node {
+			for _, f := range find(h, ops.KindTextField) {
+				for p := f; p != nil; p = p.parent {
+					if p == top {
+						return f
+					}
+				}
+			}
+			fatalf("no field in the %s", top.kind)
+			return nil
+		}
+		for _, k := range []ops.Kind{ops.KindSheet, ops.KindPopover} {
+			got = nil
+			n := find(h, k)[0]
+			if n.nav.window == 0 {
+				fatalf("the %s isn't shown", k)
+			}
+			f := in(n)
+			name := map[ops.Kind]string{ops.KindSheet: "sheet", ops.KindPopover: "popover"}[k]
+			pressKey(h, f.ctl, VK_DOWN, 0, 0)
+			pressKey(h, f.ctl, VK_UP, 0, 0)
+			pressKey(h, n.nav.window, VK_UP, 0, 0) // nothing focused in it
+			want := []string{name + " down", "main up", "main up"}
+			if k == ops.KindSheet {
+				pressKey(h, f.ctl, 'D', modPrimary, 0)
+				want = append(want, "sheet usekeys")
+			}
+			if len(got) != len(want) {
+				fatalf("%s: got %q, want %q", name, got, want)
+			}
+			for i := range want {
+				if got[i] != want[i] {
+					fatalf("%s: got %q, want %q", name, got, want)
+				}
+			}
+		}
+	})
+}
+
 // A panel's Escape is the app's when it declares it: the panel stays.
 func TestKeysEscapeInPanel(t *testing.T) {
 	boot.KeepRunning = true
@@ -271,10 +331,12 @@ func TestKeysEscapeInPanel(t *testing.T) {
 }
 
 // A list's rows are in it: a key in a row's field goes to the row's view,
-// then out through the list to the views around it.
+// then on from its cell to the list, the views around it and the
+// window's UseKeys.
 func TestKeysInListRow(t *testing.T) {
 	var got []string
 	h, _ := mount(t, func() ui.Node {
+		ui.UseKeys(ui.KeyMap{{Key: "up"}: func() { got = append(got, "main up") }})
 		return ui.View(ui.ViewProps{Style: ui.Style{Height: ui.Pt(300)}, Keys: ui.KeyMap{{Key: "down"}: func() { got = append(got, "outer down") }}},
 			ui.List(ui.ListProps{}, signal.Static([]int{1, 2, 3}), func(i int) int { return i },
 				func(item signal.Accessor[int], _ signal.Accessor[int]) ui.Node {
@@ -288,10 +350,10 @@ func TestKeysInListRow(t *testing.T) {
 			fatalf("no rows bound")
 		}
 		f := fields[0]
-		if pressKey(h, f.ctl, VK_DOWN, 0, 0) != 1 || pressKey(h, f.ctl, VK_RETURN, 0, 0) != 1 {
+		if pressKey(h, f.ctl, VK_DOWN, 0, 0) != 1 || pressKey(h, f.ctl, VK_RETURN, 0, 0) != 1 || pressKey(h, f.ctl, VK_UP, 0, 0) != 1 {
 			fatalf("got %q", got)
 		}
-		if len(got) != 2 || got[0] != "outer down" || got[1] != "row enter" {
+		if len(got) != 3 || got[0] != "outer down" || got[1] != "row enter" || got[2] != "main up" {
 			fatalf("got %q", got)
 		}
 	})
