@@ -7,6 +7,7 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
+	"github.com/egoist/asuka/internal/boot"
 	. "github.com/egoist/asuka/internal/darwin"
 	"github.com/egoist/asuka/ops"
 )
@@ -160,7 +161,9 @@ func registerTarget() {
 	h := func() *Host { return theHost }
 	methods := []objc.MethodDef{
 		// The application.
-		Method("applicationShouldTerminateAfterLastWindowClosed:", func(self ID, _ SEL, app ID) bool { return true }),
+		// An app that keeps running (app.KeepRunning, in the background)
+		// doesn't quit with its last window: closing the main one hides it.
+		Method("applicationShouldTerminateAfterLastWindowClosed:", func(self ID, _ SEL, app ID) bool { return !boot.KeepsRunning() && !inBackground() }),
 		Method("applicationWillTerminate:", func(self ID, _ SEL, n ID) {
 			h().lifecycle(ops.LifecycleBackground)
 			saveState()

@@ -24,7 +24,7 @@ func (h *Host) automation() {
 				WithPool(func() {
 					h.snapshot(path)
 					if os.Getenv("ASUKA_DUMP") != "" {
-						os.WriteFile(path+".txt", []byte(h.dump()), 0o644)
+						os.WriteFile(path+".txt", []byte(h.dump()+trayDump), 0o644)
 					}
 				})
 				if os.Getenv("ASUKA_SNAPSHOT_STAY") == "" {
@@ -35,12 +35,22 @@ func (h *Host) automation() {
 	}
 }
 
-// snapshot writes the window's content as a PNG.
+// snapshot writes the window's content as a PNG, and each tray icon's
+// beside it (tray.go).
 func (h *Host) snapshot(path string) {
 	v := Send(h.window, "contentView")
 	if f := Send(Send(h.window, "contentView"), "superview"); f != 0 && !strings.HasSuffix(path, ".content.png") {
 		v = f // the frame view: the title bar and toolbar too
 	}
+	writeViewPNG(v, path)
+	trayDump = h.traySnapshots(path)
+}
+
+// trayDump is what the tray icons show, for the dump.
+var trayDump string
+
+// writeViewPNG writes what a view draws as a PNG.
+func writeViewPNG(v ID, path string) {
 	b := MsgRect(v, Sel("bounds"))
 	rep := MsgRectToID(v, Sel("bitmapImageRepForCachingDisplayInRect:"), b)
 	MsgRectIDVoid(v, Sel("cacheDisplayInRect:toBitmapImageRep:"), b, rep)

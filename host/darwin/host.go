@@ -197,7 +197,8 @@ type Host struct {
 	videos        map[ID]ops.NodeID // by AVPlayerItem
 	main          *win              // the main window, holding the root
 	wins          map[ID]*win       // the Windows' windows, by NSWindow
-	appMenus      []appMenu         // MenuBar's
+	appMenus      []ops.MenuBarMenu // MenuBar's
+	appItems      []ops.MenuItem    // their items, by number
 	chromeQueued  bool
 	a11yActions   map[ID]a11yAction
 	exiting       map[ID]bool // views going out with a transition
@@ -246,7 +247,9 @@ func newHost() *Host {
 	app := Send(Class("NSApplication"), "sharedApplication")
 	h.appRTL = SendInt(app, "userInterfaceLayoutDirection") == 1
 	h.rtl = h.appRTL
-	Send(app, "setActivationPolicy:", 0) // regular: a Dock icon and a menu bar
+	// Regular: a Dock icon and a menu bar; an accessory in the background
+	// (tray.go).
+	Send(app, "setActivationPolicy:", backgroundPolicy())
 	Send(Class("NSWindow"), "setAllowsAutomaticWindowTabbing:", 0)
 	Send(app, "setDelegate:", uintptr(h.target))
 	h.makeMenu(app)
@@ -278,6 +281,8 @@ func Run(root func() ui.Node) {
 		if os.Getenv("ASUKA_SNAPSHOT") != "" {
 			// Automation: shown, without taking the user's focus.
 			Send(h.window, "orderFront:", 0)
+		} else if inBackground() {
+			// In the background: no window until the app shows one.
 		} else {
 			Send(h.window, "makeKeyAndOrderFront:", 0)
 			// A plain executable (go run, asuka dev) doesn't come to the
