@@ -10,10 +10,14 @@ import (
 	"database/sql"
 	"fmt"
 	"net/url"
+	"os"
+	"strings"
 
 	"github.com/egoist/asuka/app"
 	"github.com/egoist/asuka/device"
+	"github.com/egoist/asuka/dialog"
 	"github.com/egoist/asuka/hotkey"
+	"github.com/egoist/asuka/shell"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/sqlite"
 	"github.com/egoist/asuka/ui"
@@ -46,6 +50,36 @@ func write(query string, args ...any) {
 			ui.Alert(ui.AlertProps{Title: "Couldn't save", Message: err.Error()})
 		}
 	})
+}
+
+// export asks where to save the notes as a Markdown checklist, writes
+// them there, and shows the file in the file manager.
+func export(notes []note) {
+	dialog.Save(dialog.SaveOptions{Name: "Notes.md", Button: "Export",
+		Filters: []dialog.Filter{{Name: "Markdown", Types: []string{"text/markdown"}, Extensions: []string{"md"}}}},
+		func(path string, err error) {
+			if err != nil || path == "" {
+				return // cancelled, or a platform without the dialog
+			}
+			var b strings.Builder
+			for _, n := range notes {
+				mark := " "
+				if n.Done {
+					mark = "x"
+				}
+				fmt.Fprintf(&b, "- [%s] %s\n", mark, n.Text)
+			}
+			go func() {
+				err := os.WriteFile(path, []byte(b.String()), 0o644)
+				ui.Post(func() {
+					if err != nil {
+						ui.Alert(ui.AlertProps{Title: "Couldn't export", Message: err.Error()})
+						return
+					}
+					shell.Reveal(path, nil)
+				})
+			}()
+		})
 }
 
 func App() ui.Node {
@@ -106,7 +140,10 @@ func App() ui.Node {
 			// window of statistics, which floats over other apps' windows
 			// and opens where it was left. A phone has neither.
 			ui.MenuBar(signal.Static([]ui.MenuBarMenu{
-				{Title: "File", Items: []ui.MenuItem{{Title: "Add Note", Shortcut: ui.Cmd("enter"), OnPress: add}}},
+				{Title: "File", Items: []ui.MenuItem{
+					{Title: "Add Note", Shortcut: ui.Cmd("enter"), OnPress: add},
+					{Title: "Export…", Shortcut: ui.Cmd("e").With(ui.Shift), OnPress: func() { export(signal.Untrack(rows.Get)) }},
+				}},
 				{Title: "Edit", Items: []ui.MenuItem{{Title: "Clear Completed", Shortcut: ui.Cmd("k").With(ui.Shift), Destructive: true,
 					OnPress: func() { write(`delete from notes where done`) }}}},
 				// Focus opens the window, or brings it to the front if it's

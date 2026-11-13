@@ -13,6 +13,7 @@ import { modules as system } from "./modules/system.js";
 import { modules as hardware } from "./modules/hardware.js";
 import { modules as web } from "./modules/web.js";
 import { modules as desktop } from "./modules/desktop.js";
+import { modules as dialog } from "./modules/dialog.js";
 
 const enc = new TextEncoder();
 
@@ -48,7 +49,7 @@ export class Modules {
   }
 
   builtin(name) {
-    this.builtins ??= { ...system(this.h), ...hardware(this.h), ...web(this.h), ...desktop(this.h) };
+    this.builtins ??= { ...system(this.h), ...hardware(this.h), ...web(this.h), ...desktop(this.h), ...dialog(this.h) };
     return Object.hasOwn(this.builtins, name) ? this.builtins[name] : null;
   }
 }

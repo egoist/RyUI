@@ -135,7 +135,12 @@ export const memfs = {
     fds.set(fd, { path, pos: 0, append: !!(flags & constants.O_APPEND), write });
     cb(null, fd);
   },
-  close(fd, cb) { fds.delete(fd); cb(null); },
+  close(fd, cb) {
+    const f = fds.get(fd);
+    fds.delete(fd);
+    if (f?.write) written(f.path);
+    cb(null);
+  },
   fsync(fd, cb) { cb(null); },
   fstat(fd, cb) {
     const f = fds.get(fd);
@@ -199,6 +204,7 @@ export const memfs = {
     if (e.dir) for (const [k, v] of files) if (k.startsWith(from + "/")) moved.push([k, v]);
     for (const [k] of moved) remove(k);
     for (const [k, v] of moved) put(to + k.slice(from.length), v);
+    if (!e.dir) written(to);
     cb(null);
   },
   truncate(path, length, cb) {
@@ -465,6 +471,11 @@ export function writeFile(path, bytes) {
   put(path, { dir: false, mode: S_IFREG | 0o644, mtime: now(), size: bytes.length, data: bytes });
 }
 
+/** makeDir makes a directory (and those it's in). */
+export function makeDir(path) {
+  mkdirs(clean(path));
+}
+
 /** fileOf is a File of a file's bytes, to drag or share. */
 export function fileOf(path, name, type) {
   const b = readFile(path);
@@ -484,6 +495,33 @@ export function blobURL(path) {
   const url = URL.createObjectURL(new Blob([e.data.subarray(0, e.size)]));
   urls.set(path, { url, mtime: e.mtime });
   return url;
+}
+
+// --- Files that go somewhere once written ---
+
+// sinks are what's done with a file once the app has written it (closed
+// a file it opened to write, or renamed one over it): asuka/dialog's Save
+// writes it to the file the user chose, or downloads it.
+const sinks = new Map(); // path -> function(bytes)
+const pending = new Set();
+
+/** onWritten calls sink with a file's bytes each time the app has written it (null: no longer). */
+export function onWritten(path, sink) {
+  path = clean(path);
+  if (sink) sinks.set(path, sink);
+  else sinks.delete(path);
+}
+
+// written notes that the app has written path: its sink runs once the
+// call's done (a write's several closes and renames run it once).
+function written(path) {
+  if (!sinks.has(path) || pending.has(path)) return;
+  pending.add(path);
+  setTimeout(() => {
+    pending.delete(path);
+    const b = readFile(path);
+    if (b) sinks.get(path)?.(b.slice());
+  }, 0);
 }
 
 let uploads = 0;

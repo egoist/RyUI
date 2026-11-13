@@ -281,7 +281,7 @@ const viewable = (t) => /^(image|video|audio|text)\//.test(t) || ["application/p
 
 // --- preview ---
 
-async function preview(h, b) {
+export async function preview(h, b) {
   const a = JSON.parse(dec.decode(b));
   if (!a.files?.length) throw new Error("preview.show: bad arguments");
   const f = a.files[Math.min(Math.max(a.start | 0, 0), a.files.length - 1)];
