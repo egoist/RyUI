@@ -570,12 +570,12 @@ keyboard's focus is in it (`ViewProps.Keys`, `TextFieldProps.Keys`, a
   A key goes out from the focused node through its parents in the
   core's tree. A node the core leaves without a parent, but which shows
   inside another, goes on where it shows: a List's row (a cell the host
-  made and bound) to its List; a Sheet's or a Popover's node to what
-  it's presented from: on a desktop, the window it covers (the window
-  of a popover's anchor: a sheet's node, for a popover in a sheet), so
-  its way ends at that window's root and its `UseKeys` (a sheet
-  presented from a Window node's content, at that Window node); on a
-  phone, the root. A Window node is an end: its window's own keys (its
+  made and bound) to its List; a Sheet's node to the window it's
+  declared in (its `Window` prop: the root's or a Window node's ID, the
+  window it's presented on, as `UseKeys` in it are that window's), a
+  Popover's to the root of what its anchor is in (a window's root, or a
+  sheet's node, for a popover in a sheet), so its way ends at that
+  window's root and its `UseKeys`; on a phone (one window), the root. A Window node is an end: its window's own keys (its
   `UseKeys`), never the main window's; the root is one too. With
   nothing focused, a key starts at the root of the window that has the
   keyboard: the root, a Window node, or a sheet's or a popover's node
@@ -592,20 +592,19 @@ keyboard's focus is in it (`ViewProps.Keys`, `TextFieldProps.Keys`, a
   responder's view (a field's field editor: its field), its Asuka node
   (the window's root node with none: the root, a Window's, a sheet's or
   a popover's), out (a cell to its list, a sheet's node to the window
-  it's a sheet of, a popover's to its anchor's window), ahead of the
+  it's declared in, a popover's to its anchor's window), ahead of the
   field editor and `performKeyEquivalent:`. Windows, the message loop's
   WM_KEYDOWN and WM_SYSKEYDOWN before TranslateMessage, IsDialogMessage
   and the accelerators: the focused HWND's node, out (a cell to its
-  list, a sheet's or a popover's node to the window it covers, its
-  owner). Linux, a key controller on each window, and each popover, in
+  list, a sheet's node to the window it's declared in, a popover's to
+  the window it covers, its owner). Linux, a key controller on each window, and each popover, in
   the capture phase: the focus widget's node, out (a list's cells are
-  the host's views in it; a sheet's node to the window it was presented
-  over, a popover's to its anchor's window). The web, a keydown listener
+  the host's views in it; a sheet's node to the window it's declared
+  in, a popover's to its anchor's window). The web, a keydown listener
   on the window in the capture phase, ahead of the menu bar's:
   `event.target`'s node (the page's body: the root; a dialog's own
   element: its node), out (a cell to its list, a sheet's node to the
-  Window it was presented from or the root, a popover's to its anchor's
-  window), `preventDefault` and `stopImmediatePropagation`. iOS,
+  window it's declared in, a popover's to its anchor's window), `preventDefault` and `stopImmediatePropagation`. iOS,
   `UIKeyCommand`s from the root view controller, which UIKit asks
   through the responder chain as a key goes down: the first responder's
   node's keys, out (a cell's to its List, a sheet's or a popover's node
@@ -1421,7 +1420,9 @@ Each one ends with its examples running and its tests in CI.
   exit transitions (the frame carries the scale and offset). Windows,
   the menu bar and shortcuts (below): each `ui.Window` an `NSWindow`
   with its own toolbar and title (its innermost stack's), cascaded from
-  the window in use; sheets and alerts go over the window in use. The
+  the window in use; a sheet and an alert go over the window they're
+  declared in (their `Window` prop: an alert's, the window of the view
+  whose event shows it), whichever is in use. The
   app's menus join the Mac's own: one titled File, Edit, View, Window or
   Help adds its items to it, the others go between View and Window; a
   disabled item is off through `validateMenuItem:`, as is Back with no
@@ -1995,11 +1996,12 @@ How the Windows host maps Asuka (`host/windows`):
   before the buttons, up to 280 points wide, as WinUI puts an
   AutoSuggestBox in a command bar; typing is the screen's TextChanged,
   Enter its Submit). `Tabs` are a bar on top, as WinUI's
-  top `NavigationView`. A `Sheet` is a modal window over the window in
-  use (the one activated last: the main one, a `Window`, a sheet; the
-  owner disabled meanwhile; closing it or Escape dismisses it), half
-  the window's height for a medium-only sheet. An `Alert` is a task
-  dialog over the window in use; an action sheet's buttons are command
+  top `NavigationView`. A `Sheet` is a modal window over the window
+  it's declared in (its `Window` prop: the main one, a `Window`, or the
+  sheet shown over it; the owner disabled meanwhile; closing it or
+  Escape dismisses it), half the window's height for a medium-only
+  sheet. An `Alert` is a task dialog over the window it's declared in,
+  likewise; an action sheet's buttons are command
   links. A menu is a
   popup menu: a button's drops below it, a view's `LongPress` menu is
   its context menu (a right-click, or a long press).
@@ -2405,7 +2407,8 @@ How the Linux host maps Asuka (`host/linux`):
   `AdwViewSwitcherBar` at the bottom of a narrow one (under 550 points),
   a `Sheet` an `AdwDialog` (a floating dialog, a bottom sheet in a
   narrow window), an `Alert` an `AdwAlertDialog` (the first default
-  button suggested, a destructive one red, Escape the cancel button), a
+  button suggested, a destructive one red, Escape the cancel button),
+  each presented on the window it's declared in (its `Window` prop), a
   `Window` an `AdwWindow` of its own. Screens, sheets and windows are
   sized by GTK: each reports its `Environment` as it's allocated.
 - Menus are `GMenu` models in `GtkPopoverMenu`s, their items actions of
@@ -3466,7 +3469,9 @@ calls:
 - Navigation draws its own bars, as the Windows host's: a `Stack`'s
   header (back, title, bar buttons, search), `Tabs`' bottom bar, a
   `SplitView`'s sidebar (a drawer below 700 points). Sheets and alerts
-  are modal `<dialog>`s (the top layer, what's under them inert);
+  are modal `<dialog>`s (the top layer, what's under them inert); one
+  declared in a `Window` (its `Window` prop) is centered over that
+  Window's panel while it shows, and moves with it;
   popovers and menus are `popover` elements. The browser's back goes
   back in the app: a history entry stands for it while there's a dialog
   to close or a stack to pop, and its `popstate` goes back (closing the
