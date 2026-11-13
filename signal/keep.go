@@ -40,21 +40,24 @@ func KeepState(saved map[string][]byte) {
 	keep = &keeper{saved: saved, live: map[string]func() ([]byte, bool){}, used: map[string]map[int]bool{}}
 }
 
-// KeptState returns the live signals' values, to give to the next run's
-// KeepState; they're also restored if the app is mounted again in this
-// one (a player reconnecting). Main thread.
+// KeptState returns the values to give to the next run's KeepState:
+// the live signals', and those kept earlier in this run that no signal
+// has taken back since (a player's session that ended: its values are
+// kept as it ends, and a save after that mustn't lose them). They're
+// also restored if the app is mounted again in this run (a player
+// reconnecting). Main thread.
 func KeptState() map[string][]byte {
 	if keep == nil {
 		return nil
 	}
-	out := make(map[string][]byte, len(keep.live))
 	for k, f := range keep.live {
 		if b, ok := f(); ok {
-			out[k] = b
+			keep.saved[k] = b
 		}
 	}
-	for k, v := range out {
-		keep.saved[k] = v
+	out := make(map[string][]byte, len(keep.saved))
+	for k, v := range keep.saved {
+		out[k] = v
 	}
 	return out
 }

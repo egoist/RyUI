@@ -2,7 +2,8 @@
 
 // Package e2e drives the example apps on a simulator and an emulator,
 // through the platform's widgets, not the core. The tests build each app
-// with `asuka dev --once` (its Go code embedded, a debug build), then tap
+// with `asuka dev --once` (its Go code embedded, a debug build; the
+// player's tests, player_test.go, run asuka dev's player instead), then tap
 // and read the screen through the debug hosts' automation
 // (platform/ios/Sources/AsukaHost/Automation.swift, a notification;
 // platform/android/asuka/src/main/java/dev/asuka/Automation.kt, a broadcast;

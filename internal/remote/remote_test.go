@@ -3,6 +3,7 @@ package remote
 import (
 	"fmt"
 	"net"
+	"strings"
 	"testing"
 	"time"
 
@@ -386,4 +387,58 @@ func TestConnectFollowsTheCoreAcrossRuns(t *testing.T) {
 	stop()
 	s.until("the next run's app", func() bool { return hasText(h, "two") && !hasText(h, "one") })
 	next()
+}
+
+type stall struct {
+	stacks []byte
+	err    error
+}
+
+// A player that connects and never sends its environment (its main thread
+// stuck) is reported, with its goroutines, which it answers off its main
+// thread.
+func TestAStuckPlayerIsReported(t *testing.T) {
+	posts := make(chan func(), 16)
+	conns := make(chan net.Conn)
+	srv := NewServer(func() ui.Node { return ui.StaticText("hello") }, posts)
+	srv.StallAfter = time.Millisecond
+	got := make(chan stall, 1)
+	srv.Stalled = func(_ time.Duration, stacks []byte, err error) { got <- stall{stacks, err} }
+	done := make(chan struct{})
+	go func() {
+		srv.Loop(conns)
+		close(done)
+	}()
+	a, b := net.Pipe()
+	// The player: its reader runs, its main thread never does.
+	p := newPeer(a)
+	p.direct = answerStacks
+	go p.read(nil)
+	conns <- b
+	var s stall
+	select {
+	case s = <-got:
+	case <-time.After(10 * time.Second): // a hang guard
+		t.Fatal("not reported")
+	}
+	if s.err != nil || !strings.Contains(string(s.stacks), "goroutine ") {
+		t.Fatalf("%v\n%s", s.err, s.stacks)
+	}
+	a.Close()
+	close(conns)
+	<-done
+}
+
+// A session whose app is mounted isn't reported.
+func TestAPlayerShowingTheAppIsntReported(t *testing.T) {
+	reported := make(chan bool, 1)
+	srv := &Server{Stalled: func(time.Duration, []byte, error) { reported <- true }}
+	ss := &session{r: &ui.Root{}}
+	srv.sessions = []*session{ss}
+	srv.checkStall(ss, 0)
+	select {
+	case <-reported:
+		t.Fatal("a mounted session reported")
+	default:
+	}
 }

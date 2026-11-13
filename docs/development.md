@@ -361,6 +361,12 @@ ASUKA_SCRIPT="tap:Add;tap:Add" ASUKA_SNAPSHOT=shot.png go run .   # Windows, Lin
 - **Java**: Gradle needs a JDK: `JAVA_HOME`, else Android Studio's own.
 - **The first Android build is slow**: Gradle downloads itself and
   Android's libraries, once.
+- **`the player connected ... and hasn't shown the app`**: the player
+  reached your Go code but never showed the app, its main thread stuck.
+  Asuka saves the player's goroutines to `player-stacks.txt` in the
+  app's directory in Asuka's cache (the path is printed): attach it to
+  a bug report. Relaunch the player, or run with `--no-hot` to build the
+  app with its Go code in it.
 - **A release build on the phone**: an app installed by `asuka build`
   (another signing key) is uninstalled, with its data, to install the
   debug one.

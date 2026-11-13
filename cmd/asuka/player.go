@@ -622,7 +622,7 @@ func devAndroidPlayer(app *goApp, tc *androidToolchain, work, serial string, sto
 	}
 	release := sync.OnceFunc(unlock)
 	defer release()
-	player := &goApp{dir: dir, name: playerName, bundleID: playerID, cfg: playerConfig()}
+	player := &goApp{dir: dir, name: playerName, bundleID: playerID, cfg: playerConfig(), pkg: playerPkg, pkgIn: app.dir}
 	apk, hash, err := tc.buildAPK(player, dir)
 	if err != nil {
 		return err

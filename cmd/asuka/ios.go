@@ -39,6 +39,16 @@ type goApp struct {
 	pkg, pkgIn string
 }
 
+// goPackage is where to run the go command for the app's Go code, and
+// the package to name: its directory and ".", or, for the player, the
+// app's directory and mobile/player.
+func (a *goApp) goPackage() (dir, pkg string) {
+	if a.pkg != "" {
+		return a.pkgIn, a.pkg
+	}
+	return a.dir, "."
+}
+
 // displayName is the name under the app's icon.
 func (a *goApp) displayName() string {
 	if a.cfg != nil && a.cfg.Name != "" {

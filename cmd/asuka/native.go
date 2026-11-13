@@ -39,10 +39,11 @@ var (
 	nativesCache = map[string][]nativePackage{}
 )
 
-// appNatives are the native packages of the main package in dir, built
-// for goos and goarch: its dependencies with generated native code.
-func appNatives(dir, goos, goarch string) ([]nativePackage, error) {
-	key := dir + "\x00" + goos + "\x00" + goarch
+// appNatives are the native packages of package pkg, as the go command
+// in dir builds it for goos and goarch: its dependencies with generated
+// native code.
+func appNatives(dir, pkg, goos, goarch string) ([]nativePackage, error) {
+	key := dir + "\x00" + pkg + "\x00" + goos + "\x00" + goarch
 	nativesMu.Lock()
 	ps, ok := nativesCache[key]
 	nativesMu.Unlock()
@@ -53,7 +54,7 @@ func appNatives(dir, goos, goarch string) ([]nativePackage, error) {
 	if goos == "ios" || goos == "android" {
 		cgo = "1"
 	}
-	c := exec.Command("go", "-C", dir, "list", "-deps", "-f", "{{.ImportPath}}\t{{.Name}}\t{{.Dir}}\t{{with .Module}}{{.Main}}{{end}}", ".")
+	c := exec.Command("go", "-C", dir, "list", "-deps", "-f", "{{.ImportPath}}\t{{.Name}}\t{{.Dir}}\t{{with .Module}}{{.Main}}{{end}}", pkg)
 	c.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+goarch, "CGO_ENABLED="+cgo)
 	var stderr bytes.Buffer
 	c.Stderr = &stderr
@@ -93,7 +94,8 @@ func nativeFor(app *goApp, platform, goarch string) ([]nativePackage, error) {
 	if platform == "web" {
 		goarch = "wasm"
 	}
-	ps, err := appNatives(app.dir, goos, goarch)
+	dir, pkg := app.goPackage()
+	ps, err := appNatives(dir, pkg, goos, goarch)
 	if err != nil {
 		return nil, err
 	}

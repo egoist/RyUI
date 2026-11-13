@@ -32,14 +32,12 @@ func (t *iosToolchain) pluginLibs(app *goApp) ([]pluginLib, error) {
 	if goarch == "" {
 		goarch = "arm64"
 	}
-	if app.pkg != "" {
-		ps, err := pkgPlugins(app.pkgIn, app.pkg, "ios", goarch)
-		if err != nil {
-			return nil, err
-		}
-		return pluginLibs(ps, t.pluginTarget())
+	dir, pkg := app.goPackage()
+	ps, err := pkgPlugins(dir, pkg, "ios", goarch)
+	if err != nil {
+		return nil, err
 	}
-	return appLibs(app.dir, "ios", goarch, t.pluginTarget())
+	return pluginLibs(ps, t.pluginTarget())
 }
 
 // pluginFrameworkInfo is a plugin library's framework's Info.plist, for

@@ -1258,6 +1258,15 @@ the new code, with no install. The app's logs are the process's output.
   call returns. Both ends are Go, so the protocol is tested in Go, with
   the fake host as the player. A call that gets no reply in 10s gives
   up rather than hang a main thread.
+- **A stuck player is reported**: a session whose player connected 10s
+  ago and hasn't had the app mounted (it never sent its environment)
+  makes the core ask it for its goroutines' stacks (`mStacks`), which
+  the player answers on its connection's reader, not its main thread,
+  which is likely what's stuck. The run says so, with what to do
+  (relaunch the player, `--no-hot`), and writes the stacks beside the
+  kept state. The GUI tests (`e2e`, `-run Player`) install the player,
+  reload after an edit and relaunch it against the running code, and
+  fail on that report.
 - **Several players at once**: each connection is a session with its
   own root, multiplexed on the core's one loop (the app on an iPhone
   and an Android phone together). A reconnecting player clears the last
