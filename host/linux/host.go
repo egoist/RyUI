@@ -112,6 +112,7 @@ type node struct {
 	loaded     bool        // an Image's Source loaded
 	pulsed     time.Time   // an indeterminate Progress's last pulse
 	ext        any         // an area's own state (a list's, a web view's...)
+	keys       []ops.Key   // the Keys prop, control as primary (keys.go)
 }
 
 func (n *node) listening(e ops.EventKind) bool {

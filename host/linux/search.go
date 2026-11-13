@@ -37,6 +37,7 @@ func (h *Host) searchFor(w *win, screen *node) Ptr {
 		s.entry = SearchEntryNew()
 		SearchBarSetChild(s.bar, s.entry)
 		SearchBarConnectEntry(s.bar, s.entry)
+		watchPreedit(EditableGetDelegate(s.entry))
 		SearchBarSetKeyCaptureWidget(s.bar, w.window)
 		AdwToolbarViewAddTopBar(w.toolbar, s.bar)
 		Connect(s.entry, "search-changed", func() {
