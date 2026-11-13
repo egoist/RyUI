@@ -693,4 +693,3 @@ func versionFile(app *goApp) []byte {
 	b, _ := json.MarshalIndent(v, "", "  ")
 	return append(b, '\n')
 }
-

@@ -63,4 +63,3 @@ func TestS3URLs(t *testing.T) {
 		t.Error("no error without credentials")
 	}
 }
-
