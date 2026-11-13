@@ -354,12 +354,16 @@ func loadConfig(dir string) (*appConfig, error) {
 }
 
 // ldflags is the go build -ldflags for the app: what of asuka.json its Go
-// code reads (internal/boot), and, for a release, no symbol tables.
+// code reads (internal/boot), and, for a release, no symbol tables; for a
+// development build, no DWARF.
 func (c *appConfig) ldflags(release bool) string {
 	if release {
 		return c.ldflagsStrip("-s", "-w")
 	}
-	return c.ldflagsStrip()
+	// A development build: without DWARF, which the linker spends a good
+	// part of its time on and asuka dev's runs don't use (panics' traces
+	// and runtime.Callers come from the symbol table, which stays).
+	return c.ldflagsStrip("-w")
 }
 
 // ldflagsStrip is ldflags with what the linker leaves out: an iOS

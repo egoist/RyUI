@@ -52,12 +52,19 @@ web](web.md#asuka-dev--platform-web).
 
 On macOS, Windows and Linux, the app's Go code and the platform's host
 are one Go program, built for this computer with `CGO_ENABLED=0`. `asuka
-dev` builds it and runs it; on each save it builds it again, stops the
-running app, which saves its signals' values as it quits, and runs the
-new one, which takes them back (see [What a reload
-keeps](#what-a-reload-keeps)). A reload takes about as long as `go
-build`. A build that fails prints its errors and keeps the running
-app.
+dev` builds it and runs it; on each save it builds it again and starts
+the new one while the running app stays on screen. Once the new one has
+started, Asuka stops the running app, which saves its signals' values
+as it quits, and the new one goes on and takes them back (see [What a
+reload keeps](#what-a-reload-keeps)). A reload takes about as long as
+`go build`. A build that fails prints its errors and keeps the running
+app, and so does one that quits as it starts (a panic in an `init`).
+
+On macOS, the system checks a program the first time it runs, which
+can add a few hundred milliseconds to every reload; Asuka says so when
+it does. Adding your terminal app under System Settings > Privacy &
+Security > Developer Tools turns that check off for what it runs (and,
+with tmux or another multiplexer, the multiplexer too).
 
 The app reads its `assets/` where they are, so changing one needs no
 copy. Its data (`store.Dir()`, SQLite databases there) is in a `data`
@@ -80,16 +87,16 @@ Attest) work only in a release build signed with one: see
 **Windows.** `asuka dev` runs only on Windows itself; `asuka build
 --platform windows` builds from any system. The dev build is a console
 program, so its output prints in the terminal; a release has no
-console. To stop the app for a reload, Asuka closes its standard input
-(Windows can't send a process Ctrl-C), and it saves its state as it
-quits.
+console. To stop the app for a reload, Asuka tells it over a connection
+it keeps to each run (Windows can't send a process Ctrl-C), and it saves
+its state as it quits.
 
 **Linux.** `asuka dev` on Linux runs the app on GTK 4 and libadwaita,
 which it needs installed (see [Getting
 started](getting-started.md#what-you-need)), under your session's
 display, Wayland or X11. It gets the name, ID, version and accent of
-`asuka.json`, as a release does; Asuka stops it with SIGINT, and it saves
-its state as it quits. On a Mac or a PC, `asuka dev --platform linux`
+`asuka.json`, as a release does; Asuka stops it over a connection it
+keeps to each run (or SIGINT), and it saves its state as it quits. On a Mac or a PC, `asuka dev --platform linux`
 builds the app for Linux but can't run it there, unless
 `ASUKA_LINUX_RUN` names a command that runs a program on a Linux machine
 with a display, which sees this computer's files at the same paths: a
@@ -107,8 +114,9 @@ installed again only when it changes (a new version of Asuka). The Go
 code and the player talk over a socket.
 
 On a save, Asuka rebuilds the Go code for your computer and restarts it,
-in about a second; the player reconnects and shows the new code.
-Nothing is installed.
+in about a second, the new run starting while the last one still serves
+the player; the player reconnects as the last one stops, and shows the
+new code. Nothing is installed.
 
 With `--no-hot` or `--once`, or when the app uses native packages with code
 for the platform (a `Package.swift` or `android/`, see [Native
@@ -136,17 +144,37 @@ in the player, on the desktop and in the browser. The app saves them as
 it stops, to the file the `ASUKA_STATE` environment variable names
 (`asuka dev` sets it to `state.json` in the app's directory in Asuka's
 cache), and the next run gives each value back to the signal made at
-the same place: the same call path (function names, not lines), the
-same type, and the same position among the signals of that type made
-there.
+the same place: the same call path (the functions it's made in, not
+lines), the same name, and the same type.
+
+Places are named from your source, which Asuka reads as it builds: a
+closure by what it is in its function (the variable or field it's
+assigned to, the call it's passed to, a `go` or `defer`), and a signal
+by the variable or field it's made for. So editing around a signal
+doesn't lose its value: adding a handler before the closure that makes
+it, or another signal of its type before it.
+
+```go
+func Counter() ui.Node {
+	onReset := func() { ... }  // added: count keeps its value
+	step := signal.New(1)      // added: likewise
+	count := signal.New(0)
+	...
+}
+```
 
 What isn't kept:
 
 - Navigation: a reload starts at the root screen.
 - Signals Asuka makes itself, and values JSON doesn't carry (funcs,
   unexported fields).
-- Signals whose type changed, and those of a type after one of the same
-  type you added at the same place.
+- Signals whose type changed.
+- Signals made in a file that has a `//asuka:reset` comment, when the
+  file was edited: put it in a file whose screen should start over as
+  you change it.
+- A signal renamed, or moved to another function or closure, starts
+  over; several made for the same name at one place (in a loop) are
+  told apart by their order.
 
 A built phone app (`--no-hot`, `--once`, native code) starts again from
 nothing on each reload.
@@ -160,7 +188,9 @@ web](web.md#the-apps-files).
 
 ## Reloading
 
-Asuka watches, by polling, the app's directory and its module's:
+Asuka watches the app's directory and its module's, as the system says
+they change (FSEvents, inotify, ReadDirectoryChangesW; where it can't,
+by polling):
 
 - Go files and `go.mod` (not `_test.go`);
 - Swift and Kotlin files;
@@ -331,6 +361,12 @@ ASUKA_SCRIPT="tap:Add;tap:Add" ASUKA_SNAPSHOT=shot.png go run .   # Windows, Lin
 - **Java**: Gradle needs a JDK: `JAVA_HOME`, else Android Studio's own.
 - **The first Android build is slow**: Gradle downloads itself and
   Android's libraries, once.
+- **`the player connected ... and hasn't shown the app`**: the player
+  reached your Go code but never showed the app, its main thread stuck.
+  Asuka saves the player's goroutines to `player-stacks.txt` in the
+  app's directory in Asuka's cache (the path is printed): attach it to
+  a bug report. Relaunch the player, or run with `--no-hot` to build the
+  app with its Go code in it.
 - **A release build on the phone**: an app installed by `asuka build`
   (another signing key) is uninstalled, with its data, to install the
   debug one.

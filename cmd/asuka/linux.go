@@ -194,7 +194,7 @@ func devLinux(dir string, o *devOptions, stop <-chan os.Signal) error {
 	if o.once {
 		// Until it quits, or Asuka is stopped (it stops the app).
 		select {
-		case <-proc.done:
+		case <-proc.done():
 		case <-stop:
 			proc.stop()
 		}

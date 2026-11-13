@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -149,6 +150,13 @@ type Server struct {
 	// Sheet is the root of a share sheet's session (a player's share
 	// extension, its share activity): ui.ShareSheetRoot of the app's.
 	Sheet func() ui.Node
+	// Stalled, if set, is called on the loop when a player connected
+	// StallAfter ago (10s when zero) and still hasn't had the app mounted:
+	// it never sent its environment, its main thread likely stuck. stacks
+	// are its goroutines' (mStacks, answered off its main thread), or err
+	// why there are none.
+	Stalled    func(after time.Duration, stacks []byte, err error)
+	StallAfter time.Duration
 }
 
 type session struct {
@@ -205,6 +213,23 @@ func (s *Server) add(conn net.Conn) {
 	h.resume = func(token string) bool { return s.resume(ss, token) }
 	s.sessions = append(s.sessions, ss)
 	s.listen(ss, p)
+	if s.Stalled != nil {
+		after := s.StallAfter
+		if after == 0 {
+			after = 10 * time.Second
+		}
+		time.AfterFunc(after, func() { s.posts <- func() { s.checkStall(ss, after) } })
+	}
+}
+
+// checkStall reports a session whose player connected and never had the
+// app mounted (Stalled). Loop only.
+func (s *Server) checkStall(ss *session, after time.Duration) {
+	if ss.r != nil || ss.cut || ss.h.closed || !slices.Contains(s.sessions, ss) {
+		return // mounted, gone, or resumed another session
+	}
+	stacks, err := ss.h.p.call(mStacks, nil)
+	s.Stalled(after, stacks, err)
 }
 
 // listen reads p's frames for ss. The reader wakes the loop, but mustn't
@@ -355,7 +380,9 @@ func (s *Server) Loop(conns <-chan net.Conn) {
 // names): saved when a player disconnects and when the process is
 // stopped, restored by the next run. It returns if listening fails.
 func Run(addr string, root, sheet func() ui.Node) error {
-	ln, err := net.Listen("tcp", addr)
+	// The run before this one stopped, and saved its state, first.
+	stopped := devstate.Wait()
+	ln, err := listen(addr, "ASUKA_REMOTE_FD")
 	if err != nil {
 		return err
 	}
@@ -367,7 +394,11 @@ func Run(addr string, root, sheet func() ui.Node) error {
 	if base := os.Getenv("ASUKA_ASSETS_URL"); base != "" {
 		boot.AssetBase = base
 		if a := os.Getenv("ASUKA_ASSETS_ADDR"); a != "" {
-			go serveAssets(a, "assets")
+			assets, err := listen(a, "ASUKA_ASSETS_FD")
+			if err != nil {
+				return err
+			}
+			go serveAssets(assets, "assets")
 		}
 	}
 	save := func() {
@@ -382,11 +413,17 @@ func Run(addr string, root, sheet func() ui.Node) error {
 	srv := NewServer(root, posts)
 	srv.Sheet = sheet
 	srv.Closed = save
+	srv.Stalled = func(after time.Duration, stacks []byte, err error) {
+		reportStall(store, after, stacks, err)
+	}
 	// Stopped (asuka dev reloading): save on the loop, then exit.
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	go func() {
-		<-stop
+		select {
+		case <-stop:
+		case <-stopped:
+		}
 		posts <- func() { save(); os.Exit(0) }
 	}()
 	conns := make(chan net.Conn)
@@ -418,4 +455,24 @@ func keepDevLocale() {
 		return strings.TrimSpace(string(b))
 	}
 	boot.SaveLocale = func(tag string) { os.WriteFile(file, []byte(tag), 0o644) }
+}
+
+// reportStall says that a player connected and hasn't shown the app, and
+// keeps its goroutines' stacks beside the kept state (store), for a bug
+// report.
+func reportStall(store string, after time.Duration, stacks []byte, err error) {
+	msg := fmt.Sprintf("asuka: the player connected %v ago and hasn't shown the app", after)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s, and doesn't answer (%v). Relaunch the player, or run asuka dev with --no-hot to build the app with its Go code in it.\n", msg, err)
+		return
+	}
+	dir := os.TempDir()
+	if store != "" {
+		dir = filepath.Dir(store)
+	}
+	path := filepath.Join(dir, "player-stacks.txt")
+	if werr := os.WriteFile(path, stacks, 0o644); werr != nil {
+		path = "(not written: " + werr.Error() + ")"
+	}
+	fmt.Fprintf(os.Stderr, "%s: its main thread seems stuck. Its goroutines are in %s, for a bug report. Relaunch the player, or run asuka dev with --no-hot to build the app with its Go code in it.\n", msg, path)
 }

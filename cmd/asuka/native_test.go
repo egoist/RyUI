@@ -28,7 +28,7 @@ func testNativeApp(t *testing.T) *goApp {
 // code; each platform's are those with its project.
 func TestNativePackages(t *testing.T) {
 	app := testNativeApp(t)
-	all, err := appNatives(app.dir, "android", "arm64")
+	all, err := appNatives(app.dir, ".", "android", "arm64")
 	if err != nil || len(all) != 1 || all[0].name != "kitchen" || !all[0].main {
 		t.Fatalf("%+v %v", all, err)
 	}

@@ -33,10 +33,10 @@ func init() {
 
 // restoreState gives the app's signals the values the last run saved,
 // under asuka dev (ASUKA_STATE), and saves them when asuka dev stops the app
-// to run the new code. Windows can't send a process SIGINT, so asuka dev
-// closes the app's standard input instead (ASUKA_STOP=stdin); Ctrl+C in
-// its console works too.
-func restoreState() {
+// to run the new code: it closes the run's control connection (stopped,
+// devstate.Wait), or, Windows sending a process no SIGINT, its standard
+// input (ASUKA_STOP=stdin); Ctrl+C in its console works too.
+func restoreState(stopped <-chan struct{}) {
 	path := os.Getenv("ASUKA_STATE")
 	if path == "" {
 		return
@@ -44,7 +44,13 @@ func restoreState() {
 	if err := devstate.Keep(path); err != nil {
 		fmt.Fprintln(os.Stderr, "asuka: restoring state:", err)
 	}
-	stop := make(chan struct{}, 2)
+	stop := make(chan struct{}, 3)
+	if stopped != nil {
+		go func() {
+			<-stopped
+			stop <- struct{}{}
+		}()
+	}
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt)
 	go func() {

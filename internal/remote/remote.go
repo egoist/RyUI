@@ -28,15 +28,16 @@ import (
 
 // Methods.
 const (
-	mApply      = 1 // core → host: a batch
-	mMeasure    = 2 // core → host: u32 id, f32 width, height, avail width, avail height → f32 width, height
-	mEvent      = 3 // host → core: an event
-	mListCount  = 4 // host → core: u32 list → i64
-	mListBind   = 5 // host → core: u32 list, i64 index, u32 cell
-	mListUnbind = 6 // host → core: u32 list, u32 cell
-	mAttach     = 7 // host → core: the Activity was recreated
-	mResume     = 8 // host → core: its session's token → u8 resumed (the session it had, kept while it was cut off)
-	mShareSheet = 9 // host → core: the session is a share sheet's (app.ShareSheet), before its environment
+	mApply      = 1  // core → host: a batch
+	mMeasure    = 2  // core → host: u32 id, f32 width, height, avail width, avail height → f32 width, height
+	mEvent      = 3  // host → core: an event
+	mListCount  = 4  // host → core: u32 list → i64
+	mListBind   = 5  // host → core: u32 list, i64 index, u32 cell
+	mListUnbind = 6  // host → core: u32 list, u32 cell
+	mAttach     = 7  // host → core: the Activity was recreated
+	mResume     = 8  // host → core: its session's token → u8 resumed (the session it had, kept while it was cut off)
+	mShareSheet = 9  // host → core: the session is a share sheet's (app.ShareSheet), before its environment
+	mStacks     = 10 // core → host: → the player's goroutines' stacks, answered off its main thread (a player that seems stuck)
 )
 
 // Frame kinds.
@@ -90,6 +91,10 @@ type peer struct {
 	asleep bool // the other side's app is in the background
 	// peek sees each request as it arrives, before it's held.
 	peek func(method byte, payload []byte)
+	// direct, if set, answers some requests on the reader's goroutine, as
+	// they arrive (ok), not on the goroutine that owns the peer: what must
+	// be answered even when that one is stuck.
+	direct func(method byte, payload []byte) (reply []byte, ok bool)
 	// owner is the session (the core's) its frames are for.
 	owner atomic.Value
 }
@@ -132,6 +137,12 @@ func (p *peer) read(notify func()) {
 		f.payload = rest
 		if debug {
 			fmt.Fprintf(os.Stderr, "ASUKADBG recv kind=%d id=%d m=%d n=%d\n", f.kind, f.id, f.method, len(f.payload))
+		}
+		if f.kind == kRequest && p.direct != nil {
+			if reply, ok := p.direct(f.method, f.payload); ok {
+				p.send(kReply, f.id, 0, reply)
+				continue
+			}
 		}
 		p.in <- f
 		if notify != nil {

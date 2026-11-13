@@ -462,8 +462,6 @@ func devAndroid(dir string, o *devOptions, stop <-chan os.Signal) error {
 	fmt.Println("asuka: watching for changes (Ctrl-C to stop)")
 	natives, _ := nativeFor(app, "android", "arm64") // its native packages' Kotlin, wherever they are
 	w := newWatcher(append([]string{app.moduleDir, app.dir}, nativeDirsOf(natives, "android")...)...)
-	tick := time.NewTicker(400 * time.Millisecond)
-	defer tick.Stop()
 	for {
 		select {
 		case <-stop:
@@ -471,7 +469,7 @@ func devAndroid(dir string, o *devOptions, stop <-chan os.Signal) error {
 				logs.Process.Kill()
 			}
 			return nil
-		case <-tick.C:
+		case <-w.wake:
 			if !w.changed() {
 				continue
 			}

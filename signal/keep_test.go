@@ -63,3 +63,23 @@ func TestAnOwnersSignalsGoWithIt(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+// A session that ends keeps its values (KeptState as it ends); a save
+// later in the run, with its signals gone, still has them.
+func TestValuesKeptAsASessionEndsSurviveTheNextSave(t *testing.T) {
+	defer signal.StopKeeping()
+	signal.KeepState(nil)
+	var dispose func()
+	var count *signal.Signal[int]
+	mount := func() { signal.Root(func(d func()) { dispose = d; count, _, _ = component() }) }
+	mount()
+	count.Set(3)
+	signal.KeptState() // the session ends
+	dispose()
+	saved := signal.KeptState() // the run stops
+	signal.KeepState(saved)
+	mount()
+	if count.Peek() != 3 {
+		t.Fatalf("count %d after the run's save", count.Peek())
+	}
+}

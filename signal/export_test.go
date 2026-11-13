@@ -1,4 +1,4 @@
 package signal
 
 // StopKeeping turns keeping off (tests).
-func StopKeeping() { keep = nil }
+func StopKeeping() { keep, places = nil, nil }

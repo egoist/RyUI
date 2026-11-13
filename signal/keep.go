@@ -13,10 +13,15 @@ import (
 // Refresh keeps hooks' state. A signal is known by where it's made: the
 // call path (function names, not lines, so edits elsewhere don't move
 // it), its type, and its place among the live signals of that type made
-// there. Adding a signal of a type before others of that type made at
-// the same place, or changing its type, resets those; values that don't
-// survive JSON (funcs, unexported fields) aren't kept. Off in a built
-// app: then New pays one nil check.
+// there. Under asuka dev, which read the app's source as it built it
+// (places.go), closures in the path are named by what they are in their
+// function rather than by their place among its closures, and a signal
+// by the variable or field it's made for, its place counted among those
+// only; a signal made in a file that says //asuka:reset starts over when
+// the file is edited. Adding a signal of a type before others of that
+// type made at the same place for nothing named, or changing its type,
+// resets those; values that don't survive JSON (funcs, unexported
+// fields) aren't kept. Off in a built app: then New pays one nil check.
 
 var keep *keeper
 
@@ -35,21 +40,24 @@ func KeepState(saved map[string][]byte) {
 	keep = &keeper{saved: saved, live: map[string]func() ([]byte, bool){}, used: map[string]map[int]bool{}}
 }
 
-// KeptState returns the live signals' values, to give to the next run's
-// KeepState; they're also restored if the app is mounted again in this
-// one (a player reconnecting). Main thread.
+// KeptState returns the values to give to the next run's KeepState:
+// the live signals', and those kept earlier in this run that no signal
+// has taken back since (a player's session that ended: its values are
+// kept as it ends, and a save after that mustn't lose them). They're
+// also restored if the app is mounted again in this run (a player
+// reconnecting). Main thread.
 func KeptState() map[string][]byte {
 	if keep == nil {
 		return nil
 	}
-	out := make(map[string][]byte, len(keep.live))
 	for k, f := range keep.live {
 		if b, ok := f(); ok {
-			out[k] = b
+			keep.saved[k] = b
 		}
 	}
-	for k, v := range out {
-		keep.saved[k] = v
+	out := make(map[string][]byte, len(keep.saved))
+	for k, v := range keep.saved {
+		out[k] = v
 	}
 	return out
 }
@@ -61,7 +69,9 @@ var core = []string{
 	"github.com/egoist/asuka/internal/remote.", "github.com/egoist/asuka/internal/boot.",
 }
 
-func callPath() (string, bool) {
+// callPath is the path of calls that made a signal, from where it was
+// made out, and the name of what it was made for there (places.go).
+func callPath() (path, site string, ok bool) {
 	var pcs [48]uintptr
 	n := runtime.Callers(4, pcs[:]) // above keepSignal and New
 	frames := runtime.CallersFrames(pcs[:n])
@@ -72,34 +82,50 @@ func callPath() (string, bool) {
 		if first {
 			for _, p := range core {
 				if strings.HasPrefix(f.Function, p) {
-					return "", false
+					return "", "", false
 				}
 			}
 			first = false
+			if places != nil {
+				name, reset := places.site(f)
+				if name != "" {
+					site = "$" + name
+				}
+				if reset != "" {
+					site += "@" + reset
+				}
+			}
 		}
 		if !strings.HasPrefix(f.Function, "runtime.") {
-			b.WriteString(f.Function)
+			name := f.Function
+			if places != nil {
+				if s := places.closure(f); s != "" {
+					name = s
+				}
+			}
+			b.WriteString(name)
 			b.WriteByte('<')
 		}
 		if !more {
 			break
 		}
 	}
-	return b.String(), true
+	return b.String(), site, true
 }
 
 func keepSignal[T any](s *Signal[T], equal func(a, b T) bool) {
 	if equal == nil {
 		return // can't tell a value survived JSON
 	}
-	path, ok := callPath()
+	path, site, ok := callPath()
 	if !ok {
 		return
 	}
-	// Places are counted per type: a new string signal doesn't move the
-	// ints made at the same place.
+	// Places are counted per name and type: a new string signal doesn't
+	// move the ints made at the same place, nor a new signal named
+	// otherwise this one.
 	var zero T
-	path += fmt.Sprintf("%T", zero)
+	path += site + fmt.Sprintf("%T", zero)
 	k := keep
 	used := k.used[path]
 	if used == nil {

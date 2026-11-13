@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"runtime"
 	"strconv"
 	"sync"
 	"time"
@@ -200,6 +201,7 @@ func (x *Proxy) disconnected(p *peer) {
 func (x *Proxy) Attach(conn net.Conn) {
 	p := newPeer(conn)
 	p.serve = x.serve
+	p.direct = answerStacks
 	x.mu.Lock()
 	x.p = p
 	x.mu.Unlock()
@@ -237,6 +239,23 @@ func (x *Proxy) Attach(conn net.Conn) {
 		if x.shared != nil {
 			x.call(mEvent, x.shared)
 		}
+	}
+}
+
+// answerStacks answers mStacks with every goroutine's stack, on the
+// connection's reader: the core asks when the player seems stuck, and its
+// main thread may be what's stuck.
+func answerStacks(method byte, _ []byte) ([]byte, bool) {
+	if method != mStacks {
+		return nil, false
+	}
+	buf := make([]byte, 1<<20)
+	for {
+		n := runtime.Stack(buf, true)
+		if n < len(buf) || len(buf) >= 16<<20 {
+			return buf[:n], true
+		}
+		buf = make([]byte, 2*len(buf))
 	}
 }
 

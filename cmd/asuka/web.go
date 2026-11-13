@@ -62,11 +62,20 @@ func webLdflags(app *goApp, release bool) string {
 	return "-ldflags=" + strings.TrimSpace(f)
 }
 
-// buildWasm builds the app's Go code for the browser.
-func buildWasm(app *goApp, out string, release, verbose bool) error {
+// buildWasm builds the app's Go code for the browser; a development build
+// (places, not a release) with the names of its source's places for its
+// kept state (devPlaces).
+func buildWasm(app *goApp, out string, release, verbose bool, places *devPlaces) error {
 	args := []string{"build", webLdflags(app, release), "-o", out}
 	if release {
 		args = append(args, "-trimpath")
+	}
+	if places != nil {
+		ov, err := devOverlay(app, filepath.Dir(out), false, places)
+		if err != nil {
+			return err
+		}
+		args = append(args, "-overlay", ov)
 	}
 	args = append(args, ".")
 	if verbose {
@@ -74,7 +83,7 @@ func buildWasm(app *goApp, out string, release, verbose bool) error {
 	}
 	c := exec.Command("go", args...)
 	c.Dir = app.dir
-	c.Env = append(os.Environ(), "GOOS=js", "GOARCH=wasm", "CGO_ENABLED=0")
+	c.Env = goEnv(app.dir, "GOOS=js", "GOARCH=wasm", "CGO_ENABLED=0")
 	if b, err := c.CombinedOutput(); err != nil {
 		return fmt.Errorf("go build failed:\n%s", bytes.TrimSpace(b))
 	}
@@ -317,9 +326,10 @@ func devWeb(dir string, o *devOptions, stop <-chan os.Signal) error {
 		return err
 	}
 	src, srcDir := webSource(app)
-	s := &devServer{app: app, src: src, exec: exec_, wasm: filepath.Join(work, "app.wasm"), vapid: vapid, clients: map[chan string]bool{}}
+	s := &devServer{app: app, src: src, exec: exec_, wasm: filepath.Join(work, "app.wasm"), vapid: vapid, clients: map[chan string]bool{},
+		places: newDevPlaces(app, "js", "wasm")}
 	start := time.Now()
-	if err := buildWasm(app, s.wasm, false, o.verbose); err != nil {
+	if err := buildWasm(app, s.wasm, false, o.verbose, s.places); err != nil {
 		return err
 	}
 	if err := s.findPlugins(); err != nil {
@@ -357,21 +367,21 @@ func devWeb(dir string, o *devOptions, stop <-chan os.Signal) error {
 		return nil
 	}
 	fmt.Println("asuka: watching for changes (Ctrl-C to stop)")
-	roots := []string{app.moduleDir, app.dir}
-	w := newWatcher(roots...)
 	hostWatch := newWebWatcher(srcDir)
 	var nativeWatch []*webWatcher // the native packages' JavaScript, wherever it is
 	natives, _ := nativeFor(app, "web", "wasm")
-	for _, d := range nativeDirsOf(natives, "web") {
+	webDirs := nativeDirsOf(natives, "web")
+	for _, d := range webDirs {
 		nativeWatch = append(nativeWatch, newWebWatcher(d))
 	}
-	tick := time.NewTicker(300 * time.Millisecond)
-	defer tick.Stop()
+	// Woken by changes to any of them: the Go code and what the scripts'
+	// watchers look at.
+	w := newWatcher(append([]string{app.moduleDir, app.dir, srcDir}, webDirs...)...)
 	for {
 		select {
 		case <-stop:
 			return nil
-		case <-tick.C:
+		case <-w.wake:
 			if hostWatch.changed() || slices.ContainsFunc(nativeWatch, (*webWatcher).changed) {
 				// The host's own JavaScript (a checkout of Asuka): the page loads it again.
 				s.stamp = strconv.FormatInt(time.Now().UnixNano(), 36)
@@ -381,7 +391,7 @@ func devWeb(dir string, o *devOptions, stop <-chan os.Signal) error {
 				continue
 			}
 			t := time.Now()
-			if err := buildWasm(app, s.wasm, false, o.verbose); err != nil {
+			if err := buildWasm(app, s.wasm, false, o.verbose, s.places); err != nil {
 				fmt.Fprintln(os.Stderr, "asuka:", err)
 				s.send("failed", err.Error())
 				s.failed = true
@@ -412,6 +422,7 @@ type devServer struct {
 	exec    []byte
 	wasm    string
 	vapid   string // asuka.json's web.vapidPublicKey
+	places  *devPlaces
 	stamp   string // the build's, so the page never loads an old one
 	failed  bool
 	mu      sync.Mutex
@@ -718,7 +729,7 @@ func buildWeb(app *goApp, o *buildOptions) error {
 		return err
 	}
 	tmp := filepath.Join(out, ".app.wasm")
-	if err := buildWasm(app, tmp, true, o.verbose); err != nil {
+	if err := buildWasm(app, tmp, true, o.verbose, nil); err != nil {
 		return err
 	}
 	defer os.Remove(tmp)

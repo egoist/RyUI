@@ -21,6 +21,7 @@ import (
 	"github.com/egoist/asuka/host"
 	"github.com/egoist/asuka/internal/boot"
 	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/internal/devstate"
 	"github.com/egoist/asuka/layout"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/ui"
@@ -270,6 +271,9 @@ func Run(root func() ui.Node) {
 	}
 	Load()
 	WithPool(startCrash)
+	// Under asuka dev, until the run before this one has stopped: this one
+	// starts behind it (state.go).
+	stopped := devstate.Wait()
 	WithPool(func() {
 		h := newHost()
 		// The app's Swift (macos/*.swift), before its root asks for its
@@ -277,7 +281,7 @@ func Run(root func() ui.Node) {
 		if err := loadSwiftNatives(swiftLibPath()); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
-		restoreState()
+		restoreState(stopped)
 		// asuka/sdk/notify: the center's delegate before launch ends.
 		h.installNotifications()
 		// app.Quit, OnQuit's signals and the launch's Apple Event (files.go).

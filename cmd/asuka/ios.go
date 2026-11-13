@@ -33,6 +33,20 @@ type goApp struct {
 	moduleDir string
 	bundleID  string
 	cfg       *appConfig // asuka.json
+	// pkg, for an app whose Go code is a package of another module (the
+	// player's, mobile/player), is that package, as the go command in
+	// pkgIn builds it; dir is then only where it's built.
+	pkg, pkgIn string
+}
+
+// goPackage is where to run the go command for the app's Go code, and
+// the package to name: its directory and ".", or, for the player, the
+// app's directory and mobile/player.
+func (a *goApp) goPackage() (dir, pkg string) {
+	if a.pkg != "" {
+		return a.pkgIn, a.pkg
+	}
+	return a.dir, "."
 }
 
 // displayName is the name under the app's icon.
@@ -831,8 +845,6 @@ func devIOS(dir string, o *devOptions, stop <-chan os.Signal) error {
 	fmt.Println("asuka: watching for changes (Ctrl-C to stop)")
 	natives, _ := nativeFor(app, "ios", tc.goarch) // its native packages' Swift, wherever they are
 	w := newWatcher(append([]string{app.moduleDir, app.dir}, nativeDirsOf(natives, "ios")...)...)
-	tick := time.NewTicker(400 * time.Millisecond)
-	defer tick.Stop()
 	for {
 		select {
 		case <-stop:
@@ -840,7 +852,7 @@ func devIOS(dir string, o *devOptions, stop <-chan os.Signal) error {
 				logs.Process.Kill()
 			}
 			return nil
-		case <-tick.C:
+		case <-w.wake:
 			if !w.changed() {
 				continue
 			}
