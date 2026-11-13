@@ -589,23 +589,34 @@ keyboard's focus is in it (`ViewProps.Keys`, `TextFieldProps.Keys`, a
 - `UseKeys`' maps are merged per window, the last one called first for a
   key; each goes with its component's owner, and a view's with the view.
 - Hosts: macOS, a local event monitor for key down: the first
-  responder's view (a field's field editor: its field), its Asuka node,
-  out through the node's parents to the root, ahead of the field editor
-  and `performKeyEquivalent:`. Windows, the message loop's WM_KEYDOWN and
-  WM_SYSKEYDOWN before TranslateMessage, IsDialogMessage and the
-  accelerators: the focused HWND's node, out. Linux, a key controller
-  on each window in the capture phase: the focus widget's node, out. The
-  web, a keydown listener on the window in the capture phase, ahead of
-  the menu bar's: `event.target`'s node (a Window panel's ends at its
-  Window node; the page's body: the root), out, `preventDefault` and
-  `stopImmediatePropagation`.
-  iOS, `UIKeyCommand`s from the root view controller, which UIKit asks
+  responder's view (a field's field editor: its field), its Asuka node
+  (the window's root node with none: the root, a Window's, a sheet's or
+  a popover's), out (a cell to its list, a sheet's node to the window
+  it's a sheet of, a popover's to its anchor's window), ahead of the
+  field editor and `performKeyEquivalent:`. Windows, the message loop's
+  WM_KEYDOWN and WM_SYSKEYDOWN before TranslateMessage, IsDialogMessage
+  and the accelerators: the focused HWND's node, out (a cell to its
+  list, a sheet's or a popover's node to the window it covers, its
+  owner). Linux, a key controller on each window, and each popover, in
+  the capture phase: the focus widget's node, out (a list's cells are
+  the host's views in it; a sheet's node to the window it was presented
+  over, a popover's to its anchor's window). The web, a keydown listener
+  on the window in the capture phase, ahead of the menu bar's:
+  `event.target`'s node (the page's body: the root; a dialog's own
+  element: its node), out (a cell to its list, a sheet's node to the
+  Window it was presented from or the root, a popover's to its anchor's
+  window), `preventDefault` and `stopImmediatePropagation`. iOS,
+  `UIKeyCommand`s from the root view controller, which UIKit asks
   through the responder chain as a key goes down: the first responder's
-  node's keys, out (the root's with no first responder), each
+  node's keys, out (a cell's to its List, a sheet's or a popover's node
+  to the root); with no first responder, from the presented sheet's or
+  popover's node, else the root. Each is
   `wantsPriorityOverSystemBehavior`, so they come ahead of a text
-  field's caret, and repeating while held. Android, the activity's
-  `dispatchKeyEvent` (and a sheet's or popover's window, at its screen):
-  the focused view's node, out; Ctrl is Primary, as Control.
+  field's caret, and they repeat while held. Android, the activity's
+  `dispatchKeyEvent` (and a sheet's or popover's window, at its screen;
+  with nothing focused there, its unhandled key, from its node): the
+  focused view's node, out (a cell to its List, a sheet's or popover's
+  node to the root); Ctrl is Primary, as Control.
 
 ### Accessibility
 
