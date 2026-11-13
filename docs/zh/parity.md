@@ -137,6 +137,7 @@ SwiftUI 也能在 Mac 上运行。Expo 支持 iOS、Android 和 Web；React Nati
 | 通讯录 | Contacts、ContactsUI | `expo-contacts` | ✓ `asuka/sdk/contacts`（联系人选择器和新建联系人界面不需要权限；有权限后可以访问通讯录；Windows 上添加联系人会打开一个 vCard，无法访问通讯录） |
 | 日历 | EventKit、EventKitUI | `expo-calendar` | ✓ `asuka/sdk/calendar`（事件编辑器不需要权限；有权限后可以访问日历和事件；Windows 上添加事件会打开一个 iCalendar 文件，无法访问日历） |
 | 主屏幕小组件 | WidgetKit | `expo-widgets` | ✓ `asuka/sdk/widget` 和 `asuka.json` 的 `widgets`（所有尺寸共用一个模板，iOS 上还有锁屏小组件；时间线、倒计时、点按时打开 URL） |
+| 实时活动 | ActivityKit | `expo-live-activity` | ✓ `asuka/sdk/liveactivity`（iOS：锁屏和灵动岛；Android：常驻通知，即 Android 16 的实时更新；倒计时、进度、提醒，以及由服务器推送来更新和启动） |
 | App Intents、快捷指令 | App Intents、App Shortcuts | — | ✓ `asuka.json` 的 `shortcuts`（iOS 上是带 Siri 短语的 App Shortcuts，会出现在聚焦搜索和“快捷指令”里；Android 上是启动器快捷方式） |
 | 自定义字体 | `.font(.custom)` | `expo-font` | ✓ `Font.Family` |
 | 生命周期 | `scenePhase` | AppState | ✓ `app.OnLifecycle` |

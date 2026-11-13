@@ -211,6 +211,7 @@ private fun AsukaRuntime.registerBuiltinModules() {
     modules["contacts"] = contactsMethods()
     modules["calendar"] = calendarMethods()
     modules["widget"] = widgetMethods()
+    modules["liveActivity"] = liveActivityMethods()
     modules["files"] = filesMethods()
     modules["preview"] = previewMethods()
     modules["print"] = printMethods()

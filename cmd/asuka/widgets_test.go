@@ -2,7 +2,9 @@ package main
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -112,5 +114,50 @@ func TestAndroidWidgetsAndShortcuts(t *testing.T) {
 	}
 	if g := read("drawable/asuka_shortcut_new_note_glyph.xml"); !strings.Contains(g, `android:fillColor="#FF336699"`) || !strings.Contains(g, "pathData") {
 		t.Errorf("glyph:\n%s", g)
+	}
+}
+
+// An app with Live Activities has the widget extension with or without
+// widgets: its bundle holds their template, which builds (with Xcode)
+// with the attributes it shares with the host.
+func TestLiveActivityExtension(t *testing.T) {
+	c := appConfig{ID: "dev.asuka.test"}
+	if c.widgetExtension() {
+		t.Fatal("an extension for an app with neither widgets nor Live Activities")
+	}
+	c.addFeatureExtras([]string{"ASUKA_LIVEACTIVITY"})
+	if !c.widgetExtension() || !slices.Contains(c.iosTrue, "NSSupportsLiveActivities") {
+		t.Fatalf("Live Activities: extension %v, Info.plist's %v", c.widgetExtension(), c.iosTrue)
+	}
+	if c.appGroup() != "" {
+		t.Errorf("an App Group (%s) for Live Activities alone", c.appGroup())
+	}
+	if info := c.widgetInfo(nil); info["AsukaAppGroup"] != nil {
+		t.Errorf("the extension's Info.plist names an App Group: %v", info)
+	}
+	if s := c.widgetKindsSwift(); !strings.Contains(s, "        AsukaLiveActivityBundle().body\n") {
+		t.Errorf("no Live Activities in\n%s", s)
+	}
+	if _, err := exec.LookPath("xcrun"); err != nil {
+		t.Skip("no Xcode")
+	}
+	for _, widgets := range []bool{false, true} {
+		c := c
+		if widgets {
+			c.Widgets = []widgetConfig{{Kind: "today", Name: "Today", Sizes: []string{"small"}}}
+		}
+		tc, err := newIOSToolchain(false)
+		if err != nil {
+			t.Skip(err)
+		}
+		work := filepath.Join(t.TempDir(), "a", "work")
+		os.MkdirAll(work, 0o755)
+		exe, err := tc.buildWidgets(work, &c)
+		if err != nil {
+			t.Fatalf("widgets %v: %v", widgets, err)
+		}
+		if !exists(exe) {
+			t.Fatalf("no %s", exe)
+		}
 	}
 }

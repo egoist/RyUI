@@ -48,6 +48,19 @@ func init() {
 				reply(nil, errors.New("not available: widgets are iOS's and Android's"))
 			},
 		}
+		// asuka/sdk/liveactivity: an iPhone's and an Android phone's; none here.
+		noActivities := func(_ []byte, reply func([]byte, error)) {
+			reply(nil, errors.New("not available: live activities are iOS's and Android's"))
+		}
+		m["liveActivity"] = map[string]method{
+			"enabled": func(_ []byte, reply func([]byte, error)) { reply([]byte{0}, nil) },
+			"start":   noActivities,
+			"update":  answerNil,
+			"end":     answerNil,
+			"running": func(_ []byte, reply func([]byte, error)) { reply([]byte("[]"), nil) },
+			"next":    noActivities,
+			"stop":    answerNil,
+		}
 		notAvailable := func(_ []byte, reply func([]byte, error)) { reply(nil, errors.New("not available")) }
 		m["appleAuth"] = map[string]method{
 			"available": func(_ []byte, reply func([]byte, error)) { reply([]byte{0}, nil) },

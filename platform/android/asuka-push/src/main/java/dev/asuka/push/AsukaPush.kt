@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import dev.asuka.AsukaLiveActivities
 import dev.asuka.AsukaPlugin
 import dev.asuka.AsukaNotifications
 import dev.asuka.AsukaPushHub
@@ -30,6 +31,13 @@ class AsukaPushPlugin : AsukaPlugin {
             }
             r.withPermission(arrayOf(Manifest.permission.POST_NOTIFICATIONS)) { tokenFor(it) }
         }
+        AsukaPushHub.token = { done ->
+            try {
+                FirebaseMessaging.getInstance().token.addOnCompleteListener { t -> done(if (t.isSuccessful) t.result else null) }
+            } catch (e: IllegalStateException) {
+                done(null) // no google-services.json in the build
+            }
+        }
     }
 }
 
@@ -45,6 +53,11 @@ class AsukaPushPlugin : AsukaPlugin {
  */
 class AsukaPushService : FirebaseMessagingService() {
     override fun onMessageReceived(m: RemoteMessage) {
+        // asuka/sdk/liveactivity's: a server starts, updates or ends an activity.
+        if (m.data["asuka.liveActivity"] != null) {
+            AsukaLiveActivities.remote(this, m.data)
+            return
+        }
         val n = m.notification
         val id = m.messageId ?: java.util.UUID.randomUUID().toString()
         val message = AsukaPushHub.messageJSON(id, n?.title ?: m.data["title"].orEmpty(), n?.body ?: m.data["body"].orEmpty(), m.data,
@@ -60,8 +73,10 @@ class AsukaPushService : FirebaseMessagingService() {
         AsukaNotifications.show(this, s, remote = true)
     }
 
-    // A new token: the app sends it on its next Register.
-    override fun onNewToken(token: String) {}
+    // A new token: the app sends it on its next Register; live activities' are told now.
+    override fun onNewToken(token: String) {
+        AsukaLiveActivities.newToken(this, token)
+    }
 
     companion object {
         /** What Firebase gives onMessageReceived is about 20 seconds: the rewrite has half. */

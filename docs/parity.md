@@ -149,6 +149,7 @@ draws its own UI, see [Asuka and MyGo](mygo.md).
 | Contacts | Contacts, ContactsUI | `expo-contacts` | ✓ `asuka/sdk/contacts` (the picker and new contact screen without permission; the address book with it; Windows: adding opens a vCard, no address book) |
 | Calendars | EventKit, EventKitUI | `expo-calendar` | ✓ `asuka/sdk/calendar` (the event editor without permission; calendars and events with it; Windows: adding opens an iCalendar file, no calendars) |
 | Home screen widgets | WidgetKit | `expo-widgets` | ✓ `asuka/sdk/widget` and `asuka.json`'s `widgets` (a template in every size, the lock screen's on iOS; timelines, countdowns, taps with a URL) |
+| Live Activities | ActivityKit | `expo-live-activity` | ✓ `asuka/sdk/liveactivity` (iOS: the lock screen and the Dynamic Island; Android: an ongoing notification, Android 16's Live Update; countdowns, progress, alerts, updates and starts from a server's push) |
 | App Intents, shortcuts | App Intents, App Shortcuts | — | ✓ `asuka.json`'s `shortcuts` (iOS: App Shortcuts with Siri phrases, in Spotlight and Shortcuts; Android: launcher shortcuts) |
 | Custom fonts | `.font(.custom)` | `expo-font` | ✓ `Font.Family` |
 | Lifecycle | `scenePhase` | AppState | ✓ `app.OnLifecycle` |

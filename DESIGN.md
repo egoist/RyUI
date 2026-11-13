@@ -1002,7 +1002,13 @@ What runs outside the app's process is built from `asuka.json`. iOS's
 widget extension is WidgetKit's, so SwiftUI's (the one place the host
 uses it): one template (platform/ios/Widget) with the app's kinds,
 reading the entries the app's Go code sets (`asuka/sdk/widget`) from the App
-Group they share; it runs no Go. The shortcuts are App Intents the CLI
+Group they share; it runs no Go. The same extension draws the Live
+Activities (`asuka/sdk/liveactivity`), for an app whose Go code calls the
+package (`ASUKA_LIVEACTIVITY`), with or without widgets: one template,
+its attributes (`AsukaActivityAttributes`) compiled into both the host
+and the extension, since ActivityKit matches them by name and shape. On
+Android an activity is an ongoing notification the host builds, which
+Android 16 promotes to a Live Update. The shortcuts are App Intents the CLI
 generates and links into the executable, their metadata extracted as
 Xcode does (swiftc's constant values, appintentsmetadataprocessor); each
 opens the app with its URL. On Android, the CLI generates an App Widget

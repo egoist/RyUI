@@ -167,6 +167,10 @@ type appConfig struct {
 	// pushRewrite: the app's Go code calls push.Rewrite (rewriteSymbol):
 	// on iOS it has a Notification Service Extension, which runs it.
 	pushRewrite bool
+	// liveActivity: the app's Go code calls asuka/sdk/liveactivity
+	// (ASUKA_LIVEACTIVITY): on iOS its widget extension has the Live
+	// Activities' template, with or without widgets.
+	liveActivity bool
 	// androidModules are the host's optional Gradle modules the app's
 	// packages need (featurePermissions).
 	androidModules []string
@@ -520,6 +524,14 @@ var featurePermissions = []struct {
 	{pkg: "github.com/egoist/asuka/sdk/periodic", modules: []string{"periodic"},
 		plistArrays: map[string][]string{"UIBackgroundModes": {"fetch", "processing"},
 			"BGTaskSchedulerPermittedIdentifiers": {"dev.asuka.refresh", "dev.asuka.processing"}}},
+	// Live activities: an ongoing notification each, which Android 16
+	// promotes to a Live Update (POST_PROMOTED_NOTIFICATIONS); the
+	// receiver hears one dismissed, and refreshes a bar that fills by
+	// itself. iOS's Info.plist key and widget extension come with the
+	// feature (ASUKA_LIVEACTIVITY), as the Go code calls it.
+	{pkg: "github.com/egoist/asuka/sdk/liveactivity",
+		android:    []string{"android.permission.POST_NOTIFICATIONS", "android.permission.POST_PROMOTED_NOTIFICATIONS"},
+		androidApp: []string{`<receiver android:name="dev.asuka.AsukaLiveActivityReceiver" android:exported="false" />`}},
 	// Binding the text-to-speech engine: Android 11's package visibility.
 	{pkg: "github.com/egoist/asuka/sdk/speech", androidTop: []string{`<queries><intent><action android:name="android.intent.action.TTS_SERVICE" /></intent></queries>`}},
 	// The pedometer: iOS's Motion & Fitness; Android's physical activity.

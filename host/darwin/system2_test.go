@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/ebitengine/purego/objc"
@@ -47,6 +48,7 @@ func TestSystemModulesThere(t *testing.T) {
 			"background":   {"start", "update", "end", "next"},
 			"sensors":      {"available", "start", "stop", "stopAll", "next", "steps", "simulate"},
 			"widget":       {"set"},
+			"liveActivity": {"enabled", "start", "update", "end", "running", "next", "stop"},
 			"splash":       {"hold", "hide"},
 			"screen":       {"lock", "bars", "preventCapture", "screenshot", "stopScreenshots"},
 			"tracking":     {"request", "status"},
@@ -166,6 +168,12 @@ func TestScreenAndOthers(t *testing.T) {
 		}
 		if _, err, _ := callNow(t, h, "widget", "set", []byte(`{"kind":"k","entries":[]}`)); err == nil {
 			t.Error("widget.set succeeded with no widget extension")
+		}
+		if b, err, _ := callNow(t, h, "liveActivity", "enabled", nil); err != nil || len(b) != 1 || b[0] != 0 {
+			t.Errorf("liveActivity.enabled: %v, %v", b, err)
+		}
+		if _, err, _ := callNow(t, h, "liveActivity", "start", []byte(`{"id":"a","content":{}}`)); !strings.HasPrefix(errText(err), "not available") {
+			t.Errorf("liveActivity.start: %v", err)
 		}
 		if _, err, _ := callNow(t, h, "ageRange", "request", nil); errText(err) != "not available" {
 			t.Errorf("ageRange.request: %v", err)

@@ -13,7 +13,8 @@ import (
 
 // More of the system's modules on a Mac: asuka/sdk/background (an activity
 // that keeps App Nap off), asuka/sdk/sensors (a Mac has none of the motion
-// sensors: none available), asuka/sdk/widget, asuka/sdk/splash, asuka/sdk/screen
+// sensors: none available), asuka/sdk/widget, asuka/sdk/liveactivity (none),
+// asuka/sdk/splash, asuka/sdk/screen
 // (capture kept out of screenshots and recordings; screenshots seen by
 // Spotlight), asuka/sdk/tracking (App Tracking Transparency), asuka/sdk/integrity
 // (App Attest) and asuka/sdk/agerange.
@@ -23,6 +24,7 @@ func init() {
 		m["background"] = h.backgroundModule()
 		m["sensors"] = sensorsModule()
 		m["widget"] = widgetModule()
+		m["liveActivity"] = liveActivityModule()
 		m["splash"] = splashModule()
 		m["screen"] = h.screenModule()
 		m["tracking"] = trackingModule()
@@ -138,6 +140,25 @@ func widgetModule() map[string]method {
 		"set": func(_ []byte, reply func([]byte, error)) {
 			reply(nil, errors.New("not available: widgets are iOS's and Android's"))
 		},
+	}
+}
+
+// liveActivityModule is asuka/sdk/liveactivity's: Live Activities are an
+// iPhone's (a Mac shows an iPhone's in its menu bar, through iPhone
+// Mirroring, but no app of its own starts one): none, and nothing to
+// observe.
+func liveActivityModule() map[string]method {
+	na := func(_ []byte, reply func([]byte, error)) {
+		reply(nil, errors.New("not available: live activities are iOS's and Android's"))
+	}
+	return map[string]method{
+		"enabled": func(_ []byte, reply func([]byte, error)) { reply([]byte{0}, nil) },
+		"start":   na,
+		"update":  answerNil,
+		"end":     answerNil,
+		"running": func(_ []byte, reply func([]byte, error)) { reply([]byte("[]"), nil) },
+		"next":    na,
+		"stop":    answerNil,
 	}
 }
 

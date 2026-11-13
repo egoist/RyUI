@@ -46,6 +46,7 @@ web need nothing declared (see each one's section below).
 | `asuka/sdk/biometric` | `USE_BIOMETRIC` | `NSFaceIDUsageDescription` |
 | `asuka/sdk/audio/record` | `RECORD_AUDIO`, `FOREGROUND_SERVICE_MICROPHONE`; a foreground service | `NSMicrophoneUsageDescription` |
 | `asuka/sdk/nowplaying` | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`; a foreground service | the `audio` background mode (for an app that calls `nowplaying.Show`) |
+| `asuka/sdk/liveactivity` | `POST_NOTIFICATIONS`, `POST_PROMOTED_NOTIFICATIONS` | `NSSupportsLiveActivities` and the widget extension (for an app that calls it) |
 | `asuka/sdk/transcribe` | `RECORD_AUDIO` | `NSSpeechRecognitionUsageDescription` |
 | `asuka/sdk/screen` | `DETECT_SCREEN_CAPTURE` | |
 | `asuka/sdk/tracking` | | `NSUserTrackingUsageDescription` |
@@ -130,7 +131,7 @@ UserNotifications, AuthenticationServices), except where a Mac differs:
 | `asuka/sdk/transcribe` | On the device only; the app's bundle needs its purpose string, which `asuka build` writes |
 | `asuka/sdk/sensors` | A Mac has no motion sensors: `Available` is false, watching gets nothing, `StepsBetween` fails with `ErrNotAvailable` |
 | `ui.Haptic` | The trackpad's feedback (a Force Touch trackpad): an alignment for `HapticSelection`, a level change for the others |
-| `asuka/sdk/widget`, `asuka/sdk/agerange` | Not on a Mac: `widget.Set` does nothing, `agerange.Request` fails with `ErrNotAvailable` |
+| `asuka/sdk/widget`, `asuka/sdk/liveactivity`, `asuka/sdk/agerange` | Not on a Mac: `widget.Set` does nothing, `liveactivity.Start` and `agerange.Request` fail with `ErrNotAvailable` |
 | `asuka/sdk/splash` | A Mac app has no launch screen: `Hold` and `Hide` do nothing |
 | `ui.OnShare`, `app.ShareSheet`, shortcuts | iOS and Android only: a Mac app isn't offered in other apps' share menus, and `asuka.json`'s `shortcuts` aren't added |
 
@@ -175,6 +176,7 @@ device without it:
 | `asuka/sdk/screen` | `Lock` and `SetBars` do nothing; `PreventCapture` leaves the app's windows out of screenshots and recordings; `OnScreenshot` hears of the screenshots saved in the Screenshots folder (Print Screen with Windows, the Snipping Tool) |
 | `asuka/sdk/tracking` | No prompt: allowed while the advertising ID is on in Settings, else denied |
 | `asuka/sdk/push`, `asuka/sdk/widget`, `asuka/sdk/review`, `asuka/sdk/integrity` | Packaged (Store) apps' or Apple's and Google's: `push.Register` fails, `widget.Set` does nothing, `review.Request` shows nothing, `integrity.Supported` is false |
+| `asuka/sdk/liveactivity` | A phone's: `Enabled` is false, `Start` fails with `ErrNotAvailable` |
 | `asuka/sdk/appleauth`, `asuka/sdk/agerange`, `asuka/sdk/transcribe`, `asuka/sdk/sensors` | Not on Windows: unavailable, as on a device without them |
 | `ui.Haptic` | A PC has no haptics: it does nothing |
 | `asuka/sdk/splash` | A Windows app has no launch screen: `Hold` and `Hide` do nothing |
@@ -223,7 +225,7 @@ names what's missing.
 | `asuka/sdk/screen` | `Lock`, `SetBars` and `PreventCapture` do nothing; `OnScreenshot` hears of new images in Pictures/Screenshots (GNOME's, KDE's) |
 | `asuka/sdk/sensors` | iio-sensor-proxy (convertibles, tablets): the light sensor, in lux, and the accelerometer's orientation as 1 g along the axis that's up, as it turns. No others: `Available` is false, `StepsBetween` fails with `ErrNotAvailable` |
 | `asuka/sdk/contacts`, `asuka/sdk/calendar` | Evolution Data Server's address books and calendars (GNOME Contacts', GNOME Calendar's, the online accounts'): access is `Full` when it has one; `Pick` is a dialog of the contacts with a search field; `Add` asks, then saves in the default address book or the event's calendar. Without it: contacts' access is `Denied`, calendars' `WriteOnly`; `Add` opens a vCard or an iCalendar file in the user's contacts or calendar app (`saved` is false); `contacts.Pick` fails |
-| `asuka/sdk/photos`' library, `asuka/sdk/appleauth`, `asuka/sdk/transcribe`, `asuka/sdk/widget` | None on Linux: the library's access is `Denied`; `appleauth.Available` is false and its button shows nothing; `transcribe` fails with `ErrNotAvailable`; `widget.Set` does nothing. `asuka/sdk/splash` has nothing to hold |
+| `asuka/sdk/photos`' library, `asuka/sdk/appleauth`, `asuka/sdk/transcribe`, `asuka/sdk/widget`, `asuka/sdk/liveactivity` | None on Linux: the library's access is `Denied`; `appleauth.Available` is false and its button shows nothing; `transcribe` and `liveactivity.Start` fail with `ErrNotAvailable`; `widget.Set` does nothing. `asuka/sdk/splash` has nothing to hold |
 | `asuka/sdk/biometric`, `asuka/sdk/integrity`, `asuka/sdk/agerange`, `asuka/sdk/push` | None on Linux: not available, not supported. `asuka/sdk/review` does nothing; `asuka/sdk/tracking` answers allowed |
 | `asuka/sdk/crash` | Go's crash output, which has a crash in native code too (a signal in GTK's code, a GLib abort), reported as `Native`; the system's own record (systemd-coredump, apport) isn't read |
 | `ui.Haptic` | A desktop has no haptics: it does nothing |
@@ -262,7 +264,7 @@ and its service worker for notifications and Web Push.
 | `asuka/sdk/background` | The page runs while it's open; a task adds nothing, and has no notification |
 | `asuka/sdk/tracking` | No prompt: `Denied` when the browser sends Global Privacy Control or Do Not Track, else `Allowed` |
 | `ui.Haptic` | `navigator.vibrate`, where the browser has it (Chrome on Android) |
-| `asuka/sdk/review`, `asuka/sdk/integrity`, `asuka/sdk/agerange`, `asuka/sdk/appleauth`, `asuka/sdk/periodic`, `asuka/sdk/widget`, `asuka/sdk/transcribe` | Not on the web: an error that says so, or the package's `ErrNotAvailable` |
+| `asuka/sdk/review`, `asuka/sdk/integrity`, `asuka/sdk/agerange`, `asuka/sdk/appleauth`, `asuka/sdk/periodic`, `asuka/sdk/widget`, `asuka/sdk/liveactivity`, `asuka/sdk/transcribe` | Not on the web: an error that says so, or the package's `ErrNotAvailable` |
 | `asuka/sdk/maps` | OpenStreetMap's tiles, drawn by the host, as on Windows; `ShowsUser` once the page has the location permission |
 | `asuka/sdk/crash` | Go's crashes (the host keeps the runtime's output) and uncaught JavaScript errors, as `Exception` reports that aren't fatal |
 | `asuka/sdk/splash` | `Hold` and `Hide` do nothing |
@@ -2221,6 +2223,68 @@ extension the CLI builds into the app, sharing an App Group with it
 extension's ID, the app's plus `.widgets`). Android: an App Widget for
 each kind, Material You colors, sized to the launcher's cells. The
 desktops and the web have none: `widget.Set` does nothing there.
+
+## Live activities: asuka/sdk/liveactivity
+
+A live activity shows what's happening now outside the app, as it
+changes: a delivery on its way, a ride, a game's score, a timer. On iOS
+it's a Live Activity (iOS 16.2): the lock screen, the Dynamic Island, a
+banner on an iPhone without one. On Android it's an ongoing
+notification, which Android 16 promotes to a Live Update: at the top of
+the shade and the lock screen, with a chip in the status bar.
+
+```go
+a, err := liveactivity.Start(liveactivity.Content{
+	Title: "Order #1042", Subtitle: "Ana is picking it up", Value: "12 min",
+	Symbol: "bag.fill", Until: eta, URL: "myapp://orders/1042",
+}, liveactivity.Options{})
+
+// Later, on the main thread:
+a.Update(liveactivity.Content{Title: "Order #1042", Subtitle: "2 stops away", Value: "4 min", Until: eta},
+	liveactivity.Alert{Title: "Almost there", Body: "Ana is 2 stops away"})
+a.End(liveactivity.Content{Title: "Order #1042", Subtitle: "Delivered"}, liveactivity.Dismiss{})
+```
+
+An activity shows its `Content` with the platform's template, which
+leaves out what's empty: the `Title` and `Subtitle`, the `Value` (large
+at the side; the Dynamic Island's compact view; Android 16's status bar
+chip), the `Symbol` in the `Tint`, a `Progress` bar, and a countdown to
+`Until` that runs without the app. With `Since`, `Until` and
+`ShowProgress`, the bar fills by itself. Tapping it opens the app with
+its `URL` (`ui.OnOpenURL`).
+
+`Start` runs while the app is on screen (neither platform lets an app in
+the background start one) and isn't on the main thread; `Update` and
+`End` are. An `Alert` lights the screen up with the update: iOS expands
+the Dynamic Island and shows it on an Apple Watch; Android alerts with
+the notification again. `End` leaves the last content showing until the
+system takes it (4 hours at most), until `Dismiss.At`, or takes it at
+once with `Dismiss.Now`. `Running` lists the activities still running
+(after a relaunch, for instance), with what each shows; `Enabled`
+reports whether the user allows them (Android asks for notifications at
+the first `Start`).
+
+`Observe` says what happens to them: one `Ended` (by the user, the
+system, a server or `End`), one `Started` by a server, and the push
+tokens. With `Options.Push`, a server updates and ends an activity while
+the app is away: send its `PushToken` and its `ID` to the server. On iOS
+it sends an APNs push of the `liveactivity` type, whose `content-state`
+is the `Content` as JSON (its `MarshalJSON`, from Go); on Android, a
+Firebase data message with `asuka.liveActivity` (`update`, `end`),
+`asuka.id` and `asuka.content`. A server starts one with iOS 17.2's
+`PushToStartToken` (the attributes type `AsukaActivityAttributes`, with
+the new activity's `id`), or on Android with `asuka.liveActivity` set to
+`start`. The package's doc has the payloads. Pushing needs
+`asuka/sdk/push` in the app: the Push Notifications capability on iOS,
+Firebase on Android.
+
+The iOS build adds the widget extension for an app that calls the
+package, with the activities' template (SwiftUI's, as the widgets'), and
+`NSSupportsLiveActivities`; a release needs a profile for the
+extension's ID, as widgets do. The user can turn Live Activities off for
+the app in Settings, and Android 16's promotion in its notification
+settings. The desktops and the web have none: `Enabled` is false and
+`Start` fails with `ErrNotAvailable`.
 
 ## Shortcuts: Siri, Spotlight, the launcher
 

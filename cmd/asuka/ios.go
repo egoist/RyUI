@@ -346,6 +346,11 @@ var iosFeatures = []struct{ flag, symbol string }{
 	{"ASUKA_MAPS", "github.com/egoist/asuka/sdk/maps.View"},
 	{"ASUKA_PERIODIC", "github.com/egoist/asuka/sdk/periodic.Schedule"},
 	{"ASUKA_WIDGET", "github.com/egoist/asuka/sdk/widget.Set"},
+	// ActivityKit, and the widget extension with the Live Activities' template.
+	{"ASUKA_LIVEACTIVITY", "github.com/egoist/asuka/sdk/liveactivity.Start"},
+	{"ASUKA_LIVEACTIVITY", "github.com/egoist/asuka/sdk/liveactivity.Enabled"},
+	{"ASUKA_LIVEACTIVITY", "github.com/egoist/asuka/sdk/liveactivity.Running"},
+	{"ASUKA_LIVEACTIVITY", "github.com/egoist/asuka/sdk/liveactivity.Observe"},
 	{"ASUKA_CONTACTS", "github.com/egoist/asuka/sdk/contacts.Request"},
 	{"ASUKA_CONTACTS", "github.com/egoist/asuka/sdk/contacts.List"},
 	{"ASUKA_CONTACTS", "github.com/egoist/asuka/sdk/contacts.Pick"},
@@ -386,6 +391,7 @@ var iosFeatures = []struct{ flag, symbol string }{
 var featureExtras = map[string]struct {
 	entitlements map[string]any
 	plistArrays  map[string][]string
+	iosTrue      []string
 }{
 	// Communication notifications: the capability, and the intent the
 	// app donates for each message.
@@ -398,14 +404,27 @@ var featureExtras = map[string]struct {
 	"ASUKA_NOWPLAYING": {
 		plistArrays: map[string][]string{"UIBackgroundModes": {"audio"}},
 	},
+	// Live Activities: the app says it has them (the widget extension
+	// draws them: liveActivity).
+	"ASUKA_LIVEACTIVITY": {
+		iosTrue: []string{"NSSupportsLiveActivities"},
+	},
 }
 
 // addFeatureExtras adds what the features flags need (featureExtras).
 func (c *appConfig) addFeatureExtras(flags []string) {
 	for _, f := range flags {
+		if f == "ASUKA_LIVEACTIVITY" {
+			c.liveActivity = true
+		}
 		x, ok := featureExtras[f]
 		if !ok {
 			continue
+		}
+		for _, k := range x.iosTrue {
+			if !slices.Contains(c.iosTrue, k) {
+				c.iosTrue = append(c.iosTrue, k)
+			}
 		}
 		for k, v := range x.entitlements {
 			if c.entitlements == nil {
@@ -617,7 +636,7 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 			return "", err
 		}
 	}
-	if len(app.cfg.Widgets) > 0 {
+	if app.cfg.widgetExtension() {
 		exe, err := t.buildWidgets(work, app.cfg)
 		if err != nil {
 			return "", err

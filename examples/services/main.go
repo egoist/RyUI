@@ -29,6 +29,7 @@ import (
 	"github.com/egoist/asuka/sdk/dock"
 	"github.com/egoist/asuka/sdk/imageedit"
 	"github.com/egoist/asuka/sdk/integrity"
+	"github.com/egoist/asuka/sdk/liveactivity"
 	"github.com/egoist/asuka/sdk/maps"
 	"github.com/egoist/asuka/sdk/periodic"
 	"github.com/egoist/asuka/sdk/power"
@@ -88,6 +89,16 @@ func App() ui.Node {
 		tilting := signal.New(false)
 		var stopTilt func()
 		hidden := signal.New(false)
+		// The live activity started last (main thread), and what happens to them.
+		var trip *liveactivity.Activity
+		var tripEnd time.Time
+		signal.OnCleanup(liveactivity.Observe(func(e liveactivity.Event) {
+			log.Printf("services: live activity %v %v %s", e.Type, e.Activity, e.Token)
+			if e.Type == liveactivity.Ended && trip != nil && e.Activity.ID == trip.ID {
+				trip = nil
+				status.Set("The live activity ended")
+			}
+		}))
 		pow, look, displays := power.Use(), appearance.Use(), screen.UseDisplays()
 		signal.OnCleanup(power.OnLock(func() { log.Println("services: the screen locked") }))
 		signal.OnCleanup(power.OnSuspend(func() { log.Println("services: going to sleep") }))
@@ -376,6 +387,45 @@ func App() ui.Node {
 						Progress: 0.72, ShowProgress: true, Until: time.Now().Add(25 * time.Minute), URL: "asukaservices://speak",
 					})
 					status.Set("Widget updated")
+				}),
+				item("Start a live activity", func() {
+					status.Set("…")
+					start := time.Now()
+					tripEnd = start.Add(10 * time.Minute)
+					go func() {
+						a, err := liveactivity.Start(liveactivity.Content{
+							Title: "Order #1042", Subtitle: "Ana is picking it up", Value: "10 min", Symbol: "bag.fill",
+							ShowProgress: true, Since: start, Until: tripEnd, URL: "asukaservices://speak",
+						}, liveactivity.Options{})
+						ui.Post(func() {
+							if err != nil {
+								status.Set("live activity: " + err.Error())
+								return
+							}
+							trip = a
+							status.Set("Live activity started: lock the screen")
+						})
+					}()
+				}),
+				item("Update the live activity", func() {
+					if trip == nil {
+						status.Set("No live activity: start one")
+						return
+					}
+					trip.Update(liveactivity.Content{
+						Title: "Order #1042", Subtitle: "Ana is 2 stops away", Value: "4 min", Symbol: "bag.fill",
+						ShowProgress: true, Since: tripEnd.Add(-10 * time.Minute), Until: tripEnd, URL: "asukaservices://speak",
+					}, liveactivity.Alert{Title: "Almost there", Body: "Ana is 2 stops away"})
+					status.Set("Live activity updated")
+				}),
+				item("End the live activity", func() {
+					if trip == nil {
+						status.Set("No live activity: start one")
+						return
+					}
+					trip.End(liveactivity.Content{Title: "Order #1042", Subtitle: "Delivered", Symbol: "checkmark.circle.fill"}, liveactivity.Dismiss{})
+					trip = nil
+					status.Set("Live activity ended")
 				}),
 
 				section("Desktop"),

@@ -19,6 +19,12 @@ object AsukaPushHub {
     /** The module's: asks for the token, then answers JSON (token, service, allowed). Main thread. */
     var register: ((AsukaRuntime, (Result<ByteArray>) -> Unit) -> Unit)? = null
 
+    /**
+     * The module's: Firebase's token (null: none), without asking to show
+     * notifications, for asuka/sdk/liveactivity's pushes. Null without Firebase.
+     */
+    var token: (((String?) -> Unit) -> Unit)? = null
+
     fun message(id: String, title: String, body: String, data: Map<String, String>): ByteArray =
         messageJSON(id, title, body, data, null, null).toString().toByteArray()
 

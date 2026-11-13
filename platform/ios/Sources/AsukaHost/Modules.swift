@@ -228,6 +228,9 @@ struct AsukaModuleError: LocalizedError {
         #if ASUKA_WIDGET
         modules["widget"] = AsukaWidgetData.methods()
         #endif
+        #if canImport(ActivityKit) && ASUKA_LIVEACTIVITY
+        modules["liveActivity"] = AsukaLiveActivities.shared.methods()
+        #endif
         #if ASUKA_CONTACTS
         modules["contacts"] = AsukaContacts.shared.methods(self)
         #endif

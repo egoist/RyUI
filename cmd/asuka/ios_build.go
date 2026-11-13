@@ -74,6 +74,14 @@ func buildIOS(app *goApp, o *buildOptions) error {
 	if err != nil {
 		return err
 	}
+	// The widget extension of an app with Live Activities and no widgets,
+	// likewise known once the Go code is.
+	if cfg.widgetExtension() && widgetProf == nil && !o.simulator {
+		if widgetProf, err = pickProfile(prof.team, cfg.widgetID(), cfg.IOS.WidgetProfile, o.distribution); err != nil {
+			return fmt.Errorf("the widget extension (asuka/sdk/liveactivity's Live Activities): %v", err)
+		}
+		fmt.Printf("asuka: signing the widget extension with %q\n", widgetProf.name)
+	}
 	// The Notification Service Extension (push.Rewrite), whose profile is
 	// known once the Go code is: signed with one of its own, likewise.
 	if cfg.pushRewrite && !o.simulator {
@@ -181,8 +189,8 @@ func buildIOS(app *goApp, o *buildOptions) error {
 			return err
 		}
 	}
-	// The widget extension, likewise.
-	if len(cfg.Widgets) > 0 {
+	// The widget extension (widgets, Live Activities), likewise.
+	if cfg.widgetExtension() {
 		exe, err := tc.buildWidgets(work, cfg)
 		if err != nil {
 			return err

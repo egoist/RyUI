@@ -31,7 +31,7 @@ import (
 //     notification for them, as macOS hasn't).
 //   - sensors: none an app reads here, as on a Mac.
 //   - widget: Windows's widgets are packaged apps' (a widget provider);
-//     not available.
+//     not available. liveActivity: a phone's; none.
 //   - tracking: Windows has no prompt; the user's choice is Settings'
 //     advertising ID (Privacy & security, General): allowed while it's
 //     on, denied while it's off.
@@ -62,6 +62,15 @@ func init() {
 		m["screen"] = h.screenModule()
 		m["sensors"] = sensorsModule()
 		m["widget"] = map[string]asyncMethod{"set": failing("not available: widgets are iOS's and Android's")}
+		m["liveActivity"] = map[string]asyncMethod{
+			"enabled": func(_ []byte, reply func([]byte, error)) { reply([]byte{0}, nil) },
+			"start":   failing("not available: live activities are iOS's and Android's"),
+			"update":  answerNil,
+			"end":     answerNil,
+			"running": func(_ []byte, reply func([]byte, error)) { reply([]byte("[]"), nil) },
+			"next":    failing("not available: live activities are iOS's and Android's"),
+			"stop":    answerNil,
+		}
 		m["tracking"] = trackingModule()
 		m["integrity"] = integrityModule()
 		m["ageRange"] = map[string]asyncMethod{"request": failing("not available")}

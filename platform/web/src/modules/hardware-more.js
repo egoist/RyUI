@@ -21,7 +21,7 @@
 //   - splash: a page has no launch screen: nothing to hold.
 //   - transcribe.check: not on the device.
 //   - The rest fail, saying why: review, integrity, ageRange, appleAuth,
-//     periodic, widget, the photo library, contacts' and calendars'
+//     periodic, widget, liveActivity, the photo library, contacts' and calendars'
 //     reading, screenshots. (push is system-push.js's: Web Push.)
 
 import { Reader } from "../ops.js";
@@ -340,6 +340,15 @@ export function modules(h) {
     },
     background: background(),
     widget: { set: fail("widget.set", "a page has no home screen widgets") },
+    liveActivity: {
+      enabled: () => new Uint8Array([0]),
+      start: () => { throw new Error("not available: a page has no live activities"); },
+      update: () => {},
+      end: () => {},
+      running: () => "[]",
+      next: () => { throw new Error("not available: a page has no live activities"); },
+      stop: () => {},
+    },
     splash: { hold: () => {}, hide: () => {} },
     // asuka/sdk/recent and asuka/sdk/login: a desktop app's. A page has no recent
     // documents of its own with the system, and doesn't start at login.

@@ -25,6 +25,7 @@ Asuka 提供了一系列包，让应用用上视图之外的设备能力：相�
 | `asuka/sdk/biometric` | `USE_BIOMETRIC` | `NSFaceIDUsageDescription` |
 | `asuka/sdk/audio/record` | `RECORD_AUDIO`、`FOREGROUND_SERVICE_MICROPHONE`；一个前台服务 | `NSMicrophoneUsageDescription` |
 | `asuka/sdk/nowplaying` | `FOREGROUND_SERVICE`、`FOREGROUND_SERVICE_MEDIA_PLAYBACK`；一个前台服务 | `audio` 后台模式（仅限调用了 `nowplaying.Show` 的应用） |
+| `asuka/sdk/liveactivity` | `POST_NOTIFICATIONS`、`POST_PROMOTED_NOTIFICATIONS` | `NSSupportsLiveActivities` 和小组件扩展（仅限调用了它的应用） |
 | `asuka/sdk/transcribe` | `RECORD_AUDIO` | `NSSpeechRecognitionUsageDescription` |
 | `asuka/sdk/screen` | `DETECT_SCREEN_CAPTURE` | |
 | `asuka/sdk/tracking` | | `NSUserTrackingUsageDescription` |
@@ -83,7 +84,7 @@ Mac 应用（无论是 `asuka dev` 还是 `asuka build` 生成的）的 Info.pli
 | `asuka/sdk/transcribe` | 只在本机识别；应用的 bundle 需要它的用途说明，这一项由 `asuka build` 写入 |
 | `asuka/sdk/sensors` | Mac 没有运动传感器：`Available` 为 false，监听收不到任何数据，`StepsBetween` 以 `ErrNotAvailable` 失败 |
 | `ui.Haptic` | 触控板的反馈（需要 Force Touch 触控板）：`HapticSelection` 对应“对齐”反馈，其他类型对应“级别变化”反馈 |
-| `asuka/sdk/widget`、`asuka/sdk/agerange` | Mac 上不支持：`widget.Set` 什么也不做，`agerange.Request` 以 `ErrNotAvailable` 失败 |
+| `asuka/sdk/widget`、`asuka/sdk/liveactivity`、`asuka/sdk/agerange` | Mac 上不支持：`widget.Set` 什么也不做，`liveactivity.Start` 和 `agerange.Request` 以 `ErrNotAvailable` 失败 |
 | `asuka/sdk/splash` | Mac 应用没有启动屏：`Hold` 和 `Hide` 什么也不做 |
 | `ui.OnShare`、`app.ShareSheet`、快捷操作 | 仅限 iOS 和 Android：Mac 应用不会出现在其他应用的分享菜单里，`asuka.json` 的 `shortcuts` 也不会被添加 |
 
@@ -120,6 +121,7 @@ Windows 应用不需要声明任何东西：`asuka build --platform windows` 不
 | `asuka/sdk/screen` | `Lock` 和 `SetBars` 什么也不做；`PreventCapture` 让应用的窗口不出现在截图和录屏中；`OnScreenshot` 能收到保存在“屏幕截图”文件夹里的截图（Windows 键 + Print Screen、截图工具） |
 | `asuka/sdk/tracking` | 没有提示框：“设置”中的广告 ID 开着就是允许，否则就是拒绝 |
 | `asuka/sdk/push`、`asuka/sdk/widget`、`asuka/sdk/review`、`asuka/sdk/integrity` | 这些能力只属于打包（应用商店）应用，或者依赖 Apple 和 Google 的服务：`push.Register` 会失败，`widget.Set` 什么也不做，`review.Request` 不显示任何东西，`integrity.Supported` 为 false |
+| `asuka/sdk/liveactivity` | 这是手机的能力：`Enabled` 为 false，`Start` 以 `ErrNotAvailable` 失败 |
 | `asuka/sdk/appleauth`、`asuka/sdk/agerange`、`asuka/sdk/transcribe`、`asuka/sdk/sensors` | Windows 上不支持：返回不可用，与在缺少这些功能的设备上一样 |
 | `ui.Haptic` | 电脑没有触感反馈：什么也不做 |
 | `asuka/sdk/splash` | Windows 应用没有启动屏：`Hold` 和 `Hide` 什么也不做 |
@@ -153,7 +155,7 @@ Linux 宿主访问桌面服务时，有门户就走门户，此外还用到 GLib
 | `asuka/sdk/screen` | `Lock`、`SetBars` 和 `PreventCapture` 什么也不做；`OnScreenshot` 能收到 Pictures/Screenshots 中新增的图片（GNOME 和 KDE 都把截图存在这里） |
 | `asuka/sdk/sensors` | iio-sensor-proxy（适用于二合一设备、平板）：光线传感器（单位为 lux），以及由加速度计得出的方向，表示为沿朝上那条轴的 1 g，随设备转动而变化。没有其他传感器：`Available` 为 false，`StepsBetween` 以 `ErrNotAvailable` 失败 |
 | `asuka/sdk/contacts`、`asuka/sdk/calendar` | Evolution Data Server 中的通讯录和日历（来自 GNOME 通讯录、GNOME 日历和在线账户）：有它时访问权限为 `Full`；`Pick` 是一个带搜索框的联系人对话框；`Add` 先确认，再保存到默认通讯录或该日程所属的日历。没有它时：通讯录的访问权限为 `Denied`，日历为 `WriteOnly`；`Add` 会在用户的联系人或日历应用中打开一个 vCard 或 iCalendar 文件（`saved` 为 false）；`contacts.Pick` 会失败 |
-| `asuka/sdk/photos` 的照片库、`asuka/sdk/appleauth`、`asuka/sdk/transcribe`、`asuka/sdk/widget` | Linux 上都没有：照片库的访问权限为 `Denied`；`appleauth.Available` 为 false，它的按钮什么也不显示；`transcribe` 以 `ErrNotAvailable` 失败；`widget.Set` 什么也不做。`asuka/sdk/splash` 也没有启动屏可以保持 |
+| `asuka/sdk/photos` 的照片库、`asuka/sdk/appleauth`、`asuka/sdk/transcribe`、`asuka/sdk/widget`、`asuka/sdk/liveactivity` | Linux 上都没有：照片库的访问权限为 `Denied`；`appleauth.Available` 为 false，它的按钮什么也不显示；`transcribe` 和 `liveactivity.Start` 以 `ErrNotAvailable` 失败；`widget.Set` 什么也不做。`asuka/sdk/splash` 也没有启动屏可以保持 |
 | `asuka/sdk/biometric`、`asuka/sdk/integrity`、`asuka/sdk/agerange`、`asuka/sdk/push` | Linux 上都没有：返回不可用或不受支持。`asuka/sdk/review` 什么也不做；`asuka/sdk/tracking` 总是返回允许 |
 | `asuka/sdk/crash` | Go 的崩溃输出，其中也包括原生代码中的崩溃（GTK 代码里收到的信号、GLib 的 abort），这类崩溃报告为 `Native`；不会读取系统自己的崩溃记录（systemd-coredump、apport） |
 | `ui.Haptic` | 桌面设备没有触感反馈：什么也不做 |
@@ -187,7 +189,7 @@ Linux 宿主访问桌面服务时，有门户就走门户，此外还用到 GLib
 | `asuka/sdk/background` | 页面打开期间一直在运行；任务不会带来额外效果，也没有通知 |
 | `asuka/sdk/tracking` | 没有提示框：浏览器发送了 Global Privacy Control 或 Do Not Track 时为 `Denied`，否则为 `Allowed` |
 | `ui.Haptic` | 浏览器支持时（Android 上的 Chrome）使用 `navigator.vibrate` |
-| `asuka/sdk/review`、`asuka/sdk/integrity`、`asuka/sdk/agerange`、`asuka/sdk/appleauth`、`asuka/sdk/periodic`、`asuka/sdk/widget`、`asuka/sdk/transcribe` | Web 上不支持：返回一个说明这一点的错误，或者该包的 `ErrNotAvailable` |
+| `asuka/sdk/review`、`asuka/sdk/integrity`、`asuka/sdk/agerange`、`asuka/sdk/appleauth`、`asuka/sdk/periodic`、`asuka/sdk/widget`、`asuka/sdk/liveactivity`、`asuka/sdk/transcribe` | Web 上不支持：返回一个说明这一点的错误，或者该包的 `ErrNotAvailable` |
 | `asuka/sdk/maps` | 和 Windows 一样，由宿主绘制 OpenStreetMap 的瓦片；页面获得定位权限后，`ShowsUser` 才会生效 |
 | `asuka/sdk/crash` | Go 的崩溃（宿主会保留运行时的输出）和未捕获的 JavaScript 错误，都作为非致命的 `Exception` 报告 |
 | `asuka/sdk/splash` | `Hold` 和 `Hide` 什么也不做 |
@@ -1398,6 +1400,30 @@ widget.Set("today", widget.Entry{
 小组件会用平台的模板显示它的 `Entry`，并按尺寸排版：`Title`（带上 `Symbol`，以 `Tint` 着色）、大号的 `Value`、`Body`、`Progress` 进度条、到 `Until` 为止的实时倒计时，以及 `Caption`。在应用设置新的内容之前，它会一直显示当前内容，不管应用是否在运行；点按小组件会用它的 `URL` 打开应用（`ui.OnOpenURL`）。多个条目各自带上 `At`，就构成了一条时间线：每个条目从各自的时间开始显示。`Clear` 用来清空小组件。
 
 尺寸有 `small`、`medium`、`large`，以及 iOS 的 `extraLarge`（iPad）和锁屏上的 `circular`、`rectangular`、`inline`。iOS：CLI 会把一个 WidgetKit 扩展构建进应用，并让它与应用共享一个 App Group（发布构建需要开启 App Groups 功能，还需要为扩展的 ID，即应用的 ID 加上 `.widgets`，准备一个描述文件）。Android：每种小组件对应一个 App Widget，使用 Material You 配色，尺寸按启动器的网格单元计算。桌面端和 Web 没有小组件：`widget.Set` 在这些平台上什么也不做。
+
+## 实时活动：asuka/sdk/liveactivity
+
+实时活动在应用之外显示正在发生的事，并随着事情的进展更新：一份正在配送的外卖、一趟行程、一场比赛的比分、一个计时器。在 iOS 上，它是一个实时活动（Live Activity，iOS 16.2 起）：显示在锁屏和灵动岛上，没有灵动岛的 iPhone 上则以横幅显示。在 Android 上，它是一条常驻通知，Android 16 会把它提升为实时更新（Live Update）：显示在通知栏和锁屏的顶部，状态栏里还有一个胶囊标签。
+
+```go
+a, err := liveactivity.Start(liveactivity.Content{
+	Title: "Order #1042", Subtitle: "Ana is picking it up", Value: "12 min",
+	Symbol: "bag.fill", Until: eta, URL: "myapp://orders/1042",
+}, liveactivity.Options{})
+
+// 稍后，在主线程上：
+a.Update(liveactivity.Content{Title: "Order #1042", Subtitle: "2 stops away", Value: "4 min", Until: eta},
+	liveactivity.Alert{Title: "Almost there", Body: "Ana is 2 stops away"})
+a.End(liveactivity.Content{Title: "Order #1042", Subtitle: "Delivered"}, liveactivity.Dismiss{})
+```
+
+实时活动用平台的模板显示它的 `Content`，空着的字段不显示：`Title` 和 `Subtitle`、`Value`（大号显示在一侧；在灵动岛的紧凑视图里显示；在 Android 16 上是状态栏里的胶囊标签）、以 `Tint` 着色的 `Symbol`、`Progress` 进度条，以及一个到 `Until` 为止的倒计时，它不需要应用运行也会走。同时设置 `Since`、`Until` 和 `ShowProgress` 时，进度条会自己往前走。点按实时活动会用它的 `URL` 打开应用（`ui.OnOpenURL`）。
+
+`Start` 要在应用显示在屏幕上时调用（两个平台都不允许后台的应用启动实时活动），而且不能在主线程上调用；`Update` 和 `End` 则要在主线程上调用。带上 `Alert` 的更新会点亮屏幕：iOS 会展开灵动岛，并在 Apple Watch 上显示它；Android 会让通知再提醒一次。`End` 之后，最后的内容会一直显示，直到系统把它移走（最多 4 小时），或者到 `Dismiss.At` 为止；`Dismiss.Now` 则立即移走。`Running` 列出仍在运行的实时活动以及它们各自显示的内容（比如应用重新启动之后）；`Enabled` 表示用户是否允许实时活动（Android 会在第一次 `Start` 时请求通知权限）。
+
+`Observe` 会告诉你实时活动发生了什么：某个活动 `Ended`（被用户、系统、服务器或 `End` 结束）、某个活动被服务器 `Started`，以及推送令牌。设置了 `Options.Push` 后，服务器可以在应用不在前台时更新和结束实时活动：把它的 `PushToken` 和 `ID` 发给服务器即可。在 iOS 上，服务器发送一条 `liveactivity` 类型的 APNs 推送，其中的 `content-state` 就是 JSON 形式的 `Content`（在 Go 里用它的 `MarshalJSON` 生成）；在 Android 上，服务器发送一条 Firebase 数据消息，带上 `asuka.liveActivity`（`update` 或 `end`）、`asuka.id` 和 `asuka.content`。服务器也可以启动实时活动：在 iOS 17.2 上用 `PushToStartToken`（attributes 类型为 `AsukaActivityAttributes`，带上新活动的 `id`），在 Android 上把 `asuka.liveActivity` 设为 `start`。具体的消息格式见这个包的文档。推送需要应用同时使用 `asuka/sdk/push`：iOS 上需要推送通知功能，Android 上需要 Firebase。
+
+对于调用了这个包的应用，iOS 构建会加入小组件扩展，其中带有实时活动的模板（和小组件一样用 SwiftUI 编写），并设置 `NSSupportsLiveActivities`；和小组件一样，发布构建需要为扩展的 ID 准备一个描述文件。用户可以在“设置”里为应用关闭实时活动，也可以在 Android 16 的通知设置里关闭提升显示。桌面端和 Web 没有实时活动：`Enabled` 为 false，`Start` 以 `ErrNotAvailable` 失败。
 
 ## 快捷方式：Siri、聚焦搜索与启动器
 
