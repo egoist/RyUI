@@ -438,14 +438,6 @@ Its fields:
   off, GNOME's animations off). See [Motion](motion.md).
 - `ScreenReader`: VoiceOver, TalkBack, Narrator or Orca is on. See
   [Accessibility](accessibility.md#is-a-screen-reader-on).
-- `Platform`: the system the app runs on: `ui.PlatformIOS`,
-  `ui.PlatformAndroid`, `ui.PlatformMacOS`, `ui.PlatformWindows`,
-  `ui.PlatformLinux` or `ui.PlatformWeb` (the device's, also in `asuka
-  dev`, where a phone's Go code runs on your computer). The platform's
-  views look as they should by themselves; use it for what an app
-  draws itself, to follow each platform's design, as
-  [`examples/usage`](../examples/usage) draws UIKit's inset grouped
-  lists on iOS and Material 3's on Android.
 - `WidthClass`, `HeightClass`: how much room the window gives the app
   along each axis, as the platform classes it: `ui.SizeClassCompact`,
   `ui.SizeClassMedium` or `ui.SizeClassExpanded`. Branch on them, not
@@ -474,6 +466,31 @@ ui.Show(signal.Func(func() bool { return env.Get().WidthClass == ui.SizeClassExp
 	func() ui.Node { return ui.Row(ui.Style{Grow: 1}, sidebar(), detail()) },
 	func() ui.Node { return list() })
 ```
+
+### The platform
+
+`ui.Platform()` is the system the app runs on: `ui.PlatformIOS`,
+`ui.PlatformAndroid`, `ui.PlatformMacOS`, `ui.PlatformWindows`,
+`ui.PlatformLinux` or `ui.PlatformWeb`. It's the device's, also in
+`asuka dev`, where a phone's Go code runs on your computer, so branch on
+it, not on `runtime.GOOS` or build tags. It never changes, so it's a
+plain value: no accessor, no effect.
+
+```go
+variant := ui.ButtonFilled
+if ui.Platform() == ui.PlatformIOS {
+	variant = ui.ButtonGlassProminent
+}
+```
+
+Call it while the component builds, as `UseEnvironment`: `asuka dev`
+can serve an iPhone and an Android phone from one process, and each has
+its own. Keep it in a variable for an event handler or a goroutine.
+
+The platform's views look as they should by themselves; use it for what
+an app draws itself, to follow each platform's design, as
+[`examples/usage`](../examples/usage) draws UIKit's inset grouped lists
+on iOS and Material 3's on Android.
 
 ## Values that persist
 

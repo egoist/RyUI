@@ -306,11 +306,17 @@ func Row(style Styler, children ...Node) Node {
 // size, the locale and time zone.
 type Environment = host.Environment
 
-// Platform is the system the app runs on, the environment's Platform:
-// for the few places an app follows each platform's own design (a
-// section's heading, a card's corners) where Asuka has no view that does
-// it for it.
-type Platform = ops.Platform
+// PlatformKind is a system an app runs on: what Platform returns.
+type PlatformKind = ops.Platform
+
+// Platform is the system the app runs on (the device's, also in asuka
+// dev, where a phone's Go code runs on the computer): for the few places
+// an app follows each platform's own design (a section's heading, a
+// card's corners) where Asuka has no view that does it for it. It never
+// changes, so it's a value, not a signal; like UseEnvironment, it's the
+// root's being made (asuka dev serves a phone of each platform at once),
+// so call it as a component is made, and keep it for what runs later.
+func Platform() PlatformKind { return current().envV.Platform }
 
 const (
 	PlatformIOS     = ops.PlatformIOS

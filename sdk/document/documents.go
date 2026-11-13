@@ -116,12 +116,11 @@ func (ds *Documents[T]) Run() {
 // with a hidden main window on the desktop: ui.WindowOptions.Hidden).
 func (ds *Documents[T]) Root() ui.Node {
 	k := ds.k
-	env := signal.Untrack(ui.UseEnvironment().Get)
-	switch env.Platform {
+	switch p := ui.Platform(); p {
 	case ui.PlatformIOS, ui.PlatformAndroid, ui.PlatformWeb:
 	default:
 		k.desktop = true
-		k.mac = env.Platform == ui.PlatformMacOS
+		k.mac = p == ui.PlatformMacOS
 	}
 	k.mounted = true
 	signal.OnCleanup(func() { k.mounted = false })
