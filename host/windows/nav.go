@@ -61,6 +61,9 @@ type nav struct {
 	size, minSize [2]float32
 	cfg           ops.WindowConfig
 	ctl           *wctl
+	// edited: the document it shows has unsaved changes (a * before its
+	// title, as Notepad marks it).
+	edited bool
 }
 
 const (
@@ -344,6 +347,11 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 			n.nav.cfg = c
 			n.nav.size = [2]float32{c.Width, c.Height}
 			n.nav.minSize = [2]float32{c.MinWidth, c.MinHeight}
+		case ops.PropWindowEdited:
+			n.nav.edited = v.Int != 0
+			if n.nav.window != 0 {
+				SetWindowText(n.nav.window, h.windowTitle(n))
+			}
 		}
 	case ops.KindAlert:
 		switch p {
