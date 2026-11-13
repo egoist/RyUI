@@ -84,7 +84,15 @@ asuka build --platform ios
 
 `asuka publish --platform ios` 会构建并上传到 App Store Connect（见[发布到应用商店](#发布到应用商店)）；也可以用 Apple 的 Transporter 上传。
 
-**隐私清单。** App Store 要求每个应用都提供隐私清单，为它用到的、Apple 列出的需声明理由的每个 API 说明理由。Asuka 会根据二进制实际用到的 API 自动生成这份清单：Go 运行时会读取时钟和文件时间；清单还声明应用不做追踪、不收集任何数据。如果你的应用会收集数据或进行追踪，就自己写一份 `ios/PrivacyInfo.xcprivacy`，同时把上面那些理由也写进去，Asuka 会改用你的版本。无论应用用的是哪一份，`asqlite.framework` 都带有自己的隐私清单，说明 SQLite 用到的 API（文件时间、磁盘剩余空间）。
+**隐私清单。** App Store 要求每个应用都提供隐私清单，为它用到的、Apple 列出的需声明理由的每个 API 说明理由。Asuka 会根据二进制实际用到的 API 自动生成这份清单：Go 运行时会读取时钟和文件时间。清单声明应用不做追踪；应用收集的数据则按 `ios.collected` 列出的写入，App Store Connect 会拿它和应用的隐私标签对照：
+
+```json
+"ios": {
+  "collected": [{ "type": "EmailAddress", "linked": true, "purposes": ["AppFunctionality"] }]
+}
+```
+
+`type` 和 `purposes` 使用 Apple 的名称并去掉前缀（`NSPrivacyCollectedDataType`、`NSPrivacyCollectedDataTypePurpose`）；`linked` 表示数据与用户身份关联，`tracking` 表示数据用于追踪用户（见 [asuka.json 参考](asuka-json.md#ios)）。如果你的应用会进行追踪，或者清单需要的内容不止这些，就自己写一份 `ios/PrivacyInfo.xcprivacy`，同时把上面那些理由也写进去。Asuka 会改用你的版本，`ios.collected` 也随之被忽略。无论应用用的是哪一份，`asqlite.framework` 都带有自己的隐私清单，说明 SQLite 用到的 API（文件时间、磁盘剩余空间）。
 
 ## Android
 

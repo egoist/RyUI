@@ -200,10 +200,24 @@ the group too, for its data, whatever it takes.
 
 **Privacy manifest.** The App Store requires one, giving a reason for
 each API of Apple's list the app uses. Asuka writes it, from what the
-binary uses: Go's runtime reads the clock and file times; it declares no
-tracking and no data collected. If your app collects data or tracks,
-write your own as `ios/PrivacyInfo.xcprivacy`, with those reasons in it
-too; Asuka uses it instead. `asqlite.framework` has a manifest of its
+binary uses: Go's runtime reads the clock and file times. It declares
+no tracking, and the data the app collects as `ios.collected` lists it,
+for what App Store Connect compares with the app's privacy labels:
+
+```json
+"ios": {
+  "collected": [{ "type": "EmailAddress", "linked": true, "purposes": ["AppFunctionality"] }]
+}
+```
+
+`type` and `purposes` are Apple's names without their prefixes
+(`NSPrivacyCollectedDataType`, `NSPrivacyCollectedDataTypePurpose`);
+`linked` says the data is tied to the user's identity, `tracking` that
+it's used to track them (see [the reference](asuka-json.md#ios)). If
+your app tracks, or its manifest needs more than this, write your own
+as `ios/PrivacyInfo.xcprivacy`, with the reasons above in it too; Asuka
+uses it instead, and `ios.collected` with it is ignored.
+`asqlite.framework` has a manifest of its
 own, for what SQLite uses (file times, the disk's free space), whichever
 the app's is.
 
