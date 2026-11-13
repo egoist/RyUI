@@ -2363,6 +2363,48 @@ and never assumes a single root in its own data structures.
   route them (key equivalents, accelerators), and how users find them.
   Mobile hosts ignore it.
 
+**Global shortcuts** (`hotkey`): keys that reach the app while another
+app is in front (a launcher's panel, start and stop a recording).
+
+- `hotkey.Register(Props{Shortcut, Description, OnPress})` registers a
+  `ui.Shortcut` while the calling component's owner lives; disposed (or
+  `Unregister`), the keys are let go. The shortcut follows its accessor:
+  the old keys go as the new ones are taken, and a Shortcut without a
+  Key registers nothing (a setting the user cleared). `OnPress` runs on
+  the main thread at each press; a key held down doesn't repeat it, and
+  only the press is reported (Windows tells no release).
+- `Status()` (off, pending, active, failed) and `Err()` are signals:
+  `ErrTaken` (another app has the keys, or this one already does),
+  `ErrNotAllowed` (the user declined, or the desktop won't bind them for
+  an app it can't place), `ErrNotAvailable` (phones, the web, a Wayland
+  desktop without the portal), `ErrKey` (no such key).
+- One module, `hotkey`: `register` (id, modifiers, key, description),
+  `unregister`, and a long poll, `next`, answered with the ids pressed
+  since; one runs while any shortcut is active, `stop` ends it. Phones and
+  the web have no module, which the package reports as `ErrNotAvailable`.
+- macOS: Carbon's `RegisterEventHotKey` through purego, as every Mac
+  app's global shortcut (no Accessibility permission), registered
+  exclusively; the system's own shortcuts (`CopySymbolicHotKeys`) are
+  taken. A character is the key that types it on the keyboard's layout
+  (`UCKeyTranslate`). Another app's non-exclusive registration of the
+  same keys isn't reported: both get the press.
+- Windows: `RegisterHotKey` on a message window, `MOD_NOREPEAT`; it fails
+  while another app has the keys. The press lets the app take the
+  foreground. Keys map as the menu bar's accelerators do.
+- Linux, Wayland: apps can't see other apps' keys; the desktop binds
+  them through the XDG desktop portal's GlobalShortcuts (GNOME 48, KDE
+  Plasma 6, Hyprland). A session binds its shortcuts once, so each change
+  binds them all in a new session (named after the app), with their
+  descriptions and preferred triggers; the desktop may ask the user to
+  confirm or pick other keys, remembers them by the shortcut's id, and
+  knows the app by its desktop entry. `Activated` is a press; its
+  activation token is the display's while `OnPress` runs, so a window
+  it shows takes the focus. Linux, X11: `XGrabKey` on the root window
+  (in Caps Lock's and Num Lock's states too), taken while another client
+  has the keys; presses come through GDK's `xevent`. Neither (GNOME
+  before 48, XWayland alone, whose grabs see only X11 windows' keys):
+  `ErrNotAvailable`.
+
 ## The web
 
 The app's Go code is a WebAssembly program (`GOOS=js GOARCH=wasm`,
