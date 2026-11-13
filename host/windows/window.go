@@ -177,6 +177,7 @@ func (h *Host) makeWindow() {
 func (h *Host) windowMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
 	h.placementMessage(m, wp)
 	h.badgeMessage(m)
+	h.dockMessage(m)
 	if r, ok := h.menuBarMessage(h.window, m, wp, lp); ok {
 		return r, true
 	}
