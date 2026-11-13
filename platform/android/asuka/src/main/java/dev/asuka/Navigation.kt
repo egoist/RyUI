@@ -1323,7 +1323,6 @@ private fun AsukaRuntime.presentFullScreen(act: AsukaActivity, n: AsukaNode) {
     val d = androidx.activity.ComponentDialog(ctx, R.style.ThemeOverlay_Asuka_FullScreenDialog)
     val screen = n.view as AsukaScreen
     (screen.parent as? ViewGroup)?.removeView(screen)
-    screen.setBackgroundColor(MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorSurface, Color.WHITE))
     d.setContentView(screen, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
     directDialog(d)
     val w = d.window
@@ -1336,13 +1335,9 @@ private fun AsukaRuntime.presentFullScreen(act: AsukaActivity, n: AsukaNode) {
         }
         w.isNavigationBarContrastEnforced = true // a scrim behind three-button navigation, as the activity's
         w.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
-        // The bars' icons dark on a light app, light on a dark one.
-        val light = !isNight(act.resources.configuration)
-        androidx.core.view.WindowCompat.getInsetsController(w, w.decorView).run {
-            isAppearanceLightStatusBars = light
-            isAppearanceLightNavigationBars = light
-        }
     }
+    n.dialog = d
+    styleFullScreen(n, isNight(act.resources.configuration))
     // Its insets change (the keyboard, a rotation): its environment again,
     // the keyboard frame by frame as it moves.
     ViewCompat.setOnApplyWindowInsetsListener(screen) { _, ins -> screen.post { screen.report() }; ins }
@@ -1416,8 +1411,23 @@ private fun AsukaRuntime.presentFullScreen(act: AsukaActivity, n: AsukaNode) {
     }
     d.onBackPressedDispatcher.addCallback(back)
     d.setCanceledOnTouchOutside(false)
-    n.dialog = d
     d.show()
+}
+
+/**
+ * A full-screen sheet's look, which follows the app's light or dark
+ * (the system's dark mode, or ui.SetColorScheme) while it shows: its
+ * surface, and the system bars' icons over it, dark on a light app and
+ * light on a dark one, as the activity's.
+ */
+internal fun AsukaRuntime.styleFullScreen(n: AsukaNode, night: Boolean) {
+    val d = n.dialog ?: return
+    n.view.setBackgroundColor(MaterialColors.getColor(themed, com.google.android.material.R.attr.colorSurface, Color.WHITE))
+    val w = d.window ?: return
+    androidx.core.view.WindowCompat.getInsetsController(w, w.decorView).run {
+        isAppearanceLightStatusBars = !night
+        isAppearanceLightNavigationBars = !night
+    }
 }
 
 private fun AsukaRuntime.presentAlert(act: AsukaActivity, n: AsukaNode) {

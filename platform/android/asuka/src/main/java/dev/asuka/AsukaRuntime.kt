@@ -559,6 +559,7 @@ class AsukaRuntime private constructor(val app: Application) : AsukaOpHandler {
                 (n.view as? AsukaSegmented)?.restyle()
                 (n.view as? AsukaPicker)?.restyle()
                 (n.view as? AsukaDatePicker)?.refresh() // says the date in the language
+                if (n.kind == AsukaKind.SHEET && n.fullScreen) styleFullScreen(n, night)
             }
         }
     }
@@ -588,6 +589,11 @@ class AsukaRuntime private constructor(val app: Application) : AsukaOpHandler {
         val cur = n.view
         when {
             old is android.widget.EditText && cur is android.widget.EditText -> {
+                // The old view's layout params first: a field measured while
+                // its props were replayed (a multiline one) checks them as
+                // its text is set (TextView.checkForResize).
+                if (cur.layoutParams == null) cur.layoutParams = old.layoutParams
+                    ?: ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                 cur.setText(old.text)
                 cur.setSelection(old.selectionStart.coerceAtLeast(0), old.selectionEnd.coerceAtLeast(0))
                 n.pasteTypes?.let { setPasteTypes(n, ByteBuffer.wrap(it)) }
