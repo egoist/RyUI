@@ -164,6 +164,7 @@ type node struct {
 	dying          bool
 	interceptBack  bool // ui.OnBack: going back asks the core (Back)
 	tooltip        string
+	keys           []ops.Key  // its Keys prop's, Control as primary (keys.go)
 	canvas         []byte     // a Canvas's display list
 	kage           *cpuShader // a Shader's program, on the CPU
 	paneNode       *node      // a SplitView's pane
@@ -309,6 +310,10 @@ type Host struct {
 	dropHelp       DropHelper
 	dropHelperMade bool
 	pendingURLs    []string // opened with before the root was mounted
+
+	// The keys a view took (keys_windows.go): their letting go doesn't
+	// reach the focused control or the menu bar, nor Alt's if it was held.
+	keyUps [256]bool
 }
 
 var theHost *Host
@@ -432,10 +437,13 @@ func (h *Host) loop() {
 }
 
 // preTranslate handles a key message for one of the app's windows before
-// it's dispatched: the menus' shortcuts (TranslateAccelerator, against
+// it's dispatched: a view's Keys, the menus' shortcuts (TranslateAccelerator, against
 // the window it's for), the host's keys, and Tab and arrow key
 // navigation among the controls, as in a dialog (IsDialogMessage).
 func (h *Host) preTranslate(m *Msg) bool {
+	if h.routeKey(m) { // the views' Keys, first (keys_windows.go)
+		return true
+	}
 	w := h.keyWindow(m.Hwnd)
 	if w == 0 {
 		return false

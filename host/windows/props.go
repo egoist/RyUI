@@ -159,6 +159,8 @@ func (h *Host) setCommon(n *node, p ops.PropID, v *ops.Value) {
 		SetTooltip(h.tips, n.hwnd, v.Str)
 	case ops.PropInterceptBack:
 		n.interceptBack = v.Int != 0 // ui.OnBack: the back button and Escape ask the core
+	case ops.PropKeys:
+		n.keys = keysOf(v.Bytes) // keys_windows.go routes keys to it
 	}
 }
 

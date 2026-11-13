@@ -23,11 +23,6 @@ import (
 // drawn red by the host (menudraw.go).
 
 const (
-	modPrimary = 1
-	modShift   = 2
-	modAlt     = 4
-	modControl = 8
-
 	// menuBase is the command ID of the menus' first item.
 	menuBase = 0x100
 )
