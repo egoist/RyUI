@@ -14,7 +14,7 @@ import (
 	. "github.com/egoist/asuka/internal/gtk"
 )
 
-// A vCard as EDS writes one: its fields as asuka/contacts' JSON.
+// A vCard as EDS writes one: its fields as asuka/sdk/contacts' JSON.
 func TestContactOfVCard(t *testing.T) {
 	card := "BEGIN:VCARD\r\nVERSION:3.0\r\nUID:pas-id-1\r\nFN:Ada Lovelace\r\nN:Lovelace;Ada;;;\r\n" +
 		"ORG:Analytical Engines\\, Ltd;Research\r\nTITLE:Countess\r\nitem1.TEL;TYPE=CELL;X-EVOLUTION-UI-SLOT=1:+44 1\r\n" +

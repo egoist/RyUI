@@ -14,7 +14,7 @@
 // that imports asuka/sqlite: its worker starts with the app),
 // serviceWorker (the URL of the app's service worker, sw.js with the
 // app's settings, which the page registers: its notifications and
-// pushes), vapidPublicKey (the app's VAPID key, for asuka/push), icon (a
+// pushes), vapidPublicKey (the app's VAPID key, for asuka/sdk/push), icon (a
 // notification's icon), mapTiles (the URL of maps.View's tiles, with
 // {z}, {x} and {y}: OpenStreetMap's by default), dev (asuka dev's: the page reloads with each
 // build, keeping the app's state, and the app's logs go to the terminal).
@@ -63,7 +63,7 @@ export async function start(options = {}) {
   const hostName = "asukaHost" + (hosts++ || "");
   globalThis[hostName] = host;
   const go = new globalThis.Go();
-  // asuka/crash's record of the run: what Go's runtime prints of a crash, uncaught errors.
+  // asuka/sdk/crash's record of the run: what Go's runtime prints of a crash, uncaught errors.
   host.crash = new Crash(go, host);
   // The program's exit status (wasm_exec.js only logs it).
   go.exitCode = 0;
@@ -94,7 +94,7 @@ export async function start(options = {}) {
   if (dev) dev.attach(host);
   const run = go.run(instance);
   // What's scheduled and came due while no page was open shows now.
-  try { notifyFor(host); } catch (e) { console.warn("asuka/notify:", e); }
+  try { notifyFor(host); } catch (e) { console.warn("asuka/sdk/notify:", e); }
   run.then(() => {
     host.crash.exited(go.exitCode);
     if (go.exitCode) showError(container, dev?.lastError() || `The app stopped (exit status ${go.exitCode}).`);

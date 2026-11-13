@@ -1,6 +1,6 @@
 // The widget extension (asuka.json's widgets): WidgetKit's, so SwiftUI's,
 // the one place Asuka's iOS host uses it. It runs no Go: the app's Go code
-// sets each kind's entries (asuka/widget), which the app keeps in the App
+// sets each kind's entries (asuka/sdk/widget), which the app keeps in the App
 // Group's defaults (AsukaAppGroup) for this extension to show with one
 // template, laid out for each size. The CLI compiles this with the app's
 // kinds (Kinds.swift: a WidgetBundle of AsukaKindWidget<...>).
@@ -15,7 +15,7 @@ protocol AsukaWidgetKind {
     static var families: [WidgetFamily] { get }
 }
 
-/// What the app set: as asuka/widget's Entry on the wire.
+/// What the app set: as asuka/sdk/widget's Entry on the wire.
 struct AsukaWidgetEntry: TimelineEntry, Decodable {
     var date: Date = .now
     var title = "", value = "", body = "", caption = "", symbol = "", url = "", tint = ""

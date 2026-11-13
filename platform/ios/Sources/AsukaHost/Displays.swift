@@ -83,7 +83,7 @@ func asukaJSONNumber(_ v: Double) -> String {
     return s
 }
 
-/// asuka/screen's displays: "current" (a JSON list as screen.Display's,
+/// asuka/sdk/screen's displays: "current" (a JSON list as screen.Display's,
 /// the device's own screen first, in points as it's turned now), and,
 /// while watching, "next" and "stop". A screen the iPhone mirrors or
 /// extends to (AirPlay, a cable) follows it, placed after it in a row.
@@ -126,7 +126,7 @@ func asukaJSONNumber(_ v: Double) -> String {
     func methods() -> [String: AsukaModuleMethod] { watch.methods() }
 }
 
-/// asuka/dock: a phone has no Dock or taskbar: nothing to show, nothing asked.
+/// asuka/sdk/dock: a phone has no Dock or taskbar: nothing to show, nothing asked.
 enum AsukaDock {
     static func methods() -> [String: AsukaModuleMethod] {
         [

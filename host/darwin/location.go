@@ -13,7 +13,7 @@ import (
 	. "github.com/egoist/asuka/internal/darwin"
 )
 
-// asuka/location on a Mac, with Core Location as on iOS: the position now
+// asuka/sdk/location on a Mac, with Core Location as on iOS: the position now
 // ("current"), each next one while watching ("next", "stop"), a place's
 // name ("name"). Replies are JSON: lat, lon, acc (meters), alt, t (Unix
 // ms); "denied" fails when the user hasn't allowed it. macOS asks the

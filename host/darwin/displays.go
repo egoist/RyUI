@@ -9,7 +9,7 @@ import (
 	. "github.com/egoist/asuka/internal/darwin"
 )
 
-// asuka/screen's displays on a Mac: NSScreen's screens (the first is the
+// asuka/sdk/screen's displays on a Mac: NSScreen's screens (the first is the
 // one with the menu bar, the primary), read again as AppKit says they
 // changed (NSApplicationDidChangeScreenParametersNotification: one
 // plugged in or out, arranged, a resolution or scale changed, the Dock

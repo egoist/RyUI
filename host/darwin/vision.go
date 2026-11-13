@@ -17,7 +17,7 @@ import (
 	. "github.com/egoist/asuka/internal/darwin"
 )
 
-// asuka/scan's "file" and asuka/vision's "analyze" on a Mac, with Vision as
+// asuka/sdk/scan's "file" and asuka/sdk/vision's "analyze" on a Mac, with Vision as
 // on iOS.
 //
 // scan.file: the kinds, comma-separated, a newline, the path; answers a
@@ -35,7 +35,7 @@ func init() {
 	})
 }
 
-// scanSymbologies are asuka/scan's kinds and Vision's symbologies.
+// scanSymbologies are asuka/sdk/scan's kinds and Vision's symbologies.
 var scanSymbologies = []struct {
 	kind  string
 	names []string
@@ -55,7 +55,7 @@ var visLoad = sync.OnceValue(func() uintptr { return framework("Vision") })
 // it: Codabar is macOS 12's).
 func scanSymbology(name string) ID { return Const(visLoad(), name) }
 
-// scanKind is asuka/scan's name of a symbology.
+// scanKind is asuka/sdk/scan's name of a symbology.
 func scanKind(sym string) string {
 	for _, s := range scanSymbologies {
 		if s.kind == "upca" {
@@ -70,7 +70,7 @@ func scanKind(sym string) string {
 	return ""
 }
 
-// scanKinds is what asuka/scan asks for ("": every kind).
+// scanKinds is what asuka/sdk/scan asks for ("": every kind).
 type scanKinds map[string]bool
 
 func parseScanKinds(s string) scanKinds {
@@ -85,7 +85,7 @@ func parseScanKinds(s string) scanKinds {
 
 func (k scanKinds) wants(kind string) bool { return len(k) == 0 || k[kind] }
 
-// named is the code as asuka/scan names it: Apple reads a UPC-A as an
+// named is the code as asuka/sdk/scan names it: Apple reads a UPC-A as an
 // EAN-13 with a leading 0, a UPC-A again if the app asked for those.
 func (k scanKinds) named(kind, value string) (string, string) {
 	if kind == "ean13" && len(value) == 13 && strings.HasPrefix(value, "0") && k.wants("upca") {
@@ -94,7 +94,7 @@ func (k scanKinds) named(kind, value string) (string, string) {
 	return kind, value
 }
 
-// encodeCodes is the reply asuka/scan's decode reads.
+// encodeCodes is the reply asuka/sdk/scan's decode reads.
 func encodeCodes(codes [][2]string) []byte {
 	le := binary.LittleEndian
 	b := le.AppendUint32(nil, uint32(len(codes)))
@@ -245,7 +245,7 @@ func (h *Host) visionAnalyze(args []byte, reply func([]byte, error)) {
 }
 
 // visUpright is the image upright, whatever its orientation says (+1):
-// the boxes are in the same space as asuka/imageedit's pixels.
+// the boxes are in the same space as asuka/sdk/imageedit's pixels.
 func visUpright(path string) (uintptr, error) {
 	u := FileURL(path)
 	if strings.HasPrefix(path, "file://") {

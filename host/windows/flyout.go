@@ -252,7 +252,7 @@ func (h *Host) parentContent(id ops.NodeID) (uintptr, float32) {
 	return 0, h.scale
 }
 
-// trayIconRect is the rectangle of the tray icon id (asuka/tray's), as
+// trayIconRect is the rectangle of the tray icon id (asuka/sdk/tray's), as
 // the notification area shows it.
 func (h *Host) trayIconRect(id uint32) (Rect, bool) {
 	s := h.tray

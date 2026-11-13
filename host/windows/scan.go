@@ -17,12 +17,12 @@ import (
 
 // Codes in images on Windows, which has no reader of its own for apps:
 // package barcode's, in Go (QR codes, Data Matrix, EAN-13 and EAN-8,
-// UPC-A and UPC-E, Code 128, Code 39). asuka/scan's "file" (the kinds,
+// UPC-A and UPC-E, Code 128, Code 39). asuka/sdk/scan's "file" (the kinds,
 // comma-separated, a newline, the path; answers a u32 count, then each
 // code's kind and value, u32-length strings), vision's codes, and the
 // camera view's frames.
 
-// scanKinds is what asuka/scan asks for ("": every kind).
+// scanKinds is what asuka/sdk/scan asks for ("": every kind).
 type scanKinds map[string]bool
 
 func parseScanKinds(s string) scanKinds {
@@ -90,7 +90,7 @@ func scanFile(path string, k scanKinds) (codes []barcode.Code, w, h int, err err
 	return
 }
 
-// encodeCodes is the reply asuka/scan's decode reads.
+// encodeCodes is the reply asuka/sdk/scan's decode reads.
 func encodeCodes(codes [][2]string) []byte {
 	le := binary.LittleEndian
 	b := le.AppendUint32(nil, uint32(len(codes)))

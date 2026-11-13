@@ -19,7 +19,7 @@ import java.nio.ByteOrder
 import java.util.Locale
 
 /**
- * asuka/transcribe's module: "check" (the language) answers JSON onDevice,
+ * asuka/sdk/transcribe's module: "check" (the language) answers JSON onDevice,
  * language; "file" (JSON path, language) answers JSON text, segments,
  * language. Android 13's on-device recognizer, in a segmented session, fed
  * the file decoded to 16 kHz mono: only ever on the device.

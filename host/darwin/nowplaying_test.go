@@ -16,7 +16,7 @@ import (
 	"github.com/ebitengine/purego/objc"
 
 	. "github.com/egoist/asuka/internal/darwin"
-	"github.com/egoist/asuka/nowplaying"
+	"github.com/egoist/asuka/sdk/nowplaying"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )

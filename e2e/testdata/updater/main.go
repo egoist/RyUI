@@ -12,9 +12,9 @@ import (
 	"os"
 
 	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/sdk/update"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
-	"github.com/egoist/asuka/update"
 )
 
 func main() {

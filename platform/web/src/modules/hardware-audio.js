@@ -1,4 +1,4 @@
-// asuka/speech, asuka/audio, asuka/audio/record and asuka/nowplaying in
+// asuka/sdk/speech, asuka/sdk/audio, asuka/sdk/audio/record and asuka/sdk/nowplaying in
 // the browser (nowPlaying: see its function).
 //
 //   - speech: speechSynthesis. "speak" (JSON: id, text, language, voice,
@@ -42,7 +42,7 @@ export function sourceURL(h, src) {
   return h.assets + "/" + src.replace(/^\.?\//, "");
 }
 
-/** status is a player's status as asuka/audio's reply: f64 position, f64 duration, u8 playing, u8 ended. */
+/** status is a player's status as asuka/sdk/audio's reply: f64 position, f64 duration, u8 playing, u8 ended. */
 export function encodeStatus(position, duration, playing, ended) {
   const b = new Uint8Array(18);
   const v = new DataView(b.buffer);
@@ -357,7 +357,7 @@ export function encodeCommands(cmds) {
 }
 
 /**
- * nowPlaying is asuka/nowplaying's module: the page's Media Session
+ * nowPlaying is asuka/sdk/nowplaying's module: the page's Media Session
  * (navigator.mediaSession), which the browser's media controls, the
  * media keys and a phone's lock screen show and drive while the page
  * plays. "set" (JSON: internal/nowplayingspec's Info) sets its metadata,

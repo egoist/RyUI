@@ -15,7 +15,7 @@ import (
 	. "github.com/egoist/asuka/internal/windows"
 )
 
-// asuka/webauth on Windows: the sign-in page in a window of its own over
+// asuka/sdk/webauth on Windows: the sign-in page in a window of its own over
 // the window in use (which waits, as for a sheet), a WebView2 in it, as
 // ASWebAuthenticationSession's sheet is on a Mac. It shares the app's
 // WebView2 profile (the user's sessions there), or, Ephemeral, has a

@@ -14,7 +14,7 @@ import (
 // "current" answers it, "next" answers once it isn't the state given
 // (or with the events queued since), "stop" answers the waiting "next"s
 // with "stopped". The state is read again as what it's read from
-// changes; events (asuka/power's) are queued from the first "next" until
+// changes; events (asuka/sdk/power's) are queued from the first "next" until
 // "stop", so none is lost between two "next"s.
 type watched struct {
 	read    func() []byte

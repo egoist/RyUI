@@ -104,7 +104,7 @@ func (h *Host) makeMenu(app ID) {
 		sep(file)
 	}
 	// The app's File menu with Open Recent and Close of its own (a
-	// document app's, asuka/document) has them where it puts them.
+	// document app's, asuka/sdk/document) has them where it puts them.
 	if !hasRole(own["File"], ops.MenuRoleOpenRecent) && h.hasOpenRecent() { // files.go
 		h.addOpenRecent(file)
 		sep(file)

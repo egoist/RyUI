@@ -210,7 +210,7 @@ func (s *ShareSheet) close(how byte) {
 	}
 	s.done = true
 	// The sheet's process ends with it, as an app in the background may:
-	// what's pending is written now (asuka/store), and app.OnLifecycle
+	// what's pending is written now (asuka/sdk/store), and app.OnLifecycle
 	// hears it.
 	for _, f := range boot.Lifecycle {
 		f(int(ops.LifecycleBackground))

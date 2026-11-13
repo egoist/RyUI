@@ -118,7 +118,7 @@ func TestQuitAsks(t *testing.T) {
 	})
 }
 
-// asuka/recent: the app's recent files, newest first, those that exist;
+// asuka/sdk/recent: the app's recent files, newest first, those that exist;
 // clearing takes the app off them, the user's other recent files stay.
 func TestRecentModule(t *testing.T) {
 	dir := t.TempDir()
@@ -184,7 +184,7 @@ func TestRecentModule(t *testing.T) {
 	}
 }
 
-// asuka/login: an XDG autostart entry, which the user can turn off.
+// asuka/sdk/login: an XDG autostart entry, which the user can turn off.
 func TestLoginModule(t *testing.T) {
 	cfg := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", cfg)

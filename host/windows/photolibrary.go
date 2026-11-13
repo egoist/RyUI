@@ -19,7 +19,7 @@ import (
 	. "github.com/egoist/asuka/internal/windows"
 )
 
-// asuka/photos' library on Windows ("photoLibrary"): the user's Pictures
+// asuka/sdk/photos' library on Windows ("photoLibrary"): the user's Pictures
 // folder, which the Photos app shows, read as the library is on a phone.
 // A Windows app needs no permission to read it: "current" and "request"
 // answer "allowed", "manage" does nothing. "list" (JSON screenshots,

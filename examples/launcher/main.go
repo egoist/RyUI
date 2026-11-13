@@ -14,12 +14,12 @@ import (
 	"slices"
 
 	"github.com/egoist/asuka/app"
-	"github.com/egoist/asuka/apps"
 	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/fonts"
-	"github.com/egoist/asuka/hotkey"
+	"github.com/egoist/asuka/sdk/apps"
+	"github.com/egoist/asuka/sdk/hotkey"
+	"github.com/egoist/asuka/sdk/tray"
 	"github.com/egoist/asuka/signal"
-	"github.com/egoist/asuka/tray"
 	"github.com/egoist/asuka/ui"
 )
 

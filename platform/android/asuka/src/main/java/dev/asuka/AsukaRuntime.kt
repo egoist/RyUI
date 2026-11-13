@@ -440,7 +440,7 @@ class AsukaRuntime private constructor(val app: Application) : AsukaOpHandler {
 
     /**
      * Starts the core without an Activity, if it hasn't started: the
-     * system runs a task (asuka/periodic) with the app in the background.
+     * system runs a task (asuka/sdk/periodic) with the app in the background.
      * The root's views are made; an Activity that comes takes them (attach).
      */
     fun startHeadless() {

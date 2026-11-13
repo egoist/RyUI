@@ -225,7 +225,7 @@ func TestWebViewPreloadBack(t *testing.T) {
 	})
 }
 
-// asuka/js's module runs a script in a web view of its own: its value, a
+// asuka/sdk/js's module runs a script in a web view of its own: its value, a
 // promise's, or what it threw; none is kept after.
 func TestJSModule(t *testing.T) {
 	needWebKit(t)

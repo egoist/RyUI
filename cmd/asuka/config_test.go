@@ -165,7 +165,7 @@ func TestShareTargetConfig(t *testing.T) {
 
 func TestFeaturesFromImports(t *testing.T) {
 	var c appConfig
-	c.permissionsFor([]string{"github.com/egoist/asuka/ui", "github.com/egoist/asuka/scan", "github.com/egoist/asuka/camera"})
+	c.permissionsFor([]string{"github.com/egoist/asuka/ui", "github.com/egoist/asuka/sdk/scan", "github.com/egoist/asuka/sdk/camera"})
 	if got := c.gradleModules(); got != "-PasukaModules=scan" {
 		t.Errorf("modules: %s", got)
 	}
@@ -173,7 +173,7 @@ func TestFeaturesFromImports(t *testing.T) {
 		t.Errorf("permissions: %v", c.Android.Permissions)
 	}
 	var pics appConfig
-	pics.permissionsFor([]string{"github.com/egoist/asuka/vision", "github.com/egoist/asuka/photos"})
+	pics.permissionsFor([]string{"github.com/egoist/asuka/sdk/vision", "github.com/egoist/asuka/sdk/photos"})
 	if got := pics.gradleModules(); got != "-PasukaModules=vision" {
 		t.Errorf("modules: %s", got)
 	}
@@ -295,7 +295,7 @@ func TestFeatureExtras(t *testing.T) {
 	}
 	found := false
 	for _, f := range iosFeatures {
-		if f.flag == "ASUKA_CONVERSATIONS" && f.symbol == "github.com/egoist/asuka/notify.Notification.From" {
+		if f.flag == "ASUKA_CONVERSATIONS" && f.symbol == "github.com/egoist/asuka/sdk/notify.Notification.From" {
 			found = true
 		}
 	}

@@ -50,10 +50,10 @@ import (
 //   - background: a Windows app keeps running out of sight; a task keeps
 //     the system from sleeping (SetThreadExecutionState) until the last
 //     one ends, as an activity does on a Mac.
-//   - clipboard (asuka/device's): its image, copying one, and its changes.
+//   - clipboard (asuka/sdk/device's): its image, copying one, and its changes.
 //   - library: files go to the user's Downloads, Videos, Music and
 //     Pictures folders.
-//   - asuka/maps' view: the host's own, of OpenStreetMap's tiles
+//   - asuka/sdk/maps' view: the host's own, of OpenStreetMap's tiles
 //     (maps.go).
 
 func init() {
@@ -206,7 +206,7 @@ func (h *Host) watchScreenshots() error {
 
 // Sensors.
 
-// sensorsModule is asuka/sensors': none available, as on a Mac. Starting
+// sensorsModule is asuka/sdk/sensors': none available, as on a Mac. Starting
 // one fails "not available", and so do "next" (which ends the Go side's
 // watching) and "steps".
 func sensorsModule() map[string]asyncMethod {
@@ -226,7 +226,7 @@ func sensorsModule() map[string]asyncMethod {
 
 var iidAdvertisingManagerStatics = NewGUID("ADD3468C-A273-48CB-B346-3544522D5581")
 
-// trackingModule is asuka/tracking's: u8 not asked, restricted, denied,
+// trackingModule is asuka/sdk/tracking's: u8 not asked, restricted, denied,
 // allowed. Windows asks nothing: it's the advertising ID's setting.
 func trackingModule() map[string]asyncMethod {
 	status := func(_ []byte, reply func([]byte, error)) {
@@ -278,7 +278,7 @@ func pushModule() map[string]asyncMethod {
 		return func(_ []byte, reply func([]byte, error)) { pushQueues[kind] = append(pushQueues[kind], reply) }
 	}
 	return map[string]asyncMethod{
-		"register":     failing("asuka/push: Windows gives push channels (WNS) to packaged apps only"),
+		"register":     failing("asuka/sdk/push: Windows gives push channels (WNS) to packaged apps only"),
 		"nextReceived": wait("nextReceived"),
 		"nextOpened":   wait("nextOpened"),
 		"stop": func(args []byte, reply func([]byte, error)) {
@@ -289,7 +289,7 @@ func pushModule() map[string]asyncMethod {
 			}
 			reply(nil, nil)
 		},
-		"nextRewrite": failing("asuka/push: rewriting needs a notification service extension, which a Windows app doesn't have"),
+		"nextRewrite": failing("asuka/sdk/push: rewriting needs a notification service extension, which a Windows app doesn't have"),
 		"rewritten":   answerNil,
 	}
 }
@@ -455,7 +455,7 @@ func safeFileName(s, def string) string {
 
 // Background.
 
-// bgTasks are asuka/background's tasks: a task keeps the system awake
+// bgTasks are asuka/sdk/background's tasks: a task keeps the system awake
 // until the last one ends; "update" does nothing (there's no
 // notification to update), and "next" (actions tapped) waits until the
 // last task ends, then fails "ended".
@@ -523,7 +523,7 @@ var clipWatch struct {
 	stop    func()
 }
 
-// clipboardModule is asuka/device's clipboard: "has" (u8 text, image,
+// clipboardModule is asuka/sdk/device's clipboard: "has" (u8 text, image,
 // URL), "image" (the clipboard's image as a PNG in the caches; empty:
 // none), "copyImage" (a file's path), and, while watching, "next"
 // (answered at the next change) and "stop".

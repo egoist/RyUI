@@ -1,10 +1,10 @@
 // Downloader saves videos from links: a link pasted or shared from
 // another app (ui.OnShare), downloaded while the app is out of sight
-// (asuka/background, its progress and Pause and Cancel in a notification),
-// on Wi-Fi only if asked (asuka/network), into the gallery (asuka/library).
+// (asuka/sdk/background, its progress and Pause and Cancel in a notification),
+// on Wi-Fi only if asked (asuka/sdk/network), into the gallery (asuka/sdk/library).
 // Its browser finds the videos a page plays, from a script that runs
 // before the page's own (WebViewProps.Preload), and blocks ads; its icons
-// are SVG (asuka/svg); asuka/js runs a script off screen.
+// are SVG (asuka/sdk/svg); asuka/sdk/js runs a script off screen.
 //
 //	go run ./cmd/asuka dev --platform android --once examples/downloader
 package main
@@ -24,16 +24,16 @@ import (
 	"time"
 
 	"github.com/egoist/asuka/app"
-	"github.com/egoist/asuka/background"
 	"github.com/egoist/asuka/colors"
-	"github.com/egoist/asuka/dock"
 	"github.com/egoist/asuka/fonts"
-	"github.com/egoist/asuka/js"
-	"github.com/egoist/asuka/library"
-	"github.com/egoist/asuka/network"
+	"github.com/egoist/asuka/sdk/background"
+	"github.com/egoist/asuka/sdk/dock"
+	"github.com/egoist/asuka/sdk/js"
+	"github.com/egoist/asuka/sdk/library"
+	"github.com/egoist/asuka/sdk/network"
+	"github.com/egoist/asuka/sdk/store"
+	"github.com/egoist/asuka/sdk/svg"
 	"github.com/egoist/asuka/signal"
-	"github.com/egoist/asuka/store"
-	"github.com/egoist/asuka/svg"
 	"github.com/egoist/asuka/ui"
 )
 

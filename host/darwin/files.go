@@ -164,7 +164,7 @@ func (h *Host) recentModule() map[string]method {
 		"add": func(args []byte, reply func([]byte, error)) {
 			path := string(args)
 			if !filepath.IsAbs(path) {
-				reply(nil, errors.New("asuka/recent: not an absolute path"))
+				reply(nil, errors.New("asuka/sdk/recent: not an absolute path"))
 				return
 			}
 			dc := documentController()
@@ -293,11 +293,11 @@ var smOnce sync.Once
 // without a bundle (go run), or a macOS before 13.
 func mainAppService() (ID, error) {
 	if !bundled() {
-		return 0, errors.New("asuka/login: a login item needs the app's bundle: build it with asuka build, or run it with asuka dev")
+		return 0, errors.New("asuka/sdk/login: a login item needs the app's bundle: build it with asuka build, or run it with asuka dev")
 	}
 	smOnce.Do(func() { Dlopen("/System/Library/Frameworks/ServiceManagement.framework/ServiceManagement") })
 	if Class("SMAppService") == 0 {
-		return 0, errors.New("asuka/login: login items need macOS 13 or later")
+		return 0, errors.New("asuka/sdk/login: login items need macOS 13 or later")
 	}
 	return Send(Class("SMAppService"), "mainAppService"), nil
 }
@@ -350,12 +350,12 @@ func loginModule() map[string]method {
 			case on && status == smEnabled, !on && status != smEnabled && status != smRequiresApproval:
 			case on:
 				if !SendBool(s, "registerAndReturnError:", uintptr(unsafe.Pointer(&nserr))) && SendInt(s, "status") != smRequiresApproval {
-					reply(nil, errorText(nserr, "asuka/login: the login item wasn't registered"))
+					reply(nil, errorText(nserr, "asuka/sdk/login: the login item wasn't registered"))
 					return
 				}
 			default:
 				if !SendBool(s, "unregisterAndReturnError:", uintptr(unsafe.Pointer(&nserr))) && SendInt(s, "status") == smEnabled {
-					reply(nil, errorText(nserr, "asuka/login: the login item wasn't removed"))
+					reply(nil, errorText(nserr, "asuka/sdk/login: the login item wasn't removed"))
 					return
 				}
 			}

@@ -469,7 +469,7 @@ const (
 	PropWindowTitle PropID = 64
 	// PropWindowConfig: its options when it opens, as the WindowOptions command's args (ops.WindowConfig, ops.AppendWindowConfig); set before Present.
 	PropWindowConfig PropID = 65
-	// PropWindowFlyout: a flyout's anchor (with WindowFlyout; ops.Flyout, ops.AppendFlyout): u32 tray icon (asuka/tray's id; 0: none), f32 x, y, width, height (without a tray icon: a rectangle of its parent's content, in points), u8 Placement, f32 gap (points); set before Present and again when the anchor changes, which places it again.
+	// PropWindowFlyout: a flyout's anchor (with WindowFlyout; ops.Flyout, ops.AppendFlyout): u32 tray icon (asuka/sdk/tray's id; 0: none), f32 x, y, width, height (without a tray icon: a rectangle of its parent's content, in points), u8 Placement, f32 gap (points); set before Present and again when the anchor changes, which places it again.
 	PropWindowFlyout PropID = 66
 	// PropWindowEdited: the document it shows has unsaved changes: a dot in a Mac's close button (setDocumentEdited:), a * before the title on Windows, Linux and the web.
 	PropWindowEdited PropID = 67

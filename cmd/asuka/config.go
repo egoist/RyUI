@@ -109,7 +109,7 @@ type appConfig struct {
 	// take it). Default: the platform's.
 	Accent string `json:"accent"`
 	// Background makes a desktop app one that runs in the background,
-	// living in the tray (asuka/tray), as app.RunInBackground does: no
+	// living in the tray (asuka/sdk/tray), as app.RunInBackground does: no
 	// window at launch, kept running with none, and on macOS no Dock
 	// icon from launch (Info.plist's LSUIElement).
 	Background bool `json:"background"`
@@ -148,11 +148,11 @@ type appConfig struct {
 		Background     string `json:"background"`
 		DarkBackground string `json:"darkBackground"`
 	} `json:"splash"`
-	// Widgets are the app's home screen widgets (asuka/widget fills them).
+	// Widgets are the app's home screen widgets (asuka/sdk/widget fills them).
 	Widgets []widgetConfig `json:"widgets"`
 	// I18n says where the app's catalogs are, when they aren't in locales.
 	I18n *i18nConfig `json:"i18n"`
-	// Updates are a desktop app's (asuka/update, updates.go): the public
+	// Updates are a desktop app's (asuka/sdk/update, updates.go): the public
 	// key updates are signed with, and where they're published.
 	Updates *updatesConfig `json:"updates"`
 	// dir is the app's directory.
@@ -205,9 +205,9 @@ type appConfig struct {
 	// Web is what a web build needs (cmd/asuka/web.go).
 	Web struct {
 		// VapidPublicKey is the app server's VAPID public key (base64url, an
-		// uncompressed P-256 point), for asuka/push's Web Push: the browser
+		// uncompressed P-256 point), for asuka/sdk/push's Web Push: the browser
 		// subscribes with it, and the server signs with its private key
-		// (asuka/push/webpush: GenerateKeys makes a pair).
+		// (asuka/sdk/push/webpush: GenerateKeys makes a pair).
 		VapidPublicKey string `json:"vapidPublicKey"`
 	} `json:"web"`
 	Android struct {
@@ -221,10 +221,10 @@ type appConfig struct {
 		Keystore string `json:"keystore"`
 		KeyAlias string `json:"keyAlias"`
 		// GoogleServices is the Firebase project's google-services.json,
-		// for asuka/push (Firebase Cloud Messaging).
+		// for asuka/sdk/push (Firebase Cloud Messaging).
 		GoogleServices string `json:"googleServices"`
 		// MapsKey is a Google Maps Platform API key (Maps SDK for Android),
-		// for asuka/maps.
+		// for asuka/sdk/maps.
 		MapsKey string `json:"mapsKey"`
 		// ServiceAccount is the JSON key of the Google Cloud service
 		// account asuka publish uploads with (ASUKA_PLAY_SERVICE_ACCOUNT, the
@@ -445,51 +445,51 @@ var featurePermissions = []struct {
 	// androidTop are elements of the Android manifest itself (queries).
 	androidTop []string
 }{
-	{"github.com/egoist/asuka/location", []string{"android.permission.ACCESS_COARSE_LOCATION", "android.permission.ACCESS_FINE_LOCATION"},
+	{"github.com/egoist/asuka/sdk/location", []string{"android.permission.ACCESS_COARSE_LOCATION", "android.permission.ACCESS_FINE_LOCATION"},
 		map[string]string{"NSLocationWhenInUseUsageDescription": "To show where you are."}, nil, nil, nil, nil, nil, nil},
-	{"github.com/egoist/asuka/notify", []string{"android.permission.POST_NOTIFICATIONS"}, nil, nil, nil, nil, nil, nil, nil},
+	{"github.com/egoist/asuka/sdk/notify", []string{"android.permission.POST_NOTIFICATIONS"}, nil, nil, nil, nil, nil, nil, nil},
 	// camera.View's preview is the app's own: the camera permission (and
 	// with it declared, the system's camera app needs it granted too).
-	{"github.com/egoist/asuka/camera", []string{"android.permission.CAMERA"}, map[string]string{"NSCameraUsageDescription": "To take a photo."}, nil, nil, nil, nil, nil, nil},
-	{"github.com/egoist/asuka/camera/record", []string{"android.permission.RECORD_AUDIO"}, map[string]string{"NSMicrophoneUsageDescription": "To record a video's sound."}, nil, nil, nil, nil, nil, nil},
-	{"github.com/egoist/asuka/network", []string{"android.permission.ACCESS_NETWORK_STATE"}, nil, nil, nil, nil, nil, nil, nil},
+	{"github.com/egoist/asuka/sdk/camera", []string{"android.permission.CAMERA"}, map[string]string{"NSCameraUsageDescription": "To take a photo."}, nil, nil, nil, nil, nil, nil},
+	{"github.com/egoist/asuka/sdk/camera/record", []string{"android.permission.RECORD_AUDIO"}, map[string]string{"NSMicrophoneUsageDescription": "To record a video's sound."}, nil, nil, nil, nil, nil, nil},
+	{"github.com/egoist/asuka/sdk/network", []string{"android.permission.ACCESS_NETWORK_STATE"}, nil, nil, nil, nil, nil, nil, nil},
 	// MediaStore needs no permission from Android 10; before, writing to
 	// the shared folders does. Files in Documents show in iOS's Files.
-	{"github.com/egoist/asuka/library", []string{"android.permission.WRITE_EXTERNAL_STORAGE:28"},
+	{"github.com/egoist/asuka/sdk/library", []string{"android.permission.WRITE_EXTERNAL_STORAGE:28"},
 		map[string]string{"NSPhotoLibraryAddUsageDescription": "To save videos and photos to your library."}, nil,
 		[]string{"UIFileSharingEnabled", "LSSupportsOpeningDocumentsInPlace"}, nil, nil, nil, nil},
 	// A foreground service of the data sync type, its notification, the
 	// CPU kept awake.
-	{"github.com/egoist/asuka/background", []string{"android.permission.FOREGROUND_SERVICE", "android.permission.FOREGROUND_SERVICE_DATA_SYNC",
+	{"github.com/egoist/asuka/sdk/background", []string{"android.permission.FOREGROUND_SERVICE", "android.permission.FOREGROUND_SERVICE_DATA_SYNC",
 		"android.permission.POST_NOTIFICATIONS", "android.permission.WAKE_LOCK"}, nil, nil, nil,
 		[]string{`<service android:name="dev.asuka.AsukaWorkService" android:exported="false" android:foregroundServiceType="dataSync" />`}, nil, nil, nil},
 	// ML Kit's barcode model: about 2 MB, only in the apps that scan.
-	{"github.com/egoist/asuka/scan", nil, nil, []string{"scan"}, nil, nil, nil, nil, nil},
+	{"github.com/egoist/asuka/sdk/scan", nil, nil, []string{"scan"}, nil, nil, nil, nil, nil},
 	// ML Kit's text, face and barcode models: only in the apps that analyze.
-	{pkg: "github.com/egoist/asuka/vision", modules: []string{"vision"}},
+	{pkg: "github.com/egoist/asuka/sdk/vision", modules: []string{"vision"}},
 	// Reading the library: all of it, or what the user chose (Android 14).
-	{pkg: "github.com/egoist/asuka/photos",
+	{pkg: "github.com/egoist/asuka/sdk/photos",
 		android: []string{"android.permission.READ_EXTERNAL_STORAGE:32", "android.permission.READ_MEDIA_IMAGES", "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"},
 		usage:   map[string]string{"NSPhotoLibraryUsageDescription": "To show your photos."}},
-	{pkg: "github.com/egoist/asuka/screen", android: []string{"android.permission.DETECT_SCREEN_CAPTURE"}},
-	{pkg: "github.com/egoist/asuka/biometric", android: []string{"android.permission.USE_BIOMETRIC"},
+	{pkg: "github.com/egoist/asuka/sdk/screen", android: []string{"android.permission.DETECT_SCREEN_CAPTURE"}},
+	{pkg: "github.com/egoist/asuka/sdk/biometric", android: []string{"android.permission.USE_BIOMETRIC"},
 		usage: map[string]string{"NSFaceIDUsageDescription": "To confirm it's you."}},
-	{pkg: "github.com/egoist/asuka/tracking", usage: map[string]string{"NSUserTrackingUsageDescription": "To show you ads that suit you."}},
+	{pkg: "github.com/egoist/asuka/sdk/tracking", usage: map[string]string{"NSUserTrackingUsageDescription": "To show you ads that suit you."}},
 	// Play's in-app review, Play Integrity, Play Age Signals, Google Maps:
 	// Google's libraries, only in the apps that use them.
-	{pkg: "github.com/egoist/asuka/review", modules: []string{"review"}},
-	{pkg: "github.com/egoist/asuka/integrity", modules: []string{"integrity"},
+	{pkg: "github.com/egoist/asuka/sdk/review", modules: []string{"review"}},
+	{pkg: "github.com/egoist/asuka/sdk/integrity", modules: []string{"integrity"},
 		entitlements: map[string]any{"com.apple.developer.devicecheck.appattest-environment": "development"}},
-	{pkg: "github.com/egoist/asuka/agerange", modules: []string{"agerange"},
+	{pkg: "github.com/egoist/asuka/sdk/agerange", modules: []string{"agerange"},
 		entitlements: map[string]any{"com.apple.developer.declared-age-range": true}},
-	{pkg: "github.com/egoist/asuka/maps", modules: []string{"maps"}},
-	{pkg: "github.com/egoist/asuka/appleauth", entitlements: map[string]any{"com.apple.developer.applesignin": []string{"Default"}}},
+	{pkg: "github.com/egoist/asuka/sdk/maps", modules: []string{"maps"}},
+	{pkg: "github.com/egoist/asuka/sdk/appleauth", entitlements: map[string]any{"com.apple.developer.applesignin": []string{"Default"}}},
 	// Firebase Cloud Messaging (its manifest has POST_NOTIFICATIONS); APNs.
-	{pkg: "github.com/egoist/asuka/push", modules: []string{"push"},
+	{pkg: "github.com/egoist/asuka/sdk/push", modules: []string{"push"},
 		entitlements: map[string]any{"aps-environment": "development"},
 		plistArrays:  map[string][]string{"UIBackgroundModes": {"remote-notification"}}},
 	// The service keeps a recording with Options.Background going out of sight.
-	{pkg: "github.com/egoist/asuka/audio/record", android: []string{"android.permission.RECORD_AUDIO",
+	{pkg: "github.com/egoist/asuka/sdk/audio/record", android: []string{"android.permission.RECORD_AUDIO",
 		"android.permission.FOREGROUND_SERVICE", "android.permission.FOREGROUND_SERVICE_MICROPHONE", "android.permission.POST_NOTIFICATIONS"},
 		usage:      map[string]string{"NSMicrophoneUsageDescription": "To record sound."},
 		androidApp: []string{`<service android:name="dev.asuka.AsukaRecordService" android:exported="false" android:foregroundServiceType="microphone" />`}},
@@ -497,30 +497,30 @@ var featurePermissions = []struct {
 	// POST_NOTIFICATIONS: a media session's is exempt); while playing, a
 	// foreground service of the media playback type keeps the app
 	// running out of sight (Android 14's rules).
-	{pkg: "github.com/egoist/asuka/nowplaying",
+	{pkg: "github.com/egoist/asuka/sdk/nowplaying",
 		android:    []string{"android.permission.FOREGROUND_SERVICE", "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"},
 		androidApp: []string{`<service android:name="dev.asuka.AsukaMediaService" android:exported="false" android:foregroundServiceType="mediaPlayback" />`}},
 	// On-device speech recognition; Android's reads the file as the microphone's permission.
-	{pkg: "github.com/egoist/asuka/transcribe", android: []string{"android.permission.RECORD_AUDIO"},
+	{pkg: "github.com/egoist/asuka/sdk/transcribe", android: []string{"android.permission.RECORD_AUDIO"},
 		usage: map[string]string{"NSSpeechRecognitionUsageDescription": "To turn your recordings into text, on this device."}},
 	// WorkManager; iOS's background tasks, by the identifiers the host
 	// schedules (AsukaPeriodic).
-	{pkg: "github.com/egoist/asuka/periodic", modules: []string{"periodic"},
+	{pkg: "github.com/egoist/asuka/sdk/periodic", modules: []string{"periodic"},
 		plistArrays: map[string][]string{"UIBackgroundModes": {"fetch", "processing"},
 			"BGTaskSchedulerPermittedIdentifiers": {"dev.asuka.refresh", "dev.asuka.processing"}}},
 	// Binding the text-to-speech engine: Android 11's package visibility.
-	{pkg: "github.com/egoist/asuka/speech", androidTop: []string{`<queries><intent><action android:name="android.intent.action.TTS_SERVICE" /></intent></queries>`}},
+	{pkg: "github.com/egoist/asuka/sdk/speech", androidTop: []string{`<queries><intent><action android:name="android.intent.action.TTS_SERVICE" /></intent></queries>`}},
 	// The pedometer: iOS's Motion & Fitness; Android's physical activity.
-	{pkg: "github.com/egoist/asuka/sensors", android: []string{"android.permission.ACTIVITY_RECOGNITION"},
+	{pkg: "github.com/egoist/asuka/sdk/sensors", android: []string{"android.permission.ACTIVITY_RECOGNITION"},
 		usage: map[string]string{"NSMotionUsageDescription": "To count your steps."}},
-	{pkg: "github.com/egoist/asuka/contacts", android: []string{"android.permission.READ_CONTACTS"},
+	{pkg: "github.com/egoist/asuka/sdk/contacts", android: []string{"android.permission.READ_CONTACTS"},
 		usage: map[string]string{"NSContactsUsageDescription": "To find people you know."}},
 	// iOS 17's full access, and before it.
-	{pkg: "github.com/egoist/asuka/calendar", android: []string{"android.permission.READ_CALENDAR"},
+	{pkg: "github.com/egoist/asuka/sdk/calendar", android: []string{"android.permission.READ_CALENDAR"},
 		usage: map[string]string{"NSCalendarsFullAccessUsageDescription": "To show your events.", "NSCalendarsUsageDescription": "To show your events."}},
 	// Whether an app takes mailto: and smsto: links: iOS's canOpenURL,
 	// Android 11's package visibility.
-	{pkg: "github.com/egoist/asuka/compose",
+	{pkg: "github.com/egoist/asuka/sdk/compose",
 		plistArrays: map[string][]string{"LSApplicationQueriesSchemes": {"mailto"}},
 		androidTop: []string{`<queries><intent><action android:name="android.intent.action.SENDTO" /><data android:scheme="mailto" /></intent>` +
 			`<intent><action android:name="android.intent.action.SENDTO" /><data android:scheme="smsto" /></intent></queries>`}},
@@ -612,7 +612,7 @@ func (c *appConfig) androidManifest(debug bool) string {
 		b.WriteString(" android:usesCleartextTraffic=\"true\"")
 	}
 	b.WriteString(">\n")
-	// The Maps SDK's key (asuka/maps), which it reads from the manifest.
+	// The Maps SDK's key (asuka/sdk/maps), which it reads from the manifest.
 	if c.Android.MapsKey != "" && slices.Contains(c.androidModules, "maps") {
 		fmt.Fprintf(&b, "        <meta-data android:name=\"com.google.android.geo.API_KEY\" android:value=\"%s\" />\n", html.EscapeString(c.Android.MapsKey))
 	}

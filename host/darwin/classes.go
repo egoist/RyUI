@@ -168,7 +168,7 @@ func registerTarget() {
 		// Its Dock icon clicked (or the app opened again) with no window
 		// showing, as when one that keeps running has closed its main
 		// window: the main window comes back.
-		// A document app (asuka/document) makes a document instead.
+		// A document app (asuka/sdk/document) makes a document instead.
 		Method("applicationShouldHandleReopen:hasVisibleWindows:", func(self ID, _ SEL, app ID, visible bool) bool {
 			if !visible && boot.Reopen != nil {
 				handled := false

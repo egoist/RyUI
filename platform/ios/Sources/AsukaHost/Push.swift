@@ -1,8 +1,8 @@
-#if canImport(UIKit) && ASUKA_PUSH // an app that calls asuka/push (see the CLI's iosFeatures)
+#if canImport(UIKit) && ASUKA_PUSH // an app that calls asuka/sdk/push (see the CLI's iosFeatures)
 import UIKit
 import UserNotifications
 
-/// asuka/push's module: "register" asks for notifications, registers with
+/// asuka/sdk/push's module: "register" asks for notifications, registers with
 /// APNs and answers JSON (token, service, allowed); "nextReceived" and
 /// "nextOpened" answer with the next message (push.Message's JSON), kept
 /// until asked; "stop" (the method's name) fails the waiting ones with

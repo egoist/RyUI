@@ -1,14 +1,14 @@
 # Data
 
-An app keeps its data in a few places: small values in `asuka/store`, records
+An app keeps its data in a few places: small values in `asuka/sdk/store`, records
 in SQLite with `asuka/plugins/sqlite`, secrets in the platform's keychain with
-`asuka/secure`, and files of its own with Go's `os`. This page covers each,
+`asuka/sdk/secure`, and files of its own with Go's `os`. This page covers each,
 the network through `net/http`, watching files, and which calls may block
 the main thread.
 
 ## Where data lives
 
-`store.Dir()` is the app's data directory. `asuka/store`'s file is there,
+`store.Dir()` is the app's data directory. `asuka/sdk/store`'s file is there,
 and so are the databases `sqlite.Open` makes from a plain name. Put your
 own files there too.
 
@@ -35,14 +35,14 @@ app, and iOS and Android in the player), `store.Dir()` is a directory of
 one for each app and platform), so what you try while developing never
 mixes with an installed build's data. With the player, the store, the
 databases and your files are on the computer, not on the device.
-`asuka/secure` is the exception: it is the platform's store, as in a
+`asuka/sdk/secure` is the exception: it is the platform's store, as in a
 release build (under the player, the device's keychain). On the web,
 `asuka dev`'s page keeps its files in the browser, for the dev server's
 address.
 
-## Small values: asuka/store
+## Small values: asuka/sdk/store
 
-`asuka/store` keeps small values across launches: settings, a signed-in
+`asuka/sdk/store` keeps small values across launches: settings, a signed-in
 user's name, the tab last open. Values are JSON, in one file
 (`store.json` in `store.Dir()`), written off the main thread a moment
 after they change, and when the app goes to the background (on a Mac,
@@ -368,9 +368,9 @@ platforms, the Android NDK, Zig for Linux, Windows and the web) into
 from then on, and `go run ./cmd/asuka plugin publish plugins/sqlite`
 publishes it.
 
-## Secrets: asuka/secure
+## Secrets: asuka/sdk/secure
 
-`asuka/secure` keeps small secrets, tokens and passwords, encrypted by the
+`asuka/sdk/secure` keeps small secrets, tokens and passwords, encrypted by the
 platform. It's for secrets, not data: keep everything else in the store
 or a database.
 
@@ -500,14 +500,14 @@ func download(url, file string) error {
 ```
 
 To keep a long download going while the app is out of sight, see
-[`asuka/background`](device.md#background-work-asukabackground); to know
+[`asuka/sdk/background`](device.md#background-work-asukabackground); to know
 whether the connection is Wi-Fi or metered, see
-[`asuka/network`](device.md#network-state-asukanetwork).
+[`asuka/sdk/network`](device.md#network-state-asukanetwork).
 [`examples/downloader`](../examples/downloader) does both.
 
-## Watching files: asuka/watch
+## Watching files: asuka/sdk/watch
 
-`asuka/watch` tells the app when files change: a folder it shows, a
+`asuka/sdk/watch` tells the app when files change: a folder it shows, a
 project open in an editor, a settings file another program writes, a
 document another app saved. It works on every platform, phones and the
 web too.

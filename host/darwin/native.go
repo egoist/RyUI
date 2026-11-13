@@ -18,8 +18,8 @@ import (
 // props go to the view's Set, its events come back with the context's
 // Emit, and it's measured by its Measure, or its fittingSize.
 
-// builtinViews are the host's own native views (asuka/maps' map,
-// asuka/camera's preview), by kind, each file adding its own (from its
+// builtinViews are the host's own native views (asuka/sdk/maps' map,
+// asuka/sdk/camera's preview), by kind, each file adding its own (from its
 // init). They win over the app's of the same kind.
 var builtinViews = map[string]func(native.Context) native.View{}
 

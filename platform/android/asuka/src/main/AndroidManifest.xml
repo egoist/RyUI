@@ -13,9 +13,9 @@
             android:taskAffinity=""
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|fontScale|density|locale|layoutDirection"
             android:windowSoftInputMode="adjustResize" />
-        <!-- asuka/notify: posts a notification when its alarm goes off. -->
+        <!-- asuka/sdk/notify: posts a notification when its alarm goes off. -->
         <receiver android:name="dev.asuka.AsukaNotifyReceiver" android:exported="false" />
-        <!-- asuka/camera: the camera app writes the photo to a file of the app's; ui.ShareFiles hands files to other apps. -->
+        <!-- asuka/sdk/camera: the camera app writes the photo to a file of the app's; ui.ShareFiles hands files to other apps. -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.asuka.files"

@@ -6,8 +6,8 @@ import "fmt"
 
 // File associations, recent documents and the jump list's Recent, and the
 // registry's values of the user's that they need: the host's file types
-// (registered for the user as the app starts), asuka/recent and
-// asuka/login.
+// (registered for the user as the app starts), asuka/sdk/recent and
+// asuka/sdk/login.
 
 var (
 	procSHChangeNotify     = shell32.NewProc("SHChangeNotify")

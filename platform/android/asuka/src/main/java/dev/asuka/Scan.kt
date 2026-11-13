@@ -3,8 +3,8 @@ package dev.asuka
 import android.content.Context
 
 /**
- * Reads codes for asuka/scan. It's ML Kit's, in the asuka-scan module, which
- * only the apps that import asuka/scan are built with (the CLI's
+ * Reads codes for asuka/sdk/scan. It's ML Kit's, in the asuka-scan module, which
+ * only the apps that import asuka/sdk/scan are built with (the CLI's
  * featurePermissions); found by name.
  */
 interface AsukaCodeReader {
@@ -44,7 +44,7 @@ class AsukaCodeSeen {
 }
 
 /**
- * asuka/scan's module: "file" reads the codes in an image file. args: the
+ * asuka/sdk/scan's module: "file" reads the codes in an image file. args: the
  * kinds, comma-separated, a newline, the path. The reply: a u32 count,
  * then each code's kind and value as strings.
  */
@@ -54,7 +54,7 @@ fun AsukaRuntime.scanMethods(): Map<String, AsukaModuleMethod> = mapOf(
         val nl = s.indexOf('\n')
         val reader = AsukaScan.reader
         if (nl < 0) reply(Result.failure(Exception("bad arguments")))
-        else if (reader == null) reply(Result.failure(Exception("asuka/scan isn't in this build")))
+        else if (reader == null) reply(Result.failure(Exception("asuka/sdk/scan isn't in this build")))
         else reader.file(app, s.substring(nl + 1), AsukaScan.kinds(s.substring(0, nl))) { r ->
             reply(r.map { codes ->
                 val w = AsukaWriter()

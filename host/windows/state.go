@@ -14,7 +14,7 @@ import (
 )
 
 func init() {
-	// The app's data (asuka/store, files it keeps): Local AppData.
+	// The app's data (asuka/sdk/store, files it keeps): Local AppData.
 	if os.Getenv("ASUKA_DATA") == "" {
 		if base, err := os.UserConfigDir(); err == nil {
 			if d := os.Getenv("LOCALAPPDATA"); d != "" {
@@ -24,7 +24,7 @@ func init() {
 			if name == "" {
 				name = appName()
 			}
-			// Made by what writes there (asuka/store, asuka/sqlite, the
+			// Made by what writes there (asuka/sdk/store, asuka/sqlite, the
 			// window's placement), not here.
 			os.Setenv("ASUKA_DATA", filepath.Join(base, name))
 		}

@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/egoist/asuka/app"
-	"github.com/egoist/asuka/notify"
-	"github.com/egoist/asuka/push"
+	"github.com/egoist/asuka/sdk/notify"
+	"github.com/egoist/asuka/sdk/push"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )

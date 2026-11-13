@@ -313,7 +313,7 @@ func TestClipboardImage(t *testing.T) {
 	})
 }
 
-// Windows Hello's answers, as asuka/biometric's: what the PC has, and the
+// Windows Hello's answers, as asuka/sdk/biometric's: what the PC has, and the
 // prompt's outcomes (Windows asked through seams: a test never meets the
 // prompt).
 func TestBiometric(t *testing.T) {

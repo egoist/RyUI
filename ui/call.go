@@ -20,7 +20,7 @@ var (
 // Kotlin), with args; done gets its result, on the main thread. Main
 // thread.
 //
-// Packages wrap the built-in modules (asuka/secure); an app's own modules
+// Packages wrap the built-in modules (asuka/sdk/secure); an app's own modules
 // take whatever bytes it gives them, JSON for instance.
 func Call(module, method string, args []byte, done func(result []byte, err error)) {
 	if cur == nil && len(roots) == 0 {
@@ -129,7 +129,7 @@ var (
 // OnOpenFiles calls f with the files the app is opened with, at launch
 // or since: those of asuka.json's "fileTypes" the user opens with it
 // (a double click in Finder, Explorer or Files, Open With, a file
-// dropped on its Dock icon), a recent document chosen (asuka/recent:
+// dropped on its Dock icon), a recent document chosen (asuka/sdk/recent:
 // the File menu's Open Recent, the Dock menu, the jump list), and on
 // Windows and Linux the paths it's started with on the command line. The
 // files opened together come in one call, as absolute paths.

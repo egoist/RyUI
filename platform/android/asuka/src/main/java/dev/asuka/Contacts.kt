@@ -16,7 +16,7 @@ import org.json.JSONObject
 private var contactLaunches = 0
 
 /**
- * asuka/contacts' module, with ContactsContract: "request" (u8 access: 1
+ * asuka/sdk/contacts' module, with ContactsContract: "request" (u8 access: 1
  * denied, 3 full), "list" (JSON: name, limit) and "pick" answer contacts
  * as JSON; "add" (a contact's JSON) opens the contacts app's new contact
  * screen and answers u8 saved. Pick needs no permission: the picker

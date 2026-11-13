@@ -1,8 +1,8 @@
-#if canImport(UIKit) && ASUKA_AUDIO // an app that imports asuka/audio (see the CLI's iosFeatures)
+#if canImport(UIKit) && ASUKA_AUDIO // an app that imports asuka/sdk/audio (see the CLI's iosFeatures)
 import UIKit
 import AVFoundation
 
-/// asuka/audio's module: players by ID (each call's args begin with it, a
+/// asuka/sdk/audio's module: players by ID (each call's args begin with it, a
 /// u32-length string): load (the source), play, playOnce, pause, seek
 /// (f64 seconds), volume (f64), rate (f64), loop (u8), release; status
 /// answers f64 position, f64 duration, u8 playing, u8 ended.

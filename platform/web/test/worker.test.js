@@ -306,7 +306,7 @@ test("the page's answer to a push: its rewrite, then Present's", async () => {
   assert.equal(asked.remote, true);
 });
 
-// --- asuka/notify's module ---
+// --- asuka/sdk/notify's module ---
 
 function notifyEnv() {
   const caches = fakeCaches();
@@ -387,7 +387,7 @@ test("notify: Present hides one that comes while the page is in front", async ()
   }
 });
 
-// --- asuka/push's module ---
+// --- asuka/sdk/push's module ---
 
 const vapid = "BP4z9KsN6nGRTbVYI_c7VJSPQTBtkgcy27mlmlMoZIIgDll6e3vCYLocInmYWAmS6TlzAC8wEqKK6PBru3jl7A8";
 

@@ -7,7 +7,7 @@ import dev.asuka.AsukaRuntime
 import dev.asuka.registerModule
 
 /**
- * asuka/integrity's Play Integrity: "prepare" (the cloud project number)
+ * asuka/sdk/integrity's Play Integrity: "prepare" (the cloud project number)
  * readies a token provider; "token" (the request hash) answers its token.
  * App Attest's methods are iOS's.
  */

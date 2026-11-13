@@ -15,7 +15,7 @@
 // Props: region and markers (JSON), type (Satellite and Hybrid have no
 // free imagery source: they show the streets; Muted shows them in
 // quieter colors), showsUser (the user's location, once the page has the
-// location permission: asuka/location asks for it), interactive. The user
+// location permission: asuka/sdk/location asks for it), interactive. The user
 // moves it with a drag, zooms with the wheel (a trackpad's pinch comes as
 // Ctrl and the wheel), a finger's pinch, a double click (Shift: out), and
 // + and -; the arrow keys move it. Events: region (lat, lng, latDelta,

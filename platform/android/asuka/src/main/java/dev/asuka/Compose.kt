@@ -13,7 +13,7 @@ import java.io.File
 import java.util.UUID
 
 /*
- * asuka/compose's module. "mail" (JSON: to, cc, bcc, subject, body, html,
+ * asuka/sdk/compose's module. "mail" (JSON: to, cc, bcc, subject, body, html,
  * text, attachments: source, type, name) hands the mail to a mail app
  * (one that takes mailto:, as Android picks it): ACTION_SENDTO, or with
  * attachments ACTION_SEND with mailto: as its selector, the files through

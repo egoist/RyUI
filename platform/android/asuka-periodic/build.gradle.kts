@@ -1,5 +1,5 @@
-// asuka/periodic's WorkManager: periodic work that runs the app's Go code
-// in the background. Only the apps that import asuka/periodic are built
+// asuka/sdk/periodic's WorkManager: periodic work that runs the app's Go code
+// in the background. Only the apps that import asuka/sdk/periodic are built
 // with it (the Asuka CLI's asukaModules).
 plugins {
     id("com.android.library")

@@ -1,4 +1,4 @@
-// The app's file system's fs.watch (asuka/watch on the web): what changes
+// The app's file system's fs.watch (asuka/sdk/watch on the web): what changes
 // in a directory, told a moment after the call that changed it; inode
 // numbers kept as an entry is renamed.
 import { test } from "node:test";

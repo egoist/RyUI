@@ -20,7 +20,7 @@ import (
 	"github.com/egoist/asuka/internal/notifyspec"
 )
 
-// asuka/notify on Linux: GNotification through the app's GApplication
+// asuka/sdk/notify on Linux: GNotification through the app's GApplication
 // (GNOME Shell's notifications, the portal's in a sandbox, the
 // freedesktop server elsewhere), the module's methods as the other
 // hosts have them. A notification's tap and its buttons are actions of
@@ -32,7 +32,7 @@ import (
 // app's, kept while it runs. What Linux lacks: a list of what's showing (the host keeps what it
 // showed and wasn't withdrawn or tapped), inline replies (a reply action
 // is a button that opens the app), Android's channels (ignored, as on
-// iOS) and pushes (asuka/push isn't on Linux). The badge is the launcher
+// iOS) and pushes (asuka/sdk/push isn't on Linux). The badge is the launcher
 // API's (com.canonical.Unity.LauncherEntry: Dash to Dock, Plasma's task
 // manager); GNOME's own dash has none.
 
@@ -171,7 +171,7 @@ func (h *Host) installNotifications() error {
 		return nil
 	}
 	if h.app == 0 || !Sys.ApplicationGetIsRegistered(h.app) {
-		return errors.New("asuka/notify: the application isn't registered (no session bus?)")
+		return errors.New("asuka/sdk/notify: the application isn't registered (no session bus?)")
 	}
 	h.installNotifyActions()
 	switch notifyBackend {
@@ -538,7 +538,7 @@ func (h *Host) withdraw(ids ...string) {
 }
 
 // setBadge sets the launcher's count for the app (0: none).
-// The entry is asuka/dock's too (modules_dock.go).
+// The entry is asuka/sdk/dock's too (modules_dock.go).
 func (h *Host) setBadge(n int) error {
 	launch.count = n
 	return h.updateLauncher()
@@ -586,7 +586,7 @@ func notifyImageFile(src, assets, cache string) (string, error) {
 	}
 }
 
-// notifyModule is asuka/notify's module.
+// notifyModule is asuka/sdk/notify's module.
 func (h *Host) notifyModule() map[string]method {
 	ready := func(reply func([]byte, error)) bool {
 		if err := h.installNotifications(); err != nil {

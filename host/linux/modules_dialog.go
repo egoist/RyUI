@@ -13,8 +13,8 @@ import (
 	"github.com/egoist/asuka/ops"
 )
 
-// asuka/dialog (GtkFileDialog: GTK's own dialog, or the desktop's file
-// chooser portal in a sandbox, modal to the window) and asuka/shell (the
+// asuka/sdk/dialog (GtkFileDialog: GTK's own dialog, or the desktop's file
+// chooser portal in a sandbox, modal to the window) and asuka/sdk/shell (the
 // file manager's FileManager1 interface, GtkFileLauncher, GIO's trash)
 // on Linux.
 
@@ -37,7 +37,7 @@ func init() {
 	})
 }
 
-// dialogArgs are asuka/dialog's options.
+// dialogArgs are asuka/sdk/dialog's options.
 type dialogArgs struct {
 	Title   string `json:"title"`
 	Button  string `json:"button"`
@@ -196,7 +196,7 @@ func (h *Host) dialogWindow(view ops.NodeID) Ptr {
 	return h.dialogParent()
 }
 
-// asuka/shell.
+// asuka/sdk/shell.
 
 // shellReveal shows the item selected in a window of its folder: the
 // file manager's org.freedesktop.FileManager1 (Files, Dolphin, Nemo,

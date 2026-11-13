@@ -19,7 +19,7 @@ import java.io.File
 import java.text.BreakIterator
 import java.util.Locale
 
-/** asuka/vision's reader, with ML Kit. Blocking: called off the main thread. */
+/** asuka/sdk/vision's reader, with ML Kit. Blocking: called off the main thread. */
 class AsukaMLKitVision : AsukaVisionReader {
     private val kinds = mapOf(
         Barcode.FORMAT_QR_CODE to "qr", Barcode.FORMAT_AZTEC to "aztec", Barcode.FORMAT_DATA_MATRIX to "datamatrix",

@@ -4,7 +4,7 @@ import ImageIO
 import NaturalLanguage
 import Vision
 
-/// asuka/vision's module: "analyze" takes JSON (path, text, faces, codes,
+/// asuka/sdk/vision's module: "analyze" takes JSON (path, text, faces, codes,
 /// languages) and answers JSON: the image's size upright, its lines of text
 /// with their words, its faces and codes, each with a box in fractions of
 /// the image from its top left. Off the main thread.
@@ -34,7 +34,7 @@ enum AsukaVision {
     }
 
     /// The image upright, whatever its orientation says: the boxes are in
-    /// the same space as asuka/imageedit's pixels.
+    /// the same space as asuka/sdk/imageedit's pixels.
     static func upright(_ path: String) throws -> CGImage {
         let url = path.hasPrefix("file://") ? URL(string: path) : URL(fileURLWithPath: path)
         guard let url, let s = CGImageSourceCreateWithURL(url as CFURL, nil), CGImageSourceGetCount(s) > 0 else {
@@ -196,7 +196,7 @@ enum AsukaVision {
     static func findCodes(_ img: CGImage) throws -> [[String: Any]] {
         let req = VNDetectBarcodesRequest()
         #if targetEnvironment(simulator)
-        // As asuka/scan: only the first revision finds anything there.
+        // As asuka/sdk/scan: only the first revision finds anything there.
         req.revision = VNDetectBarcodesRequestRevision1
         prepare(req)
         #endif

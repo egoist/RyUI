@@ -23,7 +23,7 @@ import (
 	. "github.com/egoist/asuka/internal/windows"
 )
 
-// asuka/apps on Windows: the Start menu's All apps, the shell's
+// asuka/sdk/apps on Windows: the Start menu's All apps, the shell's
 // Applications folder (FOLDERID_AppsFolder: desktop apps by their
 // shortcuts, packaged apps by their AppUserModelIDs, as PowerToys'
 // Command Palette lists them), each item's icon from the shell

@@ -200,7 +200,7 @@ struct AsukaModuleError: LocalizedError {
         modules["share"] = AsukaShare.methods(self)
         modules["screen"] = AsukaScreen.shared.methods(self)
         modules["splash"] = AsukaSplash.shared.methods()
-        // asuka/recent and asuka/login: a desktop's. iOS's Files keeps its
+        // asuka/sdk/recent and asuka/sdk/login: a desktop's. iOS's Files keeps its
         // own recent files, and an app doesn't start at login.
         modules["recent"] = [
             "add": { _, reply in reply(.success(Data())) },

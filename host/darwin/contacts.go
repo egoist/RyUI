@@ -16,7 +16,7 @@ import (
 	"github.com/egoist/asuka/internal/l10n"
 )
 
-// asuka/contacts on a Mac, with the Contacts framework as on iOS:
+// asuka/sdk/contacts on a Mac, with the Contacts framework as on iOS:
 // "request" answers u8 access (not asked, denied, limited, full), "list"
 // (JSON: name, limit) and "pick" contacts as iOS's JSON, "add" (a
 // contact's JSON) u8 saved. macOS has no new-contact screen: "add" asks
@@ -65,7 +65,7 @@ func contactsStore() ID {
 	return contactsStoreObj
 }
 
-// contactsAccess is the status as asuka/contacts' Access: not asked,
+// contactsAccess is the status as asuka/sdk/contacts' Access: not asked,
 // denied, limited, full.
 func contactsAccess() byte {
 	switch contactsStatus() {

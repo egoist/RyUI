@@ -19,10 +19,10 @@ import (
 	"github.com/egoist/asuka/native"
 )
 
-// asuka/camera on a Mac, with AVFoundation as on iOS. The "asuka.camera"
+// asuka/sdk/camera on a Mac, with AVFoundation as on iOS. The "asuka.camera"
 // view is an AVCaptureSession's preview filling its box (the view's
 // backing layer an AVCaptureVideoPreviewLayer), with a photo output for
-// Capture, a movie file output for asuka/camera/record in video mode, and
+// Capture, a movie file output for asuka/sdk/camera/record in video mode, and
 // with scan on a metadata output reading codes (macOS 13). "take" has no
 // system camera screen to show on a Mac: it shows a sheet of the host's
 // own over the window in use, a live preview with Take Photo and Cancel
@@ -349,7 +349,7 @@ func (v *cameraView) Set(name string, value any) {
 	})
 }
 
-// codeTypes are the metadata types of each kind asuka/scan names.
+// codeTypes are the metadata types of each kind asuka/sdk/scan names.
 var codeTypes = []struct {
 	kind  string
 	types []string
@@ -695,7 +695,7 @@ func newCameraKinds(s string) cameraKinds {
 
 func (k cameraKinds) wants(kind string) bool { return len(k) == 0 || k[kind] }
 
-// named is the code as asuka/scan names it: Apple reads a UPC-A as an
+// named is the code as asuka/sdk/scan names it: Apple reads a UPC-A as an
 // EAN-13 with a leading 0, a UPC-A again if the app asked for those.
 func (k cameraKinds) named(kind, value string) (string, string) {
 	if kind == "ean13" && len(value) == 13 && value[0] == '0' && k.wants("upca") {

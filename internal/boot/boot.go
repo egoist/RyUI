@@ -48,7 +48,7 @@ var SecondInstance func(args []string, dir string)
 var MultipleInstances string
 
 // LoginArg is the argument a login entry starts the app with on
-// Windows and Linux (asuka/login), so that it knows it was opened at
+// Windows and Linux (asuka/sdk/login), so that it knows it was opened at
 // login: the host takes it out of os.Args before main reads them.
 const LoginArg = "--asuka-opened-at-login"
 
@@ -154,7 +154,7 @@ func Mounted() {
 // KeepRunning.
 var Background string
 
-// StagedRelaunch, set by asuka/update while a Mac app's update waits for
+// StagedRelaunch, set by asuka/sdk/update while a Mac app's update waits for
 // the app to quit (its helper puts the new bundle in place), relaunches
 // the app with args once that's done, reporting whether it will:
 // app.Relaunch asks it first. Main thread.
@@ -164,7 +164,7 @@ var StagedRelaunch func(args []string) bool
 // (app.KeepRunning): closing the main window hides it.
 var KeepRunning bool
 
-// Reopen, when set (asuka/document), is asked when the user opens the
+// Reopen, when set (asuka/sdk/document), is asked when the user opens the
 // app again while it has no window showing (a Mac's Dock icon clicked,
 // applicationShouldHandleReopen:): true says it took care of it (made a
 // document's window), and the host shows nothing of its own; false, or

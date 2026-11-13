@@ -13,7 +13,7 @@ import (
 
 	"github.com/egoist/asuka/internal/notifyspec"
 	. "github.com/egoist/asuka/internal/windows"
-	"github.com/egoist/asuka/notify"
+	"github.com/egoist/asuka/sdk/notify"
 	"github.com/egoist/asuka/ui"
 )
 

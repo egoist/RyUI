@@ -8,7 +8,7 @@ import (
 	. "github.com/egoist/asuka/internal/windows"
 )
 
-// asuka/power on Windows: the battery and the power source
+// asuka/sdk/power on Windows: the battery and the power source
 // (GetSystemPowerStatus; Low Power is battery saver, and Windows 11's
 // energy saver, which it reports the same way; Windows has no thermal
 // state for apps: nominal), read again as WM_POWERBROADCAST says they
@@ -43,7 +43,7 @@ var power = watched{read: readPower}
 // broadcast and RegisterSuspendResumeNotification's message can come.
 var powerAsleep bool
 
-// asuka/power's events.
+// asuka/sdk/power's events.
 const (
 	powerSuspend = 1
 	powerResume  = 2
@@ -89,7 +89,7 @@ func sessionChange(event uintptr) {
 	}
 }
 
-// readPower is asuka/power's state: u8 battery, on battery, level (255:
+// readPower is asuka/sdk/power's state: u8 battery, on battery, level (255:
 // not known), charging, low power, thermal.
 func readPower() []byte {
 	s, ok := SystemPowerStatus()

@@ -185,14 +185,14 @@ type Host struct {
 	splits        map[ID]*node            // SplitViews, by their sidebar's table
 	shaderTimer   ID                      // animated Shaders' clock, while there are any
 	wheelSwipe    wheelSwipe              // a trackpad's scroll that may be a swipe
-	scripts       map[ID]*script          // asuka/js runs, by their web view
+	scripts       map[ID]*script          // asuka/sdk/js runs, by their web view
 	clip          clipboard               // the clipboard module's watching
 	match         matching                // Style.Match (match.go)
-	net           netMonitor              // asuka/network (services.go)
-	speech        speech                  // asuka/speech
-	loc           locator                 // asuka/location
+	net           netMonitor              // asuka/sdk/network (services.go)
+	speech        speech                  // asuka/sdk/speech
+	loc           locator                 // asuka/sdk/location
 	refreshTarget ID                      // the observer of refreshable scroll views (refresh.go)
-	players       map[string]*audioPlayer // asuka/audio's, by ID
+	players       map[string]*audioPlayer // asuka/sdk/audio's, by ID
 	sidebarSource ID
 	editors       map[ID]ID         // each window's field editor (AsukaFieldEditor)
 	videos        map[ID]ops.NodeID // by AVPlayerItem
@@ -278,7 +278,7 @@ func Run(root func() ui.Node) {
 			fmt.Fprintln(os.Stderr, err)
 		}
 		restoreState()
-		// asuka/notify: the center's delegate before launch ends.
+		// asuka/sdk/notify: the center's delegate before launch ends.
 		h.installNotifications()
 		// app.Quit, OnQuit's signals and the launch's Apple Event (files.go).
 		h.startQuit()

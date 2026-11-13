@@ -320,7 +320,7 @@ func (v *mapView) clicked(g ID) {
 }
 
 // askLocationForMap asks for the location the first time the map shows
-// the user, if the app says why (asuka/location's purpose string).
+// the user, if the app says why (asuka/sdk/location's purpose string).
 func askLocationForMap() {
 	info := Send(Send(Class("NSBundle"), "mainBundle"), "infoDictionary")
 	if info == 0 {

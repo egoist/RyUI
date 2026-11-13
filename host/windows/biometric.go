@@ -8,7 +8,7 @@ import (
 	. "github.com/egoist/asuka/internal/windows"
 )
 
-// asuka/biometric on Windows: Windows Hello (UserConsentVerifier).
+// asuka/sdk/biometric on Windows: Windows Hello (UserConsentVerifier).
 // "check" answers u8 kind (none, fingerprint, face: the sensor Windows
 // Hello has, from the Windows Biometric Framework), u8 enrolled (a sensor,
 // and Windows Hello set up), u8 passcode (Windows Hello set up: its PIN);

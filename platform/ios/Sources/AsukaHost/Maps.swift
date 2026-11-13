@@ -49,7 +49,7 @@ import MapKit
             }
         case "showsUser":
             if value.bool && CLLocationManager().authorizationStatus == .notDetermined {
-                // Asks for it, if the app has the purpose string (asuka/location's).
+                // Asks for it, if the app has the purpose string (asuka/sdk/location's).
                 if Bundle.main.object(forInfoDictionaryKey: "NSLocationWhenInUseUsageDescription") != nil {
                     location = CLLocationManager()
                     location?.requestWhenInUseAuthorization()

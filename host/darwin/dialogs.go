@@ -18,8 +18,8 @@ import (
 	"github.com/egoist/asuka/ops"
 )
 
-// asuka/dialog (NSOpenPanel, NSSavePanel: sheets on the window) and
-// asuka/shell (NSWorkspace, NSFileManager) on a Mac.
+// asuka/sdk/dialog (NSOpenPanel, NSSavePanel: sheets on the window) and
+// asuka/sdk/shell (NSWorkspace, NSFileManager) on a Mac.
 
 func init() {
 	moduleHooks = append(moduleHooks, func(h *Host, m map[string]map[string]method) {
@@ -40,7 +40,7 @@ func init() {
 	})
 }
 
-// dialogArgs are asuka/dialog's options.
+// dialogArgs are asuka/sdk/dialog's options.
 type dialogArgs struct {
 	Title   string `json:"title"`
 	Button  string `json:"button"`
@@ -235,7 +235,7 @@ func contentTypes(mimes, exts []string) []ID {
 	return ts
 }
 
-// asuka/shell.
+// asuka/sdk/shell.
 
 // shellReveal shows the item selected in a Finder window of its folder.
 func shellReveal(args []byte, reply func([]byte, error)) {

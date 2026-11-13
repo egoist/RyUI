@@ -8,7 +8,7 @@ import (
 	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/internal/shadercode"
 	"github.com/egoist/asuka/ops"
-	"github.com/egoist/asuka/shader"
+	"github.com/egoist/asuka/sdk/shader"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )

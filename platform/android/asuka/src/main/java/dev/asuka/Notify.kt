@@ -35,7 +35,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 /**
- * asuka/notify's module (and asuka/push's notifications, which go through
+ * asuka/sdk/notify's module (and asuka/sdk/push's notifications, which go through
  * the same builder):
  * - "request" (u8 allowed); "schedule" (a notifyspec.Spec; seconds 0
  *   posts it now, else an inexact alarm does, allowed while idle: no
@@ -241,7 +241,7 @@ object AsukaNotifyHub {
 }
 
 /**
- * The one builder of notifications, from a notifyspec.Spec: asuka/notify's
+ * The one builder of notifications, from a notifyspec.Spec: asuka/sdk/notify's
  * and pushes'. What it posts is kept (by id, in SharedPreferences) while
  * it shows: its data for "showing", its messages to add the next one to,
  * the reply to add after an inline reply. Off the main thread ([worker]):

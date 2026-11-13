@@ -10,7 +10,7 @@ import (
 	. "github.com/egoist/asuka/internal/windows"
 )
 
-// asuka/hotkey on Windows: RegisterHotKey with a message window of the
+// asuka/sdk/hotkey on Windows: RegisterHotKey with a message window of the
 // modules' (HWND_MESSAGE), which gets WM_HOTKEY for a press whichever
 // app has the keyboard. It fails while another app has the keys
 // ("taken"); MOD_NOREPEAT keeps a key held down from pressing it again.

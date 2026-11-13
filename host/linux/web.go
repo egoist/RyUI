@@ -481,7 +481,7 @@ func (w *web) released() {
 	}
 }
 
-// The web module and asuka/js.
+// The web module and asuka/sdk/js.
 
 // evalBody runs s in the page's world and answers with its value as
 // JSON: the last statement's, or what its promise resolves to.
@@ -583,7 +583,7 @@ func (n *node) extWeb() (*web, bool) {
 	return w, ok
 }
 
-// script is a asuka/js run: a web view that's never shown, and who waits
+// script is a asuka/sdk/js run: a web view that's never shown, and who waits
 // for it.
 type script struct {
 	view    Ptr
@@ -592,7 +592,7 @@ type script struct {
 	reply   func([]byte, error)
 }
 
-// scriptsRunning counts the asuka/js runs under way.
+// scriptsRunning counts the asuka/sdk/js runs under way.
 var scriptsRunning int
 
 // jsModule is the "js" module: "eval" (args: u32 timeout ms, then the

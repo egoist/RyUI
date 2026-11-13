@@ -19,7 +19,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /**
- * asuka/audio/record's module: "start" (u8 quality: voice, music; u32 max
+ * asuka/sdk/audio/record's module: "start" (u8 quality: voice, music; u32 max
  * milliseconds, 0: none; u8 flags, 1 background, 2 stream; u32-length
  * notification title; u32-length path, empty for the app's caches) records
  * AAC, in MPEG-4 or as an ADTS stream, until "stop" and answers with the path;

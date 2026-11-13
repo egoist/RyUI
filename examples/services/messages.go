@@ -11,10 +11,10 @@ import (
 
 	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/fonts"
-	"github.com/egoist/asuka/notify"
-	"github.com/egoist/asuka/push"
+	"github.com/egoist/asuka/sdk/notify"
+	"github.com/egoist/asuka/sdk/push"
+	"github.com/egoist/asuka/sdk/store"
 	"github.com/egoist/asuka/signal"
-	"github.com/egoist/asuka/store"
 	"github.com/egoist/asuka/ui"
 )
 

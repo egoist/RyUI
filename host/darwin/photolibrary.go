@@ -21,7 +21,7 @@ import (
 	. "github.com/egoist/asuka/internal/darwin"
 )
 
-// asuka/photos on a Mac, with PhotoKit as on iOS ("photoLibrary"):
+// asuka/sdk/photos on a Mac, with PhotoKit as on iOS ("photoLibrary"):
 // "current" and "request" answer what's allowed, "list" JSON (id, width,
 // height, created in ms, screenshot), "thumbnail" a JPEG's path in the
 // caches and "export" JSON (path, name). macOS has no limited library
@@ -29,7 +29,7 @@ import (
 // it, "list" answers none and the others "not allowed", without asking:
 // Request asks, with the app's NSPhotoLibraryUsageDescription.
 //
-// asuka/library ("library": "save"): movies and pictures go to Photos
+// asuka/sdk/library ("library": "save"): movies and pictures go to Photos
 // (after asking to add to it, NSPhotoLibraryAddUsageDescription),
 // answering with the asset's identifier; downloads to ~/Downloads and
 // music to ~/Music, under the folder asked, answering with the file's
@@ -99,7 +99,7 @@ var phlLoaded = sync.OnceValue(func() bool {
 
 func phlLoad() bool { return phlLoaded() }
 
-// phlAccess is a status as asuka/photos' wire names it.
+// phlAccess is a status as asuka/sdk/photos' wire names it.
 func phlAccess(s int) string {
 	switch s {
 	case 3:

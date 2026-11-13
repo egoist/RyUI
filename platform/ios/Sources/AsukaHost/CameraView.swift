@@ -2,9 +2,9 @@
 import UIKit
 import AVFoundation
 
-/// asuka/camera's View: an AVCaptureSession's preview, filling the view,
+/// asuka/sdk/camera's View: an AVCaptureSession's preview, filling the view,
 /// a photo output for camera.Capture and, with scan on, a metadata output
-/// that reads codes (asuka/scan's Codes). The session runs while the view is
+/// that reads codes (asuka/sdk/scan's Codes). The session runs while the view is
 /// in a window.
 @MainActor final class AsukaCameraView: NSObject, AsukaNativeView, AVCapturePhotoCaptureDelegate, AVCaptureMetadataOutputObjectsDelegate {
     static weak var current: AsukaCameraView?

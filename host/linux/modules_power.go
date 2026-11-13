@@ -10,7 +10,7 @@ import (
 	. "github.com/egoist/asuka/internal/gtk"
 )
 
-// asuka/power on Linux, through the system's services over D-Bus:
+// asuka/sdk/power on Linux, through the system's services over D-Bus:
 // UPower for the battery (its OnBattery, and the display device: the
 // batteries as one, its percentage and whether it charges), GIO's power
 // profile monitor for the power saver profile (power-profiles-daemon,

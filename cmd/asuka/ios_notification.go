@@ -19,7 +19,7 @@ const notificationExe = "AsukaNotification"
 
 // rewriteSymbol is push.Rewrite's: the app's Go calls it if the archive
 // has it.
-const rewriteSymbol = "github.com/egoist/asuka/push.Rewrite"
+const rewriteSymbol = "github.com/egoist/asuka/sdk/push.Rewrite"
 
 // notificationID is the extension's bundle ID, which a device build needs
 // a provisioning profile for, as the app's.

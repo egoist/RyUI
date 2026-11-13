@@ -23,7 +23,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /**
- * asuka/nowplaying's module: a MediaSession, which the notification
+ * asuka/sdk/nowplaying's module: a MediaSession, which the notification
  * shade's media controls, the lock screen, Bluetooth headsets, Android
  * Auto and Wear OS show and drive, with its media-style notification.
  * "set" (JSON: internal/nowplayingspec's Info) sets the session's
@@ -264,7 +264,7 @@ class AsukaNowPlaying(private val rt: AsukaRuntime) {
             // In the background without an exemption: the notification
             // alone, as Media3 does.
         } catch (_: SecurityException) {
-            // Not declared (an app built without asuka/nowplaying's manifest).
+            // Not declared (an app built without asuka/sdk/nowplaying's manifest).
         }
     }
 

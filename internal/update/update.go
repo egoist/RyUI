@@ -1,4 +1,4 @@
-// Package update holds what package update (asuka/update, the updater of
+// Package update holds what package update (asuka/sdk/update, the updater of
 // desktop apps) and the Asuka CLI (asuka build and publish) share: the
 // update manifest, keys and signatures, versions and channels, the formats
 // of archives and delta updates, the feeds of GitHub releases, and how an

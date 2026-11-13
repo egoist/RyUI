@@ -1,5 +1,5 @@
-// asuka/camera, asuka/camera/record, asuka/scan, asuka/vision and
-// asuka/imageedit in the browser.
+// asuka/sdk/camera, asuka/sdk/camera/record, asuka/sdk/scan, asuka/sdk/vision and
+// asuka/sdk/imageedit in the browser.
 //
 //   - camera.take: a phone's camera app (<input capture>, where the screen
 //     is touch), else a dialog of the page's own: the camera's preview
@@ -264,7 +264,7 @@ function camera() {
 
 // --- codes ---
 
-// asuka/scan's kinds and the Shape Detection API's formats.
+// asuka/sdk/scan's kinds and the Shape Detection API's formats.
 const formats = {
   qr: "qr_code", aztec: "aztec", datamatrix: "data_matrix", pdf417: "pdf417", ean13: "ean_13", ean8: "ean_8",
   upca: "upc_a", upce: "upc_e", code128: "code_128", code39: "code_39", code93: "code_93", codabar: "codabar", itf: "itf",
@@ -272,7 +272,7 @@ const formats = {
 const kinds = Object.fromEntries(Object.entries(formats).map(([k, f]) => [f, k]));
 export const kindOf = (format) => kinds[format] || format;
 
-/** formatsOf is the detector's formats for asuka/scan's kinds (a comma-separated list; empty: all). */
+/** formatsOf is the detector's formats for asuka/sdk/scan's kinds (a comma-separated list; empty: all). */
 export function formatsOf(list) {
   const ks = (list || "").split(",").map((s) => s.trim()).filter(Boolean);
   return (ks.length ? ks : Object.keys(formats)).map((k) => formats[k]).filter(Boolean);
@@ -284,7 +284,7 @@ async function barcodeDetector(list) {
   return new BarcodeDetector(want.length ? { formats: want } : undefined);
 }
 
-/** encodeCodes is asuka/scan's reply: u32 count, then each code's kind and value, u32-length strings. */
+/** encodeCodes is asuka/sdk/scan's reply: u32 count, then each code's kind and value, u32-length strings. */
 export function encodeCodes(codes) {
   const parts = codes.map((c) => [enc.encode(c.kind), enc.encode(c.value)]);
   let n = 4;
@@ -405,7 +405,7 @@ export function pixelate(data, w, h, x0, y0, x1, y1, block) {
 
 const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
 
-/** applyActions does asuka/imageedit's actions on an image (anything drawImage takes), returning a canvas. */
+/** applyActions does asuka/sdk/imageedit's actions on an image (anything drawImage takes), returning a canvas. */
 function applyActions(src, w, h, actions) {
   let c = canvas(w, h);
   c.getContext("2d").drawImage(src, 0, 0, w, h);

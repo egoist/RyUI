@@ -2,7 +2,7 @@
 
 package gtk
 
-// What asuka/dialog and asuka/shell call of GTK and GIO (host/linux's
+// What asuka/sdk/dialog and asuka/sdk/shell call of GTK and GIO (host/linux's
 // modules_dialog.go): GtkFileDialog's save and folder methods and its
 // start, name and button, GIO's trash, GDK's beep. Bound by Load.
 var Dialogs struct {

@@ -1,11 +1,11 @@
-#if canImport(UIKit) && ASUKA_INTEGRITY // an app that calls asuka/integrity (see the CLI's iosFeatures)
+#if canImport(UIKit) && ASUKA_INTEGRITY // an app that calls asuka/sdk/integrity (see the CLI's iosFeatures)
 import UIKit
 import DeviceCheck
 #if canImport(AsukaOps)
 import AsukaOps
 #endif
 
-/// asuka/integrity's module, App Attest: "supported" (u8), "generateKey"
+/// asuka/sdk/integrity's module, App Attest: "supported" (u8), "generateKey"
 /// (the key's ID), "attestKey" and "assert" (string key ID, then the
 /// 32-byte client data hash) answer the attestation or assertion.
 /// Play Integrity's "prepare" and "token" are Android's.

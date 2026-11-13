@@ -1,5 +1,5 @@
-// Crash reports (asuka/crash) in the browser: the web host's side of the
-// run's record (internal/crashrun, which an app that imports asuka/crash
+// Crash reports (asuka/sdk/crash) in the browser: the web host's side of the
+// run's record (internal/crashrun, which an app that imports asuka/sdk/crash
 // starts as the host does).
 //
 //   - Go's crash output. On js/wasm Go's runtime can't write it to a file
@@ -10,12 +10,12 @@
 //     between, so when the program ends with a nonzero status, what it
 //     printed last from "panic: " or "fatal error: " on is the crash: it
 //     goes in the run's .crash file (crashrun's begin names it), in the
-//     app's files, which IndexedDB keeps; asuka/crash reads it into a
+//     app's files, which IndexedDB keeps; asuka/sdk/crash reads it into a
 //     report on the next launch.
 //   - Which runs live. The app's files are the origin's, shared by its
 //     pages (each reads them as it loads), so a page marks its run alive
 //     in localStorage, every page of the origin seeing it, while it's
-//     open: asuka/crash leaves the runs of the others alone.
+//     open: asuka/sdk/crash leaves the runs of the others alone.
 //   - Uncaught JavaScript errors (the host's, or the app's web/*.js): an
 //     exception report each, not fatal (the page goes on), written to the
 //     inbox as the mobile hosts write theirs, and Go told (crashNotify),

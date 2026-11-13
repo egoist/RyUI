@@ -13,7 +13,7 @@ import (
 	. "github.com/egoist/asuka/internal/gtk"
 )
 
-// asuka/login on Linux: an XDG autostart entry of the user's
+// asuka/sdk/login on Linux: an XDG autostart entry of the user's
 // ($XDG_CONFIG_HOME/autostart/<id>.desktop), which GNOME's and KDE's
 // sessions start as the user logs in, and GNOME Tweaks and KDE's
 // settings list. In a Flatpak the sandbox can't write it: the Background

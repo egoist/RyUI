@@ -8,7 +8,7 @@ import (
 	. "github.com/egoist/asuka/internal/gtk"
 )
 
-// asuka/network on Linux: GNetworkMonitor (NetworkManager's, the portal's
+// asuka/sdk/network on Linux: GNetworkMonitor (NetworkManager's, the portal's
 // in a sandbox) says whether the network is there and metered;
 // NetworkManager, when it runs, says what carries it (its primary
 // connection's type). The state is u8 connected, type (1 Wi-Fi, 2
@@ -45,7 +45,7 @@ func (h *Host) startNetwork() error {
 	}
 	n.monitor = Sys.NetworkMonitorGetDefault()
 	if n.monitor == 0 {
-		return errors.New("asuka/network: no network monitor")
+		return errors.New("asuka/sdk/network: no network monitor")
 	}
 	changed := func() { h.readNetwork() }
 	Connect(n.monitor, "network-changed", func(uintptr) { changed() })

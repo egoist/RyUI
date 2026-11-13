@@ -17,7 +17,7 @@ import (
 	"github.com/egoist/asuka/ops"
 )
 
-// asuka/print and asuka/compose on Linux.
+// asuka/sdk/print and asuka/sdk/compose on Linux.
 //
 // Printing: a file goes to the print portal (its dialog, then the
 // printer: what CUPS takes, PDFs and images among them), or, without the

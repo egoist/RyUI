@@ -12,7 +12,7 @@ import (
 )
 
 // A menu titled as the app adds its items to the app's menu, after About:
-// "Check for Updates…" (asuka/update's AppMenu).
+// "Check for Updates…" (asuka/sdk/update's AppMenu).
 func TestMenuBarAppMenu(t *testing.T) {
 	defer func(n string) { boot.Name = n }(boot.Name)
 	boot.Name = "Notes"

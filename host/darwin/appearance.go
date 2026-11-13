@@ -6,7 +6,7 @@ import (
 	. "github.com/egoist/asuka/internal/darwin"
 )
 
-// asuka/appearance on a Mac: the accent is NSColor's controlAccentColor
+// asuka/sdk/appearance on a Mac: the accent is NSColor's controlAccentColor
 // (System Settings, Appearance; multicolor is blue), in sRGB; Increase
 // Contrast and Reduce Transparency are NSWorkspace's accessibility
 // display options. The accent's changes come as the system's colors

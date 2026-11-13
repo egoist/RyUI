@@ -18,7 +18,7 @@ import androidx.core.app.ServiceCompat
 import org.json.JSONObject
 
 /**
- * asuka/background's module: "start", "update" and "end" (args: JSON id,
+ * asuka/sdk/background's module: "start", "update" and "end" (args: JSON id,
  * title, text, progress, actions) keep the app running in a foreground
  * service (data sync) while a task lives, each task with its ongoing
  * notification; "next" answers with an action tapped (JSON id, action),
@@ -148,7 +148,7 @@ class AsukaBackground(private val rt: AsukaRuntime) {
     }
 }
 
-/** The foreground service asuka/background's tasks keep the app running in. */
+/** The foreground service asuka/sdk/background's tasks keep the app running in. */
 class AsukaWorkService : Service() {
     companion object {
         var running: AsukaWorkService? = null

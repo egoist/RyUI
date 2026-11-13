@@ -6,7 +6,7 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
-        <!-- The channel Firebase shows notifications in while the app is in the background: asuka/notify's. -->
+        <!-- The channel Firebase shows notifications in while the app is in the background: asuka/sdk/notify's. -->
         <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="asuka" />
     </application>
 </manifest>

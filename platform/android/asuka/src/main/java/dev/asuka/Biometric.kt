@@ -12,7 +12,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /**
- * asuka/biometric's module: "check" answers u8 kind (none, fingerprint,
+ * asuka/sdk/biometric's module: "check" answers u8 kind (none, fingerprint,
  * face, iris), u8 enrolled, u8 passcode; "authenticate" (u8 flags: 1 no
  * passcode; string reason; string cancel) shows BiometricPrompt, and
  * fails with "canceled", "not available" or "failed".
@@ -71,7 +71,7 @@ fun AsukaRuntime.biometricMethods(): Map<String, AsukaModuleMethod> = mapOf(
     },
 )
 
-/** asuka/tracking's module: Android has no tracking prompt; the answer is allowed (3). */
+/** asuka/sdk/tracking's module: Android has no tracking prompt; the answer is allowed (3). */
 fun trackingMethods(): Map<String, AsukaModuleMethod> = mapOf(
     "request" to { _, reply -> reply(Result.success(byteArrayOf(3))) },
     "status" to { _, reply -> reply(Result.success(byteArrayOf(3))) },

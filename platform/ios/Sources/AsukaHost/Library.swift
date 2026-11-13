@@ -1,8 +1,8 @@
-#if canImport(UIKit) && ASUKA_LIBRARY // an app that calls asuka/library (see the CLI's iosFeatures)
+#if canImport(UIKit) && ASUKA_LIBRARY // an app that calls asuka/sdk/library (see the CLI's iosFeatures)
 import Foundation
 import Photos
 
-/// asuka/library's module: "save" (args: JSON path, collection 0 downloads,
+/// asuka/sdk/library's module: "save" (args: JSON path, collection 0 downloads,
 /// 1 movies, 2 music, 3 pictures, name, folder, mime, move). Movies and
 /// pictures go to Photos (after asking to add to it), answering with the
 /// asset's identifier; the rest to the app's Documents (the Files app

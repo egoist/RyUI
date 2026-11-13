@@ -36,8 +36,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/egoist/asuka/sdk/store"
 	"github.com/egoist/asuka/signal"
-	"github.com/egoist/asuka/store"
 	"github.com/egoist/asuka/ui"
 )
 

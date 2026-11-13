@@ -17,7 +17,7 @@ import (
 	"github.com/egoist/asuka/ui"
 )
 
-// asuka/apps: the list has the system's apps, named and with their
+// asuka/sdk/apps: the list has the system's apps, named and with their
 // bundle IDs, and Finder; each once.
 func TestAppsList(t *testing.T) {
 	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })
@@ -103,7 +103,7 @@ func TestAppsList(t *testing.T) {
 	}
 }
 
-// asuka/apps: Icon writes a PNG of the size at the main display's
+// asuka/sdk/apps: Icon writes a PNG of the size at the main display's
 // scale, kept and used again; a missing app fails.
 func TestAppsIcon(t *testing.T) {
 	cache := t.TempDir()
@@ -168,7 +168,7 @@ func TestAppsIcon(t *testing.T) {
 	}
 }
 
-// asuka/apps: Open of a missing app fails (no app is launched here).
+// asuka/sdk/apps: Open of a missing app fails (no app is launched here).
 func TestAppsOpenMissing(t *testing.T) {
 	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })
 	var err error

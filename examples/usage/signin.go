@@ -7,16 +7,16 @@ import (
 
 	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/fonts"
-	"github.com/egoist/asuka/secure"
+	"github.com/egoist/asuka/sdk/secure"
+	"github.com/egoist/asuka/sdk/webauth"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
-	"github.com/egoist/asuka/webauth"
 )
 
 // addSheet signs in with Claude: to add an account, or, with id, that
 // account again. Or it adds a demo account.
 //
-// The sign-in is the system's sheet (asuka/webauth): Claude's page, with
+// The sign-in is the system's sheet (asuka/sdk/webauth): Claude's page, with
 // the browser's sessions, Google's and Apple's sign-in. It redirects to
 // a server of the app's on localhost, which gets the code. Signing in
 // with a code instead redirects to a page that shows it, to paste.

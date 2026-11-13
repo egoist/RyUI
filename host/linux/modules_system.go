@@ -17,12 +17,12 @@ import (
 )
 
 // More of the system's modules on Linux, as macOS answers them where
-// Linux has nothing of its own: asuka/background (a desktop app keeps
+// Linux has nothing of its own: asuka/sdk/background (a desktop app keeps
 // running out of sight: a task holds off the system's suspending),
-// asuka/periodic (tasks on a timer while the app runs, as macOS's
-// scheduler runs them), asuka/splash (no launch screen to hold),
-// asuka/screen (no orientation or bars; capture can't be prevented;
-// screenshots seen as they're saved), asuka/widget (none), and the
+// asuka/sdk/periodic (tasks on a timer while the app runs, as macOS's
+// scheduler runs them), asuka/sdk/splash (no launch screen to hold),
+// asuka/sdk/screen (no orientation or bars; capture can't be prevented;
+// screenshots seen as they're saved), asuka/sdk/widget (none), and the
 // personal data Linux keeps no store of an app can read: Sign in with
 // Apple, the photo library, and contacts and calendars on a system
 // without Evolution Data Server (modules_eds.go reads and writes its
@@ -70,7 +70,7 @@ func answerNil(_ []byte, reply func([]byte, error)) { reply(nil, nil) }
 
 // Background.
 
-// bgTasks are asuka/background's tasks: a Linux app keeps running out of
+// bgTasks are asuka/sdk/background's tasks: a Linux app keeps running out of
 // sight, so a task only keeps the system from suspending (the session's
 // inhibitor, through the portal in a sandbox) until the last one ends.
 // There's no notification to show: "update" does nothing, and "next"
@@ -146,7 +146,7 @@ func endBackgroundTask(id uint32) {
 
 // Periodic.
 
-// asuka/periodic on Linux: a task runs about every interval while the
+// asuka/sdk/periodic on Linux: a task runs about every interval while the
 // app runs (in the background too: a Linux app keeps running out of
 // sight), as macOS's NSBackgroundActivityScheduler runs it; nothing
 // launches the app for it. "schedule" (string name, u32 seconds, u8
@@ -378,7 +378,7 @@ func onACPower() bool {
 
 // Screen.
 
-// screenState is asuka/screen's on Linux. Locking the orientation and the
+// screenState is asuka/sdk/screen's on Linux. Locking the orientation and the
 // bars' style are a phone's: a desktop's display doesn't turn with the
 // window, and it has no status or navigation bar. Nothing keeps a
 // window out of the desktop's own screenshots and recordings (Wayland
@@ -489,14 +489,14 @@ func isScreenshot(name string, inScreenshots bool) bool {
 
 // The photo library.
 
-// photoLibraryModule is asuka/photos' library's: a Linux desktop has no
-// photo library an app can read (photos are files: asuka/photos' Pick
-// and asuka/device's file picker reach them). Access is denied, and
+// photoLibraryModule is asuka/sdk/photos' library's: a Linux desktop has no
+// photo library an app can read (photos are files: asuka/sdk/photos' Pick
+// and asuka/sdk/device's file picker reach them). Access is denied, and
 // listing fails saying so.
 func (h *Host) photoLibraryModule() map[string]method {
 	denied := func(_ []byte, reply func([]byte, error)) { reply([]byte("denied"), nil) }
 	none := func(_ []byte, reply func([]byte, error)) {
-		reply(nil, errors.New("not available: Linux has no photo library (pick photos with asuka/photos' Pick)"))
+		reply(nil, errors.New("not available: Linux has no photo library (pick photos with asuka/sdk/photos' Pick)"))
 	}
 	return map[string]method{
 		"current":   denied,
@@ -510,7 +510,7 @@ func (h *Host) photoLibraryModule() map[string]method {
 
 // Contacts and calendars.
 
-// contactsModule is asuka/contacts' without Evolution Data Server
+// contactsModule is asuka/sdk/contacts' without Evolution Data Server
 // (modules_eds.go has its address books): no address book, no contact
 // picker: access is denied (the device doesn't allow it), listing fails
 // "not allowed", picking "not available". Adding a contact opens it, as a vCard, in the user's
@@ -533,7 +533,7 @@ func (h *Host) contactsModule() map[string]method {
 	}
 }
 
-// contactArgs is a contact as asuka/contacts adds it.
+// contactArgs is a contact as asuka/sdk/contacts adds it.
 type contactArgs struct {
 	Name, GivenName, FamilyName, Organization, JobTitle, Birthday, Note string
 	Phones, Emails                                                      []struct{ Label, Value string }
@@ -574,7 +574,7 @@ func vCard(c contactArgs) string {
 	return b.String()
 }
 
-// calendarModule is asuka/calendar's without Evolution Data Server
+// calendarModule is asuka/sdk/calendar's without Evolution Data Server
 // (modules_eds.go has its calendars): an app may add events but not
 // read them, as iOS's write-only access: "request" answers write
 // only, reading fails "not allowed". Adding an event opens it, as an

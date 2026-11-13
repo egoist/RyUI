@@ -64,7 +64,7 @@ var shareScreen func(*ui.ShareSheet) ui.Node
 // It runs in a process of its own, with a root of its own: on iOS the
 // app's share extension, which iOS shows as a sheet; on Android an
 // activity shown as a bottom sheet over the other app. What the app
-// keeps (asuka/store, sqlite in store.Dir, asuka/secure) is the same
+// keeps (asuka/sdk/store, sqlite in store.Dir, asuka/sdk/secure) is the same
 // there as in the app.
 //
 // Never inlined: asuka build looks for its symbol (cmd/asuka).

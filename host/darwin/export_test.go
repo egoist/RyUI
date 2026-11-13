@@ -10,7 +10,7 @@ import (
 )
 
 // What tests in package darwin_test use: those that import packages
-// importing package app, which imports this one (asuka/document).
+// importing package app, which imports this one (asuka/sdk/document).
 
 // OnMain runs f on the main thread (onMain); Fatal and Fatalf fail the
 // test from there.

@@ -1,4 +1,4 @@
-#if canImport(UIKit) && (ASUKA_NOTIFY || ASUKA_PUSH || ASUKA_NOTIFICATION_SERVICE) // asuka/notify, asuka/push (see the CLI's iosFeatures)
+#if canImport(UIKit) && (ASUKA_NOTIFY || ASUKA_PUSH || ASUKA_NOTIFICATION_SERVICE) // asuka/sdk/notify, asuka/sdk/push (see the CLI's iosFeatures)
 import UIKit
 import UserNotifications
 import UniformTypeIdentifiers
@@ -28,7 +28,7 @@ import Intents
     }
 }
 
-/// asuka/notify's module, and the notification center's delegate (asuka/
+/// asuka/sdk/notify's module, and the notification center's delegate (asuka/
 /// push's notifications too):
 /// - "request" (u8 allowed); "schedule" (a notifyspec.Spec: seconds 0
 ///   shows it now); "cancel" (the id).
@@ -271,7 +271,7 @@ import Intents
 }
 
 /// Notifications' content from Go's spec (internal/notifyspec's Spec):
-/// asuka/notify's, and a push's rewrite (push.Rewrite, in the Notification
+/// asuka/sdk/notify's, and a push's rewrite (push.Rewrite, in the Notification
 /// Service Extension); and what's reported of one that shows.
 enum AsukaNotifyContent {
     /// Makes the content o says (into base: a push's, which keeps its aps),

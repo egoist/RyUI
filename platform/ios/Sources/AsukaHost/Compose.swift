@@ -1,8 +1,8 @@
-#if canImport(UIKit) && ASUKA_COMPOSE // an app that calls asuka/compose (see the CLI's iosFeatures)
+#if canImport(UIKit) && ASUKA_COMPOSE // an app that calls asuka/sdk/compose (see the CLI's iosFeatures)
 import UIKit
 import MessageUI
 
-/// asuka/compose's module: "mail" (JSON: to, cc, bcc, subject, body, html,
+/// asuka/sdk/compose's module: "mail" (JSON: to, cc, bcc, subject, body, html,
 /// text, mailto, attachments: source, type, name) shows Mail's composer,
 /// or opens the mailto: link when the device has no Mail account and
 /// there are no attachments; "message" (to, subject, body, attachments)

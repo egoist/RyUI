@@ -13,7 +13,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /**
- * asuka/agerange's Play Age Signals: "request" asks the user to share
+ * asuka/sdk/agerange's Play Age Signals: "request" asks the user to share
  * (Play's consent screen), then reads the age range. The reply: u8 status
  * (declined, shared, verification required), u8 source (unknown), u32
  * lower, u32 upper (0: open); "not available" where Play can't answer.

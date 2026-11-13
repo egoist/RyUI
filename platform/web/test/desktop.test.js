@@ -1,5 +1,5 @@
 // The displays, power, dock and appearance modules' wire formats, as
-// asuka/screen, asuka/power, asuka/dock and asuka/appearance read them:
+// asuka/sdk/screen, asuka/sdk/power, asuka/sdk/dock and asuka/sdk/appearance read them:
 // node --test platform/web.
 import { test } from "node:test";
 import assert from "node:assert/strict";

@@ -1,10 +1,10 @@
-#if canImport(UIKit) && ASUKA_PHOTOLIBRARY // an app that calls asuka/photos (see the CLI's iosFeatures)
+#if canImport(UIKit) && ASUKA_PHOTOLIBRARY // an app that calls asuka/sdk/photos (see the CLI's iosFeatures)
 import CryptoKit
 import Photos
 import PhotosUI
 import UIKit
 
-/// asuka/photos' module, on PhotoKit: "current" and "request" answer what's
+/// asuka/sdk/photos' module, on PhotoKit: "current" and "request" answer what's
 /// allowed, "manage" shows the limited library picker, "list" answers JSON
 /// (id, width, height, created in ms, screenshot), "thumbnail" a JPEG's path
 /// and "export" JSON (path, name). Off the main thread where they wait.

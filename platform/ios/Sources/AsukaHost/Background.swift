@@ -1,7 +1,7 @@
 #if canImport(UIKit)
 import UIKit
 
-/// asuka/background's module: "start" and "end" (args: JSON id...) hold a
+/// asuka/sdk/background's module: "start" and "end" (args: JSON id...) hold a
 /// background task while a task lives, which gives the app about 30
 /// seconds more once it's out of sight; iOS shows no notification, so
 /// "update" does nothing, and "next" (actions tapped) waits until the

@@ -180,8 +180,8 @@ type Host struct {
 	frames       bool
 	inhibit      uint32
 	inBackground bool       // no window of the app's shows (lifecycle.go)
-	tray         *trayState // asuka/tray's icons and Dock menu (tray.go)
-	np           *mpris     // asuka/nowplaying's MPRIS player (nowplaying.go)
+	tray         *trayState // asuka/sdk/tray's icons and Dock menu (tray.go)
+	np           *mpris     // asuka/sdk/nowplaying's MPRIS player (nowplaying.go)
 	quitting     bool
 	quitAllowed  bool // OnQuit's handlers let the app quit (quit.go)
 	fontFamilies map[string]string

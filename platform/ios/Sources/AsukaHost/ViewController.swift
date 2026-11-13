@@ -55,7 +55,7 @@ public final class AsukaViewController: UIViewController {
         rt.start(self)
     }
 
-    // asuka/screen's lock and status bar.
+    // asuka/sdk/screen's lock and status bar.
     public override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
         AsukaScreen.lock ?? super.supportedInterfaceOrientations
     }

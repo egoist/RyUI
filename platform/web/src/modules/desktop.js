@@ -1,4 +1,4 @@
-// asuka/screen's displays, asuka/power, asuka/dock and asuka/appearance in
+// asuka/sdk/screen's displays, asuka/sdk/power, asuka/sdk/dock and asuka/sdk/appearance in
 // the browser.
 //
 //   - displays: "current", "next" (answered once the list isn't the one
@@ -67,7 +67,7 @@ const rect = (x, y, width, height) => ({ x: x ?? 0, y: y ?? 0, width: width ?? 0
 
 /**
  * displaysJSON is screens (window.screen, or getScreenDetails' screens) as
- * asuka/screen's displays: the primary one first. Without details, the
+ * asuka/sdk/screen's displays: the primary one first. Without details, the
  * one screen is the primary one.
  */
 export function displaysJSON(screens, scale, detailed) {
@@ -132,7 +132,7 @@ function displays() {
 // --- power ---
 
 /**
- * batteryState is a BatteryManager (or none) as asuka/power's state: u8
+ * batteryState is a BatteryManager (or none) as asuka/sdk/power's state: u8
  * battery, u8 on battery, u8 level (255 not known), u8 charging, u8 low
  * power, u8 thermal. Chrome answers a computer without a battery as one
  * charging, full, charged in no time and never discharging: no battery.
@@ -178,7 +178,7 @@ export function parseRGB(s) {
   return null;
 }
 
-/** appearanceState is asuka/appearance's reply: u8 has accent, r, g, b, u8 increase contrast, u8 reduce transparency. */
+/** appearanceState is asuka/sdk/appearance's reply: u8 has accent, r, g, b, u8 increase contrast, u8 reduce transparency. */
 export function appearanceState(accent, contrast, transparency) {
   const b = new Uint8Array(6);
   if (accent) b.set([1, ...accent]);

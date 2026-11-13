@@ -9,7 +9,7 @@ import (
 	. "github.com/egoist/asuka/internal/windows"
 )
 
-// asuka/dock on Windows: the taskbar button of the app's main window.
+// asuka/sdk/dock on Windows: the taskbar button of the app's main window.
 // "progress" is ITaskbarList3's progress (normal, indeterminate, paused
 // in yellow, error in red), set again when Explorer makes the button
 // again (TaskbarButtonCreated: the window showing, Explorer restarting).
@@ -34,7 +34,7 @@ var dockState struct {
 	flashWin  uintptr
 }
 
-// dockStates are asuka/dock's states as TBPF_ flags: none, normal,
+// dockStates are asuka/sdk/dock's states as TBPF_ flags: none, normal,
 // indeterminate, paused, error.
 var dockStates = [...]uint32{TBPF_NOPROGRESS, TBPF_NORMAL, TBPF_INDETERMINATE, TBPF_PAUSED, TBPF_ERROR}
 

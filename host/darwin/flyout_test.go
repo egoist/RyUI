@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/sdk/tray"
 	"github.com/egoist/asuka/signal"
-	"github.com/egoist/asuka/tray"
 	"github.com/egoist/asuka/ui"
 )
 

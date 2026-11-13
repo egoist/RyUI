@@ -14,7 +14,7 @@ import (
 	. "github.com/egoist/asuka/internal/darwin"
 )
 
-// asuka/periodic on a Mac: NSBackgroundActivityScheduler, which runs a
+// asuka/sdk/periodic on a Mac: NSBackgroundActivityScheduler, which runs a
 // task about every interval while the app runs (in the background too:
 // a Mac app keeps running out of sight), when the system has the time
 // and power for it; unlike iOS's BGTaskScheduler it doesn't launch the
@@ -237,7 +237,7 @@ func periodicFinished(name string, ok bool) {
 	Release(ID(done))
 }
 
-// online reports whether the Mac has a network path (asuka/network's
+// online reports whether the Mac has a network path (asuka/sdk/network's
 // monitor, started for it: unknown yet counts as online).
 func (h *Host) online() bool {
 	if h.startNetwork() != nil || len(h.net.path) == 0 {

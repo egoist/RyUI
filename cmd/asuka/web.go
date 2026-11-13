@@ -261,7 +261,7 @@ func webVAPIDKey(app *goApp) (string, error) {
 		_, err = ecdh.P256().NewPublicKey(b)
 	}
 	if err != nil || len(b) != 65 {
-		return "", errors.New("asuka.json: web.vapidPublicKey isn't a VAPID public key (an uncompressed P-256 point, 65 bytes, in base64url): github.com/egoist/asuka/push/webpush's GenerateKeys makes a pair")
+		return "", errors.New("asuka.json: web.vapidPublicKey isn't a VAPID public key (an uncompressed P-256 point, 65 bytes, in base64url): github.com/egoist/asuka/sdk/push/webpush's GenerateKeys makes a pair")
 	}
 	return k, nil
 }
@@ -816,7 +816,7 @@ func buildWeb(app *goApp, o *buildOptions) error {
 	if err := os.WriteFile(filepath.Join(out, "index.html"), []byte(page), 0o644); err != nil {
 		return err
 	}
-	// What asuka/update reads for a newer version than the page's.
+	// What asuka/sdk/update reads for a newer version than the page's.
 	if err := os.WriteFile(filepath.Join(out, "version.json"), versionFile(app), 0o644); err != nil {
 		return err
 	}

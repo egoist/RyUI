@@ -99,7 +99,7 @@ class AsukaMapView(context: Context, private val ctx: AsukaNativeContext) : Asuk
     private fun apply(g: GoogleMap, moveCamera: Boolean) {
         g.mapType = when (type) { 1 -> GoogleMap.MAP_TYPE_SATELLITE; 2 -> GoogleMap.MAP_TYPE_HYBRID; else -> GoogleMap.MAP_TYPE_NORMAL }
         g.uiSettings.setAllGesturesEnabled(interactive)
-        // The user's location needs the permission (asuka/location's); without it, none.
+        // The user's location needs the permission (asuka/sdk/location's); without it, none.
         try { g.isMyLocationEnabled = showsUser } catch (_: SecurityException) {}
         placeMarkers(g)
         if (moveCamera) moveTo(g, animated = false)

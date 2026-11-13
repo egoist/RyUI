@@ -137,7 +137,7 @@ something without a selection, `ui.Copy(text)` puts it on the clipboard.
 
 ### Markdown
 
-Package `asuka/markdown` shows Markdown as native views, built from
+Package `asuka/sdk/markdown` shows Markdown as native views, built from
 `RichText`. It parses as text is appended: only the block being written
 parses again, and only its views update.
 
@@ -458,7 +458,7 @@ Icons' glyphs on Windows. A name outside the set shows nothing there
 
 ### SVG icons
 
-For icons of your own, package `asuka/svg` draws SVG with the platform's
+For icons of your own, package `asuka/sdk/svg` draws SVG with the platform's
 vector drawing; nothing is rasterized. `svg.MustParse` reads the markup
 (`svg.Parse` returns an error instead), and `svg.View` draws it.
 
@@ -701,7 +701,7 @@ read by screen readers: give the view around it a `Label`.
 
 ### Charts
 
-`asuka/chart` draws charts on a Canvas: bars, lines, areas and points
+`asuka/sdk/chart` draws charts on a Canvas: bars, lines, areas and points
 over a value axis, with the platform's text for their labels (measured
 by it, scaled with the user's text size).
 

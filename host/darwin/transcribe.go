@@ -12,7 +12,7 @@ import (
 	. "github.com/egoist/asuka/internal/darwin"
 )
 
-// asuka/transcribe on a Mac, with the Speech framework as on iOS: "check"
+// asuka/sdk/transcribe on a Mac, with the Speech framework as on iOS: "check"
 // (the language) answers JSON onDevice, language; "file" (JSON path,
 // language) answers JSON text, segments, language. On the device only:
 // it never falls back to Apple's servers. macOS asks the user once, with

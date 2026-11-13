@@ -118,7 +118,7 @@ func TestWebViewBlockDownloadEval(t *testing.T) {
 	})
 }
 
-// asuka/js's module runs a script in a web view of its own: its value,
+// asuka/sdk/js's module runs a script in a web view of its own: its value,
 // a promise's, or what it threw.
 func TestJSModule(t *testing.T) {
 	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })

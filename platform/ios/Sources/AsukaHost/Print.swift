@@ -1,10 +1,10 @@
-#if canImport(UIKit) && ASUKA_PRINT // an app that calls asuka/print (see the CLI's iosFeatures)
+#if canImport(UIKit) && ASUKA_PRINT // an app that calls asuka/sdk/print (see the CLI's iosFeatures)
 import UIKit
 #if ASUKA_PRINTHTML
 import WebKit
 #endif
 
-/// asuka/print's module, each with JSON: "file" (source, type), "html"
+/// asuka/sdk/print's module, each with JSON: "file" (source, type), "html"
 /// (html) and "webView" (view, a WebView's node id), with the dialog's
 /// job, landscape and from (the node id the iPad's popover points at),
 /// show the print sheet and answer u8: 0 cancelled, 1 printed; "pdf"

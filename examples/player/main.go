@@ -1,5 +1,5 @@
 // Player plays an album and shows what plays where the system shows
-// media (asuka/nowplaying): the lock screen, Control Center and the
+// media (asuka/sdk/nowplaying): the lock screen, Control Center and the
 // notification shade, the menu bar's Now Playing, the volume flyout, the
 // desktops' media controls, the browser's; their buttons and the media
 // keys of keyboards and headsets play, pause, skip, seek and change track.
@@ -13,10 +13,10 @@ import (
 	"time"
 
 	"github.com/egoist/asuka/app"
-	"github.com/egoist/asuka/audio"
 	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/fonts"
-	"github.com/egoist/asuka/nowplaying"
+	"github.com/egoist/asuka/sdk/audio"
+	"github.com/egoist/asuka/sdk/nowplaying"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )

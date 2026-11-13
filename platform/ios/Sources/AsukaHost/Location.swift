@@ -1,8 +1,8 @@
-#if canImport(UIKit) && ASUKA_LOCATION // an app that imports asuka/location (see the CLI's iosFeatures)
+#if canImport(UIKit) && ASUKA_LOCATION // an app that imports asuka/sdk/location (see the CLI's iosFeatures)
 import UIKit
 import CoreLocation
 
-/// asuka/location's module: the position now ("current"), and each next
+/// asuka/sdk/location's module: the position now ("current"), and each next
 /// one while watching ("next", "stop"). Replies are JSON: lat, lon, acc
 /// (meters), alt, t (Unix ms); "denied" fails when the user hasn't
 /// allowed it.

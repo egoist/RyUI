@@ -1,4 +1,4 @@
-// asuka/secure on the web. A browser has no keychain: the values are kept
+// asuka/sdk/secure on the web. A browser has no keychain: the values are kept
 // in the app's IndexedDB database, each encrypted (AES-GCM, 256 bits)
 // under a key WebCrypto made non-extractable, kept in the same database
 // (IndexedDB keeps a CryptoKey as it is, so no script, the app's own

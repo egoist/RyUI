@@ -1,5 +1,5 @@
-// asuka/maps's Google Maps (the Maps SDK for Android; its key is
-// asuka.json's android.mapsKey). Only the apps that import asuka/maps are
+// asuka/sdk/maps's Google Maps (the Maps SDK for Android; its key is
+// asuka.json's android.mapsKey). Only the apps that import asuka/sdk/maps are
 // built with it (the Asuka CLI's asukaModules).
 plugins {
     id("com.android.library")

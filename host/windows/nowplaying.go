@@ -16,7 +16,7 @@ import (
 	. "github.com/egoist/asuka/internal/windows"
 )
 
-// asuka/nowplaying on Windows: the SystemMediaTransportControls of the
+// asuka/sdk/nowplaying on Windows: the SystemMediaTransportControls of the
 // app's window (ISystemMediaTransportControlsInterop::GetForWindow, as a
 // desktop app gets them; a hidden window of the host's when the app has
 // none, a background app's), which the volume flyout (Windows 10), quick

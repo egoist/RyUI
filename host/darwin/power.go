@@ -10,7 +10,7 @@ import (
 	. "github.com/egoist/asuka/internal/darwin"
 )
 
-// asuka/power on a Mac. The battery is IOKit's power sources
+// asuka/sdk/power on a Mac. The battery is IOKit's power sources
 // (IOPSCopyPowerSourcesInfo: the internal battery's capacity and
 // whether it charges; the source the Mac runs on), followed through
 // IOPSNotificationCreateRunLoopSource; Low Power Mode and the thermal
@@ -36,7 +36,7 @@ func init() {
 	})
 }
 
-// The events, asuka/power's Event values.
+// The events, asuka/sdk/power's Event values.
 const (
 	powerSuspend = 1 + iota
 	powerResume

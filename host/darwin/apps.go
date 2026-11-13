@@ -18,7 +18,7 @@ import (
 	. "github.com/egoist/asuka/internal/darwin"
 )
 
-// asuka/apps on a Mac: the .app bundles where Spotlight finds them,
+// asuka/sdk/apps on a Mac: the .app bundles where Spotlight finds them,
 // named by Launch Services (NSFileManager's displayNameAtPath:), their
 // icons NSWorkspace's, drawn into a bitmap, and opened by NSWorkspace.
 

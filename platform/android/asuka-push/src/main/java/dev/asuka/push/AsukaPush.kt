@@ -13,7 +13,7 @@ import dev.asuka.AsukaRuntime
 import dev.asuka.withPermission
 import org.json.JSONObject
 
-/** asuka/push's registration: notifications allowed (Android 13's prompt), then FCM's token. */
+/** asuka/sdk/push's registration: notifications allowed (Android 13's prompt), then FCM's token. */
 class AsukaPushPlugin : AsukaPlugin {
     override fun register(rt: AsukaRuntime) {
         AsukaPushHub.register = { r, reply ->
@@ -38,7 +38,7 @@ class AsukaPushPlugin : AsukaPlugin {
  * message itself, and a tap opens the app with its data as extras
  * (AsukaActivity hands them to AsukaPushHub); this sees data messages, and
  * every message while the app is in the foreground. It shows them with
- * asuka/notify's builder: a notification message, and a data message with
+ * asuka/sdk/notify's builder: a notification message, and a data message with
  * a "title" or "body" (its "channel", "category", "thread", "image"...).
  * With push.Rewrite (the manifest's dev.asuka.push.rewrite), the Go code
  * rewrites each first, started without a screen if the app isn't running.

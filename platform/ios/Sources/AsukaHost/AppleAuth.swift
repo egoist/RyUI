@@ -1,8 +1,8 @@
-#if canImport(UIKit) && ASUKA_APPLEAUTH // an app that calls asuka/appleauth (see the CLI's iosFeatures)
+#if canImport(UIKit) && ASUKA_APPLEAUTH // an app that calls asuka/sdk/appleauth (see the CLI's iosFeatures)
 import UIKit
 import AuthenticationServices
 
-/// asuka/appleauth's module: "available"; "signIn" (JSON: fullName, email,
+/// asuka/sdk/appleauth's module: "available"; "signIn" (JSON: fullName, email,
 /// nonce, state) shows Sign in with Apple and answers the credential as
 /// JSON, or fails with "canceled"; "state" (the user ID) answers u8:
 /// revoked, authorized, not found, transferred.

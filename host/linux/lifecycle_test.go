@@ -10,12 +10,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/egoist/asuka/crash"
 	"github.com/egoist/asuka/internal/boot"
 	"github.com/egoist/asuka/internal/crashrun"
 	. "github.com/egoist/asuka/internal/gtk"
 	"github.com/egoist/asuka/ops"
-	"github.com/egoist/asuka/store"
+	"github.com/egoist/asuka/sdk/crash"
+	"github.com/egoist/asuka/sdk/store"
 	"github.com/egoist/asuka/ui"
 )
 
@@ -156,7 +156,7 @@ func init() {
 	os.Exit(0)
 }
 
-// The Linux host keeps the app's crashes (asuka/crash): a Go panic, and a
+// The Linux host keeps the app's crashes (asuka/sdk/crash): a Go panic, and a
 // crash in C, each the next run's report with the run's context, the
 // computer's and the app's.
 func TestCrashReport(t *testing.T) {

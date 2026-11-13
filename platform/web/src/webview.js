@@ -801,7 +801,7 @@ export function cookies(url) {
 }
 
 /**
- * runScript runs a script in a page of its own (asuka/js): a hidden frame,
+ * runScript runs a script in a page of its own (asuka/sdk/js): a hidden frame,
  * sandboxed (an origin of its own: it can't reach the app or its
  * storage), made for it and let go after. It resolves to the value as
  * JSON, or rejects with what it threw, or "timeout".

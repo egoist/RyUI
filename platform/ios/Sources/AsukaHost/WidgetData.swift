@@ -2,7 +2,7 @@
 import UIKit
 import WidgetKit
 
-/// asuka/widget's module: "set" (JSON: kind, entries) keeps the kind's
+/// asuka/sdk/widget's module: "set" (JSON: kind, entries) keeps the kind's
 /// entries in the App Group's defaults (AsukaAppGroup), where the widget
 /// extension reads them, and reloads its widgets.
 enum AsukaWidgetData {

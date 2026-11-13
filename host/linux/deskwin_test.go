@@ -10,8 +10,8 @@ import (
 	"github.com/egoist/asuka/internal/flyout"
 	. "github.com/egoist/asuka/internal/gtk"
 	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/sdk/tray"
 	"github.com/egoist/asuka/signal"
-	"github.com/egoist/asuka/tray"
 	"github.com/egoist/asuka/ui"
 )
 

@@ -13,7 +13,7 @@ import org.json.JSONObject
 import java.util.Locale
 
 /**
- * asuka/speech's module, with TextToSpeech: "speak" (JSON: id, text,
+ * asuka/sdk/speech's module, with TextToSpeech: "speak" (JSON: id, text,
  * language, voice, pitch, rate, volume) answers once the utterance is
  * spoken, or fails with "stopped"; "stop", "pause", "resume"; "speaking"
  * (u8); "voices" (JSON). Utterances queue here: TextToSpeech can't pause,

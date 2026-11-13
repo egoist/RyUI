@@ -9,7 +9,7 @@ import (
 )
 
 // Printing: GTK's print settings, page setups and dialog, and WebKit's
-// print operation (asuka/print's markup and web views).
+// print operation (asuka/sdk/print's markup and web views).
 var Print struct {
 	SettingsNew        func() Ptr
 	SettingsSet        func(s Ptr, key, value string)

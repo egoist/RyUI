@@ -190,7 +190,7 @@ func DecodeWindowAction(b []byte) (a WindowAction, x, y float32, ok bool) {
 // Window's Flyout prop carries it: a tray icon, or a rectangle of its
 // parent's content.
 type Flyout struct {
-	// Tray is the tray icon it hangs from (asuka/tray's id for it); 0:
+	// Tray is the tray icon it hangs from (asuka/sdk/tray's id for it); 0:
 	// none, the rectangle instead.
 	Tray uint32
 	// X, Y, Width and Height are the rectangle, in points from the top

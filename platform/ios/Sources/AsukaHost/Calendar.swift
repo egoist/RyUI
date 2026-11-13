@@ -1,9 +1,9 @@
-#if canImport(UIKit) && ASUKA_CALENDAR // an app that calls asuka/calendar (see the CLI's iosFeatures)
+#if canImport(UIKit) && ASUKA_CALENDAR // an app that calls asuka/sdk/calendar (see the CLI's iosFeatures)
 import UIKit
 import EventKit
 import EventKitUI
 
-/// asuka/calendar's module: "request" (u8 access: not asked, denied, write
+/// asuka/sdk/calendar's module: "request" (u8 access: not asked, denied, write
 /// only, full), "calendars" and "events" (JSON: from, to in ms,
 /// calendars) answer JSON; "add" (an event's JSON) shows the event editor
 /// and answers u8 saved.

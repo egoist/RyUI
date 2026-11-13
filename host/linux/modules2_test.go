@@ -20,13 +20,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/egoist/asuka/camera"
 	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/fonts"
 	. "github.com/egoist/asuka/internal/gtk"
-	"github.com/egoist/asuka/maps"
 	"github.com/egoist/asuka/ops"
-	"github.com/egoist/asuka/scan"
+	"github.com/egoist/asuka/sdk/camera"
+	"github.com/egoist/asuka/sdk/maps"
+	"github.com/egoist/asuka/sdk/scan"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )

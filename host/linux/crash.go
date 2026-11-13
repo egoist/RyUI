@@ -10,7 +10,7 @@ import (
 	"github.com/egoist/asuka/internal/crashrun"
 )
 
-// startCrash begins the run's crash record (asuka/crash), if the app
+// startCrash begins the run's crash record (asuka/sdk/crash), if the app
 // reports crashes: Go's crash output, which has a native crash too (a
 // signal in GTK's code, an abort of GLib's: the runtime's handler prints
 // it, with every goroutine, before the process ends). Before GTK loads,

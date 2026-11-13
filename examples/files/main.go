@@ -1,5 +1,5 @@
 // Files shows a folder and keeps it up to date as files appear, change,
-// are renamed and go (asuka/watch): the app's own folder at first, which
+// are renamed and go (asuka/sdk/watch): the app's own folder at first, which
 // New File and swiping a file away change, or, on a desktop, a folder
 // chosen with Choose Folder…, which any app may change. What changed
 // since the folder opened is listed below it.
@@ -18,12 +18,12 @@ import (
 
 	"github.com/egoist/asuka/app"
 	"github.com/egoist/asuka/colors"
-	"github.com/egoist/asuka/dialog"
 	"github.com/egoist/asuka/fonts"
+	"github.com/egoist/asuka/sdk/dialog"
+	"github.com/egoist/asuka/sdk/store"
+	"github.com/egoist/asuka/sdk/watch"
 	"github.com/egoist/asuka/signal"
-	"github.com/egoist/asuka/store"
 	"github.com/egoist/asuka/ui"
-	"github.com/egoist/asuka/watch"
 )
 
 type entry struct {

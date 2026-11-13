@@ -117,7 +117,7 @@ type WindowProps struct {
 	// MenuBar shows the app's menu bar (MenuBar) in it as in the main
 	// window: Windows' menu bar, Linux's main menu. A Mac's menu bar is
 	// the app's whatever the window. For a window of the app's own, a
-	// document's (asuka/document), not a panel's.
+	// document's (asuka/sdk/document), not a panel's.
 	MenuBar bool
 	// Edited says the document it shows has unsaved changes: a dot in a
 	// Mac's close button, a * before its title on Windows, Linux and the
@@ -499,7 +499,7 @@ func Cmd(key string) Shortcut { return Shortcut{Key: key, Mods: Primary} }
 func (s Shortcut) With(m Modifiers) Shortcut { s.Mods |= m; return s }
 
 // MenuItem is an item of a menu: a menu bar's (MenuBar), a tray icon's
-// or the Dock icon's (asuka/tray).
+// or the Dock icon's (asuka/sdk/tray).
 type MenuItem struct {
 	// Title is what the item says (a role's own when empty).
 	Title string
@@ -538,7 +538,7 @@ const (
 	// asking its OnCloseRequest first: "Close", ⌘W, Ctrl+W. In a Mac's
 	// File menu it takes the place of the host's Close Window.
 	MenuRoleClose = ops.MenuRoleClose
-	// MenuRoleOpenRecent is the recent documents' submenu (asuka/recent):
+	// MenuRoleOpenRecent is the recent documents' submenu (asuka/sdk/recent):
 	// on a Mac the host's own, NSDocumentController's, which it fills as
 	// it opens, in this item's place; elsewhere the item's Submenu.
 	MenuRoleOpenRecent = ops.MenuRoleOpenRecent
@@ -557,7 +557,7 @@ var MenuSeparator = MenuItem{Separator: true}
 var MenuQuit = MenuItem{Role: MenuRoleQuit}
 
 // EncodeMenu is items as the hosts read a menu (ops.DecodeMenu): for a
-// package that shows menus of its own (asuka/tray) through a module.
+// package that shows menus of its own (asuka/sdk/tray) through a module.
 // The item a host reports by its number is MenuItemAt's.
 func EncodeMenu(items []MenuItem) []byte { return ops.AppendMenu(nil, menuOps(items)) }
 
@@ -629,7 +629,7 @@ func pressMenuItem(it *MenuItem) {
 // app's menu, Edit and Window; a menu titled as one of those (File,
 // Edit, View, Window, Help) adds its items to it, and on a Mac one titled
 // as the app (asuka.json's name) adds them to the app's menu, after
-// About ("Check for Updates…": asuka/update's AppMenu). Menus follows its
+// About ("Check for Updates…": asuka/sdk/update's AppMenu). Menus follows its
 // signals: an item turned off or checked, a menu that comes and goes.
 // While several are mounted, the last one shows; when it's disposed, the
 // one before. A phone has no menu bar: mobile hosts ignore it. The node

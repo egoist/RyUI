@@ -1,8 +1,8 @@
-#if canImport(UIKit) && ASUKA_PREVIEW // an app that calls asuka/preview (see the CLI's iosFeatures)
+#if canImport(UIKit) && ASUKA_PREVIEW // an app that calls asuka/sdk/preview (see the CLI's iosFeatures)
 import UIKit
 import QuickLook
 
-/// asuka/preview's module: "show" (JSON: files, each a source and a MIME
+/// asuka/sdk/preview's module: "show" (JSON: files, each a source and a MIME
 /// type; start; from, the node id of the view it grows from; edit,
 /// Markup into the files) presents
 /// Quick Look over the top screen, the files to swipe through, and

@@ -12,7 +12,7 @@ import (
 	. "github.com/egoist/asuka/internal/windows"
 )
 
-// asuka/audio on Windows: each player an MCI mpegvideo device (DirectShow's
+// asuka/sdk/audio on Windows: each player an MCI mpegvideo device (DirectShow's
 // playback), opened on its source's file (an asset, a path, a URL
 // downloaded to the caches first). A play asks to be told when it ends
 // (MM_MCINOTIFY, to the message window): looping plays again, playOnce
@@ -47,7 +47,7 @@ func (h *Host) mci(p *mciPlayer, cmd string, notify bool) string {
 	return out
 }
 
-// audioModule is asuka/audio's: players by ID (each call's args begin with
+// audioModule is asuka/sdk/audio's: players by ID (each call's args begin with
 // it, a u32-length string): load (the source), play, playOnce, pause,
 // seek (f64 seconds), volume (f64), rate (f64), loop (u8), release;
 // status answers f64 position, f64 duration, u8 playing, u8 ended.
@@ -164,7 +164,7 @@ func (h *Host) loadAudio(id, src string, reply func([]byte, error)) {
 		}
 		if err != nil {
 			delete(s.players, id)
-			reply(nil, fmt.Errorf("asuka/audio: %s: %w", src, err))
+			reply(nil, fmt.Errorf("asuka/sdk/audio: %s: %w", src, err))
 			return
 		}
 		p.open = true

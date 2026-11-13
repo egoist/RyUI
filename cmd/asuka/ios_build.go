@@ -650,7 +650,7 @@ func (p *profile) sign(t *iosToolchain, work, bundle, id string, domains []strin
 		}
 	}
 	// The app's keychain group, first (the one items go to), for the app
-	// and its share sheet: asuka/secure's items are the same in both.
+	// and its share sheet: asuka/sdk/secure's items are the same in both.
 	if keychain != "" {
 		if err := t.run(work, nil, "plutil", "-replace", "keychain-access-groups", "-json", `["`+keychain+`"]`, ent); err != nil {
 			return err

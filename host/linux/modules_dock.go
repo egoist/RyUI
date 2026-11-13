@@ -10,7 +10,7 @@ import (
 	. "github.com/egoist/asuka/internal/gtk"
 )
 
-// asuka/dock on Linux. The progress, like notify's badge, is the launcher
+// asuka/sdk/dock on Linux. The progress, like notify's badge, is the launcher
 // API's (com.canonical.Unity.LauncherEntry, an Update signal on the
 // session bus naming the app's desktop file): Dash to Dock and Ubuntu's
 // dock, KDE Plasma's task manager and others draw it over the app's

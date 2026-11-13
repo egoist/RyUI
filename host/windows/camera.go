@@ -15,11 +15,11 @@ import (
 	"github.com/egoist/asuka/native"
 )
 
-// asuka/camera on Windows, with Media Foundation's capture engine. The
+// asuka/sdk/camera on Windows, with Media Foundation's capture engine. The
 // "asuka.camera" view is a window of its own the engine's preview sink
 // draws the camera into, filling it (cropped to keep its aspect); its
 // photo sink takes Capture's photos (JPEG), its record sink
-// asuka/camera/record's videos in video mode (H.264 and AAC in MPEG-4).
+// asuka/sdk/camera/record's videos in video mode (H.264 and AAC in MPEG-4).
 // With scan on, the preview comes to the view as frames (the preview
 // sink's sample callback), which it draws itself and reads codes in, four
 // times a second, with package barcode (scan.go): each code reported as

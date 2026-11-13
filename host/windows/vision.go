@@ -12,7 +12,7 @@ import (
 	. "github.com/egoist/asuka/internal/windows"
 )
 
-// asuka/vision's "analyze" on Windows: the image decoded upright (WIC),
+// asuka/sdk/vision's "analyze" on Windows: the image decoded upright (WIC),
 // its text read by Windows's OCR (Windows.Media.Ocr: line by line, word
 // by word, in the first language asked for whose OCR is installed, else
 // the user's), its faces found by Windows.Media.FaceAnalysis; boxes in

@@ -11,7 +11,7 @@ import android.provider.Settings
 import androidx.core.content.ContextCompat
 
 /**
- * asuka/appearance's module: "current" (u8 has accent, red, green, blue,
+ * asuka/sdk/appearance's module: "current" (u8 has accent, red, green, blue,
  * increase contrast, reduce transparency), and, while watching, "next"
  * and "stop". The accent is the wallpaper's color Material You takes
  * (the system's accent1 at tone 40 in light mode, 80 in dark, as the

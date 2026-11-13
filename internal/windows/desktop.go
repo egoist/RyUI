@@ -4,7 +4,7 @@ package windows
 
 import "unsafe"
 
-// What asuka/power, asuka/appearance and asuka/dock read and ask: the
+// What asuka/sdk/power, asuka/sdk/appearance and asuka/sdk/dock read and ask: the
 // battery and the power source, the user's idle time, the notifications
 // of sleep, power changes and the session locking; the accent and the
 // accessibility settings; asking for the user's attention.

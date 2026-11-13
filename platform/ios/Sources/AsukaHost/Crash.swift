@@ -12,7 +12,7 @@ import MetricKit
 @_implementationOnly import CAsuka
 #endif
 
-/// asuka/crash's native side. The Go code keeps its own crashes (its crash
+/// asuka/sdk/crash's native side. The Go code keeps its own crashes (its crash
 /// output) and the run's context; the host writes what only it sees, in
 /// the directory's inbox, for the Go code to read into reports:
 ///
@@ -23,7 +23,7 @@ import MetricKit
 ///   exceptions, slow launches), which iOS delivers on a later launch:
 ///   inbox/metrickit-<UUID>.json, the payload's JSON as it is.
 ///
-/// Nothing's installed if the app doesn't import asuka/crash (the Go code
+/// Nothing's installed if the app doesn't import asuka/sdk/crash (the Go code
 /// says so).
 enum AsukaCrash {
     nonisolated(unsafe) private static var inbox: String?

@@ -21,9 +21,9 @@ import (
 
 // The modules that take files from the user and hand them to the system,
 // on Linux: device's pickers (photos, files: GtkFileDialog, the portal's
-// in a sandbox), its clipboard beyond text (GdkClipboard), asuka/library
+// in a sandbox), its clipboard beyond text (GdkClipboard), asuka/sdk/library
 // (the user's folders: XDG's Pictures, Videos, Music, Downloads),
-// asuka/preview (the file's app, GtkFileLauncher) and ui.ShareFiles (no
+// asuka/sdk/preview (the file's app, GtkFileLauncher) and ui.ShareFiles (no
 // share sheet on Linux: the files are copied, as text is).
 
 func init() {
@@ -354,7 +354,7 @@ func (c *clipWatch) stopWatching() {
 	}
 }
 
-// asuka/library: the file copied into the user's folder for its
+// asuka/sdk/library: the file copied into the user's folder for its
 // collection (XDG's), in a folder of the app's if asked; a name taken
 // gets a number. The answer is where it went.
 
@@ -444,7 +444,7 @@ func saveInto(dir, name, src string, move bool) (string, error) {
 	}
 }
 
-// asuka/preview: the start file in its app (Linux has no Quick Look of
+// asuka/sdk/preview: the start file in its app (Linux has no Quick Look of
 // its own), answered once it's handed over.
 
 type modSource struct {

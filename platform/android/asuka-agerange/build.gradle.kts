@@ -1,4 +1,4 @@
-// asuka/agerange's Play Age Signals. Only the apps that import asuka/agerange are built with it (the Asuka CLI's
+// asuka/sdk/agerange's Play Age Signals. Only the apps that import asuka/sdk/agerange are built with it (the Asuka CLI's
 // asukaModules).
 plugins {
     id("com.android.library")

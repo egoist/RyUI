@@ -1,4 +1,4 @@
-// asuka/integrity's Play Integrity (standard requests). Only the apps that import asuka/integrity are built with it (the Asuka CLI's
+// asuka/sdk/integrity's Play Integrity (standard requests). Only the apps that import asuka/sdk/integrity are built with it (the Asuka CLI's
 // asukaModules).
 plugins {
     id("com.android.library")

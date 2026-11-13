@@ -1,10 +1,10 @@
-#if canImport(UIKit) && ASUKA_IMAGEEDIT // an app that calls asuka/imageedit (see the CLI's iosFeatures)
+#if canImport(UIKit) && ASUKA_IMAGEEDIT // an app that calls asuka/sdk/imageedit (see the CLI's iosFeatures)
 import UIKit
 import ImageIO
 import AVFoundation
 import UniformTypeIdentifiers
 
-/// asuka/imageedit's module: "edit", "size" and "videoFrame", each with
+/// asuka/sdk/imageedit's module: "edit", "size" and "videoFrame", each with
 /// JSON (source, actions, format, quality, at in ms), answer JSON (path,
 /// width, height) or "no image". ImageIO decodes (HEIC, JPEG, PNG, WebP...)
 /// upright, at the size the first resize needs; Core Graphics does the

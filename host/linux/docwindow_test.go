@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/egoist/asuka/document"
 	"github.com/egoist/asuka/host/linux"
 	"github.com/egoist/asuka/internal/boot"
 	"github.com/egoist/asuka/internal/fileurl"
+	"github.com/egoist/asuka/sdk/document"
 	"github.com/egoist/asuka/ui"
 )
 

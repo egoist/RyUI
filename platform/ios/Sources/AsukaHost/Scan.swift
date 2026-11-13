@@ -1,13 +1,13 @@
 #if canImport(UIKit)
 import Foundation
 
-/// The kinds of code asuka/scan asks for ("" or none: every kind), parsed.
+/// The kinds of code asuka/sdk/scan asks for ("" or none: every kind), parsed.
 struct AsukaCodeKinds {
     let wanted: Set<String>
     init(_ s: String) { wanted = Set(s.split(separator: ",").map(String.init)) }
     func wants(_ kind: String) -> Bool { wanted.isEmpty || wanted.contains(kind) }
 
-    /// The code as asuka/scan names it. Apple reads a UPC-A as an EAN-13
+    /// The code as asuka/sdk/scan names it. Apple reads a UPC-A as an EAN-13
     /// with a leading 0: it's a UPC-A again if the app asked for those.
     func named(_ kind: String, _ value: String) -> (String, String) {
         if kind == "ean13", value.count == 13, value.hasPrefix("0"), wants("upca") {
@@ -30,7 +30,7 @@ struct AsukaCodeSeen {
     }
 }
 
-/// The reply asuka/scan's decode reads: a u32 count, then each code's kind
+/// The reply asuka/sdk/scan's decode reads: a u32 count, then each code's kind
 /// and value, each a u32 length and its bytes.
 func asukaEncodeCodes(_ codes: [(String, String)]) -> Data {
     var d = Data()
@@ -46,7 +46,7 @@ func asukaEncodeCodes(_ codes: [(String, String)]) -> Data {
 #if canImport(UIKit) && (ASUKA_SCAN || ASUKA_VISION) // an app that calls scan.File or vision.Analyze (see the CLI's iosFeatures)
 import Vision
 
-/// asuka/scan's module: "file" reads the codes in an image file, with Vision.
+/// asuka/sdk/scan's module: "file" reads the codes in an image file, with Vision.
 /// args: the kinds, comma-separated, a newline, the path.
 enum AsukaScan {
     static let symbologies: [(String, [VNBarcodeSymbology])] = [

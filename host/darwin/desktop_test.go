@@ -8,10 +8,10 @@ import (
 	"math"
 	"testing"
 
-	"github.com/egoist/asuka/appearance"
 	. "github.com/egoist/asuka/internal/darwin"
-	"github.com/egoist/asuka/power"
-	"github.com/egoist/asuka/screen"
+	"github.com/egoist/asuka/sdk/appearance"
+	"github.com/egoist/asuka/sdk/power"
+	"github.com/egoist/asuka/sdk/screen"
 	"github.com/egoist/asuka/ui"
 )
 

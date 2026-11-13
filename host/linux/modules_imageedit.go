@@ -20,7 +20,7 @@ import (
 	. "github.com/egoist/asuka/internal/gtk"
 )
 
-// asuka/imageedit on Linux: "edit", "size" and "videoFrame", each with
+// asuka/sdk/imageedit on Linux: "edit", "size" and "videoFrame", each with
 // JSON (source, actions, format, quality, at in ms), answer JSON (path,
 // width, height) or fail "no image". GdkPixbuf's loaders decode (JPEG,
 // PNG, WebP, HEIF, TIFF... as the system has them), upright as the

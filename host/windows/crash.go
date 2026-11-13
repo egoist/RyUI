@@ -12,7 +12,7 @@ import (
 	. "github.com/egoist/asuka/internal/windows"
 )
 
-// startCrash begins the run's crash record (asuka/crash), if the app
+// startCrash begins the run's crash record (asuka/sdk/crash), if the app
 // reports crashes: Go's crash output, and with no console what the
 // runtime prints to standard error, where it reports a Windows exception
 // it can't handle (crashrun).

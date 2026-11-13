@@ -1,7 +1,7 @@
 #if canImport(UIKit)
 import UIKit
 
-/// asuka/screen's module: "lock" (u8 orientation), "bars" (u8 style, u8
+/// asuka/sdk/screen's module: "lock" (u8 orientation), "bars" (u8 style, u8
 /// flags: 1 status bar hidden), "preventCapture" (u8 on), and, while
 /// watching, "screenshot" (answered at the next screenshot) and
 /// "stopScreenshots". The root and the screens' controllers read the

@@ -17,7 +17,7 @@ import (
 	. "github.com/egoist/asuka/internal/windows"
 )
 
-// asuka/imageedit on Windows: "edit", "size" and "videoFrame", each with
+// asuka/sdk/imageedit on Windows: "edit", "size" and "videoFrame", each with
 // JSON (source, actions, format, quality, at in ms), answer JSON (path,
 // width, height) or fail "no image". Windows's codecs (WIC) decode what
 // the system reads (HEIC, WebP where their extensions are installed),

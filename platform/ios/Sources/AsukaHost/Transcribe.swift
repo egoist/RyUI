@@ -1,8 +1,8 @@
-#if canImport(UIKit) && ASUKA_TRANSCRIBE // an app that calls asuka/transcribe (see the CLI's iosFeatures)
+#if canImport(UIKit) && ASUKA_TRANSCRIBE // an app that calls asuka/sdk/transcribe (see the CLI's iosFeatures)
 import UIKit
 import Speech
 
-/// asuka/transcribe's module: "check" (the language) answers JSON onDevice,
+/// asuka/sdk/transcribe's module: "check" (the language) answers JSON onDevice,
 /// language; "file" (JSON path, language) answers JSON text, segments,
 /// language. On the device only: it never falls back to Apple's servers.
 @MainActor final class AsukaTranscribe {

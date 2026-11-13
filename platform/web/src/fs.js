@@ -1,6 +1,6 @@
 // The app's files: a file system in memory with the API of Node's fs that
 // Go's syscall package calls on js/wasm, answered at once (Go waits for
-// each call's callback, so its os package works unchanged: asuka/store,
+// each call's callback, so its os package works unchanged: asuka/sdk/store,
 // crash records, the app's own files). What's under the app's data
 // directory (ASUKA_DATA, /data/<the app's name>) is kept in IndexedDB: loaded before Go
 // starts, written back shortly after each change and as the page hides.
@@ -16,7 +16,7 @@
 // file a tab changed and hasn't written yet stays its own: written whole
 // once it's written, the last tab's to write it).
 //
-// memfs.watch is Node's fs.watch, which asuka/watch calls: it tells what
+// memfs.watch is Node's fs.watch, which asuka/sdk/watch calls: it tells what
 // changes in a directory, a moment after the app's Go changed it.
 
 const S_IFDIR = 0o040000, S_IFREG = 0o100000;
@@ -67,7 +67,7 @@ function mkdirs(p) {
 }
 
 // lastInode numbers the entries, each its own inode kept as it's renamed,
-// as a disk's is: asuka/watch tells a file renamed from one replaced.
+// as a disk's is: asuka/sdk/watch tells a file renamed from one replaced.
 let lastInode = 0;
 
 function stat(e, path) {
@@ -602,7 +602,7 @@ export function blobURL(path) {
 // --- Files that go somewhere once written ---
 
 // sinks are what's done with a file once the app has written it (closed
-// a file it opened to write, or renamed one over it): asuka/dialog's Save
+// a file it opened to write, or renamed one over it): asuka/sdk/dialog's Save
 // writes it to the file the user chose, or downloads it.
 const sinks = new Map(); // path -> function(bytes)
 const pending = new Set();

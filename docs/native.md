@@ -106,7 +106,7 @@ func CallWait(module, method string, args []byte) ([]byte, error)
 
 The arguments and the result are bytes, whatever the module and your Go
 code agree on: JSON is fine. Asuka's packages wrap the built-in modules
-the same way: `asuka/secure` calls the `secureStore` module with
+the same way: `asuka/sdk/secure` calls the `secureStore` module with
 `CallWait` and with `Call`.
 
 `Call` fails with an error when the module has no such method (`no

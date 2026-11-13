@@ -13,7 +13,7 @@ import (
 	"github.com/egoist/asuka/ops"
 )
 
-// asuka/tray on Windows: icons in the notification area
+// asuka/sdk/tray on Windows: icons in the notification area
 // (Shell_NotifyIcon, NOTIFYICON_VERSION_4), owned by a hidden top-level
 // window of the modules' class (a message-only window doesn't get
 // TaskbarCreated, the message that says Explorer started again and the

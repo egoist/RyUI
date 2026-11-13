@@ -64,7 +64,7 @@ func TestDocuments(t *testing.T) {
 }
 
 // The modules: secureStore keeps a value in the Credential Manager and
-// deletes it; device.info says Windows; asuka/js runs a script (its value,
+// deletes it; device.info says Windows; asuka/sdk/js runs a script (its value,
 // a promise's, what it threw) in a WebView2 of its own.
 func TestModules(t *testing.T) {
 	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })

@@ -7,8 +7,8 @@ import (
 
 	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/fonts"
+	"github.com/egoist/asuka/sdk/svg"
 	"github.com/egoist/asuka/signal"
-	"github.com/egoist/asuka/svg"
 	"github.com/egoist/asuka/ui"
 )
 

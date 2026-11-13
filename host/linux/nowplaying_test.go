@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	. "github.com/egoist/asuka/internal/gtk"
-	"github.com/egoist/asuka/nowplaying"
+	"github.com/egoist/asuka/sdk/nowplaying"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )

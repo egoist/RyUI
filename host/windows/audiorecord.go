@@ -13,7 +13,7 @@ import (
 	. "github.com/egoist/asuka/internal/windows"
 )
 
-// asuka/audio/record on Windows: the default microphone (waveIn) encoded
+// asuka/sdk/audio/record on Windows: the default microphone (waveIn) encoded
 // to AAC by Media Foundation as it records, in an MPEG-4 file (.m4a) or,
 // streaming, ADTS (.aac). "start" (u8 quality: voice, music; u32 max
 // milliseconds, 0: none; u8 flags, 1 background, 2 stream; u32-length

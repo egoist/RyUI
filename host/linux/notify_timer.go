@@ -41,7 +41,7 @@ import (
 // The timers are used when the app is unique (an app ID of its own, not
 // a asuka dev, test or automation run), outside a sandbox (a Flatpak
 // can't reach systemd), and the user's systemd runs; else a timer of the
-// app's shows it while it runs, as before. asuka/notify has no repeating
+// app's shows it while it runs, as before. asuka/sdk/notify has no repeating
 // schedules: a timer is one time (OnCalendar), gone once it fires
 // (RemainAfterElapse=no).
 
@@ -180,7 +180,7 @@ func (h *Host) cancelSystemTimer(id string) {
 const notifyDueAction = "asuka-notify-due"
 
 // installNotifyActions adds the application's notification actions, as
-// it starts: a run that hasn't used asuka/notify yet is handed what's
+// it starts: a run that hasn't used asuka/sdk/notify yet is handed what's
 // due and what's tapped.
 func (h *Host) installNotifyActions() {
 	if notes.actionsAdded {
@@ -312,7 +312,7 @@ func (h *Host) fireDue(id string, done func(int)) {
 	}
 	conn, err := Bus(BusSession)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "asuka/notify:", err)
+		fmt.Fprintln(os.Stderr, "asuka/sdk/notify:", err)
 		done(1)
 		return
 	}
@@ -320,7 +320,7 @@ func (h *Host) fireDue(id string, done func(int)) {
 		if running {
 			activateRemote(conn, h.appID, notifyDueAction, string(b), func(err error) {
 				if err != nil {
-					fmt.Fprintln(os.Stderr, "asuka/notify:", err)
+					fmt.Fprintln(os.Stderr, "asuka/sdk/notify:", err)
 					done(1)
 					return
 				}
@@ -368,7 +368,7 @@ func (h *Host) showHeadless(conn Ptr, st storedNote, done func(int)) {
 				return
 			}
 			if err := notifyLaunch(string(tb)); err != nil {
-				fmt.Fprintln(os.Stderr, "asuka/notify:", err)
+				fmt.Fprintln(os.Stderr, "asuka/sdk/notify:", err)
 				finish(1)
 				return
 			}
@@ -380,7 +380,7 @@ func (h *Host) showHeadless(conn Ptr, st storedNote, done func(int)) {
 	}
 	h.fdoNotify(s, st.Image, false, func(ok bool) {
 		if !ok {
-			fmt.Fprintln(os.Stderr, "asuka/notify:", errors.New("no notification server"))
+			fmt.Fprintln(os.Stderr, "asuka/sdk/notify:", errors.New("no notification server"))
 			finish(1)
 			return
 		}

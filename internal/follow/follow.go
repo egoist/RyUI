@@ -1,5 +1,5 @@
 // Package follow follows a host module's state for the packages that
-// watch one (asuka/screen's displays, asuka/power, asuka/appearance): a
+// watch one (asuka/sdk/screen's displays, asuka/sdk/power, asuka/sdk/appearance): a
 // goroutine asks the module's "next" with the state it last got, which
 // the host answers once its state isn't that one (at once for none), and
 // hands each answer to the watchers, on the main thread, until the last

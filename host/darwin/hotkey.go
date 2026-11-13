@@ -11,7 +11,7 @@ import (
 	. "github.com/egoist/asuka/internal/darwin"
 )
 
-// asuka/hotkey on a Mac: Carbon's hot keys (RegisterEventHotKey), which
+// asuka/sdk/hotkey on a Mac: Carbon's hot keys (RegisterEventHotKey), which
 // need no Accessibility permission, registered exclusively: another
 // app's exclusive registration of the same keys fails one ("taken"), as
 // do the system's own shortcuts (Spotlight's ⌘Space, Mission Control's),

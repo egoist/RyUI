@@ -149,7 +149,7 @@ What isn't kept:
 A built phone app (`--embed`, `--once`, native code) starts again from
 nothing on each reload.
 
-Files your Go code writes (`asuka/store`, `asuka/plugins/sqlite`) are on your
+Files your Go code writes (`asuka/sdk/store`, `asuka/plugins/sqlite`) are on your
 computer, in the player as on the desktop: `store.Dir()` is a `data`
 directory of the app's own in Asuka's cache, one for each platform, as
 two devices would have theirs. Delete it to start the app again with no
@@ -339,7 +339,7 @@ ASUKA_SCRIPT="tap:Add;tap:Add" ASUKA_SNAPSHOT=shot.png go run .   # Windows, Lin
   libadwaita 1.5 or later (`the Linux host needs GTK 4.14 and libadwaita
   1.5 or later`), and some packages a library of their own: WebKitGTK
   6.0 for `ui.WebView`, GStreamer for video and audio, libsecret for
-  `asuka/secure`. The error names it; install it with your distribution's
+  `asuka/sdk/secure`. The error names it; install it with your distribution's
   package manager.
 - **A Linux app that doesn't open**: it needs a display. Over SSH or in
   CI, run it under Xvfb (`xvfb-run -a`), with a session bus

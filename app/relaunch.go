@@ -16,7 +16,7 @@ import (
 // Relaunch quits the app as Quit does (OnQuit's handlers run first, and
 // may cancel it, which cancels the relaunch too) and starts it again once
 // this process has exited, with the same arguments: after an update
-// (asuka/update), the new version; after a setting that only takes effect
+// (asuka/sdk/update), the new version; after a setting that only takes effect
 // at launch, the same one afresh. Safe from any goroutine.
 //
 // The new process starts only once this one is gone, so an app that runs
@@ -64,7 +64,7 @@ func relaunchAfterQuit(canceled, ending bool) {
 	}
 	args := os.Args[1:]
 	if boot.StagedRelaunch != nil && boot.StagedRelaunch(args) {
-		return // asuka/update's helper puts the new version in place, then opens it
+		return // asuka/sdk/update's helper puts the new version in place, then opens it
 	}
 	if err := startRelaunch(args); err != nil {
 		os.Stderr.WriteString("asuka: relaunching: " + err.Error() + "\n")

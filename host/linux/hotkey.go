@@ -13,7 +13,7 @@ import (
 	. "github.com/egoist/asuka/internal/gtk"
 )
 
-// asuka/hotkey on Linux, two ways:
+// asuka/sdk/hotkey on Linux, two ways:
 //
 //   - Wayland: apps can't see keys pressed in other apps; the desktop
 //     binds shortcuts for an app that asks the XDG desktop portal's

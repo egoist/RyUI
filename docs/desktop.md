@@ -225,7 +225,7 @@ icons, and Enter opens the first.
 
 ## Finding apps
 
-`asuka/apps` lists the apps installed, as a launcher searches them:
+`asuka/sdk/apps` lists the apps installed, as a launcher searches them:
 
 ```go
 apps.List(func(list []apps.App, err error) { installed.Set(list) })
@@ -277,7 +277,7 @@ clicks through to the page; nothing lets them out of the browser.
 
 ## File dialogs
 
-`asuka/dialog` shows the system's file dialogs and gives the user's own
+`asuka/sdk/dialog` shows the system's file dialogs and gives the user's own
 paths, not copies:
 
 ```go
@@ -308,7 +308,7 @@ Save and Folder answer `dialog.ErrUnsupported`.
 
 ## The file manager
 
-`asuka/shell` does what the file manager does with a file:
+`asuka/sdk/shell` does what the file manager does with a file:
 `shell.Reveal` shows it selected in its folder (Finder, Explorer, or the
 desktop's file manager), `shell.Open` opens it in the user's app for its
 type (`shell.ErrNoApp` if there's none) and a folder in the file
@@ -316,7 +316,7 @@ manager, `shell.Trash` moves it to the trash or the Recycle Bin and
 never deletes it for good (it fails instead), and `shell.Beep` sounds
 the alert. Phones and the web have no file manager: Reveal and Trash
 answer `shell.ErrUnsupported`, and on the web Open shows the file in a
-new tab. To show a file's contents in the app, use `asuka/preview`.
+new tab. To show a file's contents in the app, use `asuka/sdk/preview`.
 
 ## Opening files
 
@@ -400,7 +400,7 @@ app's own.
 
 ## Documents
 
-`asuka/document` makes an app whose windows each show a file, as a text
+`asuka/sdk/document` makes an app whose windows each show a file, as a text
 editor or a drawing app does: what NSDocument gives a Mac app, on every
 platform. Describe the kind of document, and run it:
 

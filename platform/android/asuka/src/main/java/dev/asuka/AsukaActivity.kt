@@ -59,7 +59,7 @@ open class AsukaActivity : AppCompatActivity() {
         AsukaSplash.theme(this) // asuka.json's splash: shown, then the app's theme
         edgeToEdge()
         super.onCreate(savedInstanceState)
-        AsukaDisplay.apply(this, runtime.isNight(resources.configuration)) // asuka/screen's, if it set any
+        AsukaDisplay.apply(this, runtime.isNight(resources.configuration)) // asuka/sdk/screen's, if it set any
         frame = FrameLayout(this)
         localeChanged()
         AsukaSplash.install(frame) // asuka.json's splash, until the first frame
@@ -140,9 +140,9 @@ open class AsukaActivity : AppCompatActivity() {
             openFile(data)
             return
         }
-        // A notification's tap or action that opens the app (asuka/notify).
+        // A notification's tap or action that opens the app (asuka/sdk/notify).
         AsukaNotifyHub.opened(this, intent)
-        // A push the user tapped (asuka/push): its data's url, if any.
+        // A push the user tapped (asuka/sdk/push): its data's url, if any.
         val pushed = AsukaPushHub.opened(intent)
         (intent.data?.toString() ?: pushed)?.let { runtime.openURL(it) }
     }
@@ -203,7 +203,7 @@ open class AsukaActivity : AppCompatActivity() {
 
     private fun configured(config: Configuration) {
         edgeToEdge() // status bar icons follow dark mode
-        AsukaDisplay.bars(this, runtime.isNight(config)) // unless asuka/screen set them
+        AsukaDisplay.bars(this, runtime.isNight(config)) // unless asuka/sdk/screen set them
         runtime.configurationChanged(config)
         AsukaSystemAppearance.configurationChanged()
         localeChanged()

@@ -38,7 +38,7 @@ draws its own UI, see [Asuka and MyGo](mygo.md).
 
 | | SwiftUI | Expo | Asuka |
 |---|---|---|---|
-| Text, styled text, links | `Text`, `AttributedString` | `Text` | ✓ `Text`, `RichText` (spans, links, inline views, selection), `asuka/markdown` |
+| Text, styled text, links | `Text`, `AttributedString` | `Text` | ✓ `Text`, `RichText` (spans, links, inline views, selection), `asuka/sdk/markdown` |
 | Buttons (variants, icons, menus) | `Button`, `Menu` | `Pressable` | ✓ `Button` (filled, tinted, gray, bordered; icon; menu), `Menu`, context menus |
 | Text fields | `TextField`, `SecureField`, `TextEditor` | `TextInput` | ✓ `TextField` (secure, keyboards, return keys, multiline) |
 | The cursor, inserting at it | `TextSelection` | `selection`, `onSelectionChange` | ✓ `TextFieldProps.Selection`, `ui.InsertText` |
@@ -54,10 +54,10 @@ draws its own UI, see [Asuka and MyGo](mygo.md).
 | Icons | SF Symbols | `@expo/vector-icons` | ✓ `Symbol` (SF Symbols on iOS and the Mac; for the same names, Material Symbols on Android and the web, Segoe Fluent Icons on Windows, the icon theme's or Material Symbols on Linux: a curated set) |
 | Images (remote, cached, placeholders) | `AsyncImage` | `expo-image` | ✓ `Image` (memory and disk cache, `Placeholder`) |
 | Video | `VideoPlayer` | `expo-video` | ✓ `Video` (AVKit on iOS and the Mac, Media3 on Android, WebView2 on Windows, GStreamer on Linux, `<video>` on the web) |
-| Web content | `WKWebView` | `react-native-webview` | ✓ `WebView` (WKWebView on iOS and the Mac, Android's WebView, WebView2 on Windows, WebKitGTK on Linux; URL, HTML, messages both ways, scripts before the page's, blocked requests, its state and history, downloads, new windows, cookies, a script's value; each request on Android; on the web, all of it for the app's own site and for pages that cooperate through `postMessage`, while another site's page only loads); `asuka/js` runs JavaScript off screen |
-| Maps | `Map` | `expo-maps` | ✓ `asuka/maps` (Apple Maps; Google Maps with an API key: region, markers, the user's location, taps; libshumate's OpenStreetMap map on Linux; on Windows the host draws OpenStreetMap's tiles itself) |
-| Custom drawing | `Shape`, `Path`, `Canvas` | `react-native-svg`, Skia | ✓ `Shape` and `Path` (fill, stroke, caps, joins, dashes, an animatable trim); `Canvas` (paths, gradients, text, transforms, clips, opacity); SVG icons drawn natively (`asuka/svg`) |
-| Charts | Swift Charts | `victory-native`, community | ✓ `asuka/chart` (bars, lines, areas, points) |
+| Web content | `WKWebView` | `react-native-webview` | ✓ `WebView` (WKWebView on iOS and the Mac, Android's WebView, WebView2 on Windows, WebKitGTK on Linux; URL, HTML, messages both ways, scripts before the page's, blocked requests, its state and history, downloads, new windows, cookies, a script's value; each request on Android; on the web, all of it for the app's own site and for pages that cooperate through `postMessage`, while another site's page only loads); `asuka/sdk/js` runs JavaScript off screen |
+| Maps | `Map` | `expo-maps` | ✓ `asuka/sdk/maps` (Apple Maps; Google Maps with an API key: region, markers, the user's location, taps; libshumate's OpenStreetMap map on Linux; on Windows the host draws OpenStreetMap's tiles itself) |
+| Custom drawing | `Shape`, `Path`, `Canvas` | `react-native-svg`, Skia | ✓ `Shape` and `Path` (fill, stroke, caps, joins, dashes, an animatable trim); `Canvas` (paths, gradients, text, transforms, clips, opacity); SVG icons drawn natively (`asuka/sdk/svg`) |
+| Charts | Swift Charts | `victory-native`, community | ✓ `asuka/sdk/chart` (bars, lines, areas, points) |
 | Shaders | `.colorEffect(ShaderLibrary...)` | Skia's runtime effects | ✓ `Shader` (Kage, Go's syntax: Metal on iOS and the Mac, AGSL on Android, WebGL 2 on the web, the CPU on Windows and Linux) |
 | Native escape hatch | `UIViewRepresentable` | native modules | ✓ `ui.Native` views, `ui.Call` modules (Swift on iOS and macOS, Kotlin on Android, Go on the desktop, JavaScript on the web: [Native code](native.md)) |
 | Paging, page dots | `.scrollTargetBehavior(.paging)`, `TabView(.page)` | `react-native-pager-view` | ✓ `ScrollProps.Paging`, `PageControl` |
@@ -100,19 +100,19 @@ draws its own UI, see [Asuka and MyGo](mygo.md).
 | | SwiftUI / Apple | Expo | Asuka |
 |---|---|---|---|
 | State | `@State`, `@Observable` | hooks | ✓ signals (fine-grained: a write updates only what reads it) |
-| Small persisted values | `@AppStorage` | AsyncStorage | ✓ `asuka/store` |
+| Small persisted values | `@AppStorage` | AsyncStorage | ✓ `asuka/sdk/store` |
 | SQLite | SwiftData / GRDB | `expo-sqlite` | ✓ `asuka/plugins/sqlite` (migrations, typed queries, transactions, writes off the main thread, live queries that run again when a table they read is written, also with arguments that change: `WatchWith`; in the browser too, SQLite's WebAssembly build) |
-| Secure storage | Keychain | `expo-secure-store` | ✓ `asuka/secure` (on the web: encrypted in IndexedDB under a key the browser won't let out; not a keychain) |
+| Secure storage | Keychain | `expo-secure-store` | ✓ `asuka/sdk/secure` (on the web: encrypted in IndexedDB under a key the browser won't let out; not a keychain) |
 | Files, network | Foundation | `expo-file-system`, fetch | ✓ Go's `os`, `net/http` |
 | Photos | `PhotosPicker` | `expo-image-picker` | ✓ `device.PickPhotos` |
 | Documents | `UIDocumentPickerViewController` | `expo-document-picker` | ✓ `device.PickFiles` (MIME types, several) |
-| Camera | AVFoundation | `expo-camera` | ✓ `asuka/camera`: `Take` (the system's camera; on the Mac, Windows and Linux, a dialog with a live preview; Windows: Media Foundation's capture engine; Linux: the camera portal or Video4Linux through GStreamer), `View` (a live preview, front or back), `Capture`; `asuka/camera/record` records video with sound |
-| Barcodes, QR codes | AVFoundation, Vision | `expo-camera` scanning | ✓ `asuka/scan`: live in `camera.View` (`Scan: scan.Codes(...)`) and in image files (`scan.File`); ML Kit on Android, only in the apps that import it; ZBar on Linux; on Windows Asuka's own reader in Go (`internal/barcode`: QR, Data Matrix, EAN, UPC, Code 128, Code 39) |
-| Location | Core Location | `expo-location` | ✓ `asuka/location` (place names: on Windows, OpenStreetMap's Nominatim) |
+| Camera | AVFoundation | `expo-camera` | ✓ `asuka/sdk/camera`: `Take` (the system's camera; on the Mac, Windows and Linux, a dialog with a live preview; Windows: Media Foundation's capture engine; Linux: the camera portal or Video4Linux through GStreamer), `View` (a live preview, front or back), `Capture`; `asuka/sdk/camera/record` records video with sound |
+| Barcodes, QR codes | AVFoundation, Vision | `expo-camera` scanning | ✓ `asuka/sdk/scan`: live in `camera.View` (`Scan: scan.Codes(...)`) and in image files (`scan.File`); ML Kit on Android, only in the apps that import it; ZBar on Linux; on Windows Asuka's own reader in Go (`internal/barcode`: QR, Data Matrix, EAN, UPC, Code 128, Code 39) |
+| Location | Core Location | `expo-location` | ✓ `asuka/sdk/location` (place names: on Windows, OpenStreetMap's Nominatim) |
 | Translations, plurals, regional formats | String Catalogs, FormatStyle | `expo-localization`, i18next | ✓ `asuka/i18n`, catalogs ([Languages](i18n.md)) |
 | Right-to-left layout | `layoutDirection` | `I18nManager` | ✓ follows the language, `ui.WithDirection` |
-| Local notifications | UserNotifications | `expo-notifications` | ✓ `asuka/notify` (now or scheduled, images; iOS, Android, macOS, Linux; Windows' toasts, with buttons and replies through the app's COM activator; on the web through the app's service worker, so they stay and answer after the page closes, a scheduled one showing at its time while a page of the app is open, else as the next opens: browsers can't schedule one) |
-| Push notifications | APNs | `expo-notifications` | ✓ `asuka/push` (APNs on iOS and macOS, Firebase Cloud Messaging, Web Push with VAPID on the web: the token, messages received and tapped; `asuka/push/webpush` sends Web Push from a Go server) |
+| Local notifications | UserNotifications | `expo-notifications` | ✓ `asuka/sdk/notify` (now or scheduled, images; iOS, Android, macOS, Linux; Windows' toasts, with buttons and replies through the app's COM activator; on the web through the app's service worker, so they stay and answer after the page closes, a scheduled one showing at its time while a page of the app is open, else as the next opens: browsers can't schedule one) |
+| Push notifications | APNs | `expo-notifications` | ✓ `asuka/sdk/push` (APNs on iOS and macOS, Firebase Cloud Messaging, Web Push with VAPID on the web: the token, messages received and tapped; `asuka/sdk/push/webpush` sends Web Push from a Go server) |
 | Notification actions, inline replies | `UNNotificationCategory`, `UNTextInputNotificationAction` | `setNotificationCategoryAsync` | ✓ `notify.SetCategories`, `OnAction` (background actions run the app's Go code, started without a screen if it isn't running; `Response.Defer`; Android's reply posted back into the conversation; on the web, the service worker's notification actions, inline replies where Chrome has them) |
 | Threads, the notifications showing, the badge | `threadIdentifier`, `getDeliveredNotifications`, `setBadgeCount` | `getPresentedNotificationsAsync`, `setBadgeCountAsync` | ✓ `Thread` (Android: a group with its summary kept), `notify.Showing`, `Remove`, `RemoveThread`, `SetBadge` (Android: the launcher's, from the notifications) |
 | Notifications in the foreground | `willPresent` | `setNotificationHandler` | ✓ `notify.Present` (banner, quiet, hidden) |
@@ -120,39 +120,39 @@ draws its own UI, see [Asuka and MyGo](mygo.md).
 | Messages in conversations | Communication notifications (`INSendMessageIntent`) | community | ✓ `Notification.From`, `push.Message.From`: iOS's communication notifications (the entitlement added for the apps that use it), Android's MessagingStyle and conversation shortcuts; plain on macOS; no bubbles |
 | Changing a push before it shows | Notification Service Extension | community (`expo-notifications` has none) | ✓ `push.Rewrite`: the app's Go code in iOS's extension (built and signed by `asuka build`), in the app's process for Android's data messages |
 | Clipboard, share sheet, browser | `UIPasteboard`, `ShareLink`, `SFSafariViewController` | `expo-clipboard`, `expo-sharing`, `expo-web-browser` | ✓ `Copy`, `device.Clipboard` (text; images: `CopyImage`, `ClipboardImage`; `ClipboardHas`, `OnClipboardChange`), `Share` (text), `ShareFiles` (files, with expo-sharing's MIME type, UTI, title and iPad anchor; done when the sheet closes), `device.Browse` |
-| Previewing files | `QLPreviewController`, `.quickLookPreview` | `react-native-file-viewer` | ✓ `asuka/preview` (Quick Look on iOS and the Mac, several files, Markup; Android's viewer apps; Windows's and Linux's default app) |
-| Printing, PDFs from HTML | `UIPrintInteractionController`, `UIPrintPageRenderer` | `expo-print` | ✓ `asuka/print` (files, HTML, a WebView, with the system's dialog and its result; `PDF`: paginated, the region's paper, margins) |
-| Mail and message composers | `MFMailComposeViewController`, `MFMessageComposeViewController` | `expo-mail-composer`, `expo-sms` | ✓ `asuka/compose` (recipients, subject, HTML body, attachments; what the user did on iOS; the mail apps only on Android; Messages on the Mac) |
+| Previewing files | `QLPreviewController`, `.quickLookPreview` | `react-native-file-viewer` | ✓ `asuka/sdk/preview` (Quick Look on iOS and the Mac, several files, Markup; Android's viewer apps; Windows's and Linux's default app) |
+| Printing, PDFs from HTML | `UIPrintInteractionController`, `UIPrintPageRenderer` | `expo-print` | ✓ `asuka/sdk/print` (files, HTML, a WebView, with the system's dialog and its result; `PDF`: paginated, the region's paper, margins) |
+| Mail and message composers | `MFMailComposeViewController`, `MFMessageComposeViewController` | `expo-mail-composer`, `expo-sms` | ✓ `asuka/sdk/compose` (recipients, subject, HTML body, attachments; what the user did on iOS; the mail apps only on Android; Messages on the Mac) |
 | Keep awake, device info | `isIdleTimerDisabled`, `UIDevice` | `expo-keep-awake`, `expo-device` | ✓ `device.KeepAwake`, `device.GetInfo` |
-| Network state | `NWPathMonitor` | `expo-network` | ✓ `asuka/network` (online, Wi-Fi or cellular, metered, Data Saver / Low Data Mode) |
-| Saving to the gallery, Downloads | `PHPhotoLibrary` | `expo-media-library` | ✓ `asuka/library` (MediaStore's collections; Photos, or Documents in Files) |
-| Work in the background | `beginBackgroundTask`, `BGTaskScheduler` | `expo-task-manager`, `expo-background-task` | ✓ `asuka/background`: Android keeps the app running, its progress and buttons in a notification; iOS gives about 30 seconds; the Mac keeps it running (App Nap off), Linux and Windows keep the system from suspending. `asuka/periodic`: tasks the system runs now and then, the app's Go code started without a screen (BGTaskScheduler, WorkManager; on the Mac while the app runs, `NSBackgroundActivityScheduler`; on Linux and Windows, a timer while it runs) |
+| Network state | `NWPathMonitor` | `expo-network` | ✓ `asuka/sdk/network` (online, Wi-Fi or cellular, metered, Data Saver / Low Data Mode) |
+| Saving to the gallery, Downloads | `PHPhotoLibrary` | `expo-media-library` | ✓ `asuka/sdk/library` (MediaStore's collections; Photos, or Documents in Files) |
+| Work in the background | `beginBackgroundTask`, `BGTaskScheduler` | `expo-task-manager`, `expo-background-task` | ✓ `asuka/sdk/background`: Android keeps the app running, its progress and buttons in a notification; iOS gives about 30 seconds; the Mac keeps it running (App Nap off), Linux and Windows keep the system from suspending. `asuka/sdk/periodic`: tasks the system runs now and then, the app's Go code started without a screen (BGTaskScheduler, WorkManager; on the Mac while the app runs, `NSBackgroundActivityScheduler`; on Linux and Windows, a timer while it runs) |
 | Receiving shares from other apps | Share extension | `expo-sharing` (`useIncomingShare`) | ✓ `ui.OnShare`: texts, links, images, videos, audio and files, one or many, with their name, MIME type and size (`asuka.json`'s `shareTarget`: types and max, Android's intent filters and iOS's activation rule from them; on iOS a share extension that opens the app, files through an App Group); `app.ShareSheet`, the app's own screen over the app that shares (iOS: its share extension; Android: a bottom sheet in a process of its own), its data shared with the app; no resolving of links (`net/http`) |
-| Audio | AVAudioPlayer, AVAudioRecorder | `expo-audio` | ✓ `asuka/audio` (load, play, pause, seek, volume, loop); `asuka/audio/record` (voice or music quality, pause, a level meter) |
-| Now Playing, lock screen controls, media keys | `MPNowPlayingInfoCenter`, `MPRemoteCommandCenter` | `expo-audio`'s lock screen controls, community (`react-native-track-player`) | ✓ `asuka/nowplaying` (title, artist, album, artwork, duration, a position the system advances, play, pause, next, previous, seek, skips, stop, enabled by the handlers set; follows an `audio.Player` by itself; a MediaSession and a media playback service on Android; Control Center on the Mac, the media flyout on Windows, MPRIS on Linux, the Media Session API on the web) |
-| Sign in with Apple | `SignInWithAppleButton` | `expo-apple-authentication` | ✓ `asuka/appleauth` (Apple's button, the credential, its state; iOS and macOS) |
-| Face ID, fingerprints | LocalAuthentication | `expo-local-authentication` | ✓ `asuka/biometric` (Windows Hello on Windows; on the web, the platform's authenticator through WebAuthn) |
-| Store review | `requestReview` | `expo-store-review` | ✓ `asuka/review` (the App Store's prompt, Play's in-app review) |
-| Tracking permission | App Tracking Transparency | `expo-tracking-transparency` | ✓ `asuka/tracking` |
-| App integrity | App Attest | `expo-app-integrity` | ✓ `asuka/integrity` (App Attest, Play Integrity) |
-| Age range | Declared Age Range | `expo-age-range` | ✓ `asuka/agerange` (Declared Age Range, Play Age Signals) |
-| Sensors | Core Motion | `expo-sensors` | ✓ `asuka/sensors` (accelerometer, gyroscope, magnetometer, device motion with attitude and heading, barometer, light, pedometer; the same axes and units on both; a Mac and Windows have none; Linux: iio-sensor-proxy's light and orientation) |
-| Image editing | Core Graphics, ImageIO | `expo-image-manipulator` | ✓ `asuka/imageedit` (resize, crop, rotate, flip, fill, pixelate; HEIC in, JPEG or PNG out, upright, without the source's metadata; GdkPixbuf's decoders on Linux, WIC's on Windows) |
-| Text, faces and codes in an image | Vision | no | ✓ `asuka/vision`, with where each is; ML Kit on Android, only in the apps that import it; Linux: ZBar's codes and Tesseract's text, no faces; Windows: its OCR's text and faces, Asuka's reader's codes |
-| The photo library | PhotoKit | `expo-media-library` | ✓ `asuka/photos`: permission, listing, thumbnails, the original files (Windows: the Pictures folder) |
+| Audio | AVAudioPlayer, AVAudioRecorder | `expo-audio` | ✓ `asuka/sdk/audio` (load, play, pause, seek, volume, loop); `asuka/sdk/audio/record` (voice or music quality, pause, a level meter) |
+| Now Playing, lock screen controls, media keys | `MPNowPlayingInfoCenter`, `MPRemoteCommandCenter` | `expo-audio`'s lock screen controls, community (`react-native-track-player`) | ✓ `asuka/sdk/nowplaying` (title, artist, album, artwork, duration, a position the system advances, play, pause, next, previous, seek, skips, stop, enabled by the handlers set; follows an `audio.Player` by itself; a MediaSession and a media playback service on Android; Control Center on the Mac, the media flyout on Windows, MPRIS on Linux, the Media Session API on the web) |
+| Sign in with Apple | `SignInWithAppleButton` | `expo-apple-authentication` | ✓ `asuka/sdk/appleauth` (Apple's button, the credential, its state; iOS and macOS) |
+| Face ID, fingerprints | LocalAuthentication | `expo-local-authentication` | ✓ `asuka/sdk/biometric` (Windows Hello on Windows; on the web, the platform's authenticator through WebAuthn) |
+| Store review | `requestReview` | `expo-store-review` | ✓ `asuka/sdk/review` (the App Store's prompt, Play's in-app review) |
+| Tracking permission | App Tracking Transparency | `expo-tracking-transparency` | ✓ `asuka/sdk/tracking` |
+| App integrity | App Attest | `expo-app-integrity` | ✓ `asuka/sdk/integrity` (App Attest, Play Integrity) |
+| Age range | Declared Age Range | `expo-age-range` | ✓ `asuka/sdk/agerange` (Declared Age Range, Play Age Signals) |
+| Sensors | Core Motion | `expo-sensors` | ✓ `asuka/sdk/sensors` (accelerometer, gyroscope, magnetometer, device motion with attitude and heading, barometer, light, pedometer; the same axes and units on both; a Mac and Windows have none; Linux: iio-sensor-proxy's light and orientation) |
+| Image editing | Core Graphics, ImageIO | `expo-image-manipulator` | ✓ `asuka/sdk/imageedit` (resize, crop, rotate, flip, fill, pixelate; HEIC in, JPEG or PNG out, upright, without the source's metadata; GdkPixbuf's decoders on Linux, WIC's on Windows) |
+| Text, faces and codes in an image | Vision | no | ✓ `asuka/sdk/vision`, with where each is; ML Kit on Android, only in the apps that import it; Linux: ZBar's codes and Tesseract's text, no faces; Windows: its OCR's text and faces, Asuka's reader's codes |
+| The photo library | PhotoKit | `expo-media-library` | ✓ `asuka/sdk/photos`: permission, listing, thumbnails, the original files (Windows: the Pictures folder) |
 | Video thumbnails | `AVAssetImageGenerator` | `expo-video-thumbnails` | ✓ `imageedit.VideoFrame` |
-| Text to speech | `AVSpeechSynthesizer` | `expo-speech` | ✓ `asuka/speech` (a queue, voices, pitch, rate, pause at a word) |
-| Contacts | Contacts, ContactsUI | `expo-contacts` | ✓ `asuka/contacts` (the picker and new contact screen without permission; the address book with it; Windows: adding opens a vCard, no address book) |
-| Calendars | EventKit, EventKitUI | `expo-calendar` | ✓ `asuka/calendar` (the event editor without permission; calendars and events with it; Windows: adding opens an iCalendar file, no calendars) |
-| Home screen widgets | WidgetKit | `expo-widgets` | ✓ `asuka/widget` and `asuka.json`'s `widgets` (a template in every size, the lock screen's on iOS; timelines, countdowns, taps with a URL) |
+| Text to speech | `AVSpeechSynthesizer` | `expo-speech` | ✓ `asuka/sdk/speech` (a queue, voices, pitch, rate, pause at a word) |
+| Contacts | Contacts, ContactsUI | `expo-contacts` | ✓ `asuka/sdk/contacts` (the picker and new contact screen without permission; the address book with it; Windows: adding opens a vCard, no address book) |
+| Calendars | EventKit, EventKitUI | `expo-calendar` | ✓ `asuka/sdk/calendar` (the event editor without permission; calendars and events with it; Windows: adding opens an iCalendar file, no calendars) |
+| Home screen widgets | WidgetKit | `expo-widgets` | ✓ `asuka/sdk/widget` and `asuka.json`'s `widgets` (a template in every size, the lock screen's on iOS; timelines, countdowns, taps with a URL) |
 | App Intents, shortcuts | App Intents, App Shortcuts | — | ✓ `asuka.json`'s `shortcuts` (iOS: App Shortcuts with Siri phrases, in Spotlight and Shortcuts; Android: launcher shortcuts) |
 | Custom fonts | `.font(.custom)` | `expo-font` | ✓ `Font.Family` |
 | Lifecycle | `scenePhase` | AppState | ✓ `app.OnLifecycle` |
-| Launch screen | `UILaunchScreen` | `expo-splash-screen` | ✓ `asuka.json`'s `splash`; `asuka/splash` holds it while the app loads |
-| Status bar, navigation bar | `statusBarHidden`, `preferredStatusBarStyle` | `expo-status-bar`, `expo-navigation-bar` | ✓ `asuka/screen`'s `SetBars` |
-| Orientation lock | `supportedInterfaceOrientations` | `expo-screen-orientation` | ✓ `asuka/screen`'s `Lock` |
-| Screenshots | `isCaptured`, `userDidTakeScreenshotNotification` | `expo-screen-capture` | ✓ `asuka/screen`'s `PreventCapture` (Android: blank captures; iOS: covered while recorded; macOS and Windows: the windows left out), `OnScreenshot` (Linux and Windows: new images in Pictures/Screenshots) |
-| Crash reports | MetricKit, Crashlytics, Sentry | Sentry, Crashlytics (`@react-native-firebase/crashlytics`) | ✓ `asuka/crash`: Go panics and fatal errors, uncaught exceptions, MetricKit's crashes and hangs, Android's native crashes and ANRs, with breadcrumbs and values; the app sends them where it likes (no service built in); dSYMs and native debug symbols from `asuka build` |
+| Launch screen | `UILaunchScreen` | `expo-splash-screen` | ✓ `asuka.json`'s `splash`; `asuka/sdk/splash` holds it while the app loads |
+| Status bar, navigation bar | `statusBarHidden`, `preferredStatusBarStyle` | `expo-status-bar`, `expo-navigation-bar` | ✓ `asuka/sdk/screen`'s `SetBars` |
+| Orientation lock | `supportedInterfaceOrientations` | `expo-screen-orientation` | ✓ `asuka/sdk/screen`'s `Lock` |
+| Screenshots | `isCaptured`, `userDidTakeScreenshotNotification` | `expo-screen-capture` | ✓ `asuka/sdk/screen`'s `PreventCapture` (Android: blank captures; iOS: covered while recorded; macOS and Windows: the windows left out), `OnScreenshot` (Linux and Windows: new images in Pictures/Screenshots) |
+| Crash reports | MetricKit, Crashlytics, Sentry | Sentry, Crashlytics (`@react-native-firebase/crashlytics`) | ✓ `asuka/sdk/crash`: Go panics and fatal errors, uncaught exceptions, MetricKit's crashes and hangs, Android's native crashes and ANRs, with breadcrumbs and values; the app sends them where it likes (no service built in); dSYMs and native debug symbols from `asuka build` |
 
 ## Appearance and accessibility
 
@@ -216,24 +216,24 @@ Windows and Linux unless the row says otherwise.
 | Panels for launchers | `type: 'panel'` (macOS) | panels | ✓ `Panel`: floating over every app and Space, the keyboard without activating the app on a Mac, closed by Escape or a click elsewhere (Linux under Wayland: a window as others) |
 | Windows sized to their content | `setContentSize` by the app | `FitContent` | ✓ `FitContent`: the core's layout sizes the window as its content changes |
 | Click-through windows | `setIgnoreMouseEvents` | `SetIgnoreMouseEvents`, `SetInputRegion` | ✓ `ClickThrough`, `WindowHandle.SetClickThrough` (the whole window) |
-| The apps installed, for a launcher | none | `InstalledApps`, `FileIcon`, `LaunchApp` | ✓ `asuka/apps` `List`, `Search`, `Icon`, `Open` |
+| The apps installed, for a launcher | none | `InstalledApps`, `FileIcon`, `LaunchApp` | ✓ `asuka/sdk/apps` `List`, `Search`, `Icon`, `Open` |
 | Global shortcuts | `globalShortcut` | global shortcuts | ✓ `hotkey.Register` (Carbon's hot keys; `RegisterHotKey`; X11 grabs or Wayland's GlobalShortcuts portal) |
-| Open, save and folder dialogs | `dialog.showOpenDialog`, `showSaveDialog` | dialogs | ✓ `asuka/dialog` `Open`, `Save`, `Folder` (sheets on the Mac; the web: the File System Access pickers or the file input; phones: `Open` only) |
-| Reveal, open in its app, move to the trash | `shell.showItemInFolder`, `openPath`, `trashItem` | the shell | ✓ `asuka/shell` `Reveal`, `Open`, `Trash`, `Beep` |
+| Open, save and folder dialogs | `dialog.showOpenDialog`, `showSaveDialog` | dialogs | ✓ `asuka/sdk/dialog` `Open`, `Save`, `Folder` (sheets on the Mac; the web: the File System Access pickers or the file input; phones: `Open` only) |
+| Reveal, open in its app, move to the trash | `shell.showItemInFolder`, `openPath`, `trashItem` | the shell | ✓ `asuka/sdk/shell` `Reveal`, `Open`, `Trash`, `Beep` |
 | File associations | `fileAssociations` (electron-builder), `open-file` | file associations | ✓ `asuka.json`'s `fileTypes`, `ui.OnOpenFiles` (also iOS, Android and installed web apps) |
 | One instance, its second launch | `requestSingleInstanceLock`, `second-instance` | a single instance | ✓ `app.OnSecondInstance`, `asuka.json`'s `singleInstance` (the Mac passes files, not arguments) |
 | Quitting, asking first | `app.quit`, `before-quit` | quitting | ✓ `app.Quit`, `app.OnQuit` (`Cancel`, `SessionEnding`) |
 | The app's folders | `app.getPath` | directories | ✓ `app.DataDir`, `ConfigDir`, `CacheDir`, `LogDir` (everywhere) |
-| Recent documents | `app.addRecentDocument` | recent documents | ✓ `asuka/recent` (Open Recent on the Mac, the jump list, the user's recent files on Linux) |
-| Document-based apps | — | documents | ✓ `asuka/document`: a window per file, the File menu, autosave, recovery copies, save questions on close and quit, files changed by other apps (phones and the web: one document at a time, saved in place) |
-| Starting at login | `app.setLoginItemSettings` | start at login | ✓ `asuka/login` (`SMAppService`, macOS 13+; the Run key; XDG autostart or the Background portal) |
-| Watching files | Node's `fs.watch` (chokidar) | `WatchFiles`, the watch plugin | ✓ `asuka/watch` `Path`, `New` (FSEvents, inotify, `ReadDirectoryChangesW`; also iOS's kqueue, Android's inotify and the web's own files): renames paired, atomic saves as writes, bursts coalesced |
+| Recent documents | `app.addRecentDocument` | recent documents | ✓ `asuka/sdk/recent` (Open Recent on the Mac, the jump list, the user's recent files on Linux) |
+| Document-based apps | — | documents | ✓ `asuka/sdk/document`: a window per file, the File menu, autosave, recovery copies, save questions on close and quit, files changed by other apps (phones and the web: one document at a time, saved in place) |
+| Starting at login | `app.setLoginItemSettings` | start at login | ✓ `asuka/sdk/login` (`SMAppService`, macOS 13+; the Run key; XDG autostart or the Background portal) |
+| Watching files | Node's `fs.watch` (chokidar) | `WatchFiles`, the watch plugin | ✓ `asuka/sdk/watch` `Path`, `New` (FSEvents, inotify, `ReadDirectoryChangesW`; also iOS's kqueue, Android's inotify and the web's own files): renames paired, atomic saves as writes, bursts coalesced |
 | Displays | `screen` | displays | ✓ `screen.UseDisplays`, `Nearest`, `Matching` (Wayland: no work area; phones and the web: theirs) |
-| Sleep, wake, lock, idle time, battery | `powerMonitor` | power | ✓ `asuka/power` (phones: battery, Low Power Mode, lock; the web: the battery) |
+| Sleep, wake, lock, idle time, battery | `powerMonitor` | power | ✓ `asuka/sdk/power` (phones: battery, Low Power Mode, lock; the web: the battery) |
 | Progress and attention on the app's icon | `setProgressBar`, `flashFrame`, `dock.bounce` | the Dock and the taskbar | ✓ `dock.SetProgress`, `RequestAttention` (Linux: docks with the Unity launcher API) |
-| Accent color, Increase Contrast, Reduce Transparency | `systemPreferences` | accent color and accessibility | ✓ `asuka/appearance` (no Reduce Transparency on Linux) |
-| Now Playing and the media keys | (none: `navigator.mediaSession` in the page) | Now Playing | ✓ `asuka/nowplaying` (`MPNowPlayingInfoCenter`; the window's SystemMediaTransportControls; an MPRIS player) |
-| Auto-updates: signed releases, deltas, Sparkle's window | `autoUpdater` (Squirrel), electron-updater | the updater, its plugin | ✓ `asuka/update` (`Window`, `CheckForUpdates`, `Check`, `Install`, `Relaunch`; Ed25519 signatures, delta updates, channels; GitHub releases, an S3 bucket or any HTTPS directory, a server of yours; `asuka publish --platform mac\|windows\|linux`); apps the system's packages, Flatpak or a store installed update through them; the web reloads |
+| Accent color, Increase Contrast, Reduce Transparency | `systemPreferences` | accent color and accessibility | ✓ `asuka/sdk/appearance` (no Reduce Transparency on Linux) |
+| Now Playing and the media keys | (none: `navigator.mediaSession` in the page) | Now Playing | ✓ `asuka/sdk/nowplaying` (`MPNowPlayingInfoCenter`; the window's SystemMediaTransportControls; an MPRIS player) |
+| Auto-updates: signed releases, deltas, Sparkle's window | `autoUpdater` (Squirrel), electron-updater | the updater, its plugin | ✓ `asuka/sdk/update` (`Window`, `CheckForUpdates`, `Check`, `Install`, `Relaunch`; Ed25519 signatures, delta updates, channels; GitHub releases, an S3 bucket or any HTTPS directory, a server of yours; `asuka publish --platform mac\|windows\|linux`); apps the system's packages, Flatpak or a store installed update through them; the web reloads |
 
 Not yet, of what MyGo has: of its documents, versions (a Mac's Browse
 All Versions) and locking; and of its click-through windows, an input

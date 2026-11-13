@@ -10,8 +10,8 @@ import (
 	"github.com/ebitengine/purego"
 )
 
-// GStreamer (asuka/audio's players and recorder) and geocode-glib
-// (asuka/location's place names), opened the first time they're used: a
+// GStreamer (asuka/sdk/audio's players and recorder) and geocode-glib
+// (asuka/sdk/location's place names), opened the first time they're used: a
 // system without them answers an error.
 
 // Gst is GStreamer's core, bound by LoadGst.

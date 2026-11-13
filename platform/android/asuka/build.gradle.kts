@@ -57,13 +57,13 @@ dependencies {
     implementation("androidx.recyclerview:recyclerview:1.4.0")
     implementation("androidx.activity:activity:1.10.1") // predictive back, the photo picker
     implementation("androidx.browser:browser:1.9.0") // in-app browser tabs
-    implementation("androidx.biometric:biometric:1.1.0") // asuka/biometric's prompt
+    implementation("androidx.biometric:biometric:1.1.0") // asuka/sdk/biometric's prompt
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
     // Video: ExoPlayer and its PlayerView (controls), HLS streams.
     implementation("androidx.media3:media3-exoplayer:1.11.1")
     implementation("androidx.media3:media3-exoplayer-hls:1.11.1")
     implementation("androidx.media3:media3-ui:1.11.1")
-    // asuka/camera's View: CameraX's preview and photo capture.
+    // asuka/sdk/camera's View: CameraX's preview and photo capture.
     implementation("androidx.exifinterface:exifinterface:1.4.1") // a photo's orientation
     implementation("androidx.webkit:webkit:1.14.0") // WebView's document-start scripts
     implementation("androidx.camera:camera-camera2:1.6.2")

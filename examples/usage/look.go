@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/egoist/asuka/colors"
-	"github.com/egoist/asuka/device"
 	"github.com/egoist/asuka/fonts"
+	"github.com/egoist/asuka/sdk/device"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )

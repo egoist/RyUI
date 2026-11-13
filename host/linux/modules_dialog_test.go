@@ -16,7 +16,7 @@ import (
 	. "github.com/egoist/asuka/internal/gtk"
 )
 
-// asuka/dialog's dialogs are GTK's file chooser (without portals),
+// asuka/sdk/dialog's dialogs are GTK's file chooser (without portals),
 // modal to the window and set up as asked; the test answers each as the
 // user would (a file chosen, a name typed, Cancel) and reads the answer.
 func TestFileDialogs(t *testing.T) {
@@ -149,7 +149,7 @@ func TestFileDialogs(t *testing.T) {
 	}
 }
 
-// asuka/shell: Reveal asks the file manager (a test's, on the session
+// asuka/sdk/shell: Reveal asks the file manager (a test's, on the session
 // bus) to show the item; a missing file fails; Trash moves a file to
 // the trash, and fails (leaving it) where its volume has none.
 func TestShell(t *testing.T) {

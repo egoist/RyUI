@@ -8,7 +8,7 @@ import (
 	"unsafe"
 )
 
-// The monitors (asuka/screen's displays): their rectangles in pixels,
+// The monitors (asuka/sdk/screen's displays): their rectangles in pixels,
 // work areas, DPIs, names and refresh rates.
 
 var (

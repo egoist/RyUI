@@ -13,7 +13,7 @@ import (
 	"github.com/egoist/asuka/ui"
 )
 
-// Monitors of different DPIs are placed as asuka/screen has them: each
+// Monitors of different DPIs are placed as asuka/sdk/screen has them: each
 // one's origin in pixels over the least scale, its size in its own.
 func TestDisplaysInPoints(t *testing.T) {
 	r := func(l, tp, w, h int32) Rect { return Rect{Left: l, Top: tp, Right: l + w, Bottom: tp + h} }
@@ -59,8 +59,8 @@ func TestPowerState(t *testing.T) {
 	}
 }
 
-// The desktop modules answer as asuka/screen, asuka/power,
-// asuka/appearance and asuka/dock read them, and the system window's
+// The desktop modules answer as asuka/sdk/screen, asuka/sdk/power,
+// asuka/sdk/appearance and asuka/sdk/dock read them, and the system window's
 // messages answer a waiting "next".
 func TestDesktopModules(t *testing.T) {
 	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })

@@ -2,7 +2,7 @@
 import UIKit
 import StoreKit
 
-/// asuka/review's module: "request" asks the App Store for its rating
+/// asuka/sdk/review's module: "request" asks the App Store for its rating
 /// prompt, which it shows or not (at most three times a year).
 @MainActor enum AsukaReview {
     static func methods(_ rt: AsukaRuntime) -> [String: AsukaModuleMethod] {

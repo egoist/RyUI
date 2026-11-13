@@ -16,10 +16,10 @@ import (
 	. "github.com/egoist/asuka/internal/darwin"
 )
 
-// startCrash begins the run's crash record (asuka/crash), if the app
+// startCrash begins the run's crash record (asuka/sdk/crash), if the app
 // reports crashes, and subscribes to MetricKit's diagnostics (macOS 12
 // and later): its native crashes, hangs, and CPU and disk exceptions,
-// delivered on a later launch, which asuka/crash reads into reports.
+// delivered on a later launch, which asuka/sdk/crash reads into reports.
 //
 // No handler of uncaught Objective-C exceptions: AppKit catches those on
 // the main thread itself (and logs them), and MetricKit reports the ones

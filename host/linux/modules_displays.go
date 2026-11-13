@@ -10,7 +10,7 @@ import (
 	. "github.com/egoist/asuka/internal/gtk"
 )
 
-// asuka/screen's displays on Linux: the default GdkDisplay's monitors
+// asuka/sdk/screen's displays on Linux: the default GdkDisplay's monitors
 // (gdk_display_get_monitors, which changes as one's plugged in or out),
 // each one's geometry in application pixels (points, in the desktop's
 // layout), its scale (fractional, GTK 4.14), refresh rate, connector
@@ -69,7 +69,7 @@ func (h *Host) startDisplays() error {
 	}
 	disp := DisplayGetDefault()
 	if disp == 0 || Desk.DisplayGetMonitors == nil {
-		return errors.New("asuka/screen: no display")
+		return errors.New("asuka/sdk/screen: no display")
 	}
 	d.started = true
 	d.monitors = map[Ptr]bool{}

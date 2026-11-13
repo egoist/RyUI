@@ -1,5 +1,5 @@
-// asuka/review's prompt: Google Play's in-app review. Only the apps that
-// import asuka/review are built with it (the Asuka CLI's asukaModules).
+// asuka/sdk/review's prompt: Google Play's in-app review. Only the apps that
+// import asuka/sdk/review are built with it (the Asuka CLI's asukaModules).
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")

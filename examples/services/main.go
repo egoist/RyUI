@@ -2,8 +2,8 @@
 // biometrics, push and a messaging app's notifications, files, the
 // screen, the stores' services, a map, recording and work in the
 // background; the displays, the battery, the system's accent and a
-// progress on the app's icon (asuka/screen, asuka/power,
-// asuka/appearance, asuka/dock).
+// progress on the app's icon (asuka/sdk/screen, asuka/sdk/power,
+// asuka/sdk/appearance, asuka/sdk/dock).
 package main
 
 import (
@@ -14,34 +14,34 @@ import (
 	"strings"
 	"time"
 
-	"github.com/egoist/asuka/agerange"
 	"github.com/egoist/asuka/app"
-	"github.com/egoist/asuka/appearance"
-	"github.com/egoist/asuka/appleauth"
-	"github.com/egoist/asuka/audio"
-	"github.com/egoist/asuka/audio/record"
-	"github.com/egoist/asuka/biometric"
-	"github.com/egoist/asuka/calendar"
 	"github.com/egoist/asuka/colors"
-	"github.com/egoist/asuka/contacts"
-	"github.com/egoist/asuka/device"
-	"github.com/egoist/asuka/dock"
 	"github.com/egoist/asuka/fonts"
-	"github.com/egoist/asuka/imageedit"
-	"github.com/egoist/asuka/integrity"
-	"github.com/egoist/asuka/maps"
-	"github.com/egoist/asuka/periodic"
-	"github.com/egoist/asuka/power"
-	"github.com/egoist/asuka/push"
-	"github.com/egoist/asuka/review"
-	"github.com/egoist/asuka/screen"
-	"github.com/egoist/asuka/sensors"
+	"github.com/egoist/asuka/sdk/agerange"
+	"github.com/egoist/asuka/sdk/appearance"
+	"github.com/egoist/asuka/sdk/appleauth"
+	"github.com/egoist/asuka/sdk/audio"
+	"github.com/egoist/asuka/sdk/audio/record"
+	"github.com/egoist/asuka/sdk/biometric"
+	"github.com/egoist/asuka/sdk/calendar"
+	"github.com/egoist/asuka/sdk/contacts"
+	"github.com/egoist/asuka/sdk/device"
+	"github.com/egoist/asuka/sdk/dock"
+	"github.com/egoist/asuka/sdk/imageedit"
+	"github.com/egoist/asuka/sdk/integrity"
+	"github.com/egoist/asuka/sdk/maps"
+	"github.com/egoist/asuka/sdk/periodic"
+	"github.com/egoist/asuka/sdk/power"
+	"github.com/egoist/asuka/sdk/push"
+	"github.com/egoist/asuka/sdk/review"
+	"github.com/egoist/asuka/sdk/screen"
+	"github.com/egoist/asuka/sdk/sensors"
+	"github.com/egoist/asuka/sdk/speech"
+	"github.com/egoist/asuka/sdk/splash"
+	"github.com/egoist/asuka/sdk/tracking"
+	"github.com/egoist/asuka/sdk/widget"
 	"github.com/egoist/asuka/signal"
-	"github.com/egoist/asuka/speech"
-	"github.com/egoist/asuka/splash"
-	"github.com/egoist/asuka/tracking"
 	"github.com/egoist/asuka/ui"
-	"github.com/egoist/asuka/widget"
 )
 
 func App() ui.Node {

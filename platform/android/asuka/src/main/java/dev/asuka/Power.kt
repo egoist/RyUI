@@ -10,7 +10,7 @@ import android.os.PowerManager
 import androidx.core.content.ContextCompat
 
 /**
- * asuka/power's module: "current" (u8 battery, on battery, level 0 to
+ * asuka/sdk/power's module: "current" (u8 battery, on battery, level 0 to
  * 100 or 255, charging, low power, thermal), "idle" (nothing: a phone
  * doesn't say), and, while watching, "next" (the state, then the events
  * since: 3 lock, 4 unlock) and "stop". The battery is the sticky
@@ -75,7 +75,7 @@ class AsukaPower(private val rt: AsukaRuntime) {
     )
 }
 
-/** asuka/dock: a phone has no Dock or taskbar: nothing to show, nothing asked. */
+/** asuka/sdk/dock: a phone has no Dock or taskbar: nothing to show, nothing asked. */
 fun dockMethods(): Map<String, AsukaModuleMethod> = mapOf(
     "progress" to { _, reply -> reply(Result.success(ByteArray(0))) },
     "attention" to { _, reply -> reply(Result.success(ByteArray(4))) },

@@ -13,7 +13,7 @@ import (
 	. "github.com/egoist/asuka/internal/darwin"
 )
 
-// asuka/push on a Mac: APNs, as on iOS. "register" asks for notifications
+// asuka/sdk/push on a Mac: APNs, as on iOS. "register" asks for notifications
 // (the user notification center: the app's bundle), registers with APNs
 // (NSApplication's registerForRemoteNotifications) and answers JSON
 // (token, service, allowed); "nextReceived" and "nextOpened" answer with
@@ -52,12 +52,12 @@ func (h *Host) pushModule() map[string]method {
 	return map[string]method{
 		"register": func(_ []byte, reply func([]byte, error)) {
 			if !bundled() {
-				reply(nil, errors.New("asuka/push: APNs needs the app's bundle: build it with asuka build --platform mac"))
+				reply(nil, errors.New("asuka/sdk/push: APNs needs the app's bundle: build it with asuka build --platform mac"))
 				return
 			}
 			h.installNotifications()
 			if notes.center == 0 {
-				reply(nil, errors.New("asuka/push: no user notification center"))
+				reply(nil, errors.New("asuka/sdk/push: no user notification center"))
 				return
 			}
 			var done objc.Block
@@ -81,7 +81,7 @@ func (h *Host) pushModule() map[string]method {
 			reply(nil, nil)
 		},
 		"nextRewrite": func(_ []byte, reply func([]byte, error)) {
-			reply(nil, errors.New("asuka/push: rewriting needs a notification service extension, which a Mac app doesn't have"))
+			reply(nil, errors.New("asuka/sdk/push: rewriting needs a notification service extension, which a Mac app doesn't have"))
 		},
 		"rewritten": answerNil,
 	}

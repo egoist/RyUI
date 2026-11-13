@@ -7,7 +7,7 @@ import java.io.File
 private var shots = 0
 
 /**
- * asuka/camera's module: "take" opens the system's camera app (which needs
+ * asuka/sdk/camera's module: "take" opens the system's camera app (which needs
  * no camera permission of the app's) to a file of the app's, through its
  * FileProvider, and answers with that file ("" if cancelled), or fails
  * "no camera".
@@ -73,7 +73,7 @@ private fun AsukaRuntime.launchCamera(reply: (Result<ByteArray>) -> Unit) {
 }
 
 /**
- * asuka/camera's View: CameraX's PreviewView, bound to the Activity's
+ * asuka/sdk/camera's View: CameraX's PreviewView, bound to the Activity's
  * lifecycle with a preview and an image capture (for camera.Capture),
  * once the camera's allowed.
  */
@@ -155,7 +155,7 @@ class AsukaCameraView(private val rt: AsukaRuntime, private val ctx: AsukaNative
                     analyzer = null
                     val cases = mutableListOf<androidx.camera.core.UseCase>(p, c)
                     val reader = AsukaScan.reader
-                    if (scan && reader == null) ctx.emit("error", mapOf("message" to "asuka/scan isn't in this build"))
+                    if (scan && reader == null) ctx.emit("error", mapOf("message" to "asuka/sdk/scan isn't in this build"))
                     if (scan && reader != null) {
                         val a = reader.analyzer(kinds) { k, v -> if (seen.isNew(k, v)) ctx.emit("code", mapOf("kind" to k, "value" to v)) }
                         val ex = analysis ?: java.util.concurrent.Executors.newSingleThreadExecutor().also { analysis = it }

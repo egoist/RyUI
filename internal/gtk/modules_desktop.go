@@ -2,8 +2,8 @@
 
 package gtk
 
-// What the host's desktop modules (asuka/screen's displays, asuka/power,
-// asuka/dock) call of GDK and GIO beyond the rest: the display's monitors
+// What the host's desktop modules (asuka/sdk/screen's displays, asuka/sdk/power,
+// asuka/sdk/dock) call of GDK and GIO beyond the rest: the display's monitors
 // (GdkMonitor; its scale and description are GTK 4.14's and 4.10's, nil
 // before), X11's primary monitor, work area and urgency hint (GDK's X11
 // backend, in libgtk-4; nil where GTK was built without it), and GIO's

@@ -17,7 +17,7 @@ import (
 //	db, err := sql.Open("sqlite", filepath.Join(dir, "notes.db"))
 
 // DataDir is where the app keeps its data, what it can't make again:
-// asuka/store's file is there, and the hosts' saved state (the window's
+// asuka/sdk/store's file is there, and the hosts' saved state (the window's
 // place). macOS: ~/Library/Application Support/<Name>. Windows: Local
 // AppData\<Name>. Linux: $XDG_DATA_HOME/<id> (~/.local/share). iOS:
 // Application Support in its container (its App Group's with a share

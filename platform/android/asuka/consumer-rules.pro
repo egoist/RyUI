@@ -6,5 +6,5 @@
 -keep class * implements dev.asuka.AsukaNativeModule { *; }
 # The optional modules' plugins, found by name.
 -keep class * implements dev.asuka.AsukaPlugin { <init>(); }
-# asuka/print's PDF writer subclasses the print callbacks in their package.
+# asuka/sdk/print's PDF writer subclasses the print callbacks in their package.
 -keep class android.print.AsukaPdfWriter** { *; }

@@ -2,7 +2,7 @@
 import UIKit
 import UniformTypeIdentifiers
 
-/// asuka/device's clipboard module: "has" (u8 text, image, URL: no paste
+/// asuka/sdk/device's clipboard module: "has" (u8 text, image, URL: no paste
 /// prompt), "image" (the clipboard's image as a file in the caches, in its
 /// own format; empty: none), "copyImage" (a file's path), and, while
 /// watching, "next" (answered at the next change: the app's own, or, as

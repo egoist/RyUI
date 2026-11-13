@@ -22,11 +22,11 @@ import (
 	"github.com/egoist/asuka/internal/notifyspec"
 )
 
-// asuka/notify on macOS: UNUserNotificationCenter, as iOS's host has it
+// asuka/sdk/notify on macOS: UNUserNotificationCenter, as iOS's host has it
 // (platform/ios's Notify.swift), the module's methods the same. What macOS
 // lacks of it: Android's channels (ignored, as on iOS) and communication
 // notifications (a message shows as a notification, its sender's name its
-// title). Pushes (APNs) shown or tapped go to asuka/push too (push.go),
+// title). Pushes (APNs) shown or tapped go to asuka/sdk/push too (push.go),
 // their data the payload's keys beside aps. The center needs the
 // app's bundle (asuka build --platform mac): an executable run on its own (go run,
 // asuka dev) has no bundle ID, and gets an error.
@@ -101,7 +101,7 @@ func bundled() bool {
 	return Send(Send(Class("NSBundle"), "mainBundle"), "bundleIdentifier") != 0
 }
 
-var errNoBundle = errors.New("asuka/notify: macOS's notifications need the app's bundle: build it with asuka build --platform mac")
+var errNoBundle = errors.New("asuka/sdk/notify: macOS's notifications need the app's bundle: build it with asuka build --platform mac")
 
 // installNotifications makes the center's delegate, if the app is a
 // bundle: before it finishes launching, to see a response that launched
@@ -410,7 +410,7 @@ func content(s notifyspec.Spec, image string) ID {
 	return c
 }
 
-// notifyModule is asuka/notify's module.
+// notifyModule is asuka/sdk/notify's module.
 func (h *Host) notifyModule() map[string]method {
 	center := func(reply func([]byte, error)) bool {
 		h.installNotifications()

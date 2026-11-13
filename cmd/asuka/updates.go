@@ -23,7 +23,7 @@ import (
 	iupdate "github.com/egoist/asuka/internal/update"
 )
 
-// Updates of desktop apps (asuka/update): asuka update keygen makes the key
+// Updates of desktop apps (asuka/sdk/update): asuka update keygen makes the key
 // pair; asuka build builds the feed's address and the public key into the
 // app, and with the private key writes, in dist/updates, the signed
 // archive of each target, delta updates from the versions published
@@ -182,7 +182,7 @@ func updateLdflags(app *goApp, target string) string {
 	if err != nil || u == nil {
 		return ""
 	}
-	pkg := "github.com/egoist/asuka/update."
+	pkg := "github.com/egoist/asuka/sdk/update."
 	return " -X " + strconv.Quote(pkg+"buildFeed="+u.feed(target)) +
 		" -X " + strconv.Quote(pkg+"buildKey="+strings.TrimSpace(u.PublicKey)) +
 		" -X " + strconv.Quote(pkg+"buildTarget="+target)
@@ -679,7 +679,7 @@ it can ship code to your users.`
 	return nil
 }
 
-// versionFile is the web's version.json (asuka/update on the web): the
+// versionFile is the web's version.json (asuka/sdk/update on the web): the
 // version built, and its release notes.
 func versionFile(app *goApp) []byte {
 	v := map[string]string{"version": app.cfg.Version, "build": strconv.Itoa(app.cfg.Build), "date": time.Now().UTC().Format(time.RFC3339)}

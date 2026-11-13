@@ -31,7 +31,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/egoist/asuka/push/webpush"
+	"github.com/egoist/asuka/sdk/push/webpush"
 )
 
 // The test app's VAPID keys (e2e/testdata/webpush/asuka.json has the
@@ -45,14 +45,14 @@ var testVAPID = webpush.Keys{
 // the browser's own push service (Chrome's is Google's, which a test
 // can't stand in for): the page's PushManager is stubbed to subscribe
 // with a key pair the test holds, at a fake push service; push.Register
-// gives the app that subscription; the server's side (asuka/push/webpush)
+// gives the app that subscription; the server's side (asuka/sdk/push/webpush)
 // encrypts and signs a push to it; the fake service checks the VAPID
 // token, decrypts the push as a browser would and delivers it to the
 // app's service worker (DevTools' ServiceWorker.deliverPushMessage), which
 // shows it and hands it to the page (push.OnReceive). Its click goes
 // through the worker's own handler (DevTools has no way to click a
 // notification): OnAction, OnOpen, OnOpenURL. Then a notification
-// scheduled with asuka/notify, which comes due while no page is open,
+// scheduled with asuka/sdk/notify, which comes due while no page is open,
 // shows as the app's page opens again. What shows is read from the
 // showNotification calls (recorded), not getNotifications: Chrome
 // reconciles that with what the system displays, and may leave out one

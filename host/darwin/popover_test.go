@@ -9,7 +9,7 @@ import (
 	"github.com/egoist/asuka/colors"
 	. "github.com/egoist/asuka/internal/darwin"
 	"github.com/egoist/asuka/ops"
-	kage "github.com/egoist/asuka/shader"
+	kage "github.com/egoist/asuka/sdk/shader"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )

@@ -1,13 +1,13 @@
-#if canImport(UIKit) && ASUKA_SPEECH // an app that calls asuka/speech (see the CLI's iosFeatures)
+#if canImport(UIKit) && ASUKA_SPEECH // an app that calls asuka/sdk/speech (see the CLI's iosFeatures)
 import UIKit
 import AVFoundation
 
-/// asuka/speech's module, with AVSpeechSynthesizer: "speak" (JSON: id,
+/// asuka/sdk/speech's module, with AVSpeechSynthesizer: "speak" (JSON: id,
 /// text, language, voice, pitch, rate, volume) answers once the utterance
 /// is spoken, or fails with "stopped"; "stop", "pause", "resume";
 /// "speaking" (u8); "voices" (JSON). While it speaks, the audio session
 /// plays (with the silent switch on) and ducks other apps, unless the app
-/// set it up itself (asuka/audio's); after, it goes back.
+/// set it up itself (asuka/sdk/audio's); after, it goes back.
 @MainActor final class AsukaSpeech: NSObject, AVSpeechSynthesizerDelegate {
     static let shared = AsukaSpeech()
     private let synth = AVSpeechSynthesizer()
@@ -77,7 +77,7 @@ import AVFoundation
     }
 
     /// Plays through the silent switch, ducking others, while it speaks,
-    /// unless the app's session already plays (asuka/audio's).
+    /// unless the app's session already plays (asuka/sdk/audio's).
     private func claimSession() {
         let s = AVAudioSession.sharedInstance()
         guard session == nil, s.category != .playback, s.category != .playAndRecord else { return }

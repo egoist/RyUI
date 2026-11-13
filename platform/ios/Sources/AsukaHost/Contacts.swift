@@ -1,9 +1,9 @@
-#if canImport(UIKit) && ASUKA_CONTACTS // an app that calls asuka/contacts (see the CLI's iosFeatures)
+#if canImport(UIKit) && ASUKA_CONTACTS // an app that calls asuka/sdk/contacts (see the CLI's iosFeatures)
 import UIKit
 import Contacts
 import ContactsUI
 
-/// asuka/contacts' module: "request" (u8 access: not asked, denied,
+/// asuka/sdk/contacts' module: "request" (u8 access: not asked, denied,
 /// limited, full), "list" (JSON: name, limit) and "pick" answer contacts
 /// as JSON; "add" (a contact's JSON) shows the new contact screen and
 /// answers u8 saved.

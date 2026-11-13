@@ -129,7 +129,7 @@ The environment a web app sees (`ui.UseEnvironment`) is the browser's:
 
 ## The app's files
 
-`asuka/store`, crash records and the files your app writes in `store.Dir`
+`asuka/sdk/store`, crash records and the files your app writes in `store.Dir`
 are kept: the page gives Go a file system in memory, the data directory's
 files loaded from the browser's storage (IndexedDB) before the app starts
 and written back a moment after they change (a large file in chunks of
@@ -197,7 +197,7 @@ the directory of `asqlite.wasm` (the build's `asuka/<digest>/plugins/sqlite/`), 
 
 Asuka's packages call the host's native modules (`ui.Call`). In a browser:
 
-- `asuka/secure`: the values are encrypted (AES-GCM) with a key the
+- `asuka/sdk/secure`: the values are encrypted (AES-GCM) with a key the
   browser keeps and won't let out (a non-extractable WebCrypto key), in
   IndexedDB. It isn't a keychain: script running in the app's origin
   can't read the key, but it can ask it to decrypt. It needs `https`
@@ -210,72 +210,72 @@ Asuka's packages call the host's native modules (`ui.Call`). In a browser:
   page shows); `Browse` (a new tab); `PickPhotos` and `PickFiles` (the
   browser's file picker; the files copied to the caches).
 - `ShareFiles`: the share sheet with the files (`navigator.share`),
-  else each file downloaded. `asuka/preview`: the file opened in a new
+  else each file downloaded. `asuka/sdk/preview`: the file opened in a new
   tab (images, video, audio, text, PDF, HTML); another type is
   `ErrNoViewer`.
-- `asuka/print`: HTML, files (PDFs in the browser's viewer) and the app's
+- `asuka/sdk/print`: HTML, files (PDFs in the browser's viewer) and the app's
   own web views, with the browser's print dialog; the result is always
   `Unknown` (a browser doesn't say). `PDF` isn't on the web: a browser
   makes PDFs only through its print dialog (Save as PDF).
-- `asuka/compose`: `mailto:` and `sms:` links; with attachments, the share
+- `asuka/sdk/compose`: `mailto:` and `sms:` links; with attachments, the share
   sheet.
-- `asuka/notify` and `asuka/push`: the Notification API and Web Push,
+- `asuka/sdk/notify` and `asuka/sdk/push`: the Notification API and Web Push,
   through the app's service worker: see
   [Notifications and Web Push](#notifications-and-web-push).
-- `asuka/network`: online from `navigator.onLine`; Wi-Fi, cellular or
+- `asuka/sdk/network`: online from `navigator.onLine`; Wi-Fi, cellular or
   Ethernet where the browser says (Chrome on Android), metered for
   cellular, constrained for Data Saver.
-- `asuka/location`: the Geolocation API; `PlaceName` isn't on the web (a
+- `asuka/sdk/location`: the Geolocation API; `PlaceName` isn't on the web (a
   browser has no geocoder).
-- `asuka/sensors`: the Generic Sensor API (Chrome) or device motion and
+- `asuka/sdk/sensors`: the Generic Sensor API (Chrome) or device motion and
   orientation events (Safari asks on a tap), in Android's axes and
   units; no barometer or pedometer.
-- `asuka/speech`: `speechSynthesis`, the browser's voices.
-- `asuka/audio`: an audio element per player (the browser's autoplay
-  rules apply: play from a tap). `asuka/audio/record`: `MediaRecorder`,
+- `asuka/sdk/speech`: `speechSynthesis`, the browser's voices.
+- `asuka/sdk/audio`: an audio element per player (the browser's autoplay
+  rules apply: play from a tap). `asuka/sdk/audio/record`: `MediaRecorder`,
   AAC in MPEG-4 where the browser records it, else Opus in WebM.
-- `asuka/camera`: `Take` opens a phone's camera, or a dialog with the live
+- `asuka/sdk/camera`: `Take` opens a phone's camera, or a dialog with the live
   camera and a shutter; `camera.View` is the camera in a `<video>`
   (`Capture`, `record`, and scanning codes where the browser has
-  `BarcodeDetector`). `asuka/scan` and `asuka/vision`'s codes use
+  `BarcodeDetector`). `asuka/sdk/scan` and `asuka/sdk/vision`'s codes use
   `BarcodeDetector`, faces and text only where the browser has them.
-- `asuka/imageedit`: a canvas (JPEG or PNG; a remote image needs CORS).
-- `asuka/maps`: a map the host draws of OpenStreetMap's tiles, as on
+- `asuka/sdk/imageedit`: a canvas (JPEG or PNG; a remote image needs CORS).
+- `asuka/sdk/maps`: a map the host draws of OpenStreetMap's tiles, as on
   Windows: pins, their callouts, a drag, the wheel, a pinch, a double
   click and the keyboard to move it, and the attribution OpenStreetMap
   asks for. Satellite and Hybrid show the streets (no free imagery);
   `ShowsUser` shows the user's location once the page has the location
-  permission (`asuka/location` asks; the map never does). The tiles come
+  permission (`asuka/sdk/location` asks; the map never does). The tiles come
   from `tile.openstreetmap.org` as its usage policy asks of a web page
   (only what's on screen, the browser's cache, its Referer); for heavy
   use, pass `mapTiles` (another server's URL, with `{z}`, `{x}` and
   `{y}`) to `start` ([Embedding](#embedding)).
-- `asuka/crash`: Go's runtime can't write its crash output to a file in a
+- `asuka/sdk/crash`: Go's runtime can't write its crash output to a file in a
   browser, so the host keeps what it prints and, as the program ends
   with a panic or a fatal error, writes it to the run's record in the
   app's files: the next launch reports it. An uncaught JavaScript error
   (the host's, or your `web/*.js`) is an `Exception` report at once, not
   fatal (the page goes on). A page marks its run alive in `localStorage`,
   so other open pages of the app leave it alone.
-- `asuka/biometric`: the platform's authenticator through WebAuthn (Touch
+- `asuka/sdk/biometric`: the platform's authenticator through WebAuthn (Touch
   ID, Face ID, Windows Hello, Android's screen lock), user verification
   required: the first `Authenticate` makes a passkey for the site, named
   after the app. The prompt is the browser's, so the reason and cancel
   texts don't show.
-- `asuka/webauth`: a popup, done when it comes back to a page of the
+- `asuka/sdk/webauth`: a popup, done when it comes back to a page of the
   app's own origin (a custom scheme can't open a page).
-- `asuka/screen`: `Lock` (only full screen, or an installed app); hiding
+- `asuka/sdk/screen`: `Lock` (only full screen, or an installed app); hiding
   the bars is full screen.
-- `asuka/library`: `Save` downloads the file. `asuka/contacts`: `Pick`
+- `asuka/sdk/library`: `Save` downloads the file. `asuka/sdk/contacts`: `Pick`
   where the browser has the Contact Picker (Chrome on Android); `Add`
-  downloads a vCard, and `asuka/calendar`'s `Add` an `.ics` file.
-- `asuka/tracking` answers Denied when the browser sends Global Privacy
+  downloads a vCard, and `asuka/sdk/calendar`'s `Add` an `.ics` file.
+- `asuka/sdk/tracking` answers Denied when the browser sends Global Privacy
   Control or Do Not Track, else Allowed, without a prompt.
 - Not on the web, with an error that says so (or the package's own
-  "not available"): `asuka/review`, `asuka/integrity`, `asuka/agerange`,
-  `asuka/appleauth`, `asuka/periodic`, `asuka/widget`, `asuka/photos` (Denied:
+  "not available"): `asuka/sdk/review`, `asuka/sdk/integrity`, `asuka/sdk/agerange`,
+  `asuka/sdk/appleauth`, `asuka/sdk/periodic`, `asuka/sdk/widget`, `asuka/sdk/photos` (Denied:
   `device.PickPhotos` picks photos), reading contacts and calendars,
-  `asuka/transcribe`'s files, `asuka/screen`'s `PreventCapture` and
+  `asuka/sdk/transcribe`'s files, `asuka/sdk/screen`'s `PreventCapture` and
   `OnScreenshot`.
 
 ## Notifications and Web Push
@@ -288,7 +288,7 @@ pushes, and answers their clicks, whether or not a page of the app is
 open. A browser runs service workers only for pages served over HTTPS,
 or from `localhost` (`asuka dev`'s, but not `--lan`'s addresses).
 
-### asuka/notify
+### asuka/sdk/notify
 
 - `Request` asks with the browser's prompt; browsers ask only from a tap
   or a click, so call it from one.
@@ -351,7 +351,7 @@ event wakes it, not on a timer. So `Schedule` does what a browser can:
 For a notification that must show at its time with the app closed, send
 a push from your server at that time.
 
-### asuka/push: Web Push
+### asuka/sdk/push: Web Push
 
 Web Push needs a VAPID key pair: the app's server signs its pushes with
 the private key, and the browser subscribes with the public one, which
@@ -429,11 +429,11 @@ been updated in the background") and Safari ends the subscription after
 a few. A payload that isn't JSON shows as the body. A payload is at most
 3993 bytes.
 
-From Go, `github.com/egoist/asuka/push/webpush` encrypts, signs and sends,
+From Go, `github.com/egoist/asuka/sdk/push/webpush` encrypts, signs and sends,
 with the standard library only:
 
 ```go
-import "github.com/egoist/asuka/push/webpush"
+import "github.com/egoist/asuka/sdk/push/webpush"
 
 var sender = &webpush.Sender{
 	Keys:    webpush.Keys{Public: os.Getenv("VAPID_PUBLIC_KEY"), Private: os.Getenv("VAPID_PRIVATE_KEY")},
@@ -525,7 +525,7 @@ app({ asuka: "ready", url: location.href, title: document.title });
 app({ text: "Hello from the page" }); // OnMessage
 ```
 
-`asuka/js` runs its script in a hidden sandboxed frame of an origin of its
+`asuka/sdk/js` runs its script in a hidden sandboxed frame of an origin of its
 own, so it can't reach the app's page or storage.
 
 ## Native code
@@ -580,8 +580,8 @@ in it; it then follows the element's size:
 Several apps can run on one page, each in its element. `serviceWorker`
 registers the app's worker (the build's `sw.<digest>.js`, from the
 folder whose pages it serves): without it, notifications are the page's
-own and `asuka/push` can't subscribe. Pass `vapidPublicKey` too for
-`asuka/push`, as `index.html` does, and `mapTiles` for `asuka/maps`' tiles
+own and `asuka/sdk/push` can't subscribe. Pass `vapidPublicKey` too for
+`asuka/sdk/push`, as `index.html` does, and `mapTiles` for `asuka/sdk/maps`' tiles
 from a server of your own (`"https://tiles.example.com/{z}/{x}/{y}.png"`;
 OpenStreetMap's by default).
 
@@ -589,6 +589,6 @@ OpenStreetMap's by default).
 
 - A text field's accessory bar shows only where there's an on-screen
   keyboard (a touch screen).
-- A notification scheduled with `asuka/notify` can't show at its time
+- A notification scheduled with `asuka/sdk/notify` can't show at its time
   while no page of the app is open: browsers have no way to schedule one
   ([above](#scheduled-notifications)).

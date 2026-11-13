@@ -1,4 +1,4 @@
-// asuka/dialog and asuka/shell on the web (src/modules/dialog.js), with
+// asuka/sdk/dialog and asuka/sdk/shell on the web (src/modules/dialog.js), with
 // the File System Access API's pickers and handles faked: what's picked
 // is copied into the app's files, a folder with all it holds, and the
 // file Save gives goes to the handle the user chose once it's written.

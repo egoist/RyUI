@@ -18,7 +18,7 @@ import (
 // ending (GtkApplication's query-end, through the session manager or, in
 // a sandbox, the portal), or a signal (SIGTERM as a systemd session
 // stops, SIGINT, SIGHUP), which quits it as closing it does. Each sends
-// Lifecycle, and the core's handlers run then: asuka/store writes what's
+// Lifecycle, and the core's handlers run then: asuka/sdk/store writes what's
 // pending, so nothing set in the app's last moment is lost. GLib's memory
 // monitor's warnings are LifecycleMemoryWarning.
 

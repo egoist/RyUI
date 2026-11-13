@@ -1,4 +1,4 @@
-// asuka/dialog and asuka/shell on the web. A browser gives a page files,
+// asuka/sdk/dialog and asuka/sdk/shell on the web. A browser gives a page files,
 // never their paths, so the paths these give are the app's (fs.js):
 //
 //   - dialog.open: the files copied into the app's caches (/tmp/shared,

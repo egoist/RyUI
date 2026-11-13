@@ -6,7 +6,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /**
- * asuka/periodic's runs: the asuka-periodic module's worker hands a task
+ * asuka/sdk/periodic's runs: the asuka-periodic module's worker hands a task
  * over (run, from its thread) and waits for the Go code to report it
  * done; "next" gives the Go code each one (string name, u32 seconds),
  * "done" (string name, u8 ok) reports it. Scheduling is the module's
@@ -49,7 +49,7 @@ object AsukaPeriodicHub {
             val seconds = b.int.toLong() and 0xffffffffL
             val flags = b.get().toInt()
             val s = schedule
-            if (s == null) reply(Result.failure(Exception("asuka/periodic isn't in this build")))
+            if (s == null) reply(Result.failure(Exception("asuka/sdk/periodic isn't in this build")))
             else { s(rt, name, seconds, flags and 1 != 0, flags and 2 != 0); reply(Result.success(ByteArray(0))) }
         },
         "cancel" to { args, reply ->

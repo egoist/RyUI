@@ -1,8 +1,8 @@
-#if canImport(UIKit) && ASUKA_NETWORK // an app that calls asuka/network (see the CLI's iosFeatures)
+#if canImport(UIKit) && ASUKA_NETWORK // an app that calls asuka/sdk/network (see the CLI's iosFeatures)
 import Foundation
 import Network
 
-/// asuka/network's module: "current", and, while watching, "next" (answered
+/// asuka/sdk/network's module: "current", and, while watching, "next" (answered
 /// once the state isn't the one given) and "stop", from NWPathMonitor.
 /// Replies are u8 connected, u8 type (none, wifi, cellular, ethernet,
 /// other), u8 metered (isExpensive), u8 constrained (Low Data Mode).

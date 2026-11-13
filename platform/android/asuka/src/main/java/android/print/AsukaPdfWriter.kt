@@ -6,7 +6,7 @@ import java.io.File
 
 /**
  * Writes what a PrintDocumentAdapter prints (a WebView's) to a PDF file,
- * without the print dialog: asuka/print's PDF. The adapter's callbacks
+ * without the print dialog: asuka/sdk/print's PDF. The adapter's callbacks
  * have no public constructor in the SDK, but one in their package, which
  * is why this is in android.print, as Expo's expo-print does it.
  */

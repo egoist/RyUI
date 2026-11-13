@@ -1,4 +1,4 @@
-// asuka/network, asuka/location and asuka/sensors in the browser.
+// asuka/sdk/network, asuka/sdk/location and asuka/sdk/sensors in the browser.
 //
 //   - network: navigator.onLine and the Network Information API
 //     (navigator.connection, Chrome's): "current", "next" (answered once
@@ -23,7 +23,7 @@ const deg = Math.PI / 180;
 
 // --- network ---
 
-/** networkState is the network as asuka/network's reply: u8 connected, u8 type, u8 metered, u8 constrained. */
+/** networkState is the network as asuka/sdk/network's reply: u8 connected, u8 type, u8 metered, u8 constrained. */
 export function networkState(onLine, c) {
   if (!onLine || c?.type === "none") return new Uint8Array([0, 0, 0, 0]);
   const type = { wifi: 1, cellular: 2, ethernet: 3 }[c?.type] ?? 4;
@@ -68,7 +68,7 @@ function network() {
 
 // --- location ---
 
-/** positionJSON is a GeolocationPosition as asuka/location's reply. */
+/** positionJSON is a GeolocationPosition as asuka/sdk/location's reply. */
 export function positionJSON(p) {
   const c = p.coords;
   return JSON.stringify({ lat: c.latitude, lon: c.longitude, acc: c.accuracy, alt: c.altitude ?? 0, t: Math.round(p.timestamp) });

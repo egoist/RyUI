@@ -13,7 +13,7 @@ import (
 	. "github.com/egoist/asuka/internal/windows"
 )
 
-// asuka/periodic on Windows: timers while the app runs (out of sight too:
+// asuka/sdk/periodic on Windows: timers while the app runs (out of sight too:
 // a Windows app keeps running), as a Mac's NSBackgroundActivityScheduler
 // runs them; nothing launches the app. "schedule" (string name, u32
 // seconds, u8 flags: 1 network, 2 charging) and "cancel" (the name) keep
@@ -228,7 +228,7 @@ func (h *Host) periodicFinished(name string, ok bool) {
 	h.periodicAfter(name, time.Duration(max(t.Every, 60)*float64(time.Second)))
 }
 
-// online reports whether the PC has a network (asuka/network's list,
+// online reports whether the PC has a network (asuka/sdk/network's list,
 // started for it: unknown counts as online).
 func (h *Host) online() bool {
 	if h.startNetwork() != nil || h.svc.net == nil {

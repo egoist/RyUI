@@ -8,7 +8,7 @@ import (
 	. "github.com/egoist/asuka/internal/windows"
 )
 
-// asuka/screen's displays on Windows: the monitors attached to the
+// asuka/sdk/screen's displays on Windows: the monitors attached to the
 // desktop (EnumDisplayMonitors, GetMonitorInfo), each at its effective
 // DPI (GetDpiForMonitor), named by its EDID (the display
 // configuration's friendly name; "Built-in Display" for a laptop's
@@ -69,7 +69,7 @@ func readDisplays() []byte {
 	return b
 }
 
-// displaysInPoints places the monitors in points, as asuka/screen has
+// displaysInPoints places the monitors in points, as asuka/sdk/screen has
 // them: each one's origin is its top left corner in pixels over the
 // smallest scale of the monitors, and it goes on in its own scale (its
 // size, its work area's place in it), so monitors never overlap.

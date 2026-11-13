@@ -1,4 +1,4 @@
-// What the page's asuka/notify and asuka/push (modules/system-notify.js,
+// What the page's asuka/sdk/notify and asuka/sdk/push (modules/system-notify.js,
 // modules/system-push.js) and the app's service worker (sw.js) share:
 // how a notification (notifyspec.Spec) and a push's payload become the
 // browser's notification, what the user's answer to one is on the wire

@@ -1,11 +1,11 @@
-#if canImport(UIKit) && ASUKA_BIOMETRIC // an app that calls asuka/biometric (see the CLI's iosFeatures)
+#if canImport(UIKit) && ASUKA_BIOMETRIC // an app that calls asuka/sdk/biometric (see the CLI's iosFeatures)
 import UIKit
 import LocalAuthentication
 #if canImport(AsukaOps)
 import AsukaOps
 #endif
 
-/// asuka/biometric's module: "check" answers u8 kind (none, fingerprint,
+/// asuka/sdk/biometric's module: "check" answers u8 kind (none, fingerprint,
 /// face, iris, optic), u8 enrolled, u8 passcode; "authenticate" (u8
 /// flags: 1 no passcode; string reason; string cancel) shows the prompt,
 /// and fails with "canceled", "not available" or "failed".

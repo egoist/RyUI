@@ -16,7 +16,7 @@ import (
 	. "github.com/egoist/asuka/internal/gtk"
 )
 
-// asuka/audio and asuka/audio/record on Linux, with GStreamer (which GTK's
+// asuka/sdk/audio and asuka/sdk/audio/record on Linux, with GStreamer (which GTK's
 // media plays with too): a player is a playbin (its pitch kept at any
 // rate by scaletempo), a recording a pipeline from the default source
 // (PipeWire's, PulseAudio's) through an AAC encoder into an MPEG-4 file,
@@ -77,7 +77,7 @@ var players = map[string]*audioPlayer{}
 // a fakesink).
 var playerSink string
 
-// audioModule is asuka/audio's: players by ID (each call's args begin with
+// audioModule is asuka/sdk/audio's: players by ID (each call's args begin with
 // it, a u32-length string): load (the source), play, playOnce, pause,
 // seek (f64 seconds), volume (f64), rate (f64), loop (u8), release;
 // status answers f64 position, f64 duration, u8 playing, u8 ended.
@@ -186,11 +186,11 @@ func (h *Host) audioURI(source string) string {
 func (h *Host) loadAudio(id, source string) error {
 	releaseAudio(id)
 	if err := LoadGst(); err != nil {
-		return errors.New("asuka/audio: " + err.Error())
+		return errors.New("asuka/sdk/audio: " + err.Error())
 	}
 	pipe := Gst.ElementFactoryMake("playbin", 0)
 	if pipe == 0 {
-		return errors.New("asuka/audio: GStreamer's playbin isn't installed (gst-plugins-base)")
+		return errors.New("asuka/sdk/audio: GStreamer's playbin isn't installed (gst-plugins-base)")
 	}
 	ObjectRefSink(pipe)
 	SetStringProperty(pipe, "uri", h.audioURI(source))
@@ -325,7 +325,7 @@ var rec *recording
 // aacEncoders are GStreamer's AAC encoders, best first.
 var aacEncoders = []string{"fdkaacenc", "avenc_aac", "voaacenc", "faac"}
 
-// recordModule is asuka/audio/record's: "start" (u8 quality: voice,
+// recordModule is asuka/sdk/audio/record's: "start" (u8 quality: voice,
 // music; u32 max milliseconds, 0: none; u8 flags, 1 background (a
 // desktop app records out of sight anyway), 2 stream; u32-length title;
 // u32-length path, empty for the app's caches) records until "stop" and
@@ -406,7 +406,7 @@ func (r *recording) elapsed() time.Duration {
 
 func (h *Host) startRecording(music bool, maxMS uint32, stream bool, path string, reply func([]byte, error)) error {
 	if err := LoadGst(); err != nil {
-		return errors.New("asuka/audio/record: " + err.Error())
+		return errors.New("asuka/sdk/audio/record: " + err.Error())
 	}
 	enc := ""
 	for _, e := range aacEncoders {
@@ -416,7 +416,7 @@ func (h *Host) startRecording(music bool, maxMS uint32, stream bool, path string
 		}
 	}
 	if enc == "" {
-		return errors.New("asuka/audio/record: no AAC encoder (install GStreamer's libav or bad plugins)")
+		return errors.New("asuka/sdk/audio/record: no AAC encoder (install GStreamer's libav or bad plugins)")
 	}
 	ext := ".m4a"
 	if stream {
@@ -444,7 +444,7 @@ func (h *Host) startRecording(music bool, maxMS uint32, stream bool, path string
 	var gerr Ptr
 	pipe := Gst.ParseLaunch(desc, &gerr)
 	if pipe == 0 {
-		return errors.New("asuka/audio/record: " + GError(gerr).Error())
+		return errors.New("asuka/sdk/audio/record: " + GError(gerr).Error())
 	}
 	if gerr != 0 { // a warning: an element it could make without
 		ErrorFree(gerr)
@@ -474,7 +474,7 @@ func (h *Host) startRecording(music bool, maxMS uint32, stream bool, path string
 	)
 	if Gst.ElementSetState(pipe, GstStatePlaying) == GstStateChangeFailure {
 		r.release()
-		return errors.New("asuka/audio/record: the microphone can't record")
+		return errors.New("asuka/sdk/audio/record: the microphone can't record")
 	}
 	rec = r
 	if maxMS > 0 {

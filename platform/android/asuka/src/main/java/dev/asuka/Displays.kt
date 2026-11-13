@@ -79,7 +79,7 @@ internal fun jsonNumber(v: Float): String {
 }
 
 /**
- * asuka/screen's displays: "current" (a JSON list as screen.Display's,
+ * asuka/sdk/screen's displays: "current" (a JSON list as screen.Display's,
  * the default display first, in dp), and, while watching, "next" and
  * "stop", from DisplayManager and its listener. A display's work area is
  * its bounds: the system bars are the app's insets (ui.UseEnvironment).

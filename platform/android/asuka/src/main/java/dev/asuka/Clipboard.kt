@@ -11,7 +11,7 @@ import java.io.File
 import java.util.UUID
 
 /**
- * asuka/device's clipboard module: "has" (u8 text, image, URL, from the
+ * asuka/sdk/device's clipboard module: "has" (u8 text, image, URL, from the
  * clip's description: no "pasted" notice), "image" (the clip's image as a
  * file in the caches, in its own format; empty: none), "copyImage" (a
  * file's path, through the app's FileProvider), and, while watching,

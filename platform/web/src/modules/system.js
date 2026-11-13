@@ -1,7 +1,7 @@
 // The system's modules on the web, as the other hosts have them, with
 // what a browser offers:
 //
-//   - secureStore (asuka/secure): IndexedDB, encrypted under a
+//   - secureStore (asuka/sdk/secure): IndexedDB, encrypted under a
 //     non-extractable WebCrypto key (system-secure.js). Not a keychain.
 //   - device: info (the browser's platform, from User-Agent Client Hints
 //     where there are, else the user agent), the clipboard's text,

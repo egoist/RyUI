@@ -22,7 +22,7 @@ import (
 	"github.com/egoist/asuka/ops"
 )
 
-// asuka/notify on Windows: toasts (WinRT's ToastNotificationManager), the
+// asuka/sdk/notify on Windows: toasts (WinRT's ToastNotificationManager), the
 // module's methods as the other hosts have them. The app is registered
 // with the shell as an unpackaged app is (a Start menu shortcut with its
 // AppUserModelID, the AppUserModelId key) with a COM activator of its
@@ -161,15 +161,15 @@ func (h *Host) toasts() (*Toaster, error) {
 	exe, _ := os.Executable()
 	clsid := h.toastActivatorID()
 	if err := RegisterAppID(id, h.appName, icon, exe, clsid); err != nil {
-		return nil, fmt.Errorf("asuka/notify: %w", err)
+		return nil, fmt.Errorf("asuka/sdk/notify: %w", err)
 	}
 	if err := RegisterToastActivator(id, clsid, exe); err != nil {
-		return nil, fmt.Errorf("asuka/notify: %w", err)
+		return nil, fmt.Errorf("asuka/sdk/notify: %w", err)
 	}
 	h.startActivator()
 	t, err := NewToaster(id)
 	if err != nil {
-		return nil, fmt.Errorf("asuka/notify: %w", err)
+		return nil, fmt.Errorf("asuka/sdk/notify: %w", err)
 	}
 	s.toaster = t
 	return t, nil
@@ -186,7 +186,7 @@ func (h *Host) startActivator() {
 		// Activate is a COM call: the work waits until it's returned.
 		h.Post(func() { h.toastActivated(a) })
 	}); err != nil {
-		fmt.Fprintf(os.Stderr, "asuka/notify: %v\n", err)
+		fmt.Fprintf(os.Stderr, "asuka/sdk/notify: %v\n", err)
 		return
 	}
 	s.activator = true
@@ -529,7 +529,7 @@ func (h *Host) badgeMessage(m uint32) {
 	}
 }
 
-// notifyModule is asuka/notify's module.
+// notifyModule is asuka/sdk/notify's module.
 func (h *Host) notifyModule() map[string]asyncMethod {
 	s := h.notes()
 	ok := func(_ []byte, reply func([]byte, error)) { reply(nil, nil) }

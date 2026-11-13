@@ -8,7 +8,7 @@ import (
 	. "github.com/egoist/asuka/internal/gtk"
 )
 
-// asuka/appearance on Linux: the settings portal's appearance
+// asuka/sdk/appearance on Linux: the settings portal's appearance
 // (org.freedesktop.appearance: accent-color, GNOME 47's and KDE's, an
 // sRGB triple; contrast, 1 for high), read once and followed by its
 // SettingChanged. Without the portal (or a contrast in it), high contrast

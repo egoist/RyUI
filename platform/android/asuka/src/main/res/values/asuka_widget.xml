@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- asuka/widget's colors: Material 3's baseline, light (dark in values-night);
+<!-- asuka/sdk/widget's colors: Material 3's baseline, light (dark in values-night);
      Android 12's dynamic colors in values-v31. -->
 <resources>
     <color name="asuka_widget_surface">#FFF7F2FA</color>

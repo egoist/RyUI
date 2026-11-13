@@ -8,8 +8,8 @@ import (
 	"fmt"
 
 	"github.com/egoist/asuka/app"
-	"github.com/egoist/asuka/crash"
-	"github.com/egoist/asuka/maps"
+	"github.com/egoist/asuka/sdk/crash"
+	"github.com/egoist/asuka/sdk/maps"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )

@@ -12,7 +12,7 @@ import (
 
 // More of the host's modules, each file its own, as host/darwin's are:
 // a file adds its modules from its init (moduleHooks) and its native
-// views (builtinViews: asuka/camera's, asuka/maps'). Their windows (the
+// views (builtinViews: asuka/sdk/camera's, asuka/sdk/maps'). Their windows (the
 // services' message window, the camera and sign-in dialogs, the camera's
 // preview) are of a class of their own, whose messages go to the
 // function each registers (ownWindows), apart from the host's views.

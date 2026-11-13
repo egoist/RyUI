@@ -1,11 +1,11 @@
-#if canImport(UIKit) && ASUKA_PERIODIC // an app that calls asuka/periodic (see the CLI's iosFeatures)
+#if canImport(UIKit) && ASUKA_PERIODIC // an app that calls asuka/sdk/periodic (see the CLI's iosFeatures)
 import UIKit
 import BackgroundTasks
 #if canImport(AsukaOps)
 import AsukaOps
 #endif
 
-/// asuka/periodic's module, with BGTaskScheduler: "schedule" (string name,
+/// asuka/sdk/periodic's module, with BGTaskScheduler: "schedule" (string name,
 /// u32 seconds, u8 flags: 1 network, 2 charging) and "cancel" (the name)
 /// keep the app's tasks (in UserDefaults) and submit a refresh task (a
 /// processing task for those that want power) for the earliest due; when

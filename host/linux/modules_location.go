@@ -12,7 +12,7 @@ import (
 	. "github.com/egoist/asuka/internal/gtk"
 )
 
-// asuka/location on Linux: the location portal (org.freedesktop.portal.
+// asuka/sdk/location on Linux: the location portal (org.freedesktop.portal.
 // Location, which asks the user and works in a sandbox), else GeoClue2
 // on the system bus directly; a place's name through geocode-glib
 // (GNOME's reverse geocoding), when it's installed. Replies are JSON as

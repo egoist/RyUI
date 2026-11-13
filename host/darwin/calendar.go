@@ -16,7 +16,7 @@ import (
 	"github.com/egoist/asuka/internal/l10n"
 )
 
-// asuka/calendar on a Mac, with EventKit as on iOS: "request" answers u8
+// asuka/sdk/calendar on a Mac, with EventKit as on iOS: "request" answers u8
 // access (not asked, denied, write only, full), "calendars" and "events"
 // (JSON: from, to in ms, calendars) JSON, "add" (an event's JSON) u8
 // saved. macOS has no event editor for apps (EventKitUI is iOS's): "add"
@@ -71,7 +71,7 @@ func calStore() ID {
 	return calStoreObj
 }
 
-// calAccess is the status as asuka/calendar's Access: not asked, denied,
+// calAccess is the status as asuka/sdk/calendar's Access: not asked, denied,
 // write only, full.
 func calAccess() byte {
 	switch calStatus() {

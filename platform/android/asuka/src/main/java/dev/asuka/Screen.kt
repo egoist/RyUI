@@ -9,7 +9,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 
 /**
- * asuka/screen's settings: the app's, kept here so that an Activity made
+ * asuka/sdk/screen's settings: the app's, kept here so that an Activity made
  * again (a configuration change) takes them, as AsukaActivity applies them.
  */
 object AsukaDisplay {
@@ -68,12 +68,12 @@ object AsukaDisplay {
                 callback = null
             }
         } catch (_: SecurityException) {
-            // No DETECT_SCREEN_CAPTURE: the app doesn't import asuka/screen's package path.
+            // No DETECT_SCREEN_CAPTURE: the app doesn't import asuka/sdk/screen's package path.
         }
     }
 }
 
-/** asuka/screen's module: "lock", "bars", "preventCapture", "screenshot", "stopScreenshots" (see screen.go). */
+/** asuka/sdk/screen's module: "lock", "bars", "preventCapture", "screenshot", "stopScreenshots" (see screen.go). */
 fun AsukaRuntime.screenMethods(): Map<String, AsukaModuleMethod> {
     fun applied(reply: (Result<ByteArray>) -> Unit) {
         activity?.let { AsukaDisplay.apply(it, isNight(it.resources.configuration)) }

@@ -10,7 +10,7 @@ import org.junit.Test
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-// asuka/nowplaying's wire, as the Go package writes and reads it: the
+// asuka/sdk/nowplaying's wire, as the Go package writes and reads it: the
 // session's actions are the commands enabled; "next" answers u8 command,
 // f64 value each.
 class NowPlayingTest {

@@ -12,7 +12,7 @@ import java.nio.ByteOrder
 import kotlin.math.sqrt
 
 /**
- * asuka/sensors' module, with SensorManager: "available" (u8 sensor),
+ * asuka/sdk/sensors' module, with SensorManager: "available" (u8 sensor),
  * "start" (u8 sensor, u32 µs), "stop" (u8 sensor), "stopAll", "next"
  * (the samples since the last, once there are some: u8 sensor, f64
  * seconds since boot, u8 count, count f64s), "steps" (Android keeps no

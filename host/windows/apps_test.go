@@ -15,7 +15,7 @@ import (
 	"github.com/egoist/asuka/ui"
 )
 
-// asuka/apps: the Start menu's apps, named, by ID, at their items; an
+// asuka/sdk/apps: the Start menu's apps, named, by ID, at their items; an
 // icon of the right pixel size for one, and for a program's file, kept
 // and used again; a missing app fails.
 func TestApps(t *testing.T) {

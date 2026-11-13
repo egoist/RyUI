@@ -18,7 +18,7 @@ import (
 	. "github.com/egoist/asuka/internal/darwin"
 )
 
-// asuka/device's "files" and "clipboard" modules on a Mac.
+// asuka/sdk/device's "files" and "clipboard" modules on a Mac.
 
 // filesModule is device.PickFiles: "pick" shows an open panel (a sheet
 // on the window in use). args: u8 multiple, then MIME types a line each
@@ -170,7 +170,7 @@ type clipboard struct {
 	timer   ID
 }
 
-// clipboardModule is asuka/device's clipboard: "has" (u8 text, image,
+// clipboardModule is asuka/sdk/device's clipboard: "has" (u8 text, image,
 // URL), "image" (the clipboard's image as a file in the caches, in its
 // own format; empty: none), "copyImage" (a file's path), and, while
 // watching, "next" (answered at the next change) and "stop".

@@ -40,7 +40,7 @@ const macMin = "11.0"
 const macTarget = "darwin-universal"
 
 // macLdflags is the -ldflags of a Mac build: asuka.json's, and the app's
-// name (its menus and window title), version and build (asuka/update's,
+// name (its menus and window title), version and build (asuka/sdk/update's,
 // its crash reports').
 func macLdflags(app *goApp, release bool) string {
 	f := strings.TrimPrefix(app.cfg.ldflags(release), "-ldflags=")

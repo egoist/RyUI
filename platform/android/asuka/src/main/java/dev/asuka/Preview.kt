@@ -30,7 +30,7 @@ internal fun AsukaRuntime.launchAndWait(intent: Intent, back: () -> Unit, failed
 }
 
 /**
- * asuka/preview's module: "show" (JSON: files, each a source and a MIME
+ * asuka/sdk/preview's module: "show" (JSON: files, each a source and a MIME
  * type; start) opens the start file in the app the user picks for its
  * type (ACTION_VIEW), through the app's FileProvider, readable by that
  * app alone, and answers once the user is back; "no viewer" if no app

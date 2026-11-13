@@ -9,7 +9,7 @@ import android.webkit.WebViewClient
 import org.json.JSONObject
 
 /**
- * asuka/js's module: "eval" runs a script (args: u32 timeout ms, then the
+ * asuka/sdk/js's module: "eval" runs a script (args: u32 timeout ms, then the
  * script) in a WebView that's never shown, made for it and destroyed
  * after, and answers with its value as JSON: the last statement's, or
  * what its promise resolves to. A thrown error fails with its message and

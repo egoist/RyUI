@@ -552,7 +552,7 @@ func TestWindowOptions(t *testing.T) {
 	})
 }
 
-// asuka/notify needs the app's bundle: a test binary has none, and is told
+// asuka/sdk/notify needs the app's bundle: a test binary has none, and is told
 // so; what needs no center (the Dock's badge, Android's channels) works.
 func TestNotifyWithoutBundle(t *testing.T) {
 	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })

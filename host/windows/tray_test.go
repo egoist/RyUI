@@ -9,8 +9,8 @@ import (
 	"github.com/egoist/asuka/internal/l10n"
 	. "github.com/egoist/asuka/internal/windows"
 	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/sdk/tray"
 	"github.com/egoist/asuka/signal"
-	"github.com/egoist/asuka/tray"
 	"github.com/egoist/asuka/ui"
 )
 

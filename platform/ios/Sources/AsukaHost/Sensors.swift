@@ -1,11 +1,11 @@
-#if canImport(UIKit) && ASUKA_SENSORS // an app that calls asuka/sensors (see the CLI's iosFeatures)
+#if canImport(UIKit) && ASUKA_SENSORS // an app that calls asuka/sdk/sensors (see the CLI's iosFeatures)
 import UIKit
 import CoreMotion
 #if canImport(AsukaOps)
 import AsukaOps
 #endif
 
-/// asuka/sensors' module, with Core Motion: "available" (u8 sensor),
+/// asuka/sdk/sensors' module, with Core Motion: "available" (u8 sensor),
 /// "start" (u8 sensor, u32 µs), "stop" (u8 sensor), "stopAll", "next"
 /// (the samples since the last, once there are some: u8 sensor, f64
 /// seconds since boot, u8 count, count f64s), "steps" (i64 ms from, to:
@@ -103,7 +103,7 @@ import AsukaOps
         ]
     }
 
-    // Core Motion's readings in asuka/sensors' terms: accelerations negated
+    // Core Motion's readings in asuka/sdk/sensors' terms: accelerations negated
     // (Core Motion's read gravity's way, -1 g on z face up; the
     // accelerometer's, Android's and the W3C's read +1), rotation as is;
     // device motion as gravity, user acceleration, rotation and, if

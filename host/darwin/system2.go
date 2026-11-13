@@ -11,12 +11,12 @@ import (
 	. "github.com/egoist/asuka/internal/darwin"
 )
 
-// More of the system's modules on a Mac: asuka/background (an activity
-// that keeps App Nap off), asuka/sensors (a Mac has none of the motion
-// sensors: none available), asuka/widget, asuka/splash, asuka/screen
+// More of the system's modules on a Mac: asuka/sdk/background (an activity
+// that keeps App Nap off), asuka/sdk/sensors (a Mac has none of the motion
+// sensors: none available), asuka/sdk/widget, asuka/sdk/splash, asuka/sdk/screen
 // (capture kept out of screenshots and recordings; screenshots seen by
-// Spotlight), asuka/tracking (App Tracking Transparency), asuka/integrity
-// (App Attest) and asuka/agerange.
+// Spotlight), asuka/sdk/tracking (App Tracking Transparency), asuka/sdk/integrity
+// (App Attest) and asuka/sdk/agerange.
 
 func init() {
 	moduleHooks = append(moduleHooks, func(h *Host, m map[string]map[string]method) {
@@ -36,7 +36,7 @@ func answerNil(_ []byte, reply func([]byte, error)) { reply(nil, nil) }
 
 // Background.
 
-// bgTasks are asuka/background's tasks: a Mac app keeps running out of
+// bgTasks are asuka/sdk/background's tasks: a Mac app keeps running out of
 // sight, so a task holds an activity (NSProcessInfo's) that keeps App Nap
 // from slowing it and the system from ending it to free memory, until
 // the last one ends. There's no notification to show (iOS shows none
@@ -69,7 +69,7 @@ func (h *Host) backgroundModule() map[string]method {
 				pi := Send(Class("NSProcessInfo"), "processInfo")
 				bgTasks.activity = Retain(Send(pi, "beginActivityWithOptions:reason:",
 					userInitiatedAllowingIdleSystemSleep|suddenTerminationDisabled|automaticTerminationDisabled,
-					uintptr(String("asuka/background: a task"))))
+					uintptr(String("asuka/sdk/background: a task"))))
 			}
 			reply(nil, nil)
 		},
@@ -110,7 +110,7 @@ func endBackgroundTask(id uint32) {
 
 // Sensors.
 
-// sensorsModule is asuka/sensors': a Mac has no accelerometer, gyroscope,
+// sensorsModule is asuka/sdk/sensors': a Mac has no accelerometer, gyroscope,
 // magnetometer, barometer or pedometer an app can read (Core Motion's
 // managers aren't on macOS), and its ambient light sensor has no public
 // API: none is available, starting one fails "not available", and so do
@@ -130,7 +130,7 @@ func sensorsModule() map[string]method {
 
 // Widget.
 
-// widgetModule is asuka/widget's: a Mac app from asuka build has no widget
+// widgetModule is asuka/sdk/widget's: a Mac app from asuka build has no widget
 // extension (WidgetKit's widgets are an extension the iOS build makes),
 // so there are none to give entries to.
 func widgetModule() map[string]method {
@@ -143,7 +143,7 @@ func widgetModule() map[string]method {
 
 // Splash.
 
-// splashModule is asuka/splash's: a Mac app has no launch screen (its
+// splashModule is asuka/sdk/splash's: a Mac app has no launch screen (its
 // window shows once the app's first frame is laid out), so holding it and
 // hiding it do nothing.
 func splashModule() map[string]method {
@@ -152,7 +152,7 @@ func splashModule() map[string]method {
 
 // Screen.
 
-// screenState is asuka/screen's on a Mac. Locking the orientation and the
+// screenState is asuka/sdk/screen's on a Mac. Locking the orientation and the
 // bars' style are a phone's: a Mac's display doesn't turn with the
 // window, and it has no status or navigation bar. PreventCapture keeps
 // the app's windows out of screenshots and screen recordings
@@ -278,7 +278,7 @@ func watchScreenshots() error {
 
 // Tracking.
 
-// trackingModule is asuka/tracking's: App Tracking Transparency, as on
+// trackingModule is asuka/sdk/tracking's: App Tracking Transparency, as on
 // iOS (macOS 11). The reply: u8 not asked, restricted, denied, allowed.
 func trackingModule() map[string]method {
 	load := func() bool {
@@ -318,7 +318,7 @@ func trackingModule() map[string]method {
 
 // Integrity.
 
-// integrityModule is asuka/integrity's: App Attest (DeviceCheck's
+// integrityModule is asuka/sdk/integrity's: App Attest (DeviceCheck's
 // DCAppAttestService, macOS 11), as on iOS: "supported" (u8),
 // "generateKey" (the key's ID), "attestKey" and "assert" (string key ID,
 // then the 32-byte client data hash). The app needs the App Attest
@@ -413,7 +413,7 @@ func (h *Host) integrityModule() map[string]method {
 
 // Age range.
 
-// ageRangeModule is asuka/agerange's: the Declared Age Range service is a
+// ageRangeModule is asuka/sdk/agerange's: the Declared Age Range service is a
 // Swift API (AgeRangeService, async), which an app driven through the
 // Objective-C runtime can't call: not available, as before iOS 26.
 func ageRangeModule() map[string]method {

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- asuka/widget's template (small): AsukaWidgets.render fills it. -->
+<!-- asuka/sdk/widget's template (small): AsukaWidgets.render fills it. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/asuka_widget_root"
     android:layout_width="match_parent"

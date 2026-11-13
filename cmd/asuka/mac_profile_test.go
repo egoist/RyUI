@@ -149,7 +149,7 @@ func TestReadMacProfile(t *testing.T) {
 func TestMacProfileEntitlements(t *testing.T) {
 	cfg := &appConfig{ID: "dev.asuka.services"}
 	cfg.IOS.Usage = map[string]string{"NSCameraUsageDescription": "x"}
-	cfg.permissionsFor([]string{"github.com/egoist/asuka/push", "github.com/egoist/asuka/appleauth", "github.com/egoist/asuka/integrity", "github.com/egoist/asuka/agerange"})
+	cfg.permissionsFor([]string{"github.com/egoist/asuka/sdk/push", "github.com/egoist/asuka/sdk/appleauth", "github.com/egoist/asuka/sdk/integrity", "github.com/egoist/asuka/sdk/agerange"})
 	if got := macProfileNeeds(cfg); len(got) != 3 {
 		t.Errorf("needs: %v", got)
 	}
@@ -191,7 +191,7 @@ func TestMacProfileEntitlements(t *testing.T) {
 	}
 	// A profile without push.
 	delete(p.entitlements, "com.apple.developer.aps-environment")
-	if _, err := macEntitlements(cfg, p, false); err == nil || !strings.Contains(err.Error(), "lacks Push Notifications (asuka/push)") {
+	if _, err := macEntitlements(cfg, p, false); err == nil || !strings.Contains(err.Error(), "lacks Push Notifications (asuka/sdk/push)") {
 		t.Errorf("no push: %v", err)
 	}
 	// An app that needs none: no profile entitlements but its ID and team.

@@ -13,7 +13,7 @@ import dev.asuka.AsukaCodeAnalyzer
 import dev.asuka.AsukaCodeReader
 import java.io.File
 
-/** asuka/scan's reader, with ML Kit. */
+/** asuka/sdk/scan's reader, with ML Kit. */
 class AsukaMLKitReader : AsukaCodeReader {
     private val formats = mapOf(
         "qr" to Barcode.FORMAT_QR_CODE, "aztec" to Barcode.FORMAT_AZTEC,

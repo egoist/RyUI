@@ -1,7 +1,7 @@
 #if canImport(UIKit)
 import UIKit
 
-/// asuka/camera's module: "take" shows the system's camera (a
+/// asuka/sdk/camera's module: "take" shows the system's camera (a
 /// UIImagePickerController) and answers with the photo's file, a JPEG in
 /// the caches ("" if cancelled), or fails "no camera".
 @MainActor final class AsukaCamera: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {

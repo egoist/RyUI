@@ -84,7 +84,7 @@ func writeEntry(t *testing.T, path string, lines ...string) {
 	}
 }
 
-// asuka/apps: the entries a menu shows, from the user's folder then the
+// asuka/sdk/apps: the entries a menu shows, from the user's folder then the
 // system's, the first of an ID hiding the others, named in the user's
 // language.
 func TestAppsList(t *testing.T) {
@@ -152,7 +152,7 @@ func TestAppsList(t *testing.T) {
 	}
 }
 
-// asuka/apps: Icon draws an entry's icon (a file it names, or the
+// asuka/sdk/apps: Icon draws an entry's icon (a file it names, or the
 // theme's) as a PNG of the size at the monitor's scale, used again
 // until the entry changes; a missing entry fails, as does opening one.
 func TestAppsIcon(t *testing.T) {

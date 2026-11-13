@@ -15,7 +15,7 @@ import (
 	"github.com/egoist/asuka/ops"
 )
 
-// asuka/tray on Linux. GTK 4 has no tray, and the GTK 3 appindicator
+// asuka/sdk/tray on Linux. GTK 4 has no tray, and the GTK 3 appindicator
 // libraries can't load in a GTK 4 process, so the host speaks the
 // protocol they speak itself, through GDBus:
 //
@@ -42,7 +42,7 @@ import (
 //     (application://<id>.desktop), which Ubuntu's Dock, Dash to Dock,
 //     Plank and KDE's task manager follow.
 //
-// The module's methods are tray/tray.go's.
+// The module's methods are sdk/tray/tray.go's.
 
 const (
 	sniPath     = "/StatusNotifierItem"
@@ -103,7 +103,7 @@ const dbusMenuXML = `<node><interface name="com.canonical.dbusmenu">
 <signal name="ItemActivationRequested"><arg type="i"/><arg type="u"/></signal>
 </interface></node>`
 
-// What "next" reports (tray/tray.go).
+// What "next" reports (sdk/tray/tray.go).
 const (
 	trayClick = 1
 	trayItem  = 2

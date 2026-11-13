@@ -141,7 +141,7 @@ func asuka_list_unbind(list C.uint32_t, cell C.uint32_t) {
 }
 
 // asuka_crash_start begins this run's crash record, if the app reports
-// crashes (asuka/crash): Go's crash output, and the run's context, with
+// crashes (asuka/sdk/crash): Go's crash output, and the run's context, with
 // info, the host's JSON of the device and the app (model, system,
 // systemVersion, appVersion, build) and, if it knows, whether the app
 // starts in the foreground (foreground). The host calls it as early as it
@@ -166,7 +166,7 @@ func asuka_crash_start(info *C.char) *C.char {
 }
 
 // asuka_crash_notify says the host wrote a report in the inbox (MetricKit's
-// diagnostics, Android's record of how the last runs ended): asuka/crash
+// diagnostics, Android's record of how the last runs ended): asuka/sdk/crash
 // reads it, for OnReport. Any thread.
 //
 //export asuka_crash_notify

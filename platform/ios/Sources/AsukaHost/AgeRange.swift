@@ -1,8 +1,8 @@
-#if canImport(UIKit) && ASUKA_AGERANGE // an app that calls asuka/agerange (see the CLI's iosFeatures)
+#if canImport(UIKit) && ASUKA_AGERANGE // an app that calls asuka/sdk/agerange (see the CLI's iosFeatures)
 import UIKit
 import DeclaredAgeRange
 
-/// asuka/agerange's module: "request" (up to three u32 age gates) asks for
+/// asuka/sdk/agerange's module: "request" (up to three u32 age gates) asks for
 /// the Declared Age Range (iOS 26) and answers u8 status (declined,
 /// shared), u8 source (unknown, self, guardian, confirmed), u32 lower,
 /// u32 upper (0: open); it fails with "not available" before iOS 26 and

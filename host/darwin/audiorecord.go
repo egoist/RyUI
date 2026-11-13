@@ -13,7 +13,7 @@ import (
 	. "github.com/egoist/asuka/internal/darwin"
 )
 
-// asuka/audio/record on a Mac: AVAudioRecorder, as on iOS. "start" (u8
+// asuka/sdk/audio/record on a Mac: AVAudioRecorder, as on iOS. "start" (u8
 // quality: voice, music; u32 max milliseconds, 0: none; u8 flags, 1
 // background, 2 stream; u32-length title; u32-length path, empty for the
 // app's caches) records until "stop" and answers with the file's path;

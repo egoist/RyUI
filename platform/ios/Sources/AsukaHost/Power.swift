@@ -1,7 +1,7 @@
 #if canImport(UIKit)
 import UIKit
 
-/// asuka/power's module: "current" (u8 battery, on battery, level 0 to
+/// asuka/sdk/power's module: "current" (u8 battery, on battery, level 0 to
 /// 100 or 255, charging, low power, thermal), "idle" (nothing: iOS
 /// doesn't say), and, while watching, "next" (the state, then the events
 /// since: 3 lock, 4 unlock) and "stop". The battery is UIDevice's

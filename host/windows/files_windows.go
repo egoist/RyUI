@@ -16,8 +16,8 @@ import (
 	"github.com/egoist/asuka/ops"
 )
 
-// The app's file types, its quitting, its recent documents (asuka/recent)
-// and its start at login (asuka/login) on Windows; files.go has what's
+// The app's file types, its quitting, its recent documents (asuka/sdk/recent)
+// and its start at login (asuka/sdk/login) on Windows; files.go has what's
 // tested anywhere.
 
 func init() {
@@ -143,7 +143,7 @@ func (h *Host) quitMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
 	return 0, false
 }
 
-// Recent documents (asuka/recent): the shell's recent items for the app,
+// Recent documents (asuka/sdk/recent): the shell's recent items for the app,
 // which its jump list's Recent shows (for the file types it's registered
 // to open), and its own list, newest first, which List returns, kept in
 // its data directory.
@@ -200,7 +200,7 @@ func (h *Host) recentModule() map[string]asyncMethod {
 	}
 }
 
-// Start at login (asuka/login): a value of the user's Run key, named for
+// Start at login (asuka/sdk/login): a value of the user's Run key, named for
 // the app, whose command starts it with boot.LoginArg; Task Manager's
 // Startup apps lists it, and turns it off in StartupApproved.
 

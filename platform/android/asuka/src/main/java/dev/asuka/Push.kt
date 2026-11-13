@@ -6,7 +6,7 @@ import android.os.Looper
 import org.json.JSONObject
 
 /**
- * asuka/push's messages, kept until the Go side asks for them: those that
+ * asuka/sdk/push's messages, kept until the Go side asks for them: those that
  * come while the app runs ("nextReceived") and those the user taps
  * ("nextOpened"), from any thread (Firebase's service). Its "register"
  * is the asuka-push module's (Firebase Cloud Messaging), set as it loads.
@@ -102,14 +102,14 @@ object AsukaPushHub {
 }
 
 /**
- * asuka/push's module: "register", "nextReceived", "nextOpened", "stop" (the
+ * asuka/sdk/push's module: "register", "nextReceived", "nextOpened", "stop" (the
  * method's name); "nextRewrite" ({token, message}) and "rewritten"
  * ({token, ok, spec}) for push.Rewrite.
  */
 fun AsukaRuntime.pushMethods(): Map<String, AsukaModuleMethod> = mapOf(
     "register" to { _, reply ->
         val r = AsukaPushHub.register
-        if (r == null) reply(Result.failure(Exception("asuka/push isn't in this build")))
+        if (r == null) reply(Result.failure(Exception("asuka/sdk/push isn't in this build")))
         else r(this, reply)
     },
     "nextReceived" to { _, reply -> AsukaPushHub.next("nextReceived", reply) },

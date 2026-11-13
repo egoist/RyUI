@@ -17,7 +17,7 @@ import java.io.File
 import java.util.UUID
 
 /**
- * asuka/photos' module, on MediaStore: "current" and "request" answer what's
+ * asuka/sdk/photos' module, on MediaStore: "current" and "request" answer what's
  * allowed, "manage" asks again for which photos, "list" answers JSON (id,
  * width, height, created in ms, screenshot), "thumbnail" a JPEG's path and
  * "export" JSON (path, name). Off the main thread where they wait.

@@ -9,7 +9,7 @@ import (
 	. "github.com/egoist/asuka/internal/gtk"
 )
 
-// asuka/secure on Linux: the user's keyring through libsecret (the Secret
+// asuka/sdk/secure on Linux: the user's keyring through libsecret (the Secret
 // Service: GNOME Keyring, KWallet, KeePassXC), each key an item of the
 // app's own schema (its ID), labeled with the app's name and the key.
 // Without libsecret, or a keyring, the calls fail saying so.

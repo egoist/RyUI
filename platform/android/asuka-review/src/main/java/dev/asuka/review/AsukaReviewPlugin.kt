@@ -5,7 +5,7 @@ import dev.asuka.AsukaPlugin
 import dev.asuka.AsukaRuntime
 import dev.asuka.registerModule
 
-/** asuka/review's module: "request" asks Play for its in-app review, which it shows or not (its quota). */
+/** asuka/sdk/review's module: "request" asks Play for its in-app review, which it shows or not (its quota). */
 class AsukaReviewPlugin : AsukaPlugin {
     override fun register(rt: AsukaRuntime) {
         rt.registerModule("review", mapOf(

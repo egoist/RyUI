@@ -13,7 +13,7 @@ import org.json.JSONObject
 private var calendarLaunches = 0
 
 /**
- * asuka/calendar's module, with CalendarContract: "request" (u8 access: 1
+ * asuka/sdk/calendar's module, with CalendarContract: "request" (u8 access: 1
  * denied, 3 full), "calendars" and "events" (JSON: from, to in ms,
  * calendars; each occurrence, from the Instances table) answer JSON;
  * "add" (an event's JSON) opens the calendar app's editor and answers u8

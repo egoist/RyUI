@@ -29,7 +29,7 @@ import java.io.FileOutputStream
 import java.util.UUID
 
 /*
- * asuka/print's module, each with JSON: "file" (source, type), "html"
+ * asuka/sdk/print's module, each with JSON: "file" (source, type), "html"
  * (html) and "webView" (view, a WebView's node id), with the dialog's job,
  * landscape and letter (the region's paper), show Android's print screen
  * (PrintManager) and answer u8: 0 cancelled, 1 printed (queued, or saved

@@ -17,9 +17,9 @@ import (
 	"github.com/egoist/asuka/ops"
 )
 
-// The modules that hand files to the system: asuka/preview (the file's
-// app), asuka/print (WebView2's printing, the file's app) and
-// asuka/compose (mailto:, Simple MAPI). Their methods answer later (a
+// The modules that hand files to the system: asuka/sdk/preview (the file's
+// app), asuka/sdk/print (WebView2's printing, the file's app) and
+// asuka/sdk/compose (mailto:, Simple MAPI). Their methods answer later (a
 // download, a page loading, a composer the user closes).
 
 type asyncMethod func(args []byte, reply func([]byte, error))

@@ -8,7 +8,7 @@ import (
 
 	spec "github.com/egoist/asuka/internal/nowplayingspec"
 	. "github.com/egoist/asuka/internal/windows"
-	"github.com/egoist/asuka/nowplaying"
+	"github.com/egoist/asuka/sdk/nowplaying"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )

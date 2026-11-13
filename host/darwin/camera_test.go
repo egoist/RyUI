@@ -38,7 +38,7 @@ func pumpUntil(cond func() bool) bool {
 	return cond()
 }
 
-// The arguments asuka/camera/record and asuka/audio/record send.
+// The arguments asuka/sdk/camera/record and asuka/sdk/audio/record send.
 func TestCameraArgs(t *testing.T) {
 	args := []byte{1, 0, 0, 0, 0}
 	binary.LittleEndian.PutUint32(args[1:], 1500)

@@ -11,7 +11,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /**
- * asuka/audio's module: players by ID (each call's args begin with it, a
+ * asuka/sdk/audio's module: players by ID (each call's args begin with it, a
  * u32-length string): load (the source), play, playOnce, pause, seek (f64
  * seconds), volume (f64), rate (f64), loop (u8), release; status answers
  * f64 position, f64 duration, u8 playing, u8 ended. Media3's ExoPlayer, as

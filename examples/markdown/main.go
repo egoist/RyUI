@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/egoist/asuka/app"
-	"github.com/egoist/asuka/markdown"
+	"github.com/egoist/asuka/sdk/markdown"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )

@@ -8,8 +8,8 @@ import (
 
 	"github.com/ebitengine/purego"
 
-	"github.com/egoist/asuka/hotkey"
 	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/sdk/hotkey"
 	"github.com/egoist/asuka/ui"
 )
 

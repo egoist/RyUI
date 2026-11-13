@@ -6,7 +6,7 @@
 //     webview.js); "cookies" (args: a URL) with the app's own site's
 //     cookies (document.cookie) as a Cookie header: a browser keeps
 //     another site's from it.
-//   - js (asuka/js): "eval" (args: u32 timeout ms, then the script) runs
+//   - js (asuka/sdk/js): "eval" (args: u32 timeout ms, then the script) runs
 //     the script in a hidden, sandboxed frame made for it, and answers
 //     with its value as JSON, or what it threw (or "timeout").
 

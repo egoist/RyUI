@@ -1,9 +1,9 @@
-#if canImport(UIKit) && ASUKA_NOWPLAYING // an app that imports asuka/nowplaying (see the CLI's iosFeatures)
+#if canImport(UIKit) && ASUKA_NOWPLAYING // an app that imports asuka/sdk/nowplaying (see the CLI's iosFeatures)
 import UIKit
 import AVFoundation
 import MediaPlayer
 
-/// asuka/nowplaying's module: MPNowPlayingInfoCenter, which the lock
+/// asuka/sdk/nowplaying's module: MPNowPlayingInfoCenter, which the lock
 /// screen, Control Center, the Dynamic Island and CarPlay show, and
 /// MPRemoteCommandCenter, whose commands they, AirPods and headsets send.
 /// "set" (JSON: internal/nowplayingspec's Info) sets the info and enables

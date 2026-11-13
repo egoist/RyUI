@@ -23,7 +23,7 @@ import (
 	. "github.com/egoist/asuka/internal/gtk"
 )
 
-// asuka/apps on Linux: the desktop entries a menu shows, read as the
+// asuka/sdk/apps on Linux: the desktop entries a menu shows, read as the
 // XDG specs say (the base directories, the desktop entry spec), their
 // icons from the GTK icon theme, drawn by GSK's Cairo renderer, and
 // their apps launched by GIO with the display's launch context.

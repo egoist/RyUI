@@ -2,7 +2,7 @@
 // it as the page starts, and this listens for what it sends (the user's
 // answers to notifications, pushes) from then on, before the app's Go
 // code asks for them: each host (app) on the page has its channel, whose
-// queues keep them until asuka/notify and asuka/push ask ("next...").
+// queues keep them until asuka/sdk/notify and asuka/sdk/push ask ("next...").
 //
 //   - "response": notify.OnAction's Response (actions), a push's to
 //     push.OnOpen too (opened), a tap's URL to ui.OnOpenURL.

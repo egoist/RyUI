@@ -7,7 +7,7 @@ import (
 
 	"example.com/vettest/msgs"
 	"github.com/egoist/asuka/colors"
-	"github.com/egoist/asuka/markdown"
+	"github.com/egoist/asuka/sdk/markdown"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )

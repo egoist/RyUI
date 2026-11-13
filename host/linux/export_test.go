@@ -10,7 +10,7 @@ import (
 )
 
 // What tests in package linux_test use: those that import packages
-// importing package app, which imports this one (asuka/document).
+// importing package app, which imports this one (asuka/sdk/document).
 
 // OnMain runs f on the main thread; Fatalf fails the test from there.
 var (

@@ -16,8 +16,8 @@ import (
 	"github.com/egoist/asuka/ops"
 )
 
-// asuka/dialog (the common item dialogs, modal to the window) and
-// asuka/shell (Explorer, the Recycle Bin) on Windows.
+// asuka/sdk/dialog (the common item dialogs, modal to the window) and
+// asuka/sdk/shell (Explorer, the Recycle Bin) on Windows.
 
 func init() {
 	moduleHooks = append(moduleHooks, func(h *Host, m map[string]map[string]asyncMethod) {
@@ -64,7 +64,7 @@ func init() {
 	})
 }
 
-// dialogArgs are asuka/dialog's options.
+// dialogArgs are asuka/sdk/dialog's options.
 type dialogArgs struct {
 	Title    string         `json:"title"`
 	Button   string         `json:"button"`

@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/egoist/asuka/document"
 	"github.com/egoist/asuka/host/darwin"
 	"github.com/egoist/asuka/internal/boot"
 	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/sdk/document"
 	"github.com/egoist/asuka/ui"
 )
 

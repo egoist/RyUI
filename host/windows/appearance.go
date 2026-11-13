@@ -4,7 +4,7 @@ package windows
 
 import . "github.com/egoist/asuka/internal/windows"
 
-// asuka/appearance on Windows: the accent color (Settings,
+// asuka/sdk/appearance on Windows: the accent color (Settings,
 // Personalization, Colors: the accent palette's own entry, else DWM's
 // colorization color), a contrast theme on (SPI_GETHIGHCONTRAST) as
 // Increase Contrast, and transparency effects off (the Personalize key's
@@ -30,7 +30,7 @@ func watchAppearance() {
 	})
 }
 
-// readAppearance is asuka/appearance's settings: u8 has accent, red,
+// readAppearance is asuka/sdk/appearance's settings: u8 has accent, red,
 // green, blue, increase contrast, reduce transparency.
 func readAppearance() []byte {
 	b := make([]byte, 6)

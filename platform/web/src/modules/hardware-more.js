@@ -174,7 +174,7 @@ function background() {
 
 // --- screen ---
 
-/** orientation is the Screen Orientation API's lock for asuka/screen's Orientation (null: unlock). */
+/** orientation is the Screen Orientation API's lock for asuka/sdk/screen's Orientation (null: unlock). */
 export function orientation(o) {
   return [null, "portrait", "portrait-primary", "landscape", "landscape-primary", "landscape-secondary"][o] ?? null;
 }
@@ -212,7 +212,7 @@ function download(bytes, name, type) {
 
 const vEscape = (s) => String(s ?? "").replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/([,;])/g, "\\$1");
 
-/** vCard is a contact (asuka/contacts' JSON) as a vCard 3.0. */
+/** vCard is a contact (asuka/sdk/contacts' JSON) as a vCard 3.0. */
 export function vCard(c) {
   const lines = ["BEGIN:VCARD", "VERSION:3.0"];
   const fn = c.name || [c.givenName, c.familyName].filter(Boolean).join(" ") || c.organization || "";
@@ -234,7 +234,7 @@ const icsDate = (ms, allDay) => {
   return `${d.getUTCFullYear()}${p(d.getUTCMonth() + 1)}${p(d.getUTCDate())}T${p(d.getUTCHours())}${p(d.getUTCMinutes())}${p(d.getUTCSeconds())}Z`;
 };
 
-/** iCalendar is an event (asuka/calendar's add JSON) as an iCalendar file. */
+/** iCalendar is an event (asuka/sdk/calendar's add JSON) as an iCalendar file. */
 export function iCalendar(e, uid, now = Date.now()) {
   const all = !!e.allDay;
   const end = all && e.endMs <= e.startMs ? e.startMs + 86400000 : e.endMs;
@@ -341,7 +341,7 @@ export function modules(h) {
     background: background(),
     widget: { set: fail("widget.set", "a page has no home screen widgets") },
     splash: { hold: () => {}, hide: () => {} },
-    // asuka/recent and asuka/login: a desktop app's. A page has no recent
+    // asuka/sdk/recent and asuka/sdk/login: a desktop app's. A page has no recent
     // documents of its own with the system, and doesn't start at login.
     recent: { add: () => {}, clear: () => {}, list: () => "[]" },
     login: {

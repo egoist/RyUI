@@ -10,7 +10,7 @@ import java.util.concurrent.Executors
 private val copier = Executors.newSingleThreadExecutor()
 
 /**
- * asuka/library's module: "save" (args: JSON path, collection 0 downloads,
+ * asuka/sdk/library's module: "save" (args: JSON path, collection 0 downloads,
  * 1 movies, 2 music, 3 pictures, name, folder, mime, move) copies a file
  * into a MediaStore collection, off the main thread, and answers with its
  * content:// URI.

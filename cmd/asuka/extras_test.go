@@ -14,7 +14,7 @@ import (
 // and Android modules; a release's profile must have the entitlements.
 func TestPackageExtras(t *testing.T) {
 	var c appConfig
-	c.permissionsFor([]string{"github.com/egoist/asuka/push", "github.com/egoist/asuka/periodic", "github.com/egoist/asuka/appleauth"})
+	c.permissionsFor([]string{"github.com/egoist/asuka/sdk/push", "github.com/egoist/asuka/sdk/periodic", "github.com/egoist/asuka/sdk/appleauth"})
 	if got := c.gradleModules(); got != "-PasukaModules=push,periodic" {
 		t.Errorf("modules: %s", got)
 	}
@@ -34,14 +34,14 @@ func TestPackageExtras(t *testing.T) {
 
 	ent := filepath.Join(t.TempDir(), "e.plist")
 	os.WriteFile(ent, []byte(plist(map[string]any{"aps-environment": "production"})), 0o644)
-	if m := c.missingEntitlements(ent); !slices.Equal(m, []string{"Sign in with Apple (asuka/appleauth)"}) {
+	if m := c.missingEntitlements(ent); !slices.Equal(m, []string{"Sign in with Apple (asuka/sdk/appleauth)"}) {
 		t.Errorf("missing: %v", m)
 	}
 
 	// Android: biometric's permission; maps' key in the manifest.
 	var a appConfig
 	a.Android.MapsKey = "KEY"
-	a.permissionsFor([]string{"github.com/egoist/asuka/biometric", "github.com/egoist/asuka/maps"})
+	a.permissionsFor([]string{"github.com/egoist/asuka/sdk/biometric", "github.com/egoist/asuka/sdk/maps"})
 	man := a.androidManifest(false)
 	if !strings.Contains(man, "android.permission.USE_BIOMETRIC") || !strings.Contains(man, `android:name="com.google.android.geo.API_KEY" android:value="KEY"`) {
 		t.Errorf("manifest:\n%s", man)
@@ -63,13 +63,13 @@ func TestNowPlayingExtras(t *testing.T) {
 	}
 	found := false
 	for _, f := range iosFeatures {
-		found = found || f.flag == "ASUKA_NOWPLAYING" && f.symbol == "github.com/egoist/asuka/nowplaying.Show"
+		found = found || f.flag == "ASUKA_NOWPLAYING" && f.symbol == "github.com/egoist/asuka/sdk/nowplaying.Show"
 	}
 	if !found {
 		t.Error("nowplaying.Show's symbol isn't a feature's")
 	}
 	var a appConfig
-	a.permissionsFor([]string{"github.com/egoist/asuka/nowplaying"})
+	a.permissionsFor([]string{"github.com/egoist/asuka/sdk/nowplaying"})
 	man := a.androidManifest(false)
 	for _, want := range []string{"android.permission.FOREGROUND_SERVICE\"", "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
 		`<service android:name="dev.asuka.AsukaMediaService" android:exported="false" android:foregroundServiceType="mediaPlayback" />`} {
@@ -78,7 +78,7 @@ func TestNowPlayingExtras(t *testing.T) {
 		}
 	}
 	var none appConfig
-	none.permissionsFor([]string{"github.com/egoist/asuka/audio"})
+	none.permissionsFor([]string{"github.com/egoist/asuka/sdk/audio"})
 	if man := none.androidManifest(false); strings.Contains(man, "AsukaMediaService") || strings.Contains(man, "MEDIA_PLAYBACK") {
 		t.Errorf("audio alone:\n%s", man)
 	}

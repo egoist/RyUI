@@ -51,7 +51,7 @@ func (c *appConfig) plistExtras() map[string]any {
 		m["UIBackgroundModes"] = vs
 	}
 	// asuka.json's fileTypes (LSSupportsOpeningDocumentsInPlace with
-	// them, unless asuka/library's iosTrue has it already).
+	// them, unless asuka/sdk/library's iosTrue has it already).
 	for k, v := range c.documentTypes(c.fileTypes(), true, nil) {
 		if !slices.Contains(c.iosTrue, k) {
 			m[k] = v
@@ -87,11 +87,11 @@ func plistKeys(m map[string]any) string {
 // the profile's (ent, a plist file) lacks, with what each is for.
 func (c *appConfig) missingEntitlements(ent string) []string {
 	what := map[string]string{
-		"aps-environment":                                       "Push Notifications (asuka/push)",
-		"com.apple.developer.applesignin":                       "Sign in with Apple (asuka/appleauth)",
-		"com.apple.developer.devicecheck.appattest-environment": "App Attest (asuka/integrity)",
-		"com.apple.developer.declared-age-range":                "Declared Age Range (asuka/agerange)",
-		"com.apple.developer.usernotifications.communication":   "Communication Notifications (asuka/notify's From)",
+		"aps-environment":                                       "Push Notifications (asuka/sdk/push)",
+		"com.apple.developer.applesignin":                       "Sign in with Apple (asuka/sdk/appleauth)",
+		"com.apple.developer.devicecheck.appattest-environment": "App Attest (asuka/sdk/integrity)",
+		"com.apple.developer.declared-age-range":                "Declared Age Range (asuka/sdk/agerange)",
+		"com.apple.developer.usernotifications.communication":   "Communication Notifications (asuka/sdk/notify's From)",
 	}
 	data, err := os.ReadFile(ent)
 	if err != nil {

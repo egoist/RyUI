@@ -36,7 +36,7 @@ What follows from it:
   the platform. MyGo's are MyGo's, made over what it draws.
 - **What no widget shows.** MyGo draws anything as it draws the rest.
   Asuka has packages for what has no widget, drawing with the platform:
-  `asuka/chart`, `asuka/svg`, and `ui.Shader` for shaders.
+  `asuka/sdk/chart`, `asuka/sdk/svg`, and `ui.Shader` for shaders.
 
 ## Where it runs
 

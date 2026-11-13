@@ -1,7 +1,7 @@
 #if canImport(UIKit)
 import UIKit
 
-/// asuka/appearance's module: "current" (u8 has accent, red, green, blue,
+/// asuka/sdk/appearance's module: "current" (u8 has accent, red, green, blue,
 /// increase contrast, reduce transparency), and, while watching, "next"
 /// and "stop". iOS has no accent of the system's (an app's tint is its
 /// own): none. Increase Contrast and Reduce Transparency are

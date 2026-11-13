@@ -11,7 +11,7 @@ import androidx.core.location.LocationManagerCompat
 import org.json.JSONObject
 
 /**
- * asuka/location's module: the position now ("current"), and each next one
+ * asuka/sdk/location's module: the position now ("current"), and each next one
  * while watching ("next", "stop"), from Android's location manager (no
  * Play services). Replies are JSON: lat, lon, acc (meters), alt, t (Unix
  * ms); "denied" fails when the user hasn't allowed it.

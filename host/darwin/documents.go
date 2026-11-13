@@ -16,8 +16,8 @@ import (
 	"github.com/egoist/asuka/ops"
 )
 
-// The modules that hand files to the system: asuka/preview (Quick Look's
-// panel), asuka/print (NSPrintOperation) and asuka/compose
+// The modules that hand files to the system: asuka/sdk/preview (Quick Look's
+// panel), asuka/sdk/print (NSPrintOperation) and asuka/sdk/compose
 // (NSSharingService, mailto:).
 
 // source is a file a module call names: its source and MIME type.

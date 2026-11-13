@@ -11,24 +11,24 @@ import (
 	"time"
 
 	"github.com/egoist/asuka/app"
-	"github.com/egoist/asuka/audio"
-	"github.com/egoist/asuka/camera"
-	"github.com/egoist/asuka/camera/record"
-	"github.com/egoist/asuka/chart"
 	"github.com/egoist/asuka/colors"
-	"github.com/egoist/asuka/compose"
-	"github.com/egoist/asuka/crash"
-	"github.com/egoist/asuka/device"
 	"github.com/egoist/asuka/fonts"
-	"github.com/egoist/asuka/location"
-	"github.com/egoist/asuka/notify"
-	"github.com/egoist/asuka/preview"
-	"github.com/egoist/asuka/print"
-	"github.com/egoist/asuka/scan"
-	"github.com/egoist/asuka/secure"
-	"github.com/egoist/asuka/shader"
+	"github.com/egoist/asuka/sdk/audio"
+	"github.com/egoist/asuka/sdk/camera"
+	"github.com/egoist/asuka/sdk/camera/record"
+	"github.com/egoist/asuka/sdk/chart"
+	"github.com/egoist/asuka/sdk/compose"
+	"github.com/egoist/asuka/sdk/crash"
+	"github.com/egoist/asuka/sdk/device"
+	"github.com/egoist/asuka/sdk/location"
+	"github.com/egoist/asuka/sdk/notify"
+	"github.com/egoist/asuka/sdk/preview"
+	"github.com/egoist/asuka/sdk/print"
+	"github.com/egoist/asuka/sdk/scan"
+	"github.com/egoist/asuka/sdk/secure"
+	"github.com/egoist/asuka/sdk/shader"
+	"github.com/egoist/asuka/sdk/store"
 	"github.com/egoist/asuka/signal"
-	"github.com/egoist/asuka/store"
 	"github.com/egoist/asuka/ui"
 )
 
@@ -934,7 +934,7 @@ func platform() ui.Node {
 	)
 }
 
-// crashes shows the crash reports kept (asuka/crash): the app's own
+// crashes shows the crash reports kept (asuka/sdk/crash): the app's own
 // crashes, from earlier runs, and the errors it recorded. A real app
 // sends each to its server and deletes it; here, Delete only forgets it.
 func crashes() ui.Node {
@@ -1021,8 +1021,8 @@ func topButton(shown signal.Accessor[bool], top func()) ui.Node {
 
 // cameraScreen shows the camera live (camera.View) with a shutter
 // (camera.Capture), and the last photo taken; it records videos
-// (asuka/camera/record), played on a screen of their own, and reads the
-// codes it sees (asuka/scan).
+// (asuka/sdk/camera/record), played on a screen of their own, and reads the
+// codes it sees (asuka/sdk/scan).
 func cameraScreen() ui.Node {
 	nav := ui.UseNavigator()
 	last := signal.New("")

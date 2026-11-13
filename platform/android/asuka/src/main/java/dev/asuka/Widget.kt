@@ -22,7 +22,7 @@ import org.json.JSONObject
  * The App Widget of a kind asuka.json declares: the CLI makes a subclass
  * for each (dev.asuka.app.widgets), a receiver in the manifest with the
  * kind in its meta-data (dev.asuka.widget.kind). It shows the kind's
- * entries, which asuka/widget's "set" keeps in the app's preferences: the
+ * entries, which asuka/sdk/widget's "set" keeps in the app's preferences: the
  * one whose time has come, laid out for the widget's size (small, medium,
  * large, as responsive layouts), and wakes for the next one, and for a
  * countdown's end, with an alarm.
@@ -66,7 +66,7 @@ open class AsukaWidgetProvider(private val kind: String, private val sizes: Stri
     }
 }
 
-/** asuka/widget's entries, and the template. */
+/** asuka/sdk/widget's entries, and the template. */
 object AsukaWidgets {
     private const val PREFS = "asuka.widgets"
 
@@ -165,7 +165,7 @@ object AsukaWidgets {
     }
 }
 
-/** asuka/widget's module: "set" (JSON: kind, entries). */
+/** asuka/sdk/widget's module: "set" (JSON: kind, entries). */
 fun AsukaRuntime.widgetMethods(): Map<String, AsukaModuleMethod> = mapOf(
     "set" to { args, reply ->
         val o = runCatching { JSONObject(String(args, Charsets.UTF_8)) }.getOrNull()

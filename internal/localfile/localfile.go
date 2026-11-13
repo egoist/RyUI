@@ -1,6 +1,6 @@
 // Package localfile finds the file a source names, for the desktop
-// hosts' modules that hand files to the system (asuka/preview,
-// asuka/print, asuka/compose): a path, a file:// URL, an asset's path, or
+// hosts' modules that hand files to the system (asuka/sdk/preview,
+// asuka/sdk/print, asuka/sdk/compose): a path, a file:// URL, an asset's path, or
 // an http(s) URL, downloaded first. The mobile hosts do the same in
 // Swift and Kotlin.
 package localfile

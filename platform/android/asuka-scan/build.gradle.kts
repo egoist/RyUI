@@ -1,6 +1,6 @@
-// asuka/scan's reader: ML Kit's barcode scanning, with its model (about
+// asuka/sdk/scan's reader: ML Kit's barcode scanning, with its model (about
 // 2 MB), so it works without Google Play services. Only the apps that
-// import asuka/scan are built with it (the Asuka CLI's asukaModules).
+// import asuka/sdk/scan are built with it (the Asuka CLI's asukaModules).
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")

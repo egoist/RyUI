@@ -1,11 +1,11 @@
-#if canImport(UIKit) && ASUKA_AUDIORECORD // an app that calls asuka/audio/record (see the CLI's iosFeatures)
+#if canImport(UIKit) && ASUKA_AUDIORECORD // an app that calls asuka/sdk/audio/record (see the CLI's iosFeatures)
 import UIKit
 import AVFoundation
 #if canImport(AsukaOps)
 import AsukaOps
 #endif
 
-/// asuka/audio/record's module: "start" (u8 quality: voice, music; u32 max
+/// asuka/sdk/audio/record's module: "start" (u8 quality: voice, music; u32 max
 /// milliseconds, 0: none; u8 flags, 1 background (which iOS doesn't show), 2
 /// stream; u32-length title; u32-length path, empty for the app's caches)
 /// records until "stop" and answers with the file's path; "pause",

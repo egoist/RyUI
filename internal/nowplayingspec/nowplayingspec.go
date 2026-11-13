@@ -1,4 +1,4 @@
-// Package nowplayingspec is the wire format of asuka/nowplaying between
+// Package nowplayingspec is the wire format of asuka/sdk/nowplaying between
 // Go and the hosts' "nowPlaying" module:
 //
 //   - "set" (Info as JSON) shows what the app plays where the system

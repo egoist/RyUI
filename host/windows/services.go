@@ -138,7 +138,7 @@ func (h *Host) startNetwork() error {
 	}
 	l, err := NewNetworkList(h.networkChanged)
 	if err != nil {
-		return fmt.Errorf("asuka/network: %w", err)
+		return fmt.Errorf("asuka/sdk/network: %w", err)
 	}
 	s.net = l
 	s.netState = encodeNet(l.State())
@@ -174,7 +174,7 @@ func (h *Host) networkChanged() {
 	s.netNext = keep
 }
 
-// networkModule is asuka/network's: "current", and, while watching, "next"
+// networkModule is asuka/sdk/network's: "current", and, while watching, "next"
 // (answered once the state isn't the one given) and "stop".
 func (h *Host) networkModule() map[string]asyncMethod {
 	s := &h.svc
@@ -216,7 +216,7 @@ func (h *Host) speechVoice() (*Voice, error) {
 	if s.voice == nil {
 		v, err := NewVoice(h.msgWin, wmSpeech)
 		if err != nil {
-			return nil, fmt.Errorf("asuka/speech: %w", err)
+			return nil, fmt.Errorf("asuka/sdk/speech: %w", err)
 		}
 		s.voice, s.spoken = v, map[uint32]func([]byte, error){}
 	}
@@ -237,7 +237,7 @@ func (h *Host) speechEvents() {
 	}
 }
 
-// speechModule is asuka/speech's: "speak" (JSON: text, language, voice,
+// speechModule is asuka/sdk/speech's: "speak" (JSON: text, language, voice,
 // pitch, rate, volume) answers once spoken, or fails with "stopped";
 // "stop", "pause", "resume", "speaking" (u8), "voices" (JSON). The voice's
 // pitch is SAPI's XML's; its rate and volume the voice's.
@@ -348,7 +348,7 @@ func voiceFor(lang string) string {
 
 // Location.
 
-// locationModule is asuka/location's: "current" (asking for permission
+// locationModule is asuka/sdk/location's: "current" (asking for permission
 // first), "next" (each position as the device moves, while watched),
 // "stop"; "name" and "places" are OpenStreetMap's (geocode.go).
 // Positions are JSON: lat, lon, acc, alt, t.

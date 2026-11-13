@@ -1,4 +1,4 @@
-// TextEdit is a plain text editor with documents (asuka/document): on the
+// TextEdit is a plain text editor with documents (asuka/sdk/document): on the
 // desktop a window per file, the File menu (New, Open…, Open Recent,
 // Save, Duplicate, Rename…, Revert…), autosave and recovery copies, and a
 // bar when another app changes the file being edited; on a phone or in a
@@ -15,8 +15,8 @@ import (
 	"unicode"
 
 	"github.com/egoist/asuka/colors"
-	"github.com/egoist/asuka/document"
 	"github.com/egoist/asuka/fonts"
+	"github.com/egoist/asuka/sdk/document"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )

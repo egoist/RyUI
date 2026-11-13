@@ -13,7 +13,7 @@ import (
 	"github.com/egoist/asuka/ui"
 )
 
-// asuka/dialog's dialogs are the common item dialogs, modal to the
+// asuka/sdk/dialog's dialogs are the common item dialogs, modal to the
 // window; the test answers each as the user would (a name typed, OK or
 // Cancel pressed) once it shows.
 func TestFileDialogs(t *testing.T) {
@@ -126,7 +126,7 @@ func TestDialogFilters(t *testing.T) {
 	}
 }
 
-// asuka/shell: a missing file fails; Trash moves a file to the Recycle
+// asuka/sdk/shell: a missing file fails; Trash moves a file to the Recycle
 // Bin (or says it can't, never deleting it).
 func TestShell(t *testing.T) {
 	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })

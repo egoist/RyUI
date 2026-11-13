@@ -18,8 +18,8 @@ import (
 
 	"github.com/egoist/asuka/colors"
 	. "github.com/egoist/asuka/internal/windows"
-	"github.com/egoist/asuka/maps"
 	"github.com/egoist/asuka/native"
+	"github.com/egoist/asuka/sdk/maps"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )

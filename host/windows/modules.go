@@ -20,7 +20,7 @@ import (
 
 // The native modules (ui.Call) on Windows, as the other hosts have them:
 //
-//   - secureStore (asuka/secure): the user's generic credentials in the
+//   - secureStore (asuka/sdk/secure): the user's generic credentials in the
 //     Credential Manager, named "<app>/<key>" (values up to 2560 bytes).
 //   - device: info, the clipboard's text, keeping the display on
 //     (SetThreadExecutionState).
@@ -30,7 +30,7 @@ import (
 //     as iOS and Android give them.
 //   - web (EvalJSResult, WebCookies): WebView2's DevTools protocol
 //     (Runtime.evaluate, awaiting a promise; Network.getCookies).
-//   - js (asuka/js): a script run in a WebView2 that's never shown.
+//   - js (asuka/sdk/js): a script run in a WebView2 that's never shown.
 
 // syncModules are the modules that answer at once.
 func (h *Host) syncModules() map[string]func(method string, args []byte) ([]byte, error) {
@@ -367,7 +367,7 @@ func (h *Host) webModules(name string) map[string]asyncMethod {
 	return nil
 }
 
-// runScript runs a asuka/js script in a WebView2 that's never shown (a
+// runScript runs a asuka/sdk/js script in a WebView2 that's never shown (a
 // blank page in the host's hidden window), and lets it go after.
 func (h *Host) runScript(args []byte, reply func([]byte, error)) {
 	if len(args) < 4 {

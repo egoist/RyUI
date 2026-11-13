@@ -18,7 +18,7 @@ import (
 	. "github.com/egoist/asuka/internal/darwin"
 )
 
-// asuka/imageedit on a Mac, as on iOS: "edit", "size" and "videoFrame",
+// asuka/sdk/imageedit on a Mac, as on iOS: "edit", "size" and "videoFrame",
 // each with JSON (source, actions, format, quality, at in ms), answer
 // JSON (path, width, height) or fail "no image". ImageIO decodes (HEIC,
 // JPEG, PNG, WebP...) upright, at the size the first resize needs; Core

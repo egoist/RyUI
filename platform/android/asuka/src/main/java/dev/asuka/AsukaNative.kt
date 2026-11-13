@@ -53,10 +53,10 @@ object AsukaNative {
         } else {
             System.loadLibrary("asuka")
         }
-        // Where the Go code keeps its files (asuka/store). A library from
+        // Where the Go code keeps its files (asuka/sdk/store). A library from
         // before asuka_setenv hasn't it: nothing to set then.
         runCatching { setenv("ASUKA_DATA", context.filesDir.absolutePath) }
-        // asuka/crash's record of the run, before the Go code's main.
+        // asuka/sdk/crash's record of the run, before the Go code's main.
         AsukaCrash.start(context)
     }
 }

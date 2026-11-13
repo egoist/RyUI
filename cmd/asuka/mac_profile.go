@@ -47,9 +47,9 @@ type macProfile struct {
 // Mac app's packages need: their iOS name (appConfig.entitlements', as
 // the packages' imports say), their Mac name, and what they're for.
 var macProfileFeatures = []struct{ ios, mac, what string }{
-	{"aps-environment", "com.apple.developer.aps-environment", "Push Notifications (asuka/push)"},
-	{"com.apple.developer.applesignin", "com.apple.developer.applesignin", "Sign in with Apple (asuka/appleauth)"},
-	{"com.apple.developer.devicecheck.appattest-environment", "com.apple.developer.devicecheck.appattest-environment", "App Attest (asuka/integrity)"},
+	{"aps-environment", "com.apple.developer.aps-environment", "Push Notifications (asuka/sdk/push)"},
+	{"com.apple.developer.applesignin", "com.apple.developer.applesignin", "Sign in with Apple (asuka/sdk/appleauth)"},
+	{"com.apple.developer.devicecheck.appattest-environment", "com.apple.developer.devicecheck.appattest-environment", "App Attest (asuka/sdk/integrity)"},
 }
 
 // macProfileNeeds are what the app's packages need a profile for (their

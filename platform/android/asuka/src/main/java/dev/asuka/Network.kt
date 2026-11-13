@@ -8,12 +8,12 @@ import android.os.Handler
 import android.os.Looper
 
 /**
- * asuka/network's module: "current", and, while watching, "next" (answered
+ * asuka/sdk/network's module: "current", and, while watching, "next" (answered
  * once the state isn't the one given) and "stop", from the default
  * network's capabilities. Replies are u8 connected, u8 type (none, wifi,
  * cellular, ethernet, other), u8 metered, u8 constrained (Data Saver).
  */
-@android.annotation.SuppressLint("MissingPermission") // ACCESS_NETWORK_STATE: an app that imports asuka/network has it
+@android.annotation.SuppressLint("MissingPermission") // ACCESS_NETWORK_STATE: an app that imports asuka/sdk/network has it
 class AsukaNetwork(private val rt: AsukaRuntime) {
     private val cm = rt.app.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     private val main = Handler(Looper.getMainLooper())

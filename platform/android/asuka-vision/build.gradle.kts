@@ -1,6 +1,6 @@
-// asuka/vision's reader: ML Kit's text recognition (Chinese and Latin
+// asuka/sdk/vision's reader: ML Kit's text recognition (Chinese and Latin
 // scripts), face detection and barcode scanning, with their models, so it
-// works without Google Play services. Only the apps that import asuka/vision
+// works without Google Play services. Only the apps that import asuka/sdk/vision
 // are built with it (the Asuka CLI's asukaModules).
 plugins {
     id("com.android.library")

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/egoist/asuka/hotkey"
 	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/sdk/hotkey"
 	"github.com/egoist/asuka/ui"
 )
 

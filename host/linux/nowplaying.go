@@ -15,7 +15,7 @@ import (
 	spec "github.com/egoist/asuka/internal/nowplayingspec"
 )
 
-// asuka/nowplaying on Linux: an MPRIS player (org.mpris.MediaPlayer2 and
+// asuka/sdk/nowplaying on Linux: an MPRIS player (org.mpris.MediaPlayer2 and
 // its .Player) on the session bus, which GNOME Shell's and KDE Plasma's
 // media controls, their lock screens, the desktops' media keys
 // (gsd-media-keys, KDE's), and playerctl show and drive. The player is

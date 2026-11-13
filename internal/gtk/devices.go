@@ -14,7 +14,7 @@ import (
 
 // What the host's device modules use beyond GTK and the GLib stack:
 // GStreamer's appsink and buffers (the camera's frames, a video's frame),
-// GdkPixbuf's loaders (asuka/imageedit, asuka/scan), ZBar (codes),
+// GdkPixbuf's loaders (asuka/sdk/imageedit, asuka/sdk/scan), ZBar (codes),
 // Tesseract (text), libshumate (maps), D-Bus replies carrying file
 // descriptors (the camera portal's PipeWire remote), GIO's file
 // monitors, and WebKit's navigation decisions and ephemeral sessions.

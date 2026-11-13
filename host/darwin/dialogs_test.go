@@ -13,7 +13,7 @@ import (
 	"github.com/egoist/asuka/ui"
 )
 
-// asuka/dialog's panels are sheets on the window, set up as asked; the
+// asuka/sdk/dialog's panels are sheets on the window, set up as asked; the
 // test ends each as the user would (endSheet:returnCode:, OK or Cancel)
 // and reads the answer.
 func TestFileDialogs(t *testing.T) {
@@ -147,7 +147,7 @@ func TestFileDialogNoWindow(t *testing.T) {
 	})
 }
 
-// asuka/shell: a missing file fails, a type no app opens is "no app",
+// asuka/sdk/shell: a missing file fails, a type no app opens is "no app",
 // and Trash moves the file to the Trash.
 func TestShell(t *testing.T) {
 	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })

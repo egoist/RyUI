@@ -12,7 +12,7 @@ import (
 // Quit quits the app as the user's Quit does (⌘Q on a Mac, closing the
 // main window on Windows and Linux): OnQuit's handlers run first, and
 // may cancel it; then the app's windows close, it goes to the
-// background (asuka/store writes what's pending) and the process ends.
+// background (asuka/sdk/store writes what's pending) and the process ends.
 // Safe from any goroutine.
 //
 // A phone's app doesn't quit itself (the system ends it), nor does a

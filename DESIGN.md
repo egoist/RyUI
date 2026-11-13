@@ -896,7 +896,7 @@ not to be confused with keeping state across `asuka dev` reloads (below),
 which needs no code.
 
 The core can also start without a screen: when the system runs a
-background task (`asuka/periodic`: BGTaskScheduler, WorkManager) with the
+background task (`asuka/sdk/periodic`: BGTaskScheduler, WorkManager) with the
 app closed, the host starts the core headless (`startHeadless`): `main`
 runs, the root component mounts into views no window holds yet, and the
 task's Go code runs. A screen that comes later (the user opens the app)
@@ -914,7 +914,7 @@ and views by name at start.
 What runs outside the app's process is built from `asuka.json`. iOS's
 widget extension is WidgetKit's, so SwiftUI's (the one place the host
 uses it): one template (platform/ios/Widget) with the app's kinds,
-reading the entries the app's Go code sets (`asuka/widget`) from the App
+reading the entries the app's Go code sets (`asuka/sdk/widget`) from the App
 Group they share; it runs no Go. The shortcuts are App Intents the CLI
 generates and links into the executable, their metadata extracted as
 Xcode does (swiftc's constant values, appintentsmetadataprocessor); each
@@ -1223,7 +1223,12 @@ asuka/
   platform/android/  Kotlin/Gradle library
   app/               app.Root, lifecycle
     remote/          what asuka dev links in to serve a player
-  cmd/asuka/           CLI
+  sdk/               the packages beyond the core: what the platform offers
+                     (biometric, camera, push, tray…) over native modules,
+                     and libraries over ui (chart, markdown, svg, store…)
+  plugin/            plugins' manifests, fetching and linking
+  plugins/sqlite/    the first plugin
+  cmd/asuka/         CLI
   template/          what `asuka new` copies
   examples/counter/  examples/todo/  examples/list10k/  examples/navigation/
   conformance/       what every host draws for a Style, measured on its pixels
@@ -1367,15 +1372,15 @@ Each one ends with its examples running and its tests in CI.
   - Grids: `ListProps.Columns` and `Gap` (a compositional grid on iOS,
     a GridLayoutManager on Android); the core lays each cell out at
     exactly the column width the host gives it.
-  - `asuka/store` (small values kept across launches, `store.Signal`),
+  - `asuka/sdk/store` (small values kept across launches, `store.Signal`),
     `ui.Copy`, `ui.Share`.
   - The app's accent color (`asuka.json`).
   - The device's time zone as Go's `time.Local`.
   - Motion: `Style.Transform`, shadows, gradients, `Style.Material`
     (blur), repeating animations, enter and exit `Transition`s.
   - `asuka/plugins/sqlite` (SQLite's C, no cgo; live queries with `sqlite.Watch`), native
-    modules (`ui.Call`: `asuka/secure`, the keychain and Keystore;
-    `asuka/device`: info, an in-app browser, the photo picker).
+    modules (`ui.Call`: `asuka/sdk/secure`, the keychain and Keystore;
+    `asuka/sdk/device`: info, an in-app browser, the photo picker).
   - A search field in the navigation bar (`ScreenOptions.Search`).
   - Incoming links: `asuka.json`'s `scheme` and `links`, `ui.OnOpenURL`.
   - Shares from other apps: `asuka.json`'s `shareTarget` (`true`, or
@@ -1468,7 +1473,7 @@ Each one ends with its examples running and its tests in CI.
     content-sized layout root, `fits`); `TextFieldProps.Accessory` (a
     full-width content-sized root: `inputAccessoryView`, and a bar on the
     keyboard on Android); `ui.Canvas` (a display list, re-recorded with no
-    allocation) and `asuka/chart` on it; `ui.Shader` (a Kage shader, Go's
+    allocation) and `asuka/sdk/chart` on it; `ui.Shader` (a Kage shader, Go's
     syntax, compiled in Go by package `shader`: Metal on iOS and macOS,
     AGSL on Android, package interp's CPU on Windows, and GLSL kept for
     Linux); `ui.SplitView`
@@ -1511,7 +1516,7 @@ Each one ends with its examples running and its tests in CI.
   disabled item is off through `validateMenuItem:`, as is Back with no
   screen to go back from. Swipes, the inline date picker; the WebView's
   blocked requests, downloads and state, `EvalJSResult`, `WebCookies`
-  and asuka/js; device's files and clipboard modules; network
+  and asuka/sdk/js; device's files and clipboard modules; network
   (NWPathMonitor), location (Core Location), speech
   (AVSpeechSynthesizer), audio (AVPlayer), biometric (Touch ID), review;
   matched views (`Match`); pull to refresh (a trackpad's elastic pull
@@ -1607,9 +1612,9 @@ Each one ends with its examples running and its tests in CI.
   app, named by its digest, beside `index.html`): notifications with
   their actions and inline replies that stay and answer after the page
   closes (a tap opens a page, which gets the response as it starts),
-  `asuka/push` as Web Push with the app's VAPID key (`web.vapidPublicKey`;
+  `asuka/sdk/push` as Web Push with the app's VAPID key (`web.vapidPublicKey`;
   the subscription is the token; the page in front rewrites and presents
-  a push), `asuka/push/webpush` for servers (RFC 8291's encryption and RFC
+  a push), `asuka/sdk/push/webpush` for servers (RFC 8291's encryption and RFC
   8292's VAPID tokens, in Go's standard library). Scheduled
   notifications: browsers have no API to show one at a time with no page
   open (Notification Triggers were abandoned), so they show at their
@@ -1903,7 +1908,7 @@ How the macOS host maps Asuka (`host/darwin`):
   too), a response it can't show a `Download`, its state observed (KVO)
   and reported once a turn; the `web` module runs script for its value
   (`callAsyncJavaScript`) and reads the cookies, the `js` module runs
-  asuka/js's scripts in a web view that's never shown.
+  asuka/sdk/js's scripts in a web view that's never shown.
 - `RichText` is a non-editable `NSTextView` (TextKit lays it out and
   draws it, links, selection and accessibility come with it); outside
   a `Selectable` it takes clicks only on links. Inline components are
@@ -2501,7 +2506,7 @@ How the Linux host maps Asuka (`host/linux`):
   shows (hidden, or its GdkToplevel minimized or suspended), and as it
   quits (its last window closing, GtkApplication's `query-end` as the
   session ends, `shutdown`, or SIGTERM, SIGINT and SIGHUP, which quit it
-  as closing it does), so `asuka/store` writes what's pending; GLib's
+  as closing it does), so `asuka/sdk/store` writes what's pending; GLib's
   memory monitor's warnings are MemoryWarning. Crash reports: Go's crash
   output (`crashrun`), which has a signal in native code too (Native).
   Windows are placed by the desktop: GTK 4 has no way to place one.
@@ -2815,7 +2820,7 @@ menu bar's shortcuts with the same layout.
 - A flyout's anchor is the `Window` kind's `Flyout` prop (`ops.Flyout`:
   u32 tray icon, f32 x, y, width, height of a rectangle of its parent's
   content, u8 `Placement`, f32 gap), sent before `Present` and again as
-  its accessor changes (placed again). A tray icon is `asuka/tray`'s id
+  its accessor changes (placed again). A tray icon is `asuka/sdk/tray`'s id
   for it (the "set" call's), which each host's tray module keys its
   icons by: `tray.Show` returns an `Icon`, whose `Anchor` is that id.
   `internal/flyout.Place` is one placement for the desktop hosts: on
@@ -2908,7 +2913,7 @@ menu bar's shortcuts with the same layout.
   page's top right), closed on Escape and a press outside them;
   click-through is `pointer-events: none` on the panel, the page under
   it taking the clicks.
-- `asuka/apps` lists the apps installed (module "apps": "list" answers
+- `asuka/sdk/apps` lists the apps installed (module "apps": "list" answers
   JSON, "icon" draws a PNG in the caches and answers its path, "open"),
   sorted and deduplicated in Go; `Search` ranks them in Go. macOS reads
   the application folders (`displayNameAtPath:`, bundle identifiers,
@@ -2949,7 +2954,7 @@ menu bar's shortcuts with the same layout.
   `OnResume`, `OnLock`, `OnUnlock`; `IdleTime`, since the user's last
   input in any app (`ErrIdleUnknown` where the system doesn't say).
   Keeping the display on stays `device.KeepAwake`, working out of sight
-  `asuka/background`.
+  `asuka/sdk/background`.
 - `dock.SetProgress` shows a task's progress on the app's icon (Normal,
   Indeterminate, Paused, Error); `dock.RequestAttention` asks the user
   to come to the app (Informational, Critical), and does nothing while
@@ -3117,7 +3122,7 @@ menu bar's shortcuts with the same layout.
 - `app.DataDir`, `ConfigDir`, `CacheDir` and `LogDir` are
   internal/appdir's, each platform's place for the app (`store.Dir` is
   DataDir).
-- `asuka/recent` (module `recent`: `add`, `clear`, `list`):
+- `asuka/sdk/recent` (module `recent`: `add`, `clear`, `list`):
   NSDocumentController's recent documents on macOS, in an Open Recent
   menu the host fills as it opens (in the File menu once the app
   declares file types, has recent documents or adds one; choosing one
@@ -3127,7 +3132,7 @@ menu bar's shortcuts with the same layout.
   user's `recently-used.xbel`, through GBookmarkFile, as the app's (its
   application name), clearing only the app's. Phones and the web answer
   nothing.
-- `asuka/login` (module `login`: `set`, `enabled`, `openedAtLogin`):
+- `asuka/sdk/login` (module `login`: `set`, `enabled`, `openedAtLogin`):
   SMAppService's `mainAppService` on macOS 13 (a bundle only;
   `requiresApproval` is `ErrNeedsApproval`), the opening Apple Event's
   `keyAELaunchedAsLogInItem` for `openedAtLogin`; Windows the HKCU `Run`
@@ -3426,7 +3431,7 @@ from releases `asuka build` signs; MyGo's updater, ported.
   (`Use`), checks and downloads in goroutines that `ui.Post` back, a
   timer that wakes at least hourly to compare with the clock (a computer
   asleep stops timers); the window's view follows the phase (a memo, so
-  progress doesn't rebuild it), its release notes `asuka/markdown`, its
+  progress doesn't rebuild it), its release notes `asuka/sdk/markdown`, its
   words `internal/l10n`'s. Preferences in `update.json` in the data
   directory.
 - The CLI: `asuka update keygen`; `asuka build` writes `dist/updates`
@@ -3499,7 +3504,7 @@ their own.
   (`boot.KeepRunning`) and its Dock icon makes a document
   (`boot.Reopen`, which `applicationShouldHandleReopen:` asks); Windows'
   and Linux's quit with their last document.
-- Files other apps change: each open file is watched (asuka/watch's
+- Files other apps change: each open file is watched (asuka/sdk/watch's
   watch of it, through its folder, so a file an editor replaces stays
   watched; where there's none, or once its folder went, a poll of its
   stamp every two seconds) and looked at when its window

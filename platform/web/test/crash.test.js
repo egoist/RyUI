@@ -1,4 +1,4 @@
-// asuka/crash in the browser (crash.js): Go's crash output kept as the
+// asuka/sdk/crash in the browser (crash.js): Go's crash output kept as the
 // program ends, the run's mark, uncaught errors as exception records,
 // and what the page says of the browser.
 import { test } from "node:test";

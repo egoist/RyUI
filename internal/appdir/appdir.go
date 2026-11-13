@@ -1,5 +1,5 @@
 // Package appdir finds the app's own directories on each platform: its
-// data (asuka/store's, the hosts' saved state), configuration, caches and
+// data (asuka/sdk/store's, the hosts' saved state), configuration, caches and
 // logs. app's DataDir, ConfigDir, CacheDir and LogDir make them; store.Dir
 // is Data.
 //

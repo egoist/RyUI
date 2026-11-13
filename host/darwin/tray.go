@@ -14,7 +14,7 @@ import (
 	"github.com/egoist/asuka/ops"
 )
 
-// asuka/tray on a Mac (the "tray" module; the protocol is in package
+// asuka/sdk/tray on a Mac (the "tray" module; the protocol is in package
 // tray): each icon is an NSStatusItem in the menu bar, its button showing
 // the image (a template: AppKit colors it as the menu bar is) and the
 // title, its menu an NSMenu. Without OnClick the menu is the item's own,

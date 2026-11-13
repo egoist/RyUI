@@ -13,7 +13,7 @@ import (
 	spec "github.com/egoist/asuka/internal/nowplayingspec"
 )
 
-// asuka/nowplaying on a Mac: MediaPlayer's MPNowPlayingInfoCenter, which
+// asuka/sdk/nowplaying on a Mac: MediaPlayer's MPNowPlayingInfoCenter, which
 // Control Center's and the menu bar's Now Playing show, and
 // MPRemoteCommandCenter, whose commands they, the keyboard's media keys
 // and AirPods send. Both are the process's: the module's state is the

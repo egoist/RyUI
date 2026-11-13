@@ -44,7 +44,7 @@ func LoadSecret() error {
 			}
 		}
 		if lib == 0 {
-			libsecretAPI.err = fmt.Errorf("asuka/secure: libsecret isn't installed (%v)", err)
+			libsecretAPI.err = fmt.Errorf("asuka/sdk/secure: libsecret isn't installed (%v)", err)
 			return
 		}
 		for _, f := range []struct {
@@ -64,7 +64,7 @@ func LoadSecret() error {
 		} {
 			p, err := purego.Dlsym(lib, f.name)
 			if err != nil {
-				libsecretAPI.err = fmt.Errorf("asuka/secure: libsecret is too old (no %s): 0.19 or later is needed", f.name)
+				libsecretAPI.err = fmt.Errorf("asuka/sdk/secure: libsecret is too old (no %s): 0.19 or later is needed", f.name)
 				return
 			}
 			purego.RegisterFunc(f.p, p)
@@ -197,5 +197,5 @@ func libsecretErr(gerr Ptr) error {
 	if err == nil {
 		return nil
 	}
-	return errors.New("asuka/secure: the keyring: " + err.Error())
+	return errors.New("asuka/sdk/secure: the keyring: " + err.Error())
 }

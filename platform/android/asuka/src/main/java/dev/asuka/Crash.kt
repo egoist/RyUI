@@ -11,7 +11,7 @@ import java.io.File
 import java.util.UUID
 
 /**
- * asuka/crash's native side. The Go code keeps its own crashes (its crash
+ * asuka/sdk/crash's native side. The Go code keeps its own crashes (its crash
  * output) and the run's context; the host writes what only it sees, in
  * the directory's inbox, for the Go code to read into reports:
  *
@@ -26,7 +26,7 @@ import java.util.UUID
  *   The last one written is remembered (exits, in the directory), so
  *   each is written once.
  *
- * Nothing's installed if the app doesn't import asuka/crash (the Go code
+ * Nothing's installed if the app doesn't import asuka/sdk/crash (the Go code
  * says so).
  */
 object AsukaCrash {

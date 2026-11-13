@@ -15,14 +15,14 @@ import (
 )
 
 func init() {
-	// The app's data (asuka/store, files it keeps): Application Support.
+	// The app's data (asuka/sdk/store, files it keeps): Application Support.
 	if os.Getenv("ASUKA_DATA") == "" {
 		if home, err := os.UserHomeDir(); err == nil {
 			name := boot.Name
 			if name == "" {
 				name = filepath.Base(os.Args[0])
 			}
-			// Made by what writes there (asuka/store, asuka/sqlite), not here.
+			// Made by what writes there (asuka/sdk/store, asuka/sqlite), not here.
 			os.Setenv("ASUKA_DATA", filepath.Join(home, "Library", "Application Support", name))
 		}
 	}
