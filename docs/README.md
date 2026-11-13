@@ -95,6 +95,10 @@ browser.
   biometrics, the screen and the launch screen, maps, the stores'
   services, sensors, image editing, speech, contacts and calendars, home
   screen widgets and shortcuts, and crash reports, on each platform.
+- [The desktop](desktop.md): tray icons and the Dock menu, apps in the
+  background, global shortcuts, file dialogs and the file manager,
+  opening files, one instance, quitting, recent documents, starting at
+  login, the displays, power and progress on the app's icon.
 - [Native code](native.md): views and modules of your own: Swift on
   iOS and macOS, Kotlin on Android, Go on the desktop, JavaScript on the
   web.

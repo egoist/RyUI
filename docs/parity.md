@@ -12,8 +12,9 @@ SwiftUI also runs on the Mac. Expo runs on iOS, Android and the web;
 React Native reaches Windows and the Mac through Microsoft's React
 Native for Windows and macOS, outside Expo. For Asuka against the
 desktop's own frameworks (Electron, Tauri, Wails), see
-[On the desktop](#on-the-desktop); against MyGo, which draws its own UI,
-see [Asuka and MyGo](mygo.md).
+[On the desktop](#on-the-desktop), and for what a desktop app needs
+beyond its windows, [The desktop](#the-desktop); against MyGo, which
+draws its own UI, see [Asuka and MyGo](mygo.md).
 
 ✓ has it · ◐ in part (what's missing is said) · ✗ not yet
 
@@ -195,6 +196,38 @@ text input and menus, with one layout engine, in Go, for all of them.
 The desktop hosts run the app's Go in its own process, calling the
 platform without cgo, so `asuka build` makes Windows and Linux builds
 from any system.
+
+## The desktop
+
+What a desktop app needs beyond its windows and menu bar, against
+Electron and MyGo ([The desktop](desktop.md)). A ✓ is on the Mac,
+Windows and Linux unless the row says otherwise.
+
+| | Electron | MyGo | Asuka |
+|---|---|---|---|
+| Controlling windows | `BrowserWindow` | `Window` | ✓ `ui.UseWindow`, `ui.MainWindow`: show, hide, focus, minimize, maximize, full screen, size, place, always on top, their state as signals; `OnCloseRequest`; where they were, by `StateKey`; child and modal windows; a hidden title bar (Linux: no place, center or always on top, which the compositor decides) |
+| Tray icons | `Tray` | tray icons | ✓ `tray.Show` (an `NSStatusItem`; the notification area; a StatusNotifierItem on Linux): icon or symbol, title, tooltip, menu, click |
+| Submenus, a Quit item | `MenuItem.submenu`, roles | roles, submenus | ✓ `MenuItem.Submenu`, `ui.MenuQuit`, in the menu bar, tray and Dock menus |
+| The Dock menu, jump list tasks | `app.dock.setMenu`, `setUserTasks` | the Dock menu, jump lists | ✓ `tray.DockMenu` (the Dock's menu, the jump list's Tasks, Linux's launcher quicklist) |
+| Apps in the background | `app.dock.hide`, not quitting on `window-all-closed` | an app in the background | ✓ `app.KeepRunning`, `app.RunInBackground`, `asuka.json`'s `background` |
+| Global shortcuts | `globalShortcut` | global shortcuts | ✓ `hotkey.Register` (Carbon's hot keys; `RegisterHotKey`; X11 grabs or Wayland's GlobalShortcuts portal) |
+| Open, save and folder dialogs | `dialog.showOpenDialog`, `showSaveDialog` | dialogs | ✓ `asuka/dialog` `Open`, `Save`, `Folder` (sheets on the Mac; the web: the File System Access pickers or the file input; phones: `Open` only) |
+| Reveal, open in its app, move to the trash | `shell.showItemInFolder`, `openPath`, `trashItem` | the shell | ✓ `asuka/shell` `Reveal`, `Open`, `Trash`, `Beep` |
+| File associations | `fileAssociations` (electron-builder), `open-file` | file associations | ✓ `asuka.json`'s `fileTypes`, `ui.OnOpenFiles` (also iOS, Android and installed web apps) |
+| One instance, its second launch | `requestSingleInstanceLock`, `second-instance` | a single instance | ✓ `app.OnSecondInstance`, `asuka.json`'s `singleInstance` (the Mac passes files, not arguments) |
+| Quitting, asking first | `app.quit`, `before-quit` | quitting | ✓ `app.Quit`, `app.OnQuit` (`Cancel`, `SessionEnding`) |
+| The app's folders | `app.getPath` | directories | ✓ `app.DataDir`, `ConfigDir`, `CacheDir`, `LogDir` (everywhere) |
+| Recent documents | `app.addRecentDocument` | recent documents | ✓ `asuka/recent` (Open Recent on the Mac, the jump list, the user's recent files on Linux) |
+| Starting at login | `app.setLoginItemSettings` | start at login | ✓ `asuka/login` (`SMAppService`, macOS 13+; the Run key; XDG autostart or the Background portal) |
+| Displays | `screen` | displays | ✓ `screen.UseDisplays`, `Nearest`, `Matching` (Wayland: no work area; phones and the web: theirs) |
+| Sleep, wake, lock, idle time, battery | `powerMonitor` | power | ✓ `asuka/power` (phones: battery, Low Power Mode, lock; the web: the battery) |
+| Progress and attention on the app's icon | `setProgressBar`, `flashFrame`, `dock.bounce` | the Dock and the taskbar | ✓ `dock.SetProgress`, `RequestAttention` (Linux: docks with the Unity launcher API) |
+| Accent color, Increase Contrast, Reduce Transparency | `systemPreferences` | accent color and accessibility | ✓ `asuka/appearance` (no Reduce Transparency on Linux) |
+
+Not yet, of what MyGo has: document-based apps (a window per file,
+autosave, versions), auto-updates, flyouts (a window attached to a tray
+icon), non-activating panels for launchers, click-through windows, Now
+Playing and the media keys, and watching files (Go's own packages do).
 
 ## Not yet
 
