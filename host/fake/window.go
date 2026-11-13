@@ -22,6 +22,32 @@ type WindowInfo struct {
 	Closed bool
 	// Actions are the WindowAction commands it got, in order.
 	Actions []ops.WindowAction
+	// Fits are the sizes WindowAction Fit gave it, in order (a window
+	// sized to its content).
+	Fits [][2]float32
+	// Shown counts the times it was shown (opened shown, Show, Focus).
+	Shown int
+}
+
+// Flyout returns a flyout Window's anchor and placement, as its Flyout
+// prop says; ok is false for a window that's no flyout.
+func (h *Host) Flyout(v *View) (f ops.Flyout, ok bool) {
+	p, has := v.Props[ops.PropWindowFlyout]
+	if !has || v.Kind != ops.KindWindow {
+		return ops.Flyout{}, false
+	}
+	return ops.DecodeFlyout(p.Bytes)
+}
+
+// DismissFlyout closes a flyout or a panel as a desktop host does as it
+// loses the keyboard (a click elsewhere) or on an Escape its content
+// leaves: as the user closing it.
+func (h *Host) DismissFlyout(v *View) {
+	w := h.wins[v.ID]
+	if w == nil || w.Config.Flags&(ops.WindowFlyout|ops.WindowPanel) == 0 {
+		panic("fake: DismissFlyout on a window that's no flyout or panel")
+	}
+	h.CloseWindow(v)
 }
 
 // Window returns v's window (v the root, or a Window); nil if it has
@@ -59,6 +85,9 @@ func (h *Host) windowCommand(v *View, c ops.CommandID, args []byte) {
 		w.Config = ops.DecodeWindowConfig(v.Props[ops.PropWindowConfig].Bytes)
 		w.State = ops.WindowState{Width: 800, Height: 600, Flags: ops.WindowVisible | ops.WindowFocused}
 		h.configure(w)
+		if w.State.Flags&ops.WindowVisible != 0 {
+			w.Shown++
+		}
 		h.reportWindow(v)
 	case ops.CmdWindowAction:
 		if v.Kind != ops.KindWindow && v.Kind != ops.KindView {
@@ -74,10 +103,12 @@ func (h *Host) windowCommand(v *View, c ops.CommandID, args []byte) {
 		switch a {
 		case ops.WindowActionShow:
 			s.Flags |= ops.WindowVisible
+			w.Shown++
 		case ops.WindowActionHide:
 			s.Flags &^= ops.WindowVisible | ops.WindowFocused
 		case ops.WindowActionFocus:
 			s.Flags |= ops.WindowVisible | ops.WindowFocused
+			w.Shown++
 			s.Flags &^= ops.WindowMinimizedState
 		case ops.WindowActionMinimize:
 			s.Flags |= ops.WindowMinimizedState
@@ -98,6 +129,13 @@ func (h *Host) windowCommand(v *View, c ops.CommandID, args []byte) {
 			s.Width, s.Height = x, y
 		case ops.WindowActionPosition:
 			s.X, s.Y = x, y
+		case ops.WindowActionFit:
+			s.Width, s.Height = x, y
+			w.Fits = append(w.Fits, [2]float32{x, y})
+		case ops.WindowActionClickThrough:
+			s.Flags |= ops.WindowClickThroughState
+		case ops.WindowActionNotClickThrough:
+			s.Flags &^= ops.WindowClickThroughState
 		case ops.WindowActionClose:
 			w.Closed = true
 			s.Flags &^= ops.WindowVisible | ops.WindowFocused
@@ -121,7 +159,8 @@ func (h *Host) configure(w *WindowInfo) {
 	for _, f := range [...]struct {
 		c ops.WindowFlags
 		s ops.WindowStateFlags
-	}{{ops.WindowMaximized, ops.WindowMaximizedState}, {ops.WindowFullscreen, ops.WindowFullscreenState}, {ops.WindowAlwaysOnTop, ops.WindowOnTop}} {
+	}{{ops.WindowMaximized, ops.WindowMaximizedState}, {ops.WindowFullscreen, ops.WindowFullscreenState}, {ops.WindowAlwaysOnTop, ops.WindowOnTop},
+		{ops.WindowClickThrough, ops.WindowClickThroughState}} {
 		if c.Flags&f.c != 0 {
 			s.Flags |= f.s
 		}

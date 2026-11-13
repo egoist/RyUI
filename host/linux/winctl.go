@@ -29,13 +29,13 @@ import (
 // modal one (gtk_window_set_modal: the parent takes no input while it's
 // open).
 //
-// What it can't: a window's place (X, Y, Center, SetPosition): Wayland
-// leaves it to the compositor, and GTK 4 dropped gtk_window_move on X11
-// too; a most size (GDK's toplevel layout has a least size only); always
-// on top and skipping the taskbar (the hints GTK 3 set on X11 are gone,
-// and Wayland has no such requests). Those options and actions do
-// nothing, and the position reported is 0, 0. Wayland doesn't tell an
-// app its window is minimized either: Minimized reads true on X11 only.
+// What GTK 4 can't, the host does on X11 through Xlib (deskwin.go): a
+// window's place (X, Y, Center, SetPosition), always on top, skipping
+// the taskbar, as do panels and flyouts. Wayland leaves those to the
+// compositor, where they do nothing. Neither has a most size (GDK's
+// toplevel layout has a least size only), and the position reported is
+// 0, 0. Wayland doesn't tell an app its window is minimized either:
+// Minimized reads true on X11 only.
 //
 // The state is reported (WindowState) while the core listens: at once,
 // then as the window shows or hides, takes or loses the keyboard, is
@@ -75,7 +75,7 @@ func (h *Host) windowNode(w *win) *node {
 // above the content: none with a hidden title bar, the content going
 // under it.
 func (w *win) headerRoom() int32 {
-	if w.cfg.TitleBar == ops.TitleBarHidden {
+	if w.cfg.TitleBar == ops.TitleBarHidden || w.frameless() {
 		return 0
 	}
 	return headerHeight
@@ -118,9 +118,12 @@ func (h *Host) configure(w *win, c ops.WindowConfig) {
 	if w == h.main && w.stateKey == "" {
 		w.stateKey = winstate.Main
 	}
-	h.restoreWindow(w)
+	fits := c.Flags&ops.WindowFitContent != 0
+	if !fits {
+		h.restoreWindow(w) // one sized to its content is its content's size
+	}
 	minW, minH := c.MinWidth, c.MinHeight
-	if w == h.main {
+	if w == h.main && !fits {
 		// The main window's least is 320 points square unless the app
 		// says.
 		if minW <= 0 {
@@ -145,6 +148,7 @@ func (h *Host) configure(w *win, c ops.WindowConfig) {
 			WindowSetModal(w.window, c.Flags&ops.WindowModal != 0)
 		}
 	}
+	h.configureDesk(w, c)
 }
 
 // parentWin is the window of a Window's Parent: the root's (the main
@@ -241,7 +245,7 @@ func (h *Host) showMain() {
 		h.configure(w, ops.WindowConfig{})
 	}
 	if !w.hidden {
-		WindowPresent(w.window)
+		h.showWin(w, true)
 	}
 }
 
@@ -255,13 +259,13 @@ func (h *Host) windowAction(w *win, args []byte) {
 	switch a {
 	case ops.WindowActionShow:
 		w.hidden = false
-		WidgetSetVisible(win, true)
+		h.showWin(w, false)
 	case ops.WindowActionHide:
 		WidgetSetVisible(win, false)
 	case ops.WindowActionFocus:
 		w.hidden = false
 		WindowUnminimize(win)
-		WindowPresent(win)
+		h.showWin(w, true)
 	case ops.WindowActionMinimize:
 		WindowMinimize(win)
 	case ops.WindowActionMaximize:
@@ -293,8 +297,16 @@ func (h *Host) windowAction(w *win, args []byte) {
 				return false
 			})
 		}
-	case ops.WindowActionPosition, ops.WindowActionCenter, ops.WindowActionAlwaysOnTop, ops.WindowActionNotAlwaysOnTop:
-		// The desktop's to say: GTK 4 can't ask.
+	case ops.WindowActionFit:
+		h.fit(w, x, y)
+	case ops.WindowActionClickThrough, ops.WindowActionNotClickThrough:
+		h.setClickThrough(w, a == ops.WindowActionClickThrough)
+	case ops.WindowActionAlwaysOnTop, ops.WindowActionNotAlwaysOnTop:
+		h.setOnTop(w, a == ops.WindowActionAlwaysOnTop) // X11's (deskwin.go)
+	case ops.WindowActionPosition:
+		h.moveTo(w, x, y) // X11's
+	case ops.WindowActionCenter:
+		h.center(w)
 	}
 	h.queueWindowState(w)
 }
@@ -368,6 +380,12 @@ func (h *Host) windowState(w *win) ops.WindowState {
 	}
 	if WindowIsFullscreen(w.window) {
 		s.Flags |= ops.WindowFullscreenState
+	}
+	if h.onTop(w) {
+		s.Flags |= ops.WindowOnTop
+	}
+	if w.desk.through {
+		s.Flags |= ops.WindowClickThroughState
 	}
 	return s
 }

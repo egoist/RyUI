@@ -46,8 +46,9 @@ type nav struct {
 	alert  ID
 	order  []int // an alert's buttons' indexes, in the alert's order
 
-	// Window: its options (Config).
-	cfg ops.WindowConfig
+	// Window: its options (Config), and a flyout's anchor (Flyout).
+	cfg    ops.WindowConfig
+	flyout ops.Flyout
 }
 
 func (h *Host) createNav(n *node) bool {
@@ -231,13 +232,18 @@ func (h *Host) destroyNav(n *node) bool {
 			if p := Send(w, "sheetParent"); p != 0 {
 				Send(p, "endSheet:", uintptr(w))
 			}
-			if p := Send(w, "parentWindow"); p != 0 {
+			p := Send(w, "parentWindow")
+			if p != 0 {
 				Send(p, "removeChildWindow:", uintptr(w))
 			}
+			key := SendBool(w, "isKeyWindow")
 			Send(w, "orderOut:", 0)
 			Send(w, "close")
 			Release(w)
 			n.nav.window = 0
+			if key && p != 0 {
+				h.regainKey(p)
+			}
 		}
 		for _, c := range n.children {
 			c.parent = nil
@@ -438,6 +444,14 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 			}
 		case ops.PropWindowConfig:
 			n.nav.cfg = ops.DecodeWindowConfig(v.Bytes)
+		case ops.PropWindowFlyout:
+			n.nav.flyout, _ = ops.DecodeFlyout(v.Bytes)
+			if x := h.wins[n.nav.window]; x != nil {
+				x.flyout = n.nav.flyout
+				if SendBool(x.window, "isVisible") {
+					h.placeFlyout(x)
+				}
+			}
 		}
 	case ops.KindAlert:
 		switch p {
@@ -568,6 +582,8 @@ func (h *Host) cancel(view ID) {
 			return
 		}
 	}
+	// Left by the content: a flyout or a panel closes, as menus do.
+	h.escapeFloating(w)
 }
 
 // win is one of the app's windows: the main one, holding the root, or a
@@ -587,6 +603,14 @@ type win struct {
 	configured bool // its options are applied
 	child      ID   // the window it's a child window of
 	sheetOf    ID   // the window it's a sheet of (Modal)
+
+	// A flyout's and a panel's (flyout.go): a flyout's anchor; placed, a
+	// panel the app placed (not centered on the pointer's display as it
+	// shows); showOnFit, a window sized to its content that shows once
+	// it's sized (fitted).
+	flyout            ops.Flyout
+	placed            bool
+	showOnFit, fitted bool
 }
 
 // chrome is what a window's title and toolbar show: the innermost shown

@@ -243,6 +243,8 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) bool {
 			h.updateTitle(w)
 		case ops.PropWindowConfig:
 			h.configure(w, ops.DecodeWindowConfig(v.Bytes))
+		case ops.PropWindowFlyout:
+			h.setFlyout(w, v.Bytes)
 		}
 	default:
 		return false
@@ -398,6 +400,7 @@ func (h *Host) destroyNav(n *node) bool {
 			h.saveWindow(w)
 			h.dropWindowCSS(w)
 			w.closing = true
+			h.dropDesk(w)
 			if w.root != nil && WidgetGetParent(w.root.widget) == w.content {
 				WidgetUnparent(w.root.widget)
 			}
@@ -557,11 +560,13 @@ func (h *Host) tabsResized(n *node) {
 // Windows.
 
 // openWindow shows a Window node's window at its size. Where it goes is
-// the desktop's to say, not the app's: GTK 4 has no way to place a window
-// (Wayland leaves it to the compositor, and GTK 4 dropped
+// the desktop's to say, unless the app says: GTK 4 has no way to place a
+// window (Wayland leaves it to the compositor, and GTK 4 dropped
 // gtk_window_move on X11 too), and GNOME's and KDE's window managers
 // place a new window themselves, where it covers the fewest others,
-// cascading when it must.
+// cascading when it must; on X11 the host moves one placed at X, Y,
+// centered, a panel or a flyout itself (deskwin.go). One sized to its
+// content shows once it knows its size.
 //
 // One opened hidden (WindowConfig's WindowHidden) is laid out at its size
 // first, its environment reported as if shown, and shown by a Show or
@@ -578,5 +583,5 @@ func (h *Host) openWindow(n *node) {
 		h.rootAllocated(n, dw, max(dh-w.headerRoom(), 0))
 		return
 	}
-	WindowPresent(w.window)
+	h.showWin(w, true)
 }

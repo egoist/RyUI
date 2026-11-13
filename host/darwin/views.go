@@ -638,6 +638,10 @@ func (h *Host) textChanged(field ID) {
 
 // textCommand handles return in a field: Submit.
 func (h *Host) textCommand(control, tv ID, cmd SEL) bool {
+	// Escape in a flyout's or a panel's field closes it, as menus close.
+	if cmd == Sel("cancelOperation:") && h.escapeFloating(Send(control, "window")) {
+		return true
+	}
 	n := h.byView[control]
 	if n == nil {
 		return h.searchCommand(control, cmd)

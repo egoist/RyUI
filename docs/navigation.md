@@ -593,6 +593,10 @@ take the same options for how a window opens:
 | `SkipTaskbar` | leaves it out of the taskbar (Windows) and the Window menu (macOS) |
 | `Maximized`, `Fullscreen` | opens it so |
 | `StateKey` | where its place is kept, see [below](#where-windows-were) |
+| `FitContent` | sizes it to its content, as that changes, within its least and most size ([The desktop](desktop.md#windows-sized-to-their-content)) |
+| `Panel` | a launcher's or a palette's window: floating over every app, taking the keyboard without bringing the app forward, closed by Escape or a click elsewhere ([Panels](desktop.md#panels-and-launchers)) |
+| `ClickThrough` | lets the mouse go through it to what's behind ([Click-through](desktop.md#click-through-windows)) |
+| `Flyout` | a `Window`'s: hangs it from a tray icon or a rectangle of its parent ([Flyouts](desktop.md#flyouts)) |
 | `Child`, `Modal` | a `Window`'s: see [below](#child-and-modal-windows) |
 
 With a hidden title bar the content goes to the top edge, under the
@@ -645,13 +649,14 @@ ui.Text(signal.Func(func() string {
 - `SetSize` (its content's, in points), `SetPosition` (its frame's top
   left, from the main display's top left), `Center`.
 - `SetAlwaysOnTop` keeps it above other apps' windows, or not.
+- `SetClickThrough` lets the mouse go through it, or not.
 - `Close` closes it as the user does, asking first (below); `Destroy`
   closes it without asking. The main window closing quits the app.
 - Its state is signals that follow the user's changes as well as the
   app's: `Visible`, `Focused`, `Minimized`, `Maximized`, `Fullscreen`,
-  `AlwaysOnTop`, `Position` and `Size`. Read them in an effect or a
-  `StyleFunc`. A minimized window, or one behind others, is still
-  visible.
+  `AlwaysOnTop`, `ClickThrough`, `Position` and `Size`. Read them in an
+  effect or a `StyleFunc`. A minimized window, or one behind others, is
+  still visible.
 
 The methods act on the window at the flush, as signal writes do. On a
 phone they do nothing, and the state reads visible and focused.
@@ -735,11 +740,14 @@ ui.Window(ui.WindowProps{Open: prefs, Modal: true, Title: ui.Val("Preferences"),
 | Full screen | yes | yes | yes | the Fullscreen API | the Fullscreen API |
 | Size, least size | yes | yes | yes | no | yes |
 | Most size | yes | yes | no: GTK 4 has none | no | yes |
-| Position, center | yes | yes | no: the compositor places windows | no (reads the browser window's) | yes |
-| Always on top | yes | yes | no | no | above the other panels |
+| Position, center | yes | yes | X11; Wayland: no, the compositor places windows | no (reads the browser window's) | yes |
+| Always on top | yes | yes | X11 | no | above the other panels |
 | Hidden title bar | yes | yes | yes | no | yes |
 | Background, transparent | yes | background; transparent falls back to it | yes (transparent with a compositor) | background | yes |
-| Skip the taskbar | the Window menu | yes | no | no | no |
+| Skip the taskbar | the Window menu | yes | X11 | no | no |
+| Panel, flyout | yes | yes | X11: kept above, placed; Wayland: no place, nothing above | no | yes |
+| Fit its content | yes | yes | yes | no | yes |
+| Click-through | yes | yes | yes | no | to the page |
 
 ## The menu bar and keyboard shortcuts
 

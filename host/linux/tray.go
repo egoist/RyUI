@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	. "github.com/egoist/asuka/internal/gtk"
 	"github.com/egoist/asuka/ops"
@@ -134,6 +135,13 @@ type sni struct {
 	iconName string
 	pixels   *decoded // the Image's, once decoded
 	loading  string   // the Image being decoded
+
+	// Where the panel last said it was clicked (screen pixels), which a
+	// flyout hangs from, and when its flyout last closed as it lost the
+	// keyboard (deskwin.go).
+	clickX, clickY int32
+	clicked        bool
+	flyoutClosed   time.Time
 }
 
 func init() {
@@ -346,9 +354,19 @@ func (t *sni) emit(signal string) {
 // takes them; the rest the panel does itself (the menu, through
 // dbusmenu).
 func (h *Host) sniMethod(t *sni, c DBusInvocation) {
+	if v, _ := VariantGo(c.Params).([]any); len(v) == 2 {
+		// Activate, SecondaryActivate and ContextMenu carry where the
+		// click was, on the panels that know (KDE Plasma, GNOME's
+		// AppIndicator extension).
+		x, _ := v[0].(int32)
+		y, _ := v[1].(int32)
+		t.clickAt(x, y)
+	}
 	switch c.Method {
 	case "Activate":
-		if t.flags&2 != 0 {
+		// The click that took the keyboard from its flyout closed it:
+		// it doesn't open it again.
+		if t.flags&2 != 0 && !t.clickClosedFlyout() {
 			h.trayEvent(t.id, trayClick, 0)
 		}
 	}

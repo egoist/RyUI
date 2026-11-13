@@ -31,6 +31,10 @@ type trayIcon struct {
 	image, symbol, title, tip, key string
 	items                          []ops.MenuItem
 	loading                        string // the image being decoded
+	// clicked is where the copy of the button the user last clicked
+	// shows on screen (AppKit's coordinates), while its window keeps
+	// the frame it had then (of): a flyout hangs from it (flyout.go).
+	clicked, of Rect
 }
 
 const (
@@ -293,6 +297,7 @@ func (h *Host) trayClicked(button ID) {
 		return
 	}
 	ev := Send(Send(Class("NSApplication"), "sharedApplication"), "currentEvent")
+	t.noteClick(button, ev)
 	secondary := false
 	if ev != 0 {
 		typ := SendInt(ev, "type")

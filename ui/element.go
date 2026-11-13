@@ -105,9 +105,13 @@ type element struct {
 	fits      bool
 	fullWidth bool // a fits root as wide as the root (an Accessory)
 	maxW      float32
-	measured  bool       // the host measures its content
-	insets    [4]float32 // a measured view's ContentInset, as last sent
-	laidSize  layout.Size
+	// fitWin: a window sized to its content (FitContent), which the core
+	// lays out at its content's size and tells the host with
+	// WindowAction Fit; fitSent once it has.
+	fitWin, fitSent bool
+	measured        bool       // the host measures its content
+	insets          [4]float32 // a measured view's ContentInset, as last sent
+	laidSize        layout.Size
 }
 
 var (

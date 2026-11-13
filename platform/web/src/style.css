@@ -473,6 +473,9 @@ textarea.asuka-field { overflow-y: auto; display: block; }
 .asuka-window-backdrop { position: absolute; inset: 0; z-index: 20; background: rgb(0 0 0 / 0.12); }
 .asuka-window[hidden], .asuka-window-backdrop[hidden] { display: none; }
 .asuka-window-grip { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; touch-action: none; z-index: 2; }
+/* A flyout and a panel: frameless, a popover's look, over the other windows. */
+.asuka-flyout, .asuka-window-panel { z-index: 22; background: var(--asuka-card); outline: none; }
+.asuka-window-click-through, .asuka-window-click-through * { pointer-events: none !important; }
 
 .asuka-accessory { position: fixed; left: 0; z-index: 30; display: none; }
 .asuka-accessory.asuka-accessory-shown { display: block; }

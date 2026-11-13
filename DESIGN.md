@@ -2412,8 +2412,10 @@ How the Linux host maps Asuka (`host/linux`):
   destroyed with it, a modal one modal too. GTK 4 has no most size, no
   way to place a window or center it (Wayland leaves it to the
   compositor, and GTK 4 dropped moving one on X11 too), and none to keep
-  one on top or out of the taskbar: those options and actions do
-  nothing, and the position reported is 0, 0. The actions are GTK's
+  one on top or out of the taskbar: under X11 the host does those itself
+  through Xlib on the surface's window (`deskwin.go`: `XMoveWindow`,
+  EWMH's `_NET_WM_STATE_ABOVE`, GDK's skip-taskbar hint); under Wayland
+  they do nothing. The position reported is 0, 0. The actions are GTK's
   (`gtk_window_present`, `_minimize`, `_maximize`, `_fullscreen`, a new
   default size); the state follows `notify::visible`, `is-active`,
   `maximized`, `fullscreened`, the surface's state (minimized: X11 only,
@@ -2639,6 +2641,122 @@ menu bar's shortcuts with the same layout.
   (`ASUKA_SNAPSHOT`) still show the main window; on macOS they write
   each tray icon's button beside it (`file.tray.png`) and, with
   `ASUKA_DUMP`, the icons' and the Dock's menus in the dump.
+
+**Flyouts, panels, windows sized to their content, click-through**
+(`ui`, `tray`, `apps`; `internal/flyout`):
+
+- Kinds of `Window`, not kinds of their own: `ops.WindowConfig`'s flags
+  `WindowFlyout`, `WindowPanel`, `WindowFitContent` and
+  `WindowClickThrough` (bits 14 to 17), set before the window opens
+  (`WindowProps`' `Flyout`, `Panel`, `FitContent`, `ClickThrough`; the
+  main window's `WindowOptions` take all but `Flyout`). A panel also
+  sets always on top, skip the taskbar, no minimize or maximize; a
+  flyout skip the taskbar and its `Parent`, the window it's declared in.
+- A flyout's anchor is the `Window` kind's `Flyout` prop (`ops.Flyout`:
+  u32 tray icon, f32 x, y, width, height of a rectangle of its parent's
+  content, u8 `Placement`, f32 gap), sent before `Present` and again as
+  its accessor changes (placed again). A tray icon is `asuka/tray`'s id
+  for it (the "set" call's), which each host's tray module keys its
+  icons by: `tray.Show` returns an `Icon`, whose `Anchor` is that id.
+  `internal/flyout.Place` is one placement for the desktop hosts: on
+  the side the placement names, flipped to the other side where that
+  has no room and the other has, lined up along it (flipped to the other
+  end), slid into the work area, shrunk to it, as GTK places menus.
+- A flyout and a panel take the keyboard as they show, and close as the
+  user's closing does (CloseRequest, else Dismissed; the main window's
+  close, which hides it in an app that keeps running) on an Escape the
+  content leaves and as they lose the keyboard, unless a sheet, an
+  alert or a modal `Window` of theirs shows: a modal `Window` whose
+  parent is a flyout or a panel is a window above it, centered on it,
+  not a sheet hanging from it, and gives it the keyboard back as it
+  closes.
+- Fit: a window sized to its content is a layout root the core lays out
+  at its content's size, not the host's (`layoutFitWindow`: width auto
+  within the least and most width, a second pass at the most width if
+  it reaches it, so text wraps there; height auto within the least and
+  most height), and sends `WindowAction Fit` (its size, as `Size`'s
+  args) in the frames' batch whenever that size changes, once at the
+  least as it opens. The host sizes the window in the same crossing: a
+  flyout placed again, other windows keeping their top left; a window
+  that opens shown with it shows on its first Fit, so never at another
+  size first. The environment the host then reports doesn't lay the
+  content out again (the content isn't laid out at it). The tab on the
+  web isn't fitted.
+- Click-through is `WindowAction` ClickThrough and NotClickThrough, and
+  the `WindowState` bit 64 (`WindowHandle.ClickThrough`).
+- macOS: flyouts and panels are `AsukaPanel`s, `NSPanel`s made
+  nonactivating and borderless from the start (the window server learns
+  that a window never activates its app only from the style it's made
+  with, and forgets it if the style is set again: `configure` leaves
+  their style alone; the main window, made before its options, is made
+  again as one as `WindowOptions` says so), clear under an
+  `NSVisualEffectView` (a menu's material for a flyout, a popover's for
+  a panel) unless the app gives a background, the content's layer
+  rounded, the window's shadow. They can be key, never main:
+  `makeKeyAndOrderFront:` leaves the app the user is in frontmost (NSApp
+  reads active meanwhile; the workspace's frontmost application
+  doesn't change). A panel joins all Spaces as a full-screen auxiliary,
+  out of the window cycle, at the floating level; a tray flyout is at
+  the level of menus, under the copy of the status item the user
+  clicked (the click's place less its place in the item's window, as
+  the window isn't always where the copy shows: one per display's menu
+  bar), or the item's window where it's on a display, or the pointer; a
+  rectangle's flyout is its parent's child window. They close on
+  `cancelOperation:` (the content's views', a field's, the panel's), on
+  `windowDidResignKey:` once the key window settles (posted), and on a
+  global monitor's mouse-down outside the app's windows (an inactive
+  app's windows get those events too). Click-through is
+  `ignoresMouseEvents`.
+- Windows: flyouts and panels are borderless popup tool windows of a
+  class with a drop shadow, topmost, owned by the host's hidden window
+  (a rectangle's flyout by its parent), with Windows 11's rounded
+  corners; a tray flyout is placed against `Shell_NotifyIconGetRect`
+  (the cursor where Windows says nothing), in the monitor's work area at
+  its DPI. They take the foreground, close on an Escape the content
+  leaves and on `WA_INACTIVE` to a window not their own (checked once
+  activation settles, posted); a press on the tray icon leaves a flyout
+  to the icon's click, which toggles it, and a click on the parent while
+  a flyout has the keyboard only closes it. No system backdrop: every
+  view is an opaque child window, which would hide it. Click-through is
+  `WS_EX_LAYERED | WS_EX_TRANSPARENT`, opaque.
+- Linux: flyouts and panels are undecorated (their header bar hidden),
+  take the keyboard with `gtk_window_present` and close on an Escape the
+  content leaves (a bubbling key controller on the window) and on
+  `notify::is-active` going false, unless a window transient for them
+  shows. GTK 4 dropped placing windows and keeping them above, so under
+  X11 the host does it through Xlib on the surface's window: a utility
+  window out of the taskbar and pager, `_NET_WM_STATE_ABOVE` (and
+  `STICKY` for a panel) asked as EWMH says, `XMoveWindow` before it
+  maps: a panel on the pointer's display a third down, a flyout against
+  its parent's rectangle (`XTranslateCoordinates`) or where its tray
+  icon was clicked (StatusNotifierItem's `Activate` x, y, where the
+  panel says: KDE Plasma, GNOME's AppIndicator extension), in the work
+  area; and with it a window's `X`, `Y`, `SetPosition`, `Center` and
+  `AlwaysOnTop`. Under Wayland the compositor places an ordinary window
+  and keeps it in the taskbar (an `xdg_popup` needs a parent surface,
+  which a tray flyout hasn't); a panel is an overlay layer-shell surface
+  where the app runs with gtk4-layer-shell (`LD_PRELOAD`: it must load
+  before libwayland-client) and the compositor speaks wlr-layer-shell
+  (KDE Plasma, Sway, Hyprland, COSMIC; not GNOME). A tray flyout closed
+  by the click on its icon (which took its keyboard) remembers it a
+  moment, so that click doesn't open it again. Fit is the content's
+  size request and the default size; click-through an empty input
+  region (`gdk_surface_set_input_region`), set again after each frame
+  while on.
+- The web: a flyout and a panel are window panels without a title bar,
+  above the others, placed with a port of `Place` (a tray anchor: the
+  page's top right), closed on Escape and a press outside them;
+  click-through is `pointer-events: none` on the panel, the page under
+  it taking the clicks.
+- `asuka/apps` lists the apps installed (module "apps": "list" answers
+  JSON, "icon" draws a PNG in the caches and answers its path, "open"),
+  sorted and deduplicated in Go; `Search` ranks them in Go. macOS reads
+  the application folders (`displayNameAtPath:`, bundle identifiers,
+  `iconForFile:`, `openApplicationAtURL:`), Windows the shell's
+  Applications folder (`FOLDERID_AppsFolder`, `IShellItemImageFactory`,
+  `ShellExecute`), Linux the XDG desktop entries in Go (the theme's
+  icons drawn by GTK, `g_app_info_launch_uris_async` with the display's
+  launch context). Phones and the web answer `ErrUnsupported`.
 
 **Displays, power, the Dock and the system's appearance** (`screen`,
 `power`, `dock`, `appearance`):

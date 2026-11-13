@@ -27,6 +27,18 @@
 // SafeTop), modal (a backdrop over the page until it closes). With a
 // state key its place, size and whether it was maximized are kept in the
 // page's localStorage.
+//
+// A window sized to its content (FitContent) is sized by WindowAction
+// Fit, keeping its top left (it opens at the first one's size); the tab
+// can't be. A panel (Panel: a launcher's, a palette's) is a frameless
+// panel over the others, centered across the app's area a third of the
+// way down; a flyout (Flyout) a frameless one with a popover's look,
+// placed against its anchor (place: a rectangle of its parent's content,
+// or for a tray icon, which a page has none of, the top right corner).
+// Both take the keyboard as they show and close as the user closes them
+// on a press outside them and on an Escape their content leaves (nav.js).
+// A click-through window lets the pointer through to the page under it;
+// the tab can't let it out of the browser.
 
 import { Event, Events, WindowAction, TitleBar } from "./ops.js";
 import * as color from "./color.js";
@@ -35,10 +47,90 @@ import * as color from "./color.js";
 export const Flag = Object.freeze({
   FixedSize: 1, NoMinimize: 2, NoMaximize: 4, NoClose: 8, AlwaysOnTop: 16, Hidden: 32, SkipTaskbar: 64,
   Centered: 128, Positioned: 256, Transparent: 512, Maximized: 1024, Fullscreen: 2048, Child: 4096, Modal: 8192,
+  Panel: 16384, Flyout: 32768, FitContent: 65536, ClickThrough: 131072,
 });
 
 /** Window state bits (ops.WindowStateFlags). */
-const State = Object.freeze({ Visible: 1, Focused: 2, Minimized: 4, Maximized: 8, Fullscreen: 16, OnTop: 32 });
+export const State = Object.freeze({ Visible: 1, Focused: 2, Minimized: 4, Maximized: 8, Fullscreen: 16, OnTop: 32, ClickThrough: 64 });
+
+/**
+ * center is a w by h rectangle centered across r, its top a third of the
+ * way down the room left (as Spotlight's panel shows), within r
+ * (internal/flyout's Center).
+ */
+export function center(w, h, r) {
+  w = Math.min(w, r.w); h = Math.min(h, r.h);
+  return { x: r.x + (r.w - w) / 2, y: r.y + (r.h - h) / 3, w, h };
+}
+
+/**
+ * place is the frame of a w by h flyout next to anchor ({x, y, w, h}),
+ * gap away, on the side Placement p names, within work (internal/flyout's
+ * Place): flipped to the other side where that has no room and the other
+ * has more, lined up with the anchor along it (flipped to the other end
+ * where that has no room), then slid back into work, then shrunk to it.
+ */
+export function place(anchor, w, h, p, gap, work) {
+  if (!(p >= 0 && p <= 11)) p = 0;
+  let side = Math.floor(p / 3); // 0 bottom, 1 top, 2 right, 3 left
+  const align = p % 3; // 0 center, 1 start, 2 end
+  const r = { x: 0, y: 0, w, h };
+  const aRight = anchor.x + anchor.w, aBottom = anchor.y + anchor.h;
+  const wRight = work.x + work.w, wBottom = work.y + work.h;
+  if (side <= 1) {
+    const after = wBottom - (aBottom + gap), before = anchor.y - gap - work.y;
+    if (side === 0 && h > after && before > after) side = 1;
+    else if (side === 1 && h > before && after > before) side = 0;
+    r.y = side === 0 ? aBottom + gap : anchor.y - gap - h;
+    r.x = lineUp(anchor.x, anchor.w, w, align, work.x, wRight);
+  } else {
+    const after = wRight - (aRight + gap), before = anchor.x - gap - work.x;
+    if (side === 2 && w > after && before > after) side = 3;
+    else if (side === 3 && w > before && after > before) side = 2;
+    r.x = side === 2 ? aRight + gap : anchor.x - gap - w;
+    r.y = lineUp(anchor.y, anchor.h, h, align, work.y, wBottom);
+  }
+  r.w = Math.min(r.w, work.w); r.h = Math.min(r.h, work.h);
+  r.x = Math.max(Math.min(r.x, wRight - r.w), work.x);
+  r.y = Math.max(Math.min(r.y, wBottom - r.h), work.y);
+  return r;
+}
+
+/**
+ * lineUp is where a flyout size long starts along an anchor at pos, n
+ * long, lined up as align says; an end with no room flips to the other
+ * end where that has room.
+ */
+function lineUp(pos, n, size, align, lo, hi) {
+  if (align === 1) return pos + size > hi && pos + n - size >= lo ? pos + n - size : pos;
+  if (align === 2) return pos + n - size < lo && pos + size <= hi ? pos : pos + n - size;
+  return pos + (n - size) / 2;
+}
+
+/**
+ * trayAnchor is where a flyout hanging from a tray icon goes in a page,
+ * which has no menu bar: under where an icon at the top right corner of
+ * the app's area (w wide) would be.
+ */
+export function trayAnchor(w) {
+  return { x: Math.max(0, w - 40), y: 0, w: 32, h: 0 };
+}
+
+const focusable = "input:not([disabled]):not([type=hidden]), textarea:not([disabled]), select:not([disabled]), button:not([disabled]), a[href], [contenteditable]:not([contenteditable=false]), [tabindex]:not([tabindex='-1'])";
+
+/** focusIn gives the keyboard to el's first focusable element, or el itself. */
+export function focusIn(el) {
+  for (const x of el.querySelectorAll(focusable)) {
+    x.focus({ preventScroll: true });
+    if (document.activeElement === x) return;
+  }
+  el.focus({ preventScroll: true });
+}
+
+/** transient reports whether a Window's panel is a flyout or a panel: closed by a press outside it and an Escape. */
+export function transient(n) {
+  return !!(n?.win?.cfg && n.win.cfg.flags & (Flag.Flyout | Flag.Panel));
+}
 
 export class Windows {
   constructor(h) {
@@ -83,6 +175,7 @@ export class Windows {
     if (w.maximized) f |= State.Maximized;
     if (fs === n.dialog) f |= State.Fullscreen;
     if (w.onTop) f |= State.OnTop;
+    if (w.clickThrough) f |= State.ClickThrough;
     return { x: w.x, y: w.y, w: w.w, h: w.h - w.bar, f };
   }
 
@@ -137,16 +230,21 @@ export class Windows {
     const nav = this.h.nav, w = n.win, d = n.dialog;
     if (!d) return;
     switch (a) {
-      case WindowAction.Show: this.setHidden(n, false); break;
+      case WindowAction.Show:
+        if (!w.hidden) break;
+        this.setHidden(n, false);
+        // A flyout or a panel takes the keyboard as it shows.
+        if (transient(n)) this.h.afterCore(() => { if (n.dialog === d && !w.hidden) focusIn(d); });
+        break;
       case WindowAction.Hide: this.setHidden(n, true); break;
       case WindowAction.Focus:
         this.setHidden(n, false);
         w.minimized = false;
         nav.raiseWindow(n);
-        (d.querySelector("input, textarea, button, [tabindex]") || d).focus({ preventScroll: true });
+        focusIn(d);
         break;
-      case WindowAction.Minimize: w.minimized = true; break;
-      case WindowAction.Maximize: this.maximize(n, true); break;
+      case WindowAction.Minimize: if (!w.flyout) w.minimized = true; break;
+      case WindowAction.Maximize: if (!w.flyout) this.maximize(n, true); break;
       case WindowAction.Restore:
         if (w.minimized) w.minimized = false;
         else this.maximize(n, false);
@@ -155,20 +253,49 @@ export class Windows {
       case WindowAction.ExitFullscreen: if (document.fullscreenElement === d) document.exitFullscreen().catch(() => {}); break;
       case WindowAction.Center: {
         const c = this.h.container.getBoundingClientRect();
+        if (w.cfg?.flags & Flag.Panel) {
+          ({ x: w.x, y: w.y } = center(w.w, w.h, { x: 0, y: 0, w: c.width, h: c.height }));
+          break;
+        }
         w.x = Math.max(0, (c.width - w.w) / 2);
         w.y = Math.max(0, (c.height - w.h) / 2);
         break;
       }
       case WindowAction.Size:
+        if (w.flyout) { w.want = { w: x, h: y }; break; }
         w.w = this.clamp(x, w.minWidth || 200, w.maxWidth);
         w.h = this.clamp(y, w.minHeight || 120, w.maxHeight) + w.bar;
         break;
+      case WindowAction.Fit: this.fit(n, x, y); break;
       case WindowAction.Position: w.x = x; w.y = y; break;
       case WindowAction.AlwaysOnTop: w.onTop = true; break;
       case WindowAction.NotAlwaysOnTop: w.onTop = false; break;
+      case WindowAction.ClickThrough: this.setClickThrough(n, true); break;
+      case WindowAction.NotClickThrough: this.setClickThrough(n, false); break;
     }
     nav.sizeDialog(n);
     this.save(n);
+  }
+
+  /**
+   * fit sizes a panel to its content's size (WindowFitContent): a flyout
+   * is placed again at it; another keeps its top left, but at the first,
+   * before the page draws it, it's placed as it opens at that size.
+   */
+  fit(n, width, height) {
+    const w = n.win;
+    if (w.flyout) { w.want = { w: width, h: height }; return; }
+    const c = this.h.container.getBoundingClientRect();
+    w.w = Math.max(0, Math.min(width, c.width - 16));
+    w.h = Math.max(0, Math.min(height + w.bar, c.height - 16));
+    if (!w.fitted && w.autoPlaced) this.h.nav.placeNew(n);
+    w.fitted = true;
+  }
+
+  /** setClickThrough lets the pointer through a panel to the page under it, or stops it. */
+  setClickThrough(n, on) {
+    n.win.clickThrough = on;
+    n.dialog?.classList.toggle("asuka-window-click-through", on);
   }
 
   clamp(v, least, most) {

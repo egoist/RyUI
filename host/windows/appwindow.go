@@ -39,6 +39,11 @@ func (h *Host) openWindow(n *node) {
 		ht = defaultWindowHeight
 	}
 	c := &wctl{n: n, cfg: cfg, key: cfg.StateKey}
+	if n.nav.fitted {
+		// Its content was laid out before it opened (flyout.go).
+		c.fit, c.fitted = [2]float32{w, ht}, true
+	}
+	c.waitFit = c.has(ops.WindowFitContent) && !c.fitted
 	style := c.style()
 	from := h.windowInUse()
 	dpi := DPI(from)
@@ -46,8 +51,14 @@ func (h *Host) openWindow(n *node) {
 	x, y := h.cascade(r.W(), r.H())
 	if cfg.Flags&ops.WindowChild != 0 {
 		c.owner = h.parentWindow(cfg.Parent)
+	} else if f, ok := c.anchor(); ok && f.Tray == 0 {
+		c.owner = h.parentWindow(cfg.Parent) // a flyout stays above the window it hangs from
 	}
-	win := CreateWindow(h.topLevelStyle(), classWindow, h.windowTitle(n), style, x, y, r.W(), r.H(), c.owner, 0)
+	class := classWindow
+	if c.frameless() {
+		class = classFlyout // a drop shadow (flyout.go)
+	}
+	win := CreateWindow(h.topLevelStyle()|h.exStyle(c), class, h.windowTitle(n), style, x, y, r.W(), r.H(), c.owner, 0)
 	c.hwnd = win
 	fw := newNode(0, kindWindowFrame)
 	fw.hwnd = win
@@ -72,6 +83,8 @@ func (h *Host) openWindow(n *node) {
 		switch {
 		case cfg.Flags&ops.WindowPositioned != 0:
 			h.moveTo(c, cfg.X, cfg.Y)
+		case c.owner != 0 && h.isFrameless(c.owner):
+			h.centerOver(c, c.owner) // a dialog of a panel or a flyout, over it (flyout.go)
 		case cfg.Flags&ops.WindowCentered != 0:
 			h.center(c, from)
 		}
@@ -88,6 +101,7 @@ func (h *Host) openWindow(n *node) {
 	id := n.id
 	h.afterCore(func() {
 		if n := h.nodes[id]; n != nil && n.nav.ctl == c {
+			h.fitArrived(c) // in case no Fit came: it shows at its size
 			h.reportState(c)
 		}
 	})
@@ -240,7 +254,9 @@ func (h *Host) closeWindow(n *node) {
 	}
 	// The window it belongs to (or the main one) is the one in use next,
 	// not another app's.
-	if ForegroundWindow() == win && !snapshotting() {
+	// A panel or a tray icon's flyout belongs to no window of the app's:
+	// the activation goes where Windows takes it, another app's window.
+	if ForegroundWindow() == win && !snapshotting() && !(c != nil && c.frameless() && c.owner == 0) {
 		next := h.window
 		if c != nil && c.owner != 0 && c.owner != h.park && IsWindow(c.owner) {
 			next = c.owner
@@ -314,6 +330,13 @@ func (h *Host) windowOptions(n *node, args []byte) {
 	cfg := ops.DecodeWindowConfig(args)
 	c := h.mainCtl
 	c.n, c.cfg, c.key = n, cfg, mainKey(&cfg)
+	if c.frameless() && cfg.StateKey == "" {
+		c.key = "" // a panel shows where the cursor is, unless the app keeps its place
+	}
+	if c.has(ops.WindowFitContent) && !c.fitted {
+		c.waitFit = true // shown once its content is laid out (flyout.go)
+		h.afterCore(func() { h.fitArrived(c) })
+	}
 	h.minSize = [2]float32{cfg.MinWidth, cfg.MinHeight}
 	if title := cfg.Title; title != "" {
 		h.setWindowTitle(title)

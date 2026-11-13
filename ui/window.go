@@ -1,7 +1,6 @@
 package ui
 
 import (
-
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
 )
@@ -43,14 +42,15 @@ type WindowProps struct {
 	MaxWidth, MaxHeight float32
 	// X and Y place it; with both 0 it opens down and right of the window
 	// in use, as new windows cascade, or centered on its display with
-	// Center. Linux's desktop places windows itself: GTK has no way to.
+	// Center. Under Wayland the compositor places windows itself: an app
+	// has no way to.
 	X, Y   float32
 	Center bool
 	// DisableResize, DisableMinimize, DisableMaximize and DisableClose
 	// take the user's abilities away: resizing it, and its buttons.
 	DisableResize, DisableMinimize, DisableMaximize, DisableClose bool
-	// AlwaysOnTop keeps it above other apps' windows (not on Linux, where
-	// GTK 4 can't ask for it).
+	// AlwaysOnTop keeps it above other apps' windows (not under Wayland,
+	// where an app can't ask for it).
 	AlwaysOnTop bool
 	TitleBar    TitleBarStyle
 	// Background fills the window behind its content (0: the platform's
@@ -77,6 +77,43 @@ type WindowProps struct {
 	// window and closes with it. Modal makes it a child that blocks that
 	// window until it closes (on a Mac, a sheet of it).
 	Child, Modal bool
+	// Flyout, if set, makes it a flyout: a window without a frame or a
+	// taskbar button hanging from an anchor, a tray icon (a menu bar
+	// app's panel) or a rectangle of the window it's declared in, placed
+	// on the side Placement names and kept in its display's work area. It
+	// takes the keyboard as it shows and closes, as the user closing it,
+	// as it loses the keyboard (a click elsewhere, another app) or on an
+	// Escape its content leaves, as menus and popovers do; a Modal Window
+	// declared in it, or an Alert, keeps it open while it shows. On a Mac,
+	// with no Background, it has the material of menus behind its content,
+	// rounded corners and a shadow; Windows 11 rounds it.
+	Flyout *Flyout
+	// Panel makes it a panel, a launcher's or a command palette's window:
+	// it floats above every app's windows, on whichever Space or virtual
+	// desktop the user is on and over apps in full screen, out of the
+	// taskbar, the Dock's windows and the window cycle, and takes the
+	// keyboard without activating the app on a Mac, so the app the user
+	// was in stays in front. Frameless (on a Mac over the material of
+	// popovers unless it has a Background), it closes, as the user
+	// closing it, on an Escape its content leaves or as it loses the
+	// keyboard: give it OnCloseRequest to hide it instead, so it shows
+	// again at once. Without X and Y it shows on the display with the
+	// pointer, centered across it, a third of the way down.
+	Panel bool
+	// FitContent sizes the window to its content, and follows it as it
+	// changes, within MinWidth, MaxWidth, MinHeight and MaxHeight (and its
+	// display): its width the content's widest line (max-content), its
+	// height the content's at that width, beyond MaxHeight a Scroll in it
+	// scrolls. A flyout is placed again against its anchor as it resizes;
+	// a panel or a window keeps its top edge. Width and Height are its size
+	// until its content is laid out, which happens before it shows. The
+	// user can't resize it.
+	FitContent bool
+	// ClickThrough lets the mouse go through the window to what's behind
+	// it, another app's window or the desktop, as an overlay's or a HUD's
+	// does (with Transparent and AlwaysOnTop); WindowHandle.SetClickThrough
+	// switches it.
+	ClickThrough bool
 	// Handle, if set, is the window's handle (NewWindowHandle), to
 	// control it from outside it: UseWindow in its content returns the
 	// same.
@@ -111,7 +148,75 @@ func (p *WindowProps) config() ops.WindowConfig {
 	if p.Modal {
 		c.Flags |= ops.WindowChild | ops.WindowModal
 	}
+	c.Flags |= kindFlags(p.Panel, p.FitContent, p.ClickThrough)
+	if p.Flyout != nil {
+		c.Flags |= ops.WindowFlyout | ops.WindowSkipTaskbar | ops.WindowNoMinimize | ops.WindowNoMaximize
+		c.Flags &^= ops.WindowPanel | ops.WindowChild | ops.WindowModal | ops.WindowCentered | ops.WindowPositioned |
+			ops.WindowMaximized | ops.WindowFullscreen
+	}
 	return c
+}
+
+// kindFlags are the flags of a panel, a window sized to its content and
+// one the mouse goes through.
+func kindFlags(panel, fit, clickThrough bool) ops.WindowFlags {
+	var f ops.WindowFlags
+	if panel {
+		f |= ops.WindowPanel | ops.WindowAlwaysOnTop | ops.WindowSkipTaskbar | ops.WindowNoMinimize | ops.WindowNoMaximize
+	}
+	if fit {
+		f |= ops.WindowFitContent | ops.WindowFixedSize
+	}
+	if clickThrough {
+		f |= ops.WindowClickThrough
+	}
+	return f
+}
+
+// Placement is where a flyout goes from its anchor: the side, and how it
+// lines up with the anchor along that side.
+type Placement = ops.Placement
+
+const (
+	// PlacementBottom is below the anchor, centered under it: a menu bar
+	// icon's panel (a taskbar's at the bottom of the screen flips above
+	// it).
+	PlacementBottom      = ops.PlacementBottom
+	PlacementBottomStart = ops.PlacementBottomStart // below, left edges lined up
+	PlacementBottomEnd   = ops.PlacementBottomEnd   // below, right edges lined up
+	PlacementTop         = ops.PlacementTop
+	PlacementTopStart    = ops.PlacementTopStart
+	PlacementTopEnd      = ops.PlacementTopEnd
+	PlacementRight       = ops.PlacementRight
+	PlacementRightStart  = ops.PlacementRightStart // right of it, top edges lined up
+	PlacementRightEnd    = ops.PlacementRightEnd
+	PlacementLeft        = ops.PlacementLeft
+	PlacementLeftStart   = ops.PlacementLeftStart
+	PlacementLeftEnd     = ops.PlacementLeftEnd
+)
+
+// Anchor is what a flyout hangs from: a tray icon (tray.Icon's Anchor
+// gives one, its Tray set) or a rectangle of the window the flyout is
+// declared in, in points from the top left of its content (a rectangle of
+// no size is a point).
+type Anchor struct {
+	// Tray is a tray icon's (from tray.Icon.Anchor); 0: the rectangle.
+	Tray                uint32
+	X, Y, Width, Height float32
+}
+
+// Flyout is a flyout window's anchor and placement (WindowProps.Flyout).
+type Flyout struct {
+	// Anchor is what it hangs from; it follows the accessor, placed
+	// again as it changes.
+	Anchor signal.Accessor[Anchor]
+	// Placement is the side of the anchor it goes to (PlacementBottom:
+	// below it, centered): where the display has no room for it there, it
+	// flips to the other side, then slides into the display, then
+	// shrinks to fit it.
+	Placement Placement
+	// Gap is the room between the anchor and the flyout, in points.
+	Gap float32
 }
 
 func windowFlags(noResize, noMin, noMax, noClose, onTop, hidden, skipTaskbar, transparent, maximized, fullscreen bool) ops.WindowFlags {
@@ -184,10 +289,13 @@ func Window(p WindowProps) Node {
 		withRoot(r, func() Node {
 			win = newProvider(ops.KindWindow)
 			c := p.config()
-			if pe := parent.el(); c.Flags&ops.WindowChild != 0 && pe != nil {
+			if pe := parent.el(); c.Flags&(ops.WindowChild|ops.WindowFlyout) != 0 && pe != nil {
 				c.Parent = pe.id
 			} else {
 				c.Flags &^= ops.WindowChild | ops.WindowModal
+			}
+			if c.Flags&ops.WindowFitContent != 0 {
+				fitWindow(win, &c)
 			}
 			r.batch.SetBytes(win.id, ops.PropWindowConfig, ops.AppendWindowConfig(nil, &c))
 			win.handlers().dismissed = func() {
@@ -203,6 +311,21 @@ func Window(p WindowProps) Node {
 					dispose = d
 					if p.Title != nil {
 						bind(p.Title, func(v string) { r.batch.SetString(w.id, ops.PropWindowTitle, v) })
+					}
+					if f := p.Flyout; f != nil {
+						var sent []byte
+						signal.RenderEffect(func() {
+							var a Anchor
+							if f.Anchor != nil {
+								a = f.Anchor.Get()
+							}
+							b := ops.AppendFlyout(sent[:0:0], ops.Flyout{Tray: a.Tray, X: a.X, Y: a.Y, Width: a.Width, Height: a.Height,
+								Placement: f.Placement, Gap: f.Gap})
+							if string(b) != string(sent) {
+								sent = b
+								r.batch.SetBytes(w.id, ops.PropWindowFlyout, b)
+							}
+						})
 					}
 					// Opened before its content is built: a Window declared
 					// in it, a child of it, opens after it.
@@ -247,6 +370,12 @@ type WindowOptions struct {
 	Hidden                bool
 	SkipTaskbar           bool
 	Maximized, Fullscreen bool
+	// Panel, FitContent and ClickThrough are WindowProps': a launcher's
+	// main window is a panel (with app.RunInBackground, hidden until a
+	// global shortcut shows it), sized to its results; an overlay's lets
+	// the mouse through. A panel closing hides it in an app that keeps
+	// running (app.KeepRunning, app.RunInBackground); else the app quits.
+	Panel, FitContent, ClickThrough bool
 	// StateKey is where the host remembers where the user left it
 	// ("main" if empty): it opens there, over Width, Height, X and Y.
 	StateKey string
@@ -273,6 +402,7 @@ func (o *WindowOptions) config() ops.WindowConfig {
 	if o.X != 0 || o.Y != 0 {
 		c.Flags |= ops.WindowPositioned
 	}
+	c.Flags |= kindFlags(o.Panel, o.FitContent, o.ClickThrough)
 	return c
 }
 

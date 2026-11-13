@@ -62,6 +62,9 @@ func remembers() bool {
 
 // styleMask is the style a window's options give it.
 func styleMask(c *ops.WindowConfig) uint {
+	if floating(c) {
+		return floatingStyle(c)
+	}
 	m := uint(styleTitled | styleClosable | styleMiniaturizable | styleResizable)
 	if c.Flags&ops.WindowFixedSize != 0 {
 		m &^= styleResizable
@@ -90,8 +93,20 @@ func (h *Host) configure(x *win, c ops.WindowConfig) (restored bool) {
 	if full {
 		mask |= styleFullScreen
 	}
-	Send(w, "setStyleMask:", uintptr(mask))
-	if c.TitleBar == ops.TitleBarHidden {
+	// A flyout's or a panel's is the style it was made with: set again,
+	// even as it was, the window server forgets it never activates the
+	// app.
+	if !floating(&c) {
+		Send(w, "setStyleMask:", uintptr(mask))
+	}
+	if floating(&c) {
+		h.floatingChrome(x)
+		x.placed = c.Flags&(ops.WindowPositioned|ops.WindowCentered) != 0
+	}
+	if c.Flags&ops.WindowClickThrough != 0 {
+		setClickThrough(x, true)
+	}
+	if c.TitleBar == ops.TitleBarHidden && !floating(&c) {
 		Send(w, "setTitlebarAppearsTransparent:", 1)
 		Send(w, "setTitleVisibility:", 1) // hidden
 	}
@@ -142,13 +157,14 @@ func (h *Host) configure(x *win, c ops.WindowConfig) (restored bool) {
 		h.setTopLeft(w, float64(c.X), float64(c.Y))
 	}
 	key := c.StateKey
-	if x == h.main && key == "" {
-		key = "main"
+	if x == h.main && key == "" && !floating(&c) {
+		key = "main" // a panel goes where the pointer is, unless kept
 	}
 	if key != "" && remembers() {
 		name := uintptr(String(h.autosaveName(key)))
 		restored = SendBool(w, "setFrameUsingName:", name)
 		Send(w, "setFrameAutosaveName:", name)
+		x.placed = x.placed || restored
 	}
 	x.layoutChanged()
 	return restored
@@ -174,6 +190,16 @@ func (h *Host) setTopLeft(w ID, x, y float64) {
 // front, key; then what it was to open as (zoomed, in full screen).
 func (h *Host) showWin(x *win, activate bool) {
 	w := x.window
+	if floating(&x.cfg) {
+		h.showFloating(x)
+		x.shown = true
+		h.windowsChanged()
+		return
+	}
+	if over := h.winOf(x.child); over != nil && floating(&over.cfg) && x.cfg.Flags&ops.WindowModal != 0 {
+		h.placeOver(x, over)
+		activate = true // a dialog the flyout asked for, in front
+	}
 	switch {
 	case x.sheetOf != 0:
 		if Send(w, "sheetParent") == 0 {
@@ -251,8 +277,17 @@ func (h *Host) windowAction(n *node, args []byte) {
 		if p := Send(w, "sheetParent"); p != 0 {
 			Send(p, "endSheet:", uintptr(w))
 		}
+		if floating(&x.cfg) {
+			h.hideFloating(x)
+		}
 		Send(w, "orderOut:", 0)
 	case ops.WindowActionFocus:
+		if floating(&x.cfg) {
+			// A flyout or a panel takes the keyboard, the app the user
+			// is in staying in front.
+			h.showWin(x, false)
+			break
+		}
 		if SendBool(app, "isHidden") {
 			Send(app, "unhide:", 0)
 		}
@@ -279,10 +314,19 @@ func (h *Host) windowAction(n *node, args []byte) {
 		}
 	case ops.WindowActionCenter:
 		Send(w, "center")
+		x.placed = true
 	case ops.WindowActionSize:
 		MsgSetSize(w, Sel("setContentSize:"), Size{Width: float64(px), Height: float64(py)})
+		if x.isFlyout() && SendBool(w, "isVisible") {
+			h.placeFlyout(x)
+		}
+	case ops.WindowActionFit:
+		h.fit(x, px, py)
+	case ops.WindowActionClickThrough, ops.WindowActionNotClickThrough:
+		setClickThrough(x, a == ops.WindowActionClickThrough)
 	case ops.WindowActionPosition:
 		h.setTopLeft(w, float64(px), float64(py))
+		x.placed = true
 	case ops.WindowActionAlwaysOnTop:
 		Send(w, "setLevel:", floatingLevel)
 	case ops.WindowActionNotAlwaysOnTop:
@@ -325,6 +369,9 @@ func (h *Host) windowState(x *win) ops.WindowState {
 	}
 	if SendInt(w, "level") > 0 {
 		s.Flags |= ops.WindowOnTop
+	}
+	if SendBool(w, "ignoresMouseEvents") {
+		s.Flags |= ops.WindowClickThroughState
 	}
 	return s
 }
@@ -395,7 +442,12 @@ func init() {
 	targetMethods = append(targetMethods,
 		Method("windowDidMove:", changed),
 		Method("windowDidBecomeKey:", changed),
-		Method("windowDidResignKey:", changed),
+		Method("windowDidResignKey:", func(self ID, _ SEL, n ID) {
+			if t := h(); t != nil {
+				t.windowsChanged()
+				t.resignedKey(Send(n, "object"))
+			}
+		}),
 		Method("windowDidEnterFullScreen:", func(self ID, _ SEL, n ID) {
 			if t := h(); t != nil {
 				t.environmentChanged()

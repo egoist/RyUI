@@ -34,6 +34,7 @@ func registerClasses() {
 	wndProcCallback = syscall.NewCallback(wndProc)
 	icon := AppIcon()
 	RegisterClass(classWindow, CS_HREDRAW|CS_VREDRAW, wndProcCallback, icon)
+	RegisterClass(classFlyout, CS_HREDRAW|CS_VREDRAW|CS_DROPSHADOW, wndProcCallback, icon)
 	RegisterClass(classView, CS_DBLCLKS, wndProcCallback, 0)
 	RegisterClass(classMessage, 0, wndProcCallback, 0)
 }
@@ -63,6 +64,11 @@ func (h *Host) message(hwnd uintptr, m uint32, wp, lp uintptr) (uintptr, bool) {
 	}
 	if c := h.chrome[hwnd]; c != nil {
 		return h.chromeMessage(c, hwnd, m, wp, lp)
+	}
+	// One of the app's windows activated: the panels and flyouts it isn't
+	// one of the own windows of close (flyout.go).
+	if m == WM_ACTIVATE && LoWord(wp) != WA_INACTIVE {
+		h.windowActivated(hwnd)
 	}
 	switch hwnd {
 	case h.msgWin:
@@ -432,6 +438,9 @@ func (h *Host) keyMessage(m *Msg) bool {
 			return h.refreshKey(m)
 		}
 	case VK_ESCAPE:
+		if h.escapeDismisses(m) { // a panel, a flyout (flyout.go)
+			return true
+		}
 		if w := RootWindow(m.Hwnd); w != h.window {
 			if n := h.byHwnd[w]; n != nil && n.kind == kindSheetWindow {
 				h.cancelSheet(n)

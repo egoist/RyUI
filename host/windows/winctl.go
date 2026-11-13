@@ -68,6 +68,15 @@ type wctl struct {
 	hidden  bool        // its title bar is hidden (titlebar.go)
 	caption *captionBar // its caption buttons, then
 	topEdge uintptr     // the strip along its top that resizes it, then
+
+	// A panel, a flyout, a window sized to its content (flyout.go).
+	fit            [2]float32 // its content's size, as WindowAction Fit last gave it (points)
+	fitted         bool       // Fit came
+	waitFit        bool       // it shows once its first Fit comes
+	showPending    bool       // it was to show meanwhile
+	showActivate   bool       // with the keyboard
+	appPlaced      bool       // the app (or where the user left it) placed it: a panel isn't centered again
+	dismissPending bool       // it lost the keyboard: it closes once that settles (wmLightDismiss)
 }
 
 // fullScreen is what a window in full screen goes back to.
@@ -97,6 +106,9 @@ func (c *wctl) has(f ops.WindowFlags) bool { return c.cfg.Flags&f != 0 }
 
 // style is the window's style for its options.
 func (c *wctl) style() uint32 {
+	if c.frameless() {
+		return WS_POPUP | WS_CLIPCHILDREN // a panel, a flyout: no frame, no caption (flyout.go)
+	}
 	s := uint32(WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN)
 	if c.has(ops.WindowFixedSize) {
 		s &^= WS_THICKFRAME | WS_MAXIMIZEBOX
@@ -145,9 +157,10 @@ func (h *Host) parentWindow(id ops.NodeID) uintptr {
 func (h *Host) configure(c *wctl) {
 	cur := WindowLong(c.hwnd, GWL_STYLE)
 	SetWindowLong(c.hwnd, GWL_STYLE, uintptr(c.style())|cur&(WS_VISIBLE|WS_MINIMIZE|WS_MAXIMIZE))
-	if c.cfg.TitleBar == ops.TitleBarHidden && !c.hidden {
+	if c.cfg.TitleBar == ops.TitleBarHidden && !c.hidden && !c.frameless() {
 		h.hideTitleBar(c) // titlebar.go
 	}
+	h.configureFrameless(c) // flyout.go
 	SetWindowPos(c.hwnd, 0, 0, 0, 0, 0, SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE|SWP_FRAMECHANGED)
 	EnableSystemCommand(c.hwnd, SC_CLOSE, !c.has(ops.WindowNoClose))
 	if c.has(ops.WindowAlwaysOnTop) {
@@ -162,6 +175,9 @@ func (h *Host) configure(c *wctl) {
 // least and most are the window's least and most content sizes, in
 // points (0: none).
 func (h *Host) least(c *wctl) [2]float32 {
+	if c.main && (c.frameless() || c.has(ops.WindowFitContent)) {
+		return h.minSize // its options' alone: its content may be smaller than a window's least
+	}
 	if c.main {
 		return h.leastSize()
 	}
@@ -265,6 +281,13 @@ func (h *Host) center(c *wctl, from uintptr) {
 // showCtl shows a window (activate: and gives it the keyboard): the first
 // time maximized or in full screen if it opens so or was left maximized.
 func (h *Host) showCtl(c *wctl, activate bool) {
+	if c.waitFit {
+		// Sized to its content, which isn't laid out yet: it shows at that
+		// size (flyout.go).
+		c.showPending, c.showActivate = true, c.showActivate || activate
+		return
+	}
+	h.beforeShow(c) // a panel centered, a flyout placed (flyout.go)
 	first := !c.placed
 	switch {
 	case first && (c.restoreMax || c.has(ops.WindowMaximized)) && c.full == nil:
@@ -361,15 +384,22 @@ func (c *wctl) safeTop() float32 {
 func (h *Host) windowAction(n *node, args []byte) {
 	a, x, y, ok := ops.DecodeWindowAction(args)
 	c := h.ctlFor(n)
+	if ok && c == nil && a == ops.WindowActionFit && n.kind == ops.KindWindow && n.nav != nil {
+		// Laid out before its window opens (a flyout of a Window opening
+		// with it): it opens at that size.
+		n.nav.size, n.nav.fitted = [2]float32{x, y}, true
+		return
+	}
 	if !ok || c == nil || c.hwnd == 0 || !IsWindow(c.hwnd) {
 		return
 	}
 	switch a {
 	case ops.WindowActionShow:
-		if !IsWindowVisible(c.hwnd) {
+		if !IsWindowVisible(c.hwnd) || c.waitFit {
 			h.showCtl(c, true)
 		}
 	case ops.WindowActionHide:
+		c.showPending = false // not shown as its size comes either
 		ShowWindow(c.hwnd, SW_HIDE)
 	case ops.WindowActionFocus:
 		h.focus(c)
@@ -390,6 +420,7 @@ func (h *Host) windowAction(n *node, args []byte) {
 	case ops.WindowActionCenter:
 		if c.full == nil && !IsZoomed(c.hwnd) && !IsIconic(c.hwnd) {
 			h.center(c, c.hwnd)
+			c.appPlaced = true
 		}
 	case ops.WindowActionSize:
 		if c.full == nil {
@@ -404,7 +435,14 @@ func (h *Host) windowAction(n *node, args []byte) {
 				ShowWindow(c.hwnd, SW_RESTORE)
 			}
 			h.moveTo(c, x, y)
+			c.appPlaced = true
 		}
+	case ops.WindowActionFit:
+		h.fitWindow(c, x, y) // flyout.go
+	case ops.WindowActionClickThrough:
+		h.setClickThrough(c, true)
+	case ops.WindowActionNotClickThrough:
+		h.setClickThrough(c, false)
 	case ops.WindowActionAlwaysOnTop:
 		SetWindowPos(c.hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE)
 	case ops.WindowActionNotAlwaysOnTop:
@@ -450,6 +488,9 @@ func (h *Host) windowState(c *wctl) ops.WindowState {
 	if WindowLong(c.hwnd, GWL_EXSTYLE)&WS_EX_TOPMOST != 0 {
 		f |= ops.WindowOnTop
 	}
+	if clickThrough(c.hwnd) {
+		f |= ops.WindowClickThroughState
+	}
 	s.Flags = f
 	return s
 }
@@ -492,6 +533,9 @@ func (h *Host) ctlMessage(c *wctl, m uint32, wp, lp uintptr) (uintptr, bool) {
 		h.placementMessage(c, m, wp)
 	}
 	if r, ok := h.titleBarMessage(c, m, wp, lp); ok {
+		return r, true
+	}
+	if r, ok := h.lightDismissMessage(c, m, wp, lp); ok { // flyout.go
 		return r, true
 	}
 	switch m {
