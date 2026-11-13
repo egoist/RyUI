@@ -548,8 +548,7 @@ func Sheet(p SheetProps) Node {
 					backCtx.Provide(scope, func() {
 						envCtx.Provide(s.env, func() {
 							if n := p.Content(); n.e != nil {
-								fill(n)
-								s.appendKid(n.e)
+								s.appendKid(onlyKid(n))
 							}
 						})
 					})

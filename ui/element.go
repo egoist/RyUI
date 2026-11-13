@@ -623,6 +623,22 @@ func (e *element) markMeasured() {
 }
 
 // fill makes n fill its provider, as the root's child does.
+// onlyKid is n's element, made to fill its parent, as the one child of a
+// kind that has one (a Sheet's, a Window's content): an element that
+// makes no view of its own (a plain Column, flattened; a Show or For)
+// goes in a View that does, so the host gets one child, as the schema
+// says, whatever the content.
+func onlyKid(n Node) *element {
+	fill(n)
+	if n.e.real && !n.e.frag {
+		return n.e
+	}
+	v := newElement(ops.KindView, true)
+	fill(Node{v})
+	v.appendKid(n.e)
+	return v
+}
+
 func fill(n Node) {
 	if n.e != nil {
 		n.e.fill = true

@@ -355,8 +355,7 @@ func Window(p WindowProps) Node {
 					windowCtx.Provide(wh, func() {
 						envCtx.Provide(w.env, func() {
 							if n := p.Content(); n.e != nil {
-								fill(n)
-								w.appendKid(n.e)
+								w.appendKid(onlyKid(n))
 							}
 						})
 					})
