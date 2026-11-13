@@ -13,7 +13,11 @@
 //   - A SplitView is a sidebar beside its detail Stack; on a narrow
 //     window, a drawer the detail's header opens.
 //   - A Window is a panel in the page the user can move and resize
-//     (window.js: what a WindowHandle does to it, and its options).
+//     (window.js: what a WindowHandle does to it, and its options). A
+//     flyout and a panel are frameless ones over the others, closed as
+//     the user closes them on a press outside them (but in a window of
+//     theirs, a modal one over a flyout) and on an Escape their content
+//     leaves.
 //
 // Going back is the browser's: its back button (a history entry stands
 // for the app's back while there's somewhere to go back to), Escape,
@@ -24,7 +28,7 @@
 // reports each one's Environment.
 
 import { Kind, KindProp as P, Event, Events, Command, Reader, TitleBar, environment as newEnv } from "./ops.js";
-import { Flag } from "./window.js";
+import { Flag, place, center, trayAnchor, focusIn, transient } from "./window.js";
 import { own } from "./views.js";
 import { decodeActions } from "./host.js";
 import { symbolSVG } from "./media.js";
@@ -59,6 +63,7 @@ export class Navigation {
     this.words = {};
     addEventListener("popstate", () => this.popstate());
     addEventListener("keydown", (e) => this.key(e));
+    addEventListener("pointerdown", (e) => this.pressOutside(e), true);
     this.edgeSwipe();
   }
 
@@ -332,10 +337,14 @@ export class Navigation {
     let w, h;
     if (n.kind === Kind.Window) {
       const wn = n.win;
-      if (wn.maximized) { wn.x = 0; wn.y = 0; wn.w = c.width; wn.h = c.height; }
+      if (wn.flyout) this.placeFlyout(n, c);
+      else if (wn.maximized) { wn.x = 0; wn.y = 0; wn.w = c.width; wn.h = c.height; }
       w = wn.w; h = wn.minimized ? Math.max(wn.bar, 36) : wn.h;
       d.style.left = wn.x + "px";
       d.style.top = wn.y + "px";
+      const z = String(20 + this.windowLayer(n));
+      d.style.zIndex = z;
+      if (n.backdrop) n.backdrop.style.zIndex = z;
       d.classList.toggle("asuka-window-top", !!wn.onTop);
       d.classList.toggle("asuka-window-minimized", !!wn.minimized);
       d.classList.toggle("asuka-window-maximized", !!wn.maximized);
@@ -530,29 +539,38 @@ export class Navigation {
     if (n.shown) return;
     const c = this.h.container.getBoundingClientRect();
     const cfg = n.win.cfg || decodeWindowConfig(new Uint8Array(0));
-    const hiddenBar = cfg.titleBar === TitleBar.Hidden;
-    const barH = 36, bar = hiddenBar ? 0 : barH;
-    const w = Math.min(n.win.width || 480, c.width - 16), h = Math.min((n.win.height || 600) + bar, c.height - 16);
-    const open = this.dialogs.filter((x) => x.kind === Kind.Window).length;
-    let x = Math.max(8, (c.width - w) / 2 + open * 24), y = Math.max(8, (c.height - h) / 2 + open * 24);
-    if (cfg.flags & Flag.Centered) { x = Math.max(0, (c.width - w) / 2); y = Math.max(0, (c.height - h) / 2); }
-    if (cfg.flags & Flag.Positioned) { x = cfg.x; y = cfg.y; }
-    n.win = { ...n.win, w, h, x, y, bar, safeTop: hiddenBar ? barH : 0, maxWidth: cfg.maxWidth, maxHeight: cfg.maxHeight,
-      hidden: false, minimized: false, maximized: false, onTop: !!(cfg.flags & Flag.AlwaysOnTop) };
+    n.win.cfg = cfg;
+    // A flyout and a panel are frameless: no title bar, not moved.
+    const flyout = !!(cfg.flags & Flag.Flyout), frameless = flyout || !!(cfg.flags & Flag.Panel);
+    const hiddenBar = !frameless && cfg.titleBar === TitleBar.Hidden;
+    const barH = 36, bar = hiddenBar || frameless ? 0 : barH;
+    const w = Math.min(n.win.width || (flyout ? 320 : 480), c.width - 16), h = Math.min((n.win.height || (flyout ? 400 : 600)) + bar, c.height - 16);
+    n.win = { ...n.win, w, h, x: 0, y: 0, bar, safeTop: hiddenBar ? barH : 0, maxWidth: cfg.maxWidth, maxHeight: cfg.maxHeight,
+      hidden: false, minimized: false, maximized: false, onTop: !!(cfg.flags & Flag.AlwaysOnTop),
+      cascade: this.dialogs.filter((x) => x.kind === Kind.Window && !transient(x)).length,
+      flyout: flyout ? n.win.flyout || decodeFlyout(new Uint8Array(0)) : null, want: flyout ? { w: n.win.width || 320, h: n.win.height || 400 } : null,
+      autoPlaced: false, fitted: false, clickThrough: !!(cfg.flags & Flag.ClickThrough) };
     const d = div("asuka-window");
     d.setAttribute("role", "dialog");
     d.tabIndex = -1;
-    const title = div("asuka-window-bar");
-    title.classList.toggle("asuka-window-bar-hidden", hiddenBar);
-    const name = div("asuka-window-title");
-    name.textContent = n.title || "";
-    title.append(name);
-    if (!(cfg.flags & Flag.NoClose)) {
-      const close = iconButton("xmark", "Close", false);
-      close.addEventListener("click", () => this.h.windows.userClose(n));
-      title.append(close);
-    }
-    d.append(title, n.el);
+    d.classList.toggle("asuka-flyout", flyout);
+    d.classList.toggle("asuka-window-panel", frameless && !flyout);
+    d.classList.toggle("asuka-window-click-through", n.win.clickThrough);
+    let title = null, name = null;
+    if (!frameless) {
+      title = div("asuka-window-bar");
+      title.classList.toggle("asuka-window-bar-hidden", hiddenBar);
+      name = div("asuka-window-title");
+      name.textContent = n.title || "";
+      title.append(name);
+      if (!(cfg.flags & Flag.NoClose)) {
+        const close = iconButton("xmark", "Close", false);
+        close.addEventListener("click", () => this.h.windows.userClose(n));
+        title.append(close);
+      }
+      d.append(title);
+    } else if (n.title) d.setAttribute("aria-label", n.title);
+    d.append(n.el);
     const bg = this.h.windows.background(n);
     if (bg) d.style.background = bg;
     if (cfg.flags & Flag.Modal) {
@@ -560,7 +578,7 @@ export class Navigation {
       n.backdrop = div("asuka-window-backdrop");
       this.h.container.appendChild(n.backdrop);
     }
-    const resizable = !(cfg.flags & Flag.FixedSize);
+    const resizable = !(cfg.flags & Flag.FixedSize) && !flyout;
     if (resizable) {
       const grip = div("asuka-window-grip");
       d.appendChild(grip);
@@ -577,13 +595,15 @@ export class Navigation {
     n.winTitle = name;
     n.shown = true;
     this.dialogs.push(n);
-    this.drag(title, (dx, dy) => {
-      const wn = n.win;
-      if (wn.maximized) return;
-      wn.x += dx; wn.y += dy;
-      this.sizeDialog(n);
-    }, () => this.h.windows.save(n));
-    if (resizable && !(cfg.flags & Flag.NoMaximize)) {
+    if (title) {
+      this.drag(title, (dx, dy) => {
+        const wn = n.win;
+        if (wn.maximized) return;
+        wn.x += dx; wn.y += dy;
+        this.sizeDialog(n);
+      }, () => this.h.windows.save(n));
+    }
+    if (title && resizable && !(cfg.flags & Flag.NoMaximize)) {
       title.addEventListener("dblclick", (e) => {
         if (e.target.closest("button")) return;
         this.h.windows.maximize(n, !n.win.maximized);
@@ -595,19 +615,90 @@ export class Navigation {
     d.addEventListener("pointerdown", () => this.raiseWindow(n));
     d.addEventListener("focusin", () => this.h.windows.report(n));
     d.addEventListener("focusout", () => queueMicrotask(() => this.h.windows.report(n)));
-    if (!this.h.windows.restore(n) && cfg.flags & Flag.Maximized) this.h.windows.maximize(n, true);
+    const restored = !flyout && this.h.windows.restore(n);
+    if (!restored) {
+      // Placed where it opens; a window sized to its content again at
+      // its first size, which comes before the page draws it.
+      n.win.autoPlaced = !flyout && !(cfg.flags & Flag.Positioned);
+      this.placeNew(n);
+      if (cfg.flags & Flag.Maximized && !frameless) this.h.windows.maximize(n, true);
+    }
     if (cfg.flags & Flag.Hidden) this.h.windows.setHidden(n, true);
     else this.raiseWindow(n);
     this.sizeDialog(n);
     this.updateGuard();
+    // A flyout or a panel takes the keyboard as it shows, once its content is in.
+    if (frameless && !n.win.hidden) this.h.afterCore(() => { if (n.dialog === d && !n.win.hidden) focusIn(d); });
   }
 
-  /** raiseWindow brings a Window's panel to the front: under those always on top, unless it is. */
+  /**
+   * placeNew places a Window's panel where one opens: where its options
+   * say, centered a third of the way down for a panel, else centered,
+   * each one opened after another a little lower and to the right.
+   */
+  placeNew(n) {
+    const wn = n.win, f = wn.cfg?.flags || 0;
+    if (wn.flyout) return;
+    if (f & Flag.Positioned) { wn.x = wn.cfg.x; wn.y = wn.cfg.y; return; }
+    const c = this.h.container.getBoundingClientRect();
+    const w = wn.w, h = wn.h;
+    if (f & Flag.Panel) {
+      ({ x: wn.x, y: wn.y } = center(w, h, { x: 0, y: 0, w: c.width, h: c.height }));
+    } else if (f & Flag.Centered) {
+      wn.x = Math.max(0, (c.width - w) / 2); wn.y = Math.max(0, (c.height - h) / 2);
+    } else {
+      wn.x = Math.max(8, (c.width - w) / 2 + wn.cascade * 24); wn.y = Math.max(8, (c.height - h) / 2 + wn.cascade * 24);
+    }
+  }
+
+  /**
+   * placeFlyout places a flyout against its anchor, within the app's
+   * area: a rectangle of its parent's content (a Window's, the root's),
+   * or the top right corner for a tray icon.
+   */
+  placeFlyout(n, c) {
+    const wn = n.win, f = wn.flyout;
+    const work = { x: 8, y: 8, w: Math.max(0, c.width - 16), h: Math.max(0, c.height - 16) };
+    let anchor;
+    if (f.tray) anchor = trayAnchor(c.width);
+    else {
+      const p = this.h.nodes.get(wn.cfg?.parent) || this.h.root;
+      const r = p?.el?.getBoundingClientRect() || c;
+      anchor = { x: r.left - c.left + f.x, y: r.top - c.top + f.y, w: f.width, h: f.height };
+    }
+    const r = place(anchor, wn.want.w, wn.want.h, f.placement, f.gap, work);
+    wn.x = r.x; wn.y = r.y; wn.w = r.w; wn.h = r.h;
+  }
+
+  /**
+   * windowLayer is how high a Window's panel goes: a flyout's and a
+   * panel's over those always on top, over the others; one belonging to
+   * another (a child, a modal one, a flyout) at least as high as it.
+   */
+  windowLayer(n) {
+    let l = 0;
+    for (let x = n, i = 0; x && x.kind === Kind.Window && x.win && i < 64; x = this.h.nodes.get(x.win.cfg?.parent), i++) {
+      l = Math.max(l, transient(x) ? 2 : x.win.onTop ? 1 : 0);
+    }
+    return l;
+  }
+
+  /** belongsTo reports whether Window x is n's, or one of its own's (its Config's Parent). */
+  belongsTo(x, n) {
+    for (let p = this.h.nodes.get(x.win?.cfg?.parent), i = 0; p && i < 64; p = this.h.nodes.get(p.win?.cfg?.parent), i++) {
+      if (p === n) return true;
+      if (p.kind !== Kind.Window) return false;
+    }
+    return false;
+  }
+
+  /** raiseWindow brings a Window's panel to the front: under those higher (windowLayer) and its own. */
   raiseWindow(n) {
     const c = this.h.container;
     const tail = [n.backdrop, n.dialog];
+    const l = this.windowLayer(n);
     for (const x of this.dialogs) {
-      if (x !== n && x.kind === Kind.Window && x.win.onTop) tail.push(x.dialog);
+      if (x !== n && x.kind === Kind.Window && x.dialog && (this.windowLayer(x) > l || this.belongsTo(x, n))) tail.push(x.backdrop, x.dialog);
     }
     const els = tail.filter(Boolean);
     // Moved only if they aren't where they go already: a press whose
@@ -720,6 +811,7 @@ export class Navigation {
       if (top.kind === Kind.Split) this.closeDrawer(top);
       else if (top.kind === Kind.Alert) top.dialog?.dispatchEvent(new window.Event("cancel"));
       else if (top.kind === Kind.Popover) top.dialog?.hidePopover();
+      else if (top.kind === Kind.Window && transient(top)) this.h.windows.userClose(top);
       else this.dismiss(top);
       return true;
     }
@@ -736,6 +828,50 @@ export class Navigation {
     history.back();
   }
 
+  /**
+   * transientFor is the flyout or panel an Escape typed at t goes to: the
+   * one t is in, or with the keyboard in none of the windows, the newest
+   * window if it's one.
+   */
+  transientFor(t) {
+    const el = t?.nodeType === 1 ? t : null;
+    for (let i = this.dialogs.length - 1; i >= 0; i--) {
+      const x = this.dialogs[i];
+      if (x.kind !== Kind.Window || !x.dialog || x.win.hidden) continue;
+      if (el && x.dialog.contains(el)) return transient(x) ? x : null;
+    }
+    if (el?.closest(".asuka-window")) return null;
+    const top = this.dialogs[this.dialogs.length - 1];
+    return top?.kind === Kind.Window && top.dialog && !top.win.hidden && transient(top) ? top : null;
+  }
+
+  /**
+   * pressOutside closes, as the user closes them, the flyouts and panels
+   * a press lands outside of: not in one of its own flyouts or modal
+   * windows, nor over everything (a sheet, an alert, a popover, a menu).
+   */
+  pressOutside(e) {
+    const el = e.target?.nodeType === 1 ? e.target : null;
+    if (el?.closest("dialog, [popover]")) return;
+    for (let i = this.dialogs.length - 1; i >= 0; i--) {
+      const n = this.dialogs[i];
+      if (n.kind !== Kind.Window || !n.shown || !n.dialog || n.win.hidden || !transient(n)) continue;
+      if (el && this.within(n, el)) continue;
+      this.h.windows.userClose(n);
+    }
+  }
+
+  /** within reports whether el is in Window n's panel, or a modal window or a flyout of its own over it. */
+  within(n, el) {
+    if (n.dialog.contains(el)) return true;
+    for (const x of this.dialogs) {
+      if (x === n || x.kind !== Kind.Window || !x.dialog || x.win.hidden) continue;
+      if (!(x.win.cfg?.flags & (Flag.Modal | Flag.Flyout)) || !this.belongsTo(x, n)) continue;
+      if (x.dialog.contains(el) || x.backdrop?.contains(el)) return true;
+    }
+    return false;
+  }
+
   key(e) {
     if (e.defaultPrevented) return;
     // An app in an element of a page (not the whole page) takes the keys typed in it.
@@ -743,6 +879,17 @@ export class Navigation {
     const mac = /Mac|iPhone|iPad/.test(navigator.platform);
     const backKey = (e.altKey && e.key === "ArrowLeft" && !mac) || (e.metaKey && e.key === "[" && mac) || e.key === "BrowserBack";
     const escape = e.key === "Escape" && !this.dialogs.some((d) => d.dialog?.tagName === "DIALOG" || d.kind === Kind.Popover);
+    // A flyout or a panel with the keyboard closes as the user closes it,
+    // from a text field in it too (a launcher's), unless a stack in it
+    // goes back.
+    const f = escape ? this.transientFor(e.target) : null;
+    if (f) {
+      e.preventDefault();
+      const stack = this.dialogs[this.dialogs.length - 1] === f ? this.innermostStack() : null;
+      if (stack) this.goBack(stack);
+      else this.h.windows.userClose(f);
+      return;
+    }
     if (escape && e.target.closest?.("input, textarea")) { e.target.blur(); return; }
     if (backKey || escape) {
       if (this.back()) e.preventDefault();
@@ -1146,6 +1293,23 @@ export function decodeWindowConfig(b) {
   return c;
 }
 
+/**
+ * decodeFlyout reads what a flyout hangs from (ops.Flyout): the Window
+ * kind's Flyout prop, u32 tray icon (0: none), f32 x, y, width, height (a
+ * rectangle of its parent's content), u8 Placement, f32 gap. Args cut
+ * short read as a point at the parent's top left, below it.
+ */
+export function decodeFlyout(b) {
+  const f = { tray: 0, x: 0, y: 0, width: 0, height: 0, placement: 0, gap: 0 };
+  if (b.length < 25) return f;
+  const r = new Reader(b);
+  f.tray = r.u32();
+  f.x = r.f32(); f.y = r.f32(); f.width = r.f32(); f.height = r.f32();
+  f.placement = r.u8();
+  f.gap = r.f32();
+  return f;
+}
+
 const windowKind = {
   create(h, n) {
     own(n, div("asuka-window-content"));
@@ -1154,7 +1318,18 @@ const windowKind = {
   },
   prop(h, n, p, v) {
     switch (p) {
-      case P.Window.Title: n.title = v; if (n.winTitle) n.winTitle.textContent = v; break;
+      case P.Window.Title:
+        n.title = v;
+        if (n.winTitle) n.winTitle.textContent = v;
+        else if (n.dialog) n.dialog.setAttribute("aria-label", v);
+        break;
+      case P.Window.Flyout:
+        // Placed again against its new anchor (a shown window that isn't
+        // a flyout doesn't become one).
+        if (n.shown && !n.win.want) break;
+        n.win.flyout = decodeFlyout(v);
+        if (n.shown) h.nav.sizeDialog(n);
+        break;
       case P.Window.Config: {
         const c = decodeWindowConfig(v);
         n.win.cfg = c;
