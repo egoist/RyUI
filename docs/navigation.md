@@ -594,6 +594,7 @@ take the same options for how a window opens:
 | `Maximized`, `Fullscreen` | opens it so |
 | `StateKey` | where its place is kept, see [below](#where-windows-were) |
 | `Child`, `Modal` | a `Window`'s: see [below](#child-and-modal-windows) |
+| `MenuBar`, `Edited`, `File` | a `Window`'s that shows a document: the app's menu bar in it (Windows, Linux), the dot in a Mac's close button or a `*` before the title, the file's icon in a Mac's title bar; [`asuka/document`](desktop.md#documents) sets them |
 
 With a hidden title bar the content goes to the top edge, under the
 window's buttons (a Mac's traffic lights, Windows' caption buttons, the
