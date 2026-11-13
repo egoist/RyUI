@@ -243,6 +243,12 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) bool {
 			h.updateTitle(w)
 		case ops.PropWindowConfig:
 			h.configure(w, ops.DecodeWindowConfig(v.Bytes))
+		case ops.PropWindowEdited:
+			w.edited = v.Int != 0
+			h.updateTitle(w)
+		case ops.PropWindowFile:
+			w.file = v.Str
+			h.updateTitle(w)
 		}
 	default:
 		return false

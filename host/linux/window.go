@@ -31,6 +31,9 @@ type win struct {
 	node     *node // the Window node (nil for the main window)
 
 	name       string  // its title (the app's name for the main window, unless set)
+	edited     bool    // its document has unsaved changes: a * before the title
+	file       string  // its document's file: its folder is the subtitle
+	subtitled  bool    // its title has a subtitle (its file's folder)
 	envW, envH float32 // as last reported
 	chrome     chrome  // what its header bar shows (nav.go)
 	closing    bool
@@ -398,16 +401,43 @@ func (h *Host) setWindowOptions(args []byte) {
 
 func (h *Host) updateTitle(w *win) {
 	t := w.name
+	if w.edited {
+		t = "*" + t // as gedit and GNOME Text Editor mark it
+	}
 	if c := w.chrome.title; c != "" {
 		AdwWindowTitleSetTitle(w.title, c)
 	} else {
 		AdwWindowTitleSetTitle(w.title, t)
+	}
+	if w.file != "" || w.subtitled {
+		// A document's folder under its name, as GNOME Text Editor shows
+		// it, the home folder as ~.
+		Dev.AdwWindowTitleSetSubtitle(w.title, folderLabel(w.file))
+		w.subtitled = w.file != ""
 	}
 	if w.chrome.title != "" && w.node == nil {
 		WindowSetTitle(w.window, w.chrome.title)
 	} else {
 		WindowSetTitle(w.window, t)
 	}
+}
+
+// folderLabel is the folder of the file at path as a title bar shows it:
+// the home folder as ~.
+func folderLabel(path string) string {
+	if path == "" {
+		return ""
+	}
+	dir := filepath.Dir(path)
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		if dir == home {
+			return "~"
+		}
+		if rel, err := filepath.Rel(home, dir); err == nil && !strings.HasPrefix(rel, "..") {
+			return "~/" + rel
+		}
+	}
+	return dir
 }
 
 // detachFromContainer takes w out of a container of GTK's.
