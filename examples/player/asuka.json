@@ -1,0 +1,8 @@
+{
+  "name": "Player",
+  "id": "dev.asuka.player",
+  "version": "1.0.0",
+  "build": 1,
+  "icon": "icon.png",
+  "accent": "#8E44AD"
+}

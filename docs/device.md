@@ -2,7 +2,7 @@
 
 Asuka's packages reach what the device has beyond views: the camera, codes,
 what's in an image, photos and files, previewing, printing and PDFs, the
-mail and message composers, location, notifications and push, sound and recording,
+mail and message composers, location, notifications and push, sound, Now Playing and recording,
 the network's state, the shared library, work in the background, shares
 from other apps, JavaScript, sign-in and biometrics, the screen, maps,
 the stores' services, and crash reports.
@@ -45,6 +45,7 @@ web need nothing declared (see each one's section below).
 | `asuka/appleauth` | | the Sign in with Apple entitlement |
 | `asuka/biometric` | `USE_BIOMETRIC` | `NSFaceIDUsageDescription` |
 | `asuka/audio/record` | `RECORD_AUDIO`, `FOREGROUND_SERVICE_MICROPHONE`; a foreground service | `NSMicrophoneUsageDescription` |
+| `asuka/nowplaying` | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`; a foreground service | the `audio` background mode (for an app that calls `nowplaying.Show`) |
 | `asuka/transcribe` | `RECORD_AUDIO` | `NSSpeechRecognitionUsageDescription` |
 | `asuka/screen` | `DETECT_SCREEN_CAPTURE` | |
 | `asuka/tracking` | | `NSUserTrackingUsageDescription` |
@@ -115,6 +116,7 @@ UserNotifications, AuthenticationServices), except where a Mac differs:
 | `asuka/device` | `PickPhotos` and `PickFiles`: an open panel, a sheet on the window (no permission), copies in the app's caches. `Browse` opens the page in the user's browser. `GetInfo`: `Model` `"Mac"`, `System` `"macOS"` |
 | `asuka/camera` | `Take`: a sheet over the window with a live preview, Take Photo and Cancel (AppKit has no camera screen). `View`'s "back" is the built-in camera (a Mac has no back one), or the one plugged in; scanning codes in it needs macOS 13 |
 | `asuka/audio/record` | No audio session: other apps' sound plays on; `Background` changes nothing, a Mac app records out of sight anyway |
+| `asuka/nowplaying` | `MPNowPlayingInfoCenter` and `MPRemoteCommandCenter`, as on iOS: Control Center's and the menu bar's Now Playing, the keyboard's media keys, AirPods. A Mac needs no audio session or background mode |
 | `asuka/contacts`, `asuka/calendar` | `Add` asks in an alert over the window (macOS has no new contact or event screen), then saves, asking for access first |
 | `asuka/photos` | PhotoKit, as on iOS; a Mac has no limited library: `ManageLimited` does nothing |
 | `asuka/library` | Photos and videos go to Photos; `Downloads` and `Music` to the user's `~/Downloads` and `~/Music`, in the folder asked |
@@ -154,6 +156,7 @@ device without it:
 | `asuka/camera/record` | H.264 and AAC in MPEG-4 (`.mp4`), the default microphone unless muted |
 | `asuka/audio` | MCI (DirectShow's playback); a URL is downloaded to the app's caches first |
 | `asuka/audio/record` | The default microphone, AAC at 44.1 kHz (voice mono, music stereo); `Background` changes nothing |
+| `asuka/nowplaying` | The app window's SystemMediaTransportControls (a hidden window of its own for an app without one): the volume flyout on Windows 10, quick settings' media controls on Windows 11, the lock screen, the keyboard's media keys. The skips are its fast-forward and rewind buttons; it has no toggle (the play/pause key sends play or pause) |
 | `asuka/speech` | SAPI's voices, those installed (Settings, Time & language, Speech) |
 | `asuka/network` | The Network List Manager: Wi-Fi, cellular or a cable; `Metered` for a connection with a cost, `Constrained` near or over its data limit |
 | `asuka/location` | WinRT's Geolocator. `PlaceName` asks OpenStreetMap's Nominatim (Windows's own geocoder needs a Bing Maps key): one request a second at most, answers kept in the app's caches |
@@ -206,6 +209,7 @@ names what's missing.
 | `asuka/location` | The location portal (GeoClue's, which asks the user), else GeoClue itself; `PlaceName` with geocode-glib, when it's installed |
 | `asuka/speech` | Speech Dispatcher (started when it isn't running): its voices, rate, pitch, volume |
 | `asuka/audio`, `asuka/audio/record` | GStreamer: an AAC encoder (FDK, libav's...) records, the default source the microphone |
+| `asuka/nowplaying` | An MPRIS player on the session bus, named `org.mpris.MediaPlayer2.<app>.instance<pid>` while something shows: GNOME's and KDE's media controls and lock screens, the media keys, `playerctl`. MPRIS's `Seek` is a skip where the app skips, else a seek; the artwork is a `file://` or http(s) URL |
 | `asuka/library` | The user's folders (XDG's Pictures, Videos, Music, Downloads), in the folder asked |
 | `ui.ShareFiles` | No share sheet: the files are copied to the clipboard, with a toast |
 | `asuka/camera`, `asuka/camera/record` | The camera portal (it asks the user once; PipeWire's cameras, `gstreamer1.0-pipewire`), else the first Video4Linux camera, through GStreamer. `Take`: a dialog over the window with a live preview, Take Photo and Cancel. `View`: the preview, mirrored, filling its box; front and back are the same camera (a computer's face the user). Videos are MPEG-4 (H.264 from x264 or OpenH264, AAC), else WebM; scanning codes needs GStreamer's `zbar` element. No camera: `ErrNoCamera`; refused: "not allowed" |
@@ -247,6 +251,7 @@ and its service worker for notifications and Web Push.
 | `asuka/network` | Online from `navigator.onLine`; Wi-Fi, cellular or Ethernet where the browser says (Chrome on Android), metered for cellular, constrained for Data Saver |
 | `asuka/notify`, `asuka/push` | The Notification API and Web Push, through the app's service worker (`push.Register`'s `Service` is `"webpush"`); a notification due later can't show while no page of the app is open |
 | `asuka/audio`, `asuka/audio/record` | An audio element per player (the browser's autoplay rules apply: play from a tap); `MediaRecorder`, AAC in MPEG-4 where the browser records it, else Opus in WebM |
+| `asuka/nowplaying` | The Media Session API (`navigator.mediaSession`): the browser's media controls, the media keys, a phone's lock screen, shown while the page plays sound. It has no toggle (the key sends play or pause), and a browser without an action (stop, in some) leaves it out |
 | `asuka/speech` | `speechSynthesis`, the browser's voices |
 | `asuka/sensors` | The Generic Sensor API (Chrome) or device motion and orientation events (Safari asks on a tap), in Android's axes and units; no barometer or pedometer |
 | `asuka/biometric` | The platform's authenticator through WebAuthn (Touch ID, Face ID, Windows Hello, Android's screen lock): the first `Authenticate` makes a passkey for the site. The prompt is the browser's: `Reason` and `Cancel` don't show |
@@ -1198,6 +1203,86 @@ what it holds. Release a player when it's no longer needed.
 
 The sound plays with iOS's silent switch on, as a music or game app's
 does, and doesn't mix with other apps' audio.
+
+### Now Playing and the media keys: asuka/nowplaying
+
+`asuka/nowplaying` shows what the app plays where the system shows media,
+and sends the app the commands of its controls: the lock screen, Control
+Center, the Dynamic Island and CarPlay on iOS; the notification shade,
+the lock screen, Android Auto and Wear OS on Android; Control Center and
+the menu bar on a Mac; the media flyout on Windows; GNOME's and KDE's
+media controls on Linux; the browser's. The media keys of keyboards and
+headsets send the same commands. `Show` is called in a component, follows
+its accessors, and goes when the component's owner is disposed:
+
+```go
+func Episode(ep *Episode) ui.Node {
+	state := signal.New(nowplaying.Paused)
+	position := signal.New(0.0) // seconds: set when playback jumps
+	nowplaying.Show(nowplaying.Props{
+		Title:          ui.Val(ep.Title),
+		Artist:         ui.Val(ep.Show),
+		Artwork:        ui.Val(ep.Cover), // an asset, a file or an http(s) URL
+		Duration:       ui.Val(ep.Seconds),
+		State:          state,
+		Position:       position,
+		OnPlay:         func() { player.Play(); state.Set(nowplaying.Playing) },
+		OnPause:        func() { player.Pause(); state.Set(nowplaying.Paused) },
+		OnSeek:         func(at float64) { player.Seek(at); position.Set(at) },
+		OnSkipForward:  func(s float64) { skip(s) },
+		OnSkipBackward: func(s float64) { skip(-s) },
+		SkipInterval:   30,
+	})
+	// ...
+}
+```
+
+What shows: `Title`, `Artist`, `Album`, `Artwork` (a square image of 512
+pixels or more looks sharp everywhere), `Duration` (0 for a live stream,
+which can't be sought), `State` (`Playing`, `Paused` or `Stopped`),
+`Position` and `Rate`. The system advances the position by itself while
+playing, at the rate: the package sends `Position` again only when
+playback jumps (a seek, a stall) or the state or rate changes, so it may
+follow a player's status read a few times a second at no cost.
+
+A command is enabled by its handler; the others are greyed out or left
+out. `OnPlay`, `OnPause` and `OnTogglePlayPause` stand in for each other
+(a headset's one button toggles; a lock screen shows play or pause), so
+any of them enables all three. `OnSeek` needs a known `Duration`.
+`OnSkipForward` and `OnSkipBackward` skip by `SkipInterval` (15 seconds
+by default); iOS and the Mac show them in place of next and previous,
+Android in their slots when there's no `OnNext` or `OnPrevious`.
+
+For a player of `asuka/audio`, `Player` does the rest: the state,
+position and duration come from it (its status, read once a second; a
+command run on it shows at once), and play, pause, stop, seek and (with
+a `SkipInterval`) the skips run on it unless their handlers are set:
+
+```go
+music := audio.Load("music/spring.mp3")
+signal.OnCleanup(music.Release)
+nowplaying.Show(nowplaying.Props{
+	Title:   ui.Val("Spring"),
+	Artist:  ui.Val("Vivaldi"),
+	Artwork: ui.Val("covers/spring.jpg"),
+	Player:  music,
+	OnNext:  playNext,
+})
+```
+
+Several may be mounted: the last shows, and when it goes, the one before.
+One replaced by another in the same update (a track's component giving
+way to the next one's) keeps the system's controls the app's in between.
+
+On iOS the app is given the `audio` background mode, so it plays on with
+the screen locked, and its audio session is the playback category: iOS
+shows the app whose audio session plays. On Android it's a MediaSession
+with its media-style notification (a media session's needs no
+notification permission); while it plays, a foreground service of the
+media playback type keeps the app running out of sight, as Android 14
+asks; paused, the notification stays and can be swiped away. Both are
+added by `asuka build` only for the apps that use the package.
+`examples/player` plays an album with it.
 
 ## Network state: asuka/network
 

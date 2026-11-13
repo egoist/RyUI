@@ -188,6 +188,7 @@ private fun AsukaRuntime.registerBuiltinModules() {
     modules["background"] = AsukaBackground(this).methods()
     modules["notify"] = notifyMethods()
     modules["audio"] = audioMethods()
+    modules["nowPlaying"] = AsukaNowPlaying(this).methods()
     modules["camera"] = cameraMethods()
     modules["scan"] = scanMethods()
     modules["vision"] = visionMethods()

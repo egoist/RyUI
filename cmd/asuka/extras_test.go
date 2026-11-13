@@ -51,6 +51,39 @@ func TestPackageExtras(t *testing.T) {
 	}
 }
 
+// Now Playing: on iOS, the audio background mode for an app that calls
+// nowplaying.Show; on Android, the media playback foreground service and
+// its permissions for one that imports it, and nothing for one that
+// doesn't.
+func TestNowPlayingExtras(t *testing.T) {
+	var c appConfig
+	c.addFeatureExtras([]string{"ASUKA_NOWPLAYING"})
+	if m := c.plistArrays["UIBackgroundModes"]; !slices.Equal(m, []string{"audio"}) {
+		t.Errorf("background modes: %v", m)
+	}
+	found := false
+	for _, f := range iosFeatures {
+		found = found || f.flag == "ASUKA_NOWPLAYING" && f.symbol == "github.com/egoist/asuka/nowplaying.Show"
+	}
+	if !found {
+		t.Error("nowplaying.Show's symbol isn't a feature's")
+	}
+	var a appConfig
+	a.permissionsFor([]string{"github.com/egoist/asuka/nowplaying"})
+	man := a.androidManifest(false)
+	for _, want := range []string{"android.permission.FOREGROUND_SERVICE\"", "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+		`<service android:name="dev.asuka.AsukaMediaService" android:exported="false" android:foregroundServiceType="mediaPlayback" />`} {
+		if !strings.Contains(man, want) {
+			t.Errorf("no %s in the manifest:\n%s", want, man)
+		}
+	}
+	var none appConfig
+	none.permissionsFor([]string{"github.com/egoist/asuka/audio"})
+	if man := none.androidManifest(false); strings.Contains(man, "AsukaMediaService") || strings.Contains(man, "MEDIA_PLAYBACK") {
+		t.Errorf("audio alone:\n%s", man)
+	}
+}
+
 // asuka.json's splash: checked and defaulted; the launch screen and the
 // Android theme and images that show it.
 func TestSplash(t *testing.T) {

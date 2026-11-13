@@ -255,6 +255,7 @@ var iosFeatures = []struct{ flag, symbol string }{
 	// The Notification Service Extension's principal class.
 	{"ASUKA_NOTIFICATION_SERVICE", rewriteSymbol},
 	{"ASUKA_AUDIO", "github.com/egoist/asuka/audio.Load"},
+	{"ASUKA_NOWPLAYING", "github.com/egoist/asuka/nowplaying.Show"},
 	{"ASUKA_CAMERAVIEW", "github.com/egoist/asuka/camera.View"},
 	{"ASUKA_SCAN", "github.com/egoist/asuka/scan.File"},
 	{"ASUKA_VISION", "github.com/egoist/asuka/vision.Analyze"},
@@ -333,6 +334,11 @@ var featureExtras = map[string]struct {
 	"ASUKA_CONVERSATIONS": {
 		entitlements: map[string]any{"com.apple.developer.usernotifications.communication": true},
 		plistArrays:  map[string][]string{"NSUserActivityTypes": {"INSendMessageIntent"}},
+	},
+	// Now Playing: playing on with the screen locked and the app away,
+	// which the lock screen's controls need.
+	"ASUKA_NOWPLAYING": {
+		plistArrays: map[string][]string{"UIBackgroundModes": {"audio"}},
 	},
 }
 

@@ -3,6 +3,7 @@
 package windows
 
 import (
+	"math"
 	"syscall"
 	"unsafe"
 )
@@ -22,4 +23,10 @@ func fcall(p *syscall.LazyProc, floats uint32, args ...uintptr) uintptr {
 // reference on x64.
 func ComCallRect(obj uintptr, i int, r Rect) uintptr {
 	return ComCall(obj, i, uintptr(unsafe.Pointer(&r)))
+}
+
+// ComCallDouble calls a COM method that takes a double: in the XMM
+// register of its position, which Go's calls fill from the integer one.
+func ComCallDouble(obj uintptr, i int, v float64) uintptr {
+	return ComCall(obj, i, uintptr(math.Float64bits(v)))
 }

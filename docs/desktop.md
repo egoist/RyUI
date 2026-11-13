@@ -4,9 +4,10 @@ What only a desktop has, beyond windows and the menu bar
 ([Navigation](navigation.md#windows)): tray icons and the Dock menu,
 apps that live in the background, global shortcuts, file dialogs and
 the file manager, files the app opens, one instance, quitting, recent
-documents, starting at login, the displays, power, progress on the
-app's icon and the system's appearance. To follow changes to files and
-folders (a folder the app shows, a document another app saves), see
+documents, starting at login, Now Playing and the media keys, the
+displays, power, progress on the app's icon and the system's
+appearance. To follow changes to files and folders (a folder the app
+shows, a document another app saves), see
 [Watching files](data.md#watching-files-asukawatch), which phones and
 the web have too.
 
@@ -198,6 +199,29 @@ app only; `login.ErrNeedsApproval` until the user allows it in System
 Settings), a Run entry on Windows, and an autostart entry on Linux (the
 Background portal in a Flatpak). `login.OpenedAtLogin` tells a launch at
 login apart, so the app can start out of sight.
+
+## Now Playing and the media keys
+
+`nowplaying.Show` puts what the app plays in the system's media
+controls, and their buttons and the keyboard's media keys (play/pause,
+next, previous) reach its handlers: Control Center's and the menu bar's
+Now Playing on the Mac, the media controls of the volume flyout and
+quick settings on Windows (the app window's
+SystemMediaTransportControls), an MPRIS player on Linux, which GNOME's
+and KDE's controls and `playerctl` drive. It's the same package as on
+phones, where it's the lock screen's controls
+([Device and services](device.md#now-playing-and-the-media-keys-asukanowplaying)):
+
+```go
+music := audio.Load("music/spring.mp3")
+signal.OnCleanup(music.Release)
+nowplaying.Show(nowplaying.Props{
+	Title:  ui.Val("Spring"),
+	Artist: ui.Val("Vivaldi"),
+	Player: music, // its state and position; play, pause, seek on it
+	OnNext: playNext,
+})
+```
 
 ## Displays, power and the app's icon
 

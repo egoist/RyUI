@@ -23,13 +23,15 @@ var (
 // Packages wrap the built-in modules (asuka/secure); an app's own modules
 // take whatever bytes it gives them, JSON for instance.
 func Call(module, method string, args []byte, done func(result []byte, err error)) {
-	r := activeRoot()
-	if r == nil {
+	if cur == nil && len(roots) == 0 {
+		// Before Mount, or after the last root went (a package's
+		// cleanup that's put off).
 		if done != nil {
-			done(nil, errors.New("ui: Call before Mount"))
+			done(nil, errors.New("ui: Call without a mounted root"))
 		}
 		return
 	}
+	r := activeRoot()
 	nextCall++
 	id := nextCall
 	if done != nil {

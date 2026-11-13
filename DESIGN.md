@@ -3028,6 +3028,65 @@ too. MyGo's `WatchFiles`, ported.
   its entries have inode numbers of their own, kept as they're renamed.
   Under Node (`go test`), Node's `fs.watch`.
 
+**Now Playing and the media keys** (`nowplaying`), on every platform
+(phones first): what the app plays in the system's media controls, and
+their commands back.
+
+- `nowplaying.Show(Props)` in a component: accessors for the title,
+  artist, album, artwork (a source, as `Image`'s), duration, state
+  (`Paused`, `Playing`, `Stopped`), position and rate, read in one render
+  effect; handlers for play, pause, toggle, stop, next, previous, seek
+  (to a position) and the skips (by `SkipInterval`, 15 s). A handler
+  enables its command; play, pause and toggle stand in for each other;
+  seek needs a duration. Several mounted: the last shows (a stack). The
+  last one disposed clears the controls once the flush is over (a posted
+  check), so a component replaced by another (a track's, in a `Dynamic`)
+  doesn't drop the app out of them in between.
+- The position is published with the state and the rate, and the host
+  takes its time on receipt, so the system advances it; the package
+  sends it again only when it's half a second off where the system has
+  it while playing (a seek, a stall), or changes while paused. A
+  position signal written from a polled status costs nothing.
+- `Props.Player`, an `*audio.Player`: its `Status` is read once a
+  second (a timer, `ui.Post`) and fills the state, position and
+  duration; play, pause, stop, seek and, with a `SkipInterval`, the
+  skips run on it unless their handlers are set, and show at once (the
+  status assumed until the next read, which a read already in flight
+  can't overwrite).
+- One module, `nowPlaying` (internal/nowplayingspec): `set` (the info as
+  JSON, with the enabled commands as bits), `clear`, and a long poll,
+  `next`, answered with the commands since (u8 command, f64 value each);
+  `stop` ends it. Hosts drop commands while no poll follows, or that
+  aren't enabled.
+- iOS and macOS: `MPNowPlayingInfoCenter` (the playback rate 0 while
+  paused; `playbackState` on the Mac) and `MPRemoteCommandCenter`'s
+  commands, their targets added once, enabled per `set`; the artwork an
+  `MPMediaItemArtwork` of the image loaded off the main thread (on the
+  Mac its handler decodes the bytes it holds, so the image goes with the
+  artwork). iOS puts the audio session in the playback category; the CLI
+  adds the `audio` background mode for an app whose archive has
+  `nowplaying.Show` (iosFeatures, `ASUKA_NOWPLAYING`). The Mac's through
+  purego (host/darwin), which also routes the keyboard's media keys.
+- Android: a platform `MediaSession` (its `PlaybackState` actions the
+  commands; the skips also custom actions, which fill the previous and
+  next slots of Android 13's media controls), with a `MediaStyle`
+  notification; `AsukaMediaService`, a foreground service of the
+  `mediaPlayback` type, runs while playing and detaches the notification
+  when paused (Android 14's rules; a start the system refuses in the
+  background leaves the notification alone). The build declares it and
+  its permissions only for apps that import the package.
+- Windows: `ISystemMediaTransportControlsInterop::GetForWindow` on the
+  app's window (or a hidden one of the host's), its buttons (fast
+  forward and rewind the skips) and timeline, delegates that post to
+  the main thread; the artwork read off it into a stream. Linux: an MPRIS
+  player (`org.mpris.MediaPlayer2` and `.Player`) on a session bus
+  connection of its own, its name
+  `org.mpris.MediaPlayer2.<app>.instance<pid>`; `Position` extrapolated
+  as it's read, `Seeked` on jumps, a new track id when the track
+  changes, `Seek` a skip or a seek; `clear` closes the connection, so
+  the name goes. The web: the Media Session API (`metadata`,
+  `playbackState`, action handlers, `setPositionState`).
+
 ## The web
 
 The app's Go code is a WebAssembly program (`GOOS=js GOARCH=wasm`,

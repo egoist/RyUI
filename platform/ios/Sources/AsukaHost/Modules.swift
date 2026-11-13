@@ -290,6 +290,9 @@ struct AsukaModuleError: LocalizedError {
         #if ASUKA_AUDIO
         modules["audio"] = AsukaAudio.shared.methods()
         #endif
+        #if ASUKA_NOWPLAYING
+        modules["nowPlaying"] = AsukaNowPlaying.shared.methods()
+        #endif
         modules["camera"] = AsukaCamera.shared.methods()
         modules["background"] = AsukaBackground.shared.methods()
         #if ASUKA_SCAN

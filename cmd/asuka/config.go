@@ -487,6 +487,13 @@ var featurePermissions = []struct {
 		"android.permission.FOREGROUND_SERVICE", "android.permission.FOREGROUND_SERVICE_MICROPHONE", "android.permission.POST_NOTIFICATIONS"},
 		usage:      map[string]string{"NSMicrophoneUsageDescription": "To record sound."},
 		androidApp: []string{`<service android:name="dev.asuka.AsukaRecordService" android:exported="false" android:foregroundServiceType="microphone" />`}},
+	// Now Playing: a MediaSession and its notification (which needs no
+	// POST_NOTIFICATIONS: a media session's is exempt); while playing, a
+	// foreground service of the media playback type keeps the app
+	// running out of sight (Android 14's rules).
+	{pkg: "github.com/egoist/asuka/nowplaying",
+		android:    []string{"android.permission.FOREGROUND_SERVICE", "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"},
+		androidApp: []string{`<service android:name="dev.asuka.AsukaMediaService" android:exported="false" android:foregroundServiceType="mediaPlayback" />`}},
 	// On-device speech recognition; Android's reads the file as the microphone's permission.
 	{pkg: "github.com/egoist/asuka/transcribe", android: []string{"android.permission.RECORD_AUDIO"},
 		usage: map[string]string{"NSSpeechRecognitionUsageDescription": "To turn your recordings into text, on this device."}},
