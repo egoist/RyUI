@@ -51,6 +51,8 @@ class AsukaNode(val id: Int, val kind: Int, var view: View) {
     var actions: List<AsukaAction> = emptyList()
     var swipeActions: List<AsukaAction> = emptyList() // a list cell's
     var leadingSwipeActions: List<AsukaAction> = emptyList() // a list cell's
+    /** Its Keys prop: the hardware keyboard's keys it takes (Keys.kt). */
+    var keys: List<AsukaKey> = emptyList()
     var pasteTypes: ByteArray? = null // a text field's PasteTypes, to set again on a remade view
     var richBytes: ByteArray? = null // a rich text field's text, likewise
     /** ContentInset (dp: top, right, bottom, left): its padding and border, inside its frame. */

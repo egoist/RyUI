@@ -3,7 +3,8 @@
 // :active), hovered (:hover, and a group's), dragged, a drag over a drop
 // target; and drag and drop, within the app (cards between
 // columns, carrying Go values) and with other apps (files, photos,
-// links, text).
+// links, text); and a hardware keyboard's keys (an iPad's, a
+// Chromebook's, a computer's), which a view takes from a field inside it.
 //
 //	go run ./cmd/asuka dev --platform ios examples/interaction
 //	go run ./cmd/asuka dev --platform mac examples/interaction
@@ -11,6 +12,7 @@ package main
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/egoist/asuka/app"
@@ -29,6 +31,7 @@ func home() ui.Node {
 		ui.SafeArea(ui.Style{Gap: 24, Padding: ui.All(16)},
 			section("Pressed and hovered", cards()),
 			section("Hold", hold()),
+			section("Keys", keys()),
 			section("Drag between columns", board()),
 			section("Drop from another app", dropZone()),
 			section("Drag to another app", sources()),
@@ -118,6 +121,88 @@ type task struct {
 	id    int
 	title string
 	done  bool
+}
+
+// fruits are what keys searches.
+var fruits = []string{"Apple", "Apricot", "Banana", "Blueberry", "Cherry", "Grape", "Lemon", "Lime", "Mango", "Orange", "Peach", "Pear", "Plum"}
+
+// keys is a search field over its results: with a hardware keyboard,
+// Up and Down (and Control-N, Control-P) move the highlighted result
+// (not the field's caret: the column's KeyMap takes them while the field
+// has the focus), Enter picks it and Escape clears the field. Characters
+// type into the field, as the map has none. Cmd-K (Ctrl-K) is the
+// window's: it puts the focus in the field from anywhere.
+func keys() ui.Node {
+	query := signal.New("")
+	results := signal.NewMemoFunc(func() []string {
+		q := strings.ToLower(query.Get())
+		var r []string
+		for _, f := range fruits {
+			if strings.Contains(strings.ToLower(f), q) {
+				r = append(r, f)
+			}
+		}
+		return r
+	}, slices.Equal[[]string])
+	sel := signal.New(0)
+	signal.Effect(func() {
+		results.Get()
+		sel.Set(0)
+	})
+	picked := signal.New("")
+	move := func(by int) func() {
+		return func() {
+			if n := len(signal.Untrack(results.Get)); n > 0 {
+				sel.Set((sel.Peek() + by + n) % n)
+			}
+		}
+	}
+	pick := func() {
+		if r, i := signal.Untrack(results.Get), sel.Peek(); i < len(r) {
+			picked.Set(r[i])
+		}
+	}
+	field := ui.TextField(ui.TextFieldProps{
+		Value:       query,
+		Placeholder: ui.Val("Search fruits"),
+		Autocorrect: ui.AutocorrectNo,
+		OnSubmit:    pick,
+	})
+	ui.UseKeys(ui.KeyMap{ui.Cmd("k"): func() { ui.Focus(field) }})
+	return ui.View(ui.ViewProps{
+		Style: ui.Style{Gap: 8},
+		Keys: ui.KeyMap{
+			{Key: "down"}:                move(1),
+			{Key: "up"}:                  move(-1),
+			{Key: "n", Mods: ui.Control}: move(1),
+			{Key: "p", Mods: ui.Control}: move(-1),
+			{Key: "enter"}:               pick,
+			{Key: "escape"}:              func() { query.Set("") },
+		},
+	},
+		field,
+		ui.Text(signal.Func(func() string {
+			r, i := results.Get(), sel.Get()
+			if i >= len(r) {
+				return "No fruit"
+			}
+			s := "Highlighted: " + r[i]
+			if p := picked.Get(); p != "" {
+				s += ", picked: " + p
+			}
+			return s
+		}), ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel}),
+		ui.Column(ui.Style{},
+			ui.For(results, func(f string) string { return f }, func(f signal.Accessor[string], i signal.Accessor[int]) ui.Node {
+				on := signal.Func(func() bool { return i.Get() == sel.Get() })
+				return ui.View(ui.ViewProps{
+					Style: ui.Style{Padding: ui.Edges{Top: 6, Bottom: 6, Left: 10, Right: 10}, CornerRadius: 8}.
+						When(on.Get, ui.Style{Background: ui.Separator}),
+					OnPress: func() { sel.Set(signal.Untrack(i.Get)); pick() },
+				}, ui.Text(f, ui.Style{}))
+			}),
+		),
+	)
 }
 
 // board is two columns of cards: a card dragged to the other column

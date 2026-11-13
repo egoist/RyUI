@@ -587,11 +587,13 @@ keyboard's focus is in it (`ViewProps.Keys`, `TextFieldProps.Keys`, a
   the menu bar's: `event.target`'s node (a Window panel's ends at its
   Window node; the page's body: the root), out, `preventDefault` and
   `stopImmediatePropagation`.
-  iOS, `pressesBegan` on the host's window, ahead of the first responder
-  (UIKit gives presses to it first otherwise), with `UIKeyCommand`s on
-  the root view controller for what a text field would take
-  (`wantsPriorityOverSystemBehavior`). Android, the activity's
-  `dispatchKeyEvent`: the focused view's node, out.
+  iOS, `UIKeyCommand`s from the root view controller, which UIKit asks
+  through the responder chain as a key goes down: the first responder's
+  node's keys, out (the root's with no first responder), each
+  `wantsPriorityOverSystemBehavior`, so they come ahead of a text
+  field's caret, and repeating while held. Android, the activity's
+  `dispatchKeyEvent` (and a sheet's or popover's window, at its screen):
+  the focused view's node, out; Ctrl is Primary, as Control.
 
 ### Accessibility
 

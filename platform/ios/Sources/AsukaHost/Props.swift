@@ -358,6 +358,8 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             // Shown by the pointer (iPadOS, an iPhone app on a Mac).
             for i in n.view.interactions where i is UIToolTipInteraction { n.view.removeInteraction(i) }
             if !v.string.isEmpty { n.view.addInteraction(UIToolTipInteraction(defaultToolTip: v.string)) }
+        case AsukaProp.keys:
+            setKeys(n, v)
         case AsukaProp.menuTrigger:
             n.menuTrigger = v.enumValue
             installMenu(n)

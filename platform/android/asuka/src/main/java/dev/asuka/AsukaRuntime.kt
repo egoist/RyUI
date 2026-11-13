@@ -231,6 +231,9 @@ class AsukaRuntime private constructor(val app: Application) : AsukaOpHandler {
         if (a != null) a.schemeChanged() else configurationChanged(app.resources.configuration)
     }
     val nodes = HashMap<Int, AsukaNode>()
+    /** The nodes with Keys, and the keys (codes) whose going down a node's Keys took: their release goes no further either. */
+    val keyed = HashSet<Int>()
+    val takenKeys = HashSet<Int>()
     var rootID = 0
     var activity: AsukaActivity? = null
     private var started = false
@@ -879,6 +882,10 @@ class AsukaRuntime private constructor(val app: Application) : AsukaOpHandler {
             setPasteTypes(n, v)
             return
         }
+        if (prop == AsukaProp.KEYS) {
+            setKeys(n, v)
+            return
+        }
         if (prop == AsukaProp.MENU) {
             n.actions = decodeActions(v)
             wirePresses(n)
@@ -917,6 +924,7 @@ class AsukaRuntime private constructor(val app: Application) : AsukaOpHandler {
 
     override fun destroy(id: Int) {
         val n = nodes.remove(id) ?: return
+        keyed.remove(id)
         (n.view as? AsukaVideo)?.release()
         stacks.remove(n)
         if (n.underDying) return // its views leave with the animating screen or sheet
