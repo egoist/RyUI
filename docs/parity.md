@@ -218,16 +218,17 @@ Windows and Linux unless the row says otherwise.
 | Quitting, asking first | `app.quit`, `before-quit` | quitting | ✓ `app.Quit`, `app.OnQuit` (`Cancel`, `SessionEnding`) |
 | The app's folders | `app.getPath` | directories | ✓ `app.DataDir`, `ConfigDir`, `CacheDir`, `LogDir` (everywhere) |
 | Recent documents | `app.addRecentDocument` | recent documents | ✓ `asuka/recent` (Open Recent on the Mac, the jump list, the user's recent files on Linux) |
+| Document-based apps | — | documents | ✓ `asuka/document`: a window per file, the File menu, autosave, recovery copies, save questions on close and quit, files changed by other apps (phones and the web: one document at a time, saved in place) |
 | Starting at login | `app.setLoginItemSettings` | start at login | ✓ `asuka/login` (`SMAppService`, macOS 13+; the Run key; XDG autostart or the Background portal) |
 | Displays | `screen` | displays | ✓ `screen.UseDisplays`, `Nearest`, `Matching` (Wayland: no work area; phones and the web: theirs) |
 | Sleep, wake, lock, idle time, battery | `powerMonitor` | power | ✓ `asuka/power` (phones: battery, Low Power Mode, lock; the web: the battery) |
 | Progress and attention on the app's icon | `setProgressBar`, `flashFrame`, `dock.bounce` | the Dock and the taskbar | ✓ `dock.SetProgress`, `RequestAttention` (Linux: docks with the Unity launcher API) |
 | Accent color, Increase Contrast, Reduce Transparency | `systemPreferences` | accent color and accessibility | ✓ `asuka/appearance` (no Reduce Transparency on Linux) |
 
-Not yet, of what MyGo has: document-based apps (a window per file,
-autosave, versions), auto-updates, flyouts (a window attached to a tray
-icon), non-activating panels for launchers, click-through windows, Now
-Playing and the media keys, and watching files (Go's own packages do).
+Not yet, of what MyGo has: auto-updates, flyouts (a window attached to a
+tray icon), non-activating panels for launchers, click-through windows,
+Now Playing and the media keys, and watching files (Go's own packages
+do), and of its documents, versions.
 
 ## Not yet
 

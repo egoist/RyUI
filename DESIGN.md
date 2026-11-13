@@ -2524,7 +2524,10 @@ and never assumes a single root in its own data structures.
   separators and submenus count), and `Action` carries that number. A
   `MenuItem` with a `Role` is the host's: `MenuRoleQuit` (`ui.MenuQuit`)
   quits the app as the system quits it ("Quit Notes", ⌘Q on a Mac), its
-  title the host's unless the item has one, and is never reported.
+  title the host's unless the item has one, and is never reported;
+  `MenuRoleClose` closes the window in use as its close button does
+  (⌘W, Ctrl+W); `MenuRoleOpenRecent` is a Mac's Open Recent submenu,
+  the host's, and elsewhere the item's own (Documents, below).
 
 **Menus, one encoding** (`ops/menu.go`): the menu bar, a tray icon's
 menu and the Dock menu are the same bytes: a menu is u32 count, then per
@@ -2963,6 +2966,83 @@ app is in front (a launcher's panel, start and stop a recording).
   Phones and the web have no file manager: Reveal and Trash are
   `shell.ErrUnsupported` there (Open too on phones: `preview.Show`
   shows a file), Beep nothing.
+
+**Documents** (`document`): document-based apps, as NSDocument and
+NSDocumentController, SwiftUI's DocumentGroup and MyGo's documents make
+them, built on the desktop's own pieces (`ui.Window`, `MenuBar`,
+`OnOpenFiles`, `app.OnQuit`, `recent`, `dialog`) rather than ops of
+their own.
+
+- `document.New(Options[T]{Types, Read, Write, View, ...})` describes
+  one kind of document whose content is a `T`; `Run` runs the app with
+  it (`app.RunWindow` with the main window hidden), `Root` is its root
+  for an app that runs itself. A `Document[T]`'s content is a signal
+  (`Content()`): the view binds it (a text field's `Value`), and an
+  effect owned by the document marks it edited as it changes, unless
+  `Equal` finds it equal to the file's. Reading the file (open, revert,
+  another app's change) sets it without editing. A mutable content says
+  `Changed()`, and `Snapshot` copies it before a write.
+- Everything is on the main thread. Each document's reads and writes are
+  jobs run one at a time: a job starts on the main thread (where it
+  takes its snapshot of the content), works on a goroutine, and comes
+  back with `ui.Post` before the next starts, so no lock guards a
+  document. Questions are callbacks (alerts, dialogs): a close or a quit
+  that must ask is refused, then done again once answered.
+- Files are written as NSDocument and GIO write them: a sibling file,
+  flushed, renamed over the old one (its permissions, owner and group
+  kept; on a Mac its extended attributes, Finder's tags; on Windows
+  `ReplaceFileW`, which keeps its security, streams and creation time);
+  a file with other hard links, or in a folder the user can't write,
+  in place. Before writing, the file's stamp (modification time, size)
+  is compared with what the document read: a changed file puts it in
+  conflict instead.
+- Desktop: one `ui.Window` per document (`For` over the open ones), its
+  `StateKey` the file's, with the `Edited` and `File` props (the
+  Window kind's): a Mac's `setDocumentEdited:` and `setRepresentedURL:`,
+  a `*` before the title on Windows, Linux and the web, the file's
+  folder as a GNOME title's subtitle; the title is the name, and "name -
+  App" on Windows and Linux. `WindowMenuBar` (a `WindowConfig` flag)
+  gives the window the app's menu bar where it's per window (Windows'
+  HMENU, Linux's main menu). The File menu is the package's `MenuBar`
+  (with `Options.Menus` beside it), its items enabled for the document
+  in use (the window focused last); two `MenuRole`s are the hosts':
+  `MenuRoleClose` closes the window in use as its close button does
+  (`performClose:`, `WM_CLOSE`, `gtk_window_close`), and on a Mac
+  replaces the host's Close Window; `MenuRoleOpenRecent` is a Mac's
+  NSDocumentController submenu, in its place, and elsewhere the item's
+  submenu, which the package fills from `recent.List`.
+- Autosave (`AutosaveInPlace`, the default): a document with a file it
+  can write is saved a moment after the edits stop (5 s, at most 30 s
+  apart), when its window loses the focus and when it closes; others
+  (untitled, read-only, in conflict, deleted, or `AutosaveOff`) keep a
+  recovery copy a second after the edits stop, in `Recovery/<kind>` of
+  `app.DataDir`, in a session a lock file says is alive. A launch claims
+  the sessions no instance holds and opens their documents, edited.
+- Closing: an unedited document closes; an edited one is saved in place
+  or asks (`OnCloseRequest` false; the answer `Destroy`s the window).
+  Quitting (`app.OnQuit`): documents are saved in place or kept in their
+  copies, the quit canceled meanwhile and asked for again; with
+  `AskOnQuit`, a Mac asks whether to review them, then each, Windows and
+  Linux in one question naming them. The session's end saves at once,
+  on the main thread. A Mac's app keeps running with no window
+  (`boot.KeepRunning`) and its Dock icon makes a document
+  (`boot.Reopen`, which `applicationShouldHandleReopen:` asks); Windows'
+  and Linux's quit with their last document.
+- Files other apps change: each open file is watched (a poll of its
+  stamp every two seconds, behind an interface a package of the
+  system's notifications can take over) and looked at when its window
+  comes to the front: an unedited document reads it again, an edited one
+  is in conflict; a file gone is looked for by its identity (a Mac:
+  anywhere on its volume, `/.vol/<dev>/<ino>` and `F_GETPATH`; elsewhere
+  its folder, by inode or Windows' file index), else the document is
+  Deleted.
+- Phones and the web: one document at a time in the root's `Stack`: a
+  list of the app's documents (its documents folder: iOS's container's
+  Documents), and a document's screen pushed over it. Every document has
+  a file from the start, is saved in place (also as the app goes to the
+  background), and closes as its screen goes; files from elsewhere are
+  copied in; a crash's copies are written back quietly (beside the file,
+  "(Recovered)", where it changed).
 
 ## The web
 

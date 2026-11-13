@@ -910,3 +910,72 @@ func TestTranslations(t *testing.T) {
 		t.Errorf("a language without them: %q", got)
 	}
 }
+
+// A mutable content: Changed edits the document, and Snapshot copies it
+// on the main thread before it's written, so an edit made while it's
+// written isn't in the file and leaves the document edited.
+func TestMutableContent(t *testing.T) {
+	type model struct{ lines []string }
+	x := setup(t, ui.PlatformMacOS, Options[string]{NoUntitled: true})
+	p := x.file("m.txt", "one")
+	snapshots := 0
+	var during func()
+	ds := New(Options[*model]{
+		Types: []Type{{Name: "Lines", Extensions: []string{"txt"}}},
+		Read: func(r io.Reader) (*model, error) {
+			b, err := io.ReadAll(r)
+			return &model{lines: strings.Split(string(b), "\n")}, err
+		},
+		Write: func(w io.Writer, m *model) error {
+			if during != nil {
+				during()
+			}
+			_, err := io.WriteString(w, strings.Join(m.lines, "\n"))
+			return err
+		},
+		Snapshot: func(m *model) *model { snapshots++; return &model{lines: slices.Clone(m.lines)} },
+		View:     func(d *Document[*model]) ui.Node { return ui.StaticText("lines") },
+		NoUntitled: true,
+	})
+	x.r.Dispose()
+	x.h = fake.New()
+	x.h.Env.Platform = ui.PlatformMacOS
+	x.h.Modules = map[string]func(string, []byte) ([]byte, error){"recent": func(string, []byte) ([]byte, error) { return []byte("[]"), nil }}
+	x.r = ui.Mount(x.h, ds.Root)
+	x.r.Flush()
+	var d *Document[*model]
+	ds.Open(p, func(doc *Document[*model], err error) { d = doc })
+	for range 10 {
+		x.h.RunPosted()
+		x.r.Flush()
+	}
+	if d == nil {
+		t.Fatal("not opened")
+	}
+	m := d.Content().Peek()
+	m.lines = append(m.lines, "two")
+	d.Changed()
+	if !d.Edited() {
+		t.Fatal("Changed didn't edit it")
+	}
+	// An edit while the file is written: on the goroutine, the snapshot
+	// stays as it was taken.
+	during = func() { m.lines = append(m.lines, "three") }
+	d.Save(nil)
+	for range 10 {
+		x.h.RunPosted()
+		x.r.Flush()
+	}
+	if got := x.read(p); got != "one\ntwo" || snapshots == 0 {
+		t.Fatalf("wrote %q (%d snapshots)", got, snapshots)
+	}
+	d.Changed() // the edit made meanwhile, told
+	if !d.Edited() {
+		t.Fatal("the edit made while saving isn't unsaved")
+	}
+	// SetEdited(false): what's there is the file's now, without writing.
+	d.SetEdited(false)
+	if d.Edited() || x.read(p) != "one\ntwo" {
+		t.Fatal("SetEdited(false)")
+	}
+}
