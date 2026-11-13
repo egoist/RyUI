@@ -933,8 +933,8 @@ func TestMutableContent(t *testing.T) {
 			_, err := io.WriteString(w, strings.Join(m.lines, "\n"))
 			return err
 		},
-		Snapshot: func(m *model) *model { snapshots++; return &model{lines: slices.Clone(m.lines)} },
-		View:     func(d *Document[*model]) ui.Node { return ui.StaticText("lines") },
+		Snapshot:   func(m *model) *model { snapshots++; return &model{lines: slices.Clone(m.lines)} },
+		View:       func(d *Document[*model]) ui.Node { return ui.StaticText("lines") },
 		NoUntitled: true,
 	})
 	x.r.Dispose()
