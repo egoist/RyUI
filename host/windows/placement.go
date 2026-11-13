@@ -114,6 +114,7 @@ func (h *Host) restorePlacement(c *wctl) bool {
 	SetWindowPos(c.hwnd, 0, r.Left, r.Top, r.W(), r.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 	c.normal = r
 	c.restoreMax = p.Maximized
+	c.appPlaced = true // a panel shows there, not where the cursor is
 	return true
 }
 

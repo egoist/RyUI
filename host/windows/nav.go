@@ -61,6 +61,9 @@ type nav struct {
 	size, minSize [2]float32
 	cfg           ops.WindowConfig
 	ctl           *wctl
+	fitted        bool       // size is its content's, WindowAction Fit's, which came before it opened
+	flyout        ops.Flyout // a flyout's anchor (its Flyout prop), if hasFlyout
+	hasFlyout     bool
 }
 
 const (
@@ -344,6 +347,13 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 			n.nav.cfg = c
 			n.nav.size = [2]float32{c.Width, c.Height}
 			n.nav.minSize = [2]float32{c.MinWidth, c.MinHeight}
+		case ops.PropWindowFlyout:
+			if f, ok := ops.DecodeFlyout(v.Bytes); ok {
+				n.nav.flyout, n.nav.hasFlyout = f, true
+				if c := n.nav.ctl; c != nil && n.nav.window != 0 {
+					h.placeFlyout(c) // flyout.go
+				}
+			}
 		}
 	case ops.KindAlert:
 		switch p {
@@ -796,7 +806,7 @@ func (h *Host) present(n *node) {
 		// opens them both (the core presents a Window once its content,
 		// the child among it, is built): it opens once the batch is
 		// applied, owned by its parent's window.
-		if p := h.nodes[n.nav.cfg.Parent]; n.nav.cfg.Flags&ops.WindowChild != 0 && p != nil && p.kind == ops.KindWindow && p.nav.window == 0 {
+		if p := h.nodes[n.nav.cfg.Parent]; n.nav.cfg.Flags&(ops.WindowChild|ops.WindowFlyout) != 0 && p != nil && p.kind == ops.KindWindow && p.nav.window == 0 {
 			id := n.id
 			h.afterCore(func() {
 				if n := h.nodes[id]; n != nil && !n.dying {

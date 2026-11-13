@@ -309,6 +309,7 @@ func (h *Host) trayWindowMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
 		case NIN_SELECT, NIN_KEYSELECT:
 			if t.flags&2 != 0 {
 				h.trayEvent(t.id, 1, 0)
+				h.trayClicked(t.id) // a flyout hanging from it (flyout.go)
 			} else {
 				h.trayMenu(t, x, y)
 			}

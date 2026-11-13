@@ -128,7 +128,8 @@ func (h *Host) buildMenuBar() {
 	var bar uintptr
 	// A hidden title bar's main window has no menu bar: Windows would
 	// draw it under a caption that isn't there (titlebar.go).
-	if len(h.appMenus) > 0 && (h.mainCtl == nil || !h.mainCtl.hidden) {
+	// Nor has a panel (flyout.go).
+	if len(h.appMenus) > 0 && (h.mainCtl == nil || !h.mainCtl.hidden && !h.mainCtl.frameless()) {
 		bar = CreateMenu()
 		titles := make([]string, len(h.appMenus))
 		for i, m := range h.appMenus {
