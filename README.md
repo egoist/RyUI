@@ -82,8 +82,6 @@ See [the documentation](docs/README.md) for the guides, and
 [`examples`](examples) for apps: [`gallery`](examples/gallery) shows
 every component.
 
-Asuka is young: the API may change before 1.0.
-
 ## License
 
 MIT
