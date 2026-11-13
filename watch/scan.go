@@ -58,6 +58,10 @@ type scan struct {
 	// overflowed says the system dropped changes since the last update,
 	// which looks at everything and says so.
 	overflowed bool
+	// noParent says the parent of the watched directory, which the scan
+	// watches where the system needs it to see the directory go, can't
+	// be watched.
+	noParent bool
 }
 
 // record is what the scan keeps of a file or directory: its
@@ -175,12 +179,12 @@ func (s *scan) start() ([]Event, error) {
 }
 
 // watchParent enrolls the directory of a watched file, and the parent of
-// the watched directory on Windows, where the directory's own handle
-// reports nothing when it is renamed or replaced; "..", whose notices
-// about other entries are ignored. A drive's root, which can't be renamed,
-// has no parent.
+// a watched directory where the system needs it to see the directory go
+// (parentWatch); "..", whose notices about other entries are ignored. A
+// drive's root, which can't be renamed, has no parent.
 func (s *scan) watchParent() error {
-	if !s.file && runtime.GOOS != "windows" {
+	needed := parentWatch(s.w.opts.backend)
+	if !s.file && (needed == parentNo || s.noParent) {
 		return nil
 	}
 	parent := filepath.Dir(s.w.root)
@@ -188,10 +192,40 @@ func (s *scan) watchParent() error {
 		return nil
 	}
 	info, err := os.Lstat(parent)
-	if err != nil {
-		return err
+	if err == nil {
+		err = s.add("..", statIdentity(info))
 	}
-	return s.add("..", statIdentity(info))
+	if err != nil && !s.file && needed == parentHelps {
+		// Seen later, as the watch lets the directory go.
+		s.noParent = true
+		return nil
+	}
+	return err
+}
+
+// Whether a watch of a directory watches its parent too.
+const (
+	parentNo = iota
+	// parentNeeded: Windows, where the directory's own handle reports
+	// nothing when it is renamed or replaced.
+	parentNeeded
+	// parentHelps: inotify, which says a directory was removed (its
+	// IN_DELETE_SELF) only once nothing has it open, as the watch does:
+	// its parent says so at once. Without permission to watch the parent,
+	// the watch does without.
+	parentHelps
+)
+
+func parentWatch(backend string) int {
+	switch {
+	case backend != "":
+		return parentNo
+	case runtime.GOOS == "windows":
+		return parentNeeded
+	case runtime.GOOS == "linux" || runtime.GOOS == "android":
+		return parentHelps
+	}
+	return parentNo
 }
 
 // gone reports whether the watched directory, or the directory of the

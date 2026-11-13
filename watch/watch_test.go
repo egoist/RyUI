@@ -306,11 +306,14 @@ func TestSystemBurst(t *testing.T) {
 // of ".", then Next says io.EOF, and Err nil.
 func TestSystemDeletedDirectory(t *testing.T) {
 	eachBackend(t, func(t *testing.T, backend string) {
-		for _, recursive := range []bool{false, true} {
+		for i, recursive := range []bool{false, true, false} {
 			dir := filepath.Join(t.TempDir(), "root")
-			mkdir(t, filepath.Join(dir, "sub", "deeper"))
-			write(t, filepath.Join(dir, "sub", "f"), "f")
-			write(t, filepath.Join(dir, "g"), "g")
+			mkdir(t, dir)
+			if i < 2 { // the last empty
+				mkdir(t, filepath.Join(dir, "sub", "deeper"))
+				write(t, filepath.Join(dir, "sub", "f"), "f")
+				write(t, filepath.Join(dir, "g"), "g")
+			}
 			r := start(t, backend, dir, Options{Recursive: recursive})
 			remove(t, dir)
 			r.until(Event{Op: Remove, Path: ".", IsDir: true})
@@ -415,6 +418,17 @@ func TestSystemPermissions(t *testing.T) {
 		write(t, filepath.Join(locked, "new"), "n")
 		write(t, filepath.Join(dir, "touch"), "")
 		r.until(Event{Op: Create, Path: "touch"})
+		// A directory whose parent can't be listed (nor watched) is
+		// watched still.
+		hidden := filepath.Join(t.TempDir(), "hidden")
+		mkdir(t, filepath.Join(hidden, "dir"))
+		if err := os.Chmod(hidden, 0o300); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { os.Chmod(hidden, 0o755) })
+		r = start(t, backend, filepath.Join(hidden, "dir"), Options{})
+		write(t, filepath.Join(hidden, "dir", "f"), "")
+		r.expect(Event{Op: Create, Path: "f"})
 	})
 }
 
