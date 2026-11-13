@@ -110,6 +110,9 @@ type appConfig struct {
 	// Scheme is the app's URL scheme: myapp://anything opens it
 	// (ui.OnOpenURL gets the URL).
 	Scheme string `json:"scheme"`
+	// FileTypes are the kinds of files the app opens (filetypes.go):
+	// ui.OnOpenFiles gets them.
+	FileTypes []fileTypeConfig `json:"fileTypes"`
 	// Links are the web domains whose https links open the app: iOS's
 	// universal links (the domain serves apple-app-site-association) and
 	// Android's App Links (assetlinks.json).
@@ -267,6 +270,9 @@ func loadConfig(dir string) (*appConfig, error) {
 		if !domain.MatchString(l) {
 			return nil, fmt.Errorf("asuka.json: link domain %q (want a host name, as example.com)", l)
 		}
+	}
+	if err := c.checkFileTypes(dir); err != nil {
+		return nil, fmt.Errorf("asuka.json: %v", err)
 	}
 	if err := c.checkWidgets(); err != nil {
 		return nil, fmt.Errorf("asuka.json: %v", err)
@@ -609,6 +615,9 @@ func (c *appConfig) androidManifest(debug bool) string {
 	if c.ShareTarget.on && !c.shareSheet {
 		b.WriteString(c.ShareTarget.intentFilters())
 	}
+	// asuka.json's fileTypes: opened from a file manager, or a mail's
+	// attachment (AsukaActivity copies a content:// URI's file).
+	b.WriteString(fileTypeFilters(c.fileTypes()))
 	b.WriteString("        </activity>\n")
 	// A share sheet (app.ShareSheet): the shares go to its Activity.
 	if c.ShareTarget.on && c.shareSheet {

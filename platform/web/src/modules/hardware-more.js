@@ -341,6 +341,14 @@ export function modules(h) {
     background: background(),
     widget: { set: fail("widget.set", "a page has no home screen widgets") },
     splash: { hold: () => {}, hide: () => {} },
+    // asuka/recent and asuka/login: a desktop app's. A page has no recent
+    // documents of its own with the system, and doesn't start at login.
+    recent: { add: () => {}, clear: () => {}, list: () => "[]" },
+    login: {
+      set: fail("login.set", "a page doesn't start at login"),
+      enabled: () => new Uint8Array([0]),
+      openedAtLogin: () => new Uint8Array([0]),
+    },
     screen: screenModule(),
     transcribe: {
       check: (b) => JSON.stringify({ onDevice: false, language: dec.decode(b) || navigator.language || "" }),

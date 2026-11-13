@@ -60,10 +60,14 @@ func linuxLdflags(app *goApp, release bool) string {
 
 // linuxExe is the executable's name: the app's, in lower case, words
 // joined by hyphens, as Linux names its programs.
-func linuxExe(app *goApp) string {
+func linuxExe(app *goApp) string { return exeSlug(app.displayName(), app.bundleID) }
+
+// exeSlug is name in lower case, its words joined by hyphens; for a name
+// in another script, id's last part.
+func exeSlug(name, id string) string {
 	var b strings.Builder
 	dash := false
-	for _, r := range strings.ToLower(app.displayName()) {
+	for _, r := range strings.ToLower(name) {
 		if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '_' {
 			if dash && b.Len() > 0 {
 				b.WriteByte('-')
@@ -76,7 +80,6 @@ func linuxExe(app *goApp) string {
 	}
 	if b.Len() == 0 {
 		// A name in another script: the ID's last part.
-		id := app.bundleID
 		if i := strings.LastIndexByte(id, '.'); i >= 0 {
 			id = id[i+1:]
 		}
@@ -236,6 +239,9 @@ func buildLinux(app *goApp, o *buildOptions) error {
 	}
 	fmt.Printf("asuka: %s (linux/%s; it needs GTK 4.14 and libadwaita 1.5 or later)\n", filepath.Join(out, "bin", exe), arch)
 	fmt.Printf("asuka: %s, to install: tar -xzf %s --strip-components=1 -C ~/.local\n", tgz, filepath.Base(tgz))
+	if mimePackage(app.cfg.fileTypes()) != "" {
+		fmt.Println("asuka: then update-mime-database ~/.local/share/mime and update-desktop-database ~/.local/share/applications, for its file types (a package manager and Flatpak do it themselves)")
+	}
 	fmt.Printf("asuka: %s, a Flatpak: flatpak-builder --user --install --force-clean build %s\n", manifest, filepath.Base(manifest))
 	l := app.cfg.Linux
 	if l.Summary == "" || l.Description == "" || l.License == "" || l.Developer == "" {
@@ -271,6 +277,33 @@ func writeLinuxShare(app *goApp, out, exe string) error {
 		filepath.Join(share, "applications", id+".desktop"):  desktopEntry(app, exe, icon),
 		filepath.Join(share, "metainfo", id+".metainfo.xml"): metainfo(app, icon, time.Now()),
 	}
+	// asuka.json's fileTypes: the MIME types the app defines, for
+	// shared-mime-info (named for the app's ID, as Flatpak exports it),
+	// and their icons in the hicolor theme.
+	types := app.cfg.fileTypes()
+	if pkg := mimePackage(types); pkg != "" {
+		files[filepath.Join(share, "mime", "packages", id+".xml")] = pkg
+	}
+	for i, t := range types {
+		if t.icon == "" {
+			continue
+		}
+		img, err := loadIcon(t.icon)
+		if err != nil {
+			return fmt.Errorf("fileTypes[%d]'s icon: %w", i, err)
+		}
+		for _, m := range t.mimeTypes {
+			if !t.definesMIME(m) {
+				continue
+			}
+			for _, s := range linuxIconSizes {
+				p := filepath.Join(share, "icons", "hicolor", fmt.Sprintf("%dx%d", s, s), "mimetypes", mimeIconName(m)+".png")
+				if err := writePNG(p, resize(img, s)); err != nil {
+					return err
+				}
+			}
+		}
+	}
 	for p, s := range files {
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 			return err
@@ -293,8 +326,10 @@ func desktopEntry(app *goApp, exe string, icon bool) string {
 	if l.Summary != "" {
 		fmt.Fprintf(&b, "Comment=%s\n", desktopEscape(l.Summary))
 	}
-	if app.cfg.Scheme != "" {
-		// Its links open it: the URL is the argument (host/linux's open).
+	types := app.cfg.fileTypes()
+	if app.cfg.Scheme != "" || len(types) > 0 {
+		// Its links and files open it: their URIs are the arguments
+		// (host/linux's command line).
 		fmt.Fprintf(&b, "Exec=%s %%U\n", exe)
 	} else {
 		fmt.Fprintf(&b, "Exec=%s\n", exe)
@@ -307,8 +342,8 @@ func desktopEntry(app *goApp, exe string, icon bool) string {
 	if len(l.Keywords) > 0 {
 		fmt.Fprintf(&b, "Keywords=%s;\n", desktopEscape(strings.Join(l.Keywords, ";")))
 	}
-	if app.cfg.Scheme != "" {
-		fmt.Fprintf(&b, "MimeType=x-scheme-handler/%s;\n", app.cfg.Scheme)
+	if ms := desktopMimeTypes(app, types); len(ms) > 0 {
+		fmt.Fprintf(&b, "MimeType=%s;\n", strings.Join(ms, ";"))
 	}
 	b.WriteString("StartupNotify=true\n")
 	fmt.Fprintf(&b, "StartupWMClass=%s\n", exe)

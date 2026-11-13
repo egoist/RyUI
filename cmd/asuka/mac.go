@@ -164,6 +164,22 @@ func writeMacBundle(app *goApp, bundle, work string, release bool, run func(dir 
 		}
 		info["CFBundleIconFile"] = "AppIcon"
 	}
+	// asuka.json's fileTypes, their icons as .icns files of their own.
+	types := app.cfg.fileTypes()
+	icons := map[int]string{}
+	for i, t := range types {
+		if t.icon == "" {
+			continue
+		}
+		name := fmt.Sprintf("DocumentIcon%d", i+1)
+		if err := macDocumentIcon(t.icon, work, filepath.Join(res, name+".icns"), run); err != nil {
+			return "", fmt.Errorf("fileTypes[%d]'s icon: %w", i, err)
+		}
+		icons[i] = name
+	}
+	for k, v := range app.cfg.documentTypes(types, false, icons) {
+		info[k] = v
+	}
 	app.cfg.plistLocalizations(info)
 	if err := app.cfg.writeLprojs(res); err != nil {
 		return "", err
@@ -517,6 +533,26 @@ func macIcon(src, work, out string, run func(dir string, env []string, cmd strin
 			return err
 		}
 		if err := writePNG(filepath.Join(set, fmt.Sprintf("icon_%dx%d@2x.png", s, s)), resize(canvas, s*2)); err != nil {
+			return err
+		}
+	}
+	return run(work, nil, "iconutil", "-c", "icns", "-o", out, set)
+}
+
+// macDocumentIcon makes a file type's .icns from a PNG, as it is: a
+// document's icon has its own shape (a page, say), which the PNG draws.
+func macDocumentIcon(src, work, out string, run func(dir string, env []string, cmd string, args ...string) error) error {
+	img, err := loadIcon(src)
+	if err != nil {
+		return err
+	}
+	set := filepath.Join(work, strings.TrimSuffix(filepath.Base(out), ".icns")+".iconset")
+	os.RemoveAll(set)
+	for _, s := range []int{16, 32, 128, 256, 512} {
+		if err := writePNG(filepath.Join(set, fmt.Sprintf("icon_%dx%d.png", s, s)), resize(img, s)); err != nil {
+			return err
+		}
+		if err := writePNG(filepath.Join(set, fmt.Sprintf("icon_%dx%d@2x.png", s, s)), resize(img, s*2)); err != nil {
 			return err
 		}
 	}

@@ -67,6 +67,12 @@ var ID string
 // starts, and passes on the URLs it's opened with).
 var Scheme string
 
+// FileTypes are asuka.json's fileTypes (internal/filetype's encoding),
+// set by the Asuka CLI (-ldflags -X) where the platform has no bundle or
+// desktop file to declare them in (Windows: the host registers them for
+// the user as the app starts).
+var FileTypes string
+
 // Version and Build are asuka.json's, set by the Asuka CLI (-ldflags -X)
 // where the platform has no bundle to read them from (Windows).
 var Version, Build string

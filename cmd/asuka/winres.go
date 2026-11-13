@@ -55,6 +55,38 @@ func winresSyso(app *goApp, goarch string) ([]byte, error) {
 		}
 		res[rtGroupIcon] = map[uint16][]byte{1: group.Bytes()}
 	}
+	// asuka.json's fileTypes' icons: a group each (fileTypeIconID), which
+	// the types' DefaultIcon names ("app.exe",-101).
+	for i, t := range app.cfg.fileTypes() {
+		if t.icon == "" {
+			continue
+		}
+		images, sizes, err := iconImages(t.icon)
+		if err != nil {
+			return nil, fmt.Errorf("fileTypes[%d]'s icon: %w", i, err)
+		}
+		if res[rtIcon] == nil {
+			res[rtIcon] = map[uint16][]byte{}
+		}
+		if res[rtGroupIcon] == nil {
+			res[rtGroupIcon] = map[uint16][]byte{}
+		}
+		var group bytes.Buffer
+		binary.Write(&group, binary.LittleEndian, [3]uint16{0, 1, uint16(len(images))})
+		for j, img := range images {
+			id := uint16(len(res[rtIcon]) + 1)
+			res[rtIcon][id] = img
+			dim := byte(sizes[j])
+			if sizes[j] >= 256 {
+				dim = 0
+			}
+			group.Write([]byte{dim, dim, 0, 0})
+			binary.Write(&group, binary.LittleEndian, [2]uint16{1, 32})
+			binary.Write(&group, binary.LittleEndian, uint32(len(img)))
+			binary.Write(&group, binary.LittleEndian, id)
+		}
+		res[rtGroupIcon][uint16(fileTypeIconID(i))] = group.Bytes()
+	}
 
 	// The resource section: three levels of directories (type, id,
 	// language), the data entries, then the data. Directory entries point

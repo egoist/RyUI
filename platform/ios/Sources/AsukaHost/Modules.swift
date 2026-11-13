@@ -200,6 +200,18 @@ struct AsukaModuleError: LocalizedError {
         modules["share"] = AsukaShare.methods(self)
         modules["screen"] = AsukaScreen.shared.methods(self)
         modules["splash"] = AsukaSplash.shared.methods()
+        // asuka/recent and asuka/login: a desktop's. iOS's Files keeps its
+        // own recent files, and an app doesn't start at login.
+        modules["recent"] = [
+            "add": { _, reply in reply(.success(Data())) },
+            "clear": { _, reply in reply(.success(Data())) },
+            "list": { _, reply in reply(.success(Data("[]".utf8))) },
+        ]
+        modules["login"] = [
+            "set": { _, reply in reply(.failure(AsukaModuleError("not available: an iOS app doesn't start at login"))) },
+            "enabled": { _, reply in reply(.success(Data([0]))) },
+            "openedAtLogin": { _, reply in reply(.success(Data([0]))) },
+        ]
         modules["clipboard"] = AsukaClipboard.shared.methods()
         #if ASUKA_REVIEW
         modules["review"] = AsukaReview.methods(self)

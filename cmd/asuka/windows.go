@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/egoist/asuka/internal/filetype"
 )
 
 // Windows: the app's Go code and its host (host/windows, Win32 through
@@ -44,6 +46,17 @@ func windowsLdflags(app *goApp, release bool) string {
 		}
 		if app.cfg.Scheme != "" {
 			f += " -X " + strconv.Quote("github.com/egoist/asuka/internal/boot.Scheme="+app.cfg.Scheme)
+		}
+		// The file types, registered as the app starts; a release's icons
+		// are the executable's (winresSyso).
+		if types := app.cfg.fileTypes(); len(types) > 0 {
+			ids := map[int]int{}
+			for i, t := range types {
+				if release && t.icon != "" {
+					ids[i] = fileTypeIconID(i)
+				}
+			}
+			f += " -X " + strconv.Quote("github.com/egoist/asuka/internal/boot.FileTypes="+filetype.Encode(windowsFileTypes(types, ids)))
 		}
 		f += " -X " + strconv.Quote("github.com/egoist/asuka/internal/boot.Version="+app.cfg.Version)
 		f += " -X " + strconv.Quote("github.com/egoist/asuka/internal/boot.Build="+strconv.Itoa(app.cfg.Build))
