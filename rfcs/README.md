@@ -18,6 +18,7 @@ Each RFC is a file `NNNN-short-name.md` with a header:
 | [0001](0001-keep-native-views-across-reloads.md) | Keep the player's native views across reloads | Draft |
 | [0002](0002-restore-navigation-across-reloads.md) | Restore navigation across reloads | Draft |
 | [0003](0003-in-process-code-patching.md) | In-process code patching and an interpreted app package | Rejected |
+| [0004](0004-asuka-test.md) | asuka test: the same UI tests on the platforms' real views | Draft |
 
 ## Background: hot reload today
 
