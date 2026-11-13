@@ -8,7 +8,6 @@ package gtk
 var Dialogs struct {
 	FileDialogSetInitialFolder func(d, folder Ptr)
 	FileDialogSetInitialName   func(d Ptr, name string)
-	FileDialogSetInitialFile   func(d, file Ptr)
 	FileDialogSetAcceptLabel   func(d Ptr, label string)
 	FileDialogSave             func(d, parent, cancellable, cb, data Ptr)
 	FileDialogSaveFinish       func(d, res Ptr, err *Ptr) Ptr
@@ -29,7 +28,6 @@ func init() {
 	bindings = append(bindings,
 		binding{&d.FileDialogSetInitialFolder, "gtk_file_dialog_set_initial_folder"},
 		binding{&d.FileDialogSetInitialName, "gtk_file_dialog_set_initial_name"},
-		binding{&d.FileDialogSetInitialFile, "gtk_file_dialog_set_initial_file"},
 		binding{&d.FileDialogSetAcceptLabel, "gtk_file_dialog_set_accept_label"},
 		binding{&d.FileDialogSave, "gtk_file_dialog_save"},
 		binding{&d.FileDialogSaveFinish, "gtk_file_dialog_save_finish"},

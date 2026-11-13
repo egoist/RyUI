@@ -72,7 +72,8 @@ type OpenOptions struct {
 	// default: the system's ("Open").
 	Button string
 	// Start is the folder the dialog starts in, or a file whose folder it
-	// starts in, selected. Default: the system's (the folder last used).
+	// starts in, the file selected (macOS, Windows; GTK's dialog selects
+	// nothing). Default: the system's (the folder last used).
 	// On the web, a path one of these dialogs gave (the browser starts
 	// where that file or folder is), else ignored.
 	Start string

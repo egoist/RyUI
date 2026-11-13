@@ -108,6 +108,15 @@ func TestFileDialogs(t *testing.T) {
 		t.Fatalf("open: %q, %v", r.b, r.err)
 	}
 
+	// Open, starting at a file: in its folder (GTK selects nothing: its
+	// open dialog and the portal's take a folder).
+	r = show("open", map[string]any{"start": filepath.Join(dir, "a.txt")}, func(d Ptr) {
+		settle(t, h, func() bool { return folderOf(d) == dir })
+	}, cancel)
+	if r.err != nil || len(r.b) != 0 {
+		t.Fatalf("open, from a file: %q, %v", r.b, r.err)
+	}
+
 	// Save: the name suggested, in the folder; the path chosen.
 	r = show("save", map[string]any{"start": dir, "name": "Notes.md"}, func(d Ptr) {
 		onMain(func() {

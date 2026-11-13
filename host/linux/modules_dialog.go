@@ -71,16 +71,11 @@ func (h *Host) fileDialog(kind string, args []byte, reply func([]byte, error)) {
 		Dialogs.FileDialogSetAcceptLabel(d, a.Button)
 	}
 	if a.Start != "" {
-		st, err := os.Stat(a.Start)
-		switch {
-		case err == nil && st.IsDir():
+		if st, err := os.Stat(a.Start); err == nil && st.IsDir() {
 			setInitialFolder(d, a.Start)
-		case err == nil && kind == "open":
-			// A file that's there: its folder, the file selected.
-			f := Sys.FileNewForPath(a.Start)
-			Dialogs.FileDialogSetInitialFile(d, f)
-			ObjectUnref(f)
-		default:
+		} else {
+			// A file: its folder. GTK's open dialog (and the portal's)
+			// selects nothing in it; Save suggests its name.
 			setInitialFolder(d, filepath.Dir(a.Start))
 			if kind == "save" && a.Name == "" {
 				Dialogs.FileDialogSetInitialName(d, filepath.Base(a.Start))

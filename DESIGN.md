@@ -2369,11 +2369,11 @@ and never assumes a single root in its own data structures.
   paths, not copies (`device.PickFiles` gives copies, as a phone's
   document picker does): the app reads and writes the files where they
   are. Their options are a title, the button's label, where the dialog
-  starts (a folder, or a file in it: selected, or its name suggested),
-  filters (`dialog.Filter`: MIME types as an input's accept takes them,
-  `image/*` a family, or extensions, or both), several files or
-  folders, hidden files, and `From`, a view in the window the dialog
-  belongs to (default: the one in use). They're module calls (`dialog`:
+  starts (a folder, or a file in it: selected on macOS and Windows, or
+  its name suggested), filters (`dialog.Filter`: MIME types as an
+  input's accept takes them, `image/*` a family, or extensions, or
+  both), several files or folders, hidden files, and `From`, a view in
+  the window the dialog belongs to (default: the one in use). They're module calls (`dialog`:
   `open`, `save`, `folder`, the options as JSON), answered with the
   paths (JSON) or the path once the user has chosen; nothing is a
   cancel.
