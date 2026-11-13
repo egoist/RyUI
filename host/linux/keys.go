@@ -18,8 +18,12 @@ import (
 // window's focus widget's node (the nearest widget out from it that is a
 // node's view: an entry's GtkText is its field's; the header bar's search
 // entry, its screen's), or the window's root (the main window's root, a
-// Window node) where no node has the focus, and goes out through the
-// nodes' parents to the window's: a Window node ends its content. The
+// Window node; a popover's node) where no node has the focus, and goes
+// out through the nodes' parents, and on from a node with none where it
+// shows (keyOut): a sheet's (an AdwDialog in the window it was presented
+// over) and a popover's node to that window's root, which ends it, a
+// Window node ending its content (a list's cells are the host's views,
+// in the list). The
 // first node whose Keys have the key takes it: the controller stops it,
 // so neither the focused control (an entry's caret, its activate) nor the
 // accelerators nor a panel's or a popover's Escape get it, and the node
@@ -93,22 +97,54 @@ func (h *Host) keyPressed(w *win, native Ptr, start *node, ctrl Ptr, keyval, key
 	if name == "" {
 		return false
 	}
-	return h.routeKey(w, h.focusNode(w, native, focus, start), name, mods)
+	return h.routeKey(h.focusNode(w, native, focus, start), name, mods)
 }
 
-// routeKey gives a key to the nearest node, from n out through its
-// parents, then w's root (a Sheet's, a Popover's content isn't in the
-// root's tree), whose Keys have it.
-func (h *Host) routeKey(w *win, n *node, name string, mods uint8) bool {
-	for ; n != nil; n = n.parent {
+// routeKey gives a key to the nearest node, from n out (keyOut), whose
+// Keys have it.
+func (h *Host) routeKey(n *node, name string, mods uint8) bool {
+	for ; n != nil; n = h.keyOut(n) {
 		if h.takeKey(n, name, mods) {
 			return true
 		}
-		if n == w.root || n.kind == ops.KindWindow {
-			return false
-		}
 	}
-	return w.root != nil && h.takeKey(w.root, name, mods)
+	return false
+}
+
+// keyOut is where a key goes on from n, not taking it: n's parent (a
+// list's cells and rows are views of the host's in it, with their
+// parents); from a node the core leaves without one, where it shows: a
+// sheet's node the root of the window it was presented over (the main
+// window's root, a Window node), a popover's node the root of what its
+// anchor is in (a window's, or a sheet's node). The root and a Window
+// node are ends (nil): a Window's keys are its own.
+func (h *Host) keyOut(n *node) *node {
+	if n.parent != nil {
+		return n.parent
+	}
+	switch n.kind {
+	case ops.KindSheet:
+		if w := n.nav.over; w != nil && !w.closing && w.root != nil && w.root != n {
+			return w.root
+		}
+	case ops.KindPopover:
+		var a *node
+		if po, ok := n.ext.(*popover); ok {
+			a = h.nodes[po.anchor]
+		}
+		for a != nil && a.parent != nil {
+			a = a.parent
+		}
+		if a != nil && a != n {
+			return a
+		}
+	default:
+		return nil
+	}
+	if h.main != nil {
+		return h.main.root
+	}
+	return nil
 }
 
 // takeKey gives n the key if its Keys have it.
@@ -153,7 +189,7 @@ func (h *Host) keyToNodes(name string, mods uint8) bool {
 	if focus != 0 && composing(focus) {
 		return false
 	}
-	return h.routeKey(w, h.focusNode(w, w.window, focus, w.root), ops.KeyName(name), mods)
+	return h.routeKey(h.focusNode(w, w.window, focus, w.root), ops.KeyName(name), mods)
 }
 
 // inside reports whether w is inside native.

@@ -21,11 +21,12 @@ import (
 // (chrome), or the tabs' switcher, or the window's title.
 
 type nav struct {
-	view     Ptr // a Stack's AdwNavigationView; Tabs' AdwViewStack
-	page     Ptr // a Screen's AdwNavigationPage, or its AdwViewStackPage in Tabs
-	dialog   Ptr // a Sheet's AdwDialog, an Alert's AdwAlertDialog
-	bar      Ptr // Tabs' AdwViewSwitcherBar
-	switcher Ptr // Tabs' AdwViewSwitcher, for the header bar
+	view     Ptr  // a Stack's AdwNavigationView; Tabs' AdwViewStack
+	page     Ptr  // a Screen's AdwNavigationPage, or its AdwViewStackPage in Tabs
+	dialog   Ptr  // a Sheet's AdwDialog, an Alert's AdwAlertDialog
+	over     *win // the window a Sheet was presented over
+	bar      Ptr  // Tabs' AdwViewSwitcherBar
+	switcher Ptr  // Tabs' AdwViewSwitcher, for the header bar
 	narrow   bool
 	popping  bool // the host is popping (no Popped)
 	gone     bool // the user popped or dismissed it
@@ -448,6 +449,10 @@ func (h *Host) present(n *node) {
 	switch n.kind {
 	case ops.KindSheet:
 		h.sizeSheet(n)
+		n.nav.over = h.main
+		if w := h.activeWin; w != nil {
+			n.nav.over = w
+		}
 		AdwDialogPresent(n.nav.dialog, parent)
 	case ops.KindAlert:
 		h.presentAlert(n, parent)

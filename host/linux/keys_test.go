@@ -183,6 +183,73 @@ func TestUseKeys(t *testing.T) {
 	waitLog(t, h, &log, "main space", "main ctrl e", "main escape", "window escape", "window k", "menu k")
 }
 
+// A key goes on from a node the core leaves without a parent where it
+// shows: a list's row (a cell) to its list and the views around it; a
+// sheet's node to the window it covers, whose UseKeys (a sheet's
+// content's UseKeys too) come after the content's keys; a sheet over a
+// Window to that Window's, never the main window's.
+func TestKeysSheetListRow(t *testing.T) {
+	var log keyLog
+	sheet, win, winSheet := signal.New(false), signal.New(false), signal.New(false)
+	h, r := mount(t, func() ui.Node {
+		ui.UseKeys(ui.KeyMap{{Key: "f2"}: log.add("main f2"), {Key: "f3"}: log.add("main f3")})
+		return ui.Column(ui.Style{},
+			ui.View(ui.ViewProps{Style: ui.Style{Height: ui.Pt(200)}, Keys: ui.KeyMap{{Key: "f3"}: log.add("around f3")}},
+				ui.List(ui.ListProps{}, signal.Static([]int{1, 2}), func(i int) int { return i },
+					func(signal.Accessor[int], signal.Accessor[int]) ui.Node {
+						return ui.Row(ui.Style{Height: ui.Pt(44)}, ui.TextField(ui.TextFieldProps{Value: signal.New("")}))
+					})),
+			ui.Sheet(ui.SheetProps{Open: sheet, Content: func() ui.Node {
+				ui.UseKeys(ui.KeyMap{{Key: "f4"}: log.add("sheet usekeys")})
+				return ui.View(ui.ViewProps{Keys: ui.KeyMap{{Key: "f2"}: log.add("sheet f2")}},
+					ui.TextField(ui.TextFieldProps{Value: signal.New("")}))
+			}}),
+			ui.Window(ui.WindowProps{Open: win, Width: 300, Height: 200, Content: func() ui.Node {
+				ui.UseKeys(ui.KeyMap{{Key: "f5"}: log.add("window f5")})
+				return ui.Sheet(ui.SheetProps{Open: winSheet, Content: func() ui.Node {
+					return ui.TextField(ui.TextFieldProps{Value: signal.New("")})
+				}})
+			}}),
+		)
+	})
+	// focusIn focuses a field under a node of kind k (a cell's: k 0).
+	focusIn := func(k ops.Kind) {
+		t.Helper()
+		settle(t, h, func() bool {
+			for _, f := range find(h, ops.KindTextField) {
+				top, inCell := f, false
+				for top.parent != nil {
+					if _, ok := top.ext.(*cell); ok {
+						inCell = true
+					}
+					top = top.parent
+				}
+				if (k == 0 && inCell || k != 0 && top.kind == k) && WidgetGetMapped(f.widget) {
+					WidgetGrabFocus(f.field.editable)
+					return WidgetHasFocus(EditableGetDelegate(f.field.editable))
+				}
+			}
+			return false
+		})
+	}
+	press := keyboard(t, h.main)
+	focusIn(0)
+	press("F3", "F2")
+	waitLog(t, h, &log, "around f3", "main f2")
+	onMain(func() { h.enter(func() { sheet.Set(true); r.Flush() }) })
+	focusIn(ops.KindSheet)
+	press("F2", "F3", "F4")
+	want := []string{"around f3", "main f2", "sheet f2", "main f3", "sheet usekeys"}
+	waitLog(t, h, &log, want...)
+	onMain(func() { h.enter(func() { sheet.Set(false); win.Set(true); r.Flush() }) })
+	w := theWindow(t, h)
+	press = keyboard(t, w)
+	onMain(func() { h.enter(func() { winSheet.Set(true); r.Flush() }) })
+	focusIn(ops.KindSheet)
+	press("F2", "F3", "F5")
+	waitLog(t, h, &log, append(want, "window f5")...)
+}
+
 // A panel's content declaring Escape takes it before the panel's own
 // Escape, which closes it; a popover's likewise, and its window's keys
 // (UseKeys) are reached from it.
