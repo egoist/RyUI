@@ -1253,7 +1253,7 @@ the new code, with no install. The app's logs are the process's output.
   (`boot.AssetBase`).
 - **Not in the player**: an app's own native code (`ios/`, `android/`),
   which only an app built with it can show. Such apps, `--once` and
-  `--embed` build the app with its Go code, as before: `asuka dev`
+  `--no-hot` build the app with its Go code, as before: `asuka dev`
   rebuilds the library and relaunches on the iOS simulator (no Xcode
   project: `swiftc` compiles the embedded host, with the app's Swift,
   into one object, cached; each change rebuilds the archive, links,

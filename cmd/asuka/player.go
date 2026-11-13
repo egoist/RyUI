@@ -38,7 +38,7 @@ const (
 // native packages (it, or its dependencies) have native code for platform
 // (ios, android), which only an app built with it can show.
 func usePlayer(app *goApp, o *devOptions, platform string) bool {
-	if o.embed || o.once {
+	if o.noHot || o.once {
 		return false
 	}
 	natives, err := nativeFor(app, platform, "arm64")
