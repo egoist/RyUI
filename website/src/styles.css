@@ -10,13 +10,11 @@
   --font-heading: var(--font-sans);
   --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
-  --color-gopher: var(--gopher);
-  --color-gopher-ink: var(--gopher-ink);
-  --color-bang-1: var(--bang-1);
-  --color-bang-2: var(--bang-2);
-  --color-bang-3: var(--bang-3);
-  --color-bang-4: var(--bang-4);
-  --color-bang-5: var(--bang-5);
+  --font-display: "Shippori Mincho B1", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --color-unit: var(--unit);
+  --color-unit-ink: var(--unit-ink);
+  --color-signal: var(--signal);
+  --color-signal-ink: var(--signal-ink);
   --color-code: var(--code);
   --color-better: var(--better);
   --color-worse: var(--worse);
@@ -47,71 +45,49 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Neutral, with one accent: Go's gopher blue. */
-:root {
-  --gopher: oklch(0.69 0.13 224);
-  --gopher-ink: oklch(0.5 0.11 228);
-  /* The "!" of the wordmark, in the colors of MyGO!!!!!'s members: Tomori,
-     Anon, Rāna, Soyo and Taki. Deeper on white, for 3:1. */
-  --bang-1: oklch(0.66 0.084 231);
-  --bang-2: oklch(0.69 0.145 12);
-  --bang-3: oklch(0.65 0.169 144);
-  --bang-4: oklch(0.67 0.111 88);
-  --bang-5: oklch(0.59 0.078 284);
-  --code: oklch(0.985 0 0);
-  /* A benchmark that got faster or leaner, or slower or heavier: text
-     colors, always next to an arrow. */
-  --better: oklch(0.52 0.14 150);
-  --worse: oklch(0.55 0.2 27);
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: var(--gopher);
-  --radius: 0.625rem;
+/* The title cards' face: Shippori Mincho B1 ExtraBold, cut down to Latin and
+   the few kanji the site sets (public/fonts, under the OFL). */
+@font-face {
+  font-family: "Shippori Mincho B1";
+  font-weight: 800;
+  font-display: swap;
+  src: url("/fonts/shippori-mincho-b1-800.woff2") format("woff2");
 }
 
-.dark {
-  --gopher: oklch(0.76 0.12 222);
-  --gopher-ink: oklch(0.8 0.11 222);
-  --bang-1: oklch(0.76 0.084 231);
-  --bang-2: oklch(0.76 0.145 12);
-  --bang-3: oklch(0.81 0.169 144);
-  --bang-4: oklch(0.91 0.111 88);
-  --bang-5: oklch(0.59 0.078 284);
-  --code: oklch(0.165 0 0);
+/* Ink, as a title card: paper for text, Unit red the one accent, the field's
+   orange for what is drawn, never for text a reader must read. Corners are
+   sharp. The site is dark only; <html> carries .dark for components that
+   style by it. */
+:root {
+  color-scheme: dark;
+  --unit: #e3212b;
+  --unit-ink: #ff5a5f;
+  --signal: #ff7a1a;
+  --signal-ink: #ff9d57;
+  --code: #121015;
+  /* A benchmark that got faster or leaner, or slower or heavier: text
+     colors, always next to an arrow. */
   --better: oklch(0.78 0.15 150);
   --worse: oklch(0.72 0.17 25);
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.175 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
+  --background: #0e0d10;
+  --foreground: #f4efe5;
+  --card: #141217;
+  --card-foreground: #f4efe5;
+  --popover: #18161b;
+  --popover-foreground: #f4efe5;
+  --primary: #f4efe5;
+  --primary-foreground: #0e0d10;
+  --secondary: #1f1c22;
+  --secondary-foreground: #f4efe5;
+  --muted: #1f1c22;
+  --muted-foreground: #a39c91;
+  --accent: #24212a;
+  --accent-foreground: #f4efe5;
+  --destructive: #ff5a5f;
+  --border: rgb(244 239 229 / 11%);
+  --input: rgb(244 239 229 / 16%);
+  --ring: var(--unit);
+  --radius: 0.125rem;
 }
 
 @layer base {
@@ -120,17 +96,52 @@
   }
   html {
     @apply scroll-pt-28 font-sans antialiased;
-    color-scheme: light;
-  }
-  html.dark {
-    color-scheme: dark;
+    overflow-x: clip;
   }
   body {
     @apply bg-background text-foreground;
   }
   ::selection {
-    background: color-mix(in oklch, var(--gopher) 28%, transparent);
+    background: color-mix(in oklch, var(--unit) 30%, transparent);
   }
+}
+
+/* A section that runs the width of the window, out of the page's column;
+   its content goes back in with .inner. */
+@utility bleed {
+  width: 100vw;
+  margin-inline: calc(50% - 50vw);
+}
+@utility inner {
+  @apply mx-auto w-full max-w-6xl px-4 sm:px-10;
+}
+
+/* A line of text that runs past, right to left, twice over so it never
+   ends; still for readers who prefer reduced motion. */
+@keyframes ticker {
+  to { translate: -50% 0; }
+}
+.ticker {
+  animation: ticker 40s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ticker {
+    animation: none;
+  }
+}
+
+/* A unit's sync bar fills as it scrolls into view, where the browser can
+   tie an animation to scrolling; full otherwise. */
+@supports (animation-timeline: view()) {
+  .sync-fill {
+    animation: sync-fill linear both;
+    animation-timeline: view();
+    animation-range: entry 10% cover 45%;
+  }
+}
+@keyframes sync-fill {
+  from { scale: 0 1; }
+  to { scale: 1 1; }
 }
 
 /* The column of every page, between two hairlines. */
@@ -143,32 +154,56 @@
   @apply font-mono text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase;
 }
 
-/* The "!" of the wordmark come in one after another, --bang-delay apart:
-   each from large, raised and blurred, springing to its size. */
-@theme inline {
-  --animate-bang: bang 0.4s linear var(--bang-delay, 0s) both;
-}
-@keyframes bang {
-  0% { opacity: 0; scale: 2.2; translate: 0 -0.25em; filter: blur(0.04em); }
-  10% { opacity: 0.5; scale: 1.39; translate: 0 -0.15em; filter: blur(0.024em); }
-  20% { opacity: 1; scale: 0.93; translate: 0 -0.08em; filter: blur(0.013em); }
-  30% { scale: 0.85; translate: 0 -0.04em; filter: blur(0.007em); }
-  40% { scale: 0.92; translate: 0 -0.02em; filter: blur(0.003em); }
-  50% { scale: 0.99; translate: 0 -0.01em; filter: blur(0); }
-  60% { scale: 1.015; translate: 0 0; }
-  80% { scale: 1.004; }
-  100% { scale: 1; }
+/* The type of a title card: heavy mincho, set tight. */
+@utility display {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  font-kerning: normal;
 }
 
-/* Shiki, for both color schemes. */
+/* A band of hazard stripes, in the field's orange. */
+@utility hazard {
+  background: repeating-linear-gradient(-45deg, var(--signal) 0 12px, transparent 12px 24px);
+}
+
+/* Corner brackets, as on a monitor's readout: --hud is their color. */
+@utility hud {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    pointer-events: none;
+    --c: var(--hud, var(--signal));
+    --l: 14px;
+    --w: 2px;
+    background:
+      linear-gradient(var(--c) 0 0) top left / var(--l) var(--w),
+      linear-gradient(var(--c) 0 0) top left / var(--w) var(--l),
+      linear-gradient(var(--c) 0 0) top right / var(--l) var(--w),
+      linear-gradient(var(--c) 0 0) top right / var(--w) var(--l),
+      linear-gradient(var(--c) 0 0) bottom left / var(--l) var(--w),
+      linear-gradient(var(--c) 0 0) bottom left / var(--w) var(--l),
+      linear-gradient(var(--c) 0 0) bottom right / var(--l) var(--w),
+      linear-gradient(var(--c) 0 0) bottom right / var(--w) var(--l);
+    background-repeat: no-repeat;
+  }
+}
+
+/* Two corners cut off, as on a plate of armour. */
+@utility chamfer {
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+}
+
+/* Lines of a monitor, faint, over a dark card. */
+@utility scanlines {
+  background-image: repeating-linear-gradient(to bottom, rgb(255 255 255 / 0.025) 0 1px, transparent 1px 4px);
+}
+
+/* Shiki's colors. */
 .shiki,
 .shiki span {
-  color: var(--shiki-light);
-  font-style: var(--shiki-light-font-style);
-  font-weight: var(--shiki-light-font-weight);
-}
-.dark .shiki,
-.dark .shiki span {
   color: var(--shiki-dark);
   font-style: var(--shiki-dark-font-style);
   font-weight: var(--shiki-dark-font-weight);
@@ -194,7 +229,7 @@
     @apply text-foreground;
   }
   & h2 {
-    @apply mt-16 mb-4 border-t pt-10 text-[1.625rem] leading-tight font-semibold tracking-[-0.025em];
+    @apply mt-16 mb-4 border-t pt-10 display text-[1.75rem] leading-tight;
   }
   & h3 {
     @apply mt-10 mb-3 text-[1.0625rem] font-semibold tracking-tight;
@@ -207,7 +242,7 @@
   }
   & :is(h2, h3, h4) > a::after {
     content: "§";
-    @apply ml-2 font-sans text-[0.7em] text-gopher-ink opacity-0 transition-opacity;
+    @apply ml-2 font-sans text-[0.7em] text-unit-ink opacity-0 transition-opacity;
   }
   & :is(h2, h3, h4) > a:hover::after {
     @apply opacity-100;
@@ -219,7 +254,7 @@
     @apply my-5;
   }
   & a {
-    @apply font-medium text-foreground underline decoration-gopher/45 decoration-1 underline-offset-[5px] transition-colors hover:decoration-gopher;
+    @apply font-medium text-foreground underline decoration-unit/45 decoration-1 underline-offset-[5px] transition-colors hover:decoration-unit;
   }
   & strong {
     @apply font-semibold text-foreground;
@@ -240,7 +275,7 @@
     @apply my-2;
   }
   & blockquote {
-    @apply border-l-2 border-gopher pl-4 text-muted-foreground;
+    @apply border-l-2 border-unit pl-4 text-muted-foreground;
   }
   & hr {
     @apply my-12;
@@ -280,28 +315,18 @@
 }
 
 /* A frame of website/docs-demo, a component of native UI in WebAssembly,
-   in a window of macOS: prefers-color-scheme in the frame follows its
+   in a dark window of macOS: prefers-color-scheme in the frame follows its
    color-scheme. */
 .ui-preview {
   @apply my-6 overflow-hidden rounded-[10px];
-  --preview-bar: #fafafa;
-  --preview-bar-border: #ebebeb;
-  --preview-title: #4d4d4d;
-  background: #fff;
+  --preview-bar: #2a2a2b;
+  --preview-bar-border: #161617;
+  --preview-title: #b9b9bb;
+  background: #1e1e1e;
   box-shadow:
-    0 0 0 0.5px rgb(0 0 0 / 0.18),
-    0 4px 12px -4px rgb(0 0 0 / 0.1);
-
-  .dark & {
-    --preview-bar: #2a2a2b;
-    --preview-bar-border: #161617;
-    --preview-title: #b9b9bb;
-    background: #1e1e1e;
-    box-shadow:
-      0 0 0 0.5px rgb(255 255 255 / 0.14),
-      0 0 0 1px rgb(0 0 0 / 0.4),
-      0 4px 12px -4px rgb(0 0 0 / 0.35);
-  }
+    0 0 0 0.5px rgb(255 255 255 / 0.14),
+    0 0 0 1px rgb(0 0 0 / 0.4),
+    0 4px 12px -4px rgb(0 0 0 / 0.35);
 }
 
 .ui-preview-titlebar {
@@ -348,11 +373,7 @@
 
 .ui-preview-frame {
   @apply block w-full border-0;
-  color-scheme: light;
-
-  .dark & {
-    color-scheme: dark;
-  }
+  color-scheme: dark;
 }
 
 .copy-button {
@@ -369,7 +390,7 @@
     @apply hidden;
   }
   &[data-copied] .icon-check {
-    @apply block text-gopher-ink;
+    @apply block text-unit-ink;
   }
 }
 
@@ -384,13 +405,146 @@
   @apply text-[15px] font-semibold tracking-tight text-foreground transition-colors;
 }
 .prose-docs a.doc-card:hover .doc-card-title {
-  @apply text-gopher-ink;
+  @apply text-unit-ink;
 }
 .doc-card-description {
   @apply text-sm leading-6 font-normal text-muted-foreground;
 }
 
-/* The hero's gopher: the scene fades out at its edges. */
-.gopher-rocket {
-  mask-image: radial-gradient(closest-side, black 70%, transparent);
+/* The home page's translation: a pulse runs down each wire from the Go
+   source to the host's widget. */
+.wire::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: 0;
+  width: 18px;
+  height: 5px;
+  background: var(--signal);
+  box-shadow: 0 0 10px var(--signal);
+  animation: wire 1.4s cubic-bezier(0.5, 0, 0.5, 1) var(--delay, 0s) infinite;
+}
+@keyframes wire {
+  from { translate: 0 0; opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  to { translate: calc(7rem - 18px) 0; opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wire::after {
+    animation: none;
+  }
+}
+
+/* Each platform's widgets, sketched in its dark appearance: a field with
+   its placeholder, a switch that is on, a slider at 60%, a filled button.
+   Picking another platform changes them in place, shape and color easing
+   from one to the next. */
+.mock-field,
+.mock-switch,
+.mock-switch i,
+.mock-slider,
+.mock-slider b,
+.mock-slider i,
+.mock-slider::after,
+.mock-button {
+  transition-property: width, height, padding, border-radius, background, box-shadow, border-color, color, right, font-size, letter-spacing;
+  transition-duration: 0.35s;
+  transition-timing-function: cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .mock-field,
+  .mock-switch,
+  .mock-switch i,
+  .mock-slider,
+  .mock-slider b,
+  .mock-slider i,
+  .mock-slider::after,
+  .mock-button {
+    transition: none;
+  }
+}
+.mock-field {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  font-size: 14px;
+}
+.mock-switch {
+  position: relative;
+  display: block;
+  flex: none;
+  & i {
+    position: absolute;
+    top: 50%;
+    translate: 0 -50%;
+    border-radius: 999px;
+  }
+}
+.mock-slider {
+  position: relative;
+  display: block;
+  width: 100%;
+  & b,
+  & i {
+    position: absolute;
+    top: 50%;
+    translate: 0 -50%;
+  }
+  & b {
+    left: 0;
+    width: 60%;
+  }
+  & i {
+    left: 60%;
+    translate: -50% -50%;
+  }
+}
+.mock-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+[data-platform="ios"] {
+  --font: -apple-system, "SF Pro Text", system-ui, sans-serif;
+  & .mock-field { height: 36px; padding: 0 12px; border-radius: 10px; background: #1c1c1e; color: #8e8e93; font: 15px var(--font); }
+  & .mock-switch { width: 51px; height: 31px; border-radius: 999px; background: #30d158; & i { right: 2px; width: 27px; height: 27px; background: #fff; box-shadow: 0 2px 4px rgb(0 0 0 / 0.3); } }
+  & .mock-slider { height: 28px; background: linear-gradient(#3a3a3c 0 0) center / 100% 4px no-repeat; & b { height: 4px; border-radius: 2px; background: #0a84ff; } & i { width: 28px; height: 28px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgb(0 0 0 / 0.35); } }
+  & .mock-button { height: 40px; padding: 0 22px; border-radius: 12px; background: #0a84ff; color: #fff; font: 600 15px var(--font); }
+}
+[data-platform="android"] {
+  --font: Roboto, "Google Sans", system-ui, sans-serif;
+  & .mock-field { height: 46px; padding: 0 14px; border: 1px solid #938f99; border-radius: 4px; color: #cac4d0; font: 15px var(--font); }
+  & .mock-switch { width: 52px; height: 32px; border-radius: 999px; background: #d0bcff; & i { right: 4px; width: 24px; height: 24px; background: #381e72; } }
+  & .mock-slider { height: 44px; & b { height: 16px; width: calc(60% - 6px); border-radius: 8px 2px 2px 8px; background: #d0bcff; } & i { width: 4px; height: 40px; border-radius: 2px; background: #d0bcff; } &::after { content: ""; position: absolute; top: 50%; right: 0; left: calc(60% + 6px); height: 16px; translate: 0 -50%; border-radius: 2px 8px 8px 2px; background: #4a4458; } }
+  & .mock-button { height: 40px; padding: 0 24px; border-radius: 999px; background: #d0bcff; color: #381e72; font: 500 14px var(--font); letter-spacing: 0.01em; }
+}
+[data-platform="macos"] {
+  --font: -apple-system, "SF Pro Text", system-ui, sans-serif;
+  & .mock-field { height: 24px; padding: 0 7px; border-radius: 5px; background: rgb(255 255 255 / 0.06); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.14); color: rgb(255 255 255 / 0.3); font: 13px var(--font); }
+  & .mock-switch { width: 38px; height: 22px; border-radius: 999px; background: #0a84ff; & i { right: 1px; width: 20px; height: 20px; background: #e6e6e6; box-shadow: 0 1px 2px rgb(0 0 0 / 0.4); } }
+  & .mock-slider { height: 20px; background: linear-gradient(rgb(255 255 255 / 0.16) 0 0) center / 100% 4px no-repeat; & b { height: 4px; border-radius: 2px; background: #0a84ff; } & i { width: 18px; height: 18px; border-radius: 50%; background: #d9d9d9; box-shadow: 0 1px 3px rgb(0 0 0 / 0.5); } }
+  & .mock-button { height: 24px; padding: 0 16px; border-radius: 6px; background: #0a84ff; color: #fff; font: 13px var(--font); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18); }
+}
+[data-platform="windows"] {
+  --font: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  & .mock-field { height: 32px; padding: 0 11px; border-radius: 4px; background: rgb(255 255 255 / 0.06); box-shadow: inset 0 -1px 0 rgb(255 255 255 / 0.54), inset 0 0 0 1px rgb(255 255 255 / 0.07); color: rgb(255 255 255 / 0.55); font: 14px var(--font); }
+  & .mock-switch { width: 40px; height: 20px; border-radius: 999px; background: #60cdff; & i { right: 4px; width: 12px; height: 12px; background: #000; } }
+  & .mock-slider { height: 20px; background: linear-gradient(rgb(255 255 255 / 0.54) 0 0) center / 100% 4px no-repeat; & b { height: 4px; border-radius: 2px; background: #60cdff; } & i { width: 20px; height: 20px; border-radius: 50%; background: radial-gradient(#60cdff 0 5px, #454545 6px); box-shadow: 0 0 0 1px rgb(0 0 0 / 0.2); } }
+  & .mock-button { height: 32px; padding: 0 20px; border-radius: 4px; background: #60cdff; color: #000; font: 14px var(--font); }
+}
+[data-platform="linux"] {
+  --font: Cantarell, "Adwaita Sans", "Inter", system-ui, sans-serif;
+  & .mock-field { height: 34px; padding: 0 9px; border-radius: 6px; background: rgb(255 255 255 / 0.1); color: rgb(255 255 255 / 0.5); font: 15px var(--font); }
+  & .mock-switch { width: 48px; height: 26px; border-radius: 999px; background: #3584e4; & i { right: 3px; width: 20px; height: 20px; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / 0.3); } }
+  & .mock-slider { height: 20px; background: linear-gradient(rgb(255 255 255 / 0.15) 0 0) center / 100% 6px no-repeat; & b { height: 6px; border-radius: 3px; background: #3584e4; } & i { width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / 0.4); } }
+  & .mock-button { height: 34px; padding: 0 18px; border-radius: 6px; background: #3584e4; color: #fff; font: 700 15px var(--font); }
+}
+[data-platform="web"] {
+  --font: system-ui, sans-serif;
+  & .mock-field { height: 34px; padding: 0 10px; border-radius: 8px; background: rgb(255 255 255 / 0.04); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.18); color: rgb(255 255 255 / 0.35); font: 15px var(--font); }
+  & .mock-switch { width: 44px; height: 24px; border-radius: 999px; background: #30d158; & i { right: 2px; width: 20px; height: 20px; background: #fff; } }
+  & .mock-slider { height: 16px; background: linear-gradient(#545454 0 0) center / 100% 6px no-repeat; border-radius: 3px; & b { height: 6px; border-radius: 3px; background: #3d8bff; } & i { width: 16px; height: 16px; border-radius: 50%; background: #3d8bff; } }
+  & .mock-button { height: 34px; padding: 0 16px; border-radius: 9px; background: #3d8bff; color: #fff; font: 15px var(--font); }
 }

@@ -59,7 +59,7 @@ function Highlight({ text, terms }: { text: string; terms: string[] }) {
   const pattern = new RegExp(`(${terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "gi")
   return text.split(pattern).map((part, i) =>
     i % 2 ? (
-      <mark key={i} className="rounded-sm bg-gopher/20 text-foreground">
+      <mark key={i} className="rounded-sm bg-unit/20 text-foreground">
         {part}
       </mark>
     ) : (

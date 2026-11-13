@@ -19,7 +19,7 @@ export function DocsNav({ sections, page, onNavigate }: { sections: NavSection[]
             {section.items.map((p) => (
               <li key={p.slug ?? p.href}>
                 {p.slug !== undefined ? (
-                  <DocLink slug={p.slug} onClick={onNavigate} className={item} activeProps={{ className: "bg-muted font-medium text-foreground!" }}>
+                  <DocLink slug={p.slug} onClick={onNavigate} className={item} activeProps={{ className: "bg-muted font-medium text-foreground! shadow-[inset_2px_0_0_var(--unit)]" }}>
                     {p.title}
                   </DocLink>
                 ) : (
@@ -36,7 +36,7 @@ export function DocsNav({ sections, page, onNavigate }: { sections: NavSection[]
                           href={`#${h.id}`}
                           onClick={onNavigate}
                           data-active={active === h.id || undefined}
-                          className="-ml-px block border-l border-transparent py-1 pr-2 pl-3 text-[13px] leading-5 text-muted-foreground transition-colors hover:text-foreground data-active:border-gopher data-active:text-foreground"
+                          className="-ml-px block border-l border-transparent py-1 pr-2 pl-3 text-[13px] leading-5 text-muted-foreground transition-colors hover:text-foreground data-active:border-unit data-active:text-foreground"
                         >
                           {h.text}
                         </a>

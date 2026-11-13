@@ -1,13 +1,17 @@
 import { Link } from "@tanstack/react-router"
 
+import { Mark } from "@/components/logo"
 import { site } from "@/lib/site"
 
 export function SiteFooter() {
   return (
     <footer className="frame label flex flex-wrap items-center justify-between gap-4 border-t px-4 py-6 sm:px-6">
-      <a href={`${site.repo}/blob/main/LICENSE`} className="hover:text-foreground">
-        MIT License
-      </a>
+      <div className="flex items-center gap-3">
+        <Mark className="size-5" />
+        <a href={`${site.repo}/blob/main/LICENSE`} className="hover:text-foreground">
+          MIT License
+        </a>
+      </div>
       <nav className="flex flex-wrap gap-x-6 gap-y-2">
         <Link to="/docs" className="hover:text-foreground">
           Docs

@@ -65,8 +65,8 @@ export function DocPage({ doc }: { doc: Doc }) {
 
       <article className="max-w-[52rem] px-4 pt-10 pb-20 sm:px-10 lg:pt-14">
         <header>
-          {doc.section && <p className="label">{doc.section}</p>}
-          <h1 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">{doc.title}</h1>
+          {doc.section && <p className="label flex items-center gap-2"><span className="size-1.5 bg-unit" />{doc.section}</p>}
+          <h1 className="display mt-3 text-4xl leading-[1.05] sm:text-5xl">{doc.title}</h1>
           {doc.summary && <p className="mt-3 text-lg leading-8 text-muted-foreground">{doc.summary}</p>}
         </header>
 

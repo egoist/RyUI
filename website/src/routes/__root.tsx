@@ -5,7 +5,6 @@ import { NotFound } from "@/components/not-found"
 import { SiteFooter } from "@/components/site-footer"
 import { SiteHeader } from "@/components/site-header"
 import { site } from "@/lib/site"
-import { themeScript } from "@/lib/theme"
 import appCss from "@/styles.css?url"
 
 export const Route = createRootRoute({
@@ -26,7 +25,6 @@ export const Route = createRootRoute({
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
     ],
     // An analytics script, if the site has one, goes here (in production only).
-    scripts: [{ children: themeScript }],
   }),
   shellComponent: RootDocument,
   component: RootLayout,
@@ -35,7 +33,7 @@ export const Route = createRootRoute({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className="dark">
       <head>
         <HeadContent />
       </head>

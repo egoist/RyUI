@@ -34,7 +34,8 @@ export interface RenderedMarkdown {
   sections: Section[]
 }
 
-const themes = { light: "github-light-default", dark: "github-dark-default" } as const
+// The site is dark only: one theme, its colors as --shiki-dark.
+const themes = { dark: "github-dark-default" } as const
 
 let highlighter: Promise<Highlighter> | undefined
 function getHighlighter() {
@@ -180,7 +181,7 @@ function highlight(shiki: Highlighter, code: string, lang: string): Element {
   return pre
 }
 
-/** Code highlighted for both color schemes, as HTML. */
+/** Code highlighted, as HTML. */
 export async function highlightCode(code: string, lang: string) {
   const pre = highlight(await getHighlighter(), code, lang)
   return unified().use(rehypeStringify).stringify({ type: "root", children: [pre] })
