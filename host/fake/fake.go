@@ -73,6 +73,10 @@ type Host struct {
 	// Modules answer Calls, by module name: as a host's, with Result
 	// events (posted: run them with RunPosted).
 	Modules map[string]func(method string, args []byte) ([]byte, error)
+	// AsyncModules answer Calls later, as a host's methods that wait do
+	// (a long poll's "next"): reply posts the Result, from any
+	// goroutine, once. Modules' come first.
+	AsyncModules map[string]func(method string, args []byte, reply func([]byte, error))
 
 	core     host.Core
 	posted   []func()
@@ -412,7 +416,8 @@ func measureText(text string, c layout.Constraints) layout.Size {
 	return layout.Size{W: w, H: float32(lines * 20)}
 }
 
-// call runs a Call with h.Modules and posts its Result.
+// call runs a Call with h.Modules (or h.AsyncModules) and posts its
+// Result.
 func (h *Host) call(root ops.NodeID, b []byte) {
 	le := binary.LittleEndian
 	id := le.Uint32(b)
@@ -423,20 +428,23 @@ func (h *Host) call(root ops.NodeID, b []byte) {
 	n = le.Uint32(b)
 	method := string(b[4 : 4+n])
 	args := append([]byte(nil), b[4+n:]...)
-	var res []byte
-	var err error
-	if f := h.Modules[module]; f != nil {
-		res, err = f(method, args)
-	} else {
-		err = fmt.Errorf("no module %q", module)
+	answer := func(res []byte, err error) {
+		out := le.AppendUint32(nil, id)
+		if err != nil {
+			out = append(append(out, 0), err.Error()...)
+		} else {
+			out = append(append(out, 1), res...)
+		}
+		h.Post(func() { h.dispatch(ops.Event{ID: root, Kind: ops.EventResult, Bytes: out}) })
 	}
-	out := le.AppendUint32(nil, id)
-	if err != nil {
-		out = append(append(out, 0), err.Error()...)
-	} else {
-		out = append(append(out, 1), res...)
+	switch {
+	case h.Modules[module] != nil:
+		answer(h.Modules[module](method, args))
+	case h.AsyncModules[module] != nil:
+		h.AsyncModules[module](method, args, answer)
+	default:
+		answer(nil, fmt.Errorf("no module %q", module))
 	}
-	h.Post(func() { h.dispatch(ops.Event{ID: root, Kind: ops.EventResult, Bytes: out}) })
 }
 
 // Root returns the view set as root.
