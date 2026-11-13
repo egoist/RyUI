@@ -154,6 +154,12 @@ func Mounted() {
 // KeepRunning.
 var Background string
 
+// StagedRelaunch, set by asuka/update while a Mac app's update waits for
+// the app to quit (its helper puts the new bundle in place), relaunches
+// the app with args once that's done, reporting whether it will:
+// app.Relaunch asks it first. Main thread.
+var StagedRelaunch func(args []string) bool
+
 // KeepRunning keeps a desktop app running when its last window closes
 // (app.KeepRunning): closing the main window hides it.
 var KeepRunning bool

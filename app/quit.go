@@ -104,6 +104,7 @@ func quitRequested(ending bool) bool {
 	})
 	// What the handlers changed (an alert to show) goes to the host.
 	boot.AfterMount(func() { ui.Post(func() {}) })
+	relaunchAfterQuit(e.canceled, ending)
 	return e.canceled
 }
 
