@@ -107,6 +107,11 @@ type appConfig struct {
 	// scheme (Android 12 and later; before, Asuka's own uses of the accent
 	// take it). Default: the platform's.
 	Accent string `json:"accent"`
+	// Background makes a desktop app one that runs in the background,
+	// living in the tray (asuka/tray), as app.RunInBackground does: no
+	// window at launch, kept running with none, and on macOS no Dock
+	// icon from launch (Info.plist's LSUIElement).
+	Background bool `json:"background"`
 	// Scheme is the app's URL scheme: myapp://anything opens it
 	// (ui.OnOpenURL gets the URL).
 	Scheme string `json:"scheme"`
@@ -332,6 +337,9 @@ func (c *appConfig) ldflagsStrip(strip ...string) string {
 	}
 	if c != nil && c.Android.DynamicColor {
 		f = append(f, "-X", "github.com/egoist/asuka/internal/boot.DynamicColor=1")
+	}
+	if c != nil && c.Background {
+		f = append(f, "-X", "github.com/egoist/asuka/internal/boot.Background=1")
 	}
 	if devLang != "" {
 		f = append(f, "-X", "github.com/egoist/asuka/internal/boot.Lang="+devLang)
