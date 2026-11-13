@@ -119,11 +119,22 @@ class AsukaScreen(context: Context, val nodeID: Int, private val rt: AsukaRuntim
     /**
      * A sheet's or popover's window (a dialog's, a popup's): its keys don't
      * pass the activity's dispatchKeyEvent, so they're routed here, on
-     * their way to the focused view inside (Keys.kt).
+     * their way to the focused view inside, from its node with nothing
+     * focused (Keys.kt).
      */
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
-        if (rootView !== rt.activity?.window?.decorView && rt.routeKey(event, findFocus())) return true
+        if (rootView !== rt.activity?.window?.decorView && rt.routeKey(event, findFocus(), rt.nodes[nodeID])) return true
         return super.dispatchKeyEvent(event)
+    }
+
+    // With nothing focused in its window, a key passes no view: it comes
+    // back unhandled, and starts at the sheet's or popover's node.
+    init {
+        addOnUnhandledKeyEventListener { _, e ->
+            val n = rt.nodes[nodeID]
+            (n?.kind == AsukaKind.SHEET || n?.kind == AsukaKind.POPOVER) &&
+                rootView !== rt.activity?.window?.decorView && findFocus() == null && rt.routeKey(e, null, n)
+        }
     }
 
     fun report() {

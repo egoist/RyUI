@@ -110,4 +110,62 @@ class KeysTest {
         assertNull(AsukaKeys.name(KeyEvent.KEYCODE_SHIFT_LEFT, 0))
         assertNull(AsukaKeys.name(KeyEvent.KEYCODE_GRAVE, '`'.code or Int.MIN_VALUE))
     }
+
+    /** A node tree: the root, a view with Keys around a List, a cell bound in it with a row's field; a sheet and a popover, each with a view and a field. */
+    private class Tree {
+        val nodes = HashMap<Int, AsukaNode>()
+        fun node(id: Int, kind: Int, parent: AsukaNode? = null, vararg keys: AsukaKey): AsukaNode {
+            val n = AsukaNode(id, kind, android.view.View(null))
+            n.parent = parent
+            n.keys = keys.toList()
+            nodes[id] = n
+            return n
+        }
+        val root = node(1, AsukaKind.VIEW, null, AsukaKey("escape", 0), AsukaKey("k", 1))
+        val around = node(2, AsukaKind.VIEW, root, AsukaKey("down", 0))
+        val list = node(3, AsukaKind.LIST, around)
+        val cell = node((0x80000000L or 1L).toInt(), 0).also { it.cellOf = list.id }
+        val rowField = node(4, AsukaKind.TEXT_FIELD, cell, AsukaKey("enter", 0))
+        val sheet = node(10, AsukaKind.SHEET)
+        val sheetView = node(11, AsukaKind.VIEW, sheet, AsukaKey("escape", 0))
+        val sheetField = node(12, AsukaKind.TEXT_FIELD, sheetView)
+        val pop = node(20, AsukaKind.POPOVER)
+        val popField = node(21, AsukaKind.TEXT_FIELD, pop)
+        val window = node(30, AsukaKind.WINDOW)
+        val windowField = node(31, AsukaKind.TEXT_FIELD, window)
+
+        fun taker(from: AsukaNode?, name: String, mods: Int = 0) = keyTaker(from, nodes, root.id, name, mods)?.first
+    }
+
+    // A list's row is a cell the host made, which the core leaves without
+    // a parent: a key in it goes on to its List, then the views around.
+    @Test
+    fun listRow() {
+        val t = Tree()
+        assertEquals(t.list, keyOut(t.cell, t.nodes, t.root.id))
+        assertEquals(t.rowField, t.taker(t.rowField, "enter"))
+        assertEquals(t.around, t.taker(t.rowField, "down"))
+        assertEquals(t.root, t.taker(t.rowField, "escape"))
+        assertNull(t.taker(t.rowField, "up"))
+    }
+
+    // A sheet's and a popover's node go on to the root (a phone's: the
+    // window they cover), whose keys (UseKeys) come after what their
+    // content declared; with nothing focused in their window, a key starts
+    // at their node. The root and a Window are ends.
+    @Test
+    fun sheetPopover() {
+        val t = Tree()
+        assertEquals(t.root, keyOut(t.sheet, t.nodes, t.root.id))
+        assertEquals(t.root, keyOut(t.pop, t.nodes, t.root.id))
+        assertNull(keyOut(t.root, t.nodes, t.root.id))
+        assertNull(keyOut(t.window, t.nodes, t.root.id))
+        assertEquals(t.sheetView, t.taker(t.sheetField, "escape")) // the sheet's first
+        assertEquals(t.root, t.taker(t.sheetField, "k", 1))
+        assertEquals(t.root, t.taker(t.sheet, "k", 1)) // nothing focused in it
+        assertEquals(t.root, t.taker(t.popField, "escape"))
+        assertEquals(t.root, t.taker(t.pop, "k", 1))
+        assertNull(t.taker(t.sheetField, "down")) // the views around the list aren't on its way
+        assertNull(t.taker(t.windowField, "k", 1)) // a Window's keys are its own
+    }
 }

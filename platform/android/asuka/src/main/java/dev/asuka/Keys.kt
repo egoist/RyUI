@@ -15,7 +15,9 @@ import java.util.IdentityHashMap
 // dispatchKeyEvent, which the window's keys reach before its views (and
 // after the input method, which keeps what it composes); a sheet's or a
 // popover's window doesn't pass it, so its screen routes them
-// (AsukaScreen.dispatchKeyEvent).
+// (AsukaScreen.dispatchKeyEvent), starting at its node with nothing
+// focused. Out is through the nodes' parents; a list's cell goes on to
+// its List, a sheet's or a popover's node to the root (keyOut).
 
 /** A key of a view's Keys prop (ops.Key): a lower case character or a named key, and modifiers (1 primary, 2 shift, 4 alt, 8 control). */
 data class AsukaKey(val name: String, val mods: Int)
@@ -99,11 +101,12 @@ object AsukaKeys {
 
 /**
  * Routes a key event from a window: the nearest node from focused out
- * (the root when nothing of the app's has the focus) whose Keys has it
- * gets Key with its index, and the event goes no further (nor its
- * release). Reports whether it was taken.
+ * (start when nothing of the app's has the focus: the root for the
+ * activity's window, a sheet's or a popover's node for its own) whose
+ * Keys has it gets Key with its index, and the event goes no further
+ * (nor its release). Reports whether it was taken.
  */
-fun AsukaRuntime.routeKey(e: KeyEvent, focused: View?): Boolean {
+fun AsukaRuntime.routeKey(e: KeyEvent, focused: View?, start: AsukaNode?): Boolean {
     when (e.action) {
         KeyEvent.ACTION_UP -> return takenKeys.remove(e.keyCode) // its down was taken
         KeyEvent.ACTION_DOWN -> {}
@@ -120,27 +123,45 @@ fun AsukaRuntime.routeKey(e: KeyEvent, focused: View?): Boolean {
         byView[n.view] = n
         n.wrapper?.let { byView[it] = n }
     }
-    fun nodeOf(v: View?): AsukaNode? {
-        var x: Any? = v
-        while (x is View) {
-            byView[x]?.let { return it }
-            x = x.parent
-        }
-        return null
+    var from: AsukaNode? = null
+    var x: Any? = focused
+    while (x is View && from == null) {
+        from = byView[x]
+        x = x.parent
     }
-    var n = nodeOf(focused) ?: nodes[rootID]
-    while (n != null) {
-        val i = AsukaKeys.match(n.keys, name, mods)
-        if (i >= 0) {
-            takenKeys.add(e.keyCode)
-            val id = n.id
-            emit(id, AsukaEventKind.KEY) { AsukaEvents.key(id, i.toLong()) }
-            return true
-        }
-        // A list's row: its cell has no parent node, its list's view holds it.
-        n = n.parent ?: nodeOf(n.outer.parent as? View)
+    val (n, i) = keyTaker(from ?: start, nodes, rootID, name, mods) ?: return false
+    takenKeys.add(e.keyCode)
+    val id = n.id
+    emit(id, AsukaEventKind.KEY) { AsukaEvents.key(id, i.toLong()) }
+    return true
+}
+
+/**
+ * The node, from n out ([keyOut]), whose Keys has the key, and the key's
+ * index there; null: none.
+ */
+fun keyTaker(n: AsukaNode?, nodes: Map<Int, AsukaNode>, rootID: Int, name: String, mods: Int): Pair<AsukaNode, Int>? {
+    var x = n
+    var hops = 0
+    while (x != null && hops++ < 10_000) { // a cycle never hangs the app
+        val i = AsukaKeys.match(x.keys, name, mods)
+        if (i >= 0) return x to i
+        x = keyOut(x, nodes, rootID)
     }
-    return false
+    return null
+}
+
+/**
+ * Where a key goes on from n, not taking it: n's parent; for a node the
+ * core leaves without one, where it shows: a list's cell its List, a
+ * sheet's or a popover's node the root (a phone's: the window it covers
+ * is the activity's). The root (and a Window) is an end: null.
+ */
+fun keyOut(n: AsukaNode, nodes: Map<Int, AsukaNode>, rootID: Int): AsukaNode? {
+    n.parent?.let { return it }
+    if (n.cellOf != 0) return nodes[n.cellOf]
+    if (n.kind == AsukaKind.SHEET || n.kind == AsukaKind.POPOVER) return nodes[rootID]?.takeIf { it !== n }
+    return null
 }
 
 /** Sets a node's Keys prop. */

@@ -27,6 +27,8 @@ class AsukaNode(val id: Int, val kind: Int, var view: View) {
     var borderWidth = 0f
     var borderColor = 0L
     var list: AsukaList? = null
+    /** A list cell's List's node ID (0: no cell): where its keys go on. */
+    var cellOf = 0
     /** The last value of each prop, to make the view again (see AsukaRuntime.rebuild). */
     val props = HashMap<Int, Any>()
 

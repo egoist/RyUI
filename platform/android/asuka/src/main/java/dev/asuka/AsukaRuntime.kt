@@ -1176,12 +1176,12 @@ class AsukaRuntime private constructor(val app: Application) : AsukaOpHandler {
 
     // Cells
 
-    fun makeCell(cell: AsukaCell): Int {
+    fun makeCell(cell: AsukaCell, list: Int): Int {
         nextCellID++
         val id = (0x80000000L or nextCellID.toLong()).toInt()
         cell.asukaID = id
         if (rtl) cell.layoutDirection = View.LAYOUT_DIRECTION_RTL
-        nodes[id] = AsukaNode(id, 0, cell)
+        nodes[id] = AsukaNode(id, 0, cell).also { it.cellOf = list }
         return id
     }
 }

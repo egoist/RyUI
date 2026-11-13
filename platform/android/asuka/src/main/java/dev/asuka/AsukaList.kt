@@ -426,7 +426,7 @@ class AsukaList(val id: Int, val runtime: AsukaRuntime) {
 
     private fun makePinned(): AsukaCell {
         val c = AsukaCell(runtime.themed)
-        runtime.makeCell(c)
+        runtime.makeCell(c, id)
         c.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS // the list's own header row is read
         frame.addView(c, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP))
         restylePinned(c)
@@ -472,13 +472,13 @@ class AsukaList(val id: Int, val runtime: AsukaRuntime) {
             if (viewType == 1) {
                 val h = AsukaCell(runtime.themed)
                 h.layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                runtime.makeCell(h)
+                runtime.makeCell(h, id)
                 androidx.core.view.ViewCompat.setAccessibilityHeading(h, true)
                 return Holder(null, h)
             }
             val row = AsukaSwipeRow(runtime, AsukaCell(runtime.themed))
             row.layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            runtime.makeCell(row.cell)
+            runtime.makeCell(row.cell, id)
             return Holder(row, null)
         }
 

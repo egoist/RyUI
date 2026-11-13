@@ -101,7 +101,7 @@ open class AsukaActivity : AppCompatActivity() {
      * node and its ancestors' take it first (Keys.kt).
      */
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
-        if (::runtime.isInitialized && runtime.activity === this && runtime.routeKey(event, currentFocus)) return true
+        if (::runtime.isInitialized && runtime.activity === this && runtime.routeKey(event, currentFocus, runtime.nodes[runtime.rootID])) return true
         return super.dispatchKeyEvent(event)
     }
 
