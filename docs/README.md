@@ -95,8 +95,9 @@ browser.
   biometrics, the screen and the launch screen, maps, the stores'
   services, sensors, image editing, speech, contacts and calendars, home
   screen widgets and shortcuts, and crash reports, on each platform.
-- [Native code](native.md): views and modules of your own, in Swift,
-  Kotlin, Go and JavaScript.
+- [Native code](native.md): views and modules of your own: Swift on
+  iOS and macOS, Kotlin on Android, Go on the desktop, JavaScript on the
+  web.
 - [Development](development.md): `ryui dev` in depth on each platform,
   devices, `ryui vet`, tests and common problems.
 - [Shipping](shipping.md): builds for the App Store and Google Play, a

@@ -221,6 +221,23 @@ RyUI's packages call the host's native modules (`ui.Call`). In a browser:
   `BarcodeDetector`). `ryui/scan` and `ryui/vision`'s codes use
   `BarcodeDetector`, faces and text only where the browser has them.
 - `ryui/imageedit`: a canvas (JPEG or PNG; a remote image needs CORS).
+- `ryui/maps`: a map the host draws of OpenStreetMap's tiles, as on
+  Windows: pins, their callouts, a drag, the wheel, a pinch, a double
+  click and the keyboard to move it, and the attribution OpenStreetMap
+  asks for. Satellite and Hybrid show the streets (no free imagery);
+  `ShowsUser` shows the user's location once the page has the location
+  permission (`ryui/location` asks; the map never does). The tiles come
+  from `tile.openstreetmap.org` as its usage policy asks of a web page
+  (only what's on screen, the browser's cache, its Referer); for heavy
+  use, pass `mapTiles` (another server's URL, with `{z}`, `{x}` and
+  `{y}`) to `start` ([Embedding](#embedding)).
+- `ryui/crash`: Go's runtime can't write its crash output to a file in a
+  browser, so the host keeps what it prints and, as the program ends
+  with a panic or a fatal error, writes it to the run's record in the
+  app's files: the next launch reports it. An uncaught JavaScript error
+  (the host's, or your `web/*.js`) is an `Exception` report at once, not
+  fatal (the page goes on). A page marks its run alive in `localStorage`,
+  so other open pages of the app leave it alone.
 - `ryui/biometric`: the platform's authenticator through WebAuthn (Touch
   ID, Face ID, Windows Hello, Android's screen lock), user verification
   required: the first `Authenticate` makes a passkey for the site, named
@@ -495,9 +512,9 @@ own, so it can't reach the app's page or storage.
 ## Native code
 
 An app's own views and modules for the web are JavaScript, in `web/*.js`
-beside its Go code, as its Swift is in `ios/`, its Kotlin in
-`android/`, and its desktop views and modules are Go (package `native`):
-see [Native code](native.md). The page loads them before the app starts; they register with
+beside its Go code, as its Swift is in `ios/` and `macos/`, its Kotlin
+in `android/`, and its desktop views and modules in Go are in package
+`native`: see [Native code](native.md). The page loads them before the app starts; they register with
 the global `ryui`:
 
 ```js
@@ -518,6 +535,10 @@ ryui.registerModule("greeter", {
   hello: (args) => new TextEncoder().encode("Hello, " + new TextDecoder().decode(args)),
 });
 ```
+
+A kind no script registers shows nothing, and the page logs `ryui: no
+native view "Stepper" is registered`, as the other hosts do. `ryui dev`
+reloads the page when a script in `web/` changes.
 
 `examples/media` has a native view, its JavaScript in
 `examples/media/web/natives.js`.
@@ -541,7 +562,9 @@ Several apps can run on one page, each in its element. `serviceWorker`
 registers the app's worker (the build's `sw.<digest>.js`, from the
 folder whose pages it serves): without it, notifications are the page's
 own and `ryui/push` can't subscribe. Pass `vapidPublicKey` too for
-`ryui/push`, as `index.html` does.
+`ryui/push`, as `index.html` does, and `mapTiles` for `ryui/maps`' tiles
+from a server of your own (`"https://tiles.example.com/{z}/{x}/{y}.png"`;
+OpenStreetMap's by default).
 
 ## What it doesn't do yet
 

@@ -178,11 +178,17 @@ type record struct {
 	foreground *bool
 	// info is the device and the app as the record says (MetricKit's).
 	info crashrun.Info
+	// run is the ID of the run it was in, if the host said: that run's,
+	// this one's too (what the web host reports as the page goes on).
+	run string
 }
 
 // add saves rec's report, with the context of the run it was in.
 func (c *collector) add(rec record) error {
 	r := c.match(rec.pid, rec.Time)
+	if rec.run != "" {
+		r = c.byID(rec.run)
+	}
 	if r != nil {
 		for _, k := range rec.unlessReported {
 			if c.context(r).reported[k] || c.pending(r, k) {
@@ -205,8 +211,18 @@ func (c *collector) add(rec record) error {
 	if err := c.save(rep); err != nil {
 		return err
 	}
-	if r != nil {
+	if r != nil && r.id != c.current {
 		c.mark(r, rep.Kind)
+	}
+	return nil
+}
+
+// byID is the run of an ID, this one too; nil if its files are gone.
+func (c *collector) byID(id string) *runFile {
+	for _, r := range c.runs {
+		if r.id == id {
+			return r
+		}
 	}
 	return nil
 }

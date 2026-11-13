@@ -561,7 +561,9 @@ return ui.Column(nil,
 - The user closing it sets `Open` to false and calls `OnClose`. Setting
   `Open` to false from code closes it without calling `OnClose`.
 - It opens at 800 by 600 points unless it says otherwise, cascaded
-  from the window in use on a Mac and on Windows. Stacks in it have their own bar, as in the main
+  from the window in use on a Mac and on Windows. On Linux the desktop
+  places it, as GTK 4 leaves to it (GNOME and KDE put a new window where
+  it covers the fewest others). Stacks in it have their own bar, as in the main
   window. Sheets and alerts open over the window the user is working in.
 
 | | A window |
@@ -653,8 +655,13 @@ domains, when `ryui.json` lists them:
 - `scheme` opens the app for `notes://anything`: on iOS and Android,
   on a Mac (the app's `Info.plist` declares it), and on Linux once the
   app is installed (its desktop file handles the scheme; a link opened
-  while the app runs goes to it, as GNOME's apps are one instance each).
-  Windows apps aren't registered for it yet.
+  while the app runs goes to it, as GNOME's apps are one instance each),
+  and on Windows (the app registers it for the user as it starts, under
+  `HKEY_CURRENT_USER\Software\Classes`, again if it has moved; a link
+  opened while the app runs goes to it). An app with an `id` runs once
+  on Linux and Windows: launched again, it comes to the front. `ryui
+  dev` registers no scheme on Linux or Windows, and its runs don't hand
+  themselves to an installed copy of the app: try links with a build.
 - `links` opens it for `https://notes.example.com/...`: universal links
   on iOS, App Links on Android. The domain must say so too. It serves
   `apple-app-site-association` for iOS and `assetlinks.json` for
@@ -680,9 +687,8 @@ ui.OnOpenURL(func(raw string) {
 
 [`examples/notes`](../examples/notes) adds a note for
 `ryuinotes://add?text=...`. A notification's URL arrives the same way
-when the user taps it, the web and Windows included (see
-[Device](device.md)); on Linux it's opened as any link is, so it reaches
-the app when it's of the app's scheme. A web app has no links of its own: its page's address doesn't change as it
+when the user taps it, on every platform (see [Device](device.md)). A
+web app has no links of its own: its page's address doesn't change as it
 navigates, and opening it doesn't call `OnOpenURL`.
 
 ## Shares from other apps

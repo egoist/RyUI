@@ -557,8 +557,12 @@ func (h *Host) tabsResized(n *node) {
 
 // Windows.
 
-// openWindow shows a Window node's window at its size, cascaded from the
-// window in use (where the compositor lets an app say).
+// openWindow shows a Window node's window at its size. Where it goes is
+// the desktop's to say, not the app's: GTK 4 has no way to place a window
+// (Wayland leaves it to the compositor, and GTK 4 dropped
+// gtk_window_move on X11 too), and GNOME's and KDE's window managers
+// place a new window themselves, where it covers the fewest others,
+// cascading when it must.
 func (h *Host) openWindow(n *node) {
 	w := n.win
 	width, height := w.width, w.height
@@ -569,9 +573,6 @@ func (h *Host) openWindow(n *node) {
 		height = 600
 	}
 	WindowSetDefaultSize(w.window, windowSize(width), windowSize(height)+headerHeight)
-	if a := h.activeWin; a != nil {
-		_ = a
-	}
 	WindowSetApplication(w.window, h.app)
 	WindowPresent(w.window)
 }

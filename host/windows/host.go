@@ -302,6 +302,7 @@ type Host struct {
 	dragSnapshot   []ops.Item // its items as its drag began
 	dropHelp       DropHelper
 	dropHelperMade bool
+	pendingURLs    []string // opened with before the root was mounted
 }
 
 var theHost *Host
@@ -327,7 +328,9 @@ func newHost() *Host {
 	h.intl = readIntl()
 	h.assets = assetsDir()
 	h.measureDC = CreateCompatibleDC(0)
-	h.msgWin = CreateWindow(0, classMessage, "", 0, 0, 0, 0, 0, ^uintptr(2), 0) // HWND_MESSAGE: -3
+	// HWND_MESSAGE (-3); titled, for a running-once app, so that a second
+	// launch finds it (deeplink_windows.go).
+	h.msgWin = CreateWindow(0, classMessage, msgWinTitle, 0, 0, 0, 0, 0, ^uintptr(2), 0)
 	h.park = CreateWindow(0, classWindow, "", WS_POPUP|WS_CLIPCHILDREN, 0, 0, 0, 0, 0, 0)
 	h.dark = !AppsUseLightTheme()
 	switch os.Getenv("RYUI_COLOR_SCHEME") { // automation: snapshots in either
@@ -346,10 +349,15 @@ func newHost() *Host {
 // Run runs root as the app's window until it's closed. Main thread: call
 // it from main.
 func Run(root func() ui.Node) {
+	launch := launchURL(os.Args, boot.Scheme)
+	if !takeInstance(launch) {
+		return // the running instance has it
+	}
 	startCrash()
 	h := newHost()
 	restoreState()
 	h.enter(func() { ui.Mount(h, root) })
+	h.startLinks(launch)
 	h.startToasts()
 	if launchedForToast {
 		h.waitForToast() // notify.go: shown if the click opens the app

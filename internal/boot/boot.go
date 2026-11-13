@@ -35,6 +35,12 @@ var Name string
 // name).
 var ID string
 
+// Scheme is ryui.json's URL scheme (myapp), set by the RyUI CLI
+// (-ldflags -X) where the platform has no bundle or desktop file to
+// declare it in (Windows: the host registers it for the user as the app
+// starts, and passes on the URLs it's opened with).
+var Scheme string
+
 // Version and Build are ryui.json's, set by the RyUI CLI (-ldflags -X)
 // where the platform has no bundle to read them from (Windows).
 var Version, Build string

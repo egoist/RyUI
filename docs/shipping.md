@@ -62,8 +62,9 @@ Every key is optional; these apply on every platform:
   accent and its manifest's `theme_color`. Without it, each platform's
   own.
 - `scheme` opens the app for `myapp://` URLs: on iOS, Android, the Mac
-  (`CFBundleURLTypes`) and Linux (the desktop file's
-  `x-scheme-handler`); a Windows build doesn't register it. `links`
+  (`CFBundleURLTypes`), Linux (the desktop file's
+  `x-scheme-handler`) and Windows (the app registers it for the user as
+  it starts, in `HKEY_CURRENT_USER\Software\Classes`). `links`
   opens it for https links to your domains (universal links, App Links;
   iOS and Android). `ui.OnOpenURL` gets them.
 
@@ -284,7 +285,9 @@ is `NSLocationUsageDescription` on the Mac, taken from
 entitlements for them (`com.apple.security.device.camera`,
 `...audio-input`, `...personal-information.location`...), without which
 an app signed with a Developer ID is refused the camera, the microphone
-or the user's data.
+or the user's data. An app with Swift of its own (`macos/*.swift`) has it
+compiled for both architectures into `Contents/Frameworks`, signed with
+the app (see [Native code](native.md)).
 
 To give it to others outside the Mac App Store, sign it with your
 Developer ID and have Apple notarize it, so Gatekeeper opens it:

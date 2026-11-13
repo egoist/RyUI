@@ -129,7 +129,7 @@ func animation() ui.Node {
 func nativeView() ui.Node {
 	selected := signal.New(1)
 	return ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 16},
-		ui.StaticText("A segmented control the app registers on each platform: in Swift (ios/), Kotlin (android/), JavaScript (web/), and Go on macOS, Windows and Linux (natives_*.go):", ui.Style{Color: ui.SecondaryLabel}),
+		ui.StaticText("A segmented control the app registers on each platform: Swift on iOS (ios/) and macOS (macos/), Kotlin on Android (android/), JavaScript on the web (web/), and Go on Windows and Linux (natives_*.go):", ui.Style{Color: ui.SecondaryLabel}),
 		ui.Native("Segmented", ui.NativeProps{
 			Props: map[string]any{"items": "Day,Week,Month", "selected": selected},
 			On: map[string]func(ui.NativeEvent){"changed": func(e ui.NativeEvent) {

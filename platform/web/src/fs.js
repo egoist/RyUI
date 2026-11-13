@@ -24,6 +24,7 @@ let out = { 1: "", 2: "" };
 let onOutput = null;
 
 const now = () => Date.now();
+const pageID = 1 + Math.floor(Math.random() * 0x7ffffffe);
 const put = (path, entry) => { files.set(path, entry); markDirty(path); };
 
 function err(code) {
@@ -348,7 +349,9 @@ export async function mount({ name, dir = "/data", output } = {}) {
   Object.assign(globalThis.process, {
     getuid: () => -1, getgid: () => -1, geteuid: () => -1, getegid: () => -1,
     getgroups: () => { throw err("ENOSYS"); },
-    pid: -1, ppid: -1,
+    // The page is the app's process: an ID of its own (os.Getpid), which
+    // names its run in crash reports.
+    pid: pageID, ppid: -1,
     umask: () => 0o22,
     cwd: () => "/",
     chdir: () => { throw err("ENOSYS"); },
@@ -443,6 +446,11 @@ export const file = {
 };
 
 // --- For the host ---
+
+/** log prints a line of the host's to standard error, as Go's are: the console, and ryui dev's terminal. */
+export function log(line) {
+  memfs.writeSync(2, new TextEncoder().encode(line + "\n"));
+}
 
 /** readFile is a file's bytes (null if there's none). */
 export function readFile(path) {

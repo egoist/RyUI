@@ -4,7 +4,8 @@ An app can bring native code of its own, on every platform: native
 views, shown in Go with `ui.Native`, and native modules, whose methods
 Go calls with `ui.Call`. The Go side is the same everywhere; each
 platform's side is written in its own language: Swift on iOS, Kotlin on
-Android, Go on macOS, Windows and Linux, JavaScript on the web.
+Android, Swift or Go on macOS, Go on Windows and Linux, JavaScript on the
+web.
 
 ## When you need it
 
@@ -26,13 +27,14 @@ An app's native code lives beside its Go:
 | --- | --- | --- | --- |
 | iOS | Swift (UIKit) | `ios/*.swift` | `RyUIAppNatives`, an `@objc` class |
 | Android | Kotlin (Android Views) | `android/*.kt` | `dev.ryui.app.RyUIAppNatives`, an `object` |
+| macOS | Swift (AppKit) | `macos/*.swift` | `RyUIAppNatives`, an `@objc` class |
 | macOS | Go (AppKit through purego's `objc`) | `*.go` built for `darwin && !ios` | package `native`, from an `init` |
 | Windows | Go (Win32 through `syscall`) | `*.go` built for `windows` | package `native`, from an `init` |
 | Linux | Go (GTK 4 through purego) | `*.go` built for `linux && !android` | package `native`, from an `init` |
 | Web | JavaScript (the DOM) | `web/*.js` | `ryui.registerNative`, `ryui.registerModule` |
 
-On iOS and Android, only the files directly in `ios/` and `android/` are
-taken, not those in directories under them. On the desktop the native
+Only the files directly in `ios/`, `android/` and `macos/` are taken,
+not those in directories under them. On the desktop the native
 code is part of the app's Go, in its package or any package it imports.
 Release builds (`ryui build`) include all of it.
 
@@ -241,10 +243,61 @@ On both iOS and Android there is one `RyUIAppNatives` an app: it
 registers every view and module. The views and modules themselves can
 be in other files.
 
+## macOS: Swift
+
+On the Mac, an app's native code can be Swift, as on iOS: use it for an
+API only Swift has (a Swift-only framework, a Swift package's types) or
+to share what you know from iOS. The names are iOS's; the view is an
+`NSView`:
+
+```swift
+@MainActor public protocol RyUINativeView: AnyObject {
+    var view: NSView { get }
+    func set(_ name: String, _ value: RyUINativeValue)
+    func sizeThatFits(_ size: CGSize) -> CGSize // default: view.fittingSize
+    func destroy()                              // default: nothing
+}
+```
+
+- `view`, `set`, `RyUINativeValue` and the `RyUINativeContext`'s `emit`
+  are as on iOS.
+- `sizeThatFits` is the view's size for what the layout offers
+  (`CGFloat.greatestFiniteMagnitude` for either: as wide or tall as it
+  likes). AppKit views have no `sizeThatFits` of their own, so by
+  default it's the view's `fittingSize`; give one to a view whose size
+  depends on its width.
+- `destroy` frees what the view holds as the core destroys it.
+
+Register from a class named `RyUIAppNatives` in Objective-C, with
+`RyUIRuntime.shared.registerNative` and `registerModule`, exactly as on
+iOS; a module's method is the same `RyUIModuleMethod`, called on the
+main thread and replying from any thread. A view's action needs an
+Objective-C target: make the view an `NSObject` and its action an
+`@objc` method (the complete example below does).
+
+How it runs:
+
+- The CLI compiles `macos/*.swift` with RyUI's Swift for it
+  (`platform/macos`), in one module, into a library in the app's bundle,
+  `Contents/Frameworks/RyUIAppNatives.dylib`. No import of RyUI is
+  needed. The host loads it as it starts, before your Go code mounts,
+  and calls it through purego: the app's Go still builds with no cgo.
+- `ryui dev` and `ryui build` compile it, with Xcode's command line
+  tools (`xcode-select --install`; Xcode has them). A release build is
+  universal (arm64 and x86_64), and signed with the app. A plain `go run
+  .` makes no bundle, so it has no Swift: its views show nothing.
+- It targets macOS 11, the apps' minimum. Swift concurrency
+  (`async`, actors) needs a runtime macOS 11 doesn't have: when the
+  library uses it, the build puts Swift's copy beside it, as Xcode does.
+- Swift and Go native code can live in one app. A kind or module
+  registered in both is Swift's, which registers last. The host's own
+  modules of a name win over either.
+
 ## macOS, Windows and Linux: Go
 
 The desktop hosts run the app's Go in their own process, so an app's
-native code there is Go too: AppKit through purego's `objc` package on
+native code there can be Go too (on the Mac, Swift is the other way,
+above): AppKit through purego's `objc` package on
 macOS, Win32 through `syscall` on Windows, GTK 4 through purego on
 Linux. None of it needs cgo. It registers its views and modules with
 package `native`, from an `init` in a file built only for its platform:
@@ -550,12 +603,83 @@ class Stepper(ctx: RyUINativeContext) : RyUINativeView {
 }
 ```
 
-### macOS
+### macOS in Swift
 
-`natives_darwin.go`. The steppers share one target, an object of a class
-the app registers, whose `changed:` finds the stepper by its sender. The
-battery comes from IOKit's power sources, whose dictionaries are
-`NSDictionary`s.
+`macos/Natives.swift`. The stepper is its own action's target, so it's
+an `NSObject`; the battery comes from IOKit's power sources.
+
+```swift
+import AppKit
+import IOKit.ps
+
+@objc(RyUIAppNatives) final class AppNatives: NSObject, RyUINativeModule {
+    @MainActor static func register() {
+        RyUIRuntime.shared.registerNative("Stepper") { ctx in Stepper(ctx) }
+        RyUIRuntime.shared.registerModule("battery", [
+            "level": { _, reply in
+                let info = IOPSCopyPowerSourcesInfo().takeRetainedValue()
+                let sources = IOPSCopyPowerSourcesList(info).takeRetainedValue() as [CFTypeRef]
+                for source in sources {
+                    guard let d = IOPSGetPowerSourceDescription(info, source)?.takeUnretainedValue() as? [String: Any],
+                          d[kIOPSTypeKey] as? String == kIOPSInternalBatteryType,
+                          let now = d[kIOPSCurrentCapacityKey] as? Int,
+                          let max = d[kIOPSMaxCapacityKey] as? Int, max > 0
+                    else { continue }
+                    let battery: [String: Any] = [
+                        "level": Double(now) / Double(max),
+                        "charging": d[kIOPSIsChargingKey] as? Bool ?? false,
+                    ]
+                    reply(Result { try JSONSerialization.data(withJSONObject: battery) })
+                    return
+                }
+                reply(.failure(BatteryError()))
+            },
+        ])
+    }
+}
+
+struct BatteryError: LocalizedError {
+    var errorDescription: String? { "this Mac has no battery" }
+}
+
+/// An NSStepper: props "value" and "max"; event "changed" with "value".
+@MainActor final class Stepper: NSObject, RyUINativeView {
+    let stepper = NSStepper()
+    var view: NSView { stepper }
+    private let ctx: RyUINativeContext
+    private var wanted = 0.0
+
+    init(_ ctx: RyUINativeContext) {
+        self.ctx = ctx
+        super.init()
+        stepper.target = self
+        stepper.action = #selector(changed)
+    }
+
+    // The control's action: the user stepped it.
+    @objc private func changed() {
+        wanted = stepper.doubleValue
+        ctx.emit("changed", ["value": .int(Int64(stepper.integerValue))])
+    }
+
+    func set(_ name: String, _ value: RyUINativeValue) {
+        switch name {
+        case "value": wanted = value.float
+        case "max": stepper.maxValue = value.float
+        default: return
+        }
+        // Props come in no set order: max may follow value.
+        stepper.doubleValue = wanted
+    }
+}
+```
+
+### macOS in Go
+
+The same in Go instead, `natives_darwin.go`. The steppers share one
+target, an object of a class the app registers, whose `changed:` finds
+the stepper by its sender. The battery comes from IOKit's power
+sources, whose dictionaries are `NSDictionary`s.
 
 ```go
 //go:build darwin && !ios
@@ -936,7 +1060,7 @@ Three things the example shows:
   listener on iOS, Android, macOS or Windows, so this doesn't loop.
   GTK's signals do fire for a change made in code: guard them, as the
   Linux view does.
-- **Errors carry a message.** On iOS, conform the error to
+- **Errors carry a message.** In Swift, conform the error to
   `LocalizedError`; in Go, it's the error's `Error()`.
 
 For another, see [`examples/media`](../examples/media): its native view
@@ -944,14 +1068,16 @@ screen shows a segmented control, `UISegmentedControl` on iOS,
 Material's segmented buttons on Android, `NSSegmentedControl` on macOS,
 a tab control drawn as buttons on Windows, linked toggle buttons on
 Linux, and radio buttons on the web (`ios/Natives.swift`,
-`android/Natives.kt`, `natives_darwin.go`, `natives_windows.go`,
+`android/Natives.kt`, `macos/Natives.swift`, `natives_windows.go`,
 `natives_linux.go`, `web/natives.js`).
 
 ## Developing native code
 
-**On the desktop**, native code is Go in the app, built with the rest:
-`ryui dev` builds and runs it, and on each save builds it again and runs
-the new one, its signals' values kept, as for any Go change. See
+**On the desktop**, native code in Go is part of the app, built with the
+rest: `ryui dev` builds and runs it, and on each save builds it again
+and runs the new one, its signals' values kept, as for any Go change. A
+Mac app's `macos/*.swift` is compiled again as it changes, and the app
+runs again the same way. See
 [Development](development.md#on-the-desktop).
 
 **On iOS and Android**, `ryui dev` can't run an app with native code in
@@ -961,4 +1087,6 @@ Go code and native code, and rebuilds and reinstalls it on each save,
 Swift and Kotlin included. Its signals' values aren't kept across those
 reloads. See [Development](development.md#on-a-phone-the-player-and-built-apps).
 
-**On the web**, see [the web](web.md#native-code).
+**On the web**, `ryui dev -platform web` reloads the page as a script in
+`web/` changes, its signals' values kept; see
+[the web](web.md#native-code).

@@ -84,6 +84,11 @@ func (h *Host) message(hwnd uintptr, m uint32, wp, lp uintptr) (uintptr, bool) {
 		case MM_MCINOTIFY:
 			h.audioNotified(wp, lp) // audio.go
 			return 0, true
+		case WM_COPYDATA:
+			if tag, b := CopyDataBytes(lp); tag == instanceTag {
+				h.launchedAgain(string(b)) // deeplink_windows.go
+				return 1, true
+			}
 		}
 		return 0, false
 	case h.window:

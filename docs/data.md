@@ -46,7 +46,9 @@ user's name, the tab last open. Values are JSON, in one file
 (`store.json` in `store.Dir()`), written off the main thread a moment
 after they change, and when the app goes to the background (on a Mac,
 as it's hidden or minimized or quits; on Windows, as its window loses
-focus; in a browser, as the page is hidden). It's not a
+focus; on Linux, as none of its windows shows, each hidden, minimized or
+on another workspace, and as it quits, its session ends or it's sent
+SIGTERM; in a browser, as the page is hidden). It's not a
 database: for many or large records, use SQLite.
 
 `store.Signal` is a signal whose value is kept. It starts with the value

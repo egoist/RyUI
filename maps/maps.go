@@ -1,5 +1,6 @@
-// Package maps shows a map (expo-maps): Apple Maps (MapKit) on iOS,
-// Google Maps on Android, with markers, the user's location and the
+// Package maps shows a map (expo-maps): Apple Maps (MapKit) on iOS and
+// the Mac, Google Maps on Android, OpenStreetMap's tiles on Windows, Linux
+// (libshumate) and the web, with markers, the user's location and the
 // region the app moves it to.
 //
 // Android: Google's Maps SDK, which an app that imports this package is
@@ -50,7 +51,7 @@ const (
 	Standard  Type = iota // streets
 	Satellite             // imagery
 	Hybrid                // imagery with streets
-	Muted                 // streets in quieter colors (iOS); Standard elsewhere
+	Muted                 // streets in quieter colors (iOS, the web); Standard elsewhere
 )
 
 // Props are the map's.

@@ -12,7 +12,8 @@ import (
 
 // An uncaught exception, as the iOS host (NSSetUncaughtExceptionHandler)
 // or the Android host (Thread.setDefaultUncaughtExceptionHandler) writes
-// it as the app ends: inbox/exception-<unique>.json.
+// it as the app ends, or the web host an uncaught JavaScript error, which
+// the page survives: inbox/exception-<unique>.json.
 type exceptionFile struct {
 	Time   int64  `json:"time"` // Unix milliseconds
 	PID    int    `json:"pid"`
@@ -27,6 +28,11 @@ type exceptionFile struct {
 		Name  string `json:"name"`
 		Stack string `json:"stack"`
 	} `json:"threads"`
+	// Fatal: the app ended (missing: it did; the web's are false).
+	Fatal *bool `json:"fatal"`
+	// Run is the ID of the run it was in, when the host knows it: the
+	// web's, written as the run goes on (the run may be this one).
+	Run string `json:"run"`
 }
 
 func exceptionRecords(id string, b []byte) []record {
@@ -49,9 +55,10 @@ func exceptionRecords(id string, b []byte) []record {
 		text += "\n\n\"" + th.Name + "\"\n" + th.Stack
 		threads = append(threads, Thread{Name: th.Name, Frames: jvmFrames(th.Stack)})
 	}
+	fatal := e.Fatal == nil || *e.Fatal
 	return []record{{
-		Report: Report{ID: id, Kind: Exception, Fatal: true, Time: t, Message: msg, Text: text, Threads: threads},
-		pid:    e.PID, exact: true,
+		Report: Report{ID: id, Kind: Exception, Fatal: fatal, Time: t, Message: msg, Text: text, Threads: threads},
+		pid:    e.PID, run: e.Run, exact: true,
 	}}
 }
 
@@ -202,8 +209,9 @@ func metricKitRecords(id string, b []byte) []record {
 		add(d, kind, true, msg)
 		if kind == Exception || d.Meta.Signal != nil && *d.Meta.Signal == sigabrt {
 			// The exception the app's handler reported, or the Go crash
-			// that aborted: the same crash.
-			out[len(out)-1].unlessReported = []Kind{Exception, Go}
+			// that aborted (or the abort in native code Go's runtime
+			// reported): the same crash.
+			out[len(out)-1].unlessReported = []Kind{Exception, Go, Native}
 		}
 	}
 	for _, d := range p.Hangs {

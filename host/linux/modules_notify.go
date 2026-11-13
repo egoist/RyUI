@@ -358,8 +358,8 @@ func (h *Host) notificationActivated(t notifyTarget) {
 		if h.main != nil {
 			WindowPresent(h.main.window)
 		}
-		if t.Action == "" && shown.URL != "" && h.core != nil {
-			h.openURL(shown.URL)
+		if t.Action == "" && shown.URL != "" {
+			h.incomingURL(shown.URL) // ui.OnOpenURL's, as on the other platforms
 		}
 		return
 	}

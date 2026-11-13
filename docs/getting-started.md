@@ -14,8 +14,9 @@ save.
   Manager, or a phone with USB debugging on. RyUI finds the SDK in its
   usual place, or at `ANDROID_HOME`, and Android Studio's Java.
 - **macOS**: a Mac, macOS 11 or later. Nothing else to run the app;
-  release builds use Xcode's command line tools (`xcode-select
-  --install`), which Xcode includes.
+  release builds, and an app with Swift of its own (`macos/*.swift`),
+  use Xcode's command line tools (`xcode-select --install`), which Xcode
+  includes.
 - **Windows**: a PC with Windows 10 or 11, x64 or Arm. Nothing else:
   RyUI calls Win32 from Go. `ui.WebView` and `ui.Video` use the
   Microsoft Edge WebView2 Runtime, which Windows 11 has, as most
@@ -128,8 +129,8 @@ gives the main window its title and size, and `ui.Window` and
   [Languages](i18n.md)).
 - Native code of your own, for views shown with `ui.Native` and modules
   your Go code calls with `ui.Call` (see [Native code](native.md)):
-  `ios/*.swift`, `android/*.kt`, `web/*.js`, and, for macOS, Windows and
-  Linux, Go files built for that platform.
+  `ios/*.swift`, `android/*.kt`, `macos/*.swift`, `web/*.js`, and, for
+  macOS, Windows and Linux, Go files built for that platform.
 
 ## Next
 

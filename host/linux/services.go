@@ -3,6 +3,7 @@
 package linux
 
 import (
+	"bufio"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -118,27 +119,37 @@ func (h *Host) builtinModules() map[string]map[string]method {
 	return mods
 }
 
-// osVersion is the distribution and its version (os-release).
+// osVersion is the distribution and its version: the host's, in a
+// Flatpak (os-release).
 func osVersion() string {
-	b, err := os.ReadFile("/etc/os-release")
-	if err != nil {
-		return runtime.GOOS
+	for _, path := range []string{"/run/host/os-release", "/etc/os-release", "/usr/lib/os-release"} {
+		if r := osRelease(path); r["NAME"] != "" {
+			return strings.TrimSpace(r["NAME"] + " " + r["VERSION_ID"])
+		}
 	}
-	name, ver := "", ""
-	for _, line := range strings.Split(string(b), "\n") {
-		k, v, ok := strings.Cut(line, "=")
-		if !ok {
+	return runtime.GOOS
+}
+
+// osRelease reads an os-release file's fields.
+func osRelease(path string) map[string]string {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+	out := map[string]string{}
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		k, v, ok := strings.Cut(strings.TrimSpace(sc.Text()), "=")
+		if !ok || strings.HasPrefix(k, "#") {
 			continue
 		}
-		v = strings.Trim(v, `"`)
-		switch k {
-		case "NAME":
-			name = v
-		case "VERSION_ID":
-			ver = v
+		if len(v) >= 2 && (v[0] == '"' || v[0] == '\'') && v[len(v)-1] == v[0] {
+			v = v[1 : len(v)-1]
 		}
+		out[k] = v
 	}
-	return strings.TrimSpace(name + " " + ver)
+	return out
 }
 
 // openURL opens a URL with the user's app for it (through the portal in
@@ -153,8 +164,8 @@ func (h *Host) openURL(u string) {
 	ObjectUnref(l)
 }
 
-// share shares text: Linux has no share sheet, so it's copied, as on
-// Windows, with a toast saying so.
+// share shares text: Linux has no share sheet (no portal offers one), so
+// it's copied, with a toast saying so.
 func (h *Host) share(n *node, text string) {
 	ClipboardSetText(DisplayGetClipboard(DisplayGetDefault()), text)
 	h.toast("Copied to clipboard")

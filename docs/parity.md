@@ -57,7 +57,7 @@ desktop's own frameworks (Electron, Tauri, Wails), see
 | Custom drawing | `Shape`, `Path`, `Canvas` | `react-native-svg`, Skia | ✓ `Shape` and `Path` (fill, stroke, caps, joins, dashes, an animatable trim); `Canvas` (paths, gradients, text, transforms, clips, opacity); SVG icons drawn natively (`ryui/svg`) |
 | Charts | Swift Charts | `victory-native`, community | ✓ `ryui/chart` (bars, lines, areas, points) |
 | Shaders | `.colorEffect(ShaderLibrary...)` | Skia's runtime effects | ✓ `Shader` (Kage, Go's syntax: Metal on iOS and the Mac, AGSL on Android, WebGL 2 on the web, the CPU on Windows and Linux) |
-| Native escape hatch | `UIViewRepresentable` | native modules | ✓ `ui.Native` views, `ui.Call` modules (Swift on iOS, Kotlin on Android, Go on the desktop, JavaScript on the web: [Native code](native.md)) |
+| Native escape hatch | `UIViewRepresentable` | native modules | ✓ `ui.Native` views, `ui.Call` modules (Swift on iOS and macOS, Kotlin on Android, Go on the desktop, JavaScript on the web: [Native code](native.md)) |
 | Paging, page dots | `.scrollTargetBehavior(.paging)`, `TabView(.page)` | `react-native-pager-view` | ✓ `ScrollProps.Paging`, `PageControl` |
 | Checkbox | `Toggle` (`.checkbox`, macOS) | community | ✓ `ToggleProps.Checkbox` |
 

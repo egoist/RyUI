@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/egoist/ryui/internal/devstate"
+	"github.com/egoist/ryui/ops"
 )
 
 // Under ryui dev (RYUI_STATE), the app's signals get the values the last
@@ -35,6 +36,7 @@ func init() {
 			if err := devstate.Save(path); err != nil {
 				fmt.Fprintln(os.Stderr, "ryui: saving state:", err)
 			}
+			h.lifecycle(ops.LifecycleBackground) // the store written, as quitting does
 			os.Exit(0)
 		})
 	}()

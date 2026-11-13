@@ -594,6 +594,15 @@ main.main()
 	if windowsException([]byte("Exception 0x1 in a log line\n")) >= 0 {
 		t.Fatal("a log line taken for an exception")
 	}
+	// A signal in native code (an abort in a library called through
+	// purego) is a native crash; one in Go code isn't.
+	n := goReport("SIGABRT: abort\nPC=0xffffb95574b8 m=0 sigcode=18446744073709551610\nsignal arrived during cgo execution\n\ngoroutine 1 [syscall, locked to thread]:\nruntime.cgocall(0x5dea20, 0xce82699e580)\n\t/usr/local/go/src/runtime/cgocall.go:167 +0x44\n")
+	if n.Kind != Native || n.Message != "SIGABRT: abort" || len(n.Threads) != 1 {
+		t.Fatalf("native %+v", n)
+	}
+	if g := goReport("panic: runtime error: invalid memory address or nil pointer dereference\n[signal SIGSEGV: segmentation violation code=0x1 addr=0x0 pc=0x1]\n\ngoroutine 1 [running]:\nmain.main()\n\t/src/app/main.go:3 +0x1\n\nsignal arrived during cgo execution\n"); g.Kind != Go {
+		t.Fatalf("go %+v", g)
+	}
 }
 
 // Without a started run, Reports says why.
@@ -605,4 +614,38 @@ func TestNotStarted(t *testing.T) {
 	}
 	Breadcrumb("nothing kept") // no panic
 	Record(errors.New("x"))
+}
+
+// An uncaught JavaScript error, as the web host writes it while the page
+// goes on: a report at once, not fatal, with this run's context.
+func TestWebException(t *testing.T) {
+	dir := start(t)
+	Breadcrumb("opened the map")
+	Set("screen", "map")
+	exc, _ := json.Marshal(map[string]any{
+		"time": time.Now().UnixMilli(), "pid": 12345, "thread": "main", "name": "TypeError", "reason": "x is undefined",
+		"stack":  "    at set (http://localhost/web/natives.js:3:9)",
+		"frames": []map[string]any{{"function": "set", "file": "http://localhost/web/natives.js", "line": 3}},
+		"fatal":  false, "run": crashrun.ID(),
+	})
+	inbox(t, dir, "exception-web-W1.json", exc)
+	rs, err := Reports()
+	if err != nil || len(rs) != 1 {
+		t.Fatalf("reports %+v, %v", rs, err)
+	}
+	r := rs[0]
+	if r.Kind != Exception || r.Fatal || r.Message != "TypeError: x is undefined" {
+		t.Fatalf("report %+v", r)
+	}
+	if fs := r.Threads[0].Frames; len(fs) != 1 || fs[0] != (Frame{Function: "set", File: "http://localhost/web/natives.js", Line: 3}) {
+		t.Fatalf("frames %+v", fs)
+	}
+	c := r.Context
+	if c.Values["screen"] != "map" || len(c.Breadcrumbs) != 1 || c.Breadcrumbs[0].Message != "opened the map" || c.System != "iOS" {
+		t.Fatalf("context %+v", c)
+	}
+	// This run's files are left as they were: it goes on.
+	if _, err := os.Stat(filepath.Join(dir, "runs", crashrun.ID()+".ctx")); err != nil {
+		t.Fatal("this run's context is gone:", err)
+	}
 }

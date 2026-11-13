@@ -756,7 +756,11 @@ const native = {
   prop(h, n, p, v) {
     if (p === P.Native.Type) {
       const factory = h.natives.get(v);
-      if (!factory) throw new Error(`ryui: the web host has no native view ${JSON.stringify(v)}; register it with ryui.registerNative in the app's web/ scripts`);
+      if (!factory) {
+        // As the other hosts: said, and nothing shown in its place.
+        fs.log(`ryui: no native view ${JSON.stringify(v)} is registered (ryui.registerNative, in the app's web/*.js)`);
+        return;
+      }
       const ctx = {
         emit: (name, values = {}) => h.dispatch(Events.native(n.id, encodeNative(name, values))),
         host: h,

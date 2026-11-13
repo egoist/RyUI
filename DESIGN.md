@@ -370,6 +370,15 @@ looks up at start: `@objc(RyUIAppNatives)` conforming to
 RyUINativeModule` in Kotlin, calling `registerNative(kind) { ctx -> view }`.
 A native view implements `set(name, value)` and sends events with
 `ctx.emit(name, values)`; the host measures it as it measures any view.
+On the desktop the app's Go registers views and modules with package
+`native`. On the Mac its Swift can too: `macos/*.swift` is compiled with
+`platform/macos` (the iOS names, an `NSView`) into
+`Contents/Frameworks/RyUIAppNatives.dylib`, which `host/darwin` loads
+at start through purego and drives through C functions (`@_cdecl`):
+make, set (the wire's prop bytes), measure, destroy, call; events and
+replies come back through two purego callbacks. What it registers joins
+package `native`'s registry, so the rest of the host doesn't know the
+difference, and nothing needs cgo.
 On the wire it's one kind (`Native`) whose `Type` prop, sent right
 after `Create`, picks the factory.
 
@@ -1349,7 +1358,8 @@ Each one ends with its examples running and its tests in CI.
   (AVSpeechSynthesizer), audio (AVPlayer), biometric (Touch ID), review;
   matched views (`Match`); pull to refresh (a trackpad's elastic pull
   past the top); `ui.Native` and the app's modules in Go (package
-  `native`, below); notarization (`ryui build -platform mac -notarize`).
+  `native`, below) or Swift (`macos/*.swift`, loaded from the bundle);
+  notarization (`ryui build -platform mac -notarize`).
   Every module the packages call answers (below): the camera (its view,
   capture, recording, codes; `Take` a sheet of the host's), audio
   recording, contacts, calendars, the photo library and saving to it,
@@ -1752,8 +1762,10 @@ How the macOS host maps RyUI (`host/darwin`):
   package `native` (`RegisterView`, `RegisterModule`): a view is an
   `NSView` the app makes through purego's objc package, put in the
   node's view and filling it; on Windows a child window made in the
-  context's `Parent`, its controls' notifications given to it. The mobile
-  hosts keep Swift and Kotlin, the web JavaScript.
+  context's `Parent`, its controls' notifications given to it. On the
+  Mac the app's Swift registers into the same registry (`host/darwin/
+  swift.go`: the library the CLI compiles from `macos/*.swift`). The
+  mobile hosts keep Swift and Kotlin, the web JavaScript.
 - Visual props are the views' layers'. The layers under the window's
   flipped content view have y down: gradients' points, shadows' offsets
   and transforms are given so. AppKit owns a layer-backed view's
@@ -2246,6 +2258,14 @@ How the Linux host maps RyUI (`host/linux`):
 - Menus are `GMenu` models in `GtkPopoverMenu`s, their items actions of
   a group on the view: a button's drops from it, a view's LongPress menu
   is its context menu at the pointer (a secondary click, a long press).
+- Lifecycle, as on a Mac: Background while no window of the app's
+  shows (hidden, or its GdkToplevel minimized or suspended), and as it
+  quits (its last window closing, GtkApplication's `query-end` as the
+  session ends, `shutdown`, or SIGTERM, SIGINT and SIGHUP, which quit it
+  as closing it does), so `ryui/store` writes what's pending; GLib's
+  memory monitor's warnings are MemoryWarning. Crash reports: Go's crash
+  output (`crashrun`), which has a signal in native code too (Native).
+  Windows are placed by the desktop: GTK 4 has no way to place one.
 - Input is GTK's event controllers, added as the core listens: a click
   (Press, Pressed; Enter and Space press a focused pressable view, which
   Tab reaches), a long press or a secondary click (LongPress), a drag

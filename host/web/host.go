@@ -27,6 +27,7 @@ import (
 
 	"github.com/egoist/ryui/host"
 	"github.com/egoist/ryui/internal/boot"
+	"github.com/egoist/ryui/internal/crashrun"
 	"github.com/egoist/ryui/internal/l10n"
 	"github.com/egoist/ryui/layout"
 	"github.com/egoist/ryui/ops"
@@ -62,6 +63,7 @@ var theHost *Host
 // Call it from main (app.Run does).
 func Run(root func() ui.Node) {
 	h := newHost()
+	startCrash(h)
 	h.restoreState()
 	h.enter(func() { ui.Mount(h, root) })
 	h.js.Call("started")
@@ -127,6 +129,11 @@ func (h *Host) connect() {
 	})
 	fn("runPosted", func([]js.Value) any {
 		h.runPosted()
+		return nil
+	})
+	// crash.js wrote a report in the inbox (an uncaught JavaScript error).
+	fn("crashNotify", func([]js.Value) any {
+		crashrun.Notify()
 		return nil
 	})
 	// ryui dev: the page is about to load the new build.

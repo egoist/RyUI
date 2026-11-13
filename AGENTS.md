@@ -71,6 +71,7 @@ go run ./cmd/ryui publish -platform android -track internal examples/counter  # 
 go run ./cmd/ryui dev examples/counter            # macOS (on a Mac, no -platform: mac): the app and its AppKit host in one process, rerun on save
 go run ./cmd/ryui build examples/counter          # likewise: a universal .app (-sign "Developer ID Application: ..."; default ad hoc)
 go test ./host/darwin                            # the macOS host, driving real AppKit views (macOS)
+go test ./host/darwin -run Swift               # an app's macos/*.swift, compiled and loaded by the host (Xcode's command line tools)
 (cd examples/counter && RYUI_SNAPSHOT=/tmp/c.png RYUI_DUMP=1 go run .)  # macOS: the window as a PNG and its view tree, then quit
 go run ./cmd/ryui dev examples/counter            # Windows (on a PC, no -platform: windows): the app and its Win32 host in one process, rerun on save
 go run ./cmd/ryui build -platform windows examples/counter  # a folder: the .exe (icon, manifest, version) and its assets; from any system
@@ -99,7 +100,10 @@ go test -tags e2e ./e2e -run Web                  # GUI tests: the examples in h
   inventing one.
 - Swift host: UIKit only, no SwiftUI. Kotlin host: Android Views and
   Material Components, no Compose. macOS host: AppKit only, from Go
-  through `internal/darwin` (purego), no cgo, no SwiftUI. Windows host:
+  through `internal/darwin` (purego), no cgo, no SwiftUI; an app's own
+  Swift (`macos/*.swift`) is compiled with `platform/macos` into a
+  library the host loads through purego (`host/darwin/swift.go`), never
+  linked. Windows host:
   Win32 and the common controls, from Go through `internal/windows`
   (syscall), no cgo, no WinUI; the controls drawn as Fluent's in custom
   draw, so an app that sets no style looks like Windows 11. Linux host:

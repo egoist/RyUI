@@ -27,3 +27,31 @@ func TestPropRoundTrip(t *testing.T) {
 		t.Errorf("event %q", b)
 	}
 }
+
+func TestEventRoundTrip(t *testing.T) {
+	in := map[string]any{"on": true, "n": int64(-3), "x": 2.5, "s": "héllo"}
+	name, out, ok := DecodeEvent(EncodeEvent("changed", in))
+	if !ok || name != "changed" || len(out) != len(in) {
+		t.Fatalf("%q %v %v", name, out, ok)
+	}
+	for k, v := range in {
+		if out[k] != v {
+			t.Errorf("%s: %v, want %v", k, out[k], v)
+		}
+	}
+	b := EncodeEvent("e", map[string]any{"s": "long"})
+	if _, _, ok := DecodeEvent(b[:len(b)-1]); ok {
+		t.Error("a short event decoded")
+	}
+}
+
+func TestEncodeProp(t *testing.T) {
+	for _, v := range []any{true, int64(-7), 1.5, "hi"} {
+		if n, got, ok := DecodeProp(EncodeProp("p", v)); !ok || n != "p" || got != v {
+			t.Errorf("%v: %q %v %v", v, n, got, ok)
+		}
+	}
+	if EncodeProp("p", 3) != nil {
+		t.Error("an int encoded (props come as int64)")
+	}
+}

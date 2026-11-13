@@ -179,6 +179,8 @@ type Host struct {
 	ticking       bool
 	frames        bool
 	inhibit       uint32
+	inBackground  bool // no window of the app's shows (lifecycle.go)
+	quitting      bool
 	fontFamilies  map[string]string
 }
 
@@ -187,6 +189,7 @@ var theHost *Host
 // Run runs root as the app's window until the app quits. Main thread:
 // call it from main.
 func Run(root func() ui.Node) {
+	startCrash()
 	MustLoad()
 	h := newHost()
 	h.run(root)
@@ -224,6 +227,9 @@ func (h *Host) run(root func() ui.Node) {
 	h.app = AdwApplicationNew(h.appID, flags)
 	notifyUnique = flags&(1<<5) == 0
 	h.installNotifyActions() // a notification due, or tapped, reaches it
+	h.watchApp()
+	h.watchSignals()
+	h.watchMemory()
 	started := false
 	start := func() bool {
 		if started {

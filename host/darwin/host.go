@@ -266,6 +266,11 @@ func Run(root func() ui.Node) {
 	WithPool(startCrash)
 	WithPool(func() {
 		h := newHost()
+		// The app's Swift (macos/*.swift), before its root asks for its
+		// views.
+		if err := loadSwiftNatives(swiftLibPath()); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
 		restoreState()
 		// ryui/notify: the center's delegate before launch ends.
 		h.installNotifications()

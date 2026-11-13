@@ -4,17 +4,19 @@
 // imageEdit) and hardware-more.js (biometric, webAuth, screen, contacts,
 // calendar, library..., and the ones a browser can't do, which say why).
 //
-// camera.View is a native view, "ryui.camera": natives has its factory,
-// which the host registers beside the app's own.
+// camera.View and maps.View are native views, "ryui.camera" and
+// "ryui.map" (maps.js): natives has their factories, which the host
+// registers beside the app's own.
 
 import { modules as sensors } from "./hardware-sensors.js";
 import { modules as audio } from "./hardware-audio.js";
 import { modules as camera, cameraView } from "./hardware-camera.js";
 import { modules as more } from "./hardware-more.js";
+import { mapView } from "./maps.js";
 
 export function modules(h) {
   return { ...sensors(h), ...audio(h), ...camera(h), ...more(h) };
 }
 
 /** natives are the native views (ui.Native kinds) RyUI's packages make, by kind. */
-export const natives = { "ryui.camera": cameraView };
+export const natives = { "ryui.camera": cameraView, "ryui.map": mapView };

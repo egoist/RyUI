@@ -193,3 +193,23 @@ func tinyPE() []byte {
 	b[fileAlign] = 0xc3                 // ret
 	return b
 }
+
+// A Windows build carries ryui.json's ID and scheme, which the host
+// registers and runs once by.
+func TestWindowsLdflags(t *testing.T) {
+	app := &goApp{name: "notes", cfg: &appConfig{ID: "com.example.notes", Scheme: "notes", Version: "1.2", Build: 3}}
+	f := windowsLdflags(app, true)
+	for _, want := range []string{
+		`"github.com/egoist/ryui/internal/boot.ID=com.example.notes"`,
+		`"github.com/egoist/ryui/internal/boot.Scheme=notes"`,
+		"-H windowsgui",
+	} {
+		if !strings.Contains(f, want) {
+			t.Errorf("windowsLdflags: %s, want %s in it", f, want)
+		}
+	}
+	app.cfg.Scheme = ""
+	if f := windowsLdflags(app, false); strings.Contains(f, "boot.Scheme") {
+		t.Errorf("windowsLdflags without a scheme: %s", f)
+	}
+}

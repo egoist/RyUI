@@ -10,6 +10,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -71,7 +73,14 @@ func devMac(dir string, o *devOptions, stop <-chan os.Signal) error {
 	if err != nil {
 		return err
 	}
-	proc.afterBuild = func() error { return signMac(bundle, "-", ents, run) }
+	proc.afterBuild = func() error {
+		// The app's Swift (macos/*.swift), for this Mac, again as it
+		// changes.
+		if err := macSwift(app, bundle, work, []string{runtime.GOARCH}, false, run); err != nil {
+			return err
+		}
+		return signMac(bundle, "-", ents, run)
+	}
 	// It answers for itself, as when it's opened from the Finder: its
 	// privacy prompts (camera, location...) are its own, with its purpose
 	// strings, not the terminal's.
@@ -218,10 +227,19 @@ func signMac(bundle, identity, entitlements string, run func(dir string, env []s
 	if identity != "-" {
 		args = append(args, "--options", "runtime", "--timestamp")
 	}
+	dir := filepath.Dir(bundle)
+	// What the bundle holds first (the app's Swift library, and the
+	// runtime it ships), each signed as the app is, without the
+	// entitlements, which are the executable's.
+	libs, _ := filepath.Glob(filepath.Join(bundle, "Contents", "Frameworks", "*.dylib"))
+	for _, lib := range libs {
+		if err := run(dir, nil, "codesign", append(slices.Clip(args), lib)...); err != nil {
+			return err
+		}
+	}
 	if entitlements != "" {
 		args = append(args, "--entitlements", entitlements)
 	}
-	dir := filepath.Dir(bundle)
 	if err := run(dir, nil, "codesign", append(args, bundle)...); err != nil {
 		return err
 	}
@@ -264,6 +282,10 @@ func buildMac(app *goApp, o *buildOptions) error {
 	}
 	bin := filepath.Join(bundle, "Contents", "MacOS", exe)
 	if err := run(work, nil, "lipo", append([]string{"-create", "-output", bin}, parts...)...); err != nil {
+		return err
+	}
+
+	if err := macSwift(app, bundle, work, []string{"arm64", "amd64"}, true, run); err != nil {
 		return err
 	}
 

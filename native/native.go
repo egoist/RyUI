@@ -158,6 +158,29 @@ func DecodeProp(b []byte) (name string, value any, ok bool) {
 	return name, value, !r.bad
 }
 
+// EncodeProp is for hosts: a prop in DecodeProp's format, for native
+// code of another language (nil for a value of another type).
+func EncodeProp(name string, value any) []byte {
+	le := binary.LittleEndian
+	b := append(le.AppendUint32(nil, uint32(len(name))), name...)
+	switch v := value.(type) {
+	case bool:
+		t := byte(0)
+		if v {
+			t = 1
+		}
+		return append(b, typeBool, t)
+	case int64:
+		return le.AppendUint64(append(b, typeInt), uint64(v))
+	case float64:
+		return le.AppendUint64(append(b, typeFloat), math.Float64bits(v))
+	case string:
+		b = le.AppendUint32(append(b, typeString), uint32(len(v)))
+		return append(b, v...)
+	}
+	return nil
+}
+
 // EncodeEvent is for hosts: a Native event's payload (its values in
 // their keys' order).
 func EncodeEvent(name string, values map[string]any) []byte {
@@ -200,6 +223,35 @@ func EncodeEvent(name string, values map[string]any) []byte {
 	}
 	le.PutUint32(b[4+len(name):], uint32(n))
 	return b
+}
+
+// DecodeEvent is for hosts: a Native event's name and values, from its
+// payload (EncodeEvent's format, which native code of another language
+// writes too). ok is false for a malformed payload.
+func DecodeEvent(b []byte) (name string, values map[string]any, ok bool) {
+	r := reader{b: b}
+	name = r.str()
+	n := int(r.u32())
+	values = make(map[string]any, min(n, 64))
+	for i := 0; i < n && !r.bad; i++ {
+		k := r.str()
+		switch r.u8() {
+		case typeBool:
+			values[k] = r.u8() != 0
+		case typeInt:
+			values[k] = int64(r.u64())
+		case typeFloat:
+			values[k] = math.Float64frombits(r.u64())
+		case typeString:
+			values[k] = r.str()
+		default:
+			return "", nil, false
+		}
+	}
+	if r.bad {
+		return "", nil, false
+	}
+	return name, values, true
 }
 
 type reader struct {

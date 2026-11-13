@@ -4,8 +4,10 @@
 // runtime/debug.SetCrashOutput, from before main), of each native crash
 // (iOS: MetricKit's diagnostics and uncaught Objective-C and Swift
 // exceptions; Android: uncaught JVM exceptions, and the system's record
-// of native crashes, ANRs and low-memory kills; macOS: MetricKit's), and
-// of errors the app records (Record). The app reads them on its next
+// of native crashes, ANRs and low-memory kills; macOS: MetricKit's; in a
+// browser, where the web host keeps Go's crash output, uncaught
+// JavaScript errors, which the page survives), and of errors the app
+// records (Record). The app reads them on its next
 // launch (Reports, OnReport), sends them, and deletes them (Delete).
 //
 //	crash.OnReport(func(r crash.Report) {
@@ -80,10 +82,12 @@ const (
 	// out of memory, a signal in Go code).
 	Go Kind = "go"
 	// Exception is an uncaught exception: Objective-C's or Swift's
-	// (NSException) on iOS, a JVM Throwable on Android.
+	// (NSException) on iOS, a JVM Throwable on Android, a JavaScript
+	// error in a browser (not fatal: the page goes on).
 	Exception Kind = "exception"
 	// Native is a native crash: a signal (SIGSEGV, SIGABRT...), a Mach
-	// exception, a Windows exception.
+	// exception, a Windows exception; on the desktops, a signal Go's
+	// runtime reports as it arrived in native code.
 	Native Kind = "native"
 	// Hang is the app not answering: an ANR on Android (fatal), a hang of
 	// the main thread on iOS (MetricKit's: not fatal, unless the system's
@@ -154,9 +158,9 @@ type Frame struct {
 type Context struct {
 	AppVersion    string `json:"appVersion,omitempty"`    // ryui.json's version
 	Build         string `json:"build,omitempty"`         // ryui.json's build
-	Model         string `json:"model,omitempty"`         // "iPhone17,1", "Pixel 9"
-	System        string `json:"system,omitempty"`        // "iOS", "Android", "macOS", "Windows"
-	SystemVersion string `json:"systemVersion,omitempty"` // "26.0", "16"
+	Model         string `json:"model,omitempty"`         // "iPhone17,1", "Pixel 9"; on the web, the browser's system ("macOS 15.1")
+	System        string `json:"system,omitempty"`        // "iOS", "Android", "macOS", "Windows", "Linux", "Web"
+	SystemVersion string `json:"systemVersion,omitempty"` // "26.0", "16"; on the web, the browser ("Chrome 131")
 	Arch          string `json:"arch,omitempty"`          // "arm64", "amd64"
 	// Process is "app", or "share" in the app's share sheet.
 	Process string `json:"process,omitempty"`

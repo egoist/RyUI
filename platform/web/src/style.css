@@ -487,3 +487,25 @@ html:has(> body > .ryui-page), body:has(> .ryui-page) { margin: 0; height: 100%;
 .ryui-richfield a { color: var(--ryui-accent); text-decoration: none; }
 .ryui-richfield.ryui-empty::before { content: attr(data-placeholder); position: absolute; color: var(--ryui-tertiary-label); pointer-events: none; }
 .ryui-richfield[contenteditable="false"] { opacity: 0.5; cursor: default; }
+
+/* maps.View (modules/maps.js): OpenStreetMap's tiles, the pins, a callout, the user's location, the attribution. */
+.ryui-map { position: relative; overflow: hidden; background: #e8e4de; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; outline: none; contain: strict; }
+.ryui-map:focus-visible { box-shadow: inset 0 0 0 2px var(--ryui-accent); }
+.ryui-map.ryui-map-static { cursor: default; touch-action: auto; }
+.ryui-map-tiles, .ryui-map-pins { position: absolute; inset: 0; pointer-events: none; }
+.ryui-map-muted .ryui-map-tiles { filter: saturate(0.35) brightness(1.04); }
+.ryui-map-tile { position: absolute; overflow: hidden; }
+.ryui-map-img, .ryui-map-fallback { position: absolute; display: block; max-width: none; -webkit-user-drag: none; }
+.ryui-map-img { inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 0.15s; }
+.ryui-map-img.ryui-map-loaded { opacity: 1; }
+.ryui-map-pin { position: absolute; left: 0; top: 0; width: 26px; height: 36px; padding: 0; border: 0; background: none; cursor: pointer; pointer-events: auto; filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.3)); }
+.ryui-map-pin svg { display: block; }
+.ryui-map-pin:focus-visible { outline: 2px solid var(--ryui-accent); outline-offset: 2px; border-radius: 13px 13px 4px 4px; }
+.ryui-map-callout { position: absolute; left: 0; top: 0; max-width: 240px; padding: 8px 12px; border-radius: 10px; background: var(--ryui-card); color: var(--ryui-label); box-shadow: var(--ryui-shadow); font: 13px/1.35 system-ui, sans-serif; pointer-events: auto; cursor: default; white-space: normal; }
+.ryui-map-callout-title { font-weight: 600; }
+.ryui-map-callout-subtitle { color: var(--ryui-secondary-label); }
+.ryui-map-user { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+.ryui-map-dot { position: absolute; left: -8px; top: -8px; width: 16px; height: 16px; border-radius: 50%; background: var(--ryui-blue); border: 3px solid #fff; box-sizing: border-box; box-shadow: 0 1px 3px rgb(0 0 0 / 0.35); }
+.ryui-map-accuracy { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; background: rgb(0 122 255 / 0.14); border: 1px solid rgb(0 122 255 / 0.35); box-sizing: border-box; }
+.ryui-map-attribution { position: absolute; right: 0; bottom: 0; padding: 1px 6px; border-top-left-radius: 4px; background: rgb(255 255 255 / 0.8); color: #333; font: 11px/1.45 system-ui, sans-serif; text-decoration: none; cursor: pointer; }
+.ryui-map-attribution:hover { text-decoration: underline; }

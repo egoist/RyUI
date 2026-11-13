@@ -41,9 +41,9 @@ var Enabled bool
 
 // Info is the device and the app, as a host knows them.
 type Info struct {
-	Model         string `json:"model,omitempty"`         // "iPhone17,1", "Pixel 9", "MacBookPro18,3"
-	System        string `json:"system,omitempty"`        // "iOS", "Android", "macOS", "Windows"
-	SystemVersion string `json:"systemVersion,omitempty"` // "26.0", "16"
+	Model         string `json:"model,omitempty"`         // "iPhone17,1", "Pixel 9", "MacBookPro18,3"; on the web, the browser's system ("macOS 15.1")
+	System        string `json:"system,omitempty"`        // "iOS", "Android", "macOS", "Windows", "Web"
+	SystemVersion string `json:"systemVersion,omitempty"` // "26.0", "16"; on the web, the browser ("Chrome 131")
 	AppVersion    string `json:"appVersion,omitempty"`    // ryui.json's version
 	Build         string `json:"build,omitempty"`         // ryui.json's build
 }

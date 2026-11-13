@@ -15,7 +15,8 @@
 // serviceWorker (the URL of the app's service worker, sw.js with the
 // app's settings, which the page registers: its notifications and
 // pushes), vapidPublicKey (the app's VAPID key, for ryui/push), icon (a
-// notification's icon), dev (ryui dev's: the page reloads with each
+// notification's icon), mapTiles (the URL of maps.View's tiles, with
+// {z}, {x} and {y}: OpenStreetMap's by default), dev (ryui dev's: the page reloads with each
 // build, keeping the app's state, and the app's logs go to the terminal).
 
 import { Host } from "./host.js";
@@ -23,6 +24,7 @@ import * as fs from "./fs.js";
 import { natives as builtinNatives } from "./modules/hardware.js";
 import * as worker from "./worker.js";
 import { notifyFor } from "./modules/system-notify.js";
+import { Crash } from "./crash.js";
 
 let hosts = 0;
 const natives = new Map();
@@ -59,6 +61,11 @@ export async function start(options = {}) {
   const hostName = "ryuiHost" + (hosts++ || "");
   globalThis[hostName] = host;
   const go = new globalThis.Go();
+  // ryui/crash's record of the run: what Go's runtime prints of a crash, uncaught errors.
+  host.crash = new Crash(go, host);
+  // The program's exit status (wasm_exec.js only logs it).
+  go.exitCode = 0;
+  go.exit = (code) => { go.exitCode = code; };
   go.argv = [name];
   go.env = { RYUI_WEB_HOST: hostName, RYUI_DATA: data, HOME: "/home", TMPDIR: "/tmp", TZ: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", ...(options.env || {}) };
   const res = fetch(options.wasm || "app.wasm");
@@ -87,6 +94,7 @@ export async function start(options = {}) {
   // What's scheduled and came due while no page was open shows now.
   try { notifyFor(host); } catch (e) { console.warn("ryui/notify:", e); }
   run.then(() => {
+    host.crash.exited(go.exitCode);
     if (go.exitCode) showError(container, dev?.lastError() || `The app stopped (exit status ${go.exitCode}).`);
   });
   return host;

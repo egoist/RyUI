@@ -8,9 +8,16 @@ import (
 )
 
 // goReport is the report of Go's crash output: "panic: ..." or "fatal
-// error: ...", then the goroutines' stacks.
+// error: ...", then the goroutines' stacks. A signal that arrived in
+// native code (a crash in a library the app calls through purego, an
+// abort of its) is Native: the runtime says where it arrived before the
+// stacks.
 func goReport(out string) *Report {
 	r := &Report{Kind: Go, Fatal: true, Text: out, Message: firstLine(out)}
+	head, _, _ := strings.Cut(out, "\ngoroutine ")
+	if strings.Contains(head, "signal arrived during cgo execution") || strings.Contains(head, "signal arrived during external code execution") {
+		r.Kind = Native
+	}
 	r.Threads = goThreads(out)
 	if len(r.Threads) > 0 {
 		r.Threads[0].Crashed = true

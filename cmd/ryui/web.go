@@ -565,7 +565,9 @@ func contentType(p string) string {
 	return "application/octet-stream"
 }
 
-// webWatcher notices changes to the host's own files (a checkout of RyUI).
+// webWatcher notices changes to JavaScript the page loads as it is, with
+// no build: the host's own (a checkout of RyUI: src/ and its modules/),
+// and the app's (web/*.js).
 type webWatcher struct {
 	dir, last string
 }
@@ -581,12 +583,15 @@ func (w *webWatcher) scan() string {
 		return ""
 	}
 	var b strings.Builder
-	es, _ := os.ReadDir(w.dir)
-	for _, e := range es {
-		if info, err := e.Info(); err == nil {
-			fmt.Fprintf(&b, "%s%d;", e.Name(), info.ModTime().UnixNano())
+	filepath.WalkDir(w.dir, func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
 		}
-	}
+		if info, err := d.Info(); err == nil {
+			fmt.Fprintf(&b, "%s%d;", p, info.ModTime().UnixNano())
+		}
+		return nil
+	})
 	return b.String()
 }
 

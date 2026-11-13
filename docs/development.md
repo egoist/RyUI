@@ -163,7 +163,10 @@ RyUI watches, by polling, the app's directory and its module's:
 - Go files and `go.mod` (not `_test.go`);
 - Swift and Kotlin files;
 - the language catalogs;
-- files under `assets/`.
+- files under `assets/`;
+- with `-platform web`, the app's scripts (`web/*.js`), and in a
+  checkout of RyUI the web host's (`platform/web/src`): the page
+  reloads with them, without a build.
 
 It skips directories starting with `.`, and `testdata`, `build` and
 `node_modules`. A build that fails prints its errors and keeps the
@@ -174,8 +177,10 @@ again after changing them; it rebuilds and reinstalls what changed.
 
 Native code reloads only in a built phone app, where RyUI rebuilds and
 reinstalls it on each save. Gradle runs again when Kotlin changes, which
-takes longer than a Go change. A desktop app's native code is Go, and
-reloads as the rest of it does.
+takes longer than a Go change. A desktop app's native code in Go
+reloads as the rest of it does; a Mac app's `macos/*.swift` is compiled
+again as it changes (a second or two), and the app runs again with its
+signals' values kept.
 
 ## Devices
 

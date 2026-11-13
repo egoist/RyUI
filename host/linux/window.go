@@ -86,6 +86,7 @@ func (h *Host) newWin(window Ptr) *win {
 		AdwWindowSetContent(window, w.toolbar)
 	}
 	h.wins[window] = w
+	h.watchWindow(w)
 	Connect(window, "notify::is-active", func(uintptr) {
 		if WindowIsActive(window) {
 			h.activeWin = w

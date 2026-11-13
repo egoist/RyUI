@@ -221,7 +221,7 @@ names what's missing.
 | `ryui/contacts`, `ryui/calendar` | Evolution Data Server's address books and calendars (GNOME Contacts', GNOME Calendar's, the online accounts'): access is `Full` when it has one; `Pick` is a dialog of the contacts with a search field; `Add` asks, then saves in the default address book or the event's calendar. Without it: contacts' access is `Denied`, calendars' `WriteOnly`; `Add` opens a vCard or an iCalendar file in the user's contacts or calendar app (`saved` is false); `contacts.Pick` fails |
 | `ryui/photos`' library, `ryui/appleauth`, `ryui/transcribe`, `ryui/widget` | None on Linux: the library's access is `Denied`; `appleauth.Available` is false and its button shows nothing; `transcribe` fails with `ErrNotAvailable`; `widget.Set` does nothing. `ryui/splash` has nothing to hold |
 | `ryui/biometric`, `ryui/integrity`, `ryui/agerange`, `ryui/push` | None on Linux: not available, not supported. `ryui/review` does nothing; `ryui/tracking` answers allowed |
-| `ryui/crash` | Not kept on Linux yet: `Reports` fails, `Record` does nothing |
+| `ryui/crash` | Go's crash output, which has a crash in native code too (a signal in GTK's code, a GLib abort), reported as `Native`; the system's own record (systemd-coredump, apport) isn't read |
 | `ui.Haptic` | A desktop has no haptics: it does nothing |
 | `ui.OnShare`, `app.ShareSheet`, shortcuts | iOS and Android only |
 
@@ -258,8 +258,8 @@ and its service worker for notifications and Web Push.
 | `ryui/tracking` | No prompt: `Denied` when the browser sends Global Privacy Control or Do Not Track, else `Allowed` |
 | `ui.Haptic` | `navigator.vibrate`, where the browser has it (Chrome on Android) |
 | `ryui/review`, `ryui/integrity`, `ryui/agerange`, `ryui/appleauth`, `ryui/periodic`, `ryui/widget`, `ryui/transcribe` | Not on the web: an error that says so, or the package's `ErrNotAvailable` |
-| `ryui/maps` | No map in a browser yet |
-| `ryui/crash` | Not kept in a browser yet: `Reports` fails, `Record` does nothing |
+| `ryui/maps` | OpenStreetMap's tiles, drawn by the host, as on Windows; `ShowsUser` once the page has the location permission |
+| `ryui/crash` | Go's crashes (the host keeps the runtime's output) and uncaught JavaScript errors, as `Exception` reports that aren't fatal |
 | `ryui/splash` | `Hold` and `Hide` do nothing |
 | `ui.OnShare`, `app.ShareSheet`, shortcuts | iOS and Android only |
 
@@ -1867,8 +1867,8 @@ func App() ui.Node {
 ## Maps: ryui/maps
 
 `maps.View` is a map: Apple Maps on iOS and the Mac, Google Maps on
-Android, OpenStreetMap's tiles on Windows (drawn by the host) and Linux
-(libshumate). A browser has no map view yet.
+Android, OpenStreetMap's tiles on Windows and in a browser (drawn by the
+host) and on Linux (libshumate).
 
 ```go
 region := signal.New(maps.Region{Center: maps.Coordinate{Lat: 37.77, Lng: -122.42}, LatDelta: 0.05, LngDelta: 0.05})
@@ -1895,9 +1895,14 @@ maps.View(maps.Props{
 
 Android needs a Google Maps Platform API key with the Maps SDK for
 Android, in `ryui.json`: `{"android": {"mapsKey": "..."}}`. Without it,
-the map says so, and `OnError` gets why. On Windows and Linux, Satellite
-and Hybrid show the streets (no free imagery) and `ShowsUser` shows
-nothing; Linux needs libshumate (`libshumate-1.0-1`).
+the map says so, and `OnError` gets why. On Windows, Linux and the web,
+Satellite and Hybrid show the streets (no free imagery); `ShowsUser`
+shows nothing on Windows and Linux, and the user's location in a browser
+once the page has the location permission. `Muted` is quieter streets
+on iOS and the web. Linux needs libshumate (`libshumate-1.0-1`). The
+tiles come from `tile.openstreetmap.org`, as its usage policy asks, with
+its attribution on the map; a web app can take them from a server of its
+own ([the web](web.md)).
 
 ## Background refresh: ryui/periodic
 
@@ -2201,19 +2206,17 @@ all, oldest first (not on the main thread). A report stays until
 `Delete(id)`; past `MaxReports` (50) the oldest go. Its `ID` is the same
 each time it's read, so a server can tell one sent twice.
 
-What's reported, as a `Kind`, on the platforms that keep reports
-(Linux and the web don't yet: there `Reports` fails, and `Record` does
-nothing):
+What's reported, as a `Kind`, on each platform:
 
-| | iOS | Android | macOS | Windows |
-|---|---|---|---|---|
-| `Go`: a panic not recovered, on any goroutine; a fatal error (a concurrent map write, a deadlock, out of memory) | ✓ | ✓ | ✓ | ✓ |
-| `Exception`: uncaught | NSException (Objective-C, Swift's `NSException`s) | a JVM `Throwable` | — | — |
-| `Native`: a signal, a Mach or Windows exception | MetricKit | the system's tombstone | MetricKit | the runtime's report |
-| `Hang` | MetricKit's hangs (not fatal), the watchdog | ANRs, with their traces | MetricKit | — |
-| `OutOfMemory` | the memory limit, when MetricKit says | low-memory kills | — | — |
-| `Resource` | CPU and disk-write exceptions (not fatal) | excessive resource use | MetricKit | — |
-| `NonFatal`: `Record(err)` | ✓ | ✓ | ✓ | ✓ |
+| | iOS | Android | macOS | Windows | Linux | Web |
+|---|---|---|---|---|---|---|
+| `Go`: a panic not recovered, on any goroutine; a fatal error (a concurrent map write, a deadlock, out of memory) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ (the host keeps the runtime's output) |
+| `Exception`: uncaught | NSException (Objective-C, Swift's `NSException`s) | a JVM `Throwable` | — | — | — | an uncaught JavaScript error (not fatal) |
+| `Native`: a signal, a Mach or Windows exception | MetricKit | the system's tombstone | MetricKit | the runtime's report | the runtime's report (a signal in native code) | — |
+| `Hang` | MetricKit's hangs (not fatal), the watchdog | ANRs, with their traces | MetricKit | — | — | — |
+| `OutOfMemory` | the memory limit, when MetricKit says | low-memory kills | — | — | — | — |
+| `Resource` | CPU and disk-write exceptions (not fatal) | excessive resource use | MetricKit | — | — | — |
+| `NonFatal`: `Record(err)` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 A Go crash is kept by Go's runtime itself (`runtime/debug.SetCrashOutput`,
 set as the app starts, before its `main`), with every goroutine's stack.
@@ -2276,7 +2279,16 @@ and exits. Without a console (a release, built for the GUI), RyUI sends
 what the runtime prints to a file of the run's, which the next launch
 reads into a `Native` report. RyUI sets no unhandled exception filter of
 its own: Go's handler runs first, and replacing it would break Go's.
-Windows Error Reporting keeps its record as ever.
+Windows Error Reporting keeps its record as ever. In a browser, Go's
+runtime can't write its crash output to a file (`SetCrashOutput` needs
+`dup`), so the host keeps what the runtime prints while Go runs and, as
+the program ends with a panic or a fatal error, writes it to the run's
+record, in the app's files (IndexedDB): the next launch reads it. An
+uncaught JavaScript error, the host's or the app's `web/*.js`, is an
+`Exception` report at once, not fatal (the page goes on), with the run's
+context; at most 20 a run, each once. A page marks its run alive in the
+origin's `localStorage`, so the app's other open pages leave its record
+alone.
 
 **Under `ryui dev`** the Go code runs on your Mac (or PC): its crashes
 print in the terminal, as ever, and are kept there, so `crash.Reports`
