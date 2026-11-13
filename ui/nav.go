@@ -1005,6 +1005,9 @@ func Alert(p AlertProps) {
 						r.batch.SetBytes(e.id, ops.PropAlertButtons, v)
 					}
 				})
+				// Still up as the root goes (unmounted, reloaded): it
+				// goes too, as a sheet does with its owner.
+				signal.OnCleanup(e.destroy)
 			})
 		})
 		if p.ActionSheet {

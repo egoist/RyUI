@@ -319,6 +319,37 @@ func TestSafeAreaAndKeyboard(t *testing.T) {
 	}
 }
 
+// A List going (its screen popped, a Show off) destroys its bound rows'
+// views, which the hosts keep by ID until they're destroyed.
+func TestDisposingAListDestroysItsRows(t *testing.T) {
+	var all []todo
+	for i := range 10 {
+		all = append(all, todo{ID: i, Title: fmt.Sprint("row ", i)})
+	}
+	shown := signal.New(true)
+	h, r := mount(t, func() ui.Node {
+		return ui.Show(shown, func() ui.Node {
+			return ui.List(ui.ListProps{}, ui.Val(all), func(t todo) int { return t.ID },
+				func(it signal.Accessor[todo], _ signal.Accessor[int]) ui.Node {
+					return ui.Text(signal.Func(func() string { return it.Get().Title }))
+				})
+		})
+	})
+	list := h.OfKind(ops.KindList)[0]
+	for i := range 5 {
+		h.Bind(list, i, h.NewCell())
+	}
+	h.Unbind(list, h.Views[ops.HostIDBit|1]) // one let go of before
+	if n := len(h.OfKind(ops.KindText)); n != 4 {
+		t.Fatal(n, "rows")
+	}
+	shown.Set(false)
+	r.Flush()
+	if n := len(h.OfKind(ops.KindText)); n != 0 || h.Views[list.ID] != nil {
+		t.Fatalf("%d rows left\n%s", n, h.Log())
+	}
+}
+
 func TestListBindsOnlyWhatTheHostAsks(t *testing.T) {
 	var all []todo
 	for i := 0; i < 10000; i++ {
