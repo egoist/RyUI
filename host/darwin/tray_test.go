@@ -5,6 +5,8 @@ package darwin
 import (
 	"testing"
 
+	"github.com/egoist/asuka/internal/boot"
+
 	. "github.com/egoist/asuka/internal/darwin"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/tray"
@@ -189,6 +191,36 @@ func TestDockMenu(t *testing.T) {
 		h.runPosted()
 		if chose != "away" {
 			fatalf(t, "chose %q", chose)
+		}
+	})
+}
+
+// An app that keeps running doesn't quit with its last window; with its
+// main window closed, its Dock icon brings the window back.
+func TestKeepRunning(t *testing.T) {
+	boot.KeepRunning = true
+	defer func() { boot.KeepRunning = false }()
+	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })
+	onMain(func() {
+		app := Send(Class("NSApplication"), "sharedApplication")
+		if SendBool(h.target, "applicationShouldTerminateAfterLastWindowClosed:", uintptr(app)) {
+			fatal(t, "quits with its last window")
+		}
+		Send(h.window, "orderFront:", 0)
+		Send(h.window, "performClose:", 0)
+		if SendBool(h.window, "isVisible") {
+			fatal(t, "the window didn't close")
+		}
+		Send(h.target, "applicationShouldHandleReopen:hasVisibleWindows:", uintptr(app), 0)
+		if !SendBool(h.window, "isVisible") {
+			fatal(t, "the Dock icon didn't bring the window back")
+		}
+	})
+	boot.KeepRunning = false
+	onMain(func() {
+		app := Send(Class("NSApplication"), "sharedApplication")
+		if !SendBool(h.target, "applicationShouldTerminateAfterLastWindowClosed:", uintptr(app)) {
+			fatal(t, "keeps running without KeepRunning")
 		}
 	})
 }

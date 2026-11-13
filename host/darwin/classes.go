@@ -164,6 +164,21 @@ func registerTarget() {
 		// An app that keeps running (app.KeepRunning, in the background)
 		// doesn't quit with its last window: closing the main one hides it.
 		Method("applicationShouldTerminateAfterLastWindowClosed:", func(self ID, _ SEL, app ID) bool { return !boot.KeepsRunning() && !inBackground() }),
+		// Its Dock icon clicked (or the app opened again) with no window
+		// showing, as when one that keeps running has closed its main
+		// window: the main window comes back.
+		Method("applicationShouldHandleReopen:hasVisibleWindows:", func(self ID, _ SEL, app ID, visible bool) bool {
+			if w := h().window; !visible && w != 0 && !SendBool(w, "isVisible") {
+				if SendBool(w, "isMiniaturized") {
+					Send(w, "deminiaturize:", 0)
+				}
+				Send(w, "makeKeyAndOrderFront:", 0)
+				if inBackground() {
+					Send(app, "activateIgnoringOtherApps:", 1)
+				}
+			}
+			return true
+		}),
 		Method("applicationWillTerminate:", func(self ID, _ SEL, n ID) {
 			h().lifecycle(ops.LifecycleBackground)
 			saveState()
