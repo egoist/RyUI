@@ -634,6 +634,8 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [AsukaAction] {
             if case .bytes(let b) = v { n.actions = decodeActions(b) }
         case (.alert, AsukaProp.Alert.style):
             n.alertStyle = v.enumValue
+        case (.sheet, AsukaProp.Sheet.window), (.alert, AsukaProp.Alert.window):
+            break // the window it's declared in: a phone has one
         case (.scroll, AsukaProp.Scroll.refreshable), (.list, AsukaProp.List.refreshable):
             guard let s = n.view as? UIScrollView else { return }
             if v.bool {

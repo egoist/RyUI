@@ -872,6 +872,7 @@ fun AsukaRuntime.setNavProp(n: AsukaNode, prop: Int, v: Any): Boolean {
         AsukaKind.SHEET -> when (prop) {
             AsukaProp.Sheet.DETENTS -> n.detents = v as Long
             AsukaProp.Sheet.GRABBER -> n.grabber = v as Boolean
+            AsukaProp.Sheet.WINDOW -> {} // the window it's declared in: a phone has one
             else -> return false
         }
         AsukaKind.ALERT -> when (prop) {
@@ -879,6 +880,7 @@ fun AsukaRuntime.setNavProp(n: AsukaNode, prop: Int, v: Any): Boolean {
             AsukaProp.Alert.MESSAGE -> n.alertMessage = v as String
             AsukaProp.Alert.BUTTONS -> n.actions = decodeActions(v as ByteBuffer)
             AsukaProp.Alert.STYLE -> n.alertStyle = v as Int
+            AsukaProp.Alert.WINDOW -> {} // likewise
             else -> return false
         }
         AsukaKind.SCROLL -> when (prop) {
