@@ -60,6 +60,10 @@ const (
 	// WindowClickThrough lets the mouse go through the window to what's
 	// behind it (WindowAction ClickThrough and NotClickThrough switch it).
 	WindowClickThrough
+	// WindowMenuBar: it shows the app's menu bar (MenuBar) as the main
+	// window does: Windows' menu bar, Linux's main menu (a Mac's menu bar
+	// is the app's, whatever the window): a document's window.
+	WindowMenuBar
 )
 
 // WindowStateFlags are a WindowState event's bits.

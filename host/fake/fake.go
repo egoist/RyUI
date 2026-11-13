@@ -85,6 +85,7 @@ type Host struct {
 	nextCell ops.NodeID
 	opsAlloc []byte
 	wins     map[ops.NodeID]*WindowInfo // window.go
+	key      ops.NodeID                 // the window in use (window.go): 0 the main one
 }
 
 // New makes a fake host with a 390×844 portrait phone environment.
@@ -967,8 +968,13 @@ func (h *Host) MenuBar() []MenuBarItem {
 }
 
 // ChooseMenuItem chooses the menu bar's item i, as a click or its
-// shortcut does.
+// shortcut does: a Close item (MenuRoleClose) closes the window in use
+// (KeyWindow), as a host does.
 func (h *Host) ChooseMenuItem(i int) {
+	if items := h.MenuBar(); i >= 0 && i < len(items) && items[i].Role == ops.MenuRoleClose {
+		h.CloseWindow(h.KeyWindow())
+		return
+	}
 	root := h.Root()
 	h.listening(root, ops.EventAction)
 	h.dispatch(ops.Event{ID: root.ID, Kind: ops.EventAction, Int: int64(i)})

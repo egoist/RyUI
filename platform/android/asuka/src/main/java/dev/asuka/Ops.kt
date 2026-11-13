@@ -339,6 +339,8 @@ object AsukaProp {
         const val TITLE = 64
         const val CONFIG = 65
         const val FLYOUT = 66
+        const val EDITED = 67
+        const val FILE = 68
     }
 }
 

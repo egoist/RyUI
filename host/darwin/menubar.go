@@ -50,7 +50,8 @@ func (h *Host) addMenuItems(m ID, items []ops.MenuItem, action SEL, tagBase int,
 			key, mods = keyEquivalent(it.Key, it.Mods)
 		}
 		act := action
-		if it.Role == ops.MenuRoleQuit {
+		switch it.Role {
+		case ops.MenuRoleQuit:
 			if title == "" {
 				title = l10n.Quit(h.locale, h.appName)
 			}
@@ -58,6 +59,18 @@ func (h *Host) addMenuItems(m ID, items []ops.MenuItem, action SEL, tagBase int,
 				key, mods = "q", modCommand
 			}
 			act = Sel("terminate:")
+		case ops.MenuRoleClose:
+			if title == "" {
+				title = h.menuWord("Close")
+			}
+			if key == "" && keys {
+				key, mods = "w", modCommand
+			}
+			act = Sel("performClose:")
+		case ops.MenuRoleOpenRecent:
+			// The host's own, NSDocumentController's recent documents.
+			h.addOpenRecent(m)
+			continue
 		}
 		if it.Is(ops.MenuSubmenu) {
 			act = 0
@@ -65,7 +78,7 @@ func (h *Host) addMenuItems(m ID, items []ops.MenuItem, action SEL, tagBase int,
 		}
 		mi := Send(m, "addItemWithTitle:action:keyEquivalent:", uintptr(String(title)), uintptr(act), uintptr(String(key)))
 		Send(mi, "setKeyEquivalentModifierMask:", uintptr(mods))
-		if act == action {
+		if act == action && it.Role == ops.MenuRoleNone {
 			Send(mi, "setTarget:", uintptr(h.target))
 			Send(mi, "setTag:", uintptr(tagBase+it.Index))
 		}
@@ -88,6 +101,19 @@ func (h *Host) addMenuItems(m ID, items []ops.MenuItem, action SEL, tagBase int,
 			Send(mi, "setEnabled:", Bool(!it.Is(ops.MenuDisabled)))
 		}
 	}
+}
+
+// hasRole reports whether the menu has an item of role, in a submenu too.
+func hasRole(m *ops.MenuBarMenu, role ops.MenuRole) bool {
+	if m == nil {
+		return false
+	}
+	for _, it := range ops.FlattenMenu(m.Items) {
+		if it.Role == role {
+			return true
+		}
+	}
+	return false
 }
 
 // destructiveTitle shows a menu item's title in the system's red, as

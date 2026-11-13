@@ -103,11 +103,17 @@ func (h *Host) makeMenu(app ID) {
 		h.addAppItems(file, m)
 		sep(file)
 	}
-	if h.hasOpenRecent() { // files.go
+	// The app's File menu with Open Recent and Close of its own (a
+	// document app's, asuka/document) has them where it puts them.
+	if !hasRole(own["File"], ops.MenuRoleOpenRecent) && h.hasOpenRecent() { // files.go
 		h.addOpenRecent(file)
 		sep(file)
 	}
-	item(file, h.menuWord("Close Window"), "performClose:", "w", 0)
+	if !hasRole(own["File"], ops.MenuRoleClose) {
+		item(file, h.menuWord("Close Window"), "performClose:", "w", 0)
+	} else if n := SendInt(file, "numberOfItems"); n > 0 && SendBool(Send(file, "itemAtIndex:", uintptr(n-1)), "isSeparatorItem") {
+		Send(file, "removeItemAtIndex:", uintptr(n-1))
+	}
 	sub(bar, h.menuWord("File"), file)
 
 	edit := menu(h.menuWord("Edit"))
@@ -374,6 +380,7 @@ func (h *Host) openWindow(n *node) {
 	from := MsgRect(h.keyWin().window, Sel("frame"))
 	MsgPointID(w, Sel("cascadeTopLeftFromPoint:"), Point{X: from.Origin.X + 24, Y: from.Origin.Y + from.Size.Height - 24})
 	h.configure(x, c)
+	h.applyDocument(n)
 	h.reportScreen(n, MsgRect(content, Sel("bounds")).Size)
 	h.updateWindowChrome()
 	switch {
@@ -386,6 +393,25 @@ func (h *Host) openWindow(n *node) {
 		// An app in the background (an accessory) isn't active: its
 		// window comes over the app in use, as the user asked for it.
 		h.showWin(x, inBackground())
+	}
+}
+
+// applyDocument shows the document a Window shows: the dot in its close
+// button while it's edited (setDocumentEdited:), and its file's icon in
+// the title bar, which drags the file and whose Command-click lists its
+// folders (setRepresentedURL:).
+func (h *Host) applyDocument(n *node) {
+	w := n.nav.window
+	if w == 0 {
+		return
+	}
+	Send(w, "setDocumentEdited:", Bool(n.nav.edited))
+	var u ID
+	if n.nav.file != "" {
+		u = FileURL(n.nav.file)
+	}
+	if u != Send(w, "representedURL") {
+		Send(w, "setRepresentedURL:", uintptr(u))
 	}
 }
 

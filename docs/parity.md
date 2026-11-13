@@ -224,6 +224,7 @@ Windows and Linux unless the row says otherwise.
 | Quitting, asking first | `app.quit`, `before-quit` | quitting | ✓ `app.Quit`, `app.OnQuit` (`Cancel`, `SessionEnding`) |
 | The app's folders | `app.getPath` | directories | ✓ `app.DataDir`, `ConfigDir`, `CacheDir`, `LogDir` (everywhere) |
 | Recent documents | `app.addRecentDocument` | recent documents | ✓ `asuka/recent` (Open Recent on the Mac, the jump list, the user's recent files on Linux) |
+| Document-based apps | — | documents | ✓ `asuka/document`: a window per file, the File menu, autosave, recovery copies, save questions on close and quit, files changed by other apps (phones and the web: one document at a time, saved in place) |
 | Starting at login | `app.setLoginItemSettings` | start at login | ✓ `asuka/login` (`SMAppService`, macOS 13+; the Run key; XDG autostart or the Background portal) |
 | Watching files | Node's `fs.watch` (chokidar) | `WatchFiles`, the watch plugin | ✓ `asuka/watch` `Path`, `New` (FSEvents, inotify, `ReadDirectoryChangesW`; also iOS's kqueue, Android's inotify and the web's own files): renames paired, atomic saves as writes, bursts coalesced |
 | Displays | `screen` | displays | ✓ `screen.UseDisplays`, `Nearest`, `Matching` (Wayland: no work area; phones and the web: theirs) |
@@ -233,10 +234,10 @@ Windows and Linux unless the row says otherwise.
 | Now Playing and the media keys | (none: `navigator.mediaSession` in the page) | Now Playing | ✓ `asuka/nowplaying` (`MPNowPlayingInfoCenter`; the window's SystemMediaTransportControls; an MPRIS player) |
 | Auto-updates: signed releases, deltas, Sparkle's window | `autoUpdater` (Squirrel), electron-updater | the updater, its plugin | ✓ `asuka/update` (`Window`, `CheckForUpdates`, `Check`, `Install`, `Relaunch`; Ed25519 signatures, delta updates, channels; GitHub releases, an S3 bucket or any HTTPS directory, a server of yours; `asuka publish --platform mac\|windows\|linux`); apps the system's packages, Flatpak or a store installed update through them; the web reloads |
 
-Not yet, of what MyGo has: document-based apps (a window per file,
-autosave, versions); and of its click-through windows, an input region
-(the parts of a window that still take clicks: Asuka's let the mouse
-through all of it, or none).
+Not yet, of what MyGo has: of its documents, versions (a Mac's Browse
+All Versions) and locking; and of its click-through windows, an input
+region (the parts of a window that still take clicks: Asuka's let the
+mouse through all of it, or none).
 
 ## Not yet
 

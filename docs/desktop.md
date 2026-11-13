@@ -4,14 +4,13 @@ What only a desktop has, beyond windows and the menu bar
 ([Navigation](navigation.md#windows)): tray icons and the Dock menu,
 flyouts, apps that live in the background, global shortcuts, panels and
 launchers, finding the apps installed, click-through windows, file
-dialogs and
-the file manager, files the app opens, one instance, quitting, recent
-documents, starting at login, updates, Now Playing and the media keys,
-the displays, power, progress on the app's icon and the system's
-appearance. To follow changes to files and folders (a folder the app
-shows, a document another app saves), see
-[Watching files](data.md#watching-files-asukawatch), which phones and
-the web have too.
+dialogs and the file manager, files the app opens, one instance,
+quitting, recent documents, document-based apps, starting at login,
+updates, Now Playing and the media keys, the displays, power, progress
+on the app's icon and the system's appearance. To follow changes to
+files and folders (a folder the app shows, a document another app
+saves), see [Watching files](data.md#watching-files-asukawatch), which
+phones and the web have too.
 
 Each one is a package, or a function in `ui` or `app`, and works on the
 Mac, Windows and Linux. A phone or a browser that hasn't one answers
@@ -398,6 +397,105 @@ Windows in the jump list, Linux in the user's recent files. Choosing one
 opens it through `ui.OnOpenFiles`. `recent.List` returns them newest
 first, skipping files that are gone, and `recent.Clear` removes the
 app's own.
+
+## Documents
+
+`asuka/document` makes an app whose windows each show a file, as a text
+editor or a drawing app does: what NSDocument gives a Mac app, on every
+platform. Describe the kind of document, and run it:
+
+```go
+func main() {
+	document.New(document.Options[string]{
+		Types: []document.Type{{Name: "Plain Text", Extensions: []string{"txt"}}},
+		Read: func(r io.Reader) (string, error) {
+			b, err := io.ReadAll(r)
+			return string(b), err
+		},
+		Write: func(w io.Writer, text string) error {
+			_, err := io.WriteString(w, text)
+			return err
+		},
+		Equal: func(a, b string) bool { return a == b },
+		View: func(doc *document.Document[string]) ui.Node {
+			return ui.TextField(ui.TextFieldProps{Value: doc.Content(), Multiline: true, Plain: true})
+		},
+	}).Run()
+}
+```
+
+List the same types in `asuka.json`'s `fileTypes`, so the system offers
+the app for them. `examples/textedit` is this editor with a status line
+and a bar for a file another app changed.
+
+A document's `Content()` is a signal: the view binds it, and changing
+it edits the document, unless `Equal` finds it equal to the file's
+(undoing back to it, typing a letter and deleting it). Reading the file
+again sets it too. A content the app changes in place (a pointer to a
+model) says so with `doc.Changed()`, and gives `Snapshot`, which copies
+it before it's written. `doc.State()` is a signal of the document's
+name, file and whether it's edited, read-only, in conflict or deleted.
+
+What the user gets on the desktop:
+
+- **A window per document**, named after its file ("Untitled",
+  "Untitled 2" before it has one), opening where the user left that
+  file's window. A Mac shows a dot in the close button while it has
+  unsaved changes and the file's icon in the title bar; Windows and
+  Linux a `*` before the title, which ends with the app's name, and
+  GNOME the file's folder under it.
+- **The File menu**: New, Open…, Open Recent, Close, Save, Save As…,
+  and on a Mac Duplicate, Rename…, Move To… and Revert to Saved
+  (Revert elsewhere), with their shortcuts, acting on the window in
+  use. `Options.Menus` adds the app's own menus beside it; one titled
+  File adds its items to it. Windows and Linux show the menus in each
+  document's window.
+- **Autosave**: a document with a file is saved a moment after the
+  user stops typing, when its window loses the focus and when it
+  closes, as Mac apps save; it never asks. `AutosaveOff` saves when the
+  user says, and asks when the window closes, as Windows apps
+  traditionally do.
+- **Questions only where saving can't happen by itself**: closing an
+  untitled document ("Do you want to keep this new document?"), one
+  whose file is read-only or another app changed ("Save Anyway",
+  "Revert"), or any edited one with `AutosaveOff`.
+- **Recovery copies**: unsaved changes are copied into the app's data a
+  second after the user stops typing. A crash, a forced quit or a quit
+  loses nothing: the next launch opens those documents again, edited.
+  Quitting keeps the documents that way, as VS Code does; with
+  `AskOnQuit` it asks instead (on a Mac, "You have 3 documents with
+  unsaved changes. Do you want to review these changes before
+  quitting?"; on Windows and Linux one question naming them). When the
+  session ends there's no time to ask: everything is saved or kept at
+  once.
+- **Files opened from outside**: Finder, Explorer, the Dock, the
+  command line, Open Recent, and Open… go to the document's window if
+  it's open already.
+- **Files other apps change**: an unedited document reads its file
+  again; an edited one asks at its next save. A file renamed is
+  followed (on a Mac, wherever the user moves it on its disk), and one
+  deleted is written again by the next save.
+
+A Mac's document app stays open with no window, and clicking its Dock
+icon makes a new document; on Windows and Linux the app quits with its
+last document's window. `NoUntitled` opens nothing at launch instead of
+an untitled document.
+
+On a phone and in a browser there's one document at a time: the app
+opens on a list of its documents (on iOS, its folder in Files), with
+New and Open…, and a document's screen is pushed over it. Each document
+has a file from the moment it's made and is saved as the user edits,
+when the app goes to the background and when the user goes back, as
+UIDocument's apps save: nothing ever asks. Files from elsewhere are
+copied into the app's documents first.
+
+The questions and the menu speak the app's language (English, German,
+French, Spanish, Japanese and Chinese so far): give others, or change
+them, with keys `document.<key>` in the app's catalogs.
+
+Left out, of what only NSDocument does on a Mac: versions (Revert To a
+version), locking, renaming in the title bar's popover, and documents
+that are folders.
 
 ## Starting at login
 

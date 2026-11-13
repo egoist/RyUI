@@ -164,6 +164,13 @@ var StagedRelaunch func(args []string) bool
 // (app.KeepRunning): closing the main window hides it.
 var KeepRunning bool
 
+// Reopen, when set (asuka/document), is asked when the user opens the
+// app again while it has no window showing (a Mac's Dock icon clicked,
+// applicationShouldHandleReopen:): true says it took care of it (made a
+// document's window), and the host shows nothing of its own; false, or
+// unset, shows the main window as before. Main thread.
+var Reopen func() bool
+
 // InBackground reports whether the app runs in the background
 // (Background).
 func InBackground() bool { return Background == "1" || Background == "true" }

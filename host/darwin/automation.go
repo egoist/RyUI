@@ -38,8 +38,12 @@ func (h *Host) automation() {
 // snapshot writes the window's content as a PNG, and each tray icon's
 // beside it (tray.go).
 func (h *Host) snapshot(path string) {
-	v := Send(h.window, "contentView")
-	if f := Send(Send(h.window, "contentView"), "superview"); f != 0 && !strings.HasSuffix(path, ".content.png") {
+	w := h.window
+	if !SendBool(w, "isVisible") {
+		w = h.keyWin().window // the main window hidden: the one in use
+	}
+	v := Send(w, "contentView")
+	if f := Send(Send(w, "contentView"), "superview"); f != 0 && !strings.HasSuffix(path, ".content.png") {
 		v = f // the frame view: the title bar and toolbar too
 	}
 	writeViewPNG(v, path)
@@ -104,6 +108,45 @@ func (h *Host) dump() string {
 	}
 	if h.root != nil {
 		walk(h.root, 0)
+	}
+	b.WriteString(h.dumpWindows())
+	return b.String()
+}
+
+// dumpWindows describes the app's windows that show, front to back: their
+// titles, the document's dot and file, and the File menu.
+func (h *Host) dumpWindows() string {
+	var b strings.Builder
+	app := Send(Class("NSApplication"), "sharedApplication")
+	for _, nw := range ArrayItems(Send(app, "orderedWindows")) {
+		if h.winOf(nw) == nil || !SendBool(nw, "isVisible") {
+			continue
+		}
+		fmt.Fprintf(&b, "window %q", GoString(Send(nw, "title")))
+		if SendBool(nw, "isDocumentEdited") {
+			b.WriteString(" edited")
+		}
+		if u := Send(nw, "representedURL"); u != 0 {
+			fmt.Fprintf(&b, " file=%q", GoString(Send(u, "path")))
+		}
+		b.WriteByte('\n')
+	}
+	bar := Send(app, "mainMenu")
+	if file := Send(bar, "itemAtIndex:", 1); file != 0 {
+		m := Send(file, "submenu")
+		b.WriteString("File:")
+		for i := range SendInt(m, "numberOfItems") {
+			it := Send(m, "itemAtIndex:", uintptr(i))
+			if SendBool(it, "isSeparatorItem") {
+				b.WriteString(" |")
+				continue
+			}
+			fmt.Fprintf(&b, " %q", GoString(Send(it, "title")))
+			if k := GoString(Send(it, "keyEquivalent")); k != "" {
+				fmt.Fprintf(&b, "(%s)", k)
+			}
+		}
+		b.WriteByte('\n')
 	}
 	return b.String()
 }

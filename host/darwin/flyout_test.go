@@ -147,9 +147,9 @@ func TestFlyoutAnchoredDarwin(t *testing.T) {
 	open := signal.New(true)
 	h, _ := mount(t, func() ui.Node {
 		return ui.Window(ui.WindowProps{
-			Open:    open,
-			Flyout:  &ui.Flyout{Anchor: ui.Val(ui.Anchor{X: 10, Y: 20, Width: 100, Height: 30}), Placement: ui.PlacementBottomStart, Gap: 4},
-			Width:   180, Height: 90,
+			Open:   open,
+			Flyout: &ui.Flyout{Anchor: ui.Val(ui.Anchor{X: 10, Y: 20, Width: 100, Height: 30}), Placement: ui.PlacementBottomStart, Gap: 4},
+			Width:  180, Height: 90,
 			Content: func() ui.Node { return ui.StaticText("Hello") },
 		})
 	})

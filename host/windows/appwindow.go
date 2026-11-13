@@ -76,6 +76,7 @@ func (h *Host) openWindow(n *node) {
 	SetParent(n.hwnd, win)
 	h.rescale(n.hwnd, fw.k)
 	h.configure(c)
+	h.setWindowMenu(c) // before its size: the menu bar takes from its client area
 	cr := ClientRect(win)
 	SetWindowPos(n.hwnd, 0, 0, 0, cr.W(), cr.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 	h.sizeContent(c, w, ht) // its frame as configured (a hidden title bar's), at its DPI
@@ -140,10 +141,14 @@ func (h *Host) windowDPIChanged(f *node, dpi int, s Rect) {
 }
 
 func (h *Host) windowTitle(n *node) string {
-	if n.title != "" {
-		return n.title
+	t := n.title
+	if t == "" {
+		t = h.appName
 	}
-	return h.appName
+	if n.nav != nil && n.nav.edited {
+		t = "*" + t
+	}
+	return t
 }
 
 // cascade places a window of w by ht pixels down and right of the window

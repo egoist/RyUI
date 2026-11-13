@@ -336,6 +336,8 @@ public enum AsukaProp {
         public static let title: UInt16 = 64
         public static let config: UInt16 = 65
         public static let flyout: UInt16 = 66
+        public static let edited: UInt16 = 67
+        public static let file: UInt16 = 68
     }
 }
 

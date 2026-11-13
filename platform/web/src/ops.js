@@ -116,7 +116,7 @@ export const KindProp = Object.freeze({
   Canvas: Object.freeze({ Commands: 64 }),
   Split: Object.freeze({ Items: 64, Selected: 65, Title: 66 }),
   Shader: Object.freeze({ Code: 64, Uniforms: 65, Animated: 66 }),
-  Window: Object.freeze({ Title: 64, Config: 65, Flyout: 66 }),
+  Window: Object.freeze({ Title: 64, Config: 65, Flyout: 66, Edited: 67, File: 68 }),
 });
 
 /** Events hosts send. */

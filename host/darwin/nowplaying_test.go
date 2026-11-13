@@ -84,7 +84,9 @@ func TestNowPlaying(t *testing.T) {
 	info := func() ID {
 		return Send(Send(Class("MPNowPlayingInfoCenter"), "defaultCenter"), "nowPlayingInfo")
 	}
-	num := func(name string) float64 { return MsgFloat(Send(info(), "objectForKey:", key(name)), Sel("doubleValue")) }
+	num := func(name string) float64 {
+		return MsgFloat(Send(info(), "objectForKey:", key(name)), Sel("doubleValue"))
+	}
 	commands := func() ID { return Send(Class("MPRemoteCommandCenter"), "sharedCommandCenter") }
 	invoke := func(getter string, event func(cmd ID) ID) {
 		cmd := Send(commands(), getter)

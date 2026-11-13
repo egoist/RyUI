@@ -1,0 +1,11 @@
+{
+  "name": "TextEdit",
+  "id": "dev.asuka.textedit",
+  "version": "1.0.0",
+  "build": 1,
+  "icon": "icon.png",
+  "fileTypes": [
+    { "name": "Plain Text", "extensions": ["txt", "text"] },
+    { "name": "Markdown Document", "extensions": ["md", "markdown"] }
+  ]
+}

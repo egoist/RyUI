@@ -38,6 +38,15 @@ const (
 	MenuRoleNone MenuRole = iota
 	// MenuRoleQuit quits the app: "Quit <app>", ⌘Q on a Mac.
 	MenuRoleQuit
+	// MenuRoleClose closes the window in use as its close button does
+	// (asking first where the core listens for CloseRequest): "Close",
+	// ⌘W, Ctrl+W. A Mac's File menu has no Close Window of the host's
+	// then.
+	MenuRoleClose
+	// MenuRoleOpenRecent opens the recent documents: on a Mac the host's
+	// own Open Recent submenu, NSDocumentController's, in its place;
+	// elsewhere the item's submenu, as the app gives it.
+	MenuRoleOpenRecent
 )
 
 // MenuItem is a menu's item.

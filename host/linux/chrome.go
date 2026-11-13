@@ -46,6 +46,12 @@ func (h *Host) queueChrome() {
 	})
 }
 
+// showsMenu reports whether w's header bar has the app's main menu: the
+// main window's, and a Window's that asks (WindowMenuBar: a document's).
+func (h *Host) showsMenu(w *win) bool {
+	return w == h.main || w.cfg.Flags&ops.WindowMenuBar != 0
+}
+
 func (h *Host) updateChrome() {
 	if h.main != nil {
 		h.updateWinChrome(h.main)
@@ -149,7 +155,7 @@ func (h *Host) updateWinChrome(w *win) {
 			h.find(x, &c)
 		}
 	}
-	if w == h.main {
+	if h.showsMenu(w) {
 		c.menus = h.menusVersion
 	}
 	h.placeHeader(w, c.split)
@@ -174,7 +180,7 @@ func (h *Host) updateWinChrome(w *win) {
 		AdwHeaderBarPackStart(w.header, b)
 		c.packed = append(c.packed, b)
 	}
-	if w == h.main && h.appMenu != 0 {
+	if h.showsMenu(w) && h.appMenu != 0 {
 		mb := MenuButtonNew()
 		MenuButtonSetIconName(mb, "open-menu-symbolic")
 		MenuButtonSetMenuModel(mb, h.appMenu)

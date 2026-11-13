@@ -64,6 +64,9 @@ type nav struct {
 	fitted        bool       // size is its content's, WindowAction Fit's, which came before it opened
 	flyout        ops.Flyout // a flyout's anchor (its Flyout prop), if hasFlyout
 	hasFlyout     bool
+	// edited: the document it shows has unsaved changes (a * before its
+	// title, as Notepad marks it).
+	edited bool
 }
 
 const (
@@ -353,6 +356,11 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 				if c := n.nav.ctl; c != nil && n.nav.window != 0 {
 					h.placeFlyout(c) // flyout.go
 				}
+			}
+		case ops.PropWindowEdited:
+			n.nav.edited = v.Int != 0
+			if n.nav.window != 0 {
+				SetWindowText(n.nav.window, h.windowTitle(n))
 			}
 		}
 	case ops.KindAlert:

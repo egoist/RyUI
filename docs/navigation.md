@@ -598,6 +598,7 @@ take the same options for how a window opens:
 | `ClickThrough` | lets the mouse go through it to what's behind ([Click-through](desktop.md#click-through-windows)) |
 | `Flyout` | a `Window`'s: hangs it from a tray icon or a rectangle of its parent ([Flyouts](desktop.md#flyouts)) |
 | `Child`, `Modal` | a `Window`'s: see [below](#child-and-modal-windows) |
+| `MenuBar`, `Edited`, `File` | a `Window`'s that shows a document: the app's menu bar in it (Windows, Linux), the dot in a Mac's close button or a `*` before the title, the file's icon in a Mac's title bar; [`asuka/document`](desktop.md#documents) sets them |
 
 With a hidden title bar the content goes to the top edge, under the
 window's buttons (a Mac's traffic lights, Windows' caption buttons, the

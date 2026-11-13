@@ -8,8 +8,8 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
-	"github.com/egoist/asuka/internal/flyout"
 	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/internal/flyout"
 	"github.com/egoist/asuka/ops"
 )
 

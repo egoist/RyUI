@@ -56,7 +56,19 @@ func (h *Host) itemTitle(it *ops.MenuItem) string {
 	if it.Title == "" && it.Role == ops.MenuRoleQuit {
 		return l10n.Quit(h.locale, h.appName)
 	}
+	if it.Title == "" && it.Role == ops.MenuRoleClose {
+		return "Close"
+	}
 	return it.Title
+}
+
+// itemShortcut is an item's shortcut: its own, or its role's (Close's
+// Ctrl+W).
+func itemShortcut(it *ops.MenuItem) (string, byte) {
+	if it.Key == "" && it.Role == ops.MenuRoleClose {
+		return "w", modPrimary
+	}
+	return it.Key, it.Mods
 }
 
 // popup makes a popup menu of items, their submenus popups of it.
@@ -93,7 +105,7 @@ func (b *menuBuild) popup(items []ops.MenuItem) uintptr {
 		if it.Is(ops.MenuChecked) {
 			flags |= MF_CHECKED
 		}
-		if s := shortcutText(it.Key, it.Mods); s != "" && b.shortcuts {
+		if s := shortcutText(itemShortcut(it)); s != "" && b.shortcuts {
 			text += "\t" + s
 		}
 		AppendMenu(pop, flags, uintptr(b.base+it.Index), text)
@@ -113,10 +125,6 @@ func (b *menuBuild) popup(items []ops.MenuItem) uintptr {
 // menus open mirrored; MF_RIGHTORDER has their text read right to left and
 // their submenus cascade to the left.
 func (h *Host) buildMenuBar() {
-	order := uint32(0)
-	if h.rtl {
-		order = MF_RIGHTORDER
-	}
 	for _, om := range h.barOwned {
 		h.forget(om)
 	}
@@ -130,17 +138,7 @@ func (h *Host) buildMenuBar() {
 	// draw it under a caption that isn't there (titlebar.go).
 	// Nor has a panel (flyout.go).
 	if len(h.appMenus) > 0 && (h.mainCtl == nil || !h.mainCtl.hidden && !h.mainCtl.frameless()) {
-		bar = CreateMenu()
-		titles := make([]string, len(h.appMenus))
-		for i, m := range h.appMenus {
-			titles[i] = m.Title
-		}
-		titles = accessKeys(titles)
-		b := &menuBuild{h: h, base: menuBase, order: order, shortcuts: true}
-		for i, m := range h.appMenus {
-			AppendMenu(bar, MF_POPUP|order, b.popup(m.Items), titles[i])
-		}
-		h.barOwned = append(h.barOwned, b.owned...)
+		bar = h.newMenuBar()
 	}
 	// A menu bar coming or going before the window shows keeps its client
 	// size (WindowOptions'), and the window centered.
@@ -158,18 +156,65 @@ func (h *Host) buildMenuBar() {
 		}
 	}
 
+	// The Windows that show the menu bar too (a document's).
+	for _, c := range h.ctls {
+		if !c.main && c.cfg.Flags&ops.WindowMenuBar != 0 {
+			h.setWindowMenu(c)
+		}
+	}
+
 	DestroyAcceleratorTable(h.accel)
 	var accels []Accel
 	for _, it := range h.appItems {
 		if it.Flags&(ops.MenuSeparator|ops.MenuDisabled|ops.MenuSubmenu) != 0 {
 			continue
 		}
-		if a, ok := accelerator(it.Key, it.Mods); ok {
+		if a, ok := accelerator(itemShortcut(&it)); ok {
 			a.Cmd = uint16(menuBase + it.Index)
 			accels = append(accels, a)
 		}
 	}
 	h.accel = CreateAcceleratorTable(accels)
+}
+
+// newMenuBar makes a menu bar (an HMENU) of the app's menus, in the
+// app's direction.
+func (h *Host) newMenuBar() uintptr {
+	order := uint32(0)
+	if h.rtl {
+		order = MF_RIGHTORDER
+	}
+	bar := CreateMenu()
+	titles := make([]string, len(h.appMenus))
+	for i, m := range h.appMenus {
+		titles[i] = m.Title
+	}
+	titles = accessKeys(titles)
+	b := &menuBuild{h: h, base: menuBase, order: order, shortcuts: true}
+	for i, m := range h.appMenus {
+		AppendMenu(bar, MF_POPUP|order, b.popup(m.Items), titles[i])
+	}
+	h.barOwned = append(h.barOwned, b.owned...)
+	return bar
+}
+
+// setWindowMenu gives a Window that asks for it (WindowMenuBar: a
+// document's, as Notepad's windows each have theirs) a menu bar of the
+// app's menus of its own, again as they change.
+func (h *Host) setWindowMenu(c *wctl) {
+	if c.main || c.hwnd == 0 || c.cfg.Flags&ops.WindowMenuBar == 0 {
+		return
+	}
+	var bar uintptr
+	if len(h.appMenus) > 0 && !c.hidden {
+		bar = h.newMenuBar()
+	}
+	old := GetMenu(c.hwnd)
+	SetMenu(c.hwnd, bar)
+	if old != 0 {
+		DestroyMenu(old)
+	}
+	DrawMenuBar(c.hwnd)
 }
 
 // accessKeys gives each title an access key (Alt and the underlined
@@ -315,6 +360,10 @@ func (h *Host) menuCommand(id int) bool {
 	case it.Flags&(ops.MenuSeparator|ops.MenuDisabled|ops.MenuSubmenu) != 0:
 	case it.Role == ops.MenuRoleQuit:
 		h.quit()
+	case it.Role == ops.MenuRoleClose:
+		// The window in use, as its close button closes it (WM_CLOSE: the
+		// core asks first where it listens).
+		PostMessage(h.windowInUse(), WM_CLOSE, 0, 0)
 	case h.root != nil:
 		h.emit(h.root, ops.Event{Kind: ops.EventAction, Int: int64(it.Index)})
 	}

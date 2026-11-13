@@ -561,7 +561,7 @@ export class Navigation {
       title = div("asuka-window-bar");
       title.classList.toggle("asuka-window-bar-hidden", hiddenBar);
       name = div("asuka-window-title");
-      name.textContent = n.title || "";
+      name.textContent = windowTitle(n);
       title.append(name);
       if (!(cfg.flags & Flag.NoClose)) {
         const close = iconButton("xmark", "Close", false);
@@ -1310,6 +1310,11 @@ export function decodeFlyout(b) {
   return f;
 }
 
+/** A Window's title as its bar shows it: a * first while edited. */
+function windowTitle(n) {
+  return (n.edited ? "*" : "") + (n.title || "");
+}
+
 const windowKind = {
   create(h, n) {
     own(n, div("asuka-window-content"));
@@ -1320,7 +1325,7 @@ const windowKind = {
     switch (p) {
       case P.Window.Title:
         n.title = v;
-        if (n.winTitle) n.winTitle.textContent = v;
+        if (n.winTitle) n.winTitle.textContent = windowTitle(n);
         else if (n.dialog) n.dialog.setAttribute("aria-label", v);
         break;
       case P.Window.Flyout:
@@ -1330,6 +1335,8 @@ const windowKind = {
         n.win.flyout = decodeFlyout(v);
         if (n.shown) h.nav.sizeDialog(n);
         break;
+      // A document's: a * before its title while it has unsaved changes.
+      case P.Window.Edited: n.edited = !!v; if (n.winTitle) n.winTitle.textContent = windowTitle(n); break;
       case P.Window.Config: {
         const c = decodeWindowConfig(v);
         n.win.cfg = c;

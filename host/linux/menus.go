@@ -188,6 +188,9 @@ func (h *Host) appMenuModel(items []ops.MenuItem) Ptr {
 		if role == ops.MenuRoleQuit && key == "" {
 			key, mods = "q", 1
 		}
+		if role == ops.MenuRoleClose && key == "" {
+			key, mods = "w", 1
+		}
 		if accel := accelerator(key, mods); accel != "" && !it.Is(ops.MenuDisabled) {
 			s := CString(accel)
 			list := [2]Ptr{Addr(s), 0}
@@ -207,6 +210,9 @@ func (h *Host) menuItemTitle(it *ops.MenuItem) string {
 	if it.Title == "" && it.Role == ops.MenuRoleQuit {
 		return l10n.Quit(h.locale, h.appName)
 	}
+	if it.Title == "" && it.Role == ops.MenuRoleClose {
+		return "Close"
+	}
 	return it.Title
 }
 
@@ -215,6 +221,16 @@ func (h *Host) menuItemTitle(it *ops.MenuItem) string {
 func (h *Host) chooseAppItem(index int, role ops.MenuRole) {
 	if role == ops.MenuRoleQuit {
 		h.afterCore(h.quit)
+		return
+	}
+	if role == ops.MenuRoleClose {
+		// The window in use, as its close button closes it (close-request:
+		// the core asks first where it listens).
+		h.afterCore(func() {
+			if w := ApplicationGetActiveWindow(h.app); w != 0 {
+				WindowClose(w)
+			}
+		})
 		return
 	}
 	if h.root != nil {
