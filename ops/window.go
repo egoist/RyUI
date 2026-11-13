@@ -41,6 +41,10 @@ const (
 	WindowFullscreen                          // opens in full screen
 	WindowChild                               // above its Parent, and goes with it
 	WindowModal                               // a child that blocks its Parent until it closes
+	// WindowMenuBar: it shows the app's menu bar (MenuBar) as the main
+	// window does: Windows' menu bar, Linux's main menu (a Mac's menu bar
+	// is the app's, whatever the window): a document's window.
+	WindowMenuBar
 )
 
 // WindowStateFlags are a WindowState event's bits.

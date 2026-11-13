@@ -338,6 +338,8 @@ object AsukaProp {
     object Window {
         const val TITLE = 64
         const val CONFIG = 65
+        const val EDITED = 66
+        const val FILE = 67
     }
 }
 

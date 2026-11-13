@@ -77,6 +77,19 @@ type WindowProps struct {
 	// window and closes with it. Modal makes it a child that blocks that
 	// window until it closes (on a Mac, a sheet of it).
 	Child, Modal bool
+	// MenuBar shows the app's menu bar (MenuBar) in it as in the main
+	// window: Windows' menu bar, Linux's main menu. A Mac's menu bar is
+	// the app's whatever the window. For a window of the app's own, a
+	// document's (asuka/document), not a panel's.
+	MenuBar bool
+	// Edited says the document it shows has unsaved changes: a dot in a
+	// Mac's close button, a * before its title on Windows, Linux and the
+	// web.
+	Edited signal.Accessor[bool]
+	// File is the path of the file the document it shows is (empty:
+	// none): a Mac's title bar shows its icon, which drags the file to
+	// another app, and Command-clicking the title lists its folders.
+	File signal.Accessor[string]
 	// Handle, if set, is the window's handle (NewWindowHandle), to
 	// control it from outside it: UseWindow in its content returns the
 	// same.
@@ -110,6 +123,9 @@ func (p *WindowProps) config() ops.WindowConfig {
 	}
 	if p.Modal {
 		c.Flags |= ops.WindowChild | ops.WindowModal
+	}
+	if p.MenuBar {
+		c.Flags |= ops.WindowMenuBar
 	}
 	return c
 }
@@ -203,6 +219,12 @@ func Window(p WindowProps) Node {
 					dispose = d
 					if p.Title != nil {
 						bind(p.Title, func(v string) { r.batch.SetString(w.id, ops.PropWindowTitle, v) })
+					}
+					if p.Edited != nil {
+						bind(p.Edited, func(v bool) { r.batch.SetBool(w.id, ops.PropWindowEdited, v) })
+					}
+					if p.File != nil {
+						bind(p.File, func(v string) { r.batch.SetString(w.id, ops.PropWindowFile, v) })
 					}
 					// Opened before its content is built: a Window declared
 					// in it, a child of it, opens after it.
@@ -383,6 +405,14 @@ const (
 	// pending is saved. An app that keeps running with no window
 	// (app.KeepRunning, app.RunInBackground) puts it in its tray icon's menu.
 	MenuRoleQuit = ops.MenuRoleQuit
+	// MenuRoleClose closes the window in use as its close button does,
+	// asking its OnCloseRequest first: "Close", ⌘W, Ctrl+W. In a Mac's
+	// File menu it takes the place of the host's Close Window.
+	MenuRoleClose = ops.MenuRoleClose
+	// MenuRoleOpenRecent is the recent documents' submenu (asuka/recent):
+	// on a Mac the host's own, NSDocumentController's, which it fills as
+	// it opens, in this item's place; elsewhere the item's Submenu.
+	MenuRoleOpenRecent = ops.MenuRoleOpenRecent
 )
 
 // MenuBarMenu is one of the menu bar's menus.

@@ -59,6 +59,9 @@ func (h *Host) windowCommand(v *View, c ops.CommandID, args []byte) {
 		w.Config = ops.DecodeWindowConfig(v.Props[ops.PropWindowConfig].Bytes)
 		w.State = ops.WindowState{Width: 800, Height: 600, Flags: ops.WindowVisible | ops.WindowFocused}
 		h.configure(w)
+		if w.State.Flags&ops.WindowFocused != 0 {
+			h.key = v.ID
+		}
 		h.reportWindow(v)
 	case ops.CmdWindowAction:
 		if v.Kind != ops.KindWindow && v.Kind != ops.KindView {
@@ -79,6 +82,11 @@ func (h *Host) windowCommand(v *View, c ops.CommandID, args []byte) {
 		case ops.WindowActionFocus:
 			s.Flags |= ops.WindowVisible | ops.WindowFocused
 			s.Flags &^= ops.WindowMinimizedState
+			if v.Kind == ops.KindWindow {
+				h.key = v.ID
+			} else {
+				h.key = 0
+			}
 		case ops.WindowActionMinimize:
 			s.Flags |= ops.WindowMinimizedState
 			s.Flags &^= ops.WindowFocused
@@ -158,6 +166,24 @@ func (h *Host) SetWindowState(v *View, s ops.WindowState) {
 	h.window(v).State = s
 	if v.Listens[ops.EventWindowState] {
 		h.dispatch(ops.Event{ID: v.ID, Kind: ops.EventWindowState, Bytes: ops.AppendWindowState(nil, s)})
+	}
+}
+
+// KeyWindow is the window in use: the Window presented or focused last
+// that's still open, else the root (the main window).
+func (h *Host) KeyWindow() *View {
+	if v := h.Views[h.key]; v != nil && v.Kind == ops.KindWindow {
+		return v
+	}
+	return h.Root()
+}
+
+// SetKeyWindow makes v's window the one in use (v a Window, or the root),
+// as the user clicking it does.
+func (h *Host) SetKeyWindow(v *View) {
+	h.key = 0
+	if v.Kind == ops.KindWindow {
+		h.key = v.ID
 	}
 }
 
