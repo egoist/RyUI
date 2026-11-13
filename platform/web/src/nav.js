@@ -309,6 +309,9 @@ export class Navigation {
     if (n.shown) return;
     const d = document.createElement("dialog");
     d.className = "asuka-sheet-dialog";
+    // The window it's presented from, where its keys go on to: the
+    // Window the keyboard is in, else the root.
+    n.over = this.h.keys?.windowAt(document.activeElement) || this.h.root;
     this.h.container.appendChild(d);
     d.appendChild(n.el);
     if (n.grabber) {

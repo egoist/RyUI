@@ -5,6 +5,7 @@ package e2e
 import (
 	"encoding/json"
 	"runtime"
+	"strconv"
 	"testing"
 )
 
@@ -141,6 +142,42 @@ func TestKeysWeb(t *testing.T) {
 	press(escape)
 	showsLine(t, s, "window escape: 1")
 
+	// A list's row: a key in its field goes on from the row to the list,
+	// the view around it, the window.
+	focusOn := func(sel string) {
+		t.Helper()
+		until(t, func() bool {
+			return c.eval(t, page, `String(!!document.querySelector(`+strconv.Quote(sel)+`))`) == "true"
+		}, func() string { return "no " + sel })
+		c.eval(t, page, `document.querySelector(`+strconv.Quote(sel)+`).focus(), "ok"`)
+	}
+	// What the page shows, a modal sheet over it or not.
+	shows := func(line string) {
+		t.Helper()
+		js := `String(document.body.innerText.includes(` + strconv.Quote(line) + `))`
+		until(t, func() bool { return c.eval(t, page, js) == "true" }, func() string { return "the page doesn't show " + line })
+	}
+	pageDown := key{key: "PageDown", code: "PageDown", vk: 34, command: "scrollPageDown"}
+	focusOn(`input.asuka-field[placeholder=Row]`)
+	press(pageDown)
+	showsLine(t, s, "list keys: pagedown")
+	press(save)
+	showsLine(t, s, "window save: 2")
+
+	// A sheet: its content's keys first (its Escape, not the window's),
+	// then the window's (UseKeys).
+	s.tap("Open sheet")
+	focusOn(`.asuka-sheet-dialog input.asuka-field[placeholder="In the sheet"]`)
+	press(escape)
+	shows("sheet keys: escape")
+	press(save)
+	shows("window save: 3")
+	shows("window escape: 1")
+	s.tap("Close sheet")
+	until(t, func() bool {
+		return c.eval(t, page, `String(!document.querySelector(".asuka-sheet-dialog[open]"))`) == "true"
+	}, func() string { return "the sheet stays" })
+
 	// The panel: its keys are its UseKeys', and go no further.
 	s.tap("Open panel")
 	const inPanel = `document.querySelector(".asuka-window input.asuka-field")`
@@ -157,4 +194,16 @@ func TestKeysWeb(t *testing.T) {
 	if got := c.eval(t, page, `String(!!`+inPanel+`?.isConnected && document.activeElement === `+inPanel+`)`); got != "true" {
 		t.Fatalf("the panel closed on a declared Escape (or lost the keyboard): %s", got)
 	}
+
+	// A sheet presented from the panel: on to the panel's keys, never the
+	// main window's.
+	s.tap("Open panel sheet")
+	focusOn(`.asuka-sheet-dialog input.asuka-field[placeholder="In the panel's sheet"]`)
+	press(arrowDown)
+	shows("panel keys: escape down down")
+	press(save)
+	press(escape)
+	shows("panel keys: escape down down escape")
+	shows("window save: 3")
+	shows("window escape: 1")
 }

@@ -7,9 +7,13 @@
 // out through the views' parents, the nearest whose Keys have the key
 // takes it (preventDefault and stopImmediatePropagation: the focused
 // control, its caret, and the page's own listeners don't get it) and gets
-// Key with the key's index. A Window's panel ends at its Window node
-// (its UseKeys'); with nothing focused, a key starts at the root (the
-// main window's).
+// Key with the key's index. From a node the core leaves without a
+// parent, a key goes on where it shows (up): a list's cell to its list, a
+// sheet's node to the window it was presented from (a Window node, or the
+// root) and a popover's to the root of what its anchor is in (a window's,
+// or a sheet's node). A Window node is an end (a Window's keys are its
+// own, its UseKeys'), and the root; with nothing focused, a key starts at
+// the root, or at the node of the panel or dialog that has the keyboard.
 
 import { Events, Kind } from "./ops.js";
 
@@ -174,7 +178,7 @@ export class Keys {
     }
     const k = keyOf(e, this.mac, this.layout);
     if (!k) return false;
-    for (let n = this.start(e.target), i = 0; n && i < 4096; i++) {
+    for (let n = this.start(e.target), i = 0; n && i < 4096; i++, n = this.up(n)) {
       if (n.keys) {
         const at = matchKey(n.keys, k, this.mac);
         if (at >= 0) {
@@ -184,8 +188,6 @@ export class Keys {
           return true;
         }
       }
-      if (n.kind === Kind.Window) break; // a panel's keys end at its window
-      n = this.up(n);
     }
     return false;
   }
@@ -207,11 +209,47 @@ export class Keys {
     return r === undefined ? h.root : r;
   }
 
-  /** up is the view out from n: its parent, or its element's nearest ancestor's (a list's row in the host's cell). */
+  /**
+   * up is where a key goes on from n: its parent; from a node the core
+   * leaves without one, where it shows: a list's cell its list, a
+   * sheet's node the window it was presented from (its over: a Window
+   * node, the root), a popover's the root of what its anchor is in (a
+   * Window's, a sheet's node, the root). Null at the root and a Window
+   * node: ends.
+   */
   up(n) {
     if (n.parent) return n.parent;
-    if (!n.el?.parentElement) return null;
-    return this.nodeAt(n.el.parentElement, n) || null;
+    if (n.listCell) {
+      const l = n.listCell.l?.n;
+      return l && !l.dying ? l : null;
+    }
+    const root = this.h.root;
+    if (n.kind === Kind.Sheet) {
+      const o = n.over;
+      return o && o !== n && !o.dying ? o : root;
+    }
+    if (n.kind === Kind.Popover) {
+      let a = this.h.nodes?.get(n.pop?.anchor);
+      for (let i = 0; a && i < 4096; i++) {
+        const p = a.parent || a.listCell?.l?.n;
+        if (!p) break;
+        a = p;
+      }
+      return a && a !== n && !a.dying ? a : root;
+    }
+    return null;
+  }
+
+  /** windowAt is the window an element is in, as a sheet presented from it covers it: a Window node, else the root (a sheet's: the one it covers). */
+  windowAt(el) {
+    const ds = this.h.nav?.dialogs || [];
+    for (let i = ds.length - 1; i >= 0; i--) {
+      const x = ds[i];
+      if (!x.dialog || !el || !x.dialog.contains?.(el)) continue;
+      if (x.kind === Kind.Window) return x;
+      if (x.kind === Kind.Sheet) return x.over || this.h.root;
+    }
+    return this.h.root;
   }
 
   /**

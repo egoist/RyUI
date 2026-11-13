@@ -131,10 +131,11 @@ function page({ fullPage = true } = {}) {
   container.contains = (el) => { for (; el; el = el.parentElement) if (el === container) return true; return false; };
   const sent = [];
   let next = 1;
-  const h = { container, options: { fullPage }, nav: { dialogs: [] }, dispatch: (b) => sent.push(decodeEvent(b)) };
+  const h = { container, options: { fullPage }, nav: { dialogs: [] }, nodes: new Map(), dispatch: (b) => sent.push(decodeEvent(b)) };
   const node = (parent, kind = Kind.View, keys = null, inEl = parent?.el) => {
     const n = { id: next++, kind, parent, el: element(inEl ?? container), keys: null, dialog: null };
     n.el.asukaNode = n;
+    h.nodes.set(n.id, n);
     if (keys) n.keys = keys;
     return n;
   };
@@ -227,7 +228,8 @@ test("a Window panel's keys end at its Window node, its UseKeys'", () => {
   h.root.keys = K("escape", "space");
   // The panel: its own element around the title bar and the Window node's.
   const panel = element(container, "asuka-window");
-  const win = node(h.root, Kind.Window, K("escape"), panel);
+  panel.contains = (el) => { for (; el; el = el.parentElement) if (el === panel) return true; return false; };
+  const win = node(null, Kind.Window, K("escape"), panel); // no parent: the core's
   win.dialog = panel;
   h.nav.dialogs.push(win);
   const bar = element(panel, "asuka-window-bar");
@@ -248,22 +250,67 @@ test("a Window panel's keys end at its Window node, its UseKeys'", () => {
   assert.equal(press(input, "Escape", "Escape").took, false);
 });
 
-test("a sheet's content goes out through its node's parents; an alert's and a popup menu's keys are their own", () => {
-  const { h, node, sent, press, container } = page();
-  h.root.keys = K("enter");
+test("a sheet's and a popover's node goes on to the window it covers; an alert's and a popup menu's keys are their own", () => {
+  const { h, k, node, sent, press, container } = page();
+  h.root.keys = K("enter", "f2");
   const screen = node(h.root);
   const dialog = element(container);
-  const sheet = node(screen, Kind.Sheet, null, dialog);
+  // No parent (the core's): presented from the main window.
+  const sheet = node(null, Kind.Sheet, null, dialog);
   sheet.dialog = dialog;
+  sheet.over = h.root;
   h.nav.dialogs.push(sheet);
   const grabber = element(dialog, "asuka-grabber");
+  const content = node(sheet, Kind.View, K("f2"));
+  const field = node(content, Kind.TextField);
+  // The content's first, then the window's (UseKeys: the root's).
+  press(element(field.el), "F2", "F2");
+  assert.deepEqual(sent.pop(), { id: content.id, kind: Event.Key, index: 0 });
+  press(element(field.el), "Enter", "Enter");
+  assert.deepEqual(sent.pop(), { id: h.root.id, kind: Event.Key, index: 0 });
+  // Nothing of the content's focused: from the sheet's node.
   press(element(sheet.el), "Enter", "Enter");
   assert.deepEqual(sent.pop(), { id: h.root.id, kind: Event.Key, index: 0 });
   press(grabber, "Enter", "Enter");
   assert.deepEqual(sent.pop(), { id: h.root.id, kind: Event.Key, index: 0 });
 
+  // A popover: on to the root of what its anchor is in.
+  const anchor = node(screen);
+  const pop = node(null, Kind.Popover, null, element(container));
+  pop.pop = { anchor: anchor.id };
+  const inPop = node(pop, Kind.TextField, K("escape"));
+  press(element(inPop.el), "Escape", "Escape");
+  assert.deepEqual(sent.pop(), { id: inPop.id, kind: Event.Key, index: 0 });
+  press(element(inPop.el), "Enter", "Enter");
+  assert.deepEqual(sent.pop(), { id: h.root.id, kind: Event.Key, index: 0 });
+  // Anchored in the sheet: on to the sheet's node (not through the
+  // anchor's views), then its window.
+  pop.pop.anchor = field.id;
+  sheet.keys = K("f3");
+  press(element(inPop.el), "F3", "F3");
+  assert.deepEqual(sent.pop(), { id: sheet.id, kind: Event.Key, index: 0 });
+  press(element(inPop.el), "F2", "F2");
+  assert.deepEqual(sent.pop(), { id: h.root.id, kind: Event.Key, index: 1 });
+  sheet.keys = null;
+
+  // A sheet presented from a Window's content: that Window's, never the main window's.
+  const panel = element(container, "asuka-window");
+  panel.contains = (el) => { for (; el; el = el.parentElement) if (el === panel) return true; return false; };
+  const win = node(null, Kind.Window, K("escape"), panel);
+  win.dialog = panel;
+  h.nav.dialogs.push(win);
+  const button = node(node(win), Kind.Button);
+  assert.equal(k.windowAt(button.el), win);
+  assert.equal(k.windowAt(element(field.el)), h.root, "in a sheet over the main window");
+  const winSheet = node(null, Kind.Sheet, null, element(container));
+  winSheet.over = k.windowAt(button.el);
+  const inWinSheet = node(winSheet, Kind.TextField);
+  press(element(inWinSheet.el), "Escape", "Escape");
+  assert.deepEqual(sent.pop(), { id: win.id, kind: Event.Key, index: 0 });
+  assert.equal(press(element(inWinSheet.el), "Enter", "Enter").took, false);
+
   const alertDialog = element(container, "asuka-alert");
-  const alert = { id: 99, kind: Kind.Alert, parent: screen, el: null, keys: null, dialog: alertDialog };
+  const alert = { id: 99, kind: Kind.Alert, parent: null, el: null, keys: null, dialog: alertDialog };
   h.nav.dialogs.push(alert);
   const ok = element(element(alertDialog, "asuka-alert-buttons"));
   assert.equal(press(ok, "Enter", "Enter").took, false);
@@ -272,15 +319,23 @@ test("a sheet's content goes out through its node's parents; an alert's and a po
   assert.equal(sent.length, 0);
 });
 
-test("a list's row goes out through the host's cell to the list", () => {
+test("a list's row goes on from the host's cell to its list", () => {
   const { h, node, sent, press } = page();
-  const list = node(h.root, Kind.List, K("pagedown"));
+  h.root.keys = K("escape");
+  const around = node(h.root, Kind.View, K("down"));
+  const list = node(around, Kind.List, K("pagedown"));
   const scroller = element(list.el, "asuka-scroller");
   // The host's cell: a node of no parent, its element in the list's.
   const cell = node(null, 1000, null, scroller);
+  cell.listCell = { l: { n: list } };
   const row = node(cell);
-  press(element(row.el), "PageDown", "PageDown");
+  const field = node(row, Kind.TextField);
+  press(element(field.el), "PageDown", "PageDown");
   assert.deepEqual(sent.pop(), { id: list.id, kind: Event.Key, index: 0 });
+  press(element(field.el), "ArrowDown", "ArrowDown");
+  assert.deepEqual(sent.pop(), { id: around.id, kind: Event.Key, index: 0 });
+  press(element(field.el), "Escape", "Escape");
+  assert.deepEqual(sent.pop(), { id: h.root.id, kind: Event.Key, index: 0 });
 });
 
 test("the Keys prop: set, replaced, emptied", () => {
