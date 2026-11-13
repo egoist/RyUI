@@ -154,7 +154,7 @@ func TestKeysWeb(t *testing.T) {
 	// What the page shows, a modal sheet over it or not.
 	shows := func(line string) {
 		t.Helper()
-		js := `String(document.body.innerText.includes(` + strconv.Quote(line) + `))`
+		js := `String(document.body.innerText.split("\n").some((l) => l.trim() === ` + strconv.Quote(line) + `))`
 		until(t, func() bool { return c.eval(t, page, js) == "true" }, func() string { return "the page doesn't show " + line })
 	}
 	pageDown := key{key: "PageDown", code: "PageDown", vk: 34, command: "scrollPageDown"}
@@ -195,15 +195,63 @@ func TestKeysWeb(t *testing.T) {
 		t.Fatalf("the panel closed on a declared Escape (or lost the keyboard): %s", got)
 	}
 
-	// A sheet presented from the panel: on to the panel's keys, never the
+	// The main window's sheet, with the panel in use: on the main window
+	// (not over the panel), its keys on to the main window's.
+	s.tap("Open sheet")
+	focusOn(`.asuka-sheet-dialog:not(.asuka-on-window) input.asuka-field[placeholder="In the sheet"]`)
+	press(save)
+	shows("window save: 4")
+	press(escape)
+	shows("sheet keys: escape escape")
+	s.tap("Close sheet")
+	until(t, func() bool {
+		return c.eval(t, page, `String(!document.querySelector(".asuka-sheet-dialog[open]"))`) == "true"
+	}, func() string { return "the sheet stays" })
+
+	// overPanel reports whether the sheet with field ph shows over the
+	// Window panel holding text: its dialog's center in the panel.
+	overPanel := func(ph, text string) string {
+		return c.eval(t, page, `(() => {
+			const d = document.querySelector(".asuka-sheet-dialog.asuka-on-window[open]");
+			const f = d?.querySelector("input.asuka-field[placeholder=" + JSON.stringify(`+strconv.Quote(ph)+`) + "]");
+			const p = [...document.querySelectorAll(".asuka-window")].find((w) => w.textContent.includes(`+strconv.Quote(text)+`) || w.querySelector("input[placeholder=" + JSON.stringify(`+strconv.Quote(text)+`) + "]"));
+			if (!d || !f || !p) return "no sheet over a panel: " + !!d + " " + !!f + " " + !!p;
+			const r = d.getBoundingClientRect(), q = p.getBoundingClientRect();
+			const x = r.left + r.width / 2, y = r.top + r.height / 2;
+			return x >= q.left && x <= q.right && y >= q.top && y <= q.bottom ? "over" : "not over: " + JSON.stringify([r, q]);
+		})()`)
+	}
+
+	// The panel's sheet, opened with the keyboard elsewhere (the main
+	// window's field): on the panel, its keys on to the panel's, never the
 	// main window's.
+	c.eval(t, page, search+`.focus(), "ok"`)
 	s.tap("Open panel sheet")
+	until(t, func() bool { return overPanel("In the panel's sheet", "In the panel") == "over" }, func() string { return overPanel("In the panel's sheet", "In the panel") })
 	focusOn(`.asuka-sheet-dialog input.asuka-field[placeholder="In the panel's sheet"]`)
 	press(arrowDown)
 	shows("panel keys: escape down down")
 	press(save)
 	press(escape)
 	shows("panel keys: escape down down escape")
-	shows("window save: 3")
+	shows("window save: 4")
 	shows("window escape: 1")
+	s.tap("Close panel sheet")
+	until(t, func() bool {
+		return c.eval(t, page, `String(!document.querySelector(".asuka-sheet-dialog[open]"))`) == "true"
+	}, func() string { return "the panel's sheet stays" })
+
+	// A Window and its sheet, opened in one batch, before the Window is in
+	// use: the sheet goes on it, its keys on to its UseKeys.
+	s.tap("Open window two")
+	until(t, func() bool { return overPanel("In window two's sheet", "window two") == "over" }, func() string { return overPanel("In window two's sheet", "window two") })
+	focusOn(`.asuka-sheet-dialog input.asuka-field[placeholder="In window two's sheet"]`)
+	press(escape)
+	shows("window two keys: escape")
+	press(save)
+	press(arrowDown) // the panel's: not here
+	shows("window two keys: escape")
+	shows("window save: 4")
+	shows("window escape: 1")
+	shows("panel keys: escape down down escape")
 }

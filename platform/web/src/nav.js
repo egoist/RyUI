@@ -87,6 +87,7 @@ export class Navigation {
     for (const n of this.h.nodes.values()) {
       if (n.kind === Kind.Stack || n.kind === Kind.Tabs || n.kind === Kind.Split) this.layoutScreens(n);
       else if ((n.kind === Kind.Sheet || n.kind === Kind.Window) && n.shown) this.sizeDialog(n);
+      else if (n.kind === Kind.Alert && n.shown) this.placeOnWindow(n);
       else if (n.kind === Kind.Popover && n.shown) this.placePopover(n);
     }
   }
@@ -309,9 +310,6 @@ export class Navigation {
     if (n.shown) return;
     const d = document.createElement("dialog");
     d.className = "asuka-sheet-dialog";
-    // The window it's presented from, where its keys go on to: the
-    // Window the keyboard is in, else the root.
-    n.over = this.h.keys?.windowAt(document.activeElement) || this.h.root;
     this.h.container.appendChild(d);
     d.appendChild(n.el);
     if (n.grabber) {
@@ -351,8 +349,18 @@ export class Navigation {
       d.classList.toggle("asuka-window-top", !!wn.onTop);
       d.classList.toggle("asuka-window-minimized", !!wn.minimized);
       d.classList.toggle("asuka-window-maximized", !!wn.maximized);
+    } else if ((n.kind === Kind.Sheet) && this.panelOf(n)) {
+      // A sheet of a Window's panel: a card over the panel's content,
+      // as a desktop's sheet over its window.
+      const a = this.panelArea(this.panelOf(n), c);
+      d.classList.add("asuka-wide", "asuka-on-window");
+      w = Math.min(Math.max(a.w - 40, 280), c.width - 16);
+      h = Math.min(n.detents === 1 ? Math.max(a.h / 2, 200) : Math.max(a.h - 40, 200), c.height - 16);
+      this.placeOver(d, a, w, h, c);
     } else {
       const wide = this.wide();
+      d.classList.remove("asuka-on-window");
+      d.style.left = d.style.top = "";
       d.classList.toggle("asuka-wide", wide);
       // It opens at its smallest detent, as iOS's sheets do; the keyboard expands it.
       const medium = (n.detents & 1) !== 0 && !n.expanded;
@@ -382,7 +390,53 @@ export class Navigation {
     n.frame = [0, top, w, h - top];
     n.placed = true;
     this.report(n, w, h - top, n.el, n.kind === Kind.Window ? n.win.safeTop : 0);
-    if (n.kind === Kind.Window) this.h.windows.report(n);
+    if (n.kind === Kind.Window) {
+      this.h.windows.report(n);
+      // Its sheets and alerts go with it.
+      for (const x of this.dialogs) {
+        if (x.winID !== n.id || x === n) continue;
+        if (x.kind === Kind.Sheet) this.sizeDialog(x);
+        else if (x.kind === Kind.Alert) this.placeOnWindow(x);
+      }
+    }
+  }
+
+  /**
+   * panelOf is the Window node whose panel a sheet or an alert goes on:
+   * its Window prop's (the window it's declared in), while that panel
+   * shows; null for the main window's (the page), or a panel hidden or
+   * minimized.
+   */
+  panelOf(n) {
+    const w = this.h.nodes.get(n.winID);
+    if (!w || w.kind !== Kind.Window || !w.shown || !w.dialog || !w.win || w.win.hidden || w.win.minimized) return null;
+    return w;
+  }
+
+  /** panelArea is a Window panel's content, in the viewport's coordinates (c: the container's rectangle). */
+  panelArea(w, c) {
+    const wn = w.win;
+    return { x: c.left + wn.x, y: c.top + wn.y + wn.bar, w: wn.w, h: wn.h - wn.bar };
+  }
+
+  /** placeOver puts dialog d, w by h, centered over area a, within the container's rectangle c. */
+  placeOver(d, a, w, h, c) {
+    const x = Math.min(Math.max(a.x + (a.w - w) / 2, c.left + 8), Math.max(c.left + 8, c.right - w - 8));
+    const y = Math.min(Math.max(a.y + (a.h - h) / 2, c.top + 8), Math.max(c.top + 8, c.bottom - h - 8));
+    d.style.left = x + "px";
+    d.style.top = y + "px";
+  }
+
+  /** placeOnWindow puts an alert over its Window's panel, or where the page puts it. */
+  placeOnWindow(n) {
+    const d = n.dialog;
+    if (!d) return;
+    const w = this.panelOf(n);
+    d.classList.toggle("asuka-on-window", !!w);
+    if (!w) { d.style.left = d.style.top = ""; return; }
+    const c = this.h.container.getBoundingClientRect();
+    const r = d.getBoundingClientRect();
+    this.placeOver(d, this.panelArea(w, c), r.width, r.height, c);
   }
 
   /** dismiss is the user's: the sheet's ui.OnBack asks the core, or the core hears it was dismissed. */
@@ -479,6 +533,7 @@ export class Navigation {
     d.addEventListener("cancel", (e) => { e.preventDefault(); cancel(); });
     d.addEventListener("click", (e) => { if (e.target === d && sheet) cancel(); });
     d.showModal();
+    this.placeOnWindow(n);
     const def = buttons.querySelector("button:not(.asuka-cancel)") || buttons.querySelector("button");
     def?.focus();
     if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -1215,6 +1270,7 @@ const sheet = {
   prop(h, n, p, v) {
     if (p === P.Sheet.Detents) n.detents = v;
     if (p === P.Sheet.Grabber) n.grabber = !!v;
+    if (p === P.Sheet.Window) n.winID = v; // the window it's declared in: the root's, a Window's
   },
   frame() { return true; },
   destroy(h, n) {
@@ -1237,6 +1293,7 @@ const alert = {
     if (p === P.Alert.Message) n.message = v;
     if (p === P.Alert.Buttons) n.actions = decodeActions(v);
     if (p === P.Alert.Style) n.alertStyle = v;
+    if (p === P.Alert.Window) n.winID = v;
   },
   common() { return true; },
   destroy(h, n) {

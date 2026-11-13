@@ -251,14 +251,14 @@ test("a Window panel's keys end at its Window node, its UseKeys'", () => {
 });
 
 test("a sheet's and a popover's node goes on to the window it covers; an alert's and a popup menu's keys are their own", () => {
-  const { h, k, node, sent, press, container } = page();
+  const { h, node, sent, press, container } = page();
   h.root.keys = K("enter", "f2");
   const screen = node(h.root);
   const dialog = element(container);
   // No parent (the core's): presented from the main window.
   const sheet = node(null, Kind.Sheet, null, dialog);
   sheet.dialog = dialog;
-  sheet.over = h.root;
+  sheet.winID = h.root.id; // its Window prop: declared in the main window
   h.nav.dialogs.push(sheet);
   const grabber = element(dialog, "asuka-grabber");
   const content = node(sheet, Kind.View, K("f2"));
@@ -293,21 +293,28 @@ test("a sheet's and a popover's node goes on to the window it covers; an alert's
   assert.deepEqual(sent.pop(), { id: h.root.id, kind: Event.Key, index: 1 });
   sheet.keys = null;
 
-  // A sheet presented from a Window's content: that Window's, never the main window's.
+  // A sheet declared in a Window's content (its Window prop): that
+  // Window's keys, never the main window's, wherever the keyboard was.
   const panel = element(container, "asuka-window");
-  panel.contains = (el) => { for (; el; el = el.parentElement) if (el === panel) return true; return false; };
   const win = node(null, Kind.Window, K("escape"), panel);
   win.dialog = panel;
   h.nav.dialogs.push(win);
-  const button = node(node(win), Kind.Button);
-  assert.equal(k.windowAt(button.el), win);
-  assert.equal(k.windowAt(element(field.el)), h.root, "in a sheet over the main window");
   const winSheet = node(null, Kind.Sheet, null, element(container));
-  winSheet.over = k.windowAt(button.el);
+  winSheet.winID = win.id;
   const inWinSheet = node(winSheet, Kind.TextField);
   press(element(inWinSheet.el), "Escape", "Escape");
   assert.deepEqual(sent.pop(), { id: win.id, kind: Event.Key, index: 0 });
   assert.equal(press(element(inWinSheet.el), "Enter", "Enter").took, false);
+  // With nothing of its content focused: from its node, on to the Window.
+  press(winSheet.el, "Escape", "Escape");
+  assert.deepEqual(sent.pop(), { id: win.id, kind: Event.Key, index: 0 });
+  // The main window's sheet stays the main window's with a Window in use.
+  press(element(field.el), "Enter", "Enter");
+  assert.deepEqual(sent.pop(), { id: h.root.id, kind: Event.Key, index: 0 });
+  // A Window prop naming no window (gone): the root.
+  winSheet.winID = 999;
+  press(element(inWinSheet.el), "Enter", "Enter");
+  assert.deepEqual(sent.pop(), { id: h.root.id, kind: Event.Key, index: 0 });
 
   const alertDialog = element(container, "asuka-alert");
   const alert = { id: 99, kind: Kind.Alert, parent: null, el: null, keys: null, dialog: alertDialog };

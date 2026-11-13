@@ -407,6 +407,8 @@ textarea.asuka-field { overflow-y: auto; display: block; }
   box-shadow: var(--asuka-shadow);
 }
 .asuka-sheet-dialog.asuka-wide { inset: 0; margin: auto; border-radius: 14px; }
+/* Over a Window's panel: placed by the host (left, top). */
+.asuka-sheet-dialog.asuka-on-window, .asuka-alert.asuka-on-window { position: fixed; inset: auto; margin: 0; }
 .asuka-sheet-dialog::backdrop, .asuka-alert::backdrop { background: var(--asuka-scrim); }
 .asuka-sheet { position: absolute; }
 .asuka-grabber { position: absolute; top: 5px; left: calc(50% - 18px); width: 36px; height: 5px; border-radius: 3px; background: var(--asuka-tertiary-label); z-index: 5; cursor: grab; touch-action: none; }

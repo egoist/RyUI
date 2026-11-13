@@ -9,8 +9,8 @@
 // control, its caret, and the page's own listeners don't get it) and gets
 // Key with the key's index. From a node the core leaves without a
 // parent, a key goes on where it shows (up): a list's cell to its list, a
-// sheet's node to the window it was presented from (a Window node, or the
-// root) and a popover's to the root of what its anchor is in (a window's,
+// sheet's node to the window it's declared in (its Window prop: a Window
+// node, or the root) and a popover's to the root of what its anchor is in (a window's,
 // or a sheet's node). A Window node is an end (a Window's keys are its
 // own, its UseKeys'), and the root; with nothing focused, a key starts at
 // the root, or at the node of the panel or dialog that has the keyboard.
@@ -212,7 +212,7 @@ export class Keys {
   /**
    * up is where a key goes on from n: its parent; from a node the core
    * leaves without one, where it shows: a list's cell its list, a
-   * sheet's node the window it was presented from (its over: a Window
+   * sheet's node the window it's declared in (its Window prop: a Window
    * node, the root), a popover's the root of what its anchor is in (a
    * Window's, a sheet's node, the root). Null at the root and a Window
    * node: ends.
@@ -225,8 +225,8 @@ export class Keys {
     }
     const root = this.h.root;
     if (n.kind === Kind.Sheet) {
-      const o = n.over;
-      return o && o !== n && !o.dying ? o : root;
+      const o = this.h.nodes?.get(n.winID);
+      return o && o !== n && !o.dying && (o === root || o.kind === Kind.Window) ? o : root;
     }
     if (n.kind === Kind.Popover) {
       let a = this.h.nodes?.get(n.pop?.anchor);
@@ -238,18 +238,6 @@ export class Keys {
       return a && a !== n && !a.dying ? a : root;
     }
     return null;
-  }
-
-  /** windowAt is the window an element is in, as a sheet presented from it covers it: a Window node, else the root (a sheet's: the one it covers). */
-  windowAt(el) {
-    const ds = this.h.nav?.dialogs || [];
-    for (let i = ds.length - 1; i >= 0; i--) {
-      const x = ds[i];
-      if (!x.dialog || !el || !x.dialog.contains?.(el)) continue;
-      if (x.kind === Kind.Window) return x;
-      if (x.kind === Kind.Sheet) return x.over || this.h.root;
-    }
-    return this.h.root;
   }
 
   /**
