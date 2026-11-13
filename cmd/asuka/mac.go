@@ -150,6 +150,10 @@ func writeMacBundle(app *goApp, bundle, work string, release bool, run func(dir 
 	if t := app.cfg.urlTypes(false); len(t) > 0 {
 		info["CFBundleURLTypes"] = t
 	}
+	// In the background (a menu bar app): no Dock icon, from launch.
+	if app.cfg.Background {
+		info["LSUIElement"] = true
+	}
 	// The purpose strings are the same keys on macOS (camera, contacts...);
 	// location's is NSLocationUsageDescription there.
 	for k, v := range app.cfg.IOS.Usage {

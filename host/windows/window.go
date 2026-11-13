@@ -225,6 +225,7 @@ func (h *Host) windowMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
 		h.closeMain()
 		return 0, true
 	case WM_DESTROY:
+		h.removeTrayIcons()
 		PostQuitMessage(0)
 		return 0, true
 	}

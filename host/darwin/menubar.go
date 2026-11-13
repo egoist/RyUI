@@ -3,98 +3,102 @@
 package darwin
 
 import (
-	"encoding/binary"
 	"strings"
 
 	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/internal/l10n"
 	"github.com/egoist/asuka/ops"
 )
 
 // The app's menus (ui.MenuBar): the menu bar is made again with them
 // each time they change. A chosen item, by a click or its shortcut,
-// sends Action to the root with its index among all the menus' items.
-
-type appMenu struct {
-	title string
-	items []appItem
-}
-
-type appItem struct {
-	index int // among all the menus' items
-	flags byte
-	title string
-	key   string
-	mods  byte
-}
-
-const (
-	itemSeparator   = 1
-	itemDisabled    = 2
-	itemChecked     = 4
-	itemDestructive = 8
-)
+// sends Action to the root with its number among all the menus' items
+// (ops.MenuItem.Index); a submenu is an NSMenu of its own, a role's item
+// does what AppKit does (Quit: terminate:).
 
 // setMenuBar takes the MenuBar command's menus and makes the menu bar
 // again.
 func (h *Host) setMenuBar(b []byte) {
-	h.appMenus = h.appMenus[:0]
-	str := func() string {
-		if len(b) < 4 || int(binary.LittleEndian.Uint32(b)) > len(b)-4 {
-			b = nil
-			return ""
-		}
-		n := int(binary.LittleEndian.Uint32(b))
-		s := string(b[4 : 4+n])
-		b = b[4+n:]
-		return s
-	}
-	u32 := func() int {
-		if len(b) < 4 {
-			b = nil
-			return 0
-		}
-		v := int(binary.LittleEndian.Uint32(b))
-		b = b[4:]
-		return v
-	}
-	index := 0
-	for range u32() {
-		m := appMenu{title: str()}
-		for range u32() {
-			if len(b) < 1 {
-				break
-			}
-			it := appItem{index: index, flags: b[0]}
-			b = b[1:]
-			it.title, it.key = str(), str()
-			if len(b) > 0 {
-				it.mods = b[0]
-				b = b[1:]
-			}
-			index++
-			m.items = append(m.items, it)
-		}
-		h.appMenus = append(h.appMenus, m)
+	h.appMenus = ops.DecodeMenuBar(b)
+	h.appItems = h.appItems[:0]
+	for _, m := range h.appMenus {
+		h.appItems = append(h.appItems, ops.FlattenMenu(m.Items)...)
 	}
 	h.makeMenu(Send(Class("NSApplication"), "sharedApplication"))
 }
 
 // addAppItems adds an app menu's items to m.
-func (h *Host) addAppItems(m ID, am *appMenu) {
-	for _, it := range am.items {
-		if it.flags&itemSeparator != 0 {
+func (h *Host) addAppItems(m ID, am *ops.MenuBarMenu) {
+	h.addMenuItems(m, am.Items, Sel("appMenuItem:"), 0, true)
+}
+
+// addMenuItems adds items to m, their submenus too: chosen, an item
+// sends action to the host's target, its tag tagBase plus its number
+// (ops.MenuItem.Index). keys says whether they show their shortcuts (a
+// tray icon's and the Dock's menus show none). A role's item does what
+// AppKit does.
+func (h *Host) addMenuItems(m ID, items []ops.MenuItem, action SEL, tagBase int, keys bool) {
+	for i := range items {
+		it := &items[i]
+		if it.Is(ops.MenuSeparator) {
 			sep(m)
 			continue
 		}
-		key, mods := keyEquivalent(it.key, it.mods)
-		mi := Send(m, "addItemWithTitle:action:keyEquivalent:", uintptr(String(it.title)), uintptr(Sel("appMenuItem:")), uintptr(String(key)))
+		title := it.Title
+		key, mods := "", uint(0)
+		if keys {
+			key, mods = keyEquivalent(it.Key, it.Mods)
+		}
+		act := action
+		if it.Role == ops.MenuRoleQuit {
+			if title == "" {
+				title = l10n.Quit(h.locale, h.appName)
+			}
+			if key == "" && keys {
+				key, mods = "q", modCommand
+			}
+			act = Sel("terminate:")
+		}
+		if it.Is(ops.MenuSubmenu) {
+			act = 0
+			key, mods = "", 0
+		}
+		mi := Send(m, "addItemWithTitle:action:keyEquivalent:", uintptr(String(title)), uintptr(act), uintptr(String(key)))
 		Send(mi, "setKeyEquivalentModifierMask:", uintptr(mods))
-		Send(mi, "setTarget:", uintptr(h.target))
-		Send(mi, "setTag:", uintptr(it.index))
-		if it.flags&itemChecked != 0 {
+		if act == action {
+			Send(mi, "setTarget:", uintptr(h.target))
+			Send(mi, "setTag:", uintptr(tagBase+it.Index))
+		}
+		if it.Is(ops.MenuChecked) && !it.Is(ops.MenuSubmenu) {
 			Send(mi, "setState:", 1)
 		}
+		if it.Is(ops.MenuDestructive) {
+			destructiveTitle(mi, title)
+		}
+		if it.Is(ops.MenuSubmenu) {
+			s := menu(title)
+			Send(s, "setAutoenablesItems:", Bool(Send(m, "autoenablesItems") != 0))
+			h.addMenuItems(s, it.Items, action, tagBase, keys)
+			Send(mi, "setSubmenu:", uintptr(s))
+			Release(s)
+			if it.Is(ops.MenuDisabled) {
+				Send(mi, "setEnabled:", 0)
+			}
+		} else if Send(m, "autoenablesItems") == 0 {
+			Send(mi, "setEnabled:", Bool(!it.Is(ops.MenuDisabled)))
+		}
 	}
+}
+
+// destructiveTitle shows a menu item's title in the system's red, as
+// macOS shows a destructive item.
+func destructiveTitle(mi ID, title string) {
+	red := Send(Class("NSColor"), "systemRedColor")
+	key := Const(AppKit(), "NSForegroundColorAttributeName")
+	attrs := Send(Class("NSDictionary"), "dictionaryWithObject:forKey:", uintptr(red), uintptr(key))
+	s := Send(Send(Class("NSAttributedString"), "alloc"), "initWithString:attributes:", uintptr(String(title)), uintptr(attrs))
+	Send(mi, "setAttributedTitle:", uintptr(s))
+	Release(s)
 }
 
 // keyEquivalent maps a shortcut to AppKit's key equivalent and modifier
@@ -148,12 +152,8 @@ func (h *Host) validateMenuItem(mi ID) bool {
 	switch SEL(Send(mi, "action")) {
 	case Sel("appMenuItem:"):
 		i := SendInt(mi, "tag")
-		for _, m := range h.appMenus {
-			for _, it := range m.items {
-				if it.index == i {
-					return it.flags&itemDisabled == 0
-				}
-			}
+		if i >= 0 && i < len(h.appItems) {
+			return !h.appItems[i].Is(ops.MenuDisabled)
 		}
 		return false
 	case Sel("back:"):

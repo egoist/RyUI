@@ -225,6 +225,15 @@ func (h *Host) toFront() {
 		h.showMain()
 		return
 	}
+	if !IsWindowVisible(h.window) {
+		// Closed while the app keeps running: it shows again. A
+		// background app's, which hasn't shown, is the app's to show.
+		if !h.mainCtl.placed {
+			return
+		}
+		h.showCtl(h.mainCtl, true)
+		h.lifecycle(ops.LifecycleForeground)
+	}
 	if IsIconic(h.window) {
 		ShowWindow(h.window, 9) // SW_RESTORE
 	}

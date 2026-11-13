@@ -57,11 +57,18 @@ func (h *Host) newMainWindow() *win {
 	AdwWindowTitleSetTitle(w.title, h.appName)
 	WindowSetDefaultSize(w.window, 800, 600+headerHeight)
 	// The user closing it: the core asks first while it listens for
-	// CloseRequest (the window stays); else, or once the core closes it,
-	// it closes, which quits the app.
+	// CloseRequest (the window stays). Then, for an app that keeps
+	// running with no window (app.KeepRunning, app.RunInBackground), it
+	// hides, the root mounted and the app in the background
+	// (lifecycle.go); else it closes, which quits the app.
 	Connect(w.window, "close-request", func() bool {
 		if !w.forced && h.root != nil && h.root.listening(ops.EventCloseRequest) {
 			h.emit(h.root, ops.Event{Kind: ops.EventCloseRequest})
+			return true
+		}
+		if boot.KeepsRunning() && !h.quitting {
+			h.saveWindow(w)
+			WidgetSetVisible(w.window, false)
 			return true
 		}
 		// Closing the app's last window quits it: OnQuit's handlers may
@@ -216,6 +223,7 @@ func (h *Host) watchSettings() {
 	Connect(sm, "notify::dark", func(uintptr) {
 		h.dark = AdwStyleManagerGetDark(sm)
 		h.themeChanged()
+		h.trayStyleChanged()
 	})
 	Connect(sm, "notify::high-contrast", func(uintptr) { h.themeChanged() })
 	if s := SettingsGetDefault(); s != 0 {

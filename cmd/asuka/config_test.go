@@ -35,6 +35,11 @@ func TestAccent(t *testing.T) {
 	if got := c.ldflagsStrip("-w"); !strings.HasPrefix(got, "-ldflags=-w -X ") {
 		t.Fatalf("Android release: %q", got)
 	}
+	// A background app says so to the desktop hosts.
+	write(`{"background": true}`)
+	if c, err := loadConfig(dir); err != nil || c.ldflags(false) != "-ldflags=-X github.com/egoist/asuka/internal/boot.Background=1" {
+		t.Fatalf("background: %v, %v", c, err)
+	}
 	write(`{"accent": "purple"}`)
 	if _, err := loadConfig(dir); err == nil {
 		t.Fatal("a bad accent was taken")

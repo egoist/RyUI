@@ -58,12 +58,12 @@ func (h *Host) makeWindow() {
 func (h *Host) makeMenu(app ID) {
 	bar := New("NSMenu")
 	name := h.appName
-	own := map[string]*appMenu{}
-	joined := map[*appMenu]bool{}
+	own := map[string]*ops.MenuBarMenu{}
+	joined := map[*ops.MenuBarMenu]bool{}
 	for i := range h.appMenus {
 		m := &h.appMenus[i]
 		for _, s := range []string{"File", "Edit", "View", "Window", "Help"} {
-			if strings.EqualFold(m.title, s) || strings.EqualFold(m.title, h.menuWord(s)) {
+			if strings.EqualFold(m.Title, s) || strings.EqualFold(m.Title, h.menuWord(s)) {
 				if old := own[s]; old != nil {
 					delete(joined, old)
 				}
@@ -128,9 +128,9 @@ func (h *Host) makeMenu(app ID) {
 		if joined[m] {
 			continue
 		}
-		mm := menu(m.title)
+		mm := menu(m.Title)
 		h.addAppItems(mm, m)
-		sub(bar, m.title, mm)
+		sub(bar, m.Title, mm)
 	}
 
 	win := menu(h.menuWord("Window"))
@@ -359,7 +359,9 @@ func (h *Host) openWindow(n *node) {
 	h.reportScreen(n, MsgRect(content, Sel("bounds")).Size)
 	h.updateWindowChrome()
 	if c.Flags&ops.WindowHidden == 0 {
-		h.showWin(x, false)
+		// An app in the background (an accessory) isn't active: its
+		// window comes over the app in use, as the user asked for it.
+		h.showWin(x, inBackground())
 	}
 }
 

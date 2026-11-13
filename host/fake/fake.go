@@ -435,19 +435,17 @@ func (h *Host) call(root ops.NodeID, b []byte) {
 	n = le.Uint32(b)
 	method := string(b[4 : 4+n])
 	args := append([]byte(nil), b[4+n:]...)
+	var once sync.Once
+	reply := func(res []byte, err error) { once.Do(func() { h.result(root, id, res, err) }) }
 	if f := h.AsyncModules[module]; f != nil {
-		var once sync.Once
-		f(method, args, func(res []byte, err error) { once.Do(func() { h.result(root, id, res, err) }) })
+		f(method, args, reply)
 		return
 	}
-	var res []byte
-	var err error
 	if f := h.Modules[module]; f != nil {
-		res, err = f(method, args)
-	} else {
-		err = fmt.Errorf("no module %q", module)
+		reply(f(method, args))
+		return
 	}
-	h.result(root, id, res, err)
+	reply(nil, fmt.Errorf("no module %q", module))
 }
 
 // result posts a Call's Result.
@@ -940,37 +938,29 @@ func (v *View) Rich() []RichParagraph {
 type MenuBarItem struct {
 	Menu, Title, Key string
 	Flags, Mods      byte
+	Role             ops.MenuRole
+	// Depth is how deep in submenus it is (0: in the menu itself).
+	Depth int
 }
 
-// MenuBar returns the items of the menus last sent, in order (an item's
-// index is the one ChooseMenuItem takes).
+// MenuBar returns the items of the menus last sent, in order, with their
+// submenus' items after the item that opens them (an item's index is the
+// one ChooseMenuItem takes).
 func (h *Host) MenuBar() []MenuBarItem {
 	cmds := h.Commands(ops.CmdMenuBar)
 	if len(cmds) == 0 {
 		return nil
 	}
-	b := cmds[len(cmds)-1].Value.Bytes
-	str := func() string {
-		n := int(binary.LittleEndian.Uint32(b))
-		s := string(b[4 : 4+n])
-		b = b[4+n:]
-		return s
-	}
 	var out []MenuBarItem
-	menus := int(binary.LittleEndian.Uint32(b))
-	b = b[4:]
-	for range menus {
-		title := str()
-		items := int(binary.LittleEndian.Uint32(b))
-		b = b[4:]
-		for range items {
-			it := MenuBarItem{Menu: title, Flags: b[0]}
-			b = b[1:]
-			it.Title, it.Key = str(), str()
-			it.Mods = b[0]
-			b = b[1:]
-			out = append(out, it)
+	for _, m := range ops.DecodeMenuBar(cmds[len(cmds)-1].Value.Bytes) {
+		var walk func(items []ops.MenuItem, depth int)
+		walk = func(items []ops.MenuItem, depth int) {
+			for _, it := range items {
+				out = append(out, MenuBarItem{Menu: m.Title, Title: it.Title, Key: it.Key, Flags: byte(it.Flags), Mods: it.Mods, Role: it.Role, Depth: depth})
+				walk(it.Items, depth+1)
+			}
 		}
+		walk(m.Items, 0)
 	}
 	return out
 }

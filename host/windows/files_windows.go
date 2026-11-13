@@ -101,13 +101,19 @@ func (h *Host) startQuit() {
 	}()
 }
 
-// quit quits the app as closing its main window does, if the handlers
-// let it.
+// quit quits the app as the user's Quit does (app.Quit, a Quit item,
+// Ctrl+C), if the OnQuit handlers let it: the main window closes for good,
+// also in an app that keeps running with no window.
 func (h *Host) quit() {
-	if h.window == 0 || !h.askQuit(false) {
-		return
-	}
-	SendMessage(h.window, WM_CLOSE, 0, 0)
+	h.afterCore(func() {
+		if h.quitting || !IsWindow(h.window) || !h.askQuit(false) {
+			return
+		}
+		h.lifecycle(ops.LifecycleBackground)
+		h.savePlacement(h.mainCtl)
+		h.quitting = true
+		DestroyWindow(h.window)
+	})
 }
 
 const (
@@ -115,22 +121,13 @@ const (
 	wmEndSession      = 0x0016
 )
 
-// quitMessage handles the main window's messages that quit the app:
-// WM_CLOSE (the user closing it quits the app, unless a handler cancels:
-// then the window stays) and the session ending (WM_QUERYENDSESSION,
+// quitMessage handles the session ending (WM_QUERYENDSESSION,
 // which the app doesn't refuse; WM_ENDSESSION, after which the process
 // may end at any moment: what's pending is written then). It reports
 // whether it handled the message; one it lets through goes on as before.
-//
-// NOTE: an app kept running after its last window closes (a tray icon's)
-// changes what closing the main window means; this is the one place that
-// asks the quit handlers for it.
+// Closing the main window asks the handlers in closeMain (winctl.go).
 func (h *Host) quitMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
 	switch m {
-	case WM_CLOSE:
-		if !h.askQuit(false) {
-			return 0, true // canceled: the window stays
-		}
 	case wmQueryEndSession:
 		h.askQuit(true)
 		return 1, true

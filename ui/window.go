@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"encoding/binary"
 
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
@@ -348,18 +347,43 @@ func Cmd(key string) Shortcut { return Shortcut{Key: key, Mods: Primary} }
 // With adds modifiers.
 func (s Shortcut) With(m Modifiers) Shortcut { s.Mods |= m; return s }
 
-// MenuItem is an item of a menu bar's menu.
+// MenuItem is an item of a menu: a menu bar's (MenuBar), a tray icon's
+// or the Dock icon's (asuka/tray).
 type MenuItem struct {
-	Title       string
-	Shortcut    Shortcut
-	OnPress     func()
-	Disabled    bool
-	Checked     bool
+	// Title is what the item says (a role's own when empty).
+	Title string
+	// Shortcut chooses it from the keyboard (a menu bar's items; other
+	// menus show none).
+	Shortcut Shortcut
+	OnPress  func()
+	Disabled bool
+	Checked  bool
+	// Destructive shows it red, as an item that deletes (macOS,
+	// Windows; GTK sets it apart in a section of its own).
 	Destructive bool
 	// Separator makes it a line between groups of items (the rest is
 	// ignored).
 	Separator bool
+	// Submenu makes it open a menu of these items, beside the menu it's
+	// in; its own OnPress, Shortcut and Checked are ignored.
+	Submenu []MenuItem
+	// Role makes it do what the platform does itself, with the
+	// platform's title for it (unless Title says otherwise) and
+	// shortcut; OnPress is ignored.
+	Role MenuRole
 }
+
+// MenuRole is what a menu item does that the platform does itself.
+type MenuRole = ops.MenuRole
+
+const (
+	MenuRoleNone = ops.MenuRoleNone
+	// MenuRoleQuit quits the app ("Quit Notes", ⌘Q in a Mac's menu bar),
+	// as the system quits it: lifecycle Background first, so what's
+	// pending is saved. An app that keeps running with no window
+	// (app.KeepRunning, app.RunInBackground) puts it in its tray icon's menu.
+	MenuRoleQuit = ops.MenuRoleQuit
+)
 
 // MenuBarMenu is one of the menu bar's menus.
 type MenuBarMenu struct {
@@ -369,6 +393,77 @@ type MenuBarMenu struct {
 
 // MenuSeparator is a line between a menu's groups of items.
 var MenuSeparator = MenuItem{Separator: true}
+
+// MenuQuit is the item that quits the app (MenuRoleQuit).
+var MenuQuit = MenuItem{Role: MenuRoleQuit}
+
+// EncodeMenu is items as the hosts read a menu (ops.DecodeMenu): for a
+// package that shows menus of its own (asuka/tray) through a module.
+// The item a host reports by its number is MenuItemAt's.
+func EncodeMenu(items []MenuItem) []byte { return ops.AppendMenu(nil, menuOps(items)) }
+
+// MenuItemAt is the item numbered i in items, depth first (each
+// submenu's items after the item that opens it; separators and
+// submenus count), as hosts number them; nil when there's none.
+func MenuItemAt(items []MenuItem, i int) *MenuItem {
+	var at func([]MenuItem) *MenuItem
+	at = func(items []MenuItem) *MenuItem {
+		for k := range items {
+			if i == 0 {
+				return &items[k]
+			}
+			i--
+			if items[k].Separator {
+				continue
+			}
+			if it := at(items[k].Submenu); it != nil {
+				return it
+			}
+		}
+		return nil
+	}
+	if i < 0 {
+		return nil
+	}
+	return at(items)
+}
+
+// menuOps is items in ops' form.
+func menuOps(items []MenuItem) []ops.MenuItem {
+	if len(items) == 0 {
+		return nil
+	}
+	out := make([]ops.MenuItem, len(items))
+	for i, it := range items {
+		var f ops.MenuFlags
+		if it.Separator {
+			f |= ops.MenuSeparator
+		}
+		if it.Disabled {
+			f |= ops.MenuDisabled
+		}
+		if it.Checked {
+			f |= ops.MenuChecked
+		}
+		if it.Destructive {
+			f |= ops.MenuDestructive
+		}
+		out[i] = ops.MenuItem{Flags: f, Title: it.Title, Key: it.Shortcut.Key, Mods: uint8(it.Shortcut.Mods), Role: it.Role}
+		if !it.Separator {
+			out[i].Items = menuOps(it.Submenu)
+		}
+	}
+	return out
+}
+
+// pressMenuItem runs the item's OnPress, unless it's the host's own or
+// opens a submenu (the hosts send no disabled item).
+func pressMenuItem(it *MenuItem) {
+	if it == nil || it.Separator || it.Role != MenuRoleNone || len(it.Submenu) > 0 {
+		return
+	}
+	call(it.OnPress)
+}
 
 // MenuBar gives the app these menus (macOS, Windows), with their
 // keyboard shortcuts, beside the ones the platform makes: on a Mac the
@@ -408,43 +503,23 @@ func (r *Root) sendMenuBar() {
 	if n := len(r.menuBars); n > 0 {
 		menus = r.menuBars[n-1].menus
 	}
-	b := binary.LittleEndian.AppendUint32(nil, uint32(len(menus)))
-	str := func(s string) {
-		b = binary.LittleEndian.AppendUint32(b, uint32(len(s)))
-		b = append(b, s...)
-	}
-	for _, m := range menus {
-		str(m.Title)
-		b = binary.LittleEndian.AppendUint32(b, uint32(len(m.Items)))
-		for _, it := range m.Items {
-			var flags byte
-			if it.Separator {
-				flags |= 1
-			}
-			if it.Disabled {
-				flags |= 2
-			}
-			if it.Checked {
-				flags |= 4
-			}
-			if it.Destructive {
-				flags |= 8
-			}
-			b = append(b, flags)
-			str(it.Title)
-			str(it.Shortcut.Key)
-			b = append(b, byte(it.Shortcut.Mods))
-		}
-	}
+	bar := make([]ops.MenuBarMenu, len(menus))
 	r.menuItems = r.menuItems[:0]
-	for _, m := range menus {
-		r.menuItems = append(r.menuItems, m.Items...)
+	for i, m := range menus {
+		bar[i] = ops.MenuBarMenu{Title: m.Title, Items: menuOps(m.Items)}
+		r.menuItems = append(r.menuItems, m.Items)
 	}
+	b := ops.AppendMenuBar(nil, bar)
 	if !r.menuListen {
 		r.menuListen = true
 		r.el.handlers().action = func(i int64) {
-			if i >= 0 && int(i) < len(r.menuItems) {
-				call(r.menuItems[i].OnPress)
+			for _, items := range r.menuItems {
+				n := int64(menuCount(items))
+				if i < n {
+					pressMenuItem(MenuItemAt(items, int(i)))
+					return
+				}
+				i -= n
 			}
 		}
 		r.el.listen(ops.EventAction)
@@ -454,4 +529,15 @@ func (r *Root) sendMenuBar() {
 	}
 	r.menuSent = b
 	r.batch.Command(r.el.id, ops.CmdMenuBar, b)
+}
+
+// menuCount is how many items items numbers, with its submenus'.
+func menuCount(items []MenuItem) int {
+	n := len(items)
+	for _, it := range items {
+		if !it.Separator {
+			n += menuCount(it.Submenu)
+		}
+	}
+	return n
 }

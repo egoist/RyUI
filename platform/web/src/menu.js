@@ -85,23 +85,31 @@ export class Menus {
     }
   }
 
-  /** menuBar takes the app's menus: their items' shortcuts work in the page, sending Action on the root with the item's index among all the menus' items. */
+  /** menuBar takes the app's menus: their items' shortcuts work in the page, sending Action on the root with the item's index among all the menus' items, depth first (a submenu's after the item that opens it). */
   menuBar(n, args) {
     const r = new Reader(args);
     const count = r.u32();
     const out = [];
     let index = 0;
-    for (let i = 0; i < count; i++) {
-      r.string();
+    // A menu (ops/menu.go): u32 count, per item u8 flags (1 separator,
+    // 2 disabled, 16 submenu), string title, string key, u8 modifiers,
+    // u8 role, then a submenu's menu.
+    const menu = (depth) => {
       const k = r.u32();
       for (let j = 0; j < k; j++) {
         const flags = r.u8();
         r.string();
         const key = r.string();
         const mods = r.u8();
+        const role = r.u8();
         const at = index++;
-        if (key && !(flags & 1) && !(flags & 2)) out.push({ key: key.toLowerCase(), mods, index: at, root: n.id });
+        if (key && !(flags & (1 | 2 | 16)) && !role) out.push({ key: key.toLowerCase(), mods, index: at, root: n.id });
+        if (flags & 16 && depth < 16) menu(depth + 1);
       }
+    };
+    for (let i = 0; i < count; i++) {
+      r.string();
+      menu(0);
     }
     this.shortcuts = out;
   }

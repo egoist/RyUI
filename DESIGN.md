@@ -2519,6 +2519,124 @@ and never assumes a single root in its own data structures.
   before. Shortcuts are menu items' because that's how both platforms
   route them (key equivalents, accelerators), and how users find them.
   Mobile hosts ignore it.
+- A `MenuItem` with a `Submenu` opens a menu of those items. Items are
+  numbered depth first (a submenu's items after the item that opens it;
+  separators and submenus count), and `Action` carries that number. A
+  `MenuItem` with a `Role` is the host's: `MenuRoleQuit` (`ui.MenuQuit`)
+  quits the app as the system quits it ("Quit Notes", ⌘Q on a Mac), its
+  title the host's unless the item has one, and is never reported.
+
+**Menus, one encoding** (`ops/menu.go`): the menu bar, a tray icon's
+menu and the Dock menu are the same bytes: a menu is u32 count, then per
+item u8 flags (separator, disabled, checked, destructive, submenu), its
+title, its shortcut's key and modifiers, u8 role, and with the submenu
+flag the submenu, a menu. `ui` encodes (`ui.EncodeMenu`, for packages
+that show menus through a module) and finds an item by its number
+(`ui.MenuItemAt`); the desktop hosts decode with `ops.DecodeMenu` and
+`ops.DecodeMenuBar`, which number the items; the web host reads the
+menu bar's shortcuts with the same layout.
+
+**The tray, the Dock menu, background apps** (`tray`, `app`):
+
+- `tray.Show(tray.Props{Image, Symbol, Template, Title, Tooltip, Menu,
+  OnClick, ID})`, called in a component, shows an icon in the tray while
+  its owner lives: the menu bar on macOS, the notification area on
+  Windows, the panel's status icons on Linux. It follows its accessors;
+  disposed, the icon goes. `tray.DockMenu(items)` adds items to the app
+  icon's menu, the last mounted showing, as `MenuBar`. Neither is a
+  node: they talk to the host through a module, `tray`, as other
+  packages do (`ui.Call`): `set` sends an icon whole (its strings and its
+  menu, only when its encoding changed), `remove` takes it away, `dock`
+  sets the Dock menu, and `next`, asked again each time it answers,
+  reports a click or a chosen item (an icon's id, 0 for the Dock menu,
+  and the item's number). The asking runs on the main thread, a `Call`
+  from the last one's answer, while an icon or a Dock menu is mounted;
+  the last one going sends `stop`. A host without the module (phones,
+  the web) answers with an error, and the package stops asking: there,
+  `Show` and `DockMenu` do nothing and `tray.Supported` is false.
+- An icon is an `Image` (an asset or a file, drawn 16 points tall) or a
+  `Symbol` (an SF Symbol name, drawn as each host draws `ui.Symbol`),
+  and a template when it's a Symbol or `Template` says so: black on
+  transparent, which the platform colors as its own icons. Without
+  `OnClick` a click opens the menu; with it, a click is `OnClick` and the
+  menu opens on a secondary click.
+- macOS: an `NSStatusItem` (variable length; `ID` its autosave name,
+  so it comes back where the user ⌘-dragged it), its button the template
+  image and the title in the menu bar's font with monospaced digits;
+  without `OnClick` its menu is the item's own, with it the button's
+  action opens the menu on a right or Control click (the menu set on the
+  item for one `performClick:`). Its menu and the Dock's enable items as
+  the app says (no validation) and show no shortcuts. The Dock menu is
+  the application delegate's `applicationDockMenu:`, made when the Dock
+  asks.
+- Windows: `Shell_NotifyIconW` (`NOTIFYICON_VERSION_4`), the icons a
+  hidden top-level window's (a message-only window doesn't get
+  `TaskbarCreated`, on which every icon is added again). An Image is
+  fitted to `SM_CXSMICON` at the system DPI; a Symbol is its Segoe
+  Fluent Icons glyph, its gray antialiasing the alpha; a Symbol or a
+  Template is white on a dark taskbar and black on a light one
+  (`SystemUsesLightTheme`, drawn again on `ImmersiveColorSet`). The
+  tooltip is `szTip`; Windows shows no title. `NIN_SELECT` and
+  `NIN_KEYSELECT` are `OnClick`, else the menu; `WM_CONTEXTMENU` the
+  menu, made by the menu bar's code (submenus, checks, destructive items
+  owner-drawn), opened at the event's anchor after the tray window comes
+  to the foreground, `WM_NULL` posted after it. `ID` is unused: an
+  `NIF_GUID` is tied to the executable's path. The Dock menu is the
+  jump list's Tasks (`ICustomDestinationList`): each top-level item a
+  shell link to the executable with `--asuka-dock-item=<number>`, titled
+  by `System.Title`; separators `IsDestListSeparator` links; submenus,
+  disabled items and roles left out (a jump list can't show them); none
+  deletes the list; tests and automation and dev runs don't touch the
+  user's. The argument is taken out of `os.Args`; a running app (one
+  with asuka.json's `id` runs once) is handed `asuka-dock-item:<n>`, and
+  reports the item without coming to the front. Submenus in the menu bar
+  are `MF_POPUP`s, with access keys per level; an owner-drawn item that
+  opens one draws the visual style's arrow (`MENU_POPUPSUBMENU`) and
+  clips it out (`ExcludeClipRect`) so the system's classic one doesn't
+  draw over it. Quit destroys the main window once the core has
+  returned (Lifecycle Background first), which ends the loop and removes
+  the icons. Keeping running, `WM_CLOSE` hides the main window.
+- Linux: GTK 4 has no tray, and the GTK 3 appindicator libraries can't
+  load in a GTK 4 process, so the host speaks their protocol itself
+  through GDBus (`internal/gtk/dbusobject.go`: objects exported with one
+  vtable of callbacks, made once, routed by user data). Each icon is a
+  StatusNotifierItem on a session bus connection of its own
+  (`/StatusNotifierItem`), its menu a `com.canonical.dbusmenu` object
+  (`/MenuBar`), registered with `org.kde.StatusNotifierWatcher` and again
+  when that name gets a new owner; removing it closes its connection,
+  whose name going every watcher follows. A Symbol is `IconName`, with
+  `IconThemePath` the host's directory of Material symbols; an Image is
+  `IconPixmap` (ARGB32, big-endian, at its size and 48 down to 16), a
+  Template white while libadwaita's style is dark; the title is
+  `XAyatanaLabel` (GNOME's AppIndicator extension shows it). Without
+  `OnClick`, `ItemIsMenu` has the panel open the menu on a click; with
+  it, `Activate` is the click. The dbusmenu's items have labels (`_`
+  doubled), enabled, a checkmark toggle and `children-display` for a
+  submenu; a destructive item is set apart by separators, as the
+  host's GMenus set it apart; each change bumps the layout's revision
+  (LayoutUpdated); a "clicked" Event chooses the item. KDE Plasma, Xfce,
+  Cinnamon, MATE, Budgie and GNOME with the AppIndicator extension
+  (Ubuntu's default) show it. The Dock menu is the launcher's quicklist:
+  a dbusmenu at `/org/asuka/Quicklist`, named by
+  `com.canonical.Unity.LauncherEntry.Update` for
+  `application://<id>.desktop` (Ubuntu's Dock, Dash to Dock, Plank,
+  KDE's task manager). Keeping running holds the `GApplication`; closing
+  the main window hides it. The menu bar's submenus are GMenu submenus;
+  Quit takes Ctrl+Q and quits as SIGTERM does.
+- `app.KeepRunning()` keeps a desktop app running when its last window
+  closes: closing the main window hides it, its root mounted, until the
+  app shows it again (on macOS also the Dock icon, clicked with no window
+  showing: `applicationShouldHandleReopen:hasVisibleWindows:`; on Linux,
+  the app launched again, `activate`). `app.RunInBackground()` (and asuka.json's
+  `"background": true`, which sets it with `-X` and, on macOS, puts
+  `LSUIElement` in the Info.plist so the Dock icon never shows) also
+  leaves the main window hidden at launch, and on macOS makes the app an
+  accessory (no Dock icon, not in ⌘Tab; a `Window` it opens activates
+  it). Windows and Linux have no app without a taskbar button but one
+  without a window showing: that's theirs. Automation runs
+  (`ASUKA_SNAPSHOT`) still show the main window; on macOS they write
+  each tray icon's button beside it (`file.tray.png`) and, with
+  `ASUKA_DUMP`, the icons' and the Dock's menus in the dump.
 
 **Displays, power, the Dock and the system's appearance** (`screen`,
 `power`, `dock`, `appearance`):

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/internal/l10n"
 	"github.com/egoist/asuka/ops"
 )
 
@@ -109,47 +110,14 @@ func (h *Host) popupMenu(n *node, x, y float64) {
 
 // The app's menus (MenuBar): GNOME's apps have no menu bar but a main
 // menu, the header bar's last button; each of the app's menus is a
-// submenu of it (its items, when it has one). The items' shortcuts are
-// the application's accelerators, in every window. A chosen item sends
-// Action on the root with its index among all the menus' items.
-
-type appItem struct {
-	index      int
-	flags      uint8
-	title, key string
-	mods       uint8
-}
-
-type appMenu struct {
-	title string
-	items []appItem
-}
-
-const (
-	itemSeparator   = 1
-	itemDisabled    = 2
-	itemChecked     = 4
-	itemDestructive = 8
-)
+// submenu of it (its items, when it has one), and an item with a submenu
+// opens one of its own. The items' shortcuts are the application's
+// accelerators, in every window. A chosen item sends Action on the root
+// with its number among all the menus' items (ops.DecodeMenuBar's); a
+// Quit item (MenuRoleQuit) quits the app instead.
 
 func (h *Host) setMenuBar(b []byte) {
-	r := reader{b: b}
-	var menus []appMenu
-	index := 0
-	for range int(r.u32()) {
-		m := appMenu{title: r.str()}
-		for range int(r.u32()) {
-			if !r.ok(1) {
-				break
-			}
-			it := appItem{index: index, flags: r.u8()}
-			it.title, it.key = r.str(), r.str()
-			it.mods = r.u8()
-			index++
-			m.items = append(m.items, it)
-		}
-		menus = append(menus, m)
-	}
+	menus := ops.DecodeMenuBar(b)
 	// The previous menus' actions and accelerators go.
 	for _, name := range h.appActions {
 		none := [1]Ptr{}
@@ -159,7 +127,7 @@ func (h *Host) setMenuBar(b []byte) {
 	h.appActions = h.appActions[:0]
 	h.appItems = h.appItems[:0]
 	for _, m := range menus {
-		h.appItems = append(h.appItems, m.items...)
+		h.appItems = append(h.appItems, ops.FlattenMenu(m.Items)...)
 	}
 	if h.appMenu != 0 {
 		ObjectUnref(h.appMenu)
@@ -168,47 +136,11 @@ func (h *Host) setMenuBar(b []byte) {
 	if len(menus) > 0 {
 		root := MenuNew()
 		for _, m := range menus {
-			sub := MenuNew()
-			section := MenuNew()
-			for _, it := range m.items {
-				if it.flags&itemSeparator != 0 {
-					MenuAppendSection(sub, 0, section)
-					ObjectUnref(section)
-					section = MenuNew()
-					continue
-				}
-				name := "asuka-menu-" + strconv.Itoa(it.index)
-				var a Ptr
-				if it.flags&itemChecked != 0 {
-					a = SimpleActionNewStateful(name, 0, VariantNewBoolean(true))
-				} else {
-					a = SimpleActionNew(name, 0)
-				}
-				SimpleActionSetEnabled(a, it.flags&itemDisabled == 0)
-				index := it.index
-				Connect(a, "activate", func(uintptr) {
-					if h.root != nil {
-						h.dispatch(ops.Event{ID: h.root.id, Kind: ops.EventAction, Int: int64(index)})
-					}
-				})
-				ActionMapAddAction(h.app, a)
-				ObjectUnref(a)
-				h.appActions = append(h.appActions, name)
-				if accel := accelerator(it.key, it.mods); accel != "" && it.flags&itemDisabled == 0 {
-					s := CString(accel)
-					list := [2]Ptr{Addr(s), 0}
-					ApplicationSetAccelsForAction(h.app, "app."+name, &list[0])
-				}
-				item := MenuItemNew(it.title, "app."+name)
-				MenuAppendItem(section, item)
-				ObjectUnref(item)
-			}
-			MenuAppendSection(sub, 0, section)
-			ObjectUnref(section)
+			sub := h.appMenuModel(m.Items)
 			if len(menus) == 1 {
 				MenuAppendSection(root, 0, sub)
 			} else {
-				MenuAppendSubmenu(root, m.title, sub)
+				MenuAppendSubmenu(root, m.Title, sub)
 			}
 			ObjectUnref(sub)
 		}
@@ -216,6 +148,78 @@ func (h *Host) setMenuBar(b []byte) {
 	}
 	h.menusVersion++
 	h.queueChrome()
+}
+
+// appMenuModel builds a GMenu of the app's items: sections between
+// separators, a submenu for an item with one, each item an action of the
+// application's ("app.asuka-menu-<number>").
+func (h *Host) appMenuModel(items []ops.MenuItem) Ptr {
+	m := MenuNew()
+	section := MenuNew()
+	for i := range items {
+		it := &items[i]
+		if it.Is(ops.MenuSeparator) {
+			MenuAppendSection(m, 0, section)
+			ObjectUnref(section)
+			section = MenuNew()
+			continue
+		}
+		title := h.menuItemTitle(it)
+		if it.Is(ops.MenuSubmenu) {
+			sub := h.appMenuModel(it.Items)
+			MenuAppendSubmenu(section, title, sub)
+			ObjectUnref(sub)
+			continue
+		}
+		name := "asuka-menu-" + strconv.Itoa(it.Index)
+		var a Ptr
+		if it.Is(ops.MenuChecked) {
+			a = SimpleActionNewStateful(name, 0, VariantNewBoolean(true))
+		} else {
+			a = SimpleActionNew(name, 0)
+		}
+		SimpleActionSetEnabled(a, !it.Is(ops.MenuDisabled))
+		index, role := it.Index, it.Role
+		Connect(a, "activate", func(uintptr) { h.chooseAppItem(index, role) })
+		ActionMapAddAction(h.app, a)
+		ObjectUnref(a)
+		h.appActions = append(h.appActions, name)
+		key, mods := it.Key, it.Mods
+		if role == ops.MenuRoleQuit && key == "" {
+			key, mods = "q", 1
+		}
+		if accel := accelerator(key, mods); accel != "" && !it.Is(ops.MenuDisabled) {
+			s := CString(accel)
+			list := [2]Ptr{Addr(s), 0}
+			ApplicationSetAccelsForAction(h.app, "app."+name, &list[0])
+		}
+		item := MenuItemNew(title, "app."+name)
+		MenuAppendItem(section, item)
+		ObjectUnref(item)
+	}
+	MenuAppendSection(m, 0, section)
+	ObjectUnref(section)
+	return m
+}
+
+// menuItemTitle is what an item says: its title, or its role's.
+func (h *Host) menuItemTitle(it *ops.MenuItem) string {
+	if it.Title == "" && it.Role == ops.MenuRoleQuit {
+		return l10n.Quit(h.locale, h.appName)
+	}
+	return it.Title
+}
+
+// chooseAppItem is the app menu's item chosen: Action on the root, or
+// the app quitting for a Quit item.
+func (h *Host) chooseAppItem(index int, role ops.MenuRole) {
+	if role == ops.MenuRoleQuit {
+		h.afterCore(h.quit)
+		return
+	}
+	if h.root != nil {
+		h.dispatch(ops.Event{ID: h.root.id, Kind: ops.EventAction, Int: int64(index)})
+	}
 }
 
 // accelerator is a shortcut in GTK's accelerator syntax: <Control><Shift>s.
@@ -285,14 +289,13 @@ func keyName(key string) string {
 // activateAppItem chooses the app menu's item with a title, as a click
 // on it would.
 func (h *Host) activateAppItem(title string) error {
-	for _, it := range h.appItems {
-		if it.title == title && it.flags&itemSeparator == 0 {
-			if it.flags&itemDisabled != 0 {
+	for i := range h.appItems {
+		it := &h.appItems[i]
+		if h.menuItemTitle(it) == title && !it.Is(ops.MenuSeparator) && !it.Is(ops.MenuSubmenu) {
+			if it.Is(ops.MenuDisabled) {
 				return fmt.Errorf("%q is disabled", title)
 			}
-			if h.root != nil {
-				h.dispatch(ops.Event{ID: h.root.id, Kind: ops.EventAction, Int: int64(it.index)})
-			}
+			h.chooseAppItem(it.Index, it.Role)
 			return nil
 		}
 	}

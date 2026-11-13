@@ -28,6 +28,7 @@ type ownerItem struct {
 	key         []uint16 // its shortcut's text
 	separator   bool
 	destructive bool
+	submenu     bool // it opens a submenu: the arrow is drawn
 }
 
 // ownerMenu is an owner-drawn menu: its items share a text and a
@@ -44,6 +45,7 @@ type menuItem struct {
 	text        string
 	separator   bool
 	destructive bool
+	submenu     bool
 }
 
 // ownerDrawMenu makes all of a menu's items owner-drawn (it has a
@@ -55,7 +57,7 @@ func (h *Host) ownerDrawMenu(m uintptr, items []menuItem, order uint32) *ownerMe
 	om := &ownerMenu{menu: m}
 	for i, mi := range items {
 		title, key, _ := strings.Cut(mi.text, "\t")
-		it := &ownerItem{menu: om, text: UTF16Units(title), key: UTF16Units(key), separator: mi.separator, destructive: mi.destructive}
+		it := &ownerItem{menu: om, text: UTF16Units(title), key: UTF16Units(key), separator: mi.separator, destructive: mi.destructive, submenu: mi.submenu}
 		h.ownedNext++
 		id := h.ownedNext
 		h.owned[id] = it
@@ -118,6 +120,7 @@ type menuStyle struct {
 	checkBgM   Margins  // around its background
 	itemM      Margins  // the item's content
 	arrow      int32    // the submenu arrow's width: the column right of the shortcuts
+	arrowH     int32    // and its height
 	arrowM     Margins  // around it
 	sep        int32    // the separator's height
 	text       uint32   // COLORREFs: the text's, disabled
@@ -176,7 +179,7 @@ func (h *Host) menuStyle(hwnd uintptr, dpi int) *menuStyle {
 	s.checkM = ThemeMargins(s.theme, dc, MENU_POPUPCHECK, 0, TMT_CONTENTMARGINS)
 	s.checkBgM = ThemeMargins(s.theme, dc, MENU_POPUPCHECKBACKGROUND, 0, TMT_CONTENTMARGINS)
 	s.itemM = ThemeMargins(s.theme, dc, MENU_POPUPITEM, 0, TMT_CONTENTMARGINS)
-	s.arrow, _ = ThemePartSize(s.theme, dc, MENU_POPUPSUBMENU, 0)
+	s.arrow, s.arrowH = ThemePartSize(s.theme, dc, MENU_POPUPSUBMENU, 0)
 	s.arrowM = ThemeMargins(s.theme, dc, MENU_POPUPSUBMENU, 0, TMT_CONTENTMARGINS)
 	_, s.sep = ThemePartSize(s.theme, dc, MENU_POPUPSEPARATOR, 0)
 	var ok bool
@@ -358,6 +361,19 @@ func (h *Host) drawMenuItem(s *menuStyle, d *DrawItem, it *ownerItem) {
 		DrawText(dc, it.key, &tr, DT_SINGLELINE|DT_VCENTER|DT_RIGHT|DT_NOPREFIX|textDirection(rtl))
 	}
 	SelectObject(dc, old)
+	if it.submenu {
+		// The submenu's arrow, in its column, as the visual style draws
+		// it; the item's rectangle then kept from the system, which
+		// would draw a classic arrow over it.
+		st := MSM_NORMAL
+		if disabled {
+			st = MSM_DISABLED
+		}
+		right := r.Right - s.inset() - s.px(s.arrowM.Right)
+		top := r.Top + (r.H()-s.arrowH)/2
+		DrawThemeBackground(s.theme, dc, MENU_POPUPSUBMENU, st, Rect{Left: right - s.arrow, Top: top, Right: right, Bottom: top + s.arrowH})
+		ExcludeClipRect(dc, r)
+	}
 }
 
 // menuBackground is a popup menu's background: Windows 11's, light or

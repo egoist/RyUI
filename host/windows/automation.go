@@ -140,7 +140,7 @@ func (h *Host) step(verb, arg string) {
 		// (the window isn't active: Alt and its key wouldn't open it).
 		bar := GetMenu(h.window)
 		for i, m := range h.appMenus {
-			if m.title != arg {
+			if m.Title != arg {
 				continue
 			}
 			r := MenuItemRect(h.window, bar, i)
@@ -157,8 +157,8 @@ func (h *Host) step(verb, arg string) {
 		fmt.Fprintf(os.Stderr, "asuka: automation: no menu %q\n", arg)
 	case "menu":
 		for _, it := range h.appItems {
-			if it.title == arg {
-				SendMessage(h.window, WM_COMMAND, uintptr(menuBase+it.index), 0)
+			if it.Title == arg && !it.Is(ops.MenuSubmenu) {
+				SendMessage(h.window, WM_COMMAND, uintptr(menuBase+it.Index), 0)
 				return
 			}
 		}
@@ -516,18 +516,24 @@ func (h *Host) dump() string {
 	}
 	if bar := GetMenu(h.window); bar != 0 {
 		b.WriteString("menu bar:\n")
-		for i := range MenuItemCount(bar) {
-			fmt.Fprintf(&b, "  %s\n", MenuString(bar, i))
-			sub := SubMenu(bar, i)
-			for j := range MenuItemCount(sub) {
-				s := MenuString(sub, j)
-				if MenuState(sub, j)&MF_SEPARATOR != 0 {
+		var items func(m uintptr, depth int)
+		items = func(m uintptr, depth int) {
+			for j := range MenuItemCount(m) {
+				s := MenuString(m, j)
+				if MenuState(m, j)&MF_SEPARATOR != 0 {
 					s = "---"
-				} else if MenuState(sub, j)&MF_GRAYED != 0 {
+				} else if MenuState(m, j)&MF_GRAYED != 0 {
 					s += " (off)"
 				}
-				fmt.Fprintf(&b, "    %q\n", s)
+				fmt.Fprintf(&b, "%s%q\n", strings.Repeat("  ", depth), s)
+				if sub := SubMenu(m, j); sub != 0 {
+					items(sub, depth+1)
+				}
 			}
+		}
+		for i := range MenuItemCount(bar) {
+			fmt.Fprintf(&b, "  %s\n", MenuString(bar, i))
+			items(SubMenu(bar, i), 2)
 		}
 	}
 	return b.String()

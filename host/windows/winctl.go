@@ -5,6 +5,8 @@ package windows
 import (
 	"math"
 
+	"github.com/egoist/asuka/internal/boot"
+
 	. "github.com/egoist/asuka/internal/windows"
 	"github.com/egoist/asuka/internal/winstate"
 	"github.com/egoist/asuka/ops"
@@ -524,14 +526,21 @@ func (h *Host) ctlMessage(c *wctl, m uint32, wp, lp uintptr) (uintptr, bool) {
 	return 0, false
 }
 
-// closeMain closes the main window for good, as its close button does when
-// nothing asks first: the app quits.
+// closeMain closes the main window, as its close button does when nothing
+// asks first (or the app agreed): for an app that keeps running with no
+// window (app.KeepRunning, app.RunInBackground) it hides, its root
+// mounted; else the app quits, unless OnQuit's handlers keep it open.
 func (h *Host) closeMain() {
-	// Closing it quits the app: OnQuit's handlers may keep it open.
+	h.savePlacement(h.mainCtl)
+	if boot.KeepsRunning() && !h.quitting {
+		ShowWindow(h.window, SW_HIDE)
+		h.lifecycle(ops.LifecycleBackground)
+		h.reportState(h.mainCtl)
+		return
+	}
 	if !h.askQuit(false) {
 		return
 	}
-	h.savePlacement(h.mainCtl)
 	h.quitting = true
 	DestroyWindow(h.window)
 }

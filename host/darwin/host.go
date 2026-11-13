@@ -197,7 +197,8 @@ type Host struct {
 	videos        map[ID]ops.NodeID // by AVPlayerItem
 	main          *win              // the main window, holding the root
 	wins          map[ID]*win       // the Windows' windows, by NSWindow
-	appMenus      []appMenu         // MenuBar's
+	appMenus      []ops.MenuBarMenu // MenuBar's
+	appItems      []ops.MenuItem    // their items, by number
 	chromeQueued  bool
 	winQueued     bool // a report of the windows' states waits (winctl.go)
 	a11yActions   map[ID]a11yAction
@@ -247,7 +248,9 @@ func newHost() *Host {
 	app := Send(Class("NSApplication"), "sharedApplication")
 	h.appRTL = SendInt(app, "userInterfaceLayoutDirection") == 1
 	h.rtl = h.appRTL
-	Send(app, "setActivationPolicy:", 0) // regular: a Dock icon and a menu bar
+	// Regular: a Dock icon and a menu bar; an accessory in the background
+	// (tray.go).
+	Send(app, "setActivationPolicy:", backgroundPolicy())
 	Send(Class("NSWindow"), "setAllowsAutomaticWindowTabbing:", 0)
 	Send(app, "setDelegate:", uintptr(h.target))
 	h.makeMenu(app)
@@ -283,9 +286,11 @@ func Run(root func() ui.Node) {
 			h.configure(h.main, ops.WindowConfig{})
 		}
 		// Shown (automation: without taking the user's focus) unless the
-		// app shows it itself; a plain executable (go run, asuka dev)
-		// doesn't come to the front on its own.
-		if h.main.cfg.Flags&ops.WindowHidden == 0 {
+		// app shows it itself, or runs in the background (no window
+		// until it shows one; automation shows it still). A plain
+		// executable (go run, asuka dev) doesn't come to the front on
+		// its own.
+		if h.main.cfg.Flags&ops.WindowHidden == 0 && (!inBackground() || os.Getenv("ASUKA_SNAPSHOT") != "") {
 			h.showWin(h.main, true)
 		}
 		h.automation()

@@ -80,6 +80,12 @@ func (h *Host) startLinks(launch string) {
 // from can quit.
 func (h *Host) launchedAgain(payload []byte) {
 	dir, args := parseInstancePayload(payload)
+	// A jump list task's launch: the Dock menu's item, chosen (tray.go),
+	// which says itself whether the app comes to the front.
+	if _, n := takeDockItem(append([]string{""}, args...)); n >= 0 {
+		h.Post(func() { h.trayEvent(0, 2, n) })
+		return
+	}
 	h.Post(func() {
 		h.toFront()
 		if boot.SecondInstance != nil {

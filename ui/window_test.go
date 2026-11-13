@@ -121,6 +121,41 @@ func TestMenuBar(t *testing.T) {
 	}
 }
 
+// A submenu's items are numbered after the item that opens it, across
+// the menus; a role's item is the host's.
+func TestMenuBarSubmenu(t *testing.T) {
+	chose := ""
+	h, _ := mount(t, func() ui.Node {
+		return ui.MenuBar(ui.Val([]ui.MenuBarMenu{
+			{Title: "File", Items: []ui.MenuItem{
+				{Title: "Open Recent", Submenu: []ui.MenuItem{
+					{Title: "a.txt", OnPress: func() { chose = "a" }},
+					{Title: "More", Submenu: []ui.MenuItem{{Title: "b.txt", OnPress: func() { chose = "b" }}}},
+				}},
+				ui.MenuQuit,
+			}},
+			{Title: "View", Items: []ui.MenuItem{{Title: "Zoom", OnPress: func() { chose = "zoom" }}}},
+		}))
+	})
+	items := h.MenuBar()
+	if len(items) != 6 || items[0].Flags != byte(ops.MenuSubmenu) || items[2].Depth != 1 || items[3].Title != "b.txt" ||
+		items[3].Depth != 2 || items[4].Role != ops.MenuRoleQuit || items[5].Menu != "View" {
+		t.Fatalf("menus %+v", items)
+	}
+	for i, want := range map[int]string{1: "a", 3: "b", 5: "zoom"} {
+		h.ChooseMenuItem(i)
+		if chose != want {
+			t.Fatalf("item %d chose %q, want %q", i, chose, want)
+		}
+	}
+	chose = ""
+	h.ChooseMenuItem(0)
+	h.ChooseMenuItem(4)
+	if chose != "" {
+		t.Fatalf("a submenu's or a role's item chose %q", chose)
+	}
+}
+
 func TestWindowOptions(t *testing.T) {
 	ui.SetWindowOptions(ui.WindowOptions{Title: ui.Val("Notes"), Width: 800, Height: 600, MinWidth: 400})
 	defer ui.SetWindowOptions(ui.WindowOptions{})

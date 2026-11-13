@@ -55,8 +55,8 @@ type Root struct {
 	animating bool
 	animArgs  [22]byte
 
-	menuBars   []*menuBar // MenuBar's, mounted; the last shows
-	menuItems  []MenuItem // the menus' items, in order (Action's index)
+	menuBars   []*menuBar   // MenuBar's, mounted; the last shows
+	menuItems  [][]MenuItem // each menu's items, in order (Action's index)
 	menuSent   []byte
 	menuListen bool
 
