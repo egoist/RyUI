@@ -53,8 +53,9 @@ func (h *Host) makeWindow() {
 // makeMenu makes the main menu: the app's, File, Edit (text fields' copy
 // and paste go through it), View, Window and Help, in the language shown,
 // with the app's own menus (MenuBar): one titled as a standard one, in
-// English or in that language, adds its items to it, the others go between
-// View and Window, as macOS orders them.
+// English or in that language, adds its items to it (one titled as the
+// app, to the app's menu after About: "Check for Updates…"), the others go
+// between View and Window, as macOS orders them.
 func (h *Host) makeMenu(app ID) {
 	bar := New("NSMenu")
 	name := h.appName
@@ -62,6 +63,13 @@ func (h *Host) makeMenu(app ID) {
 	joined := map[*ops.MenuBarMenu]bool{}
 	for i := range h.appMenus {
 		m := &h.appMenus[i]
+		if name != "" && m.Title == name {
+			if old := own["App"]; old != nil {
+				delete(joined, old)
+			}
+			own["App"], joined[m] = m, true
+			continue
+		}
 		for _, s := range []string{"File", "Edit", "View", "Window", "Help"} {
 			if strings.EqualFold(m.Title, s) || strings.EqualFold(m.Title, h.menuWord(s)) {
 				if old := own[s]; old != nil {
@@ -75,6 +83,9 @@ func (h *Host) makeMenu(app ID) {
 
 	appMenu := menu("")
 	item(appMenu, l10n.About(h.locale, name), "orderFrontStandardAboutPanel:", "", 0)
+	if m := own["App"]; m != nil {
+		h.addAppItems(appMenu, m)
+	}
 	sep(appMenu)
 	services := menu(h.menuWord("Services"))
 	sub(appMenu, h.menuWord("Services"), services)
