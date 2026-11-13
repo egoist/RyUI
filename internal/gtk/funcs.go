@@ -277,6 +277,14 @@ var (
 	WindowSetDecorated             func(w Ptr, d bool)
 	WindowListToplevels            func() Ptr
 	ApplicationGetActiveWindow     func(app Ptr) Ptr
+	WindowSetDeletable             func(w Ptr, d bool)
+	WindowSetDestroyWithParent     func(w Ptr, d bool)
+	WindowMinimize                 func(w Ptr)
+	WindowUnminimize               func(w Ptr)
+	WindowUnmaximize               func(w Ptr)
+	WindowFullscreen               func(w Ptr)
+	WindowUnfullscreen             func(w Ptr)
+	WindowIsFullscreen             func(w Ptr) bool
 
 	// Labels, Pango.
 	LabelNew                  func(text string) Ptr
@@ -605,6 +613,7 @@ var (
 	AdwHeaderBarSetShowEndTitleButtons       func(h Ptr, s bool)
 	AdwHeaderBarSetShowBackButton            func(h Ptr, s bool)
 	AdwHeaderBarSetShowTitle                 func(h Ptr, s bool)
+	AdwHeaderBarSetDecorationLayout          func(h Ptr, layout string)
 	AdwWindowTitleNew                        func(title, subtitle string) Ptr
 	AdwWindowTitleSetTitle                   func(t Ptr, title string)
 	AdwNavigationViewNew                     func() Ptr
@@ -892,6 +901,14 @@ var bindings = []binding{
 	{&WindowSetDecorated, "gtk_window_set_decorated"},
 	{&WindowListToplevels, "gtk_window_list_toplevels"},
 	{&ApplicationGetActiveWindow, "gtk_application_get_active_window"},
+	{&WindowSetDeletable, "gtk_window_set_deletable"},
+	{&WindowSetDestroyWithParent, "gtk_window_set_destroy_with_parent"},
+	{&WindowMinimize, "gtk_window_minimize"},
+	{&WindowUnminimize, "gtk_window_unminimize"},
+	{&WindowUnmaximize, "gtk_window_unmaximize"},
+	{&WindowFullscreen, "gtk_window_fullscreen"},
+	{&WindowUnfullscreen, "gtk_window_unfullscreen"},
+	{&WindowIsFullscreen, "gtk_window_is_fullscreen"},
 
 	{&LabelNew, "gtk_label_new"},
 	{&LabelSetText, "gtk_label_set_text"},
@@ -1214,6 +1231,7 @@ var bindings = []binding{
 	{&AdwHeaderBarSetShowEndTitleButtons, "adw_header_bar_set_show_end_title_buttons"},
 	{&AdwHeaderBarSetShowBackButton, "adw_header_bar_set_show_back_button"},
 	{&AdwHeaderBarSetShowTitle, "adw_header_bar_set_show_title"},
+	{&AdwHeaderBarSetDecorationLayout, "adw_header_bar_set_decoration_layout"},
 	{&AdwWindowTitleNew, "adw_window_title_new"},
 	{&AdwWindowTitleSetTitle, "adw_window_title_set_title"},
 	{&AdwNavigationViewNew, "adw_navigation_view_new"},

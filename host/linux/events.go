@@ -44,6 +44,13 @@ func (n *node) ev() *events {
 }
 
 func (h *Host) listen(n *node, e ops.EventKind) {
+	if e == ops.EventWindowState {
+		if w := h.winFor(n); w != nil {
+			w.reported = false // reported at once, as the core starts listening
+			h.queueWindowState(w)
+		}
+		return
+	}
 	if e == ops.EventScrolled {
 		return // scroll.go reports it as it scrolls
 	}

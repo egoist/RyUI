@@ -30,12 +30,21 @@ type win struct {
 	root     *node
 	node     *node // the Window node (nil for the main window)
 
-	name       string // its title (the app's name for the main window, unless set)
-	width      float32
-	height     float32
+	name       string  // its title (the app's name for the main window, unless set)
 	envW, envH float32 // as last reported
 	chrome     chrome  // what its header bar shows (nav.go)
 	closing    bool
+
+	// Its options and state (winctl.go).
+	cfg        ops.WindowConfig
+	configured bool
+	hidden     bool   // kept hidden until a Show or Focus
+	forced     bool   // closing for good: the core's Close
+	stateKey   string // where its size is remembered ("": not)
+	css        Ptr    // its own style provider: background, title bar
+	cssName    string // its widget name, which that style selects
+	sent       ops.WindowState
+	reported   bool
 }
 
 func (h *Host) newMainWindow() *win {
@@ -46,17 +55,15 @@ func (h *Host) newMainWindow() *win {
 	w.name = h.appName
 	WindowSetTitle(w.window, h.appName)
 	AdwWindowTitleSetTitle(w.title, h.appName)
-	o := h.windowOptions
-	width, height := float32(800), float32(600)
-	if o.width > 0 {
-		width = o.width
-	}
-	if o.height > 0 {
-		height = o.height
-	}
-	WindowSetDefaultSize(w.window, int32(width), int32(height)+headerHeight)
-	h.restoreWindow(w)
+	WindowSetDefaultSize(w.window, 800, 600+headerHeight)
+	// The user closing it: the core asks first while it listens for
+	// CloseRequest (the window stays); else, or once the core closes it,
+	// it closes, which quits the app.
 	Connect(w.window, "close-request", func() bool {
+		if !w.forced && h.root != nil && h.root.listening(ops.EventCloseRequest) {
+			h.emit(h.root, ops.Event{Kind: ops.EventCloseRequest})
+			return true
+		}
 		h.saveWindow(w)
 		return false
 	})
@@ -92,6 +99,7 @@ func (h *Host) newWin(window Ptr) *win {
 			h.activeWin = w
 		}
 	})
+	h.watchWindowState(w)
 	return w
 }
 
@@ -132,6 +140,7 @@ func (w *win) allocated(h *Host, width, height int32) {
 		return
 	}
 	w.envW, w.envH = fw, fh
+	h.queueWindowState(w)
 	if w.node == nil {
 		// The main window: the root's environment.
 		env := h.environment(w)
@@ -164,7 +173,7 @@ func (h *Host) environment(w *win) ops.Environment {
 	if env.Width == 0 && env.Height == 0 {
 		var dw, dh int32
 		WindowGetDefaultSize(w.window, &dw, &dh)
-		env.Width, env.Height = float32(dw), float32(max(dh-headerHeight, 0))
+		env.Width, env.Height = float32(dw), float32(max(dh-w.headerRoom(), 0))
 	}
 	if nat := WidgetGetNative(w.content); nat != 0 {
 		if s := NativeGetSurface(nat); s != 0 {
@@ -177,6 +186,15 @@ func (h *Host) environment(w *win) ops.Environment {
 	}
 	if env.Scale <= 0 {
 		env.Scale = 1
+	}
+	if w.cfg.TitleBar == ops.TitleBarHidden {
+		// The content goes under the header bar: SafeArea keeps clear of
+		// it, its window buttons.
+		top := AdwToolbarViewGetTopBarHeight(w.toolbar)
+		if top <= 0 {
+			top = headerHeight
+		}
+		env.SafeTop = float32(top)
 	}
 	if s := SettingsGetDefault(); s != 0 {
 		env.ReduceMotion = !GetBoolProperty(s, "gtk-enable-animations")
@@ -211,6 +229,11 @@ func (h *Host) watchSettings() {
 // the core.
 func (h *Host) themeChanged() {
 	h.theme = h.readPalette(h.main.content)
+	for _, w := range h.wins {
+		if w.cfg.Background != 0 {
+			h.windowCSS(w) // a semantic color, the style's
+		}
+	}
 	for _, n := range h.nodes {
 		queueDraw(n)
 		if n.kind == ops.KindText || n.kind == ops.KindTextField || n.kind == ops.KindButton || n.kind == ops.KindRichText {
@@ -345,42 +368,19 @@ func assetsDir() string {
 	return "assets"
 }
 
-// windowOptions are the main window's, from WindowOptions.
-type windowOptions struct {
-	width, height, minWidth, minHeight float32
-	title                              string
-}
-
+// setWindowOptions applies WindowOptions to the main window, before it
+// shows.
 func (h *Host) setWindowOptions(args []byte) {
 	c := ops.DecodeWindowConfig(args)
-	o := windowOptions{width: c.Width, height: c.Height, minWidth: c.MinWidth, minHeight: c.MinHeight, title: c.Title}
-	h.windowOptions = o
 	w := h.main
 	if w == nil {
 		return
 	}
-	if o.title != "" {
-		w.name = o.title
+	if c.Title != "" {
+		w.name = c.Title
 	}
 	h.updateTitle(w)
-	if !w.restored && (o.width > 0 || o.height > 0) {
-		width, height := float32(800), float32(600)
-		if o.width > 0 {
-			width = o.width
-		}
-		if o.height > 0 {
-			height = o.height
-		}
-		WindowSetDefaultSize(w.window, int32(width), int32(height)+headerHeight)
-	}
-	minW, minH := o.minWidth, o.minHeight
-	if minW <= 0 {
-		minW = 320
-	}
-	if minH <= 0 {
-		minH = 320
-	}
-	WidgetSetSizeRequest(w.content, int32(minW), int32(minH))
+	h.configure(w, c)
 }
 
 func (h *Host) updateTitle(w *win) {

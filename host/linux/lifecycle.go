@@ -122,6 +122,9 @@ func (h *Host) watchApp() {
 		Connect(h.app, "query-end", func() { h.lifecycle(ops.LifecycleBackground) })
 	}
 	Connect(h.app, "shutdown", func() {
+		for _, w := range h.wins {
+			h.saveWindow(w)
+		}
 		h.lifecycle(ops.LifecycleBackground)
 		h.quitting = true
 	})

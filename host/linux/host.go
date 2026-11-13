@@ -26,6 +26,7 @@ import (
 	"github.com/egoist/asuka/host"
 	"github.com/egoist/asuka/internal/boot"
 	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/internal/winstate"
 	"github.com/egoist/asuka/layout"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/ui"
@@ -111,9 +112,7 @@ type node struct {
 	date       *datePicker // a DatePicker's
 	loaded     bool        // an Image's Source loaded
 	pulsed     time.Time   // an indeterminate Progress's last pulse
-	minWidth   float32     // a Window's least content size
-	minHeight  float32
-	ext        any // an area's own state (a list's, a web view's...)
+	ext        any         // an area's own state (a list's, a web view's...)
 }
 
 func (n *node) listening(e ops.EventKind) bool {
@@ -164,24 +163,25 @@ type Host struct {
 	savedLocale string
 	localePath  string
 
-	modules       map[string]map[string]method
-	windowOptions windowOptions
-	activeWin     *win
-	screenReader  bool
-	hourCycle     uint8
-	chromeQueued  bool
-	menusVersion  int
-	appMenu       Ptr
-	appActions    []string
-	appItems      []appItem
-	popups        []Ptr
-	tweens        map[*node]*tween
-	ticking       bool
-	frames        bool
-	inhibit       uint32
-	inBackground  bool // no window of the app's shows (lifecycle.go)
-	quitting      bool
-	fontFamilies  map[string]string
+	modules      map[string]map[string]method
+	states       *winstate.Store // windows' sizes, by key (state.go)
+	nextWin      int             // windows named for their own style (winctl.go)
+	activeWin    *win
+	screenReader bool
+	hourCycle    uint8
+	chromeQueued bool
+	menusVersion int
+	appMenu      Ptr
+	appActions   []string
+	appItems     []appItem
+	popups       []Ptr
+	tweens       map[*node]*tween
+	ticking      bool
+	frames       bool
+	inhibit      uint32
+	inBackground bool // no window of the app's shows (lifecycle.go)
+	quitting     bool
+	fontFamilies map[string]string
 }
 
 var theHost *Host
@@ -284,7 +284,7 @@ func (h *Host) incomingURL(u string) {
 func (h *Host) start(root func() ui.Node) {
 	h.setup()
 	h.enter(func() { ui.Mount(h, root) })
-	WindowPresent(h.main.window)
+	h.showMain()
 	h.notifyActionAtStart() // launched by a notification's tap
 	h.automation()
 }

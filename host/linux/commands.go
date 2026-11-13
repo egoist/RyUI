@@ -66,6 +66,10 @@ func (h *Host) command(n *node, c ops.CommandID, args []byte) {
 		h.setMenuBar(args)
 	case ops.CmdWindowOptions:
 		h.setWindowOptions(args)
+	case ops.CmdWindowAction:
+		if w := h.winFor(n); w != nil {
+			h.windowAction(w, args)
+		}
 	case ops.CmdWindowTitle:
 		if h.main != nil {
 			h.main.name = string(args)

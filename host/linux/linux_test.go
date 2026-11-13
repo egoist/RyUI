@@ -98,16 +98,24 @@ func fatalf(t *testing.T, format string, args ...any) {
 
 // mount mounts root on a new host with a window of its own, shown.
 func mount(t *testing.T, root func() ui.Node) (*Host, *ui.Root) {
+	return mountWith(t, nil, root)
+}
+
+// mountWith is mount with prep run on the new host first.
+func mountWith(t *testing.T, prep func(h *Host), root func() ui.Node) (*Host, *ui.Root) {
 	var h *Host
 	var r *ui.Root
 	onMain(func() {
 		h = newHost()
 		h.app = testApp
+		if prep != nil {
+			prep(h)
+		}
 		h.setup()
 		h.enter(func() { r = ui.Mount(h, root) })
-		WindowPresent(h.main.window)
+		h.showMain()
 	})
-	settle(t, h, func() bool { return h.root != nil && h.main.envW > 0 })
+	settle(t, h, func() bool { return h.root != nil && (h.main.envW > 0 || h.main.hidden) })
 	t.Cleanup(func() {
 		onMain(func() {
 			h.enter(r.Dispose)

@@ -166,8 +166,13 @@ func (h *Host) createNav(n *node) bool {
 			if w.closing {
 				return false
 			}
-			h.emit(n, ops.Event{Kind: ops.EventDismissed})
-			return true // the core closes it
+			// The core closes it, or asks the app first (CloseRequest).
+			if n.listening(ops.EventCloseRequest) {
+				h.emit(n, ops.Event{Kind: ops.EventCloseRequest})
+			} else {
+				h.emit(n, ops.Event{Kind: ops.EventDismissed})
+			}
+			return true
 		})
 	default:
 		return false
@@ -237,10 +242,7 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) bool {
 			w.name = v.Str
 			h.updateTitle(w)
 		case ops.PropWindowConfig:
-			c := ops.DecodeWindowConfig(v.Bytes)
-			w.width, w.height = c.Width, c.Height
-			n.minWidth, n.minHeight = c.MinWidth, c.MinHeight
-			WidgetSetSizeRequest(w.content, windowSize(n.minWidth), windowSize(n.minHeight))
+			h.configure(w, ops.DecodeWindowConfig(v.Bytes))
 		}
 	default:
 		return false
@@ -393,6 +395,8 @@ func (h *Host) destroyNav(n *node) bool {
 		}
 	case ops.KindWindow:
 		if w := n.win; w != nil {
+			h.saveWindow(w)
+			h.dropWindowCSS(w)
 			w.closing = true
 			if w.root != nil && WidgetGetParent(w.root.widget) == w.content {
 				WidgetUnparent(w.root.widget)
@@ -558,16 +562,21 @@ func (h *Host) tabsResized(n *node) {
 // gtk_window_move on X11 too), and GNOME's and KDE's window managers
 // place a new window themselves, where it covers the fewest others,
 // cascading when it must.
+//
+// One opened hidden (WindowConfig's WindowHidden) is laid out at its size
+// first, its environment reported as if shown, and shown by a Show or
+// Focus.
 func (h *Host) openWindow(n *node) {
 	w := n.win
-	width, height := w.width, w.height
-	if width <= 0 {
-		width = 800
+	if !w.configured {
+		h.configure(w, ops.WindowConfig{})
 	}
-	if height <= 0 {
-		height = 600
-	}
-	WindowSetDefaultSize(w.window, windowSize(width), windowSize(height)+headerHeight)
 	WindowSetApplication(w.window, h.app)
+	if w.hidden {
+		var dw, dh int32
+		WindowGetDefaultSize(w.window, &dw, &dh)
+		h.rootAllocated(n, dw, max(dh-w.headerRoom(), 0))
+		return
+	}
 	WindowPresent(w.window)
 }
