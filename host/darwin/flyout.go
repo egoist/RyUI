@@ -219,13 +219,23 @@ func (h *Host) flyoutAnchor(x *win) (flyout.Rect, bool) {
 		if t == nil {
 			return flyout.Rect{}, false
 		}
-		button := Send(t.item, "button")
-		bw := Send(button, "window")
+		bw := Send(Send(t.item, "button"), "window")
 		if bw == 0 {
 			return flyout.Rect{}, false
 		}
-		r := MsgRectIDToRect(button, Sel("convertRect:toView:"), MsgRect(button, Sel("bounds")), 0)
-		return yDown(MsgRectToRect(bw, Sel("convertRectToScreen:"), r)), true
+		frame := MsgRect(bw, Sel("frame"))
+		if t.clicked.Size.Width > 0 && frame == t.of {
+			return yDown(t.clicked), true
+		}
+		// Not clicked (opened from code): the item's window, where it's
+		// on a display. A Mac whose menu bar has no room for the item,
+		// or whose menu bar shows on several displays, may not show it
+		// there: then where the pointer is, as a menu would open.
+		if r := yDown(frame); onScreen(r.X+r.W/2, r.Y+r.H/2) {
+			return r, true
+		}
+		px, py := pointer()
+		return flyout.Rect{X: px, Y: py}, true
 	}
 	p := h.parentWindow(x.cfg.Parent)
 	if p == 0 {
@@ -235,6 +245,32 @@ func (h *Host) flyoutAnchor(x *win) (flyout.Rect, bool) {
 	r := Rect{Origin: Point{X: float64(f.X), Y: float64(f.Y)}, Size: Size{Width: float64(f.Width), Height: float64(f.Height)}}
 	r = MsgRectIDToRect(content, Sel("convertRect:toView:"), r, 0)
 	return yDown(MsgRectToRect(p, Sel("convertRectToScreen:"), r)), true
+}
+
+// onScreen reports whether the point x, y (y down) is on a display.
+func onScreen(x, y float64) bool {
+	for _, s := range ArrayItems(Send(Class("NSScreen"), "screens")) {
+		if yDown(MsgRect(s, Sel("frame"))).Contains(x, y) {
+			return true
+		}
+	}
+	return false
+}
+
+// noteClick keeps where on screen the copy of t's button the click ev
+// hit shows: the pointer less the click's place in the button's window,
+// which the copies (one per display's menu bar) share. A flyout hangs
+// from it while the window keeps its frame.
+func (t *trayIcon) noteClick(button, ev ID) {
+	w := Send(button, "window")
+	if ev == 0 || w == 0 || Send(ev, "window") != w {
+		return
+	}
+	of := MsgRect(w, Sel("frame"))
+	at := MsgPoint(Class("NSEvent"), Sel("mouseLocation"))
+	in := MsgPoint(ev, Sel("locationInWindow"))
+	t.clicked = Rect{Origin: Point{X: at.X - in.X, Y: at.Y - in.Y}, Size: of.Size}
+	t.of = of
 }
 
 // placeFlyout places x against its anchor, in the work area of the
@@ -386,6 +422,18 @@ func (h *Host) escapeFloating(w ID) bool {
 	return true
 }
 
+// appWindowAt reports whether the point x, y (y down) is in one of the
+// app's windows that shows, a flyout's dialog or an alert's too.
+func (h *Host) appWindowAt(x, y float64) bool {
+	app := Send(Class("NSApplication"), "sharedApplication")
+	for _, w := range ArrayItems(Send(app, "windows")) {
+		if SendBool(w, "isVisible") && yDown(MsgRect(w, Sel("frame"))).Contains(x, y) {
+			return true
+		}
+	}
+	return false
+}
+
 // outsideClicks is the monitor of clicks in other apps, made as the
 // first flyout or panel shows.
 var outsideClicks ID
@@ -396,6 +444,12 @@ func (h *Host) watchOutsideClicks() {
 	}
 	const mask = 1<<1 | 1<<3 | 1<<25 // left, right and other mouse down
 	blk := NewBlock(func(_ objc.Block, ev ID) {
+		// An inactive app's windows get a global monitor's events too:
+		// a click on one of its own is no click elsewhere.
+		at := MsgPoint(ev, Sel("locationInWindow")) // on the screen: no window of the app's
+		if h.appWindowAt(at.X, mainScreenHeight()-at.Y) {
+			return
+		}
 		for _, x := range h.allWins() {
 			h.dismissFloating(x, true)
 		}
