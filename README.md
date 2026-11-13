@@ -10,6 +10,10 @@ Windows 11's, GTK 4 and libadwaita on Linux, the DOM in a browser) and
 updates them with fine-grained signals: a change touches only the views
 that read it.
 
+> [!WARNING]
+> **Alpha.** Asuka is pre-1.0 and changes daily. There is no API
+> stability, no backwards compatibility, and no migration guide yet.
+
 ```go
 func Counter() ui.Node {
 	count := signal.New(0)
