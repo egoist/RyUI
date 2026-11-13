@@ -25,6 +25,7 @@ import (
 
 	"github.com/egoist/asuka/app"
 	"github.com/egoist/asuka/background"
+	"github.com/egoist/asuka/dock"
 	"github.com/egoist/asuka/js"
 	"github.com/egoist/asuka/library"
 	"github.com/egoist/asuka/network"
@@ -147,21 +148,33 @@ func download(url string, status *signal.Signal[string]) {
 					p = float64(done) / float64(total)
 					text = fmt.Sprintf("%.0f%% of %.1f MB", p*100, float64(total)/1e6)
 				}
+				icon := dock.Progress{Value: p}
+				if p < 0 {
+					icon.State = dock.Indeterminate
+				}
 				if paused.Load() {
 					text = "Paused · " + text
+					icon.State = dock.Paused
 				}
 				task.Update(background.Options{Title: "Downloading " + name, Text: text, Progress: p, Actions: actions()})
+				dock.SetProgress(icon) // on the Dock or the taskbar, on a desktop
 			})
 		})
 		ui.Post(func() {
 			if err != nil {
 				task.End()
+				dock.SetProgress(dock.Progress{})
 				status.Set("Couldn't: " + err.Error())
 				return
 			}
 			task.Update(background.Options{Title: "Saving " + name, Progress: -1})
+			dock.SetProgress(dock.Progress{State: dock.Indeterminate})
 			library.Save(file, library.Options{Collection: library.Movies, Folder: "Downloader", Move: true}, func(where string, err error) {
 				task.End()
+				// Done: the progress off the app's icon, and the user, in
+				// another app meanwhile, asked to come back.
+				dock.SetProgress(dock.Progress{})
+				dock.RequestAttention(dock.Informational)
 				if err != nil {
 					status.Set("Couldn't save: " + err.Error())
 					return
