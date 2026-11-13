@@ -93,6 +93,10 @@ type ViewProps struct {
 	// screen alone never hovers.
 	OnHoverChange func(hovered bool)
 
+	// Keys are what the view does with keys while the keyboard's focus is
+	// in it (it, or a view inside it): see KeyMap.
+	Keys KeyMap
+
 	// Drag makes the view draggable, within the app and to other apps.
 	Drag *DragSource
 	// Drop makes the view take drops (CSS's drag-over is its
@@ -207,7 +211,7 @@ func addKids(e *element, kids []Node) {
 // ancestor that has one.
 func View(p ViewProps, children ...Node) Node {
 	real := p.OnPress != nil || p.OnLongPress != nil || hasText(p.Label) || hasText(p.Hint) || hasText(p.Tooltip) || p.Role != RoleNone || p.Decorative || p.OnLayout != nil ||
-		len(p.Actions) > 0 || p.OnAdjust != nil ||
+		len(p.Actions) > 0 || p.OnAdjust != nil || len(p.Keys) > 0 ||
 		p.OnPan != nil || p.OnPinch != nil || p.OnSwipe != nil || p.OnRotate != nil || p.interactive()
 	if s, ok := p.Style.(Style); ok && (s.visual() || s.hasVariants()) {
 		real = true
@@ -264,6 +268,7 @@ func View(p ViewProps, children ...Node) Node {
 		}
 		e.listenGestures(&p)
 		e.listenInteraction(&p)
+		e.setKeys(p.Keys)
 	}
 	e.setStyle(e.variantStyle(p.Style, p.Interaction), false)
 	addKids(e, children)
@@ -575,6 +580,10 @@ type TextFieldProps struct {
 	// with the field and disposed with it. Desktops, with no on-screen
 	// keyboard, don't show it.
 	Accessory func() Node
+	// Keys are what the field does with keys while it's focused, before
+	// it edits with them: Up and Down through suggestions below it,
+	// Escape to clear it, Tab to complete (see KeyMap).
+	Keys KeyMap
 }
 
 // TextRange is a span of a TextField's text, as byte offsets into it
@@ -630,6 +639,7 @@ func TextField(p TextFieldProps) Node {
 	}
 	e := newElement(ops.KindTextField, true)
 	e.measure()
+	e.setKeys(p.Keys)
 	b := e.r.batch
 	id := e.id
 	if p.Multiline {

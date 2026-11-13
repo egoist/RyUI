@@ -637,6 +637,46 @@ a link from a browser) come once their items are loaded:
 - In a browser, a dropped file is copied into the app's files (the
   page's, in memory) and `Drop.Copied` is true.
 
+## Keys
+
+A view takes keys while the keyboard's focus is in it, the view or one
+inside it, with `Keys`: a `KeyMap` from a `Shortcut` to what it does.
+A key goes to the nearest view that has it, from the focused one out,
+before the focused control and the menu bar, so a search field's Up and
+Down can move through the results under it:
+
+```go
+sel := signal.New(0)
+move := func(by int) func() {
+	return func() {
+		n := len(signal.Untrack(results.Get))
+		sel.Set(max(0, min(sel.Peek()+by, n-1)))
+	}
+}
+ui.TextField(ui.TextFieldProps{
+	Value:    query,
+	Keys:     ui.KeyMap{{Key: "down"}: move(1), {Key: "up"}: move(-1)},
+	OnSubmit: func() { open(signal.Untrack(results.Get)[sel.Peek()]) },
+})
+```
+
+A key is a character or a named key (`enter`, `escape`, `tab`, `space`,
+`delete`, `backspace`, `up`, `down`, `left`, `right`, `home`, `end`,
+`pageup`, `pagedown`, `f1` to `f12`), with exactly the modifiers given:
+`ui.Cmd("d")`, `{Key: "up", Mods: ui.Alt}`. Held, it repeats. A
+character with no modifiers takes typing from a field inside the view,
+so give it one, or put it where no field is.
+
+`ui.UseKeys(ui.KeyMap{...})` gives the window keys of its own: a key
+reaches them last, and first when nothing has the focus, as a game's
+arrows or a viewer's Space. They go with the component that called it.
+
+Keys come from a hardware keyboard: a desktop's, an iPad's or a
+Chromebook's, a browser's. Never make one the only way to do
+something: a phone usually has none. An input method composing text (a
+Japanese or Chinese keyboard's) keeps its keys. `examples/launcher`
+moves through its results with Up and Down.
+
 ## Haptics
 
 `ui.Haptic` plays feedback: `ui.HapticSelection` (a value ticked over),

@@ -632,6 +632,10 @@ func dispatch(ev ops.Event) {
 		if i := int(ev.Int); i >= 0 && i < len(h.a11yActions) {
 			h.a11yActions[i]()
 		}
+	case ops.EventKey:
+		if i := int(ev.Int); i >= 0 && i < len(h.keys) && h.keys[i] != nil {
+			h.keys[i]()
+		}
 	case ops.EventAdjust:
 		if h.adjust != nil {
 			h.adjust(int(ev.Int))

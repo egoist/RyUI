@@ -35,6 +35,10 @@ type WindowHandle struct {
 	watched   bool
 	listening uint8 // what the open window's element listens for: 1 state, 2 close requests
 
+	// keyMaps are UseKeys' while their components live, the last first.
+	keyMaps  []*KeyMap
+	keysSent []byte // the Keys prop last sent to the window's element
+
 	visible, focused, minimized, maximized, fullscreen, onTop, through *signal.Signal[bool]
 	pos                                                                *signal.Signal[Point]
 	size                                                               *signal.Signal[Size]
@@ -102,8 +106,10 @@ func (w *WindowHandle) watch() {
 func (w *WindowHandle) attach(e *element) {
 	w.e = e
 	w.listening = 0
+	w.keysSent = nil
 	e.handlers().win = w
 	w.sync()
+	w.sendKeys()
 }
 
 // detach is the Window closing: it reads closed from now on.
@@ -381,3 +387,55 @@ func (w *WindowHandle) Size() signal.Accessor[Size] { return w.size }
 
 // ClickThrough is whether the mouse goes through it (SetClickThrough).
 func (w *WindowHandle) ClickThrough() signal.Accessor[bool] { return w.through }
+
+// UseKeys gives the window the calling component is in these keys while
+// the component lives: the window's own, which a key reaches last, after
+// the focused view and its ancestors (their KeyMaps), and first when no
+// view has the focus (a window of no text field: a game's arrows, a
+// viewer's Space). Its funcs run as a KeyMap's do; of two UseKeys with a
+// key, the one called last takes it.
+func UseKeys(m KeyMap) {
+	w := windowCtx.Use()
+	if w == nil {
+		w = current().win
+	}
+	p := &m
+	w.keyMaps = append(w.keyMaps, p)
+	w.sendKeys()
+	signal.OnCleanup(func() {
+		for i, q := range w.keyMaps {
+			if q == p {
+				w.keyMaps = append(w.keyMaps[:i], w.keyMaps[i+1:]...)
+				break
+			}
+		}
+		w.sendKeys()
+	})
+}
+
+// sendKeys gives the window's element the keys of its UseKeys, if they
+// changed.
+func (w *WindowHandle) sendKeys() {
+	e := w.el()
+	if e == nil {
+		return
+	}
+	all := KeyMap{}
+	for _, m := range w.keyMaps { // later ones over earlier
+		for k, f := range *m {
+			all[k] = f
+		}
+	}
+	keys, funcs := all.keyList()
+	b := ops.AppendKeys(nil, keys)
+	h := e.handlers()
+	h.keys = funcs
+	if string(b) == string(w.keysSent) || len(keys) == 0 && w.keysSent == nil {
+		return
+	}
+	if w.keysSent == nil {
+		e.listen(ops.EventKey)
+	}
+	w.keysSent = b
+	e.r.batch.SetBytes(e.id, ops.PropKeys, b)
+}

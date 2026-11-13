@@ -41,6 +41,7 @@ type handlers struct {
 	layout              func(Frame)
 	a11yActions         []func()
 	adjust              func(by int)
+	keys                []func() // a KeyMap's, in its Keys prop's order
 	color               func(Color)
 	web                 *webHandlers // a WebView's
 	pressed, hover      func(bool)

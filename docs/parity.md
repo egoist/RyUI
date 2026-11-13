@@ -88,6 +88,7 @@ draws its own UI, see [Asuka and MyGo](mygo.md).
 | Frame-driven animation | `TimelineView(.animation)` | `useFrameCallback` | ✓ `OnFrame` |
 | Shadows, gradients, blur | `.shadow`, `LinearGradient`, materials | style, expo-linear-gradient, expo-blur | ✓ `Shadow`, `LinearGradient`, `Material` |
 | Gestures | tap, long press, drag, magnify, rotate | Gesture Handler | ✓ tap, long press, pan, pinch, rotate, swipe |
+| Keys of a hardware keyboard | `.onKeyPress`, `.keyboardShortcut` | `onKeyPress` (a `TextInput`'s; React Native for Windows and macOS: `onKeyDown`) | ✓ `ViewProps.Keys`, `TextFieldProps.Keys` (from the focused view out, ahead of the control and the menus), `UseKeys` (the window's) |
 | Pressed and hover states | `ButtonStyle`'s `isPressed`, `.onHover` | `Pressable`'s `pressed`, `onHoverIn`/`onHoverOut` | ✓ `Style.Pressed`, `Hovered` variants; `Interaction` for a group's or a peer's (`Style.When`); `OnPressedChange`, `OnHoverChange` |
 | Drag and drop | `.draggable`, `.dropDestination` | (none built in) | ✓ `Drag`, `Drop` (Go values within the app; texts, links, files with other apps; `Dragging` and `DragOver` variants) |
 | Shared-element transitions | `matchedGeometryEffect`, `.navigationTransition(.zoom)` | shared transitions | ✓ `Style.Match` (a view grows from another's place and size), `ScreenOptions.ZoomFrom` (a pushed screen zooms out of a view: iOS 18's zoom; Material's container transform) |

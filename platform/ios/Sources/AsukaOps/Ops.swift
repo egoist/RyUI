@@ -119,6 +119,7 @@ public enum AsukaProp {
     public static let match: UInt16 = 34
     public static let interceptBack: UInt16 = 35
     public static let tooltip: UInt16 = 36
+    public static let keys: UInt16 = 37
 
     public enum View {
         public static let dropAccept: UInt16 = 64
@@ -397,6 +398,7 @@ public enum AsukaEventKind: UInt16 {
     case paged = 53
     case windowState = 54
     case closeRequest = 55
+    case key = 56
 }
 
 public enum AsukaCommand: UInt16 {
@@ -1058,5 +1060,8 @@ public enum AsukaEvents {
     }
     public static func closeRequest(_ id: UInt32) -> [UInt8] {
         var w = AsukaWriter(); w.header(id, 55); return w.bytes
+    }
+    public static func key(_ id: UInt32, _ v: Int64) -> [UInt8] {
+        var w = AsukaWriter(); w.header(id, 56); w.u64(UInt64(bitPattern: v)); return w.bytes
     }
 }

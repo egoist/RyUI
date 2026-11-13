@@ -547,6 +547,50 @@ it carries an app's value). `ops/item.go` has the codecs and
   release within the margin, not a tap recognizer's 10 points), and a
   macOS view's tap menu opens on a click's release, as on Windows.
 
+### Keys
+
+A hardware keyboard's keys, on a desktop, an iPad, a Chromebook, a
+phone with one, and in a browser: what a view does with them while the
+keyboard's focus is in it (`ViewProps.Keys`, `TextFieldProps.Keys`, a
+`KeyMap` of `Shortcut` to func), and what the window does
+(`UseKeys`).
+
+- Declared, not asked: a view's keys are a prop (`Keys`: each key's
+  name, a lower case character or a named key, and its modifiers, as the
+  menu bar's), and the host routes a key going down (and each repeat) on
+  its own: from the focused view out through its ancestors, the nearest
+  with the key takes it, and the host sends `Key` with its index. So no
+  host waits on Go to know whether a key is taken (the platforms want to
+  know as the key goes down: a text field's caret, the menus' key
+  equivalents), and it works the same with the app's Go elsewhere
+  (`asuka dev` on a phone).
+- The nearest first, as the responder chains go (AppKit's, UIKit's,
+  the DOM's bubbling): a field's own Keys, then the views around it, then
+  the window's (`UseKeys`: the root's, or a Window node's, Keys prop),
+  which is also where a key starts when no view has the focus. A key a
+  view takes doesn't reach the focused control (Up and Down in a search
+  field move a selection, not its caret) nor the menu bar.
+- Matching: the key as it types without modifiers (a character, lower
+  case: Shift is a modifier like the others), and exactly the declared
+  modifiers. Never while an input method composes text (marked text):
+  its keys are its own.
+- `UseKeys`' maps are merged per window, the last one called first for a
+  key; each goes with its component's owner, and a view's with the view.
+- Hosts: macOS, a local event monitor for key down: the first
+  responder's view (a field's field editor: its field), its Asuka node,
+  out through the node's parents to the root, ahead of the field editor
+  and `performKeyEquivalent:`. Windows, the message loop's WM_KEYDOWN and
+  WM_SYSKEYDOWN before TranslateMessage, IsDialogMessage and the
+  accelerators: the focused HWND's node, out. Linux, a key controller
+  on each window in the capture phase: the focus widget's node, out. The
+  web, a keydown listener on the document in the capture phase:
+  `event.target`'s node, out, `preventDefault` and `stopPropagation`.
+  iOS, `pressesBegan` on the host's window, ahead of the first responder
+  (UIKit gives presses to it first otherwise), with `UIKeyCommand`s on
+  the root view controller for what a text field would take
+  (`wantsPriorityOverSystemBehavior`). Android, the activity's
+  `dispatchKeyEvent`: the focused view's node, out.
+
 ### Accessibility
 
 Native widgets bring their own. `View` takes `Label`, `Hint`, `Role`

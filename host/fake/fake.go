@@ -549,6 +549,30 @@ func (h *Host) Submit(v *View) {
 	h.dispatch(ops.Event{ID: v.ID, Kind: ops.EventSubmit})
 }
 
+// Key presses a key while focused (a view, or nil: the window) has the
+// keyboard's focus, as the platforms route it: to the nearest view, from
+// focused out through its ancestors, whose Keys prop has the key (name: a
+// character, any case, or a named key; mods: 1 primary, 2 shift, 4 alt, 8
+// control), which gets Key with its index. It reports whether a view took
+// it (false: the focused control or the menus would have).
+func (h *Host) Key(focused *View, name string, mods uint8) bool {
+	if focused == nil {
+		focused = h.Root()
+	}
+	for v := focused; v != nil; v = v.Parent {
+		b, ok := v.Props[ops.PropKeys]
+		if !ok {
+			continue
+		}
+		if i := ops.MatchKey(ops.DecodeKeys(b.Bytes), name, mods); i >= 0 {
+			h.listening(v, ops.EventKey)
+			h.dispatch(ops.Event{ID: v.ID, Kind: ops.EventKey, Int: int64(i)})
+			return true
+		}
+	}
+	return false
+}
+
 // Flip toggles a switch.
 func (h *Host) Flip(v *View) {
 	on := !v.Bool(ops.PropToggleOn)

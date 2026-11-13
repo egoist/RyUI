@@ -122,6 +122,7 @@ object AsukaProp {
     const val MATCH = 34
     const val INTERCEPT_BACK = 35
     const val TOOLTIP = 36
+    const val KEYS = 37
 
     object View {
         const val DROP_ACCEPT = 64
@@ -400,6 +401,7 @@ object AsukaEventKind {
     const val PAGED = 53
     const val WINDOW_STATE = 54
     const val CLOSE_REQUEST = 55
+    const val KEY = 56
 }
 
 object AsukaCommand {
@@ -935,4 +937,5 @@ object AsukaEvents {
     fun paged(id: Int, v: Long): ByteArray = AsukaWriter().apply { header(id, 53); u64(v) }.bytes()
     fun windowState(id: Int, v: ByteArray): ByteArray = AsukaWriter().apply { header(id, 54); u32(v.size); raw(v) }.bytes()
     fun closeRequest(id: Int): ByteArray = AsukaWriter().apply { header(id, 55) }.bytes()
+    fun key(id: Int, v: Long): ByteArray = AsukaWriter().apply { header(id, 56); u64(v) }.bytes()
 }

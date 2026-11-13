@@ -81,7 +81,7 @@ browser.
   windows and the menu bar, links into the app, and shares from other
   apps.
 - [Motion and gestures](motion.md): animations, transitions, shared
-  elements, gestures and haptics.
+  elements, gestures, keys and haptics.
 - [Accessibility](accessibility.md): labels, roles, custom actions,
   announcements, and text that scales.
 - [Languages](i18n.md): translated messages with plurals, numbers and

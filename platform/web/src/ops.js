@@ -80,6 +80,7 @@ export const Prop = Object.freeze({
   Match: 34,
   InterceptBack: 35,
   Tooltip: 36,
+  Keys: 37,
 });
 
 /** Each kind's own props, from 64. */
@@ -176,6 +177,7 @@ export const Event = Object.freeze({
   Paged: 53,
   WindowState: 54,
   CloseRequest: 55,
+  Key: 56,
 });
 
 /** Commands the core sends. */
@@ -440,4 +442,5 @@ export const Events = Object.freeze({
   paged: (id, v) => new Writer().header(id, 53).i64(v).done(),
   windowState: (id, v) => new Writer().header(id, 54).bytes(v).done(),
   closeRequest: (id) => new Writer().header(id, 55).done(),
+  key: (id, v) => new Writer().header(id, 56).i64(v).done(),
 });

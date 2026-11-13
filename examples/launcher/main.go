@@ -1,8 +1,9 @@
 // Launcher is a Spotlight of its own: an app in the background, with no
 // Dock icon and no window, whose panel a global shortcut (⌥Space, Alt+Space)
 // summons over whatever app the user is in, without taking that app out
-// of the front. It searches the apps installed as the user types, Enter
-// opens the first, a click any; Escape, or a click elsewhere, puts the
+// of the front. It searches the apps installed as the user types; Up and
+// Down (and Control-P, Control-N) move through the results, Enter opens
+// the one selected, a click any; Escape, or a click elsewhere, puts the
 // panel away. Its tray icon (the menu bar on a Mac) opens it too, and
 // quits it.
 //
@@ -50,6 +51,20 @@ func Launcher() ui.Node {
 		}
 		return r
 	}, slices.Equal[[]apps.App])
+	// sel is the result Enter opens: the first as the results change,
+	// then where Up and Down move it.
+	sel := signal.New(0)
+	signal.Effect(func() {
+		results.Get()
+		sel.Set(0)
+	})
+	move := func(by int) func() {
+		return func() {
+			if n := len(signal.Untrack(results.Get)); n > 0 {
+				sel.Set((sel.Peek() + by + n) % n)
+			}
+		}
+	}
 	var field ui.Node
 
 	// Read the apps again each time it shows: one may have come or gone.
@@ -104,9 +119,17 @@ func Launcher() ui.Node {
 		Autocorrect: ui.AutocorrectNo,
 		Style:       ui.Style{Grow: 1, Font: ui.Title2},
 		OnSubmit: func() {
-			if r := signal.Untrack(results.Get); len(r) > 0 {
-				open(r[0])
+			if r, i := signal.Untrack(results.Get), sel.Peek(); i < len(r) {
+				open(r[i])
 			}
+		},
+		// The field keeps the keyboard; these keys move through the
+		// results instead of its caret (Spotlight's, and Emacs' too).
+		Keys: ui.KeyMap{
+			{Key: "down"}:                move(1),
+			{Key: "up"}:                  move(-1),
+			{Key: "n", Mods: ui.Control}: move(1),
+			{Key: "p", Mods: ui.Control}: move(-1),
 		},
 	})
 	return ui.Column(ui.Style{},
@@ -118,16 +141,16 @@ func Launcher() ui.Node {
 			return ui.Column(ui.Style{Padding: ui.Edges{Bottom: 8, Left: 8, Right: 8}},
 				ui.View(ui.ViewProps{Style: ui.Style{Height: ui.Pt(1), Background: ui.Separator, Margin: ui.Edges{Bottom: 6, Left: 10, Right: 10}}}),
 				ui.For(results, func(a apps.App) string { return a.Path }, func(a signal.Accessor[apps.App], i signal.Accessor[int]) ui.Node {
-					return row(a, i, open)
+					return row(a, signal.Func(func() bool { return i.Get() == sel.Get() }), open)
 				}),
 			)
 		}),
 	)
 }
 
-// row is an app among the results: its icon and name, the first one
-// highlighted (Enter opens it), the one under the pointer too.
-func row(a signal.Accessor[apps.App], i signal.Accessor[int], open func(apps.App)) ui.Node {
+// row is an app among the results: its icon and name, highlighted while
+// selected (Enter opens it), and under the pointer.
+func row(a signal.Accessor[apps.App], selected signal.Accessor[bool], open func(apps.App)) ui.Node {
 	icon := signal.New("")
 	signal.Effect(func() {
 		apps.Icon(a.Get(), 32, func(path string, err error) {
@@ -136,12 +159,11 @@ func row(a signal.Accessor[apps.App], i signal.Accessor[int], open func(apps.App
 			}
 		})
 	})
-	first := func() bool { return i.Get() == 0 }
 	base := ui.Style{Padding: ui.Edges{Top: 6, Bottom: 6, Left: 10, Right: 10}, Gap: 12, Align: ui.AlignCenter,
 		Direction: ui.RowDir, CornerRadius: 8,
 		Hovered: &ui.Style{Background: ui.Separator}}
 	return ui.View(ui.ViewProps{
-		Style:   base.When(first, ui.Style{Background: ui.Separator}),
+		Style:   base.When(selected.Get, ui.Style{Background: ui.Separator}),
 		OnPress: func() { open(signal.Untrack(a.Get)) },
 		Label:   signal.Func(func() string { return a.Get().Name }),
 	},
