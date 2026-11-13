@@ -420,6 +420,9 @@ func (k *kind) openDialog() {
 var quitAgain = app.Quit
 
 func (k *kind) onQuit(e *app.QuitEvent) {
+	if k.quitting {
+		return
+	}
 	if k.quit.resolved {
 		k.quit.resolved = false
 		k.quitting = true

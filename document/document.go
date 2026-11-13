@@ -269,8 +269,8 @@ type snapshot struct {
 	write func(io.Writer) error
 }
 
-// ops is what the generic Document gives the rest of the machinery.
-type ops interface {
+// contentOps is what the generic Document gives the rest of the machinery.
+type contentOps interface {
 	capture() snapshot
 	markSaved(s snapshot)
 	replace(v any)
@@ -282,7 +282,7 @@ type ops interface {
 // type. Main thread only.
 type base struct {
 	k   *kind
-	ops ops
+	ops contentOps
 	// id names its recovery copy.
 	id string
 
