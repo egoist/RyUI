@@ -96,6 +96,15 @@ open class AsukaActivity : AppCompatActivity() {
         if (savedInstanceState == null) intent?.let { incoming(it) }
     }
 
+    /**
+     * A hardware keyboard's key, before the focused view: the Keys of its
+     * node and its ancestors' take it first (Keys.kt).
+     */
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        if (::runtime.isInitialized && runtime.activity === this && runtime.routeKey(event, currentFocus)) return true
+        return super.dispatchKeyEvent(event)
+    }
+
     /** The Activity's theme, for what it makes in another language. */
     protected open val themeRes: Int get() = R.style.Theme_Asuka
 
