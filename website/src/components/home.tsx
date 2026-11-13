@@ -51,7 +51,7 @@ interface Copy {
 const en: Copy = {
   toolkits: ["UIKit", "Android Views · Material 3", "AppKit", "Win32, drawn as Windows 11", "GTK 4 · libadwaita", "The DOM"],
   hero: {
-    status: "Core: Go / Host: native / Sync",
+    status: "Core: Go / Host: native / Sync 100.0%",
     framework: "Framework:",
     title: "Native widgets, in Go.",
     subtitle: "UIKit, Material, AppKit, Win32, GTK and the DOM. Not a canvas, not a web view.",
@@ -177,7 +177,7 @@ const en: Copy = {
 const zh: Copy = {
   toolkits: ["UIKit", "Android Views · Material 3", "AppKit", "Win32，Windows 11 外观", "GTK 4 · libadwaita", "DOM"],
   hero: {
-    status: "核心：Go / 宿主：原生 / 同步率",
+    status: "核心：Go / 宿主：原生 / 同步率 100.0%",
     framework: "框架：",
     title: "跨平台原生控件，用 Go 写。",
     // No breaks inside a phrase: Chinese breaks between any two characters.
@@ -438,9 +438,7 @@ function Hero({ locale, t }: { locale: Locale; t: Copy }) {
           <span className="size-1.5 animate-pulse bg-unit" />
           {__ASUKA_VERSION__}
         </p>
-        <p className="label hidden text-signal-ink sm:block">
-          {t.hero.status} <SyncRate />
-        </p>
+        <p className="label hidden text-signal-ink sm:block">{t.hero.status}</p>
       </div>
 
       <div className="relative px-4 pt-8 pb-10 sm:px-10 md:pt-10 md:pb-12">
@@ -493,21 +491,6 @@ function Hero({ locale, t }: { locale: Locale; t: Copy }) {
       </div>
       <div className="hazard relative h-3" />
     </section>
-  )
-}
-
-/**
- * The sync rate, 100.0%, counting up from 0.0% as a gauge does when the page
- * opens, the tenths flickering past. In CSS alone (an integer property, its
- * thousandths shown as counters), so the page paints it already counting;
- * still, at 100.0%, for readers who prefer reduced motion.
- */
-function SyncRate() {
-  return (
-    <>
-      <span aria-hidden className="sync-rate" />
-      <span className="sr-only">100.0%</span>
-    </>
   )
 }
 

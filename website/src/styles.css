@@ -199,44 +199,6 @@ html:lang(zh) :lang(ja) {
   }
 }
 
-/* The hero's sync rate counts up to 100.0% as the page opens: --sync is
-   the rate in thousandths, an integer the browser can animate, shown as two
-   counters, its whole and its tenths, the tenths flickering past on the
-   way. Where the browser has no mod(), or the reader prefers reduced
-   motion, it reads 100.0% from the start. */
-@property --sync {
-  syntax: "<integer>";
-  inherits: false;
-  initial-value: 1000;
-}
-.sync-rate {
-  display: inline-block;
-  min-width: 6ch;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  &::after {
-    content: "100.0%";
-  }
-}
-@supports (z-index: mod(3, 2)) {
-  .sync-rate {
-    counter-reset: sync-whole round(down, var(--sync) / 10, 1) sync-tenth mod(var(--sync), 10);
-    &::after {
-      content: counter(sync-whole) "." counter(sync-tenth) "%";
-    }
-  }
-  @media (prefers-reduced-motion: no-preference) {
-    .sync-rate {
-      animation: sync-rate 2.2s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
-    }
-  }
-}
-@keyframes sync-rate {
-  from {
-    --sync: 0;
-  }
-}
-
 /* A unit's sync bar fills as it scrolls into view, where the browser can
    tie an animation to scrolling; full otherwise. */
 @supports (animation-timeline: view()) {
