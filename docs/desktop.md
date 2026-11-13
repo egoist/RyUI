@@ -2,7 +2,9 @@
 
 What only a desktop has, beyond windows and the menu bar
 ([Navigation](navigation.md#windows)): tray icons and the Dock menu,
-apps that live in the background, global shortcuts, file dialogs and
+flyouts, apps that live in the background, global shortcuts, panels and
+launchers, finding the apps installed, click-through windows, file
+dialogs and
 the file manager, files the app opens, one instance, quitting, recent
 documents, starting at login, the displays, power, progress on the
 app's icon and the system's appearance.
@@ -50,6 +52,75 @@ on Linux, the launcher's quicklist.
 
 `examples/tray` is a timer that lives in the menu bar.
 
+## Flyouts
+
+A flyout is a window that hangs from a tray icon, as the panels of the
+Mac's menu bar extras and of Windows' notification area do, or from a
+rectangle of a window. It's a `ui.Window` with a `Flyout`:
+
+```go
+open := signal.New(false)
+icon := tray.Show(tray.Props{
+	Symbol:  ui.Val("bolt.fill"),
+	OnClick: func() { open.Set(!open.Peek()) },
+	Menu:    ui.Val([]ui.MenuItem{ui.MenuQuit}), // a right click
+})
+ui.Window(ui.WindowProps{
+	Open:       open,
+	Flyout:     &ui.Flyout{Anchor: icon.Anchor(), Placement: ui.PlacementBottom},
+	FitContent: true, MinWidth: 260, MaxHeight: 480,
+	Content:    panel,
+})
+```
+
+- It has no frame and no taskbar button; with no `Background` it shows
+  the system's material behind its content (a Mac's menus'), with
+  rounded corners and a shadow, so give its content no background.
+- `Placement` is the side of the anchor it goes to and how it lines up
+  with it (`PlacementBottom`: below, centered). Where the display has
+  no room there it flips to the other side (below a Mac's menu bar
+  icon, above an icon of a taskbar at the bottom of the screen), then
+  slides into the display, then shrinks to fit it. `Gap` keeps it off
+  the anchor.
+- `Anchor` follows its accessor: `ui.Anchor{X, Y, Width, Height}` is a
+  rectangle of the window the flyout is declared in, in points from its
+  content's top left (a view's frame, from `OnLayout`); there it's that
+  window's child, and moves with it.
+- It takes the keyboard as it shows, without bringing the app to the
+  front, and closes as the user closing it does (`Open` false,
+  `OnClose`, or `OnCloseRequest` asked) when they click elsewhere, go
+  to another app, or press an Escape its content leaves.
+- A dialog over it: a `Modal` `ui.Window` declared in its content shows
+  over the flyout, above it and centered on it, and keeps the flyout
+  open until it closes, when the flyout gets the keyboard back. An
+  `Alert` over it keeps it open too.
+- `FitContent` sizes it to its content (below), placed again against
+  its anchor as that grows or shrinks.
+
+| | Tray flyout | Placed against |
+|---|---|---|
+| macOS | a borderless, nonactivating `NSPanel` at the level of menus, over the material of menus | the copy of the status item the user clicked (each display's menu bar has one) |
+| Windows | a borderless, topmost tool window with Windows 11's rounded corners | the icon's rectangle (`Shell_NotifyIconGetRect`), the taskbar's edge considered |
+| Linux | an undecorated window, out of the taskbar | under X11, where the panel says the icon was clicked; under Wayland, which lets no app place a window, where the desktop puts it |
+| The web | a panel in the page, the page's top right for a tray anchor | a rectangle of its window, in the page |
+
+`examples/tray`'s icon opens one with the timer in it, and a dialog over
+it.
+
+## Windows sized to their content
+
+`FitContent` (`WindowProps`', `WindowOptions`') sizes a window to what
+it shows, and follows it as it changes: a flyout with a list of nodes
+that grows, a launcher whose results come and go. Its width is its
+content's widest line (max-content) within `MinWidth` and `MaxWidth`,
+at which its text wraps; its height is its content's at that width
+within `MinHeight` and `MaxHeight`, beyond which a `Scroll` in it
+scrolls. The core lays the content out at that size as it lays out each
+frame, and the window takes it in the same pass, so it shows at its size,
+never at another first. A flyout is placed again against its anchor; a
+window or a panel keeps its top edge and grows down. The user can't
+resize it. On the web the main window is the tab, which fills the page.
+
 ## Apps in the background
 
 `app.KeepRunning()` keeps the app running when its last window closes:
@@ -90,6 +161,113 @@ declined, or the desktop doesn't know the app), `ErrNotAvailable`,
   needs the app installed with its desktop entry. A window `OnPress`
   shows takes the focus with the press's activation token.
 - Phones and the web have none (`ErrNotAvailable`).
+
+## Panels and launchers
+
+A panel is the window of a launcher, a command palette or a quick
+entry, as Spotlight's and Raycast's are: summoned from anywhere by a
+global shortcut, it floats above every app's windows, on whichever
+Space or virtual desktop the user is on and over apps in full screen,
+stays out of the taskbar, the Dock's windows and the app switcher, and
+takes the keyboard without bringing the app to the front on a Mac, so
+the app the user was in keeps its menu bar and gets the keyboard back
+as the panel goes. It's a window with `Panel`: a launcher's main
+window, in an app that runs in the background:
+
+```go
+func main() {
+	app.RunInBackground()
+	app.RunWindow(ui.WindowOptions{Panel: true, Hidden: true, FitContent: true,
+		MinWidth: 640, MaxWidth: 640, MaxHeight: 440}, Launcher)
+}
+
+func Launcher() ui.Node {
+	w := ui.UseWindow()
+	w.OnCloseRequest(func() bool { w.Hide(); return false }) // Escape, a click elsewhere
+	hotkey.Register(hotkey.Props{
+		Shortcut: ui.Val(ui.Shortcut{Key: "space", Mods: ui.Alt}),
+		OnPress:  func() { w.Show() },
+	})
+	// ...
+}
+```
+
+- It has no frame; with no `Background` it shows the system's material
+  behind its content, with rounded corners and a shadow.
+- Without `X` and `Y` (or a `StateKey`), it shows on the display with
+  the pointer, centered across it, a third of the way down, each time
+  it shows; `SetPosition` and `Center` place it for good. With
+  `FitContent` it grows down from its top as results come.
+- It closes as the user closing it does on an Escape its content leaves
+  (a text field's too) and as it loses the keyboard: a click elsewhere,
+  another app. Hide it instead (`OnCloseRequest`, above), so it shows
+  again at once, as it was; the main window of an app that keeps
+  running hides as it closes anyway.
+- `Show` shows it with the keyboard; `Focus` does the same, never
+  bringing the app forward.
+
+| | A panel |
+|---|---|
+| macOS | an `NSPanel` with the nonactivating style, on every Space and over full-screen apps (`canJoinAllSpaces`, `fullScreenAuxiliary`), out of the window cycle, floating; never the main window |
+| Windows | a borderless topmost tool window owned by a hidden window (no taskbar button), Windows 11's rounded corners; it takes the foreground, which a global shortcut's key press lets it |
+| Linux | an undecorated window; under X11 a utility window kept above, on every workspace, out of the taskbar and pager; under Wayland an overlay layer-shell surface where the app runs with gtk4-layer-shell (`LD_PRELOAD`) on a compositor that has the protocol (KDE Plasma, Sway, Hyprland, COSMIC), else a window as others (GNOME places it, and keeps nothing above) |
+| The web | a panel over the page, a third of the way down |
+
+`examples/launcher` is a Spotlight of its own: ⌥Space (Alt+Space) shows
+a panel with a search field, the apps installed as you type, with their
+icons, and Enter opens the first.
+
+## Finding apps
+
+`asuka/apps` lists the apps installed, as a launcher searches them:
+
+```go
+apps.List(func(list []apps.App, err error) { installed.Set(list) })
+results := apps.Search(installed.Get(), query.Get())
+apps.Icon(results[0], 32, func(path string, err error) { icon.Set(path) }) // a PNG for ui.Image
+apps.Open(results[0], nil)
+```
+
+- `List` gives each app's `Name` (as the system shows it, in the user's
+  language), `ID` and `Path`, sorted by name; it reads the disk off the
+  main thread and answers on it. List them again as the panel shows: an
+  app may have come or gone.
+- `Search` ranks them for what the user typed, ignoring case and
+  accents: the name itself, then its start, then a word's start or the
+  initials ("vsc" for Visual Studio Code), then anywhere, then its
+  letters in order.
+- `Icon` draws an app's icon at a size in points as a PNG file in the
+  app's caches, kept for the next time, and gives its path.
+- `Open` starts the app, or brings it to the front. Hide the panel
+  first, so the app the user was in has the keyboard until the opened
+  one takes it.
+
+| | Where | ID | Icon | Open |
+|---|---|---|---|---|
+| macOS | `/Applications`, `/System/Applications`, `~/Applications` and a folder below each, Finder | the bundle identifier | the workspace's icon for it | `NSWorkspace` |
+| Windows | the Start menu's apps (the shell's Applications folder), packaged ones too | the AppUserModelID | the shell's image for it | the shell |
+| Linux | the desktop entries a menu shows (XDG, Flatpak's and Snap's too), by `OnlyShowIn`, `NoDisplay`, `TryExec` | the desktop file id | the entry's icon from the theme | GIO, with the display's launch context |
+
+Phones and the web answer `apps.ErrUnsupported`.
+
+## Click-through windows
+
+`ClickThrough` (or `ui.UseWindow().SetClickThrough(true)`) lets the
+mouse go through a window to what's behind it, another app's window or
+the desktop: an overlay, a HUD, a desktop pet, made `Transparent` and
+`AlwaysOnTop`. `ClickThrough()` follows it as a signal. The window
+takes no clicks, hover or wheel at all while it's on; switch it off to
+let the user use it.
+
+```go
+ui.Window(ui.WindowProps{Open: hud, Transparent: true, AlwaysOnTop: true, ClickThrough: true,
+	Width: 240, Height: 80, Content: meters})
+```
+
+It's `ignoresMouseEvents` on a Mac, a layered `WS_EX_TRANSPARENT`
+window on Windows and an empty input region on Linux
+(`gdk_surface_set_input_region`). On the web a window in the page lets
+clicks through to the page; nothing lets them out of the browser.
 
 ## File dialogs
 

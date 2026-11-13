@@ -205,11 +205,16 @@ Windows and Linux unless the row says otherwise.
 
 | | Electron | MyGo | Asuka |
 |---|---|---|---|
-| Controlling windows | `BrowserWindow` | `Window` | ✓ `ui.UseWindow`, `ui.MainWindow`: show, hide, focus, minimize, maximize, full screen, size, place, always on top, their state as signals; `OnCloseRequest`; where they were, by `StateKey`; child and modal windows; a hidden title bar (Linux: no place, center or always on top, which the compositor decides) |
+| Controlling windows | `BrowserWindow` | `Window` | ✓ `ui.UseWindow`, `ui.MainWindow`: show, hide, focus, minimize, maximize, full screen, size, place, always on top, their state as signals; `OnCloseRequest`; where they were, by `StateKey`; child and modal windows; a hidden title bar (Wayland: no place, center or always on top, which the compositor decides; X11: done through Xlib) |
 | Tray icons | `Tray` | tray icons | ✓ `tray.Show` (an `NSStatusItem`; the notification area; a StatusNotifierItem on Linux): icon or symbol, title, tooltip, menu, click |
 | Submenus, a Quit item | `MenuItem.submenu`, roles | roles, submenus | ✓ `MenuItem.Submenu`, `ui.MenuQuit`, in the menu bar, tray and Dock menus |
 | The Dock menu, jump list tasks | `app.dock.setMenu`, `setUserTasks` | the Dock menu, jump lists | ✓ `tray.DockMenu` (the Dock's menu, the jump list's Tasks, Linux's launcher quicklist) |
 | Apps in the background | `app.dock.hide`, not quitting on `window-all-closed` | an app in the background | ✓ `app.KeepRunning`, `app.RunInBackground`, `asuka.json`'s `background` |
+| Flyouts: a window hanging from a tray icon | a frameless `BrowserWindow` placed at `tray.getBounds()` by the app | flyouts | ✓ `WindowProps.Flyout` hanging from `tray.Icon.Anchor()` or a rectangle of its window: placed and flipped in the display, closed by a click elsewhere or Escape, a modal dialog over it (Linux: placed under X11 only) |
+| Panels for launchers | `type: 'panel'` (macOS) | panels | ✓ `Panel`: floating over every app and Space, the keyboard without activating the app on a Mac, closed by Escape or a click elsewhere (Linux under Wayland: a window as others) |
+| Windows sized to their content | `setContentSize` by the app | `FitContent` | ✓ `FitContent`: the core's layout sizes the window as its content changes |
+| Click-through windows | `setIgnoreMouseEvents` | `SetIgnoreMouseEvents`, `SetInputRegion` | ✓ `ClickThrough`, `WindowHandle.SetClickThrough` (the whole window) |
+| The apps installed, for a launcher | none | `InstalledApps`, `FileIcon`, `LaunchApp` | ✓ `asuka/apps` `List`, `Search`, `Icon`, `Open` |
 | Global shortcuts | `globalShortcut` | global shortcuts | ✓ `hotkey.Register` (Carbon's hot keys; `RegisterHotKey`; X11 grabs or Wayland's GlobalShortcuts portal) |
 | Open, save and folder dialogs | `dialog.showOpenDialog`, `showSaveDialog` | dialogs | ✓ `asuka/dialog` `Open`, `Save`, `Folder` (sheets on the Mac; the web: the File System Access pickers or the file input; phones: `Open` only) |
 | Reveal, open in its app, move to the trash | `shell.showItemInFolder`, `openPath`, `trashItem` | the shell | ✓ `asuka/shell` `Reveal`, `Open`, `Trash`, `Beep` |
@@ -225,9 +230,10 @@ Windows and Linux unless the row says otherwise.
 | Accent color, Increase Contrast, Reduce Transparency | `systemPreferences` | accent color and accessibility | ✓ `asuka/appearance` (no Reduce Transparency on Linux) |
 
 Not yet, of what MyGo has: document-based apps (a window per file,
-autosave, versions), auto-updates, flyouts (a window attached to a tray
-icon), non-activating panels for launchers, click-through windows, Now
-Playing and the media keys, and watching files (Go's own packages do).
+autosave, versions), auto-updates, Now Playing and the media keys, and
+watching files (Go's own packages do); and of its click-through windows,
+an input region (the parts of a window that still take clicks: Asuka's
+let the mouse through all of it, or none).
 
 ## Not yet
 

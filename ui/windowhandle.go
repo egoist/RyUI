@@ -17,8 +17,9 @@ import (
 // nothing, and the state stays as it starts (visible and focused).
 //
 // Where a platform can't do something, the method does nothing there:
-// Linux's desktop places windows (SetPosition, Center) and keeps them on
-// top itself (SetAlwaysOnTop) with no way for GTK 4 to ask; a browser tab
+// under Wayland, the compositor places windows (SetPosition, Center) and
+// keeps them on top itself (SetAlwaysOnTop), as an app can't ask (under
+// X11 the Linux host does them through Xlib); a browser tab
 // can only go full screen and take the focus (the main window on the
 // web), while a Window in the page does all but minimize.
 type WindowHandle struct {
@@ -240,10 +241,10 @@ func (w *WindowHandle) SetFullscreen(on bool) {
 func (w *WindowHandle) SetSize(width, height float32) { w.do(ops.WindowActionSize, width, height) }
 
 // SetPosition moves its frame's top left to x, y on the screen, in points
-// from the main display's top left (not on Linux).
+// from the main display's top left (not under Wayland).
 func (w *WindowHandle) SetPosition(x, y float32) { w.do(ops.WindowActionPosition, x, y) }
 
-// Center centers it on its display (not on Linux).
+// Center centers it on its display (not under Wayland).
 func (w *WindowHandle) Center() { w.do(ops.WindowActionCenter, 0, 0) }
 
 // SetClickThrough lets the mouse go through the window to what's behind
@@ -259,8 +260,8 @@ func (w *WindowHandle) SetClickThrough(on bool) {
 	w.do(a, 0, 0)
 }
 
-// SetAlwaysOnTop keeps it above other apps' windows, or not (not on
-// Linux).
+// SetAlwaysOnTop keeps it above other apps' windows, or not (not under
+// Wayland).
 func (w *WindowHandle) SetAlwaysOnTop(on bool) {
 	a := ops.WindowActionNotAlwaysOnTop
 	if on {

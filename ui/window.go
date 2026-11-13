@@ -42,14 +42,15 @@ type WindowProps struct {
 	MaxWidth, MaxHeight float32
 	// X and Y place it; with both 0 it opens down and right of the window
 	// in use, as new windows cascade, or centered on its display with
-	// Center. Linux's desktop places windows itself: GTK has no way to.
+	// Center. Under Wayland the compositor places windows itself: an app
+	// has no way to.
 	X, Y   float32
 	Center bool
 	// DisableResize, DisableMinimize, DisableMaximize and DisableClose
 	// take the user's abilities away: resizing it, and its buttons.
 	DisableResize, DisableMinimize, DisableMaximize, DisableClose bool
-	// AlwaysOnTop keeps it above other apps' windows (not on Linux, where
-	// GTK 4 can't ask for it).
+	// AlwaysOnTop keeps it above other apps' windows (not under Wayland,
+	// where an app can't ask for it).
 	AlwaysOnTop bool
 	TitleBar    TitleBarStyle
 	// Background fills the window behind its content (0: the platform's
