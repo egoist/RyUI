@@ -1,3 +1,5 @@
+<img src="artwork/icons/atfield.svg" width="96" alt="">
+
 # Asuka
 
 Native apps in Go for iOS, Android, macOS, Windows, Linux and the web.
