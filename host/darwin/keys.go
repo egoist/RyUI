@@ -27,13 +27,15 @@ import (
 // field's; a view the host doesn't know: its nearest superview that it
 // does), else, when the window itself or nothing of the host's has the
 // focus, at the window's root node (the root, a Window's, a sheet's or
-// a popover's node); it goes out through the nodes' parents, as the core
-// has them, to that root (a Window's, a sheet's or a popover's content
-// is under its node, which has no parent: another window's keys are its
-// own). The first node whose Keys have it takes it: the event goes no
-// further and the node gets Key. While an input
-// method composes text (the first responder has marked text), its keys
-// are its own.
+// a popover's node). It goes out through the nodes' parents, as the core
+// has them, and on from a node with none where it shows (keyOut): a
+// list's cell to its list, a sheet's node to the window it's a sheet of
+// and a popover's to its anchor's window (a sheet's node, for a popover
+// in a sheet), ending at that window's root (the root, or a Window node:
+// another window's keys are its own). The first node whose Keys have it
+// takes it: the event goes no further and the node gets Key. While an
+// input method composes text (the first responder has marked text), its
+// keys are its own.
 
 // keyMonitor is the local monitor of keys going down.
 var keyMonitor ID
@@ -90,7 +92,7 @@ func (h *Host) keyDown(ev ID) bool {
 	if name == "" {
 		return false
 	}
-	for ; n != nil; n = n.parent {
+	for ; n != nil; n = h.keyOut(n) {
 		if n.keys != nil {
 			if i := ops.MatchKey(n.keys, name, mods); i >= 0 {
 				h.emit(n, ops.Event{Kind: ops.EventKey, Int: int64(i)})
@@ -99,6 +101,49 @@ func (h *Host) keyDown(ev ID) bool {
 		}
 	}
 	return false
+}
+
+// keyOut is where a key goes on from n, not taking it: n's parent; for
+// a node the core leaves without one, where it shows: a list's cell its
+// list, a sheet's node the root of the window it's a sheet of (the main
+// window's root, a Window node), a popover's node the root of what its
+// anchor is in (a window's, or a sheet's node). The root and a Window
+// node are ends (nil).
+func (h *Host) keyOut(n *node) *node {
+	if n.parent != nil {
+		return n.parent
+	}
+	if n.cell != nil {
+		if l := n.cell.l.n; h.alive(l) {
+			return l
+		}
+		return nil
+	}
+	switch n.kind {
+	case ops.KindSheet:
+		if w := h.winOf(n.nav.over); w != nil && w.root != n {
+			return w.root
+		}
+		if h.main != nil {
+			return h.main.root
+		}
+	case ops.KindPopover:
+		a := h.nodes[n.popover.anchor]
+		for a != nil && (a.parent != nil || a.cell != nil) {
+			if a.parent != nil {
+				a = a.parent
+			} else {
+				a = a.cell.l.n
+			}
+		}
+		if a != nil && a != n {
+			return a
+		}
+		if h.main != nil {
+			return h.main.root
+		}
+	}
+	return nil
 }
 
 // keyStart is the node a key in window w starts at, fr its first

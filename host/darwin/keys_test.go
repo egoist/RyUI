@@ -229,18 +229,29 @@ func TestKeysInWindowDarwin(t *testing.T) {
 	})
 }
 
-// In a sheet (a window of its own), its content's keys are taken; its
-// node has no parent, so the main window's aren't.
+// In a sheet (a window of its own), its content's keys come first, then
+// the window it's a sheet of: the main window's UseKeys (UseKeys in the
+// sheet's content too), from a field in it or with nothing focused. A
+// sheet over a Window goes on to that Window's, never the main window's.
 func TestKeysInSheetDarwin(t *testing.T) {
-	open := signal.New(false)
+	open, win, winSheet := signal.New(false), signal.New(false), signal.New(false)
 	var got []string
 	rec := func(s string) func() { return func() { got = append(got, s) } }
 	h, _ := mount(t, func() ui.Node {
-		ui.UseKeys(ui.KeyMap{{Key: "up"}: rec("main up")})
-		return ui.Sheet(ui.SheetProps{Open: open, Content: func() ui.Node {
-			return ui.View(ui.ViewProps{Keys: ui.KeyMap{{Key: "down"}: rec("sheet down")}},
-				ui.TextField(ui.TextFieldProps{Value: signal.New("")}))
-		}})
+		ui.UseKeys(ui.KeyMap{{Key: "up"}: rec("main up"), {Key: "down"}: rec("main down")})
+		return ui.Column(ui.Style{},
+			ui.Sheet(ui.SheetProps{Open: open, Content: func() ui.Node {
+				ui.UseKeys(ui.KeyMap{ui.Cmd("d"): rec("sheet usekeys")})
+				return ui.View(ui.ViewProps{Keys: ui.KeyMap{{Key: "down"}: rec("sheet down")}},
+					ui.TextField(ui.TextFieldProps{Value: signal.New("")}))
+			}}),
+			ui.Window(ui.WindowProps{Open: win, Width: 300, Height: 200, Content: func() ui.Node {
+				ui.UseKeys(ui.KeyMap{{Key: "down"}: rec("window down")})
+				return ui.Sheet(ui.SheetProps{Open: winSheet, Content: func() ui.Node {
+					return ui.TextField(ui.TextFieldProps{Value: signal.New("")})
+				}})
+			}}),
+		)
 	})
 	onMain(func() {
 		Send(h.window, "makeKeyAndOrderFront:", 0)
@@ -252,8 +263,94 @@ func TestKeysInSheetDarwin(t *testing.T) {
 		}
 		pressKey(w, kcDown, "\uf701", 0, true)
 		pressKey(w, kcUp, "\uf700", 0, false)
-		if !slices.Equal(got, []string{"sheet down"}) {
-			fatalf(t, "got %q", got)
+		pressKey(w, kcD, "d", nsEventModifierCommand, false)
+		Send(w, "makeFirstResponder:", 0) // the sheet's window
+		pressKey(w, kcUp, "\uf700", 0, false)
+		if want := []string{"sheet down", "main up", "sheet usekeys", "main up"}; !slices.Equal(got, want) {
+			fatalf(t, "got %q, want %q", got, want)
+		}
+		got = nil
+		post(h, func() { open.Set(false); win.Set(true) })
+		x := onlyWin(t, h)
+		Send(x.window, "makeKeyAndOrderFront:", 0)
+		Send(h.window, "orderOut:", 0) // the app isn't active: the Window in use
+		post(h, func() { winSheet.Set(true) })
+		n = nil
+		for _, f := range find(h, ops.KindTextField) {
+			if v := Send(f.view, "window"); v != 0 && Send(v, "sheetParent") == x.window {
+				n = f
+			}
+		}
+		if n == nil {
+			fatal(t, "the field isn't in a sheet of the Window")
+		}
+		w = focus(n)
+		pressKey(w, kcDown, "\uf701", 0, false)
+		pressKey(w, kcUp, "\uf700", 0, false) // the main window's: not here
+		if want := []string{"window down"}; !slices.Equal(got, want) {
+			fatalf(t, "got %q, want %q", got, want)
+		}
+	})
+}
+
+// A popover's content goes on to its anchor's window: the main window's
+// UseKeys, after what the content declared.
+func TestKeysInPopoverDarwin(t *testing.T) {
+	open := signal.New(false)
+	var got []string
+	rec := func(s string) func() { return func() { got = append(got, s) } }
+	h, _ := mount(t, func() ui.Node {
+		ui.UseKeys(ui.KeyMap{{Key: "up"}: rec("main up"), {Key: "down"}: rec("main down")})
+		return ui.Column(ui.Style{Padding: ui.All(20)},
+			ui.Popover(ui.PopoverProps{Open: open, Content: func() ui.Node {
+				return ui.View(ui.ViewProps{Keys: ui.KeyMap{{Key: "down"}: rec("popover down")}},
+					ui.TextField(ui.TextFieldProps{Value: signal.New("")}))
+			}}, ui.Button(ui.ButtonProps{Title: ui.Val("Info")})))
+	})
+	onMain(func() {
+		Send(h.window, "makeKeyAndOrderFront:", 0) // shown, for the popover to show
+		post(h, func() { open.Set(true) })
+		if pops := find(h, ops.KindPopover); len(pops) != 1 || pops[0].popover.pop == 0 {
+			fatal(t, "no NSPopover")
+		}
+		w := focus(find(h, ops.KindTextField)[0])
+		if w == h.window {
+			fatal(t, "the field isn't in the popover's window")
+		}
+		pressKey(w, kcDown, "\uf701", 0, false)
+		pressKey(w, kcUp, "\uf700", 0, false)
+		Send(w, "makeFirstResponder:", 0)
+		pressKey(w, kcUp, "\uf700", 0, false)
+		if want := []string{"popover down", "main up", "main up"}; !slices.Equal(got, want) {
+			fatalf(t, "got %q, want %q", got, want)
+		}
+	})
+}
+
+// A list's row is a cell of the host's, with no parent in the core's
+// tree: a key in it goes on to the list, the views around it, the
+// window's.
+func TestKeysInListRowDarwin(t *testing.T) {
+	var got []string
+	rec := func(s string) func() { return func() { got = append(got, s) } }
+	h, _ := mount(t, func() ui.Node {
+		ui.UseKeys(ui.KeyMap{{Key: "up"}: rec("main up")})
+		return ui.View(ui.ViewProps{Style: ui.Style{Grow: 1}, Keys: ui.KeyMap{{Key: "down"}: rec("around down")}},
+			ui.List(ui.ListProps{}, signal.Static([]int{1, 2, 3}), func(i int) int { return i },
+				func(it signal.Accessor[int], _ signal.Accessor[int]) ui.Node {
+					return ui.Row(ui.Style{Height: ui.Pt(44)}, ui.TextField(ui.TextFieldProps{Value: signal.New("")}))
+				}))
+	})
+	onMain(func() {
+		fields := find(h, ops.KindTextField)
+		if len(fields) == 0 {
+			fatal(t, "no rows bound")
+		}
+		w := focus(fields[0])
+		pressKey(w, kcDown, "\uf701", 0, false)
+		pressKey(w, kcUp, "\uf700", 0, false)
+		if want := []string{"around down", "main up"}; !slices.Equal(got, want) {
+			fatalf(t, "got %q, want %q", got, want)
 		}
 	})
 }

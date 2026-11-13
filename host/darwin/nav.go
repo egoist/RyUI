@@ -41,8 +41,9 @@ type nav struct {
 	setting  bool
 	reversed bool // its items are in the reverse order of its children
 
-	// Sheet and Alert.
+	// Sheet and Alert; over, the window a sheet is a sheet of.
 	window ID
+	over   ID
 	alert  ID
 	order  []int // an alert's buttons' indexes, in the alert's order
 
@@ -521,6 +522,7 @@ func (h *Host) present(n *node) {
 		Send(content, "addSubview:", uintptr(n.view))
 		h.byView[content] = n
 		n.nav.window = w
+		n.nav.over = over.window
 		n.presented = true
 		h.reportScreen(n, size)
 		Send(over.window, "beginSheet:completionHandler:", uintptr(w), 0)
