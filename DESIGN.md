@@ -2964,6 +2964,70 @@ app is in front (a launcher's panel, start and stop a recording).
   `shell.ErrUnsupported` there (Open too on phones: `preview.Show`
   shows a file), Beep nothing.
 
+**Watching files** (`watch`): changes to a file or a directory, and with
+`Recursive` the directories in it; every platform, phones and the web
+too. MyGo's `WatchFiles`, ported.
+
+- No module and no host: the package calls each system from Go, in
+  the app's process (on iOS and Android, the Go library's), without
+  cgo. `watch.New(ctx, path, Options)` from any goroutine, `Next` for
+  each batch, `Close`; `watch.Path(path accessor, Options, f)` in a
+  component: the watch starts on a goroutine, follows its accessor,
+  stops with its owner, `f` runs on the main thread (`ui.Post`), and the
+  next batch waits until it has; `Err()`, `Watching()` and `Root()` are
+  signals.
+- A watch is a snapshot and a comparison, not a relay of the system's
+  events: it keeps each entry's identity (device and inode; volume and
+  file ID on Windows, read when the stat is taken), size, modification
+  time and mode, and where the system says something changed (a
+  notice: a directory, or an entry in one, with a kind that's only a
+  hint), it lists or stats again, once the notices stop for `Debounce`
+  (50 ms; never more than `MaxDelay`, 500 ms). The differences are the
+  events: `Create`, `Write`, `Remove`, `Rename` (paired by identity when
+  exactly one entry has it before and after: any platform, any
+  distance within the tree; a directory renamed is one event),
+  `Attrib` (the mode, with `Attributes`), and `Overflow` first in a
+  batch the system dropped changes for, after which it looked at
+  everything. A file replaced at its path by another file (an atomic
+  save) is a `Write`, never a removal and a creation, and the new file
+  is watched. A file is watched through its directory. The watched
+  directory removed, renamed or replaced ends the watch with a
+  `Remove` of `.`. The watch doesn't look again until `Next` took the
+  last batch, so a slow reader gets one batch of what changed meanwhile;
+  notices that come while it looks wait (spilled, up to `MaxEntries`,
+  then a look at everything).
+- It never leaves the tree: entries are stat'ed and directories
+  opened relative to their directory (`os.Root`), symlinks and
+  junctions are entries, not followed, and each target the system
+  watches is checked to be what the scan saw. What it can't read is
+  left out, not an error; `Ignore` (`watch.Patterns`, gitignore-like)
+  leaves out entries, and a directory it ignores is never opened.
+  `MaxEntries` (65536 on macOS, 8192 elsewhere) bounds a tree.
+- macOS: FSEvents through purego, a stream per directory target with
+  `kFSEventStreamCreateFlagFileEvents` and `WatchRoot`, on one serial
+  dispatch queue, one callback for the process; a stream covers its
+  tree, so directories below need none. Dropped events
+  (`MustScanSubDirs`, user or kernel drops) are an overflow.
+- iOS: kqueue's `EVFILT_VNODE` on an `O_EVTONLY` descriptor per
+  directory and file, an `EVFILT_USER` event to wake it (macOS runs it
+  too, and the tests run every case through both).
+- Linux and Android: inotify, one instance for the process (watch
+  descriptors, not instances, are what a user has many of), a watch
+  descriptor per directory, `IN_Q_OVERFLOW` an overflow. inotify says a
+  directory was removed (`IN_DELETE_SELF`) only once nothing holds it
+  open, and the watch does: a directory's watch watches its parent too,
+  which says so at once, when it may.
+- Windows: `ReadDirectoryChangesW` on a completion port, one handle for
+  a recursive tree (its directories stay renamable), its parent's too
+  (a directory's own handle says nothing when it's renamed), the
+  buffer's overflow (`ERROR_NOTIFY_ENUM_DIR`, or nothing returned) an
+  overflow. `FILE_NOTIFY_CHANGE_ATTRIBUTES` only with `Attributes`.
+- The web: Go's `os` on js/wasm calls the page's `fs`, fs.js's file
+  system in memory, whose `watch` is Node's `fs.watch` (rename and
+  change, by name, recursive), told after the call that changed it;
+  its entries have inode numbers of their own, kept as they're renamed.
+  Under Node (`go test`), Node's `fs.watch`.
+
 ## The web
 
 The app's Go code is a WebAssembly program (`GOOS=js GOARCH=wasm`,

@@ -219,6 +219,7 @@ Windows and Linux unless the row says otherwise.
 | The app's folders | `app.getPath` | directories | ✓ `app.DataDir`, `ConfigDir`, `CacheDir`, `LogDir` (everywhere) |
 | Recent documents | `app.addRecentDocument` | recent documents | ✓ `asuka/recent` (Open Recent on the Mac, the jump list, the user's recent files on Linux) |
 | Starting at login | `app.setLoginItemSettings` | start at login | ✓ `asuka/login` (`SMAppService`, macOS 13+; the Run key; XDG autostart or the Background portal) |
+| Watching files | Node's `fs.watch` (chokidar) | `WatchFiles`, the watch plugin | ✓ `asuka/watch` `Path`, `New` (FSEvents, inotify, `ReadDirectoryChangesW`; also iOS's kqueue, Android's inotify and the web's own files): renames paired, atomic saves as writes, bursts coalesced |
 | Displays | `screen` | displays | ✓ `screen.UseDisplays`, `Nearest`, `Matching` (Wayland: no work area; phones and the web: theirs) |
 | Sleep, wake, lock, idle time, battery | `powerMonitor` | power | ✓ `asuka/power` (phones: battery, Low Power Mode, lock; the web: the battery) |
 | Progress and attention on the app's icon | `setProgressBar`, `flashFrame`, `dock.bounce` | the Dock and the taskbar | ✓ `dock.SetProgress`, `RequestAttention` (Linux: docks with the Unity launcher API) |
@@ -226,8 +227,8 @@ Windows and Linux unless the row says otherwise.
 
 Not yet, of what MyGo has: document-based apps (a window per file,
 autosave, versions), auto-updates, flyouts (a window attached to a tray
-icon), non-activating panels for launchers, click-through windows, Now
-Playing and the media keys, and watching files (Go's own packages do).
+icon), non-activating panels for launchers, click-through windows, and
+Now Playing and the media keys.
 
 ## Not yet
 

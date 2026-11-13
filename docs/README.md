@@ -87,7 +87,7 @@ browser.
 - [Languages](i18n.md): translated messages with plurals, numbers and
   dates in the user's way, right-to-left layouts, and trying a language.
 - [Data](data.md): values kept across launches, SQLite with live
-  queries, and secure storage.
+  queries, secure storage, and watching files.
 - [Device and services](device.md): the camera, code scanning, photos
   and files, previewing, printing and PDFs, the mail and message
   composers, location, notifications and push, audio and recording,

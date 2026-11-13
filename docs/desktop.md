@@ -5,7 +5,10 @@ What only a desktop has, beyond windows and the menu bar
 apps that live in the background, global shortcuts, file dialogs and
 the file manager, files the app opens, one instance, quitting, recent
 documents, starting at login, the displays, power, progress on the
-app's icon and the system's appearance.
+app's icon and the system's appearance. To follow changes to files and
+folders (a folder the app shows, a document another app saves), see
+[Watching files](data.md#watching-files-asukawatch), which phones and
+the web have too.
 
 Each one is a package, or a function in `ui` or `app`, and works on the
 Mac, Windows and Linux. A phone or a browser that hasn't one answers

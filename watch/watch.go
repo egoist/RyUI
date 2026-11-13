@@ -6,16 +6,24 @@
 // calls a function on the main thread with each batch of changes:
 //
 //	func Folder(dir signal.Accessor[string]) ui.Node {
-//		names := signal.New(list(dir.Get()))
-//		w := watch.Path(dir, watch.Options{}, func(events []watch.Event) {
-//			names.Set(list(dir.Peek())) // read the folder again
+//		names := signal.NewFunc[[]string](nil, slices.Equal)
+//		reload := func() {
+//			d := signal.Untrack(dir.Get)
+//			go func() {
+//				list := readNames(d) // os.ReadDir, off the main thread
+//				ui.Post(func() { names.Set(list) })
+//			}()
+//		}
+//		reload()
+//		w := watch.Path(dir, watch.Options{Ignore: watch.Patterns(".*")}, func([]watch.Event) {
+//			reload() // read the folder again
 //		})
 //		return ui.Column(nil,
-//			ui.Show(func() bool { return w.Err() != nil }, func() ui.Node {
-//				return ui.Text(func() string { return w.Err().Error() })
+//			ui.Show(signal.Func(func() bool { return w.Err() != nil }), func() ui.Node {
+//				return ui.Text(signal.Func(func() string { return w.Err().Error() }))
 //			}),
-//			ui.For(names, func(name string, _ signal.Accessor[int]) ui.Node {
-//				return ui.StaticText(name)
+//			ui.For(names, func(n string) string { return n }, func(n signal.Accessor[string], _ signal.Accessor[int]) ui.Node {
+//				return ui.Text(n)
 //			}),
 //		)
 //	}

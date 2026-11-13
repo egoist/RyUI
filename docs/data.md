@@ -3,7 +3,8 @@
 An app keeps its data in a few places: small values in `asuka/store`, records
 in SQLite with `asuka/sqlite`, secrets in the platform's keychain with
 `asuka/secure`, and files of its own with Go's `os`. This page covers each,
-the network through `net/http`, and which calls may block the main thread.
+the network through `net/http`, watching files, and which calls may block
+the main thread.
 
 ## Where data lives
 
@@ -411,6 +412,113 @@ To keep a long download going while the app is out of sight, see
 whether the connection is Wi-Fi or metered, see
 [`asuka/network`](device.md#network-state-asukanetwork).
 [`examples/downloader`](../examples/downloader) does both.
+
+## Watching files: asuka/watch
+
+`asuka/watch` tells the app when files change: a folder it shows, a
+project open in an editor, a settings file another program writes, a
+document another app saved. It works on every platform, phones and the
+web too.
+
+In a component, `watch.Path` watches a path while the component is
+there, and calls a function on the main thread with each batch of
+changes. Read the files again there:
+
+```go
+func Folder(dir signal.Accessor[string]) ui.Node {
+	names := signal.NewFunc[[]string](nil, slices.Equal)
+	reload := func() {
+		d := signal.Untrack(dir.Get)
+		go func() {
+			list := readNames(d) // os.ReadDir, off the main thread
+			ui.Post(func() { names.Set(list) })
+		}()
+	}
+	reload()
+	w := watch.Path(dir, watch.Options{Ignore: watch.Patterns(".*")}, func([]watch.Event) {
+		reload()
+	})
+	return ui.Column(nil,
+		ui.Show(signal.Func(func() bool { return w.Err() != nil }), func() ui.Node {
+			return ui.Text(signal.Func(func() string { return w.Err().Error() }))
+		}),
+		ui.For(names, func(n string) string { return n }, func(n signal.Accessor[string], _ signal.Accessor[int]) ui.Node {
+			return ui.Text(n)
+		}),
+	)
+}
+```
+
+The watch follows its accessor (a new path stops the old watch and
+starts one of the new), and stops as the component goes. It starts on
+a goroutine, since listing a large folder takes a while: `w.Watching()`
+says once it has, and `w.Err()` what kept it from starting (the path
+doesn't exist, can't be read, holds too many files: `watch.ErrLimit`).
+While the function runs, the watch waits, so a busy app gets the
+changes of the meantime in one batch rather than many.
+
+Off the main thread, as in a command-line tool or a sync loop,
+`watch.New` watches from any goroutine and `Next` returns each batch:
+
+```go
+w, err := watch.New(ctx, dir, watch.Options{Recursive: true, Ignore: watch.Patterns("node_modules/", ".git/")})
+if err != nil {
+	return err
+}
+defer w.Close()
+for {
+	events, err := w.Next(ctx)
+	if err != nil {
+		return err // io.EOF once closed, or once dir went away
+	}
+	for _, e := range events {
+		fmt.Println(e) // "create src/a.go", "rename a.txt -> b.txt", ...
+	}
+}
+```
+
+An event's `Op` is `Create`, `Write`, `Remove`, `Rename` (with
+`OldPath`), `Attrib` (permissions, with `Options.Attributes`) or
+`Overflow`; its `Path` is relative to what's watched, separated by
+slashes, `.` for itself. A watch compares what it sees with what it saw,
+so events say what's different, not every step that made it so:
+
+- A file written many times in a row is one `Write`, and one created
+  and removed in between is nothing. Changes wait for 50 ms of quiet
+  (`Debounce`), and never more than 500 ms while more keep coming
+  (`MaxDelay`).
+- A file saved as editors save, a temporary file renamed over it, is a
+  `Write`, not a removal and a creation, and the new file is watched in
+  its turn.
+- A file or folder moved within the watched folder is a `Rename`,
+  however far it moved, on every platform: the watch knows files by
+  their identity (device and inode, or Windows's file ID), not their
+  name. What moved in or out is a `Create` or a `Remove`.
+- `Overflow` starts a batch when the system dropped changes (too many at
+  once): the watch looked at everything again, and the rest of the
+  batch is what it found.
+- When the watched folder (or a watched file's folder) is removed or
+  renamed, the last batch has a `Remove` of `.`, and the watch ends.
+
+Without `Recursive`, a folder's watch reports its files and folders,
+not what's in them. A file is watched through its folder: watch the
+file's own path, and its replacement, removal and return are reported
+as `.`. Symlinks are reported as themselves, never followed. `Ignore`
+leaves out what it matches, and never opens a folder it ignores:
+`watch.Patterns` takes `.gitignore`'s simple patterns (`*.log`,
+`node_modules/`, `/dist`, `src/**/gen`).
+
+Each platform's own way: FSEvents on macOS (a whole tree for the cost of
+one stream), kqueue on iOS (a descriptor per file and folder, so keep
+iOS watches to the app's own folders), inotify on Android and Linux (a
+watch per folder, up to `fs.inotify.max_user_watches`), and
+`ReadDirectoryChangesW` on Windows. On the web, the app's files are the
+page's (see [Where data lives](#where-data-lives)), and the watch sees
+what the app's own code changes in them. The watch never leaves the
+folder: what it can't read is left out, and `MaxEntries` (65536 files
+and folders on macOS, 8192 elsewhere) stops a watch of a tree too
+large with `watch.ErrLimit`. [`examples/files`](../examples/files)
+shows a folder that updates live.
 
 ## The main thread
 
