@@ -1,0 +1,7 @@
+{
+  "name": "Launcher",
+  "id": "dev.asuka.launcher",
+  "version": "1.0.0",
+  "build": 1,
+  "background": true
+}
