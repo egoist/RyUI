@@ -543,13 +543,13 @@ The environment says the same for CI and tests: `ASUKA_UPDATE_PRIVATE_KEY`
 ### In the app
 
 `update.Window` is the update window, in the app's root; `update.AppMenu`
-puts "Check for Updates…" in the app's menu after About on the Mac (in
-Help on Windows and Linux):
+puts "Check for Updates…" in the app's menu after About on the Mac (a
+Help menu on Windows, the header bar's main menu on Linux):
 
 ```go
 func Root() ui.Node {
 	return ui.Column(ui.Style{},
-		update.Window(update.Options{Icon: "icon.png"}),
+		update.Window(update.Options{Icon: "logo.png"}), // an image in assets/
 		ui.MenuBar(ui.Val([]ui.MenuBarMenu{update.AppMenu()})),
 		// ...
 	)
