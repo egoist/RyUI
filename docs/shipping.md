@@ -3,7 +3,9 @@
 `asuka build` makes an app's release build for one platform, from the
 app's directory (or the one given), into its `dist`. `asuka publish`
 uploads the iOS and Android builds to their stores: to TestFlight and
-App Review, or a Google Play track (see [Publishing](#publishing)).
+App Review, or a Google Play track (see [Publishing](#publishing)); and
+the desktop builds' signed updates, which installed apps update to, to
+GitHub's releases or an S3 bucket (see [Updates](#updates)).
 
 | `--platform` | What it makes, in `dist` | Builds on | Given to users |
 |---|---|---|---|
@@ -1042,6 +1044,40 @@ the notary service; `WINDOWS_CERTIFICATE`, a code signing certificate
 (a `.pfx`), and `WINDOWS_CERTIFICATE_PASSWORD`. Each Linux build makes
 its own `.tar.gz`; the Flatpak manifest packages the last one built, for
 its architecture.
+
+With [updates](#updates) on GitHub, `asuka publish` in place of `asuka
+build` also uploads each platform's update to the tag's draft release
+(the `release` job made it), to publish once every platform is there.
+Add the secret key as a secret (`gh secret set ASUKA_UPDATE_PRIVATE_KEY <
+asuka-update.key`), give the jobs `ASUKA_UPDATE_PRIVATE_KEY` and
+`GH_TOKEN`, and build the tag's version:
+
+```yaml
+      - name: build, sign, notarize, and upload with its update
+        env:
+          ASUKA_UPDATE_PRIVATE_KEY: ${{ secrets.ASUKA_UPDATE_PRIVATE_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          ASUKA_APPLE_ID: ${{ secrets.APPLE_ID }}
+          ASUKA_APPLE_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          ASUKA_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: asuka publish --platform mac --draft --version "${GITHUB_REF_NAME#v}" --sign "Developer ID Application: Your Name (TEAMID)" --notarize env
+```
+
+and in the Windows and Linux job:
+
+```yaml
+        run: |
+          for p in "windows" "windows --arch arm64" "linux" "linux --arch arm64"; do
+            asuka publish --platform $p --draft --version "${GITHUB_REF_NAME#v}"
+          done
+```
+
+Then publish the draft (`gh release edit v1.2.0 --draft=false`, or in
+the release's page): installed apps update to it. The release job's tag
+is `tagPrefix` and the version (`v1.2.0`); `--version` makes the build's
+the tag's, so `asuka.json`'s needn't be bumped. Deltas start from the
+published release, which the runners download (`GH_TOKEN` lifts the
+GitHub API's limit on requests, which a `tagPrefix` uses).
 
 ## Languages
 

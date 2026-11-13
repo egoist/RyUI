@@ -98,7 +98,7 @@ browser.
 - [The desktop](desktop.md): tray icons and the Dock menu, apps in the
   background, global shortcuts, file dialogs and the file manager,
   opening files, one instance, quitting, recent documents, starting at
-  login, the displays, power and progress on the app's icon.
+  login, updates, the displays, power and progress on the app's icon.
 - [Native code](native.md): views and modules of your own: Swift on
   iOS and macOS, Kotlin on Android, Go on the desktop, JavaScript on the
   web.
@@ -106,7 +106,8 @@ browser.
   devices, `asuka vet`, tests and common problems.
 - [Shipping](shipping.md): builds for the App Store and Google Play, a
   signed and notarized Mac app, a Windows folder, a Linux archive and
-  Flatpak manifest, and what `asuka.json` says of the app.
+  Flatpak manifest, desktop apps' signed updates, and what
+  `asuka.json` says of the app.
 - [The web](web.md): the same app in a browser, as WebAssembly and the
   page's DOM; `asuka dev --platform web`, a static site to deploy,
   embedding, and what it doesn't do yet.

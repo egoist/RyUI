@@ -86,6 +86,9 @@ go run ./cmd/asuka dev --platform web examples/counter       # the web: served t
 go run ./cmd/asuka build --platform web examples/counter     # a static site, in examples/counter/dist/web
 GOOS=js GOARCH=wasm go vet ./host/web ./app       # the web host's Go side
 go test -tags e2e ./e2e -run Web                  # GUI tests: the examples in headless Chrome
+go run ./cmd/asuka update keygen                  # the key pair that signs desktop apps' updates (asuka.json's updates)
+go run ./cmd/asuka publish --platform linux examples/counter  # a desktop build and its signed update, uploaded (GitHub, S3)
+go test -tags e2e ./e2e -run Updater               # a desktop app updates itself and relaunches (macOS; Linux under xvfb-run)
 ```
 
 ## Conventions

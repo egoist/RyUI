@@ -918,6 +918,8 @@ asuka dev|build <dir>                       no --platform: this computer's, on m
 asuka generate <dir>                        the typed functions of the app's catalogs
 asuka i18n init|add|check                   start, add languages to, and check the catalogs
 asuka vet [packages]                        what builds but runs wrong: a signal read once, written off the main thread
+asuka publish --platform mac|windows|linux   the desktop build, its signed update (dist/updates), uploaded: a GitHub release, S3
+asuka update keygen                         the Ed25519 key pair that signs desktop updates
 ```
 
 **An app's metadata** is `asuka.json` beside its Go code, all optional:
@@ -2963,6 +2965,77 @@ app is in front (a launcher's panel, start and stop a recording).
   Phones and the web have no file manager: Reveal and Trash are
   `shell.ErrUnsupported` there (Open too on phones: `preview.Show`
   shows a file), Beep nothing.
+
+**Updates** (`update`, `internal/update`, `app/relaunch.go`,
+`cmd/asuka/updates.go`): a desktop app updates itself as Sparkle's do,
+from releases `asuka build` signs; MyGo's updater, ported.
+
+- The format (`internal/update`, shared by the app and the CLI): a
+  manifest per target (`darwin-universal`, `windows-amd64`,
+  `linux-arm64`...), `update-<target>.json`, or a prerelease's channel's
+  `update-<target>-beta.json` (a version's channel is its prerelease's
+  letters): the version, Markdown notes, the date, the archive's URL,
+  size and Ed25519 signature of its SHA-256, the deltas from earlier
+  versions and the archives before (for the next build's deltas).
+  Versions compare as semantic versioning orders them. An archive is a
+  gzipped tar of the app as installed; a delta (Sparkle's kind) lists the
+  new app's tree, each file a copy of the old app's (by path or by
+  content), a bsdiff patch of it (suffix array by qsufsort), or new
+  (DEFLATE), and every file it makes is checked against its size and
+  SHA-256, so a delta applied to a changed app fails and the archive is
+  downloaded instead.
+- The feed (`buildFeed`, `-ldflags -X` with the public key and the
+  target, only in `asuka build`'s builds): a static manifest URL (S3, a
+  CDN), GitHub's latest release (or, with a tag prefix or a channel, the
+  newest tagged release the API lists), or a custom server's URL with
+  `{target}`, `{version}` and `{channel}` that answers a manifest or
+  204. `update.SetSource` puts code of the app's own in its place.
+  Requests are HTTPS (or the loopback), through the environment's
+  proxy, retried on 429 and 5xx.
+- Where an app is installed (`internal/update.Locate`, pure file
+  operations, tested on any system for each layout): a Mac bundle
+  (`Contents/MacOS/<exe>`; App Translocation and the Mac App Store's
+  receipt refused), a Windows folder (MSIX's `WindowsApps` refused), a
+  Linux prefix (`<prefix>/bin/<exe>` with `share/<exe>/`; Flatpak, Snap,
+  AppImage, `/usr` refused). Updates are made in `Work`, on the
+  install's volume, and put in place by renames.
+- macOS: the new bundle is checked (`codesign --verify --deep --strict`,
+  the running app's team ID and identifier, quarantine taken off) and
+  left to a helper, `/bin/sh` in a session of its own, that waits for
+  the app's pid to exit, swaps the bundles (the old one back if the new
+  can't be moved in), registers it with Launch Services and, when
+  `app.Relaunch` asked (`boot.StagedRelaunch`), opens it with
+  `/usr/bin/open`: after the app quits, so the Dock keeps its tile.
+- Windows and Linux (`Install.Swap`): the units of the new tree (a
+  folder's entries; a prefix's files and links) replace the installed
+  ones, those the old version's `.asuka-files` names and the new lacks go,
+  what no list names stays (the user's files, other programs of
+  `~/.local`); everything moved aside first and put back if one rename
+  fails. The running `.exe` is renamed aside (Windows lets it), removed at
+  the next launch (`CleanLeftovers`). Linux then runs the desktop's cache
+  tools.
+- `app.Relaunch` quits as `app.Quit` does and, once the quit goes on,
+  starts what starts the app after this process exits: on the Mac a
+  detached shell that waits, then `open`s the bundle; elsewhere the
+  executable (its path from launch: Linux's `/proc` names the replaced
+  file), with `ASUKA_RELAUNCH_WAIT`, which package `app`'s init waits on
+  (`kill(pid, 0)`; `OpenProcess` and `WaitForSingleObject`) before the
+  host takes the single instance.
+- The updater (`update.Window`): its state a signal on the main thread
+  (`Use`), checks and downloads in goroutines that `ui.Post` back, a
+  timer that wakes at least hourly to compare with the clock (a computer
+  asleep stops timers); the window's view follows the phase (a memo, so
+  progress doesn't rebuild it), its release notes `asuka/markdown`, its
+  words `internal/l10n`'s. Preferences in `update.json` in the data
+  directory.
+- The CLI: `asuka update keygen`; `asuka build` writes `dist/updates`
+  (the Linux tarball is the archive; a Windows folder and a Linux prefix
+  get `.asuka-files`), deltas from the published manifest's versions
+  (downloaded and verified); `asuka publish --platform mac|windows|linux`
+  uploads to the tag's GitHub release (`gh`) or S3 (SigV4 in Go), the
+  manifests last. Phones answer `ErrUnsupported`; the web build writes
+  `version.json`, which `update.Check` reads past caches, and `Relaunch`
+  reloads the page.
 
 ## The web
 
