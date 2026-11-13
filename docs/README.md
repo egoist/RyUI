@@ -1,7 +1,7 @@
 # Asuka documentation
 
-Asuka makes native apps in Go, for iOS, Android, macOS, Windows, Linux
-and the web. An app's interface is Go functions that return views; Asuka
+Asuka makes apps in Go with each platform's own widgets, on iOS, Android,
+macOS, Windows, Linux and the web. An app's interface is Go functions that return views; Asuka
 shows them with each platform's own widgets, and updates only the views
 that read a signal when it changes.
 
@@ -111,5 +111,7 @@ browser.
 
 - [Compared to SwiftUI and Expo](parity.md): what Asuka has, and what it
   doesn't yet.
+- [Asuka and MyGo](mygo.md): the platform's widgets or UI drawn by the
+  framework, phones or the desktop alone, and when to use each.
 - The Go API: `go doc -all github.com/egoist/asuka/ui`, and the other
   packages of the module.

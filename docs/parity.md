@@ -12,7 +12,8 @@ SwiftUI also runs on the Mac. Expo runs on iOS, Android and the web;
 React Native reaches Windows and the Mac through Microsoft's React
 Native for Windows and macOS, outside Expo. For Asuka against the
 desktop's own frameworks (Electron, Tauri, Wails), see
-[On the desktop](#on-the-desktop).
+[On the desktop](#on-the-desktop); against MyGo, which draws its own UI,
+see [Asuka and MyGo](mygo.md).
 
 ✓ has it · ◐ in part (what's missing is said) · ✗ not yet
 

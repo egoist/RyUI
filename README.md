@@ -2,8 +2,9 @@
 
 # Asuka
 
-Native apps in Go for iOS, Android, macOS, Windows, Linux and the web.
-Asuka renders with each platform's own widgets (UIKit on iOS, Android
+Apps in Go with each platform's own widgets, on iOS, Android, macOS,
+Windows, Linux and the web.
+Asuka renders with each platform's widgets (UIKit on iOS, Android
 Views and Material 3 on Android, AppKit on the Mac, Win32 drawn as
 Windows 11's, GTK 4 and libadwaita on Linux, the DOM in a browser) and
 updates them with fine-grained signals: a change touches only the views

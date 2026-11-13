@@ -181,21 +181,21 @@ function Home() {
 
 /**
  * The title card, in the page's column and within a laptop's screen:
- * NATIVE APPS, set to the column's full width, IN GO. flush right under it
- * at the same size, the subtitle in the space it leaves. The size comes from
- * the line's width in Shippori Mincho B1 ExtraBold: NATIVE APPS, is 7.74em.
+ * NATIVE WIDGETS, set to the column's full width, IN GO. flush right under it
+ * and larger, the subtitle in the space it leaves. The sizes come from the
+ * lines' widths in Shippori Mincho B1 ExtraBold: NATIVE WIDGETS, is 10.23em.
  */
 function Hero() {
   // Line height after the size: tailwind-merge drops a leading- that comes before a text- size.
-  const big = "block origin-bottom-left scale-y-[1.14] whitespace-nowrap text-[calc(100cqi/7.9)] leading-[0.9]"
-  const subtitle = "display leading-snug text-balance"
+  const big = (size: string) => cn("block origin-bottom-left scale-y-[1.14] whitespace-nowrap", size, "leading-[0.9]")
+  const subtitle = (size: string) => cn("display text-balance", size, "leading-snug")
   return (
     <section className="relative overflow-hidden border-b">
       <div className="scanlines pointer-events-none absolute inset-0" />
       <div className="relative flex items-center justify-between border-b px-4 py-3 sm:px-10">
         <p className="label flex items-center gap-2 text-foreground/80">
           <span className="size-1.5 animate-pulse bg-unit" />
-          Asuka {__ASUKA_VERSION__}
+          {__ASUKA_VERSION__}
         </p>
         <p className="label hidden text-signal-ink sm:block">Core: Go / Host: native / Sync 100.0%</p>
       </div>
@@ -209,15 +209,15 @@ function Hero() {
         </div>
 
         <div className="@container mt-3">
-          <h1 className="sr-only">Native apps, in Go.</h1>
-          <p aria-hidden className={cn("display", big)}>
-            NATIVE APPS,
+          <h1 className="sr-only">Native widgets, in Go.</h1>
+          <p aria-hidden className={cn("display", big("text-[calc(100cqi/10.4)]"))}>
+            NATIVE WIDGETS,
           </p>
           <div className="mt-[1.6cqi] flex items-end justify-between gap-6">
-            <p className={cn(subtitle, "hidden max-w-[24ch] pb-[0.8cqi] text-[clamp(1.25rem,2.9cqi,2.1rem)] sm:block")}>
-              The platform&apos;s widgets, not a web view.
+            <p className={cn(subtitle("text-[clamp(1.2rem,2.5cqi,1.9rem)]"), "hidden max-w-[26ch] pb-[0.8cqi] sm:block")}>
+              UIKit, Material, AppKit, Win32, GTK and the DOM. Not a canvas, not a web view.
             </p>
-            <p aria-hidden className={cn("display ml-auto origin-bottom-right", big, "origin-bottom-right")}>
+            <p aria-hidden className={cn("display ml-auto", big("text-[calc(100cqi/7.6)]"), "origin-bottom-right")}>
               IN <span className="text-unit">GO.</span>
             </p>
           </div>
@@ -225,9 +225,9 @@ function Hero() {
 
         <div className="mt-6 grid grid-cols-1 gap-6 border-t-2 border-foreground pt-6 md:mt-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-10">
           <div>
-            <p className={cn(subtitle, "mb-3 text-[1.6rem] sm:hidden")}>The platform&apos;s widgets, not a web view.</p>
+            <p className={cn(subtitle("text-[1.5rem]"), "mb-3 sm:hidden")}>UIKit, Material, AppKit, Win32, GTK and the DOM. Not a canvas, not a web view.</p>
             <p className="max-w-xl text-base leading-7 text-foreground/70">
-              Write one app in Go alone, for phones, desktops and the web. Asuka shows it with each platform&apos;s own widgets, and updates only what changed.
+              Write one app in Go alone, for phones, desktops and the web. Each platform shows it with its own controls, its text input and its accessibility, and Asuka updates only what changed.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
