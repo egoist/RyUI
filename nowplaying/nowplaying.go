@@ -166,6 +166,8 @@ var (
 
 	following bool
 	gen       int // a "next" of another generation is stale
+
+	clearing int // counts the clears put off; a Show cancels the one pending
 )
 
 // Seams for tests: the clock, and the Player's next status read.
@@ -192,6 +194,9 @@ func Show(p Props) {
 		s.status = signal.New(audio.Status{})
 		s.readStatus()
 	}
+	if len(shown) == 0 {
+		clearing++ // what the last one showed is replaced, not cleared
+	}
 	shown = append(shown, s)
 	follow()
 	signal.RenderEffect(func() {
@@ -209,8 +214,22 @@ func Show(p Props) {
 				break
 			}
 		}
-		publish()
+		if len(shown) > 0 {
+			publish() // the one before
+			return
+		}
+		// The last one: cleared once what replaces it, if anything, has
+		// mounted (a track's component giving way to the next one's), so
+		// the system's controls stay the app's in between (Android's
+		// session, Linux's bus name, the headset's media button).
 		unfollow()
+		clearing++
+		c := clearing
+		ui.Post(func() {
+			if c == clearing && len(shown) == 0 {
+				publish()
+			}
+		})
 	})
 }
 

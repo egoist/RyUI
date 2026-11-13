@@ -298,6 +298,35 @@ func TestDispose(t *testing.T) {
 	}
 }
 
+// A track's component giving way to the next one's replaces what shows:
+// the controls aren't cleared in between, and the commands keep coming.
+func TestReplace(t *testing.T) {
+	newClock(t)
+	index := signal.New(0)
+	titles := []string{"Morning", "Evening"}
+	var next int
+	h, np, r := mount(t, func() ui.Node {
+		return ui.Dynamic(func() ui.Node {
+			title := titles[index.Get()]
+			nowplaying.Show(nowplaying.Props{Title: ui.Val(title), OnNext: func() { next++; index.Set(1 - index.Peek()) }})
+			return ui.StaticText(title)
+		})
+	})
+	np.Send("next", 0)
+	settle(h, r)
+	if next != 1 || np.Info == nil || np.Info.Title != "Evening" || np.Clears != 0 {
+		t.Fatalf("after next: %d, %+v, %d clears", next, np.Info, np.Clears)
+	}
+	if !np.Following() {
+		t.Fatal("not following after the change")
+	}
+	np.Send("next", 0)
+	settle(h, r)
+	if next != 2 || np.Info.Title != "Morning" || np.Clears != 0 {
+		t.Fatalf("again: %d, %+v, %d clears", next, np.Info, np.Clears)
+	}
+}
+
 // fakePlayer is a host's "audio" module for one player.
 type fakePlayer struct {
 	calls    []string
