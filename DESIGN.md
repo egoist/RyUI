@@ -3342,9 +3342,10 @@ their own.
   (`boot.KeepRunning`) and its Dock icon makes a document
   (`boot.Reopen`, which `applicationShouldHandleReopen:` asks); Windows'
   and Linux's quit with their last document.
-- Files other apps change: each open file is watched (a poll of its
-  stamp every two seconds, behind an interface a package of the
-  system's notifications can take over) and looked at when its window
+- Files other apps change: each open file is watched (asuka/watch's
+  watch of it, through its folder, so a file an editor replaces stays
+  watched; where there's none, or once its folder went, a poll of its
+  stamp every two seconds) and looked at when its window
   comes to the front: an unedited document reads it again, an edited one
   is in conflict; a file gone is looked for by its identity (a Mac:
   anywhere on its volume, `/.vol/<dev>/<ino>` and `F_GETPATH`; elsewhere

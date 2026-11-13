@@ -1,10 +1,13 @@
 package document
 
 import (
+	"context"
 	"io"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/egoist/asuka/watch"
 )
 
 // Documents notice what other apps do to their files: a watch of each
@@ -15,9 +18,11 @@ import (
 // Mac anywhere on its volume, elsewhere in its folder), and a deleted one
 // leaves the document open, written again by its next save.
 //
-// The watch is behind fileWatcher: polling the file's stamp, a cheap stat
-// every two seconds per open document, until a package that watches files
-// with the system's notifications takes its place.
+// The watch is behind fileWatcher: asuka/watch's watch of the file (the
+// system's notifications, through its folder, so a file an editor
+// replaces stays watched), and where it can't watch (the platform hasn't
+// one, the folder went away) a look at the file's stamp, a cheap stat
+// every two seconds.
 
 // fileWatcher tells when a file may have changed.
 type fileWatcher interface {
@@ -27,7 +32,51 @@ type fileWatcher interface {
 }
 
 // watcher is the package's (tests replace it).
-var watcher fileWatcher = pollWatcher{every: 2 * time.Second}
+var watcher fileWatcher = systemWatcher{poll: pollWatcher{every: 2 * time.Second}}
+
+// systemWatcher watches a file with asuka/watch, and polls it where that
+// can't, or once its watch ended (its folder removed or moved: the file
+// may come back, or the document follows it elsewhere).
+type systemWatcher struct{ poll pollWatcher }
+
+func (s systemWatcher) watch(path string, changed func()) (stop func()) {
+	ctx, cancel := context.WithCancel(context.Background())
+	var mu sync.Mutex
+	var stopPoll func()
+	stopped := false
+	go func() {
+		if w, err := watch.New(ctx, path, watch.Options{}); err == nil {
+			defer w.Close()
+			for {
+				if _, err := w.Next(ctx); err != nil {
+					break
+				}
+				post(changed)
+			}
+			if ctx.Err() != nil {
+				return
+			}
+			post(changed) // the watch ended: its folder went
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		if !stopped {
+			stopPoll = s.poll.watch(path, changed)
+		}
+	}()
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			cancel()
+			mu.Lock()
+			stopped = true
+			if stopPoll != nil {
+				stopPoll()
+			}
+			mu.Unlock()
+		})
+	}
+}
 
 // pollWatcher looks at a file's stamp every so often.
 type pollWatcher struct{ every time.Duration }
