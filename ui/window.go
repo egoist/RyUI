@@ -1,7 +1,6 @@
 package ui
 
 import (
-
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
 )
