@@ -3,6 +3,7 @@
 package windows
 
 import (
+	"math"
 	"syscall"
 	"unsafe"
 )
@@ -46,6 +47,18 @@ func fcall(p *syscall.LazyProc, floats uint32, args ...uintptr) uintptr {
 			nx++
 		}
 	}
+	r, _, _ := syscall.SyscallN(fcallTrampAddr, uintptr(unsafe.Pointer(&fr)))
+	return r
+}
+
+// ComCallDouble calls a COM method that takes a double: in D0, through
+// fcallTramp.
+func ComCallDouble(obj uintptr, i int, v float64) uintptr {
+	vtbl := *(*uintptr)(native(obj))
+	var fr fframe
+	fr.fn = *(*uintptr)(unsafe.Add(native(vtbl), i*int(unsafe.Sizeof(uintptr(0)))))
+	fr.x[0] = obj
+	fr.v[0] = math.Float64bits(v)
 	r, _, _ := syscall.SyscallN(fcallTrampAddr, uintptr(unsafe.Pointer(&fr)))
 	return r
 }
