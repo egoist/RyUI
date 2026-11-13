@@ -123,11 +123,33 @@ open class AsukaActivity : AppCompatActivity() {
             intent.getByteArrayExtra(AsukaShareActivity.ITEMS)?.let { runtime.shared(it) }
             return
         }
+        // A file of asuka.json's fileTypes, opened from a file manager or
+        // a mail's attachment: a content:// URI is no path, so the app gets
+        // its own copy, in its caches, for ui.OnOpenFiles.
+        val data = intent.data
+        if (intent.action == android.content.Intent.ACTION_VIEW && data != null && (data.scheme == "content" || data.scheme == "file")) {
+            openFile(data)
+            return
+        }
         // A notification's tap or action that opens the app (asuka/notify).
         AsukaNotifyHub.opened(this, intent)
         // A push the user tapped (asuka/push): its data's url, if any.
         val pushed = AsukaPushHub.opened(intent)
         (intent.data?.toString() ?: pushed)?.let { runtime.openURL(it) }
+    }
+
+    /** openFile copies uri's file into the caches (off the main thread), then opens the app with it as a file:// URL. */
+    private fun openFile(uri: android.net.Uri) {
+        val ctx = applicationContext
+        Thread {
+            val url = try {
+                openedFileURL(ctx, uri)
+            } catch (e: Exception) {
+                android.util.Log.w("Asuka", "a file the app was opened with: $e")
+                null
+            }
+            if (url != null) runOnUiThread { runtime.openURL(url) }
+        }.start()
     }
 
     fun mount(root: View) {
@@ -247,4 +269,23 @@ open class AsukaActivity : AppCompatActivity() {
         runtime.detach(this)
         super.onDestroy()
     }
+}
+
+/**
+ * openedFileURL is the file:// URL of the app's copy of uri's file
+ * (cache/opened/<n>/<its name>), or of the file itself for a file:// URI.
+ */
+internal fun openedFileURL(ctx: android.content.Context, uri: android.net.Uri): String {
+    if (uri.scheme == "file") return android.net.Uri.fromFile(java.io.File(uri.path ?: "")).toString()
+    var name = uri.lastPathSegment?.substringAfterLast('/') ?: "file"
+    ctx.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+        if (c.moveToFirst() && !c.isNull(0)) name = c.getString(0)
+    }
+    name = name.replace('/', '_').ifEmpty { "file" }
+    val dir = java.io.File(ctx.cacheDir, "opened/" + System.nanoTime())
+    dir.mkdirs()
+    val f = java.io.File(dir, name)
+    val input = ctx.contentResolver.openInputStream(uri) ?: throw java.io.IOException("no stream for $uri")
+    input.use { i -> f.outputStream().use { o -> i.copyTo(o) } }
+    return android.net.Uri.fromFile(f).toString()
 }

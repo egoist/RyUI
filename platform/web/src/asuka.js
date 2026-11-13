@@ -58,6 +58,8 @@ export async function start(options = {}) {
   for (const [k, f] of natives) host.natives.set(k, f);
   for (const [k, m] of modules) host.modules.registered.set(k, m);
   worker.attach(host);
+  // Files an installed app is opened with (asuka.json's fileTypes).
+  worker.openLaunchFiles(host, fs.saveUpload);
   const hostName = "asukaHost" + (hosts++ || "");
   globalThis[hostName] = host;
   const go = new globalThis.Go();
