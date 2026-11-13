@@ -84,17 +84,17 @@ type WindowProps struct {
 	// takes the keyboard as it shows and closes, as the user closing it,
 	// as it loses the keyboard (a click elsewhere, another app) or on an
 	// Escape its content leaves, as menus and popovers do; a Modal Window
-	// declared in it, or an Alert, keeps it open while it shows. With no
-	// Background it has the system's material behind its content (a
-	// Mac's menus'), rounded corners and a shadow.
+	// declared in it, or an Alert, keeps it open while it shows. On a Mac,
+	// with no Background, it has the material of menus behind its content,
+	// rounded corners and a shadow; Windows 11 rounds it.
 	Flyout *Flyout
 	// Panel makes it a panel, a launcher's or a command palette's window:
 	// it floats above every app's windows, on whichever Space or virtual
 	// desktop the user is on and over apps in full screen, out of the
 	// taskbar, the Dock's windows and the window cycle, and takes the
 	// keyboard without activating the app on a Mac, so the app the user
-	// was in stays in front. Frameless, with the system's material behind
-	// its content unless it has a Background, it closes, as the user
+	// was in stays in front. Frameless (on a Mac over the material of
+	// popovers unless it has a Background), it closes, as the user
 	// closing it, on an Escape its content leaves or as it loses the
 	// keyboard: give it OnCloseRequest to hide it instead, so it shows
 	// again at once. Without X and Y it shows on the display with the
