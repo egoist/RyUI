@@ -11,7 +11,9 @@ import (
 // Destructive menu items: a Win32 menu can't color an item's text, so a
 // menu with a destructive item (a MenuBar item with Destructive, an
 // Action with ActionDestructive in a popup menu) is owner-drawn, the
-// destructive items red (Fluent's critical text color). All its items
+// destructive items red (Fluent's critical text color). So is a menu
+// with a section's header (ui.MenuSection's title), drawn in the
+// secondary text color, which the mouse doesn't highlight. All its items
 // are: a menu with one owner-drawn item loses its visual style for the
 // others, which the system then draws as classic menus. They're drawn as
 // the system draws a themed menu's, with the visual style's Menu parts
@@ -29,6 +31,7 @@ type ownerItem struct {
 	separator   bool
 	destructive bool
 	submenu     bool // it opens a submenu: the arrow is drawn
+	header      bool // a section's title (an Action's MenuSection)
 }
 
 // ownerMenu is an owner-drawn menu: its items share a text and a
@@ -46,6 +49,7 @@ type menuItem struct {
 	separator   bool
 	destructive bool
 	submenu     bool
+	header      bool
 }
 
 // ownerDrawMenu makes all of a menu's items owner-drawn (it has a
@@ -57,7 +61,7 @@ func (h *Host) ownerDrawMenu(m uintptr, items []menuItem, order uint32) *ownerMe
 	om := &ownerMenu{menu: m}
 	for i, mi := range items {
 		title, key, _ := strings.Cut(mi.text, "\t")
-		it := &ownerItem{menu: om, text: UTF16Units(title), key: UTF16Units(key), separator: mi.separator, destructive: mi.destructive, submenu: mi.submenu}
+		it := &ownerItem{menu: om, text: UTF16Units(title), key: UTF16Units(key), separator: mi.separator, destructive: mi.destructive, submenu: mi.submenu, header: mi.header}
 		h.ownedNext++
 		id := h.ownedNext
 		h.owned[id] = it
@@ -312,7 +316,7 @@ func (h *Host) drawMenuItem(s *menuStyle, d *DrawItem, it *ownerItem) {
 	disabled := state&(ODS_GRAYED|ODS_DISABLED) != 0
 	sel := Rect{Left: r.Left + s.inset(), Top: r.Top, Right: r.Right - s.inset(), Bottom: r.Bottom}
 	DrawThemeBackground(s.theme, dc, MENU_POPUPITEM, MPI_NORMAL, sel)
-	if state&ODS_SELECTED != 0 {
+	if state&ODS_SELECTED != 0 && !it.header {
 		if state&ODS_NOFOCUSRECT != 0 {
 			// Under the mouse: the backplate.
 			st := MPI_HOT
@@ -462,11 +466,16 @@ func (h *Host) roundMenu(hwnd uintptr) {
 		return
 	}
 	SetCornerPreference(hwnd, 3) // DWMWCP_ROUNDSMALL
-	border := uint32(0xE5E5E5)
+	SetBorderColor(hwnd, h.flyoutBorder().ref())
+}
+
+// flyoutBorder is the border DWM draws around Windows 11's menus and
+// flyouts, light or dark.
+func (h *Host) flyoutBorder() rgba {
 	if h.dark {
-		border = 0x3E3E3E
+		return hex(0x3E3E3E)
 	}
-	SetBorderColor(hwnd, border)
+	return hex(0xE5E5E5)
 }
 
 // paintMenuFrame paints a menu window's frame (what's outside its client

@@ -169,6 +169,17 @@ func navigation(t *testing.T, s screen) {
 	s.command("type hello")
 	s.tap("Save")
 	waitFor(t, s, []string{"Note: hello"}, "Save")
+	// A full-screen sheet: on a phone and in a browser it's told the
+	// screen's own size and safe area, the root's; on a desktop it covers
+	// its window (all of it on Linux, the header bar too: not the root's).
+	s.tap("Write a Reply")
+	if _, desktop := s.(*linuxScreen); desktop {
+		waitFor(t, s, []string{"To: Linus", "Send"})
+	} else {
+		waitFor(t, s, []string{"To: Linus", "Send", "Covers the screen"})
+	}
+	s.tap("Cancel")
+	waitFor(t, s, []string{"Add a note", "Note: hello"}, "To: Linus")
 	s.command("back")
 	waitFor(t, s, []string{"Message 19"}, "Add a note", "Note: hello")
 	s.command("tab Settings")
@@ -550,8 +561,111 @@ func TestBookmarksWeb(t *testing.T) {
 	s.relaunch()
 	waitFor(t, s, []string{"Bookmarks", title})
 }
-func TestNavigationWeb(t *testing.T) { navigation(t, webApp(t, "navigation")) }
-func TestLanguagesWeb(t *testing.T)  { languages(t, webApp(t, "i18n")) }
+
+// TestNavigationWeb also checks the Inbox tab's badge: its unread count
+// goes down as a message is read.
+func TestNavigationWeb(t *testing.T) {
+	s := webApp(t, "navigation")
+	waitFor(t, s, []string{"Inbox", "3"})
+	navigation(t, s)
+	waitFor(t, s, []string{"Inbox", "2"}, "3")
+}
+
+// TestToolbarWeb: the inbox's primary action, a floating button, composes a
+// message; a message's bottom bar has its toolbar's buttons, which follow
+// the app's state, one opening a menu, and its primary action.
+func TestToolbarWeb(t *testing.T) {
+	s := webApp(t, "navigation")
+	waitFor(t, s, []string{"Message 20", "Compose"})
+	s.tap("Compose")
+	waitFor(t, s, []string{"Message 21"})
+	s.tap("Message 21")
+	waitFor(t, s, []string{"Delete", "Star", "Reply", "Mark as unread", "Compose"}, "Message 20")
+	s.tap("Reply")
+	waitFor(t, s, []string{"Forward"})
+	s.tap("Forward")
+	waitFor(t, s, []string{"Reply"}, "Forward")
+	s.tap("Star") // the top bar's: the toolbar's follows it
+	waitFor(t, s, []string{"Unstar"})
+	s.command("back")
+	waitFor(t, s, []string{"Message 20", "Compose"}, "Mark as unread")
+}
+
+// TestMenusWeb: the gallery's menu shows its section under its title,
+// its submenu and its disabled item; choosing in the section moves its
+// check, and the submenu opens beside its item.
+func TestMenusWeb(t *testing.T) {
+	s := webApp(t, "gallery")
+	waitFor(t, s, []string{"Gallery"})
+	s.tap("Gallery") // the drawer's button, on a narrow page
+	waitFor(t, s, []string{"Symbols"})
+	s.tap("Symbols")
+	waitFor(t, s, []string{"Sorted by Name"})
+	s.tap("More")
+	waitFor(t, s, []string{"Sort by", "Name", "Date", "Move to", "Delete"})
+	s.tap("Date")
+	waitFor(t, s, []string{"Sorted by Date"}, "Sort by")
+	s.tap("More")
+	waitFor(t, s, []string{"Move to"})
+	s.tap("Move to")
+	waitFor(t, s, []string{"Inbox", "Archive"})
+}
+
+// The gallery's Picker: a <select> showing its label while none is
+// chosen; choosing an item writes the app's signal.
+func TestPickerWeb(t *testing.T) {
+	s := webApp(t, "gallery")
+	waitFor(t, s, []string{"Gallery"})
+	s.tap("Gallery") // the drawer's button, on a narrow page
+	waitFor(t, s, []string{"Controls"})
+	s.tap("Controls")
+	waitFor(t, s, []string{"Milk", "No milk chosen"})
+	s.command("choose Oat")
+	waitFor(t, s, []string{"Oat", "Oat milk"}, "No milk chosen")
+}
+
+// TestSnackbarWeb: the gallery's snackbar says what was done, at the
+// bottom of the window; its Undo undoes it, and its close button and a
+// new one take it away.
+func TestSnackbarWeb(t *testing.T) {
+	s := webApp(t, "gallery")
+	waitFor(t, s, []string{"Gallery"})
+	s.tap("Gallery") // the drawer's button, on a narrow page
+	waitFor(t, s, []string{"Controls"})
+	s.tap("Controls")
+	waitFor(t, s, []string{"3 drafts", "Delete a draft"})
+	s.tap("Delete a draft")
+	waitFor(t, s, []string{"2 drafts", "Draft deleted", "Undo", "Close"})
+	s.tap("Undo")
+	waitFor(t, s, []string{"3 drafts"}, "Draft deleted")
+	s.tap("Upload")
+	waitFor(t, s, []string{"Uploading 3 photos…"})
+	s.tap("Copy the link") // replaces it
+	waitFor(t, s, []string{"Link copied"}, "Uploading 3 photos…")
+	s.tap("Close")
+	waitFor(t, s, []string{"Copy the link"}, "Link copied")
+}
+func TestLanguagesWeb(t *testing.T) { languages(t, webApp(t, "i18n")) }
+
+// TestProgressRingWeb: the gallery's rings follow the volume (40%), read
+// as progress bars with their percentage; the indeterminate one has none.
+func TestProgressRingWeb(t *testing.T) {
+	s := webApp(t, "gallery")
+	waitFor(t, s, []string{"Gallery"})
+	s.tap("Gallery") // the drawer's button, on a narrow page
+	waitFor(t, s, []string{"Controls"})
+	s.tap("Controls")
+	waitFor(t, s, []string{"Wi-Fi", "progress 40%"})
+	n := 0
+	for _, x := range s.texts() {
+		if x == "progress 40%" {
+			n++
+		}
+	}
+	if n != 2 {
+		t.Fatalf("%d rings at 40%%, want 2: %q", n, s.texts())
+	}
+}
 
 // Linux
 

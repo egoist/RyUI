@@ -298,6 +298,10 @@ final class AsukaGestureDelegate: NSObject, UIGestureRecognizerDelegate {
             p.setProgress(Float(v.float), animated: p.window != nil)
         case (.progress, AsukaProp.Progress.indeterminate):
             break // UIKit's bar has no such state: its track shows
+        case (.progressRing, AsukaProp.ProgressRing.value):
+            (n.view as? AsukaProgressRing)?.set(CGFloat(v.float), animation)
+        case (.progressRing, AsukaProp.ProgressRing.indeterminate):
+            (n.view as? AsukaProgressRing)?.indeterminate = v.bool
         case (.symbol, AsukaProp.Symbol.name):
             guard let s = n.view as? AsukaSymbolView else { return true }
             s.node = n

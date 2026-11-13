@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -641,6 +642,50 @@ func TestSegmentedAndProgress(t *testing.T) {
 	}
 }
 
+// A progress ring sends its clamped value as it changes, or, without
+// one, that it's indeterminate before it's measured (its view is the
+// spinner); it's measured square, and stops when its owner is disposed.
+func TestProgressRing(t *testing.T) {
+	done := signal.New(0.25)
+	show := signal.New(true)
+	h, r := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{Align: ui.AlignStart},
+			ui.Show(show, func() ui.Node {
+				return ui.Row(ui.Style{Align: ui.AlignStart},
+					ui.ProgressRing(done),
+					ui.ProgressRing(nil),
+					ui.ProgressRing(done, ui.Style{Width: ui.Pt(48)}))
+			}, nil))
+	})
+	rs := h.OfKind(ops.KindProgressRing)
+	if len(rs) != 3 {
+		t.Fatalf("%d rings", len(rs))
+	}
+	if rs[0].Props[ops.PropProgressRingValue].Float != 0.25 || rs[0].Bool(ops.PropProgressRingIndeterminate) {
+		t.Fatalf("ring %v", rs[0].Props)
+	}
+	if _, ok := rs[1].Props[ops.PropProgressRingValue]; ok || !rs[1].Bool(ops.PropProgressRingIndeterminate) {
+		t.Fatalf("indeterminate ring %v", rs[1].Props)
+	}
+	if rs[0].Frame[2] != 20 || rs[0].Frame[3] != 20 || rs[2].Frame[2] != 48 || rs[2].Frame[3] != 48 {
+		t.Fatalf("frames %v %v", rs[0].Frame, rs[2].Frame)
+	}
+	h.Reset()
+	done.Set(-1)
+	r.Flush()
+	if rs[0].Props[ops.PropProgressRingValue].Float != 0 || rs[2].Props[ops.PropProgressRingValue].Float != 0 || h.Count(ops.OpSetProp) != 2 {
+		t.Fatalf("clamped %v, %d props", rs[0].Props[ops.PropProgressRingValue].Float, h.Count(ops.OpSetProp))
+	}
+	show.Set(false)
+	r.Flush()
+	h.Reset()
+	done.Set(0.5)
+	r.Flush()
+	if len(h.OfKind(ops.KindProgressRing)) != 0 || h.Count(ops.OpSetProp) != 0 {
+		t.Fatalf("disposed rings still follow their value: %d props", h.Count(ops.OpSetProp))
+	}
+}
+
 // A date picker sends its instant in Unix milliseconds, and the user's
 // choice writes the signal without being sent back.
 func TestDatePicker(t *testing.T) {
@@ -1145,6 +1190,96 @@ func TestWheelStepper(t *testing.T) {
 	if s.Float(ops.PropStepperValue) != 5 || h.Count(ops.OpSetProp) != 1 {
 		t.Fatalf("after the app's write: %v\n%s", s.Float(ops.PropStepperValue), h.Log())
 	}
+}
+
+// A Picker shows its items, its label and the chosen item, follows its
+// signals and writes the user's choice without sending it back, and
+// measures again as what it shows changes.
+func TestPicker(t *testing.T) {
+	items := signal.NewFunc([]string{"Name", "Date", "Size"}, slices.Equal[[]string])
+	pick := signal.New(-1)
+	label := signal.New("Sort by")
+	off := signal.New(false)
+	shown := signal.New(true)
+	h, r := mount(t, func() ui.Node {
+		return ui.Row(ui.Style{Align: ui.AlignStart},
+			ui.Show(shown, func() ui.Node {
+				return ui.Picker(ui.PickerProps{Items: items, Selected: pick, Label: label, Disabled: off})
+			}))
+	})
+	p := h.OfKind(ops.KindPicker)[0]
+	if got := p.Strings(ops.PropPickerItems); len(got) != 3 || got[1] != "Date" || p.Int(ops.PropPickerSelected) != -1 || p.String(ops.PropPickerLabel) != "Sort by" || p.Bool(ops.PropDisabled) {
+		t.Fatalf("props %v", p.Props)
+	}
+	if p.Frame[2] != 7*8+32 || p.Frame[3] != 34 {
+		t.Fatalf("frame %v: the label's width", p.Frame)
+	}
+
+	// The user's choice writes the signal, isn't sent back, and the
+	// picker is measured again with its new title.
+	h.Reset()
+	h.Select(p, 2)
+	r.Flush()
+	if pick.Peek() != 2 || h.Count(ops.OpSetProp) != 0 || p.Frame[2] != 4*8+32 {
+		t.Fatalf("picked %d, frame %v\n%s", pick.Peek(), p.Frame, h.Log())
+	}
+
+	// Code's choice, items and label are sent, once each.
+	h.Reset()
+	pick.Set(1)
+	r.Flush()
+	if p.Int(ops.PropPickerSelected) != 1 || h.Count(ops.OpSetProp) != 1 || p.Frame[2] != 4*8+32 {
+		t.Fatalf("code's choice\n%s", h.Log())
+	}
+	h.Reset()
+	items.Set([]string{"Name", "Modified", "Size"})
+	label.Set("Order")
+	off.Set(true)
+	r.Flush()
+	if p.Strings(ops.PropPickerItems)[1] != "Modified" || p.String(ops.PropPickerLabel) != "Order" || !p.Bool(ops.PropDisabled) || h.Count(ops.OpSetProp) != 3 || p.Frame[2] != 8*8+32 {
+		t.Fatalf("after the app's writes: frame %v\n%s", p.Frame, h.Log())
+	}
+
+	// Out of range is none chosen: the label shows.
+	pick.Set(7)
+	r.Flush()
+	if p.Int(ops.PropPickerSelected) != 7 || p.Frame[2] != 5*8+32 {
+		t.Fatalf("out of range: frame %v", p.Frame)
+	}
+
+	// Gone, it follows nothing.
+	shown.Set(false)
+	r.Flush()
+	if len(h.OfKind(ops.KindPicker)) != 0 {
+		t.Fatal("picker not destroyed")
+	}
+	h.Reset()
+	pick.Set(0)
+	items.Set(nil)
+	label.Set("x")
+	off.Set(false)
+	r.Flush()
+	if h.Count(ops.OpSetProp) != 0 {
+		t.Fatalf("a disposed picker still follows its signals\n%s", h.Log())
+	}
+	r.Dispose()
+}
+
+// A Picker without a Selected signal still shows the user's choice.
+func TestPickerUncontrolled(t *testing.T) {
+	h, r := mount(t, func() ui.Node {
+		return ui.Row(ui.Style{Align: ui.AlignStart}, ui.Picker(ui.PickerProps{Items: ui.Val([]string{"A", "Bee"}), Label: ui.Val("Pick")}))
+	})
+	p := h.OfKind(ops.KindPicker)[0]
+	if p.Int(ops.PropPickerSelected) != -1 || !p.Listens[ops.EventSelected] {
+		t.Fatalf("props %v", p.Props)
+	}
+	h.Select(p, 1)
+	r.Flush()
+	if p.Frame[2] != 3*8+32 {
+		t.Fatalf("frame %v", p.Frame)
+	}
+	r.Dispose()
 }
 
 func TestColorPicker(t *testing.T) {

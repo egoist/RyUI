@@ -35,11 +35,10 @@ final class AsukaSplitController: UISplitViewController, UISplitViewControllerDe
 /// sidebar's look beside the content, an inset grouped list with
 /// disclosure indicators when collapsed (an iPhone's first screen).
 final class AsukaSidebarController: UICollectionViewController {
-    struct Item { let title: String; let icon: String }
-    struct Section { let title: String; let items: [Item] }
+    typealias Section = AsukaSidebarSection
 
     let nodeID: UInt32
-    var sections: [Section] = [] { didSet { collectionView.reloadData(); showSelection() } }
+    private(set) var sections: [Section] = []
     var selected = -1 { didSet { showSelection() } }
     var choseOnce = false
 
@@ -108,6 +107,37 @@ final class AsukaSidebarController: UICollectionViewController {
         }
     }
 
+    /// Shows new sections: with as many sections and items as before (a
+    /// badge counting, a title changing), the rows that changed update in
+    /// place, keeping the list's scroll, selection and VoiceOver's focus;
+    /// otherwise the list is made again.
+    func setSections(_ new: [Section]) {
+        let old = sections
+        sections = new
+        guard isViewLoaded else { return }
+        guard AsukaSidebar.sameShape(old, new), collectionView.numberOfSections == new.count else {
+            collectionView.reloadData()
+            showSelection()
+            return
+        }
+        var changed: [IndexPath] = []
+        for (s, sec) in new.enumerated() {
+            for (i, it) in sec.items.enumerated() where it != old[s].items[i] { changed.append(IndexPath(item: i, section: s)) }
+            if sec.title != old[s].title {
+                if sec.title.isEmpty != old[s].title.isEmpty {
+                    // A header comes or goes: the layout changes.
+                    restyle()
+                    return
+                }
+                let ip = IndexPath(item: 0, section: s)
+                if let h = collectionView.supplementaryView(forElementKind: UICollectionView.elementKindSectionHeader, at: ip) as? UICollectionViewListCell {
+                    configureHeader(h, s)
+                }
+            }
+        }
+        if !changed.isEmpty { collectionView.reconfigureItems(at: changed) }
+    }
+
     override func numberOfSections(in cv: UICollectionView) -> Int { sections.count }
     override func collectionView(_ cv: UICollectionView, numberOfItemsInSection s: Int) -> Int { sections[s].items.count }
 
@@ -118,17 +148,29 @@ final class AsukaSidebarController: UICollectionViewController {
         c.text = item.title
         c.image = item.icon.isEmpty ? nil : UIImage(systemName: item.icon)
         cell.contentConfiguration = c
-        cell.accessories = collapsed ? [.disclosureIndicator()] : []
+        // The badge is a label at the trailing end, in the secondary
+        // color, as the system's sidebars show counts; VoiceOver reads it
+        // after the title.
+        var accessories: [UICellAccessory] = []
+        if !item.badge.isEmpty {
+            accessories.append(.label(text: item.badge))
+        }
+        if collapsed { accessories.append(.disclosureIndicator()) }
+        cell.accessories = accessories
         return cell
     }
 
     override func collectionView(_ cv: UICollectionView, viewForSupplementaryElementOfKind kind: String, at ip: IndexPath) -> UICollectionReusableView {
         let h = cv.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: "header", for: ip) as! UICollectionViewListCell
+        configureHeader(h, ip.section)
+        return h
+    }
+
+    private func configureHeader(_ h: UICollectionViewListCell, _ section: Int) {
         var c = UIListContentConfiguration.sidebarHeader()
         if collapsed { c = .groupedHeader() }
-        c.text = sections[ip.section].title
+        c.text = sections[section].title
         h.contentConfiguration = c
-        return h
     }
 
     override func collectionView(_ cv: UICollectionView, didSelectItemAt ip: IndexPath) {
@@ -150,16 +192,8 @@ extension Array {
         guard let s = n.vc as? AsukaSplitController else { return }
         switch prop {
         case AsukaProp.Split.items:
-            guard case .bytes(let b) = v, b.count >= 4 else { return }
-            var r = AsukaReader(b)
-            var sections: [AsukaSidebarController.Section] = []
-            for _ in 0..<Int(r.u32()) {
-                let title = r.string()
-                var items: [AsukaSidebarController.Item] = []
-                for _ in 0..<Int(r.u32()) { items.append(.init(title: r.string(), icon: r.string())) }
-                sections.append(.init(title: title, items: items))
-            }
-            s.sidebar.sections = sections
+            guard case .bytes(let b) = v else { return }
+            s.sidebar.setSections(AsukaSidebar.decode(b))
         case AsukaProp.Split.selected:
             s.sidebar.selected = Int(v.int)
         case AsukaProp.Split.title:

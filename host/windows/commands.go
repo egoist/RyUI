@@ -170,17 +170,63 @@ func (h *Host) popUp(n *node, anchor uintptr, below bool) {
 			}
 		}
 		h.modal++
-		if om != nil {
+		if len(om) > 0 {
 			h.menuLoop(true) // before the menu window is made
 		}
 		got := TrackPopupMenu(m, flags, p.X, p.Y, RootWindow(anchor))
 		h.menuLoop(false)
 		h.modal--
 		DestroyMenu(m)
-		h.forget(om)
+		for _, o := range om {
+			h.forget(o)
+		}
 		if got > 0 {
 			if n := h.nodes[id]; n != nil {
 				h.emit(n, ops.Event{Kind: ops.EventAction, Int: int64(got - 1)})
+			}
+		}
+	})
+}
+
+// popUpActions shows actions as a menu below anchor, a control of the
+// node at (its direction's); the item chosen is reported to target with
+// Action. It shows once the core has returned.
+func (h *Host) popUpActions(target *node, anchor uintptr, at *node, actions []action) {
+	h.popUpActionsFrom(target, anchor, at, actions, 0)
+}
+
+// popUpActionsFrom is popUpActions for a menu whose Action events carry
+// base + an item's number (a screen's Toolbar's and Primary's).
+func (h *Host) popUpActionsFrom(target *node, anchor uintptr, at *node, actions []action, base int64) {
+	id, atID := target.id, at.id
+	h.afterCore(func() {
+		at := h.nodes[atID]
+		if h.nodes[id] == nil || at == nil || !IsWindow(anchor) {
+			return
+		}
+		rtl := h.isRTL(at)
+		m, om := h.actionMenu(actions, rtl)
+		r := WindowRect(anchor)
+		x := r.Left
+		flags := uint32(TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RIGHTBUTTON)
+		if rtl {
+			x = r.Right
+			flags |= TPM_LAYOUTRTL
+		}
+		h.modal++
+		if len(om) > 0 {
+			h.menuLoop(true)
+		}
+		got := TrackPopupMenu(m, flags, x, r.Bottom+h.px(at, 4), RootWindow(anchor))
+		h.menuLoop(false)
+		h.modal--
+		DestroyMenu(m)
+		for _, o := range om {
+			h.forget(o)
+		}
+		if got > 0 {
+			if n := h.nodes[id]; n != nil {
+				h.emit(n, ops.Event{Kind: ops.EventAction, Int: base + int64(got-1)})
 			}
 		}
 	})
@@ -408,26 +454,70 @@ func (h *Host) module(name string) func(method string, args []byte) ([]byte, err
 	return h.modules[name]
 }
 
-// actionMenu is a popup menu of actions (but the cancel one), item i+1
-// action i's; owner-drawn if one is destructive.
-func (h *Host) actionMenu(actions []action, rtl bool) (uintptr, *ownerMenu) {
-	m := CreatePopupMenu()
-	var items []menuItem
-	destructive := false
+// actionMenu is a popup menu of actions (but the cancel one), the
+// command of each item 1 + its number: dimmed when disabled, checked,
+// submenus, and sections between separators under a header. Owner-drawn
+// (each of its menus that has a destructive item or a header): the
+// owner-drawn ones are returned, to forget once the menu's gone.
+func (h *Host) actionMenu(actions []action, rtl bool) (uintptr, []*ownerMenu) {
 	order := uint32(0)
 	if rtl {
 		order = MF_RIGHTORDER
 	}
-	for i, a := range actions {
-		if a.role == ops.AlertButtonRoleCancel {
+	b := &menuBuild{h: h, base: 1, order: order}
+	return b.popup(actionMenuItems(actions)), b.owned
+}
+
+// menuHeader marks a section's title among the items menuBuild makes of
+// actions: shown as a header, which isn't chosen.
+const menuHeader ops.MenuFlags = 1 << 7
+
+// actionMenuItems are a menu's items for actions: a section's set off by
+// separators, under a header with its title; none at the ends or
+// doubled.
+func actionMenuItems(actions []action) []ops.MenuItem {
+	var out []ops.MenuItem
+	var add func(as []action)
+	add = func(as []action) {
+		for i := range as {
+			a := &as[i]
+			if a.role == ops.AlertButtonRoleCancel {
+				continue
+			}
+			if a.is(ops.MenuSubmenu | ops.MenuInline) {
+				out = append(out, ops.MenuItem{Flags: ops.MenuSeparator})
+				if a.title != "" {
+					out = append(out, ops.MenuItem{Title: a.title, Flags: menuHeader | ops.MenuDisabled, Index: -1})
+				}
+				add(a.items)
+				out = append(out, ops.MenuItem{Flags: ops.MenuSeparator})
+				continue
+			}
+			it := ops.MenuItem{Index: int(a.index), Title: a.title, Flags: a.flags & (ops.MenuDisabled | ops.MenuChecked)}
+			if a.role == ops.AlertButtonRoleDestructive {
+				it.Flags |= ops.MenuDestructive
+			}
+			if a.is(ops.MenuSubmenu) {
+				it.Flags |= ops.MenuSubmenu
+				it.Items = actionMenuItems(a.items)
+				if len(it.Items) == 0 {
+					it.Flags |= ops.MenuDisabled // nothing to open
+				}
+			}
+			out = append(out, it)
+		}
+	}
+	add(actions)
+	// No separator at the ends, nor one after another.
+	trimmed := out[:0]
+	for _, it := range out {
+		if it.Is(ops.MenuSeparator) && (len(trimmed) == 0 || trimmed[len(trimmed)-1].Is(ops.MenuSeparator)) {
 			continue
 		}
-		AppendMenu(m, MF_STRING|order, uintptr(i+1), a.title)
-		items = append(items, menuItem{text: a.title, destructive: a.role == ops.AlertButtonRoleDestructive})
-		destructive = destructive || a.role == ops.AlertButtonRoleDestructive
+		trimmed = append(trimmed, it)
 	}
-	if !destructive {
-		return m, nil
+	if n := len(trimmed); n > 0 && trimmed[n-1].Is(ops.MenuSeparator) {
+		trimmed = trimmed[:n-1]
 	}
-	return m, h.ownerDrawMenu(m, items, order)
+	return trimmed
 }

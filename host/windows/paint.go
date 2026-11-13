@@ -41,7 +41,7 @@ func (h *Host) opaque(n *node) bool {
 		return false // it blurs what's behind it (material.go)
 	}
 	switch n.kind {
-	case ops.KindScreen, ops.KindSheet, ops.KindWindow, kindHeader, kindTabBar, kindSidebar:
+	case ops.KindScreen, ops.KindSheet, ops.KindWindow, kindHeader, kindTabBar, kindSidebar, kindCommandBar, kindAlertWindow:
 		return n.cornerRadius == 0
 	}
 	c, ok := h.resolve(n.background)
@@ -72,7 +72,7 @@ func (h *Host) paintOwn(n *node, hwnd, dc uintptr, r Rect) {
 	switch {
 	case hasBg:
 	case n.kind == ops.KindScreen || n.kind == ops.KindSheet || n.kind == ops.KindWindow,
-		n.kind == kindHeader || n.kind == kindTabBar || n.kind == kindSidebar:
+		n.kind == kindHeader || n.kind == kindTabBar || n.kind == kindSidebar || n.kind == kindCommandBar:
 		bg, hasBg = h.bgIn(hwnd), true // its window's (winctl.go)
 	}
 	if a := n.ownAlpha(); a < 1 {
@@ -132,18 +132,26 @@ func (h *Host) paintOwn(n *node, hwnd, dc uintptr, r Rect) {
 		h.paintShader(n, g, w, ht, radius)
 	case ops.KindActivity:
 		h.paintActivity(n, g, w, ht)
+	case ops.KindProgressRing:
+		h.paintProgressRing(n, g, w, ht)
 	case ops.KindTextField:
 		h.paintField(n, g, w, ht)
 	case kindHeader:
 		h.paintHeader(n, 0, g, r)
+	case kindCommandBar:
+		h.paintCommandBar(n, g, r)
 	case kindTabBar:
 		h.paintTabBar(n, 0, g, r)
 	case kindSidebar:
 		h.paintPane(n, 0, g, r)
+	case kindAlertWindow:
+		h.paintAlertDialog(n, g, r)
 	case kindRow:
 		if n.row != nil {
 			n.row.paint(h, g, w, ht)
 		}
+	case ops.KindSnackbar:
+		h.paintSnack(n, g, w, ht)
 	}
 	g.Close()
 	switch n.kind {
@@ -161,6 +169,8 @@ func (h *Host) paintOwn(n *node, hwnd, dc uintptr, r Rect) {
 		h.paintTabBar(n, dc, 0, r)
 	case kindSidebar:
 		h.paintPane(n, dc, 0, r)
+	case ops.KindSnackbar:
+		h.paintSnackText(n, dc)
 	case ops.KindTextField:
 		if n.searchOf != nil {
 			h.paintSearchIcon(n, dc, r)
@@ -187,8 +197,8 @@ func (n *node) interactive() bool {
 		return true
 	}
 	switch n.kind {
-	case ops.KindScroll, ops.KindList, ops.KindSegmented, ops.KindTextField, kindHeader, kindTabBar, kindSidebar,
-		ops.KindButton, ops.KindToggle, ops.KindSlider, ops.KindStepper, ops.KindWheel, ops.KindDatePicker,
+	case ops.KindScroll, ops.KindList, ops.KindSegmented, ops.KindTextField, kindHeader, kindTabBar, kindSidebar, kindCommandBar,
+		ops.KindButton, ops.KindToggle, ops.KindSlider, ops.KindStepper, ops.KindWheel, ops.KindPicker, ops.KindDatePicker,
 		ops.KindColorPicker, ops.KindWebView, ops.KindVideo:
 		return true
 	}
@@ -395,6 +405,37 @@ func (h *Host) paintActivity(n *node, g Graphics, w, ht float32) {
 	sweep := float32(60 + 200*(0.5-0.5*math.Cos(t*math.Pi)))
 	x, y := ox+(w-d)/2+stroke/2, oy+(ht-d)/2+stroke/2
 	g.DrawArc(pen, x, y, d-stroke, d-stroke, start, sweep)
+	pen.Close()
+}
+
+// paintProgressRing is Fluent's ProgressRing (WinUI's): determinate, an
+// arc in the accent color (Color sets it) from the top, clockwise, as
+// far as its value, with no track, as WinUI draws it; indeterminate, the
+// arc that turns and grows, as an Activity's. Its stroke is an eighth
+// of its size (4 at its own 32).
+func (h *Host) paintProgressRing(n *node, g Graphics, w, ht float32) {
+	if n.indeterminate {
+		was := n.animating
+		n.animating = true
+		h.paintActivity(n, g, w, ht)
+		n.animating = was
+		return
+	}
+	v := float32(min(max(n.shown, 0), 1))
+	if v <= 0 {
+		return
+	}
+	k := h.scaleOf(n)
+	c, ok := h.resolve(n.color)
+	if !ok {
+		c = h.theme.accent
+	}
+	d := min(w, ht)
+	stroke := max(d/8, 2*k)
+	pen := NewPen(c.argb(), stroke)
+	pen.SetCaps(2, 2) // round
+	x, y := (w-d)/2+stroke/2, (ht-d)/2+stroke/2
+	g.DrawArc(pen, x, y, d-stroke, d-stroke, -90, 360*v) // GDI+: degrees clockwise from 3 o'clock
 	pen.Close()
 }
 

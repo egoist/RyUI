@@ -3,11 +3,10 @@
 package darwin
 
 import (
-	"encoding/binary"
-
 	"github.com/ebitengine/purego/objc"
 
 	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/internal/l10n"
 	"github.com/egoist/asuka/ops"
 )
 
@@ -27,9 +26,9 @@ type split struct {
 // sidebarRow is a section's title (group) or a destination (index among
 // all the destinations).
 type sidebarRow struct {
-	title, icon string
-	group       bool
-	index       int
+	title, icon, badge string
+	group              bool
+	index              int
 }
 
 func registerSplitClasses() {
@@ -53,40 +52,112 @@ func registerSplitClasses() {
 			if s == nil || row >= len(s.rows) {
 				return 0
 			}
-			return sidebarCell(s.rows[row])
+			cell := Send(initView("AsukaSidebarCell"), "autorelease")
+			theHost.fillSidebarCell(cell, s.rows[row], theHost.isRTL(theHost.splits[t]))
+			return cell
 		}),
 		Method("tableViewSelectionDidChange:", func(self ID, _ SEL, note ID) {
 			theHost.sidebarChose(Send(note, "object"))
 		}),
 	})
+	// A row's view: its symbol, title and badge, which it lays out
+	// itself as it's sized, from its leading edge.
+	DefineClass("AsukaSidebarCell", "NSTableCellView", nil, []objc.MethodDef{
+		Method("resizeSubviewsWithOldSize:", func(self ID, _ SEL, old Size) { layoutSidebarCell(self) }),
+	})
 }
 
-// sidebarCell is a row's view: a destination's symbol and title, or a
+// sidebarBadgeID marks a row's badge among its subviews.
+const sidebarBadgeID = "asuka.badge"
+
+// fillSidebarCell shows a row in its view (a new one, or one shown
+// already, in place): a destination's symbol, title and badge, or a
 // section's title in the group row's style.
-func sidebarCell(r sidebarRow) ID {
-	cell := initView("NSTableCellView")
-	label := Send(Class("NSTextField"), "labelWithString:", uintptr(String(r.title)))
-	Send(label, "setTranslatesAutoresizingMaskIntoConstraints:", 1)
-	Send(label, "setLineBreakMode:", 4) // truncate the tail
-	x := 4.0
+func (h *Host) fillSidebarCell(cell ID, r sidebarRow, rtl bool) {
+	Send(cell, "setUserInterfaceLayoutDirection:", direction(rtl))
+	label := Send(cell, "textField")
+	if label == 0 {
+		label = Send(Class("NSTextField"), "labelWithString:", uintptr(String("")))
+		Send(label, "setLineBreakMode:", 4) // truncate the tail
+		Send(cell, "addSubview:", uintptr(label))
+		Send(cell, "setTextField:", uintptr(label))
+	}
+	Send(label, "setStringValue:", uintptr(String(r.title)))
+	Send(label, "setAlignment:", 4) // natural: the way its text reads
 	if r.group {
 		Send(label, "setFont:", uintptr(MsgFloat2ID(Class("NSFont"), Sel("systemFontOfSize:weight:"), 11, 0.3)))
 		Send(label, "setTextColor:", uintptr(Send(Class("NSColor"), "secondaryLabelColor")))
-	} else if img := symbolImage(r.icon); img != 0 {
-		iv := initView("NSImageView")
+	}
+	iv := Send(cell, "imageView")
+	if img := symbolImage(r.icon); img != 0 && !r.group {
+		if iv == 0 {
+			iv = initView("NSImageView")
+			Send(iv, "setContentTintColor:", uintptr(Send(Class("NSColor"), "controlAccentColor")))
+			Send(cell, "addSubview:", uintptr(iv))
+			Send(cell, "setImageView:", uintptr(iv))
+			Release(iv)
+		}
 		Send(iv, "setImage:", uintptr(img))
-		Send(iv, "setContentTintColor:", uintptr(Send(Class("NSColor"), "controlAccentColor")))
-		MsgSetRect(iv, selSetFrame, Rect{Origin: Point{X: 4, Y: 4}, Size: Size{Width: 18, Height: 16}})
-		Send(cell, "addSubview:", uintptr(iv))
-		Send(cell, "setImageView:", uintptr(iv))
-		Release(iv)
+	} else if iv != 0 {
+		Send(iv, "removeFromSuperview")
+		Send(cell, "setImageView:", 0)
+	}
+	// The badge: a count at the trailing end in the secondary color, as
+	// Mail counts a mailbox's unread messages; VoiceOver reads it after
+	// the title, a count as so many items.
+	badge := sidebarBadge(cell)
+	if r.badge != "" && !r.group {
+		if badge == 0 {
+			badge = Send(Class("NSTextField"), "labelWithString:", uintptr(String("")))
+			Send(badge, "setIdentifier:", uintptr(String(sidebarBadgeID)))
+			Send(badge, "setFont:", uintptr(MsgFloat2ID(Class("NSFont"), Sel("monospacedDigitSystemFontOfSize:weight:"), MsgFloat(Class("NSFont"), Sel("systemFontSize")), 0)))
+			Send(badge, "setTextColor:", uintptr(Send(Class("NSColor"), "secondaryLabelColor")))
+			Send(cell, "addSubview:", uintptr(badge))
+		}
+		Send(badge, "setStringValue:", uintptr(String(r.badge)))
+		Send(badge, "setAccessibilityLabel:", uintptr(String(l10n.Badge(h.locale, r.badge))))
+	} else if badge != 0 {
+		Send(badge, "removeFromSuperview")
+	}
+	layoutSidebarCell(cell)
+}
+
+func sidebarBadge(cell ID) ID {
+	for _, v := range ArrayItems(Send(cell, "subviews")) {
+		if id := Send(v, "identifier"); id != 0 && GoString(id) == sidebarBadgeID {
+			return v
+		}
+	}
+	return 0
+}
+
+// layoutSidebarCell places a row's symbol at its leading edge, its badge
+// at its trailing edge and its title between them, mirrored right to
+// left.
+func layoutSidebarCell(cell ID) {
+	b := MsgRect(cell, Sel("bounds"))
+	w, ht := b.Size.Width, b.Size.Height
+	rtl := SendInt(cell, "userInterfaceLayoutDirection") == 1
+	place := func(v ID, x, width, height float64) {
+		if rtl {
+			x = w - x - width
+		}
+		MsgSetRect(v, selSetFrame, Rect{Origin: Point{X: x, Y: (ht - height) / 2}, Size: Size{Width: max(width, 0), Height: height}})
+	}
+	x, end := 4.0, w-4
+	if iv := Send(cell, "imageView"); iv != 0 {
+		place(iv, 4, 18, 16)
 		x = 28
 	}
-	MsgSetRect(label, selSetFrame, Rect{Origin: Point{X: x, Y: 3}, Size: Size{Width: 200 - x, Height: 18}})
-	Send(label, "setAutoresizingMask:", 2) // its width follows the cell's
-	Send(cell, "addSubview:", uintptr(label))
-	Send(cell, "setTextField:", uintptr(label))
-	return Send(cell, "autorelease")
+	if badge := sidebarBadge(cell); badge != 0 {
+		s := MsgSize(badge, Sel("fittingSize"))
+		end = w - 8 - s.Width
+		place(badge, end, s.Width, s.Height)
+		end -= 6
+	}
+	if label := Send(cell, "textField"); label != 0 {
+		place(label, x, end-x, MsgSize(label, Sel("intrinsicContentSize")).Height)
+	}
 }
 
 func (h *Host) makeSplit(n *node) ID {
@@ -140,7 +211,24 @@ func (h *Host) setSplitProp(n *node, p ops.PropID, v *ops.Value) {
 	s := n.split
 	switch p {
 	case ops.PropSplitItems:
-		s.rows = decodeSidebar(v.Bytes)
+		rows := decodeSidebar(v.Bytes)
+		if sameRows(s.rows, rows) {
+			// As many sections and items: the rows that changed change
+			// in place, keeping the selection, the scroll and VoiceOver's
+			// focus.
+			rtl := h.isRTL(n)
+			for r := range rows {
+				if rows[r] == s.rows[r] {
+					continue
+				}
+				s.rows[r] = rows[r]
+				if cell := Send(s.table, "viewAtColumn:row:makeIfNecessary:", 0, uintptr(r), 0); cell != 0 {
+					h.fillSidebarCell(cell, rows[r], rtl)
+				}
+			}
+			return
+		}
+		s.rows = rows
 		s.reloading = true
 		Send(s.table, "reloadData")
 		s.reloading = false
@@ -154,36 +242,32 @@ func (h *Host) setSplitProp(n *node, p ops.PropID, v *ops.Value) {
 }
 
 func decodeSidebar(b []byte) []sidebarRow {
-	le := binary.LittleEndian
-	i := 0
-	u32 := func() int {
-		if i+4 > len(b) {
-			i = len(b)
-			return 0
-		}
-		v := int(le.Uint32(b[i:]))
-		i += 4
-		return v
-	}
-	str := func() string {
-		n := min(u32(), len(b)-i)
-		s := string(b[i : i+n])
-		i += n
-		return s
-	}
 	var rows []sidebarRow
 	flat := 0
-	for range u32() {
-		if t := str(); t != "" {
-			rows = append(rows, sidebarRow{title: t, group: true})
+	for _, sec := range ops.DecodeSidebar(b) {
+		if sec.Title != "" {
+			rows = append(rows, sidebarRow{title: sec.Title, group: true})
 		}
-		for range u32() {
-			title := str()
-			rows = append(rows, sidebarRow{title: title, icon: str(), index: flat})
+		for _, it := range sec.Items {
+			rows = append(rows, sidebarRow{title: it.Title, icon: it.Icon, badge: it.Badge, index: flat})
 			flat++
 		}
 	}
 	return rows
+}
+
+// sameRows reports whether a and b are as many rows, each a group or a
+// destination as before: they change in place.
+func sameRows(a, b []sidebarRow) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].group != b[i].group || a[i].index != b[i].index {
+			return false
+		}
+	}
+	return true
 }
 
 // showSidebarSelection selects the chosen destination's row.

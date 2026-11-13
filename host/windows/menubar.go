@@ -71,19 +71,27 @@ func (b *menuBuild) popup(items []ops.MenuItem) uintptr {
 	pop := CreatePopupMenu()
 	var names []string
 	for i := range items {
-		if !items[i].Is(ops.MenuSeparator) {
+		if !items[i].Is(ops.MenuSeparator) && !items[i].Is(menuHeader) {
 			names = append(names, b.h.itemTitle(&items[i]))
 		}
 	}
 	names = accessKeys(names)
 	k := 0
 	var drawn []menuItem
-	destructive := false
+	destructive := false // or a header: the menu is owner-drawn
 	for i := range items {
 		it := &items[i]
 		if it.Is(ops.MenuSeparator) {
 			AppendMenu(pop, MF_SEPARATOR, 0, "")
 			drawn = append(drawn, menuItem{separator: true})
+			continue
+		}
+		if it.Is(menuHeader) {
+			// A section's title: drawn as a header, and not chosen.
+			text := strings.ReplaceAll(it.Title, "&", "&&")
+			AppendMenu(pop, MF_STRING|MF_GRAYED|b.order, 0, text)
+			drawn = append(drawn, menuItem{text: text, header: true})
+			destructive = true
 			continue
 		}
 		flags := uint32(MF_STRING) | b.order

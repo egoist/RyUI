@@ -1,6 +1,7 @@
 package dev.asuka
 
 import android.annotation.SuppressLint
+import android.view.MenuItem
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -8,9 +9,9 @@ import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.drawerlayout.widget.DrawerLayout
+import com.google.android.material.color.MaterialColors
 import com.google.android.material.navigation.NavigationView
 import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
 /**
  * A SplitView: Material's navigation drawer, a NavigationView in a
@@ -60,26 +61,82 @@ class AsukaSplit(private val rt: AsukaRuntime, private val id: Int) : DrawerLayo
         header.visibility = if (t.isEmpty()) View.GONE else View.VISIBLE
     }
 
-    /** The sections and destinations (Split's Items). */
+    private var sections = emptyList<AsukaSidebarSection>()
+    /** The destinations' items, in order (their ids are their indexes). */
+    private val items = ArrayList<MenuItem>()
+
+    /**
+     * The sections and destinations (Split's Items). With as many
+     * sections and items as before (a badge counting, a title changing),
+     * the items change in place, a counter alone without touching the
+     * menu; otherwise the menu is made again.
+     */
     fun setItems(b: ByteBuffer) {
-        val r = b.duplicate().order(ByteOrder.LITTLE_ENDIAN)
-        fun str(): String = ByteArray(r.int).also { r.get(it) }.toString(Charsets.UTF_8)
+        val new = decodeSidebar(b)
+        val old = sections
+        sections = new
+        if (sameSidebarShape(old, new) && items.size == new.sumOf { it.items.size }) {
+            var flat = 0
+            for ((s, sec) in new.withIndex()) {
+                if (sec.title != old[s].title) {
+                    if (sec.title.isEmpty() != old[s].title.isEmpty()) return rebuild()
+                    nav.menu.findItem(SECTION_ID + s)?.title = sec.title
+                }
+                for ((i, it) in sec.items.withIndex()) {
+                    val was = old[s].items[i]
+                    val item = items[flat++]
+                    if (it.title != was.title) item.title = it.title
+                    if (it.icon != was.icon) item.icon = if (it.icon.isEmpty()) null else rt.symbol(it.icon)
+                    if (it.badge != was.badge) showCounter(item, it.badge)
+                }
+            }
+            return
+        }
+        rebuild()
+    }
+
+    private fun rebuild() {
         val menu = nav.menu
         menu.clear()
-        if (r.remaining() < 4) return
+        items.clear()
         var flat = 0
-        for (s in 0 until r.int) {
-            val title = str()
-            val group = if (title.isEmpty()) menu else menu.addSubMenu(s, 0, s, title)
-            for (i in 0 until r.int) {
-                val item = group.add(s, flat, flat, str())
-                val icon = str()
-                if (icon.isNotEmpty()) item.icon = rt.symbol(icon)
+        for ((s, sec) in sections.withIndex()) {
+            val group = if (sec.title.isEmpty()) menu else menu.addSubMenu(s, SECTION_ID + s, s, sec.title)
+            for (it in sec.items) {
+                val item = group.add(s, flat, flat, it.title)
+                if (it.icon.isNotEmpty()) item.icon = rt.symbol(it.icon)
                 item.isCheckable = true
+                showCounter(item, it.badge)
+                items.add(item)
                 flat++
             }
         }
         check(selected)
+    }
+
+    /**
+     * An item's badge: a counter at its end, as Material's navigation
+     * drawer and Gmail show one (label large, on surface variant). TalkBack
+     * reads it after the title, a count in Material's badge words ("3 new
+     * notifications"), as the navigation bar's badges.
+     */
+    private fun showCounter(item: MenuItem, badge: String) {
+        if (badge.isEmpty()) {
+            if (item.actionView != null) item.actionView = null
+            return
+        }
+        val t = (item.actionView as? TextView) ?: TextView(rt.themed).also {
+            it.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_LabelLarge)
+            it.setTextColor(MaterialColors.getColor(nav, com.google.android.material.R.attr.colorOnSurfaceVariant))
+            it.gravity = Gravity.CENTER_VERTICAL or Gravity.END
+            it.fontFeatureSettings = "tnum"
+            item.actionView = it
+        }
+        t.text = badge
+        val n = badgeNumber(badge)
+        t.contentDescription = if (n != null) {
+            rt.themed.resources.getQuantityString(com.google.android.material.R.plurals.mtrl_badge_content_description, n, n)
+        } else null
     }
 
     private var selected = -1
@@ -143,3 +200,6 @@ class AsukaSplit(private val rt: AsukaRuntime, private val id: Int) : DrawerLayo
         back.remove()
     }
 }
+
+/** A section's submenu item's id: past any destination's. */
+private const val SECTION_ID = 0x40000000

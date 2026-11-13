@@ -102,6 +102,7 @@ type node struct {
 	title, message string // Button, Screen, Alert
 	variant        int32
 	icon           string
+	badge          string   // a tab's (Screen's Badge)
 	actions        []action // a Screen's bar buttons, an Alert's buttons
 	alertStyle     int32
 	text           string // Text, TextField's last reported value
@@ -130,14 +131,18 @@ type node struct {
 	secure         bool
 	keyboard       int32
 	items          []string // Segmented, Wheel
+	pickerLabel    string   // a Picker's Label
+	comboList      uintptr  // a Wheel's or Picker's combo box's list window (combo.go)
+	comboHot       bool     // the pointer is over its combo box
 	selected       int
 	pages          int     // a PageControl's
 	paging         bool    // a Scroll that moves by pages
 	wheelSum       int32   // a paging Scroll's wheel, toward a page
-	value          float64 // Slider, Stepper, Progress, DatePicker
+	value          float64 // Slider, Stepper, Progress, ProgressRing, DatePicker
+	shown          float64 // ProgressRing: the value drawn, moving to value
 	min, max, step float64
 	on             bool    // Toggle
-	indeterminate  bool    // Progress
+	indeterminate  bool    // Progress, ProgressRing
 	animating      bool    // Activity
 	phase          float64 // Activity, indeterminate Progress
 	dateMode       int32
@@ -157,6 +162,7 @@ type node struct {
 	row            *rowView
 	cell           *cell
 	nav            *nav
+	snack          *snack // a Snackbar's (snackbar.go)
 	rich           *rich
 	shape          *shape
 	web            *web
@@ -180,6 +186,7 @@ type node struct {
 	uia            uintptr // its UI Automation provider, once asked for
 	colorValue     ops.Color
 	host           func(h *Host, n *node, m uint32, w, l uintptr) (uintptr, bool) // a host-made view's messages
+	alertOf        *node                                                          // a field of an alert's dialog: the alert
 }
 
 // Kinds of the views the host makes itself, past the schema's.
@@ -193,6 +200,8 @@ const (
 	kindWindowFrame   // a Window's top-level window
 	kindPopoverWindow // a Popover's popup window
 	kindSidebar       // a SplitView's pane
+	kindCommandBar    // a stack's command bar: its top screen's Toolbar and Primary (cmdbar.go)
+	kindAlertWindow   // an alert's dialog (alertdialog.go)
 )
 
 func (n *node) listening(e ops.EventKind) bool {
@@ -203,7 +212,12 @@ type action struct {
 	role  ops.AlertButtonRole
 	title string
 	icon  string
+	index int64 // its number in its menu, depth first: what Action carries
+	flags ops.MenuFlags
+	items []action // a submenu's or section's (ops.MenuSubmenu)
 }
+
+func (a *action) is(f ops.MenuFlags) bool { return a.flags&f == f }
 
 // Host is the Windows host.
 type Host struct {
@@ -220,6 +234,7 @@ type Host struct {
 	scale  float32 // pixels per point: dpi / 96
 	dark   bool
 	theme  palette
+	snacks []*node // the Snackbars showing, or going (snackbar.go)
 
 	shadowBuf []shadowStep // paintShadows', reused
 
@@ -452,6 +467,11 @@ func (h *Host) preTranslate(m *Msg) bool {
 	if w == 0 {
 		return false
 	}
+	if d := h.byHwnd[w]; d != nil && d.kind == kindAlertWindow {
+		// An alert's dialog is modal, as a task dialog is: the menus'
+		// shortcuts wait, and its fields keep Ctrl+C and the like.
+		return h.keyMessage(m) || IsDialogMessage(w, m)
+	}
 	return h.accelerate(w, m) || h.keyMessage(m) || IsDialogMessage(w, m)
 }
 
@@ -465,7 +485,7 @@ func (h *Host) keyWindow(hwnd uintptr) uintptr {
 	if w == h.window {
 		return w
 	}
-	if n := h.byHwnd[w]; n != nil && (n.kind == kindSheetWindow || n.kind == kindWindowFrame) {
+	if n := h.byHwnd[w]; n != nil && (n.kind == kindSheetWindow || n.kind == kindWindowFrame || n.kind == kindAlertWindow) {
 		return w
 	}
 	return 0
@@ -543,6 +563,10 @@ func (h *Host) dispatch(ev ops.Event) {
 func (h *Host) emit(n *node, ev ops.Event) {
 	if n != nil && n.searchOf != nil {
 		h.searchEvent(n, ev) // a header's search field: its screen's
+		return
+	}
+	if n != nil && n.alertOf != nil {
+		h.alertFieldEvent(n, ev) // an alert's field: the alert's (alertdialog.go)
 		return
 	}
 	if n == nil || !n.listening(ev.Kind) {
@@ -743,6 +767,9 @@ func (h *Host) forgetTree(hwnd uintptr) {
 				n.hwnd = 0
 			}
 			if n.ctl == w {
+				if n.kind == ops.KindPicker {
+					ClearAccessibleName(w) // as Dynamic Annotation asks
+				}
 				n.ctl = 0
 			}
 			KillTimer(w, timerLongPress)

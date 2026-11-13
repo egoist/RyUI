@@ -2,6 +2,7 @@
   "ok": "OK",
   "search": "Søk",
   "back": "Tilbake",
+  "moreOptions": "Flere alternativer",
   "decrease": "Reduser",
   "increase": "Øk",
   "about": "Om {app}",
@@ -37,5 +38,7 @@
   "updateCheckError": "Det oppstod en feil under søk etter oppdateringer. Prøv igjen senere.",
   "updateInstallError": "Det oppstod en feil under installering av oppdateringen. Prøv igjen senere.",
   "updateUnavailable": "Oppdateringer er ikke tilgjengelige",
-  "updateUnavailableMessage": "{app} kan ikke oppdatere seg selv der den er installert. Hvis den ble installert med en pakkebehandler eller fra en appbutikk, må du oppdatere den der."
+  "updateUnavailableMessage": "{app} kan ikke oppdatere seg selv der den er installert. Hvis den ble installert med en pakkebehandler eller fra en appbutikk, må du oppdatere den der.",
+  "badgeCount": "{count, plural, one {# element} other {# elementer}}",
+  "close": "Lukk"
 }

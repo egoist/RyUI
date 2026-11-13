@@ -14,6 +14,9 @@ class AsukaScreenController: UIViewController {
     var backGesture = true
     /// ui.OnBack: the core decides whether going back pops it.
     var interceptsBack = false
+    /// ScreenOptions.Toolbar and Primary: its bottom toolbar's items.
+    var toolbar: [AsukaAction] = []
+    var primary: AsukaAction?
 
     init(nodeID: UInt32) {
         self.nodeID = nodeID
@@ -40,7 +43,7 @@ class AsukaScreenController: UIViewController {
 
     private weak var scrollsContent: UIScrollView?
 
-    /// Tells UIKit which scroll view the screen's bar follows, for its large
+    /// Tells UIKit which scroll view the screen's bars follow, for its large
     /// title and scroll edge. It only looks down each view's first subview on
     /// its own, so a screen with something behind its list would never collapse
     /// its title. It's the first that takes up most of the screen: a row of
@@ -54,7 +57,7 @@ class AsukaScreenController: UIViewController {
             i += 1
             if let s = v as? UIScrollView, !s.isHidden, s.bounds.height >= content.bounds.height / 2, s.bounds.height > 0 {
                 scrollsContent = s
-                setContentScrollView(s, for: .top)
+                setContentScrollView(s, for: [.top, .bottom]) // the bottom: its toolbar
                 return
             }
             if !(v is UIScrollView) { queue.append(contentsOf: v.subviews) }
@@ -84,6 +87,11 @@ class AsukaScreenController: UIViewController {
 final class AsukaSheetController: AsukaScreenController, UIAdaptivePresentationControllerDelegate {
     var detents: Int64 = 0
     var grabber = false
+    /// SheetProps.FullScreen: presented .fullScreen (SwiftUI's
+    /// fullScreenCover), over everything, its view the screen's: its
+    /// environment is the screen's size and safe area. Nothing but the
+    /// core dismisses it.
+    var fullScreen = false
 
     func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
         guard let n = AsukaRuntime.shared.nodes[nodeID], !n.dying else { return }
@@ -166,6 +174,54 @@ final class AsukaStackController: UINavigationController, UINavigationController
         return top.backGesture && !top.interceptsBack
     }
 
+    /// Shows the bottom toolbar while the screen on top has items for it,
+    /// sliding with a push or a pop; an interactive pop that's cancelled
+    /// puts it back as it was.
+    func navigationController(_ nav: UINavigationController, willShow vc: UIViewController, animated: Bool) {
+        setToolbarHidden(vc.toolbarItems?.isEmpty ?? true, animated: animated)
+        hideTabBar(for: vc, animated: animated)
+        transitionCoordinator?.notifyWhenInteractionChanges { [weak self] ctx in
+            guard ctx.isCancelled, let self, let from = ctx.viewController(forKey: .from) else { return }
+            self.setToolbarHidden(from.toolbarItems?.isEmpty ?? true, animated: true)
+            self.hideTabBar(for: from, animated: true)
+        }
+    }
+
+    /// The top screen's toolbar items changed, or it was pushed: the
+    /// toolbar shows while it has some.
+    func showToolbar() {
+        guard transitionCoordinator == nil, let top = topViewController else { return }
+        let hidden = top.toolbarItems?.isEmpty ?? true
+        if hidden != isToolbarHidden { setToolbarHidden(hidden, animated: view.window != nil) }
+        hideTabBar(for: top, animated: view.window != nil)
+    }
+
+    /// Whether this stack hid its tabs' tab bar.
+    private var hidTabBar = false
+
+    /// A pushed screen with a toolbar covers the tab bar, as a message in
+    /// Mail does (hidesBottomBarWhenPushed, which UIKit only honors for a
+    /// tab's own navigation controller): the toolbar takes the bottom edge,
+    /// where iOS 26's floating tab bar would lie over it. A primary action
+    /// alone sits beside the tab bar. Before iOS 18 the toolbar stays above
+    /// the tab bar, as UIKit stacks them.
+    func hideTabBar(for vc: UIViewController, animated: Bool) {
+        guard #available(iOS 18.0, *), let tabs = tabBarController else { return }
+        let hide = vc !== viewControllers.first && !((vc as? AsukaScreenController)?.toolbar.isEmpty ?? true)
+        guard hide != hidTabBar else { return }
+        hidTabBar = hide
+        tabs.setTabBarHidden(hide, animated: animated)
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        // Going away (a split's detail replaced): the tab bar comes back.
+        if #available(iOS 18.0, *), hidTabBar, isMovingFromParent || isBeingDismissed {
+            hidTabBar = false
+            tabBarController?.setTabBarHidden(false, animated: animated)
+        }
+    }
+
     func navigationController(_ nav: UINavigationController, didShow vc: UIViewController, animated: Bool) {
         AsukaRuntime.shared.stackDidShow(self)
         if let q = queued {
@@ -212,6 +268,33 @@ final class AsukaAlertController: UIAlertController {
     }
 }
 
+/// An alert's text field's delegate, in front of UIKit's own (the
+/// alert's), which gets everything else: return goes on only if
+/// shouldReturn says so.
+final class AsukaAlertFieldDelegate: NSObject, UITextFieldDelegate {
+    weak var inner: UITextFieldDelegate?
+    let shouldReturn: () -> Bool
+
+    init(_ inner: UITextFieldDelegate?, shouldReturn: @escaping () -> Bool) {
+        self.inner = inner
+        self.shouldReturn = shouldReturn
+    }
+
+    func textFieldShouldReturn(_ tf: UITextField) -> Bool {
+        guard shouldReturn() else { return false }
+        return inner?.textFieldShouldReturn?(tf) ?? true
+    }
+
+    override func responds(to sel: Selector!) -> Bool {
+        super.responds(to: sel) || (inner?.responds(to: sel) ?? false)
+    }
+
+    override func forwardingTarget(for sel: Selector!) -> Any? {
+        if let inner, inner.responds(to: sel) { return inner }
+        return super.forwardingTarget(for: sel)
+    }
+}
+
 /// Shows a container's menu on a long press.
 final class AsukaContextMenu: NSObject, UIContextMenuInteractionDelegate {
     weak var node: AsukaNode?
@@ -224,27 +307,16 @@ final class AsukaContextMenu: NSObject, UIContextMenuInteractionDelegate {
     }
 }
 
-/// An action of a menu, an alert or a navigation bar.
-struct AsukaAction {
-    var title: String
-    var role: Int32
-    var icon = ""
+/// An action of a menu, an alert or a navigation bar (AsukaOps' reader:
+/// its number, flags and children).
+typealias AsukaAction = AsukaActionItem
+
+extension AsukaActionItem {
     /// The icon's symbol, if it has one.
     var image: UIImage? { icon.isEmpty ? nil : UIImage(systemName: icon) }
 }
 
-func decodeActions(_ b: UnsafeRawBufferPointer) -> [AsukaAction] {
-    var r = AsukaReader(b)
-    guard b.count >= 4 else { return [] }
-    let n = Int(r.u32())
-    var out: [AsukaAction] = []
-    for _ in 0..<n {
-        let role = Int32(r.u8())
-        let title = r.string()
-        out.append(AsukaAction(title: title, role: role, icon: r.string()))
-    }
-    return out
-}
+func decodeActions(_ b: UnsafeRawBufferPointer) -> [AsukaAction] { AsukaActions.decode(b) }
 
 @MainActor extension AsukaRuntime {
     var topController: UIViewController? {
@@ -335,6 +407,8 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [AsukaAction] {
             return (s.view, s)
         case .alert:
             return (UIView(), nil)
+        case .snackbar:
+            return (AsukaSnackbarView(nodeID: id), nil)
         default:
             return nil
         }
@@ -369,6 +443,7 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [AsukaAction] {
                     nav.enqueue(nav.target + [screen])
                 } else {
                     nav.pushViewController(screen, animated: !nav.instant && !nav.viewControllers.isEmpty && nav.view.window != nil)
+                    nav.showToolbar() // a first screen: no transition to show it with
                 }
                 nav.instant = false
             } else {
@@ -462,7 +537,10 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [AsukaAction] {
         switch n.kind {
         case .sheet:
             guard let s = n.vc as? AsukaSheetController, let top = topController else { return }
-            if let sheet = s.sheetPresentationController {
+            // The style before the presentation controller is first asked
+            // for: it's made for the style it has then.
+            s.modalPresentationStyle = s.fullScreen ? .fullScreen : .automatic
+            if !s.fullScreen, let sheet = s.sheetPresentationController {
                 var ds: [UISheetPresentationController.Detent] = []
                 if s.detents & 1 != 0 { ds.append(.medium()) }
                 if s.detents & 2 != 0 || ds.isEmpty { ds.append(.large()) }
@@ -487,12 +565,18 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [AsukaAction] {
             let a = AsukaAlertController(title: n.alertTitle, message: n.alertMessage,
                                         preferredStyle: n.alertStyle == AsukaAlertStyle.actionSheet.rawValue ? .actionSheet : .alert)
             let id = n.id
-            for (i, act) in n.actions.enumerated() {
+            for act in n.actions {
                 let style: UIAlertAction.Style = act.role == AsukaAlertButtonRole.cancel.rawValue ? .cancel
                     : act.role == AsukaAlertButtonRole.destructive.rawValue ? .destructive : .default
-                a.addAction(UIAlertAction(title: act.title, style: style) { [weak self] _ in
-                    self?.emit(id, .action) { AsukaEvents.action(id, Int64(i)) }
-                })
+                let index = act.index
+                let action = UIAlertAction(title: act.title, style: style) { [weak self] _ in
+                    self?.emit(id, .action) { AsukaEvents.action(id, index) }
+                }
+                action.isEnabled = !act.disabled
+                a.addAction(action)
+            }
+            if a.preferredStyle == .alert && !n.alertFields.isEmpty {
+                addFields(n, to: a)
             }
             if let pop = a.popoverPresentationController, let v = top.view {
                 pop.sourceView = v
@@ -501,19 +585,93 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [AsukaAction] {
             }
             n.vc = a
             top.present(a, animated: true)
+        case .snackbar:
+            presentSnackbar(n)
         default:
             break
         }
     }
 
-    func menu(for n: AsukaNode) -> UIMenu {
+    /// Adds an alert's text fields, which report the user's typing with
+    /// FieldChanged; the alert focuses the first as it shows. Return
+    /// presses the preferred action, the default one (the first whose role
+    /// is Default), which UIKit bolds; a field before the last moves on to
+    /// the next.
+    func addFields(_ n: AsukaNode, to a: UIAlertController) {
         let id = n.id
-        let items: [UIMenuElement] = n.actions.enumerated().map { i, act in
-            UIAction(title: act.title, image: act.image, attributes: act.role == AsukaAlertButtonRole.destructive.rawValue ? .destructive : []) { [weak self] _ in
-                self?.emit(id, .action) { AsukaEvents.action(id, Int64(i)) }
+        let count = n.alertFields.count
+        for (i, f) in n.alertFields.enumerated() {
+            a.addTextField { [weak self] tf in
+                guard let self else { return }
+                tf.text = f.text
+                tf.placeholder = f.placeholder
+                tf.isSecureTextEntry = f.secure
+                tf.keyboardType = keyboardType(f.keyboard)
+                if !f.contentType.isEmpty { tf.textContentType = contentType(f.contentType) }
+                // A password, an account's name, an address: as typed.
+                if f.secure || f.keyboard == AsukaKeyboard.email.rawValue || f.keyboard == AsukaKeyboard.url.rawValue
+                    || ["username", "password", "newPassword", "oneTimeCode", "email", "url"].contains(f.contentType) {
+                    tf.autocapitalizationType = .none
+                    tf.autocorrectionType = .no
+                }
+                tf.returnKeyType = i < count - 1 ? .next : .default
+                let attr = self.appAttribute
+                if attr != .unspecified {
+                    tf.semanticContentAttribute = attr
+                    tf.textAlignment = self.startAlignment(self.rtl)
+                }
+                tf.addAction(UIAction { [weak self, weak tf] _ in
+                    let text = tf?.text ?? ""
+                    self?.emit(id, .fieldChanged) { AsukaEvents.fieldChanged(id, AsukaAlertFields.changed(i, text)) }
+                }, for: .editingChanged)
             }
         }
-        return UIMenu(children: items)
+        var preferred: UIAlertAction?
+        if let k = n.actions.firstIndex(where: { $0.role == AsukaAlertButtonRole.default.rawValue }), k < a.actions.count {
+            preferred = a.actions[k]
+            a.preferredAction = preferred
+        }
+        // Return: before the last field, on to the next; in the last, the
+        // alert's own (the preferred action) only while it's enabled, as
+        // UIKit dismisses the alert otherwise.
+        n.alertFieldDelegates = (a.textFields ?? []).enumerated().map { i, tf in
+            let d = AsukaAlertFieldDelegate(tf.delegate) { [weak a, weak preferred] in
+                guard let fields = a?.textFields else { return false }
+                if i + 1 < fields.count {
+                    fields[i + 1].becomeFirstResponder()
+                    return false
+                }
+                return preferred?.isEnabled == true
+            }
+            tf.delegate = d
+            return d
+        }
+    }
+
+    func menu(for n: AsukaNode) -> UIMenu { menu(of: n.actions, title: "", for: n.id) }
+
+    /// A UIMenu of actions whose items send Action to the node with id:
+    /// disabled and checked items, submenus, and sections shown inline
+    /// under their titles (as SwiftUI's Section in a Menu).
+    /// Action events carry base + an item's number (a screen's Toolbar's and
+    /// Primary's: AsukaActions.toolbarBase, primaryBase).
+    func menu(of actions: [AsukaAction], title: String, image: UIImage? = nil, inline: Bool = false, for id: UInt32, base: Int64 = 0) -> UIMenu {
+        let items: [UIMenuElement] = actions.compactMap { act in
+            if act.role == AsukaAlertButtonRole.cancel.rawValue { return nil } // the menu's dismissal
+            if act.submenu {
+                // A disabled submenu: its title, dimmed, opening nothing.
+                if act.disabled && !act.inline { return UIAction(title: act.title, image: act.image, attributes: .disabled) { _ in } }
+                return menu(of: act.items, title: act.title, image: act.image, inline: act.inline, for: id, base: base)
+            }
+            var attrs: UIMenuElement.Attributes = []
+            if act.role == AsukaAlertButtonRole.destructive.rawValue { attrs.insert(.destructive) }
+            if act.disabled { attrs.insert(.disabled) }
+            let index = base + act.index
+            return UIAction(title: act.title, image: act.image, attributes: attrs, state: act.checked ? .on : .off) { [weak self] _ in
+                self?.emit(id, .action) { AsukaEvents.action(id, index) }
+            }
+        }
+        return UIMenu(title: title, image: image, options: inline ? .displayInline : [], children: items)
     }
 
     /// Installs a node's menu: on a button, as its primary action; on a
@@ -576,6 +734,9 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [AsukaAction] {
             n.vc?.navigationItem.largeTitleDisplayMode = v.bool ? .always : .never
         case (.screen, AsukaProp.Screen.icon):
             n.vc?.tabBarItem.image = UIImage(systemName: v.string)
+        case (.screen, AsukaProp.Screen.badge):
+            // The system's badge, which VoiceOver reads with the tab.
+            n.vc?.tabBarItem.badgeValue = v.string.isEmpty ? nil : v.string
         case (.screen, AsukaProp.Screen.search):
             guard let vc = n.vc else { return }
             let s = n.search ?? AsukaSearch(id: n.id, runtime: self)
@@ -602,15 +763,34 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [AsukaAction] {
         case (.screen, AsukaProp.Screen.actions):
             guard case .bytes(let b) = v, let vc = n.vc else { return }
             let id = n.id
-            vc.navigationItem.rightBarButtonItems = decodeActions(b).enumerated().map { i, act in
+            vc.navigationItem.rightBarButtonItems = decodeActions(b).map { act in
                 // An icon stands for the title, which VoiceOver reads.
-                let item = UIBarButtonItem(title: act.image == nil ? act.title : nil, image: act.image, primaryAction: UIAction(title: act.title) { [weak self] _ in
-                    self?.emit(id, .action) { AsukaEvents.action(id, Int64(i)) }
-                })
+                let item: UIBarButtonItem
+                if act.submenu {
+                    // With children, it opens them as a menu (SwiftUI's Menu in a toolbar).
+                    item = UIBarButtonItem(title: act.image == nil ? act.title : nil, image: act.image,
+                                           menu: menu(of: act.items, title: "", for: id))
+                } else {
+                    let index = act.index
+                    item = UIBarButtonItem(title: act.image == nil ? act.title : nil, image: act.image, primaryAction: UIAction(title: act.title) { [weak self] _ in
+                        self?.emit(id, .action) { AsukaEvents.action(id, index) }
+                    })
+                }
                 item.accessibilityLabel = act.title
+                item.isEnabled = !act.disabled
                 if act.role == AsukaAlertButtonRole.destructive.rawValue { item.tintColor = .systemRed }
                 return item
             }
+        case (.screen, AsukaProp.Screen.toolbar):
+            guard case .bytes(let b) = v, let vc = n.vc as? AsukaScreenController else { return }
+            vc.toolbar = decodeActions(b)
+            setToolbar(vc)
+        case (.screen, AsukaProp.Screen.primary):
+            guard case .bytes(let b) = v, let vc = n.vc as? AsukaScreenController else { return }
+            vc.primary = decodeActions(b).first
+            setToolbar(vc)
+        case (.screen, AsukaProp.Screen.primaryExtended):
+            break // Android's extended FAB: iOS's toolbar item is as it is
         case (.tabs, AsukaProp.Tabs.selected):
             n.selected = Int(v.int)
             (n.vc as? AsukaTabsController)?.selectedIndex = Int(v.int)
@@ -626,16 +806,33 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [AsukaAction] {
             (n.vc as? AsukaSheetController)?.detents = v.int
         case (.sheet, AsukaProp.Sheet.grabber):
             (n.vc as? AsukaSheetController)?.grabber = v.bool
+        case (.sheet, AsukaProp.Sheet.fullScreen):
+            (n.vc as? AsukaSheetController)?.fullScreen = v.bool
         case (.alert, AsukaProp.Alert.title):
             n.alertTitle = v.string
         case (.alert, AsukaProp.Alert.message):
             n.alertMessage = v.string
         case (.alert, AsukaProp.Alert.buttons):
-            if case .bytes(let b) = v { n.actions = decodeActions(b) }
+            guard case .bytes(let b) = v else { return }
+            n.actions = decodeActions(b)
+            // Showing, its buttons follow Disabled (a UIAlertAction's title
+            // is its own once it's made).
+            if let a = n.vc as? UIAlertController {
+                for (act, button) in zip(n.actions, a.actions) { button.isEnabled = !act.disabled }
+            }
         case (.alert, AsukaProp.Alert.style):
             n.alertStyle = v.enumValue
-        case (.sheet, AsukaProp.Sheet.window), (.alert, AsukaProp.Alert.window):
+        case (.alert, AsukaProp.Alert.fields):
+            guard case .bytes(let b) = v else { return }
+            n.alertFields = AsukaAlertFields.decode(b)
+        case (.sheet, AsukaProp.Sheet.window), (.alert, AsukaProp.Alert.window), (.snackbar, AsukaProp.Snackbar.window):
             break // the window it's declared in: a phone has one
+        case (.snackbar, AsukaProp.Snackbar.message):
+            (n.view as? AsukaSnackbarView)?.message = v.string
+        case (.snackbar, AsukaProp.Snackbar.action):
+            (n.view as? AsukaSnackbarView)?.action = v.string
+        case (.snackbar, AsukaProp.Snackbar.duration):
+            (n.view as? AsukaSnackbarView)?.duration = v.enumValue
         case (.scroll, AsukaProp.Scroll.refreshable), (.list, AsukaProp.List.refreshable):
             guard let s = n.view as? UIScrollView else { return }
             if v.bool {
@@ -664,6 +861,52 @@ func decodeActions(_ b: UnsafeRawBufferPointer) -> [AsukaAction] {
         default:
             break
         }
+    }
+
+    /// A screen's bottom toolbar (SwiftUI's .bottomBar): its Toolbar's
+    /// buttons with flexible space between them, and its Primary action as
+    /// the trailing item, prominent on iOS 26 (Mail's Compose; iOS has no
+    /// floating button). The navigation controller shows the toolbar while
+    /// the screen with items is on top (AsukaStackController).
+    func setToolbar(_ vc: AsukaScreenController) {
+        let id = vc.nodeID
+        var items: [UIBarButtonItem] = []
+        for act in vc.toolbar {
+            if !items.isEmpty { items.append(.flexibleSpace()) }
+            items.append(barButton(act, for: id, base: AsukaActions.toolbarBase))
+        }
+        if let p = vc.primary {
+            items.append(.flexibleSpace())
+            let item = barButton(p, for: id, base: AsukaActions.primaryBase)
+            if #available(iOS 26.0, *) {
+                item.style = .prominent
+            } else {
+                item.style = .done
+            }
+            items.append(item)
+        }
+        vc.setToolbarItems(items, animated: vc.view.window != nil)
+        (vc.navigationController as? AsukaStackController)?.showToolbar()
+    }
+
+    /// A bar button of an action: its icon, else its title (VoiceOver reads
+    /// the title either way); one with children opens them as a menu.
+    /// Action events carry base + the item's number.
+    func barButton(_ act: AsukaAction, for id: UInt32, base: Int64) -> UIBarButtonItem {
+        let item: UIBarButtonItem
+        let title = act.image == nil ? act.title : nil
+        if act.submenu {
+            item = UIBarButtonItem(title: title, image: act.image, menu: menu(of: act.items, title: "", for: id, base: base))
+        } else {
+            let index = base + act.index
+            item = UIBarButtonItem(title: title, image: act.image, primaryAction: UIAction(title: act.title) { [weak self] _ in
+                self?.emit(id, .action) { AsukaEvents.action(id, index) }
+            })
+        }
+        item.accessibilityLabel = act.title
+        item.isEnabled = !act.disabled
+        if act.role == AsukaAlertButtonRole.destructive.rawValue { item.tintColor = .systemRed }
+        return item
     }
 
     func haptic(_ kind: Int32) {

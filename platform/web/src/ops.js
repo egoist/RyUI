@@ -37,10 +37,13 @@ export const Kind = Object.freeze({
   Split: 33,
   Shader: 34,
   Window: 35,
+  Picker: 36,
+  ProgressRing: 37,
+  Snackbar: 38,
 });
 
 /** Kind names, by kind. */
-export const kindNames = ["", "View", "Text", "Button", "TextField", "Toggle", "Slider", "Scroll", "List", "Activity", "Stack", "Screen", "Tabs", "Sheet", "Alert", "Image", "Native", "RichText", "Selectable", "Symbol", "Segmented", "Wheel", "Stepper", "ColorPicker", "Progress", "Shape", "Video", "WebView", "DatePicker", "PageControl", "Popover", "Accessory", "Canvas", "Split", "Shader", "Window"];
+export const kindNames = ["", "View", "Text", "Button", "TextField", "Toggle", "Slider", "Scroll", "List", "Activity", "Stack", "Screen", "Tabs", "Sheet", "Alert", "Image", "Native", "RichText", "Selectable", "Symbol", "Segmented", "Wheel", "Stepper", "ColorPicker", "Progress", "Shape", "Video", "WebView", "DatePicker", "PageControl", "Popover", "Accessory", "Canvas", "Split", "Shader", "Window", "Picker", "ProgressRing", "Snackbar"];
 
 /** Props every kind has. */
 export const Prop = Object.freeze({
@@ -94,10 +97,10 @@ export const KindProp = Object.freeze({
   Scroll: Object.freeze({ Horizontal: 64, Refreshable: 65, Refreshing: 66, Paging: 67 }),
   List: Object.freeze({ Refreshable: 64, Refreshing: 65, Columns: 66, Gap: 67, Appearance: 68, Inset: 69, Anchor: 70, Selecting: 71 }),
   Activity: Object.freeze({ Animating: 64 }),
-  Screen: Object.freeze({ Title: 64, Actions: 65, BackGesture: 66, Icon: 67, Search: 68, SearchText: 69, SearchButton: 70, ZoomFrom: 71, LargeTitle: 72, BarColor: 73 }),
+  Screen: Object.freeze({ Title: 64, Actions: 65, BackGesture: 66, Icon: 67, Search: 68, SearchText: 69, SearchButton: 70, ZoomFrom: 71, LargeTitle: 72, BarColor: 73, Toolbar: 74, Primary: 75, PrimaryExtended: 76, Badge: 77 }),
   Tabs: Object.freeze({ Selected: 64 }),
-  Sheet: Object.freeze({ Detents: 64, Grabber: 65, Window: 66 }),
-  Alert: Object.freeze({ Title: 64, Message: 65, Buttons: 66, Style: 67, Window: 68 }),
+  Sheet: Object.freeze({ Detents: 64, Grabber: 65, Window: 66, FullScreen: 67 }),
+  Alert: Object.freeze({ Title: 64, Message: 65, Buttons: 66, Style: 67, Window: 68, Fields: 69 }),
   Image: Object.freeze({ Source: 64, Mode: 65, Placeholder: 66 }),
   Native: Object.freeze({ Type: 64, Prop: 65 }),
   RichText: Object.freeze({ Content: 64, Inlines: 65 }),
@@ -118,6 +121,9 @@ export const KindProp = Object.freeze({
   Split: Object.freeze({ Items: 64, Selected: 65, Title: 66 }),
   Shader: Object.freeze({ Code: 64, Uniforms: 65, Animated: 66 }),
   Window: Object.freeze({ Title: 64, Config: 65, Flyout: 66, Edited: 67, File: 68 }),
+  Picker: Object.freeze({ Items: 64, Selected: 65, Label: 66 }),
+  ProgressRing: Object.freeze({ Value: 64, Indeterminate: 65 }),
+  Snackbar: Object.freeze({ Message: 64, Action: 65, Duration: 66, Window: 67 }),
 });
 
 /** Events hosts send. */
@@ -178,6 +184,7 @@ export const Event = Object.freeze({
   WindowState: 54,
   CloseRequest: 55,
   Key: 56,
+  FieldChanged: 57,
 });
 
 /** Commands the core sends. */
@@ -252,6 +259,7 @@ export const ScrollAnchor = Object.freeze({ Top: 0, Bottom: 1 });
 export const WindowAction = Object.freeze({ Show: 0, Hide: 1, Focus: 2, Minimize: 3, Maximize: 4, Restore: 5, Fullscreen: 6, ExitFullscreen: 7, Center: 8, Size: 9, Position: 10, AlwaysOnTop: 11, NotAlwaysOnTop: 12, Close: 13, ClickThrough: 14, NotClickThrough: 15, Fit: 16 });
 export const Placement = Object.freeze({ Bottom: 0, BottomStart: 1, BottomEnd: 2, Top: 3, TopStart: 4, TopEnd: 5, Right: 6, RightStart: 7, RightEnd: 8, Left: 9, LeftStart: 10, LeftEnd: 11 });
 export const TitleBar = Object.freeze({ Default: 0, Hidden: 1 });
+export const SnackbarDuration = Object.freeze({ Short: 0, Long: 1, Indefinite: 2 });
 
 const utf8 = new TextDecoder();
 const utf8Out = new TextEncoder();
@@ -443,4 +451,5 @@ export const Events = Object.freeze({
   windowState: (id, v) => new Writer().header(id, 54).bytes(v).done(),
   closeRequest: (id) => new Writer().header(id, 55).done(),
   key: (id, v) => new Writer().header(id, 56).i64(v).done(),
+  fieldChanged: (id, v) => new Writer().header(id, 57).bytes(v).done(),
 });

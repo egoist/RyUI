@@ -2,6 +2,7 @@
   "ok": "U redu",
   "search": "Traži",
   "back": "Natrag",
+  "moreOptions": "Više opcija",
   "decrease": "Smanji",
   "increase": "Povećaj",
   "about": "Više o aplikaciji {app}",
@@ -37,5 +38,7 @@
   "updateCheckError": "Došlo je do pogreške pri traženju ažuriranja. Pokušajte ponovno kasnije.",
   "updateInstallError": "Došlo je do pogreške pri instaliranju ažuriranja. Pokušajte ponovno kasnije.",
   "updateUnavailable": "Ažuriranja nisu dostupna",
-  "updateUnavailableMessage": "Aplikacija {app} ne može se sama ažurirati na mjestu na kojem je instalirana. Ako ju je instalirao upravitelj paketa ili trgovina aplikacija, ažurirajte je ondje."
+  "updateUnavailableMessage": "Aplikacija {app} ne može se sama ažurirati na mjestu na kojem je instalirana. Ako ju je instalirao upravitelj paketa ili trgovina aplikacija, ažurirajte je ondje.",
+  "badgeCount": "{count, plural, one {# stavka} few {# stavke} other {# stavki}}",
+  "close": "Zatvori"
 }

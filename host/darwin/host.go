@@ -88,12 +88,15 @@ type node struct {
 	list           *list
 	cell           *cell
 	nav            *nav
+	snack          *snack // a Snackbar's (snackbar.go)
 	rich           *rich
 	field          *richField // a Rich TextField's
 	shape          *shape
+	ring           *progressRing // a ProgressRing's (progressring.go)
 	web            *web
 	video          *video
 	selected       int
+	pickerLabel    string // a Picker's Label
 	min, max       float64
 	scroll         bool // observes its scroll position
 	dying          bool
@@ -151,7 +154,12 @@ type action struct {
 	role  ops.AlertButtonRole
 	title string
 	icon  string
+	index int64 // its number in its menu, depth first: what Action carries
+	flags ops.MenuFlags
+	items []action // a submenu's or section's (ops.MenuSubmenu)
 }
+
+func (a *action) is(f ops.MenuFlags) bool { return a.flags&f == f }
 
 // Host is the macOS host.
 type Host struct {
@@ -172,6 +180,8 @@ type Host struct {
 	postMu sync.Mutex
 	posted []func()
 	source *MainSource
+
+	ringsObserved bool // its target follows what drawn rings' colors follow (progressring.go)
 
 	animating     bool
 	anim          animation
@@ -197,6 +207,7 @@ type Host struct {
 	sidebarSource ID
 	editors       map[ID]ID         // each window's field editor (AsukaFieldEditor)
 	videos        map[ID]ops.NodeID // by AVPlayerItem
+	alertFields   map[ID]alertField // the text fields of the alerts showing, by NSTextField
 	main          *win              // the main window, holding the root
 	wins          map[ID]*win       // the Windows' windows, by NSWindow
 	appMenus      []ops.MenuBarMenu // MenuBar's
@@ -519,6 +530,9 @@ func (h *Host) release(n *node) {
 		if n.video != nil {
 			n.video.close()
 		}
+		if n.ring != nil {
+			n.ring.release() // its layers, AppKit's indicators
+		}
 		if n.scroll {
 			clip := Send(n.view, "contentView")
 			center := Send(Class("NSNotificationCenter"), "defaultCenter")
@@ -703,6 +717,9 @@ func (h *Host) place(n *node, f [4]float32) {
 	}
 	if n.shape != nil {
 		n.shape.resized(n)
+	}
+	if n.ring != nil {
+		n.ring.layout(h, n)
 	}
 	if n.cornerRadius != 0 {
 		h.applyCorner(n)

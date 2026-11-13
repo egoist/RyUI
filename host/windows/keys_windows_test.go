@@ -374,7 +374,7 @@ func TestSheetAlertOnTheirWindow(t *testing.T) {
 		// sheet shown on it, which takes its input).
 		var owners []uintptr
 		saved := taskDialog
-		taskDialog = func(owner uintptr, _, _, _ string, _ []TaskButton, _ int, _ uint32) int {
+		taskDialog = func(owner uintptr, _, _, _ string, _ []TaskButton, _ int, _ uint32, _ func(uintptr)) int {
 			owners = append(owners, owner)
 			return IDCANCEL
 		}

@@ -163,9 +163,14 @@ func (h *Host) connect() {
 		loc := args[0].String()
 		b, _ := json.Marshal(map[string]string{
 			"ok": l10n.OK(loc), "back": l10n.Back(loc), "search": l10n.Search(loc),
-			"increase": l10n.Increase(loc), "decrease": l10n.Decrease(loc),
+			"increase": l10n.Increase(loc), "decrease": l10n.Decrease(loc), "moreOptions": l10n.MoreOptions(loc),
+			"close": l10n.Close(loc),
 		})
 		return string(b)
+	})
+	// A badge for a screen reader: a count as so many items.
+	fn("badge", func(args []js.Value) any {
+		return l10n.Badge(args[0].String(), args[1].String())
 	})
 	fn("shaderGLSL", func(args []js.Value) any {
 		if boot.ShaderGLSL == nil {

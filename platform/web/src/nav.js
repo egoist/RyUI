@@ -4,10 +4,18 @@
 //     Windows host's): a back button while there's a screen to go back
 //     to, the screen's title, its bar buttons, its search field. Pushes
 //     and pops slide (they cross-fade with reduced motion).
+//   - A screen's Toolbar is a bar at the bottom of its stack, under the
+//     screens (the buttons that don't fit in a More options menu), and its
+//     Primary action a floating button at the bottom trailing corner, over
+//     the screen and the bar; an extended one with its title, which folds
+//     to its icon as the screen's content scrolls down.
 //   - Tabs are a bar of tabs at the bottom, the selected page above it.
 //   - A Sheet is a modal <dialog> (the top layer: what's under it is
 //     inert): a bottom sheet on a narrow window, a centered card on a
-//     wide one. Escape, a click outside or a swipe down dismisses it.
+//     wide one. Escape, a click outside or a swipe down dismisses it. A
+//     FullScreen one covers the whole page (a Window's panel's content,
+//     for one declared in a Window), sliding up; only Escape (or going
+//     back) dismisses it.
 //   - An Alert is a modal <dialog> too; an action sheet's buttons a list.
 //   - A Popover is a popover element next to what it points at.
 //   - A SplitView is a sidebar beside its detail Stack; on a narrow
@@ -29,14 +37,23 @@
 
 import { Kind, KindProp as P, Event, Events, Command, Reader, TitleBar, environment as newEnv } from "./ops.js";
 import { Flag, place, center, trayAnchor, focusIn, transient } from "./window.js";
-import { own } from "./views.js";
+import { own, autocomplete, inputModes } from "./views.js";
+import { decodeAlertFields, fieldChanged, AlertFieldFlags } from "./alertfields.js";
 import { decodeActions } from "./host.js";
+import { MenuFlags } from "./actions.js";
+import { withPicks } from "./menu.js";
 import { symbolSVG } from "./media.js";
+import { decodeSidebar, sameShape, badgeNumber } from "./sidebar.js";
 import * as text from "./text.js";
+import { snackbarKind, presentSnackbar, placeSnackbar } from "./snackbar.js";
 
 const headerHeight = 52;
 const searchHeight = 48;
 const tabBarHeight = 56;
+const toolbarHeight = 50;
+/** A screen's Toolbar's Action events: toolbarBase + the item's number (ops.ScreenToolbarActions); its Primary's: primaryBase + it. */
+export const toolbarBase = 2 ** 32;
+export const primaryBase = 2 ** 33;
 const sidebarWidth = 280;
 
 function div(cls) {
@@ -71,9 +88,40 @@ export class Navigation {
     const loc = this.h.locale || navigator.language;
     let w = this.words[loc];
     if (!w) {
-      try { w = this.words[loc] = JSON.parse(this.h.core.words(loc)); } catch { w = { back: "Back", ok: "OK", search: "Search", increase: "Increase", decrease: "Decrease" }; }
+      try { w = this.words[loc] = JSON.parse(this.h.core.words(loc)); } catch { w = { back: "Back", ok: "OK", search: "Search", increase: "Increase", decrease: "Decrease", moreOptions: "More options", close: "Close" }; }
     }
     return w[key] || key;
+  }
+
+  /** badgeWords says a badge for a screen reader, in the app's language: a count as so many items ("3 items"), other text as it is. */
+  badgeWords(text) {
+    const loc = this.h.locale || navigator.language;
+    try { return this.h.core.badge(loc, text); } catch {}
+    const n = badgeNumber(text);
+    return n === null ? text : `${n} ${n === 1 ? "item" : "items"}`;
+  }
+
+  /**
+   * showBadge puts a badge in el (a tab, a sidebar row), after its title:
+   * its text, shown (the class's look) and hidden from a screen reader,
+   * which hears it in el's name instead, a count as so many items
+   * ("Inbox, 3 items"); empty, none.
+   */
+  showBadge(el, title, badge, cls) {
+    let b = el.querySelector(":scope > ." + cls);
+    if (!badge) {
+      b?.remove();
+      el.removeAttribute("aria-label");
+      return;
+    }
+    if (!b) {
+      b = document.createElement("span");
+      b.className = cls;
+      b.setAttribute("aria-hidden", "true");
+      el.append(b);
+    }
+    b.textContent = badge;
+    el.setAttribute("aria-label", title + ", " + this.badgeWords(badge));
   }
 
   rootChanged() { this.updateGuard(); }
@@ -89,6 +137,7 @@ export class Navigation {
       else if ((n.kind === Kind.Sheet || n.kind === Kind.Window) && n.shown) this.sizeDialog(n);
       else if (n.kind === Kind.Alert && n.shown) this.placeOnWindow(n);
       else if (n.kind === Kind.Popover && n.shown) this.placePopover(n);
+      else if (n.kind === Kind.Snackbar) placeSnackbar(this.h, n);
     }
   }
 
@@ -123,7 +172,12 @@ export class Navigation {
       const bar = this.barHeight(n);
       n.stack.bar.style.height = bar + "px";
       n.stack.bar.hidden = bar === 0;
-      for (const s of n.children) this.placeScreen(s, 0, bar, w, h - bar);
+      const foot = this.footHeight(n);
+      n.stack.foot.style.height = foot + "px";
+      n.stack.foot.hidden = foot === 0;
+      for (const s of n.children) this.placeScreen(s, 0, bar, w, h - bar - foot);
+      this.fitToolbar(n);
+      this.placeFab(n);
     } else if (n.kind === Kind.Tabs) {
       const bar = tabBarHeight + this.h.safeArea()[2] * (this.touchesBottom(n) ? 1 : 0);
       n.tabs.bar.style.height = bar + "px";
@@ -167,6 +221,124 @@ export class Navigation {
 
   live(stack) { return stack.children.filter((s) => !s.leaving).length; }
 
+  // --- A screen's Toolbar and Primary action ---
+
+  /** footHeight is the height of a stack's bottom bar: its top screen's Toolbar, over the safe area at the bottom. */
+  footHeight(stack) {
+    const top = this.topScreen(stack);
+    if (!top?.toolbar?.length) return 0;
+    return toolbarHeight + (this.touchesBottom(stack) ? this.h.safeArea()[2] : 0);
+  }
+
+  /** actionButton makes a bar's button for an action: its icon (its title is its label), else its title; with children, it opens them as a menu. */
+  actionButton(screen, a, base, rtl) {
+    const b = a.icon ? iconButton(a.icon, a.title, rtl) : document.createElement("button");
+    if (!a.icon) {
+      b.type = "button";
+      b.className = "asuka-bar-button asuka-bar-text asuka-control";
+      b.textContent = a.title;
+    }
+    b.title = a.title;
+    if (a.role === 2) b.classList.add("asuka-destructive");
+    if (a.flags & MenuFlags.Disabled) b.disabled = true;
+    if (a.flags & MenuFlags.Submenu) {
+      b.setAttribute("aria-haspopup", "menu");
+      b.addEventListener("click", () => this.h.menus.show(withPicks(a.items, (c) => this.h.emit(screen, Event.Action, (id) => Events.action(id, base + c.index))), 0, 0, b));
+    } else {
+      b.addEventListener("click", () => this.h.emit(screen, Event.Action, (id) => Events.action(id, base + a.index)));
+    }
+    return b;
+  }
+
+  /** updateFooter shows the top screen's Toolbar in its stack's bottom bar, and its Primary action as the floating button. */
+  updateFooter(stack) {
+    const s = stack.stack;
+    const top = this.topScreen(stack);
+    const rtl = getComputedStyle(stack.el).direction === "rtl";
+    s.foot.textContent = "";
+    s.footItems = [];
+    for (const a of top?.toolbar || []) {
+      const b = this.actionButton(top, a, toolbarBase, rtl);
+      s.footItems.push({ a, b });
+      s.foot.appendChild(b);
+    }
+    const more = iconButton("ellipsis.circle", this.word("moreOptions"), rtl);
+    more.setAttribute("aria-haspopup", "menu");
+    more.title = this.word("moreOptions");
+    more.hidden = true;
+    more.addEventListener("click", () => {
+      const rest = s.footItems.filter((x) => x.b.hidden).map((x) => x.a);
+      this.h.menus.show(withPicks(rest, (c) => this.h.emit(top, Event.Action, (id) => Events.action(id, toolbarBase + c.index))), 0, 0, more);
+    });
+    s.more = more;
+    s.foot.appendChild(more);
+    const p = top?.primary;
+    const fab = s.fab;
+    fab.textContent = "";
+    fab.hidden = !p;
+    if (p) {
+      const sym = p.icon && symbolSVG(p.icon, rtl);
+      if (sym) fab.appendChild(sym);
+      if (!sym || top.primaryExtended) {
+        const label = document.createElement("span");
+        label.textContent = p.title;
+        fab.appendChild(label);
+      }
+      fab.setAttribute("aria-label", p.title);
+      fab.title = p.title;
+      fab.disabled = !!(p.flags & MenuFlags.Disabled);
+      fab.classList.toggle("asuka-fab-extended", !sym || !!top.primaryExtended);
+      fab.classList.toggle("asuka-destructive", p.role === 2);
+      if (p.flags & MenuFlags.Submenu) fab.setAttribute("aria-haspopup", "menu"); else fab.removeAttribute("aria-haspopup");
+      fab.onclick = () => {
+        if (p.flags & MenuFlags.Submenu) this.h.menus.show(withPicks(p.items, (c) => this.h.emit(top, Event.Action, (id) => Events.action(id, primaryBase + c.index))), 0, 0, fab);
+        else this.h.emit(top, Event.Action, (id) => Events.action(id, primaryBase));
+      };
+    }
+    s.fabFolded = false;
+    fab.classList.remove("asuka-fab-folded");
+  }
+
+  /** fitToolbar puts the buttons that don't fit in the bottom bar in its More options menu. */
+  fitToolbar(stack) {
+    const s = stack.stack;
+    if (!s.footItems?.length || s.foot.hidden) return;
+    for (const x of s.footItems) x.b.hidden = false;
+    s.more.hidden = true;
+    const over = () => s.foot.scrollWidth > s.foot.clientWidth + 0.5;
+    if (!over()) return;
+    s.more.hidden = false;
+    for (let i = s.footItems.length - 1; i >= 0 && over(); i--) s.footItems[i].b.hidden = true;
+  }
+
+  /** placeFab puts the floating button over the bottom trailing corner: above the bar, or the safe area. */
+  placeFab(stack) {
+    const s = stack.stack;
+    if (s.fab.hidden) return;
+    const foot = this.footHeight(stack);
+    const safe = this.h.safeArea();
+    const rtl = getComputedStyle(stack.el).direction === "rtl";
+    const side = 16 + (rtl ? safe[3] : safe[1]);
+    s.fab.style.bottom = (foot ? foot + 16 : 16 + (this.touchesBottom(stack) ? safe[2] : 0)) + "px";
+    s.fab.style.left = rtl ? side + "px" : "";
+    s.fab.style.right = rtl ? "" : side + "px";
+  }
+
+  /** scrolled folds an extended floating button to its icon as the top screen's content scrolls down, and unfolds it scrolling up. */
+  scrolled(stack, e) {
+    const s = stack.stack;
+    const top = this.topScreen(stack);
+    const t = e.target;
+    if (!top?.primaryExtended || s.fab.hidden || !(t instanceof Element) || !top.el.contains(t) || !s.fab.querySelector("svg")) return;
+    const y = t.scrollTop, last = s.scrollY.get(t) ?? 0;
+    s.scrollY.set(t, y);
+    const fold = y > 0 && y > last;
+    if (y <= 0 || fold !== s.fabFolded && Math.abs(y - last) > 2) {
+      s.fabFolded = fold && y > 0;
+      s.fab.classList.toggle("asuka-fab-folded", s.fabFolded);
+    }
+  }
+
   topScreen(stack) {
     for (let i = stack.children.length - 1; i >= 0; i--) if (!stack.children[i].leaving) return stack.children[i];
     return null;
@@ -191,7 +363,7 @@ export class Navigation {
       b.addEventListener("click", () => this.openDrawer(stack.parent));
       s.leading.appendChild(b);
     }
-    (top?.actions || []).forEach((a, i) => {
+    (top?.actions || []).forEach((a) => {
       const b = a.icon ? iconButton(a.icon, a.title, rtl) : document.createElement("button");
       if (!a.icon) {
         b.type = "button";
@@ -199,7 +371,14 @@ export class Navigation {
         b.textContent = a.title;
       }
       if (a.role === 2) b.classList.add("asuka-destructive");
-      b.addEventListener("click", () => this.h.emit(top, Event.Action, (id) => Events.action(id, i)));
+      if (a.flags & MenuFlags.Disabled) b.disabled = true;
+      if (a.flags & MenuFlags.Submenu) {
+        // A bar button with children opens them as a menu.
+        b.setAttribute("aria-haspopup", "menu");
+        b.addEventListener("click", () => this.h.menus.show(withPicks(a.items, (c) => this.h.emit(top, Event.Action, (id) => Events.action(id, c.index))), 0, 0, b));
+      } else {
+        b.addEventListener("click", () => this.h.emit(top, Event.Action, (id) => Events.action(id, a.index)));
+      }
       s.trailing.appendChild(b);
     });
     s.search.hidden = top?.search == null || top.searchButton;
@@ -209,6 +388,7 @@ export class Navigation {
     }
     if (top?.barColor) bar.style.backgroundColor = this.h.css(top.barColor);
     else bar.style.backgroundColor = "";
+    this.updateFooter(stack);
     this.layoutScreens(stack);
     this.updateTitle();
     this.updateGuard();
@@ -301,6 +481,7 @@ export class Navigation {
       case Kind.Alert: this.presentAlert(n); break;
       case Kind.Popover: this.h.afterCore(() => { if (!n.dying) this.presentPopover(n); }); break;
       case Kind.Window: this.presentWindow(n); break;
+      case Kind.Snackbar: presentSnackbar(this.h, n, symbolSVG); break;
     }
   }
 
@@ -309,10 +490,10 @@ export class Navigation {
   presentSheet(n) {
     if (n.shown) return;
     const d = document.createElement("dialog");
-    d.className = "asuka-sheet-dialog";
+    d.className = n.fullScreen ? "asuka-sheet-dialog asuka-full-screen" : "asuka-sheet-dialog";
     this.h.container.appendChild(d);
     d.appendChild(n.el);
-    if (n.grabber) {
+    if (n.grabber && !n.fullScreen) {
       const g = div("asuka-grabber");
       d.appendChild(g);
       this.swipeDown(n, g);
@@ -321,10 +502,10 @@ export class Navigation {
     n.shown = true;
     this.dialogs.push(n);
     d.addEventListener("cancel", (e) => { e.preventDefault(); this.dismiss(n); });
-    d.addEventListener("click", (e) => { if (e.target === d) this.dismiss(n); });
+    d.addEventListener("click", (e) => { if (e.target === d && !n.fullScreen) this.dismiss(n); });
     d.showModal();
     this.sizeDialog(n);
-    const wide = this.wide();
+    const wide = this.wide() && !n.fullScreen;
     if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
       d.animate(wide ? [{ opacity: 0, transform: "scale(0.96)" }, { opacity: 1, transform: "none" }] : [{ transform: "translateY(100%)" }, { transform: "none" }], { duration: 300, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" });
     }
@@ -349,6 +530,15 @@ export class Navigation {
       d.classList.toggle("asuka-window-top", !!wn.onTop);
       d.classList.toggle("asuka-window-minimized", !!wn.minimized);
       d.classList.toggle("asuka-window-maximized", !!wn.maximized);
+    } else if (n.kind === Kind.Sheet && n.fullScreen) {
+      // All of the page, or of its Window's panel's content.
+      const w0 = this.panelOf(n);
+      const a = w0 ? this.panelArea(w0, c) : { x: c.left, y: c.top, w: c.width, h: c.height };
+      d.classList.toggle("asuka-on-window", !!w0);
+      w = a.w;
+      h = a.h;
+      d.style.left = a.x + "px";
+      d.style.top = a.y + "px";
     } else if ((n.kind === Kind.Sheet) && this.panelOf(n)) {
       // A sheet of a Window's panel: a card over the panel's content,
       // as a desktop's sheet over its window.
@@ -398,6 +588,7 @@ export class Navigation {
         if (x.kind === Kind.Sheet) this.sizeDialog(x);
         else if (x.kind === Kind.Alert) this.placeOnWindow(x);
       }
+      for (const x of this.h.nodes.values()) if (x.kind === Kind.Snackbar && x.winID === n.id) placeSnackbar(this.h, x);
     }
   }
 
@@ -458,7 +649,7 @@ export class Navigation {
     const done = () => { d.close(); d.remove(); };
     if (matchMedia("(prefers-reduced-motion: reduce)").matches || !d.isConnected) done();
     else {
-      const wide = d.classList.contains("asuka-wide") || n.kind !== Kind.Sheet;
+      const wide = (d.classList.contains("asuka-wide") || n.kind !== Kind.Sheet) && !d.classList.contains("asuka-full-screen");
       d.animate(wide ? [{ opacity: 1 }, { opacity: 0 }] : [{ transform: "none" }, { transform: "translateY(100%)" }], { duration: 220, easing: "ease-in", fill: "forwards" }).onfinish = done;
     }
     this.updateGuard();
@@ -494,6 +685,7 @@ export class Navigation {
     const body = div("asuka-alert-body");
     if (n.title) { const t = div("asuka-alert-title"); t.textContent = n.title; body.appendChild(t); d.setAttribute("aria-label", n.title); }
     if (n.message) { const m = div("asuka-alert-message"); m.textContent = n.message; body.appendChild(m); }
+    const inputs = sheet ? [] : this.alertFields(n, body);
     d.appendChild(body);
     const buttons = div("asuka-alert-buttons");
     const actions = n.actions?.length ? n.actions : [{ role: 0, title: this.word("ok"), icon: "", ok: true }];
@@ -502,12 +694,15 @@ export class Navigation {
     order.sort((a, b) => (actions[a].role === 1) - (actions[b].role === 1));
     if (!sheet && actions.length <= 2) order.sort((a, b) => (actions[b].role === 1) - (actions[a].role === 1));
     buttons.classList.toggle("asuka-stacked", sheet || actions.length > 2);
+    n.alertButtons = [];
     for (const i of order) {
       const a = actions[i];
       const b = document.createElement("button");
       b.type = "button";
       b.className = "asuka-control";
       b.textContent = a.title;
+      b.disabled = (a.flags & MenuFlags.Disabled) !== 0;
+      n.alertButtons[i] = b;
       if (a.role === 1) b.classList.add("asuka-cancel");
       if (a.role === 2) b.classList.add("asuka-destructive");
       b.addEventListener("click", () => {
@@ -534,12 +729,63 @@ export class Navigation {
     d.addEventListener("click", (e) => { if (e.target === d && sheet) cancel(); });
     d.showModal();
     this.placeOnWindow(n);
-    const def = buttons.querySelector("button:not(.asuka-cancel)") || buttons.querySelector("button");
-    def?.focus();
+    // Return in the last field presses the default button: the first
+    // whose role is Default, if it's enabled.
+    const defIdx = actions.findIndex((a) => a.role === 0 && !a.ok);
+    n.alertSubmit = () => { const b = n.alertButtons[defIdx]; if (b && !b.disabled) b.click(); };
+    const def = buttons.querySelector("button:not(.asuka-cancel):not(:disabled)") || buttons.querySelector("button:not(:disabled)");
+    if (inputs.length) inputs[0].focus();
+    else def?.focus();
     if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
       d.animate([{ opacity: 0, transform: sheet && !this.wide() ? "translateY(40px)" : "scale(1.08)" }, { opacity: 1, transform: "none" }], { duration: 200, easing: "ease-out" });
     }
     this.updateGuard();
+  }
+
+  /**
+   * alertFields adds an alert's text fields to its body: inputs labeled by
+   * their placeholders, of their keyboard's input mode, AutoFill's hint
+   * and a password's type. Typing reports FieldChanged; Enter goes on to
+   * the next field, and in the last presses the default button.
+   */
+  alertFields(n, body) {
+    const fields = n.alertFields || [];
+    if (!fields.length) return [];
+    const box = div("asuka-alert-fields");
+    const inputs = fields.map((f, i) => {
+      const label = document.createElement("label");
+      label.className = "asuka-alert-field";
+      const name = document.createElement("span");
+      name.className = "asuka-alert-field-name"; // read, not shown: the placeholder shows it
+      name.textContent = f.placeholder;
+      const el = document.createElement("input");
+      el.className = "asuka-field";
+      const secure = (f.flags & AlertFieldFlags.Secure) !== 0;
+      el.type = secure ? "password" : ["text", "text", "text", "email", "url", "tel"][f.keyboard] || "text";
+      if (!secure) el.inputMode = inputModes[f.keyboard] || "text";
+      el.placeholder = f.placeholder;
+      el.value = f.text;
+      el.autocomplete = autocomplete[f.contentType] || f.contentType || "off";
+      el.enterKeyHint = i < fields.length - 1 ? "next" : "done";
+      if (secure || ["username", "email", "url", "oneTimeCode"].includes(f.contentType)) {
+        el.autocapitalize = "none";
+        el.spellcheck = false;
+      }
+      el.addEventListener("input", () => {
+        this.h.emit(n, Event.FieldChanged, (id) => Events.fieldChanged(id, fieldChanged(i, el.value)));
+      });
+      el.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" || e.isComposing) return;
+        e.preventDefault();
+        if (i < inputs.length - 1) { inputs[i + 1].focus(); inputs[i + 1].select(); }
+        else n.alertSubmit?.();
+      });
+      label.append(name, el);
+      box.appendChild(label);
+      return el;
+    });
+    body.appendChild(box);
+    return inputs;
   }
 
   presentPopover(n) {
@@ -1063,7 +1309,17 @@ const stack = {
     bar.append(row, search);
     bar.hidden = true;
     el.appendChild(bar);
-    n.stack = { bar, leading, title, trailing, search, searchInput: input };
+    const foot = div("asuka-bar asuka-toolbar");
+    foot.setAttribute("role", "toolbar");
+    foot.hidden = true;
+    el.appendChild(foot);
+    const fab = document.createElement("button");
+    fab.type = "button";
+    fab.className = "asuka-fab asuka-control";
+    fab.hidden = true;
+    el.appendChild(fab);
+    n.stack = { bar, leading, title, trailing, search, searchInput: input, foot, fab, footItems: [], scrollY: new WeakMap(), fabFolded: false };
+    el.addEventListener("scroll", (e) => h.nav.scrolled(n, e), true);
     input.addEventListener("input", () => {
       const top = h.nav.topScreen(n);
       if (!top) return;
@@ -1135,6 +1391,14 @@ const screen = {
       case P.Screen.SearchText: n.searchText = v; break;
       case P.Screen.SearchButton: n.searchButton = !!v; break;
       case P.Screen.BarColor: n.barColor = v; break;
+      case P.Screen.Toolbar: n.toolbar = decodeActions(v); break;
+      case P.Screen.Primary: n.primary = decodeActions(v)[0] || null; break;
+      case P.Screen.PrimaryExtended: n.primaryExtended = !!v; break;
+      case P.Screen.Badge:
+        // A tab's badge changes alone: the tab bar isn't made again.
+        n.badge = v;
+        if (n.parent?.kind === Kind.Tabs && n.tabButton) h.nav.showBadge(n.tabButton, n.title, v, "asuka-tab-badge");
+        return;
       default: return;
     }
     const parent = n.parent;
@@ -1201,6 +1465,7 @@ const tabs = {
           b.type = "button";
           b.className = "asuka-tab asuka-control";
           b.setAttribute("role", "tab");
+          b.dataset.title = s.title;
           b.setAttribute("aria-selected", String(i === this.selected));
           if (s.icon) {
             const sym = symbolSVG(this.selected === i ? s.icon + ".fill" : s.icon, rtl) || symbolSVG(s.icon, rtl);
@@ -1209,6 +1474,8 @@ const tabs = {
           const t = document.createElement("span");
           t.textContent = s.title;
           b.appendChild(t);
+          h.nav.showBadge(b, s.title, s.badge, "asuka-tab-badge");
+          s.tabButton = b;
           b.addEventListener("click", () => {
             if (this.selected === i) {
               // Tapping the selected tab again pops its stack to its root, as UIKit's does.
@@ -1271,6 +1538,7 @@ const sheet = {
     if (p === P.Sheet.Detents) n.detents = v;
     if (p === P.Sheet.Grabber) n.grabber = !!v;
     if (p === P.Sheet.Window) n.winID = v; // the window it's declared in: the root's, a Window's
+    if (p === P.Sheet.FullScreen) n.fullScreen = !!v; // before Present
   },
   frame() { return true; },
   destroy(h, n) {
@@ -1291,9 +1559,17 @@ const alert = {
   prop(h, n, p, v) {
     if (p === P.Alert.Title) n.title = v;
     if (p === P.Alert.Message) n.message = v;
-    if (p === P.Alert.Buttons) n.actions = decodeActions(v);
+    if (p === P.Alert.Buttons) {
+      n.actions = decodeActions(v);
+      // Showing, its buttons follow their titles and Disabled.
+      if (n.shown) n.actions.forEach((a, i) => {
+        const b = n.alertButtons?.[i];
+        if (b) { b.textContent = a.title; b.disabled = (a.flags & MenuFlags.Disabled) !== 0; }
+      });
+    }
     if (p === P.Alert.Style) n.alertStyle = v;
     if (p === P.Alert.Window) n.winID = v;
+    if (p === P.Alert.Fields) n.alertFields = decodeAlertFields(v);
   },
   common() { return true; },
   destroy(h, n) {
@@ -1450,20 +1726,18 @@ const split = {
   prop(h, n, p, v) {
     const s = n.split;
     if (p === P.Split.Items) {
-      const r = new Reader(v);
-      const count = r.u32();
-      s.sections = [];
-      for (let i = 0; i < count; i++) {
-        const title = r.string();
-        const k = r.u32();
-        const items = [];
-        for (let j = 0; j < k; j++) items.push({ title: r.string(), icon: r.string() });
-        s.sections.push({ title, items });
-      }
+      const old = s.sections;
+      s.sections = decodeSidebar(v);
+      // As many sections and items: the rows change in place, keeping
+      // the focus and the scroll.
+      if (s.rows && sameShape(old, s.sections) && updateSidebar(h, n, old)) return;
+      renderSidebar(h, n);
     }
-    if (p === P.Split.Selected) s.selected = v;
+    if (p === P.Split.Selected) {
+      s.selected = v;
+      showSidebarSelection(n);
+    }
     if (p === P.Split.Title) { n.title = v; s.head.textContent = v; s.head.hidden = !v; }
-    renderSidebar(h, n);
   },
   insert(h, p, c, i) {
     p.el.insertBefore(c.el, p.split.sidebar);
@@ -1482,12 +1756,16 @@ const split = {
 function renderSidebar(h, n) {
   const s = n.split;
   s.list.textContent = "";
+  s.rows = []; // per section, its title (or null) and its items' buttons
   let index = 0;
   for (const sec of s.sections) {
+    const row = { head: null, items: [] };
+    s.rows.push(row);
     if (sec.title) {
       const t = div("asuka-sidebar-section");
       t.textContent = sec.title;
       s.list.appendChild(t);
+      row.head = t;
     }
     for (const it of sec.items) {
       const i = index++;
@@ -1495,20 +1773,54 @@ function renderSidebar(h, n) {
       b.type = "button";
       b.className = "asuka-sidebar-item asuka-control";
       b.setAttribute("aria-current", String(i === s.selected));
-      if (it.icon) { const sym = symbolSVG(it.icon, h.rtl); if (sym) b.appendChild(sym); }
-      const t = document.createElement("span");
-      t.textContent = it.title;
-      b.appendChild(t);
+      fillSidebarItem(h, b, it);
       b.addEventListener("click", () => {
         h.nav.closeDrawer(n);
         if (i === s.selected) return;
         s.selected = i;
-        renderSidebar(h, n);
+        showSidebarSelection(n);
         h.emit(n, Event.Selected, (id) => Events.selected(id, i));
       });
       s.list.appendChild(b);
+      row.items.push(b);
     }
   }
+}
+
+/** fillSidebarItem shows a destination in its row: its symbol, its title and its badge, at the trailing end. */
+function fillSidebarItem(h, b, it) {
+  b.textContent = "";
+  if (it.icon) { const sym = symbolSVG(it.icon, h.rtl); if (sym) b.appendChild(sym); }
+  const t = document.createElement("span");
+  t.className = "asuka-sidebar-label";
+  t.textContent = it.title;
+  b.appendChild(t);
+  h.nav.showBadge(b, it.title, it.badge, "asuka-sidebar-badge");
+}
+
+/** updateSidebar changes the rows whose destinations changed, in place; false if a section's title came or went (the list is made again). */
+function updateSidebar(h, n, old) {
+  const s = n.split;
+  for (let k = 0; k < s.sections.length; k++) {
+    const sec = s.sections[k], was = old[k], row = s.rows[k];
+    if (!!sec.title !== !!was.title) return false;
+    if (row.head && sec.title !== was.title) row.head.textContent = sec.title;
+    sec.items.forEach((it, j) => {
+      const w = was.items[j], b = row.items[j];
+      if (it.title === w.title && it.icon === w.icon) {
+        if (it.badge !== w.badge) h.nav.showBadge(b, it.title, it.badge, "asuka-sidebar-badge");
+      } else {
+        fillSidebarItem(h, b, it);
+      }
+    });
+  }
+  return true;
+}
+
+function showSidebarSelection(n) {
+  const s = n.split;
+  let i = 0;
+  for (const row of s.rows || []) for (const b of row.items) b.setAttribute("aria-current", String(i++ === s.selected));
 }
 
 export const navKinds = {
@@ -1521,4 +1833,5 @@ export const navKinds = {
   [Kind.Window]: windowKind,
   [Kind.Accessory]: accessory,
   [Kind.Split]: split,
+  [Kind.Snackbar]: snackbarKind,
 };

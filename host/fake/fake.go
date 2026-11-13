@@ -64,6 +64,10 @@ func (v *View) Int(p ops.PropID) int64 { return v.Props[p].Int }
 // Float returns a float prop.
 func (v *View) Float(p ops.PropID) float64 { return v.Props[p].Float }
 
+// Strings decodes a list of strings prop (a Wheel's or Picker's items, a
+// Segmented control's segments).
+func (v *View) Strings(p ops.PropID) []string { return ops.DecodeStrings(v.Props[p].Bytes) }
+
 // Host is the fake host.
 type Host struct {
 	Views map[ops.NodeID]*View
@@ -243,6 +247,9 @@ func (h *Host) apply(op *ops.Op) {
 		if !ok || t != op.Value.Type {
 			panic(fmt.Sprintf("fake: SetProp: %s has no %s prop %d", v.Kind, typeName(op.Value.Type), op.Prop))
 		}
+		if v.Kind == ops.KindSheet && op.Prop == ops.PropSheetFullScreen && v.presented {
+			panic("fake: SetProp: a sheet's FullScreen after its Present: a host presents it as it was")
+		}
 		v.Props[op.Prop] = op.Value
 	case ops.OpSetFrame:
 		h.view(op.ID, "SetFrame").Frame = op.Frame
@@ -264,7 +271,7 @@ func (h *Host) apply(op *ops.Op) {
 			v.Items, v.Sections = decodeListUpdate(op.Value.Bytes)
 		}
 		if op.Cmd == ops.CmdPresent {
-			if v.Kind != ops.KindSheet && v.Kind != ops.KindPopover && v.Kind != ops.KindAlert && v.Kind != ops.KindWindow {
+			if v.Kind != ops.KindSheet && v.Kind != ops.KindPopover && v.Kind != ops.KindAlert && v.Kind != ops.KindWindow && v.Kind != ops.KindSnackbar {
 				panic(fmt.Sprintf("fake: Present on a %s", v.Kind))
 			}
 			v.presented = true
@@ -354,6 +361,14 @@ func (h *Host) Measure(id ops.NodeID, c layout.Constraints) layout.Size {
 		s = layout.Size{W: 22, H: 22}
 	case ops.KindWheel:
 		s = layout.Size{W: 320, H: 216} // UIPickerView's
+	case ops.KindPicker:
+		// A pop-up button: its title (the chosen item, else its label),
+		// 8pt characters, and the indicator.
+		title := v.String(ops.PropPickerLabel)
+		if items, i := v.Strings(ops.PropPickerItems), int(v.Int(ops.PropPickerSelected)); i >= 0 && i < len(items) {
+			title = items[i]
+		}
+		s = layout.Size{W: float32(len([]rune(title)))*8 + 32, H: 34}
 	case ops.KindStepper:
 		s = layout.Size{W: 94, H: 32} // UIStepper's
 	case ops.KindColorPicker:
@@ -374,6 +389,14 @@ func (h *Host) Measure(id ops.NodeID, c layout.Constraints) layout.Size {
 		s = layout.Size{W: 100, H: 4}
 		if fin(c.AvailW) {
 			s.W = c.AvailW
+		}
+	case ops.KindProgressRing:
+		// Square: a style that sizes one side sizes the other.
+		s = layout.Size{W: 20, H: 20}
+		if c.Width == c.Width {
+			s.H = c.Width
+		} else if c.Height == c.Height {
+			s.W = c.Height
 		}
 	case ops.KindRichText:
 		// As text: the paragraphs' text, a line each at least, as tall
@@ -673,13 +696,16 @@ func (h *Host) Lifecycle(s ops.Lifecycle) {
 	h.dispatch(ops.Event{Kind: ops.EventLifecycle, Int: int64(s)})
 }
 
-// PresentedOn is the window a Sheet or an Alert goes on, as a desktop
-// host presents it: its Window prop's view (the root, a Window); nil if
-// it has none.
+// PresentedOn is the window a Sheet, an Alert or a Snackbar goes on, as
+// a desktop host presents it: its Window prop's view (the root, a
+// Window); nil if it has none.
 func (h *Host) PresentedOn(v *View) *View {
 	p := ops.PropSheetWindow
-	if v.Kind == ops.KindAlert {
+	switch v.Kind {
+	case ops.KindAlert:
 		p = ops.PropAlertWindow
+	case ops.KindSnackbar:
+		p = ops.PropSnackbarWindow
 	}
 	w, ok := v.Props[p]
 	if !ok {
@@ -814,7 +840,8 @@ func (h *Host) BackFromRoot() bool {
 	return true
 }
 
-// Select selects a tab or a segment, as the user does.
+// Select selects a tab, a segment, a wheel's or a picker's item, as the
+// user does.
 func (h *Host) Select(tabs *View, index int) {
 	p := ops.PropTabsSelected
 	switch tabs.Kind {
@@ -824,6 +851,10 @@ func (h *Host) Select(tabs *View, index int) {
 		p = ops.PropSplitSelected
 	case ops.KindPageControl:
 		p = ops.PropPageControlPage
+	case ops.KindWheel:
+		p = ops.PropWheelSelected
+	case ops.KindPicker:
+		p = ops.PropPickerSelected
 	}
 	tabs.Props[p] = ops.Value{Type: ops.TInt, Int: int64(index)}
 	h.listening(tabs, ops.EventSelected)
@@ -842,11 +873,130 @@ func (h *Host) Dismiss(v *View) {
 	h.dispatch(ops.Event{ID: v.ID, Kind: ops.EventDismissed})
 }
 
-// Choose picks item index of a menu, an alert's buttons or a screen's
-// bar buttons.
+// Choose picks the item numbered index of a menu, an alert's buttons or
+// a screen's bar buttons: items are numbered depth first, a submenu or
+// section before its own items (ActionNamed finds one).
 func (h *Host) Choose(v *View, index int) {
 	h.listening(v, ops.EventAction)
 	h.dispatch(ops.Event{ID: v.ID, Kind: ops.EventAction, Int: int64(index)})
+}
+
+// ToolbarItems decodes a Screen's Toolbar: its buttons, their flags and
+// their menus' items, numbered as PressToolbar takes them.
+func (v *View) ToolbarItems() []ops.ActionItem { return v.ActionItems(ops.PropScreenToolbar) }
+
+// PrimaryItem decodes a Screen's Primary action (with its menu's items),
+// or returns nil if it has none.
+func (v *View) PrimaryItem() *ops.ActionItem {
+	items := v.ActionItems(ops.PropScreenPrimary)
+	if len(items) == 0 {
+		return nil
+	}
+	return &items[0]
+}
+
+// PressToolbar presses the item of a screen's Toolbar with this title, at
+// any depth (a button, or an item of a button's menu), as a host reports
+// it; false if there's none.
+func (h *Host) PressToolbar(screen *View, title string) bool {
+	i := screen.ActionNamed(ops.PropScreenToolbar, title)
+	if i < 0 {
+		return false
+	}
+	h.chooseAt(screen, ops.ScreenToolbarActions+int64(i))
+	return true
+}
+
+// PressPrimary presses a screen's Primary action, as a host reports it;
+// false if it has none. PressPrimaryItem picks an item of its menu.
+func (h *Host) PressPrimary(screen *View) bool {
+	if screen.PrimaryItem() == nil {
+		return false
+	}
+	h.chooseAt(screen, ops.ScreenPrimaryAction)
+	return true
+}
+
+// PressPrimaryItem picks the item with this title of the menu a screen's
+// Primary action opens; false if there's none.
+func (h *Host) PressPrimaryItem(screen *View, title string) bool {
+	i := screen.ActionNamed(ops.PropScreenPrimary, title)
+	if i <= 0 {
+		return false
+	}
+	h.chooseAt(screen, ops.ScreenPrimaryAction+int64(i))
+	return true
+}
+
+func (h *Host) chooseAt(v *View, i int64) {
+	h.listening(v, ops.EventAction)
+	h.dispatch(ops.Event{ID: v.ID, Kind: ops.EventAction, Int: i})
+}
+
+// AlertFields decodes an Alert's Fields prop: its text fields, each
+// with its text as it shows (TypeInAlert changes it).
+func (v *View) AlertFields() []ops.AlertField {
+	return ops.DecodeAlertFields(v.Props[ops.PropAlertFields].Bytes)
+}
+
+// TypeInAlert replaces the text of an alert's field (its index), as
+// typing does: the field changes first, then it reports FieldChanged.
+func (h *Host) TypeInAlert(v *View, field int, s string) {
+	fs := v.AlertFields()
+	if field < 0 || field >= len(fs) {
+		panic(fmt.Sprintf("fake: alert %d has no field %d", v.ID, field))
+	}
+	fs[field].Text = s
+	v.Props[ops.PropAlertFields] = ops.Value{Type: ops.TBytes, Bytes: ops.AppendAlertFields(nil, fs)}
+	h.listening(v, ops.EventFieldChanged)
+	h.dispatch(ops.Event{ID: v.ID, Kind: ops.EventFieldChanged, Bytes: ops.AppendFieldChanged(nil, field, s)})
+}
+
+// ReturnInAlert presses return in an alert's last field, as the hosts
+// handle it: the default button (ops.DefaultAlertAction) is pressed
+// unless it's disabled. It reports whether it was.
+func (h *Host) ReturnInAlert(v *View) bool {
+	if len(v.AlertFields()) == 0 {
+		panic(fmt.Sprintf("fake: alert %d has no fields", v.ID))
+	}
+	items := v.ActionItems(ops.PropAlertButtons)
+	i := ops.DefaultAlertAction(items)
+	if i < 0 || items[i].Is(ops.MenuDisabled) {
+		return false
+	}
+	h.Choose(v, i)
+	return true
+}
+
+// Snackbar returns the snackbar showing (presented and not destroyed),
+// or nil. Its Message, Action and Duration props are what it shows.
+func (h *Host) Snackbar() *View {
+	var top *View
+	for _, v := range h.Views {
+		if v.Kind == ops.KindSnackbar && v.presented && (top == nil || v.ID > top.ID) {
+			top = v
+		}
+	}
+	return top
+}
+
+// PressSnackbarAction presses a snackbar's action button, as the user
+// does: it reports Action (0), and the core dismisses it.
+func (h *Host) PressSnackbarAction(v *View) {
+	if v.String(ops.PropSnackbarAction) == "" {
+		panic(fmt.Sprintf("fake: snackbar %d has no action", v.ID))
+	}
+	h.Choose(v, 0)
+}
+
+// TimeOut reports a snackbar's time running out, as a host's timer
+// does: Dismissed. (Dismiss is the user's swipe, which reports the
+// same.)
+func (h *Host) TimeOut(v *View) {
+	if v.Kind != ops.KindSnackbar || !v.presented {
+		panic(fmt.Sprintf("fake: TimeOut on %s %d, not a snackbar showing", v.Kind, v.ID))
+	}
+	h.Dismiss(v)
 }
 
 // Scroll scrolls a Scroll or List to the content offset x, y.
@@ -859,6 +1009,24 @@ func (h *Host) Scroll(v *View, x, y float32) {
 func (h *Host) PullToRefresh(v *View) {
 	h.listening(v, ops.EventRefresh)
 	h.dispatch(ops.Event{ID: v.ID, Kind: ops.EventRefresh})
+}
+
+// ReportSheet reports a presented sheet's Environment as a phone's host
+// sizes it: a FullScreen sheet's is the screen's own, its whole size and
+// safe area (the status bar, the home indicator) and keyboard; another's
+// is the screen's width and the height under the status bar, less the
+// gap iOS leaves above a sheet at its large detent, with no safe area at
+// its top.
+func (h *Host) ReportSheet(v *View) {
+	if v.Kind != ops.KindSheet || !v.presented {
+		panic(fmt.Sprintf("fake: ReportSheet on %d (%s), not a presented sheet", v.ID, v.Kind))
+	}
+	e := h.Env
+	if !v.Bool(ops.PropSheetFullScreen) {
+		e.Height -= e.SafeTop + 10
+		e.SafeTop = 0
+	}
+	h.dispatch(ops.Event{ID: v.ID, Kind: ops.EventEnvironment, Env: e})
 }
 
 // Presented returns the sheets and alerts that got Present and still
@@ -885,44 +1053,58 @@ func (h *Host) Commands(c ops.CommandID) []ops.Op {
 	return out
 }
 
-// Actions decodes a Menu, Screen Actions or Alert Buttons prop.
+// Actions decodes the titles of a Menu, Screen Actions, Alert Buttons
+// or swipe actions prop's top level items.
 func (v *View) Actions(p ops.PropID) []string {
-	b := v.Props[p].Bytes
-	if len(b) < 4 {
-		return nil
-	}
-	n := int(uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24)
-	b = b[4:]
 	var out []string
-	for range n {
-		l := int(uint32(b[1]) | uint32(b[2])<<8 | uint32(b[3])<<16 | uint32(b[4])<<24)
-		out = append(out, string(b[5:5+l]))
-		b = b[5+l:]
-		l = int(uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24)
-		b = b[4+l:] // the icon
+	for _, it := range v.ActionItems(p) {
+		out = append(out, it.Title)
 	}
 	return out
 }
 
 // ActionIcons decodes the icons of a Menu, Screen Actions or Alert
-// Buttons prop.
+// Buttons prop's top level items.
 func (v *View) ActionIcons(p ops.PropID) []string {
-	b := v.Props[p].Bytes
-	if len(b) < 4 {
-		return nil
-	}
-	u32 := func(b []byte) int { return int(uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24) }
-	n := u32(b)
-	b = b[4:]
 	var out []string
-	for range n {
-		l := u32(b[1:])
-		b = b[5+l:]
-		l = u32(b)
-		out = append(out, string(b[4:4+l]))
-		b = b[4+l:]
+	for _, it := range v.ActionItems(p) {
+		out = append(out, it.Icon)
 	}
 	return out
+}
+
+// ActionItems decodes a Menu, Screen Actions, Alert Buttons or swipe
+// actions prop: its items, their flags and their submenus' and sections'
+// items, numbered as Choose takes them.
+func (v *View) ActionItems(p ops.PropID) []ops.ActionItem {
+	return ops.DecodeActions(v.Props[p].Bytes)
+}
+
+// Badges returns a Tabs' tabs' badges, in order ("": none), as its tab
+// bar shows them.
+func (v *View) Badges() []string {
+	out := make([]string, len(v.Children))
+	for i, c := range v.Children {
+		out[i] = c.String(ops.PropScreenBadge)
+	}
+	return out
+}
+
+// Sidebar decodes a SplitView's Items: its sections and their
+// destinations' titles, icons and badges.
+func (v *View) Sidebar() []ops.SidebarSection {
+	return ops.DecodeSidebar(v.Props[ops.PropSplitItems].Bytes)
+}
+
+// ActionNamed returns the number of the item of a Menu, Screen Actions or
+// Alert Buttons prop with this title, at any depth (for Choose), or -1.
+func (v *View) ActionNamed(p ops.PropID, title string) int {
+	for _, it := range ops.FlattenActions(v.ActionItems(p)) {
+		if it.Title == title {
+			return it.Index
+		}
+	}
+	return -1
 }
 
 // Dispatch sends an event to the core, as a host does.

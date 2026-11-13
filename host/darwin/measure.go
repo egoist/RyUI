@@ -71,6 +71,15 @@ func (h *Host) measure(n *node, c layout.Constraints) layout.Size {
 		if s.Height <= 0 {
 			s.Height = 20
 		}
+	case ops.KindProgressRing:
+		// AppKit's regular control size's (32 points), or square: a
+		// style that sizes one side sizes the other.
+		s = Size{Width: ringRegular, Height: ringRegular}
+		if c.Width == c.Width {
+			s.Height = float64(c.Width)
+		} else if c.Height == c.Height {
+			s.Width = float64(c.Height)
+		}
 	case ops.KindRichText:
 		s = n.rich.measure(h, n, c)
 	case ops.KindSymbol:

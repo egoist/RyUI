@@ -2,7 +2,6 @@ package ui
 
 import (
 	"bytes"
-	"encoding/binary"
 
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
@@ -19,6 +18,22 @@ type Destination struct {
 	// Options are its first screen's (its bar's buttons, search); the
 	// title is the destination's unless they give one.
 	Options ScreenOptions
+	// Badge is shown at the row's trailing end (SwiftUI's badge on a
+	// sidebar row; Mail's unread counts): usually a count, any short
+	// text; empty or nil, none. It follows the accessor, updating the row
+	// in place. Screen readers say it with the row's title, a count as so
+	// many items ("Inbox, 3 items"):
+	//
+	//   - iOS: a label accessory at the cell's trailing end, as the
+	//     system's sidebars show counts.
+	//   - Android: a counter at the drawer item's end, as Gmail's are;
+	//     TalkBack says Material's badge words ("3 new notifications").
+	//   - macOS: the source list's count, as Mail's mailboxes show.
+	//   - Windows: Fluent's InfoBadge on the navigation pane's item.
+	//   - Linux: a dimmed count at the row's end, as GNOME's sidebars
+	//     show one.
+	//   - Web: a badge on the row, part of its accessible name.
+	Badge signal.Accessor[string]
 }
 
 // SidebarSection is a titled group of destinations.
@@ -108,28 +123,22 @@ func SplitView(p SplitViewProps) Node {
 }
 
 // encodeSidebar is Split's Items: the sections' titles and their
-// destinations' titles and icons, read in the effect that sends them.
+// destinations' titles, icons and badges, read in the effect that sends
+// them.
 func encodeSidebar(sections []SidebarSection) []byte {
-	str := func(b []byte, s string) []byte {
-		b = binary.LittleEndian.AppendUint32(b, uint32(len(s)))
-		return append(b, s...)
-	}
-	b := binary.LittleEndian.AppendUint32(nil, uint32(len(sections)))
-	for _, s := range sections {
-		t := ""
-		if s.Title != nil {
-			t = s.Title.Get()
+	get := func(a signal.Accessor[string]) string {
+		if a == nil {
+			return ""
 		}
-		b = str(b, t)
-		b = binary.LittleEndian.AppendUint32(b, uint32(len(s.Destinations)))
-		for _, d := range s.Destinations {
-			t := ""
-			if d.Title != nil {
-				t = d.Title.Get()
-			}
-			b = str(b, t)
-			b = str(b, string(d.Icon))
-		}
+		return a.Get()
 	}
-	return b
+	out := make([]ops.SidebarSection, len(sections))
+	for i, s := range sections {
+		items := make([]ops.SidebarItem, len(s.Destinations))
+		for j, d := range s.Destinations {
+			items[j] = ops.SidebarItem{Title: get(d.Title), Icon: string(d.Icon), Badge: get(d.Badge)}
+		}
+		out[i] = ops.SidebarSection{Title: get(s.Title), Items: items}
+	}
+	return ops.AppendSidebar(nil, out)
 }

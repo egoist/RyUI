@@ -167,7 +167,7 @@ final class AsukaWeakList {
         let acts = leading ? n.leadingSwipeActions : n.swipeActions
         guard !acts.isEmpty else { return nil }
         let id = cell.asukaID
-        let actions = acts.enumerated().map { i, act in
+        let actions = acts.enumerated().map { i, act in // flat: numbered by their place
             let a = UIContextualAction(style: act.role == AsukaAlertButtonRole.destructive.rawValue ? .destructive : .normal,
                                        title: act.title) { [weak runtime] _, _, done in
                 runtime?.emit(id, .action) { AsukaEvents.action(id, leading ? Int64(-1 - i) : Int64(i)) }

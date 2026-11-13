@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A full-screen sheet slides up from the bottom (Material 3's
+     full-screen dialog: emphasized decelerate, long 2). -->
+<translate xmlns:android="http://schemas.android.com/apk/res/android"
+    android:fromYDelta="100%p" android:toYDelta="0"
+    android:duration="500"
+    android:interpolator="@interpolator/asuka_emphasized_decelerate" />

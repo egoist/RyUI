@@ -134,8 +134,8 @@ func sweepOrphans(mark ops.NodeID) {
 		for top.parent != nil {
 			top = top.parent
 		}
-		if top.dead || top.hostSized || top.cell || top.inline || top.kind == ops.KindAlert || top == top.r.el {
-			continue // a tree's top: a root, sheet, cell, alert
+		if top.dead || top.hostSized || top.cell || top.inline || top.kind == ops.KindAlert || top.kind == ops.KindSnackbar || top == top.r.el {
+			continue // a tree's top: a root, sheet, cell, alert, snackbar
 		}
 		top.destroy()
 	}

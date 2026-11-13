@@ -310,7 +310,7 @@ func (h *Host) picturesStale(hwnd uintptr) {
 	}
 	for w := hwnd; w != 0; w = Parent(w) {
 		n := h.byHwnd[w]
-		if n == nil || n.kind == kindSheetWindow || n.kind == kindWindowFrame || n.kind == kindPopoverWindow || w == h.window {
+		if n == nil || n.kind == kindSheetWindow || n.kind == kindWindowFrame || n.kind == kindPopoverWindow || n.kind == kindAlertWindow || w == h.window {
 			return
 		}
 		if n.hwnd == w && n.pict != nil {

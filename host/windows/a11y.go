@@ -5,6 +5,7 @@ package windows
 import (
 	"strings"
 
+	"github.com/egoist/asuka/internal/l10n"
 	. "github.com/egoist/asuka/internal/windows"
 	"github.com/egoist/asuka/ops"
 )
@@ -32,6 +33,9 @@ func (a accessible) Property(id int32) any {
 	h, n := a.h, a.n
 	if n.hwnd == 0 {
 		return nil
+	}
+	if n.kind == kindTabBar || n.kind == kindSidebar {
+		return h.choiceProperty(n, id)
 	}
 	switch id {
 	case UIA_NamePropertyId:
@@ -75,6 +79,8 @@ func (a accessible) Property(id int32) any {
 			return int32(UIA_TextControlTypeId)
 		case n.kind == ops.KindImage || n.kind == ops.KindSymbol:
 			return int32(UIA_ImageControlTypeId)
+		case n.kind == ops.KindProgressRing:
+			return int32(UIA_ProgressBarControlTypeId) // as WinUI's ring's peer
 		case n.a11yLabel != "":
 			return int32(UIA_GroupControlTypeId)
 		}
@@ -86,11 +92,74 @@ func (a accessible) Property(id int32) any {
 		if h.a11yHidden(n) {
 			return false
 		}
-		if n.kind == ops.KindText || n.pressable() || n.a11yLabel != "" {
+		if n.kind == ops.KindText || n.kind == ops.KindProgressRing || n.pressable() || n.a11yLabel != "" {
 			return true
 		}
 	}
 	return nil
+}
+
+// Range is a ProgressRing's value for screen readers, as a percentage
+// (UI Automation's RangeValue, read only, as WinUI's ring has it); an
+// indeterminate one has none.
+func (a accessible) Range() (value, lo, hi float64, ok bool) {
+	n := a.n
+	if n.kind != ops.KindProgressRing || n.indeterminate {
+		return 0, 0, 0, false
+	}
+	return n.value * 100, 0, 100, true
+}
+
+// choiceProperty is a tab bar's or a navigation pane's: the focused
+// window is the bar, the arrows moving its choice, so it stands for the
+// chosen tab (a tab item) or item (a list item): its title and its
+// badge, a count as so many items ("Inbox, 3 items"), the badge its item
+// status too, as WinUI's InfoBadge says it. Choosing another with the
+// keyboard announces it.
+func (h *Host) choiceProperty(n *node, id int32) any {
+	title, badge := h.chosen(n)
+	switch id {
+	case UIA_NamePropertyId:
+		return l10n.Badged(h.locale, title, badge)
+	case UIA_ItemStatusPropertyId:
+		if badge != "" {
+			return l10n.Badge(h.locale, badge)
+		}
+	case UIA_ControlTypePropertyId:
+		if n.kind == kindTabBar {
+			return int32(UIA_TabItemControlTypeId)
+		}
+		return int32(UIA_ListItemControlTypeId)
+	case UIA_IsControlElementPropertyId, UIA_IsContentElementPropertyId:
+		return !h.a11yHidden(n)
+	}
+	return nil
+}
+
+// chosen is a tab bar's selected tab's, or a pane's chosen item's,
+// title and badge.
+func (h *Host) chosen(n *node) (title, badge string) {
+	switch {
+	case n.kind == kindTabBar && n.nav != nil:
+		if tabs := n.nav.tabs; tabs.selected >= 0 && tabs.selected < len(tabs.children) {
+			s := tabs.children[tabs.selected]
+			return s.title, s.badge
+		}
+	case n.kind == kindSidebar && n.pane != nil:
+		for _, r := range n.pane.rows {
+			if !r.header && r.index == n.pane.selected {
+				return r.title, r.badge
+			}
+		}
+	}
+	return "", ""
+}
+
+// announceChoice says the tab or item the keyboard chose.
+func (h *Host) announceChoice(n *node) {
+	if title, badge := h.chosen(n); title != "" {
+		h.announce(l10n.Badged(h.locale, title, badge))
+	}
 }
 
 func (a accessible) Invokes() bool {
@@ -224,7 +293,7 @@ func (h *Host) actionsMenu(n *node, hwnd, lp uintptr) bool {
 		}
 		acts := make([]action, len(n.a11yActions))
 		for i, s := range n.a11yActions {
-			acts[i] = action{title: s}
+			acts[i] = action{title: s, index: int64(i)}
 		}
 		rtl := h.isRTL(n)
 		m, om := h.actionMenu(acts, rtl)
@@ -241,14 +310,16 @@ func (h *Host) actionsMenu(n *node, hwnd, lp uintptr) bool {
 			flags |= TPM_LAYOUTRTL
 		}
 		h.modal++
-		if om != nil {
+		if len(om) > 0 {
 			h.menuLoop(true)
 		}
 		got := TrackPopupMenu(m, flags, p.X, p.Y, RootWindow(n.hwnd))
 		h.menuLoop(false)
 		h.modal--
 		DestroyMenu(m)
-		h.forget(om)
+		for _, o := range om {
+			h.forget(o)
+		}
 		if got > 0 {
 			if n := h.nodes[id]; n != nil {
 				h.emit(n, ops.Event{Kind: ops.EventA11yAction, Int: int64(got - 1)})

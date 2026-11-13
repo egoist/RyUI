@@ -40,6 +40,7 @@ type Root struct {
 	scale     float32
 	scales    bool // a provider's environment has another scale (a window on another monitor)
 	dispose   func()
+	owner     *signal.Owner // the root's, which disposes with it
 	pass      layout.Pass
 	kidsQ     []*element
 	frameQ    []*element
@@ -62,6 +63,8 @@ type Root struct {
 	menuListen bool
 
 	win *WindowHandle // the main window's
+
+	snacks map[*element]*snackbar // the Snackbar showing on each window (its root or Window node)
 }
 
 var (
@@ -92,6 +95,7 @@ func Mount(h host.Host, root func() Node) *Root {
 	withRoot(r, func() Node {
 		signal.Root(func(dispose func()) {
 			r.dispose = dispose
+			r.owner = signal.CurrentOwner()
 			r.el = newElement(ops.KindView, true)
 			r.win = newMainWindow(r)
 			r.sendAccent()
@@ -681,6 +685,10 @@ func dispatch(ev ops.Event) {
 	case ops.EventPasted:
 		if h.pasted != nil {
 			h.pasted(ev.Bytes)
+		}
+	case ops.EventFieldChanged:
+		if h.fieldChanged != nil {
+			h.fieldChanged(ev.Bytes)
 		}
 	case ops.EventRichChanged:
 		if h.rich != nil {

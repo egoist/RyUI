@@ -66,6 +66,15 @@ func (h *Host) measure(n *node, c layout.Constraints) layout.Size {
 		}
 	case ops.KindActivity:
 		w, ht = 32, 32
+	case ops.KindProgressRing:
+		// WinUI's ring's own size, or square: a style that sizes one side
+		// sizes the other.
+		w, ht = 32, 32
+		if c.Width == c.Width {
+			ht = c.Width
+		} else if c.Height == c.Height {
+			w = c.Height
+		}
 	case ops.KindPageControl:
 		w, ht = h.measurePips(n)
 	case ops.KindStepper:
@@ -80,16 +89,8 @@ func (h *Host) measure(n *node, c layout.Constraints) layout.Size {
 		}
 		SelectObject(dc, old)
 		w, ht = (widest+28)*float32(len(n.items)), 32
-	case ops.KindWheel:
-		widest := float32(0)
-		dc := h.measureDC
-		old := SelectObject(dc, h.nodeFont(n))
-		for _, s := range n.items {
-			tw, _ := TextExtent(dc, UTF16Units(s))
-			widest = max(widest, h.pt(n, tw))
-		}
-		SelectObject(dc, old)
-		w, ht = max(widest+48, 120), 32
+	case ops.KindWheel, ops.KindPicker:
+		w, ht = h.measureCombo(n) // as wide as its widest item, and the chevron (combo.go)
 	case ops.KindDatePicker:
 		w, ht = h.measureDate(n)
 	case ops.KindColorPicker:

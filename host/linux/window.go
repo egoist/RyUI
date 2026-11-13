@@ -159,6 +159,7 @@ func (w *win) allocated(h *Host, width, height int32) {
 	}
 	w.envW, w.envH = fw, fh
 	h.queueWindowState(w)
+	h.sizeCovers(w)
 	if w.node == nil {
 		// The main window: the root's environment.
 		env := h.environment(w)
@@ -450,6 +451,8 @@ func (h *Host) detachFromContainer(p, w Ptr) {
 		ViewportSetChild(p, 0)
 	case TypeCheckInstanceIsA(p, Call(Sym("adw_navigation_page_get_type"))):
 		AdwNavigationPageSetChild(p, 0)
+	case TypeCheckInstanceIsA(p, Call(Sym("adw_toolbar_view_get_type"))):
+		AdwToolbarViewSetContent(p, 0)
 	case TypeCheckInstanceIsA(p, Call(Sym("adw_bin_get_type"))):
 		AdwBinSetChild(p, 0)
 	case TypeCheckInstanceIsA(p, Call(Sym("adw_dialog_get_type"))):

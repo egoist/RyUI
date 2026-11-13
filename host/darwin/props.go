@@ -129,6 +129,9 @@ func (h *Host) applyLayerColors(n *node) {
 	if n.shape != nil {
 		n.shape.colors(h, n)
 	}
+	if n.ring != nil {
+		n.ring.colors(h, n)
+	}
 	if n.list != nil {
 		n.list.colors(h)
 	}
@@ -392,10 +395,14 @@ func (h *Host) applyColor(n *node) {
 		n.rich.invalidate(h, n)
 	case ops.KindImage, ops.KindSymbol:
 		Send(n.view, "setContentTintColor:", uintptr(c))
-	case ops.KindActivity, ops.KindProgress:
-		if c != 0 && RespondsTo(n.view, "setContentFilters:") {
-			// AppKit's indicators draw in the accent color; no tint.
+	case ops.KindProgressRing:
+		// AppKit's indicator draws in the accent color only: the ring is
+		// drawn in another (progressring.go).
+		if n.placed {
+			n.ring.layout(h, n)
 		}
+	case ops.KindActivity, ops.KindProgress:
+		// AppKit's indicators draw in the accent color; no tint.
 	case ops.KindSlider, ops.KindToggle:
 		if RespondsTo(n.view, "setTrackFillColor:") {
 			Send(n.view, "setTrackFillColor:", uintptr(c))
@@ -794,23 +801,32 @@ func (h *Host) setMaterial(n *node, m ops.Material) {
 	Send(n.effect, "setMaterial:", material)
 }
 
-// decodeActions reads a Menu prop's items.
-func decodeActions(b []byte) []action {
-	if len(b) < 4 {
+// decodeActions reads a Menu prop's items (ops.DecodeActions).
+func decodeActions(b []byte) []action { return toActions(ops.DecodeActions(b)) }
+
+// decodeActionsFrom decodes a menu whose Action events carry base + an
+// item's number (a screen's Toolbar's and Primary's).
+func decodeActionsFrom(b []byte, base int64) []action {
+	as := decodeActions(b)
+	rebase(as, base)
+	return as
+}
+
+func rebase(as []action, base int64) {
+	for i := range as {
+		as[i].index += base
+		rebase(as[i].items, base)
+	}
+}
+
+func toActions(items []ops.ActionItem) []action {
+	if len(items) == 0 {
 		return nil
 	}
-	n := int(le.Uint32(b))
-	b = b[4:]
-	out := make([]action, 0, n)
-	for range n {
-		if len(b) < 5 {
-			break
-		}
-		a := action{role: ops.AlertButtonRole(b[0])}
-		b = b[1:]
-		a.title, b = readString(b)
-		a.icon, b = readString(b)
-		out = append(out, a)
+	out := make([]action, len(items))
+	for i := range items {
+		it := &items[i]
+		out[i] = action{role: it.Role, title: it.Title, icon: it.Icon, index: int64(it.Index), flags: it.Flags, items: toActions(it.Items)}
 	}
 	return out
 }

@@ -274,6 +274,20 @@ textarea.asuka-field { overflow-y: auto; display: block; }
 .asuka-activity svg, .asuka-refresher svg { width: 100%; height: 100%; animation: asuka-spin 0.8s linear infinite; }
 @keyframes asuka-spin { to { transform: rotate(360deg); } }
 
+.asuka-ring { display: flex; }
+.asuka-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+.asuka-ring circle { fill: none; stroke-width: 4; }
+.asuka-ring-track { stroke: var(--asuka-fill-strong); }
+.asuka-ring-fill { stroke: var(--tint, var(--asuka-accent)); stroke-linecap: round; stroke-dasharray: 100 100; stroke-dashoffset: 100; transition: stroke-dashoffset 0.25s ease-out; }
+.asuka-ring-indeterminate svg { animation: asuka-ring-turn 1s linear infinite; }
+.asuka-ring-indeterminate .asuka-ring-track { stroke: transparent; }
+.asuka-ring-indeterminate .asuka-ring-fill { stroke-dashoffset: 72; transition: none; }
+@keyframes asuka-ring-turn { from { transform: rotate(-90deg); } to { transform: rotate(270deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .asuka-ring-fill { transition: none; }
+  .asuka-ring-indeterminate svg { animation-duration: 4s; }
+}
+
 /* Images and symbols */
 
 .asuka-image img, .asuka-video video, .asuka-webview iframe, .asuka-canvas canvas, .asuka-shader canvas, .asuka-shape svg {
@@ -354,6 +368,22 @@ textarea.asuka-field { overflow-y: auto; display: block; }
 .asuka-bar-button:hover { background: var(--asuka-fill); }
 .asuka-bar-button .asuka-symbol { width: 24px; height: 24px; }
 .asuka-bar-button.asuka-destructive { color: var(--asuka-red); }
+.asuka-bar.asuka-toolbar { top: auto; bottom: 0; flex-direction: row; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 7px 12px 0; overflow: hidden; box-shadow: 0 -0.5px 0 var(--asuka-separator); }
+.asuka-toolbar > .asuka-bar-button { flex: none; }
+.asuka-toolbar > .asuka-bar-button[hidden] { display: none; }
+.asuka-bar-button:disabled { color: var(--asuka-tertiary-label); cursor: default; background: none; }
+.asuka-fab { position: absolute; z-index: 4; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 56px; height: 56px; padding: 0 20px 0 16px; border: none; border-radius: 28px; background: var(--asuka-accent); color: #fff; font: inherit; font-size: 1.0625rem; font-weight: 600; box-shadow: 0 4px 14px rgb(0 0 0 / 0.2), 0 1px 3px rgb(0 0 0 / 0.15); cursor: pointer; transition: gap 0.2s, padding 0.2s; }
+.asuka-fab[hidden] { display: none; }
+.asuka-fab .asuka-symbol { width: 24px; height: 24px; flex: none; }
+.asuka-fab span { max-width: 280px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; transition: max-width 0.2s, opacity 0.2s; }
+.asuka-fab:not(.asuka-fab-extended) { width: 56px; padding: 0; }
+.asuka-fab.asuka-fab-folded { gap: 0; padding: 0 16px; }
+.asuka-fab.asuka-fab-folded span { max-width: 0; opacity: 0; }
+.asuka-fab.asuka-destructive { background: var(--asuka-red); }
+.asuka-fab:hover { filter: brightness(1.08); }
+.asuka-fab:active { filter: brightness(0.92); }
+.asuka-fab:disabled { opacity: 0.4; cursor: default; filter: none; }
+@media (prefers-reduced-motion: reduce) { .asuka-fab, .asuka-fab span { transition: none; } }
 .asuka-bar-search { padding: 0 12px 10px; flex: none; }
 .asuka-bar-search[hidden] { display: none; }
 .asuka-search { width: 100%; height: 36px; padding: 0 12px; border: none; border-radius: 10px; background: var(--asuka-fill); color: var(--asuka-label); font: inherit; outline: none; user-select: text; -webkit-user-select: text; }
@@ -375,6 +405,10 @@ textarea.asuka-field { overflow-y: auto; display: block; }
 .asuka-tab .asuka-symbol { width: 26px; height: 26px; }
 .asuka-tab span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 4px; }
 .asuka-tab[aria-selected="true"] { color: var(--asuka-accent); }
+.asuka-tab { position: relative; }
+/* A tab's badge: the system's red capsule at the symbol's top trailing corner. */
+.asuka-tab-badge { position: absolute; top: 3px; inset-inline-start: calc(50% + 5px); min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--asuka-red); color: #fff; font-size: 0.8125rem; font-weight: 400; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; }
+.asuka-tab span.asuka-tab-badge { max-width: none; overflow: visible; padding: 0 5px; }
 
 .asuka-sidebar { position: absolute; top: 0; bottom: 0; left: 0; z-index: 4; display: flex; flex-direction: column; background: var(--asuka-secondary-background); box-shadow: 0.5px 0 0 var(--asuka-separator); overflow-y: auto; padding: 12px 10px; }
 [dir="rtl"] .asuka-sidebar { left: auto; right: 0; }
@@ -389,6 +423,9 @@ textarea.asuka-field { overflow-y: auto; display: block; }
 .asuka-sidebar-item .asuka-symbol { width: 22px; height: 22px; color: var(--asuka-accent); }
 .asuka-sidebar-item:hover { background: var(--asuka-fill); }
 .asuka-sidebar-item[aria-current="true"] { background: color-mix(in srgb, var(--asuka-accent) 16%, transparent); font-weight: 600; }
+.asuka-sidebar-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A destination's badge: a count at the row's trailing end, as the system's sidebars show one. */
+.asuka-sidebar-badge { flex: none; color: var(--asuka-secondary-label); font-weight: 400; font-variant-numeric: tabular-nums; }
 
 /* Sheets, alerts, popovers, menus, windows */
 
@@ -409,6 +446,8 @@ textarea.asuka-field { overflow-y: auto; display: block; }
 .asuka-sheet-dialog.asuka-wide { inset: 0; margin: auto; border-radius: 14px; }
 /* Over a Window's panel: placed by the host (left, top). */
 .asuka-sheet-dialog.asuka-on-window, .asuka-alert.asuka-on-window { position: fixed; inset: auto; margin: 0; }
+/* Full screen: placed by the host (left, top) over the page or a panel's content, square. */
+.asuka-sheet-dialog.asuka-full-screen { inset: auto; margin: 0; border-radius: 0; box-shadow: none; }
 .asuka-sheet-dialog::backdrop, .asuka-alert::backdrop { background: var(--asuka-scrim); }
 .asuka-sheet { position: absolute; }
 .asuka-grabber { position: absolute; top: 5px; left: calc(50% - 18px); width: 36px; height: 5px; border-radius: 3px; background: var(--asuka-tertiary-label); z-index: 5; cursor: grab; touch-action: none; }
@@ -435,12 +474,55 @@ textarea.asuka-field { overflow-y: auto; display: block; }
 .asuka-alert-buttons button:not(.asuka-cancel) { font-weight: 600; }
 .asuka-alert-buttons .asuka-cancel { font-weight: 400; }
 .asuka-alert-buttons .asuka-destructive { color: var(--asuka-red); }
+.asuka-alert-buttons button:disabled { color: var(--asuka-tertiary-label); cursor: default; }
+.asuka-alert-buttons button:disabled:hover { background: none; }
 .asuka-alert-buttons.asuka-stacked { flex-direction: column; }
 .asuka-alert-buttons.asuka-stacked button + button { box-shadow: 0 -0.5px 0 var(--asuka-separator); }
 .asuka-action-sheet { width: min(400px, calc(100vw - 16px)); }
+/* An alert's text fields, under its message: the host's fields. */
+.asuka-alert-fields { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; text-align: start; }
+.asuka-alert-field { display: block; }
+.asuka-alert-field-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (max-width: 599px) {
   .asuka-action-sheet { margin: auto auto 8px; }
 }
+
+/* A snackbar: a rounded bar in the bar material at the bottom of its
+   window, in the top layer (a manual popover), placed by the host. */
+.asuka-snackbar {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  z-index: 2147483000; /* without popovers: over the page */
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: max-content;
+  min-height: 48px;
+  padding: 6px 6px 6px 20px;
+  border: none;
+  border-radius: 24px;
+  background: var(--asuka-bar);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  box-shadow: 0 0 0 0.5px var(--asuka-separator), 0 8px 30px rgb(0 0 0 / 0.16), 0 1px 3px rgb(0 0 0 / 0.08);
+  color: var(--asuka-label);
+  font: inherit;
+  font-size: 0.9375rem;
+  overflow: visible;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.asuka-snackbar[dir=rtl] { padding: 6px 20px 6px 6px; }
+.asuka-snackbar-message { flex: 1 1 auto; min-width: 0; padding: 6px 4px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.asuka-snackbar-action, .asuka-snackbar-close { flex: none; display: inline-flex; align-items: center; justify-content: center; height: 36px; border: none; border-radius: 18px; background: none; font: inherit; cursor: pointer; }
+.asuka-snackbar-action { padding: 0 12px; color: var(--asuka-accent); font-weight: 600; }
+.asuka-snackbar-close { width: 36px; padding: 0; color: var(--asuka-secondary-label); }
+.asuka-snackbar-close .asuka-symbol { width: 16px; height: 16px; }
+.asuka-snackbar-action:hover, .asuka-snackbar-close:hover { background: var(--asuka-fill); }
+.asuka-snackbar-action[hidden] { display: none; }
 
 .asuka-popover, .asuka-menu {
   position: fixed;
@@ -460,6 +542,17 @@ textarea.asuka-field { overflow-y: auto; display: block; }
 .asuka-menu-item:hover, .asuka-menu-item:focus-visible { background: var(--asuka-accent); color: var(--asuka-on-accent); outline: none; }
 .asuka-menu-item.asuka-destructive { color: var(--asuka-red); }
 .asuka-menu-item.asuka-destructive:hover { background: var(--asuka-red); color: #fff; }
+.asuka-menu-item .asuka-menu-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.asuka-menu-check { display: none; flex: none; width: 16px; height: 16px; }
+.asuka-menu-check .asuka-symbol { width: 16px; height: 16px; }
+.asuka-menu-checks > .asuka-menu-item .asuka-menu-check, .asuka-menu-checks > [role=group] > .asuka-menu-item .asuka-menu-check { display: block; }
+.asuka-menu-item .asuka-menu-arrow { width: 14px; height: 14px; opacity: 0.6; }
+.asuka-menu-item[aria-expanded=true] { background: var(--asuka-fill); }
+.asuka-menu-item:disabled { color: var(--asuka-tertiary-label); cursor: default; }
+.asuka-menu-item:disabled:hover { background: none; color: var(--asuka-tertiary-label); }
+.asuka-menu-separator { height: 1px; margin: 5px 10px; background: var(--asuka-separator); }
+.asuka-menu-header { padding: 6px 10px 3px; color: var(--asuka-secondary-label); font-size: 0.75rem; font-weight: 600; }
+.asuka-menu .asuka-menu { position: fixed; }
 
 .asuka-window { position: absolute; z-index: 20; border-radius: 12px; background: var(--asuka-background); box-shadow: var(--asuka-shadow); overflow: hidden; }
 .asuka-window-bar { position: absolute; left: 0; right: 0; top: 0; height: 36px; display: flex; align-items: center; padding: 0 4px 0 14px; background: var(--asuka-secondary-background); box-shadow: 0 0.5px 0 var(--asuka-separator); cursor: grab; touch-action: none; }

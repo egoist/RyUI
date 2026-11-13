@@ -31,11 +31,85 @@ type Action struct {
 	// shows it instead of the title (which VoiceOver and TalkBack read).
 	Icon    Icon
 	OnPress func()
+	// Disabled dims the item, which can't be chosen: a menu item, an
+	// alert's button, a bar button (UIMenuElement's .disabled; a disabled
+	// MenuItem on Android). A swipe action ignores it.
+	Disabled signal.Accessor[bool]
+	// Checked shows a checkmark by a menu item: the choice in force, or an
+	// option that's on (UIMenuElement.State.on; a checkable MenuItem on
+	// Android).
+	Checked signal.Accessor[bool]
+	// Children make the item a submenu, shown when it's chosen (a nested
+	// UIMenu; a SubMenu on Android). A bar button with children opens
+	// them as a menu (SwiftUI's Menu in a toolbar). Its OnPress isn't
+	// called. Alerts and swipe actions don't show children.
+	Children []Action
+	// Inline shows the Children in place, as a section of the menu between
+	// dividers, under the Title if there is one (SwiftUI's Section in a
+	// Menu; UIMenu's displayInline; a group of items with dividers on
+	// Android).
+	Inline bool
 }
 
-func encodeActions(as []Action) []byte {
-	b := binary.LittleEndian.AppendUint32(nil, uint32(len(as)))
-	for _, a := range as {
+// Submenu is an item that opens a menu of children.
+func Submenu(title signal.Accessor[string], icon Icon, children ...Action) Action {
+	return Action{Title: title, Icon: icon, Children: children}
+}
+
+// MenuSection is a section of a menu: children shown in place, between
+// dividers, under title (nil: none).
+func MenuSection(title signal.Accessor[string], children ...Action) Action {
+	return Action{Title: title, Children: children, Inline: true}
+}
+
+// encodeActions encodes as as a Menu prop (ops.AppendActions).
+func encodeActions(as []Action) []byte { return appendActions(nil, as, 0, actionDepth) }
+
+// appendActions appends as, encoded as ops.AppendActions does, reading
+// each item's accessors (in an effect, following them). Children deeper
+// than limit aren't sent (an alert's limit is 0: it shows none).
+func appendActions(b []byte, as []Action, depth, limit int) []byte {
+	b = binary.LittleEndian.AppendUint32(b, uint32(len(as)))
+	for i := range as {
+		a := &as[i]
+		title := ""
+		if a.Title != nil {
+			title = a.Title.Get()
+		}
+		var flags ops.MenuFlags
+		if a.Disabled != nil && a.Disabled.Get() {
+			flags |= ops.MenuDisabled
+		}
+		if a.Checked != nil && a.Checked.Get() {
+			flags |= ops.MenuChecked
+		}
+		sub := (len(a.Children) > 0 || a.Inline) && depth < limit
+		if sub {
+			flags |= ops.MenuSubmenu
+			if a.Inline {
+				flags |= ops.MenuInline
+			}
+		}
+		b = append(b, byte(a.Role))
+		b = binary.LittleEndian.AppendUint32(b, uint32(len(title)))
+		b = append(b, title...)
+		b = binary.LittleEndian.AppendUint32(b, uint32(len(a.Icon)))
+		b = append(b, a.Icon...)
+		b = append(b, byte(flags))
+		if sub {
+			b = appendActions(b, a.Children, depth+1, limit)
+		}
+	}
+	return b
+}
+
+// appendSwipeActions appends a List cell's swipe actions, flat: a swipe
+// shows neither children nor a disabled look, so each item's number is
+// its place.
+func appendSwipeActions(b []byte, as []Action) []byte {
+	b = binary.LittleEndian.AppendUint32(b, uint32(len(as)))
+	for i := range as {
+		a := &as[i]
 		title := ""
 		if a.Title != nil {
 			title = a.Title.Get()
@@ -45,37 +119,98 @@ func encodeActions(as []Action) []byte {
 		b = append(b, title...)
 		b = binary.LittleEndian.AppendUint32(b, uint32(len(a.Icon)))
 		b = append(b, a.Icon...)
+		b = append(b, 0)
 	}
 	return b
 }
 
-// bindActions sends as, and again when a title changes.
-func bindActions(as []Action, apply func([]byte)) {
-	static := true
-	for _, a := range as {
-		if a.Title != nil {
-			if _, ok := signal.StaticValue(a.Title); !ok {
-				static = false
-			}
-		}
-	}
-	if static {
-		apply(encodeActions(as))
-		return
-	}
-	var last []byte
-	signal.RenderEffect(func() {
-		if b := encodeActions(as); !bytes.Equal(b, last) {
-			last = b
-			apply(b)
-		}
-	})
-}
-
-func runAction(as []Action, i int64) {
+// runSwipeAction runs the OnPress of a swipe action, by its place.
+func runSwipeAction(as []Action, i int64) {
 	if i >= 0 && int(i) < len(as) && as[i].OnPress != nil {
 		as[i].OnPress()
 	}
+}
+
+// actionDepth bounds the menus' nesting, as hosts read it (ops'
+// menuDepth): deeper children aren't sent.
+const actionDepth = 16
+
+// staticActions reports whether nothing as shows can change.
+func staticActions(as []Action) bool {
+	for i := range as {
+		a := &as[i]
+		if !staticOrNil(a.Title) || !staticOrNil(a.Disabled) || !staticOrNil(a.Checked) || !staticActions(a.Children) {
+			return false
+		}
+	}
+	return true
+}
+
+func staticOrNil[T any](a signal.Accessor[T]) bool {
+	if a == nil {
+		return true
+	}
+	_, ok := signal.StaticValue(a)
+	return ok
+}
+
+// bindActions sends as, and again when what they show changes (a title,
+// Disabled, Checked, at any depth up to limit).
+func bindActions(as []Action, limit int, apply func([]byte)) {
+	if staticActions(as) {
+		apply(appendActions(nil, as, 0, limit))
+		return
+	}
+	var last, buf []byte
+	sent := false
+	signal.RenderEffect(func() {
+		buf = appendActions(buf[:0], as, 0, limit)
+		if sent && bytes.Equal(buf, last) {
+			return
+		}
+		sent = true
+		apply(buf) // the batch copies it
+		last, buf = buf, last
+	})
+}
+
+// actionAt returns the item numbered i in as, depth first (a submenu or
+// section before its children, up to limit), or nil.
+func actionAt(as []Action, i int64, limit int) *Action {
+	n := int64(0)
+	var find func(as []Action, depth int) *Action
+	find = func(as []Action, depth int) *Action {
+		for k := range as {
+			a := &as[k]
+			if n == i {
+				return a
+			}
+			n++
+			if (len(a.Children) > 0 || a.Inline) && depth < limit {
+				if f := find(a.Children, depth+1); f != nil {
+					return f
+				}
+			}
+		}
+		return nil
+	}
+	if i < 0 {
+		return nil
+	}
+	return find(as, 0)
+}
+
+// runAction runs the OnPress of the item numbered i (as sent with
+// limit), unless it's disabled or opens children.
+func runAction(as []Action, i int64, limit int) {
+	a := actionAt(as, i, limit)
+	if a == nil || a.OnPress == nil || ((len(a.Children) > 0 || a.Inline) && limit > 0) {
+		return
+	}
+	if a.Disabled != nil && signal.Untrack(a.Disabled.Get) {
+		return // a host's menu was out of date
+	}
+	a.OnPress()
 }
 
 // Icon is a symbol (ui.Symbol, tabs, buttons, actions): an SF Symbol
@@ -184,6 +319,34 @@ type ScreenOptions struct {
 	// (nil, or 0: the surface). iOS's bar is clear at the top of a screen,
 	// over the screen, and needs no help.
 	BarColor signal.Accessor[Color]
+	// Toolbar are buttons in a bar at the bottom of the screen (SwiftUI's
+	// ToolbarItem(placement: .bottomBar)): the navigation controller's
+	// toolbar on iOS, with flexible space between them; Material's
+	// BottomAppBar on Android, as icon buttons, the ones that don't fit in
+	// its overflow menu. A disabled one is dimmed, one with Children opens
+	// them as a menu, and they follow their accessors as Actions do. The
+	// desktops put them where their apps put such buttons: in the window's
+	// toolbar on macOS (SwiftUI's bottomBar is iOS's only), in a command
+	// bar under the screen on Windows, in a GtkActionBar at the bottom of
+	// the page on Linux (libadwaita's AdwToolbarView), in a bar at the
+	// bottom on the web.
+	Toolbar []Action
+	// Primary is the screen's main action, such as compose or add:
+	// Material's FloatingActionButton at the bottom end of the screen on
+	// Android, docked in the BottomAppBar when there's a Toolbar. iOS has no
+	// floating button: it's the trailing item of the bottom toolbar, which
+	// the screen gets for it if it has no Toolbar, prominent on iOS 26
+	// (Mail's Compose). A prominent item of the window's toolbar on macOS,
+	// an accent button on Windows, a suggested-action button on Linux, a
+	// floating button on the web. Its Icon is what the button shows, its
+	// Title what screen readers say; Children make it open a menu.
+	Primary *Action
+	// PrimaryExtended makes Primary Android's ExtendedFloatingActionButton:
+	// its Title beside its Icon, shrinking to the icon as the screen's
+	// content scrolls down and extending again as it scrolls up. The other
+	// platforms show Primary as they always do (the web's floating button
+	// with its title too).
+	PrimaryExtended bool
 }
 
 // Search is a screen's search field.
@@ -267,6 +430,22 @@ type stackScreen struct {
 	el      *element
 	dispose func()
 	actions []Action
+	toolbar []Action
+	primary []Action // ScreenOptions.Primary, a menu of one
+}
+
+// action runs the item an Action event on the screen names: of its bar
+// buttons, its Toolbar or its Primary (ops.ScreenToolbarActions,
+// ops.ScreenPrimaryAction).
+func (s *stackScreen) action(i int64) {
+	switch {
+	case i >= ops.ScreenPrimaryAction:
+		runAction(s.primary, i-ops.ScreenPrimaryAction, actionDepth)
+	case i >= ops.ScreenToolbarActions:
+		runAction(s.toolbar, i-ops.ScreenToolbarActions, actionDepth)
+	default:
+		runAction(s.actions, i, actionDepth)
+	}
 }
 
 type stackState struct {
@@ -322,14 +501,20 @@ func (st *stackState) reset(root func() Node, o ScreenOptions) {
 
 func (st *stackState) push(build func() Node, o ScreenOptions) {
 	r := st.e.r
-	s := &stackScreen{actions: o.Actions}
+	s := &stackScreen{actions: o.Actions, toolbar: o.Toolbar}
+	if o.Primary != nil {
+		s.primary = []Action{*o.Primary}
+	}
 	withRoot(r, func() Node {
 		s.el = newProvider(ops.KindScreen)
 		b := r.batch
 		id := s.el.id
-		if len(o.Actions) > 0 {
-			s.el.handlers().action = func(i int64) { runAction(s.actions, i) }
+		if len(o.Actions) > 0 || len(o.Toolbar) > 0 || o.Primary != nil {
+			s.el.handlers().action = s.action
 			s.el.listen(ops.EventAction)
+		}
+		if o.Primary != nil && o.PrimaryExtended {
+			b.SetBool(id, ops.PropScreenPrimaryExtended, true)
 		}
 		if o.NoBackGesture {
 			b.SetBool(id, ops.PropScreenBackGesture, false)
@@ -344,7 +529,13 @@ func (st *stackState) push(build func() Node, o ScreenOptions) {
 			signal.Root(func(dispose func()) {
 				s.dispose = dispose
 				if len(o.Actions) > 0 {
-					bindActions(o.Actions, func(v []byte) { r.batch.SetBytes(id, ops.PropScreenActions, v) })
+					bindActions(o.Actions, actionDepth, func(v []byte) { r.batch.SetBytes(id, ops.PropScreenActions, v) })
+				}
+				if len(o.Toolbar) > 0 {
+					bindActions(o.Toolbar, actionDepth, func(v []byte) { r.batch.SetBytes(id, ops.PropScreenToolbar, v) })
+				}
+				if len(s.primary) > 0 {
+					bindActions(s.primary, actionDepth, func(v []byte) { r.batch.SetBytes(id, ops.PropScreenPrimary, v) })
 				}
 				bind(o.Title, func(v string) { r.batch.SetString(id, ops.PropScreenTitle, v) })
 				bind(o.BarColor, func(v Color) { r.batch.SetColor(id, ops.PropScreenBarColor, v) })
@@ -394,6 +585,23 @@ type Tab struct {
 	Title   signal.Accessor[string]
 	Icon    Icon
 	Content func() Node
+	// Badge is shown on the tab (SwiftUI's badge on a tab item, Compose's
+	// BadgedBox on a NavigationBarItem): usually a count, "3", though any
+	// short text works; empty or nil, none. It follows the accessor,
+	// updating the tab alone. Screen readers say it with the tab's title,
+	// a count as so many items ("Inbox, 3 items"):
+	//
+	//   - iOS: UITabBarItem's badgeValue, the system's red badge.
+	//   - Android: the navigation bar item's BadgeDrawable, its number
+	//     (999+ past 999, as Material shortens it) or its text; TalkBack
+	//     says Material's words ("3 new notifications").
+	//   - macOS: in the tab's label, "Inbox (3)": NSTabView draws its
+	//     tabs' labels alone.
+	//   - Windows: Fluent's InfoBadge on the tab.
+	//   - Linux: AdwViewStackPage's badge-number for a count, shown by the
+	//     view switcher; other text marks the page as needing attention.
+	//   - Web: a badge on the tab, part of its accessible name.
+	Badge signal.Accessor[string]
 }
 
 // TabsProps configures Tabs.
@@ -420,6 +628,12 @@ func Tabs(p TabsProps, tabs ...Tab) Node {
 		})
 		if t.Icon != "" {
 			r.batch.SetString(page.id, ops.PropScreenIcon, string(t.Icon))
+		}
+		if t.Badge != nil {
+			badge := t.Badge
+			signal.RunWithOwner(owner, func() {
+				bind(badge, func(v string) { r.batch.SetString(pageID, ops.PropScreenBadge, v) })
+			})
 		}
 		build := t.Content
 		signal.RunWithOwner(owner, func() {
@@ -478,6 +692,16 @@ type SheetProps struct {
 	Content func() Node
 	Detents Detent // 0: large
 	Grabber bool
+	// FullScreen covers the whole screen instead (SwiftUI's
+	// fullScreenCover, Material's full-screen dialog), for a task that
+	// takes the user's attention until it's done or given up: Detents
+	// and Grabber don't apply, and the user can't swipe it away or tap
+	// outside it; it closes when Open goes false. Going back (Android's
+	// back, Escape on a desktop or the web) dismisses it as it does a
+	// sheet, unless OnBack intercepts it. Its Environment is the screen's
+	// own: the whole size, and the safe area of the status bar, the
+	// notch, the home indicator or navigation bar, and the keyboard.
+	FullScreen bool
 	// OnDismiss runs when the user dismisses the sheet.
 	OnDismiss func()
 }
@@ -489,6 +713,16 @@ type SheetProps struct {
 // of the window it's declared in (a Window's content: that Window, open
 // or opening; else the main window), whichever window is in use, and a
 // key in it goes on to that window's keys.
+//
+// A FullScreen sheet is a UIViewController presented .fullScreen on iOS
+// (it slides up over everything); a full-screen Dialog on Android, edge
+// to edge, sliding up, with predictive back; on macOS a sheet as big as
+// its window's content, under its toolbar, following the window as it
+// resizes; on Windows a borderless window over its window's content,
+// following it, as a ContentDialog in Fluent's full-size form; on Linux
+// an AdwDialog filling its window, as libadwaita shows a dialog that
+// doesn't fit; on the web a modal <dialog> over the whole page (or over
+// a Window's panel, for a sheet declared in one).
 func Sheet(p SheetProps) Node {
 	f := newFragment()
 	r := f.r
@@ -523,11 +757,15 @@ func Sheet(p SheetProps) Node {
 				sheet.up = r.el
 			}
 			r.batch.SetInt(sheet.id, ops.PropSheetWindow, int64(sheet.up.id))
-			if p.Detents != 0 {
-				r.batch.SetInt(sheet.id, ops.PropSheetDetents, int64(p.Detents))
-			}
-			if p.Grabber {
-				r.batch.SetBool(sheet.id, ops.PropSheetGrabber, true)
+			if p.FullScreen {
+				r.batch.SetBool(sheet.id, ops.PropSheetFullScreen, true)
+			} else {
+				if p.Detents != 0 {
+					r.batch.SetInt(sheet.id, ops.PropSheetDetents, int64(p.Detents))
+				}
+				if p.Grabber {
+					r.batch.SetBool(sheet.id, ops.PropSheetGrabber, true)
+				}
 			}
 			sheet.handlers().dismissed = func() {
 				p.Open.Set(false)
@@ -688,6 +926,51 @@ type AlertProps struct {
 	Title, Message string
 	Actions        []Action // none: a single OK
 	ActionSheet    bool     // an action sheet rather than an alert
+	// Fields are text fields under the message, for a name or a password
+	// (SwiftUI's TextField and SecureField in an alert;
+	// UIAlertController's addTextField; TextInputLayouts in a Material
+	// dialog; an NSAlert's accessory view; AdwEntryRows in an
+	// AdwAlertDialog). The first has the focus, with the keyboard up, and
+	// return in the last presses the default action: the first whose
+	// role is ActionDefault, unless it's disabled (UIAlertController's
+	// preferredAction). An action sheet shows none.
+	Fields []AlertField
+}
+
+// AlertField is a text field of an Alert.
+type AlertField struct {
+	// Text is the field's text: it starts with Text's value, and typing
+	// writes it as the user types, so an action's Disabled can follow it
+	// (OK disabled while the name is empty), which the alert shows while
+	// it's up. Writing it while the alert shows doesn't change the field.
+	Text        *signal.Signal[string]
+	Placeholder string
+	// Secure hides what's typed: a password (SecureField; a
+	// UITextField's isSecureTextEntry; NSSecureTextField;
+	// AdwPasswordEntryRow; an input of type password).
+	Secure   bool
+	Keyboard KeyboardType
+	// ContentType says what the field holds, for the system's AutoFill,
+	// as TextFieldProps' does: one of the Content constants.
+	ContentType string
+}
+
+// encodeAlertFields encodes fs as an Alert's Fields prop, with each
+// field's starting text.
+func encodeAlertFields(fs []AlertField) []byte {
+	out := make([]ops.AlertField, len(fs))
+	for i := range fs {
+		f := &fs[i]
+		of := ops.AlertField{Placeholder: f.Placeholder, Keyboard: f.Keyboard, ContentType: f.ContentType}
+		if f.Text != nil {
+			of.Text = f.Text.Peek()
+		}
+		if f.Secure {
+			of.Flags |= ops.AlertFieldSecure
+		}
+		out[i] = of
+	}
+	return ops.AppendAlertFields(nil, out)
 }
 
 // Alert shows an alert now (UIAlertController; a Material dialog on
@@ -711,16 +994,45 @@ func Alert(p AlertProps) {
 		if p.Message != "" {
 			b.SetString(e.id, ops.PropAlertMessage, p.Message)
 		}
-		b.SetBytes(e.id, ops.PropAlertButtons, signal.Untrack(func() []byte { return encodeActions(actions) }))
+		// Its buttons follow their titles and Disabled while it shows: an
+		// owner of its own, under the root's, disposed as it goes.
+		var owner *signal.Owner
+		signal.RunWithOwner(r.owner, func() {
+			owner = signal.NewOwner()
+			signal.RunWithOwner(owner, func() {
+				bindActions(actions, 0, func(v []byte) {
+					if !e.dead {
+						r.batch.SetBytes(e.id, ops.PropAlertButtons, v)
+					}
+				})
+			})
+		})
 		if p.ActionSheet {
 			b.SetEnum(e.id, ops.PropAlertStyle, int32(ops.AlertStyleActionSheet))
 		}
 		h := e.handlers()
-		h.action = func(i int64) {
-			e.destroy()
-			runAction(actions, i)
+		if fields := p.Fields; len(fields) > 0 && !p.ActionSheet {
+			b.SetBytes(e.id, ops.PropAlertFields, encodeAlertFields(fields))
+			h.fieldChanged = func(v []byte) {
+				i, text, ok := ops.DecodeFieldChanged(v)
+				if !ok || i < 0 || i >= len(fields) || e.dead {
+					return
+				}
+				if t := fields[i].Text; t != nil {
+					t.Set(text)
+				}
+			}
+			e.listen(ops.EventFieldChanged)
 		}
-		h.dismissed = func() { e.destroy() }
+		h.action = func(i int64) {
+			owner.Dispose()
+			e.destroy()
+			runAction(actions, i, 0)
+		}
+		h.dismissed = func() {
+			owner.Dispose()
+			e.destroy()
+		}
 		e.listen(ops.EventAction)
 		e.listen(ops.EventDismissed)
 		b.Command(e.id, ops.CmdPresent, nil)
@@ -742,12 +1054,12 @@ type MenuProps struct {
 func Menu(p MenuProps, children ...Node) Node {
 	e := newElement(ops.KindView, true)
 	e.setStyle(p.Style, false)
-	bindActions(p.Actions, func(b []byte) { e.r.batch.SetBytes(e.id, ops.PropMenu, b) })
+	bindActions(p.Actions, actionDepth, func(b []byte) { e.r.batch.SetBytes(e.id, ops.PropMenu, b) })
 	if p.LongPress {
 		e.r.batch.SetEnum(e.id, ops.PropMenuTrigger, int32(ops.MenuTriggerLongPress))
 	}
 	actions := p.Actions
-	e.handlers().action = func(i int64) { runAction(actions, i) }
+	e.handlers().action = func(i int64) { runAction(actions, i, actionDepth) }
 	e.listen(ops.EventAction)
 	addKids(e, children)
 	return Node{e}

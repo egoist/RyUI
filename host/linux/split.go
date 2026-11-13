@@ -4,6 +4,7 @@ package linux
 
 import (
 	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/internal/l10n"
 	"github.com/egoist/asuka/ops"
 )
 
@@ -28,6 +29,7 @@ type split struct {
 	box         Ptr // the sidebar's GtkListBox
 	rows        []sidebarRow
 	widgets     []Ptr // the list box's rows, as rows
+	parts       []sidebarParts
 	selected    int
 	updating    bool
 	detail      *node
@@ -36,9 +38,15 @@ type split struct {
 // sidebarRow is a section's title or a destination (its index among all
 // the destinations).
 type sidebarRow struct {
-	title, icon string
-	group       bool
-	index       int
+	title, icon, badge string
+	group              bool
+	index              int
+}
+
+// sidebarParts are a row's widgets, which change in place: its box, its
+// icon (0: none), its title and its badge (0: none).
+type sidebarParts struct {
+	box, icon, title, badge Ptr
 }
 
 // headerHome is where each window's header bar is: in its own toolbar
@@ -106,7 +114,20 @@ func splitProp(h *Host, n *node, p ops.PropID, v *ops.Value) bool {
 	}
 	switch p {
 	case ops.PropSplitItems:
-		s.rows = decodeSidebar(v.Bytes)
+		rows := decodeSidebar(v.Bytes)
+		if sameRows(s.rows, rows) && len(s.parts) == len(rows) {
+			// As many sections and items: the rows that changed change in
+			// place, keeping the selection, the focus and the scroll.
+			for i := range rows {
+				if rows[i] != s.rows[i] {
+					h.updateSidebarRow(s, i, rows[i])
+				}
+			}
+			s.rows = rows
+			h.showSidebarSelection(s)
+			return true
+		}
+		s.rows = rows
 		h.fillSidebar(s)
 	case ops.PropSplitSelected:
 		s.selected = int(v.Int)
@@ -121,30 +142,36 @@ func splitProp(h *Host, n *node, p ops.PropID, v *ops.Value) bool {
 }
 
 func decodeSidebar(b []byte) []sidebarRow {
-	r := reader{b: b}
 	var rows []sidebarRow
 	flat := 0
-	for range int(r.u32()) {
-		if !r.ok(4) {
-			break
+	for _, sec := range ops.DecodeSidebar(b) {
+		if sec.Title != "" {
+			rows = append(rows, sidebarRow{title: sec.Title, group: true})
 		}
-		if t := r.str(); t != "" {
-			rows = append(rows, sidebarRow{title: t, group: true})
-		}
-		for range int(r.u32()) {
-			if !r.ok(4) {
-				break
-			}
-			title := r.str()
-			rows = append(rows, sidebarRow{title: title, icon: r.str(), index: flat})
+		for _, it := range sec.Items {
+			rows = append(rows, sidebarRow{title: it.Title, icon: it.Icon, badge: it.Badge, index: flat})
 			flat++
 		}
 	}
 	return rows
 }
 
+// sameRows reports whether a and b are as many rows, each a section's
+// title or a destination as before: they change in place.
+func sameRows(a, b []sidebarRow) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].group != b[i].group || a[i].index != b[i].index {
+			return false
+		}
+	}
+	return true
+}
+
 // fillSidebar makes the list box's rows again: a section's title (not
-// selectable), a destination's icon and title.
+// selectable), a destination's icon, title and badge.
 func (h *Host) fillSidebar(s *split) {
 	s.updating = true
 	defer func() { s.updating = false }()
@@ -152,8 +179,10 @@ func (h *Host) fillSidebar(s *split) {
 		ListBoxRemove(s.box, w)
 	}
 	s.widgets = s.widgets[:0]
+	s.parts = s.parts[:0]
 	for i, r := range s.rows {
 		row := ListBoxRowNew()
+		var parts sidebarParts
 		if r.group {
 			l := LabelNew(r.title)
 			LabelSetXAlign(l, 0)
@@ -167,22 +196,72 @@ func (h *Host) fillSidebar(s *split) {
 			ListBoxRowSetSelectable(row, false)
 			ListBoxRowSetActivatable(row, false)
 			WidgetSetFocusable(row, false)
+			parts.title = l
 		} else {
 			box := BoxNew(OrientationHorizontal, 12)
+			parts.box = box
 			if name := h.iconName(r.icon); name != "" {
-				BoxAppend(box, ImageNewFromIconName(name))
+				parts.icon = ImageNewFromIconName(name)
+				BoxAppend(box, parts.icon)
 			}
 			l := LabelNew(r.title)
 			LabelSetXAlign(l, 0)
 			LabelSetEllipsize(l, EllipsizeEnd)
 			WidgetSetHExpand(l, true)
 			BoxAppend(box, l)
+			parts.title = l
 			ListBoxRowSetChild(row, box)
 		}
 		ListBoxAppend(s.box, row)
 		s.widgets = append(s.widgets, row)
+		s.parts = append(s.parts, parts)
+		if !r.group {
+			h.showSidebarBadge(s, i, r)
+		}
 	}
 	h.showSidebarSelection(s)
+}
+
+// updateSidebarRow changes row i to r in place: its title, icon and
+// badge.
+func (h *Host) updateSidebarRow(s *split, i int, r sidebarRow) {
+	p := &s.parts[i]
+	LabelSetText(p.title, r.title)
+	if r.group {
+		return
+	}
+	if r.icon != s.rows[i].icon {
+		if p.icon != 0 {
+			BoxRemove(p.box, p.icon)
+			p.icon = 0
+		}
+		if name := h.iconName(r.icon); name != "" {
+			p.icon = ImageNewFromIconName(name)
+			BoxPrepend(p.box, p.icon)
+		}
+	}
+	h.showSidebarBadge(s, i, r)
+}
+
+// showSidebarBadge shows a destination's badge at its row's end, dimmed,
+// in tabular figures, as GNOME's sidebars count unread items; the row's
+// label for a screen reader says it after the title, a count as so many
+// items ("Inbox, 3 items").
+func (h *Host) showSidebarBadge(s *split, i int, r sidebarRow) {
+	p := &s.parts[i]
+	switch {
+	case r.badge == "" && p.badge != 0:
+		BoxRemove(p.box, p.badge)
+		p.badge = 0
+	case r.badge != "" && p.badge == 0:
+		p.badge = LabelNew(r.badge)
+		WidgetAddCSSClass(p.badge, "dim-label")
+		WidgetAddCSSClass(p.badge, "numeric")
+		BoxAppend(p.box, p.badge)
+	case r.badge != "":
+		LabelSetText(p.badge, r.badge)
+	}
+	setA11yString(s.widgets[i], a11yPropLabel, l10n.Badged(h.locale, r.title, r.badge))
 }
 
 // showSidebarSelection selects the chosen destination's row (none: no

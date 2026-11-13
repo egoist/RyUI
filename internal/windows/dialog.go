@@ -11,8 +11,9 @@ import (
 
 // TaskButton is a task dialog's button.
 type TaskButton struct {
-	ID    int
-	Title string
+	ID       int
+	Title    string
+	Disabled bool // dimmed, and not pressed (TDM_ENABLE_BUTTON)
 }
 
 const (
@@ -28,8 +29,10 @@ const (
 // TaskDialog shows a task dialog (TaskDialogIndirect, common controls 6)
 // and returns the ID of the button the user picked, IDCANCEL when they
 // closed it. It runs a modal loop: posted work and the owner's messages
-// go on meanwhile.
-func TaskDialog(owner uintptr, title, instruction, content string, buttons []TaskButton, defaultID int, flags uint32) int {
+// go on meanwhile. onWindow, if not nil, is called with the dialog's
+// window once it's made (EnableTaskButton takes it), and with 0 as it
+// goes. Its disabled buttons are disabled as it's made.
+func TaskDialog(owner uintptr, title, instruction, content string, buttons []TaskButton, defaultID int, flags uint32, onWindow func(hwnd uintptr)) int {
 	p := CommonControl("TaskDialogIndirect")
 	if p == 0 {
 		return IDCANCEL
@@ -65,9 +68,69 @@ func TaskDialog(owner uintptr, title, instruction, content string, buttons []Tas
 		le.PutUint64(cfg[64:], uint64(uintptr(unsafe.Pointer(&btns[0]))))
 	}
 	le.PutUint32(cfg[72:], uint32(int32(defaultID)))
+	// The callback, for the buttons to disable and the window.
+	if taskCallback == 0 {
+		taskCallback = syscall.NewCallback(taskDialogEvent)
+	}
+	taskNext++
+	ref := taskNext
+	taskDialogs[ref] = &taskState{buttons: buttons, onWindow: onWindow}
+	defer delete(taskDialogs, ref)
+	le.PutUint64(cfg[140:], uint64(taskCallback))
+	le.PutUint64(cfg[148:], uint64(ref))
 	var pressed int32
 	syscall.SyscallN(p, uintptr(unsafe.Pointer(&cfg[0])), uintptr(unsafe.Pointer(&pressed)), 0, 0)
 	runtime.KeepAlive(keep)
 	runtime.KeepAlive(btns)
 	return int(pressed)
+}
+
+// The task dialogs showing (nested modal loops can show more than one),
+// by their callback's reference data.
+var (
+	taskCallback uintptr
+	taskNext     uintptr
+	taskDialogs  = map[uintptr]*taskState{}
+)
+
+type taskState struct {
+	buttons  []TaskButton
+	onWindow func(hwnd uintptr)
+}
+
+const (
+	tdnCreated      = 0
+	tdnDestroyed    = 5
+	tdmEnableButton = WM_USER + 111
+)
+
+// taskDialogEvent is a task dialog's callback (PFTASKDIALOGCALLBACK).
+func taskDialogEvent(hwnd, msg, wp, lp, ref uintptr) uintptr {
+	st := taskDialogs[ref]
+	if st == nil {
+		return 0
+	}
+	switch msg {
+	case tdnCreated:
+		for _, b := range st.buttons {
+			if b.Disabled {
+				EnableTaskButton(hwnd, b.ID, false)
+			}
+		}
+		if st.onWindow != nil {
+			st.onWindow(hwnd)
+		}
+	case tdnDestroyed:
+		if st.onWindow != nil {
+			st.onWindow(0)
+		}
+	}
+	return 0 // S_OK
+}
+
+// EnableTaskButton enables or disables a task dialog's button, by its ID.
+func EnableTaskButton(dialog uintptr, id int, on bool) {
+	if dialog != 0 {
+		SendMessage(dialog, tdmEnableButton, uintptr(id), b2u(on))
+	}
 }

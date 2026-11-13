@@ -15,6 +15,25 @@
         <item name="android:backgroundDimEnabled">false</item>
     </style>
 
+    <!-- A full-screen sheet (SheetProps.FullScreen): Material's full-screen
+         dialog, over the app's theme (its colors, the accent's scheme). A
+         window as big as the screen, drawn edge to edge, see-through behind
+         its content so predictive back shows the app under it as the
+         content shrinks; it slides up and back down. -->
+    <style name="ThemeOverlay.Asuka.FullScreenDialog" parent="">
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowAnimationStyle">@style/Animation.Asuka.FullScreenDialog</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">always</item>
+    </style>
+    <style name="Animation.Asuka.FullScreenDialog" parent="">
+        <item name="android:windowEnterAnimation">@anim/asuka_full_screen_enter</item>
+        <item name="android:windowExitAnimation">@anim/asuka_full_screen_exit</item>
+    </style>
+
     <!-- Button variants (ui.ButtonVariant): plain is a text button. -->
     <style name="ThemeOverlay.Asuka.TextButton" parent="">
         <item name="materialButtonStyle">@style/Widget.Material3Expressive.Button.TextButton</item>
@@ -27,6 +46,11 @@
     </style>
     <style name="ThemeOverlay.Asuka.OutlinedButton" parent="">
         <item name="materialButtonStyle">@style/Widget.Material3Expressive.Button.OutlinedButton</item>
+    </style>
+
+    <!-- A Picker: Material 3's exposed dropdown menu, an outlined field. -->
+    <style name="ThemeOverlay.Asuka.Picker" parent="">
+        <item name="textInputStyle">@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu</item>
     </style>
 
     <style name="ThemeOverlay.Asuka.SegmentedButton" parent="">

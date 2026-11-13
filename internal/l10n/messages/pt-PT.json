@@ -2,6 +2,7 @@
   "ok": "OK",
   "search": "Pesquisar",
   "back": "Voltar",
+  "moreOptions": "Mais opções",
   "decrease": "Diminuir",
   "increase": "Aumentar",
   "about": "Acerca de {app}",
@@ -37,5 +38,7 @@
   "updateCheckError": "Ocorreu um erro ao procurar atualizações. Tente novamente mais tarde.",
   "updateInstallError": "Ocorreu um erro ao instalar a atualização. Tente novamente mais tarde.",
   "updateUnavailable": "Atualizações indisponíveis",
-  "updateUnavailableMessage": "{app} não se pode atualizar a si próprio no local onde está instalado. Se foi instalado por um gestor de pacotes ou por uma loja de aplicações, atualize-o aí."
+  "updateUnavailableMessage": "{app} não se pode atualizar a si próprio no local onde está instalado. Se foi instalado por um gestor de pacotes ou por uma loja de aplicações, atualize-o aí.",
+  "badgeCount": "{count, plural, one {# item} many {# de itens} other {# itens}}",
+  "close": "Fechar"
 }

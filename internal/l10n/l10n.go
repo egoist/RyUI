@@ -13,6 +13,7 @@ import (
 
 	"github.com/egoist/asuka/i18n"
 	"github.com/egoist/asuka/internal/i18nlink"
+	"github.com/egoist/asuka/ops"
 )
 
 // Namespace is that of the keys with which apps change Asuka's words:
@@ -51,6 +52,10 @@ func Search(locale string) string { return Catalog.Format(locale, "search", nil)
 // Back says a back button's title and label, in locale.
 func Back(locale string) string { return Catalog.Format(locale, "back", nil) }
 
+// MoreOptions says what a bar's overflow button opens (the actions that
+// don't fit), in locale, for its tooltip and a screen reader.
+func MoreOptions(locale string) string { return Catalog.Format(locale, "moreOptions", nil) }
+
 // Decrease says what a stepper's minus button does, in locale, for a screen
 // reader.
 func Decrease(locale string) string { return Catalog.Format(locale, "decrease", nil) }
@@ -85,6 +90,10 @@ func Zoom(locale string) string { return Catalog.Format(locale, "zoom", nil) }
 // what it offers, in locale.
 func Cancel(locale string) string { return Catalog.Format(locale, "cancel", nil) }
 
+// Close is the label of a button that closes what it's on: a snackbar's
+// on a desktop (macOS, Windows, the web).
+func Close(locale string) string { return Catalog.Format(locale, "close", nil) }
+
 // TakePhoto says the button that takes a photo (the camera's sheet on
 // the Mac), in locale.
 func TakePhoto(locale string) string { return Catalog.Format(locale, "takePhoto", nil) }
@@ -99,3 +108,22 @@ func AddToCalendar(locale string) string { return Catalog.Format(locale, "addToC
 
 // NewEvent says the title of an event that has none, in locale.
 func NewEvent(locale string) string { return Catalog.Format(locale, "newEvent", nil) }
+
+// Badge says a tab's or a sidebar row's badge for a screen reader, after
+// its title ("Inbox, 3 items"), in locale: a count (ops.BadgeNumber) as
+// so many items, other text as it is.
+func Badge(locale, text string) string {
+	if n, ok := ops.BadgeNumber(text); ok {
+		return Catalog.Format(locale, "badgeCount", map[string]any{"count": n})
+	}
+	return text
+}
+
+// Badged says a title with its badge, if it has one, for a screen
+// reader: "Inbox, 3 items".
+func Badged(locale, title, badge string) string {
+	if badge == "" {
+		return title
+	}
+	return title + ", " + Badge(locale, badge)
+}

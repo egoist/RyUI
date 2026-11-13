@@ -51,7 +51,7 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 	}
 	switch kind {
 	case ops.KindView, ops.KindSelectable, ops.KindText, ops.KindSymbol, ops.KindShape, ops.KindCanvas, ops.KindShader,
-		ops.KindProgress, ops.KindActivity, ops.KindImage:
+		ops.KindProgress, ops.KindProgressRing, ops.KindActivity, ops.KindImage:
 		n.hwnd = h.makeView(0)
 		switch kind {
 		case ops.KindShape:
@@ -99,8 +99,12 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 			}
 		}
 		h.nameStepper(n)
-	case ops.KindWheel:
-		h.makeControl(n, "COMBOBOX", wheelStyle, h.wheelExStyle(n))
+	case ops.KindWheel, ops.KindPicker:
+		h.makeControl(n, "COMBOBOX", comboStyle, h.wheelExStyle(n))
+		if kind == ops.KindPicker {
+			n.selected = -1 // none, till the core says
+		}
+		h.setupCombo(n) // drawn as WinUI's ComboBox (combo.go)
 	case ops.KindDatePicker:
 		n.hwnd = h.makeView(0)
 		h.makeDateControls(n)
@@ -127,7 +131,7 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 }
 
 // themeControl gives a control the system's dark or light visual style
-// where it has one (scroll bars, combo boxes).
+// where it has one (scroll bars, a combo box's list's).
 func (h *Host) themeControl(n *node) {
 	theme := "Explorer"
 	if h.dark {
@@ -139,7 +143,7 @@ func (h *Host) themeControl(n *node) {
 			AllowDark(n.hwnd, h.dark)
 			SetWindowTheme(n.hwnd, theme)
 		}
-	case ops.KindWheel:
+	case ops.KindWheel, ops.KindPicker:
 		if n.ctl != 0 {
 			AllowDark(n.ctl, h.dark)
 			if h.dark {
@@ -147,6 +151,8 @@ func (h *Host) themeControl(n *node) {
 			} else {
 				SetWindowTheme(n.ctl, "")
 			}
+			h.styleComboList(n) // combo.go
+			Invalidate(n.ctl)
 		}
 	case ops.KindTextField:
 		if n.ctl != 0 && n.multiline {
@@ -166,8 +172,6 @@ func (h *Host) themeControl(n *node) {
 
 func (n *node) stepButtons() []uintptr { return []uintptr{n.ctl, n.ctl2} }
 
-const wheelStyle = CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-
 // wheelExStyle is a combo box's direction: right to left, its text on the
 // right and its arrow on the left.
 func (h *Host) wheelExStyle(n *node) uint32 {
@@ -177,6 +181,27 @@ func (h *Host) wheelExStyle(n *node) uint32 {
 	return 0
 }
 
+// selectPicker selects a Picker's chosen item in its combo box; with none
+// (out of range) the box is empty, and shows its label.
+func (h *Host) selectPicker(n *node) {
+	i := n.selected
+	if i < 0 || i >= len(n.items) {
+		i = -1
+	}
+	SendMessage(n.ctl, CB_SETCURSEL, uintptr(i), 0)
+	Invalidate(n.ctl)
+}
+
+// labelPicker shows a Picker's label in its combo box while none is chosen
+// (the box draws it, in the secondary text color, where the combo box's
+// cue banner would be), and names it for screen readers (its own text is
+// the chosen item).
+func (h *Host) labelPicker(n *node) {
+	SendMessage(n.ctl, CB_SETCUEBANNER, 0, Str(n.pickerLabel))
+	SetAccessibleName(n.ctl, n.pickerLabel)
+	Invalidate(n.ctl)
+}
+
 // remakeWheel makes a combo box again in its direction: a combo box takes
 // its extended styles as it's made.
 func (h *Host) remakeWheel(n *node) {
@@ -184,15 +209,21 @@ func (h *Host) remakeWheel(n *node) {
 	if old == 0 {
 		return
 	}
-	h.makeControlIn(n, "COMBOBOX", wheelStyle, h.wheelExStyle(n))
+	h.makeControlIn(n, "COMBOBOX", comboStyle, h.wheelExStyle(n))
 	h.byHwnd[n.ctl] = n
 	h.forgetTree(old)
 	DestroyWindow(old)
 	h.byHwnd[n.ctl] = n
+	h.setupCombo(n)
 	for _, s := range n.items {
 		SendMessage(n.ctl, CB_ADDSTRING, 0, Str(s))
 	}
-	SendMessage(n.ctl, CB_SETCURSEL, uintptr(n.selected), 0)
+	if n.kind == ops.KindPicker {
+		h.selectPicker(n)
+		h.labelPicker(n)
+	} else {
+		SendMessage(n.ctl, CB_SETCURSEL, uintptr(n.selected), 0)
+	}
 	if n.disabled {
 		EnableWindow(n.ctl, false)
 	}
@@ -310,6 +341,22 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 			h.spin(n)
 		}
 		h.redraw(n)
+	case ops.KindProgressRing:
+		switch p {
+		case ops.PropProgressRingValue:
+			old := n.value
+			n.value = min(max(v.Float, 0), 1)
+			// The arc moves to it, as WinUI's ring eases between values;
+			// at once when it isn't shown, or motion is reduced.
+			if h.env.ReduceMotion || n.hwnd == 0 || !IsWindowVisible(n.hwnd) {
+				n.shown = n.value
+			}
+			RaiseRangeValueChanged(n.uia, old*100, n.value*100)
+		case ops.PropProgressRingIndeterminate:
+			n.indeterminate = v.Int != 0
+		}
+		h.spin(n)
+		h.redraw(n)
 	case ops.KindImage:
 		h.setImageProp(n, p, v)
 	case ops.KindSymbol:
@@ -340,6 +387,23 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 		case ops.PropWheelSelected:
 			n.selected = int(v.Int)
 			SendMessage(n.ctl, CB_SETCURSEL, uintptr(v.Int), 0)
+		}
+		Invalidate(n.ctl)
+	case ops.KindPicker:
+		switch p {
+		case ops.PropPickerItems:
+			n.items = decodeStrings(v.Bytes)
+			SendMessage(n.ctl, CB_RESETCONTENT, 0, 0)
+			for _, s := range n.items {
+				SendMessage(n.ctl, CB_ADDSTRING, 0, Str(s))
+			}
+			h.selectPicker(n)
+		case ops.PropPickerSelected:
+			n.selected = int(v.Int)
+			h.selectPicker(n)
+		case ops.PropPickerLabel:
+			n.pickerLabel = v.Str
+			h.labelPicker(n)
 		}
 	case ops.KindDatePicker:
 		switch p {
@@ -527,13 +591,18 @@ func (h *Host) controlCommand(n *node, ctl uintptr, code uint32) {
 			h.redraw(n)
 			h.emit(n, ops.Event{Kind: ops.EventBlur})
 		}
-	case ops.KindWheel:
-		if code == CBN_SELCHANGE {
-			n.selected = int(int32(SendMessage(ctl, CB_GETCURSEL, 0, 0)))
-			h.emit(n, ops.Event{Kind: ops.EventSelected, Int: int64(n.selected)})
-		}
+	case ops.KindWheel, ops.KindPicker:
+		h.comboCommand(n, ctl, code) // combo.go
 	case kindHeader:
 		h.headerCommand(n, ctl)
+	case kindCommandBar:
+		h.commandBarCommand(n, ctl)
+	case kindAlertWindow:
+		h.alertDialogCommand(n, ctl, code)
+	case ops.KindSnackbar:
+		if code == BN_CLICKED {
+			h.snackClicked(n, ctl)
+		}
 	case ops.KindRichText:
 		// EN_CHANGE and the like: a read-only rich edit's own.
 	}
@@ -551,7 +620,7 @@ func (h *Host) notify(n *node, hdr *NMHdr, lp uintptr) (uintptr, bool) {
 	case NM_CUSTOMDRAW:
 		cd := Native[NMCustomDraw](lp)
 		switch n.kind {
-		case ops.KindButton, ops.KindColorPicker, ops.KindStepper, kindHeader:
+		case ops.KindButton, ops.KindColorPicker, ops.KindStepper, kindHeader, kindCommandBar, kindAlertWindow, ops.KindSnackbar:
 			return h.drawButton(n, cd), true
 		case ops.KindToggle:
 			return h.drawToggle(n, cd), true
@@ -603,12 +672,12 @@ func (h *Host) controlColors(n *node, dc uintptr, m uint32) uintptr {
 		SetTextColor(dc, h.textColor(n, h.theme.label).over(bg).ref())
 		SetBkColor(dc, bg.ref())
 		return h.brush(bg)
-	case ops.KindWheel:
-		bg := h.theme.fieldBg
-		if h.dark {
-			bg = h.theme.control
-		}
-		SetTextColor(dc, h.theme.label.ref())
+	case kindAlertWindow:
+		return h.alertDialogColors(dc) // its title and message
+	case ops.KindWheel, ops.KindPicker:
+		// Its list's, should it ask here (combo.go answers it first).
+		bg := h.comboListBg()
+		SetTextColor(dc, h.comboListText().ref())
 		SetBkColor(dc, bg.ref())
 		return h.brush(bg)
 	}
@@ -755,6 +824,17 @@ func (h *Host) viewMessage(n *node, hwnd uintptr, m uint32, wp, lp uintptr) (uin
 			h.hideBars(n)
 		case timerSpin:
 			n.phase += 1.0 / 60 / 1.5
+			if n.kind == ops.KindProgressRing && n.shown != n.value {
+				// Eases to the value: a quarter of the way each frame
+				// (about a fifth of a second), then there.
+				n.shown += (n.value - n.shown) / 4
+				if math.Abs(n.value-n.shown) < 0.002 {
+					n.shown = n.value
+				}
+				if !n.indeterminate {
+					h.spin(n) // stops once it's there
+				}
+			}
 			Invalidate(hwnd)
 		case timerShader:
 			h.renderShader(n)
@@ -1034,13 +1114,13 @@ func abs32(v int32) int32 {
 	return v
 }
 
-// spin runs the timer of an activity ring or an indeterminate progress
-// bar while it animates.
+// spin runs the timer of an activity ring, an indeterminate progress
+// bar or ring, or a ring moving to its value, while it animates.
 func (h *Host) spin(n *node) {
 	if n.hwnd == 0 {
 		return
 	}
-	if n.animating || n.indeterminate {
+	if n.animating || n.indeterminate || n.kind == ops.KindProgressRing && n.shown != n.value {
 		SetTimer(n.hwnd, timerSpin, 16)
 	} else {
 		KillTimer(n.hwnd, timerSpin)

@@ -2,6 +2,7 @@
   "ok": "OK",
   "search": "Cari",
   "back": "Kembali",
+  "moreOptions": "Lagi pilihan",
   "decrease": "Kurangkan",
   "increase": "Tingkatkan",
   "about": "Perihal {app}",
@@ -37,5 +38,7 @@
   "updateCheckError": "Ralat berlaku semasa menyemak kemas kini. Sila cuba lagi kemudian.",
   "updateInstallError": "Ralat berlaku semasa memasang kemas kini. Sila cuba lagi kemudian.",
   "updateUnavailable": "Kemas Kini Tidak Tersedia",
-  "updateUnavailableMessage": "{app} tidak dapat mengemas kini dirinya di lokasi ia dipasang. Jika ia dipasang oleh pengurus pakej atau gedung aplikasi, kemas kininya di sana."
+  "updateUnavailableMessage": "{app} tidak dapat mengemas kini dirinya di lokasi ia dipasang. Jika ia dipasang oleh pengurus pakej atau gedung aplikasi, kemas kininya di sana.",
+  "badgeCount": "{count, plural, other {# item}}",
+  "close": "Tutup"
 }

@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/internal/l10n"
 	"github.com/egoist/asuka/ops"
 )
 
@@ -13,7 +14,10 @@ import (
 // (its pages slide, a swipe or Alt+Left goes back), each Screen a page;
 // Tabs an AdwViewStack with a view switcher (in the header bar on a wide
 // window, a bar at the bottom of a narrow one); a Sheet an AdwDialog (a
-// floating dialog, a bottom sheet in a narrow window); an Alert an
+// floating dialog, a bottom sheet in a narrow window), a FullScreen one
+// an AdwDialog as big as its window, which libadwaita shows over all of
+// it as it shows a dialog that doesn't fit (on a phone, in a narrow
+// window), following the window as it resizes; an Alert an
 // AdwAlertDialog; a Window a window of its own.
 //
 // Each window has one header bar, as GNOME's apps do: the innermost stack
@@ -33,10 +37,20 @@ type nav struct {
 	search   *searchField
 	pending  int // Selected, before its pages are in
 	searchPh string
+	fields   []ops.AlertField // an Alert's text fields
+	rows     []Ptr            // their entry rows, once it shows
 	searchTx string
+	badge    string // a tab's (Screen's Badge)
 	detents  int64
+	full     bool // a Sheet's FullScreen: as big as its window
 	envW     float32
 	envH     float32
+	// A Screen's Toolbar and Primary (numbered as their Action events
+	// are), and the bottom bar showing them (toolbar.go).
+	toolbar, primary []action
+	bottom           *screenBar
+	toast            Ptr                  // a Snackbar's AdwToast (snackbar.go)
+	duration         ops.SnackbarDuration // a Snackbar's
 }
 
 // isLayoutRoot reports whether n is a root the host sizes, whose
@@ -155,7 +169,7 @@ func (h *Host) createNav(n *node) bool {
 		Connect(d, "close-attempt", func() {
 			h.emit(n, ops.Event{Kind: ops.EventBack})
 		})
-	case ops.KindAlert:
+	case ops.KindAlert, ops.KindSnackbar:
 		n.nav = &nav{}
 	case ops.KindWindow:
 		w := h.newWin(AdwWindowNew())
@@ -190,16 +204,29 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) bool {
 			if n.nav.page != 0 {
 				if n.parent != nil && n.parent.kind == ops.KindTabs {
 					AdwViewStackPageSetTitle(n.nav.page, v.Str)
+					h.labelTabs(n.parent)
 				} else {
 					AdwNavigationPageSetTitle(n.nav.page, v.Str)
 				}
 			}
 		case ops.PropScreenActions:
 			n.actions = decodeMenu(v.Bytes)
+		case ops.PropScreenToolbar:
+			n.nav.toolbar = decodeMenuFrom(v.Bytes, ops.ScreenToolbarActions)
+			h.setScreenBar(n)
+		case ops.PropScreenPrimary:
+			n.nav.primary = decodeMenuFrom(v.Bytes, ops.ScreenPrimaryAction)
+			h.setScreenBar(n)
 		case ops.PropScreenIcon:
 			n.icon = v.Str
 			if n.nav.page != 0 && n.parent != nil && n.parent.kind == ops.KindTabs {
 				AdwViewStackPageSetIconName(n.nav.page, h.iconName(v.Str))
+			}
+		case ops.PropScreenBadge:
+			n.nav.badge = v.Str
+			if n.nav.page != 0 && n.parent != nil && n.parent.kind == ops.KindTabs {
+				h.showTabBadge(n)
+				h.labelTabs(n.parent)
 			}
 		case ops.PropScreenSearch:
 			n.nav.searchPh = v.Str
@@ -226,6 +253,14 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) bool {
 			h.sizeSheet(n)
 		case ops.PropSheetWindow:
 			n.nav.window = ops.NodeID(v.Int)
+		case ops.PropSheetFullScreen:
+			n.nav.full = v.Int != 0
+			if n.nav.full {
+				// Floating, so a narrow window doesn't make it a bottom
+				// sheet, which shows the window above it.
+				AdwDialogSetPresentationMode(n.nav.dialog, dialogFloating)
+			}
+			h.sizeSheet(n)
 		}
 	case ops.KindAlert:
 		switch p {
@@ -235,11 +270,23 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) bool {
 			n.message = v.Str
 		case ops.PropAlertButtons:
 			n.actions = decodeMenu(v.Bytes)
+			if d := n.nav.dialog; d != 0 && !n.nav.gone {
+				// Showing: its buttons follow their titles and Disabled.
+				for i, a := range n.actions {
+					id := strconv.Itoa(i)
+					AdwAlertDialogSetResponseLabel(d, id, a.title)
+					AdwAlertDialogSetResponseEnabled(d, id, !a.is(ops.MenuDisabled))
+				}
+			}
 		case ops.PropAlertStyle:
 			n.alertStyle = int32(v.Int)
 		case ops.PropAlertWindow:
 			n.nav.window = ops.NodeID(v.Int)
+		case ops.PropAlertFields:
+			n.nav.fields = ops.DecodeAlertFields(v.Bytes)
 		}
+	case ops.KindSnackbar:
+		h.setSnackProp(n, p, v)
 	case ops.KindWindow:
 		w := n.win
 		switch p {
@@ -273,7 +320,7 @@ func (h *Host) insertNav(p, c *node, index int) bool {
 	case ops.KindStack:
 		h.addChild(p, c, index)
 		title := c.title
-		page := AdwNavigationPageNew(c.widget, title)
+		page := AdwNavigationPageNew(c.pageChild(), title)
 		c.nav.page = page
 		AdwNavigationPageSetTag(page, strconv.FormatUint(uint64(c.id), 10))
 		if c.interceptBack {
@@ -292,6 +339,10 @@ func (h *Host) insertNav(p, c *node, index int) bool {
 		name := strconv.FormatUint(uint64(c.id), 10)
 		page := AdwViewStackAddTitledWithIcon(p.nav.view, c.widget, name, c.title, h.iconName(c.icon))
 		c.nav.page = page
+		if c.nav.badge != "" {
+			h.showTabBadge(c)
+		}
+		h.labelTabs(p)
 		h.selectTab(p)
 		h.queueChrome()
 		return true
@@ -340,11 +391,63 @@ func (h *Host) removeNav(p, c *node) bool {
 		if c.nav != nil && c.nav.page != 0 {
 			AdwViewStackRemove(p.nav.view, c.widget)
 			c.nav.page = 0
+			h.labelTabs(p)
 		}
 		h.queueChrome()
 		return true
 	}
 	return false
+}
+
+// showTabBadge shows a tab's badge on its page, which the view switchers
+// show: a count as its badge-number, beside the page's icon, other text
+// as needs-attention's dot; either way the page needs attention, so the
+// badge takes the accent color, as GNOME's apps count unread items.
+func (h *Host) showTabBadge(n *node) {
+	num, isNum := ops.BadgeNumber(n.nav.badge)
+	if !isNum || num < 0 {
+		num = 0
+	}
+	AdwViewStackPageSetBadgeNumber(n.nav.page, uint32(num))
+	AdwViewStackPageSetNeedsAttention(n.nav.page, n.nav.badge != "")
+}
+
+// labelTabs labels the view switchers' buttons, a tab's each, for a
+// screen reader: its title and its badge, a count as so many items
+// ("Inbox, 3 items"). The switchers' own labels say the title alone.
+func (h *Host) labelTabs(tabs *node) {
+	if tabs.nav == nil {
+		return
+	}
+	toggle := Call(Sym("gtk_toggle_button_get_type"))
+	for _, sw := range []Ptr{tabs.nav.switcher, tabs.nav.bar} {
+		var buttons []Ptr
+		var walk func(w Ptr)
+		walk = func(w Ptr) {
+			for c := WidgetGetFirstChild(w); c != 0; c = WidgetGetNextSibling(c) {
+				if TypeCheckInstanceIsA(c, toggle) {
+					buttons = append(buttons, c)
+					continue
+				}
+				walk(c)
+			}
+		}
+		if sw != 0 {
+			walk(sw)
+		}
+		var pages []*node
+		for _, c := range tabs.children {
+			if c.nav != nil && c.nav.page != 0 {
+				pages = append(pages, c)
+			}
+		}
+		if len(buttons) != len(pages) {
+			continue // the switcher makes its buttons as it's shown
+		}
+		for i, b := range buttons {
+			setA11yString(b, a11yPropLabel, l10n.Badged(h.locale, pages[i].title, pages[i].nav.badge))
+		}
+	}
 }
 
 // dropPage takes a screen's page out of its stack: popped (animated) when
@@ -406,6 +509,8 @@ func (h *Host) destroyNav(n *node) bool {
 			}
 			n.nav.dialog = 0
 		}
+	case ops.KindSnackbar:
+		h.destroySnack(n)
 	case ops.KindWindow:
 		if w := n.win; w != nil {
 			h.saveWindow(w)
@@ -441,6 +546,7 @@ func (h *Host) destroyNav(n *node) bool {
 		for _, c := range n.children {
 			c.parent = nil
 		}
+		h.releaseScreenBar(n)
 		h.release(n)
 		return true
 	}
@@ -456,10 +562,21 @@ func (h *Host) present(n *node) {
 		AdwDialogPresent(n.nav.dialog, h.declaredWin(n).content)
 	case ops.KindAlert:
 		h.presentAlert(n, h.declaredWin(n).content)
+	case ops.KindSnackbar:
+		h.presentSnack(n)
 	case ops.KindWindow:
 		h.openWindow(n)
 	case ops.KindPopover:
 		h.presentPopover(n)
+	}
+}
+
+// sizeCovers sizes the full-screen sheets on w again (it resized).
+func (h *Host) sizeCovers(w *win) {
+	for _, n := range h.nodes {
+		if n.kind == ops.KindSheet && n.nav != nil && n.nav.full && n.nav.dialog != 0 && h.declaredWin(n) == w {
+			h.sizeSheet(n)
+		}
 	}
 }
 
@@ -480,15 +597,27 @@ func (h *Host) declaredWin(n *node) *win {
 	return h.main
 }
 
+// dialogFloating is AdwDialogPresentationMode's floating dialog.
+const dialogFloating = 1
+
 // sizeSheet sizes a sheet's dialog: as wide as a dialog of libadwaita's
 // (up to 600 points), most of the window's height, half of it for a
-// medium-only sheet.
+// medium-only sheet; a full-screen one, as big as its whole window.
 func (h *Host) sizeSheet(n *node) {
 	d := n.nav.dialog
 	if d == 0 {
 		return
 	}
 	w := h.declaredWin(n)
+	if n.nav.full {
+		ww, wh := int32(Call(FnWidgetGetWidth, w.window)), int32(Call(FnWidgetGetHeight, w.window))
+		if ww <= 0 || wh <= 0 { // not shown yet: its default size
+			WindowGetDefaultSize(w.window, &ww, &wh)
+		}
+		AdwDialogSetContentWidth(d, max(ww, 1))
+		AdwDialogSetContentHeight(d, max(wh, 1))
+		return
+	}
 	ww, wh := w.envW, w.envH
 	if ww == 0 {
 		ww, wh = 800, 600
@@ -511,6 +640,9 @@ func (h *Host) presentAlert(n *node, parent Ptr) {
 	for i, a := range n.actions {
 		id := strconv.Itoa(i)
 		AdwAlertDialogAddResponse(d, id, a.title)
+		if a.is(ops.MenuDisabled) {
+			AdwAlertDialogSetResponseEnabled(d, id, false)
+		}
 		switch a.role {
 		case ops.AlertButtonRoleDestructive:
 			AdwAlertDialogSetResponseAppearance(d, id, ResponseDestructive)
@@ -529,6 +661,10 @@ func (h *Host) presentAlert(n *node, parent Ptr) {
 		closeID = "0"
 	}
 	AdwAlertDialogSetCloseResponse(d, closeID)
+	var first Ptr
+	if n.alertStyle == int32(ops.AlertStyleAlert) && len(n.nav.fields) > 0 {
+		first = h.alertFields(n, d)
+	}
 	Connect(d, "response", func(resp uintptr) {
 		n.nav.gone = true
 		id := GoString(resp)
@@ -539,6 +675,97 @@ func (h *Host) presentAlert(n *node, parent Ptr) {
 		h.emit(n, ops.Event{Kind: ops.EventDismissed})
 	})
 	AdwDialogPresent(d, parent)
+	if first != 0 {
+		AdwDialogSetFocus(d, first)
+	}
+}
+
+// alertFields gives an alert its text fields, as libadwaita's dialogs
+// have them: a boxed list of entry rows (password entry rows for
+// passwords), each titled with its placeholder, under the message. Typing
+// reports FieldChanged; activating a row before the last goes on to the
+// next, and the last activates the default response (the suggested one,
+// the first whose role is Default) if it's enabled. It returns the first
+// row, which takes the focus.
+func (h *Host) alertFields(n *node, d Ptr) Ptr {
+	list := ListBoxNew()
+	ListBoxSetSelectionMode(list, SelectionNone)
+	WidgetAddCSSClass(list, "boxed-list")
+	rows := make([]Ptr, len(n.nav.fields))
+	for i, f := range n.nav.fields {
+		var row Ptr
+		if f.Secure() {
+			row = AdwPasswordEntryRowNew()
+		} else {
+			row = AdwEntryRowNew()
+			purpose, hints := alertFieldPurpose(f)
+			AdwEntryRowSetInputPurpose(row, purpose)
+			AdwEntryRowSetInputHints(row, hints)
+		}
+		SetStringProperty(row, "title", f.Placeholder)
+		EditableSetText(row, f.Text)
+		rows[i] = row
+		ListBoxAppend(list, row)
+	}
+	for i, row := range rows {
+		i, row := i, row
+		Connect(row, "changed", func() {
+			if n.nav.gone || h.nodes[n.id] != n {
+				return
+			}
+			h.emit(n, ops.Event{Kind: ops.EventFieldChanged, Bytes: ops.AppendFieldChanged(nil, i, EditableGetText(row))})
+		})
+		if i+1 < len(rows) {
+			next := rows[i+1]
+			Connect(row, "entry-activated", func() { WidgetGrabFocus(next) })
+		} else {
+			AdwEntryRowSetActivatesDefault(row, true)
+		}
+	}
+	AdwAlertDialogSetExtraChild(d, list)
+	n.nav.rows = rows
+	return rows[0]
+}
+
+// alertFieldPurpose is what an alert's field tells the input method: its
+// keyboard and content type, as a TextField's (applyPurpose).
+func alertFieldPurpose(f ops.AlertField) (purpose, hints int32) {
+	purpose = purposeFree
+	switch f.Keyboard {
+	case ops.KeyboardNumber:
+		purpose = purposeDigits
+	case ops.KeyboardDecimal:
+		purpose = purposeNumber
+	case ops.KeyboardEmail:
+		purpose = purposeEmail
+	case ops.KeyboardURL:
+		purpose = purposeURL
+	case ops.KeyboardPhone:
+		purpose = purposePhone
+	}
+	hints = hintUppercaseSentences
+	switch f.ContentType {
+	case "oneTimeCode":
+		purpose, hints = purposePIN, hintNoSpellcheck
+	case "email":
+		purpose, hints = purposeEmail, hintNoSpellcheck
+	case "phone":
+		purpose = purposePhone
+	case "name", "givenName", "familyName":
+		purpose, hints = purposeName, hintUppercaseWords
+	case "cardNumber":
+		purpose, hints = purposeDigits, hintNoSpellcheck
+	case "postalCode":
+		hints = hintNoSpellcheck
+	case "url":
+		purpose, hints = purposeURL, hintNoSpellcheck
+	case "username":
+		hints = hintNoSpellcheck
+	}
+	if purpose == purposeEmail || purpose == purposeURL {
+		hints = hintNoSpellcheck
+	}
+	return purpose, hints
 }
 
 // Tabs.

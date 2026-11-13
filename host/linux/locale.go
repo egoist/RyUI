@@ -45,7 +45,22 @@ func (h *Host) setLocale(args []byte) {
 		return
 	}
 	rtl, tag := args[0]&1 != 0, string(args[1:])
-	h.locale = tag
+	if tag != h.locale {
+		h.locale = tag
+		// A badge is said in the language: "3 items".
+		for _, n := range h.nodes {
+			switch s, _ := n.ext.(*split); {
+			case n.kind == ops.KindTabs:
+				h.labelTabs(n)
+			case s != nil && n.kind == ops.KindSplit:
+				for i, r := range s.rows {
+					if !r.group && i < len(s.parts) {
+						h.showSidebarBadge(s, i, r)
+					}
+				}
+			}
+		}
+	}
 	if rtl == h.rtl {
 		return
 	}

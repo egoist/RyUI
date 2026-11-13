@@ -4,6 +4,7 @@ package linux
 
 import (
 	"fmt"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -15,7 +16,10 @@ import (
 // Menus are GMenu models in GtkPopoverMenus: a button's drops from it, a
 // view's LongPress menu is its context menu (a secondary click, a long
 // press) at the pointer. Items are actions of a group on the view
-// ("asuka.item<i>"); choosing one sends Action with its index.
+// ("asuka.item<number>"), disabled ones disabled, checked ones stateful
+// (a check by the item); choosing one sends Action with its number. A
+// submenu is a GMenu submenu, a section (MenuInline) a GMenu section,
+// under its title as its label.
 
 func (h *Host) menuChanged(n *node) {
 	if n.widget == 0 {
@@ -30,34 +34,106 @@ func (h *Host) menuChanged(n *node) {
 	}
 }
 
-// menuModel builds a GMenu of actions, their items named prefix+index.
+// menuModel builds a GMenu of actions, their items naming the actions
+// prefix+number (insertMenuActions makes them).
 func (h *Host) menuModel(actions []action, prefix string) Ptr {
 	m := MenuNew()
 	section := MenuNew()
-	for i, a := range actions {
-		item := MenuItemNew(a.title, prefix+strconv.Itoa(i))
-		if a.icon != "" {
-			if name := h.iconName(a.icon); name != "" {
-				icon := ThemedIconNew(name)
-				MenuItemSetIcon(item, icon)
-				ObjectUnref(icon)
-			}
+	items := 0 // in section
+	flush := func() {
+		if items > 0 {
+			MenuAppendSection(m, 0, section)
 		}
-		if a.role == ops.AlertButtonRoleDestructive {
+		ObjectUnref(section)
+		section, items = MenuNew(), 0
+	}
+	for i := range actions {
+		a := &actions[i]
+		switch {
+		case a.is(ops.MenuSubmenu | ops.MenuInline):
+			// A section of its own, under its title.
+			flush()
+			sub := h.menuModel(a.items, prefix)
+			var label *byte
+			if a.title != "" {
+				label = CString(a.title)
+			}
+			MenuAppendSection(m, Addr(label), sub) // copies the label
+			runtime.KeepAlive(label)
+			ObjectUnref(sub)
+			continue
+		case a.is(ops.MenuSubmenu):
+			sub := h.menuModel(a.items, prefix)
+			item := MenuItemNewSubmenu(a.title, sub)
+			ObjectUnref(sub)
+			h.menuItemIcon(item, a.icon)
+			MenuAppendItem(section, item)
+			ObjectUnref(item)
+			items++
+			continue
+		}
+		if a.role == ops.AlertButtonRoleDestructive && items > 0 {
 			// GTK's menus have no destructive style: a section of its own,
 			// as GNOME's apps set a destructive item apart.
-			if i > 0 {
-				MenuAppendSection(m, 0, section)
-				ObjectUnref(section)
-				section = MenuNew()
-			}
+			flush()
 		}
+		item := MenuItemNew(a.title, prefix+strconv.FormatInt(a.index, 10))
+		h.menuItemIcon(item, a.icon)
 		MenuAppendItem(section, item)
 		ObjectUnref(item)
+		items++
 	}
-	MenuAppendSection(m, 0, section)
+	flush()
 	ObjectUnref(section)
 	return m
+}
+
+func (h *Host) menuItemIcon(item Ptr, symbol string) {
+	if symbol == "" {
+		return
+	}
+	if name := h.iconName(symbol); name != "" {
+		icon := ThemedIconNew(name)
+		MenuItemSetIcon(item, icon)
+		ObjectUnref(icon)
+	}
+}
+
+// insertMenuActions gives widget the actions of a menu's items, at any
+// depth, as the group named group: "item<number>", choosing it sends
+// Action with its number to the node with id; disabled when the item
+// is, and stateful (shown checked) when it's checked.
+func (h *Host) insertMenuActions(widget Ptr, group string, id ops.NodeID, actions []action) {
+	g := SimpleActionGroupNew()
+	var add func(as []action)
+	add = func(as []action) {
+		for i := range as {
+			a := &as[i]
+			if a.is(ops.MenuSubmenu) {
+				add(a.items)
+				continue
+			}
+			name := "item" + strconv.FormatInt(a.index, 10)
+			var act Ptr
+			if a.is(ops.MenuChecked) {
+				act = SimpleActionNewStateful(name, 0, VariantNewBoolean(true))
+			} else {
+				act = SimpleActionNew(name, 0)
+			}
+			SimpleActionSetEnabled(act, !a.is(ops.MenuDisabled))
+			index := a.index
+			Connect(act, "activate", func(param uintptr) {
+				if n := h.nodes[id]; n != nil {
+					h.emit(n, ops.Event{Kind: ops.EventAction, Int: index})
+				}
+			})
+			ActionMapAddAction(g, act)
+			ObjectUnref(act)
+		}
+	}
+	add(actions)
+	WidgetInsertActionGroup(widget, group, g)
+	ObjectUnref(g)
 }
 
 // popupMenu shows n's menu: from the view (a button's, x < 0) or at a
@@ -66,21 +142,7 @@ func (h *Host) popupMenu(n *node, x, y float64) {
 	if len(n.menu) == 0 || n.widget == 0 {
 		return
 	}
-	group := SimpleActionGroupNew()
-	for i := range n.menu {
-		a := SimpleActionNew("item"+strconv.Itoa(i), 0)
-		i := i
-		id := n.id
-		Connect(a, "activate", func(param uintptr) {
-			if n := h.nodes[id]; n != nil {
-				h.emit(n, ops.Event{Kind: ops.EventAction, Int: int64(i)})
-			}
-		})
-		ActionMapAddAction(group, a)
-		ObjectUnref(a)
-	}
-	WidgetInsertActionGroup(n.widget, "asuka", group)
-	ObjectUnref(group)
+	h.insertMenuActions(n.widget, "asuka", n.id, n.menu)
 	model := h.menuModel(n.menu, "asuka.item")
 	pop := PopoverMenuNewFromModel(model)
 	ObjectUnref(model)

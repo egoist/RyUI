@@ -90,6 +90,8 @@ func (h *Host) sayWords() {
 		switch n.kind {
 		case kindHeader:
 			SetWindowText(n.nav.back, l10n.Back(h.locale))
+		case kindCommandBar:
+			SetWindowText(n.nav.cmd.more, l10n.MoreOptions(h.locale))
 		case ops.KindStepper:
 			h.nameStepper(n)
 		}
@@ -154,6 +156,9 @@ func (h *Host) setDirection(n *node, d ops.LayoutDirection) {
 	if n.nav != nil && n.nav.bar != nil {
 		n.nav.bar.dir = d
 	}
+	if n.nav != nil && n.nav.foot != nil {
+		n.nav.foot.dir = d
+	}
 	if n.list != nil {
 		n.list.setDirection(d)
 	}
@@ -167,7 +172,7 @@ func (h *Host) directionChanged(n *node) {
 	switch {
 	case n.kind == ops.KindTextField:
 		h.alignField(n)
-	case n.kind == ops.KindWheel:
+	case n.kind == ops.KindWheel || n.kind == ops.KindPicker:
 		h.remakeWheel(n)
 	case n.kind == ops.KindSlider:
 		h.applySlider(n)

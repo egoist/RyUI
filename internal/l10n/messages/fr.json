@@ -2,6 +2,7 @@
   "ok": "OK",
   "search": "Rechercher",
   "back": "Retour",
+  "moreOptions": "Plus d’options",
   "decrease": "Diminuer",
   "increase": "Augmenter",
   "about": "À propos de {app}",
@@ -37,5 +38,7 @@
   "updateCheckError": "Une erreur est survenue lors de la recherche de mises à jour. Veuillez réessayer plus tard.",
   "updateInstallError": "Une erreur est survenue lors de l’installation de la mise à jour. Veuillez réessayer plus tard.",
   "updateUnavailable": "Mises à jour indisponibles",
-  "updateUnavailableMessage": "{app} ne peut pas se mettre à jour à l’emplacement où il est installé. S’il a été installé par un gestionnaire de paquets ou une boutique d’applications, mettez-le à jour par ce biais."
+  "updateUnavailableMessage": "{app} ne peut pas se mettre à jour à l’emplacement où il est installé. S’il a été installé par un gestionnaire de paquets ou une boutique d’applications, mettez-le à jour par ce biais.",
+  "badgeCount": "{count, plural, one {# élément} many {# d’éléments} other {# éléments}}",
+  "close": "Fermer"
 }

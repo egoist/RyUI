@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
+	"strconv"
 	"time"
 
 	"github.com/egoist/asuka/app"
@@ -47,6 +49,10 @@ func App() ui.Node {
 	dest := func(title string, icon ui.Icon, content func() ui.Node, actions ...ui.Action) ui.Destination {
 		return ui.Destination{Title: ui.Val(title), Icon: icon, Content: content, Options: ui.ScreenOptions{Actions: actions}}
 	}
+	badged := func(d ui.Destination, badge signal.Accessor[string]) ui.Destination {
+		d.Badge = badge
+		return d
+	}
 	return ui.SplitView(ui.SplitViewProps{Title: ui.Val("Gallery"), Sections: []ui.SidebarSection{
 		{Title: ui.Val("Views"), Destinations: []ui.Destination{
 			dest("Text and fonts", "textformat", page(fontsPage, textInput)),
@@ -57,13 +63,15 @@ func App() ui.Node {
 			dest("Charts", "chart.bar", page(charts)),
 		}},
 		{Title: ui.Val("Controls"), Destinations: []ui.Destination{
-			dest("Controls", "slider.horizontal.3", page(controls)),
+			dest("Controls", "slider.horizontal.3", page(controls, snackbars)),
 			dest("Pages", "rectangle.split.3x1", page(pages)),
 			dest("Dates", ui.IconCalendar, page(dates)),
 		}},
 		{Title: ui.Val("Lists and navigation"), Destinations: []ui.Destination{
-			dest("Inbox", ui.IconMail, inbox,
+			badged(dest("Inbox", ui.IconMail, inbox,
 				ui.Action{Title: ui.Val("Top"), Icon: ui.IconUp, OnPress: func() { ui.ScrollToItem(inboxList, 0, true) }}),
+				// Its badge counts its messages: swiping one away counts down.
+				signal.Func(func() string { return strconv.Itoa(len(inboxItems.Get())) })),
 			dest("Settings", ui.IconSettings, settings),
 			dest("Photos", ui.IconPhoto, photos),
 			dest("Editor", ui.IconCompose, editor),
@@ -74,7 +82,7 @@ func App() ui.Node {
 				ui.Action{Title: ui.Val("Print"), Icon: "printer", OnPress: func() { print.WebView(webView, print.Options{}, nil) }}),
 		}},
 		{Title: ui.Val("Motion"), Destinations: []ui.Destination{
-			dest("Motion", "wand.and.stars", motionPage),
+			badged(dest("Motion", "wand.and.stars", motionPage), ui.Val("New")),
 		}},
 		{Title: ui.Val("Device"), Destinations: []ui.Destination{
 			dest("Camera", ui.IconCamera, cameraScreen),
@@ -106,6 +114,10 @@ func section(title string, kids ...ui.Node) ui.Node {
 
 func symbols() ui.Node {
 	liked := signal.New(false)
+	sortBy := signal.New("Name")
+	sorted := func(by string) ui.Action {
+		return ui.Action{Title: ui.Val(by), Checked: signal.Func(func() bool { return sortBy.Get() == by }), OnPress: func() { sortBy.Set(by) }}
+	}
 	icons := []ui.Icon{ui.IconHome, ui.IconSearch, ui.IconBell, ui.IconMail, ui.IconCamera,
 		ui.IconCalendar, ui.IconLocation, ui.IconCart, ui.IconLock, ui.IconSettings}
 	var row []ui.Node
@@ -127,12 +139,22 @@ func symbols() ui.Node {
 				}
 				return "Like"
 			}), Icon: ui.IconHeart, Variant: ui.ButtonTinted, OnPress: func() { liked.Set(!liked.Peek()) }}),
-			ui.Button(ui.ButtonProps{Icon: ui.IconMore, Menu: []ui.Action{
+			// A menu with a section whose choice is checked, a submenu and
+			// a disabled item (SwiftUI's Menu with a Section, a nested Menu
+			// and .disabled).
+			ui.Button(ui.ButtonProps{Icon: ui.IconMore, Label: ui.Val("More"), Menu: []ui.Action{
 				{Title: ui.Val("Copy"), Icon: ui.IconCopy},
 				{Title: ui.Val("Edit"), Icon: ui.IconEdit},
-				{Title: ui.Val("Delete"), Icon: ui.IconTrash, Role: ui.ActionDestructive},
+				ui.MenuSection(ui.Val("Sort by"), sorted("Name"), sorted("Date"), sorted("Size")),
+				ui.Submenu(ui.Val("Move to"), ui.IconFolder,
+					ui.Action{Title: ui.Val("Inbox")},
+					ui.Action{Title: ui.Val("Archive")},
+				),
+				{Title: ui.Val("Delete"), Icon: ui.IconTrash, Role: ui.ActionDestructive, Disabled: ui.Val(true)},
 			}}),
 		),
+		ui.Text(signal.Func(func() string { return "Sorted by " + sortBy.Get() }),
+			ui.Style{Font: fonts.Footnote, Color: colors.SecondaryLabel}),
 	)
 }
 
@@ -252,10 +274,20 @@ func controls() ui.Node {
 	size := signal.New(2)
 	cups := signal.New(2.0)
 	tint := signal.New(colors.Hex(0x039be5))
+	milks := []string{"Whole", "Oat", "Almond", "Soy"}
+	milk := signal.New(-1) // none yet: the picker shows its label
 	return section("Controls",
 		ui.Segmented(ui.SegmentedProps{Segments: ui.Val([]string{"Day", "Week", "Month"}), Selected: period}),
 		ui.Text(signal.Func(func() string {
 			return []string{"Today", "This week", "This month"}[period.Get()]
+		}), ui.Style{Color: colors.SecondaryLabel}),
+		ui.Row(ui.Style{Align: ui.AlignStart},
+			ui.Picker(ui.PickerProps{Items: ui.Val(milks), Selected: milk, Label: ui.Val("Milk")})),
+		ui.Text(signal.Func(func() string {
+			if i := milk.Get(); i >= 0 {
+				return milks[i] + " milk"
+			}
+			return "No milk chosen"
 		}), ui.Style{Color: colors.SecondaryLabel}),
 		ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
 			ui.Symbol(ui.IconSpeaker),
@@ -263,6 +295,11 @@ func controls() ui.Node {
 		),
 		ui.Progress(volume),
 		ui.Progress(nil),
+		ui.Row(ui.Style{Gap: 16, Align: ui.AlignCenter},
+			ui.ProgressRing(volume),
+			ui.ProgressRing(volume, ui.Style{Width: ui.Pt(24), Color: colors.Green}),
+			ui.ProgressRing(nil),
+		),
 		ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
 			ui.Text(ui.Val("Wi-Fi"), ui.Style{Grow: 1}),
 			ui.Toggle(ui.ToggleProps{Value: wifi}),
@@ -287,6 +324,39 @@ func controls() ui.Node {
 		popover(),
 		ui.Wheel(ui.WheelProps{Items: ui.Val(sizes), Selected: size}),
 		ui.Text(signal.Func(func() string { return "Size: " + sizes[size.Get()] }), ui.Style{Color: colors.SecondaryLabel}),
+	)
+}
+
+// snackbars are brief messages at the bottom of the window: one with an
+// Undo, one that stays until it's dismissed, one that just says so.
+func snackbars() ui.Node {
+	drafts := signal.New(3)
+	var hideUpload func()
+	return section("Snackbars",
+		ui.Text(signal.Func(func() string { return fmt.Sprintf("%d drafts", drafts.Get()) }), ui.Style{Color: colors.SecondaryLabel}),
+		ui.Row(ui.Style{Gap: 12, Wrap: true},
+			ui.Button(ui.ButtonProps{Title: ui.Val("Delete a draft"), Icon: ui.IconTrash, Variant: ui.ButtonGray, Disabled: signal.Func(func() bool { return drafts.Get() == 0 }), OnPress: func() {
+				drafts.Update(func(n int) int { return n - 1 })
+				ui.Snackbar(ui.SnackbarProps{
+					Message: "Draft deleted",
+					Action:  &ui.Action{Title: ui.Val("Undo"), OnPress: func() { drafts.Update(func(n int) int { return n + 1 }) }},
+				})
+			}}),
+			ui.Button(ui.ButtonProps{Title: ui.Val("Copy the link"), Icon: ui.IconCopy, Variant: ui.ButtonGray, OnPress: func() {
+				ui.Snackbar(ui.SnackbarProps{Message: "Link copied"})
+			}}),
+			ui.Button(ui.ButtonProps{Title: ui.Val("Upload"), Icon: "icloud.and.arrow.up", Variant: ui.ButtonGray, OnPress: func() {
+				// Until it's done (or the user swipes it away).
+				hideUpload = ui.Snackbar(ui.SnackbarProps{Message: "Uploading 3 photos…", Duration: ui.SnackbarIndefinite})
+			}}),
+			ui.Button(ui.ButtonProps{Title: ui.Val("Finish the upload"), Variant: ui.ButtonGray, OnPress: func() {
+				if hideUpload != nil {
+					hideUpload()
+					hideUpload = nil
+				}
+				ui.Snackbar(ui.SnackbarProps{Message: "3 photos uploaded", Duration: ui.SnackbarLong})
+			}}),
+		),
 	)
 }
 
@@ -494,17 +564,27 @@ func photo(id int) ui.Node {
 			Placeholder: "placeholder.png", Mode: ui.ImageFit, Style: ui.Style{AspectRatio: 1}}))
 }
 
+// inboxItems are the inbox's messages, kept as other destinations are
+// chosen, and counted by its badge.
+var inboxItems = signal.NewFunc(messages(0, 30), nil)
+
 func inbox() ui.Node {
-	items := signal.NewFunc(messages(0, 30), nil)
-	remove := func(i int) {
+	items := inboxItems
+	// Removing a message offers to undo it.
+	remove := func(i int, said string) {
 		l := append([]message(nil), items.Peek()...)
+		gone := l[i]
 		items.Set(append(l[:i], l[i+1:]...))
+		ui.Snackbar(ui.SnackbarProps{Message: said, Action: &ui.Action{Title: ui.Val("Undo"), OnPress: func() {
+			l := append([]message(nil), items.Peek()...)
+			items.Set(slices.Insert(l, min(i, len(l)), gone))
+		}}})
 	}
 	inboxList = ui.List(ui.ListProps{
 		SwipeActions: func(i int) []ui.Action {
 			return []ui.Action{
-				{Title: ui.Val("Delete"), Icon: ui.IconTrash, Role: ui.ActionDestructive, OnPress: func() { remove(i) }},
-				{Title: ui.Val("Archive"), Icon: "archivebox", OnPress: func() { remove(i) }},
+				{Title: ui.Val("Delete"), Icon: ui.IconTrash, Role: ui.ActionDestructive, OnPress: func() { remove(i, "Message deleted") }},
+				{Title: ui.Val("Archive"), Icon: "archivebox", OnPress: func() { remove(i, "Message archived") }},
 			}
 		},
 		OnEndReached: func() {
@@ -515,9 +595,9 @@ func inbox() ui.Node {
 		},
 	}, items, func(m message) int { return m.id }, func(m signal.Accessor[message], i signal.Accessor[int]) ui.Node {
 		// What swiping does, for a screen reader's user.
-		act := func() { remove(signal.Untrack(i.Get)) }
+		act := func(said string) func() { return func() { remove(signal.Untrack(i.Get), said) } }
 		return ui.View(ui.ViewProps{
-			Actions: []ui.A11yAction{{Name: ui.Val("Archive"), Do: act}, {Name: ui.Val("Delete"), Do: act}},
+			Actions: []ui.A11yAction{{Name: ui.Val("Archive"), Do: act("Message archived")}, {Name: ui.Val("Delete"), Do: act("Message deleted")}},
 			Style:   ui.Style{Direction: ui.RowDir, Padding: ui.Symmetric(12, 20), Gap: 12, Align: ui.AlignCenter},
 		},
 			ui.Symbol(ui.IconPerson.Filled(), ui.Style{Color: colors.SecondaryLabel, Font: fonts.Title2}),

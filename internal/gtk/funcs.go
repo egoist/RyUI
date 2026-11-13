@@ -200,6 +200,7 @@ var (
 	WidgetAddCSSClass                    func(w Ptr, c string)
 	WidgetRemoveCSSClass                 func(w Ptr, c string)
 	WidgetHasCSSClass                    func(w Ptr, c string) bool
+	WidgetGetSensitive                   func(w Ptr) bool
 	WidgetAddController                  func(w, c Ptr)
 	WidgetRemoveController               func(w, c Ptr)
 	WidgetGrabFocus                      func(w Ptr) bool
@@ -496,9 +497,11 @@ var (
 	BoxNew                                 func(orientation int32, spacing int32) Ptr
 	BoxAppend                              func(b, child Ptr)
 	BoxRemove                              func(b, child Ptr)
+	BoxPrepend                             func(b, child Ptr)
 	OverlayNew                             func() Ptr
 	OverlaySetChild                        func(o, child Ptr)
 	OverlayAddOverlay                      func(o, child Ptr)
+	OverlaySetMeasureOverlay               func(o, child Ptr, measure bool)
 	StackNew                               func() Ptr
 
 	// Images.
@@ -576,6 +579,7 @@ var (
 	MenuItemNew                     func(label string, action string) Ptr
 	MenuItemSetAttributeValue       func(i Ptr, attr string, v Ptr)
 	MenuItemSetIcon                 func(i, icon Ptr)
+	MenuItemNewSubmenu              func(label string, sub Ptr) Ptr
 	VariantNewString                func(s string) Ptr
 	VariantNewBoolean               func(b bool) Ptr
 	VariantNewInt32                 func(i int32) Ptr
@@ -604,6 +608,11 @@ var (
 	AdwToolbarViewGetTopBarHeight            func(t Ptr) int32
 	AdwToolbarViewGetBottomBarHeight         func(t Ptr) int32
 	AdwToolbarViewSetExtendContentToTopEdge  func(t Ptr, e bool)
+	ActionBarNew                             func() Ptr
+	ActionBarPackStart                       func(b, w Ptr)
+	ActionBarPackEnd                         func(b, w Ptr)
+	ActionBarRemove                          func(b, w Ptr)
+	ActionBarSetRevealed                     func(b Ptr, r bool)
 	AdwHeaderBarNew                          func() Ptr
 	AdwHeaderBarPackStart                    func(h, w Ptr)
 	AdwHeaderBarPackEnd                      func(h, w Ptr)
@@ -641,6 +650,8 @@ var (
 	AdwViewStackSetVisibleChildName          func(s Ptr, name string)
 	AdwViewStackPageSetTitle                 func(p Ptr, t string)
 	AdwViewStackPageSetIconName              func(p Ptr, n string)
+	AdwViewStackPageSetBadgeNumber           func(p Ptr, n uint32)
+	AdwViewStackPageSetNeedsAttention        func(p Ptr, a bool)
 	AdwViewStackGetPage                      func(s, child Ptr) Ptr
 	AdwViewSwitcherNew                       func() Ptr
 	AdwViewSwitcherSetStack                  func(sw, stack Ptr)
@@ -656,6 +667,8 @@ var (
 	AdwDialogSetFollowsContentSize           func(d Ptr, f bool)
 	AdwDialogSetPresentationMode             func(d Ptr, m int32)
 	AdwDialogSetCanClose                     func(d Ptr, c bool)
+	AdwDialogGetCanClose                     func(d Ptr) bool
+	AdwDialogGetPresentationMode             func(d Ptr) int32
 	AdwDialogPresent                         func(d, parent Ptr)
 	AdwDialogClose                           func(d Ptr) bool
 	AdwDialogForceClose                      func(d Ptr)
@@ -665,6 +678,8 @@ var (
 	AdwAlertDialogSetDefaultResponse         func(d Ptr, id string)
 	AdwAlertDialogSetCloseResponse           func(d Ptr, id string)
 	AdwAlertDialogSetPreferWideLayout        func(d Ptr, w bool)
+	AdwAlertDialogSetResponseEnabled         func(d Ptr, id string, enabled bool)
+	AdwAlertDialogSetResponseLabel           func(d Ptr, id, label string)
 	AdwToastOverlayNew                       func() Ptr
 	AdwBinNew                                func() Ptr
 	AdwBinSetChild                           func(b, child Ptr)
@@ -825,6 +840,7 @@ var bindings = []binding{
 	{&WidgetAddCSSClass, "gtk_widget_add_css_class"},
 	{&WidgetRemoveCSSClass, "gtk_widget_remove_css_class"},
 	{&WidgetHasCSSClass, "gtk_widget_has_css_class"},
+	{&WidgetGetSensitive, "gtk_widget_get_sensitive"},
 	{&WidgetAddController, "gtk_widget_add_controller"},
 	{&WidgetRemoveController, "gtk_widget_remove_controller"},
 	{&WidgetGrabFocus, "gtk_widget_grab_focus"},
@@ -1118,9 +1134,11 @@ var bindings = []binding{
 	{&BoxNew, "gtk_box_new"},
 	{&BoxAppend, "gtk_box_append"},
 	{&BoxRemove, "gtk_box_remove"},
+	{&BoxPrepend, "gtk_box_prepend"},
 	{&OverlayNew, "gtk_overlay_new"},
 	{&OverlaySetChild, "gtk_overlay_set_child"},
 	{&OverlayAddOverlay, "gtk_overlay_add_overlay"},
+	{&OverlaySetMeasureOverlay, "gtk_overlay_set_measure_overlay"},
 	{&StackNew, "gtk_stack_new"},
 
 	{&PictureNew, "gtk_picture_new"},
@@ -1195,6 +1213,7 @@ var bindings = []binding{
 	{&MenuItemNew, "g_menu_item_new"},
 	{&MenuItemSetAttributeValue, "g_menu_item_set_attribute_value"},
 	{&MenuItemSetIcon, "g_menu_item_set_icon"},
+	{&MenuItemNewSubmenu, "g_menu_item_new_submenu"},
 	{&VariantNewString, "g_variant_new_string"},
 	{&VariantNewBoolean, "g_variant_new_boolean"},
 	{&VariantNewInt32, "g_variant_new_int32"},
@@ -1222,6 +1241,11 @@ var bindings = []binding{
 	{&AdwToolbarViewGetTopBarHeight, "adw_toolbar_view_get_top_bar_height"},
 	{&AdwToolbarViewGetBottomBarHeight, "adw_toolbar_view_get_bottom_bar_height"},
 	{&AdwToolbarViewSetExtendContentToTopEdge, "adw_toolbar_view_set_extend_content_to_top_edge"},
+	{&ActionBarNew, "gtk_action_bar_new"},
+	{&ActionBarPackStart, "gtk_action_bar_pack_start"},
+	{&ActionBarPackEnd, "gtk_action_bar_pack_end"},
+	{&ActionBarRemove, "gtk_action_bar_remove"},
+	{&ActionBarSetRevealed, "gtk_action_bar_set_revealed"},
 	{&AdwHeaderBarNew, "adw_header_bar_new"},
 	{&AdwHeaderBarPackStart, "adw_header_bar_pack_start"},
 	{&AdwHeaderBarPackEnd, "adw_header_bar_pack_end"},
@@ -1259,6 +1283,8 @@ var bindings = []binding{
 	{&AdwViewStackSetVisibleChildName, "adw_view_stack_set_visible_child_name"},
 	{&AdwViewStackPageSetTitle, "adw_view_stack_page_set_title"},
 	{&AdwViewStackPageSetIconName, "adw_view_stack_page_set_icon_name"},
+	{&AdwViewStackPageSetBadgeNumber, "adw_view_stack_page_set_badge_number"},
+	{&AdwViewStackPageSetNeedsAttention, "adw_view_stack_page_set_needs_attention"},
 	{&AdwViewStackGetPage, "adw_view_stack_get_page"},
 	{&AdwViewSwitcherNew, "adw_view_switcher_new"},
 	{&AdwViewSwitcherSetStack, "adw_view_switcher_set_stack"},
@@ -1274,6 +1300,8 @@ var bindings = []binding{
 	{&AdwDialogSetFollowsContentSize, "adw_dialog_set_follows_content_size"},
 	{&AdwDialogSetPresentationMode, "adw_dialog_set_presentation_mode"},
 	{&AdwDialogSetCanClose, "adw_dialog_set_can_close"},
+	{&AdwDialogGetCanClose, "adw_dialog_get_can_close"},
+	{&AdwDialogGetPresentationMode, "adw_dialog_get_presentation_mode"},
 	{&AdwDialogPresent, "adw_dialog_present"},
 	{&AdwDialogClose, "adw_dialog_close"},
 	{&AdwDialogForceClose, "adw_dialog_force_close"},
@@ -1283,6 +1311,8 @@ var bindings = []binding{
 	{&AdwAlertDialogSetDefaultResponse, "adw_alert_dialog_set_default_response"},
 	{&AdwAlertDialogSetCloseResponse, "adw_alert_dialog_set_close_response"},
 	{&AdwAlertDialogSetPreferWideLayout, "adw_alert_dialog_set_prefer_wide_layout"},
+	{&AdwAlertDialogSetResponseEnabled, "adw_alert_dialog_set_response_enabled"},
+	{&AdwAlertDialogSetResponseLabel, "adw_alert_dialog_set_response_label"},
 	{&AdwToastOverlayNew, "adw_toast_overlay_new"},
 	{&AdwToastOverlaySetChild, "adw_toast_overlay_set_child"},
 	{&AdwToastOverlayAddToast, "adw_toast_overlay_add_toast"},

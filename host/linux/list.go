@@ -1042,7 +1042,11 @@ func (h *Host) rowMenu(c *cell, x, y float64) bool {
 	if c.header || c.l.selecting || len(c.leading)+len(c.swipe) == 0 || c.n.widget == 0 {
 		return false
 	}
+	// Flat, numbered by their place: a swipe's actions have no children.
 	all := append(append([]action{}, c.leading...), c.swipe...)
+	for i := range all {
+		all[i].index, all[i].flags, all[i].items = int64(i), 0, nil
+	}
 	nl := len(c.leading)
 	group := SimpleActionGroupNew()
 	for i := range all {

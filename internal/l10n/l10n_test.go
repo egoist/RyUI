@@ -68,3 +68,21 @@ func TestMenuWords(t *testing.T) {
 		}
 	}
 }
+
+// A count is said as so many items, in the language's plural; other text
+// as it is.
+func TestBadge(t *testing.T) {
+	for _, c := range []struct{ locale, badge, want string }{
+		{"en", "1", "Inbox, 1 item"},
+		{"en", "3", "Inbox, 3 items"},
+		{"en", "New", "Inbox, New"},
+		{"en", "", "Inbox"},
+		{"de", "3", "Inbox, 3 Elemente"},
+		{"ru", "5", "Inbox, 5 элементов"},
+		{"ja", "2", "Inbox, 2 件の項目"},
+	} {
+		if got := Badged(c.locale, "Inbox", c.badge); got != c.want {
+			t.Errorf("%s %q: %q, want %q", c.locale, c.badge, got, c.want)
+		}
+	}
+}

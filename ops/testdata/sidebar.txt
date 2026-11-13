@@ -1,0 +1,7 @@
+#	
+0	Inbox	tray	3
+0	Drafts	doc	
+#	Mailboxes
+1	Archiv		Neu
+1	Gelöscht	trash	1234
+#	Empty

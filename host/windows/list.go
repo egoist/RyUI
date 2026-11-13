@@ -786,7 +786,7 @@ func (h *Host) rowMenu(c *cell) bool {
 	if c == nil || c.l.selecting || len(c.leading)+len(c.swipe) == 0 {
 		return false
 	}
-	all := append(append([]action{}, c.leading...), c.swipe...)
+	all := flatActions(append(append([]action{}, c.leading...), c.swipe...))
 	id := c.n.id
 	nl := len(c.leading)
 	h.afterCore(func() {
@@ -802,14 +802,16 @@ func (h *Host) rowMenu(c *cell) bool {
 			flags |= TPM_LAYOUTRTL
 		}
 		h.modal++
-		if om != nil {
+		if len(om) > 0 {
 			h.menuLoop(true)
 		}
 		got := TrackPopupMenu(m, flags, p.X, p.Y, RootWindow(n.hwnd))
 		h.menuLoop(false)
 		h.modal--
 		DestroyMenu(m)
-		h.forget(om)
+		for _, o := range om {
+			h.forget(o)
+		}
 		if got <= 0 {
 			return
 		}

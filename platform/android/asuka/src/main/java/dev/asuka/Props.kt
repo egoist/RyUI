@@ -264,6 +264,7 @@ fun AsukaRuntime.applyColor(n: AsukaNode) {
         is CircularProgressIndicator -> if (n.color != 0L) v.setIndicatorColor(color(n.color))
         is android.widget.ImageView -> v.imageTintList = if (n.color != 0L) ColorStateList.valueOf(color(n.color)) else null
         is AsukaRichText -> { v.color = n.color; v.invalidateText() }
+        is AsukaPicker -> v.setTint(n.color)
     }
 }
 
@@ -352,6 +353,7 @@ fun AsukaRuntime.propBool(id: Int, prop: Int, v: Boolean) {
             AsukaKind.PROGRESS -> if (prop == AsukaProp.Progress.INDETERMINATE) {
                 (view as com.google.android.material.progressindicator.LinearProgressIndicator).isIndeterminate = v
             }
+            AsukaKind.PROGRESS_RING -> if (prop == AsukaProp.ProgressRing.INDETERMINATE) (view as AsukaProgressRing).isIndeterminate = v
             AsukaKind.TOGGLE -> when (prop) {
                 AsukaProp.Toggle.ON -> {
                     settingProp = true
@@ -371,6 +373,7 @@ fun AsukaRuntime.propBool(id: Int, prop: Int, v: Boolean) {
 fun AsukaRuntime.propInt(id: Int, prop: Int, v: Long) {
     val n = node(id) ?: return
     if ((n.kind == AsukaKind.WHEEL || n.kind == AsukaKind.STEPPER) && setWheelProp(n, prop, v)) return
+    if (n.kind == AsukaKind.PICKER && setPickerProp(n, prop, v)) return
     n.props[prop] = v
     if (setNavProp(n, prop, v)) return
     if (n.kind == AsukaKind.SEGMENTED && prop == AsukaProp.Segmented.SELECTED) (n.view as AsukaSegmented).select(v.toInt())
@@ -415,6 +418,8 @@ fun AsukaRuntime.propFloat(id: Int, prop: Int, v: Double) {
             n.list?.let { it.setAppearance(it.appearance, v.toFloat()) }
         } else if (n.kind == AsukaKind.PROGRESS && prop == AsukaProp.Progress.VALUE) {
             setProgress(n.view as com.google.android.material.progressindicator.LinearProgressIndicator, v)
+        } else if (n.kind == AsukaKind.PROGRESS_RING && prop == AsukaProp.ProgressRing.VALUE) {
+            setProgressRing(n.view as AsukaProgressRing, v)
         } else if (n.kind == AsukaKind.SLIDER) {
             val s = n.view as Slider
             val f = v.toFloat()
@@ -436,6 +441,7 @@ fun AsukaRuntime.propString(id: Int, prop: Int, v: String) {
         return
     }
     if (n.kind == AsukaKind.COLOR_PICKER && setWheelProp(n, prop, v)) return
+    if (n.kind == AsukaKind.PICKER && setPickerProp(n, prop, v)) return
     n.props[prop] = v
     val view = n.view
     when (prop) {
@@ -630,6 +636,11 @@ fun AsukaRuntime.measureNode(n: AsukaNode, w: Float, h: Float, aw: Float, ah: Fl
         v.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
         val mw = if (!w.isNaN()) w else if (aw.isFinite()) maxOf(aw, 0f) else 100f
         return mw to (if (!h.isNaN()) h else v.measuredHeight / d)
+    }
+    if (v is AsukaProgressRing) {
+        // Material 3's own size, or square: a style that sizes one side sizes the other.
+        val s = AsukaProgressRing.SIZE
+        return (if (!w.isNaN()) w else if (!h.isNaN()) h else s) to (if (!h.isNaN()) h else if (!w.isNaN()) w else s)
     }
     if (v is AsukaSymbol) {
         val s = v.sizePx() / d

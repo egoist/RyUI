@@ -2,6 +2,7 @@
   "ok": "OK",
   "search": "Hledat",
   "back": "Zpět",
+  "moreOptions": "Další možnosti",
   "decrease": "Snížit",
   "increase": "Zvýšit",
   "about": "O aplikaci {app}",
@@ -37,5 +38,7 @@
   "updateCheckError": "Při vyhledávání aktualizací došlo k chybě. Zkuste to prosím později znovu.",
   "updateInstallError": "Při instalaci aktualizace došlo k chybě. Zkuste to prosím později znovu.",
   "updateUnavailable": "Aktualizace nejsou k dispozici",
-  "updateUnavailableMessage": "Aplikace {app} se nemůže sama aktualizovat v místě, kde je nainstalovaná. Pokud ji nainstaloval správce balíčků nebo obchod s aplikacemi, aktualizujte ji tam."
+  "updateUnavailableMessage": "Aplikace {app} se nemůže sama aktualizovat v místě, kde je nainstalovaná. Pokud ji nainstaloval správce balíčků nebo obchod s aplikacemi, aktualizujte ji tam.",
+  "badgeCount": "{count, plural, one {# položka} few {# položky} many {# položky} other {# položek}}",
+  "close": "Zavřít"
 }

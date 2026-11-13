@@ -2,6 +2,7 @@
   "ok": "OK",
   "search": "Cari",
   "back": "Kembali",
+  "moreOptions": "Opsi lainnya",
   "decrease": "Kurangi",
   "increase": "Tambah",
   "about": "Mengenai {app}",
@@ -37,5 +38,7 @@
   "updateCheckError": "Terjadi kesalahan saat memeriksa pembaruan. Coba lagi nanti.",
   "updateInstallError": "Terjadi kesalahan saat menginstal pembaruan. Coba lagi nanti.",
   "updateUnavailable": "Pembaruan Tidak Tersedia",
-  "updateUnavailableMessage": "{app} tidak dapat memperbarui dirinya sendiri di lokasi tempatnya diinstal. Jika diinstal oleh pengelola paket atau toko aplikasi, perbarui dari sana."
+  "updateUnavailableMessage": "{app} tidak dapat memperbarui dirinya sendiri di lokasi tempatnya diinstal. Jika diinstal oleh pengelola paket atau toko aplikasi, perbarui dari sana.",
+  "badgeCount": "{count, plural, other {# item}}",
+  "close": "Tutup"
 }

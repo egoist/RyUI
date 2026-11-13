@@ -812,6 +812,7 @@ func TestControlsMirror(t *testing.T) {
 			ui.Segmented(ui.SegmentedProps{Segments: ui.Val([]string{"One", "Two", "Three"}), Selected: seg}),
 			ui.Stepper(ui.StepperProps{Value: value, Max: 10, Step: 1}),
 			ui.Wheel(ui.WheelProps{Items: ui.Val([]string{"First", "Second"}), Selected: wheel}),
+			ui.Picker(ui.PickerProps{Items: ui.Val([]string{"First", "Second"}), Selected: wheel}),
 			ui.Progress(value),
 			ui.Button(ui.ButtonProps{Title: ui.Val("Icon"), Icon: "trash"}),
 			ui.TextField(ui.TextFieldProps{Value: field, Placeholder: ui.Val("Placeholder")}),
@@ -819,7 +820,7 @@ func TestControlsMirror(t *testing.T) {
 		)
 	})
 	onMain(func() {
-		for _, k := range []ops.Kind{ops.KindToggle, ops.KindSlider, ops.KindSegmented, ops.KindStepper, ops.KindWheel, ops.KindProgress, ops.KindButton, ops.KindTextField} {
+		for _, k := range []ops.Kind{ops.KindToggle, ops.KindSlider, ops.KindSegmented, ops.KindStepper, ops.KindWheel, ops.KindPicker, ops.KindProgress, ops.KindButton, ops.KindTextField} {
 			ns := find(h, k)
 			if len(ns) == 0 {
 				fatalf(t, "no %s", k)
@@ -830,8 +831,10 @@ func TestControlsMirror(t *testing.T) {
 				}
 			}
 		}
-		if !viewRTL(Send(find(h, ops.KindWheel)[0].view, "menu")) {
-			fatal(t, "the pop-up's menu isn't right to left")
+		for _, k := range []ops.Kind{ops.KindWheel, ops.KindPicker} {
+			if !viewRTL(Send(find(h, k)[0].view, "menu")) {
+				fatalf(t, "the %s's menu isn't right to left", k)
+			}
 		}
 		for _, n := range find(h, ops.KindTextField) {
 			v := n.view

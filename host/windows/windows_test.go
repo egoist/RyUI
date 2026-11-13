@@ -835,19 +835,45 @@ func TestDestructiveMenu(t *testing.T) {
 
 		// A popup menu's actions: owner-drawn with a destructive one only.
 		m, om := h.actionMenu([]action{{title: "Star"}, {title: "Delete…", role: ops.AlertButtonRoleDestructive}, {title: "Cancel", role: ops.AlertButtonRoleCancel}}, false)
-		if om == nil || MenuItemCount(m) != 2 || MenuItemType(m, 0)&MFT_OWNERDRAW == 0 || !h.owned[MenuItemData(m, 1)].destructive {
+		if len(om) != 1 || MenuItemCount(m) != 2 || MenuItemType(m, 0)&MFT_OWNERDRAW == 0 || !h.owned[MenuItemData(m, 1)].destructive {
 			fatalf("the popup menu with Delete… isn't owner-drawn")
 		}
 		DestroyMenu(m)
-		h.forget(om)
+		h.forget(om[0])
 		if len(h.owned) != 3 {
 			fatalf("%d owner-drawn items kept, want the menu bar's 3", len(h.owned))
 		}
 		m, om = h.actionMenu([]action{{title: "Star"}, {title: "Reply"}}, false)
-		if om != nil || MenuItemType(m, 0)&MFT_OWNERDRAW != 0 {
+		if len(om) != 0 || MenuItemType(m, 0)&MFT_OWNERDRAW != 0 {
 			fatalf("a popup menu without a destructive action is owner-drawn")
 		}
 		DestroyMenu(m)
+
+		// Sections, a submenu, a checked and a disabled item: a section's
+		// title is an owner-drawn header (its menu owner-drawn), separators
+		// set it off, and each item's command is 1 + its number.
+		rich := decodeActions(ops.AppendActions(nil, []ops.ActionItem{
+			{Title: "Copy"},
+			{Title: "Sort by", Flags: ops.MenuInline, Items: []ops.ActionItem{{Title: "Name", Flags: ops.MenuChecked}, {Title: "Date"}}},
+			{Title: "Move to", Items: []ops.ActionItem{{Title: "Archive"}}},
+			{Title: "Delete", Flags: ops.MenuDisabled},
+		}))
+		m, om = h.actionMenu(rich, false)
+		// Copy, -, Sort by, Name, Date, -, Move to ▸, Delete.
+		if MenuItemCount(m) != 8 || MenuItemType(m, 1)&MF_SEPARATOR == 0 || !h.owned[MenuItemData(m, 2)].header ||
+			MenuState(m, 3)&MF_CHECKED == 0 || MenuItemType(m, 5)&MF_SEPARATOR == 0 || MenuState(m, 7)&MF_GRAYED == 0 {
+			fatalf("the sectioned menu has %d items", MenuItemCount(m))
+		}
+		if sub := SubMenu(m, 6); sub == 0 || MenuString(sub, 0) != "&Archive" {
+			fatalf("Move to's submenu")
+		}
+		if len(om) != 1 {
+			fatalf("%d owner-drawn menus, want the one with the header", len(om))
+		}
+		DestroyMenu(m)
+		for _, o := range om {
+			h.forget(o)
+		}
 	})
 }
 
@@ -1286,6 +1312,68 @@ func TestHeaderSearch(t *testing.T) {
 		h.runPosted()
 		if WindowText(f.ctl) != "dogs" {
 			fatalf("code's text: %q", WindowText(f.ctl))
+		}
+	})
+}
+
+// A tab's badge widens its tab and sits at its trailing end; Narrator
+// hears it with the chosen tab, a count as so many items, and its
+// changing draws the bar again, nothing more.
+func TestTabBadge(t *testing.T) {
+	unread := signal.New("3")
+	page := func() ui.Node { return ui.StaticText("p") }
+	h, r := mount(t, func() ui.Node {
+		return ui.Tabs(ui.TabsProps{},
+			ui.Tab{Title: ui.Val("Inbox"), Badge: unread, Content: page},
+			ui.Tab{Title: ui.Val("Inbox"), Content: page})
+	})
+	onMain(t, func() {
+		tabs := find(h, ops.KindTabs)[0]
+		bar := tabs.nav.bar
+		rects := h.tabRects(bar)
+		if rects[0].W() <= rects[1].W() {
+			fatalf("a badged tab is %d wide, a plain one %d", rects[0].W(), rects[1].W())
+		}
+		if b := h.tabBadge(bar, tabs.children[0], rects[0]); b.Right > rects[0].Right || b.Left < rects[0].Left || b.H() != h.px(bar, 16*h.fontScale()) {
+			fatalf("the badge is at %+v in %+v", b, rects[0])
+		}
+		acc := accessible{h: h, n: bar}
+		if s := acc.Property(UIA_NamePropertyId); s != "Inbox, 3 items" {
+			fatalf("Narrator hears %v", s)
+		}
+		if s := acc.Property(UIA_ItemStatusPropertyId); s != "3 items" {
+			fatalf("item status %v", s)
+		}
+		h.enter(func() { unread.Set(""); r.Flush() })
+		if rects := h.tabRects(bar); rects[0].W() != rects[1].W() {
+			fatalf("the badge's room stayed")
+		}
+		if s := acc.Property(UIA_NamePropertyId); s != "Inbox" {
+			fatalf("Narrator hears %v", s)
+		}
+	})
+}
+
+// A destination's badge is drawn at its item's trailing end, and
+// Narrator hears it with the chosen item.
+func TestPaneBadge(t *testing.T) {
+	h, _ := mount(t, func() ui.Node {
+		return ui.SplitView(ui.SplitViewProps{Sections: []ui.SidebarSection{{Destinations: []ui.Destination{
+			{Title: ui.Val("Inbox"), Badge: ui.Val("12"), Content: func() ui.Node { return ui.StaticText("inbox") }},
+			{Title: ui.Val("Drafts"), Content: func() ui.Node { return ui.StaticText("drafts") }},
+		}}}})
+	})
+	onMain(t, func() {
+		pane := find(h, ops.KindSplit)[0].paneNode
+		if len(pane.pane.rows) != 2 || pane.pane.rows[0].badge != "12" {
+			fatalf("rows %+v", pane.pane.rows)
+		}
+		tr := h.paneRects(pane)[0]
+		if b := h.paneBadge(pane, pane.pane.rows[0], tr); b.Right != tr.Right-h.px(pane, 12) {
+			fatalf("the badge is at %+v in %+v", b, tr)
+		}
+		if s := (accessible{h: h, n: pane}).Property(UIA_NamePropertyId); s != "Inbox, 12 items" {
+			fatalf("Narrator hears %v", s)
 		}
 	})
 }

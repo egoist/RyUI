@@ -68,6 +68,8 @@ let asukaAssets: URL? = {
     var alertTitle: String?
     var alertMessage: String?
     var alertStyle: Int32 = 0
+    var alertFields: [AsukaAlertField] = [] // an alert's text fields
+    var alertFieldDelegates: [AnyObject] = [] // its fields' delegates, while it shows
     var imageSource: String?
     var imageLoaded = false
     var imagePlaceholder = ""
@@ -568,6 +570,8 @@ final class AsukaTextField: UITextField {
             view = AsukaSymbolView(frame: .zero)
         case .wheel:
             view = makeWheel(id)
+        case .picker:
+            view = makePicker(id)
         case .stepper:
             view = makeStepper(id)
         case .colorPicker:
@@ -594,6 +598,8 @@ final class AsukaTextField: UITextField {
             view = p
         case .progress:
             view = UIProgressView(progressViewStyle: .default)
+        case .progressRing:
+            view = AsukaProgressRing(frame: .zero)
         case .datePicker:
             let h = AsukaDatePickerView()
             let d = h.picker
@@ -632,6 +638,10 @@ final class AsukaTextField: UITextField {
     public func destroy(_ id: UInt32) {
         guard let n = nodes.removeValue(forKey: id) else { return }
         keyed.remove(id)
+        if let s = n.view as? AsukaSnackbarView {
+            s.dismiss()
+            return
+        }
         if destroyController(n) { return }
         for c in n.children { c.parent = nil }
         if matchOut(n) { return }

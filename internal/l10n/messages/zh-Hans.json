@@ -2,6 +2,7 @@
   "ok": "好",
   "search": "搜索",
   "back": "返回",
+  "moreOptions": "更多选项",
   "decrease": "减少",
   "increase": "增加",
   "about": "关于{app}",
@@ -37,5 +38,7 @@
   "updateCheckError": "检查更新时出错，请稍后再试。",
   "updateInstallError": "安装更新时出错，请稍后再试。",
   "updateUnavailable": "无法更新",
-  "updateUnavailableMessage": "{app} 无法在当前安装位置自行更新。如果它是通过软件包管理器或应用商店安装的，请在那里更新。"
+  "updateUnavailableMessage": "{app} 无法在当前安装位置自行更新。如果它是通过软件包管理器或应用商店安装的，请在那里更新。",
+  "badgeCount": "{count, plural, other {# 项}}",
+  "close": "关闭"
 }

@@ -3,6 +3,8 @@
 package windows
 
 import (
+	"math"
+
 	"github.com/egoist/asuka/internal/l10n"
 	. "github.com/egoist/asuka/internal/windows"
 	"github.com/egoist/asuka/ops"
@@ -18,9 +20,14 @@ import (
 //     top: an icon and a title each, an accent pill under the selected
 //     one), the selected page under it.
 //   - A Sheet is a modal window over the app's (its owner is disabled
-//     meanwhile); closing it or Escape dismisses it.
+//     meanwhile); closing it or Escape dismisses it. A FullScreen one is
+//     a borderless window over all of its window's content (under its
+//     title bar, which stays its window's), following it as it moves
+//     and resizes: as Fluent's full-size ContentDialog takes a window;
+//     Escape dismisses it too.
 //   - An Alert is a task dialog (TaskDialogIndirect): an action sheet's
-//     buttons are command links.
+//     buttons are command links. One with text fields is a dialog of the
+//     host's own, as WinUI's ContentDialog (alertdialog.go).
 //   - A Window is a top-level window of its own (appwindow.go).
 //
 // Sheets and alerts open over the window in use. Screens, sheets and
@@ -48,12 +55,27 @@ type nav struct {
 	tabs *node
 	hot  int
 
+	// A screen's Toolbar and Primary, numbered within each (their Action
+	// events add ops.ScreenToolbarActions, ops.ScreenPrimaryAction); a
+	// stack's command bar showing its top screen's (foot), and that bar's
+	// state (cmd).
+	toolbar, primary []action
+	foot             *node
+	cmd              *cmdBar
+
 	// Sheet, Window: its window; a sheet's owner. Sheet, Alert: the
 	// window it's declared in (its Window prop: the root's or a Window
 	// node's ID), which it goes on.
 	window uintptr
 	owner  uintptr
 	on     ops.NodeID
+	full   bool // a Sheet's FullScreen: over all of its window's content
+
+	// Alert: its task dialog's window, while it shows; its text fields,
+	// and with them the host's own dialog (alertdialog.go).
+	dialog uintptr
+	fields []ops.AlertField
+	dlg    *alertDialog
 
 	// Popover: what it points at, and its content's size (points).
 	anchor     ops.NodeID
@@ -95,6 +117,11 @@ func (h *Host) createNav(n *node) bool {
 		n.nav = &nav{}
 	case ops.KindAlert:
 		n.nav = &nav{}
+	case ops.KindSnackbar:
+		n.hwnd = h.makeView(0)
+		ShowWindow(n.hwnd, SW_HIDE) // until it's presented, placed
+		n.nav = &nav{}
+		n.snack = &snack{}
 	default:
 		return false
 	}
@@ -155,6 +182,16 @@ func (h *Host) removeNav(p, c *node) bool {
 // destroyNav destroys a screen, sheet or alert; false: an ordinary
 // destroy.
 func (h *Host) destroyNav(n *node) bool {
+	if n.kind == ops.KindStack && n.nav != nil && n.nav.foot != nil {
+		// Its command bar goes with its window.
+		f := n.nav.foot
+		n.nav.foot = nil
+		for _, b := range append(f.nav.cmd.buttons, f.nav.cmd.more, f.nav.cmd.primary) {
+			delete(h.byHwnd, b)
+		}
+		delete(h.byHwnd, f.hwnd)
+		delete(h.nodes, f.id)
+	}
 	if n.nav == nil || n.kind == ops.KindStack || n.kind == ops.KindTabs {
 		return false
 	}
@@ -197,6 +234,11 @@ func (h *Host) destroyNav(n *node) bool {
 		return true
 	case ops.KindAlert:
 		n.dying = true
+		h.closeAlertDialog(n)
+		return true
+	case ops.KindSnackbar:
+		n.dying = true
+		h.destroySnack(n)
 		return true
 	}
 	return false
@@ -262,12 +304,19 @@ func (h *Host) layoutScreens(n *node) {
 			h.layoutHeader(b)
 		}
 	}
+	// A stack's command bar, under its screens.
+	foot := h.px(n, h.cmdBarHeightOf(n))
+	if f := n.nav.foot; f != nil && f.hwnd != 0 && foot > 0 {
+		SetWindowPos(f.hwnd, HWND_TOP, 0, max(r.H()-foot, 0), r.W(), foot, SWP_NOACTIVATE|SWP_NOCOPYBITS)
+		h.layoutCommandBar(f)
+	}
+	ch := max(r.H()-bar-foot, 0)
 	for _, c := range n.children {
 		if c.hwnd == 0 {
 			continue
 		}
-		SetWindowPos(c.hwnd, 0, 0, bar, r.W(), max(r.H()-bar, 0), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
-		h.reportScreen(c, h.pt(n, r.W()), h.pt(n, max(r.H()-bar, 0)))
+		SetWindowPos(c.hwnd, 0, 0, bar, r.W(), ch, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
+		h.reportScreen(c, h.pt(n, r.W()), h.pt(n, ch))
 	}
 }
 
@@ -284,6 +333,7 @@ func (h *Host) layoutNav() {
 			}
 		}
 	}
+	h.placeSnacks()
 }
 
 // reportScreen sends a screen's or sheet's environment if it changed.
@@ -313,10 +363,21 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 			n.title = v.Str
 		case ops.PropScreenActions:
 			n.actions = decodeActions(v.Bytes)
+		case ops.PropScreenToolbar:
+			n.nav.toolbar = decodeActions(v.Bytes)
+		case ops.PropScreenPrimary:
+			n.nav.primary = decodeActions(v.Bytes)
 		case ops.PropScreenBackGesture:
 			n.nav.backGesture = v.Int != 0
 		case ops.PropScreenIcon:
 			n.icon = v.Str
+		case ops.PropScreenBadge:
+			// The tab bar draws it again, and nothing else changes.
+			n.badge = v.Str
+			if s := n.parent; s != nil && s.kind == ops.KindTabs {
+				Invalidate(s.nav.bar.hwnd)
+			}
+			return
 		case ops.PropScreenSearch:
 			n.nav.search = v.Str
 		case ops.PropScreenSearchText:
@@ -341,6 +402,8 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 			n.detents = v.Int
 		case ops.PropSheetWindow:
 			n.nav.on = ops.NodeID(v.Int)
+		case ops.PropSheetFullScreen:
+			n.nav.full = v.Int != 0
 		}
 	case ops.KindPopover:
 		h.setPopoverProp(n, p, v)
@@ -377,11 +440,21 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 			n.message = v.Str
 		case ops.PropAlertButtons:
 			n.actions = decodeActions(v.Bytes)
+			// Showing, its buttons follow Disabled (a task dialog's titles
+			// are its own once it's made).
+			for i, a := range n.actions {
+				EnableTaskButton(n.nav.dialog, alertButtonID(i, a), !a.is(ops.MenuDisabled))
+			}
+			h.updateAlertDialog(n) // or its own dialog's
+		case ops.PropAlertFields:
+			n.nav.fields = ops.DecodeAlertFields(v.Bytes)
 		case ops.PropAlertStyle:
 			n.alertStyle = int32(v.Int)
 		case ops.PropAlertWindow:
 			n.nav.on = ops.NodeID(v.Int)
 		}
+	case ops.KindSnackbar:
+		h.setSnackProp(n, p, v)
 	}
 }
 
@@ -453,9 +526,11 @@ func (h *Host) updateHeader(stack *node) {
 	}
 	for i, a := range actions {
 		SetWindowText(b.nav.buttons[i], a.title)
+		EnableWindow(b.nav.buttons[i], !a.is(ops.MenuDisabled))
 		Invalidate(b.nav.buttons[i])
 	}
 	h.updateSearch(b, screen)
+	h.updateCommandBar(stack)
 	if h.liveScreens(stack) > 1 {
 		ShowWindow(b.nav.back, SW_SHOWNA)
 	} else {
@@ -529,10 +604,18 @@ func (h *Host) headerCommand(b *node, ctl uintptr) {
 		h.popStack(b.nav.stack)
 		return
 	}
+	screen := b.nav.screen
 	for i, btn := range b.nav.buttons {
-		if btn == ctl && b.nav.screen != nil {
-			h.emit(b.nav.screen, ops.Event{Kind: ops.EventAction, Int: int64(i)})
+		if btn != ctl || screen == nil || i >= len(screen.actions) {
+			continue
 		}
+		a := &screen.actions[i]
+		if a.is(ops.MenuSubmenu) {
+			// A bar button with children opens them as a menu, below it.
+			h.popUpActions(screen, btn, b, a.items)
+			return
+		}
+		h.emit(screen, ops.Event{Kind: ops.EventAction, Int: a.index})
 	}
 }
 
@@ -670,6 +753,9 @@ func (h *Host) tabRects(b *node) []Rect {
 		if symbolGlyph(s.icon) != 0 {
 			w += h.px(b, 16+8)
 		}
+		if bw, _ := h.badgeSize(b, s.badge); bw > 0 {
+			w += bw + h.px(b, 6)
+		}
 		out = append(out, Rect{Left: x, Top: h.px(b, 6), Right: x + w, Bottom: r.H() - h.px(b, 6)})
 		x += w + h.px(b, 4)
 	}
@@ -721,9 +807,11 @@ func tabBarMessage(h *Host, b *node, m uint32, wp, lp uintptr) (uintptr, bool) {
 		switch wp {
 		case VK_LEFT:
 			h.selectTab(tabs, tabs.selected-step)
+			h.announceChoice(b)
 			return 0, true
 		case VK_RIGHT:
 			h.selectTab(tabs, tabs.selected+step)
+			h.announceChoice(b)
 			return 0, true
 		}
 	}
@@ -758,6 +846,9 @@ func (h *Host) paintTabBar(b *node, dc uintptr, g Graphics, r Rect) {
 			tr := rects[i]
 			if i == b.nav.hot {
 				g.FillRoundRect(p.subtleHot.argb(), float32(tr.Left), float32(tr.Top), float32(tr.W()), float32(tr.H()), 4*k)
+			}
+			if s := tabs.children[i]; s.badge != "" {
+				h.paintBadge(b, 0, g, h.tabBadge(b, s, tr), s.badge)
 			}
 			if i == tabs.selected {
 				pw, ph := 16*k, 3*k
@@ -804,7 +895,22 @@ func (h *Host) paintTabBar(b *node, dc uintptr, g Graphics, r Rect) {
 		}
 		DrawText(dc, UTF16Units(s.title), &lr, DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX|startSide(rtl))
 		SelectObject(dc, old)
+		if s.badge != "" {
+			h.paintBadge(b, dc, 0, h.tabBadge(b, s, tr), s.badge)
+		}
 	}
+}
+
+// tabBadge is the place of a tab's badge: at its trailing end, inside its
+// padding, after its title (WinUI's InfoBadge on a NavigationViewItem at
+// the top).
+func (h *Host) tabBadge(b, s *node, tr Rect) Rect {
+	rtl := h.isRTL(b)
+	end := tr.Right - h.px(b, 12)
+	if rtl {
+		end = tr.Left + h.px(b, 12)
+	}
+	return h.badgeAt(b, s.badge, end, tr.Top, tr.Bottom, rtl)
 }
 
 // Sheets.
@@ -853,6 +959,13 @@ func (h *Host) present(n *node) {
 	case ops.KindAlert:
 		id := n.id
 		h.afterCore(func() { h.showAlert(id) })
+	case ops.KindSnackbar:
+		id := n.id
+		h.afterCore(func() { // its window, opened in the same batch, is shown once it's applied
+			if s := h.nodes[id]; s != nil && !s.dying {
+				h.presentSnack(s)
+			}
+		})
 	}
 }
 
@@ -894,8 +1007,14 @@ func (h *Host) openSheet(n *node) {
 	wr := WindowRect(owner)
 	x := wr.Left + (wr.W()-r.W())/2
 	y := wr.Top + (wr.H()-r.H())/2
+	if n.nav.full {
+		// No frame: it's its window's content, in pixels where that is.
+		style = WS_POPUP | WS_CLIPCHILDREN
+		r = h.coverRect(owner)
+		x, y = r.Left, r.Top
+	}
 	win := CreateWindow(h.topLevelStyle(), classWindow, h.appName, style, x, y, r.W(), r.H(), owner, 0)
-	if d := DPI(win); d != dpi {
+	if d := DPI(win); d != dpi && !n.nav.full {
 		// It opened on a monitor of another DPI.
 		dpi, k = d, dpiScale(d)
 		r = frameRect(w, ht, style, dpi)
@@ -911,6 +1030,10 @@ func (h *Host) openSheet(n *node) {
 	SetDarkTitleBar(win, h.dark)
 	n.nav.window, n.nav.owner = win, owner
 	n.presented = true
+	if n.nav.full {
+		SetCornerPreference(win, dwmwcpDoNotRound)
+		h.roundCover(n)
+	}
 	SetParent(n.hwnd, win)
 	h.rescale(n.hwnd, k)
 	cr = ClientRect(win)
@@ -928,12 +1051,21 @@ func (h *Host) openSheet(n *node) {
 func (h *Host) sheetMessage(sw *node, m uint32, wp, lp uintptr) (uintptr, bool) {
 	n := sw.parent
 	switch m {
+	case WM_MOVE, WM_WINDOWPOSCHANGED:
+		h.fitCovers(sw.hwnd)
+	}
+	switch m {
 	case WM_SIZE:
+		h.fitCovers(sw.hwnd)
+		if n != nil && n.nav.full {
+			h.roundCover(n)
+		}
 		if n != nil && n.hwnd != 0 {
 			cr := ClientRect(sw.hwnd)
 			SetWindowPos(n.hwnd, 0, 0, 0, cr.W(), cr.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 			h.reportScreen(n, h.pt(n, cr.W()), h.pt(n, cr.H()))
 		}
+		h.placeSnacks()
 		return 0, true
 	case WM_ERASEBKGND:
 		FillColor(wp, ClientRect(sw.hwnd), h.theme.bg.ref())
@@ -945,7 +1077,11 @@ func (h *Host) sheetMessage(sw *node, m uint32, wp, lp uintptr) (uintptr, bool) 
 		h.cancelSheet(sw)
 		return 0, true
 	case WM_DPICHANGED:
-		h.windowDPIChanged(sw, int(LoWord(wp)), *Native[Rect](lp))
+		r := *Native[Rect](lp)
+		if n != nil && n.nav.full {
+			r = h.coverRect(n.nav.owner) // where its window's content is, not where Windows suggests
+		}
+		h.windowDPIChanged(sw, int(LoWord(wp)), r)
 		return 0, true
 	case WM_ACTIVATE:
 		if LoWord(wp) != 0 {
@@ -954,6 +1090,72 @@ func (h *Host) sheetMessage(sw *node, m uint32, wp, lp uintptr) (uintptr, bool) 
 		return 0, false
 	}
 	return 0, false
+}
+
+// dwmwcpDoNotRound is DWMWA_WINDOW_CORNER_PREFERENCE's square corners:
+// a full-screen sheet's top meets its window's title bar.
+const dwmwcpDoNotRound = 1
+
+// coverRect is where a full-screen sheet over owner goes, in screen
+// pixels: all of owner's client area under its title bar (a hidden
+// title bar's strip, with its buttons, stays the owner's). The client
+// area's corners in either direction: a mirrored window's origin is on
+// the right.
+func (h *Host) coverRect(owner uintptr) Rect {
+	cr := ClientRect(owner)
+	top := int32(0)
+	if c := h.ctls[owner]; c != nil {
+		top = int32(math.Round(float64(c.safeTop() * dpiScale(DPI(owner)))))
+	}
+	a := ClientToScreen(owner, Point{X: 0, Y: min(top, cr.H())})
+	b := ClientToScreen(owner, Point{X: cr.W(), Y: cr.H()})
+	return Rect{Left: min(a.X, b.X), Top: min(a.Y, b.Y), Right: max(a.X, b.X), Bottom: max(a.Y, b.Y)}
+}
+
+// fitCovers puts the full-screen sheets over owner where its content is
+// again (it moved, it resized, it came back from being minimized).
+func (h *Host) fitCovers(owner uintptr) {
+	if owner == 0 || IsIconic(owner) {
+		return
+	}
+	for _, s := range h.sheets {
+		if !s.nav.full || s.nav.owner != owner || s.nav.window == 0 {
+			continue
+		}
+		r := h.coverRect(owner)
+		if WindowRect(s.nav.window) != r {
+			SetWindowPos(s.nav.window, 0, r.Left, r.Top, r.W(), r.H(), SWP_NOZORDER|SWP_NOACTIVATE)
+		}
+	}
+}
+
+// roundCovers rounds the full-screen sheets over owner again (it was
+// maximized, or restored).
+func (h *Host) roundCovers(owner uintptr) {
+	for _, s := range h.sheets {
+		if s.nav.full && s.nav.owner == owner {
+			h.roundCover(s)
+		}
+	}
+}
+
+// roundCover gives a full-screen sheet its window's bottom corners:
+// Windows 11 rounds a window's, which a rectangle over its content would
+// stick out of; none for a maximized or full-screen one. A rounded
+// rectangle whose top corners are above it, out of its region.
+func (h *Host) roundCover(n *node) {
+	w, owner := n.nav.window, n.nav.owner
+	if w == 0 {
+		return
+	}
+	c := h.ctls[owner]
+	if !Windows11() || IsZoomed(owner) || c != nil && c.full != nil {
+		SetWindowRgn(w, 0)
+		return
+	}
+	r := WindowRect(w)
+	d := int32(math.Round(16 * float64(dpiScale(DPI(w))))) // an 8 point radius, as DWM's
+	SetWindowRgn(w, CreateRoundRectRgn(0, -d, r.W()+1, r.H()+1, d, d))
 }
 
 // cancelSheet is the user dismissing a sheet (its close button,
@@ -997,14 +1199,17 @@ func (h *Host) showAlert(id ops.NodeID) {
 	if n == nil || n.dying {
 		return
 	}
+	if len(n.nav.fields) > 0 && n.alertStyle == int32(ops.AlertStyleAlert) {
+		h.openAlertDialog(n) // a task dialog holds no fields
+		return
+	}
 	var buttons []TaskButton
 	cancel := -1
 	for i, a := range n.actions {
-		bid := 100 + i
 		if a.role == ops.AlertButtonRoleCancel {
-			cancel, bid = i, IDCANCEL
+			cancel = i
 		}
-		buttons = append(buttons, TaskButton{ID: bid, Title: a.title})
+		buttons = append(buttons, TaskButton{ID: alertButtonID(i, a), Title: a.title, Disabled: a.is(ops.MenuDisabled)})
 	}
 	flags := uint32(TDF_SIZE_TO_CONTENT)
 	if cancel >= 0 {
@@ -1025,7 +1230,11 @@ func (h *Host) showAlert(id ops.NodeID) {
 	}
 	title, content := n.title, n.message
 	h.modal++
-	got := taskDialog(owner, h.appName, title, content, buttons, buttons[0].ID, flags)
+	got := taskDialog(owner, h.appName, title, content, buttons, buttons[0].ID, flags, func(hwnd uintptr) {
+		if n := h.nodes[id]; n != nil {
+			n.nav.dialog = hwnd
+		}
+	})
 	h.modal--
 	n = h.nodes[id]
 	if n == nil || n.dying {
@@ -1039,6 +1248,15 @@ func (h *Host) showAlert(id ops.NodeID) {
 	default:
 		h.emit(n, ops.Event{Kind: ops.EventDismissed})
 	}
+}
+
+// alertButtonID is the task dialog button's ID of an alert's button i:
+// the cancel one's IDCANCEL, so Escape and the close button take it.
+func alertButtonID(i int, a action) int {
+	if a.role == ops.AlertButtonRoleCancel {
+		return IDCANCEL
+	}
+	return 100 + i
 }
 
 // titleSpec is a header's title's font: Title2, in its window.

@@ -69,8 +69,14 @@ class AsukaNode(val id: Int, val kind: Int, var view: View) {
     var alertTitle = ""
     var alertMessage = ""
     var alertStyle = AsukaAlertStyle.ALERT
+    /** An alert's text fields. */
+    var alertFields: List<AsukaAlertField> = emptyList()
+    /** A showing alert's: shows its buttons' Disabled again. */
+    var alertRefresh: (() -> Unit)? = null
     var detents = 0L
     var grabber = false
+    /** A sheet's FullScreen: a full-screen dialog, not a bottom sheet. */
+    var fullScreen = false
     var imageSource: String? = null
     val a11yActions = ArrayList<Int>() // TalkBack actions' IDs (A11yActions)
     var imageLoaded = false

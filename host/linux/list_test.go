@@ -539,3 +539,63 @@ func TestListScrollToItem(t *testing.T) {
 	onMain(func() { h.enter(func() { ui.ScrollToItem(l, 10, true); r.Flush() }) })
 	settle(t, h, func() bool { x := theList(h); return x.anim == 0 && x.offset() == x.tops[10] })
 }
+
+// A destination's badge is a dimmed count at its row's end; it changes
+// in place, the row and its widgets kept.
+func TestSidebarBadge(t *testing.T) {
+	unread := signal.New("3")
+	h, r := mount(t, func() ui.Node {
+		return ui.SplitView(ui.SplitViewProps{Sections: []ui.SidebarSection{{Destinations: []ui.Destination{
+			{Title: ui.Val("Inbox"), Icon: "tray", Badge: unread, Content: func() ui.Node { return ui.StaticText("inbox") }},
+			{Title: ui.Val("Drafts"), Content: func() ui.Node { return ui.StaticText("drafts") }},
+		}}}})
+	})
+	onMain(func() {
+		s := find(h, ops.KindSplit)[0].ext.(*split)
+		row, badge := s.widgets[0], s.parts[0].badge
+		if badge == 0 || GoString(Call(Sym("gtk_label_get_text"), badge)) != "3" || !WidgetHasCSSClass(badge, "dim-label") {
+			fatalf(t, "no badge on Inbox's row")
+		}
+		if s.parts[1].badge != 0 {
+			fatalf(t, "Drafts has a badge")
+		}
+		h.enter(func() { unread.Set("12"); r.Flush() })
+		if s.widgets[0] != row || s.parts[0].badge != badge || GoString(Call(Sym("gtk_label_get_text"), badge)) != "12" {
+			fatalf(t, "the row wasn't changed in place")
+		}
+		if ListBoxGetSelectedRow(s.box) != row {
+			fatalf(t, "the selection moved")
+		}
+		h.enter(func() { unread.Set(""); r.Flush() })
+		if s.parts[0].badge != 0 {
+			fatalf(t, "the badge stayed")
+		}
+	})
+}
+
+// A tab's count is its page's badge-number; other text, needs-attention.
+func TestTabBadge(t *testing.T) {
+	unread := signal.New("3")
+	h, r := mount(t, func() ui.Node {
+		return ui.Tabs(ui.TabsProps{},
+			ui.Tab{Title: ui.Val("Inbox"), Badge: unread, Content: func() ui.Node { return ui.StaticText("a") }},
+			ui.Tab{Title: ui.Val("Archive"), Content: func() ui.Node { return ui.StaticText("b") }},
+		)
+	})
+	onMain(func() {
+		page := find(h, ops.KindTabs)[0].children[0].nav.page
+		number := func() int { return int(Call(Sym("adw_view_stack_page_get_badge_number"), page)) }
+		attention := func() bool { return Call(Sym("adw_view_stack_page_get_needs_attention"), page) != 0 }
+		if number() != 3 || !attention() {
+			fatalf(t, "badge %d, attention %v", number(), attention())
+		}
+		h.enter(func() { unread.Set("New"); r.Flush() })
+		if number() != 0 || !attention() {
+			fatalf(t, "text: badge %d, attention %v", number(), attention())
+		}
+		h.enter(func() { unread.Set(""); r.Flush() })
+		if number() != 0 || attention() {
+			fatalf(t, "none: badge %d, attention %v", number(), attention())
+		}
+	})
+}
