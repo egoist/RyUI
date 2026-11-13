@@ -34,16 +34,19 @@ func Focus() ui.Node {
 	running := signal.New(false)
 	open := signal.New(false)
 
-	var tick func()
-	tick = func() {
+	// run counts the timer's starts: a tick of an earlier run (paused,
+	// then started again within the second) stops there.
+	run := 0
+	var tick func(r int)
+	tick = func(r int) {
 		time.AfterFunc(time.Second, func() {
 			ui.Post(func() {
-				if !running.Peek() {
+				if r != run || !running.Peek() {
 					return
 				}
 				if l := left.Peek() - time.Second; l > 0 {
 					left.Set(l)
-					tick()
+					tick(r)
 					return
 				}
 				running.Set(false)
@@ -57,7 +60,8 @@ func Focus() ui.Node {
 			return
 		}
 		running.Set(true)
-		tick()
+		run++
+		tick(run)
 	}
 	setLength := func(m int) {
 		minutes.Set(m)
