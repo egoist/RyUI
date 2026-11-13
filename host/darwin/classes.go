@@ -148,6 +148,7 @@ func registerClasses() {
 	registerPageDotsClass(flipped)
 	registerCanvasClass(flipped)
 	registerSplitClasses()
+	registerPanelClass()
 	registerTarget()
 }
 

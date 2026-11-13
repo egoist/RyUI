@@ -323,8 +323,13 @@ func (h *Host) openWindow(n *node) {
 		size.Height = defaultWindowHeight
 	}
 	c.Width, c.Height = float32(size.Width), float32(size.Height)
-	w := MsgInitWindow(Send(Class("NSWindow"), "alloc"), Sel("initWithContentRect:styleMask:backing:defer:"),
-		Rect{Size: size}, styleMask(&c), backingBuffered, false)
+	var w ID
+	if floating(&c) {
+		w = newPanelWindow(size, &c)
+	} else {
+		w = MsgInitWindow(Send(Class("NSWindow"), "alloc"), Sel("initWithContentRect:styleMask:backing:defer:"),
+			Rect{Size: size}, styleMask(&c), backingBuffered, false)
+	}
 	Send(w, "setReleasedWhenClosed:", 0)
 	content := MsgInitRect(Send(Class("AsukaView"), "alloc"), Sel("initWithFrame:"), Rect{Size: size})
 	Send(content, "setAutoresizesSubviews:", 0)
@@ -340,13 +345,15 @@ func (h *Host) openWindow(n *node) {
 	if base == "" {
 		base = h.appName
 	}
-	x := &win{window: w, content: content, root: n, base: base}
+	x := &win{window: w, content: content, root: n, base: base, flyout: n.nav.flyout}
 	h.wins[w] = x
 	n.nav.window = w
 	n.presented = true
 	if c.Flags&ops.WindowChild != 0 {
 		parent := h.parentWindow(c.Parent)
-		if c.Flags&ops.WindowModal != 0 {
+		// Modal to a flyout or a panel: its child window, over it, not a
+		// sheet hanging from it.
+		if c.Flags&ops.WindowModal != 0 && h.overFloating(&c) == nil {
 			x.sheetOf = parent
 		} else {
 			x.child = parent
@@ -358,7 +365,13 @@ func (h *Host) openWindow(n *node) {
 	h.configure(x, c)
 	h.reportScreen(n, MsgRect(content, Sel("bounds")).Size)
 	h.updateWindowChrome()
-	if c.Flags&ops.WindowHidden == 0 {
+	switch {
+	case c.Flags&ops.WindowHidden != 0:
+	case c.Flags&ops.WindowFitContent != 0 && !x.fitted:
+		// Shown once sized to its content (WindowAction Fit, in the
+		// frames' batch of this flush).
+		x.showOnFit = true
+	default:
 		// An app in the background (an accessory) isn't active: its
 		// window comes over the app in use, as the user asked for it.
 		h.showWin(x, inBackground())
@@ -372,6 +385,9 @@ func (h *Host) windowOptions(args []byte) {
 	c := ops.DecodeWindowConfig(args)
 	if c.Title != "" {
 		h.main.base = c.Title
+	}
+	if c.Flags&ops.WindowPanel != 0 {
+		h.makeMainPanel(&c)
 	}
 	if c.MinWidth > 0 || c.MinHeight > 0 {
 		MsgSetSize(h.window, Sel("setContentMinSize:"), Size{Width: max(float64(c.MinWidth), 1), Height: max(float64(c.MinHeight), 1)})

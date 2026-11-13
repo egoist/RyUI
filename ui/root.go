@@ -108,7 +108,7 @@ func Mount(h host.Host, root func() Node) *Root {
 			st.Width, st.Height = layout.Pct(100), layout.Pct(100)
 			st.Direction = rootDirection(isRTLNow())
 			r.el.box.SetStyle(st)
-			if o := mainWindow; o != nil && o.FitContent && r.win.desktop() {
+			if o := mainWindow; o != nil && o.FitContent && r.win.desktop() && r.envV.Platform != ops.PlatformWeb { // the tab fills the page
 				c := o.config()
 				fitWindow(r.el, &c)
 			}
