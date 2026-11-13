@@ -238,7 +238,7 @@ platforms:
   once it has shown, without taking the focus, then quits
   (`ASUKA_DUMP=1` writes its view tree beside it). On Windows and
   Linux, `ASUKA_SCRIPT` runs steps first (`tap:Add`, `type:hello`):
-  see [Development](development.md).
+  see [Development](development.md#snapshots-and-scripts).
 - On Linux, under Xvfb (`xvfb-run -a dbus-run-session`), that works
   with no display, in CI.
 

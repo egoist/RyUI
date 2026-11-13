@@ -187,7 +187,7 @@ ASUKA_SCRIPT="tap:Add;tap:Add" ASUKA_SNAPSHOT=shot.png go run .   # Windows、Li
 
 ## 测试
 
-Asuka 自己的仓库会通过各平台的真实视图来测试每个宿主。
+如果要在 `go test` 里测试你的应用界面，不需要设备或显示器，请看[测试](testing.md)。Asuka 自己的仓库会通过各平台的真实视图来测试每个宿主。
 
 ```sh
 go test ./...                                      # 核心，基于 host/fake
