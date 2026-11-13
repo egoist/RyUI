@@ -333,7 +333,7 @@ there's none.
 
 The files from `Take` and `Capture` are in the app's caches, which the
 system may clear: move one into `store.Dir()` to keep it, or save it to
-the photo library with [`asuka/sdk/library`](#saving-to-the-library-asukalibrary).
+the photo library with [`asuka/sdk/library`](#saving-to-the-library-asukasdklibrary).
 
 **Android**: as `asuka/sdk/camera` declares the camera permission (the view
 needs it), Android requires it of the camera app too: `Take` asks for it

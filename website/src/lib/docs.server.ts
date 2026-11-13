@@ -9,13 +9,23 @@ import remarkParse from "remark-parse"
 import { unified } from "unified"
 
 import type { Doc, Navs, NavItem, NavSection, SearchEntry } from "@/lib/docs"
+import { localeInfo, messages, type Locale } from "@/lib/i18n"
 import { renderMarkdown, slugOf, type RenderedMarkdown } from "@/lib/markdown.server"
-import { unpublished } from "@/lib/markdown-source"
+import { docsBase, isPublished } from "@/lib/markdown-source"
 import { site } from "@/lib/site"
 
 // Vite runs in website/, next to the repository's docs.
 const repoDir = path.resolve(process.cwd(), "..")
-const docsDir = path.join(repoDir, "docs")
+
+/** The docs of a language: docs/, docs/zh/. */
+function docsDirOf(locale: Locale) {
+  return path.join(repoDir, localeInfo[locale].docsDir)
+}
+
+/** The pages of a language's docs, as files relative to them. */
+async function pageFiles(locale: Locale) {
+  return (await fs.readdir(docsDirOf(locale), { recursive: true })).filter((f) => isPublished(locale, f)).sort()
+}
 
 /** The files a page may be: x.md, else x/README.md. */
 function filesOf(slug: string) {
@@ -25,10 +35,10 @@ function filesOf(slug: string) {
 }
 
 /** The file of a page, relative to the docs, or undefined for none. */
-async function fileOf(slug: string) {
+async function fileOf(locale: Locale, slug: string) {
   for (const file of filesOf(slug)) {
-    if (unpublished.has(file)) continue
-    if (await fs.stat(path.join(docsDir, file)).then((s) => s.isFile(), () => false)) return file
+    if (!isPublished(locale, file)) continue
+    if (await fs.stat(path.join(docsDirOf(locale), file)).then((s) => s.isFile(), () => false)) return file
   }
   return undefined
 }
@@ -36,18 +46,21 @@ async function fileOf(slug: string) {
 // Pages are rendered once per build; in development, on every request.
 const cache = new Map<string, Promise<RenderedMarkdown | undefined>>()
 
-function render(slug: string) {
-  let page = cache.get(slug)
+function render(locale: Locale, slug: string) {
+  const key = `${locale}:${slug}`
+  let page = cache.get(key)
   if (!page) {
-    page = fileOf(slug).then((file) => {
+    const docsDir = docsDirOf(locale)
+    page = fileOf(locale, slug).then((file) => {
       if (!file) return undefined
       const abs = path.join(docsDir, file)
       return fs.readFile(abs, "utf8").then(
-        (source) => renderMarkdown(source, abs, { docsDir, repoDir, repoUrl: site.repo }),
+        (source) =>
+          renderMarkdown(source, abs, { docsDir, repoDir, repoUrl: site.repo, base: docsBase(locale) }, { copyCode: messages[locale].docs.copyCode }),
         () => undefined
       )
     })
-    if (!import.meta.env.DEV) cache.set(slug, page)
+    if (!import.meta.env.DEV) cache.set(key, page)
   }
   return page
 }
@@ -56,10 +69,11 @@ function render(slug: string) {
  * The sidebar: the lists of the docs' README, in their order, under their
  * headings, then the pages it leaves out.
  */
-export async function loadNav(): Promise<Navs> {
-  const readme = await fs.readFile(path.join(docsDir, "README.md"), "utf8")
+export async function loadNav(locale: Locale): Promise<Navs> {
+  const words = messages[locale].docs
+  const readme = await fs.readFile(path.join(docsDirOf(locale), "README.md"), "utf8")
   const tree = unified().use(remarkParse).parse(readme) as Root
-  const sections: NavSection[] = [{ title: "Overview", items: [{ slug: "", title: "Introduction" }] }]
+  const sections: NavSection[] = [{ title: words.overview, items: [{ slug: "", title: words.introduction }] }]
   let heading = ""
   for (const node of tree.children) {
     if (node.type === "heading" && node.depth === 2) heading = toString(node)
@@ -67,15 +81,14 @@ export async function loadNav(): Promise<Navs> {
   }
 
   const listed = new Set(sections.flatMap((s) => s.items.map((i) => i.slug)))
-  const files = (await fs.readdir(docsDir, { recursive: true })).filter((f) => f.endsWith(".md") && !unpublished.has(f)).sort()
   const rest: NavItem[] = []
-  for (const file of files) {
+  for (const file of await pageFiles(locale)) {
     const slug = slugOf(file)
     if (listed.has(slug)) continue
-    const page = await render(slug)
+    const page = await render(locale, slug)
     rest.push({ slug, title: page?.title || slug })
   }
-  if (rest.length) sections.push({ title: "More", items: rest })
+  if (rest.length) sections.push({ title: words.more, items: rest })
   return sections
 }
 
@@ -99,12 +112,12 @@ function navItems(list: List, base: string): NavItem[] {
 
 /** "`: install the tools, then …`" → "Install the tools, then …". */
 function sentence(text: string) {
-  const s = text.replace(/^[\s:]+/, "").replace(/\s+/g, " ").trim()
+  const s = text.replace(/^[\s:：]+/, "").replace(/\s+/g, " ").trim()
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-export async function loadDoc(slug: string): Promise<Doc | undefined> {
-  const [page, nav, file] = await Promise.all([render(slug), loadNav(), fileOf(slug)])
+export async function loadDoc(locale: Locale, slug: string): Promise<Doc | undefined> {
+  const [page, nav, file] = await Promise.all([render(locale, slug), loadNav(locale), fileOf(locale, slug)])
   if (!page || !file) return undefined
   const sections = nav
   const order = sections.flatMap((s) => s.items).filter((i) => i.slug !== undefined)
@@ -125,17 +138,17 @@ export async function loadDoc(slug: string): Promise<Doc | undefined> {
     toc: page.toc,
     prev: index > 0 ? link(index - 1) : undefined,
     next: index >= 0 ? link(index + 1) : undefined,
-    editUrl: `${site.repo}/edit/main/docs/${file}`,
+    editUrl: `${site.repo}/edit/main/${localeInfo[locale].docsDir}/${file.split(path.sep).join("/")}`,
   }
 }
 
 /** Every heading of every page, with its text, for the search of the site. */
-export async function loadSearchIndex(): Promise<SearchEntry[]> {
-  const nav = await loadNav()
+export async function loadSearchIndex(locale: Locale): Promise<SearchEntry[]> {
+  const nav = await loadNav(locale)
   const entries: SearchEntry[] = []
   for (const item of nav.flatMap((s) => s.items)) {
     if (item.slug === undefined) continue
-    const page = await render(item.slug)
+    const page = await render(locale, item.slug)
     if (!page) continue
     for (const section of page.sections) {
       entries.push({ slug: item.slug, page: page.title, id: section.id, heading: section.heading, text: section.text })

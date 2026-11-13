@@ -6,17 +6,21 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite"
 import viteReact from "@vitejs/plugin-react"
 import { defineConfig } from "vite"
 import { llmsDocs } from "./llms.ts"
-import { unpublished } from "./src/lib/markdown-source.ts"
+import { localeInfo, locales, localized } from "./src/lib/locales.ts"
+import { isPublished } from "./src/lib/markdown-source.ts"
 
 const repo = (file: string) => new URL(`../${file}`, import.meta.url)
 
-// The pages of the repository's docs, shipping.md at /docs/shipping, and a
+// The pages of the repository's docs, in each language: shipping.md at
+// /docs/shipping (docs/zh/shipping.md at /zh/docs/shipping), and a
 // directory's README at the directory. /docs itself, like every route
 // without parameters, is found without being listed.
-const docs = fs
-  .readdirSync(repo("docs"), { recursive: true, encoding: "utf8" })
-  .filter((file) => file.endsWith(".md") && file !== "README.md" && !unpublished.has(file))
-  .map((file) => `/docs/${file.slice(0, -3).split(path.sep).join("/").replace(/\/README$/, "")}`)
+const docs = locales.flatMap((locale) =>
+  fs
+    .readdirSync(repo(localeInfo[locale].docsDir), { recursive: true, encoding: "utf8" })
+    .filter((file) => file !== "README.md" && isPublished(locale, file))
+    .map((file) => localized(locale, `/docs/${file.slice(0, -3).split(path.sep).join("/").replace(/\/README$/, "")}`))
+)
 
 // Asuka's version: the highest release tag. Not `git describe`: it needs the
 // tag's commit in HEAD's history, which a shallow clone (Cloudflare's builds)
@@ -46,6 +50,7 @@ export default defineConfig({
       pages: [
         ...docs.map((path) => ({ path })),
         { path: "/docs/search.json" },
+        { path: "/zh/docs/search.json" },
         // Served by Cloudflare for any path that has no page.
         { path: "/404", prerender: { enabled: true, outputPath: "/404.html" } },
       ],

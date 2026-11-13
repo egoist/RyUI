@@ -10,23 +10,36 @@ import { unified } from "unified"
 import { visit } from "unist-util-visit"
 import type { Plugin } from "vite"
 
-import { omitRepositoryOnly, rewriteHref, slugOf, unpublished, type LinkOptions } from "./src/lib/markdown-source.ts"
+import { localeInfo, locales, localized, type Locale } from "./src/lib/locales.ts"
+import { docsBase, isPublished, omitRepositoryOnly, rewriteHref, slugOf, type LinkOptions } from "./src/lib/markdown-source.ts"
+import { messages } from "./src/lib/messages.ts"
 import { site } from "./src/lib/site.ts"
 
 /** All downloads, keyed by their site path, for the build and dev server. */
 export async function docsAssets(repoDir: string): Promise<Map<string, string>> {
-  const docsDir = path.join(repoDir, "docs")
-  const links: LinkOptions = { docsDir, repoDir, repoUrl: site.repo }
+  const assets = new Map<string, string>()
+  for (const locale of locales) await localeAssets(repoDir, locale, assets)
+  return assets
+}
+
+/**
+ * A language's downloads: each page as Markdown (/docs/shipping.md,
+ * /zh/docs/shipping.md), and its llms.txt and llms-full.txt (/llms.txt,
+ * /zh/llms.txt).
+ */
+async function localeAssets(repoDir: string, locale: Locale, assets: Map<string, string>) {
+  const docsDir = path.join(repoDir, localeInfo[locale].docsDir)
+  const links: LinkOptions = { docsDir, repoDir, repoUrl: site.repo, base: docsBase(locale) }
+  const description = messages[locale].siteDescription
   const files = (await fs.readdir(docsDir, { recursive: true }))
-    .filter((file) => file.endsWith(".md") && !unpublished.has(file))
+    .filter((file) => isPublished(locale, file))
     .sort((a, b) => {
       // The introduction comes before the pages.
       const key = (file: string) => file.replace(/(^|[\\/])README\.md$/, "$1")
       return key(a).localeCompare(key(b), "en")
     })
-  const assets = new Map<string, string>()
   const pages: string[] = []
-  const full: string[] = [`# ${site.name} documentation`, site.description]
+  const full: string[] = [`# ${site.name} documentation`, description]
   const processor = unified().use(remarkParse).use(remarkGfm).use(remarkStringify, { fences: true })
 
   for (const file of files) {
@@ -40,7 +53,7 @@ export async function docsAssets(repoDir: string): Promise<Map<string, string>> 
       node.url = href.startsWith("/") && !href.startsWith("//") ? new URL(href, site.url).href : href
     })
     const slug = slugOf(file)
-    const pathname = (slug ? `/docs/${slug}` : "/docs") + ".md"
+    const pathname = localized(locale, slug ? `/docs/${slug}` : "/docs") + ".md"
     if (assets.has(pathname)) throw new Error(`Duplicate Markdown page: ${pathname}`)
     const url = site.url + pathname
     const title = tree.children.find((node) => node.type === "heading" && node.depth === 1)
@@ -54,14 +67,15 @@ export async function docsAssets(repoDir: string): Promise<Map<string, string>> 
     full.push(`---\n\nSource: ${url}\n\n${source.trimEnd()}`)
   }
 
-  assets.set("/llms.txt", [
+  const llms = localized(locale, "/llms.txt")
+  const llmsFull = localized(locale, "/llms-full.txt")
+  assets.set(llms, [
     `# ${site.name}`,
-    `> ${site.description}`,
-    `Individual Markdown pages are listed below. All documentation is also available at ${site.url}/llms-full.txt.`,
+    `> ${description}`,
+    `Individual Markdown pages are listed below. All documentation is also available at ${site.url}${llmsFull}.`,
     "## Documentation\n\n" + pages.join("\n"),
   ].join("\n\n") + "\n")
-  assets.set("/llms-full.txt", full.join("\n\n") + "\n")
-  return assets
+  assets.set(llmsFull, full.join("\n\n") + "\n")
 }
 
 export function llmsDocs(repoDir: string): Plugin {
@@ -76,7 +90,7 @@ export function llmsDocs(repoDir: string): Plugin {
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         const pathname = req.url?.split("?", 1)[0] ?? ""
-        if (pathname !== "/llms.txt" && pathname !== "/llms-full.txt" && !/^\/docs(?:\/.*)?\.md$/.test(pathname)) return next()
+        if (!/^(?:\/zh)?(?:\/llms\.txt|\/llms-full\.txt|\/docs(?:\/.*)?\.md)$/.test(pathname)) return next()
         try {
           const source = (await docsAssets(repoDir)).get(pathname)
           if (source === undefined) return next()

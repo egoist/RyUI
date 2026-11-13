@@ -1,15 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { DocPage, docHead, loadDocPage } from "@/components/docs/doc-page"
-import { NotFound } from "@/components/not-found"
+import { DocRoute, docHead, loadDocPage } from "@/components/docs/doc-page"
 
 export const Route = createFileRoute("/docs/")({
-  loader: ({ parentMatchPromise }) => loadDocPage("", parentMatchPromise),
-  head: ({ loaderData }) => docHead(loaderData),
-  component: DocRoute,
+  loader: ({ parentMatchPromise }) => loadDocPage("en", "", parentMatchPromise),
+  head: ({ loaderData }) => docHead("en", loaderData),
+  component: () => <DocRoute doc={Route.useLoaderData()} />,
 })
-
-function DocRoute() {
-  const doc = Route.useLoaderData()
-  return doc ? <DocPage doc={doc} /> : <NotFound />
-}

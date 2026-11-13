@@ -115,7 +115,7 @@ Platform by platform:
   say: see [Linux](#linux).
 - `web.vapidPublicKey` is the app server's VAPID public key, for
   `asuka/sdk/push` on the web (Web Push; see
-  [the web](web.md#asukapush-web-push)).
+  [the web](web.md#asukasdkpush-web-push)).
 - A Windows build needs nothing beyond the keys above; its signing
   certificate is given in the environment ([Windows](#windows)).
 
@@ -137,10 +137,10 @@ These are for the phones and tablets:
   a bundle ID of its own (the app's plus `.share`).
 - `splash` is the launch screen: `{"image": "logo.png", "size": 96,
   "background": "#ffffff", "darkBackground": "#000000"}` (see
-  [Device](device.md#the-launch-screen-asukasplash)).
+  [Device](device.md#the-launch-screen-asukasdksplash)).
 - `widgets` are the app's home screen widgets and `shortcuts` its
   actions for Siri, Spotlight and the launcher (see
-  [Device](device.md#home-screen-widgets-asukawidget)). The widget
+  [Device](device.md#home-screen-widgets-asukasdkwidget)). The widget
   extension has a bundle ID of its own (the app's plus `.widgets`): a
   release needs a profile for it too, and `ios.widgetProfile` names one.
 - `android.googleServices` is the Firebase project's
@@ -820,7 +820,7 @@ traces keep their function names and lines, so its panics read as they
 are, and there are no symbols to upload.
 
 Keep each release's symbols: a crash is symbolicated with those of the
-build it happened in. See [Device](device.md#crash-reports-asukacrash)
+build it happened in. See [Device](device.md#crash-reports-asukasdkcrash)
 for the reports themselves.
 
 ## Before you release

@@ -7,16 +7,21 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { Kbd } from "@/components/ui/kbd"
 import { docHref, type SearchEntry } from "@/lib/docs"
+import { localized, messages, useLocale, type Locale } from "@/lib/i18n"
 
-// Prerendered by the /docs/search.json route, and fetched the first time the
-// search opens.
-let index: Promise<SearchEntry[]> | undefined
-function loadIndex() {
-  index ??= fetch("/docs/search.json").then((r) => {
-    if (!r.ok) throw new Error(`search index: ${r.status}`)
-    return r.json() as Promise<SearchEntry[]>
-  })
-  index.catch(() => (index = undefined))
+// Prerendered by the /docs/search.json route (/zh/docs/search.json for the
+// Chinese docs), and fetched the first time the search opens.
+const indexes = new Map<Locale, Promise<SearchEntry[]>>()
+function loadIndex(locale: Locale) {
+  let index = indexes.get(locale)
+  if (!index) {
+    index = fetch(localized(locale, "/docs/search.json")).then((r) => {
+      if (!r.ok) throw new Error(`search index: ${r.status}`)
+      return r.json() as Promise<SearchEntry[]>
+    })
+    index.catch(() => indexes.delete(locale))
+    indexes.set(locale, index)
+  }
   return index
 }
 
@@ -50,7 +55,11 @@ function snippet(text: string, terms: string[]) {
   const lower = text.toLowerCase()
   const at = Math.min(...terms.map((t) => lower.indexOf(t)).filter((i) => i >= 0))
   if (!Number.isFinite(at)) return text.slice(0, 140)
-  const start = Math.max(0, lower.lastIndexOf(" ", Math.max(0, at - 40)))
+  // From a space before the match, or, in Chinese, which has none, from 40
+  // characters before it.
+  const from = Math.max(0, at - 40)
+  const space = lower.lastIndexOf(" ", from)
+  const start = space >= 0 && from - space < 20 ? space : from
   return (start > 0 ? "…" : "") + text.slice(start, start + 160).trim()
 }
 
@@ -69,6 +78,8 @@ function Highlight({ text, terms }: { text: string; terms: string[] }) {
 }
 
 export function Search() {
+  const locale = useLocale()
+  const t = messages[locale].search
   const [open, setOpen] = React.useState(false)
   const [mac, setMac] = React.useState(true)
 
@@ -90,28 +101,29 @@ export function Search() {
       <Button
         variant="outline"
         onClick={() => setOpen(true)}
-        onPointerEnter={() => void loadIndex().catch(() => {})}
+        onPointerEnter={() => void loadIndex(locale).catch(() => {})}
         className="hidden h-8 w-56 justify-start gap-2 bg-muted/40 px-2.5 font-normal text-muted-foreground shadow-none hover:bg-muted lg:flex dark:bg-muted/30"
       >
         <SearchIcon />
-        Search docs…
+        {t.button}
         <Kbd className="ml-auto border bg-background">{mac ? "⌘K" : "Ctrl K"}</Kbd>
       </Button>
-      <Button variant="ghost" size="icon" onClick={() => setOpen(true)} className="lg:hidden" aria-label="Search docs">
+      <Button variant="ghost" size="icon" onClick={() => setOpen(true)} className="lg:hidden" aria-label={t.title}>
         <SearchIcon />
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent showCloseButton={false} className="top-[12%] translate-y-0 gap-0 overflow-hidden p-0 sm:max-w-xl">
-          <DialogTitle className="sr-only">Search the docs</DialogTitle>
-          <DialogDescription className="sr-only">Find a page or a section of the docs.</DialogDescription>
-          {open && <SearchPanel onClose={() => setOpen(false)} />}
+          <DialogTitle className="sr-only">{t.title}</DialogTitle>
+          <DialogDescription className="sr-only">{t.description}</DialogDescription>
+          {open && <SearchPanel locale={locale} onClose={() => setOpen(false)} />}
         </DialogContent>
       </Dialog>
     </>
   )
 }
 
-function SearchPanel({ onClose }: { onClose: () => void }) {
+function SearchPanel({ locale, onClose }: { locale: Locale; onClose: () => void }) {
+  const t = messages[locale].search
   const navigate = useNavigate()
   const [query, setQuery] = React.useState("")
   const [entries, setEntries] = React.useState<SearchEntry[]>()
@@ -119,8 +131,8 @@ function SearchPanel({ onClose }: { onClose: () => void }) {
   const listRef = React.useRef<HTMLDivElement>(null)
 
   React.useEffect(() => {
-    loadIndex().then(setEntries, () => setFailed(true))
-  }, [])
+    loadIndex(locale).then(setEntries, () => setFailed(true))
+  }, [locale])
 
   const terms = React.useMemo(() => query.toLowerCase().split(/\s+/).filter(Boolean), [query])
   const groups = React.useMemo(() => {
@@ -139,21 +151,21 @@ function SearchPanel({ onClose }: { onClose: () => void }) {
 
   function go(entry: SearchEntry) {
     onClose()
-    void navigate({ href: docHref(entry.slug, entry.id) })
+    void navigate({ href: docHref(locale, entry.slug, entry.id) })
   }
 
   return (
     <Command shouldFilter={false} className="rounded-none! bg-transparent p-0">
       <div className="border-b p-1.5">
-        <CommandInput value={query} onValueChange={setQuery} placeholder="Search the docs…" className="h-9" />
+        <CommandInput value={query} onValueChange={setQuery} placeholder={t.placeholder} className="h-9" />
       </div>
       <CommandList ref={listRef} className="max-h-[min(60vh,26rem)] p-1.5">
         {failed ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">The search index could not be loaded.</p>
+          <p className="py-10 text-center text-sm text-muted-foreground">{t.failed}</p>
         ) : !entries ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">Loading…</p>
+          <p className="py-10 text-center text-sm text-muted-foreground">{t.loading}</p>
         ) : (
-          <CommandEmpty className="py-10 text-muted-foreground">No results for “{query}”</CommandEmpty>
+          <CommandEmpty className="py-10 text-muted-foreground">{t.empty(query)}</CommandEmpty>
         )}
         {groups.map((results) => (
           <CommandGroup key={results[0]!.entry.slug} heading={terms.length ? results[0]!.entry.page : undefined}>

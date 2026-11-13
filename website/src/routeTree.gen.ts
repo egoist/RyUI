@@ -15,6 +15,11 @@ import { Route as DocsRouteRouteImport } from './routes/docs/route'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as DocsSplatRouteImport } from './routes/docs/$'
 import { Route as DocsSearchDotjsonRouteImport } from './routes/docs/search[.]json'
+import { Route as ZhIndexRouteImport } from './routes/zh/index'
+import { Route as ZhDocsRouteRouteImport } from './routes/zh/docs/route'
+import { Route as ZhDocsIndexRouteImport } from './routes/zh/docs/index'
+import { Route as ZhDocsSplatRouteImport } from './routes/zh/docs/$'
+import { Route as ZhDocsSearchDotjsonRouteImport } from './routes/zh/docs/search[.]json'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,14 +51,44 @@ const DocsSearchDotjsonRoute = DocsSearchDotjsonRouteImport.update({
   path: '/search.json',
   getParentRoute: () => DocsRouteRoute,
 } as any)
+const ZhIndexRoute = ZhIndexRouteImport.update({
+  id: '/zh/',
+  path: '/zh/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ZhDocsRouteRoute = ZhDocsRouteRouteImport.update({
+  id: '/zh/docs',
+  path: '/zh/docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ZhDocsIndexRoute = ZhDocsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ZhDocsRouteRoute,
+} as any)
+const ZhDocsSplatRoute = ZhDocsSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => ZhDocsRouteRoute,
+} as any)
+const ZhDocsSearchDotjsonRoute = ZhDocsSearchDotjsonRouteImport.update({
+  id: '/search.json',
+  path: '/search.json',
+  getParentRoute: () => ZhDocsRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/docs': typeof DocsRouteRouteWithChildren
   '/404': typeof R404Route
+  '/zh/docs': typeof ZhDocsRouteRouteWithChildren
   '/docs/$': typeof DocsSplatRoute
   '/docs/search.json': typeof DocsSearchDotjsonRoute
   '/docs/': typeof DocsIndexRoute
+  '/zh/': typeof ZhIndexRoute
+  '/zh/docs/$': typeof ZhDocsSplatRoute
+  '/zh/docs/search.json': typeof ZhDocsSearchDotjsonRoute
+  '/zh/docs/': typeof ZhDocsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -61,35 +96,71 @@ export interface FileRoutesByTo {
   '/docs/$': typeof DocsSplatRoute
   '/docs/search.json': typeof DocsSearchDotjsonRoute
   '/docs': typeof DocsIndexRoute
+  '/zh': typeof ZhIndexRoute
+  '/zh/docs/$': typeof ZhDocsSplatRoute
+  '/zh/docs/search.json': typeof ZhDocsSearchDotjsonRoute
+  '/zh/docs': typeof ZhDocsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/docs': typeof DocsRouteRouteWithChildren
   '/404': typeof R404Route
+  '/zh/docs': typeof ZhDocsRouteRouteWithChildren
   '/docs/$': typeof DocsSplatRoute
   '/docs/search.json': typeof DocsSearchDotjsonRoute
   '/docs/': typeof DocsIndexRoute
+  '/zh/': typeof ZhIndexRoute
+  '/zh/docs/$': typeof ZhDocsSplatRoute
+  '/zh/docs/search.json': typeof ZhDocsSearchDotjsonRoute
+  '/zh/docs/': typeof ZhDocsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/docs' | '/404' | '/docs/$' | '/docs/search.json' | '/docs/'
+  fullPaths:
+    | '/'
+    | '/docs'
+    | '/404'
+    | '/zh/docs'
+    | '/docs/$'
+    | '/docs/search.json'
+    | '/docs/'
+    | '/zh/'
+    | '/zh/docs/$'
+    | '/zh/docs/search.json'
+    | '/zh/docs/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/404' | '/docs/$' | '/docs/search.json' | '/docs'
+  to:
+    | '/'
+    | '/404'
+    | '/docs/$'
+    | '/docs/search.json'
+    | '/docs'
+    | '/zh'
+    | '/zh/docs/$'
+    | '/zh/docs/search.json'
+    | '/zh/docs'
   id:
     | '__root__'
     | '/'
     | '/docs'
     | '/404'
+    | '/zh/docs'
     | '/docs/$'
     | '/docs/search.json'
     | '/docs/'
+    | '/zh/'
+    | '/zh/docs/$'
+    | '/zh/docs/search.json'
+    | '/zh/docs/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DocsRouteRoute: typeof DocsRouteRouteWithChildren
   R404Route: typeof R404Route
+  ZhDocsRouteRoute: typeof ZhDocsRouteRouteWithChildren
+  ZhIndexRoute: typeof ZhIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -136,6 +207,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsSearchDotjsonRouteImport
       parentRoute: typeof DocsRouteRoute
     }
+    '/zh/': {
+      id: '/zh/'
+      path: '/zh'
+      fullPath: '/zh/'
+      preLoaderRoute: typeof ZhIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/zh/docs': {
+      id: '/zh/docs'
+      path: '/zh/docs'
+      fullPath: '/zh/docs'
+      preLoaderRoute: typeof ZhDocsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/zh/docs/': {
+      id: '/zh/docs/'
+      path: '/'
+      fullPath: '/zh/docs/'
+      preLoaderRoute: typeof ZhDocsIndexRouteImport
+      parentRoute: typeof ZhDocsRouteRoute
+    }
+    '/zh/docs/$': {
+      id: '/zh/docs/$'
+      path: '/$'
+      fullPath: '/zh/docs/$'
+      preLoaderRoute: typeof ZhDocsSplatRouteImport
+      parentRoute: typeof ZhDocsRouteRoute
+    }
+    '/zh/docs/search.json': {
+      id: '/zh/docs/search.json'
+      path: '/search.json'
+      fullPath: '/zh/docs/search.json'
+      preLoaderRoute: typeof ZhDocsSearchDotjsonRouteImport
+      parentRoute: typeof ZhDocsRouteRoute
+    }
   }
 }
 
@@ -155,10 +261,28 @@ const DocsRouteRouteWithChildren = DocsRouteRoute._addFileChildren(
   DocsRouteRouteChildren,
 )
 
+interface ZhDocsRouteRouteChildren {
+  ZhDocsSplatRoute: typeof ZhDocsSplatRoute
+  ZhDocsSearchDotjsonRoute: typeof ZhDocsSearchDotjsonRoute
+  ZhDocsIndexRoute: typeof ZhDocsIndexRoute
+}
+
+const ZhDocsRouteRouteChildren: ZhDocsRouteRouteChildren = {
+  ZhDocsSplatRoute: ZhDocsSplatRoute,
+  ZhDocsSearchDotjsonRoute: ZhDocsSearchDotjsonRoute,
+  ZhDocsIndexRoute: ZhDocsIndexRoute,
+}
+
+const ZhDocsRouteRouteWithChildren = ZhDocsRouteRoute._addFileChildren(
+  ZhDocsRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DocsRouteRoute: DocsRouteRouteWithChildren,
   R404Route: R404Route,
+  ZhDocsRouteRoute: ZhDocsRouteRouteWithChildren,
+  ZhIndexRoute: ZhIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

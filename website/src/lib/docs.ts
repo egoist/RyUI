@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start"
 import { staticFunctionMiddleware } from "@tanstack/start-static-server-functions"
 
 import { loadDoc, loadNav } from "@/lib/docs.server"
+import { isLocale, localized, type Locale } from "@/lib/locales"
 
 export interface TocItem {
   id: string
@@ -42,8 +43,13 @@ export interface Doc {
   editUrl: string
 }
 
-export function docHref(slug: string, id = "") {
-  return (slug ? `/docs/${slug}` : "/docs") + (id ? `#${id}` : "")
+export function docHref(locale: Locale, slug: string, id = "") {
+  return localized(locale, slug ? `/docs/${slug}` : "/docs") + (id ? `#${id}` : "")
+}
+
+function locale(value: unknown): Locale {
+  if (!isLocale(value)) throw new Error(`unknown locale: ${String(value)}`)
+  return value
 }
 
 // Server functions run while the site is prerendered; the static middleware
@@ -51,12 +57,13 @@ export function docHref(slug: string, id = "") {
 
 export const getDocsNav = createServerFn({ method: "GET" })
   .middleware([staticFunctionMiddleware])
-  .handler(() => loadNav())
+  .validator((data: Locale) => locale(data))
+  .handler(({ data }) => loadNav(data))
 
 export const getDoc = createServerFn({ method: "GET" })
   .middleware([staticFunctionMiddleware])
-  .validator((slug: string) => slug)
-  .handler(async ({ data }) => (await loadDoc(data)) ?? null)
+  .validator((data: { locale: Locale; slug: string }) => ({ locale: locale(data.locale), slug: String(data.slug) }))
+  .handler(async ({ data }) => (await loadDoc(data.locale, data.slug)) ?? null)
 
 export interface SearchEntry {
   slug: string

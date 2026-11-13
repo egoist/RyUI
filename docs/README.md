@@ -1,5 +1,9 @@
 # Asuka documentation
 
+<!-- repository-only:start -->
+[简体中文](zh/README.md)
+<!-- repository-only:end -->
+
 Asuka makes apps in Go with each platform's own widgets, on iOS, Android,
 macOS, Windows, Linux and the web. An app's interface is Go functions that return views; Asuka
 shows them with each platform's own widgets, and updates only the views

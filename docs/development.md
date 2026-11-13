@@ -46,7 +46,7 @@ On a phone:
 
 In a browser: `--port`, `--lan` (serve to your network, for a phone's
 browser) and `--no-open`; see [the
-web](web.md#asuka-dev--platform-web).
+web](web.md#asuka-dev---platform-web).
 
 ## On the desktop
 

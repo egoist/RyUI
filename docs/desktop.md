@@ -9,7 +9,7 @@ quitting, recent documents, document-based apps, starting at login,
 updates, Now Playing and the media keys, the displays, power, progress
 on the app's icon and the system's appearance. To follow changes to
 files and folders (a folder the app shows, a document another app
-saves), see [Watching files](data.md#watching-files-asukawatch), which
+saves), see [Watching files](data.md#watching-files-asukasdkwatch), which
 phones and the web have too.
 
 Each one is a package, or a function in `ui` or `app`, and works on the
@@ -516,7 +516,7 @@ quick settings on Windows (the app window's
 SystemMediaTransportControls), an MPRIS player on Linux, which GNOME's
 and KDE's controls and `playerctl` drive. It's the same package as on
 phones, where it's the lock screen's controls
-([Device and services](device.md#now-playing-and-the-media-keys-asukanowplaying)):
+([Device and services](device.md#now-playing-and-the-media-keys-asukasdknowplaying)):
 
 ```go
 music := audio.Load("music/spring.mp3")

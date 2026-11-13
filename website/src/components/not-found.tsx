@@ -1,21 +1,23 @@
 import { Link } from "@tanstack/react-router"
 
 import { buttonVariants } from "@/components/ui/button"
+import { messages, useLocale } from "@/lib/i18n"
 
 export function NotFound() {
+  const locale = useLocale()
+  const t = messages[locale].notFound
+  const zh = locale === "zh"
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-6 py-32 text-center">
-      <p className="label text-unit-ink">Error 404 / Pattern unknown</p>
-      <h1 className="display mt-4 text-4xl leading-tight sm:text-5xl">This page does not exist</h1>
-      <p className="mt-3 max-w-sm text-muted-foreground">
-        It may have moved. The docs, or their search, will have what you are looking for.
-      </p>
+      <p className="label text-unit-ink">{t.label}</p>
+      <h1 className="display mt-4 text-4xl leading-tight sm:text-5xl">{t.title}</h1>
+      <p className="mt-3 max-w-sm text-muted-foreground">{t.text}</p>
       <div className="mt-8 flex gap-3">
-        <Link to="/docs" className={buttonVariants({ size: "lg" })}>
-          Read the docs
+        <Link to={zh ? "/zh/docs" : "/docs"} className={buttonVariants({ size: "lg" })}>
+          {t.docs}
         </Link>
-        <Link to="/" className={buttonVariants({ variant: "outline", size: "lg" })}>
-          Home
+        <Link to={zh ? "/zh" : "/"} className={buttonVariants({ variant: "outline", size: "lg" })}>
+          {t.home}
         </Link>
       </div>
     </main>

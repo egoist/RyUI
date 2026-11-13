@@ -1,23 +1,10 @@
-import { Outlet, createFileRoute, useMatches } from "@tanstack/react-router"
+import { createFileRoute } from "@tanstack/react-router"
 
-import { DocsNav } from "@/components/docs/docs-nav"
-import { getDocsNav, type Doc } from "@/lib/docs"
+import { DocsLayout } from "@/components/docs/docs-layout"
+import { getDocsNav } from "@/lib/docs"
 
 export const Route = createFileRoute("/docs")({
-  loader: () => getDocsNav(),
+  loader: () => getDocsNav({ data: "en" }),
   staleTime: Infinity,
-  component: DocsLayout,
+  component: () => <DocsLayout nav={Route.useLoaderData()} />,
 })
-
-function DocsLayout() {
-  const nav = Route.useLoaderData()
-  const page = useMatches({ select: (matches) => matches.at(-1)?.loaderData as Doc | undefined })
-  return (
-    <div className="flex-1 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
-      <aside className="sticky top-14 hidden h-[calc(100svh-3.5rem)] overflow-y-auto border-r px-3 py-8 lg:block">
-        <DocsNav sections={nav} page={page?.toc ? page : undefined} />
-      </aside>
-      <Outlet />
-    </div>
-  )
-}

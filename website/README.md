@@ -24,6 +24,15 @@ The same build generates `/llms.txt`, an index of the docs as Markdown,
 and `/llms-full.txt`, all pages combined; append `.md` to a page's URL
 for its Markdown, `/docs/shipping.md`.
 
+The site is in English and, under `/zh`, in Chinese: `/zh/docs` is
+rendered from [`../docs/zh`](../docs/zh), whose pages have the same
+names and headings as the English ones, and the site's own words are in
+`src/lib/messages.ts` and the home page's copy. The language menu offers
+Auto, the default, or a language; a script in each page's `<head>` takes
+a reader whose browser prefers Chinese to the Chinese page, and a reader
+who chose a language to its pages. The Chinese Markdown is at
+`/zh/docs/*.md`, `/zh/llms.txt` and `/zh/llms-full.txt`.
+
 Blocks between `<!-- repository-only:start -->` and
 `<!-- repository-only:end -->`, on lines of their own, show on GitHub
 only.

@@ -46,7 +46,12 @@ function getHighlighter() {
   return highlighter
 }
 
-export async function renderMarkdown(source: string, file: string, links: LinkOptions): Promise<RenderedMarkdown> {
+/** The words a page adds of its own: the label of code blocks' copy buttons. */
+export interface PageLabels {
+  copyCode: string
+}
+
+export async function renderMarkdown(source: string, file: string, links: LinkOptions, labels: PageLabels): Promise<RenderedMarkdown> {
   const shiki = await getHighlighter()
   const out: RenderedMarkdown = { title: "", lead: "", html: "", toc: [], sections: [] }
   const processor = unified()
@@ -54,13 +59,13 @@ export async function renderMarkdown(source: string, file: string, links: LinkOp
     .use(remarkGfm)
     .use(() => omitRepositoryOnly)
     .use(remarkRehype)
-    .use(() => (tree: Root) => transform(tree, out, shiki, file, links))
+    .use(() => (tree: Root) => transform(tree, out, shiki, file, links, labels))
     .use(rehypeStringify)
   out.html = String(await processor.process(source))
   return out
 }
 
-function transform(tree: Root, out: RenderedMarkdown, shiki: Highlighter, file: string, links: LinkOptions) {
+function transform(tree: Root, out: RenderedMarkdown, shiki: Highlighter, file: string, links: LinkOptions, labels: PageLabels) {
   const slugger = new GithubSlugger()
   let section: Section = { id: "", heading: "", text: "" }
   out.sections.push(section)
@@ -102,7 +107,7 @@ function transform(tree: Root, out: RenderedMarkdown, shiki: Highlighter, file: 
     }
     if (!parent || index === undefined) return
     if (node.tagName === "pre") {
-      parent.children[index] = codeBlock(node, shiki)
+      parent.children[index] = codeBlock(node, shiki, labels)
       return "skip"
     }
     if (node.tagName === "table") {
@@ -130,7 +135,7 @@ function rewriteLink(node: Element, href: string, file: string, links: LinkOptio
 }
 
 /** A highlighted code block with a copy button, from remark-rehype's `<pre><code>`. */
-function codeBlock(pre: Element, shiki: Highlighter): Element {
+function codeBlock(pre: Element, shiki: Highlighter, labels: PageLabels): Element {
   const code = pre.children.find((c): c is Element => c.type === "element" && c.tagName === "code")
   const classes = (code?.properties.className as string[] | undefined) ?? []
   const lang = classes.find((c) => c.startsWith("language-"))?.slice("language-".length) ?? "text"
@@ -148,7 +153,7 @@ function codeBlock(pre: Element, shiki: Highlighter): Element {
           {
             type: "element",
             tagName: "button",
-            properties: { type: "button", className: ["copy-button"], ariaLabel: "Copy code" },
+            properties: { type: "button", className: ["copy-button"], ariaLabel: labels.copyCode },
             children: [
               icon("icon-copy", ["M8 8h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2z", "M4 16a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2"]),
               icon("icon-check", ["M20 6 9 17l-5-5"]),
@@ -222,8 +227,8 @@ function card(li: Element): Element | undefined {
   if (head?.type === "element" && head.tagName === "a") {
     // A page of the docs, then what it covers.
     href = head.properties.href
-    if (typeof href !== "string" || !href.startsWith("/docs")) return
-    if (rest[0]?.type !== "text" || !rest[0].value.startsWith(":")) return
+    if (typeof href !== "string" || !/^(?:\/zh)?\/docs(?:[/#]|$)/.test(href)) return
+    if (rest[0]?.type !== "text" || !/^[:：]/.test(rest[0].value)) return
     title = head.children
     description = rest
   } else if (head?.type === "text" && head.value.includes(": ")) {
@@ -252,6 +257,6 @@ function card(li: Element): Element | undefined {
 function capitalize(nodes: ElementContent[]): ElementContent[] {
   const [first, ...rest] = nodes
   if (first?.type !== "text") return nodes
-  const value = first.value.replace(/^[\s:]+/, "")
+  const value = first.value.replace(/^[\s:：]+/, "")
   return [{ ...first, value: value.charAt(0).toUpperCase() + value.slice(1) }, ...rest]
 }

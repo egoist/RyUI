@@ -500,9 +500,9 @@ func download(url, file string) error {
 ```
 
 To keep a long download going while the app is out of sight, see
-[`asuka/sdk/background`](device.md#background-work-asukabackground); to know
+[`asuka/sdk/background`](device.md#background-work-asukasdkbackground); to know
 whether the connection is Wi-Fi or metered, see
-[`asuka/sdk/network`](device.md#network-state-asukanetwork).
+[`asuka/sdk/network`](device.md#network-state-asukasdknetwork).
 [`examples/downloader`](../examples/downloader) does both.
 
 ## Watching files: asuka/sdk/watch

@@ -1,29 +1,32 @@
-import { getRouteApi } from "@tanstack/react-router"
+import { useMatch } from "@tanstack/react-router"
 import { ArrowLeftIcon, ArrowRightIcon, ChevronRightIcon, MenuIcon } from "lucide-react"
 import * as React from "react"
 
 import { DocContent } from "@/components/docs/doc-content"
 import { DocLink } from "@/components/docs/doc-link"
 import { DocsNav } from "@/components/docs/docs-nav"
+import { NotFound } from "@/components/not-found"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { getDoc, type Doc, type Navs } from "@/lib/docs"
 import { episodeKanji, episodeNumber } from "@/lib/episode"
+import { alternates, localized, messages, useMessages, type Locale } from "@/lib/i18n"
 
 /**
  * The loader of a page: null, before anything is fetched, for a slug without
  * a page, which the docs show as not found. (Rather than throwing notFound():
  * the router renders routes as the prerendered 404.html does, not errors.)
  */
-export async function loadDocPage(slug: string, parent: Promise<{ loaderData?: Navs }>) {
+export async function loadDocPage(locale: Locale, slug: string, parent: Promise<{ loaderData?: Navs }>) {
   const nav = (await parent).loaderData
   if (!nav?.some((s) => s.items.some((i) => i.slug === slug))) return null
-  return getDoc({ data: slug })
+  return getDoc({ data: { locale, slug } })
 }
 
-export function docHead(doc: Doc | null | undefined) {
-  if (!doc) return {}
+export function docHead(locale: Locale, doc: Doc | null | undefined) {
+  if (!doc) return { meta: [{ title: messages[locale].notFound.pageTitle }] }
   const title = doc.slug ? `${doc.title} · Asuka` : doc.title
+  const path = doc.slug ? `/docs/${doc.slug}` : "/docs"
   return {
     meta: [
       { title },
@@ -32,16 +35,27 @@ export function docHead(doc: Doc | null | undefined) {
       { property: "og:description", content: doc.description },
     ],
     links: [
-      { rel: "alternate", type: "text/markdown", href: (doc.slug ? `/docs/${doc.slug}` : "/docs") + ".md" },
-      { rel: "describedby", href: "/llms.txt" },
+      { rel: "alternate", type: "text/markdown", href: localized(locale, path) + ".md" },
+      { rel: "describedby", href: localized(locale, "/llms.txt") },
+      ...alternates(path),
     ],
   }
 }
 
-const docsRoute = getRouteApi("/docs")
+export function DocRoute({ doc }: { doc: Doc | null }) {
+  return doc ? <DocPage doc={doc} /> : <NotFound />
+}
+
+/** The sidebar of the docs being read, English or Chinese. */
+function useNav(): Navs {
+  const en = useMatch({ from: "/docs", shouldThrow: false })
+  const zh = useMatch({ from: "/zh/docs", shouldThrow: false })
+  return (zh ?? en)?.loaderData ?? []
+}
 
 export function DocPage({ doc }: { doc: Doc }) {
-  const nav = docsRoute.useLoaderData()
+  const nav = useNav()
+  const t = useMessages().docs
   const [menuOpen, setMenuOpen] = React.useState(false)
 
   return (
@@ -49,11 +63,11 @@ export function DocPage({ doc }: { doc: Doc }) {
       <div className="sticky top-14 z-30 flex h-11 items-center gap-1 border-b bg-background/85 px-2 backdrop-blur-xl lg:hidden">
         <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
           <SheetTrigger render={<Button variant="ghost" size="sm" />}>
-            <MenuIcon /> Menu
+            <MenuIcon /> {t.menu}
           </SheetTrigger>
           <SheetContent side="left" className="w-72 overflow-y-auto">
             <SheetHeader>
-              <SheetTitle>Documentation</SheetTitle>
+              <SheetTitle>{t.documentation}</SheetTitle>
             </SheetHeader>
             <div className="px-2 pb-8">
               <DocsNav sections={nav} page={doc} onNavigate={() => setMenuOpen(false)} />
@@ -95,7 +109,7 @@ export function DocPage({ doc }: { doc: Doc }) {
             {doc.prev ? (
               <DocLink slug={doc.prev.slug} className="group flex flex-col gap-2 bg-background p-5 transition-colors hover:bg-code">
                 <span className="label flex items-center gap-1.5">
-                  <ArrowLeftIcon className="size-3" /> Previous episode
+                  <ArrowLeftIcon className="size-3" /> {t.previous}
                 </span>
                 <span lang="ja" className="display text-sm text-unit-ink">
                   {episodeKanji(doc.prev.episode)}
@@ -108,7 +122,7 @@ export function DocPage({ doc }: { doc: Doc }) {
             {doc.next && (
               <DocLink slug={doc.next.slug} className="group flex flex-col items-end gap-2 bg-background p-5 text-right transition-colors hover:bg-code">
                 <span className="label flex items-center gap-1.5 text-signal-ink">
-                  Next episode <ArrowRightIcon className="size-3" />
+                  {t.next} <ArrowRightIcon className="size-3" />
                 </span>
                 <span lang="ja" className="display text-sm text-unit-ink">
                   {episodeKanji(doc.next.episode)}
@@ -118,7 +132,7 @@ export function DocPage({ doc }: { doc: Doc }) {
             )}
           </nav>
           <a href={doc.editUrl} className="mt-6 inline-block text-sm text-muted-foreground hover:text-foreground">
-            Edit this page on GitHub
+            {t.edit}
           </a>
         </footer>
       </article>

@@ -2,14 +2,36 @@
 import path from "node:path"
 import type { Root } from "mdast"
 
+import { localeInfo, locales, type Locale } from "./locales.ts"
+
 export interface LinkOptions {
   docsDir: string
   repoDir: string
   repoUrl: string
+  /** Where the docs are on the site: /docs, /zh/docs. */
+  base: string
 }
 
 /** Pages of the repository's docs that aren't the site's: notes for maintainers. */
-export const unpublished = new Set(["device-checklist.md"])
+const unpublished: Record<Locale, Set<string>> = {
+  en: new Set(["device-checklist.md"]),
+  zh: new Set(["TRANSLATING.md"]),
+}
+
+/** The directories of the docs in other languages, inside docs/: zh. */
+const translations = locales.flatMap((l) => (l === "en" ? [] : [localeInfo[l].docsDir.replace(/^docs\//, "")]))
+
+/** Whether a file of a language's docs, relative to them, is a page of the site. */
+export function isPublished(locale: Locale, file: string) {
+  const name = file.split(path.sep).join("/")
+  if (!name.endsWith(".md") || unpublished[locale].has(name)) return false
+  return locale !== "en" || !translations.some((dir) => name.startsWith(dir + "/"))
+}
+
+/** Where a language's docs are on the site. */
+export function docsBase(locale: Locale) {
+  return localeInfo[locale].prefix + "/docs"
+}
 
 /** README.md is the directory's page; other files keep their path. */
 export function slugOf(file: string) {
@@ -42,7 +64,7 @@ export function rewriteHref(href: string, file: string, links: LinkOptions, mark
   const rel = path.relative(links.docsDir, abs)
   if (abs.endsWith(".md") && !rel.startsWith("..") && !path.isAbsolute(rel)) {
     const slug = slugOf(rel)
-    return (slug ? `/docs/${slug}` : "/docs") + (markdown ? ".md" : "") + suffix
+    return (slug ? `${links.base}/${slug}` : links.base) + (markdown ? ".md" : "") + suffix
   }
   const repoPath = path.relative(links.repoDir, abs).split(path.sep).join("/")
   return `${links.repoUrl}/${path.extname(abs) ? "blob" : "tree"}/main/${repoPath}${suffix}`

@@ -6,7 +6,7 @@ import { loadSearchIndex } from "@/lib/docs.server"
 export const Route = createFileRoute("/docs/search.json")({
   server: {
     handlers: {
-      GET: async () => Response.json(await loadSearchIndex()),
+      GET: async () => Response.json(await loadSearchIndex("en")),
     },
   },
 })

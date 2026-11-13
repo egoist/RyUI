@@ -55,6 +55,14 @@
   src: url("/fonts/shippori-mincho-b1-800.woff2") format("woff2");
 }
 
+/* Chinese pages: the system's Chinese faces after the Latin ones, which
+   have no Chinese, before the Japanese ones, which lack simplified forms.
+   Mincho's counterpart in Chinese is Song. */
+html:lang(zh) {
+  --font-display: "Shippori Mincho B1", "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", "Noto Serif SC", "SimSun", serif;
+  font-family: "Geist Variable", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", ui-sans-serif, system-ui, sans-serif;
+}
+
 /* Code's face: Ioskeley Mono (Iosevka, set as Berkeley Mono is), cut down to
    Latin, Cyrillic and the symbols code uses (public/fonts, under the OFL). */
 @font-face {
