@@ -529,13 +529,11 @@ func main() {
 ```
 
 Sizes are in points, of the window's content. With none, the main window
-opens at 800 by 600 points, and the user can't make it smaller than 320
-by 320. `Title` is the app's name when it's empty; it's an accessor, so
-it can follow the app's language. The window comes back at the size the
-user left it, which wins over `Width` and `Height`: on a Mac its frame,
-on Windows where it was and whether it was maximized, on Linux its size
-and whether it was maximized (a Wayland app can't place its window).
-iOS and Android ignore the options.
+opens at 800 by 600 points, centered, and the user can't make it smaller
+than 320 by 320. `Title` is the app's name when it's empty; it's an
+accessor, so it can follow the app's language. The window comes back
+where the user left it (see [below](#where-windows-were)), which wins
+over `Width`, `Height`, `X` and `Y`. iOS and Android ignore the options.
 
 `ui.Window` opens another window while `Open` is true, as `ui.Sheet`
 opens a sheet:
@@ -576,6 +574,170 @@ return ui.Column(nil,
 A phone has no windows: opening one on iOS or Android panics. A
 component that offers one checks `ui.UseEnvironment().Platform` first,
 or opens it only from what only a desktop has, as the menu bar below.
+
+### Options
+
+`WindowOptions` (the main window's) and `WindowProps` (a `Window`'s)
+take the same options for how a window opens:
+
+| Option | |
+|---|---|
+| `Width`, `Height` | its content's size, in points |
+| `MinWidth`, `MinHeight`, `MaxWidth`, `MaxHeight` | the least and most the user can size it to; 0: the host's least, no most |
+| `X`, `Y` | its frame's top left on the screen, in points from the main display's top left; with both 0 the main window is centered and a `Window` cascades (`Center` centers it) |
+| `DisableResize`, `DisableMinimize`, `DisableMaximize`, `DisableClose` | take the user's abilities away: resizing it, and its buttons |
+| `AlwaysOnTop` | keeps it above other apps' windows |
+| `TitleBar` | `ui.TitleBarHidden` lays the content out under the title bar, to the window's top edge, the window buttons over it |
+| `Background`, `Transparent` | the window's color behind its content, or none, so what's behind it shows where the content draws nothing |
+| `Hidden` | opens it without showing it: `Show` shows it |
+| `SkipTaskbar` | leaves it out of the taskbar (Windows) and the Window menu (macOS) |
+| `Maximized`, `Fullscreen` | opens it so |
+| `StateKey` | where its place is kept, see [below](#where-windows-were) |
+| `Child`, `Modal` | a `Window`'s: see [below](#child-and-modal-windows) |
+
+With a hidden title bar the content goes to the top edge, under the
+window's buttons (a Mac's traffic lights, Windows' caption buttons, the
+header bar's on Linux), and the window's environment has the title
+bar's height as `SafeTop`: a `ui.SafeArea` keeps clear of the buttons,
+and a background, a sidebar or a picture can go under them:
+
+```go
+app.RunWindow(ui.WindowOptions{TitleBar: ui.TitleBarHidden, Background: ui.RGB(0x1e, 0x1e, 0x1e)}, func() ui.Node {
+	return ui.SafeArea(ui.Style{Grow: 1, Padding: ui.All(16)}, editor())
+})
+```
+
+The strip under the buttons still drags the window, where the content
+takes no clicks.
+
+A window that shows only once it's ready opens `Hidden` and shows from
+code: its content is built, laid out and drawn meanwhile, so it shows
+whole, never empty. An app that starts in the background (a tray icon's)
+starts its main window hidden and shows it from its menu.
+
+### Controlling a window
+
+`ui.UseWindow()` is the handle of the window a component is in: the
+`Window` whose content it's in, or the main window. `ui.MainWindow()` is
+the main window's from anywhere on the main thread (a tray icon's menu,
+a global shortcut). A `Window`'s handle from outside it is one the app
+makes (`ui.NewWindowHandle()`) and gives it as `Handle`.
+
+```go
+w := ui.UseWindow()
+ui.Button(ui.ButtonProps{Title: ui.Val("Full Screen"), OnPress: func() { w.SetFullscreen(true) }})
+ui.Text(signal.Func(func() string {
+	if w.Focused().Get() {
+		return "Typing here"
+	}
+	return "In the background"
+}))
+```
+
+- `Show` and `Hide` show and hide it; hidden, it stays open, its content
+  living on. `Focus` shows it if it's hidden or minimized, brings it to
+  the front with the keyboard in it, and brings the app to the front:
+  how a tray icon's menu brings a window back. On a closed `Window`,
+  `Show` and `Focus` open it.
+- `Minimize`, `Maximize` and `Restore` (from either); `SetFullscreen`.
+- `SetSize` (its content's, in points), `SetPosition` (its frame's top
+  left, from the main display's top left), `Center`.
+- `SetAlwaysOnTop` keeps it above other apps' windows, or not.
+- `Close` closes it as the user does, asking first (below); `Destroy`
+  closes it without asking. The main window closing quits the app.
+- Its state is signals that follow the user's changes as well as the
+  app's: `Visible`, `Focused`, `Minimized`, `Maximized`, `Fullscreen`,
+  `AlwaysOnTop`, `Position` and `Size`. Read them in an effect or a
+  `StyleFunc`. A minimized window, or one behind others, is still
+  visible.
+
+The methods act on the window at the flush, as signal writes do. On a
+phone they do nothing, and the state reads visible and focused.
+
+### Asking before a window closes
+
+`OnCloseRequest` is asked when the user closes the window (its close
+button, ⌘W, Alt+F4, the Dock's or taskbar's menu) or the app calls
+`Close`: returning false keeps it open, to ask about unsaved changes
+first. Each component that has something to lose asks for itself, while
+it's mounted:
+
+```go
+w := ui.UseWindow()
+w.OnCloseRequest(func() bool {
+	if !doc.Dirty() {
+		return true
+	}
+	ui.Alert(ui.AlertProps{Title: "Save changes?", Actions: []ui.Action{
+		{Title: ui.Val("Save"), OnPress: func() { doc.Save(); w.Destroy() }},
+		{Title: ui.Val("Don't Save"), Role: ui.ActionDestructive, OnPress: w.Destroy},
+		{Title: ui.Val("Cancel"), Role: ui.ActionCancel},
+	}})
+	return false
+})
+```
+
+Every function asked must agree; `WindowProps.OnCloseRequest` and
+`WindowOptions.OnCloseRequest` are asked too. `Destroy`, once the user
+has chosen, closes it without asking again. On the web the main window
+is the tab: leaving the page or closing the tab asks too, and a refusal
+keeps the page behind the browser's own "Leave site?" question (a page
+can't word it). Quitting the app (⌘Q) doesn't ask the windows.
+
+### Where windows were
+
+Windows come back where the user left them, across launches: the main
+window always (under the key `"main"`, or its `StateKey`), a `Window`
+when it has a `StateKey`. Give each kind of window its own
+(`"inspector"`, `"preferences"`). Where it was wins over its `Width`,
+`Height`, `X` and `Y`, which stay what the first launch opens with.
+
+| | What's kept |
+|---|---|
+| macOS | its frame, with AppKit's frame autosave (in the app's defaults) |
+| Windows | where it was and its size, in the screen's pixels and the DPI they were at, and whether it was maximized; put back whole on a monitor that's there |
+| Linux | its size and whether it was maximized: a Wayland app can't place its window |
+| The web | a `Window` panel's place and size, and whether it was maximized, in the page's `localStorage` |
+
+The desktop hosts keep theirs in `asuka-window.json` in the app's data
+directory (Windows, Linux) or the app's defaults (macOS). Tests and
+automation runs keep none.
+
+### Child and modal windows
+
+A `Window` with `Child` is a child of the window it's declared in: the
+main window, or the `Window` whose content has it. It stays above that
+window, and closes with it (its owner is disposed with that window's
+content). `Modal` makes it a child that blocks that window until it
+closes:
+
+```go
+ui.Window(ui.WindowProps{Open: prefs, Modal: true, Title: ui.Val("Preferences"), Width: 480, Height: 360,
+	Content: preferences})
+```
+
+| | `Child` | `Modal` |
+|---|---|---|
+| macOS | a child window, ordered above its parent and moving with it | a sheet of its parent |
+| Windows | owned by its parent: above it, minimized with it | owned, its parent disabled while it's open |
+| Linux | transient for its parent, destroyed with it | transient and modal |
+| The web | a panel as any other | a panel over a backdrop that takes the page's clicks |
+
+### What each desktop can do
+
+| | macOS | Windows | Linux (GTK 4) | The web: the tab | The web: a `Window` |
+|---|---|---|---|---|---|
+| Show, hide, focus | yes | yes | yes | focus only | yes |
+| Minimize | yes | yes | yes (Wayland never reports it back) | no | to its title bar |
+| Maximize, restore | zoom | yes | yes | no | over the app's area |
+| Full screen | yes | yes | yes | the Fullscreen API | the Fullscreen API |
+| Size, least size | yes | yes | yes | no | yes |
+| Most size | yes | yes | no: GTK 4 has none | no | yes |
+| Position, center | yes | yes | no: the compositor places windows | no (reads the browser window's) | yes |
+| Always on top | yes | yes | no | no | above the other panels |
+| Hidden title bar | yes | yes | yes | no | yes |
+| Background, transparent | yes | background; transparent falls back to it | yes (transparent with a compositor) | background | yes |
+| Skip the taskbar | the Window menu | yes | no | no | no |
 
 ## The menu bar and keyboard shortcuts
 

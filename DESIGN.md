@@ -688,7 +688,8 @@ Events from hosts:
 Event(id, kind, payload)    press, longPress, textChanged(string),
                             valueChanged, toggled(bool), scrolled(x, y),
                             refresh, focus, blur, submit, popped,
-                            dismissed, back (Android, unhandled)
+                            dismissed, back (Android, unhandled),
+                            windowState, closeRequest (desktop)
 Event(root, environment)    root size, safe area insets, keyboard overlap,
                             scale, appearance, text size, locale
 Event(root, lifecycle)      foreground, background, memory warning
@@ -1793,6 +1794,33 @@ How the macOS host maps Asuka (`host/darwin`):
   while the app does; `PreventCapture` keeps its windows out of
   screenshots and recordings (`NSWindowSharingNone`) and `OnScreenshot`
   sees the files Spotlight finds (`kMDItemIsScreenCapture`).
+- Windows' options are `NSWindow`'s, set as it opens (`winctl.go`):
+  its style mask (no resize, close or minimize button), the zoom button
+  turned off, the content's least and most size, the floating level for
+  always on top, out of the Window menu for skipping the taskbar (a Mac
+  has none), a background color, or a clear and non-opaque window for
+  transparent. A hidden title bar is a full-size content view under a
+  transparent, title-less title bar: the traffic lights stay where they
+  are, and `SafeTop` is the content's height less its
+  `contentLayoutRect`'s (a toolbar in the title bar adds its own). A
+  child `Window` is a child window of its parent's (ordered above it,
+  moving with it), a modal one a sheet of it. Places are the frame's top
+  left from the main display's top left, y down, flipped from AppKit's.
+  The actions are AppKit's (`orderOut:`, `makeKeyAndOrderFront:` with
+  the app activated and unhidden for `Focus`, `miniaturize:`, `zoom:`,
+  `toggleFullScreen:`, `center`, `setContentSize:`,
+  `setFrameTopLeftPoint:`, `setLevel:`), and the state is read back from
+  the window as its delegate hears it move, resize, miniaturize, become
+  or stop being key, and enter or leave full screen, and as the app
+  activates, hides or unhides: visible is shown or minimized (a Mac's
+  `isVisible` is false for a minimized window), maximized is zoomed. A
+  window's frame comes back with AppKit's frame autosave, under
+  `asuka <app>` for the main window's key (where it was kept before
+  keys) and `asuka <app> <key>` for the others', restored as it opens
+  (`setFrameUsingName:`). The user closing a window the core asks about
+  (`windowShouldClose:`) leaves it open and sends `CloseRequest`;
+  `WindowAction` Close closes the main window past that question, and
+  the app quits once its last window has.
 - Debug automation: `ASUKA_SNAPSHOT=file.png` renders the window to a PNG
   once it has shown, without taking focus (`ASUKA_DUMP=1` writes the view
   tree beside it), then quits.
@@ -2312,11 +2340,33 @@ How the Linux host maps Asuka (`host/linux`):
   context menu (a secondary click, the Menu key, Shift+F10). An
   adjustable view is a slider to screen readers and takes the arrow
   keys.
-- The main window comes back at the size the user left it, and
-  maximized if it was (a Wayland app can't place its window), in
+- Each window comes back at the size the user left it, and maximized if
+  it was (a Wayland app can't place its window), by its key in
   `asuka-window.json` in the app's data directory: `ASUKA_DATA`, which the
   host sets to the XDG data directory's folder for the app (Flatpak's
-  own).
+  own). It's saved as the window closes and as the app shuts down.
+- Windows' options are GTK's, set before the window shows
+  (`winctl.go`): its content's size (the default size, the header bar's
+  height on top) and least (the content's size request), not resizable,
+  not deletable, the header bar's decoration layout without its minimize
+  or maximize button (the window manager's shortcuts still do them),
+  maximized or full screen, hidden until a `Show`, a background color or
+  none (the window's own CSS provider, above the app's; transparent with
+  a compositor). A hidden title bar extends the content to the top edge
+  under a flat, title-less header bar whose window buttons stay;
+  `SafeTop` is its height. A child is transient for its parent and
+  destroyed with it, a modal one modal too. GTK 4 has no most size, no
+  way to place a window or center it (Wayland leaves it to the
+  compositor, and GTK 4 dropped moving one on X11 too), and none to keep
+  one on top or out of the taskbar: those options and actions do
+  nothing, and the position reported is 0, 0. The actions are GTK's
+  (`gtk_window_present`, `_minimize`, `_maximize`, `_fullscreen`, a new
+  default size); the state follows `notify::visible`, `is-active`,
+  `maximized`, `fullscreened`, the surface's state (minimized: X11 only,
+  as Wayland never tells an app) and the content's allocation. A window
+  the core asks about keeps itself open on `close-request` and sends
+  `CloseRequest`; `WindowAction` Close closes the main window on the next
+  idle turn (the core answers while GTK is still emitting the request).
 - Screen readers (Orca) read GTK's accessibility tree: a view's role (a
   pressable view a button, a header a heading), label and description.
 - Debug automation, as on macOS and Windows: `ASUKA_SCRIPT` runs steps,
@@ -2335,22 +2385,77 @@ and never assumes a single root in its own data structures.
 **Windows, the menu bar and shortcuts** (`ui/window.go`):
 
 - The main window holds the root (`app.Run`); `app.RunWindow(opts,
-  root)` gives it a title and a size and least size
-  (`ui.WindowOptions`, sent to the root as `WindowOptions` when it
-  mounts). With none, a desktop host opens it at 800 by 600 points, a
-  desktop window's size (Electron's default), not a phone's. A size the
-  user chose, remembered by the host (macOS, Windows), wins over it.
-
-- `ui.Window(WindowProps{Open, Title, Width, Height, MinWidth,
-  MinHeight, Content, OnClose})` is a window of its own while `Open` is
-  true, built as a `Sheet` is: a `Window` node, a host-sized layout root
-  whose `Environment` the host reports (it follows the user resizing
+  root)` gives it its options (`ui.WindowOptions`, sent to the root as
+  `WindowOptions` when it mounts). With none, a desktop host opens it at
+  800 by 600 points, a desktop window's size (Electron's default), not a
+  phone's, centered. Where the user left it, remembered by the host,
+  wins over its size and place.
+- `ui.Window(WindowProps{Open, Title, Width, Height, ..., Content,
+  OnClose})` is a window of its own while `Open` is true, built as a
+  `Sheet` is: a `Window` node, a host-sized layout root whose
+  `Environment` the host reports (it follows the user resizing
   it; its Scale is the window's, which on desktop can differ from the
   main window's: the core measures and snaps the frames in it at that
-  scale), `Present` opens it, `Destroy` closes it, and the user closing it
-  sends `Dismissed`, which sets `Open` false. Its content's owner lives
-  as long as the window is open. Mobile hosts can't show one (it panics
-  there, as any kind a host lacks).
+  scale), `Present` opens it (unless it's to open hidden), `Destroy`
+  closes it, and the user closing it sends `Dismissed`, which sets `Open`
+  false (or `CloseRequest`, while something asks). Its content's owner
+  lives as long as the window is open, so a `Window` declared in it
+  closes with it. Mobile hosts can't show one (it panics there, as any
+  kind a host lacks).
+- A window's options, the main window's and a `Window`'s alike, are one
+  encoding (`ops.WindowConfig`: the `WindowOptions` command's args, the
+  `Window` kind's `Config` prop), set before it opens and read by one
+  decoder in each desktop host (`ops.DecodeWindowConfig`, and the web
+  host's): its content's size, least and most size, its place (its
+  frame's top left in points from the main display's top left, or
+  centered), abilities taken away (resizing, the minimize, maximize and
+  close buttons), always on top, a hidden title bar (`TitleBarHidden`:
+  the content under it, the window buttons over the content, the title
+  bar's height reported as the window's environment's `SafeTop`, so
+  `SafeArea` keeps clear of a Mac's traffic lights as of a phone's
+  notch), a background or none (transparent), hidden, maximized or full
+  screen as it opens, left out of the taskbar, a state key, and a
+  `Window`'s parent (the node of the window it's declared in: a child
+  stays above it, a modal one blocks it). The options that change later
+  are the handle's actions, not props, as a window's place and size are
+  the user's as much as the app's.
+- `ui.UseWindow()` is the handle (`*ui.WindowHandle`) of the window the
+  component is in, from a context each window provides (the root the
+  main window's, each `Window` its own), and `ui.MainWindow()` the main
+  window's from anywhere: a tray icon's menu brings the window back with
+  `Focus`. Its actions are one `WindowAction` command (u8 action, two
+  floats for a size or a place) to the root or the `Window` node: show,
+  hide, focus, minimize, maximize, restore, full screen, center, size,
+  place, always on top, close. Its state is signals (`Visible`,
+  `Focused`, `Minimized`, `Maximized`, `Fullscreen`, `AlwaysOnTop`,
+  `Position`, `Size`), set from the host's `WindowState` event (the
+  frame's top left, the content's size, six bits), which a host sends
+  only while the core listens: a handle asked for (`UseWindow`,
+  `MainWindow`, a `Window`'s `Handle`) listens; the rest cost nothing.
+  The host reports at once as the core starts listening, then on every
+  change, the user's or the app's, deduplicated; equal values don't
+  re-run readers, as any signal's. Mobile hosts have no windows: the
+  handle sends nothing there.
+- Closing asks the app: `OnCloseRequest` (`WindowProps`',
+  `WindowOptions`', and any component's through the handle, for as long
+  as its owner lives) makes the core listen for `CloseRequest` on the
+  window. A host whose window the core listens on reports the user's
+  closing with it and keeps the window open; the core asks every
+  function, and closes the window if all agree: a `Window` as the user's
+  closing does (`Open` false, `OnClose`), the main window with
+  `WindowAction` Close, which the host does as its own closing would
+  (the app quits). `Destroy` closes without asking, what a refusal's
+  dialog calls once the user has chosen. Quitting the app as a whole
+  (⌘Q, the session ending) doesn't ask the windows.
+- Where windows were is the host's, by the key the app gives (`StateKey`;
+  the main window's is `main` when it gives none, a `Window`'s isn't kept
+  without one): a Mac's frame autosave, the Windows host's rectangle in
+  pixels with its DPI and whether it was maximized, the Linux host's
+  size and whether it was maximized, in one `asuka-window.json` per app
+  (`internal/winstate`, which reads the file an older host kept for the
+  main window alone as the main window's), and on the web a panel's
+  place in `localStorage`.
+
 - `ui.MenuBar(menus)` gives the app its menus, with keyboard shortcuts
   (`ui.Shortcut{Key, Mods}`, `ui.Cmd("s").With(ui.Shift)`; `Primary` is
   ⌘ on macOS and Ctrl on Windows). It's a fragment that follows its
