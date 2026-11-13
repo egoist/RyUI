@@ -181,11 +181,8 @@ func registerTarget() {
 			h().appActive(true)
 			h().windowsChanged()
 		}),
-		Method("application:openURLs:", func(self ID, _ SEL, app, urls ID) {
-			for _, u := range ArrayItems(urls) {
-				h().openURL(GoString(Send(u, "absoluteString")))
-			}
-		}),
+		// Links of its scheme and files (files.go), together.
+		Method("application:openURLs:", func(self ID, _ SEL, app, urls ID) { h().openURLs(urls) }),
 		Method("applicationSupportsSecureRestorableState:", func(self ID, _ SEL, app ID) bool { return true }),
 
 		// The window.

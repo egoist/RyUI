@@ -208,8 +208,16 @@ func TestWindowsLdflags(t *testing.T) {
 			t.Errorf("windowsLdflags: %s, want %s in it", f, want)
 		}
 	}
+	if strings.Contains(f, "MultipleInstances") {
+		t.Errorf("a single instance's: %s", f)
+	}
 	app.cfg.Scheme = ""
 	if f := windowsLdflags(app, false); strings.Contains(f, "boot.Scheme") {
 		t.Errorf("windowsLdflags without a scheme: %s", f)
+	}
+	no := false
+	app.cfg.SingleInstance = &no
+	if f := windowsLdflags(app, false); !strings.Contains(f, `"github.com/egoist/asuka/internal/boot.MultipleInstances=1"`) {
+		t.Errorf("singleInstance false: %s", f)
 	}
 }

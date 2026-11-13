@@ -154,6 +154,30 @@ export async function answerPush(c, message) {
   return { spec, how };
 }
 
+/**
+ * openLaunchFiles: asuka.json's fileTypes (the manifest's file_handlers)
+ * open an installed app (Chromium's File Handling) with files, from the
+ * launch queue: each read into the app's caches (save: fs.saveUpload),
+ * together to ui.OnOpenFiles, as file:// URLs one per line.
+ */
+export function openLaunchFiles(h, save, launchQueue = globalThis.launchQueue) {
+  if (!launchQueue?.setConsumer) return;
+  launchQueue.setConsumer(async (params) => {
+    const paths = [];
+    for (const handle of params?.files || []) {
+      if (handle?.kind && handle.kind !== "file") continue; // a folder: not a file to read
+      try {
+        paths.push(await save(await handle.getFile()));
+      } catch (e) {
+        console.warn("asuka: a file the app was opened with:", e);
+      }
+    }
+    if (!paths.length) return;
+    const urls = paths.map((p) => "file://" + p.split("/").map(encodeURIComponent).join("/"));
+    whenConnected(h, () => h.dispatch(Events.incomingURL(0, urls.join("\n"))));
+  });
+}
+
 /** whenConnected runs f once h's Go code is connected (it takes events then). */
 function whenConnected(h, f) {
   if (h.core) {

@@ -6,7 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
-import { attach, channel, receive, answerPush } from "../src/worker.js";
+import { attach, channel, receive, answerPush, openLaunchFiles } from "../src/worker.js";
 import { notifyModule } from "../src/modules/system-notify.js";
 import { pushModule, subscribe, base64url } from "../src/modules/system-push.js";
 
@@ -462,4 +462,26 @@ test("push: OnReceive and OnOpen's queues, and a rewrite through the page", asyn
   const spec2 = c.rewrite({ id: "3" });
   m.rewritten(enc.encode(JSON.stringify({ token: json(await next2).token, ok: false })));
   assert.equal(await spec2, null);
+});
+
+// An installed app opened with files (the launch queue): each saved into
+// the app's caches, together, as one IncomingURL of file URLs, once Go
+// is connected; folders are left out.
+test("launch queue files", async () => {
+  let consumer;
+  const queue = { setConsumer(f) { consumer = f; } };
+  const dispatched = [];
+  const h = { core: null, dispatch: (b) => dispatched.push(b) };
+  const saved = [];
+  openLaunchFiles(h, async (f) => { saved.push(f.name); return `/tmp/shared/${saved.length}/${f.name}`; }, queue);
+  const file = (name) => ({ kind: "file", getFile: async () => ({ name }) });
+  await consumer({ files: [file("a b.md"), { kind: "directory" }, file("c.md")] });
+  assert.deepEqual(saved, ["a b.md", "c.md"]);
+  assert.equal(dispatched.length, 0, "waits for Go");
+  h.core = {};
+  for (const f of h.onConnect) f();
+  assert.equal(dispatched.length, 1);
+  const s = dec.decode(dispatched[0]);
+  assert.ok(s.includes("file:///tmp/shared/1/a%20b.md\nfile:///tmp/shared/2/c.md"), s);
+  openLaunchFiles(h, null, undefined); // no launch queue: nothing
 });

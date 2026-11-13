@@ -527,6 +527,10 @@ func (h *Host) ctlMessage(c *wctl, m uint32, wp, lp uintptr) (uintptr, bool) {
 // closeMain closes the main window for good, as its close button does when
 // nothing asks first: the app quits.
 func (h *Host) closeMain() {
+	// Closing it quits the app: OnQuit's handlers may keep it open.
+	if !h.askQuit(false) {
+		return
+	}
 	h.savePlacement(h.mainCtl)
 	h.quitting = true
 	DestroyWindow(h.window)

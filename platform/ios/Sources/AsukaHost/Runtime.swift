@@ -400,13 +400,31 @@ final class AsukaTextField: UITextField {
         AsukaSplash.shared.started()
         let urls = pendingURLs
         pendingURLs = []
-        for u in urls { openURL(u) }
+        openURLs(urls)
+    }
+
+    /// The app was opened with urls together (scene(_:openURLContexts:)):
+    /// its files go to ui.OnOpenFiles at once, as file:// URLs one per
+    /// line (Go's internal/fileurl), the rest as openURL's.
+    public func openURLs(_ urls: [URL]) {
+        guard started else { pendingURLs.append(contentsOf: urls); return }
+        let files = urls.filter { $0.isFileURL }
+        for u in files {
+            // A document opened in place (another app's, iCloud Drive's):
+            // the app may read and write it until it quits.
+            _ = u.startAccessingSecurityScopedResource()
+        }
+        if !files.isEmpty {
+            send(AsukaEvents.incomingURL(rootID, files.map { $0.absoluteString }.joined(separator: "\n")))
+        }
+        for u in urls where !u.isFileURL { openURL(u) }
     }
 
     /// The app was opened with url (its scheme, a universal link): the
     /// core's ui.OnOpenURL handlers get it, once it has started.
     public func openURL(_ url: URL) {
         guard started else { pendingURLs.append(url); return }
+        if url.isFileURL { openURLs([url]); return }
         // From the share extension (asuka.json's shareTarget): what another
         // app shared, for ui.OnShare.
         if url.scheme?.lowercased() == "asukashare." + (Bundle.main.bundleIdentifier ?? "").lowercased() {

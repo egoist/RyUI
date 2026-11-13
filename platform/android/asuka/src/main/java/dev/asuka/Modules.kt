@@ -194,6 +194,15 @@ private fun AsukaRuntime.registerBuiltinModules() {
     modules["photoLibrary"] = AsukaPhotoLibrary(this).methods()
     modules["screen"] = screenMethods()
     modules["splash"] = AsukaSplash.methods()
+    // asuka/recent and asuka/login: a desktop's. Android's file pickers keep
+    // their own recent files, and an app doesn't start at login.
+    val answer = { b: ByteArray -> { _: ByteArray, reply: (Result<ByteArray>) -> Unit -> reply(Result.success(b)) } }
+    modules["recent"] = mapOf("add" to answer(ByteArray(0)), "clear" to answer(ByteArray(0)), "list" to answer("[]".toByteArray()))
+    modules["login"] = mapOf(
+        "set" to { _: ByteArray, reply: (Result<ByteArray>) -> Unit -> reply(Result.failure(Exception("not available: an Android app doesn't start at login"))) },
+        "enabled" to answer(byteArrayOf(0)),
+        "openedAtLogin" to answer(byteArrayOf(0)),
+    )
     modules["clipboard"] = AsukaClipboard(this).methods()
     modules["imageEdit"] = AsukaImageEdit(this).methods()
     modules["speech"] = AsukaSpeech(this).methods()

@@ -194,6 +194,8 @@ var menuWords = map[string][2]string{
 	"Show All":           {"Common", "Show All"},
 	"File":               {"MenuCommands", "File"},
 	"Close Window":       {"MenuCommands", "Close Window"},
+	"Open Recent":        {"MenuCommands", "Open Recent"},
+	"Clear Menu":         {"MenuCommands", "Clear Menu"},
 	"Edit":               {"Document", "Edit"},
 	"Undo":               {"Undo", "&Undo"}, // marked for an access key
 	"Redo":               {"Undo", "&Redo"},

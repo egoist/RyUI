@@ -757,6 +757,11 @@ func buildWeb(app *goApp, o *buildOptions) error {
 			{"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
 		}
 	}
+	// asuka.json's fileTypes: an installed app opens them (Chromium's
+	// File Handling), the host reads them from the launch queue.
+	if fh := webFileHandlers(app.cfg.fileTypes()); fh != nil {
+		manifest["file_handlers"] = fh
+	}
 	mb, _ := json.MarshalIndent(manifest, "", "  ")
 	if err := os.WriteFile(filepath.Join(out, "manifest.webmanifest"), mb, 0o644); err != nil {
 		return err

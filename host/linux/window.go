@@ -64,6 +64,11 @@ func (h *Host) newMainWindow() *win {
 			h.emit(h.root, ops.Event{Kind: ops.EventCloseRequest})
 			return true
 		}
+		// Closing the app's last window quits it: OnQuit's handlers may
+		// keep it open (quit.go).
+		if h.closingLast(w) && !h.askQuit(false) {
+			return true
+		}
 		h.saveWindow(w)
 		return false
 	})

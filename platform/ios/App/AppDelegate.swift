@@ -70,14 +70,14 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         w.makeKeyAndVisible()
         window = w
         // Opened with a URL, or a universal link.
-        for c in options.urlContexts { AsukaRuntime.shared.openURL(c.url) }
+        AsukaRuntime.shared.openURLs(options.urlContexts.map { $0.url })
         for a in options.userActivities where a.activityType == NSUserActivityTypeBrowsingWeb {
             if let u = a.webpageURL { AsukaRuntime.shared.openURL(u) }
         }
     }
 
     func scene(_ scene: UIScene, openURLContexts contexts: Set<UIOpenURLContext>) {
-        for c in contexts { AsukaRuntime.shared.openURL(c.url) }
+        AsukaRuntime.shared.openURLs(contexts.map { $0.url })
     }
 
     func scene(_ scene: UIScene, continue activity: NSUserActivity) {

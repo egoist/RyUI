@@ -2670,6 +2670,74 @@ and never assumes a single root in its own data structures.
   (Android 14) or high contrast text, no Reduce Transparency. `dock`
   does nothing.
 
+**Files, one instance, quitting, recent documents and login**
+(`ui/call.go`, `app/quit.go`, `app/dirs.go`, `recent`, `login`):
+
+- `asuka.json`'s `fileTypes` (name, extensions, MIME types, UTI,
+  `conformsTo`, role, icon) are declared by each build
+  (`cmd/asuka/filetypes.go`): macOS and iOS `CFBundleDocumentTypes` by
+  UTI, the app's own types (a UTI under its ID) exported, others the
+  system may not know imported, iOS opening in place; Android
+  `ACTION_VIEW` filters; Windows a ProgID per type and the extensions'
+  `OpenWithProgids` (and `Applications\<exe>\SupportedTypes`), which the
+  host writes under `HKCU\Software\Classes` as it starts, from
+  `boot.FileTypes` (internal/filetype, `-ldflags -X`), the icons in the
+  executable; Linux the desktop file's `MimeType` (and `%U`), a
+  shared-mime-info package for the app's own types and their icons; the
+  web manifest's `file_handlers`.
+- Files reach the core with no event of their own: `IncomingURL`'s
+  string carries `file://` URLs, one per line (internal/fileurl; a URL
+  has no raw line break), so the files opened together arrive together.
+  `ui.incoming` splits them: the paths go to `ui.OnOpenFiles`, the other
+  URLs to `ui.OnOpenURL`; both are owner-scoped and keep what came before
+  any handler for the first. macOS: `application:openURLs:` (Finder,
+  Open With, the Dock icon, the File menu's Open Recent). Windows and
+  Linux: the command line's files that exist (taken from the launch's
+  working directory) and `file://` URIs, with the scheme's URLs
+  (`fileurl.FromArgs`); Linux's GApplication `open` too. The web: the
+  launch queue's files, read into the app's caches.
+- One instance: an app with an ID runs once on Windows (a mutex of the
+  session; the second launch sends its working directory and arguments
+  through `WM_COPYDATA`) and Linux (a unique GApplication with
+  `HANDLES_COMMAND_LINE`: the second launch's command line over D-Bus),
+  except under automation and `asuka dev`, or with `"singleInstance":
+  false` (`boot.MultipleInstances`). The running one comes to the front,
+  `app.OnSecondInstance(args, dir)` gets the arguments, and their files
+  and URLs come as above. macOS's Launch Services runs an app once by
+  itself, and passes files as Apple Events, not arguments.
+- Quitting: `app.Quit` (`boot.Quit`, set by a desktop host) quits as the
+  user's Quit does. Every quit asks `boot.QuitRequested` (package app:
+  `app.OnQuit`'s handlers, with a `QuitEvent` they can `Cancel`) once;
+  one they allowed only finishes. macOS asks in
+  `applicationShouldTerminate:` (⌘Q, the Dock, the last window, SIGINT
+  and SIGTERM, which send `terminate:`), with `SessionEnding` after
+  `NSWorkspaceWillPowerOffNotification`; Windows on the main window's
+  `WM_CLOSE`, Ctrl+C and `WM_QUERYENDSESSION`; Linux on the last
+  window's `close-request`, SIGTERM, SIGINT and SIGHUP, and `query-end`.
+  The session's end can't be canceled; a second signal exits at once.
+  Phones and the browser never quit themselves (`boot.Quit` is nil).
+- `app.DataDir`, `ConfigDir`, `CacheDir` and `LogDir` are
+  internal/appdir's, each platform's place for the app (`store.Dir` is
+  DataDir).
+- `asuka/recent` (module `recent`: `add`, `clear`, `list`):
+  NSDocumentController's recent documents on macOS, in an Open Recent
+  menu the host fills as it opens (in the File menu once the app
+  declares file types, has recent documents or adds one; choosing one
+  goes through `openURLs`); on Windows `SHAddToRecentDocs` (the jump
+  list's Recent) and the app's own list in its data directory, cleared
+  with `IApplicationDestinations::RemoveAllDestinations`; on Linux the
+  user's `recently-used.xbel`, through GBookmarkFile, as the app's (its
+  application name), clearing only the app's. Phones and the web answer
+  nothing.
+- `asuka/login` (module `login`: `set`, `enabled`, `openedAtLogin`):
+  SMAppService's `mainAppService` on macOS 13 (a bundle only;
+  `requiresApproval` is `ErrNeedsApproval`), the opening Apple Event's
+  `keyAELaunchedAsLogInItem` for `openedAtLogin`; Windows the HKCU `Run`
+  value (and Task Manager's `StartupApproved` for `enabled`); Linux an
+  XDG autostart entry, or in a Flatpak the Background portal's
+  `RequestBackground`. The Windows and Linux entries start the app with
+  `boot.LoginArg`, which the host takes out of `os.Args` in its init.
+
 ## The web
 
 The app's Go code is a WebAssembly program (`GOOS=js GOARCH=wasm`,

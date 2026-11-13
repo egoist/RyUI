@@ -194,8 +194,6 @@ func MonitorAt(p Point) (area, work Rect, dpi int) {
 	return mi.Monitor, mi.Work, MonitorDPI(m)
 }
 
-var procGetDpiForMonitor = systemDLL("shcore.dll").NewProc("GetDpiForMonitor")
-
 // MonitorDPI is a monitor's DPI (96 if Windows can't say).
 func MonitorDPI(m uintptr) int {
 	if m != 0 && Has(procGetDpiForMonitor) {

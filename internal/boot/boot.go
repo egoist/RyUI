@@ -2,7 +2,11 @@
 // cycles.
 package boot
 
-import "sync"
+import (
+	"os"
+	"slices"
+	"sync"
+)
 
 // Runner, set by a platform host (mobile/), mounts the app's root
 // component (a func() ui.Node).
@@ -15,6 +19,50 @@ var Remote func(addr string, root, sheet any) error
 
 // Lifecycle handlers get app.State values.
 var Lifecycle []func(state int)
+
+// Quit, set by a desktop host as it starts, quits the app as the user's
+// Quit does (⌘Q, closing the main window): QuitRequested first, which
+// may cancel it. Safe from any goroutine. Nil where an app doesn't quit
+// itself (a phone's, a browser's page).
+var Quit func()
+
+// QuitRequested, set by package app, runs app.OnQuit's handlers as the
+// app is about to quit, on the main thread; ending says the session is
+// ending (logout, shutdown), when the quit can't be canceled. It reports
+// whether a handler canceled the quit (never while ending). A host asks
+// it before it quits, however that started, and asks once: a quit
+// already allowed only finishes.
+var QuitRequested func(ending bool) (cancel bool)
+
+// SecondInstance, set by package app, gets another launch of the app in
+// the instance that runs (desktop: the app runs once): its arguments
+// (os.Args[1:]) and working directory, on the main thread. The host has
+// brought the app to the front, and passes the files and URLs among the
+// arguments on to ui.OnOpenFiles and ui.OnOpenURL.
+var SecondInstance func(args []string, dir string)
+
+// MultipleInstances is "1" when asuka.json's "singleInstance" is false,
+// set by the Asuka CLI (-ldflags -X): on Windows and Linux the app then
+// runs as often as it's started, each launch its own (no
+// OnSecondInstance).
+var MultipleInstances string
+
+// LoginArg is the argument a login entry starts the app with on
+// Windows and Linux (asuka/login), so that it knows it was opened at
+// login: the host takes it out of os.Args before main reads them.
+const LoginArg = "--asuka-opened-at-login"
+
+// OpenedAtLogin: the app was started with LoginArg (TakeLoginArg).
+var OpenedAtLogin bool
+
+// TakeLoginArg takes LoginArg out of os.Args, and remembers it
+// (OpenedAtLogin): a host's init calls it, before main reads them.
+func TakeLoginArg() {
+	if i := slices.Index(os.Args, LoginArg); i > 0 {
+		os.Args = slices.Delete(os.Args, i, i+1)
+		OpenedAtLogin = true
+	}
+}
 
 // Accent is the app's accent color from asuka.json ("#rrggbb" or
 // "#rrggbbaa"), and DynamicColor "1" when its Android colors are the
@@ -40,6 +88,12 @@ var ID string
 // declare it in (Windows: the host registers it for the user as the app
 // starts, and passes on the URLs it's opened with).
 var Scheme string
+
+// FileTypes are asuka.json's fileTypes (internal/filetype's encoding),
+// set by the Asuka CLI (-ldflags -X) where the platform has no bundle or
+// desktop file to declare them in (Windows: the host registers them for
+// the user as the app starts).
+var FileTypes string
 
 // Version and Build are asuka.json's, set by the Asuka CLI (-ldflags -X)
 // where the platform has no bundle to read them from (Windows).

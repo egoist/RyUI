@@ -67,6 +67,39 @@ Every key is optional; these apply on every platform:
   it starts, in `HKEY_CURRENT_USER\Software\Classes`). `links`
   opens it for https links to your domains (universal links, App Links;
   iOS and Android). `ui.OnOpenURL` gets them.
+- `fileTypes` are the kinds of files the app opens, which
+  `ui.OnOpenFiles` gets:
+
+  ```json
+  "fileTypes": [
+    {"name": "Markdown Document", "extensions": ["md", "markdown"], "role": "viewer"},
+    {"name": "Notes Document", "extensions": ["note"], "icon": "note.png"}
+  ]
+  ```
+
+  `extensions` is required; `name` defaults to the first extension in
+  capitals and "Document". `mimeTypes` and `uti` default to what the
+  systems call an extension Asuka knows (md, txt, json, csv, pdf, png,
+  jpg...); for another, the type is the app's own:
+  `application/x-<app>-<ext>` and `<id>.<ext>`, exported (the Mac and
+  iOS), defined for shared-mime-info (Linux), and the app is its files'
+  default app. `conformsTo` is the UTIs an exported or imported type
+  conforms to (default `public.data`, `public.content`); `role` is
+  `editor` (default) or `viewer`; `icon`, a square PNG, is the files'
+  icon on the Mac, Windows and Linux. The Mac and iOS declare them in
+  Info.plist (`CFBundleDocumentTypes`, iOS opening documents in place),
+  Android as intent filters, Windows registers them for the user as the
+  app starts (a ProgID per type, the extensions' `OpenWithProgids`, the
+  icons in the `.exe`), Linux in the desktop file's `MimeType` and
+  `share/mime/packages/<id>.xml` (run `update-mime-database` and
+  `update-desktop-database` after unpacking the `.tar.gz`; a package
+  manager and Flatpak do it), the web in the manifest's
+  `file_handlers` (an installed app, in Chromium).
+- `singleInstance`, `true` by default: on Windows and Linux an app with
+  an `id` runs once, a second launch handing its arguments to the
+  running one (`app.OnSecondInstance`, its files to `ui.OnOpenFiles`)
+  and quitting. `false` runs it as often as it's started. The Mac runs
+  an app once either way.
 
 Platform by platform:
 

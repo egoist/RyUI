@@ -50,6 +50,13 @@ func (c *appConfig) plistExtras() map[string]any {
 		sort.Strings(vs)
 		m["UIBackgroundModes"] = vs
 	}
+	// asuka.json's fileTypes (LSSupportsOpeningDocumentsInPlace with
+	// them, unless asuka/library's iosTrue has it already).
+	for k, v := range c.documentTypes(c.fileTypes(), true, nil) {
+		if !slices.Contains(c.iosTrue, k) {
+			m[k] = v
+		}
+	}
 	if c.splashOn() {
 		ls := map[string]any{"UIColorName": "AsukaSplashBackground", "UIImageRespectsSafeAreaInsets": false}
 		if c.Splash.Image != "" {

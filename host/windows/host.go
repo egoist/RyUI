@@ -356,15 +356,17 @@ func newHost() *Host {
 // Run runs root as the app's window until it's closed. Main thread: call
 // it from main.
 func Run(root func() ui.Node) {
-	launch := launchURL(os.Args, boot.Scheme)
-	if !takeInstance(launch) {
+	dir, _ := os.Getwd()
+	if !takeInstance(dir, os.Args[1:]) {
 		return // the running instance has it
 	}
+	launch := launchOpens(os.Args[1:], dir)
 	startCrash()
 	h := newHost()
 	restoreState()
 	h.enter(func() { ui.Mount(h, root) })
 	h.startLinks(launch)
+	h.startQuit() // files_windows.go
 	h.startToasts()
 	if launchedForToast {
 		h.waitForToast() // notify.go: shown if the click opens the app

@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/egoist/asuka/internal/boot"
+	"github.com/egoist/asuka/internal/fileurl"
 	. "github.com/egoist/asuka/internal/windows"
 	"github.com/egoist/asuka/ops"
 )
@@ -16,25 +17,36 @@ import (
 var msgWinTitle string
 
 // takeInstance makes this process the app's one instance (deeplink.go), or
-// hands the running one the URL it was launched with (launch, or "": to
-// come to the front) and reports false. One that COM started for a
-// toast's click is always the instance (COM starts it only when none
-// runs), and an app without an ID, driven by automation or run by asuka
-// dev runs as often as it's started.
-func takeInstance(launch string) bool {
-	if launchedForToast || !singleInstance(boot.ID, os.Getenv) {
+// hands the running one its working directory and arguments (files.go)
+// and reports false. One that COM started for a toast's click is always
+// the instance (COM starts it only when none runs), and an app without an
+// ID, one whose asuka.json lets it run more than once ("singleInstance":
+// false), driven by automation or run by asuka dev runs as often as it's
+// started.
+func takeInstance(dir string, args []string) bool {
+	if launchedForToast || boot.MultipleInstances == "1" || !singleInstance(boot.ID, os.Getenv) {
 		return true
 	}
 	mutex, title := instanceNames(boot.ID)
-	if !TakeInstance(mutex, classMessage, title, instanceTag, []byte(launch)) {
+	if !TakeInstance(mutex, classMessage, title, instanceTag, instancePayload(dir, args)) {
 		return false
 	}
 	msgWinTitle = title
 	return true
 }
 
-// startLinks, once the root is mounted: registers the app's scheme for the
-// user, and passes on the URLs the app was opened with.
+// launchOpens is the IncomingURL string of a launch's arguments: the
+// files and the scheme's URLs among them (internal/fileurl).
+func launchOpens(args []string, dir string) string {
+	return fileurl.FromArgs(args, dir, boot.Scheme, func(p string) bool {
+		_, err := os.Stat(p)
+		return err == nil
+	})
+}
+
+// startLinks, once the root is mounted: registers the app's scheme and
+// file types for the user, and passes on the files and URLs the app was
+// opened with (launch: their IncomingURL string).
 func (h *Host) startLinks(launch string) {
 	if boot.Scheme != "" && !notItself(os.Getenv) {
 		if exe, err := os.Executable(); err == nil {
@@ -49,6 +61,7 @@ func (h *Host) startLinks(launch string) {
 			}
 		}
 	}
+	h.registerFileTypes() // files_windows.go
 	var urls []string
 	if launch != "" {
 		urls = append(urls, launch)
@@ -60,21 +73,27 @@ func (h *Host) startLinks(launch string) {
 	}
 }
 
-// launchedAgain is a second launch of the app, handed over (WM_COPYDATA):
-// the app comes to the front, and gets the URL it was opened with, if
-// any. Handled after the message is answered, so that the launch it came
+// launchedAgain is a second launch of the app, handed over (WM_COPYDATA:
+// its working directory and arguments): the app comes to the front,
+// app.OnSecondInstance gets them, and the root the files and URLs among
+// them. Handled after the message is answered, so that the launch it came
 // from can quit.
-func (h *Host) launchedAgain(u string) {
+func (h *Host) launchedAgain(payload []byte) {
+	dir, args := parseInstancePayload(payload)
 	h.Post(func() {
 		h.toFront()
-		if u != "" {
+		if boot.SecondInstance != nil {
+			boot.SecondInstance(args, dir)
+		}
+		if u := launchOpens(args, dir); u != "" {
 			h.incomingURL(u)
 		}
 	})
 }
 
-// incomingURL reports a URL the app was opened with to the root: once it's
-// mounted.
+// incomingURL reports what the app was opened with to the root, once it's
+// mounted: a URL, or files (and URLs) together, one per line
+// (internal/fileurl).
 func (h *Host) incomingURL(u string) {
 	h.afterCore(func() {
 		if h.root == nil {
