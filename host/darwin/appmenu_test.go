@@ -3,8 +3,8 @@ package darwin
 import (
 	"testing"
 
-	. "github.com/egoist/asuka/internal/darwin"
 	"github.com/egoist/asuka/internal/boot"
+	. "github.com/egoist/asuka/internal/darwin"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )

@@ -54,8 +54,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	iupdate "github.com/egoist/asuka/internal/update"
 	"github.com/egoist/asuka/internal/boot"
+	iupdate "github.com/egoist/asuka/internal/update"
 )
 
 // Set by the Asuka CLI (-ldflags -X) when asuka.json configures updates:

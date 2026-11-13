@@ -110,7 +110,9 @@ func (f feedSource) Manifest(ctx context.Context, target, channel string) (io.Re
 	return io.NopCloser(strings.NewReader(string(bestBody))), nil
 }
 
-func (f feedSource) Open(ctx context.Context, u string) (io.ReadCloser, error) { return httpGet(ctx, u) }
+func (f feedSource) Open(ctx context.Context, u string) (io.ReadCloser, error) {
+	return httpGet(ctx, u)
+}
 
 var (
 	errNotFound  = errors.New("not found")

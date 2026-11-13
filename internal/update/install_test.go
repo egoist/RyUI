@@ -140,12 +140,12 @@ func TestSwapFolder(t *testing.T) {
 // app files alone are replaced.
 func TestSwapPrefix(t *testing.T) {
 	prefix := writeTree(t, map[string]string{
-		"bin/notes":                                    "v1",
-		"bin/other-program":                            "theirs",
-		"share/notes/assets/a.png":                     "a1",
-		"share/notes/assets/gone.png":                  "gone",
-		"share/applications/com.example.notes.desktop": "entry 1",
-		"share/applications/org.other.desktop":         "theirs",
+		"bin/notes":                                            "v1",
+		"bin/other-program":                                    "theirs",
+		"share/notes/assets/a.png":                             "a1",
+		"share/notes/assets/gone.png":                          "gone",
+		"share/applications/com.example.notes.desktop":         "entry 1",
+		"share/applications/org.other.desktop":                 "theirs",
 		"share/icons/hicolor/64x64/apps/com.example.notes.png": "icon 1",
 	})
 	if err := WriteFileList(filepath.Join(prefix, "share/notes", FileList), []string{
