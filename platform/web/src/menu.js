@@ -6,6 +6,7 @@
 import { Event, Events, Reader } from "./ops.js";
 import { decodeActions } from "./host.js";
 import { symbolSVG } from "./media.js";
+import { apple, modsOf, declaredMods } from "./keys.js";
 
 export class Menus {
   constructor(h) {
@@ -117,14 +118,16 @@ export class Menus {
   key(e) {
     if (!this.shortcuts.length) return;
     if (!this.h.options.fullPage && !this.h.container.contains(e.target)) return;
-    const mac = /Mac|iPhone|iPad/.test(navigator.platform);
-    const mods = ((mac ? e.metaKey : e.ctrlKey) ? 1 : 0) | (e.shiftKey ? 2 : 0) | (e.altKey ? 4 : 0) | (mac && e.ctrlKey ? 8 : 0);
+    // The modifiers as a view's Keys have them (keys.js routes a key
+    // first: one a view takes is stopped before it comes here).
+    const mac = apple();
+    const mods = modsOf(e, mac);
     const names = { enter: "Enter", escape: "Escape", tab: "Tab", space: " ", delete: "Delete", backspace: "Backspace", up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight", home: "Home", end: "End", pageup: "PageUp", pagedown: "PageDown" };
     for (const s of this.shortcuts) {
       const want = names[s.key] || (/^f\d+$/.test(s.key) ? s.key.toUpperCase() : s.key);
       const got = want.length === 1 ? e.key.toLowerCase() : e.key;
       const code = want.length === 1 && e.code === "Key" + want.toUpperCase();
-      if ((got === want || code) && mods === (s.mods & 15)) {
+      if ((got === want || code) && mods === declaredMods(s.mods, mac)) {
         e.preventDefault();
         e.stopPropagation();
         this.h.dispatch(Events.action(s.root, s.index));

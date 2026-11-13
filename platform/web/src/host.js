@@ -18,6 +18,7 @@ import { Navigation, decodeWindowConfig } from "./nav.js";
 import { Windows } from "./window.js";
 import { Modules } from "./modules.js";
 import { Menus } from "./menu.js";
+import { Keys } from "./keys.js";
 import { Motion } from "./motion.js";
 import * as color from "./color.js";
 import * as text from "./text.js";
@@ -93,6 +94,8 @@ export class Host {
     this.nav = new Navigation(this);
     this.windows = new Windows(this);
     this.modules = new Modules(this);
+    // Keys before Menus: a view's keys come before the menu bar's shortcuts.
+    this.keys = new Keys(this);
     this.menus = new Menus(this);
     this.motion = new Motion(this);
     this.measurer = document.createElement("div");
@@ -388,6 +391,10 @@ export class Host {
     if (!n) return;
     if (prop >= 64) {
       if (n.impl.prop) n.impl.prop(this, n, prop, v, type);
+      return;
+    }
+    if (prop === Prop.Keys) {
+      this.keys.set(n, v);
       return;
     }
     if (n.impl.common && n.impl.common(this, n, prop, v)) return;
