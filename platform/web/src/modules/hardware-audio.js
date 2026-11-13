@@ -1,4 +1,5 @@
-// asuka/speech, asuka/audio and asuka/audio/record in the browser.
+// asuka/speech, asuka/audio, asuka/audio/record and asuka/nowplaying in
+// the browser (nowPlaying: see its function).
 //
 //   - speech: speechSynthesis. "speak" (JSON: id, text, language, voice,
 //     pitch, rate, volume) answers once spoken, or fails "stopped"; "stop",
@@ -331,6 +332,115 @@ function audioRecord() {
   };
 }
 
+// --- nowPlaying ---
+
+/**
+ * mediaActions are the Media Session's actions, by the command each sends
+ * (internal/nowplayingspec's numbers): play 1, pause 2, stop 4, next 5,
+ * previous 6, seek 7, skip forward 8 and back 9. The session has no
+ * toggle: the play/pause key sends play or pause as playbackState says.
+ */
+export const mediaActions = [
+  ["play", 1], ["pause", 2], ["stop", 4], ["nexttrack", 5], ["previoustrack", 6],
+  ["seekto", 7], ["seekforward", 8], ["seekbackward", 9],
+];
+
+/** encodeCommands is "next"'s answer: u8 command, f64 value each. */
+export function encodeCommands(cmds) {
+  const b = new Uint8Array(cmds.length * 9);
+  const v = new DataView(b.buffer);
+  cmds.forEach(([c, x], i) => {
+    b[i * 9] = c;
+    v.setFloat64(i * 9 + 1, x, true);
+  });
+  return b;
+}
+
+/**
+ * nowPlaying is asuka/nowplaying's module: the page's Media Session
+ * (navigator.mediaSession), which the browser's media controls, the
+ * media keys and a phone's lock screen show and drive while the page
+ * plays. "set" (JSON: internal/nowplayingspec's Info) sets its metadata,
+ * playbackState, position state and the handlers of the actions enabled;
+ * "clear" takes them away; "next" answers with the commands since (once
+ * there are some); "stop" fails the waiting "next" with "stopped".
+ */
+export function nowPlaying(h, nav = globalThis.navigator) {
+  let info = null;
+  let following = false;
+  let waiting = null;
+  let queue = [];
+  const enabled = (c) => info != null && (info.commands & (1 << c)) !== 0;
+  const flush = () => {
+    if (!waiting || !queue.length) return;
+    const w = waiting;
+    waiting = null;
+    w.resolve(encodeCommands(queue));
+    queue = [];
+  };
+  const command = (c, v) => {
+    if (!following || !enabled(c)) return;
+    queue.push([c, v]);
+    flush();
+  };
+  const handlers = new Map(mediaActions.map(([name, c]) => [name, (d) => {
+    if (c === 7) command(c, Number(d?.seekTime) || 0);
+    else if (c === 8 || c === 9) command(c, Number(d?.seekOffset) || info?.skip || 0);
+    else command(c, 0);
+  }]));
+  const session = () => nav?.mediaSession;
+  const quiet = (f) => { try { f(); } catch { /* an action or a state the browser doesn't take */ } };
+  const setHandlers = (s) => {
+    for (const [name, c] of mediaActions) quiet(() => s.setActionHandler(name, enabled(c) ? handlers.get(name) : null));
+  };
+  return {
+    set: (b) => {
+      info = JSON.parse(dec.decode(b));
+      const s = session();
+      if (!s) return null;
+      const meta = { title: info.title || "", artist: info.artist || "", album: info.album || "" };
+      if (info.artwork) meta.artwork = [{ src: sourceURL(h, info.artwork) }];
+      quiet(() => { s.metadata = typeof MediaMetadata === "function" ? new MediaMetadata(meta) : meta; });
+      quiet(() => { s.playbackState = info.state === "stopped" ? "none" : info.state; });
+      setHandlers(s);
+      if (typeof s.setPositionState === "function") {
+        quiet(() => {
+          if (info.duration > 0) {
+            s.setPositionState({ duration: info.duration, position: Math.min(Math.max(info.position, 0), info.duration), playbackRate: info.rate > 0 ? info.rate : 1 });
+          } else {
+            s.setPositionState();
+          }
+        });
+      }
+      return null;
+    },
+    clear: () => {
+      info = null;
+      const s = session();
+      if (!s) return null;
+      quiet(() => { s.metadata = null; });
+      quiet(() => { s.playbackState = "none"; });
+      setHandlers(s);
+      if (typeof s.setPositionState === "function") quiet(() => s.setPositionState());
+      return null;
+    },
+    next: () => new Promise((resolve, reject) => {
+      waiting?.reject(new Error("stopped")); // one poll at a time
+      following = true;
+      waiting = { resolve, reject };
+      flush();
+    }),
+    stop: () => {
+      const w = waiting;
+      following = false;
+      waiting = null;
+      queue = [];
+      w?.reject(new Error("stopped"));
+      return null;
+    },
+  };
+}
+
 export function modules(h) {
-  return { speech: speech(), audio: audio(h), audioRecord: audioRecord() };
+  return { speech: speech(), audio: audio(h), audioRecord: audioRecord(), nowPlaying: nowPlaying(h) };
 }

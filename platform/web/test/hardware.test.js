@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { networkState, positionJSON, encodeSample, quaternion, motionValues, Sensor, modules as sensorModules } from "../src/modules/hardware-sensors.js";
-import { splitID, f64, encodeStatus, parseRecordArgs, recordingType, levelOf } from "../src/modules/hardware-audio.js";
+import { splitID, f64, encodeStatus, parseRecordArgs, recordingType, levelOf, nowPlaying, encodeCommands } from "../src/modules/hardware-audio.js";
 import { encodeCodes, formatsOf, kindOf, target, rotatedSize, pixelate } from "../src/modules/hardware-camera.js";
 import { vCard, iCalendar, orientation, userVerified, biometricKind, modules as moreModules } from "../src/modules/hardware-more.js";
 import { modules as hardware, natives } from "../src/modules/hardware.js";
@@ -108,6 +108,64 @@ test("audio: the player's ID, f64 args, the status", () => {
   assert.deepEqual([s[16], s[17]], [1, 0]);
 });
 
+// A fake navigator.mediaSession: what the page set, and its handlers.
+function fakeSession() {
+  const s = { handlers: {}, positions: [], metadata: undefined, playbackState: "none" };
+  s.setActionHandler = (name, f) => {
+    if (name === "stop" && s.noStop) throw new TypeError("not supported");
+    if (f) s.handlers[name] = f;
+    else delete s.handlers[name];
+  };
+  s.setPositionState = (p) => s.positions.push(p);
+  return s;
+}
+
+test("nowPlaying: the Media Session's metadata, state, position and handlers; commands through next", async () => {
+  const s = fakeSession();
+  s.noStop = true; // a browser without the stop action
+  const np = nowPlaying(fakeHost, { mediaSession: s });
+  const bit = (...cs) => cs.reduce((m, c) => m | (1 << c), 0);
+  const set = (o) => np.set(new TextEncoder().encode(JSON.stringify(o)));
+  set({ title: "Spring", artist: "Vivaldi", album: "Seasons", artwork: "covers/spring.png", duration: 200, position: 12, rate: 1, state: "paused", commands: bit(1, 2, 3, 4, 7, 8), skip: 30 });
+  assert.equal(s.metadata.title, "Spring");
+  assert.equal(s.metadata.artist, "Vivaldi");
+  assert.equal(s.metadata.album, "Seasons");
+  assert.equal(s.metadata.artwork[0].src, "assets/covers/spring.png");
+  assert.equal(s.playbackState, "paused");
+  assert.deepEqual(s.positions.at(-1), { duration: 200, position: 12, playbackRate: 1 });
+  assert.deepEqual(Object.keys(s.handlers).sort(), ["pause", "play", "seekforward", "seekto"]);
+
+  // Commands come once "next" waits; one that came between polls waits for the next.
+  const first = np.next();
+  s.handlers.play();
+  const read = (b) => { const v = new DataView(b.buffer); const out = []; for (let i = 0; i < b.length; i += 9) out.push([b[i], v.getFloat64(i + 1, true)]); return out; };
+  assert.deepEqual(read(await first), [[1, 0]]);
+  s.handlers.seekto({ seekTime: 42 });
+  s.handlers.seekforward({}); // no offset: the interval
+  assert.deepEqual(read(await np.next()), [[7, 42], [8, 30]]);
+  assert.deepEqual(read(encodeCommands([[9, 15]])), [[9, 15]]);
+
+  // A live stream: no position; playing; stopped is "none".
+  set({ title: "Radio", rate: 1, position: 0, state: "playing", commands: bit(1, 2, 3) });
+  assert.equal(s.positions.at(-1), undefined);
+  assert.equal(s.playbackState, "playing");
+  assert.deepEqual(Object.keys(s.handlers).sort(), ["pause", "play"]);
+  set({ title: "Radio", rate: 1, position: 0, state: "stopped", commands: bit(1, 2, 3) });
+  assert.equal(s.playbackState, "none");
+
+  // Stopped following: the waiting poll fails, commands are dropped.
+  const waiting = np.next();
+  np.stop();
+  await assert.rejects(waiting, { message: "stopped" });
+  s.handlers.play();
+  np.clear();
+  assert.equal(s.metadata, null);
+  assert.equal(s.playbackState, "none");
+  assert.deepEqual(Object.keys(s.handlers), []);
+  // No Media Session: nothing to do.
+  assert.equal(nowPlaying(fakeHost, {}).set(new TextEncoder().encode("{}")), null);
+});
+
 test("audioRecord: start's args as record.Start writes them", () => {
   // u8 quality, u32 max ms, u8 flags, u32-length title, u32-length path.
   const b = cat(new Uint8Array([1]), le32(90000), new Uint8Array([3]), str("Recording"), str("/data/app/a.m4a"));
@@ -189,7 +247,7 @@ test("screen, biometric, tracking and what the web hasn't", async () => {
 
 test("every module the hardware file has, and camera.View's native view", () => {
   const all = hardware(fakeHost);
-  for (const name of ["network", "location", "sensors", "speech", "audio", "audioRecord", "camera", "scan", "vision", "imageEdit", "biometric", "review", "tracking", "integrity", "ageRange", "appleAuth", "webAuth", "periodic", "background", "widget", "splash", "screen", "transcribe", "photoLibrary", "library", "contacts", "calendar"]) {
+  for (const name of ["network", "location", "sensors", "speech", "audio", "audioRecord", "nowPlaying", "camera", "scan", "vision", "imageEdit", "biometric", "review", "tracking", "integrity", "ageRange", "appleAuth", "webAuth", "periodic", "background", "widget", "splash", "screen", "transcribe", "photoLibrary", "library", "contacts", "calendar"]) {
     assert.ok(all[name], name);
   }
   assert.equal(typeof natives["asuka.camera"], "function");

@@ -1,6 +1,6 @@
 // Media and the device's hardware on the web: the modules of
 // hardware-sensors.js (network, location, sensors), hardware-audio.js
-// (speech, audio, audioRecord), hardware-camera.js (camera, scan, vision,
+// (speech, audio, audioRecord, nowPlaying), hardware-camera.js (camera, scan, vision,
 // imageEdit) and hardware-more.js (biometric, webAuth, screen, contacts,
 // calendar, library..., and the ones a browser can't do, which say why).
 //
