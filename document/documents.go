@@ -136,11 +136,13 @@ func (ds *Documents[T]) Root() ui.Node {
 		// icon then makes a document (applicationShouldHandleReopen:).
 		boot.KeepRunning = true
 		boot.Reopen = func() bool {
-			if len(k.docs.Peek()) == 0 && !k.noUntitled {
-				k.newUntitled()
-			} else if b := k.current.Peek(); b != nil {
-				b.win.Focus()
-			}
+			post(func() {
+				if len(k.docs.Peek()) == 0 && !k.noUntitled {
+					k.newUntitled()
+				} else if b := k.current.Peek(); b != nil {
+					b.win.Focus()
+				}
+			})
 			return true
 		}
 		signal.OnCleanup(func() { boot.Reopen = nil })

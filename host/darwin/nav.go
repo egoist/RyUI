@@ -46,8 +46,11 @@ type nav struct {
 	alert  ID
 	order  []int // an alert's buttons' indexes, in the alert's order
 
-	// Window: its options (Config).
-	cfg ops.WindowConfig
+	// Window: its options (Config), and the document it shows: edited,
+	// its file.
+	cfg    ops.WindowConfig
+	edited bool
+	file   string
 }
 
 func (h *Host) createNav(n *node) bool {
@@ -438,6 +441,12 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 			}
 		case ops.PropWindowConfig:
 			n.nav.cfg = ops.DecodeWindowConfig(v.Bytes)
+		case ops.PropWindowEdited:
+			n.nav.edited = v.Int != 0
+			h.applyDocument(n)
+		case ops.PropWindowFile:
+			n.nav.file = v.Str
+			h.applyDocument(n)
 		}
 	case ops.KindAlert:
 		switch p {
@@ -612,8 +621,20 @@ func (h *Host) winOf(w ID) *win {
 // keyWin is the window the user is working in: the key window if it's
 // one of the app's, else the main one.
 func (h *Host) keyWin() *win {
-	if w := h.winOf(Send(Send(Class("NSApplication"), "sharedApplication"), "keyWindow")); w != nil {
-		return w
+	app := Send(Class("NSApplication"), "sharedApplication")
+	for _, sel := range []string{"keyWindow", "mainWindow"} {
+		if w := h.winOf(Send(app, sel)); w != nil {
+			return w
+		}
+	}
+	// The app isn't active: its front window that shows (a document
+	// app's main window stays hidden).
+	if h.main == nil || !SendBool(h.main.window, "isVisible") {
+		for _, nw := range ArrayItems(Send(app, "orderedWindows")) {
+			if w := h.winOf(nw); w != nil && SendBool(nw, "isVisible") {
+				return w
+			}
+		}
 	}
 	return h.main
 }
