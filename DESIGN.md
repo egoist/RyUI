@@ -2468,7 +2468,9 @@ menu bar's shortcuts with the same layout.
   Quit takes Ctrl+Q and quits as SIGTERM does.
 - `app.KeepRunning()` keeps a desktop app running when its last window
   closes: closing the main window hides it, its root mounted, until the
-  app shows it again. `app.RunInBackground()` (and asuka.json's
+  app shows it again (on macOS also the Dock icon, clicked with no window
+  showing: `applicationShouldHandleReopen:hasVisibleWindows:`; on Linux,
+  the app launched again, `activate`). `app.RunInBackground()` (and asuka.json's
   `"background": true`, which sets it with `-X` and, on macOS, puts
   `LSUIElement` in the Info.plist so the Dock icon never shows) also
   leaves the main window hidden at launch, and on macOS makes the app an
