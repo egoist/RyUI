@@ -881,3 +881,32 @@ func TestWords(t *testing.T) {
 		t.Fatal("untitledNumber")
 	}
 }
+
+// Every translation has every word, and says them in its language.
+func TestTranslations(t *testing.T) {
+	var en map[string]string
+	b, _ := files.ReadFile("messages/en.json")
+	json.Unmarshal(b, &en)
+	names, _ := files.ReadDir("messages")
+	for _, n := range names {
+		var m map[string]string
+		b, _ := files.ReadFile("messages/" + n.Name())
+		if err := json.Unmarshal(b, &m); err != nil {
+			t.Fatalf("%s: %v", n.Name(), err)
+		}
+		for k := range en {
+			if m[k] == "" {
+				t.Errorf("%s has no %q", n.Name(), k)
+			}
+		}
+	}
+	if got := catalog.Format("de-AT", "untitledNumbered", map[string]any{"n": 2}); got != "Ohne Titel 2" {
+		t.Errorf("German: %q", got)
+	}
+	if got := catalog.Format("ja", "saveChanges", map[string]any{"name": "a.txt"}); !strings.Contains(got, "a.txt") || !strings.Contains(got, "保存") {
+		t.Errorf("Japanese: %q", got)
+	}
+	if got := catalog.Format("sw", "untitled", nil); got != "Untitled" {
+		t.Errorf("a language without them: %q", got)
+	}
+}
