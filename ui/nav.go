@@ -485,11 +485,18 @@ type SheetProps struct {
 // Sheet presents Content in a modal sheet while Open is true (a sheet
 // presentation with detents on iOS, a BottomSheetDialog on Android). Its
 // content is built when it opens and disposed when it closes. The node
-// it returns takes no space; put it anywhere.
+// it returns takes no space; put it anywhere. On a desktop it's a sheet
+// of the window it's declared in (a Window's content: that Window, open
+// or opening; else the main window), whichever window is in use, and a
+// key in it goes on to that window's keys.
 func Sheet(p SheetProps) Node {
 	f := newFragment()
 	r := f.r
 	owner := signal.CurrentOwner()
+	win := windowCtx.Use() // the window it's declared in, as UseKeys'
+	if win == nil {
+		win = r.win
+	}
 	var sheet *element
 	var dispose func()
 	closeSheet := func() {
@@ -511,6 +518,11 @@ func Sheet(p SheetProps) Node {
 		}
 		withRoot(r, func() Node {
 			sheet = newProvider(ops.KindSheet)
+			sheet.up = win.el()
+			if sheet.up == nil {
+				sheet.up = r.el
+			}
+			r.batch.SetInt(sheet.id, ops.PropSheetWindow, int64(sheet.up.id))
 			if p.Detents != 0 {
 				r.batch.SetInt(sheet.id, ops.PropSheetDetents, int64(p.Detents))
 			}
@@ -610,6 +622,7 @@ func Popover(p PopoverProps, children ...Node) Node {
 			st.Width, st.Height = layout.Auto, layout.Auto
 			pop.box.SetStyle(st)
 			r.batch.SetInt(pop.id, ops.PropPopoverAnchor, int64(anchor.id))
+			pop.up = anchor
 			s := pop
 			s.handlers().dismissed = func() {
 				p.Open.Set(false)
@@ -654,6 +667,23 @@ func activeRoot() *Root {
 	return roots[len(roots)-1]
 }
 
+// alertWindow is the element of the window an Alert shown now goes on:
+// that of the view whose event is being handled, else of the component
+// building (the window it's in), else the root's.
+func alertWindow(r *Root) *element {
+	if e := eventEl; e != nil && e.r == r && !e.dead {
+		if w := e.window(); w != nil && !w.dead {
+			return w
+		}
+	}
+	if w := windowCtx.Use(); w != nil && w.r == r {
+		if e := w.el(); e != nil {
+			return e
+		}
+	}
+	return r.el
+}
+
 // AlertProps configures an Alert.
 type AlertProps struct {
 	Title, Message string
@@ -663,7 +693,9 @@ type AlertProps struct {
 
 // Alert shows an alert now (UIAlertController; a Material dialog on
 // Android). Pressing a button dismisses it and runs the button's
-// OnPress.
+// OnPress. On a desktop it goes on the window of the view whose event
+// shows it (a button's OnPress in a Window: that Window), else of the
+// component calling it, else the main window.
 func Alert(p AlertProps) {
 	r := activeRoot()
 	actions := p.Actions
@@ -673,6 +705,7 @@ func Alert(p AlertProps) {
 	withRoot(r, func() Node {
 		e := newElement(ops.KindAlert, true)
 		b := r.batch
+		b.SetInt(e.id, ops.PropAlertWindow, int64(alertWindow(r).id))
 		if p.Title != "" {
 			b.SetString(e.id, ops.PropAlertTitle, p.Title)
 		}

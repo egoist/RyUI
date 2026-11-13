@@ -41,11 +41,9 @@ type View struct {
 	Sections []ListSection
 
 	presented bool
-	// list is the List a cell is bound into (Bind); over is the window
-	// (the root, a Window) a sheet was presented over: the key window as
-	// it was presented. Keys go on there from a node with no parent.
+	// list is the List a cell is bound into (Bind): keys go on there
+	// from it.
 	list *View
-	over ops.NodeID
 }
 
 // ListSection is a List's section, as ListUpdate sends it.
@@ -270,11 +268,6 @@ func (h *Host) apply(op *ops.Op) {
 				panic(fmt.Sprintf("fake: Present on a %s", v.Kind))
 			}
 			v.presented = true
-			if v.Kind == ops.KindSheet {
-				if w := h.KeyWindow(); w != nil {
-					v.over = w.ID
-				}
-			}
 		}
 		h.windowCommand(v, op.Cmd, op.Value.Bytes)
 	case ops.OpSetRoot:
@@ -588,8 +581,8 @@ func (h *Host) Key(focused *View, name string, mods uint8) bool {
 
 // KeyOut is where a key goes on from v, not taking it: v's parent; for
 // a node the core leaves without one, where it shows: a cell (a List's
-// row) its List, a sheet the window it was presented over (that
-// window's root: the root, a Window), a popover the root of what its
+// row) its List, a sheet the window it's declared in (its Window prop:
+// the root, a Window), a popover the root of what its
 // anchor is in (a window's, or a sheet's node). The root and a Window
 // are ends (nil): a Window's keys are its own.
 func (h *Host) KeyOut(v *View) *View {
@@ -601,7 +594,7 @@ func (h *Host) KeyOut(v *View) *View {
 	}
 	switch v.Kind {
 	case ops.KindSheet:
-		if w := h.Views[v.over]; w != nil && w != v {
+		if w := h.PresentedOn(v); w != nil && w != v {
 			return w
 		}
 		return h.Root()
@@ -678,6 +671,21 @@ func (h *Host) rootID() ops.NodeID {
 // Lifecycle reports an app lifecycle change.
 func (h *Host) Lifecycle(s ops.Lifecycle) {
 	h.dispatch(ops.Event{Kind: ops.EventLifecycle, Int: int64(s)})
+}
+
+// PresentedOn is the window a Sheet or an Alert goes on, as a desktop
+// host presents it: its Window prop's view (the root, a Window); nil if
+// it has none.
+func (h *Host) PresentedOn(v *View) *View {
+	p := ops.PropSheetWindow
+	if v.Kind == ops.KindAlert {
+		p = ops.PropAlertWindow
+	}
+	w, ok := v.Props[p]
+	if !ok {
+		return nil
+	}
+	return h.Views[ops.NodeID(w.Int)]
 }
 
 // NewCell makes a list cell, as a collection view does.

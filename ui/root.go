@@ -483,6 +483,10 @@ func flushAll() {
 	}
 }
 
+// eventEl is the element whose event is being handled (nil: none): an
+// Alert shown from its handler goes on its window.
+var eventEl *element
+
 // Dispatch delivers an event from a host, then flushes. Writes in event
 // handlers are batched until the handler returns. Main thread.
 func Dispatch(ev ops.Event) {
@@ -547,6 +551,9 @@ func dispatch(ev ops.Event) {
 	if e == nil || e.h == nil || e.dead {
 		return
 	}
+	prev := eventEl
+	eventEl = e
+	defer func() { eventEl = prev }()
 	h := e.h
 	if interactionEvent(e, h, &ev) {
 		return

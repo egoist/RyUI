@@ -197,12 +197,14 @@ var Schema = SchemaDef{
 		{Name: "Sheet", Props: []PropDef{
 			{Name: "Detents", Type: TInt, Doc: "bits: 1 medium, 2 large (0: large)"},
 			{Name: "Grabber", Type: TBool},
+			{Name: "Window", Type: TInt, Doc: "the window it's declared in: the root's or a Window node's ID. A desktop host presents it on that window, and a key goes on from it to that window's root; a phone's one window takes it and ignores it"},
 		}, Doc: "a modal sheet with one child, its content: Present shows it, Destroy dismisses it; the user's dismissal is reported with Dismissed. Sized by the host, which reports its Environment"},
 		{Name: "Alert", Props: []PropDef{
 			{Name: "Title", Type: TString},
 			{Name: "Message", Type: TString},
 			{Name: "Buttons", Type: TBytes, Doc: "encoded as Menu"},
 			{Name: "Style", Type: TEnum, Enum: "AlertStyle"},
+			{Name: "Window", Type: TInt, Doc: "the window it's declared in: the root's or a Window node's ID. A desktop host presents it on that window; a phone's one window takes it and ignores it"},
 		}, Doc: "an alert or action sheet: Present shows it; a button reports Action with its index and dismisses it; dismissing otherwise reports Dismissed"},
 		{Name: "Image", Props: []PropDef{
 			{Name: "Source", Type: TString, Doc: "an http(s) URL, or a file in the app's assets"},

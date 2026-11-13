@@ -71,7 +71,7 @@ type element struct {
 	real   bool
 	frag   bool
 	cell   bool     // a list cell: the host made its view
-	up     *element // a list cell's List: cells have no parent
+	up     *element // where a node of no parent shows: a list cell's List, a Sheet's window (the root's element, a Window's), a Popover's anchor
 	inline bool     // a RichText's inline component: a layout root of its own
 	dead   bool
 	hooked bool // leaves its interaction states when disposed
@@ -548,6 +548,24 @@ func newProvider(kind ops.Kind) *element {
 	e.box.SetStyle(st)
 	e.r.provs = append(e.r.provs, e)
 	return e
+}
+
+// window is the element of the window e is in: the root's or a Window's
+// (out through the parents, and where a node of no parent shows: a
+// cell's List, a sheet's window, a popover's anchor).
+func (e *element) window() *element {
+	x := e
+	for i := 0; i < 1<<16; i++ {
+		switch {
+		case x.parent != nil:
+			x = x.parent
+		case x.up != nil:
+			x = x.up
+		default:
+			return x
+		}
+	}
+	return x
 }
 
 // scale is the pixels per point e is drawn at: the nearest provider's

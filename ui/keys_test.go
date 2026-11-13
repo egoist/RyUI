@@ -280,3 +280,77 @@ func TestKeysSheetPopover(t *testing.T) {
 		t.Fatalf("got %q", got)
 	}
 }
+
+// A sheet and an alert go on the window they're declared in (their
+// Window prop), whichever window is in use: a sheet opened with its
+// Window, before it's in use, on that Window, its keys on to that
+// Window's; one of the main window's, with a Window in use, on the main
+// window. An alert goes on the window of the view whose event shows it.
+func TestSheetAlertWindow(t *testing.T) {
+	h := fake.New()
+	win, mainSheet, pop := signal.New(false), signal.New(false), signal.New(false)
+	var got []string
+	rec := func(s string) func() { return func() { got = append(got, s) } }
+	alert := func(title string) ui.Node {
+		return ui.Button(ui.ButtonProps{Title: ui.Val(title), OnPress: func() { ui.Alert(ui.AlertProps{Title: title}) }})
+	}
+	r := ui.Mount(h, func() ui.Node {
+		ui.UseKeys(ui.KeyMap{{Key: "escape"}: rec("main escape")})
+		return ui.Column(ui.Style{},
+			alert("main alert"),
+			ui.Sheet(ui.SheetProps{Open: mainSheet, Content: func() ui.Node { return ui.StaticText("main sheet") }}),
+			ui.Window(ui.WindowProps{Open: win, Content: func() ui.Node {
+				ui.UseKeys(ui.KeyMap{{Key: "escape"}: rec("window escape")})
+				return ui.View(ui.ViewProps{Keys: ui.KeyMap{{Key: "f1"}: rec("window f1")}},
+					alert("window alert"),
+					ui.Popover(ui.PopoverProps{Open: pop, Content: func() ui.Node { return alert("popover alert") }}, ui.StaticText("anchor")),
+					ui.Sheet(ui.SheetProps{Open: signal.New(true), Content: func() ui.Node {
+						// A view of its own (a sheet has one child).
+						return ui.View(ui.ViewProps{Keys: ui.KeyMap{{Key: "f1"}: rec("sheet f1")}},
+							ui.TextField(ui.TextFieldProps{Value: signal.New("")}), alert("sheet alert"))
+					}}))
+			}}),
+		)
+	})
+	defer r.Dispose()
+	r.Flush()
+	h.SetKeyWindow(h.Root())
+	win.Set(true) // and its sheet, in the same batch
+	r.Flush()
+	w := h.OfKind(ops.KindWindow)[0]
+	sheet := h.OfKind(ops.KindSheet)[0]
+	if h.PresentedOn(sheet) != w {
+		t.Fatalf("the Window's sheet is on %v", h.PresentedOn(sheet))
+	}
+	h.Key(h.OfKind(ops.KindTextField)[0], "escape", 0)
+	if !slices.Equal(got, []string{"window escape"}) {
+		t.Fatalf("got %q", got)
+	}
+	// The main window's sheet, with the Window in use.
+	h.SetKeyWindow(w)
+	mainSheet.Set(true)
+	r.Flush()
+	for _, s := range h.OfKind(ops.KindSheet) {
+		if s != sheet && h.PresentedOn(s) != h.Root() {
+			t.Fatalf("the main window's sheet is on %v", h.PresentedOn(s))
+		}
+	}
+	pop.Set(true)
+	r.Flush()
+	for _, c := range []struct {
+		title string
+		on    *fake.View
+	}{{"main alert", h.Root()}, {"window alert", w}, {"sheet alert", w}, {"popover alert", w}} {
+		h.Tap(h.Find(ops.KindButton, c.title)[0])
+		r.Flush()
+		var a *fake.View
+		for _, x := range h.OfKind(ops.KindAlert) {
+			if x.String(ops.PropAlertTitle) == c.title {
+				a = x
+			}
+		}
+		if a == nil || h.PresentedOn(a) != c.on {
+			t.Fatalf("%s: on %v, want %v", c.title, a, c.on)
+		}
+	}
+}

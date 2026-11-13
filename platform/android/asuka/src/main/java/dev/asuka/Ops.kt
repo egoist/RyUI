@@ -209,6 +209,7 @@ object AsukaProp {
     object Sheet {
         const val DETENTS = 64
         const val GRABBER = 65
+        const val WINDOW = 66
     }
 
     object Alert {
@@ -216,6 +217,7 @@ object AsukaProp {
         const val MESSAGE = 65
         const val BUTTONS = 66
         const val STYLE = 67
+        const val WINDOW = 68
     }
 
     object Image {

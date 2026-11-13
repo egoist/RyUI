@@ -206,6 +206,7 @@ public enum AsukaProp {
     public enum Sheet {
         public static let detents: UInt16 = 64
         public static let grabber: UInt16 = 65
+        public static let window: UInt16 = 66
     }
 
     public enum Alert {
@@ -213,6 +214,7 @@ public enum AsukaProp {
         public static let message: UInt16 = 65
         public static let buttons: UInt16 = 66
         public static let style: UInt16 = 67
+        public static let window: UInt16 = 68
     }
 
     public enum Image {
