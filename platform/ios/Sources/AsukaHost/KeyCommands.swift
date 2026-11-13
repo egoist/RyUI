@@ -99,10 +99,12 @@ extension UIResponder {
 
 extension AsukaRuntime {
     /// The key commands of the Keys of the views the keyboard's focus is
-    /// in: the first responder's node's, then its ancestors' out to the
-    /// root (the root's alone when nothing of the app's has the focus).
-    /// Of two with the same key, the nearer's. UIKit asks as a key goes
-    /// down, so they follow the focus and the props as they are then.
+    /// in: the first responder's node's, then on out (AsukaKeys.way: its
+    /// parents; a list cell's List; a sheet's or a popover's node, the
+    /// root). With nothing of the app's focused, the presented sheet's or
+    /// popover's node on top, else the root. Of two with the same key,
+    /// the nearer's. UIKit asks as a key goes down, so they follow the
+    /// focus and the props as they are then.
     func keyCommands() -> [UIKeyCommand] {
         guard !keyed.isEmpty else { return [] }
         asukaFirstResponder = nil
@@ -110,16 +112,17 @@ extension AsukaRuntime {
         let first = asukaFirstResponder
         asukaFirstResponder = nil
         if let t = first as? UITextInput, t.markedTextRange != nil { return [] } // an input method composing
-        var n = first.flatMap(node(of:)) ?? nodes[rootID]
+        let start = first.flatMap(node(of:)) ?? topController.flatMap(node(of:)).flatMap {
+            $0.kind == .sheet || $0.kind == .popover ? $0 : nil
+        }
+        let way = AsukaKeys.way(from: start, root: nodes[rootID], parent: { $0.parent },
+                                list: { [self] n in n.cell?.list.flatMap { nodes[$0.id] } }, kind: { $0.kind })
         var out: [UIKeyCommand] = []
         var seen = Set<String>()
-        while let m = n {
+        for m in way {
             for c in m.keyCommands where seen.insert("\(c.modifierFlags.rawValue) \(c.input ?? "")").inserted {
                 out.append(c)
             }
-            // A list's row: its cell has no parent node, its list's view
-            // holds it.
-            n = m.parent ?? m.view.superview.flatMap(node(of:))
         }
         return out
     }

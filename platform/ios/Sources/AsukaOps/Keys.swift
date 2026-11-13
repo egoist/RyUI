@@ -58,3 +58,31 @@ public enum AsukaKeys {
         name.unicodeScalars.count == 1 ? name.lowercased() : name
     }
 }
+
+extension AsukaKeys {
+    /// The nodes a key goes out through, from start (nil: nothing has the
+    /// focus, root), nearest first, as the Keys prop routes it on a phone
+    /// (DESIGN.md's Keys): a node's parent in the core's tree; for a node
+    /// the core leaves without one, where it shows: a list cell (a row
+    /// the host made and bound) its List, a Sheet's or a Popover's node
+    /// the root. A Window node and the root are ends.
+    public static func way<N: AnyObject>(from start: N?, root: N?, parent: (N) -> N?, list: (N) -> N?,
+                                         kind: (N) -> AsukaKind?) -> [N] {
+        var out: [N] = []
+        var seen = Set<ObjectIdentifier>()
+        var n = start ?? root
+        while let m = n, seen.insert(ObjectIdentifier(m)).inserted {
+            out.append(m)
+            if let p = parent(m) {
+                n = p
+            } else if let l = list(m) {
+                n = l
+            } else if m !== root, kind(m) == .sheet || kind(m) == .popover {
+                n = root
+            } else {
+                n = nil
+            }
+        }
+        return out
+    }
+}
