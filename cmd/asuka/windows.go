@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/egoist/asuka/internal/filetype"
+	iupdate "github.com/egoist/asuka/internal/update"
 )
 
 // Windows: the app's Go code and its host (host/windows, Win32 through
@@ -152,7 +153,8 @@ func buildWindows(app *goApp, o *buildOptions) error {
 	} else {
 		fmt.Println("asuka: using the app's own .syso resources")
 	}
-	args := []string{"build", "-trimpath", windowsLdflags(app, true), "-o", filepath.Join(out, exe), "."}
+	target := "windows-" + goarch
+	args := []string{"build", "-trimpath", windowsLdflags(app, true) + updateLdflags(app, target), "-o", filepath.Join(out, exe), "."}
 	if o.verbose {
 		fmt.Println("+ go", strings.Join(args, " "))
 	}
@@ -170,6 +172,26 @@ func buildWindows(app *goApp, o *buildOptions) error {
 		return err
 	}
 	fmt.Printf("asuka: %s (windows/%s)\n", filepath.Join(out, exe), goarch)
+	if u, _ := app.cfg.updates(); u != nil {
+		// The folder's file list, then its update: the folder's entries.
+		b := updateBuild{target: target, kind: iupdate.Folder, dir: out, root: out}
+		if err := writeFileList(b); err != nil {
+			return err
+		}
+		entries, err := os.ReadDir(out)
+		if err != nil {
+			return err
+		}
+		for _, e := range entries {
+			b.entries = append(b.entries, e.Name())
+		}
+		if _, err := writeUpdates(app, o.out, b, o.publishing); err != nil {
+			return err
+		}
+	} else if o.publishing {
+		_, err := writeUpdates(app, o.out, updateBuild{}, true)
+		return err
+	}
 	if signed {
 		fmt.Println("asuka: the folder is the app, its .exe signed: zip it, or package it (an installer, MSIX)")
 	} else {

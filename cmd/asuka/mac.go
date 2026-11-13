@@ -15,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	iupdate "github.com/egoist/asuka/internal/update"
 )
 
 // macOS: the app's Go code and its host (host/darwin, AppKit through
@@ -32,12 +34,20 @@ import (
 
 const macMin = "11.0"
 
+// macTarget is a Mac build's, for its updates: universal.
+const macTarget = "darwin-universal"
+
 // macLdflags is the -ldflags of a Mac build: asuka.json's, and the app's
-// name (its menus and window title).
+// name (its menus and window title), version and build (asuka/update's,
+// its crash reports').
 func macLdflags(app *goApp, release bool) string {
 	f := strings.TrimPrefix(app.cfg.ldflags(release), "-ldflags=")
-	name := app.displayName()
-	return "-ldflags=" + strings.TrimSpace(f+" -X "+strconv.Quote("github.com/egoist/asuka/internal/boot.Name="+name))
+	f += " -X " + strconv.Quote("github.com/egoist/asuka/internal/boot.Name="+app.displayName())
+	if app.cfg != nil {
+		f += " -X " + strconv.Quote("github.com/egoist/asuka/internal/boot.Version="+app.cfg.Version)
+		f += " -X " + strconv.Quote("github.com/egoist/asuka/internal/boot.Build="+strconv.Itoa(app.cfg.Build))
+	}
+	return "-ldflags=" + strings.TrimSpace(f)
 }
 
 func devMac(dir string, o *devOptions, stop <-chan os.Signal) error {
@@ -290,12 +300,17 @@ func buildMac(app *goApp, o *buildOptions) error {
 		return err
 	}
 
-	// A universal binary: one per architecture, joined by lipo.
+	// A universal binary: one per architecture, joined by lipo. Updates
+	// are the Mac App Store's for its builds.
+	ldflags := macLdflags(app, true)
+	if !o.appStore {
+		ldflags += updateLdflags(app, macTarget)
+	}
 	var parts []string
 	for _, arch := range []string{"arm64", "amd64"} {
 		out := filepath.Join(work, "app-"+arch)
 		env := []string{"GOOS=darwin", "GOARCH=" + arch, "CGO_ENABLED=0", "MACOSX_DEPLOYMENT_TARGET=" + macMin}
-		if err := run(app.dir, env, "go", "build", "-trimpath", macLdflags(app, true), "-o", out, "."); err != nil {
+		if err := run(app.dir, env, "go", "build", "-trimpath", ldflags, "-o", out, "."); err != nil {
 			return err
 		}
 		parts = append(parts, out)
@@ -334,6 +349,13 @@ func buildMac(app *goApp, o *buildOptions) error {
 		}
 	}
 	fmt.Printf("asuka: %s\n", bundle)
+	if !o.appStore {
+		// The update files, of the app as notarized and stapled.
+		b := updateBuild{target: macTarget, kind: iupdate.Bundle, dir: o.out, entries: []string{filepath.Base(bundle)}, root: bundle}
+		if _, err := writeUpdates(app, o.out, b, o.publishing); err != nil {
+			return err
+		}
+	}
 	if o.appStore {
 		pkg, err := macPackage(app, bundle, prof, identity, o.out, run)
 		if err != nil {

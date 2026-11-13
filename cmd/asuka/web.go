@@ -801,7 +801,11 @@ func buildWeb(app *goApp, o *buildOptions) error {
 	if err := os.WriteFile(filepath.Join(out, "index.html"), []byte(page), 0o644); err != nil {
 		return err
 	}
-	headers := "/index.html\n  Cache-Control: no-cache\n/manifest.webmanifest\n  Cache-Control: no-cache\n/asuka/*\n  Cache-Control: public, max-age=31536000, immutable\n/web/*\n  Cache-Control: public, max-age=31536000, immutable\n/sw.*.js\n  Cache-Control: public, max-age=31536000, immutable\n/*.wasm\n  Cache-Control: public, max-age=31536000, immutable\n  Content-Type: application/wasm\n"
+	// What asuka/update reads for a newer version than the page's.
+	if err := os.WriteFile(filepath.Join(out, "version.json"), versionFile(app), 0o644); err != nil {
+		return err
+	}
+	headers := "/index.html\n  Cache-Control: no-cache\n/manifest.webmanifest\n  Cache-Control: no-cache\n/version.json\n  Cache-Control: no-cache\n/asuka/*\n  Cache-Control: public, max-age=31536000, immutable\n/web/*\n  Cache-Control: public, max-age=31536000, immutable\n/sw.*.js\n  Cache-Control: public, max-age=31536000, immutable\n/*.wasm\n  Cache-Control: public, max-age=31536000, immutable\n  Content-Type: application/wasm\n"
 	if err := os.WriteFile(filepath.Join(out, "_headers"), []byte(headers), 0o644); err != nil {
 		return err
 	}

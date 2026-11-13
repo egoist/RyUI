@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	iupdate "github.com/egoist/asuka/internal/update"
 )
 
 type buildOptions struct {
@@ -24,6 +26,8 @@ type buildOptions struct {
 	arch         string // Linux and Windows: amd64 or arm64
 	verbose      bool
 	noVet        bool
+	version      string // asuka.json's version, for this build
+	publishing   bool   // asuka publish: the update files are required
 }
 
 func buildFlags(o *buildOptions) *flagSet {
@@ -42,8 +46,22 @@ func buildFlags(o *buildOptions) *flagSet {
 	fs.Bool(&o.appStore, "appstore", 0, "macOS: a .pkg for the Mac App Store: the app sandboxed, signed with a Mac App Store profile's certificate (Apple Distribution), the .pkg with Mac Installer Distribution")
 	fs.String(&o.out, "out", 'o', "", "the output `directory` (default: dist in the app's directory)")
 	fs.Bool(&o.noVet, "no-vet", 0, "don't run asuka vet first (by default it prints what it finds, as warnings: the build goes on)")
+	fs.String(&o.version, "version", 0, "", "the `version` to build, in place of asuka.json's (as CI takes it from the tag: 1.2.0, 1.3.0-beta.1)")
 	fs.Bool(&o.verbose, "verbose", 'v', "print the commands asuka runs")
 	return fs
+}
+
+// setVersion makes --version the app's version for the build.
+func (o *buildOptions) setVersion(app *goApp) error {
+	if o.version == "" {
+		return nil
+	}
+	v := strings.TrimPrefix(o.version, "v")
+	if !iupdate.ValidVersion(v) {
+		return fmt.Errorf("--version %q isn't a version (1.2.0, 1.3.0-beta.1)", o.version)
+	}
+	app.cfg.Version = v
+	return nil
 }
 
 func cmdBuild(args []string) error {
@@ -63,6 +81,9 @@ func cmdBuild(args []string) error {
 	}
 	app, err := loadApp(dir)
 	if err != nil {
+		return err
+	}
+	if err := o.setVersion(app); err != nil {
 		return err
 	}
 	vetBuild(app.dir, !o.noVet)

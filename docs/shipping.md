@@ -3,7 +3,9 @@
 `asuka build` makes an app's release build for one platform, from the
 app's directory (or the one given), into its `dist`. `asuka publish`
 uploads the iOS and Android builds to their stores: to TestFlight and
-App Review, or a Google Play track (see [Publishing](#publishing)).
+App Review, or a Google Play track (see [Publishing](#publishing)); and
+the desktop builds' signed updates, which installed apps update to, to
+GitHub's releases or an S3 bucket (see [Updates](#updates)).
 
 | `--platform` | What it makes, in `dist` | Builds on | Given to users |
 |---|---|---|---|
@@ -488,6 +490,230 @@ good. Serve the folder from any web server or CDN, `.wasm` as
 store need it). See [the web](web.md) for what's in it and what a
 browser does differently.
 
+It also writes `version.json`, the version built and its release notes
+(`CHANGELOG.md`'s section), which `asuka/update` reads in the page: a
+page older than the site offers to reload ([Updates](#updates)).
+
+## Updates
+
+A desktop app updates itself as Mac apps do with Sparkle: it checks a
+feed for a newer version, shows its release notes, downloads it (only
+what changed, when there's a delta from the version it runs), checks
+that it's signed with your key, installs it and relaunches. Phones
+update from their stores; a web app's page reloads for a newer site.
+
+### Set up
+
+Make the key pair that signs updates, once:
+
+```sh
+asuka update keygen
+```
+
+It writes `asuka-update.key`, the secret key, and `asuka-update.pub`, the
+public key, to `asuka/update-keys` in your configuration directory
+(`--out` chooses another), and prints what to add to `asuka.json`. Keep
+the secret key out of the repository: in a password manager, and in your
+CI's secrets. Installed apps take only updates signed with it, so losing
+it strands them, and whoever has it can ship code to your users.
+
+```json
+"updates": {
+  "publicKey": "…the contents of asuka-update.pub…",
+  "github": "you/notes"
+}
+```
+
+| Key | What it is |
+|---|---|
+| `publicKey` | `asuka-update.pub`'s contents, built into the app |
+| `github` | `owner/name`: a public repository whose releases, tagged `v1.2.0`, hold the updates; apps read the latest release's |
+| `tagPrefix` | the releases' tags' prefix (default `v`); another, as `desktop-v`, lets the repository's latest release be another's (a CLI's): apps then find the newest release tagged with it through the GitHub API |
+| `url` | instead of `github`: an HTTPS directory that serves the files (an S3 or R2 bucket, a CDN, your server); apps read `url/update-<target>.json` |
+| `feed` | a server of yours that apps ask instead (with `url`, where the files are): see [your own server](#your-own-update-server) |
+| `s3` | the bucket that serves `url`, which `asuka publish` uploads to: `bucket`, `prefix` (its directory), `region`, `endpoint` (R2's, MinIO's; default Amazon S3), `pathStyle` |
+| `privateKey` | the secret key's path (`~/` the home directory), for builds on your machine |
+| `changelog` | a Markdown file whose `## 1.2.0` (or Keep a Changelog's `## [1.2.0] - 2026-11-13`) section is the release notes; default `CHANGELOG.md`, when there is one, which must then have the version's section |
+| `deltas` | how many versions before get a delta (default 3; 0: none) |
+
+The environment says the same for CI and tests: `ASUKA_UPDATE_PRIVATE_KEY`
+(the secret key itself, or its file's path), `ASUKA_UPDATE_PUBLIC_KEY` and
+`ASUKA_UPDATE_URL` (over `publicKey` and `url`).
+
+### In the app
+
+`update.Window` is the update window, in the app's root; `update.AppMenu`
+puts "Check for Updates…" in the app's menu after About on the Mac (a
+Help menu on Windows, the header bar's main menu on Linux):
+
+```go
+func Root() ui.Node {
+	return ui.Column(ui.Style{},
+		update.Window(update.Options{Icon: "logo.png"}), // an image in assets/
+		ui.MenuBar(ui.Val([]ui.MenuBarMenu{update.AppMenu()})),
+		// ...
+	)
+}
+```
+
+It checks 10 seconds after launch, then once a day (`Options.Interval`),
+and when a version is out it shows its release notes with **Install
+Update**, **Remind Me Later** and **Skip This Version** (checks in the
+background don't offer that version again, but offer the next), and
+"Automatically download and install updates in the future": then checks
+install what they find without asking, and it runs at the next launch.
+Installing shows the download's progress, then **Relaunch Now**.
+`update.CheckForUpdates()` checks as the user asked (the menu item, a
+button): the window also says when the app is up to date or can't
+update itself. `AutomaticChecks`, `SetAutomaticChecks`,
+`AutomaticDownloads`, `SetAutomaticDownloads` and `LastCheck` are the
+user's choices (in `update.json` in the app's data directory), for a
+settings page. The window's words are Asuka's, in the app's language; an
+app changes them with keys `asuka.updateInstall` and so on in its
+catalogs.
+
+An interface of the app's own uses the package's functions, off the main
+thread, or the updater's state (`update.Use()`: checking, available,
+downloading with its bytes, ready...):
+
+```go
+go func() {
+	r, err := update.Check(ctx) // nil: up to date
+	if err != nil || r == nil {
+		return
+	}
+	// r.Version, r.Notes (Markdown), r.Date, r.Size
+	if err := r.Install(ctx, func(done, total int64) { /* ui.Post the progress */ }); err == nil {
+		update.Relaunch() // app.Relaunch: quits (OnQuit may cancel), then starts the new version
+	}
+}()
+```
+
+`update.Supported()` says whether the app can update itself, and why not:
+a development build or one without `updates` (`ErrNotConfigured`), an app
+the system's packages, Flatpak, Snap, the Mac App Store or the Microsoft
+Store installed (`ErrManaged`: they update it), a Mac app run from where
+it was downloaded, which macOS translocates (`ErrTranslocated`: the user
+moves it to Applications), a folder the user can't write
+(`ErrNotWritable`), a phone (`ErrUnsupported`). The window never checks
+in the background then, and says why when the user checks.
+
+`update.SetChannel("beta")` offers a channel's prereleases too, for the
+users who chose your beta: a version's channel is its prerelease's
+letters (`1.4.0-beta.2` is `beta`'s), `"*"` takes every prerelease.
+Releases are offered on every channel. `update.SetSource` reads the
+manifests and downloads the files through code of the app's own (a
+service that wants the user's token); the signatures are checked all the
+same.
+
+### Build and publish
+
+With `updates` and the secret key, `asuka build --platform mac`,
+`windows` or `linux` writes in `dist/updates`, beside the build:
+
+- `notes-1.2.0-<target>.tar.gz`, the app as installed, signed (Ed25519
+  over its SHA-256): the bundle; the Windows folder's entries; on Linux,
+  the build's `.tar.gz` itself. The targets are `darwin-universal`,
+  `windows-amd64`, `windows-arm64`, `linux-amd64` and `linux-arm64`.
+- delta updates from the versions published before, as
+  `notes-1.1.0-to-1.2.0-<target>.delta`: it downloads them (checking
+  their signatures) from where the published manifest says, and writes
+  what changed: files moved or copied from the installed app, bsdiff
+  patches of those that changed, the rest. Apps download only the delta
+  of their version, and the whole archive when it fails (the app was
+  changed since it was installed). A first version has none.
+- `update-<target>.json`, the manifest: the version, its release notes,
+  the date, the archive's and deltas' URLs, sizes and signatures, and
+  the versions before (for the next deltas). A prerelease's is
+  `update-<target>-beta.json`, which only apps on its channel read.
+
+Without the key it builds the app and writes no update files, saying
+so. `--version 1.2.0` builds another version than `asuka.json`'s (CI takes
+it from the tag). A Windows folder and a Linux prefix also get
+`.asuka-files`, the list of what the version installs, so that its
+update removes what the next one no longer has, and nothing of yours.
+
+`asuka publish` builds and uploads them, the manifests last, so no app
+reads a manifest whose files aren't there yet:
+
+```sh
+asuka publish --platform mac --sign "Developer ID Application: …" --notarize asuka
+asuka publish --platform windows --arch arm64
+asuka publish --platform linux --draft
+```
+
+- With `github`, to the release of the version's tag (`v1.2.0`), with the
+  [GitHub CLI](https://cli.github.com) signed in (`gh auth login`, or
+  `GH_TOKEN`): made a draft if there's none, then published, as a
+  prerelease for a prerelease, and not as the latest with a `tagPrefix`
+  of your own. `--draft` leaves it a draft, to publish once every
+  platform is there (`gh release edit v1.2.0 --draft=false`): apps check
+  the latest published release.
+- With `s3`, to the bucket, the manifests with `Cache-Control: no-cache`
+  (their names stay from version to version), with
+  `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` (and `AWS_SESSION_TOKEN`),
+  the region from `s3.region`, `AWS_REGION` or `us-east-1` (which R2
+  takes). No other tool.
+- With `url` alone, upload `dist/updates` there yourself, the manifests
+  last, and keep the earlier versions' files.
+
+### Your own update server
+
+With `feed`, apps ask your server instead, its URL with `{target}`,
+`{version}` (the version they run) and `{channel}` filled in:
+
+```json
+"updates": {
+  "publicKey": "…",
+  "url": "https://downloads.example.com/notes",
+  "feed": "https://api.example.com/updates?target={target}&version={version}&channel={channel}"
+}
+```
+
+It answers `204 No Content` (or 404) when there's nothing newer, else
+with a manifest, the JSON `asuka build` writes:
+
+```json
+{
+  "version": "1.2.0",
+  "notes": "- Faster sync.\n- Fixed the sidebar.",
+  "date": "2026-11-13T09:00:00Z",
+  "url": "https://downloads.example.com/notes/notes-1.2.0-darwin-universal.tar.gz",
+  "size": 9123456,
+  "signature": "…base64…",
+  "deltas": [
+    {"from": "1.1.0", "url": "https://…/notes-1.1.0-to-1.2.0-darwin-universal.delta", "size": 21432, "signature": "…"}
+  ]
+}
+```
+
+`asuka build` writes the files for `url`; serve what it wrote, or pick
+among manifests as you like (a staged rollout, a channel per account).
+The signatures are the ones `asuka build` made: the server only chooses.
+
+### Where apps update
+
+- macOS: the new bundle, checked (its code signature valid, of the
+  running app's team and identifier, its quarantine attribute taken off),
+  waits beside the app until it quits, however it quits: a helper then
+  puts it in the old one's place and, when the app asked to relaunch,
+  opens it through Launch Services, so the Dock keeps one tile. The app's
+  folder must be one the user can write: `/Applications` for an
+  administrator, `~/Applications`.
+- Windows: the folder's entries are replaced while the app runs, each
+  renamed aside first and everything put back if one can't be; the
+  running `.exe` is renamed (Windows lets it), and removed at the next
+  launch. The folder must be the user's (not `Program Files`): unzipped
+  in their profile, or an installer's per-user install
+  (`%LOCALAPPDATA%\Programs`). MSIX packages update through the Store or
+  App Installer.
+- Linux: the tarball's prefix, such as `~/.local`: the app's files alone
+  (`bin/notes`, `share/notes/`, its desktop file, icons, metainfo and MIME
+  types), each by a rename, then the desktop's caches
+  (`update-desktop-database`, `update-mime-database`). A Flatpak, a Snap,
+  a distribution's package or an AppImage updates through its own
+  channel: there the app doesn't update itself.
+
 ## In an existing app
 
 A Asuka app can live inside an app made in Xcode or Android Studio: a
@@ -818,6 +1044,40 @@ the notary service; `WINDOWS_CERTIFICATE`, a code signing certificate
 (a `.pfx`), and `WINDOWS_CERTIFICATE_PASSWORD`. Each Linux build makes
 its own `.tar.gz`; the Flatpak manifest packages the last one built, for
 its architecture.
+
+With [updates](#updates) on GitHub, `asuka publish` in place of `asuka
+build` also uploads each platform's update to the tag's draft release
+(the `release` job made it), to publish once every platform is there.
+Add the secret key as a secret (`gh secret set ASUKA_UPDATE_PRIVATE_KEY <
+asuka-update.key`), give the jobs `ASUKA_UPDATE_PRIVATE_KEY` and
+`GH_TOKEN`, and build the tag's version:
+
+```yaml
+      - name: build, sign, notarize, and upload with its update
+        env:
+          ASUKA_UPDATE_PRIVATE_KEY: ${{ secrets.ASUKA_UPDATE_PRIVATE_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          ASUKA_APPLE_ID: ${{ secrets.APPLE_ID }}
+          ASUKA_APPLE_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          ASUKA_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: asuka publish --platform mac --draft --version "${GITHUB_REF_NAME#v}" --sign "Developer ID Application: Your Name (TEAMID)" --notarize env
+```
+
+and in the Windows and Linux job:
+
+```yaml
+        run: |
+          for p in "windows" "windows --arch arm64" "linux" "linux --arch arm64"; do
+            asuka publish --platform $p --draft --version "${GITHUB_REF_NAME#v}"
+          done
+```
+
+Then publish the draft (`gh release edit v1.2.0 --draft=false`, or in
+the release's page): installed apps update to it. The release job's tag
+is `tagPrefix` and the version (`v1.2.0`); `--version` makes the build's
+the tag's, so `asuka.json`'s needn't be bumped. Deltas start from the
+published release, which the runners download (`GH_TOKEN` lifts the
+GitHub API's limit on requests, which a `tagPrefix` uses).
 
 ## Languages
 

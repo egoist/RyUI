@@ -329,7 +329,13 @@ func TestPublishFlags(t *testing.T) {
 		err  string
 	}{
 		{[]string{}, "usage"},
-		{[]string{"--platform", "mac"}, "one of ios, android"},
+		{[]string{"--platform", "web"}, "one of ios, android, mac, windows, linux"},
+		{[]string{"--platform", "mac"}, ""},
+		{[]string{"--platform", "mac", "--arch", "arm64"}, "--arch is for --platform linux or windows"},
+		{[]string{"--platform", "linux", "--notarize", "env"}, "--notarize is for --platform mac"},
+		{[]string{"--platform", "windows", "--track", "beta"}, "--track is for --platform ios or android"},
+		{[]string{"--platform", "ios", "--version", "1.2.0"}, "--version is for --platform mac, windows or linux"},
+		{[]string{"--platform", "linux", "--arch", "arm64", "--version", "1.2.0", "--draft"}, ""},
 		{[]string{"--platform", "ios", "--track", "beta"}, "--track is for --platform android"},
 		{[]string{"--platform", "android", "--groups", "x"}, "--groups is for --platform ios"},
 		{[]string{"--platform", "ios", "--file", "a.ipa", "--build", "3"}, "--file's number"},

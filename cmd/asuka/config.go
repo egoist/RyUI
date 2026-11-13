@@ -152,6 +152,9 @@ type appConfig struct {
 	Widgets []widgetConfig `json:"widgets"`
 	// I18n says where the app's catalogs are, when they aren't in locales.
 	I18n *i18nConfig `json:"i18n"`
+	// Updates are a desktop app's (asuka/update, updates.go): the public
+	// key updates are signed with, and where they're published.
+	Updates *updatesConfig `json:"updates"`
 	// dir is the app's directory.
 	dir string
 	// Shortcuts are the app's actions for the system: on iOS, App
@@ -300,6 +303,9 @@ func loadConfig(dir string) (*appConfig, error) {
 	}
 	if err := c.ShareTarget.check(); err != nil {
 		return nil, fmt.Errorf("asuka.json: shareTarget: %v", err)
+	}
+	if _, err := c.updates(); err != nil {
+		return nil, err
 	}
 	if c.Icon != "" && !filepath.IsAbs(c.Icon) {
 		c.Icon = filepath.Join(dir, c.Icon)
