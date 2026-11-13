@@ -8,5 +8,10 @@
   "hide": "Itago ang {app}",
   "quit": "Umalis sa {app}",
   "hideOthers": "Itago ang Iba",
-  "zoom": "I-zoom"
+  "zoom": "I-zoom",
+  "cancel": "Kanselahin",
+  "takePhoto": "Kumuha ng Litrato",
+  "addToContacts": "Idagdag sa Mga Contact",
+  "addToCalendar": "Idagdag sa Kalendaryo",
+  "newEvent": "Bagong Event"
 }

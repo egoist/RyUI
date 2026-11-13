@@ -55,6 +55,17 @@ An entitlement needs its capability on the app's App ID
 profile has it then. `ryui build -platform ios` stops with what's missing if the
 profile lacks one; simulator builds have them all.
 
+A Mac app (`ryui dev` and `ryui build -platform mac`) has the same
+purpose strings in its Info.plist (location's as
+`NSLocationUsageDescription` too), and its signature the hardened
+runtime's entitlements for what they ask (camera, microphone, location,
+contacts, calendars, photos), without which a Developer ID build is
+refused them. Push's `aps-environment`, Sign in with Apple and App
+Attest are entitlements only a provisioning profile grants, which `ryui
+build -platform mac` doesn't embed yet: until it does, registering for
+pushes and signing in with Apple fail on the Mac, and App Attest says
+it isn't supported.
+
 The purpose strings RyUI writes are generic ("To take a photo."). iOS
 shows them when it asks the user, so write your own in `ryui.json`'s
 `ios.usage`:
@@ -75,6 +86,88 @@ Calls that wait (for the user, a location fix, the platform) are marked
 "not on the main thread" below: call them from a goroutine and
 `ui.Post` the result back (see [the main thread](concepts.md#the-main-thread)).
 The others take a callback, called on the main thread.
+
+## On a Mac
+
+The packages work on macOS as on iOS, through the Mac's own frameworks,
+except where a Mac differs:
+
+| Package | On a Mac |
+| --- | --- |
+| `ryui/camera` | `Take`: a sheet over the window with a live preview, Take Photo and Cancel (AppKit has no camera screen). `View`'s "back" is the built-in camera (a Mac has no back one), or the one plugged in; scanning codes in it needs macOS 13 |
+| `ryui/audio/record` | No audio session: other apps' sound plays on; `Background` changes nothing, a Mac app records out of sight anyway |
+| `ryui/contacts`, `ryui/calendar` | `Add` asks in an alert over the window (macOS has no new contact or event screen), then saves, asking for access first |
+| `ryui/photos` | PhotoKit, as on iOS; a Mac has no limited library: `ManageLimited` does nothing |
+| `ryui/library` | Photos and videos go to Photos; `Downloads` and `Music` to the user's `~/Downloads` and `~/Music`, in the folder asked |
+| `ryui/push` | APNs, as on iOS; no `Rewrite` (it needs a notification service extension). Needs a provisioning profile (above) |
+| `ryui/background` | The task keeps App Nap from slowing the app; there's no notification, so `Update` changes nothing |
+| `ryui/periodic` | `NSBackgroundActivityScheduler`: the tasks run while the app runs (it isn't launched for them); one that wants power waits while the Mac is on its battery |
+| `ryui/screen` | `Lock` and `SetBars` do nothing; `PreventCapture` leaves the app's windows out of screenshots and recordings; `OnScreenshot` hears of the screenshots Spotlight finds |
+| `ryui/appleauth` | Apple's button and sheet, as on iOS. Needs a provisioning profile (above) |
+| `ryui/transcribe` | On the device only; the app's bundle needs its purpose string, which `ryui build` writes |
+| `ryui/sensors` | A Mac has no motion sensors: `Available` is false, watching gets nothing, `StepsBetween` fails with `ErrNotAvailable` |
+| `ryui/widget`, `ryui/agerange` | Not on a Mac: `widget.Set` does nothing, `agerange.Request` fails with `ErrNotAvailable` |
+| `ryui/splash` | A Mac app has no launch screen: `Hold` and `Hide` do nothing |
+
+## On Windows
+
+The packages work on Windows through its own services (Media Foundation,
+WIC, WinRT, Windows Hello), except where Windows differs; where it has
+nothing, the package answers as on a device without it:
+
+| Package | On Windows |
+| --- | --- |
+| `ryui/camera` | Media Foundation's capture engine. `Take`: a dialog over the window with a live preview, Take Photo and Cancel (Enter and Escape). `View` picks the camera Windows names front or rear, else the first; with `Scan`, it reads codes in four frames a second with RyUI's own reader (as `ryui/scan`'s `File`). Settings' camera switch off: "not allowed" |
+| `ryui/camera/record` | H.264 and AAC in MPEG-4 (`.mp4`), the default microphone unless muted |
+| `ryui/audio/record` | The default microphone, AAC at 44.1 kHz (voice mono, music stereo); `Background` changes nothing |
+| `ryui/biometric` | Windows Hello's prompt; `Check`'s kind is the sensor's; Hello always offers its PIN, and names its own cancel button |
+| `ryui/webauth` | A window over the app's with WebView2 in it (the app's web profile; `Ephemeral`: a throwaway one) |
+| `ryui/contacts`, `ryui/calendar` | Windows gives the contacts and calendars to packaged apps only: `Request` says denied; `Add` opens a vCard or an event file in the user's contacts or calendar app (`saved` is false: it doesn't say) |
+| `ryui/photos` | The Pictures folder (no permission to ask); screenshots are its Screenshots folder's |
+| `ryui/library` | The user's Downloads, Videos, Music and Pictures folders, in the folder asked |
+| `ryui/vision` | Windows's OCR, in the languages whose OCR is installed (Settings, Time & language), and its face detector; codes as `ryui/scan` reads them |
+| `ryui/scan` | Windows has no reader of codes for apps: RyUI's own, in Go, reads QR codes, Data Matrix, EAN-13 and EAN-8, UPC-A and UPC-E, Code 128 and Code 39 (not Aztec, PDF417, Code 93, Codabar nor ITF) |
+| `ryui/imageedit` | Windows's codecs read (HEIC and WebP where their extensions are installed); a video's frame through Media Foundation |
+| `ryui/background` | The task keeps the PC from sleeping; there's no notification, so `Update` changes nothing |
+| `ryui/periodic` | Timers while the app runs (it isn't launched for them); one that wants power waits while the PC is on its battery |
+| `ryui/screen` | `Lock` and `SetBars` do nothing; `PreventCapture` leaves the app's windows out of screenshots and recordings; `OnScreenshot` hears of the screenshots saved in the Screenshots folder (Print Screen with Windows, the Snipping Tool) |
+| `ryui/tracking` | No prompt: allowed while the advertising ID is on in Settings, else denied |
+| `ryui/push`, `ryui/widget`, `ryui/review`, `ryui/integrity` | Packaged (Store) apps' or Apple's and Google's: `push.Register` fails, `widget.Set` does nothing, `review.Request` shows nothing, `integrity.Supported` is false |
+| `ryui/appleauth`, `ryui/agerange`, `ryui/transcribe`, `ryui/sensors` | Not on Windows: unavailable, as on a device without them |
+| `ryui/maps` | Windows has no map control for desktop apps (its own needs a Bing Maps key): the host draws OpenStreetMap's tiles, downloaded two at a time and kept a week in the app's caches, with "© OpenStreetMap contributors" on the map; drag, the wheel or a pinch, double-click, + and -. Satellite and Hybrid show the streets (no free imagery), and `ShowsUser` shows nothing, as on Linux |
+| `ryui/location` | `PlaceName` asks OpenStreetMap's Nominatim (Windows's own geocoder needs a Bing Maps key): one request a second at most, answers kept in the app's caches |
+| `ryui/splash` | A Windows app has no launch screen: `Hold` and `Hide` do nothing |
+
+## On Linux
+
+The Linux host reaches the desktop's services through XDG desktop
+portals where there's one (they work in a Flatpak sandbox too), GLib and
+GTK, and the libraries a desktop has, each loaded the first time it's
+used: a system without it answers an error that names what's missing.
+
+| Package | On Linux |
+| --- | --- |
+| `ryui/secure` | The keyring (libsecret: GNOME Keyring, KWallet, KeePassXC), an item per key labeled with the app's name |
+| `device.PickPhotos`, `PickFiles` | GTK's file dialog (the portal's in a sandbox), copies in the app's caches |
+| `device` clipboard | Images and changes through GDK's clipboard |
+| `ryui/network` | GNetworkMonitor; Wi-Fi, ethernet or cellular from NetworkManager; never constrained |
+| `ryui/location` | The location portal (GeoClue's, which asks the user), else GeoClue itself; `Name` with geocode-glib, when it's installed |
+| `ryui/speech` | Speech Dispatcher (started when it isn't running): its voices, rate, pitch, volume |
+| `ryui/audio`, `ryui/audio/record` | GStreamer: an AAC encoder (FDK, libav's...) records, the default source the microphone |
+| `ryui/library` | The user's folders (XDG's Pictures, Videos, Music, Downloads), in the folder asked |
+| `ui.ShareFiles` | No share sheet: the files are copied to the clipboard, with a toast |
+| `ryui/camera`, `ryui/camera/record` | The camera portal (it asks the user once; PipeWire's cameras, `gstreamer1.0-pipewire`), else the first Video4Linux camera, through GStreamer. `Take`: a dialog over the window with a live preview, Take Photo and Cancel. `View`: the preview, mirrored, filling its box; front and back are the same camera (a computer's face the user). Videos are MPEG-4 (H.264 from x264 or OpenH264, AAC), else WebM; scanning codes needs GStreamer's `zbar` element. No camera: `ErrNoCamera`; refused: "not allowed" |
+| `ryui/scan`, `ryui/vision` | ZBar (`libzbar0`) reads codes: no Aztec or Data Matrix. Tesseract (`libtesseract5` and a language's data) reads text; nothing finds faces: `Faces` is empty. Without ZBar, `scan.File` fails "not available"; `vision.Analyze` leaves out what isn't installed |
+| `ryui/imageedit` | GdkPixbuf's loaders decode (HEIF and WebP where their loaders are installed), upright; the actions are done in Go; video frames from GStreamer |
+| `ryui/webauth` | A dialog over the window with a WebKitGTK web view (`Ephemeral`: a session of its own); closing it cancels |
+| `ryui/maps` | libshumate's map of OpenStreetMap's tiles (`libshumate-1.0-1`); Satellite and Hybrid show the streets; no user location layer. Without libshumate, the view says so and `OnError` is called |
+| `ryui/background` | The task keeps the system from suspending; no notification, `Update` changes nothing |
+| `ryui/periodic` | The tasks run on a timer while the app runs (it isn't launched for them); one that wants power waits while on the battery, one that wants the network while it's offline |
+| `ryui/screen` | `Lock`, `SetBars` and `PreventCapture` do nothing; `OnScreenshot` hears of new images in Pictures/Screenshots (GNOME's, KDE's) |
+| `ryui/sensors` | iio-sensor-proxy (convertibles, tablets): the light sensor, in lux, and the accelerometer's orientation as 1 g along the axis that's up, as it turns. No others: `Available` is false, `StepsBetween` fails with `ErrNotAvailable` |
+| `ryui/contacts`, `ryui/calendar` | Evolution Data Server's address books and calendars (GNOME Contacts', GNOME Calendar's, the online accounts'): access is `Full` when it has one; `Pick` is a dialog of the contacts with a search field; `Add` asks, then saves in the default address book or the event's calendar. Without it: contacts' access is `Denied`, calendars' `WriteOnly`; `Add` opens a vCard or an iCalendar file in the user's contacts or calendar app (`saved` is false); `contacts.Pick` fails |
+| `ryui/photos`' library, `ryui/appleauth`, `ryui/transcribe`, `ryui/widget` | None on Linux: the library's access is `Denied`; `appleauth.Available` is false and its button shows nothing; `transcribe` fails with `ErrNotAvailable`; `widget.Set` does nothing. `ryui/splash` has nothing to hold |
+| `ryui/biometric`, `ryui/integrity`, `ryui/agerange`, `ryui/push` | None on Linux: not available, not supported. `ryui/review` does nothing; `ryui/tracking` answers allowed |
 
 ## The camera: ryui/camera
 
@@ -454,7 +547,9 @@ name that does, as expo-sharing does: `image.pdf` shared as a JPEG goes
 as `image.pdf.jpeg`, a link to the file, not a copy. On Android the files
 go through the app's FileProvider; one outside the app's own folders is
 copied to its caches first. On the Mac it's the sharing services
-picker. Windows has no share sheet for files yet: `done` gets an error.
+picker. On Windows it's the share UI (`done` is called once it shows:
+Windows doesn't say when it's gone).
+Linux has none: the files go on the clipboard, as a shared text does.
 
 To be opened with URLs yourself, see `ryui.json`'s `scheme` and `links` in
 [Shipping](shipping.md#ryuijson), and `ui.OnOpenURL`.
@@ -495,6 +590,7 @@ such file, a download that failed).
 | Android | `ACTION_VIEW` of the `Start` file in the app the user picks for its type (Drive's PDF viewer, Photos), through the app's FileProvider with the right to read it alone | when the user is back |
 | macOS | Quick Look's panel (`QLPreviewPanel`), its arrows between the files | when the panel closes |
 | Windows | the file's default app (`ShellExecuteEx`), or the "How do you want to open this?" dialog | once it's handed over |
+| Linux | the file's default app (`GtkFileLauncher`, the portal's in a sandbox) | once it's handed over |
 
 Android has no system viewer, nor one that pages through several files:
 it opens one, as Android's mail apps do with each attachment.
@@ -520,7 +616,8 @@ printButton = ui.Button(ui.ButtonProps{Title: ui.Val("Print"), OnPress: func() {
 
 - `print.File(source, options, done)` prints a PDF or an image (a path, an
   asset, an http(s) URL, as `preview.Show` takes them). Another type fails
-  with `print.ErrUnsupported`, but on Windows.
+  with `print.ErrUnsupported`, but on Windows and Linux (where the
+  printer takes what CUPS can print).
 - `print.HTML(markup, options, done)` prints markup, paginated as a browser
   prints a page: CSS's `@media print` and `break-before` apply. Images and
   styles come from absolute URLs (`https:`, `data:`).
@@ -542,6 +639,7 @@ the platform doesn't say. A job that fails is an error.
 | Android | `PrintManager`'s print screen | a PDF written through; an image fit to the page, upright (as `PrintHelper`) | the WebView's print adapter | printed, cancelled or failed (the job's state) |
 | macOS | `NSPrintOperation`'s panel, a sheet on the window, with a preview | PDFKit (a PDF; an image on a page) | WebKit's print operation | printed or cancelled |
 | Windows | WebView2's: the system's print dialog for HTML, the browser's preview for a WebView | the file's app prints it (the shell's `print` verb), whatever its type | WebView2 | unknown |
+| Linux | GTK's print dialog (the print portal's for a file) | the printer takes it (CUPS: PDFs, images) | WebKitGTK's print operation | printed or cancelled |
 
 An image wider than tall starts in landscape on Android and iOS, as their
 photo printing does.
@@ -574,7 +672,7 @@ go func() {
 iOS lays it out with WebKit (`UIPrintPageRenderer` with the web view's
 print formatter), Android with its WebView's print adapter, the Mac with
 WebKit's print operation, Windows with WebView2 (Chromium's
-`Page.printToPDF`).
+`Page.printToPDF`), Linux with WebKitGTK (printed to a file).
 
 ## Mail and messages: ryui/compose
 
@@ -621,6 +719,7 @@ can't do fails with `compose.ErrUnavailable`.
 | Android | the mail apps only: `ACTION_SENDTO` `mailto:`, or with attachments `ACTION_SEND` with `mailto:` as its selector, the files through the app's FileProvider; markup as spans (`EXTRA_TEXT`) and as `EXTRA_HTML_TEXT` | the default SMS app: `smsto:` with `sms_body`, or with attachments `ACTION_SEND` | unknown, once the user is back |
 | macOS | a `mailto:` link for the user's mail app; with attachments, the mail share service (`NSSharingService`), which takes no CC or BCC (they fail with `ErrUnavailable`) | Messages (`NSSharingService`) | unknown, or cancelled |
 | Windows | a `mailto:` link; with attachments, Simple MAPI (`MAPISendMailW`: Outlook, Thunderbird; the new Outlook and Windows's Mail app don't take it: `ErrUnavailable`) | `ErrUnavailable` | unknown, or cancelled (MAPI) |
+| Linux | the email portal (the mail app's composer, with the attachments), else `xdg-email`, else a `mailto:` link | `ErrUnavailable` | unknown, or cancelled (the portal) |
 
 The iOS simulator has no Mail account and no Messages: try the composers
 on a device.
@@ -899,24 +998,37 @@ count.
 
 ### On each platform
 
-| | iOS | Android | macOS | Windows |
-|---|---|---|---|---|
-| Show, schedule, cancel | ✓ | ✓ | ✓ | ✗ |
-| Actions, replies | ✓ | ✓ | ✓ | ✗ |
-| Background actions | ✓ (about 25 s) | ✓ (about 9 s) | ✓ | ✗ |
-| Threads | ✓ | ✓ (a group and its summary) | ✓ | ✗ |
-| Channels | ignored | ✓ | ignored | ✗ |
-| Conversations | ✓ (communication notifications) | ✓ (MessagingStyle, shortcuts) | plain | ✗ |
-| Badge | ✓ | the launcher's | ✓ (the Dock) | ✗ |
-| Showing, removing | ✓ | ✓ | ✓ | ✗ |
-| Present | ✓ | ✓ | ✓ | ✗ |
+| | iOS | Android | macOS | Windows | Linux |
+|---|---|---|---|---|---|
+| Show, schedule, cancel | ✓ | ✓ | ✓ | ✓ (toasts) | ✓ (scheduled: a systemd user timer, whether the app runs or not) |
+| Actions, replies | ✓ | ✓ | ✓ | ✓ (five buttons) | actions (a reply opens the app) |
+| Background actions | ✓ (about 25 s) | ✓ (about 9 s) | ✓ | ✓ (about 25 s; started for it) | while the app runs |
+| Threads | ✓ | ✓ (a group and its summary) | ✓ | not grouped; `RemoveThread` | ✓ |
+| Channels | ignored | ✓ | ignored | ignored | ignored |
+| Conversations | ✓ (communication notifications) | ✓ (MessagingStyle, shortcuts) | plain | plain | plain |
+| Badge | ✓ | the launcher's | ✓ (the Dock) | the taskbar button's overlay | the launcher API's (Dash to Dock, Plasma) |
+| Showing, removing | ✓ | ✓ | ✓ | ✓ (the notification center's) | what the app showed this run |
+| Present | ✓ | ✓ | ✓ | ✓ (not scheduled ones) | ✓ |
 
 **macOS** needs the app's bundle (`ryui build -platform mac`): an executable run on
 its own (`go run`, `ryui dev -platform mac`) has no bundle ID, and its calls fail
-with an error that says so. **Windows** has no notifications yet: its
-toasts need the app registered with the shell (an AppUserModelID, a COM
-activator for actions), which `ryui build -platform windows` doesn't do; the calls
-fail with an error that says so.
+with an error that says so. **Windows** shows toasts, now or scheduled,
+with their image, a category's actions as buttons and a reply as a text
+box. The app registers itself the first time (a Start menu shortcut with
+its AppUserModelID, ryui.json's `id`, and a COM activator: its executable,
+in the user's registry), so that a tap or a button reaches the app,
+which Windows starts for it if it isn't running; for a background
+action it stays out of sight and quits once `OnAction` is done. The
+badge is a count drawn on the app's taskbar button (a packaged app's,
+the system's badge). Windows shows a scheduled toast however `Present`
+would. **Linux** sends them as GNotifications
+when the app has its desktop file (or runs in a sandbox), else to the
+desktop's notification server itself (GNOME Shell turns away an app it
+has no desktop file for); taps and buttons reach the app while it runs.
+A notification due later is a systemd user timer (`systemd-run --user`),
+which runs the app's executable without a window to show it, hands it
+to the app if it runs, and launches the app for a tap; without systemd
+(a Flatpak, `ryui dev`) it shows while the app runs.
 
 ## Sound: ryui/audio
 
@@ -1293,7 +1405,9 @@ registers the device with Apple's (APNs) or Google's (Firebase Cloud
 Messaging) service, and reports its `Token`, its `Service` (`"apns"`,
 `"fcm"`) and whether notifications are `Allowed`. Send the token to your
 server, which sends notifications to it; register at each launch, since
-the token can change. Not on the main thread.
+the token can change. Not on the main thread. On the web it's Web Push
+(`"webpush"`, the token the browser's subscription; see
+[the web](web.md#ryuipush-web-push)).
 
 ```go
 func App() ui.Node {

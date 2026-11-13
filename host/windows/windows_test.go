@@ -1,4 +1,4 @@
-//go:build windows && amd64
+//go:build windows
 
 package windows
 
@@ -22,6 +22,10 @@ import (
 var mainQ = make(chan func())
 
 func TestMain(m *testing.M) {
+	if launchedForToast { // COM started the tests for a toast (notify_test.go)
+		toastServer()
+		os.Exit(0)
+	}
 	done := make(chan int)
 	go func() { done <- m.Run() }()
 	for {

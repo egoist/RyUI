@@ -51,7 +51,8 @@ const (
 	PlatformAndroid
 	PlatformMacOS
 	PlatformWindows
-	PlatformWeb // a browser (host/web: the DOM)
+	PlatformWeb   // a browser (host/web: the DOM)
+	PlatformLinux // GTK 4 and libadwaita (host/linux)
 )
 
 func (p Platform) String() string {
@@ -66,6 +67,8 @@ func (p Platform) String() string {
 		return "Windows"
 	case PlatformWeb:
 		return "web"
+	case PlatformLinux:
+		return "Linux"
 	}
 	return "unknown"
 }

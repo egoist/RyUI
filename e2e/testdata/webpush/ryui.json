@@ -1,0 +1,5 @@
+{
+  "name": "Web Push",
+  "id": "dev.ryui.webpushtest",
+  "web": { "vapidPublicKey": "BKpYsAT0ADj2pHQQZeNsXmA3fgij4OZ_7ZqkS63fvpscgjHLZys0UDBluROJdtDaGlE3WW1_IlFyzVzC2LlHyO0" }
+}

@@ -8,5 +8,10 @@
   "hide": "Ocultar {app}",
   "quit": "Sair de {app}",
   "hideOthers": "Ocultar outras aplicações",
-  "zoom": "Aumentar/reduzir"
+  "zoom": "Aumentar/reduzir",
+  "cancel": "Cancelar",
+  "takePhoto": "Tirar fotografia",
+  "addToContacts": "Adicionar aos contactos",
+  "addToCalendar": "Adicionar ao calendário",
+  "newEvent": "Novo evento"
 }

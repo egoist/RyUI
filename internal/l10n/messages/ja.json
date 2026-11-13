@@ -8,5 +8,10 @@
   "hide": "{app}を非表示",
   "quit": "{app}を終了",
   "hideOthers": "ほかを非表示",
-  "zoom": "拡大/縮小"
+  "zoom": "拡大/縮小",
+  "cancel": "キャンセル",
+  "takePhoto": "写真を撮る",
+  "addToContacts": "連絡先に追加",
+  "addToCalendar": "カレンダーに追加",
+  "newEvent": "新規イベント"
 }

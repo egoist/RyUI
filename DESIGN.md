@@ -899,9 +899,9 @@ ryui dev -platform ios|android <dir>       build, run, rebuild and restart on sa
 ryui build -platform ios|android <dir>     a release build for the stores
 ryui publish -platform ios|android <dir>   the release build, uploaded: TestFlight, App Review; a Play track
 ryui dev -platform mac <dir>               build and run on this Mac, rerun on save
-ryui build -platform mac <dir>             a universal .app, signed (-sign; default ad hoc)
+ryui build -platform mac <dir>             a universal .app, signed (-sign; default ad hoc), its profile embedded (-profile); -appstore: a .pkg
 ryui dev -platform windows <dir>           build and run on this PC, rerun on save
-ryui build -platform windows <dir>         a folder: the .exe (icon, manifest, version) and its assets
+ryui build -platform windows <dir>         a folder: the .exe (icon, manifest, version; signed with RYUI_WINDOWS_CERT) and its assets (-arch arm64)
 ryui dev -platform web <dir>               serve it to the browser, rebuild and reload on save
 ryui build -platform web <dir>             a static site: WebAssembly, the web host, a manifest
 ryui dev|build <dir>                       no -platform: this computer's, on macOS (mac) and Windows (windows)
@@ -1124,8 +1124,7 @@ Desktop adds `host/darwin` and `internal/darwin` (macOS),
   shadows), `host/windows` (`PrintWindow`), and `e2e` on the simulator,
   the emulator and headless Chrome at 1×, 1.5× and 2× (the DevTools
   protocol's screenshots). A host that documents lacking a feature
-  (Android's elevation shadows, Windows' transforms and group opacity)
-  skips its cases, with the reason.
+  (Android's elevation shadows) skips its cases, with the reason.
 - Tests never pass or fail on wall-clock time: wait for the condition,
   count the work.
 
@@ -1321,9 +1320,9 @@ Each one ends with its examples running and its tests in CI.
   - More accessibility: adjustable custom controls, and checking every component with VoiceOver and
     TalkBack on a device.
   - More GUI tests: gestures, alerts and menus, the gallery.
-- **Then desktop** (below), only when it's called for: until then the
-  work is maturing iOS and Android.
-- **macOS** (in progress): `host/darwin`, AppKit in the app's process
+- **Then desktop** (below), on the same core and `ops`: macOS, Windows,
+  Linux and the web, each its own host, done.
+- **macOS** (done): `host/darwin`, AppKit in the app's process
   through purego (`internal/darwin`, MyGo's Objective-C runtime layer),
   no cgo; `app.Run` runs it on macOS. `ryui dev -platform mac` (an `.app` like a
   release's, its assets read in place, its privacy prompts its own;
@@ -1350,15 +1349,38 @@ Each one ends with its examples running and its tests in CI.
   (AVSpeechSynthesizer), audio (AVPlayer), biometric (Touch ID), review;
   matched views (`Match`); pull to refresh (a trackpad's elastic pull
   past the top); `ui.Native` and the app's modules in Go (package
-  `native`, below); notarization (`ryui build -platform mac -notarize`). Not yet:
-  the other modules (camera, audio recording, contacts, calendar…).
-- **Windows** (in progress): `host/windows`, Win32 and the common
+  `native`, below); notarization (`ryui build -platform mac -notarize`).
+  Every module the packages call answers (below): the camera (its view,
+  capture, recording, codes; `Take` a sheet of the host's), audio
+  recording, contacts, calendars, the photo library and saving to it,
+  scan, vision, transcribe, imageedit, push (APNs), background, periodic
+  (`NSBackgroundActivityScheduler`), Sign in with Apple and its button,
+  webauth, maps (`MKMapView`), tracking, App Attest, screen capture;
+  sensors, widgets and the age range aren't a Mac's ("not available").
+  The CLI gives a Mac app its purpose strings and its hardened runtime's
+  entitlements for them, and its provisioning profile (`-profile`,
+  `RYUI_MAC_PROFILE`, ryui.json's `mac.profile`, else the best match
+  installed for an app that needs one): embedded as
+  `Contents/embedded.provisionprofile`, the app signed with its app ID,
+  team and what its packages need of the profile's entitlements (push's
+  `com.apple.developer.aps-environment`, Sign in with Apple, App Attest,
+  detected from the imports as on iOS), with the identity the profile
+  allows; without one the build says what won't work. `-appstore`: the
+  app sandboxed, signed with a Mac App Store profile, in a `.pkg`
+  (`productbuild`, Mac Installer Distribution). Not yet: `ZoomFrom`'s
+  zoom (a push slides), beginning a List's selection with a gesture
+  (`RowSelectBegin`), a development profile for `ryui dev`.
+- **Windows** (done): `host/windows`, Win32 and the common
   controls (version 6) in the app's process through `syscall`
   (`internal/windows`, much of it MyGo's), no cgo, no WinUI; `app.Run`
-  runs it on Windows (amd64). `ryui dev -platform windows` (rebuild and rerun on
+  runs it on Windows (amd64 and arm64). `ryui dev -platform windows` (rebuild and rerun on
   save, signals' state kept) and `ryui build -platform windows` (a folder of the
-  `.exe`, with its icon, manifest and version built in, and its
-  assets; from any system). The examples run (counter, todo, list10k,
+  `.exe`, with its icon, manifest and version built in, signed and
+  timestamped with `RYUI_WINDOWS_CERT` (by the first timestamp server
+  that answers, `RYUI_WINDOWS_TIMESTAMP`'s or DigiCert's, Sectigo's,
+  GlobalSign's; signtool on Windows, osslsigncode elsewhere), and its
+  assets; for amd64, or
+  `-arch arm64`; from any system). The examples run (counter, todo, list10k,
   navigation, gallery, richtext, markdown, notes, media but its native
   view, usage, downloader), light and dark, at any DPI. Done: the v0
   components, navigation, rich text (RichEdit), shapes, images, symbols
@@ -1371,29 +1393,93 @@ Each one ends with its examples running and its tests in CI.
   window's title, client size and least size; tests in `host/windows`
   drive real windows. Pinch and rotate (touch, the touchpad, Ctrl and
   the wheel), the header's search field, the inline date picker, the
-  native modules secureStore, device, browser, photos, files, web and js;
+  native modules: every module RyUI's packages call answers (below:
+  implemented where Windows has it, an answer of the package's protocol
+  saying it hasn't where it hasn't; `TestEveryModuleAnswers` checks);
   `ui.Native` and the app's modules in Go (package `native`); screen
   readers through UI Automation (below); shadows (drawn by the parent);
-  enter and exit transitions and matched views (the frame carries them,
-  a fade the view's own drawing); pull to refresh (F5). Not yet: the
-  other native modules (notifications, network, location, camera,
-  audio…), transforms, materials, opacity between 0 and 1 for a view's
-  children, a dark date picker, the share sheet (Share copies the
-  text), arm64 builds, code signing.
-- **Web** (in progress): `host/web` and `platform/web` (below); `app.Run`
+  enter and exit transitions and matched views (the frame carries them);
+  pull to refresh (F5). Rounded clips (a window region, the corners
+  antialiased by the parent), opacity between 0 and 1 for a view with
+  child windows and rotations (pictures, below), translations and
+  scales (the frame, and the scale of what's in it), materials, the
+  dark date picker, the share UI (text, links and files); the native
+  modules share, network (the Network List Manager), notify (toasts),
+  speech (SAPI), audio (MCI) and location (WinRT's Geolocator); native
+  arm64 builds; code signing; the camera (Media Foundation's capture
+  engine: its view, photos, video, `Take`), audio recording (AAC),
+  webauth (WebView2), Windows Hello for biometrics, vision (Windows'
+  OCR and face detector), imageedit, the Pictures folder as the photo
+  library, background and periodic tasks, screen capture prevention;
+  contacts and calendars (a packaged app's) add through the user's app;
+  toasts' buttons, replies and background actions (the app's COM
+  activator), the taskbar's badge, place names (OpenStreetMap's
+  Nominatim), codes in images and the camera's frames (`internal/barcode`,
+  in Go), a map view of OpenStreetMap's tiles.
+- **Web** (done): `host/web` and `platform/web` (below); `app.Run`
   runs it on `js/wasm`. `ryui dev -platform web` (serve, rebuild and reload on
   save, signals' state kept; the app's output and the page's errors in
-  the terminal) and `ryui build -platform web` (a static site). The examples run
-  (all but `notes` and `bookmarks`, whose SQLite has no WebAssembly
-  build), light and dark, left to right and right to left, at any size;
+  the terminal) and `ryui build -platform web` (a static site). The examples run,
+  light and dark, left to right and right to left, at any size;
   GUI tests (`e2e`, `-run Web`) drive them in headless Chrome. Done: the
   v0 components, navigation (the browser's back included), rich text and rich text fields (an editable element; formatting through the browser's editing, so its undo covers it),
-  shapes, canvas, shaders (WebGL 2), images, symbols, video, web views,
+  shapes, canvas, shaders (WebGL 2), images, symbols, video,
   gestures, drag and drop, menus, animation, transitions, matched views,
-  the app's files kept (IndexedDB), the app's own native views and
-  modules (`web/*.js`), several apps on one page. Not yet: SQLite, most
-  native modules (`ui.Call` answers that the host has none), a web
-  view of another site beyond loading it.
+  the app's files kept (IndexedDB, large files in chunks), `ryui/sqlite`
+  (SQLite's WebAssembly build, below; live queries), the native modules
+  a browser has (`platform/web/src/modules`: the secure store under a
+  non-extractable WebCrypto key, device, clipboard, pickers, share,
+  preview, print, compose, notifications, Web Push, network, location, sensors, speech, audio, recording, the camera and
+  `camera.View`, image editing, codes, WebAuthn for biometrics, web
+  auth; the others answer that the web hasn't them), web views (all of
+  it for the app's own origin; another site's page loads, and talks
+  through `postMessage` if it cooperates), the app's own native views and
+  modules (`web/*.js`), several apps on one page; the app's service
+  worker (`platform/web/src/sw.js`, which the CLI ships with every web
+  app, named by its digest, beside `index.html`): notifications with
+  their actions and inline replies that stay and answer after the page
+  closes (a tap opens a page, which gets the response as it starts),
+  `ryui/push` as Web Push with the app's VAPID key (`web.vapidPublicKey`;
+  the subscription is the token; the page in front rewrites and presents
+  a push), `ryui/push/webpush` for servers (RFC 8291's encryption and RFC
+  8292's VAPID tokens, in Go's standard library). Scheduled
+  notifications: browsers have no API to show one at a time with no page
+  open (Notification Triggers were abandoned), so they show at their
+  time while any page of the app is open (kept in Cache Storage, shown
+  once under a Web Lock), else as the next page opens, or when the worker
+  wakes first (a push, periodic background sync where Chrome grants it).
+- **Linux** (done): `host/linux`, GTK 4 and libadwaita in the app's
+  process through purego (`internal/gtk`), no cgo; `app.Run` runs it on
+  Linux (amd64 and arm64; GTK 4.14 and libadwaita 1.5 or later). `ryui
+  dev -platform linux` (on Linux: rebuild and rerun on save, signals'
+  state kept; `RYUI_LINUX_RUN` runs it on another machine) and `ryui
+  build -platform linux` (from any system: an install prefix with the
+  binary, its assets, its desktop file, icons and AppStream metainfo, a
+  `.tar.gz`, and a Flatpak manifest on GNOME's runtime). The examples
+  run; tests in `host/linux` drive real GTK windows under Xvfb, and GUI
+  tests (`e2e`, `-run Linux`) run the examples. Done: the v0
+  components, navigation (libadwaita's navigation view, view stack and
+  switcher, dialogs, alert dialogs, the split view), lists
+  (core-virtualized), rich text and rich fields, shapes, canvas,
+  shaders (on the CPU), images, symbols (the icon theme's, or Material
+  Symbols as symbolic icons), gestures, drag and drop, menus and the
+  main menu with its shortcuts, windows, animation, transitions,
+  matched views, the app's links (its scheme), `WebView` (WebKitGTK
+  6.0), `Video` (GStreamer), `ui.Native` and the app's modules in Go,
+  and every native module the packages call, through the desktop
+  portals where there's one: the secure store (libsecret), pickers,
+  notifications, network, location, speech (Speech Dispatcher), audio,
+  recording, the camera (the camera portal, PipeWire), print, compose,
+  preview, library, webauth (WebKitGTK), image editing, codes (ZBar)
+  and text (Tesseract) in images, maps (libshumate), sensors
+  (iio-sensor-proxy), background and periodic tasks, contacts and
+  calendars (Evolution Data Server), notifications due later (systemd
+  user timers, shown whether the app runs or not); the others answer
+  that Linux hasn't them. One selection across a `Selectable`'s texts
+  is the host's (GTK selects in one label at a time). An app's own
+  accessible actions are AT-SPI actions as GTK allows (its bridge lists
+  a widget's action groups: "action.Mark-as-read"), and the context
+  menu; GTK (to 4.22) has no API for named accessible actions.
 
 ## Rich text
 
@@ -1607,7 +1693,7 @@ After M6, on the same core, `ops` and app code:
 |---|---|---|
 | macOS | Go, AppKit through purego (`host/darwin`) | No cgo. `internal/darwin` is MyGo's Objective-C runtime layer (classes made at runtime, blocks, `WithPool`, a main run loop source for `Post`). In progress (see Milestones). |
 | Windows | Go, Win32 with common controls v6 through `syscall` (`host/windows`) | No cgo; `internal/windows` is the Win32, GDI, GDI+, uxtheme, DWM and WebView2 layer. Not WinUI 3: it needs the Windows App SDK beside the app, and XAML is a second reconciler. `List` is core-virtualized: no Win32 list hosts arbitrary rows. In progress (see Milestones). |
-| Linux | Go, GTK 4 through purego (`host/linux`) | libadwaita optional. |
+| Linux | Go, GTK 4 and libadwaita through purego (`host/linux`) | No cgo; `internal/gtk` binds GTK 4.14, libadwaita 1.5 and the GLib stack (Ubuntu 24.04, Debian 13, Fedora 40 and later). libadwaita, which every GNOME app links, gives navigation, dialogs and the header bar, and the look an app that sets no style should have. In progress (see Milestones). |
 
 Desktop hosts run in process: `app.Run` locks the main OS thread and
 runs the platform's event loop there, and reads the batch's Go structs
@@ -1679,6 +1765,22 @@ How the macOS host maps RyUI (`host/darwin`):
   view's shape (`shadowPath`), as on iOS; a view that clips and casts
   one clips its children in a view of their own that fills it, as on
   iOS: a layer that masks to its bounds masks its own shadow too.
+- The packages' modules are iOS's, the same methods and replies, through
+  the Mac's frameworks (each file of `host/darwin` registers its own):
+  AVFoundation for the camera (the view's layer is the capture session's
+  preview; photo, movie and metadata outputs) and `AVAudioRecorder`,
+  with no audio session; Contacts, EventKit and PhotoKit; Vision,
+  NaturalLanguage and Speech, off the main thread; MapKit;
+  AuthenticationServices; UserNotifications and the application
+  delegate for APNs. What iOS shows that AppKit hasn't, the host shows
+  itself: `camera.Take` is a sheet with a live preview, and
+  `contacts.Add` and `calendar.Add` ask in an alert over the window, then
+  save. A Mac has no back camera ("back" is the built-in one), no motion
+  sensors, no widget extension; a task in the background holds an
+  activity (App Nap off: a Mac app runs out of sight), periodic ones run
+  while the app does; `PreventCapture` keeps its windows out of
+  screenshots and recordings (`NSWindowSharingNone`) and `OnScreenshot`
+  sees the files Spotlight finds (`kMDItemIsScreenCapture`).
 - Debug automation: `RYUI_SNAPSHOT=file.png` renders the window to a PNG
   once it has shown, without taking focus (`RYUI_DUMP=1` writes the view
   tree beside it), then quits.
@@ -1713,6 +1815,35 @@ How the Windows host maps RyUI (`host/windows`):
   word). Views that take no mouse events are `HTTRANSPARENT`, so a
   click on a text reaches the pressable row under it. A pressable view
   shows Fluent's hover and pressed fills and takes Enter and Space.
+- A view that clips with a corner radius is shaped by a window region
+  (`SetWindowRgn`), which clips its child windows too: the pixels its
+  rounded rectangle covers whole. Its corners' edge pixels, outside the
+  region, are its parent's, which draws them antialiased: the view's
+  tree drawn there and mixed with what's behind by how much of each
+  pixel the rounded rectangle covers. A window in it painting over a
+  corner has the parent draw that corner again.
+- What a child window can't be, a picture draws: a view of the host's
+  above the view, taking no clicks, that draws what's behind it, then
+  the view's tree as it paints. A view with child windows at an opacity
+  between 0 and 1 is drawn blended with what's behind it, as one
+  picture (overlapping children don't show through each other); the
+  view stays under the picture and takes clicks and the keyboard. A
+  view without child windows fades its own drawing. (A layered child
+  window can be translucent, but the windows in it aren't painted.) A
+  rotated view is drawn turned (GDI+), its tree taken over black and
+  over white for its coverage; its own window is shaped to nothing
+  meanwhile, so it's drawn, not used. A picture is drawn again as
+  what's in the view paints, or moves.
+- `Style.Transform`'s translation moves the view's window; its scale
+  sizes the window about its center and multiplies the scale of what's
+  in it (`k`, as a window's DPI does: fonts, frames, controls and
+  drawing at the scaled size, still windows that take clicks); a scale
+  that differs between the axes sizes the window by each and what's in
+  it by their geometric mean. They step with `ui.Animate`'s frames.
+- `Style.Material` is drawn as Fluent's acrylic in the view (DWM's
+  backdrops are top-level windows' only): what's behind it, blurred
+  (three box blurs, a Gaussian's likeness) and tinted light or dark. A
+  view under it painting draws it again.
 - Controls are the common controls, drawn as Windows 11 draws its own
   (WinUI's Fluent styles) through custom draw, so they look current in
   light and dark mode and keep their keyboard, focus and accessibility:
@@ -1727,7 +1858,13 @@ How the Windows host maps RyUI (`host/windows`):
   segmented control, progress bar and ring are the host's own views,
   drawn as Fluent's. Each control sits in a view of the host's, which
   the core places: some controls send their notifications to the parent
-  they were made in, so a control never changes parent.
+  they were made in, so a control never changes parent. The month
+  calendar has no dark visual style: dark, it's drawn classic in the dark
+  palette's colors (its title and days' names in the accent's), the date
+  picker's drop-down one likewise; the date and time picker's field,
+  which has none either, paints itself light (its text antialiased in
+  grays) and is turned dark, white to the dark field's background and
+  black to its text.
 - Fonts are Segoe UI Variable (Segoe UI before Windows 11), its optical
   size picked by the size (Small below 12.5, Display from 20); the text
   styles are the Windows 11 type ramp's nearest: LargeTitle is Title
@@ -1871,7 +2008,79 @@ How the Windows host maps RyUI (`host/windows`):
   display on), `browser`, `photos` and `files` (the open file dialog,
   the files copied to the caches), `web` (`Runtime.evaluate` through
   WebView2's DevTools protocol, awaiting a promise; `Network.getCookies`)
-  and `js` (a blank page in a WebView2 that's never shown).
+  and `js` (a blank page in a WebView2 that's never shown); `share`
+  (Windows's share UI, `IDataTransferManagerInterop` and the
+  `DataTransferManager` of the window in use: text, a link, files as
+  `StorageFile`s through an `IIterable` of Go's; `ui.Share` too),
+  `network` (the Network List Manager: connectivity and its changes
+  through a connection point, the connection's adapter's type, the cost
+  as metered and constrained), `speech` (SAPI's `ISpVoice`, its events
+  posted to the message window; the pitch SAPI's XML's), `audio` (an MCI
+  `mpegvideo` device per player, a play's end `MM_MCINOTIFY`), `notify`
+  (toasts, `ToastNotificationManager`; scheduled ones
+  `ScheduledToastNotification`; the app registers its AppUserModelID, a
+  Start menu shortcut with it and the user's
+  `Classes\AppUserModelId`, the first time, and a COM activator, a CLSID
+  of its AppUserModelID's whose `LocalServer32` is its executable,
+  named by the shortcut's `ToastActivatorCLSID` and the key's
+  `CustomActivator`: its class object, registered as the app starts,
+  gets `INotificationActivationCallback.Activate` with the toast's or
+  button's arguments, JSON carrying the notification, and the reply's
+  text; started by COM for a click (`-ToastActivated`, taken out of
+  `os.Args` before the app sees them) the app keeps its window hidden
+  for a background action and quits once Go is done with it; `showing`
+  is `ToastNotificationHistory`'s toasts, read back from their XML; the
+  badge an overlay icon on the taskbar button,
+  `ITaskbarList3::SetOverlayIcon`, the count drawn, or
+  `BadgeUpdateManager`'s for a packaged app) and `location` (WinRT's
+  `Geolocator`, `RequestAccessAsync` first; place names from
+  OpenStreetMap's Nominatim, a request at a time and a second apart,
+  with a User-Agent naming RyUI, answers cached, as geocode-glib asks
+  it). WinRT is called from Go
+  (`internal/windows/winrt.go`): HSTRINGs, activation factories, the IIDs
+  of parameterized interfaces computed from their signatures, delegates
+  whose `Invoke` calls Go (on the thread WinRT calls them on, posted to
+  the main thread).
+- More modules, each file its own (`moduleHooks`, as on macOS; their
+  windows of a class of their own): `audioRecord` (waveIn, encoded as it
+  records by Media Foundation's sink writer to AAC in MPEG-4, or ADTS
+  when streaming; 44.1 kHz, Windows's AAC encoder's), `camera` (Media
+  Foundation's capture engine: the preview sink draws into the view's
+  window, filling it; photos through the photo sink, JPEG; videos
+  through the record sink, H.264 and AAC; `take` a dialog of the host's
+  with a live preview, Take Photo and Cancel, as on a Mac; with scan
+  on, the preview sink's sample callback gives the frames in RGB32,
+  which the view draws itself and reads codes in four times a second), `webAuth` (a window over the one in use,
+  which waits as for a sheet, with a WebView2 in it: the app's profile,
+  or a throwaway one for Ephemeral; it ends when a navigation's scheme
+  is the callback's), `biometric` (Windows Hello:
+  `UserConsentVerifier` through its interop, over the window; the
+  sensor's kind from the Windows Biometric Framework), `imageEdit` (WIC
+  decodes, upright from the EXIF orientation; Go does the actions and
+  writes; a video's frame from Media Foundation's source reader),
+  `vision` (Windows.Media.Ocr's lines and words, FaceAnalysis's faces,
+  `internal/barcode`'s codes) and `scan.file` (`internal/barcode`, pure
+  Go: QR codes, Data Matrix, EAN, UPC, Code 128 and Code 39, found at any
+  angle; Windows has no reader for apps), `photoLibrary` (the
+  Pictures folder, no permission to ask; screenshots are its
+  Screenshots folder's), `library` (the known folders), `clipboard`
+  (its image as PNG, from `PNG` or a DIB; copying one; changes by its
+  sequence number), `background` (`ES_SYSTEM_REQUIRED` while a task
+  runs), `periodic` (timers while the app runs, the tasks kept in its
+  data), `screen` (`WDA_EXCLUDEFROMCAPTURE` on every window, those that
+  show later through a WinEvent hook; screenshots seen as files appear
+  in the Screenshots folder), `tracking` (the advertising ID's setting),
+  `contacts` and `calendar` (Windows gives the stores to packaged apps
+  only: denied; adding opens a vCard or an iCalendar file in the user's
+  app), and Apple's, Google's and packaged apps' modules (`appleAuth`,
+  `ageRange`, `integrity`, `push`, `widget`, `review`), `splash`,
+  `sensors` and `transcribe` answer what they would on a device without
+  them. `ryui.map` is a view the host draws (Windows's MapControl is
+  UWP's and needs a Bing Maps key): OpenStreetMap's raster tiles,
+  two downloads at a time with a User-Agent naming RyUI, kept a week in
+  the caches, the attribution on the map; dragged, zoomed with the
+  wheel, a pinch, a double click and the keys; pins with a callout; the
+  region reported once the user has moved it.
 - Screen readers (Narrator, NVDA) read the host's views through UI
   Automation: each view of the host's own drawing answers `WM_GETOBJECT`
   with a provider of Go's (`IRawElementProviderSimple`, made once per
@@ -1890,8 +2099,9 @@ How the Windows host maps RyUI (`host/windows`):
   shape to 3σ inside it, whose compounded alpha follows a
   Gaussian-blurred edge of σ half the Radius, as the other platforms'
   shadows. Transitions and matched views move the frame, as on macOS,
-  stepped with the animation; their fades fade the view's own drawing.
-  A view going out keeps its window, and those in it, until it's gone.
+  stepped with the animation; their fades fade the view as opacity
+  does. A view going out keeps its window, and those in it, until it's
+  gone.
 - Pull to refresh is F5, the Windows way: the refreshable Scroll or List
   the focus is in, or else the innermost one on screen; a spinner floats
   at the top of its content while it refreshes.
@@ -1907,12 +2117,15 @@ How the Windows host maps RyUI (`host/windows`):
   controls: Win32 has no video view with controls.
 - Frames are set with `SetWindowPos`, without copying the old pixels
   (a view's pixels depend on what's behind it). `ui.Animate` steps the
-  frames on a timer; opacity between 0 and 1 fades a view's own drawing
-  but not its child windows (a child window can't be translucent without
-  the app's manifest).
-- The host builds for amd64 only: GDI+ takes floats, which Go's Windows
-  calls pass in the registers on amd64 but not arm64 (an amd64 build
-  runs on Windows on Arm, emulated).
+  frames on a timer, and transforms with them.
+- The host builds for amd64 and arm64. GDI+ takes floats: Go's Windows
+  calls pass them in the registers on amd64 (each in its position's), but
+  on arm64 a C function takes floats in the vector registers, which
+  Go's calls don't load; there a trampoline in Go's assembly (no cgo),
+  called through `syscall.SyscallN` with a frame, loads the integer and
+  float arguments and jumps to the function. A `RECT` by value goes in
+  two registers on arm64 (by reference on x64). WebView2's client
+  library is the runtime's of the process's architecture.
 - Debug automation: `RYUI_SNAPSHOT=file.png` writes the window (and the
   top sheet's, `file.sheet.png`, and each `Window`'s, `file.window.png`,
   `file.window2.png`…) with `PrintWindow`, and a menu open, `file.menu.png`,
@@ -1929,6 +2142,169 @@ How the Windows host maps RyUI (`host/windows`):
   `wait:<duration>`, `snap:<file>`), through the controls'
   own messages and the message loop's key handling;
   `RYUI_COLOR_SCHEME` is light or dark whatever the system's.
+
+How the Linux host maps RyUI (`host/linux`):
+
+- GTK 4 and libadwaita in the app's process through purego, no cgo
+  (`internal/gtk`: typed functions purego builds once, and raw function
+  pointers called through `SyscallN` on the hot paths, allocating frames
+  and drawing, so they use no reflection). `app.Run` makes an
+  `AdwApplication` (its ID ryui.json's `id`, `boot.ID`; unique, so a
+  second launch activates the first, but in tests and automation runs)
+  and runs GLib's main loop on the main thread. `Post` queues the
+  function and adds an idle source (`g_idle_add`, thread-safe). Signals
+  are connected through one C callback per signature, made once,
+  routed by the data pointer to the connection's Go function.
+- Every node's view is a `RyuiView`, a `GtkWidget` subclass the host
+  registers (`g_type_register_static_simple`, its class's vfuncs set from
+  Go at GTK 4's stable offsets): `size_allocate` places its children at
+  the frames the core gave them (whole sizes, the fractional origin in
+  the allocation's transform, with `Style.Transform` about the center),
+  `snapshot` draws the node's shadow, background or gradient, its own
+  content (an image, a symbol, a shape, a canvas), its children (clipped
+  to its rounded shape when it clips) and its border over them, as a
+  layer does, and `measure` asks for nothing (the core lays out), but a
+  scroll's content asks for its frame, which the viewport scrolls. A
+  control (a `GtkLabel`, `GtkButton`, `GtkEntry`...) is the only child
+  of its node's view, filling it less the content inset. A widget is
+  measured by itself (`gtk_widget_measure`), a text by a Pango layout of
+  the label's (as wide as its widest line, min-content its widest
+  word). Opacity is the widget's, so it fades its children too.
+- The environment is the window's content's size, its surface's scale
+  (fractional), the desktop's text scaling (GTK's Xft DPI over 96, as
+  FontScale), libadwaita's dark style, animations off as Reduce Motion,
+  GNOME's screen reader setting and clock format, the locale (LC_ALL,
+  LC_TIME, LANG), the languages (LANGUAGE) and the time zone
+  (/etc/localtime). `Environment.Platform` is `PlatformLinux`.
+- Colors are libadwaita's named colors (`window_bg_color`,
+  `card_bg_color`, `accent_color`...), read from the theme for the
+  current style; ryui.json's accent is the theme's accent, through a
+  style sheet of the host's. The text styles are libadwaita's type
+  classes relative to the interface font (gtk-font-name): LargeTitle is
+  `.title-1`, Title `.title-2`, Title2 `.title-3`, Title3 `.title-4`,
+  Headline `.heading`, Footnote and Caption `.caption`. Text is styled
+  with Pango attributes (no style sheet per view). The app's fonts are
+  fontconfig's application fonts.
+- Controls are GTK's and libadwaita's: Filled is `.suggested-action`,
+  Plain `.flat`, Tinted a wash of the accent; `GtkSwitch` and
+  `GtkCheckButton`, `GtkScale`, `GtkEntry` and `GtkPasswordEntry` (a
+  `GtkTextView` for Multiline), a linked box of toggle buttons for
+  `Segmented`, `GtkDropDown` for `Wheel`, linked minus and plus buttons
+  for `Stepper`, `GtkColorDialogButton`, a date button opening
+  `GtkCalendar` and hour and minute spin buttons, `GtkProgressBar`,
+  libadwaita's spinner. Images are decoded off the main thread by Go's
+  decoders (others by GDK's loaders) into textures the view draws at its
+  mode, tinted through a mask. Symbols are the icon theme's symbolic
+  icons where freedesktop or Adwaita has a match for the SF Symbol name,
+  else the Material Symbol (as Android and the web draw them), written
+  once as a symbolic SVG into an icon directory the theme searches, so
+  every place that takes an icon name (buttons, menus, tabs) takes them.
+- Text fields: a Multiline field's `GtkTextView` is styled as libadwaita
+  styles an entry (filled, rounded, the accent's focus ring), its
+  placeholder a dim label shown while it's empty, its font a tag under
+  its text; it's measured by a Pango layout of its text as the view lays
+  it out. A Rich field's styles are a text tag per style (Ctrl+B, I and
+  U toggle formats); typed text takes the style before it. Selection
+  offsets cross as UTF-16 (the core's) and characters (GTK's).
+  PasteTypes: a paste of files, an image (as PNG) or data of a type the
+  field takes (GDK's clipboard formats) is read asynchronously into the
+  app's caches and reported with Pasted instead of going in. Autocapitalize,
+  Autocorrect and ContentType are the input method's purpose and hints;
+  ReturnKey labels a touch keyboard's key, so does nothing here.
+- `RichText` is a `GtkLabel` styled with Pango attributes: the label's
+  layout draws what a layout of the same text and attributes measured.
+  Links are the host's (colored and underlined as a label's, hit-tested
+  in the layout, a hand over them, a click claimed); inline components
+  are shape attributes of their size on the baseline, their views placed
+  where the layout puts them. A `Selectable` selects across its texts:
+  GTK keeps one label's selection at a time (a label that selects takes
+  the primary selection from the one that had it), so the selection is
+  the host's. A drag on the `Selectable`'s view (claimed in the capture
+  phase) maps the pointer to a text and a character through each
+  label's Pango layout, each text between the ends in reading order has
+  its part, drawn under its label (GDK's clip region of the range) in
+  libadwaita's selection color; a double click selects words, a triple
+  click paragraphs, Shift+click extends, Ctrl+A selects all, and Ctrl+C
+  and the context menu's Copy (GTK's words) copy the parts, a paragraph
+  each. A press on a link, a control or a pressable view is theirs.
+- Each window has one header bar (an `AdwHeaderBar` in an
+  `AdwToolbarView`), as GNOME's apps do: the innermost stack on screen's
+  back button, its top screen's title, bar buttons and search (a search
+  button, and GTK's search bar under the header, which typing in the
+  window opens), or the tabs' view switcher; the app's menus
+  (`MenuBar`) are its main menu, the last button, their shortcuts the
+  application's accelerators in every window. A `Stack` is an
+  `AdwNavigationView` (its pages slide; a swipe, the back button,
+  Alt+Left and Escape pop, with `Popped`), `Tabs` an `AdwViewStack` whose
+  `AdwViewSwitcher` is in the header bar on a wide window and an
+  `AdwViewSwitcherBar` at the bottom of a narrow one (under 550 points),
+  a `Sheet` an `AdwDialog` (a floating dialog, a bottom sheet in a
+  narrow window), an `Alert` an `AdwAlertDialog` (the first default
+  button suggested, a destructive one red, Escape the cancel button), a
+  `Window` an `AdwWindow` of its own. Screens, sheets and windows are
+  sized by GTK: each reports its `Environment` as it's allocated.
+- Menus are `GMenu` models in `GtkPopoverMenu`s, their items actions of
+  a group on the view: a button's drops from it, a view's LongPress menu
+  is its context menu at the pointer (a secondary click, a long press).
+- Input is GTK's event controllers, added as the core listens: a click
+  (Press, Pressed; Enter and Space press a focused pressable view, which
+  Tab reaches), a long press or a secondary click (LongPress), a drag
+  (Pan; one that ends fast a Swipe, as a touchscreen's flick is), zoom
+  and rotate gestures (touchscreens, touchpads; Ctrl and the wheel
+  pinch too), motion (Hover).
+- Animation: GTK doesn't animate a widget's allocation, so between
+  AnimateBegin and AnimateEnd the frames, opacity and transforms the
+  core sets are stepped on the frame clock with the core's curve (CSS's
+  cubic béziers, a damped spring); a view's first frame doesn't animate;
+  enter and exit transitions start from, and go out to, the
+  transition's state (a view going out stays until it has, with the
+  views in it). `Style.Match` notes where the keyed views are as an
+  animated batch starts destroying; the old view's widget waits on top
+  of its top view (a screen's, the root's), then moves to the new one's
+  place, fading, as the new one grows from its old place.
+- Drawing is GSK's, in the view's snapshot: a `Shape`'s outline is a
+  `GskPath` (from its SVG form), filled and stroked (`GskStroke`), its
+  trim a `GskPathMeasure`'s segment, stepped on the frame clock inside
+  an animation; a `Canvas`'s commands become paths, strokes,
+  transforms and Pango layouts as they're set, replayed each frame with
+  raw calls (Clip a fill clip, Alpha multiplying the colors). A `Shader`
+  runs on the CPU (package interp), as on Windows, into a
+  `GdkMemoryTexture`; animated, on the view's frame clock. A
+  `PageControl` is drawn as libadwaita's carousel dots, measured, and
+  takes clicks and the arrow keys. A paging `Scroll` has no scroll bar
+  and settles each swipe (a wheel's notch, a touchpad's or a
+  touchscreen's swipe, the arrow keys) on a page, with `Paged`. Pull to
+  refresh is F5 or Ctrl+R (the focus's refreshable Scroll or List, else
+  the innermost on screen), a spinner on a card over its top while it
+  refreshes.
+- Drag and drop is GTK's: a `GtkDragSource` (its files a `GdkFileList`,
+  its texts a string, its links `text/uri-list`, and a private type of
+  the app's) on a view with `DragItems`, a `GtkDropTargetAsync` on one
+  with `DropAccept` (the app's own drag known by `gdk_drop_get_drag`;
+  another app's text and URIs read as it comes over: files by their
+  names' types, other URIs links). GTK has no accessible actions of an
+  app's (to 4.22), but its AT-SPI bridge gives a widget with action
+  groups of its own the Action interface, listing their actions by
+  name: a view's `A11yActions` are its group "action", named after their
+  titles as GAction names may be ("action.Mark-as-read"), which Orca
+  lists and does; the view is a group (so its label is read), has a
+  popup (has-popup) and the key Shift+F10, and the actions are its
+  context menu (a secondary click, the Menu key, Shift+F10). An
+  adjustable view is a slider to screen readers and takes the arrow
+  keys.
+- The main window comes back at the size the user left it, and
+  maximized if it was (a Wayland app can't place its window), in
+  `ryui-window.json` in the app's data directory: `RYUI_DATA`, which the
+  host sets to the XDG data directory's folder for the app (Flatpak's
+  own).
+- Screen readers (Orca) read GTK's accessibility tree: a view's role (a
+  pressable view a button, a header a heading), label and description.
+- Debug automation, as on macOS and Windows: `RYUI_SCRIPT` runs steps,
+  then `RYUI_SNAPSHOT=file.png` renders each window to a PNG
+  (`RYUI_DUMP=1`: the view tree beside it) and quits.
+- Tests (`go test ./host/linux`) drive real GTK windows; they need a
+  display and a session bus (`xvfb-run dbus-run-session`), and skip
+  without GTK.
 
 Desktop needs what mobile doesn't: several windows, the app's menu bar
 and keyboard shortcuts, hover and right-click, resizable layouts. To
@@ -2020,7 +2396,37 @@ calls:
 - Files: Go's `os` on `js/wasm` calls Node's `fs` API; the page gives
   it a file system in memory that answers at once (Go waits for each
   callback), the app's data directory (`/data/<name>`, `RYUI_DATA`)
-  loaded from IndexedDB before Go starts and written back as it changes.
+  loaded from IndexedDB before Go starts and written back as it changes
+  (a large file in chunks of 64 KiB, only those changed; each data
+  directory's changes in one IndexedDB transaction).
+- SQLite: `modernc.org/sqlite` has no `js/wasm` build, so `ryui/sqlite`
+  has a second driver there (`sqlite/driver_js.go`) over SQLite's own
+  WebAssembly build (`platform/web/sqlite`, vendored from sqlite.org;
+  the CLI ships it with the apps whose wasm has `sqlite.Open`, and the
+  loader loads it before Go starts, since `Open` is synchronous).
+  `platform/web/src/sqlite.js` drives it from Go synchronously: one call
+  per statement (arguments read from Go's memory, the answer written
+  into it), a query's rows a chunk at a time, statements cached by SQL.
+  Its VFS keeps databases as files of the page's file system, so the
+  data directory's persistence keeps them, and Go's `os` sees them;
+  each call runs to its end before the page does anything else, so a
+  kept state is always one SQLite's rollback journal recovers from.
+  The tables commits write (the preupdate and commit hooks, the
+  authorizer) and queries read come back with each answer, for the live
+  queries, as modernc's hooks give them natively. One connection per
+  file (no shared memory, so no write-ahead logging; the page can't
+  block on a lock): locks between two opens of a file are the VFS's,
+  and a statement that finds the file locked is retried from Go, which
+  lets the other run.
+- Native modules: `platform/web/src/modules` (`system.js`,
+  `hardware.js`, `web.js`), each method decoding the Go package's bytes
+  as the native hosts do; what a browser can't do answers an error that
+  says so.
+- Web views: a page of the app's origin is fetched and written into a
+  fresh `<iframe>` (its URL set to its own), with `window.ryui` and
+  `Preload` before its scripts, so the host has its script, events,
+  `Block` and navigation; another site's is a sandboxed frame that only
+  loads, unless it answers RyUI's `postMessage` protocol (docs/web.md).
 - Symbols are the Android host's Material Symbols, as SVG paths
   (`platform/web/gen_symbols.go` reads its drawables).
 - `ryui dev -platform web` serves the page, the host's files (a checkout's, so

@@ -8,5 +8,10 @@
   "hide": "隱藏{app}",
   "quit": "結束{app}",
   "hideOthers": "隱藏其他",
-  "zoom": "縮放大小"
+  "zoom": "縮放大小",
+  "cancel": "取消",
+  "takePhoto": "拍照",
+  "addToContacts": "加入聯絡人",
+  "addToCalendar": "加入行事曆",
+  "newEvent": "新增行程"
 }

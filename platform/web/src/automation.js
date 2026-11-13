@@ -12,6 +12,8 @@
 //
 // It answers with what dump read, or an error.
 
+import { flush } from "./fs.js";
+
 /** run runs commands (lines) on host h; it resolves to dump's lines, or "". */
 export async function run(h, commands) {
   let out = "";
@@ -32,7 +34,8 @@ export async function run(h, commands) {
         // A relaunch: what the app keeps (its files, its language) stays,
         // its signals start again (not a dev reload, which keeps them).
         try { sessionStorage.removeItem(h.stateKey()); } catch {}
-        setTimeout(() => location.reload(), 50);
+        // Once what it wrote is kept, as an app's files are on a disk.
+        flush().then(() => location.reload());
         break;
       default: throw new Error("unknown automation command: " + cmd);
     }

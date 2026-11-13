@@ -1,4 +1,4 @@
-//go:build windows && amd64
+//go:build windows
 
 package windows
 
@@ -44,6 +44,7 @@ func (h *Host) enterTransition(n *node, f [4]float32) bool {
 	if n.transition[0] != 0 {
 		tw.fade, tw.enter, tw.opacity = true, true, n.opacity
 		n.opacity = 0.02 // drawn faint, not hidden
+		h.applyOpacity(n)
 		h.redraw(n)
 	}
 	a.tweens[n] = tw
@@ -105,6 +106,7 @@ func (h *Host) stepFade(n *node, tw *tween, e float32) {
 	if tw.enter && e >= 1 {
 		n.opacity = tw.opacity
 	}
+	h.applyOpacity(n)
 	h.redraw(n)
 }
 

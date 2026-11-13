@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
+	"crypto/ecdh"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -24,6 +26,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	webhost "github.com/egoist/ryui/platform/web"
@@ -39,7 +42,9 @@ import (
 // the reload). The app's output and the page's errors are printed here.
 // ryui build -platform web makes a static site: its files named by their content's
 // digest (cache them for good; index.html no-cache), gzipped copies,
-// a web app manifest and its icons.
+// a web app manifest and its icons, and the app's service worker
+// (webWorker), which shows its notifications and pushes while no page is
+// open.
 
 const devWebPort = 8790
 
@@ -86,6 +91,20 @@ func webSource(app *goApp) (fs.FS, string) {
 	}
 	sub, _ := fs.Sub(webhost.Src, "src")
 	return sub, ""
+}
+
+// sqliteSymbol is in the apps that import ryui/sqlite, which the page
+// gives SQLite's WebAssembly build (platform/web/sqlite).
+const sqliteSymbol = "github.com/egoist/ryui/sqlite.Open"
+
+// webSQLite is SQLite's WebAssembly build: the checkout's, as webSource
+// has the host's, else the CLI's.
+func webSQLite(app *goApp) fs.FS {
+	if _, dir := webSource(app); dir != "" {
+		return os.DirFS(filepath.Join(filepath.Dir(dir), "sqlite"))
+	}
+	sub, _ := fs.Sub(webhost.SQLite, "sqlite")
+	return sub
 }
 
 // wasmExec is the Go release's JavaScript side of its WebAssembly port,
@@ -197,6 +216,43 @@ func appScripts(app *goApp) []string {
 	return out
 }
 
+// webWorker is the app's service worker: its settings (globalThis.ryuiApp:
+// name, title, assets, icon), then the host's notify-core.js and sw.js,
+// as one classic script (platform/web/src/sw.js says what it does).
+func webWorker(src fs.FS, settings map[string]any) ([]byte, error) {
+	var b bytes.Buffer
+	st, _ := json.Marshal(settings)
+	b.WriteString("// The app's service worker: RyUI's (platform/web/src/sw.js), with the app's settings.\n")
+	fmt.Fprintf(&b, "globalThis.ryuiApp = %s;\n", st)
+	for _, n := range []string{"notify-core.js", "sw.js"} {
+		f, err := fs.ReadFile(src, n)
+		if err != nil {
+			return nil, fmt.Errorf("the web host's %s: %w", n, err)
+		}
+		b.Write(f)
+		b.WriteString("\n")
+	}
+	return b.Bytes(), nil
+}
+
+// webVAPIDKey is ryui.json's web.vapidPublicKey, checked: an uncompressed
+// P-256 point in base64url (unpadded), as PushManager.subscribe takes it.
+func webVAPIDKey(app *goApp) (string, error) {
+	if app.cfg == nil || strings.TrimSpace(app.cfg.Web.VapidPublicKey) == "" {
+		return "", nil
+	}
+	k := strings.TrimRight(strings.TrimSpace(app.cfg.Web.VapidPublicKey), "=")
+	k = strings.NewReplacer("+", "-", "/", "_").Replace(k)
+	b, err := base64.RawURLEncoding.DecodeString(k)
+	if err == nil {
+		_, err = ecdh.P256().NewPublicKey(b)
+	}
+	if err != nil || len(b) != 65 {
+		return "", errors.New("ryui.json: web.vapidPublicKey isn't a VAPID public key (an uncompressed P-256 point, 65 bytes, in base64url): github.com/egoist/ryui/push/webpush's GenerateKeys makes a pair")
+	}
+	return k, nil
+}
+
 func devWeb(dir string, o *devOptions, stop <-chan os.Signal) error {
 	app, err := loadApp(dir)
 	if err != nil {
@@ -210,12 +266,17 @@ func devWeb(dir string, o *devOptions, stop <-chan os.Signal) error {
 	if err != nil {
 		return err
 	}
+	vapid, err := webVAPIDKey(app)
+	if err != nil {
+		return err
+	}
 	src, srcDir := webSource(app)
-	s := &devServer{app: app, src: src, exec: exec_, wasm: filepath.Join(work, "app.wasm"), clients: map[chan string]bool{}}
+	s := &devServer{app: app, src: src, sqlite: webSQLite(app), exec: exec_, wasm: filepath.Join(work, "app.wasm"), vapid: vapid, clients: map[chan string]bool{}}
 	start := time.Now()
 	if err := buildWasm(app, s.wasm, false, o.verbose); err != nil {
 		return err
 	}
+	s.useSQLite.Store(hasSymbol(s.wasm, sqliteSymbol))
 	s.stamp = strconv.FormatInt(time.Now().UnixNano(), 36)
 	host := "127.0.0.1"
 	if o.lan {
@@ -278,6 +339,7 @@ func devWeb(dir string, o *devOptions, stop <-chan os.Signal) error {
 				s.failed = false
 				s.send("fixed", "")
 			}
+			s.useSQLite.Store(hasSymbol(s.wasm, sqliteSymbol))
 			s.stamp = strconv.FormatInt(time.Now().UnixNano(), 36)
 			s.send("reload", "")
 			fmt.Printf("ryui: rebuilt in %.1fs\n", time.Since(t).Seconds())
@@ -289,16 +351,19 @@ func devWeb(dir string, o *devOptions, stop <-chan os.Signal) error {
 // files, the build, the app's assets, and its connection back (the
 // reloads it waits for, the logs it sends).
 type devServer struct {
-	app     *goApp
-	src     fs.FS
-	exec    []byte
-	wasm    string
-	stamp   string // the build's, so the page never loads an old one
-	failed  bool
-	mu      sync.Mutex
-	clients map[chan string]bool
-	nextID  int64
-	waiting map[int64]chan struct {
+	app       *goApp
+	src       fs.FS
+	sqlite    fs.FS       // SQLite's WebAssembly build
+	useSQLite atomic.Bool // the app imports ryui/sqlite
+	exec      []byte
+	wasm      string
+	vapid     string // ryui.json's web.vapidPublicKey
+	stamp     string // the build's, so the page never loads an old one
+	failed    bool
+	mu        sync.Mutex
+	clients   map[chan string]bool
+	nextID    int64
+	waiting   map[int64]chan struct {
 		ID         int64
 		Out, Error string
 	}
@@ -365,17 +430,40 @@ func (s *devServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case p == "/" || p == "/index.html":
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		opts := map[string]any{"name": s.app.cfg.ID, "title": s.app.displayName(), "dev": "/__ryui/", "fonts": fontFiles(s.app), "version": s.app.cfg.Version, "build": s.app.cfg.Build, "serviceWorker": "sw.js"}
+		if s.vapid != "" {
+			opts["vapidPublicKey"] = s.vapid
+		}
+		if s.useSQLite.Load() {
+			opts["sqlite"] = "ryui/sqlite/"
+		}
 		io.WriteString(w, webIndex(webPage{
 			Name: s.app.displayName(), Lang: devLangOr("en"),
 			Host: "ryui", Wasm: "app.wasm?" + s.stamp, Exec: "ryui/wasm_exec.js", Scripts: prefixed("web/", appScripts(s.app)),
-			Options: map[string]any{"name": s.app.cfg.ID, "title": s.app.displayName(), "dev": "/__ryui/", "fonts": fontFiles(s.app), "version": s.app.cfg.Version, "build": s.app.cfg.Build},
+			Options: opts,
 		}))
 	case p == "/app.wasm":
 		w.Header().Set("Content-Type", "application/wasm")
 		http.ServeFile(w, r, s.wasm)
+	case p == "/sw.js":
+		b, err := webWorker(s.src, map[string]any{"name": s.app.cfg.ID, "title": s.app.displayName(), "assets": "assets"})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", contentType(p))
+		w.Write(b)
 	case p == "/ryui/wasm_exec.js":
 		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 		w.Write(s.exec)
+	case strings.HasPrefix(p, "/ryui/sqlite/"):
+		b, err := fs.ReadFile(s.sqlite, strings.TrimPrefix(p, "/ryui/sqlite/"))
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", contentType(p))
+		w.Write(b)
 	case strings.HasPrefix(p, "/ryui/"):
 		b, err := fs.ReadFile(s.src, strings.TrimPrefix(p, "/ryui/"))
 		if err != nil {
@@ -465,7 +553,7 @@ func printLog(b []byte) {
 
 func contentType(p string) string {
 	switch path.Ext(p) {
-	case ".js":
+	case ".js", ".mjs":
 		return "text/javascript; charset=utf-8"
 	case ".css":
 		return "text/css; charset=utf-8"
@@ -571,6 +659,10 @@ func buildWeb(app *goApp, o *buildOptions) error {
 	if err != nil {
 		return err
 	}
+	vapid, err := webVAPIDKey(app)
+	if err != nil {
+		return err
+	}
 	src, _ := webSource(app)
 	// The host's files go in a directory named by their digest: they
 	// import each other by name.
@@ -581,6 +673,18 @@ func buildWeb(app *goApp, o *buildOptions) error {
 		}
 		return nil
 	})
+	// SQLite, for the apps that import ryui/sqlite.
+	useSQLite := hasSymbol(tmp, sqliteSymbol)
+	if useSQLite {
+		sq := webSQLite(app)
+		for _, n := range []string{"sqlite3.mjs", "sqlite3.wasm"} {
+			b, err := fs.ReadFile(sq, n)
+			if err != nil {
+				return fmt.Errorf("SQLite's WebAssembly build: %w", err)
+			}
+			files["sqlite/"+n] = b
+		}
+	}
 	names := make([]string, 0, len(files))
 	for n := range files {
 		names = append(names, n)
@@ -652,9 +756,34 @@ func buildWeb(app *goApp, o *buildOptions) error {
 	if err := os.WriteFile(filepath.Join(out, "manifest.webmanifest"), mb, 0o644); err != nil {
 		return err
 	}
+	// The app's service worker, beside index.html (its scope is the app's
+	// directory), named by its digest too.
+	settings := map[string]any{"name": app.cfg.ID, "title": name, "assets": "assets"}
+	if icon {
+		settings["icon"] = "icons/icon-192.png"
+	}
+	sw, err := webWorker(src, settings)
+	if err != nil {
+		return err
+	}
+	swSum := sha256.Sum256(sw)
+	swName := "sw." + hex.EncodeToString(swSum[:])[:12] + ".js"
+	if err := writeWeb(filepath.Join(out, swName), sw); err != nil {
+		return err
+	}
+	opts := map[string]any{"name": app.cfg.ID, "title": name, "fonts": fontFiles(app), "version": app.cfg.Version, "build": app.cfg.Build, "serviceWorker": swName}
+	if icon {
+		opts["icon"] = "icons/icon-192.png"
+	}
+	if vapid != "" {
+		opts["vapidPublicKey"] = vapid
+	}
+	if useSQLite {
+		opts["sqlite"] = hostDir + "/sqlite/"
+	}
 	page := webIndex(webPage{
 		Name: name, Lang: "en", Host: hostDir, Wasm: wasmName, Exec: hostDir + "/wasm_exec.js",
-		Options:  map[string]any{"name": app.cfg.ID, "title": name, "fonts": fontFiles(app), "version": app.cfg.Version, "build": app.cfg.Build},
+		Options:  opts,
 		Icon:     icon,
 		Manifest: true,
 		Scripts:  scripts,
@@ -662,7 +791,7 @@ func buildWeb(app *goApp, o *buildOptions) error {
 	if err := os.WriteFile(filepath.Join(out, "index.html"), []byte(page), 0o644); err != nil {
 		return err
 	}
-	headers := "/index.html\n  Cache-Control: no-cache\n/manifest.webmanifest\n  Cache-Control: no-cache\n/ryui/*\n  Cache-Control: public, max-age=31536000, immutable\n/web/*\n  Cache-Control: public, max-age=31536000, immutable\n/*.wasm\n  Cache-Control: public, max-age=31536000, immutable\n  Content-Type: application/wasm\n"
+	headers := "/index.html\n  Cache-Control: no-cache\n/manifest.webmanifest\n  Cache-Control: no-cache\n/ryui/*\n  Cache-Control: public, max-age=31536000, immutable\n/web/*\n  Cache-Control: public, max-age=31536000, immutable\n/sw.*.js\n  Cache-Control: public, max-age=31536000, immutable\n/*.wasm\n  Cache-Control: public, max-age=31536000, immutable\n  Content-Type: application/wasm\n"
 	if err := os.WriteFile(filepath.Join(out, "_headers"), []byte(headers), 0o644); err != nil {
 		return err
 	}
@@ -681,7 +810,7 @@ func writeWeb(p string, b []byte) error {
 		return err
 	}
 	switch path.Ext(p) {
-	case ".js", ".css", ".wasm", ".json":
+	case ".js", ".mjs", ".css", ".wasm", ".json":
 		var z bytes.Buffer
 		zw, _ := gzip.NewWriterLevel(&z, gzip.BestCompression)
 		zw.Write(b)

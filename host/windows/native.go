@@ -1,4 +1,4 @@
-//go:build windows && amd64
+//go:build windows
 
 package windows
 
@@ -32,7 +32,10 @@ func (h *Host) setNativeProp(n *node, p ops.PropID, v *ops.Value) {
 			return
 		}
 		n.native = &nativeView{kind: v.Str}
-		f := native.ViewFactory(v.Str)
+		f := builtinViews[v.Str] // the host's own (more.go)
+		if f == nil {
+			f = native.ViewFactory(v.Str)
+		}
 		if f == nil {
 			fmt.Fprintf(os.Stderr, "ryui: no native view %q is registered (package native)\n", v.Str)
 			return

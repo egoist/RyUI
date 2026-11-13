@@ -8,5 +8,10 @@
   "hide": "پنهان کردن {app}",
   "quit": "خروج از {app}",
   "hideOthers": "پنهان کردن بقیه",
-  "zoom": "بزرگ‌نمایی"
+  "zoom": "بزرگ‌نمایی",
+  "cancel": "لغو",
+  "takePhoto": "گرفتن عکس",
+  "addToContacts": "افزودن به مخاطبین",
+  "addToCalendar": "افزودن به تقویم",
+  "newEvent": "رویداد جدید"
 }

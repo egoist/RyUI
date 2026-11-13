@@ -8,5 +8,10 @@
   "hide": "Skjul {app}",
   "quit": "Avslutt {app}",
   "hideOthers": "Skjul andre",
-  "zoom": "Zoom"
+  "zoom": "Zoom",
+  "cancel": "Avbryt",
+  "takePhoto": "Ta bilde",
+  "addToContacts": "Legg til i Kontakter",
+  "addToCalendar": "Legg til i kalender",
+  "newEvent": "Ny hendelse"
 }

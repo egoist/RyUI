@@ -1,4 +1,4 @@
-//go:build windows && amd64
+//go:build windows
 
 package windows
 
@@ -77,6 +77,12 @@ func (h *Host) message(hwnd uintptr, m uint32, wp, lp uintptr) (uintptr, bool) {
 				p := CursorPos()
 				h.pointerMoved(WindowFromPoint(p), p, true)
 			}
+			return 0, true
+		case wmSpeech:
+			h.speechEvents() // services.go
+			return 0, true
+		case MM_MCINOTIFY:
+			h.audioNotified(wp, lp) // audio.go
 			return 0, true
 		}
 		return 0, false
@@ -165,6 +171,7 @@ func (h *Host) makeWindow() {
 
 func (h *Host) windowMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
 	h.placementMessage(m, wp)
+	h.badgeMessage(m)
 	if r, ok := h.menuBarMessage(h.window, m, wp, lp); ok {
 		return r, true
 	}
@@ -316,7 +323,7 @@ func (h *Host) setScale(hwnd uintptr, k float32) []*node {
 	ns := make([]*node, 0, len(list))
 	for _, w := range list {
 		if n := h.byHwnd[w]; n != nil && n.hwnd == w && n.kind != kindWindowFrame && n.kind != kindSheetWindow {
-			n.k = k
+			n.k = h.kFor(k, h.zoomUpTo(w, hwnd)) // transform.go
 			ns = append(ns, n)
 		}
 	}

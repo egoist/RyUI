@@ -9,12 +9,20 @@
 // of the Go release's wasm_exec.js; "wasm_exec.js" beside this file by
 // default), assets (where its assets are served: "assets"), name (the
 // app's: its stored data is kept under it), fonts (the app's font files,
-// assets/fonts), env (more environment variables for the Go code), dev
-// (ryui dev's: the page reloads with each build, keeping the app's state,
-// and the app's logs go to the terminal).
+// assets/fonts), env (more environment variables for the Go code), sqlite
+// (the URL of the directory of SQLite's sqlite3.mjs and sqlite3.wasm, for
+// an app that imports ryui/sqlite: loaded before the app starts),
+// serviceWorker (the URL of the app's service worker, sw.js with the
+// app's settings, which the page registers: its notifications and
+// pushes), vapidPublicKey (the app's VAPID key, for ryui/push), icon (a
+// notification's icon), dev (ryui dev's: the page reloads with each
+// build, keeping the app's state, and the app's logs go to the terminal).
 
 import { Host } from "./host.js";
 import * as fs from "./fs.js";
+import { natives as builtinNatives } from "./modules/hardware.js";
+import * as worker from "./worker.js";
+import { notifyFor } from "./modules/system-notify.js";
 
 let hosts = 0;
 const natives = new Map();
@@ -32,13 +40,22 @@ export async function start(options = {}) {
   if (fullPage) container.classList.add("ryui-page");
   const name = options.name || "app";
   const dev = options.dev ? devClient(options.dev) : null;
+  // The app's service worker, listened to before the app starts: a tap
+  // on a notification may be what opened the page.
+  worker.register(options.serviceWorker);
+  // SQLite loads beside the app (ryui/sqlite: its databases open at once, in main).
+  const sqlite = options.sqlite ? import("./sqlite.js").then((m) => m.load(new URL(options.sqlite, document.baseURI))) : null;
+  sqlite?.catch(() => {});
   const data = "/data/" + name.replace(/[^\w.-]/g, "_");
   await fs.mount({ name, dir: data, output: dev?.log });
   const execURL = options.exec || new URL("wasm_exec.js", import.meta.url).href;
   if (!globalThis.Go) await loadScript(execURL);
   const host = new Host(container, { ...options, fullPage, name });
+  // The host's own native views (camera.View), then the app's, which may replace them.
+  for (const [k, f] of Object.entries(builtinNatives)) host.natives.set(k, f);
   for (const [k, f] of natives) host.natives.set(k, f);
   for (const [k, m] of modules) host.modules.registered.set(k, m);
+  worker.attach(host);
   const hostName = "ryuiHost" + (hosts++ || "");
   globalThis[hostName] = host;
   const go = new globalThis.Go();
@@ -58,8 +75,18 @@ export async function start(options = {}) {
     throw e;
   }
   host.attach(instance.exports.mem);
+  if (sqlite) {
+    try {
+      host.sqlite = (await sqlite).api(() => host.mem);
+    } catch (e) {
+      console.error("ryui: SQLite didn't load:", e);
+    }
+  }
   if (dev) dev.attach(host);
-  go.run(instance).then(() => {
+  const run = go.run(instance);
+  // What's scheduled and came due while no page was open shows now.
+  try { notifyFor(host); } catch (e) { console.warn("ryui/notify:", e); }
+  run.then(() => {
     if (go.exitCode) showError(container, dev?.lastError() || `The app stopped (exit status ${go.exitCode}).`);
   });
   return host;
@@ -105,9 +132,8 @@ function devClient(url) {
   const events = new EventSource(base + "events");
   events.addEventListener("reload", () => {
     host?.saveState();
-    fs.flush();
     send();
-    location.reload();
+    fs.flush().then(() => location.reload());
   });
   events.addEventListener("failed", (e) => {
     let d = document.querySelector(".ryui-build-error");

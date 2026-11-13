@@ -11,18 +11,18 @@ benchmarks.
 ```sh
 ryui dev -platform ios [flags] [dir]
 ryui dev -platform android [flags] [dir]
-ryui dev [flags] [dir]       # on macOS or Windows: this computer (-platform mac or windows)
+ryui dev [flags] [dir]       # on macOS, Windows or Linux: this computer (-platform mac, windows or linux)
 ```
 
-`-platform` is one of `ios`, `android`, `mac`, `windows` and `web`; `ryui
-build` takes it likewise. Without it, on macOS or Windows, the app runs (or
-builds) for the computer you're on.
+`-platform` is one of `ios`, `android`, `mac`, `windows`, `linux` and
+`web`; `ryui build` takes it likewise. Without it, on macOS, Windows or
+Linux, the app runs (or builds) for the computer you're on.
 
 `dir` is the app's directory, the current one by default: a `main`
 package that calls `app.Run`. The flags:
 
-- `-platform`: `ios` or `android` (or `mac`, `windows`, `web`). One per
-  run; run two terminals for both.
+- `-platform`: `ios` or `android` (or `mac`, `windows`, `linux`, `web`).
+  One per run; run two terminals for both.
 - `-device`: on iOS, a simulator's name or UDID (by default the booted
   iPhone, else a recent iPhone Pro, which it boots); on Android, an adb
   serial or an AVD's name (by default the first device adb lists, else
@@ -35,6 +35,29 @@ package that calls `app.Run`. The flags:
 
 `ryui dev -platform web` runs the app in your browser instead: see
 [the web](web.md#ryui-dev--platform-web).
+
+## On the desktop
+
+On a desktop, the app's Go code and the platform's host are one Go
+program, built for this computer with `CGO_ENABLED=0`: `ryui dev` (or
+`-platform mac`, `windows`, `linux`) builds it, runs it, and on each
+save builds it again and runs the new one, its signals' values kept
+(see [What a reload keeps](#what-a-reload-keeps)). The app reads its
+`assets/` where they are, and its data (`store.Dir()`) is in a `data`
+directory of its own in RyUI's cache, not the installed app's.
+
+**Linux.** `ryui dev` on Linux runs the app on GTK 4 and libadwaita,
+which it needs installed (see [Getting
+started](getting-started.md#what-you-need)), under your session's
+display, Wayland or X11. It gets the name, ID, version and accent of
+`ryui.json`, as a release does; RyUI stops it with SIGINT, and it saves
+its state as it quits. On a Mac or a PC, `ryui dev -platform linux`
+builds the app for Linux but can't run it there, unless
+`RYUI_LINUX_RUN` names a command that runs a program on a Linux machine
+with a display, which sees this computer's files at the same paths: a
+VM, as `RYUI_LINUX_RUN="orb -m ubuntu"` (OrbStack) or
+`RYUI_LINUX_RUN="limactl shell default"` (Lima). RyUI runs the app with
+it, for that machine's architecture.
 
 ## The player and built apps
 
@@ -244,6 +267,7 @@ through the platform's views, in `e2e/`:
 go test -tags e2e ./e2e -run IOS       # the booted simulator, else a recent iPhone
 go test -tags e2e ./e2e -run Android   # the device ryui dev picks
 go test -tags e2e ./e2e -run Web       # headless Chrome (RYUI_CHROME: its path)
+xvfb-run -a dbus-run-session go test -tags e2e ./e2e -run Linux  # GTK 4, on Linux
 ```
 
 Each test builds an example with `ryui dev -once` (a debug build, with
@@ -262,6 +286,14 @@ The web tests run the examples with `ryui dev -platform web` in headless Chrome
 debug builds, sent through the dev server
 (`platform/web/src/automation.js`). The counter, chat, navigation and
 languages tests run there too.
+
+The Linux tests run the counter, notes, chat, navigation and i18n examples
+with `ryui dev -platform linux -once` on the display they're given
+(Xvfb's, in CI) and a session bus; the app takes the same commands from
+a file in a directory `RYUI_COMMANDS` names
+(`host/linux/automation.go`). Elsewhere, or without a display, they're
+skipped. The host's own tests drive real GTK widgets likewise:
+`xvfb-run -a dbus-run-session go test ./host/linux`.
 
 ## Benchmarks
 

@@ -1,4 +1,4 @@
-//go:build windows && amd64
+//go:build windows
 
 package windows
 
@@ -29,6 +29,7 @@ func (h *Host) setCommon(n *node, p ops.PropID, v *ops.Value) {
 		h.redraw(n)
 	case ops.PropCornerRadius:
 		n.cornerRadius = float32(v.Float)
+		h.shapeClip(n)
 		h.redraw(n)
 	case ops.PropBorderWidth:
 		n.borderWidth = float32(v.Float)
@@ -37,17 +38,19 @@ func (h *Host) setCommon(n *node, p ops.PropID, v *ops.Value) {
 		n.borderColor = ops.Color(v.Int)
 		h.redraw(n)
 	case ops.PropOpacity:
-		// Child windows can't be translucent (layered child windows need
-		// the app's manifest): a view's own drawing fades, and none hides
-		// it.
+		// Faded with what's in it (opacity.go); none
+		// hides it.
 		n.opacity = float32(v.Float)
-		h.applyHidden(n)
+		h.applyOpacity(n)
 		h.redraw(n)
 	case ops.PropHidden:
 		n.hidden = v.Int != 0
 		h.applyHidden(n)
 	case ops.PropClip:
-		// Child windows always clip their children.
+		// Child windows always clip their children to their rectangle; a
+		// rounded clip shapes the window (clip.go).
+		n.clip = v.Int != 0
+		h.shapeClip(n)
 	case ops.PropA11yLabel:
 		n.a11yLabel = v.Str
 		if n.hwnd != 0 && n.kind == ops.KindView {
@@ -131,9 +134,10 @@ func (h *Host) setCommon(n *node, p ops.PropID, v *ops.Value) {
 		}
 	case ops.PropMatch:
 		h.setMatch(n, v.Str)
-	case ops.PropTransform, ops.PropMaterial:
-		// Transforms and materials: not yet on Windows (child windows draw
-		// in place, opaque).
+	case ops.PropTransform:
+		h.setTransform(n, v.Bytes) // transform.go
+	case ops.PropMaterial:
+		h.setMaterial(n, ops.Material(v.Int)) // material.go
 	case ops.PropSwipeActions:
 		if n.cell != nil {
 			n.cell.swipe = decodeActions(v.Bytes)
@@ -182,6 +186,9 @@ func (h *Host) applyHidden(n *node) {
 	} else {
 		ShowWindow(n.hwnd, SW_SHOWNA)
 	}
+	if n.pict != nil {
+		h.placePicture(n) // picture.go
+	}
 }
 
 // applyFont sets the font of what draws its own text from n's text props.
@@ -194,6 +201,9 @@ func (h *Host) applyFont(n *node) {
 			SendMessage(n.ctl, WM_SETFONT, h.nodeFont(n), 1)
 			if n.ctl2 != 0 {
 				SendMessage(n.ctl2, WM_SETFONT, h.nodeFont(n), 1)
+			}
+			if n.kind == ops.KindDatePicker {
+				h.themeDate(n) // its fields' fonts, dark (datepicker.go)
 			}
 			h.layoutField(n)
 		}

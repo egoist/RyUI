@@ -8,5 +8,10 @@
   "hide": "Skryť {app}",
   "quit": "Ukončiť {app}",
   "hideOthers": "Skryť ostatné",
-  "zoom": "Zmeniť veľkosť"
+  "zoom": "Zmeniť veľkosť",
+  "cancel": "Zrušiť",
+  "takePhoto": "Odfotiť",
+  "addToContacts": "Pridať do kontaktov",
+  "addToCalendar": "Pridať do kalendára",
+  "newEvent": "Nová udalosť"
 }

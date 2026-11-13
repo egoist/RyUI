@@ -492,6 +492,7 @@ func (h *Host) release(n *node) {
 	if n.view != 0 {
 		Send(n.view, "removeFromSuperview")
 		delete(h.byView, n.view)
+		forgetColorWell(n.view)
 		if n.web != nil {
 			n.web.close()
 		}

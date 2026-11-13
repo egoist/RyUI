@@ -1,3 +1,7 @@
+// The plain modernc.org/sqlite driver, against RyUI's: not on the web.
+
+//go:build !js
+
 package sqlite_test
 
 import (

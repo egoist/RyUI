@@ -1,4 +1,4 @@
-//go:build windows && amd64
+//go:build windows
 
 package windows
 
@@ -19,6 +19,7 @@ func (h *Host) paintWindow(n *node, hwnd uintptr) {
 	var ps PaintStruct
 	dc := BeginPaint(hwnd, &ps)
 	r := ClientRect(hwnd)
+
 	if r.W() > 0 && r.H() > 0 {
 		pb, mem := BeginBufferedPaint(dc, &r)
 		if mem != 0 {
@@ -29,16 +30,22 @@ func (h *Host) paintWindow(n *node, hwnd uintptr) {
 		}
 	}
 	EndPaint(hwnd, &ps)
+	h.cornersPainted(hwnd)
+	h.picturesStale(hwnd)   // picture.go
+	h.materialsBehind(hwnd) // material.go
 }
 
 // opaque reports whether n's own drawing covers all of it.
 func (h *Host) opaque(n *node) bool {
+	if n.material != ops.MaterialNone {
+		return false // it blurs what's behind it (material.go)
+	}
 	switch n.kind {
 	case ops.KindScreen, ops.KindSheet, ops.KindWindow, kindHeader, kindTabBar, kindSidebar:
 		return n.cornerRadius == 0
 	}
 	c, ok := h.resolve(n.background)
-	return ok && c.a == 255 && n.cornerRadius == 0 && n.opacity >= 1
+	return ok && c.a == 255 && n.cornerRadius == 0 && n.ownAlpha() >= 1
 }
 
 // paint draws n into dc, whose client rectangle is r (pixels).
@@ -52,6 +59,9 @@ func (h *Host) paint(n *node, hwnd, dc uintptr, r Rect) {
 // paintOwn draws n itself, over what's behind it.
 func (h *Host) paintOwn(n *node, hwnd, dc uintptr, r Rect) {
 	w, ht := float32(r.W()), float32(r.H())
+	if n.material != ops.MaterialNone {
+		h.paintMaterial(n, dc, r.W(), r.H()) // material.go
+	}
 	// GDI+ draws first, GDI's text after its Graphics is closed: GDI
 	// draws at the DC's origin while one is open, not at the origin
 	// paintBehind moved it to.
@@ -66,8 +76,8 @@ func (h *Host) paintOwn(n *node, hwnd, dc uintptr, r Rect) {
 	case n.kind == kindHeader || n.kind == kindTabBar || n.kind == kindSidebar:
 		bg, hasBg = h.theme.bg, true
 	}
-	if n.opacity < 1 {
-		bg = bg.withAlpha(n.opacity)
+	if a := n.ownAlpha(); a < 1 {
+		bg = bg.withAlpha(a)
 	}
 	if n.gradient != nil {
 		h.paintGradient(g, n, w, ht, radius)
@@ -138,6 +148,8 @@ func (h *Host) paintOwn(n *node, hwnd, dc uintptr, r Rect) {
 	}
 	g.Close()
 	switch n.kind {
+	case kindPicture:
+		h.paintPicture(n, dc, false) // drawn behind another view (picture.go)
 	case ops.KindText:
 		h.paintText(n, dc, r)
 	case ops.KindSymbol:
@@ -160,6 +172,7 @@ func (h *Host) paintOwn(n *node, hwnd, dc uintptr, r Rect) {
 		h.focusRing(n, g, w, ht, radius)
 		g.Close()
 	}
+	h.paintClipCorners(n, hwnd, dc)
 }
 
 // pressable views highlight under the mouse (unless they draw their own
@@ -199,6 +212,7 @@ func (h *Host) focusRing(n *node, g Graphics, w, ht, radius float32) {
 func (h *Host) redraw(n *node) {
 	if n.hwnd != 0 {
 		RedrawWindow(n.hwnd, RDW_INVALIDATE|RDW_ALLCHILDREN)
+		h.picturesStale(n.hwnd) // picture.go
 	}
 }
 
@@ -249,8 +263,8 @@ func (h *Host) textColor(n *node, def rgba) rgba {
 	if n.disabled {
 		c = h.theme.disabled
 	}
-	if n.opacity < 1 {
-		c = c.withAlpha(n.opacity)
+	if a := n.ownAlpha(); a < 1 {
+		c = c.withAlpha(a)
 	}
 	return c.over(h.backdrop(n))
 }
@@ -435,12 +449,26 @@ func overlaps(a, b Rect) bool {
 // its parent's: the host's views as they paint, controls through
 // WM_PRINTCLIENT.
 func (h *Host) paintTree(hwnd, parent, dc uintptr) {
+	if hwnd == h.skipTree {
+		return // a rotated view, under its picture (rotate.go)
+	}
 	at := WindowRectIn(hwnd, parent)
+	if n := h.byHwnd[hwnd]; n != nil && n.hwnd == hwnd && h.treeInPicture(n) {
+		return // its picture draws it (picture.go)
+	}
 	saved := SaveDC(dc)
 	OffsetViewport(dc, at.Left, at.Top)
 	r := ClientRect(hwnd)
 	IntersectClip(dc, r)
-	if n := h.byHwnd[hwnd]; n != nil && n.hwnd == hwnd {
+	n := h.byHwnd[hwnd]
+	if n != nil && n.hwnd == hwnd {
+		h.clipTree(n, dc)
+	}
+	if _, ok := ClipBox(dc); !ok {
+		RestoreDC(dc, saved) // none of it shows
+		return
+	}
+	if n != nil && n.hwnd == hwnd {
 		h.paintOwn(n, hwnd, dc, r)
 	} else {
 		SendMessage(hwnd, WM_PRINTCLIENT, dc, 0x4|0x8) // PRF_CLIENT | PRF_ERASEBKGND

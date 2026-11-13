@@ -1,4 +1,4 @@
-//go:build windows && amd64
+//go:build windows
 
 package windows
 
@@ -25,6 +25,12 @@ import (
 type asyncMethod func(args []byte, reply func([]byte, error))
 
 func (h *Host) asyncModule(name string) map[string]asyncMethod {
+	if m := h.servicesModule(name); m != nil {
+		return m // services.go
+	}
+	if m := h.moreModule(name); m != nil {
+		return m // more.go
+	}
 	switch name {
 	case "photos", "files":
 		return h.pickerModules(name)
@@ -218,7 +224,7 @@ func (h *Host) loadPrintPage(html string, done func(*printPage, error)) {
 			p.controller = controller
 			ComCall(controller, ctlGetCoreWebView2, uintptr(unsafe.Pointer(&p.view)))
 			r := ClientRect(p.hwnd)
-			ComCall(controller, ctlPutBounds, uintptr(unsafe.Pointer(&r)))
+			ComCallRect(controller, ctlPutBounds, r)
 			var tok int64
 			finished := false
 			WithHandler(func(_, args uintptr) {

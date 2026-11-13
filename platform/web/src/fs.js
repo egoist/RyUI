@@ -6,6 +6,9 @@
 // starts, written back shortly after each change and as the page hides.
 // /tmp is the app's caches, kept for the page's life: what's dropped or
 // pasted into it, files it makes to share.
+//
+// IndexedDB keeps a small file whole, and a large one (a SQLite database)
+// in chunks of 64 KiB: a write stores only the chunks it changed.
 
 const S_IFDIR = 0o040000, S_IFREG = 0o100000;
 
@@ -14,7 +17,8 @@ const fds = new Map(); // fd -> { path, pos, append, write }
 let nextFD = 100;
 // The data directories kept in IndexedDB: an app's each (several apps
 // may run on one page, each with its own), and its database.
-const stores = []; // { dir, db, dirty }
+const stores = []; // { dir, db, dirty: Map<path, Set<chunk> | true (all of it)> }
+const CHUNK = 64 * 1024;
 let flushTimer = 0;
 let out = { 1: "", 2: "" };
 let onOutput = null;
@@ -125,7 +129,7 @@ export const memfs = {
     if (flags & constants.O_DIRECTORY && !e.dir) return cb(err("ENOTDIR"));
     const write = (flags & 3) !== 0;
     if (e.dir && write) return cb(err("EISDIR"));
-    if (flags & constants.O_TRUNC && !e.dir) { e.size = 0; e.mtime = now(); put(path, e); }
+    if (flags & constants.O_TRUNC && !e.dir && e.size) resize(path, e, 0);
     const fd = nextFD++;
     fds.set(fd, { path, pos: 0, append: !!(flags & constants.O_APPEND), write });
     cb(null, fd);
@@ -200,16 +204,14 @@ export const memfs = {
     path = clean(path);
     const e = files.get(path);
     if (!e) return cb(err("ENOENT"));
-    resize(e, length);
-    put(path, e);
+    resize(path, e, length);
     cb(null);
   },
   ftruncate(fd, length, cb) {
     const f = fds.get(fd);
     const e = f && files.get(f.path);
     if (!e) return cb(err("EBADF"));
-    resize(e, length);
-    put(f.path, e);
+    resize(f.path, e, length);
     cb(null);
   },
   utimes(path, atime, mtime, cb) {
@@ -235,11 +237,13 @@ export const memfs = {
   readlink(path, cb) { cb(err("EINVAL")); },
 };
 
-function resize(e, length) {
+function resize(path, e, length) {
   grow(e, length);
   if (length > e.size) e.data.fill(0, e.size, length);
+  const old = e.size;
   e.size = length;
   e.mtime = now();
+  markDirty(path, Math.min(old, length), Math.max(old, length));
 }
 
 function writeAt(fd, buf, offset, length, position) {
@@ -254,7 +258,7 @@ function writeAt(fd, buf, offset, length, position) {
   e.size = Math.max(e.size, at + length);
   e.mtime = now();
   if (position == null) f.pos = at + length;
-  put(f.path, e);
+  markDirty(f.path, at, at + length);
   return length;
 }
 
@@ -265,29 +269,68 @@ function remove(path) {
 
 // --- Keeping the data directory ---
 
-function markDirty(path) {
+// markDirty notes that path changed (its bytes from..to, or all of it), to
+// be written to IndexedDB shortly.
+function markDirty(path, from, to) {
   const st = stores.find((st) => path.startsWith(st.dir + "/"));
   if (!st?.db) return;
-  st.dirty.add(path);
-  if (!flushTimer) flushTimer = setTimeout(flush, 250);
+  let d = st.dirty.get(path);
+  if (from === undefined) d = true;
+  else if (d !== true) {
+    d ??= new Set();
+    for (let i = Math.floor(from / CHUNK), last = Math.floor(Math.max(from, to - 1) / CHUNK); i <= last; i++) d.add(i);
+  }
+  st.dirty.set(path, d);
+  if (!flushTimer) flushTimer = setTimeout(flush, 50);
 }
 
-/** flush writes the changed files of the data directories to IndexedDB. */
+const chunksOf = (path, from = 0) => IDBKeyRange.bound([path, from], [path, Infinity]);
+
+/**
+ * flush writes the changed files of the data directories to IndexedDB,
+ * each directory's in one transaction; it resolves once they're written
+ * (and those before them).
+ */
 export function flush() {
   clearTimeout(flushTimer);
   flushTimer = 0;
+  const done = [];
   for (const st of stores) {
+    if (st.saving) done.push(st.saving);
     if (!st.db || !st.dirty.size) continue;
-    const paths = st.dirty;
-    st.dirty = new Set();
-    const tx = st.db.transaction("files", "readwrite");
-    const os = tx.objectStore("files");
-    for (const p of paths) {
+    const dirty = st.dirty;
+    st.dirty = new Map();
+    const tx = st.db.transaction(["files", "chunks"], "readwrite");
+    const meta = tx.objectStore("files"), chunks = tx.objectStore("chunks");
+    for (const [p, d] of dirty) {
       const e = files.get(p);
-      if (!e) os.delete(p);
-      else os.put({ dir: !!e.dir, mode: e.mode, mtime: e.mtime, data: e.dir ? null : e.data.slice(0, e.size) }, p);
+      if (!e) {
+        meta.delete(p);
+        chunks.delete(chunksOf(p));
+      } else if (e.dir || e.size <= CHUNK) {
+        meta.put({ dir: !!e.dir, mode: e.mode, mtime: e.mtime, data: e.dir ? null : e.data.slice(0, e.size) }, p);
+        chunks.delete(chunksOf(p));
+      } else {
+        const n = Math.ceil(e.size / CHUNK);
+        meta.put({ dir: false, mode: e.mode, mtime: e.mtime, size: e.size, chunked: true }, p);
+        const put = (i) => chunks.put(e.data.slice(i * CHUNK, Math.min(e.size, (i + 1) * CHUNK)), [p, i]);
+        // A file that was small has no chunks yet: all of them.
+        if (d === true || !e.chunked) for (let i = 0; i < n; i++) put(i);
+        else for (const i of d) if (i < n) put(i);
+        chunks.delete(chunksOf(p, n));
+      }
+      if (e && !e.dir) e.chunked = e.size > CHUNK;
     }
+    st.saving = new Promise((resolve) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = tx.onabort = () => {
+        console.warn("ryui: the app's files weren't saved:", tx.error);
+        resolve();
+      };
+    });
+    done.push(st.saving);
   }
+  return Promise.all(done).then(() => {});
 }
 
 /**
@@ -297,7 +340,7 @@ export function flush() {
  */
 export async function mount({ name, dir = "/data", output } = {}) {
   if (output) onOutput = output;
-  const st = { dir, db: null, dirty: new Set() };
+  const st = { dir, db: null, dirty: new Map() };
   stores.push(st);
   for (const d of ["/", "/tmp", "/home", dir]) mkdirs(d);
   globalThis.fs = memfs;
@@ -314,18 +357,27 @@ export async function mount({ name, dir = "/data", output } = {}) {
   if (!globalThis.indexedDB) return;
   try {
     const db = await new Promise((resolve, reject) => {
-      const req = indexedDB.open("ryui-files:" + (name || location.pathname), 1);
-      req.onupgradeneeded = () => req.result.createObjectStore("files");
+      const req = indexedDB.open("ryui-files:" + (name || location.pathname), 2);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains("files")) db.createObjectStore("files");
+        if (!db.objectStoreNames.contains("chunks")) db.createObjectStore("chunks");
+      };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
     });
-    const tx = db.transaction("files", "readonly");
-    const os = tx.objectStore("files");
-    const [keys, values] = await Promise.all([req(os.getAllKeys()), req(os.getAll())]);
+    const tx = db.transaction(["files", "chunks"], "readonly");
+    const meta = tx.objectStore("files"), chunks = tx.objectStore("chunks");
+    const [keys, values, ckeys, cvalues] = await Promise.all([req(meta.getAllKeys()), req(meta.getAll()), req(chunks.getAllKeys()), req(chunks.getAll())]);
     keys.forEach((k, i) => {
       const v = values[i];
       if (v.dir) files.set(k, { dir: true, mode: v.mode, mtime: v.mtime, size: 0, data: null });
+      else if (v.chunked) files.set(k, { dir: false, mode: v.mode, mtime: v.mtime, size: v.size, data: new Uint8Array(v.size), chunked: true });
       else files.set(k, { dir: false, mode: v.mode, mtime: v.mtime, size: v.data.length, data: v.data });
+    });
+    ckeys.forEach(([p, i], j) => {
+      const e = files.get(p);
+      if (e?.chunked && i * CHUNK < e.size) e.data.set(cvalues[j].subarray(0, e.size - i * CHUNK), i * CHUNK);
     });
     for (const k of keys) mkdirs(parent(k));
     st.db = db;
@@ -339,6 +391,56 @@ export async function mount({ name, dir = "/data", output } = {}) {
 }
 
 const req = (r) => new Promise((resolve, reject) => { r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); });
+
+// --- For SQLite (sqlite.js's VFS) ---
+
+/**
+ * file is a file SQLite opens, by its (clean) path: its bytes read and
+ * written in place, as a disk's are, and kept as the data directory's
+ * other files are.
+ */
+export const file = {
+  /** exists reports whether there's a file at path. */
+  exists(path) { const e = files.get(path); return !!e && !e.dir; },
+  /** open makes the file if create is set and there's none; false if there's none (or it's a directory, or its directory isn't there). */
+  open(path, create) {
+    const e = files.get(path);
+    if (e) return !e.dir;
+    if (!create) return false;
+    if (!files.get(parent(path))?.dir) return false;
+    put(path, { dir: false, mode: S_IFREG | 0o644, mtime: now(), size: 0, data: new Uint8Array(0) });
+    return true;
+  },
+  size(path) { return files.get(path)?.size ?? 0; },
+  /** read copies the bytes at offset into dst, and returns how many there were. */
+  read(path, dst, offset) {
+    const e = files.get(path);
+    if (!e || e.dir || offset >= e.size) return 0;
+    const n = Math.min(dst.length, e.size - offset);
+    dst.set(e.data.subarray(offset, offset + n));
+    return n;
+  },
+  write(path, src, offset) {
+    const e = files.get(path);
+    if (!e || e.dir) throw err("ENOENT");
+    const end = offset + src.length;
+    grow(e, end);
+    if (offset > e.size) e.data.fill(0, e.size, offset);
+    e.data.set(src, offset);
+    e.size = Math.max(e.size, end);
+    e.mtime = now();
+    markDirty(path, offset, end);
+  },
+  truncate(path, n) {
+    const e = files.get(path);
+    if (e && !e.dir) resize(path, e, n);
+  },
+  remove(path) {
+    const e = files.get(path);
+    if (e && !e.dir) remove(path);
+  },
+  clean,
+};
 
 // --- For the host ---
 

@@ -8,5 +8,10 @@
   "hide": "Sakrij aplikaciju {app}",
   "quit": "Zatvori aplikaciju {app}",
   "hideOthers": "Sakrij ostalo",
-  "zoom": "Zumiraj"
+  "zoom": "Zumiraj",
+  "cancel": "Odustani",
+  "takePhoto": "Snimi fotografiju",
+  "addToContacts": "Dodaj u kontakte",
+  "addToCalendar": "Dodaj u kalendar",
+  "newEvent": "Novi događaj"
 }

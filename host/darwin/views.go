@@ -114,7 +114,8 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 		Send(v, "setTarget:", uintptr(h.target))
 		Send(v, "setAction:", uintptr(Sel("act:")))
 	case ops.KindColorPicker:
-		v = initView("NSColorWell")
+		colorPanelTitle() // before a well names it
+		v = newColorWell()
 		if RespondsTo(v, "setColorWellStyle:") {
 			Send(v, "setColorWellStyle:", 1) // minimal: a swatch that opens the picker
 		}
@@ -393,7 +394,9 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 				Send(n.view, "setColor:", uintptr(c))
 			}
 		case ops.PropColorPickerAlpha:
-			Send(Send(Class("NSColorPanel"), "sharedColorPanel"), "setShowsAlpha:", Bool(v.Int != 0))
+			setColorWell(n.view, func(c *colorWellProps) { c.alpha = v.Int != 0 })
+		case ops.PropColorPickerTitle:
+			setColorWell(n.view, func(c *colorWellProps) { c.title = v.Str })
 		}
 	case ops.KindRichText:
 		n.rich.setProp(h, n, p, v)

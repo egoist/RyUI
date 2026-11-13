@@ -1,4 +1,4 @@
-//go:build windows && amd64
+//go:build windows
 
 package windows
 
@@ -10,6 +10,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -171,7 +172,7 @@ func WithHandler(fn func(a, b uintptr), call func(h uintptr) uintptr) uintptr {
 // channel's runtime is, per machine and per user.
 func webView2Runtime() (string, error) {
 	if dir := os.Getenv("WEBVIEW2_BROWSER_EXECUTABLE_FOLDER"); dir != "" {
-		return filepath.Join(dir, "EBWebView", "x64", "EmbeddedBrowserWebView.dll"), nil
+		return filepath.Join(dir, "EBWebView", webView2Arch(), "EmbeddedBrowserWebView.dll"), nil
 	}
 	for _, channel := range []string{
 		"{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}", // Stable
@@ -184,13 +185,22 @@ func webView2Runtime() (string, error) {
 			if dir == "" {
 				continue
 			}
-			dll := filepath.Join(dir, "EBWebView", "x64", "EmbeddedBrowserWebView.dll")
+			dll := filepath.Join(dir, "EBWebView", webView2Arch(), "EmbeddedBrowserWebView.dll")
 			if _, err := os.Stat(dll); err == nil {
 				return dll, nil
 			}
 		}
 	}
 	return "", errors.New("the Microsoft Edge WebView2 Runtime isn't installed (https://go.microsoft.com/fwlink/p/?LinkId=2124703)")
+}
+
+// webView2Arch is the runtime's folder of the client library for this
+// process's architecture.
+func webView2Arch() string {
+	if runtime.GOARCH == "arm64" {
+		return "arm64"
+	}
+	return "x64"
 }
 
 // regString reads a string value from the 32-bit view of the registry,

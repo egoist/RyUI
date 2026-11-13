@@ -8,5 +8,10 @@
   "hide": "Kätke {app}",
   "quit": "Lopeta {app}",
   "hideOthers": "Kätke muut",
-  "zoom": "Zoomaa"
+  "zoom": "Zoomaa",
+  "cancel": "Kumoa",
+  "takePhoto": "Ota kuva",
+  "addToContacts": "Lisää yhteystietoihin",
+  "addToCalendar": "Lisää kalenteriin",
+  "newEvent": "Uusi tapahtuma"
 }

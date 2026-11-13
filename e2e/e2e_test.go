@@ -6,11 +6,13 @@
 // and read the screen through the debug hosts' automation
 // (platform/ios/Sources/RyUIHost/Automation.swift, a notification;
 // platform/android/ryui/src/main/java/dev/ryui/Automation.kt, a broadcast;
-// platform/web/src/automation.js, through ryui dev -web's server).
+// platform/web/src/automation.js, through ryui dev -web's server;
+// host/linux/automation.go, a file).
 //
 //	go test -tags e2e ./e2e -run IOS      # a booted simulator, else the newest iPhone
 //	go test -tags e2e ./e2e -run Android  # a running emulator or a device
 //	go test -tags e2e ./e2e -run Web      # headless Chrome (RYUI_CHROME: its path)
+//	xvfb-run -a dbus-run-session go test -tags e2e ./e2e -run Linux  # GTK 4, on Linux
 //	RYUI_DEVICE=emulator-5556 go test -tags e2e ./e2e -run Android  # one of several
 //
 // They wait for what they expect (bounded, so a broken app fails rather
@@ -27,7 +29,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
+	"sync"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -519,5 +524,154 @@ func webServer(t *testing.T, example string) string {
 
 func TestCounterWeb(t *testing.T)    { counter(t, webApp(t, "counter")) }
 func TestChatWeb(t *testing.T)       { chat(t, webApp(t, "chat")) }
+func TestNotesWeb(t *testing.T)      { notes(t, webApp(t, "notes")) }
 func TestNavigationWeb(t *testing.T) { navigation(t, webApp(t, "navigation")) }
 func TestLanguagesWeb(t *testing.T)  { languages(t, webApp(t, "i18n")) }
+
+// Linux
+
+// linuxScreen is an app ryui dev -platform linux -once runs on this
+// machine's display (xvfb-run's, in CI); the automation's commands go
+// through a directory (RYUI_COMMANDS), as on iOS.
+type linuxScreen struct {
+	t    *testing.T
+	cli  string
+	app  string
+	dir  string
+	dev  *exec.Cmd
+	logs syncBuffer
+}
+
+// syncBuffer is ryui dev's output, written by its process's copiers.
+type syncBuffer struct {
+	mu sync.Mutex
+	b  strings.Builder
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.b.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.b.String()
+}
+
+func (s *linuxScreen) start() {
+	c := exec.Command(s.cli, "dev", "-platform", "linux", "-once", "-vet=false", appDir(s.app))
+	c.Dir = root(s.t)
+	c.Env = append(os.Environ(), "RYUI_COMMANDS="+s.dir)
+	c.Stdout, c.Stderr = &s.logs, &s.logs
+	if err := c.Start(); err != nil {
+		s.t.Fatal(err)
+	}
+	s.dev = c
+}
+
+// stop stops ryui dev, which stops the app (SIGINT: it quits as it
+// would).
+func (s *linuxScreen) stop() {
+	if s.dev == nil {
+		return
+	}
+	s.dev.Process.Signal(syscall.SIGINT)
+	done := make(chan struct{})
+	go func() { s.dev.Wait(); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(30 * time.Second):
+		s.dev.Process.Kill()
+		<-done
+	}
+	s.dev = nil
+}
+
+func (s *linuxScreen) command(cmds string) {
+	file := filepath.Join(s.dir, "ryui-commands.txt")
+	// As on iOS: one the app hasn't read yet isn't written over (bounded:
+	// an app just started may not read it yet).
+	for range 500 {
+		if _, err := os.Stat(file); os.IsNotExist(err) {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	// Written whole, then moved: the app never reads half of it.
+	if err := os.WriteFile(file+".part", []byte(cmds+"\n"), 0o644); err != nil {
+		s.t.Fatal(err)
+	}
+	if err := os.Rename(file+".part", file); err != nil {
+		s.t.Fatal(err)
+	}
+}
+
+func (s *linuxScreen) texts() []string {
+	dump := filepath.Join(s.dir, "ryui-dump.txt")
+	os.Remove(dump)
+	s.command("dump")
+	for range 50 {
+		if b, err := os.ReadFile(dump); err == nil {
+			return strings.Split(strings.TrimSpace(string(b)), "\n")
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return nil
+}
+
+func (s *linuxScreen) tap(text string) { s.command("tap " + text) }
+
+func (s *linuxScreen) relaunch() {
+	s.stop()
+	os.Remove(filepath.Join(s.dir, "ryui-commands.txt")) // for the run that ended
+	s.start()
+}
+
+var linuxCLI struct {
+	once sync.Once
+	path string
+	err  error
+}
+
+func linuxApp(t *testing.T, example string) *linuxScreen {
+	if runtime.GOOS != "linux" {
+		t.Skip("not Linux")
+	}
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("no display (xvfb-run -a dbus-run-session go test ...)")
+	}
+	// The CLI built once, not go run: stopping it then stops what it runs.
+	linuxCLI.once.Do(func() {
+		dir, err := os.MkdirTemp("", "ryui-e2e")
+		if err != nil {
+			linuxCLI.err = err
+			return
+		}
+		linuxCLI.path = filepath.Join(dir, "ryui")
+		build := exec.Command("go", "build", "-o", linuxCLI.path, "./cmd/ryui")
+		build.Dir = root(t)
+		if b, err := build.CombinedOutput(); err != nil {
+			linuxCLI.err = fmt.Errorf("building the CLI: %v\n%s", err, b)
+		}
+	})
+	if linuxCLI.err != nil {
+		t.Fatal(linuxCLI.err)
+	}
+	s := &linuxScreen{t: t, cli: linuxCLI.path, app: example, dir: t.TempDir()}
+	s.start()
+	t.Cleanup(func() {
+		s.stop()
+		if t.Failed() {
+			t.Logf("ryui dev -platform linux:\n%s", s.logs.String())
+		}
+	})
+	return s
+}
+
+func TestCounterLinux(t *testing.T)    { counter(t, linuxApp(t, "counter")) }
+func TestNotesLinux(t *testing.T)      { notes(t, linuxApp(t, "notes")) }
+func TestChatLinux(t *testing.T)       { chat(t, linuxApp(t, "chat")) }
+func TestNavigationLinux(t *testing.T) { navigation(t, linuxApp(t, "navigation")) }
+func TestLanguagesLinux(t *testing.T)  { languages(t, linuxApp(t, "i18n")) }

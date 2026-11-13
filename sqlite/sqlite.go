@@ -6,7 +6,10 @@
 // again, off the main thread, when a table it reads is written.
 //
 // SQLite is modernc.org/sqlite, a translation of its C to Go: it needs no
-// cgo, so the same code runs on iOS, Android and, under ryui dev, the Mac.
+// cgo, so the same code runs on iOS, Android and the desktops. In a
+// browser (js/wasm), it's SQLite's own WebAssembly build, which the page
+// loads beside the app (platform/web/src/sqlite.js), its databases files
+// of the app's data directory as there.
 //
 //	db, err := sqlite.Open("notes.db")
 //	db.Migrate(
@@ -38,8 +41,6 @@ import (
 	"github.com/egoist/ryui/signal"
 	"github.com/egoist/ryui/store"
 	"github.com/egoist/ryui/ui"
-
-	msqlite "modernc.org/sqlite"
 )
 
 // DB is an open database.
@@ -50,11 +51,9 @@ type DB struct {
 	dirty   map[string]bool // the tables written since the live queries last heard
 }
 
-// The driver RyUI's databases use: modernc.org/sqlite's, with hooks on
-// each connection that note the tables it reads and writes (its own, so
-// they're on no one else's connections).
+// The databases' connections: the driver's (driver_native.go,
+// driver_js.go) note on each the tables it reads and writes.
 var (
-	driver   = &msqlite.Driver{}
 	opened   sync.Map // DSN → *DB, for the connection hook
 	nextDB   atomic.Int64
 	conns    sync.Map // driver connection → *connState
@@ -69,48 +68,13 @@ type connState struct {
 	reads   map[string]bool // nil: not recording
 }
 
-func registerDriver() {
-	sql.Register("ryui-sqlite", driver)
-	driver.RegisterConnectionHook(func(c msqlite.ExecQuerierContext, dsn string) error {
-		v, ok := opened.Load(dsn)
-		if !ok {
-			return nil
-		}
-		st := &connState{d: v.(*DB), written: map[string]bool{}}
-		conns.Store(c, st)
-		if h, ok := c.(msqlite.HookRegisterer); ok {
-			// Every row written (by triggers and foreign keys' actions too).
-			h.RegisterPreUpdateHook(func(u msqlite.SQLitePreUpdateData) { st.written[u.TableName] = true })
-			h.RegisterCommitHook(func() int32 {
-				st.d.wrote(st.written)
-				clear(st.written)
-				return 0
-			})
-			h.RegisterRollbackHook(func() { clear(st.written) })
-		}
-		if a, ok := c.(msqlite.AuthorizerRegisterer); ok {
-			return a.RegisterAuthorizer(func(action msqlite.AuthorizerActionCode, arg1, _, _, _ string) msqlite.AuthorizerReturnCode {
-				switch action {
-				case msqlite.AuthRead:
-					if st.reads != nil && !strings.HasPrefix(arg1, "sqlite_") {
-						st.reads[arg1] = true
-					}
-				case msqlite.AuthInsert, msqlite.AuthUpdate, msqlite.AuthDelete:
-					// Also a delete of every row, which SQLite may do without
-					// visiting them (its truncate optimization).
-					if !strings.HasPrefix(arg1, "sqlite_") {
-						st.written[arg1] = true
-					}
-				}
-				return msqlite.AuthorizerOK
-			})
-		}
-		return nil
-	})
-}
-
 // Open opens (creating it if need be) the database name: a file in the
 // app's data directory (store.Dir), an absolute path, or ":memory:".
+//
+// Never inlined: ryui build looks for its symbol (cmd/ryui, the web's
+// SQLite).
+//
+//go:noinline
 func Open(name string) (*DB, error) {
 	path := name
 	if name != ":memory:" && !filepath.IsAbs(name) {
@@ -144,8 +108,8 @@ func Open(name string) (*DB, error) {
 		db.SetMaxOpenConns(1)
 	} else {
 		// A few connections, kept: a closed one's hooks state would linger.
-		db.SetMaxOpenConns(4)
-		db.SetMaxIdleConns(4)
+		db.SetMaxOpenConns(fileConns)
+		db.SetMaxIdleConns(fileConns)
 	}
 	if err := db.Ping(); err != nil {
 		db.Close()

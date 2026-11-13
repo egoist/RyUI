@@ -1,13 +1,14 @@
-//go:build windows && amd64
+//go:build windows
 
 // Package windows is the Win32 layer of RyUI's Windows host: user32, gdi32,
 // GDI+, the common controls (version 6), uxtheme and DWM, called through
 // the syscall package, no cgo. Much of it comes from MyGo's Windows
 // backend.
 //
-// It's amd64 only: GDI+ takes float arguments, which Go's Windows calls
-// pass in the XMM registers on amd64 (the first four integer registers
-// are copied there) but not on arm64.
+// It builds for amd64 and arm64. GDI+ takes float arguments, which Go's
+// Windows calls pass in the XMM registers on amd64 (the first four
+// integer registers are copied there) but not on arm64, where fcall's
+// trampoline (fcall_arm64.s) loads them.
 package windows
 
 import (
@@ -1252,10 +1253,16 @@ func Subclass(hwnd uintptr, f func(hwnd uintptr, m uint32, w, l uintptr) uintptr
 		setSubclass = CommonControl("SetWindowSubclass")
 		defSubclass = CommonControl("DefSubclassProc")
 		subclassProc = syscall.NewCallback(func(hwnd, m, w, l, id, ref uintptr) uintptr {
+			var r uintptr
 			if f := subclassed[hwnd]; f != nil {
-				return f(hwnd, uint32(m), w, l)
+				r = f(hwnd, uint32(m), w, l)
+			} else {
+				r = DefSubclass(hwnd, uint32(m), w, l)
 			}
-			return DefSubclass(hwnd, uint32(m), w, l)
+			if m == WM_PAINT && AfterPaint != nil {
+				AfterPaint(hwnd)
+			}
+			return r
 		})
 	})
 	subclassed[hwnd] = f
@@ -1263,6 +1270,9 @@ func Subclass(hwnd uintptr, f func(hwnd uintptr, m uint32, w, l uintptr) uintptr
 }
 
 var subclassed = map[uintptr]func(hwnd uintptr, m uint32, w, l uintptr) uintptr{}
+
+// AfterPaint, if set, is told of each subclassed window that painted.
+var AfterPaint func(hwnd uintptr)
 
 // Unsubclass forgets hwnd's subclass (it's being destroyed).
 func Unsubclass(hwnd uintptr) {

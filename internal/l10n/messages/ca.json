@@ -8,5 +8,10 @@
   "hide": "Oculta l’app {app}",
   "quit": "Surt de l’app {app}",
   "hideOthers": "Oculta la resta",
-  "zoom": "Zoom"
+  "zoom": "Zoom",
+  "cancel": "Cancel·la",
+  "takePhoto": "Fes una foto",
+  "addToContacts": "Afegeix als contactes",
+  "addToCalendar": "Afegeix al calendari",
+  "newEvent": "Esdeveniment nou"
 }

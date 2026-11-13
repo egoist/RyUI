@@ -23,7 +23,10 @@ import (
 // privacy prompts), and on each change rebuilds it and runs it again (its
 // signals' state kept, as with the player). ryui build -platform mac
 // makes an .app: a universal binary (arm64 and x86_64), its Info.plist,
-// icon and assets, signed (ad hoc unless -sign names an identity).
+// icon and assets, signed (ad hoc unless -sign names an identity), with
+// its provisioning profile (Contents/embedded.provisionprofile) and the
+// entitlements the app's packages need of it (mac_profile.go); with
+// -appstore, sandboxed, in a .pkg for the Mac App Store.
 
 const macMin = "11.0"
 
@@ -64,7 +67,11 @@ func devMac(dir string, o *devOptions, stop <-chan os.Signal) error {
 	}}
 	proc.bin = filepath.Join(bundle, "Contents", "MacOS", exe)
 	// Signed as a whole, so that the bundle's identity is the app's.
-	proc.afterBuild = func() error { return signMac(bundle, "-", run) }
+	ents, err := writeMacEntitlements(app, work)
+	if err != nil {
+		return err
+	}
+	proc.afterBuild = func() error { return signMac(bundle, "-", ents, run) }
 	// It answers for itself, as when it's opened from the Finder: its
 	// privacy prompts (camera, location...) are its own, with its purpose
 	// strings, not the terminal's.
@@ -134,9 +141,13 @@ func writeMacBundle(app *goApp, bundle, work string, release bool, run func(dir 
 	if t := app.cfg.urlTypes(false); len(t) > 0 {
 		info["CFBundleURLTypes"] = t
 	}
-	// The purpose strings are the same keys on macOS (camera, location...).
+	// The purpose strings are the same keys on macOS (camera, contacts...);
+	// location's is NSLocationUsageDescription there.
 	for k, v := range app.cfg.IOS.Usage {
 		info[k] = v
+	}
+	if v := app.cfg.IOS.Usage["NSLocationWhenInUseUsageDescription"]; v != "" && info["NSLocationUsageDescription"] == nil {
+		info["NSLocationUsageDescription"] = v
 	}
 	if app.cfg.Icon != "" {
 		if err := macIcon(app.cfg.Icon, work, filepath.Join(res, "AppIcon.icns"), run); err != nil {
@@ -162,11 +173,53 @@ func writeMacBundle(app *goApp, bundle, work string, release bool, run func(dir 
 	return exe, nil
 }
 
-// signMac signs the bundle with identity ("-": ad hoc), and checks it.
-func signMac(bundle, identity string, run func(dir string, env []string, cmd string, args ...string) error) error {
+// macResourceEntitlements are the hardened runtime's entitlements an
+// app needs for what its purpose strings ask for: without them, an app
+// signed with a Developer ID (the hardened runtime) is refused the
+// camera, the microphone or the user's data, prompt or not.
+var macResourceEntitlements = map[string]string{
+	"NSCameraUsageDescription":              "com.apple.security.device.camera",
+	"NSMicrophoneUsageDescription":          "com.apple.security.device.audio-input",
+	"NSLocationWhenInUseUsageDescription":   "com.apple.security.personal-information.location",
+	"NSContactsUsageDescription":            "com.apple.security.personal-information.addressbook",
+	"NSCalendarsUsageDescription":           "com.apple.security.personal-information.calendars",
+	"NSCalendarsFullAccessUsageDescription": "com.apple.security.personal-information.calendars",
+	"NSPhotoLibraryUsageDescription":        "com.apple.security.personal-information.photos-library",
+	"NSPhotoLibraryAddUsageDescription":     "com.apple.security.personal-information.photos-library",
+}
+
+// writeMacEntitlements writes the app's entitlements for its signature
+// without a provisioning profile into work, and returns the file ("" if
+// it needs none). The ones only a profile grants (push's aps-environment,
+// Sign in with Apple, App Attest) aren't among them: signed with those
+// and no profile, macOS won't open the app.
+func writeMacEntitlements(app *goApp, work string) (string, error) {
+	ents, err := macEntitlements(app.cfg, nil, false)
+	if err != nil {
+		return "", err
+	}
+	return writeEntitlementsFile(ents, work)
+}
+
+// writeEntitlementsFile writes ents into work, and returns the file (""
+// for none).
+func writeEntitlementsFile(ents map[string]any, work string) (string, error) {
+	if len(ents) == 0 {
+		return "", nil
+	}
+	f := filepath.Join(work, "entitlements.plist")
+	return f, os.WriteFile(f, []byte(plist(ents)), 0o644)
+}
+
+// signMac signs the bundle with identity ("-": ad hoc) and entitlements
+// (a file, or ""), and checks it.
+func signMac(bundle, identity, entitlements string, run func(dir string, env []string, cmd string, args ...string) error) error {
 	args := []string{"--force", "--sign", identity}
 	if identity != "-" {
 		args = append(args, "--options", "runtime", "--timestamp")
+	}
+	if entitlements != "" {
+		args = append(args, "--entitlements", entitlements)
 	}
 	dir := filepath.Dir(bundle)
 	if err := run(dir, nil, "codesign", append(args, bundle)...); err != nil {
@@ -176,7 +229,19 @@ func signMac(bundle, identity string, run func(dir string, env []string, cmd str
 }
 
 func buildMac(app *goApp, o *buildOptions) error {
+	if o.appStore && o.notarize != "" {
+		return errors.New("ryui: -notarize is for an app distributed outside the Mac App Store, which reviews the app itself: leave it out with -appstore")
+	}
 	work, err := workDir(app, "mac-release")
+	if err != nil {
+		return err
+	}
+	// The profile first: no point building for one that isn't there.
+	prof, identity, err := macSigning(app.cfg, o)
+	if err != nil {
+		return err
+	}
+	ents, err := macEntitlements(app.cfg, prof, o.appStore)
 	if err != nil {
 		return err
 	}
@@ -202,11 +267,20 @@ func buildMac(app *goApp, o *buildOptions) error {
 		return err
 	}
 
-	identity := o.sign
-	if identity == "" {
-		identity = "-" // ad hoc: runs on this Mac; others need a Developer ID and notarization
+	if prof != nil {
+		data, err := os.ReadFile(prof.path)
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(bundle, "Contents", "embedded.provisionprofile"), data, 0o644); err != nil {
+			return err
+		}
 	}
-	if err := signMac(bundle, identity, run); err != nil {
+	entsFile, err := writeEntitlementsFile(ents, work)
+	if err != nil {
+		return err
+	}
+	if err := signMac(bundle, identity, entsFile, run); err != nil {
 		return err
 	}
 	if o.notarize != "" {
@@ -218,10 +292,95 @@ func buildMac(app *goApp, o *buildOptions) error {
 		}
 	}
 	fmt.Printf("ryui: %s\n", bundle)
+	if o.appStore {
+		pkg, err := macPackage(app, bundle, prof, identity, o.out, run)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("ryui: %s (upload it with Transporter, or xcrun altool --upload-package)\n", pkg)
+		return nil
+	}
 	if identity == "-" {
-		fmt.Println("ryui: signed ad hoc; to distribute it, sign with -sign \"Developer ID Application: ...\" and -notarize")
+		if prof != nil {
+			fmt.Println("ryui: signed ad hoc, with the profile's entitlements: macOS opens it only signed with a certificate the profile allows (-sign)")
+		} else {
+			fmt.Println("ryui: signed ad hoc; to distribute it, sign with -sign \"Developer ID Application: ...\" and -notarize")
+		}
 	}
 	return nil
+}
+
+// macSigning is the profile (nil for none) and the identity ("-": ad
+// hoc) a Mac build signs with: the profile -profile, RYUI_MAC_PROFILE or
+// ryui.json names, else for an app whose packages need one (or for the
+// Mac App Store) the best match installed; the identity -sign names, else
+// the profile's, else ad hoc. Without a profile, it says what won't work.
+func macSigning(cfg *appConfig, o *buildOptions) (*macProfile, string, error) {
+	want := o.profile
+	if want == "" {
+		want = os.Getenv("RYUI_MAC_PROFILE")
+	}
+	if want == "" {
+		want = cfg.Mac.Profile
+		if o.appStore {
+			want = cfg.Mac.AppStoreProfile
+		}
+	}
+	needs := macProfileNeeds(cfg)
+	if want == "" && !o.appStore && len(needs) == 0 {
+		identity := o.sign
+		if identity == "" {
+			identity = "-" // ad hoc: runs on this Mac; others need a Developer ID and notarization
+		}
+		return nil, identity, nil
+	}
+	ids := identities()
+	prof, err := pickMacProfile(cfg.IOS.Team, cfg.ID, want, o.appStore, ids)
+	if err != nil {
+		if want != "" || o.appStore {
+			return nil, "", err
+		}
+		// None installed: the app builds, without what needs one.
+		fmt.Printf("ryui: %s won't work on the Mac without a provisioning profile: %v (or set RYUI_MAC_PROFILE, or ryui.json's mac.profile)\n",
+			strings.Join(needs, ", "), err)
+		identity := o.sign
+		if identity == "" {
+			identity = "-"
+		}
+		return nil, identity, nil
+	}
+	identity, name, err := macIdentity(o.sign, prof, ids)
+	if err != nil {
+		return nil, "", err
+	}
+	note := ""
+	if !prof.signed {
+		note = ", not signed by Apple"
+	}
+	fmt.Printf("ryui: provisioning profile %q (%s, team %s%s), signing as %s\n", prof.name, prof.kind, prof.team, note, name)
+	return prof, identity, nil
+}
+
+// macPackage makes the Mac App Store's .pkg of the signed app, signed
+// with the team's Mac Installer Distribution identity (unsigned only for
+// a profile that isn't Apple's, to look at).
+func macPackage(app *goApp, bundle string, prof *macProfile, identity, out string, run func(dir string, env []string, cmd string, args ...string) error) (string, error) {
+	pkg := filepath.Join(out, app.displayName()+".pkg")
+	os.Remove(pkg)
+	args := []string{"--component", bundle, "/Applications"}
+	if prof.signed || identity != "-" {
+		installer := installerIdentity(prof.team)
+		if installer == "" {
+			return "", fmt.Errorf("no Mac Installer Distribution identity for team %s in the keychain, which signs the .pkg: make one in Xcode (Settings › Accounts › Manage Certificates) or at developer.apple.com", prof.team)
+		}
+		args = append(args, "--sign", installer)
+	} else {
+		fmt.Println("ryui: the .pkg isn't signed (the profile isn't Apple's): App Store Connect won't take it")
+	}
+	if err := run(filepath.Dir(bundle), nil, "productbuild", append(args, pkg)...); err != nil {
+		return "", err
+	}
+	return pkg, nil
 }
 
 // notarize sends the signed app to Apple's notary service, waits for its

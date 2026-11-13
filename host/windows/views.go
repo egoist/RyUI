@@ -1,4 +1,4 @@
-//go:build windows && amd64
+//go:build windows
 
 package windows
 
@@ -159,6 +159,8 @@ func (h *Host) themeControl(n *node) {
 			SetWindowTheme(n.ctl, theme)
 			n.rich.invalidate(h, n)
 		}
+	case ops.KindDatePicker:
+		h.themeDate(n) // datepicker.go
 	}
 }
 
@@ -564,6 +566,11 @@ func (h *Host) notify(n *node, hdr *NMHdr, lp uintptr) (uintptr, bool) {
 			}
 			return 0, true
 		}
+	case DTN_DROPDOWN:
+		if n.kind == ops.KindDatePicker {
+			h.dateDropDown(hdr.HwndFrom) // datepicker.go
+			return 0, true
+		}
 	case MCN_SELCHANGE:
 		if n.kind == ops.KindDatePicker {
 			h.datePicked(n, hdr.HwndFrom, Native[NMSelChange](lp).Start)
@@ -653,6 +660,9 @@ func (h *Host) viewMessage(n *node, hwnd uintptr, m uint32, wp, lp uintptr) (uin
 		h.paint(n, hwnd, wp, ClientRect(hwnd))
 		return 0, true
 	case WM_SIZE:
+		if n.clip {
+			h.shapeClip(n)
+		}
 		if n.kind == ops.KindStepper {
 			h.layoutStepper(n)
 		} else if n.ctl != 0 {

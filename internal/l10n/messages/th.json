@@ -8,5 +8,10 @@
   "hide": "ซ่อน{app}",
   "quit": "ออกจาก{app}",
   "hideOthers": "ซ่อนอื่นๆ",
-  "zoom": "ซูม"
+  "zoom": "ซูม",
+  "cancel": "ยกเลิก",
+  "takePhoto": "ถ่ายรูป",
+  "addToContacts": "เพิ่มไปยังรายชื่อ",
+  "addToCalendar": "เพิ่มไปยังปฏิทิน",
+  "newEvent": "เหตุการณ์ใหม่"
 }

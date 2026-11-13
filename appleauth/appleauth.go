@@ -4,8 +4,10 @@
 // app that offers another company's sign-in (Google, Facebook) for its
 // accounts (guideline 4.8).
 //
-// It's iOS's: on Android, Available is false and SignIn fails with
-// ErrNotAvailable; sign in with Apple there on the web (ryui/webauth).
+// It's iOS's and macOS's (where the app's signature needs the
+// entitlement from a provisioning profile): on Android, Available is
+// false and SignIn fails with ErrNotAvailable; sign in with Apple there
+// on the web (ryui/webauth).
 // An app that imports it is given the Sign in with Apple entitlement;
 // its App ID needs the capability (developer.apple.com) for a release
 // build.
@@ -152,16 +154,17 @@ type ButtonProps struct {
 	// OnPress is the tap: call SignIn (from a goroutine).
 	OnPress func()
 	// Layout is the button's box: it's as wide as it's given, 44 points
-	// tall unless the style says.
+	// tall (32 on macOS) unless the style says.
 	Layout ui.Styler
 }
 
 // Button is Apple's own Sign in with Apple button
 // (ASAuthorizationAppleIDButton), which the guidelines ask for: its
-// title, logo and colors are Apple's, in the user's language. On Android,
-// where there's no Sign in with Apple, it's nothing.
+// title, logo and colors are Apple's, in the user's language: on iOS
+// and macOS. Elsewhere, where there's no Sign in with Apple, it's
+// nothing.
 func Button(p ButtonProps) ui.Node {
-	if ui.UseEnvironment().Get().Platform != ui.PlatformIOS {
+	if pl := ui.UseEnvironment().Get().Platform; pl != ui.PlatformIOS && pl != ui.PlatformMacOS {
 		return ui.Show(signal.Static(false), nil)
 	}
 	np := ui.NativeProps{Style: p.Layout, Props: map[string]any{

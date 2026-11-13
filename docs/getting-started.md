@@ -11,6 +11,16 @@ app, and another runs it, reloading as you save.
   (SDK Tools → NDK), and an emulator from its Device Manager, or a phone
   with USB debugging on. RyUI finds the SDK in its usual place, or at
   `ANDROID_HOME`, and Android Studio's Java.
+- **For Linux**: GTK 4.14 and libadwaita 1.5 or later (Ubuntu 24.04,
+  Fedora 40, Debian 13 and later have them). RyUI calls them without
+  cgo, so building needs only Go, from any system; running needs the
+  libraries:
+
+  ```sh
+  sudo apt install libgtk-4-1 libadwaita-1-0   # Debian, Ubuntu
+  sudo dnf install gtk4 libadwaita             # Fedora
+  sudo pacman -S gtk4 libadwaita               # Arch
+  ```
 
 ## Install the CLI
 
@@ -38,7 +48,7 @@ cd hello
 ```sh
 ryui dev -platform ios        # the iOS simulator
 ryui dev -platform android    # an Android emulator or phone
-ryui dev                      # on a Mac or a PC: this computer (-platform mac, -platform windows)
+ryui dev                      # on a Mac, a PC or Linux: this computer (-platform mac, windows, linux)
 ```
 
 The first run builds and installs RyUI's player app, which shows your

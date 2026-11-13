@@ -5,8 +5,9 @@
 //	ryui dev -platform android <dir>       build, run on an Android emulator or device, rebuild on save
 //	ryui dev -platform mac <dir>           build, run on this Mac, rebuild on save
 //	ryui dev -platform windows <dir>       build, run on this PC, rebuild on save
+//	ryui dev -platform linux <dir>         build, run on this Linux machine, rebuild on save
 //	ryui dev -platform web <dir>           build, serve and open in the browser, rebuild on save
-//	ryui dev <dir>                         on macOS or Windows: run on this computer
+//	ryui dev <dir>                         on macOS, Windows or Linux: run on this computer
 package main
 
 import (
@@ -25,8 +26,8 @@ func usage() {
 	fmt.Fprint(os.Stderr, `usage:
   ryui new <dir>                  make a project from the template
   ryui dev [-platform p] [flags] [dir]     run, rebuilding on save, on p: ios (the simulator), android (an
-                                           emulator or device), mac, windows or web (the browser);
-                                           default on macOS and Windows: this computer
+                                           emulator or device), mac, windows, linux or web (the browser);
+                                           default on macOS, Windows and Linux: this computer
   ryui build [-platform p] [flags] [dir]   a release build for p, likewise (ryui build -h)
   ryui publish -platform ios|android [flags] [dir]   a release build, uploaded to TestFlight or Google Play (ryui publish -h)
   ryui generate [dir]             write the functions of the app's catalogs
@@ -91,8 +92,8 @@ type devOptions struct {
 
 func devFlags(o *devOptions) *flag.FlagSet {
 	fs := flag.NewFlagSet("dev", flag.ContinueOnError)
-	platformFlag(fs, &o.platform, []string{platformIOS, platformAndroid, platformMac, platformWindows, platformWeb},
-		"the `platform` to run on: ios (the simulator), android (a device or emulator), mac (this Mac), windows (this PC), or web (the browser: the Go code as WebAssembly, the views the page's DOM); default on macOS and Windows: this computer")
+	platformFlag(fs, &o.platform, []string{platformIOS, platformAndroid, platformMac, platformWindows, platformLinux, platformWeb},
+		"the `platform` to run on: ios (the simulator), android (a device or emulator), mac (this Mac), windows (this PC), linux (this Linux machine, or RYUI_LINUX_RUN's), or web (the browser: the Go code as WebAssembly, the views the page's DOM); default on macOS, Windows and Linux: this computer")
 	fs.IntVar(&o.port, "port", 0, "web: the dev server's port (default 8790, or a free one)")
 	fs.BoolVar(&o.lan, "lan", false, "web: serve to this network too (a phone's browser), not only this machine")
 	fs.BoolVar(&o.noOpen, "no-open", false, "web: don't open the page in the browser")
@@ -134,6 +135,8 @@ func cmdDev(args []string) error {
 		return devMac(dir, &o, stop)
 	case platformWindows:
 		return devWindows(dir, &o, stop)
+	case platformLinux:
+		return devLinux(dir, &o, stop)
 	case platformAndroid:
 		return devAndroid(dir, &o, stop)
 	}

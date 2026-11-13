@@ -1,4 +1,4 @@
-//go:build windows && amd64
+//go:build windows
 
 package windows
 
@@ -288,6 +288,7 @@ type fontKey struct {
 	italic    bool
 	underline bool
 	strike    bool
+	gray      bool // grayscale antialiasing, not ClearType
 }
 
 // fontSpec is a text style, size and weight resolved: points and a GDI
@@ -300,6 +301,7 @@ type fontSpec struct {
 	underline bool
 	strike    bool
 	mono      bool
+	gray      bool    // grayscale antialiasing (a field turned dark, darkField)
 	k         float32 // pixels per point: its window's (0: the main window's)
 }
 
@@ -376,11 +378,14 @@ func (h *Host) font(s fontSpec) uintptr {
 	if scale <= 0 {
 		scale = h.scale
 	}
-	k := fontKey{family: h.face(s), px: int32(math.Round(float64(s.size * scale))), weight: s.weight, italic: s.italic, underline: s.underline, strike: s.strike}
+	k := fontKey{family: h.face(s), px: int32(math.Round(float64(s.size * scale))), weight: s.weight, italic: s.italic, underline: s.underline, strike: s.strike, gray: s.gray}
 	if f := h.fonts[k]; f != 0 {
 		return f
 	}
 	lf := LogFont{Height: -k.px, Weight: k.weight, CharSet: 1, Quality: CLEARTYPE_QUALITY}
+	if k.gray {
+		lf.Quality = 4 // ANTIALIASED_QUALITY
+	}
 	if k.italic {
 		lf.Italic = 1
 	}

@@ -8,5 +8,10 @@
   "hide": "Paslēpt {app}",
   "quit": "Iziet no {app}",
   "hideOthers": "Paslēpt citas",
-  "zoom": "Tālummaiņa"
+  "zoom": "Tālummaiņa",
+  "cancel": "Atcelt",
+  "takePhoto": "Uzņemt fotoattēlu",
+  "addToContacts": "Pievienot kontaktiem",
+  "addToCalendar": "Pievienot kalendāram",
+  "newEvent": "Jauns notikums"
 }

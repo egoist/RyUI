@@ -8,5 +8,10 @@
   "hide": "{app} چھپائیں",
   "quit": "{app} بند کریں",
   "hideOthers": "دیگر چھپائیں",
-  "zoom": "زوم"
+  "zoom": "زوم",
+  "cancel": "منسوخ کریں",
+  "takePhoto": "تصویر لیں",
+  "addToContacts": "رابطوں میں شامل کریں",
+  "addToCalendar": "کیلنڈر میں شامل کریں",
+  "newEvent": "نیا ایونٹ"
 }

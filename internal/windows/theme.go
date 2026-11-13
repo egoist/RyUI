@@ -1,4 +1,4 @@
-//go:build windows && amd64
+//go:build windows
 
 package windows
 
@@ -329,3 +329,25 @@ func MenuItemType(m uintptr, i int) uint32 {
 	procGetMenuItemInfoW.Call(m, uintptr(i), 1, uintptr(unsafe.Pointer(&mii)))
 	return mii.Type
 }
+
+// DisableTheme draws a control without its visual style (classic), so
+// the colors set on it show: a month calendar's in dark mode, which has
+// no dark style.
+func DisableTheme(hwnd uintptr) {
+	procSetWindowTheme.Call(hwnd, Str(""), Str(""))
+}
+
+// Month calendars' and date and time pickers' colors.
+const (
+	MCM_SETCOLOR    = 0x100A
+	DTM_SETMCCOLOR  = 0x1006
+	DTM_GETMONTHCAL = 0x1008
+	DTN_DROPDOWN    = -754
+
+	MCSC_BACKGROUND   = 0
+	MCSC_TEXT         = 1
+	MCSC_TITLEBK      = 2
+	MCSC_TITLETEXT    = 3
+	MCSC_MONTHBK      = 4
+	MCSC_TRAILINGTEXT = 5
+)

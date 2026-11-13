@@ -15,11 +15,14 @@ import (
 // resources: its icon (from ryui.json's, at Windows's sizes), a manifest
 // (common controls 6, per-monitor DPI awareness v2, UTF-8, Windows 10
 // and 11) and its version information. The Go linker links the main
-// package's .syso files into the executable. (From MyGo's.)
-func winresSyso(app *goApp) ([]byte, error) {
+// package's .syso files into the executable. (From MyGo's.) goarch is
+// the build's: amd64 or arm64.
+func winresSyso(app *goApp, goarch string) ([]byte, error) {
+	machine, relocation := uint16(0x8664), uint16(0x0003) // amd64, IMAGE_REL_AMD64_ADDR32NB
+	if goarch == "arm64" {
+		machine, relocation = 0xAA64, 0x0002 // IMAGE_REL_ARM64_ADDR32NB
+	}
 	const (
-		machine     = 0x8664 // amd64
-		relocation  = 0x0003 // IMAGE_REL_AMD64_ADDR32NB
 		rtIcon      = 3
 		rtGroupIcon = 14
 		rtVersion   = 16

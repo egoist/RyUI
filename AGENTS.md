@@ -2,11 +2,12 @@
 
 RyUI is a UI framework in Go that renders with each platform's own
 widgets, driven by fine-grained signals. **Mobile first: iOS and
-Android.** Desktop comes later on the same core; the macOS host (`host/darwin`,
-AppKit through purego) and the Windows host (`host/windows`, Win32
-through syscall) are under way, as is the web (`host/web`, the app as
-WebAssembly, and `platform/web`, the DOM from JavaScript); Linux isn't
-started. **Read
+Android.** Desktop and the web run on the same core: the macOS host
+(`host/darwin`, AppKit through purego), the Windows host
+(`host/windows`, Win32 through syscall), the Linux host (`host/linux`,
+GTK 4 and libadwaita through purego, `internal/gtk`) and the web
+(`host/web`, the app as WebAssembly, and `platform/web`, the DOM from
+JavaScript). **Read
 [DESIGN.md](DESIGN.md) before changing code**; it is the source of truth
 for the architecture, the APIs and the milestones. Work milestone by
 milestone, in order.
@@ -21,8 +22,8 @@ milestone, in order.
   talk to hosts only through `host.Host` and `ops`. Adding a component
   means: its kind and props in `ops/schema.go`, `go generate ./ops`, the
   component in `ui`, and its view in every host (`fake` first, then iOS
-  and Android, then macOS in `host/darwin`, Windows in `host/windows`
-  and the web in `platform/web/src`).
+  and Android, then macOS in `host/darwin`, Windows in `host/windows`,
+  Linux in `host/linux` and the web in `platform/web/src`).
 - **Nothing phone-only in the core's data structures**: no single global
   root, no assumption that the screen size never changes, so desktop
   windows can be added later without rewriting the core.
@@ -74,6 +75,11 @@ go test ./host/darwin                            # the macOS host, driving real 
 go run ./cmd/ryui dev examples/counter            # Windows (on a PC, no -platform: windows): the app and its Win32 host in one process, rerun on save
 go run ./cmd/ryui build -platform windows examples/counter  # a folder: the .exe (icon, manifest, version) and its assets; from any system
 go test ./host/windows                           # the Windows host, driving real Win32 windows (Windows)
+xvfb-run -a dbus-run-session go test ./host/linux  # the Linux host, driving real GTK windows (GTK 4.14, libadwaita 1.5)
+go run ./cmd/ryui dev examples/counter            # Linux (on Linux, no -platform: linux): the app and its GTK host in one process, rerun on save
+go run ./cmd/ryui build -platform linux examples/counter    # an install prefix, a .tar.gz and a Flatpak manifest; from any system
+go run host/linux/gen_symbols.go                 # the Linux host's fallback symbols, from the web host's
+go test -tags e2e ./e2e -run Linux               # GUI tests: the examples under Xvfb (Linux)
 (cd examples/counter && RYUI_SNAPSHOT=c.png RYUI_DUMP=1 RYUI_SCRIPT="tap:Add" go run .)  # Windows: steps, then the window as a PNG and its view tree
 go run ./cmd/ryui dev -platform web examples/counter       # the web: served to the browser, reloaded on save (-lan: to a phone)
 go run ./cmd/ryui build -platform web examples/counter     # a static site, in examples/counter/dist/web
@@ -96,7 +102,10 @@ go test -tags e2e ./e2e -run Web                  # GUI tests: the examples in h
   through `internal/darwin` (purego), no cgo, no SwiftUI. Windows host:
   Win32 and the common controls, from Go through `internal/windows`
   (syscall), no cgo, no WinUI; the controls drawn as Fluent's in custom
-  draw, so an app that sets no style looks like Windows 11. Web host:
+  draw, so an app that sets no style looks like Windows 11. Linux host:
+  GTK 4 and libadwaita widgets from Go through `internal/gtk` (purego),
+  no cgo, no GtkBuilder or Blueprint; an app that sets no style looks
+  like a GNOME app. Web host:
   the DOM from plain JavaScript modules in `platform/web/src` (no build
   step, no framework), the browser's own elements for controls and
   dialogs; its Go side (`host/web`) only carries batches, measures and

@@ -80,3 +80,22 @@ func HideOthers(locale string) string { return Catalog.Format(locale, "hideOther
 
 // Zoom says the Window menu's item that zooms the window, in locale.
 func Zoom(locale string) string { return Catalog.Format(locale, "zoom", nil) }
+
+// Cancel says the button that closes a sheet or an alert without doing
+// what it offers, in locale.
+func Cancel(locale string) string { return Catalog.Format(locale, "cancel", nil) }
+
+// TakePhoto says the button that takes a photo (the camera's sheet on
+// the Mac), in locale.
+func TakePhoto(locale string) string { return Catalog.Format(locale, "takePhoto", nil) }
+
+// AddToContacts says the button that adds a contact (on the Mac, which
+// has no new contact screen), in locale.
+func AddToContacts(locale string) string { return Catalog.Format(locale, "addToContacts", nil) }
+
+// AddToCalendar says the button that adds an event (on the Mac, which
+// has no event editor), in locale.
+func AddToCalendar(locale string) string { return Catalog.Format(locale, "addToCalendar", nil) }
+
+// NewEvent says the title of an event that has none, in locale.
+func NewEvent(locale string) string { return Catalog.Format(locale, "newEvent", nil) }

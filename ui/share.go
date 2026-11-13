@@ -41,8 +41,9 @@ type ShareOptions struct {
 // ShareFiles shows the system's share sheet for the files at paths: send
 // them to an app, a contact, AirDrop, Nearby Share, save them to Files.
 // done (if not nil) is called on the main thread once the sheet is gone,
-// shared or not, with an error if it couldn't show (no such file;
-// Windows has no share sheet for files). Main thread.
+// shared or not (on Windows, once its share UI shows: it doesn't say when
+// it's gone), with an error if it couldn't show (no such file). Main
+// thread.
 //
 // On Android the files go through the app's FileProvider; one outside
 // the app's own folders is copied to its caches first.

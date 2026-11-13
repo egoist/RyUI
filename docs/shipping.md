@@ -35,7 +35,12 @@ site instead, to serve from any web server: see [the web](web.md#ryui-build--pla
   `ui.UseEnvironment()`'s `Width` and `Height`, the window's size, not
   the device's.
 - `accent` is the app's accent color, `"#rrggbb"`: the tint on iOS, the
-  seed of the Material 3 color scheme on Android.
+  seed of the Material 3 color scheme on Android, libadwaita's accent on
+  Linux.
+- `linux` is what a Linux build's desktop file and AppStream metainfo
+  say: see [Linux](#linux).
+- `mac.profile` is a Mac build's provisioning profile, and
+  `mac.appStoreProfile` the Mac App Store's: see [macOS](#macos).
 - `scheme` opens the app for `myapp://` URLs, and `links` for https links
   to your domains (universal links, App Links); `ui.OnOpenURL` gets them.
 - `shareTarget` offers the app in other apps' share sheets: `true` for
@@ -54,6 +59,9 @@ site instead, to serve from any web server: see [the web](web.md#ryui-build--pla
 - `android.googleServices` is the Firebase project's
   `google-services.json`, for `ryui/push`; `android.mapsKey`, a Google
   Maps Platform API key, for `ryui/maps`.
+- `web.vapidPublicKey` is the app server's VAPID public key, for
+  `ryui/push` on the web (Web Push; see
+  [the web](web.md#ryuipush-web-push)).
 - `ios.usage` gives the purpose strings of protected resources
   (`NSCameraUsageDescription`...), and `ios.infoPlist` adds keys to
   Info.plist; `ios.backgroundModes` adds to `UIBackgroundModes` (`"audio"`,
@@ -66,8 +74,8 @@ Write your own in `ios.usage`: the default is generic. Some need a
 capability on the App ID too (Push Notifications for `ryui/push`, Sign
 in with Apple for `ryui/appleauth`, App Attest for `ryui/integrity`,
 Declared Age Range for `ryui/agerange`): turn it on at
-developer.apple.com, then make the profile again. `ryui build -platform ios` says
-which a profile lacks.
+developer.apple.com, then make the profile again. `ryui build -platform ios` (and
+`-platform mac`) says which a profile lacks.
 
 ## iOS
 
@@ -231,6 +239,132 @@ rejected, and staples the ticket to the app, so it opens offline too.
 In CI, `-notarize env` takes `RYUI_APPLE_ID`, `RYUI_APPLE_PASSWORD` (an
 app-specific password) and `RYUI_TEAM_ID` from the environment instead
 of a keychain profile.
+
+Push (`ryui/push`), Sign in with Apple (`ryui/appleauth`) and App Attest
+(`ryui/integrity`) need entitlements only a provisioning profile grants.
+Make a macOS Developer ID profile for the app's ID at developer.apple.com
+(Profiles), with those capabilities on for the ID, and download it:
+
+```sh
+ryui build -platform mac -profile Notes.provisionprofile -notarize ryui
+```
+
+The profile goes in the app as `Contents/embedded.provisionprofile`, and
+the app is signed with what its packages need of the profile's
+entitlements (`com.apple.developer.aps-environment`,
+`com.apple.developer.applesignin`,
+`com.apple.developer.devicecheck.appattest-environment`), its app ID and
+team, and the hardened runtime. The build says which a profile lacks.
+Without `-sign`, the identity is the keychain's certificate the profile
+allows (Developer ID Application); a `-sign` the profile doesn't list is
+an error. `-profile` takes a path, or an installed profile's name or UUID;
+`RYUI_MAC_PROFILE` and ryui.json's `mac.profile` say the same. With none,
+an app that uses those packages is signed with the best match installed
+for its ID (in Xcode's profile folders), else without one: the build
+says what won't work on the Mac, and the rest of the app does.
+
+`-appstore` makes a `.pkg` for the Mac App Store instead: the app in the
+App Sandbox (with the network and the files the user picks), signed
+with a Mac App Store profile's certificate (Apple Distribution;
+ryui.json's `mac.appStoreProfile`, else `-profile`, else the best match),
+and the package with the team's Mac Installer Distribution certificate.
+Upload it with Transporter or `xcrun altool --upload-package`.
+
+## Windows
+
+`ryui build -platform windows` makes a folder, from any system: the
+`.exe` (its icon, manifest and version information built in) and the
+app's assets beside it. It's for x64 PCs, which Windows on Arm runs
+emulated; `-arch arm64` makes it native for Arm PCs instead. Zip the
+folder, or package it (an installer, MSIX).
+
+Sign the `.exe`, so SmartScreen knows who it's from, with a code signing
+certificate exported as a `.pfx`:
+
+```sh
+RYUI_WINDOWS_CERT=cert.pfx RYUI_WINDOWS_CERT_PASSWORD=... ryui build -platform windows
+```
+
+The build signs it with SHA-256 and has the signature timestamped, so
+it stays valid once the certificate expires, by the first RFC 3161 server
+that answers: `RYUI_WINDOWS_TIMESTAMP`'s (a comma-separated list), else
+DigiCert's, Sectigo's and GlobalSign's. When none answers the build
+fails, saying so; `RYUI_WINDOWS_TIMESTAMP=none` signs without a timestamp
+(the signature then ends with the certificate). It signs with `signtool` on
+Windows (the Windows SDK's; on the `PATH`, else the newest installed),
+with `osslsigncode` elsewhere (`brew install osslsigncode`, `apt install
+osslsigncode`). Without `RYUI_WINDOWS_CERT` the `.exe` isn't signed. A
+certificate on a hardware token or in a cloud service (Azure Trusted
+Signing) signs through its own tool: sign the `.exe` in the folder with
+it after the build.
+
+An app that shows notifications (`ryui/notify`) is given a shortcut in the
+user's Start menu the first time, which Windows needs for an app's
+toasts: its AppUserModelID is ryui.json's `id` (else one of its name).
+
+## Linux
+
+```sh
+ryui build -platform linux                # this machine's architecture, else amd64
+ryui build -platform linux -arch arm64    # amd64 or arm64
+```
+
+It builds from any system: the host calls GTK 4 and libadwaita without
+cgo. In `dist/linux` it makes:
+
+- `<name>/`, a folder laid out as an install prefix, named after the
+  app in lower case (`My Notes`: `my-notes`):
+  - `bin/my-notes`, the app;
+  - `share/my-notes/assets`, its assets, which it finds from
+    `bin/`;
+  - `share/applications/<id>.desktop`, what launchers show and run;
+  - `share/icons/hicolor/<size>/apps/<id>.png`, the `icon` at each size
+    from 16 to 512 pixels;
+  - `share/metainfo/<id>.metainfo.xml`, its AppStream metainfo, what
+    software centers show.
+
+  Run `bin/my-notes` from it, or install it into a prefix, where
+  launchers find it:
+
+  ```sh
+  tar -xzf my-notes-1.0-linux-amd64.tar.gz --strip-components=1 -C ~/.local
+  ```
+
+- `my-notes-<version>-linux-<arch>.tar.gz`, that folder, to hand out.
+- `<id>.yml`, a [Flatpak](https://flatpak.org) manifest that packages
+  that folder on the GNOME runtime:
+
+  ```sh
+  flatpak install flathub org.gnome.Platform//50 org.gnome.Sdk//50   # once
+  flatpak-builder --user --install --force-clean build dist/linux/com.example.notes.yml
+  flatpak run com.example.notes
+  ```
+
+The app needs GTK 4.14 and libadwaita 1.5 or later where it runs (the
+GNOME runtime 46 or later has them). Its ID is its application ID: it
+names its desktop file, its icon and its D-Bus name (a second launch
+shows the first's window), and its data directory
+(`~/.local/share/<id>`); it must be letters, digits, `_` and `-`, in two
+parts or more, none starting with a digit.
+
+What the desktop file and metainfo say, in `ryui.json`:
+
+```json
+"linux": {
+  "summary": "Write things down",
+  "description": "Notes, kept on your computer.\n\nA second paragraph.",
+  "categories": ["Office"],
+  "keywords": ["memo"],
+  "license": "MIT",
+  "developer": "Example Inc.",
+  "homepage": "https://example.com",
+  "flatpakRuntime": "50"
+}
+```
+
+`categories` are [freedesktop.org's](https://specifications.freedesktop.org/menu-spec/latest/category-registry.html)
+(`Utility` by default); `license` is an SPDX expression; Flathub and
+software centers want the summary, description, license and developer.
 
 ## In an existing app
 

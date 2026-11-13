@@ -8,5 +8,10 @@
   "hide": "Sembunyikan {app}",
   "quit": "Tutup {app}",
   "hideOthers": "Sembunyikan Lainnya",
-  "zoom": "Zoom"
+  "zoom": "Zoom",
+  "cancel": "Batalkan",
+  "takePhoto": "Ambil Foto",
+  "addToContacts": "Tambahkan ke Kontak",
+  "addToCalendar": "Tambahkan ke Kalender",
+  "newEvent": "Acara Baru"
 }

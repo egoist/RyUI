@@ -8,5 +8,10 @@
   "hide": "Göm {app}",
   "quit": "Avsluta {app}",
   "hideOthers": "Göm övriga",
-  "zoom": "Zooma"
+  "zoom": "Zooma",
+  "cancel": "Avbryt",
+  "takePhoto": "Ta bild",
+  "addToContacts": "Lägg till i Kontakter",
+  "addToCalendar": "Lägg till i kalender",
+  "newEvent": "Ny händelse"
 }

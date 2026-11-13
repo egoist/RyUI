@@ -8,5 +8,10 @@
   "hide": "Slėpti {app}",
   "quit": "Išeiti iš {app}",
   "hideOthers": "Slėpti kitas",
-  "zoom": "Keisti mastelį"
+  "zoom": "Keisti mastelį",
+  "cancel": "Atšaukti",
+  "takePhoto": "Fotografuoti",
+  "addToContacts": "Pridėti prie kontaktų",
+  "addToCalendar": "Pridėti į kalendorių",
+  "newEvent": "Naujas įvykis"
 }

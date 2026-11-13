@@ -1,4 +1,4 @@
-//go:build windows && amd64
+//go:build windows
 
 package windows
 
@@ -83,9 +83,7 @@ func (h *Host) command(n *node, c ops.CommandID, args []byte) {
 			NotifyWinEvent(EVENT_OBJECT_FOCUS, n.hwnd, OBJID_CLIENT, CHILDID_SELF)
 		}
 	case ops.CmdShare:
-		// Windows's share sheet needs a WinRT DataTransferManager: the
-		// text is copied instead.
-		SetClipboardText(h.window, string(args))
+		h.shareText(string(args)) // Windows's share UI (services.go)
 	case ops.CmdScrollTo:
 		if n.list != nil && len(args) >= 5 {
 			n.list.scrollToItem(h, int(binary.LittleEndian.Uint32(args)))
@@ -206,6 +204,9 @@ type tween struct {
 	// out from its opacity; one going out is let go of at the end.
 	fade, enter, exit bool
 	opacity           float32
+	// A transform's (transform.go): from one to the other.
+	xf         bool
+	xfrom, xto xform
 }
 
 func (h *Host) beginAnimation(args []byte) {
@@ -271,6 +272,9 @@ func (a *animation) step(h *Host) {
 		var f [4]float32
 		for i := range f {
 			f[i] = tw.from[i] + (tw.to[i]-tw.from[i])*float32(e)
+		}
+		if tw.xf {
+			h.applyXform(n, lerpXform(tw.xfrom, tw.xto, float32(e)))
 		}
 		h.placeAt(n, f)
 		h.stepFade(n, tw, float32(min(max(e, 0), 1)))
@@ -398,25 +402,6 @@ func (h *Host) call(root *node, args []byte) {
 func (h *Host) module(name string) func(method string, args []byte) ([]byte, error) {
 	if h.modules == nil {
 		h.modules = h.syncModules()
-		for name, m := range map[string]func(method string, args []byte) ([]byte, error){
-			// Windows's share sheet needs a WinRT DataTransferManager.
-			"share": func(method string, args []byte) ([]byte, error) {
-				return nil, errors.New("ui: Windows has no share sheet for files yet")
-			},
-			// ryui/notify: Windows's toasts need the app registered with
-			// the shell (an AppUserModelID, a COM activator for actions),
-			// which ryui build -platform windows doesn't do yet. Channels are
-			// Android's, ignored as on iOS.
-			"notify": func(method string, args []byte) ([]byte, error) {
-				switch method {
-				case "channels", "channelGroups":
-					return nil, nil
-				}
-				return nil, errors.New("ryui/notify: Windows has no notifications yet")
-			},
-		} {
-			h.modules[name] = m
-		}
 	}
 	return h.modules[name]
 }

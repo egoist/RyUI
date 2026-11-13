@@ -74,8 +74,13 @@ type hostProcess struct {
 	v    bool
 	// flags is the build's -ldflags (default: ryui.json's).
 	flags string
-	// goarch is the build's GOARCH (default: this machine's).
-	goarch string
+	// goos and goarch are the build's GOOS and GOARCH (default: this
+	// machine's).
+	goos, goarch string
+	// wrap, when set, is a command that runs the build where it runs
+	// (Linux: RYUI_LINUX_RUN, a VM with this computer's paths): the
+	// process is wrap, given env, the directory and the executable.
+	wrap []string
 	// stdin, when the process is told to stop by closing it (Windows,
 	// which can't send it SIGINT).
 	stdin io.WriteCloser
@@ -124,6 +129,12 @@ func (p *hostProcess) build() error {
 	c := exec.Command("go", append(args, ".")...)
 	c.Dir = p.app.dir
 	c.Env = append(os.Environ(), "CGO_ENABLED=0")
+	if p.goos != "" {
+		c.Env = append(c.Env, "GOOS="+p.goos)
+	}
+	if p.goarch != "" {
+		c.Env = append(c.Env, "GOARCH="+p.goarch)
+	}
 	if out, err := c.CombinedOutput(); err != nil {
 		return fmt.Errorf("go build failed:\n%s", out)
 	}
@@ -149,6 +160,18 @@ func (p *hostProcess) restart() error {
 		wait = func() { proc.Wait() }
 	} else {
 		c := exec.Command(p.bin)
+		if len(p.wrap) > 0 {
+			// Elsewhere: the directory and RyUI's environment go with it
+			// (RYUI_SCRIPT... of this one's, then the run's).
+			args := append(p.wrap[1:len(p.wrap):len(p.wrap)], "env", "-C", p.app.dir)
+			for _, kv := range os.Environ() {
+				if strings.HasPrefix(kv, "RYUI_") && !strings.HasPrefix(kv, "RYUI_LINUX_RUN=") {
+					args = append(args, kv)
+				}
+			}
+			args = append(append(args, p.env...), p.bin)
+			c = exec.Command(p.wrap[0], args...)
+		}
 		c.Dir = p.app.dir // assets/ is served from here
 		c.Env = env
 		c.Stdout, c.Stderr = os.Stdout, os.Stderr

@@ -1,4 +1,4 @@
-//go:build windows && amd64
+//go:build windows
 
 // Package windows is RyUI's Windows host: Win32 windows and the common
 // controls (version 6), made and driven from Go through syscall (no cgo),
@@ -61,6 +61,13 @@ type node struct {
 	shadow                  []byte
 	opacity                 float32
 	hidden                  bool
+	xf                      xform        // Style.Transform's (transform.go)
+	zoom                    float32      // the scale it gives what's in it, 0: 1 (own)
+	pict                    *picture     // its picture, rotated or faded (picture.go)
+	material                ops.Material // Style.Material (material.go)
+	clip                    bool         // Style.Clip
+	clipRects               []Rect       // its window's region's rows, a rounded clip's (clip.go)
+	clipR                   float64      // and its radius, in pixels
 	disabled                bool
 
 	menu        []action
@@ -213,6 +220,18 @@ type Host struct {
 
 	shadowBuf []shadowStep // paintShadows', reused
 
+	roundClips int             // views shaped by a rounded clip (clip.go)
+	clipOff    *node           // the one paintCorners draws whole
+	drawing    *node           // the view a picture draws (picture.go)
+	zoomed     int             // views whose transforms scale what's in them (transform.go)
+	pictures   map[*node]*node // rotated views by their pictures (rotate.go)
+	skipTree   uintptr         // a window paintTree leaves out
+	materials  int             // views with a material (material.go)
+	blurTmp    []byte          // the material's blur's buffer
+
+	svc  services                          // the modules of Windows's services (services.go)
+	more map[string]map[string]asyncMethod // the modules moduleHooks add (more.go)
+
 	depth   int // calls into the core in progress
 	pending []ops.Event
 	later   []func() // work to do once the core has returned (list tiling, modal loops)
@@ -331,6 +350,20 @@ func Run(root func() ui.Node) {
 	h := newHost()
 	restoreState()
 	h.enter(func() { ui.Mount(h, root) })
+	h.startToasts()
+	if launchedForToast {
+		h.waitForToast() // notify.go: shown if the click opens the app
+	} else {
+		h.showMain()
+	}
+	h.automation()
+	h.loop()
+	saveState()
+}
+
+// showMain shows the app's window, where the user left it, and its
+// Windows.
+func (h *Host) showMain() {
 	// Where the user left it, over WindowOptions' size.
 	maximized := h.restorePlacement()
 	if os.Getenv("RYUI_SNAPSHOT") != "" {
@@ -352,9 +385,6 @@ func Run(root func() ui.Node) {
 	for _, n := range h.wins {
 		h.showWindow(n.nav.window)
 	}
-	h.automation()
-	h.loop()
-	saveState()
 }
 
 // loop is the message loop: it dispatches the thread's messages until the
@@ -626,6 +656,23 @@ func (h *Host) release(n *node) {
 	if n.kage != nil {
 		n.kage.release()
 	}
+	if n.clipRects != nil {
+		n.clipRects = nil
+		h.roundClips--
+	}
+	if n.material != ops.MaterialNone {
+		n.material = ops.MaterialNone
+		h.materials--
+	}
+	if n.pict != nil {
+		p := n.pict.pic
+		n.pict = nil
+		h.dropPicture(p) // picture.go
+	}
+	if n.zoom != 0 {
+		n.zoom = 0
+		h.zoomed--
+	}
 	if n.hwnd != 0 {
 		hw := n.hwnd
 		h.forgetTree(hw)
@@ -686,6 +733,9 @@ func (h *Host) insert(p, c *node, index int) {
 	SetParent(c.hwnd, p.hwnd)
 	h.matchIn(c)
 	h.adopt(p, c)
+	if p.opacity < 1 && p.pict == nil {
+		h.updatePicture(p) // faded with child windows now (picture.go)
+	}
 	h.placeFrame(c)
 	// Above the windows of the children before it, below those after.
 	after := uintptr(HWND_TOP)
@@ -743,6 +793,14 @@ func (h *Host) setRoot(n *node) {
 func (h *Host) scaleOf(n *node) float32 {
 	if n != nil && n.k > 0 {
 		return n.k
+	}
+	return h.scale
+}
+
+// scaleOfK is the pixels per point of a view of k (0: the main window's).
+func (h *Host) scaleOfK(k float32) float32 {
+	if k > 0 {
+		return k
 	}
 	return h.scale
 }
@@ -814,6 +872,11 @@ func (h *Host) placeAt(n *node, f [4]float32) {
 	}
 	x0, y0 := h.px(n, x), h.px(n, y)
 	w, ht := h.px(n, x+f[2])-x0, h.px(n, y+f[3])-y0
+	if n.xf != (xform{}) && n.xf != identity {
+		var x1, y1 int32
+		x0, y0, x1, y1 = h.transformed(n, x, y, f[2], f[3]) // transform.go
+		w, ht = x1-x0, y1-y0
+	}
 	shadow := len(n.shadow) > 0
 	if shadow {
 		h.invalidateShadow(n) // where it was
@@ -821,6 +884,9 @@ func (h *Host) placeAt(n *node, f [4]float32) {
 	SetWindowPos(n.hwnd, 0, x0, y0, w, ht, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOOWNERZORDER|SWP_NOCOPYBITS)
 	if shadow {
 		h.invalidateShadow(n)
+	}
+	if n.pict != nil {
+		h.placePicture(n) // picture.go
 	}
 	h.resized(n)
 }
@@ -924,9 +990,11 @@ func (h *Host) topOfChildren(p *node) uintptr {
 // at another's (made in the parking window, or moved from another
 // window).
 func (h *Host) adopt(p, c *node) {
-	switch {
-	case c.k == p.k || c.hwnd == 0:
-	case h.scaleOf(c) == h.scaleOf(p):
+	// What's in a view has its k times the scale of the transforms on the
+	// way (transform.go).
+	switch k := h.kFor(p.k, c.own()); {
+	case c.k == k || c.hwnd == 0:
+	case h.scaleOf(c) == h.scaleOfK(k):
 		h.setScale(c.hwnd, p.k)
 	default:
 		h.rescale(c.hwnd, p.k)

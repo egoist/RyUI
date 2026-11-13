@@ -8,5 +8,10 @@
   "hide": "A(z) {app} elrejtése",
   "quit": "Kilépés a(z) {app} appból",
   "hideOthers": "A többi elrejtése",
-  "zoom": "Nagyítás"
+  "zoom": "Nagyítás",
+  "cancel": "Mégsem",
+  "takePhoto": "Fotó készítése",
+  "addToContacts": "Hozzáadás a kontaktokhoz",
+  "addToCalendar": "Hozzáadás a naptárhoz",
+  "newEvent": "Új esemény"
 }

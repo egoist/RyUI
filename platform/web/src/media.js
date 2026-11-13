@@ -6,15 +6,17 @@
 //   - Symbol: an SF Symbol name drawn as its Material Symbol (the Android
 //     host's, symbols.js), sized by the text props, colored by Color.
 //   - Video: a <video> with the browser's controls.
-//   - WebView: an <iframe>. A page of the app's (its assets, or HTML) gets
-//     window.ryui.postMessage and runs Eval; another site's page only
-//     loads, as browsers keep sites apart.
+//   - WebView: an <iframe> (webview.js). A page of the app's own site (its
+//     assets, HTML, its files) gets all of it; another site's page loads,
+//     and talks to the app only if it cooperates, as browsers keep sites
+//     apart.
 
 import { Kind, KindProp as P, Event, Events, Command, Reader, Writer } from "./ops.js";
 import { own } from "./views.js";
 import { paths, labels } from "./symbols.js";
 import * as text from "./text.js";
 import * as fs from "./fs.js";
+import { webView } from "./webview.js";
 
 const svgNS = "http://www.w3.org/2000/svg";
 
@@ -201,97 +203,6 @@ const video = {
   destroy(h, n) { n.video.pause(); n.video.removeAttribute("src"); n.video.load(); return false; },
   measure(h, n) { return n.natural || [0, 0]; },
 };
-
-const webView = {
-  create(h, n) {
-    const el = own(n, document.createElement("div"));
-    el.className = "ryui-webview";
-    const f = document.createElement("iframe");
-    f.setAttribute("allow", "fullscreen; clipboard-write; autoplay");
-    el.appendChild(f);
-    n.frameEl = f;
-    n.preload = "";
-    f.addEventListener("load", () => {
-      const w = sameOrigin(f);
-      let url = f.src || "about:srcdoc";
-      let title = "";
-      if (w) {
-        try {
-          url = w.location.href;
-          title = w.document.title;
-          inject(h, n, w);
-        } catch {}
-      }
-      h.emit(n, Event.Navigated, (id) => Events.navigated(id, url));
-      if (n.listening(Event.WebState)) {
-        const flags = 0;
-        h.dispatch(Events.webState(n.id, new Writer().string(url).string(title).u8(flags).f32(1).done()));
-      }
-    });
-    n.onMessage = (e) => {
-      if (e.source !== f.contentWindow || !e.data || e.data.ryui !== true) return;
-      h.emit(n, Event.Message, (id) => Events.message(id, String(e.data.text)));
-    };
-    addEventListener("message", n.onMessage);
-  },
-  prop(h, n, p, v) {
-    const f = n.frameEl;
-    switch (p) {
-      case P.WebView.URL:
-        if (v) { f.removeAttribute("srcdoc"); f.src = sourceURL(h, v); }
-        break;
-      case P.WebView.HTML:
-        if (v) f.srcdoc = (n.preload ? `<script>${n.preload}<\/script>` : "") + bridgeScript + v;
-        break;
-      case P.WebView.Preload:
-        n.preload = v;
-        break;
-      // UserAgent, Block and Requests are the browser's to decide: a page can't set them for a frame.
-    }
-  },
-  command(h, n, cmd, args) {
-    const w = sameOrigin(n.frameEl);
-    switch (cmd) {
-      case Command.Eval:
-        if (w) {
-          try { w.eval(new TextDecoder().decode(args)); } catch (e) { console.warn("ryui: WebView script:", e); }
-        } else console.warn("ryui: a WebView runs script only in a page of the app's own");
-        return true;
-      case Command.WebNavigate: {
-        const k = args[0];
-        try {
-          if (k === 0) n.frameEl.contentWindow.history.back();
-          else if (k === 1) n.frameEl.contentWindow.history.forward();
-          else if (k === 2) w ? w.location.reload() : (n.frameEl.src = n.frameEl.src);
-          else if (k === 3) w?.stop();
-        } catch {}
-        return true;
-      }
-    }
-    return false;
-  },
-  destroy(h, n) { removeEventListener("message", n.onMessage); return false; },
-  measure() { return [0, 0]; },
-};
-
-const bridgeScript = "<script>window.ryui={postMessage:function(t){parent.postMessage({ryui:true,text:String(t)},'*')}}<\/script>";
-
-function sameOrigin(f) {
-  try {
-    const w = f.contentWindow;
-    if (w && w.document) return w;
-  } catch {}
-  return null;
-}
-
-/** inject gives a page of the app's own window.ryui.postMessage and its Preload script. */
-function inject(h, n, w) {
-  if (w.ryui) return;
-  w.ryui = { postMessage: (t) => window.postMessage({ ryui: true, text: String(t) }, "*") };
-  // Messages come from the frame's window.
-  w.ryui.postMessage = (t) => n.onMessage({ source: n.frameEl.contentWindow, data: { ryui: true, text: String(t) } });
-  if (n.preload) try { w.eval(n.preload); } catch {}
-}
 
 export const mediaKinds = {
   [Kind.Image]: image,

@@ -8,5 +8,10 @@
   "hide": "Ascundeți {app}",
   "quit": "Închideți aplicația {app}",
   "hideOthers": "Ascundeți restul",
-  "zoom": "Zoom"
+  "zoom": "Zoom",
+  "cancel": "Anulați",
+  "takePhoto": "Faceți o poză",
+  "addToContacts": "Adăugați la Contacte",
+  "addToCalendar": "Adăugați în calendar",
+  "newEvent": "Eveniment nou"
 }

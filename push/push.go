@@ -15,6 +15,10 @@
 // data's "url", if it has one, for ui.OnOpenURL, as ryui/notify's do.
 // ryui/notify's categories, actions (OnAction), threads, channels and
 // badge are a push's too; Rewrite changes a push before it shows.
+//
+// The web: Web Push, through the app's service worker, with the app's
+// VAPID key (ryui.json's web.vapidPublicKey); ryui/push/webpush is the
+// server's side (docs/web.md).
 package push
 
 import (
@@ -27,14 +31,17 @@ import (
 
 // Registration is the device's address for the app's server.
 type Registration struct {
-	// Token is the device's token: APNs' (hex) on iOS, FCM's on Android.
-	// It can change (a restore, a reinstall): register at each launch, and
-	// send it to the server when it's not the one it has.
+	// Token is the device's token: APNs' (hex) on iOS, FCM's on Android;
+	// on the web, the browser's push subscription as its JSON (endpoint
+	// and keys: ryui/push/webpush sends to it). It can change (a restore,
+	// a reinstall): register at each launch, and send it to the server
+	// when it's not the one it has.
 	Token string `json:"token"`
-	// Service is "apns" or "fcm".
+	// Service is "apns", "fcm" or "webpush".
 	Service string `json:"service"`
 	// Allowed: the user lets the app show notifications. Without it, the
-	// token still takes data messages (silent pushes).
+	// token still takes data messages (silent pushes); on the web there's
+	// no token without it (Register fails).
 	Allowed bool `json:"allowed"`
 }
 

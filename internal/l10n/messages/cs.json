@@ -8,5 +8,10 @@
   "hide": "Skrýt aplikaci {app}",
   "quit": "Ukončit aplikaci {app}",
   "hideOthers": "Skrýt ostatní",
-  "zoom": "Přepnout velikost"
+  "zoom": "Přepnout velikost",
+  "cancel": "Zrušit",
+  "takePhoto": "Vyfotit",
+  "addToContacts": "Přidat do kontaktů",
+  "addToCalendar": "Přidat do kalendáře",
+  "newEvent": "Nová událost"
 }

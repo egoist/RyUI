@@ -1,4 +1,4 @@
-//go:build windows && amd64
+//go:build windows
 
 package windows
 
@@ -33,10 +33,10 @@ func (g Graphics) Save() uint32 {
 
 func (g Graphics) Restore(s uint32) { gdipRestoreGraphics.Call(uintptr(g), uintptr(s)) }
 
-func (g Graphics) Scale(x, y float32) { gdipScaleTransform.Call(uintptr(g), f(x), f(y), 0) }
+func (g Graphics) Scale(x, y float32) { fcall(gdipScaleTransform, 0x6, uintptr(g), f(x), f(y), 0) }
 
 // Rotate turns the world clockwise by degrees (y down).
-func (g Graphics) Rotate(degrees float32) { gdipRotateTransform.Call(uintptr(g), f(degrees), 0) }
+func (g Graphics) Rotate(degrees float32) { fcall(gdipRotateTransform, 0x2, uintptr(g), f(degrees), 0) }
 
 // IntersectClip limits drawing to inside p as well.
 func (g Graphics) IntersectClip(p Path) { gdipSetClipPath.Call(uintptr(g), uintptr(p), 1) } // CombineModeIntersect
@@ -55,7 +55,7 @@ func (g Graphics) DrawText(s, family string, size float32, bold bool, c ARGB, al
 	if bold {
 		style = 1
 	}
-	gdipCreateFont.Call(fam, f(size), style, 2, uintptr(unsafe.Pointer(&font))) // UnitPixel
+	fcall(gdipCreateFont, 0x2, fam, f(size), style, 2, uintptr(unsafe.Pointer(&font))) // UnitPixel
 	if font == 0 {
 		return
 	}

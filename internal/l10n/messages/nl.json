@@ -8,5 +8,10 @@
   "hide": "Verberg {app}",
   "quit": "Stop {app}",
   "hideOthers": "Verberg andere",
-  "zoom": "Vergroot/verklein"
+  "zoom": "Vergroot/verklein",
+  "cancel": "Annuleer",
+  "takePhoto": "Neem foto",
+  "addToContacts": "Voeg toe aan contacten",
+  "addToCalendar": "Voeg toe aan agenda",
+  "newEvent": "Nieuwe activiteit"
 }

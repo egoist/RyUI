@@ -15,6 +15,7 @@ const (
 	platformMac     = "mac"
 	platformWindows = "windows"
 	platformWeb     = "web"
+	platformLinux   = "linux"
 )
 
 // platformFlag defines -platform on fs: one of names, stored in p. Its
@@ -30,14 +31,16 @@ func platformFlag(fs *flag.FlagSet, p *string, names []string, usage string) {
 }
 
 // thisComputer is the platform of the computer ryui runs on, for a dev
-// or a build that names none: mac on macOS, windows on Windows; "" where
-// there's no desktop host yet.
+// or a build that names none: mac on macOS, windows on Windows, linux on
+// Linux; "" where there's no desktop host yet.
 func thisComputer() string {
 	switch runtime.GOOS {
 	case "darwin":
 		return platformMac
 	case "windows":
 		return platformWindows
+	case "linux":
+		return platformLinux
 	}
 	return ""
 }

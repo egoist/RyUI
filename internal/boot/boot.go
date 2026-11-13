@@ -29,6 +29,12 @@ var AssetBase string
 // -X): a desktop host's window title and menus.
 var Name string
 
+// ID is ryui.json's app ID (com.example.app), set by the RyUI CLI
+// (-ldflags -X) where the platform has no bundle to read it from (Linux:
+// the application's ID, which names its desktop file and its D-Bus
+// name).
+var ID string
+
 // Version and Build are ryui.json's, set by the RyUI CLI (-ldflags -X)
 // where the platform has no bundle to read them from (Windows).
 var Version, Build string

@@ -8,5 +8,10 @@
   "hide": "Gizle: {app}",
   "quit": "Çık: {app}",
   "hideOthers": "Diğerlerini Gizle",
-  "zoom": "Büyüt/Küçült"
+  "zoom": "Büyüt/Küçült",
+  "cancel": "Vazgeç",
+  "takePhoto": "Fotoğraf Çek",
+  "addToContacts": "Kişilere Ekle",
+  "addToCalendar": "Takvime Ekle",
+  "newEvent": "Yeni Etkinlik"
 }

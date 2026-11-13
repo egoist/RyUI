@@ -1,7 +1,8 @@
 # What RyUI has, against SwiftUI and Expo
 
 Each row is something apps often need: how SwiftUI and Expo do it, and
-what RyUI has for it.
+what RyUI has for it. In a browser, what each package does instead where a browser can't do
+what a phone does is in [The web](web.md#native-modules).
 
 ✓ has it · ◐ in part (what's missing is said) · ✗ not yet
 
@@ -41,8 +42,8 @@ what RyUI has for it.
 | Icons | SF Symbols | `@expo/vector-icons` | ✓ `Symbol` (SF Symbols; Material Symbols on Android, a curated set) |
 | Images (remote, cached, placeholders) | `AsyncImage` | `expo-image` | ✓ `Image` (memory and disk cache, `Placeholder`) |
 | Video | `VideoPlayer` | `expo-video` | ✓ `Video` |
-| Web content | `WKWebView` | `react-native-webview` | ✓ `WebView` (URL, HTML, messages both ways, scripts before the page's, blocked requests, its state and history, downloads, new windows, cookies, a script's value; each request on Android); `ryui/js` runs JavaScript off screen |
-| Maps | `Map` | `expo-maps` | ✓ `ryui/maps` (Apple Maps; Google Maps with an API key: region, markers, the user's location, taps) |
+| Web content | `WKWebView` | `react-native-webview` | ✓ `WebView` (URL, HTML, messages both ways, scripts before the page's, blocked requests, its state and history, downloads, new windows, cookies, a script's value; each request on Android; on the web, all of it for the app's own site and for pages that cooperate through `postMessage`, while another site's page only loads); `ryui/js` runs JavaScript off screen |
+| Maps | `Map` | `expo-maps` | ✓ `ryui/maps` (Apple Maps; Google Maps with an API key: region, markers, the user's location, taps; libshumate's OpenStreetMap map on Linux; on Windows the host draws OpenStreetMap's tiles itself) |
 | Custom drawing | `Shape`, `Path`, `Canvas` | `react-native-svg`, Skia | ✓ `Shape` and `Path` (fill, stroke, caps, joins, dashes, an animatable trim); `Canvas` (paths, gradients, text, transforms, clips, opacity); SVG icons drawn natively (`ryui/svg`) |
 | Charts | Swift Charts | `victory-native`, community | ✓ `ryui/chart` (bars, lines, areas, points) |
 | Shaders | `.colorEffect(ShaderLibrary...)` | Skia's runtime effects | ✓ `Shader` (Kage, Go's syntax: Metal on Apple, AGSL on Android, the CPU on Windows) |
@@ -87,48 +88,48 @@ what RyUI has for it.
 |---|---|---|---|
 | State | `@State`, `@Observable` | hooks | ✓ signals (fine-grained: a write updates only what reads it) |
 | Small persisted values | `@AppStorage` | AsyncStorage | ✓ `ryui/store` |
-| SQLite | SwiftData / GRDB | `expo-sqlite` | ✓ `ryui/sqlite` (migrations, typed queries, transactions, writes off the main thread, live queries that run again when a table they read is written, also with arguments that change: `WatchWith`) |
-| Secure storage | Keychain | `expo-secure-store` | ✓ `ryui/secure` |
+| SQLite | SwiftData / GRDB | `expo-sqlite` | ✓ `ryui/sqlite` (migrations, typed queries, transactions, writes off the main thread, live queries that run again when a table they read is written, also with arguments that change: `WatchWith`; in the browser too, SQLite's WebAssembly build) |
+| Secure storage | Keychain | `expo-secure-store` | ✓ `ryui/secure` (on the web: encrypted in IndexedDB under a key the browser won't let out; not a keychain) |
 | Files, network | Foundation | `expo-file-system`, fetch | ✓ Go's `os`, `net/http` |
 | Photos | `PhotosPicker` | `expo-image-picker` | ✓ `device.PickPhotos` |
 | Documents | `UIDocumentPickerViewController` | `expo-document-picker` | ✓ `device.PickFiles` (MIME types, several) |
-| Camera | AVFoundation | `expo-camera` | ✓ `ryui/camera`: `Take` (the system's camera), `View` (a live preview, front or back), `Capture`; `ryui/camera/record` records video with sound |
-| Barcodes, QR codes | AVFoundation, Vision | `expo-camera` scanning | ✓ `ryui/scan`: live in `camera.View` (`Scan: scan.Codes(...)`) and in image files (`scan.File`); ML Kit on Android, only in the apps that import it |
-| Location | Core Location | `expo-location` | ✓ `ryui/location` |
+| Camera | AVFoundation | `expo-camera` | ✓ `ryui/camera`: `Take` (the system's camera; on the Mac, Windows and Linux, a dialog with a live preview; Windows: Media Foundation's capture engine; Linux: the camera portal or Video4Linux through GStreamer), `View` (a live preview, front or back), `Capture`; `ryui/camera/record` records video with sound |
+| Barcodes, QR codes | AVFoundation, Vision | `expo-camera` scanning | ✓ `ryui/scan`: live in `camera.View` (`Scan: scan.Codes(...)`) and in image files (`scan.File`); ML Kit on Android, only in the apps that import it; ZBar on Linux; on Windows RyUI's own reader in Go (`internal/barcode`: QR, Data Matrix, EAN, UPC, Code 128, Code 39) |
+| Location | Core Location | `expo-location` | ✓ `ryui/location` (place names: on Windows, OpenStreetMap's Nominatim) |
 | Translations, plurals, regional formats | String Catalogs, FormatStyle | `expo-localization`, i18next | ✓ `ryui/i18n`, catalogs ([Languages](i18n.md)) |
 | Right-to-left layout | `layoutDirection` | `I18nManager` | ✓ follows the language, `ui.WithDirection` |
-| Local notifications | UserNotifications | `expo-notifications` | ✓ `ryui/notify` (now or scheduled, images; iOS, Android, macOS; not on Windows yet) |
-| Push notifications | APNs | `expo-notifications` | ✓ `ryui/push` (APNs, Firebase Cloud Messaging: the token, messages received and tapped) |
-| Notification actions, inline replies | `UNNotificationCategory`, `UNTextInputNotificationAction` | `setNotificationCategoryAsync` | ✓ `notify.SetCategories`, `OnAction` (background actions run the app's Go code, started without a screen if it isn't running; `Response.Defer`; Android's reply posted back into the conversation) |
+| Local notifications | UserNotifications | `expo-notifications` | ✓ `ryui/notify` (now or scheduled, images; iOS, Android, macOS, Linux; Windows' toasts, with buttons and replies through the app's COM activator; on the web through the app's service worker, so they stay and answer after the page closes, a scheduled one showing at its time while a page of the app is open, else as the next opens: browsers can't schedule one) |
+| Push notifications | APNs | `expo-notifications` | ✓ `ryui/push` (APNs on iOS and macOS, Firebase Cloud Messaging, Web Push with VAPID on the web: the token, messages received and tapped; `ryui/push/webpush` sends Web Push from a Go server) |
+| Notification actions, inline replies | `UNNotificationCategory`, `UNTextInputNotificationAction` | `setNotificationCategoryAsync` | ✓ `notify.SetCategories`, `OnAction` (background actions run the app's Go code, started without a screen if it isn't running; `Response.Defer`; Android's reply posted back into the conversation; on the web, the service worker's notification actions, inline replies where Chrome has them) |
 | Threads, the notifications showing, the badge | `threadIdentifier`, `getDeliveredNotifications`, `setBadgeCount` | `getPresentedNotificationsAsync`, `setBadgeCountAsync` | ✓ `Thread` (Android: a group with its summary kept), `notify.Showing`, `Remove`, `RemoveThread`, `SetBadge` (Android: the launcher's, from the notifications) |
 | Notifications in the foreground | `willPresent` | `setNotificationHandler` | ✓ `notify.Present` (banner, quiet, hidden) |
 | Android notification channels | — | `setNotificationChannelAsync` | ✓ `notify.SetChannels`, `SetChannelGroups`; a push's `channel_id` (iOS has none) |
 | Messages in conversations | Communication notifications (`INSendMessageIntent`) | community | ✓ `Notification.From`, `push.Message.From`: iOS's communication notifications (the entitlement added for the apps that use it), Android's MessagingStyle and conversation shortcuts; plain on macOS; no bubbles |
 | Changing a push before it shows | Notification Service Extension | community (`expo-notifications` has none) | ✓ `push.Rewrite`: the app's Go code in iOS's extension (built and signed by `ryui build`), in the app's process for Android's data messages |
 | Clipboard, share sheet, browser | `UIPasteboard`, `ShareLink`, `SFSafariViewController` | `expo-clipboard`, `expo-sharing`, `expo-web-browser` | ✓ `Copy`, `device.Clipboard` (text; images: `CopyImage`, `ClipboardImage`; `ClipboardHas`, `OnClipboardChange`), `Share` (text), `ShareFiles` (files, with expo-sharing's MIME type, UTI, title and iPad anchor; done when the sheet closes), `device.Browse` |
-| Previewing files | `QLPreviewController`, `.quickLookPreview` | `react-native-file-viewer` | ✓ `ryui/preview` (Quick Look on iOS and the Mac, several files, Markup; Android's viewer apps; Windows's default app) |
+| Previewing files | `QLPreviewController`, `.quickLookPreview` | `react-native-file-viewer` | ✓ `ryui/preview` (Quick Look on iOS and the Mac, several files, Markup; Android's viewer apps; Windows's and Linux's default app) |
 | Printing, PDFs from HTML | `UIPrintInteractionController`, `UIPrintPageRenderer` | `expo-print` | ✓ `ryui/print` (files, HTML, a WebView, with the system's dialog and its result; `PDF`: paginated, the region's paper, margins) |
 | Mail and message composers | `MFMailComposeViewController`, `MFMessageComposeViewController` | `expo-mail-composer`, `expo-sms` | ✓ `ryui/compose` (recipients, subject, HTML body, attachments; what the user did on iOS; the mail apps only on Android; Messages on the Mac) |
 | Keep awake, device info | `isIdleTimerDisabled`, `UIDevice` | `expo-keep-awake`, `expo-device` | ✓ `device.KeepAwake`, `device.GetInfo` |
 | Network state | `NWPathMonitor` | `expo-network` | ✓ `ryui/network` (online, Wi-Fi or cellular, metered, Data Saver / Low Data Mode) |
 | Saving to the gallery, Downloads | `PHPhotoLibrary` | `expo-media-library` | ✓ `ryui/library` (MediaStore's collections; Photos, or Documents in Files) |
-| Work in the background | `beginBackgroundTask`, `BGTaskScheduler` | `expo-task-manager`, `expo-background-task` | ✓ `ryui/background`: Android keeps the app running, its progress and buttons in a notification; iOS gives about 30 seconds. `ryui/periodic`: tasks the system runs now and then, the app's Go code started without a screen (BGTaskScheduler, WorkManager) |
+| Work in the background | `beginBackgroundTask`, `BGTaskScheduler` | `expo-task-manager`, `expo-background-task` | ✓ `ryui/background`: Android keeps the app running, its progress and buttons in a notification; iOS gives about 30 seconds; the Mac keeps it running (App Nap off), Linux and Windows keep the system from suspending. `ryui/periodic`: tasks the system runs now and then, the app's Go code started without a screen (BGTaskScheduler, WorkManager; on the Mac while the app runs, `NSBackgroundActivityScheduler`; on Linux and Windows, a timer while it runs) |
 | Receiving shares from other apps | Share extension | `expo-sharing` (`useIncomingShare`) | ✓ `ui.OnShare`: texts, links, images, videos, audio and files, one or many, with their name, MIME type and size (`ryui.json`'s `shareTarget`: types and max, Android's intent filters and iOS's activation rule from them; on iOS a share extension that opens the app, files through an App Group); `app.ShareSheet`, the app's own screen over the app that shares (iOS: its share extension; Android: a bottom sheet in a process of its own), its data shared with the app; no resolving of links (`net/http`) |
 | Audio | AVAudioPlayer, AVAudioRecorder | `expo-audio` | ✓ `ryui/audio` (load, play, pause, seek, volume, loop); `ryui/audio/record` (voice or music quality, pause, a level meter) |
-| Sign in with Apple | `SignInWithAppleButton` | `expo-apple-authentication` | ✓ `ryui/appleauth` (Apple's button, the credential, its state) |
-| Face ID, fingerprints | LocalAuthentication | `expo-local-authentication` | ✓ `ryui/biometric` |
+| Sign in with Apple | `SignInWithAppleButton` | `expo-apple-authentication` | ✓ `ryui/appleauth` (Apple's button, the credential, its state; iOS and macOS) |
+| Face ID, fingerprints | LocalAuthentication | `expo-local-authentication` | ✓ `ryui/biometric` (Windows Hello on Windows; on the web, the platform's authenticator through WebAuthn) |
 | Store review | `requestReview` | `expo-store-review` | ✓ `ryui/review` (the App Store's prompt, Play's in-app review) |
 | Tracking permission | App Tracking Transparency | `expo-tracking-transparency` | ✓ `ryui/tracking` |
 | App integrity | App Attest | `expo-app-integrity` | ✓ `ryui/integrity` (App Attest, Play Integrity) |
 | Age range | Declared Age Range | `expo-age-range` | ✓ `ryui/agerange` (Declared Age Range, Play Age Signals) |
-| Sensors | Core Motion | `expo-sensors` | ✓ `ryui/sensors` (accelerometer, gyroscope, magnetometer, device motion with attitude and heading, barometer, light, pedometer; the same axes and units on both) |
-| Image editing | Core Graphics, ImageIO | `expo-image-manipulator` | ✓ `ryui/imageedit` (resize, crop, rotate, flip, fill, pixelate; HEIC in, JPEG or PNG out, upright, without the source's metadata) |
-| Text, faces and codes in an image | Vision | no | ✓ `ryui/vision`, with where each is; ML Kit on Android, only in the apps that import it |
-| The photo library | PhotoKit | `expo-media-library` | ✓ `ryui/photos`: permission, listing, thumbnails, the original files |
+| Sensors | Core Motion | `expo-sensors` | ✓ `ryui/sensors` (accelerometer, gyroscope, magnetometer, device motion with attitude and heading, barometer, light, pedometer; the same axes and units on both; a Mac and Windows have none; Linux: iio-sensor-proxy's light and orientation) |
+| Image editing | Core Graphics, ImageIO | `expo-image-manipulator` | ✓ `ryui/imageedit` (resize, crop, rotate, flip, fill, pixelate; HEIC in, JPEG or PNG out, upright, without the source's metadata; GdkPixbuf's decoders on Linux, WIC's on Windows) |
+| Text, faces and codes in an image | Vision | no | ✓ `ryui/vision`, with where each is; ML Kit on Android, only in the apps that import it; Linux: ZBar's codes and Tesseract's text, no faces; Windows: its OCR's text and faces, RyUI's reader's codes |
+| The photo library | PhotoKit | `expo-media-library` | ✓ `ryui/photos`: permission, listing, thumbnails, the original files (Windows: the Pictures folder) |
 | Video thumbnails | `AVAssetImageGenerator` | `expo-video-thumbnails` | ✓ `imageedit.VideoFrame` |
 | Text to speech | `AVSpeechSynthesizer` | `expo-speech` | ✓ `ryui/speech` (a queue, voices, pitch, rate, pause at a word) |
-| Contacts | Contacts, ContactsUI | `expo-contacts` | ✓ `ryui/contacts` (the picker and new contact screen without permission; the address book with it) |
-| Calendars | EventKit, EventKitUI | `expo-calendar` | ✓ `ryui/calendar` (the event editor without permission; calendars and events with it) |
+| Contacts | Contacts, ContactsUI | `expo-contacts` | ✓ `ryui/contacts` (the picker and new contact screen without permission; the address book with it; Windows: adding opens a vCard, no address book) |
+| Calendars | EventKit, EventKitUI | `expo-calendar` | ✓ `ryui/calendar` (the event editor without permission; calendars and events with it; Windows: adding opens an iCalendar file, no calendars) |
 | Home screen widgets | WidgetKit | `expo-widgets` | ✓ `ryui/widget` and `ryui.json`'s `widgets` (a template in every size, the lock screen's on iOS; timelines, countdowns, taps with a URL) |
 | App Intents, shortcuts | App Intents, App Shortcuts | — | ✓ `ryui.json`'s `shortcuts` (iOS: App Shortcuts with Siri phrases, in Spotlight and Shortcuts; Android: launcher shortcuts) |
 | Custom fonts | `.font(.custom)` | `expo-font` | ✓ `Font.Family` |
@@ -136,7 +137,7 @@ what RyUI has for it.
 | Launch screen | `UILaunchScreen` | `expo-splash-screen` | ✓ `ryui.json`'s `splash`; `ryui/splash` holds it while the app loads |
 | Status bar, navigation bar | `statusBarHidden`, `preferredStatusBarStyle` | `expo-status-bar`, `expo-navigation-bar` | ✓ `ryui/screen`'s `SetBars` |
 | Orientation lock | `supportedInterfaceOrientations` | `expo-screen-orientation` | ✓ `ryui/screen`'s `Lock` |
-| Screenshots | `isCaptured`, `userDidTakeScreenshotNotification` | `expo-screen-capture` | ✓ `ryui/screen`'s `PreventCapture` (Android: blank captures; iOS: covered while recorded), `OnScreenshot` |
+| Screenshots | `isCaptured`, `userDidTakeScreenshotNotification` | `expo-screen-capture` | ✓ `ryui/screen`'s `PreventCapture` (Android: blank captures; iOS: covered while recorded; macOS and Windows: the windows left out), `OnScreenshot` (Linux and Windows: new images in Pictures/Screenshots) |
 | Crash reports | MetricKit, Crashlytics, Sentry | Sentry, Crashlytics (`@react-native-firebase/crashlytics`) | ✓ `ryui/crash`: Go panics and fatal errors, uncaught exceptions, MetricKit's crashes and hangs, Android's native crashes and ANRs, with breadcrumbs and values; the app sends them where it likes (no service built in); dSYMs and native debug symbols from `ryui build` |
 
 ## Appearance and accessibility

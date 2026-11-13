@@ -1,4 +1,4 @@
-//go:build windows && amd64
+//go:build windows
 
 package windows
 
@@ -494,7 +494,7 @@ func (w *web) resized(h *Host, n *node) {
 		return
 	}
 	r := ClientRect(n.hwnd)
-	ComCall(w.controller, ctlPutBounds, uintptr(unsafe.Pointer(&r))) // a RECT goes by reference on x64
+	ComCallRect(w.controller, ctlPutBounds, r) // a RECT by value
 }
 
 // closeNow lets the controller go at once: as the process exits, not

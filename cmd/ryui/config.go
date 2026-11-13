@@ -92,6 +92,16 @@ type appConfig struct {
 			Key      string `json:"key"`
 		} `json:"appStoreConnect"`
 	} `json:"ios"`
+	// Mac is what a Mac build signs the app with (ios.team is its team too).
+	Mac struct {
+		// Profile is a Developer ID (or development) provisioning profile's
+		// path, name or UUID, which push, Sign in with Apple and App Attest
+		// need (default: RYUI_MAC_PROFILE, else, for an app that uses them,
+		// the best match installed); AppStoreProfile, a Mac App Store one,
+		// for -appstore.
+		Profile         string `json:"profile"`
+		AppStoreProfile string `json:"appStoreProfile"`
+	} `json:"mac"`
 	// Accent is the app's accent color, "#rrggbb" or "#rrggbbaa": the
 	// tint color on iOS; on Android, the seed of the Material 3 color
 	// scheme (Android 12 and later; before, RyUI's own uses of the accent
@@ -152,7 +162,37 @@ type appConfig struct {
 	entitlements map[string]any
 	plistArrays  map[string][]string
 	androidTop   []string
-	Android      struct {
+	// Linux is what a Linux build says of the app, in its desktop file
+	// and its AppStream metainfo (what software centers and Flathub show).
+	Linux struct {
+		// Summary is a line saying what the app does; Description, a few
+		// paragraphs (separated by blank lines).
+		Summary     string `json:"summary"`
+		Description string `json:"description"`
+		// Categories are the desktop file's (freedesktop.org's main
+		// categories: Utility, Office, Development, Network...; default
+		// Utility), and Keywords more words a launcher finds it by.
+		Categories []string `json:"categories"`
+		Keywords   []string `json:"keywords"`
+		// License is the app's, as an SPDX expression (MIT, GPL-3.0-or-later,
+		// LicenseRef-proprietary); Developer, its developer's name;
+		// Homepage, its web page.
+		License   string `json:"license"`
+		Developer string `json:"developer"`
+		Homepage  string `json:"homepage"`
+		// FlatpakRuntime is the GNOME runtime's version the Flatpak manifest
+		// asks for (default: a recent one; 46 or later).
+		FlatpakRuntime string `json:"flatpakRuntime"`
+	} `json:"linux"`
+	// Web is what a web build needs (cmd/ryui/web.go).
+	Web struct {
+		// VapidPublicKey is the app server's VAPID public key (base64url, an
+		// uncompressed P-256 point), for ryui/push's Web Push: the browser
+		// subscribes with it, and the server signs with its private key
+		// (ryui/push/webpush: GenerateKeys makes a pair).
+		VapidPublicKey string `json:"vapidPublicKey"`
+	} `json:"web"`
+	Android struct {
 		// DynamicColor takes the colors from the user's wallpaper where
 		// the system has them (Android 12 and later), as Material apps do;
 		// the accent is the seed elsewhere.

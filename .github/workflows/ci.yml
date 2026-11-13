@@ -45,6 +45,22 @@ jobs:
           if [ -z "$NDK" ]; then sdkmanager "ndk;27.1.12297006"; NDK=$ANDROID_HOME/ndk/27.1.12297006; fi
           GOOS=android GOARCH=arm64 CGO_ENABLED=1 CC=$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android26-clang \
             CGO_LDFLAGS="-Wl,-z,max-page-size=16384" go build -buildmode=c-shared -o /tmp/libryui.so ./examples/counter
+  # The Linux host on real GTK 4 and libadwaita, under Xvfb and a
+  # session bus; then the examples on it (e2e/).
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: stable }
+      - name: GTK 4, libadwaita, a display and a session bus
+        run: sudo apt-get update && sudo apt-get install -y libgtk-4-1 libadwaita-1-0 xvfb dbus
+      - name: the Linux host, driving real GTK widgets
+        run: xvfb-run -a dbus-run-session go test ./host/linux
+      - name: GUI tests, the examples on GTK
+        run: xvfb-run -a -s '-screen 0 1400x1000x24' dbus-run-session go test -tags e2e ./e2e -run Linux -v
+      - name: a release builds
+        run: go run ./cmd/ryui build -platform linux -vet=false examples/counter && tar -tzf examples/counter/dist/linux/counter-*.tar.gz
   # GUI tests: the examples on a simulator and an emulator, driven
   # through the debug hosts' automation (e2e/).
   e2e-ios:

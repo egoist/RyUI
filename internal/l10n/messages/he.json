@@ -8,5 +8,10 @@
   "hide": "הסתרת ״⁨{app}⁩״",
   "quit": "סיום ״⁨{app}⁩״",
   "hideOthers": "הסתרת יישומים אחרים",
-  "zoom": "זום"
+  "zoom": "זום",
+  "cancel": "ביטול",
+  "takePhoto": "צלם תמונה",
+  "addToContacts": "הוסף לאנשי הקשר",
+  "addToCalendar": "הוסף ללוח השנה",
+  "newEvent": "אירוע חדש"
 }

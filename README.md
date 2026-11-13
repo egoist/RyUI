@@ -1,7 +1,9 @@
 # RyUI
 
-Native iOS and Android apps in Go. RyUI renders with each platform's own
-widgets (UIKit on iOS, Android Views and Material 3 on Android) and
+Native apps in Go for iOS, Android, macOS, Windows, Linux and the web.
+RyUI renders with each platform's own widgets (UIKit on iOS, Android
+Views and Material 3 on Android, AppKit on the Mac, Win32 drawn as
+Windows 11's, GTK 4 and libadwaita on Linux, the DOM in a browser) and
 updates them with fine-grained signals: a change touches only the views
 that read it.
 
@@ -39,12 +41,16 @@ func main() { app.Run(Counter) }
 - **`ryui build`**: a signed `.ipa` for the App Store, and an `.aab` for
   Google Play; **`ryui publish`** uploads them, numbered after the store's
   last build, to TestFlight (its groups, App Review) or a Play track.
-- **macOS, early**: the same app on AppKit, in one Go process
+- **macOS**: the same app on AppKit, in one Go process
   (`ryui dev -platform mac`, `ryui build -platform mac`).
-- **Windows, early**: the same app on Win32 and the common controls,
+- **Windows**: the same app on Win32 and the common controls,
   drawn as Windows 11's, in one Go process (`ryui dev -platform windows`,
   `ryui build -platform windows`).
-- **The web, early**: the same app in a browser, its Go code compiled to
+- **Linux**: the same app on GTK 4 and libadwaita, called
+  without cgo, in one Go process (`ryui dev -platform linux`, `ryui build
+  -platform linux`: a folder to install, a `.tar.gz` and a Flatpak
+  manifest, from any system).
+- **The web**: the same app in a browser, its Go code compiled to
   WebAssembly and its views the page's DOM, placed where RyUI's layout
   puts them (`ryui dev -platform web`, `ryui build -platform web`: a static site). See
   [the web](docs/web.md).

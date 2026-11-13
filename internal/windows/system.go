@@ -1,4 +1,4 @@
-//go:build windows && amd64
+//go:build windows
 
 package windows
 
@@ -186,12 +186,10 @@ func OpenFiles(owner uintptr, title string, filters []FileFilter, multiple bool)
 
 // KeepAwake keeps the display (and the system) on while on.
 func KeepAwake(on bool) {
-	const esContinuous, esSystemRequired, esDisplayRequired = 0x80000000, 0x1, 0x2
-	flags := uintptr(esContinuous)
-	if on {
-		flags |= esSystemRequired | esDisplayRequired
-	}
-	procSetThreadExecutionState.Call(flags)
+	execState.mu.Lock()
+	execState.display = on
+	applyExecState() // sys2.go: with background work's
+	execState.mu.Unlock()
 }
 
 // ClipboardText is the clipboard's text (ok false: none).

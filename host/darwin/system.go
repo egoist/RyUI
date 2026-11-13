@@ -54,7 +54,19 @@ func (h *Host) module(name string) map[string]method {
 	return nil
 }
 
+// moduleHooks add more of the host's modules, each file its own (from
+// its init).
+var moduleHooks []func(h *Host, m map[string]map[string]method)
+
 func (h *Host) builtinModules() map[string]map[string]method {
+	m := h.coreModules()
+	for _, f := range moduleHooks {
+		f(h, m)
+	}
+	return m
+}
+
+func (h *Host) coreModules() map[string]map[string]method {
 	return map[string]map[string]method{
 		"secureStore": {
 			// args: the key; result: u8 found, then the value.

@@ -1,0 +1,419 @@
+//go:build linux && !android
+
+package linux
+
+import (
+	"math"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/egoist/ryui/internal/boot"
+	. "github.com/egoist/ryui/internal/gtk"
+	"github.com/egoist/ryui/ops"
+)
+
+// win is a top-level window of the app's: the main one, holding the root,
+// or a Window node's. Its content is an AdwToolbarView: the header bar
+// (the window's title bar, with the innermost stack's back button, title
+// and bar buttons), and under it a view of the host's that holds the root
+// at its size.
+type win struct {
+	window   Ptr // AdwApplicationWindow
+	toolbar  Ptr // AdwToolbarView
+	header   Ptr // AdwHeaderBar
+	title    Ptr // AdwWindowTitle
+	content  Ptr // the host's RyuiView under the header
+	toasts   Ptr // the AdwToastOverlay around it
+	search   *searchField
+	restored bool
+	root     *node
+	node     *node // the Window node (nil for the main window)
+
+	name       string // its title (the app's name for the main window, unless set)
+	width      float32
+	height     float32
+	envW, envH float32 // as last reported
+	chrome     chrome  // what its header bar shows (nav.go)
+	closing    bool
+}
+
+func (h *Host) newMainWindow() *win {
+	w := h.newWin(AdwApplicationWindowNew(h.app))
+	if os.Getenv("RYUI_TEST") != "" {
+		WindowSetDecorated(w.window, false)
+	}
+	w.name = h.appName
+	WindowSetTitle(w.window, h.appName)
+	AdwWindowTitleSetTitle(w.title, h.appName)
+	o := h.windowOptions
+	width, height := float32(800), float32(600)
+	if o.width > 0 {
+		width = o.width
+	}
+	if o.height > 0 {
+		height = o.height
+	}
+	WindowSetDefaultSize(w.window, int32(width), int32(height)+headerHeight)
+	h.restoreWindow(w)
+	Connect(w.window, "close-request", func() bool {
+		h.saveWindow(w)
+		return false
+	})
+	return w
+}
+
+// headerHeight is libadwaita's header bar's height (47: 46 and its
+// border), which the window's default size includes.
+const headerHeight = 47
+
+// newWin wraps a GtkWindow in the host's structure.
+func (h *Host) newWin(window Ptr) *win {
+	w := &win{window: window}
+	w.toolbar = AdwToolbarViewNew()
+	w.header = AdwHeaderBarNew()
+	w.title = AdwWindowTitleNew("", "")
+	ObjectRefSink(w.title) // kept while a tabs' switcher takes its place
+	AdwHeaderBarSetTitleWidget(w.header, w.title)
+	AdwToolbarViewAddTopBar(w.toolbar, w.header)
+	w.content = newView()
+	w.toasts = AdwToastOverlayNew()
+	AdwToastOverlaySetChild(w.toasts, w.content)
+	AdwToolbarViewSetContent(w.toolbar, w.toasts)
+	if TypeCheckInstanceIsA(window, Call(Sym("adw_application_window_get_type"))) {
+		AdwApplicationWindowSetContent(window, w.toolbar)
+	} else {
+		AdwWindowSetContent(window, w.toolbar)
+	}
+	h.wins[window] = w
+	Connect(window, "notify::is-active", func(uintptr) {
+		if WindowIsActive(window) {
+			h.activeWin = w
+		}
+	})
+	return w
+}
+
+// winByContent is the window whose content view w is.
+func (h *Host) winByContent(w Ptr) *win {
+	if h.main != nil && h.main.content == w {
+		return h.main
+	}
+	for _, x := range h.wins {
+		if x.content == w {
+			return x
+		}
+	}
+	return nil
+}
+
+func (w *win) setRoot(h *Host, n *node) {
+	if w.root == n {
+		return
+	}
+	if w.root != nil && w.root.widget != 0 && WidgetGetParent(w.root.widget) == w.content {
+		WidgetUnparent(w.root.widget)
+	}
+	w.root = n
+	h.detach(n.widget)
+	WidgetSetParent(n.widget, w.content)
+	Call(FnQueueAllocate, w.content)
+}
+
+// allocated is the window's content view sized: the root takes the size,
+// and the core hears of it.
+func (w *win) allocated(h *Host, width, height int32) {
+	fw, fh := float32(width), float32(height)
+	if w.root != nil && w.root.widget != 0 {
+		allocate(w.root.widget, width, height, 0, 0, nil)
+	}
+	if fw == w.envW && fh == w.envH {
+		return
+	}
+	w.envW, w.envH = fw, fh
+	if w.node == nil {
+		// The main window: the root's environment.
+		env := h.environment(w)
+		if env == h.env {
+			return
+		}
+		h.env = env
+		if h.root != nil {
+			h.dispatch(ops.Event{ID: h.root.id, Kind: ops.EventEnvironment, Env: env})
+		}
+		return
+	}
+	// A Window's node is its root, sized here: it reports its own
+	// environment (rootAllocated).
+}
+
+// environment is a window's: its content's size, its display's scale,
+// the desktop's settings.
+func (h *Host) environment(w *win) ops.Environment {
+	env := ops.Environment{
+		Width: w.envW, Height: w.envH,
+		Scale:     1,
+		FontScale: h.fontScale,
+		Dark:      h.dark,
+		Platform:  ops.PlatformLinux,
+		Locale:    h.posixLocale(),
+		Languages: h.languages,
+		TimeZone:  timeZone(),
+	}
+	if env.Width == 0 && env.Height == 0 {
+		var dw, dh int32
+		WindowGetDefaultSize(w.window, &dw, &dh)
+		env.Width, env.Height = float32(dw), float32(max(dh-headerHeight, 0))
+	}
+	if nat := WidgetGetNative(w.content); nat != 0 {
+		if s := NativeGetSurface(nat); s != 0 {
+			if SurfaceGetScale != nil {
+				env.Scale = float32(SurfaceGetScale(s))
+			} else {
+				env.Scale = float32(SurfaceGetScaleFactor(s))
+			}
+		}
+	}
+	if env.Scale <= 0 {
+		env.Scale = 1
+	}
+	if s := SettingsGetDefault(); s != 0 {
+		env.ReduceMotion = !GetBoolProperty(s, "gtk-enable-animations")
+	}
+	env.ScreenReader = h.screenReader
+	env.HourCycle = h.hourCycle
+	return env
+}
+
+// watchSettings follows the desktop's settings: dark style, animations,
+// text scaling, the font.
+func (h *Host) watchSettings() {
+	sm := AdwStyleManagerGetDefault()
+	Connect(sm, "notify::dark", func(uintptr) {
+		h.dark = AdwStyleManagerGetDark(sm)
+		h.themeChanged()
+	})
+	Connect(sm, "notify::high-contrast", func(uintptr) { h.themeChanged() })
+	if s := SettingsGetDefault(); s != 0 {
+		for _, prop := range []string{"gtk-enable-animations", "gtk-xft-dpi", "gtk-font-name"} {
+			Connect(s, "notify::"+prop, func(uintptr) {
+				h.base = systemFont()
+				h.fontScale = textScale()
+				h.envChanged()
+			})
+		}
+	}
+	h.watchDesktop()
+}
+
+// themeChanged reads the palette again, redraws every view and tells
+// the core.
+func (h *Host) themeChanged() {
+	h.theme = h.readPalette(h.main.content)
+	for _, n := range h.nodes {
+		queueDraw(n)
+		if n.kind == ops.KindText || n.kind == ops.KindTextField || n.kind == ops.KindButton || n.kind == ops.KindRichText {
+			h.applyText(n) // colors are attributes, resolved once
+		}
+	}
+	h.envChanged()
+}
+
+// envChanged reports every window's environment again.
+func (h *Host) envChanged() {
+	if h.main == nil {
+		return
+	}
+	env := h.environment(h.main)
+	if env != h.env {
+		h.env = env
+		if h.root != nil {
+			h.dispatch(ops.Event{ID: h.root.id, Kind: ops.EventEnvironment, Env: env})
+		}
+	}
+	h.rootsEnvChanged()
+}
+
+// posixLocale is the locale of the user's formats: LC_ALL, LC_TIME or
+// LANG, as en_US.
+func (h *Host) posixLocale() string {
+	for _, k := range []string{"LC_ALL", "LC_TIME", "LANG"} {
+		if v := os.Getenv(k); v != "" && v != "C" && v != "POSIX" {
+			v, _, _ = strings.Cut(v, ".")
+			v, _, _ = strings.Cut(v, "@")
+			return v
+		}
+	}
+	return "en_US"
+}
+
+// userLanguages are the languages the user reads, most preferred first,
+// as BCP 47 tags: LANGUAGE's list, else LC_ALL, LC_MESSAGES or LANG.
+func userLanguages() string {
+	var out []string
+	add := func(v string) {
+		v, _, _ = strings.Cut(v, ".")
+		v, _, _ = strings.Cut(v, "@")
+		if v == "" || v == "C" || v == "POSIX" {
+			return
+		}
+		out = append(out, strings.ReplaceAll(v, "_", "-"))
+	}
+	if l := os.Getenv("LANGUAGE"); l != "" {
+		for _, v := range strings.Split(l, ":") {
+			add(v)
+		}
+	}
+	if len(out) == 0 {
+		for _, k := range []string{"LC_ALL", "LC_MESSAGES", "LANG"} {
+			if v := os.Getenv(k); v != "" {
+				add(v)
+				break
+			}
+		}
+	}
+	if len(out) == 0 {
+		return "en-US"
+	}
+	return strings.Join(out, ",")
+}
+
+// timeZone is the system's IANA time zone: TZ, /etc/localtime's link,
+// or /etc/timezone.
+func timeZone() string {
+	if tz := strings.TrimPrefix(os.Getenv("TZ"), ":"); tz != "" && !strings.HasPrefix(tz, "/") {
+		return tz
+	}
+	if p, err := filepath.EvalSymlinks("/etc/localtime"); err == nil {
+		if _, after, ok := strings.Cut(p, "zoneinfo/"); ok {
+			return after
+		}
+	}
+	if b, err := os.ReadFile("/etc/timezone"); err == nil {
+		return strings.TrimSpace(string(b))
+	}
+	return "UTC"
+}
+
+// appName is the app's name: ryui.json's, or the executable's.
+func appName() string {
+	if boot.Name != "" {
+		return boot.Name
+	}
+	return filepath.Base(os.Args[0])
+}
+
+// appID is the application's ID: ryui.json's, else one made of its name
+// (GApplication wants one with a dot).
+func appID(name string) string {
+	if boot.ID != "" && ApplicationIDIsValid(boot.ID) {
+		return boot.ID
+	}
+	var b strings.Builder
+	for _, r := range name {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+		case r == '-' || r == '_':
+			b.WriteRune('_')
+		}
+	}
+	id := "dev.ryui.app." + b.String()
+	if b.Len() == 0 || !ApplicationIDIsValid(id) {
+		return "dev.ryui.App"
+	}
+	return id
+}
+
+// assetsDir is where the app's assets are: assets beside the executable
+// (a release), RYUI_ASSETS (ryui dev), or assets in the working directory.
+func assetsDir() string {
+	if d := os.Getenv("RYUI_ASSETS"); d != "" {
+		return d
+	}
+	if exe, err := os.Executable(); err == nil {
+		d := filepath.Join(filepath.Dir(exe), "assets")
+		if st, err := os.Stat(d); err == nil && st.IsDir() {
+			return d
+		}
+		d = filepath.Join(filepath.Dir(exe), "..", "share", filepath.Base(exe), "assets")
+		if st, err := os.Stat(d); err == nil && st.IsDir() {
+			return d
+		}
+	}
+	return "assets"
+}
+
+// windowOptions are the main window's, from WindowOptions.
+type windowOptions struct {
+	width, height, minWidth, minHeight float32
+	title                              string
+}
+
+func (h *Host) setWindowOptions(args []byte) {
+	r := reader{b: args}
+	o := windowOptions{width: r.f32(), height: r.f32(), minWidth: r.f32(), minHeight: r.f32()}
+	o.title = string(r.rest())
+	h.windowOptions = o
+	w := h.main
+	if w == nil {
+		return
+	}
+	if o.title != "" {
+		w.name = o.title
+	}
+	h.updateTitle(w)
+	if !w.restored && (o.width > 0 || o.height > 0) {
+		width, height := float32(800), float32(600)
+		if o.width > 0 {
+			width = o.width
+		}
+		if o.height > 0 {
+			height = o.height
+		}
+		WindowSetDefaultSize(w.window, int32(width), int32(height)+headerHeight)
+	}
+	minW, minH := o.minWidth, o.minHeight
+	if minW <= 0 {
+		minW = 320
+	}
+	if minH <= 0 {
+		minH = 320
+	}
+	WidgetSetSizeRequest(w.content, int32(minW), int32(minH))
+}
+
+func (h *Host) updateTitle(w *win) {
+	t := w.name
+	if c := w.chrome.title; c != "" {
+		AdwWindowTitleSetTitle(w.title, c)
+	} else {
+		AdwWindowTitleSetTitle(w.title, t)
+	}
+	if w.chrome.title != "" && w.node == nil {
+		WindowSetTitle(w.window, w.chrome.title)
+	} else {
+		WindowSetTitle(w.window, t)
+	}
+}
+
+// detachFromContainer takes w out of a container of GTK's.
+func (h *Host) detachFromContainer(p, w Ptr) {
+	switch {
+	case TypeCheckInstanceIsA(p, Call(Sym("gtk_viewport_get_type"))):
+		ViewportSetChild(p, 0)
+	case TypeCheckInstanceIsA(p, Call(Sym("adw_navigation_page_get_type"))):
+		AdwNavigationPageSetChild(p, 0)
+	case TypeCheckInstanceIsA(p, Call(Sym("adw_bin_get_type"))):
+		AdwBinSetChild(p, 0)
+	case TypeCheckInstanceIsA(p, Call(Sym("adw_dialog_get_type"))):
+		AdwDialogSetChild(p, 0)
+	case TypeCheckInstanceIsA(p, Call(Sym("gtk_popover_get_type"))):
+		PopoverSetChild(p, 0)
+	default:
+		WidgetUnparent(w)
+	}
+}
+
+// windowSize rounds a size in points to the window's whole points.
+func windowSize(f float32) int32 { return int32(math.Round(float64(f))) }

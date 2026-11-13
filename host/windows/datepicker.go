@@ -1,4 +1,4 @@
-//go:build windows && amd64
+//go:build windows
 
 package windows
 
@@ -57,6 +57,7 @@ func (h *Host) makeTimeUnder(n *node) {
 		SendMessage(n.ctl2, WM_UPDATEUISTATE, MakeLong(UIS_SET, UISF_HIDEFOCUS), 0)
 		SendMessage(n.ctl2, DTM_SETFORMATW, 0, Str(LocaleInfo("", localeSShortTime)))
 		EnableWindow(n.ctl2, !n.disabled)
+		h.themeDateField(n, n.ctl2)
 		h.byHwnd[n.ctl2] = n
 		h.applyDate(n)
 		h.layoutField(n)
@@ -183,3 +184,108 @@ func (h *Host) layoutDate(n *node, r Rect) {
 	}
 	SetWindowPos(n.ctl2, 0, x, r.H()-th, tw, th, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 }
+
+// themeDate follows dark mode on n's controls. A month calendar has no
+// dark visual style: dark, it's drawn classic in the dark palette's
+// colors (Fluent's layer and text, the title and the days' names in the
+// accent's); light, in its visual style. The date picker's drop-down
+// calendar likewise (DTN_DROPDOWN). A date and time picker's field, which
+// has no dark style either, is drawn light and turned dark: its grays
+// become the dark field's, the text light on it (darkField).
+func (h *Host) themeDate(n *node) {
+	if n.ctl == 0 {
+		return
+	}
+	if ClassName(n.ctl) == "SysMonthCal32" {
+		h.themeCalendar(n.ctl)
+	} else {
+		h.themeDateField(n, n.ctl)
+	}
+	if n.ctl2 != 0 {
+		h.themeDateField(n, n.ctl2)
+	}
+}
+
+// themeCalendar colors a month calendar for the app's dark mode.
+func (h *Host) themeCalendar(cal uintptr) {
+	AllowDark(cal, h.dark)
+	if !h.dark {
+		SetWindowTheme(cal, "")
+		return
+	}
+	DisableTheme(cal)
+	p := &h.theme
+	for part, c := range map[uintptr]rgba{
+		MCSC_BACKGROUND: p.layer.over(p.bg), MCSC_MONTHBK: p.layer.over(p.bg), MCSC_TEXT: p.label,
+		MCSC_TITLEBK: p.accent, MCSC_TITLETEXT: p.onAccent, MCSC_TRAILINGTEXT: p.tertiary.over(p.bg),
+	} {
+		SendMessage(cal, MCM_SETCOLOR, part, uintptr(c.ref()))
+	}
+	Invalidate(cal)
+}
+
+// themeDateField draws a date and time picker's field dark, while the app
+// is, its text antialiased in grays (ClearType's colored edges don't turn
+// dark).
+func (h *Host) themeDateField(n *node, dtp uintptr) {
+	AllowDark(dtp, h.dark)
+	s := h.nodeSpec(n)
+	s.gray = h.dark
+	SendMessage(dtp, WM_SETFONT, h.font(s), 0)
+	Subclass(dtp, func(hwnd uintptr, m uint32, w, l uintptr) uintptr {
+		if m == WM_PAINT && h.dark {
+			h.darkField(hwnd)
+			return 0
+		}
+		return DefSubclass(hwnd, m, w, l)
+	})
+	Invalidate(dtp)
+}
+
+// darkField paints a date and time picker as it draws itself, then turns
+// it dark: white is the dark field's background, black its text, what's
+// between mixed. The selected part's highlight stays.
+func (h *Host) darkField(hwnd uintptr) {
+	var ps PaintStruct
+	dc := BeginPaint(hwnd, &ps)
+	defer EndPaint(hwnd, &ps)
+	r := ClientRect(hwnd)
+	if r.W() <= 0 || r.H() <= 0 {
+		return
+	}
+	mem := CreateCompatibleDC(dc)
+	bmp, px := DIB(r.W(), r.H())
+	if bmp == 0 {
+		DeleteDC(mem)
+		return
+	}
+	old := SelectObject(mem, bmp)
+	DefSubclass(hwnd, WM_PRINTCLIENT, mem, 0x4|0x8) // PRF_CLIENT | PRF_ERASEBKGND
+	bg, fg := h.theme.fieldBg.over(h.theme.bg), h.theme.label
+	hl := SysColor(13) // COLOR_HIGHLIGHT
+	for i := 0; i+3 < len(px); i += 4 {
+		b, g, rd := int(px[i]), int(px[i+1]), int(px[i+2])
+		if absInt(b-int(hl>>16&0xFF))+absInt(g-int(hl>>8&0xFF))+absInt(rd-int(hl&0xFF)) < 60 {
+			continue // the selected part's highlight
+		}
+		t := 1 - float64(b+g+rd)/(3*255) // how much text
+		mix := func(a, b uint8) uint8 { return uint8(float64(a) + (float64(b)-float64(a))*t + 0.5) }
+		px[i], px[i+1], px[i+2] = mix(bg.b, fg.b), mix(bg.g, fg.g), mix(bg.r, fg.r)
+	}
+	BitBlt(dc, 0, 0, r.W(), r.H(), mem, 0, 0)
+	SelectObject(mem, old)
+	DeleteObject(bmp)
+	DeleteDC(mem)
+}
+
+// dateDropDown themes the calendar a date picker dropped down.
+func (h *Host) dateDropDown(dtp uintptr) {
+	if cal := SendMessage(dtp, DTM_GETMONTHCAL, 0, 0); cal != 0 {
+		h.themeCalendar(cal)
+		if h.dark {
+			SetDarkTitleBar(Parent(cal), true)
+		}
+	}
+}
+
+func absInt(v int) int { return max(v, -v) }

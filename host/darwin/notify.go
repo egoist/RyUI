@@ -24,9 +24,10 @@ import (
 
 // ryui/notify on macOS: UNUserNotificationCenter, as iOS's host has it
 // (platform/ios's Notify.swift), the module's methods the same. What macOS
-// lacks of it: Android's channels (ignored, as on iOS), communication
+// lacks of it: Android's channels (ignored, as on iOS) and communication
 // notifications (a message shows as a notification, its sender's name its
-// title) and pushes (ryui/push isn't on macOS). The center needs the
+// title). Pushes (APNs) shown or tapped go to ryui/push too (push.go),
+// their data the payload's keys beside aps. The center needs the
 // app's bundle (ryui build -platform mac): an executable run on its own (go run,
 // ryui dev) has no bundle ID, and gets an error.
 
@@ -151,6 +152,7 @@ func presentOptions(how byte) uint {
 }
 
 func (h *Host) willPresent(n ID, done func(uint)) {
+	pushShown(n)
 	if !notes.presenting {
 		done(presentOptions(0))
 		return
@@ -172,6 +174,7 @@ func (h *Host) willPresent(n ID, done func(uint)) {
 }
 
 func (h *Host) didReceive(r ID, done func()) {
+	pushOpened(r)
 	n := Send(r, "notification")
 	content := Send(Send(n, "request"), "content")
 	action := GoString(Send(r, "actionIdentifier"))
@@ -236,7 +239,10 @@ func shownOf(n ID) notifyspec.Shown {
 	c := Send(req, "content")
 	info := Send(c, "userInfo")
 	data := map[string]string{}
-	if d := Send(info, "objectForKey:", uintptr(String("ryui.data"))); d != 0 {
+	remote := isPush(n)
+	if remote {
+		data = pushData(jsonObject(info))
+	} else if d := Send(info, "objectForKey:", uintptr(String("ryui.data"))); d != 0 {
 		for _, k := range ArrayItems(Send(d, "allKeys")) {
 			data[GoString(k)] = GoString(Send(d, "objectForKey:", uintptr(k)))
 		}
@@ -246,7 +252,7 @@ func shownOf(n ID) notifyspec.Shown {
 		ID: GoString(Send(req, "identifier")), Title: GoString(Send(c, "title")), Subtitle: GoString(Send(c, "subtitle")),
 		Body: GoString(Send(c, "body")), URL: GoString(Send(info, "objectForKey:", uintptr(String("url")))), Data: data,
 		Category: GoString(Send(c, "categoryIdentifier")), Thread: GoString(Send(c, "threadIdentifier")),
-		Time: int64(secs * 1000),
+		Time: int64(secs * 1000), Remote: remote,
 	}
 }
 

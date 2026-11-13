@@ -56,10 +56,6 @@ var unsupported = map[string]map[Feature]string{
 	"android": {
 		ShadowBlur: "Android draws its elevation shadow: the radius is the elevation, and the light sets the offset",
 	},
-	"windows": {
-		Transform:    "the Windows host has no transforms yet",
-		GroupOpacity: "a child window can't be translucent: opacity fades a view's own drawing only",
-	},
 }
 
 // skipped is why host skips c: a feature it lacks. Hosts are "ios",

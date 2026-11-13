@@ -8,5 +8,10 @@
   "hide": "{app} 가리기",
   "quit": "{app} 종료",
   "hideOthers": "기타 가리기",
-  "zoom": "확대/축소"
+  "zoom": "확대/축소",
+  "cancel": "취소",
+  "takePhoto": "사진 찍기",
+  "addToContacts": "연락처에 추가",
+  "addToCalendar": "캘린더에 추가",
+  "newEvent": "새로운 이벤트"
 }

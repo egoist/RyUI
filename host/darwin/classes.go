@@ -150,6 +150,10 @@ func registerClasses() {
 	registerTarget()
 }
 
+// targetMethods are more of RyUITarget's methods (the application
+// delegate's), each file adding its own (from its init).
+var targetMethods []objc.MethodDef
+
 // registerTarget makes RyUITarget, the one object that takes the views'
 // actions, delegate calls and notifications.
 func registerTarget() {
@@ -268,6 +272,7 @@ func registerTarget() {
 	methods = append(methods, webMethods()...)
 	methods = append(methods, navMethods()...)
 	methods = append(methods, previewMethods()...)
+	methods = append(methods, targetMethods...)
 	DefineClass("RyUITarget", "NSObject", []string{
 		"NSApplicationDelegate", "NSWindowDelegate", "NSTextFieldDelegate", "NSTextViewDelegate",
 		"NSTabViewDelegate", "NSMenuDelegate", "NSGestureRecognizerDelegate",

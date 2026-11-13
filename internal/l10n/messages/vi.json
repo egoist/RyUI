@@ -8,5 +8,10 @@
   "hide": "Ẩn {app}",
   "quit": "Thoát {app}",
   "hideOthers": "Ẩn các mục khác",
-  "zoom": "Thu phóng"
+  "zoom": "Thu phóng",
+  "cancel": "Hủy",
+  "takePhoto": "Chụp ảnh",
+  "addToContacts": "Thêm vào Danh bạ",
+  "addToCalendar": "Thêm vào Lịch",
+  "newEvent": "Sự kiện mới"
 }

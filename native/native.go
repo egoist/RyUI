@@ -2,8 +2,9 @@
 // run the app's Go in their process: views shown with ui.Native and
 // modules called with ui.Call, written in Go against the platform (AppKit
 // through purego's objc package on macOS; Win32 through syscall on
-// Windows). The mobile hosts take Swift and Kotlin instead (ios/*.swift,
-// android/*.kt), the web JavaScript (web/*.js).
+// Windows; GTK 4 through purego on Linux). The mobile hosts take Swift
+// and Kotlin instead (ios/*.swift, android/*.kt), the web JavaScript
+// (web/*.js).
 //
 // Register in an init function of a file built for the platform:
 //
@@ -27,8 +28,9 @@ import (
 // View is a native view a host shows for ui.Native.
 type View interface {
 	// Handle is the platform's view: an NSView (its Objective-C object) on
-	// macOS, a child window (its HWND) on Windows. The host puts it in a
-	// view of its own, which the core places, and keeps it filling it.
+	// macOS, a child window (its HWND) on Windows, a GtkWidget on Linux.
+	// The host puts it in a view of its own, which the core places, and
+	// keeps it filling it.
 	Handle() uintptr
 	// Set sets one of the view's props (NativeProps.Props): a bool, an
 	// int64, a float64 or a string. It's called once for each prop as the
@@ -39,8 +41,8 @@ type View interface {
 // Measurer is a View with a natural size. Width and height are what the
 // layout offers, in points; NaN for either: as wide or tall as it likes.
 // A View that isn't one is measured as the platform measures it (an
-// NSView's fittingSize; nothing on Windows), or takes its size from its
-// style.
+// NSView's fittingSize; a GtkWidget's natural size on Linux; nothing on
+// Windows), or takes its size from its style.
 type Measurer interface {
 	Measure(width, height float32) (w, h float32)
 }
@@ -73,7 +75,8 @@ func NewContext(parent uintptr, emit func(name string, values map[string]any)) C
 
 // Parent is the host's view the native view goes in: an NSView on macOS,
 // a window (HWND) on Windows, where a child window must have its parent
-// as it's made (CreateWindowEx's hWndParent, with WS_CHILD).
+// as it's made (CreateWindowEx's hWndParent, with WS_CHILD), a GtkWidget
+// on Linux.
 func (c Context) Parent() uintptr { return c.parent }
 
 // Emit sends an event to the view's handler of that name

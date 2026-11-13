@@ -1,4 +1,4 @@
-//go:build windows && amd64
+//go:build windows
 
 package windows
 
@@ -369,7 +369,7 @@ func (g Graphics) Close() {
 }
 
 func (g Graphics) Translate(dx, dy float32) {
-	gdipTranslate.Call(uintptr(g), f(dx), f(dy), 0)
+	fcall(gdipTranslate, 0x6, uintptr(g), f(dx), f(dy), 0)
 }
 
 // Brush is a GDI+ brush.
@@ -414,7 +414,7 @@ type Pen uintptr
 
 func NewPen(c ARGB, width float32) Pen {
 	var p uintptr
-	gdipCreatePen1.Call(uintptr(c), f(width), 2, uintptr(unsafe.Pointer(&p))) // UnitPixel
+	fcall(gdipCreatePen1, 0x2, uintptr(c), f(width), 2, uintptr(unsafe.Pointer(&p))) // UnitPixel
 	return Pen(p)
 }
 
@@ -433,7 +433,7 @@ func (p Pen) SetDash(lengths []float32, offset float32) {
 		return
 	}
 	gdipSetPenDashArray.Call(uintptr(p), uintptr(unsafe.Pointer(&lengths[0])), uintptr(len(lengths)))
-	gdipSetPenDashOffset.Call(uintptr(p), f(offset))
+	fcall(gdipSetPenDashOffset, 0x2, uintptr(p), f(offset))
 }
 
 func (p Pen) Close() {
@@ -461,21 +461,23 @@ func (p Path) StartFigure() { gdipStartFigure.Call(uintptr(p)) }
 func (p Path) CloseFigure() { gdipCloseFigure.Call(uintptr(p)) }
 
 func (p Path) Line(x0, y0, x1, y1 float32) {
-	gdipAddPathLine.Call(uintptr(p), f(x0), f(y0), f(x1), f(y1))
+	fcall(gdipAddPathLine, 0x1e, uintptr(p), f(x0), f(y0), f(x1), f(y1))
 }
 
 func (p Path) Bezier(x0, y0, x1, y1, x2, y2, x3, y3 float32) {
-	gdipAddPathBezier.Call(uintptr(p), f(x0), f(y0), f(x1), f(y1), f(x2), f(y2), f(x3), f(y3))
+	fcall(gdipAddPathBezier, 0x1fe, uintptr(p), f(x0), f(y0), f(x1), f(y1), f(x2), f(y2), f(x3), f(y3))
 }
 
 func (p Path) Arc(x, y, w, h, start, sweep float32) {
-	gdipAddPathArc.Call(uintptr(p), f(x), f(y), f(w), f(h), f(start), f(sweep))
+	fcall(gdipAddPathArc, 0x7e, uintptr(p), f(x), f(y), f(w), f(h), f(start), f(sweep))
 }
 
-func (p Path) Rect(x, y, w, h float32) { gdipAddPathRect.Call(uintptr(p), f(x), f(y), f(w), f(h)) }
+func (p Path) Rect(x, y, w, h float32) {
+	fcall(gdipAddPathRect, 0x1e, uintptr(p), f(x), f(y), f(w), f(h))
+}
 
 func (p Path) Ellipse(x, y, w, h float32) {
-	gdipAddPathEllipse.Call(uintptr(p), f(x), f(y), f(w), f(h))
+	fcall(gdipAddPathEllipse, 0x1e, uintptr(p), f(x), f(y), f(w), f(h))
 }
 
 // RoundRect adds a rounded rectangle (r: the corners' radius).
@@ -498,19 +500,19 @@ func (g Graphics) FillPath(b Brush, p Path) { gdipFillPath.Call(uintptr(g), uint
 func (g Graphics) DrawPath(pen Pen, p Path) { gdipDrawPath.Call(uintptr(g), uintptr(pen), uintptr(p)) }
 
 func (g Graphics) FillRect(b Brush, x, y, w, h float32) {
-	gdipFillRect.Call(uintptr(g), uintptr(b), f(x), f(y), f(w), f(h))
+	fcall(gdipFillRect, 0x3c, uintptr(g), uintptr(b), f(x), f(y), f(w), f(h))
 }
 
 func (g Graphics) FillEllipse(b Brush, x, y, w, h float32) {
-	gdipFillEllipse.Call(uintptr(g), uintptr(b), f(x), f(y), f(w), f(h))
+	fcall(gdipFillEllipse, 0x3c, uintptr(g), uintptr(b), f(x), f(y), f(w), f(h))
 }
 
 func (g Graphics) DrawArc(pen Pen, x, y, w, h, start, sweep float32) {
-	gdipDrawArc.Call(uintptr(g), uintptr(pen), f(x), f(y), f(w), f(h), f(start), f(sweep))
+	fcall(gdipDrawArc, 0xfc, uintptr(g), uintptr(pen), f(x), f(y), f(w), f(h), f(start), f(sweep))
 }
 
 func (g Graphics) DrawLine(pen Pen, x0, y0, x1, y1 float32) {
-	gdipDrawLine.Call(uintptr(g), uintptr(pen), f(x0), f(y0), f(x1), f(y1))
+	fcall(gdipDrawLine, 0x3c, uintptr(g), uintptr(pen), f(x0), f(y0), f(x1), f(y1))
 }
 
 // FillRoundRect fills a rounded rectangle with a color.
@@ -567,7 +569,7 @@ func (g Graphics) DrawImage(b *Bitmap, x, y, w, h, sx, sy, sw, sh float32) {
 	if b == nil || b.h == 0 {
 		return
 	}
-	gdipDrawImageRectRect.Call(uintptr(g), b.h, f(x), f(y), f(w), f(h), f(sx), f(sy), f(sw), f(sh), 2, 0, 0, 0) // UnitPixel
+	fcall(gdipDrawImageRectRect, 0x3fc, uintptr(g), b.h, f(x), f(y), f(w), f(h), f(sx), f(sy), f(sw), f(sh), 2, 0, 0, 0) // UnitPixel
 }
 
 // clampAttrs are image attributes that extend an image's edge pixels
@@ -588,14 +590,14 @@ func (g Graphics) DrawImageClamped(b *Bitmap, x, y, w, h, sx, sy, sw, sh float32
 			gdipSetImageAttrsWrap.Call(clampAttrs, 3, 0, 0) // WrapModeTileFlipXY
 		}
 	}
-	gdipDrawImageRectRect.Call(uintptr(g), b.h, f(x), f(y), f(w), f(h), f(sx), f(sy), f(sw), f(sh), 2, clampAttrs, 0, 0) // UnitPixel
+	fcall(gdipDrawImageRectRect, 0x3fc, uintptr(g), b.h, f(x), f(y), f(w), f(h), f(sx), f(sy), f(sw), f(sh), 2, clampAttrs, 0, 0) // UnitPixel
 }
 
 // FlattenedPoints flattens a path's curves into lines (in place) and
 // returns its points, each marked where a figure starts; a closed
 // figure ends with its first point again.
 func FlattenedPoints(p Path) (pts [][2]float32, starts []bool) {
-	gdipFlatten.Call(uintptr(p), 0, f(0.25))
+	fcall(gdipFlatten, 0x4, uintptr(p), 0, f(0.25))
 	var n int32
 	gdipPointCount.Call(uintptr(p), uintptr(unsafe.Pointer(&n)))
 	if n <= 0 {

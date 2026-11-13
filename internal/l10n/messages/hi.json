@@ -8,5 +8,10 @@
   "hide": "{app} छिपाएँ",
   "quit": "{app} बंद करें",
   "hideOthers": "अन्य छिपाएँ",
-  "zoom": "ज़ूम"
+  "zoom": "ज़ूम",
+  "cancel": "रद्द करें",
+  "takePhoto": "फ़ोटो लें",
+  "addToContacts": "संपर्कों में जोड़ें",
+  "addToCalendar": "कैलेंडर में जोड़ें",
+  "newEvent": "नया इवेंट"
 }

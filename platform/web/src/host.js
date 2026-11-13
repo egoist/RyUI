@@ -105,6 +105,10 @@ export class Host {
   connect(core, ioPtr) {
     this.core = core;
     this.ioPtr = ioPtr;
+    // What waited for Go (worker.js: a notification's URL).
+    const fs = this.onConnect || [];
+    this.onConnect = null;
+    for (const f of fs) f();
   }
 
   /** attach gives the host the WebAssembly memory (the loader does). */

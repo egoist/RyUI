@@ -18,6 +18,11 @@ import (
 // props go to the view's Set, its events come back with the context's
 // Emit, and it's measured by its Measure, or its fittingSize.
 
+// builtinViews are the host's own native views (ryui/maps' map,
+// ryui/camera's preview), by kind, each file adding its own (from its
+// init). They win over the app's of the same kind.
+var builtinViews = map[string]func(native.Context) native.View{}
+
 type nativeView struct {
 	kind string
 	view native.View
@@ -32,7 +37,10 @@ func (h *Host) setNativeProp(n *node, p ops.PropID, v *ops.Value) {
 			return
 		}
 		n.native = &nativeView{kind: v.Str}
-		f := native.ViewFactory(v.Str)
+		f := builtinViews[v.Str]
+		if f == nil {
+			f = native.ViewFactory(v.Str)
+		}
 		if f == nil {
 			fmt.Fprintf(os.Stderr, "ryui: no native view %q is registered (package native)\n", v.Str)
 			return

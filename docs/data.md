@@ -68,8 +68,9 @@ the app goes to the background; you need it only in tests.
 `ryui/sqlite` is an app's SQLite database. SQLite is
 [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite), a translation
 of SQLite's C to Go: it needs no cgo, so the same code runs on iOS,
-Android and, under `ryui dev`, the Mac. [`examples/notes`](../examples/notes)
-uses it.
+Android and the desktops. In a browser it's SQLite's own WebAssembly
+build, which the web's builds ship with the app ([The web](web.md#sqlite)).
+[`examples/notes`](../examples/notes) uses it.
 
 ### Open and migrate
 

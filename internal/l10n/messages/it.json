@@ -8,5 +8,10 @@
   "hide": "Nascondi {app}",
   "quit": "Esci da {app}",
   "hideOthers": "Nascondi altre",
-  "zoom": "Ridimensiona"
+  "zoom": "Ridimensiona",
+  "cancel": "Annulla",
+  "takePhoto": "Scatta foto",
+  "addToContacts": "Aggiungi ai contatti",
+  "addToCalendar": "Aggiungi al calendario",
+  "newEvent": "Nuovo evento"
 }

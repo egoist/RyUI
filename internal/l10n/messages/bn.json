@@ -8,5 +8,10 @@
   "hide": "{app} লুকান",
   "quit": "{app} বন্ধ করুন",
   "hideOthers": "অন্যগুলি লুকান",
-  "zoom": "জুম"
+  "zoom": "জুম",
+  "cancel": "বাতিল করুন",
+  "takePhoto": "ছবি তুলুন",
+  "addToContacts": "পরিচিতিতে যোগ করুন",
+  "addToCalendar": "ক্যালেন্ডারে যোগ করুন",
+  "newEvent": "নতুন ইভেন্ট"
 }
