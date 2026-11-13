@@ -180,6 +180,7 @@ public final class AsukaViewController: UIViewController {
         let rt = AsukaRuntime.shared
         rt.scale = CGFloat(e.scale)
         rt.send(AsukaEvents.environment(rt.rootID, e))
+        AsukaDisplays.shared.changed() // turned: the screen's bounds too
     }
 }
 

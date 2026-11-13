@@ -2520,6 +2520,156 @@ and never assumes a single root in its own data structures.
   route them (key equivalents, accelerators), and how users find them.
   Mobile hosts ignore it.
 
+**Displays, power, the Dock and the system's appearance** (`screen`,
+`power`, `dock`, `appearance`):
+
+- Packages over modules, not ops: what the system says about the
+  computer isn't a view's. Each state the app follows is a module with
+  "current", "next" and "stop" (`internal/follow`): a goroutine asks
+  "next" with the state it last got, which the host answers once its
+  state is another (at once for none), and hands the answer to the
+  watchers on the main thread; the last watcher's stop sends "stop",
+  which answers the waiting "next" with "stopped". Events (`power`'s
+  sleep and lock) ride the same answer, after the state: the host
+  queues them from the first "next" until "stop", so none is lost
+  between two. Each package has `Watch` and `Use` (a signal, stopped
+  with its owner); a host reads its state again as the platform says it
+  changed, and the desktop ones as each "next" comes too. `host/fake`
+  answers later as hosts do (`AsyncModules`), and `follow.Fake` is such
+  a module's host side for tests.
+- `screen.Displays` (Electron's `screen`): each display's ID, name,
+  bounds and work area in points in the desktop's coordinates (the
+  origin at the primary display's top left, y down), scale, refresh
+  rate and whether it's the primary; `Primary`, `Nearest` and
+  `Matching` pick one. Where displays have different scales (Windows),
+  each one's origin is its pixels over the least scale of the displays
+  and it goes on in its own, so displays never overlap. JSON on the
+  wire, the primary first, the same bytes for the same displays (what
+  "next" compares).
+- `power`: whether there's a battery and the computer runs on it, its
+  level and charging, Low Power Mode, the thermal state; `OnSuspend`,
+  `OnResume`, `OnLock`, `OnUnlock`; `IdleTime`, since the user's last
+  input in any app (`ErrIdleUnknown` where the system doesn't say).
+  Keeping the display on stays `device.KeepAwake`, working out of sight
+  `asuka/background`.
+- `dock.SetProgress` shows a task's progress on the app's icon (Normal,
+  Indeterminate, Paused, Error); `dock.RequestAttention` asks the user
+  to come to the app (Informational, Critical), and does nothing while
+  the app is in use. The icon's count stays `notify.SetBadge`.
+- `appearance`: the system's accent color (0 where it has none),
+  Increase Contrast and Reduce Transparency, beside what
+  `Environment` carries (dark mode, Reduce Motion, the text size).
+- macOS: the displays are `NSScreen`'s (the first has the menu bar;
+  AppKit's bottom-left coordinates flipped; `visibleFrame` the work
+  area; the CGDirectDisplayID the ID; `localizedName`,
+  `maximumFramesPerSecond`), read again at
+  `NSApplicationDidChangeScreenParametersNotification`. Power is IOKit's
+  power sources (`IOPSCopyPowerSourcesInfo`: the internal battery's
+  capacity and charging, what the Mac runs on; followed through
+  `IOPSNotificationCreateRunLoopSource`), `NSProcessInfo`'s Low Power
+  Mode and thermal state and their notifications, `NSWorkspace`'s
+  sleep and wake, the lock screen loginwindow's distributed
+  notifications (`com.apple.screenIsLocked`, `screenIsUnlocked`), the
+  idle time Quartz's (`CGEventSourceSecondsSinceLastEventType`, any
+  input). The progress is drawn on the Dock tile, under its badge: the
+  tile's content view is the app's icon with a bar over its bottom, two
+  `NSBox`es (an `NSProgressIndicator` doesn't draw in a tile, which
+  renders offscreen), the fill the accent, red for an error, yellow
+  paused; an indeterminate one is a third of the bar sliding across,
+  the tile drawn again 15 times a second. Attention is
+  `requestUserAttention:` (critical bounces until the app is active).
+  The accent is `controlAccentColor` in sRGB, the options `NSWorkspace`'s
+  accessibility display options, followed through
+  `NSSystemColorsDidChangeNotification` and
+  `NSWorkspaceAccessibilityDisplayOptionsDidChangeNotification`.
+- Windows: one hidden top-level window of the modules' class, never
+  shown, hears what Windows broadcasts to top-level windows only (a
+  message-only window hears none): `WM_DISPLAYCHANGE`,
+  `WM_SETTINGCHANGE`, `WM_SYSCOLORCHANGE`,
+  `WM_DWMCOLORIZATIONCOLORCHANGED`, `WM_POWERBROADCAST`; the power and
+  session notifications are registered for it. Displays are the
+  monitors (`EnumDisplayMonitors`, `GetMonitorInfo`), each at its
+  effective DPI (`GetDpiForMonitor`), named by the display
+  configuration's EDID name ("Built-in Display" for a laptop's panel
+  without one, else its adapter's description), at its path's refresh
+  rate; read again on a display, setting or DPI change, and once more a
+  moment later, as changes settle. Power is `GetSystemPowerStatus` (Low
+  Power: battery saver, Windows 11's energy saver; no thermal state),
+  read again on `PBT_APMPOWERSTATUSCHANGE` and the power settings
+  registered (the power source, the battery's level, the savers). Sleep
+  and waking are `PBT_APMSUSPEND` and `PBT_APMRESUMEAUTOMATIC`, which
+  `RegisterSuspendResumeNotification` sends on PCs with modern standby
+  too, each told once; locking is `WM_WTSSESSION_CHANGE`
+  (`WTSRegisterSessionNotification`); the idle time `GetLastInputInfo`'s.
+  The progress is the main window's taskbar button's (`ITaskbarList3`,
+  paused yellow, error red), set again when Explorer makes the button
+  again (`TaskbarButtonCreated`). Attention is `FlashWindowEx` on the
+  window in use: once for an informational request (the button stays
+  lit until the app is used), the button and the title bar until the
+  window comes to the foreground for a critical one. The accent is the
+  accent palette's own entry (else DWM's colorization color), a contrast
+  theme is Increase Contrast, transparency effects off Reduce
+  Transparency.
+- Linux: the displays are GDK's monitors (`gdk_display_get_monitors`,
+  followed through `items-changed` and each monitor's geometry, scale
+  and refresh rate): the geometry is in application pixels, which are
+  points, the scale fractional (GTK 4.14), the ID the connector (DP-1),
+  the name the monitor's description. GTK 4 has no primary monitor: on
+  X11 it's the X server's and the work area the window manager's
+  (`gdk_x11_monitor_get_workarea`; a panel moving has no signal of
+  GDK's, so it's seen at the next change); on Wayland the compositor
+  keeps both, so the work area is the bounds and the primary is GNOME's
+  (Mutter's `DisplayConfig`, read again on `MonitorsChanged`), else the
+  monitor at the layout's origin. Power is UPower (`OnBattery`, the
+  display device's presence, percentage and charging), GIO's power
+  profile monitor (the power saver profile, through the portal in a
+  sandbox), logind's `PrepareForSleep` for sleep and wake, and the
+  session's `LockedHint` with the screen saver's `ActiveChanged`
+  (GNOME's, KDE's) for the lock, one locked flag between them; the idle
+  time is Mutter's idle monitor's, else KDE's screen saver's, else not
+  known; no thermal state. The progress is the launcher API's
+  (`com.canonical.Unity.LauncherEntry`, as notify's badge, each
+  `Update` the whole entry: count, progress, urgent), which Dash to
+  Dock, Ubuntu's dock and Plasma's task manager draw (indeterminate a
+  full bar, paused and error as normal); GNOME's own dash shows none.
+  Attention sets the entry's urgent flag and, on X11, the window's
+  urgency hint; on Wayland, where GTK 4 has no urgency, it presents the
+  window without an activation token, which GNOME and KDE don't grant
+  but show as a notification that the app is ready, and which can't be
+  taken back. It ends as one of the app's windows becomes active. The
+  appearance is the settings portal's `org.freedesktop.appearance`
+  (`accent-color`, `contrast`, followed by `SettingChanged`),
+  libadwaita's high contrast without it; Linux desktops have no Reduce
+  Transparency.
+- The web: one display, `window.screen`'s (its work area `availLeft`,
+  `availTop`, `availWidth`, `availHeight` where the browser gives them,
+  its scale `devicePixelRatio`), or every display, with their places,
+  labels and which is primary, from the Window Management API
+  (`getScreenDetails`, Chrome) once the user has granted it: the host
+  never asks. A page isn't told a refresh rate (0). Power is the Battery
+  Status API (Chrome), which reports a computer without a battery as
+  one charging, full and never discharging: read as none. A page is told
+  of no sleep, lock, Low Power Mode or heat, and not the idle time (the
+  Idle Detection API asks the user). The accent is CSS's `AccentColor`
+  where the browser has it, the options `prefers-contrast: more` and
+  `prefers-reduced-transparency: reduce`. A page has no icon: `dock`
+  does nothing.
+- Phones answer with what they have. The displays are the device's own
+  screen first, then any it mirrors or extends to (AirPlay, a cable,
+  Android's secondary displays), in a row after it, each in points as
+  it's turned now, its work area its bounds (the bars are the app's
+  safe area). Power is `UIDevice`'s battery or the sticky battery
+  broadcast, Low Power Mode or Battery Saver, the thermal state or
+  status; the screen locks as protected data goes (iOS, with a
+  passcode) or as it goes off on a secure lock screen (Android), and
+  unlocks as protected data comes back or at the user-present broadcast.
+  A phone suspends an app as it goes to the background, not as it
+  sleeps: no Suspend or Resume, and no idle time. iOS has no system
+  accent; Android's is Material You's, as the system's dynamic primary
+  (accent1 at tone 40 light, 80 dark), its contrast the contrast level
+  (Android 14) or high contrast text, no Reduce Transparency. `dock`
+  does nothing.
+
 ## The web
 
 The app's Go code is a WebAssembly program (`GOOS=js GOARCH=wasm`,

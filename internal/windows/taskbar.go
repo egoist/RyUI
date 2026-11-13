@@ -89,12 +89,8 @@ func SetPackageBadge(n int) error {
 // SetTaskbarBadge shows n on hwnd's taskbar button, an overlay icon for
 // a display of dpi (0: none); label is what screen readers say of it.
 func SetTaskbarBadge(hwnd uintptr, n, dpi int, label string) error {
-	if taskbarList == 0 {
-		taskbarList = CoCreate(&clsidTaskbarList, &iidTaskbarList3)
-		if taskbarList == 0 {
-			return errors.New("no taskbar")
-		}
-		ComCall(taskbarList, 3) // HrInit
+	if err := initTaskbar(); err != nil {
+		return err
 	}
 	var icon uintptr
 	if n > 0 {
@@ -103,6 +99,47 @@ func SetTaskbarBadge(hwnd uintptr, n, dpi int, label string) error {
 	}
 	if hr := ComCall(taskbarList, 18, hwnd, icon, Str(label)); Failed(hr) { // SetOverlayIcon
 		return fmt.Errorf("the taskbar's overlay: %#x", uint32(hr))
+	}
+	return nil
+}
+
+// initTaskbar makes the taskbar list, once.
+func initTaskbar() error {
+	if taskbarList == 0 {
+		taskbarList = CoCreate(&clsidTaskbarList, &iidTaskbarList3)
+		if taskbarList == 0 {
+			return errors.New("no taskbar")
+		}
+		ComCall(taskbarList, 3) // HrInit
+	}
+	return nil
+}
+
+// Taskbar progress states (TBPFLAG).
+const (
+	TBPF_NOPROGRESS    = 0
+	TBPF_INDETERMINATE = 0x1
+	TBPF_NORMAL        = 0x2
+	TBPF_ERROR         = 0x4
+	TBPF_PAUSED        = 0x8
+)
+
+// SetTaskbarProgress shows a progress on hwnd's taskbar button: state a
+// TBPF_ flag, value 0 to 1 (but for no progress and an indeterminate
+// one).
+func SetTaskbarProgress(hwnd uintptr, state uint32, value float64) error {
+	if err := initTaskbar(); err != nil {
+		return err
+	}
+	if hr := ComCall(taskbarList, 10, hwnd, uintptr(state)); Failed(hr) { // SetProgressState
+		return fmt.Errorf("the taskbar's progress: %#x", uint32(hr))
+	}
+	if state != TBPF_NOPROGRESS && state != TBPF_INDETERMINATE {
+		const total = 10000
+		done := uint64(math.Round(min(max(value, 0), 1) * total))
+		if hr := ComCall(taskbarList, 9, hwnd, uintptr(done), total); Failed(hr) { // SetProgressValue
+			return fmt.Errorf("the taskbar's progress: %#x", uint32(hr))
+		}
 	}
 	return nil
 }

@@ -1,7 +1,9 @@
 // Services: what the platform does beyond views, a button each: sign-in,
 // biometrics, push and a messaging app's notifications, files, the
 // screen, the stores' services, a map, recording and work in the
-// background.
+// background; the displays, the battery, the system's accent and a
+// progress on the app's icon (asuka/screen, asuka/power,
+// asuka/appearance, asuka/dock).
 package main
 
 import (
@@ -14,6 +16,7 @@ import (
 
 	"github.com/egoist/asuka/agerange"
 	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/appearance"
 	"github.com/egoist/asuka/appleauth"
 	"github.com/egoist/asuka/audio"
 	"github.com/egoist/asuka/audio/record"
@@ -21,10 +24,12 @@ import (
 	"github.com/egoist/asuka/calendar"
 	"github.com/egoist/asuka/contacts"
 	"github.com/egoist/asuka/device"
+	"github.com/egoist/asuka/dock"
 	"github.com/egoist/asuka/imageedit"
 	"github.com/egoist/asuka/integrity"
 	"github.com/egoist/asuka/maps"
 	"github.com/egoist/asuka/periodic"
+	"github.com/egoist/asuka/power"
 	"github.com/egoist/asuka/push"
 	"github.com/egoist/asuka/review"
 	"github.com/egoist/asuka/screen"
@@ -81,6 +86,9 @@ func App() ui.Node {
 		tilting := signal.New(false)
 		var stopTilt func()
 		hidden := signal.New(false)
+		pow, look, displays := power.Use(), appearance.Use(), screen.UseDisplays()
+		signal.OnCleanup(power.OnLock(func() { log.Println("services: the screen locked") }))
+		signal.OnCleanup(power.OnSuspend(func() { log.Println("services: going to sleep") }))
 		return ui.Scroll(ui.ScrollProps{Style: ui.Style{Grow: 1}},
 			ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 10},
 				ui.Text(status, ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel}),
@@ -366,6 +374,64 @@ func App() ui.Node {
 						Progress: 0.72, ShowProgress: true, Until: time.Now().Add(25 * time.Minute), URL: "asukaservices://speak",
 					})
 					status.Set("Widget updated")
+				}),
+
+				section("Desktop"),
+				ui.Text(signal.Func(func() string {
+					p, a := pow.Get(), look.Get()
+					s := "No battery"
+					if p.Battery {
+						s = fmt.Sprintf("Battery %.0f%%", p.Level*100)
+						if p.OnBattery {
+							s += ", unplugged"
+						}
+					}
+					if p.LowPower {
+						s += ", Low Power Mode"
+					}
+					s += ", " + p.Thermal.String()
+					if r, g, b, _, ok := a.Accent.RGBA(); ok {
+						s += fmt.Sprintf(" · accent #%02x%02x%02x", r, g, b)
+					}
+					if a.IncreaseContrast {
+						s += " · more contrast"
+					}
+					if a.ReduceTransparency {
+						s += " · no transparency"
+					}
+					return s
+				}), ui.Style{Font: ui.Footnote}),
+				ui.Text(signal.Func(func() string {
+					var out []string
+					for _, d := range displays.Get() {
+						out = append(out, fmt.Sprintf("%s %gx%g@%gx %gHz", d.Name, d.Bounds.Width, d.Bounds.Height, d.Scale, d.RefreshRate))
+					}
+					return strings.Join(out, "\n")
+				}), ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel}),
+				item("Idle time", run(func() string {
+					d, err := power.IdleTime()
+					if err != nil {
+						return err.Error()
+					}
+					return "Idle for " + d.Round(time.Second).String()
+				})),
+				item("Progress on the app's icon", func() {
+					status.Set("Watch the Dock or the taskbar")
+					go func() {
+						for i := range 21 {
+							ui.Post(func() { dock.SetProgress(dock.Progress{Value: float64(i) / 20}) })
+							time.Sleep(150 * time.Millisecond)
+						}
+						ui.Post(func() {
+							dock.SetProgress(dock.Progress{})
+							dock.RequestAttention(dock.Informational)
+							status.Set("Done")
+						})
+					}()
+				}),
+				item("Ask for attention in 5 seconds", func() {
+					status.Set("Switch to another app")
+					time.AfterFunc(5*time.Second, func() { ui.Post(func() { dock.RequestAttention(dock.Critical) }) })
 				}),
 
 				section("More"),

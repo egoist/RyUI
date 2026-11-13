@@ -174,6 +174,7 @@ open class AsukaActivity : AppCompatActivity() {
         edgeToEdge() // status bar icons follow dark mode
         AsukaDisplay.bars(this, runtime.isNight(config)) // unless asuka/screen set them
         runtime.configurationChanged(config)
+        AsukaSystemAppearance.configurationChanged()
         localeChanged()
         window.setBackgroundDrawable(windowBackground())
         frame.post { sendEnvironment() }

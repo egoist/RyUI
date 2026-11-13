@@ -184,6 +184,7 @@ func (h *Host) windowMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
 		return r, true
 	}
 	h.badgeMessage(m)
+	h.dockMessage(m)
 	if r, ok := h.menuBarMessage(h.window, m, wp, lp); ok {
 		return r, true
 	}

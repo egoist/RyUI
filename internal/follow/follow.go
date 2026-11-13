@@ -1,0 +1,109 @@
+// Package follow follows a host module's state for the packages that
+// watch one (asuka/screen's displays, asuka/power, asuka/appearance): a
+// goroutine asks the module's "next" with the state it last got, which
+// the host answers once its state isn't that one (at once for none), and
+// hands each answer to the watchers, on the main thread, until the last
+// one stops. "stop" answers a waiting "next" with "stopped".
+//
+// A module that follows this way has three methods: "current" (the
+// state now), "next" (args: the last state; answered with the state once
+// it differs, or with events the host queued since) and "stop".
+package follow
+
+import (
+	"sync"
+
+	"github.com/egoist/asuka/ui"
+)
+
+// Module follows one module. Its zero value with Name set is ready.
+type Module struct {
+	Name string
+	// StateLen is how much of an answer is the state passed back to
+	// "next" (what follows it is events); 0: all of it.
+	StateLen int
+
+	mu       sync.Mutex
+	watchers map[*func([]byte)]bool
+	running  bool
+}
+
+// Watch calls f, on the main thread, with each answer of "next": the
+// state now first, then each change, until stop. Safe from any
+// goroutine.
+func (m *Module) Watch(f func(reply []byte)) (stop func()) {
+	fp := &f
+	m.mu.Lock()
+	if m.watchers == nil {
+		m.watchers = map[*func([]byte)]bool{}
+	}
+	m.watchers[fp] = true
+	start := !m.running
+	m.running = true
+	m.mu.Unlock()
+	if start {
+		go m.follow()
+	} else {
+		// The goroutine waits for a change: this watcher gets the state
+		// now of its own.
+		go func() {
+			b, err := ui.CallWait(m.Name, "current", nil)
+			if err != nil {
+				return
+			}
+			ui.Post(func() {
+				m.mu.Lock()
+				live := m.watchers[fp]
+				m.mu.Unlock()
+				if live {
+					f(b)
+				}
+			})
+		}()
+	}
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			m.mu.Lock()
+			delete(m.watchers, fp)
+			last := len(m.watchers) == 0
+			m.mu.Unlock()
+			if last {
+				ui.Post(func() { ui.Call(m.Name, "stop", nil, nil) })
+			}
+		})
+	}
+}
+
+// follow asks for each change until no one watches.
+func (m *Module) follow() {
+	var last []byte
+	for {
+		b, err := ui.CallWait(m.Name, "next", last)
+		m.mu.Lock()
+		fs := make([]func([]byte), 0, len(m.watchers))
+		for f := range m.watchers {
+			fs = append(fs, *f)
+		}
+		// Stopped as another began watching: wait on for that one.
+		if len(fs) == 0 || err != nil && err.Error() != "stopped" {
+			m.running = false
+			m.mu.Unlock()
+			return
+		}
+		m.mu.Unlock()
+		if err != nil {
+			continue
+		}
+		if n := m.StateLen; n > 0 && len(b) > n {
+			last = append(last[:0:0], b[:n]...)
+		} else {
+			last = b
+		}
+		ui.Post(func() {
+			for _, f := range fs {
+				f(b)
+			}
+		})
+	}
+}

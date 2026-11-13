@@ -93,8 +93,7 @@ type notifier struct {
 	tokens         int
 	timers         map[string]uint32     // due later, by ID
 	showing        map[string]*shownNote // shown, by ID
-	badgePath      string
-	actionsAdded   bool // the application's actions (installNotifyActions)
+	actionsAdded   bool                  // the application's actions (installNotifyActions)
 
 	// A run with ASUKA_NOTIFY's (notify_timer.go): its notification tapped,
 	// closed.
@@ -539,18 +538,10 @@ func (h *Host) withdraw(ids ...string) {
 }
 
 // setBadge sets the launcher's count for the app (0: none).
+// The entry is asuka/dock's too (modules_dock.go).
 func (h *Host) setBadge(n int) error {
-	conn, err := Bus(BusSession)
-	if err != nil {
-		return err
-	}
-	if notes.badgePath == "" {
-		notes.badgePath = "/" + strings.ReplaceAll(h.appID, ".", "/") + "/LauncherEntry"
-	}
-	return DBusEmit(conn, notes.badgePath, "com.canonical.Unity.LauncherEntry", "Update", VTuple(
-		VStr("application://"+h.appID+".desktop"),
-		VDict(map[string]Ptr{"count": VI64(int64(n)), "count-visible": VBool(n > 0)}),
-	))
+	launch.count = n
+	return h.updateLauncher()
 }
 
 // notifyImageFile is the local copy of an image source (an http(s) URL,

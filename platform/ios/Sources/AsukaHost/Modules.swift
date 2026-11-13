@@ -201,6 +201,10 @@ struct AsukaModuleError: LocalizedError {
         modules["screen"] = AsukaScreen.shared.methods(self)
         modules["splash"] = AsukaSplash.shared.methods()
         modules["clipboard"] = AsukaClipboard.shared.methods()
+        modules["displays"] = AsukaDisplays.shared.methods()
+        modules["power"] = AsukaPower.shared.methods()
+        modules["appearance"] = AsukaAppearance.shared.methods()
+        modules["dock"] = AsukaDock.methods()
         #if ASUKA_REVIEW
         modules["review"] = AsukaReview.methods(self)
         #endif
