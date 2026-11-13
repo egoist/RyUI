@@ -5,10 +5,10 @@ package darwin
 import (
 	"testing"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // A field's selection set from code moves its editor's; InsertText goes

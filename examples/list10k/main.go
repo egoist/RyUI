@@ -1,15 +1,15 @@
 // List10k shows 10,000 rows in a List: only the cells on screen have
 // rows, and a recycled cell updates only the props that differ.
 //
-//	go run ./cmd/ryui dev -platform ios examples/list10k
+//	go run ./cmd/asuka dev -platform ios examples/list10k
 package main
 
 import (
 	"fmt"
 
-	"github.com/egoist/ryui/app"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 type item struct {

@@ -1,4 +1,4 @@
-// What the page's ryui/notify and ryui/push (modules/system-notify.js,
+// What the page's asuka/notify and asuka/push (modules/system-notify.js,
 // modules/system-push.js) and the app's service worker (sw.js) share:
 // how a notification (notifyspec.Spec) and a push's payload become the
 // browser's notification, what the user's answer to one is on the wire
@@ -8,7 +8,7 @@
 //
 // A plain script, no imports or exports, so that it runs as a page's
 // module and in a classic service worker alike (the CLI writes it into
-// the worker's file): it sets globalThis.ryuiNotify.
+// the worker's file): it sets globalThis.asukaNotify.
 
 (() => {
   const g = globalThis;
@@ -24,8 +24,8 @@
     const caches = "caches" in env ? env.caches : g.caches;
     const local = "local" in env ? env.local : (() => { try { return g.localStorage; } catch { return null; } })();
     const origin = env.origin || g.location?.origin || "http://localhost";
-    const url = (k) => new URL("/__ryui/" + encodeURIComponent(app) + "/" + k, origin).href;
-    const open = () => caches.open("ryui");
+    const url = (k) => new URL("/__asuka/" + encodeURIComponent(app) + "/" + k, origin).href;
+    const open = () => caches.open("asuka");
     return {
       async get(k) {
         if (caches) {
@@ -36,7 +36,7 @@
           return null;
         }
         try {
-          const v = local?.getItem("ryui." + app + "." + k);
+          const v = local?.getItem("asuka." + app + "." + k);
           return v ? JSON.parse(v) : null;
         } catch { return null; }
       },
@@ -51,8 +51,8 @@
           return;
         }
         try {
-          if (empty) local?.removeItem("ryui." + app + "." + k);
-          else local?.setItem("ryui." + app + "." + k, JSON.stringify(v));
+          if (empty) local?.removeItem("asuka." + app + "." + k);
+          else local?.setItem("asuka." + app + "." + k, JSON.stringify(v));
         } catch {}
       },
     };
@@ -60,7 +60,7 @@
 
   /** locked runs f holding the app's lock (Web Locks: across its pages and its worker), where there are. */
   function locked(app, f, nav = g.navigator) {
-    if (nav?.locks?.request) return nav.locks.request("ryui-notify:" + app, f);
+    if (nav?.locks?.request) return nav.locks.request("asuka-notify:" + app, f);
     return f();
   }
 
@@ -179,7 +179,7 @@
       timestamp: time,
       actions,
       data: {
-        ryui: 1, app: o.app || "", shown: shownOf(s, time, o.remote), push: o.push || null,
+        asuka: 1, app: o.app || "", shown: shownOf(s, time, o.remote), push: o.push || null,
         // The actions that bring the app to the front (Action.Open).
         opens: (cat?.actions || []).filter((a) => a.open).map((a) => a.id),
       },
@@ -225,7 +225,7 @@
     return { token: newID(), action: action || "", reply: reply || "", seconds: 25, notification: d.shown };
   }
 
-  g.ryuiNotify = {
+  g.asukaNotify = {
     store, locked, schedule, unschedule, scheduled, takeDue, addPending, takePending,
     newID, shownOf, notificationOf, messageOf, specOfMessage, responseOf,
   };

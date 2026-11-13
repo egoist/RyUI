@@ -1,5 +1,5 @@
-// Package vet is RyUI's analyzer, which `ryui vet` runs, as do `ryui dev`
-// and `ryui build` before they build. Its checks find the mistakes the
+// Package vet is Asuka's analyzer, which `asuka vet` runs, as do `asuka dev`
+// and `asuka build` before they build. Its checks find the mistakes the
 // compiler can't, where code that builds and runs does the wrong thing:
 //
 //   - reads: a signal read while a component builds its tree, which runs
@@ -11,7 +11,7 @@
 // Each reports only what's certain from the code: a check that cries wolf
 // gets turned off. Its analyzers run under go vet too:
 //
-//	go vet -vettool=$(which ryui) ./...
+//	go vet -vettool=$(which asuka) ./...
 package vet
 
 import (
@@ -29,17 +29,17 @@ import (
 var Analyzers = []*analysis.Analyzer{Reads, MainThread, MemoWrites}
 
 const (
-	module     = "github.com/egoist/ryui"
+	module     = "github.com/egoist/asuka"
 	signalPath = module + "/signal"
 	uiPath     = module + "/ui"
 	i18nPath   = module + "/i18n"
 	appPath    = module + "/app"
 )
 
-// usesRyUI reports whether pkg is one of RyUI's packages or imports one,
+// usesAsuka reports whether pkg is one of Asuka's packages or imports one,
 // at any depth: no other package can read or write a signal, so the
 // others (the standard library's) are skipped.
-func usesRyUI(pkg *types.Package) bool {
+func usesAsuka(pkg *types.Package) bool {
 	seen := map[*types.Package]bool{}
 	var walk func(p *types.Package) bool
 	walk = func(p *types.Package) bool {
@@ -61,7 +61,7 @@ func usesRyUI(pkg *types.Package) bool {
 }
 
 // funcName is fn's package path and name, with its receiver's type for a
-// method: "github.com/egoist/ryui/ui.Show", ".../signal.Signal.Set".
+// method: "github.com/egoist/asuka/ui.Show", ".../signal.Signal.Set".
 func funcName(fn *types.Func) string {
 	if fn == nil || fn.Pkg() == nil {
 		return ""

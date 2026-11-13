@@ -5,7 +5,7 @@ package darwin
 import (
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
+	. "github.com/egoist/asuka/internal/darwin"
 )
 
 // Style.Transition: a view inserted during an animation comes in from its

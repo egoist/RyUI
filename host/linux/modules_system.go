@@ -12,17 +12,17 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/native"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/native"
 )
 
 // More of the system's modules on Linux, as macOS answers them where
-// Linux has nothing of its own: ryui/background (a desktop app keeps
+// Linux has nothing of its own: asuka/background (a desktop app keeps
 // running out of sight: a task holds off the system's suspending),
-// ryui/periodic (tasks on a timer while the app runs, as macOS's
-// scheduler runs them), ryui/splash (no launch screen to hold),
-// ryui/screen (no orientation or bars; capture can't be prevented;
-// screenshots seen as they're saved), ryui/widget (none), and the
+// asuka/periodic (tasks on a timer while the app runs, as macOS's
+// scheduler runs them), asuka/splash (no launch screen to hold),
+// asuka/screen (no orientation or bars; capture can't be prevented;
+// screenshots seen as they're saved), asuka/widget (none), and the
 // personal data Linux keeps no store of an app can read: Sign in with
 // Apple, the photo library, and contacts and calendars on a system
 // without Evolution Data Server (modules_eds.go reads and writes its
@@ -30,11 +30,11 @@ import (
 // user's app for it).
 
 // builtinViews are the host's own native views (ui.Native's kinds the
-// repo's packages use: ryui.camera, ryui.map), made as an app's are.
+// repo's packages use: asuka.camera, asuka.map), made as an app's are.
 var builtinViews = map[string]func(native.Context) native.View{
 	// Sign in with Apple's button: none (as on a Mac without
 	// AuthenticationServices): the node shows nothing.
-	"ryui.appleSignIn": func(native.Context) native.View { return nil },
+	"asuka.appleSignIn": func(native.Context) native.View { return nil },
 }
 
 func init() {
@@ -70,7 +70,7 @@ func answerNil(_ []byte, reply func([]byte, error)) { reply(nil, nil) }
 
 // Background.
 
-// bgTasks are ryui/background's tasks: a Linux app keeps running out of
+// bgTasks are asuka/background's tasks: a Linux app keeps running out of
 // sight, so a task only keeps the system from suspending (the session's
 // inhibitor, through the portal in a sandbox) until the last one ends.
 // There's no notification to show: "update" does nothing, and "next"
@@ -146,7 +146,7 @@ func endBackgroundTask(id uint32) {
 
 // Periodic.
 
-// ryui/periodic on Linux: a task runs about every interval while the
+// asuka/periodic on Linux: a task runs about every interval while the
 // app runs (in the background too: a Linux app keeps running out of
 // sight), as macOS's NSBackgroundActivityScheduler runs it; nothing
 // launches the app for it. "schedule" (string name, u32 seconds, u8
@@ -185,9 +185,9 @@ func (h *Host) periodicFile() string {
 	}
 	dir, err := os.UserConfigDir()
 	if err != nil {
-		dir = filepath.Join(os.TempDir(), "ryui-config")
+		dir = filepath.Join(os.TempDir(), "asuka-config")
 	}
-	return filepath.Join(dir, h.appID, "ryui-periodic.json")
+	return filepath.Join(dir, h.appID, "asuka-periodic.json")
 }
 
 func (h *Host) periodicTasks() map[string]periodicTask {
@@ -378,7 +378,7 @@ func onACPower() bool {
 
 // Screen.
 
-// screenState is ryui/screen's on Linux. Locking the orientation and the
+// screenState is asuka/screen's on Linux. Locking the orientation and the
 // bars' style are a phone's: a desktop's display doesn't turn with the
 // window, and it has no status or navigation bar. Nothing keeps a
 // window out of the desktop's own screenshots and recordings (Wayland
@@ -489,14 +489,14 @@ func isScreenshot(name string, inScreenshots bool) bool {
 
 // The photo library.
 
-// photoLibraryModule is ryui/photos' library's: a Linux desktop has no
-// photo library an app can read (photos are files: ryui/photos' Pick
-// and ryui/device's file picker reach them). Access is denied, and
+// photoLibraryModule is asuka/photos' library's: a Linux desktop has no
+// photo library an app can read (photos are files: asuka/photos' Pick
+// and asuka/device's file picker reach them). Access is denied, and
 // listing fails saying so.
 func (h *Host) photoLibraryModule() map[string]method {
 	denied := func(_ []byte, reply func([]byte, error)) { reply([]byte("denied"), nil) }
 	none := func(_ []byte, reply func([]byte, error)) {
-		reply(nil, errors.New("not available: Linux has no photo library (pick photos with ryui/photos' Pick)"))
+		reply(nil, errors.New("not available: Linux has no photo library (pick photos with asuka/photos' Pick)"))
 	}
 	return map[string]method{
 		"current":   denied,
@@ -510,7 +510,7 @@ func (h *Host) photoLibraryModule() map[string]method {
 
 // Contacts and calendars.
 
-// contactsModule is ryui/contacts' without Evolution Data Server
+// contactsModule is asuka/contacts' without Evolution Data Server
 // (modules_eds.go has its address books): no address book, no contact
 // picker: access is denied (the device doesn't allow it), listing fails
 // "not allowed", picking "not available". Adding a contact opens it, as a vCard, in the user's
@@ -533,7 +533,7 @@ func (h *Host) contactsModule() map[string]method {
 	}
 }
 
-// contactArgs is a contact as ryui/contacts adds it.
+// contactArgs is a contact as asuka/contacts adds it.
 type contactArgs struct {
 	Name, GivenName, FamilyName, Organization, JobTitle, Birthday, Note string
 	Phones, Emails                                                      []struct{ Label, Value string }
@@ -574,7 +574,7 @@ func vCard(c contactArgs) string {
 	return b.String()
 }
 
-// calendarModule is ryui/calendar's without Evolution Data Server
+// calendarModule is asuka/calendar's without Evolution Data Server
 // (modules_eds.go has its calendars): an app may add events but not
 // read them, as iOS's write-only access: "request" answers write
 // only, reading fails "not allowed". Adding an event opens it, as an
@@ -605,8 +605,8 @@ func (h *Host) calendarModule() map[string]method {
 
 // iCalendar is an event as an iCalendar file.
 func iCalendar(title, location, notes, link string, startMs, endMs int64, allDay bool, now time.Time) string {
-	return "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//RyUI//EN\r\n" +
-		vEvent(randomName()+"@ryui", title, location, notes, link, startMs, endMs, allDay, now) + "END:VCALENDAR\r\n"
+	return "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Asuka//EN\r\n" +
+		vEvent(randomName()+"@asuka", title, location, notes, link, startMs, endMs, allDay, now) + "END:VCALENDAR\r\n"
 }
 
 // vEvent is an event as an iCalendar VEVENT: times in UTC, an all-day
@@ -656,7 +656,7 @@ func vType(label string) string {
 // openDocument writes text to a file in the caches and opens it in the
 // user's app for its type; the reply is u8 0 (the app says nothing).
 func (h *Host) openDocument(ext, text string, reply func([]byte, error)) {
-	dir := filepath.Join(h.modCacheDir(), "ryui-documents")
+	dir := filepath.Join(h.modCacheDir(), "asuka-documents")
 	path := filepath.Join(dir, randomName()+ext)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		reply(nil, err)

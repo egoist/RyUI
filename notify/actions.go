@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/egoist/ryui/internal/notifyspec"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/internal/notifyspec"
+	"github.com/egoist/asuka/ui"
 )
 
 // Category is a kind of notification and the actions it shows: buttons
@@ -54,7 +54,7 @@ type Reply struct {
 // aps.category on iOS, the data's "category" on Android. They hold
 // across launches. Main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func SetCategories(cs ...Category) {
@@ -151,7 +151,7 @@ func (w *work) release() {
 
 // OnAction calls f, on the main thread, with each response the user
 // gives, until stop: a tap on a notification (Action "") or one of its
-// actions, ryui/push's too. A response that came before any f (the one
+// actions, asuka/push's too. A response that came before any f (the one
 // that launched the app, or woke it for a background action) waits for
 // the first, so set it as the app starts (in its root component). A
 // background action's work can go on after f returns (Response.Defer).

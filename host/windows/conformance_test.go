@@ -7,8 +7,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/egoist/ryui/conformance"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/conformance"
+	"github.com/egoist/asuka/ui"
 )
 
 // TestConformance draws the conformance sheet in a real window and
@@ -20,7 +20,7 @@ func TestConformance(t *testing.T) {
 		showHost(h)
 		paintNow(h) // composed before it's captured
 		img = windowImage(h.window)
-		if dir := os.Getenv("RYUI_TEST_PNG"); dir != "" {
+		if dir := os.Getenv("ASUKA_TEST_PNG"); dir != "" {
 			writeWindowPNG(h.window, dir+"/conformance.png")
 		}
 	})

@@ -1,4 +1,4 @@
-module github.com/egoist/ryui
+module github.com/egoist/asuka
 
 go 1.26.0
 

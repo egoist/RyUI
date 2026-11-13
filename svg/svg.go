@@ -18,9 +18,9 @@
 package svg
 
 import (
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // Icon is parsed SVG: its viewBox and what it draws.

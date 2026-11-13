@@ -19,6 +19,6 @@
   "notString": 3,
   "few": "{n, plural, one {#} few {#} other {#}}",
   "unknown.key": "No such library",
-  "ryui.nope": "No such message",
-  "ryui.quitApp": "Quit {application}"
+  "asuka.nope": "No such message",
+  "asuka.quitApp": "Quit {application}"
 }

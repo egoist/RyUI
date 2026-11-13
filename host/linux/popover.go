@@ -3,8 +3,8 @@
 package linux
 
 import (
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
 )
 
 // A Popover is a GtkPopover pointing at its anchor's view, below it (GTK

@@ -1,4 +1,4 @@
-//go:build ryui_debug
+//go:build asuka_debug
 
 package signal
 

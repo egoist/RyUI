@@ -25,7 +25,7 @@ const features = [
   },
   {
     title: "Live as you save",
-    text: "ryui dev runs the app on your computer, the simulator, an emulator, a phone or a browser, and reloads it on save with the app's state kept.",
+    text: "asuka dev runs the app on your computer, the simulator, an emulator, a phone or a browser, and reloads it on save with the app's state kept.",
     href: "/docs/development",
   },
   {
@@ -40,7 +40,7 @@ const features = [
   },
   {
     title: "Ready to ship",
-    text: "ryui build makes a signed .ipa for the App Store, an .aab for Google Play, a notarized Mac app, a signed Windows .exe, a Linux archive and Flatpak manifest, and a static site.",
+    text: "asuka build makes a signed .ipa for the App Store, an .aab for Google Play, a notarized Mac app, a signed Windows .exe, a Linux archive and Flatpak manifest, and a static site.",
     href: "/docs/shipping",
   },
 ]
@@ -59,7 +59,7 @@ function Home() {
           <span className="block text-muted-foreground">The platform&apos;s widgets, not a web view.</span>
         </h1>
         <p className="mt-6 max-w-xl text-lg leading-8 text-muted-foreground">
-          Write one app in Go alone, for phones, desktops and the web. RyUI shows it with each platform&apos;s own widgets, and updates only what changed.
+          Write one app in Go alone, for phones, desktops and the web. Asuka shows it with each platform&apos;s own widgets, and updates only what changed.
         </p>
         <div className="mt-10 flex flex-wrap items-center gap-3">
           <InstallCommand />
@@ -78,15 +78,15 @@ function Home() {
           <p className="label border-b px-4 py-3 sm:px-6">Run it</p>
           <pre className="overflow-x-auto px-4 py-5 font-mono text-[13px] leading-[1.7] sm:px-6">
             <span className="text-gopher-ink select-none">$ </span>
-            {"ryui new hello && cd hello\n"}
+            {"asuka new hello && cd hello\n"}
             <span className="text-gopher-ink select-none">$ </span>
-            {"ryui dev                    # this computer: Mac, PC or Linux\n"}
+            {"asuka dev                    # this computer: Mac, PC or Linux\n"}
             <span className="text-gopher-ink select-none">$ </span>
-            {"ryui dev -platform ios      # the iOS simulator\n"}
+            {"asuka dev -platform ios      # the iOS simulator\n"}
             <span className="text-gopher-ink select-none">$ </span>
-            {"ryui dev -platform android  # an emulator or a phone\n"}
+            {"asuka dev -platform android  # an emulator or a phone\n"}
             <span className="text-gopher-ink select-none">$ </span>
-            {"ryui dev -platform web      # your browser\n"}
+            {"asuka dev -platform web      # your browser\n"}
           </pre>
           <p className="mt-auto border-t px-4 py-4 text-sm leading-6 text-muted-foreground sm:px-6">
             Save a Go file and the app reloads in a moment, its state kept. See{" "}

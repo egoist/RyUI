@@ -7,7 +7,7 @@ import (
 
 	"github.com/ebitengine/purego"
 
-	. "github.com/egoist/ryui/internal/gtk"
+	. "github.com/egoist/asuka/internal/gtk"
 )
 
 // The app's fonts are added to fontconfig's application fonts, which

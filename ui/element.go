@@ -3,10 +3,10 @@ package ui
 import (
 	"math"
 
-	"github.com/egoist/ryui/host"
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
+	"github.com/egoist/asuka/host"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
 )
 
 // Node is what components return: a piece of the UI tree. The zero Node

@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/egoist/ryui/store"
+	"github.com/egoist/asuka/store"
 )
 
 // Window is a quota that resets: Claude's 5-hour window, its week, its

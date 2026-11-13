@@ -20,7 +20,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // ErrNoViewer: nothing on the device can show the file (Android: no app
@@ -52,7 +52,7 @@ type Options struct {
 // ErrNoViewer if nothing can show it, or another error (no such file, a
 // download that failed). Main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Show(sources []string, o Options, done func(err error)) {

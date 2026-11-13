@@ -5,11 +5,11 @@ package darwin
 import (
 	"testing"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/native"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/native"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // testSlider is an app's native view: an NSSlider whose "value" prop it

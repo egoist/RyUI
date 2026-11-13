@@ -1,4 +1,4 @@
-// RyUI's web host: the DOM, driven by the app's Go code compiled to
+// Asuka's web host: the DOM, driven by the app's Go code compiled to
 // WebAssembly (host/web). Each view the core makes is an absolutely
 // positioned element at the frame the core laid out, so the browser's own
 // layout never moves it; leaves (text, controls) are measured by the real
@@ -64,7 +64,7 @@ export class Host {
   /**
    * container: the element the app fills (it follows the container's
    * size). options: { assets: the URL the app's assets are served from,
-   * dev: under ryui dev, name: the app's }.
+   * dev: under asuka dev, name: the app's }.
    */
   constructor(container, options = {}) {
     this.container = container;
@@ -85,16 +85,16 @@ export class Host {
     this.nextCell = 0;
     this.envSent = null;
     this.fontScale = 1;
-    this.natives = new Map(); // ryui.registerNative's factories, by kind
+    this.natives = new Map(); // asuka.registerNative's factories, by kind
     this.fonts = options.fonts || []; // the app's font files (assets/fonts)
-    container.classList.add("ryui");
+    container.classList.add("asuka");
     this.interaction = new Interaction(this);
     this.nav = new Navigation(this);
     this.modules = new Modules(this);
     this.menus = new Menus(this);
     this.motion = new Motion(this);
     this.measurer = document.createElement("div");
-    this.measurer.className = "ryui-measurer";
+    this.measurer.className = "asuka-measurer";
     container.appendChild(this.measurer);
     this.watchEnvironment();
   }
@@ -196,7 +196,7 @@ export class Host {
     this.postChannel.port2.postMessage(0);
   }
 
-  /** savedState: ryui dev's signal values from the last build (null: not dev). */
+  /** savedState: asuka dev's signal values from the last build (null: not dev). */
   savedState() {
     if (!this.options.dev) return null;
     try {
@@ -206,9 +206,9 @@ export class Host {
     }
   }
 
-  stateKey() { return "ryui.state." + (this.options.name || location.pathname); }
+  stateKey() { return "asuka.state." + (this.options.name || location.pathname); }
 
-  /** saveState keeps the signals' values for the next build (ryui dev). */
+  /** saveState keeps the signals' values for the next build (asuka dev). */
   saveState() {
     if (!this.core || this.inGo) return;
     const s = this.callNow(() => this.core.saveState());
@@ -232,12 +232,12 @@ export class Host {
   create(id, kind) {
     const n = new Node(id, kind);
     const impl = kinds[kind];
-    if (!impl) throw new Error(`ryui: the web host can't show a ${kindName(kind)} yet`);
+    if (!impl) throw new Error(`asuka: the web host can't show a ${kindName(kind)} yet`);
     n.impl = impl;
     impl.create(this, n);
     if (n.el) {
-      n.el.classList.add("ryui-view");
-      n.el.ryuiNode = n;
+      n.el.classList.add("asuka-view");
+      n.el.asukaNode = n;
       if (!n.box) n.box = n.el;
     }
     this.nodes.set(id, n);
@@ -250,8 +250,8 @@ export class Host {
     const n = new Node((HostIDBit | this.nextCell) >>> 0, kind);
     n.impl = impl;
     impl.create(this, n);
-    n.el.classList.add("ryui-view");
-    n.el.ryuiNode = n;
+    n.el.classList.add("asuka-view");
+    n.el.asukaNode = n;
     if (!n.box) n.box = n.el;
     this.nodes.set(n.id, n);
     return n;
@@ -274,7 +274,7 @@ export class Host {
     if (n.el) {
       // Inside a view going out (a popped screen sliding away, a view
       // leaving with its transition): it goes with that view.
-      if (n.el.parentElement?.closest(".ryui-exiting")) return;
+      if (n.el.parentElement?.closest(".asuka-exiting")) return;
       if (this.motion.exit(n)) return; // goes out with its transition
       n.el.remove();
     }
@@ -321,7 +321,7 @@ export class Host {
     if (!n) return;
     if (this.root && this.root !== n && this.root.el) this.root.el.remove();
     this.root = n;
-    n.el.classList.add("ryui-root");
+    n.el.classList.add("asuka-root");
     this.container.appendChild(n.el);
     this.nav.rootChanged();
     this.sendEnvironment(true);
@@ -417,11 +417,11 @@ export class Host {
         this.motion.style(n, "opacity", v === 1 ? "" : String(v));
         break;
       case Prop.Hidden:
-        el.classList.toggle("ryui-hidden", !!v);
+        el.classList.toggle("asuka-hidden", !!v);
         if (v) el.setAttribute("inert", ""); else el.removeAttribute("inert");
         break;
       case Prop.Clip:
-        el.classList.toggle("ryui-clip", !!v);
+        el.classList.toggle("asuka-clip", !!v);
         break;
       case Prop.A11yLabel:
         if (v) el.setAttribute("aria-label", v); else el.removeAttribute("aria-label");
@@ -476,7 +476,7 @@ export class Host {
       case Prop.Disabled:
         n.disabled = !!v;
         if (n.impl.disabled) n.impl.disabled(this, n);
-        else el.classList.toggle("ryui-disabled", !!v);
+        else el.classList.toggle("asuka-disabled", !!v);
         if (v) el.setAttribute("aria-disabled", "true"); else el.removeAttribute("aria-disabled");
         break;
       case Prop.Menu:
@@ -546,7 +546,7 @@ export class Host {
     // children are placed from the frame's corner, not inside a border.
     const s = n.el.style;
     if (n.borderWidth > 0) {
-      s.outline = `${n.borderWidth}px solid ${this.css(n.borderColor) || "var(--ryui-separator)"}`;
+      s.outline = `${n.borderWidth}px solid ${this.css(n.borderColor) || "var(--asuka-separator)"}`;
       s.outlineOffset = -n.borderWidth + "px";
     } else {
       s.outline = "";
@@ -767,7 +767,7 @@ export class Host {
   announce(msg) {
     if (!this.live) {
       this.live = document.createElement("div");
-      this.live.className = "ryui-live";
+      this.live.className = "asuka-live";
       this.live.setAttribute("aria-live", "polite");
       this.container.appendChild(this.live);
     }
@@ -775,7 +775,7 @@ export class Host {
     setTimeout(() => { this.live.textContent = msg; }, 50);
   }
 
-  prefix() { return "ryui." + (this.options.name || "") + "."; }
+  prefix() { return "asuka." + (this.options.name || "") + "."; }
 
   /** schemeChanged: light or dark changed; what resolved colors itself draws again. */
   schemeChanged() { redrawCanvases(this); }
@@ -853,7 +853,7 @@ export class Host {
   safeArea() {
     if (!this.safeProbe) {
       this.safeProbe = document.createElement("div");
-      this.safeProbe.className = "ryui-safe-probe";
+      this.safeProbe.className = "asuka-safe-probe";
       this.container.appendChild(this.safeProbe);
     }
     if (!this.options.fullPage) return [0, 0, 0, 0];

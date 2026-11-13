@@ -30,20 +30,20 @@ func init() {
 		m["tracking"] = map[string]method{"request": allowed, "status": allowed}
 		m["integrity"] = map[string]method{
 			"supported":   func(_ []byte, reply func([]byte, error)) { reply([]byte{0}, nil) },
-			"generateKey": unsupported("ryui/integrity"),
-			"attestKey":   unsupported("ryui/integrity"),
-			"assert":      unsupported("ryui/integrity"),
-			"prepare":     unsupported("ryui/integrity"),
-			"token":       unsupported("ryui/integrity"),
+			"generateKey": unsupported("asuka/integrity"),
+			"attestKey":   unsupported("asuka/integrity"),
+			"assert":      unsupported("asuka/integrity"),
+			"prepare":     unsupported("asuka/integrity"),
+			"token":       unsupported("asuka/integrity"),
 		}
 		m["ageRange"] = map[string]method{
 			"request": func(_ []byte, reply func([]byte, error)) { reply(nil, errors.New("not available")) },
 		}
 		m["push"] = map[string]method{
-			"register":     unsupported("ryui/push"),
-			"nextRewrite":  unsupported("ryui/push"),
-			"nextReceived": unsupported("ryui/push"),
-			"nextOpened":   unsupported("ryui/push"),
+			"register":     unsupported("asuka/push"),
+			"nextRewrite":  unsupported("asuka/push"),
+			"nextReceived": unsupported("asuka/push"),
+			"nextOpened":   unsupported("asuka/push"),
 			"rewritten":    func(_ []byte, reply func([]byte, error)) { reply(nil, nil) },
 			"stop":         func(_ []byte, reply func([]byte, error)) { reply(nil, nil) },
 		}

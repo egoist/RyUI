@@ -1,6 +1,6 @@
 package crash
 
-import "github.com/egoist/ryui/ui"
+import "github.com/egoist/asuka/ui"
 
 // postMain runs f on the main thread, with the app's host (tests replace
 // it).

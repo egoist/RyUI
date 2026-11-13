@@ -1,6 +1,6 @@
-// Package devstate keeps the app's signals' values across ryui dev's
+// Package devstate keeps the app's signals' values across asuka dev's
 // reloads: read from a file when the new code starts, written to it when
-// ryui dev stops the old. It is what a host that runs the app under ryui
+// asuka dev stops the old. It is what a host that runs the app under asuka
 // dev uses (internal/remote, the desktop hosts), and it needs no network,
 // so a release build that links it carries none.
 package devstate
@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/egoist/ryui/signal"
+	"github.com/egoist/asuka/signal"
 )
 
 // Keep turns on keeping signals' values across reloads, with the values

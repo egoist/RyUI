@@ -71,11 +71,11 @@ func newSlots(skeletons []string) slots {
 	return s
 }
 
-// skeletonRe matches the keys of availableFormats RyUI keeps: those of
+// skeletonRe matches the keys of availableFormats Asuka keeps: those of
 // the fields it formats.
 var skeletonRe = regexp.MustCompile(`^[yMLdEchHKkamsv]+$`)
 
-// patternLettersRe matches the pattern letters RyUI formats, outside
+// patternLettersRe matches the pattern letters Asuka formats, outside
 // quotes.
 var patternLetters = "GyYMLdEcaBhHKkmszv"
 
@@ -237,7 +237,7 @@ func writeFormatTables(out, cache string, core map[string][]byte) error {
 		for _, p := range patterns {
 			for _, c := range patternFields(p) {
 				if !strings.ContainsRune(patternLetters, c) {
-					return fmt.Errorf("%s: the pattern %q has the field %c, which RyUI does not format", tag, p, c)
+					return fmt.Errorf("%s: the pattern %q has the field %c, which Asuka does not format", tag, p, c)
 				}
 				if c == 'B' {
 					r.usesB = true

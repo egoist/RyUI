@@ -66,7 +66,7 @@ export async function docsAssets(repoDir: string): Promise<Map<string, string>> 
 
 export function llmsDocs(repoDir: string): Plugin {
   return {
-    name: "ryui-markdown-docs",
+    name: "asuka-markdown-docs",
     applyToEnvironment: (environment) => environment.name === "client",
     async generateBundle() {
       for (const [pathname, source] of await docsAssets(repoDir)) {

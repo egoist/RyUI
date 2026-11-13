@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // A popover points at its anchor, is as big as its content (no wider than

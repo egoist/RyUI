@@ -16,14 +16,14 @@ import (
 	"encoding/binary"
 	"strconv"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // Supported reports whether the device can attest the app (iOS: App
 // Attest on this device; Android: true, Play's answer comes with Token).
 // Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Supported() bool {
@@ -32,10 +32,10 @@ func Supported() bool {
 }
 
 // GenerateKey makes a key pair in the Secure Enclave for App Attest and
-// reports its ID: keep it (ryui/secure), it's the app's on this device.
+// reports its ID: keep it (asuka/secure), it's the app's on this device.
 // iOS. Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func GenerateKey() (keyID string, err error) {
@@ -48,7 +48,7 @@ func GenerateKey() (keyID string, err error) {
 // server to check and keep the key's public part from. Once per key. iOS.
 // Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func AttestKey(keyID string, challenge []byte) ([]byte, error) {
@@ -59,7 +59,7 @@ func AttestKey(keyID string, challenge []byte) ([]byte, error) {
 // server's in it) with the attested key: the server checks the assertion
 // (CBOR) with the key's public part. iOS. Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Assert(keyID string, data []byte) ([]byte, error) {
@@ -78,7 +78,7 @@ func keyed(keyID string, data []byte) []byte {
 // project number: at launch, a while before the first Token (it takes
 // seconds). Android. Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Prepare(cloudProjectNumber int64) error {
@@ -91,7 +91,7 @@ func Prepare(cloudProjectNumber int64) error {
 // computes it) is requestHash: an encrypted token for the server to
 // decode with Google. After Prepare. Android. Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Token(requestHash string) (string, error) {

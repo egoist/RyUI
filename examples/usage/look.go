@@ -4,9 +4,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/egoist/ryui/device"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/device"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // The app's controls are the platform's own; what it draws around them

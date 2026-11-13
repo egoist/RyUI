@@ -1,8 +1,8 @@
-// The page's side of the app's service worker (sw.js): ryui.js registers
+// The page's side of the app's service worker (sw.js): asuka.js registers
 // it as the page starts, and this listens for what it sends (the user's
 // answers to notifications, pushes) from then on, before the app's Go
 // code asks for them: each host (app) on the page has its channel, whose
-// queues keep them until ryui/notify and ryui/push ask ("next...").
+// queues keep them until asuka/notify and asuka/push ask ("next...").
 //
 //   - "response": notify.OnAction's Response (actions), a push's to
 //     push.OnOpen too (opened), a tap's URL to ui.OnOpenURL.
@@ -15,7 +15,7 @@
 import "./notify-core.js";
 import { Events } from "./ops.js";
 
-const core = globalThis.ryuiNotify;
+const core = globalThis.asukaNotify;
 const enc = new TextEncoder();
 
 /** WaitQueue is what Go waits for ("next..." methods): items delivered to the first waiting, else kept. */
@@ -81,7 +81,7 @@ export function register(url, nav = globalThis.navigator) {
       return r;
     })
     .catch((e) => {
-      console.warn("ryui: the app's service worker didn't register:", e);
+      console.warn("asuka: the app's service worker didn't register:", e);
       return null;
     });
   return registering;
@@ -100,7 +100,7 @@ export async function registration(nav = globalThis.navigator) {
 function hello(r, app) {
   if (sent.has(app)) return;
   sent.add(app);
-  (r.active || r.waiting || r.installing)?.postMessage({ ryui: "hello", app });
+  (r.active || r.waiting || r.installing)?.postMessage({ asuka: "hello", app });
 }
 
 /** attach gives h (an app on the page) what its worker sends. */
@@ -114,16 +114,16 @@ export function attach(h) {
 
 /** receive handles a message from the worker. Exported for the tests. */
 export function receive(m, port) {
-  if (!m?.ryui) return;
+  if (!m?.asuka) return;
   const h = hosts.find((x) => appOf(x) === m.app) || (hosts.length === 1 ? hosts[0] : null);
   if (!h) {
-    if (m.ryui === "push") port?.postMessage({ spec: null, how: 0 });
-    if (m.ryui !== "closed") early.push([m.ryui === "push" ? { ...m, ryui: "received" } : m, null]);
+    if (m.asuka === "push") port?.postMessage({ spec: null, how: 0 });
+    if (m.asuka !== "closed") early.push([m.asuka === "push" ? { ...m, asuka: "received" } : m, null]);
     return;
   }
   const c = channel(h);
   const json = (v) => enc.encode(JSON.stringify(v));
-  switch (m.ryui) {
+  switch (m.asuka) {
     case "response":
       c.actions.deliver(json(m.response));
       if (m.push) c.opened.deliver(json(m.push));

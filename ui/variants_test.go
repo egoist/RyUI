@@ -3,9 +3,9 @@ package ui_test
 import (
 	"testing"
 
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 func bg(v interface{ Int(ops.PropID) int64 }) ops.Color { return ops.Color(v.Int(ops.PropBackground)) }

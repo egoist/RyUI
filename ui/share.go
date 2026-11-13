@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"slices"
 
-	"github.com/egoist/ryui/internal/boot"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
+	"github.com/egoist/asuka/internal/boot"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
 )
 
 // Share shows the system's share sheet for text (a URL is shared as a
@@ -133,7 +133,7 @@ var (
 
 // OnShare calls f with what another app shares with this one from its
 // share sheet ("Share" in YouTube, a browser, Photos), which offers this
-// app with ryui.json's "shareTarget": texts, links and files, in the
+// app with asuka.json's "shareTarget": texts, links and files, in the
 // order the other app gave them. What came before any handler (the share
 // that launched the app) goes to the first. It stops with the
 // component's owner. Main thread.
@@ -210,7 +210,7 @@ func (s *ShareSheet) close(how byte) {
 	}
 	s.done = true
 	// The sheet's process ends with it, as an app in the background may:
-	// what's pending is written now (ryui/store), and app.OnLifecycle
+	// what's pending is written now (asuka/store), and app.OnLifecycle
 	// hears it.
 	for _, f := range boot.Lifecycle {
 		f(int(ops.LifecycleBackground))

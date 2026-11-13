@@ -7,8 +7,8 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ops"
 )
 
 // Paging Scrolls and PageControls. AppKit has neither: a paging scroll
@@ -26,7 +26,7 @@ const (
 type pageDots struct{ count, page int }
 
 func registerPageDotsClass(flipped objc.MethodDef) {
-	DefineClass("RyUIPageDots", "NSView", nil, []objc.MethodDef{
+	DefineClass("AsukaPageDots", "NSView", nil, []objc.MethodDef{
 		flipped,
 		Method("acceptsFirstMouse:", func(self ID, _ SEL, ev ID) bool { return true }),
 		Method("drawRect:", func(self ID, _ SEL, dirty Rect) {
@@ -60,7 +60,7 @@ func registerPageDotsClass(flipped objc.MethodDef) {
 
 func (h *Host) makePageDots(n *node) ID {
 	n.dots = &pageDots{}
-	v := initView("RyUIPageDots")
+	v := initView("AsukaPageDots")
 	Send(v, "setAccessibilityElement:", 1)
 	Send(v, "setAccessibilityRole:", uintptr(String("AXSlider")))
 	return v

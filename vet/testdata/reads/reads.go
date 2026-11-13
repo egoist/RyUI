@@ -6,9 +6,9 @@ import (
 	"strconv"
 
 	"example.com/vettest/msgs"
-	"github.com/egoist/ryui/markdown"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/markdown"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // Reported: a read whose value goes into the tree a component builds.

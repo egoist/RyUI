@@ -1,5 +1,5 @@
-// RyUI's Android host: the `ryui` library (decoder, Views host, JNI
-// bindings) and `app`, the shell app the RyUI CLI builds for each RyUI app.
+// Asuka's Android host: the `asuka` library (decoder, Views host, JNI
+// bindings) and `app`, the shell app the Asuka CLI builds for each Asuka app.
 pluginManagement {
     repositories {
         google()
@@ -14,5 +14,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "ryui-android"
-include(":ryui", ":app", ":ryui-scan", ":ryui-vision", ":ryui-review", ":ryui-push", ":ryui-integrity", ":ryui-agerange", ":ryui-maps", ":ryui-periodic")
+rootProject.name = "asuka-android"
+include(":asuka", ":app", ":asuka-scan", ":asuka-vision", ":asuka-review", ":asuka-push", ":asuka-integrity", ":asuka-agerange", ":asuka-maps", ":asuka-periodic")

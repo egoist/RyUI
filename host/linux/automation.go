@@ -11,20 +11,20 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
 )
 
-// Debug automation, as on macOS and Windows: RYUI_SCRIPT runs steps
+// Debug automation, as on macOS and Windows: ASUKA_SCRIPT runs steps
 // (tap:<text>, type:<text>, submit, back, escape, scroll:<y>,
 // resize:<w>,<h>, key:<shortcut>, menu:<item title>, tab:<title>,
-// close, wait:<d>, snap:<file>), then RYUI_SNAPSHOT=file.png writes the window as a PNG
-// (RYUI_DUMP=1: its view tree beside it) and quits.
+// close, wait:<d>, snap:<file>), then ASUKA_SNAPSHOT=file.png writes the window as a PNG
+// (ASUKA_DUMP=1: its view tree beside it) and quits.
 
 func (h *Host) automation() {
 	h.commands()
-	script := os.Getenv("RYUI_SCRIPT")
-	snap := os.Getenv("RYUI_SNAPSHOT")
+	script := os.Getenv("ASUKA_SCRIPT")
+	snap := os.Getenv("ASUKA_SNAPSHOT")
 	if script == "" && snap == "" {
 		return
 	}
@@ -46,7 +46,7 @@ func (h *Host) automation() {
 			h.Post(func() {
 				defer close(done)
 				if err := h.step(s); err != nil {
-					fmt.Fprintln(os.Stderr, "ryui: script:", s+":", err)
+					fmt.Fprintln(os.Stderr, "asuka: script:", s+":", err)
 				}
 			})
 			<-done
@@ -58,13 +58,13 @@ func (h *Host) automation() {
 		done := make(chan struct{})
 		h.Post(func() {
 			h.snapshot(snap)
-			if os.Getenv("RYUI_DUMP") != "" {
+			if os.Getenv("ASUKA_DUMP") != "" {
 				os.WriteFile(snap+".txt", []byte(h.dump()), 0o644)
 			}
 			close(done)
 		})
 		<-done
-		if os.Getenv("RYUI_SNAPSHOT_STAY") == "" {
+		if os.Getenv("ASUKA_SNAPSHOT_STAY") == "" {
 			os.Exit(0)
 		}
 	}()
@@ -318,18 +318,18 @@ func (h *Host) dumpMore(n *node, depth int, b *strings.Builder, walk func(*node,
 
 // commands drives the app from outside while it runs, as the iOS and
 // Android debug hosts' automation does (the e2e tests): with
-// RYUI_COMMANDS=dir, commands written to dir/ryui-commands.txt, one a
+// ASUKA_COMMANDS=dir, commands written to dir/asuka-commands.txt, one a
 // line, are run and the file removed: tap <text>, type <text> (in the
 // focused field, else the first), submit, back, escape, tab <title>,
 // scroll <y>, and dump, which writes what the screen shows (each text,
 // field's text, button's title or accessibility label, a line each, in
-// creation order) to dir/ryui-dump.txt.
+// creation order) to dir/asuka-dump.txt.
 func (h *Host) commands() {
-	dir := os.Getenv("RYUI_COMMANDS")
+	dir := os.Getenv("ASUKA_COMMANDS")
 	if dir == "" {
 		return
 	}
-	file := filepath.Join(dir, "ryui-commands.txt")
+	file := filepath.Join(dir, "asuka-commands.txt")
 	go func() {
 		for {
 			time.Sleep(50 * time.Millisecond)
@@ -346,7 +346,7 @@ func (h *Host) commands() {
 					var err error
 					switch verb {
 					case "dump":
-						err = writeFileAtomic(filepath.Join(dir, "ryui-dump.txt"), h.screenTexts())
+						err = writeFileAtomic(filepath.Join(dir, "asuka-dump.txt"), h.screenTexts())
 					case "type":
 						if h.focusedField() == nil {
 							if f := h.firstField(); f != nil {
@@ -358,7 +358,7 @@ func (h *Host) commands() {
 						err = h.step(verb + ":" + arg)
 					}
 					if err != nil {
-						fmt.Fprintln(os.Stderr, "ryui: automation:", line+":", err)
+						fmt.Fprintln(os.Stderr, "asuka: automation:", line+":", err)
 					}
 				})
 				<-done

@@ -3,7 +3,7 @@
 A `ui.Style` says how a view is laid out and how it looks. Layout is CSS
 flexbox, in points; the look is colors, corners, borders, shadows and
 text. This page covers both, and styles that change. The layout is the
-same on every platform: RyUI computes it in Go and places the platform's
+same on every platform: Asuka computes it in Go and places the platform's
 views where it says.
 
 ## Platform defaults
@@ -19,7 +19,7 @@ dark mode and text sizes:
   on Win32's controls).
 - **Linux**: GNOME's (GTK 4 and libadwaita).
 - **The web**: the browser's controls, with a light and dark palette of
-  RyUI's own around them (see [the web](web.md)).
+  Asuka's own around them (see [the web](web.md)).
 
 Set only what you mean to change, and prefer the semantic colors and
 fonts below to fixed ones, so the app keeps following the platform.
@@ -298,7 +298,7 @@ Where the semantic colors come from:
 | macOS | AppKit's (`labelColor`, `windowBackgroundColor`, `controlBackgroundColor`, `separatorColor`, `systemRedColor`...) |
 | Windows | Windows 11's theme colors (WinUI's Fluent theme resources), light or dark |
 | Linux | libadwaita's named colors (`window_fg_color`, `window_bg_color`, `card_bg_color`, `destructive_color`...), as the theme defines them, high contrast included |
-| The web | RyUI's palette, as CSS variables, light and dark |
+| The web | Asuka's palette, as CSS variables, light and dark |
 
 On the desktops the grouped backgrounds are the plain ones:
 `ui.GroupedBackground` is the window's background, and
@@ -424,7 +424,7 @@ text:
 | macOS | AppKit's text styles (`NSFont.preferredFont(forTextStyle:)`), in San Francisco | 13 |
 | Windows | Windows 11's type ramp, in Segoe UI Variable (Segoe UI before Windows 11) | 14 |
 | Linux | libadwaita's type classes (`.title-1`, `.heading`, `.caption`...), relative to the desktop's interface font | the interface font's size |
-| The web | RyUI's ramp, in the system's font (`system-ui`) | 16 |
+| The web | Asuka's ramp, in the system's font (`system-ui`) | 16 |
 
 On Windows the styles take the nearest of the ramp's: `ui.LargeTitle` is
 Title Large (40), `ui.Title` Title (28), `ui.Title2` Subtitle (20),
@@ -519,7 +519,7 @@ Make the change inside `ui.Animate` and it animates (see
 ## The accent color
 
 `ui.Accent`, and the controls that use it, take the app's accent color
-from `ryui.json`:
+from `asuka.json`:
 
 ```json
 { "accent": "#7c3aed" }
@@ -529,13 +529,13 @@ It's the tint on iOS, and the seed of the Material 3 color scheme on
 Android (Android 12 and later). With `"android": {"dynamicColor": true}`,
 Android takes the colors from the user's wallpaper where the system has
 them, as Material apps do. On macOS, Windows and Linux it replaces the
-system's accent in RyUI's controls and colors; on the web it's the
+system's accent in Asuka's controls and colors; on the web it's the
 controls' `accent-color` too.
 
 Without an accent, the platform's is used. On macOS and Windows that's
 the accent the user picked (macOS's System Settings, Appearance;
 Windows' Settings, Personalization, Colors), on Linux libadwaita's
-blue, and on the web a blue of RyUI's. See [Shipping](shipping.md).
+blue, and on the web a blue of Asuka's. See [Shipping](shipping.md).
 
 ## Light and dark
 

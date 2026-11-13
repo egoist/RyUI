@@ -1,4 +1,4 @@
-// Package ui is RyUI's component layer: a tree of native views built once
+// Package ui is Asuka's component layer: a tree of native views built once
 // by components and updated by fine-grained signals.
 //
 // Components are Go functions that run once and return a Node. Props
@@ -15,11 +15,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/egoist/ryui/host"
-	"github.com/egoist/ryui/internal/boot"
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
+	"github.com/egoist/asuka/host"
+	"github.com/egoist/asuka/internal/boot"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
 )
 
 // Root is a mounted tree: on mobile, the app's screen; on desktop
@@ -316,7 +316,7 @@ func (r *Root) layoutFit(e *element, p *layout.Pass) {
 	}
 }
 
-// sendAccent tells the host the app's accent color (ryui.json's), before
+// sendAccent tells the host the app's accent color (asuka.json's), before
 // any view is made with the theme.
 func (r *Root) sendAccent() {
 	c, ok := ParseHex(boot.Accent)

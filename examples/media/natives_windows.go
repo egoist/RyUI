@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/egoist/ryui/native"
+	"github.com/egoist/asuka/native"
 )
 
 func init() {

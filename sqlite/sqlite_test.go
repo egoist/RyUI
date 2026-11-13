@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/egoist/ryui/host/fake"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/sqlite"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/host/fake"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/sqlite"
+	"github.com/egoist/asuka/ui"
 )
 
 type note struct {

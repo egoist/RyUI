@@ -9,7 +9,7 @@ import (
 
 	"github.com/ebitengine/purego"
 
-	. "github.com/egoist/ryui/internal/darwin"
+	. "github.com/egoist/asuka/internal/darwin"
 )
 
 // The app's fonts: the files in its assets/fonts, registered for the

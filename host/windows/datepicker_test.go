@@ -7,16 +7,16 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // In dark mode the month calendar, which has no dark visual style, is
 // drawn in the dark palette: a dark background, light text.
 func TestDarkCalendar(t *testing.T) {
-	os.Setenv("RYUI_COLOR_SCHEME", "dark")
-	defer os.Setenv("RYUI_COLOR_SCHEME", "")
+	os.Setenv("ASUKA_COLOR_SCHEME", "dark")
+	defer os.Setenv("ASUKA_COLOR_SCHEME", "")
 	day := signal.New(time.Date(2026, 3, 14, 0, 0, 0, 0, time.Local))
 	h, _ := mount(t, func() ui.Node {
 		return ui.Column(ui.Style{Padding: ui.All(20), Gap: 20},

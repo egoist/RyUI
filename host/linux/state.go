@@ -7,13 +7,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/egoist/ryui/internal/boot"
-	. "github.com/egoist/ryui/internal/gtk"
+	"github.com/egoist/asuka/internal/boot"
+	. "github.com/egoist/asuka/internal/gtk"
 )
 
 // The main window comes back as the user left it: its size and whether
 // it was maximized (a Wayland app can't place its window; the compositor
-// does), in ryui-window.json in the app's data directory, as GNOME's apps
+// does), in asuka-window.json in the app's data directory, as GNOME's apps
 // keep theirs. Tests and automation runs keep none.
 
 type windowState struct {
@@ -23,10 +23,10 @@ type windowState struct {
 }
 
 func windowStatePath() string {
-	if os.Getenv("RYUI_SNAPSHOT") != "" || os.Getenv("RYUI_SCRIPT") != "" || os.Getenv("RYUI_TEST") != "" {
+	if os.Getenv("ASUKA_SNAPSHOT") != "" || os.Getenv("ASUKA_SCRIPT") != "" || os.Getenv("ASUKA_TEST") != "" {
 		return ""
 	}
-	return filepath.Join(dataDir(), "ryui-window.json")
+	return filepath.Join(dataDir(), "asuka-window.json")
 }
 
 func (h *Host) restoreWindow(w *win) {
@@ -66,12 +66,12 @@ func (h *Host) saveWindow(w *win) {
 // in a folder named for the app's ID: before the app's packages read it
 // (store.Signal in a package variable).
 func init() {
-	if os.Getenv("RYUI_DATA") != "" {
+	if os.Getenv("ASUKA_DATA") != "" {
 		return
 	}
 	name := boot.ID
 	if name == "" {
 		name = filepath.Base(os.Args[0])
 	}
-	os.Setenv("RYUI_DATA", filepath.Join(xdgDataHome(), name))
+	os.Setenv("ASUKA_DATA", filepath.Join(xdgDataHome(), name))
 }

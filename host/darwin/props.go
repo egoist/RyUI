@@ -9,8 +9,8 @@ import (
 	"github.com/ebitengine/purego"
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ops"
 )
 
 var le = binary.LittleEndian
@@ -34,7 +34,7 @@ func (h *Host) nsColor(c ops.Color) ID {
 	return 0
 }
 
-// semantic maps RyUI's semantic colors to AppKit's.
+// semantic maps Asuka's semantic colors to AppKit's.
 func (h *Host) semantic(s ops.SemanticColor) ID {
 	var name string
 	switch s {
@@ -152,7 +152,7 @@ func (h *Host) applyContentInset(n *node) {
 	case n.kind == ops.KindText:
 		Send(n.view, "setNeedsDisplay:", 1)
 	case n.kind == ops.KindTextField:
-		// Its cell's drawing rect is inside it (RyUITextFieldCell); a field
+		// Its cell's drawing rect is inside it (AsukaTextFieldCell); a field
 		// being edited moves its field editor there.
 		Send(n.view, "setNeedsDisplay:", 1)
 		if ed := Send(n.view, "currentEditor"); ed != 0 {
@@ -519,7 +519,7 @@ func (h *Host) applyLineLimit(n *node) {
 }
 
 // transformKey names the animation that holds a view's Style.Transform.
-func transformKey() ID { return String("ryui.transform") }
+func transformKey() ID { return String("asuka.transform") }
 
 // caTransform3D is Core Animation's CATransform3D.
 type caTransform3D struct {
@@ -614,7 +614,7 @@ func (h *Host) setShadow(n *node, b []byte) {
 }
 
 // keepsShadow is the viewDidMoveToWindow of a class of the host's views
-// (RyUIView's has its own, which does the same).
+// (AsukaView's has its own, which does the same).
 func keepsShadow(class string) objc.MethodDef {
 	return Method("viewDidMoveToWindow", func(self ID, _ SEL) {
 		SendSuper(self, class, "viewDidMoveToWindow")
@@ -671,7 +671,7 @@ func (h *Host) updateClip(n *node) {
 	split := n.clip && n.hasShadow() && n.kind == ops.KindView && n.cell == nil
 	switch {
 	case split && n.clipView == 0:
-		cv := initView("RyUIView")
+		cv := initView("AsukaView")
 		Send(cv, "setWantsLayer:", 1)
 		MsgSetRect(cv, selSetFrame, Rect{Size: n.frame.Size})
 		// Above the view's material and gradient, its children in it in

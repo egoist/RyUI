@@ -9,8 +9,8 @@ import (
 	"unicode/utf16"
 	"unsafe"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ops"
 )
 
 // A Rich TextField: its text view, made rich, from and to the core's
@@ -22,7 +22,7 @@ import (
 // change comes back as it was sent.
 
 type richField struct {
-	styles  []fieldStyle // the styles runs have had: "ryui.style" indexes them
+	styles  []fieldStyle // the styles runs have had: "asuka.style" indexes them
 	setting bool
 	formats byte
 	link    string
@@ -49,7 +49,7 @@ const (
 )
 
 // fieldStyleKey is the attribute a run's style index is kept in.
-var fieldStyleKey = sync.OnceValue(func() ID { return Retain(String("ryui.fieldStyle")) })
+var fieldStyleKey = sync.OnceValue(func() ID { return Retain(String("asuka.fieldStyle")) })
 
 func (s fieldStyle) format() byte {
 	var f byte

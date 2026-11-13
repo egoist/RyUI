@@ -1,9 +1,9 @@
-// Package l10n holds RyUI's own words: the few that hosts' platforms don't
-// supply where RyUI shows them (an alert's only button, a search field's
+// Package l10n holds Asuka's own words: the few that hosts' platforms don't
+// supply where Asuka shows them (an alert's only button, a search field's
 // placeholder, a desktop back button), in the languages it is translated
-// to. They are a library's catalog of the namespace ryui (see
+// to. They are a library's catalog of the namespace asuka (see
 // i18n.NewLibraryCatalog): an app changes them, or gives them its other
-// languages, with keys "ryui.<key>" in its own catalogs, as "ryui.ok" in
+// languages, with keys "asuka.<key>" in its own catalogs, as "asuka.ok" in
 // its de.json. A language they lack says English.
 package l10n
 
@@ -11,19 +11,19 @@ import (
 	"embed"
 	"io/fs"
 
-	"github.com/egoist/ryui/i18n"
-	"github.com/egoist/ryui/internal/i18nlink"
+	"github.com/egoist/asuka/i18n"
+	"github.com/egoist/asuka/internal/i18nlink"
 )
 
-// Namespace is that of the keys with which apps change RyUI's words:
-// "ryui.<key>".
-const Namespace = "ryui"
+// Namespace is that of the keys with which apps change Asuka's words:
+// "asuka.<key>".
+const Namespace = "asuka"
 
 //go:embed messages/*.json
 var files embed.FS
 
-// FS returns the catalogs, which `ryui generate` checks the keys
-// "ryui.<key>" of apps against.
+// FS returns the catalogs, which `asuka generate` checks the keys
+// "asuka.<key>" of apps against.
 func FS() fs.FS {
 	sub, err := fs.Sub(files, "messages")
 	if err != nil {
@@ -33,7 +33,7 @@ func FS() fs.FS {
 }
 
 // Catalog holds the words. It doesn't link the formatting of dates, which
-// no message of RyUI's needs and every app would carry.
+// no message of Asuka's needs and every app would carry.
 var Catalog = func() *i18n.Catalog {
 	c, err := i18nlink.NewLibraryCatalog(FS(), "en", Namespace)
 	if err != nil {

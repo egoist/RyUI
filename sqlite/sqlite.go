@@ -38,9 +38,9 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/store"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/store"
+	"github.com/egoist/asuka/ui"
 )
 
 // DB is an open database.
@@ -71,7 +71,7 @@ type connState struct {
 // Open opens (creating it if need be) the database name: a file in the
 // app's data directory (store.Dir), an absolute path, or ":memory:".
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui, the web's
+// Never inlined: asuka build looks for its symbol (cmd/asuka, the web's
 // SQLite).
 //
 //go:noinline
@@ -90,7 +90,7 @@ func Open(name string) (*DB, error) {
 	}
 	// Which DB a connection is: its hook is given the DSN (SQLite and the
 	// driver ignore a parameter they don't know).
-	q.Set("_ryui", strconv.FormatInt(nextDB.Add(1), 10))
+	q.Set("_asuka", strconv.FormatInt(nextDB.Add(1), 10))
 	dsn := "file:" + path + "?" + q.Encode()
 	if name == ":memory:" {
 		dsn = "file::memory:?" + q.Encode()
@@ -98,7 +98,7 @@ func Open(name string) (*DB, error) {
 	register.Do(registerDriver)
 	d := &DB{watches: map[*watch]bool{}, dirty: map[string]bool{}}
 	opened.Store(dsn, d)
-	db, err := sql.Open("ryui-sqlite", dsn)
+	db, err := sql.Open("asuka-sqlite", dsn)
 	if err != nil {
 		opened.Delete(dsn)
 		return nil, err

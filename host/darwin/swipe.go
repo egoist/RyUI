@@ -5,8 +5,8 @@ package darwin
 import (
 	"math"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ops"
 )
 
 // Swipes (OnSwipe) on a Mac, as UISwipeGestureRecognizer's on iOS: a

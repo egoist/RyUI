@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 	"math"
 
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
 )
 
 // Desktop: windows, the menu bar and keyboard shortcuts. A phone has

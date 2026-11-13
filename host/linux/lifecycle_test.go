@@ -10,13 +10,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/egoist/ryui/crash"
-	"github.com/egoist/ryui/internal/boot"
-	"github.com/egoist/ryui/internal/crashrun"
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/store"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/crash"
+	"github.com/egoist/asuka/internal/boot"
+	"github.com/egoist/asuka/internal/crashrun"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/store"
+	"github.com/egoist/asuka/ui"
 )
 
 // lifecycles records the Lifecycle events the core gets, as an app's
@@ -88,7 +88,7 @@ func TestLifecycle(t *testing.T) {
 // disk as the window goes: Background writes the store then.
 func TestQuitWritesStore(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("RYUI_DATA", dir)
+	t.Setenv("ASUKA_DATA", dir)
 	h, _ := mount(t, emptyRoot)
 	got := lifecycles(t)
 	var other *win
@@ -133,7 +133,7 @@ func TestQuitWritesStore(t *testing.T) {
 // record, which panics on a goroutine (go), or crashes in C (native: an
 // abort in GLib's code, as a g_error is).
 func init() {
-	kind := os.Getenv("RYUI_LINUX_CRASH_CHILD")
+	kind := os.Getenv("ASUKA_LINUX_CRASH_CHILD")
 	if kind == "" {
 		return
 	}
@@ -156,18 +156,18 @@ func init() {
 	os.Exit(0)
 }
 
-// The Linux host keeps the app's crashes (ryui/crash): a Go panic, and a
+// The Linux host keeps the app's crashes (asuka/crash): a Go panic, and a
 // crash in C, each the next run's report with the run's context, the
 // computer's and the app's.
 func TestCrashReport(t *testing.T) {
 	for _, kind := range []string{"go", "native"} {
 		t.Run(kind, func(t *testing.T) {
 			data := t.TempDir()
-			t.Setenv("RYUI_DATA", data)
+			t.Setenv("ASUKA_DATA", data)
 			crashrun.Reset(data)
 			t.Cleanup(func() { crashrun.Reset("") })
 			cmd := exec.Command(os.Args[0], "-test.run=^$")
-			cmd.Env = append(os.Environ(), "RYUI_LINUX_CRASH_CHILD="+kind, "RYUI_DATA="+data)
+			cmd.Env = append(os.Environ(), "ASUKA_LINUX_CRASH_CHILD="+kind, "ASUKA_DATA="+data)
 			out, err := cmd.CombinedOutput()
 			if err == nil {
 				t.Fatalf("the child didn't crash:\n%s", out)
@@ -223,7 +223,7 @@ func TestNotificationURL(t *testing.T) {
 		notes.fdo = false
 	})
 	defer func() { notifyBackend = "" }()
-	if _, err := callModule(t, h, "notify", "schedule", []byte(`{"id":"u","title":"Reply","url":"ryuitest://chat/7"}`)); err != nil {
+	if _, err := callModule(t, h, "notify", "schedule", []byte(`{"id":"u","title":"Reply","url":"asukatest://chat/7"}`)); err != nil {
 		t.Fatal(err)
 	}
 	onMain(func() {
@@ -231,13 +231,13 @@ func TestNotificationURL(t *testing.T) {
 	})
 	settle(t, h, func() bool { return len(opened) > 0 })
 	onMain(func() {
-		if len(opened) != 1 || opened[0] != "ryuitest://chat/7" {
+		if len(opened) != 1 || opened[0] != "asukatest://chat/7" {
 			fatalf(t, "opened %v", opened)
 		}
 	})
 	// The app hears the tap too (notify.OnAction), with the URL.
 	b, err := callModule(t, h, "notify", "nextAction", nil)
-	if err != nil || !strings.Contains(string(b), `"url":"ryuitest://chat/7"`) {
+	if err != nil || !strings.Contains(string(b), `"url":"asukatest://chat/7"`) {
 		t.Fatalf("the tap's response: %s, %v", b, err)
 	}
 	callModule(t, h, "notify", "removeAll", nil)

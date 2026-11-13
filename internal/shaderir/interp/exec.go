@@ -5,7 +5,7 @@ import (
 	"go/constant"
 	"math"
 
-	"github.com/egoist/ryui/internal/shaderir"
+	"github.com/egoist/asuka/internal/shaderir"
 )
 
 // maxIterations bounds a loop, as a GPU's watchdog would: a shader whose

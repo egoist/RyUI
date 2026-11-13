@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/egoist/ryui/internal/gtk"
+	. "github.com/egoist/asuka/internal/gtk"
 )
 
-// A vCard as EDS writes one: its fields as ryui/contacts' JSON.
+// A vCard as EDS writes one: its fields as asuka/contacts' JSON.
 func TestContactOfVCard(t *testing.T) {
 	card := "BEGIN:VCARD\r\nVERSION:3.0\r\nUID:pas-id-1\r\nFN:Ada Lovelace\r\nN:Lovelace;Ada;;;\r\n" +
 		"ORG:Analytical Engines\\, Ltd;Research\r\nTITLE:Countess\r\nitem1.TEL;TYPE=CELL;X-EVOLUTION-UI-SLOT=1:+44 1\r\n" +
@@ -53,8 +53,8 @@ func TestEDS(t *testing.T) {
 	cfg := filepath.Join(home, "config")
 	src := filepath.Join(cfg, "evolution", "sources")
 	os.MkdirAll(src, 0o755)
-	os.WriteFile(filepath.Join(src, "ryui-test-book.source"), []byte("[Data Source]\nDisplayName=RyUI Test Book\nEnabled=true\nParent=local-stub\n\n[Address Book]\nBackendName=local\n"), 0o644)
-	os.WriteFile(filepath.Join(src, "ryui-test-cal.source"), []byte("[Data Source]\nDisplayName=RyUI Test Calendar\nEnabled=true\nParent=local-stub\n\n[Calendar]\nBackendName=local\nColor=#62A0EA\nSelected=true\n"), 0o644)
+	os.WriteFile(filepath.Join(src, "asuka-test-book.source"), []byte("[Data Source]\nDisplayName=Asuka Test Book\nEnabled=true\nParent=local-stub\n\n[Address Book]\nBackendName=local\n"), 0o644)
+	os.WriteFile(filepath.Join(src, "asuka-test-cal.source"), []byte("[Data Source]\nDisplayName=Asuka Test Calendar\nEnabled=true\nParent=local-stub\n\n[Calendar]\nBackendName=local\nColor=#62A0EA\nSelected=true\n"), 0o644)
 	running := false
 	onMain(func() {
 		conn, _ := Bus(BusSession)
@@ -98,7 +98,7 @@ func TestEDS(t *testing.T) {
 	if b := call("contacts", "add", []byte(`{"givenName":"Ada","familyName":"Lovelace","organization":"Engines","phones":[{"label":"mobile","value":"+44 1"}],"emails":[{"label":"home","value":"ada@example.com"}],"birthday":"1815-12-10"}`)); string(b) != "\x01" || confirmed != 1 {
 		t.Fatalf("contacts.add: %q (asked %d)", b, confirmed)
 	}
-	if _, err := EDSAddContact("ryui-test-book", vCard(contactArgs{GivenName: "Grace", FamilyName: "Hopper", Emails: []struct{ Label, Value string }{{"work", "grace@example.com"}}})); err != nil {
+	if _, err := EDSAddContact("asuka-test-book", vCard(contactArgs{GivenName: "Grace", FamilyName: "Hopper", Emails: []struct{ Label, Value string }{{"work", "grace@example.com"}}})); err != nil {
 		t.Fatal(err)
 	}
 	var list []map[string]any
@@ -149,11 +149,11 @@ func TestEDS(t *testing.T) {
 	json.Unmarshal(call("calendar", "calendars", nil), &cals)
 	var test map[string]any
 	for _, c := range cals {
-		if c["id"] == "ryui-test-cal" {
+		if c["id"] == "asuka-test-cal" {
 			test = c
 		}
 	}
-	if len(cals) < 2 || test == nil || test["title"] != "RyUI Test Calendar" || test["color"] != "#62a0ea" || test["writable"] != true {
+	if len(cals) < 2 || test == nil || test["title"] != "Asuka Test Calendar" || test["color"] != "#62a0ea" || test["writable"] != true {
 		t.Fatalf("calendars: %v", cals)
 	}
 	start := time.Date(2026, 12, 24, 18, 30, 0, 0, time.UTC)
@@ -163,19 +163,19 @@ func TestEDS(t *testing.T) {
 			t.Fatalf("calendar.add %s: %q", o, b)
 		}
 	}
-	add(fmt.Sprintf(`{"title":"Dinner","location":"Home","notes":"Bring wine","url":"https://example.com/d","calendarId":"ryui-test-cal","startMs":%d,"endMs":%d}`,
+	add(fmt.Sprintf(`{"title":"Dinner","location":"Home","notes":"Bring wine","url":"https://example.com/d","calendarId":"asuka-test-cal","startMs":%d,"endMs":%d}`,
 		start.UnixMilli(), start.Add(2*time.Hour).UnixMilli()))
 	day := time.Date(2026, 12, 25, 0, 0, 0, 0, time.UTC)
-	add(fmt.Sprintf(`{"title":"Holiday","calendarId":"ryui-test-cal","allDay":true,"startMs":%d,"endMs":%d}`, day.UnixMilli(), day.AddDate(0, 0, 2).UnixMilli()))
+	add(fmt.Sprintf(`{"title":"Holiday","calendarId":"asuka-test-cal","allDay":true,"startMs":%d,"endMs":%d}`, day.UnixMilli(), day.AddDate(0, 0, 2).UnixMilli()))
 	add(fmt.Sprintf(`{"title":"Default's","startMs":%d,"endMs":%d}`, start.UnixMilli(), start.Add(time.Hour).UnixMilli()))
 	// A repeating one: each occurrence.
-	if _, err := EDSAddEvent("ryui-test-cal", "BEGIN:VEVENT\r\nUID:standup@ryui\r\nDTSTAMP:20261101T000000Z\r\nDTSTART:20261221T090000Z\r\nDTEND:20261221T091500Z\r\n"+
+	if _, err := EDSAddEvent("asuka-test-cal", "BEGIN:VEVENT\r\nUID:standup@asuka\r\nDTSTAMP:20261101T000000Z\r\nDTSTART:20261221T090000Z\r\nDTEND:20261221T091500Z\r\n"+
 		"RRULE:FREQ=DAILY;COUNT=3\r\nSUMMARY:Standup\r\nEND:VEVENT\r\n"); err != nil {
 		t.Fatal(err)
 	}
 	var evs []map[string]any
 	from, to := time.Date(2026, 12, 20, 0, 0, 0, 0, time.UTC), time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)
-	json.Unmarshal(call("calendar", "events", []byte(fmt.Sprintf(`{"from":%d,"to":%d,"calendars":["ryui-test-cal"]}`, from.UnixMilli(), to.UnixMilli()))), &evs)
+	json.Unmarshal(call("calendar", "events", []byte(fmt.Sprintf(`{"from":%d,"to":%d,"calendars":["asuka-test-cal"]}`, from.UnixMilli(), to.UnixMilli()))), &evs)
 	var got []string
 	for _, e := range evs {
 		got = append(got, fmt.Sprintf("%s %s %s %v", e["title"], time.UnixMilli(int64(e["startMs"].(float64))).UTC().Format("01-02T15:04"),
@@ -187,7 +187,7 @@ func TestEDS(t *testing.T) {
 		t.Fatalf("events:\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
 	}
 	for _, e := range evs {
-		if e["title"] == "Dinner" && (e["location"] != "Home" || e["notes"] != "Bring wine" || e["url"] != "https://example.com/d" || e["calendarId"] != "ryui-test-cal" || e["id"] == "") {
+		if e["title"] == "Dinner" && (e["location"] != "Home" || e["notes"] != "Bring wine" || e["url"] != "https://example.com/d" || e["calendarId"] != "asuka-test-cal" || e["id"] == "") {
 			t.Fatalf("Dinner: %v", e)
 		}
 	}

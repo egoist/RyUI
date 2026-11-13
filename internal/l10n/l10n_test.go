@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/egoist/ryui/internal/i18ngen"
+	"github.com/egoist/asuka/internal/i18ngen"
 )
 
-// Every translation has every word, as `ryui generate` checks an app's.
+// Every translation has every word, as `asuka generate` checks an app's.
 func TestCatalogs(t *testing.T) {
 	c, diags, err := i18ngen.Load(FS(), i18ngen.Options{Dir: "messages", Source: "en", Namespace: Namespace})
 	if err != nil {

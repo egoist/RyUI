@@ -6,18 +6,18 @@
 // iOS: the app's App ID needs the Push Notifications capability for a
 // release build (the profile's aps-environment); an app that imports this
 // package is given the entitlement. Android: Firebase's, configured by
-// the project's google-services.json, which ryui.json's
+// the project's google-services.json, which asuka.json's
 // android.googleServices names; an app that imports this package is built
 // with Firebase Cloud Messaging and POST_NOTIFICATIONS.
 //
 // A notification shows whether or not the app runs (in the foreground
-// too, as ryui/notify's Present says); tapping it opens the app, with its
-// data's "url", if it has one, for ui.OnOpenURL, as ryui/notify's do.
-// ryui/notify's categories, actions (OnAction), threads, channels and
+// too, as asuka/notify's Present says); tapping it opens the app, with its
+// data's "url", if it has one, for ui.OnOpenURL, as asuka/notify's do.
+// asuka/notify's categories, actions (OnAction), threads, channels and
 // badge are a push's too; Rewrite changes a push before it shows.
 //
 // The web: Web Push, through the app's service worker, with the app's
-// VAPID key (ryui.json's web.vapidPublicKey); ryui/push/webpush is the
+// VAPID key (asuka.json's web.vapidPublicKey); asuka/push/webpush is the
 // server's side (docs/web.md).
 package push
 
@@ -25,15 +25,15 @@ import (
 	"encoding/json"
 	"sync"
 
-	"github.com/egoist/ryui/notify"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/notify"
+	"github.com/egoist/asuka/ui"
 )
 
 // Registration is the device's address for the app's server.
 type Registration struct {
 	// Token is the device's token: APNs' (hex) on iOS, FCM's on Android;
 	// on the web, the browser's push subscription as its JSON (endpoint
-	// and keys: ryui/push/webpush sends to it). It can change (a restore,
+	// and keys: asuka/push/webpush sends to it). It can change (a restore,
 	// a reinstall): register at each launch, and send it to the server
 	// when it's not the one it has.
 	Token string `json:"token"`
@@ -50,7 +50,7 @@ type Registration struct {
 // registers the device with APNs or FCM and reports its token. Not on the
 // main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Register() (Registration, error) {
@@ -75,7 +75,7 @@ type Message struct {
 	// Android: the notification's channel_id and image, or a data
 	// message's "subtitle", "category", "thread", "channel", "image" and
 	// "badge"). A rewrite (Rewrite) sets them for the notification shown,
-	// as ryui/notify's Notification fields of the same names.
+	// as asuka/notify's Notification fields of the same names.
 	Subtitle string `json:"subtitle"`
 	Category string `json:"category"`
 	Thread   string `json:"thread"`
@@ -96,7 +96,7 @@ type Message struct {
 // picture. On Android it shows in the conversation's notification (its
 // ID is the conversation's), under the messages there.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func (m *Message) From(sender notify.Person, c notify.Conversation) {

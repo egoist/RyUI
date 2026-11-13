@@ -1,6 +1,6 @@
 # Concepts
 
-A RyUI app is Go functions that build its views once, and signals that
+A Asuka app is Go functions that build its views once, and signals that
 hold its state. This page covers how they fit: the root component,
 signals and what they update, showing and repeating views, owners and
 cleanup, the main thread, and the environment.
@@ -126,7 +126,7 @@ left := signal.NewMemo(func() int {
 
 `signal.NewMemoFunc` is a memo with your own equality, as `NewFunc` is
 for signals. A memo must not write signals: `Set` inside one panics
-(and `ryui vet` reports it).
+(and `asuka vet` reports it).
 
 ## What updates
 
@@ -155,7 +155,7 @@ component's body is read once, as the component runs once. Read it
 inside an accessor, a `ui.StyleFunc` or an effect. To read it once on
 purpose, say so with `Peek` (`signal.Untrack` for an accessor).
 
-[`ryui vet`](development.md#ryui-vet), which `ryui dev` runs as you
+[`asuka vet`](development.md#asuka-vet), which `asuka dev` runs as you
 save, finds these: a read in a component's body, or in a `ui.Show`
 branch or a `ui.For` row, which run once too, whose value goes into the
 views it builds. The same holds for the language the app shows: a
@@ -359,7 +359,7 @@ goroutine.
 
 A goroutine doesn't touch signals or views itself. It hands a function
 to `ui.Post`, which runs it on the main thread, then updates the views
-(`ryui vet` reports a signal a goroutine writes itself):
+(`asuka vet` reports a signal a goroutine writes itself):
 
 ```go
 load := func() {
@@ -441,7 +441,7 @@ Its fields:
   [Accessibility](accessibility.md#is-a-screen-reader-on).
 - `Platform`: the system the app runs on: `ui.PlatformIOS`,
   `ui.PlatformAndroid`, `ui.PlatformMacOS`, `ui.PlatformWindows`,
-  `ui.PlatformLinux` or `ui.PlatformWeb` (the device's, also in `ryui
+  `ui.PlatformLinux` or `ui.PlatformWeb` (the device's, also in `asuka
   dev`, where a phone's Go code runs on your computer). The platform's
   views look as they should by themselves; use it for what an app
   draws itself, to follow each platform's design, as
@@ -463,7 +463,7 @@ Its fields:
   user's regional formats, the languages they read, the day their weeks
   start on and their clock. Most apps read them through
   [`ui.Locale` and `ui.FormatLocale`](i18n.md).
-- `TimeZone`: the device's time zone, by its IANA name. RyUI makes it
+- `TimeZone`: the device's time zone, by its IANA name. Asuka makes it
   Go's `time.Local`, so `time.Now().Format` shows the device's time.
 
 Semantic colors and fonts follow dark mode and the text size on their
@@ -487,6 +487,6 @@ units := store.Signal("units", "metric")
 ```
 
 It's for small values, such as settings; see [Data](data.md) for the
-store and for databases. Under `ryui dev`, every signal's value is also
+store and for databases. Under `asuka dev`, every signal's value is also
 kept across reloads, with no code (see
 [Getting started](getting-started.md#run-it)).

@@ -20,7 +20,7 @@ import (
 var MainThread = &analysis.Analyzer{
 	Name: "mainthread",
 	Doc:  "report a signal written from a goroutine, not through ui.Post\n\nSignals are written on the main thread: a goroutine reaches it with ui.Post.",
-	URL:  "https://github.com/egoist/ryui/blob/main/docs/concepts.md#the-main-thread",
+	URL:  "https://github.com/egoist/asuka/blob/main/docs/concepts.md#the-main-thread",
 	Run:  func(pass *analysis.Pass) (any, error) { return runWrites(pass, false) },
 }
 
@@ -29,7 +29,7 @@ var MainThread = &analysis.Analyzer{
 var MemoWrites = &analysis.Analyzer{
 	Name: "memowrites",
 	Doc:  "report a signal written inside a memo, which panics\n\nA memo derives a value; write signals in an effect or an event handler.",
-	URL:  "https://github.com/egoist/ryui/blob/main/docs/concepts.md#derived-values",
+	URL:  "https://github.com/egoist/asuka/blob/main/docs/concepts.md#derived-values",
 	Run:  func(pass *analysis.Pass) (any, error) { return runWrites(pass, true) },
 }
 
@@ -65,7 +65,7 @@ type writers struct {
 }
 
 func runWrites(pass *analysis.Pass, memo bool) (any, error) {
-	if !usesRyUI(pass.Pkg) || pass.Pkg.Path() == signalPath {
+	if !usesAsuka(pass.Pkg) || pass.Pkg.Path() == signalPath {
 		return nil, nil
 	}
 	w := &writers{tree: newTree(pass), writes: map[ast.Node]string{}}

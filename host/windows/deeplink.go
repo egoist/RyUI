@@ -3,14 +3,14 @@ package windows
 import "strings"
 
 // Links into the app, apart from the host (it builds anywhere, so it's
-// tested anywhere). An app with an ID (ryui.json's, set by the RyUI CLI)
+// tested anywhere). An app with an ID (asuka.json's, set by the Asuka CLI)
 // runs once: a second launch hands the first its URL, or brings it to the
 // front, and quits (deeplink_windows.go). An app with a scheme
-// (ryui.json's "scheme") is its URLs' handler: registered for the user as
+// (asuka.json's "scheme") is its URLs' handler: registered for the user as
 // it starts, its command line `"app.exe" "myapp://..."`.
 
 // instanceTag is the WM_COPYDATA dwData of a launch handed to the running
-// instance: "RyUI".
+// instance: "Asuka".
 const instanceTag = 0x52795549
 
 // instanceNames are the mutex that says an app of id runs, and the title
@@ -18,7 +18,7 @@ const instanceTag = 0x52795549
 func instanceNames(id string) (mutex, title string) {
 	// A mutex's name takes no backslash past its namespace.
 	safe := strings.ReplaceAll(id, `\`, "_")
-	return `Local\RyUI.` + safe, "RyUI instance " + id
+	return `Local\Asuka.` + safe, "Asuka instance " + id
 }
 
 // singleInstance reports whether an app of id runs once: one with an ID,
@@ -30,11 +30,11 @@ func singleInstance(id string, getenv func(string) string) bool {
 // notItself reports whether the app runs for something else than its
 // user, so that it neither hands its launch to an instance that runs, nor
 // takes the user's links: automation (snapshots, scripts, commands: tests
-// and the e2e runs, which start it again and again) and ryui dev (whose
-// runs keep their state, RYUI_STATE: one beside an installed copy of the
+// and the e2e runs, which start it again and again) and asuka dev (whose
+// runs keep their state, ASUKA_STATE: one beside an installed copy of the
 // app mustn't hand itself over to it, nor take its scheme), as on Linux.
 func notItself(getenv func(string) string) bool {
-	for _, k := range []string{"RYUI_SNAPSHOT", "RYUI_SCRIPT", "RYUI_COMMANDS", "RYUI_STATE"} {
+	for _, k := range []string{"ASUKA_SNAPSHOT", "ASUKA_SCRIPT", "ASUKA_COMMANDS", "ASUKA_STATE"} {
 		if getenv(k) != "" {
 			return true
 		}

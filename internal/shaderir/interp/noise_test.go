@@ -1,6 +1,6 @@
 package interp_test
 
-import "github.com/egoist/ryui/internal/shaderir"
+import "github.com/egoist/asuka/internal/shaderir"
 
 // noiseSource is a shader of what textures computed in shaders are made
 // of, for the GPU renderers to draw as the interpreter does: hashes of

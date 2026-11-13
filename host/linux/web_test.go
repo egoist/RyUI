@@ -15,9 +15,9 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/ui"
 )
 
 // waitFor lets the main loop run until cond holds (checked on the main
@@ -130,7 +130,7 @@ func TestWebView(t *testing.T) {
 	}
 
 	// A message round trip: Go runs script that posts back.
-	ui.Post(func() { ui.EvalJS(page, "window.ryui.postMessage('hi ' + document.title)") })
+	ui.Post(func() { ui.EvalJS(page, "window.asuka.postMessage('hi ' + document.title)") })
 	waitFor(t, "the message", func() bool { return len(messages) > 0 })
 	if messages[0] != "hi Home" {
 		t.Fatalf("messages %q", messages)
@@ -162,13 +162,13 @@ func TestWebViewHTMLAndAsset(t *testing.T) {
 	needWebKit(t)
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "page.html"), []byte(`<!doctype html><title>asset</title><script src="page.js"></script>`), 0o644)
-	os.WriteFile(filepath.Join(dir, "page.js"), []byte(`window.ryui.postMessage('asset ' + document.title)`), 0o644)
-	t.Setenv("RYUI_ASSETS", dir)
+	os.WriteFile(filepath.Join(dir, "page.js"), []byte(`window.asuka.postMessage('asset ' + document.title)`), 0o644)
+	t.Setenv("ASUKA_ASSETS", dir)
 	var messages []string
 	mount(t, func() ui.Node {
 		on := func(m string) { messages = append(messages, m) }
 		return ui.Column(ui.Style{},
-			ui.WebView(ui.WebViewProps{HTML: ui.Val(`<p>hi</p><script>window.ryui.postMessage('html')</script>`), OnMessage: on, Style: ui.Style{Height: ui.Pt(100)}}),
+			ui.WebView(ui.WebViewProps{HTML: ui.Val(`<p>hi</p><script>window.asuka.postMessage('html')</script>`), OnMessage: on, Style: ui.Style{Height: ui.Pt(100)}}),
 			ui.WebView(ui.WebViewProps{URL: ui.Val("page.html"), OnMessage: on, Style: ui.Style{Height: ui.Pt(100)}}),
 		)
 	})
@@ -185,7 +185,7 @@ func TestWebViewPreloadBack(t *testing.T) {
 	needWebKit(t)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		w.Write([]byte(`<!doctype html><title>` + strings.TrimPrefix(r.URL.Path, "/") + `</title><script>window.ryui.postMessage(document.title + ' ' + window.pre)</script>`))
+		w.Write([]byte(`<!doctype html><title>` + strings.TrimPrefix(r.URL.Path, "/") + `</title><script>window.asuka.postMessage(document.title + ' ' + window.pre)</script>`))
 	}))
 	defer srv.Close()
 	var messages []string
@@ -225,7 +225,7 @@ func TestWebViewPreloadBack(t *testing.T) {
 	})
 }
 
-// ryui/js's module runs a script in a web view of its own: its value, a
+// asuka/js's module runs a script in a web view of its own: its value, a
 // promise's, or what it threw; none is kept after.
 func TestJSModule(t *testing.T) {
 	needWebKit(t)

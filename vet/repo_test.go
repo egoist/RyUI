@@ -6,20 +6,20 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/egoist/ryui/vet"
+	"github.com/egoist/asuka/vet"
 	"golang.org/x/tools/go/analysis/unitchecker"
 )
 
 // TestMain is also go vet's -vettool for TestRepoIsClean: this binary,
-// run with RYUI_VETTOOL set.
+// run with ASUKA_VETTOOL set.
 func TestMain(m *testing.M) {
-	if os.Getenv("RYUI_VETTOOL") == "1" {
+	if os.Getenv("ASUKA_VETTOOL") == "1" {
 		unitchecker.Main(vet.Analyzers...)
 	}
 	os.Exit(m.Run())
 }
 
-// RyUI's own packages and examples follow its rules: anything the
+// Asuka's own packages and examples follow its rules: anything the
 // analyzers report there is a mistake of theirs or of the code.
 func TestRepoIsClean(t *testing.T) {
 	if testing.Short() {
@@ -37,7 +37,7 @@ func TestRepoIsClean(t *testing.T) {
 	for _, env := range [][]string{nil, {"GOOS=windows", "GOARCH=amd64"}, {"GOOS=linux"}} {
 		c := exec.Command("go", "vet", "-vettool="+exe, "./...")
 		c.Dir = root
-		c.Env = append(append(os.Environ(), "RYUI_VETTOOL=1", "CGO_ENABLED=0"), env...)
+		c.Env = append(append(os.Environ(), "ASUKA_VETTOOL=1", "CGO_ENABLED=0"), env...)
 		if out, err := c.CombinedOutput(); err != nil {
 			t.Errorf("%v go vet: %v\n%s", env, err, out)
 		}

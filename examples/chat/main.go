@@ -5,7 +5,7 @@
 // actions both ways, selecting messages to delete, and a composer that
 // rides on the keyboard, inserts at the cursor and takes pasted images.
 //
-//	go run ./cmd/ryui dev -platform ios examples/chat
+//	go run ./cmd/asuka dev -platform ios examples/chat
 package main
 
 import (
@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/egoist/ryui/app"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 type message struct {

@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"sync/atomic"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // Options are how an utterance sounds.
@@ -41,7 +41,7 @@ var next atomic.Int64
 // thread once it's been spoken (nil), or with ErrStopped, or why it
 // couldn't. Main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Speak(text string, o Options, done func(err error)) {
@@ -103,7 +103,7 @@ type Voice struct {
 
 // Voices are the voices the device has. Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Voices() ([]Voice, error) {

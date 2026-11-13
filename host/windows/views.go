@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ops"
 )
 
 // makeView makes a window of the host's own class, which draws itself.

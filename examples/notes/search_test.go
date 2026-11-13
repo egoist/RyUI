@@ -3,12 +3,12 @@ package main
 import (
 	"testing"
 
-	"github.com/egoist/ryui/sqlite"
+	"github.com/egoist/asuka/sqlite"
 )
 
 // The search's SQL: a match anywhere, any case; % and _ are text.
 func TestSearchQuery(t *testing.T) {
-	t.Setenv("RYUI_DATA", t.TempDir()) // not the test binary's own data
+	t.Setenv("ASUKA_DATA", t.TempDir()) // not the test binary's own data
 	openDB()
 	t.Cleanup(func() { db.Close() }) // Windows can't remove an open file
 	for _, s := range []string{"Buy milk", "Call Ada", "100% done", "a_b"} {

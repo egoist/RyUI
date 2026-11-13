@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/egoist/ryui/calendar"
-	"github.com/egoist/ryui/host/fake"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/calendar"
+	"github.com/egoist/asuka/host/fake"
+	"github.com/egoist/asuka/ui"
 )
 
 // Events read the hosts' ms; an all-day event's days are UTC midnights.

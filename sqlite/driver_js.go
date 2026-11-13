@@ -23,7 +23,7 @@ import (
 )
 
 // In a browser, the driver is SQLite's own WebAssembly build, which the
-// page loads beside the app (platform/web/src/sqlite.js; ryui build
+// page loads beside the app (platform/web/src/sqlite.js; asuka build
 // -platform web ships it with the apps that import this package). Each
 // call crosses into JavaScript once: its arguments read from this
 // program's memory, its answer written into it. A query's rows come a
@@ -62,9 +62,9 @@ var (
 // web is the page's SQLite: the host's.
 func web() (js.Value, error) {
 	webOnce.Do(func() {
-		name := os.Getenv("RYUI_WEB_HOST")
+		name := os.Getenv("ASUKA_WEB_HOST")
 		if name == "" {
-			name = "ryuiHost"
+			name = "asukaHost"
 		}
 		h := js.Global().Get(name)
 		if h.IsUndefined() {
@@ -73,7 +73,7 @@ func web() (js.Value, error) {
 		}
 		api := h.Get("sqlite")
 		if api.IsUndefined() || api.IsNull() {
-			webErr = errors.New("sqlite: the page didn't load SQLite (ryui build -platform web ships it with the apps that import ryui/sqlite; a page of your own passes start its sqlite option)")
+			webErr = errors.New("sqlite: the page didn't load SQLite (asuka build -platform web ships it with the apps that import asuka/sqlite; a page of your own passes start its sqlite option)")
 			return
 		}
 		webCall = api.Get("call").Call("bind", api)
@@ -81,7 +81,7 @@ func web() (js.Value, error) {
 	return webCall, webErr
 }
 
-func registerDriver() { sql.Register("ryui-sqlite", webDriver{}) }
+func registerDriver() { sql.Register("asuka-sqlite", webDriver{}) }
 
 type webDriver struct{}
 

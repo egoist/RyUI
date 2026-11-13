@@ -8,7 +8,7 @@ import * as color from "./color.js";
 
 const svgNS = "http://www.w3.org/2000/svg";
 
-/** pathData turns RyUI's path encoding (a u8 PathOp, then its f32 arguments, per segment) into SVG path data. */
+/** pathData turns Asuka's path encoding (a u8 PathOp, then its f32 arguments, per segment) into SVG path data. */
 export function pathData(b) {
   const r = new Reader(b);
   const d = [];
@@ -67,7 +67,7 @@ const joins = ["miter", "round", "bevel"];
 const shape = {
   create(h, n) {
     const el = own(n, document.createElement("div"));
-    el.className = "ryui-shape";
+    el.className = "asuka-shape";
     const svg = document.createElementNS(svgNS, "svg");
     const path = document.createElementNS(svgNS, "path");
     svg.appendChild(path);
@@ -138,7 +138,7 @@ export function redrawCanvases(h) { for (const n of canvases) draw(h, n); }
 const canvas = {
   create(h, n) {
     const el = own(n, document.createElement("div"));
-    el.className = "ryui-canvas";
+    el.className = "asuka-canvas";
     const c = document.createElement("canvas");
     el.appendChild(c);
     n.canvas = c;

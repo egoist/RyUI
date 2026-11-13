@@ -13,7 +13,7 @@ import (
 	"github.com/ebitengine/purego"
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
+	. "github.com/egoist/asuka/internal/darwin"
 )
 
 // More native modules on a Mac, as iOS has them: network (NWPathMonitor),
@@ -22,7 +22,7 @@ import (
 
 // Network.
 
-// netMonitor is ryui/network's: the path NWPathMonitor reports, and who
+// netMonitor is asuka/network's: the path NWPathMonitor reports, and who
 // waits for it.
 type netMonitor struct {
 	started bool
@@ -78,7 +78,7 @@ func loadNetwork() bool {
 	return true
 }
 
-// encodePath is a path as ryui/network's reply.
+// encodePath is a path as asuka/network's reply.
 func encodePath(p uintptr) []byte {
 	const satisfied = 1
 	const other, wifi, cellular, wired = 0, 1, 2, 3
@@ -103,7 +103,7 @@ func (h *Host) startNetwork() error {
 		return nil
 	}
 	if !loadNetwork() {
-		return errors.New("ryui/network: the Network framework isn't there")
+		return errors.New("asuka/network: the Network framework isn't there")
 	}
 	m.started = true
 	mon := nw.create()
@@ -132,7 +132,7 @@ func (h *Host) startNetwork() error {
 	return nil
 }
 
-// networkModule is ryui/network's: "current", and, while watching, "next"
+// networkModule is asuka/network's: "current", and, while watching, "next"
 // (answered once the state isn't the one given) and "stop".
 func (h *Host) networkModule() map[string]method {
 	m := &h.net
@@ -194,7 +194,7 @@ func loadAVFoundation() uintptr {
 // DefaultSpeechRate and MaximumSpeechRate.
 const minRate, defaultRate, maxRate = 0, 0.5, 1
 
-// speechModule is ryui/speech's: "speak" (JSON: text, language, voice,
+// speechModule is asuka/speech's: "speak" (JSON: text, language, voice,
 // pitch, rate, volume) answers once spoken, or fails with "stopped";
 // "stop", "pause", "resume", "speaking" (u8), "voices" (JSON).
 func (h *Host) speechModule() map[string]method {
@@ -325,7 +325,7 @@ func cmSeconds(t cmTime) float64 {
 	return float64(t.Value) / float64(t.Timescale)
 }
 
-// audioModule is ryui/audio's: players by ID (each call's args begin with
+// audioModule is asuka/audio's: players by ID (each call's args begin with
 // it, a u32-length string): load (the source), play, playOnce, pause,
 // seek (f64 seconds), volume (f64), rate (f64), loop (u8), release;
 // status answers f64 position, f64 duration, u8 playing, u8 ended.
@@ -486,7 +486,7 @@ func (h *Host) releaseAudio(id string) {
 
 // Biometric.
 
-// biometricModule is ryui/biometric's: "check" answers u8 kind (none,
+// biometricModule is asuka/biometric's: "check" answers u8 kind (none,
 // fingerprint...), u8 enrolled, u8 passcode; "authenticate" (u8 flags: 1
 // no password; string reason; string cancel) shows Touch ID's prompt, and
 // fails with "canceled", "not available" or "failed".
@@ -564,7 +564,7 @@ func (h *Host) biometricModule() map[string]method {
 	}
 }
 
-// reviewModule is ryui/review's: the App Store's rating prompt, which it
+// reviewModule is asuka/review's: the App Store's rating prompt, which it
 // shows or not.
 func reviewModule() map[string]method {
 	return map[string]method{

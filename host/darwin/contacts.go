@@ -12,11 +12,11 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/internal/l10n"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/internal/l10n"
 )
 
-// ryui/contacts on a Mac, with the Contacts framework as on iOS:
+// asuka/contacts on a Mac, with the Contacts framework as on iOS:
 // "request" answers u8 access (not asked, denied, limited, full), "list"
 // (JSON: name, limit) and "pick" contacts as iOS's JSON, "add" (a
 // contact's JSON) u8 saved. macOS has no new-contact screen: "add" asks
@@ -65,7 +65,7 @@ func contactsStore() ID {
 	return contactsStoreObj
 }
 
-// contactsAccess is the status as ryui/contacts' Access: not asked,
+// contactsAccess is the status as asuka/contacts' Access: not asked,
 // denied, limited, full.
 func contactsAccess() byte {
 	switch contactsStatus() {
@@ -309,11 +309,11 @@ var (
 
 func contactsPickerDelegate() ID {
 	if contactsDelegate == 0 {
-		DefineClass("RyUIContactsPickerDelegate", "NSObject", []string{"CNContactPickerDelegate"}, []objc.MethodDef{
+		DefineClass("AsukaContactsPickerDelegate", "NSObject", []string{"CNContactPickerDelegate"}, []objc.MethodDef{
 			Method("contactPicker:didSelectContact:", func(self ID, _ SEL, p, c ID) { contactsPicked(c) }),
 			Method("contactPickerDidClose:", func(self ID, _ SEL, p ID) { contactsPicked(0) }),
 		})
-		contactsDelegate = New("RyUIContactsPickerDelegate")
+		contactsDelegate = New("AsukaContactsPickerDelegate")
 	}
 	return contactsDelegate
 }

@@ -7,9 +7,9 @@ import (
 	"math"
 	"os"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/native"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/native"
+	"github.com/egoist/asuka/ops"
 )
 
 // ui.Native on Windows: the app's Go registers its views with package
@@ -37,7 +37,7 @@ func (h *Host) setNativeProp(n *node, p ops.PropID, v *ops.Value) {
 			f = native.ViewFactory(v.Str)
 		}
 		if f == nil {
-			fmt.Fprintf(os.Stderr, "ryui: no native view %q is registered (package native)\n", v.Str)
+			fmt.Fprintf(os.Stderr, "asuka: no native view %q is registered (package native)\n", v.Str)
 			return
 		}
 		id := n.id

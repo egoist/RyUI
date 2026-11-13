@@ -16,10 +16,10 @@ import (
 	"strings"
 	"syscall"
 
-	. "github.com/egoist/ryui/internal/windows"
+	. "github.com/egoist/asuka/internal/windows"
 )
 
-// ryui/photos' library on Windows ("photoLibrary"): the user's Pictures
+// asuka/photos' library on Windows ("photoLibrary"): the user's Pictures
 // folder, which the Photos app shows, read as the library is on a phone.
 // A Windows app needs no permission to read it: "current" and "request"
 // answer "allowed", "manage" does nothing. "list" (JSON screenshots,
@@ -148,7 +148,7 @@ func (h *Host) photoLibraryModule() map[string]asyncMethod {
 				}
 				info, _ := os.Stat(p)
 				sum := sha256.Sum256([]byte(fmt.Sprint(o.ID, info.ModTime().UnixNano())))
-				dir := filepath.Join(h.cacheDir(), "ryui-photo-thumbs")
+				dir := filepath.Join(h.cacheDir(), "asuka-photo-thumbs")
 				out := filepath.Join(dir, fmt.Sprintf("%s-%d.jpg", hexenc.EncodeToString(sum[:16]), o.Size))
 				if _, err := os.Stat(out); err == nil {
 					return []byte(out), nil
@@ -201,7 +201,7 @@ func (h *Host) photoLibraryModule() map[string]asyncMethod {
 				if err != nil {
 					return nil, err
 				}
-				dir := filepath.Join(h.cacheDir(), "ryui-photo-exports")
+				dir := filepath.Join(h.cacheDir(), "asuka-photo-exports")
 				os.MkdirAll(dir, 0o755)
 				into, err := os.MkdirTemp(dir, "")
 				if err != nil {

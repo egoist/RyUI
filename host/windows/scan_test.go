@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ui"
 )
 
 // scanReply decodes scan.file's answer.
@@ -48,13 +48,13 @@ func TestScanFile(t *testing.T) {
 			args string
 			want string
 		}{
-			{"\n" + qr, "[[qr https://ryui.dev/scan]]"},
-			{"qr,ean13\n" + qr, "[[qr https://ryui.dev/scan]]"},
+			{"\n" + qr, "[[qr https://asuka.dev/scan]]"},
+			{"qr,ean13\n" + qr, "[[qr https://asuka.dev/scan]]"},
 			{"ean13\n" + qr, "[]"},
 			{"aztec,pdf417\n" + qr, "[]"},
-			{"\n" + bars, "[[code39 RYUI39] [code128 RyUI-128] [upca 036000291452] [ean13 4006381333931]]"},
+			{"\n" + bars, "[[code39 ASUKA39] [code128 Asuka-128] [upca 036000291452] [ean13 4006381333931]]"},
 			{"ean13\n" + bars, "[[ean13 0036000291452] [ean13 4006381333931]]"},
-			{"code39,upca\n" + bars, "[[code39 RYUI39] [upca 036000291452]]"},
+			{"code39,upca\n" + bars, "[[code39 ASUKA39] [upca 036000291452]]"},
 		} {
 			b, err, _ := await(h, "scan", "file", []byte(c.args))
 			if err != nil {
@@ -76,7 +76,7 @@ func TestScanFile(t *testing.T) {
 		}
 		c := res.Codes[0]
 		// The code's box, about the turned square's in the picture.
-		if c.Kind != "qr" || c.Value != "https://ryui.dev/scan" || c.Box.X < 0.12 || c.Box.X > 0.24 || c.Box.Y < 0.15 || c.Box.Y > 0.28 || c.Box.W < 0.4 || c.Box.H < 0.45 {
+		if c.Kind != "qr" || c.Value != "https://asuka.dev/scan" || c.Box.X < 0.12 || c.Box.X > 0.24 || c.Box.Y < 0.15 || c.Box.Y > 0.28 || c.Box.W < 0.4 || c.Box.H < 0.45 {
 			fatalf("vision's code: %+v", c)
 		}
 	})
@@ -135,7 +135,7 @@ func TestCameraScansFrames(t *testing.T) {
 			h.runPosted()
 		}
 		feed(frame)
-		if !pumpUntil(func() bool { return len(codes) == 1 }) || codes[0]["kind"] != "qr" || codes[0]["value"] != "https://ryui.dev/scan" {
+		if !pumpUntil(func() bool { return len(codes) == 1 }) || codes[0]["kind"] != "qr" || codes[0]["value"] != "https://asuka.dev/scan" {
 			fatalf("the code in view: %v", codes)
 		}
 		feed(frame)

@@ -1,5 +1,5 @@
 // Package splash keeps the launch screen up while the app gets ready
-// (expo-splash-screen): ryui.json's splash (an image in the middle of a
+// (expo-splash-screen): asuka.json's splash (an image in the middle of a
 // color) shows from the tap on the icon until the app's first frame, or,
 // if the app holds it as it starts, until it hides it: once its data is
 // loaded, its fonts in, the signed-in user known.
@@ -11,7 +11,7 @@
 // icon's circle); before, the window's background.
 package splash
 
-import "github.com/egoist/ryui/ui"
+import "github.com/egoist/asuka/ui"
 
 // Hold keeps the splash up after the first frame, until Hide: call it as
 // the app starts (in its root component), before the first frame. Main

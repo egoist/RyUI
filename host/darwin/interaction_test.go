@@ -13,10 +13,10 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // AppKit's event types.
@@ -201,8 +201,8 @@ type testDrag struct {
 var testDrags = map[ID]*testDrag{}
 
 func newDragInfo(pb ID, seq int) (ID, *testDrag) {
-	if !HasClass("RyUITestDraggingInfo") {
-		DefineClass("RyUITestDraggingInfo", "NSObject", nil, []objc.MethodDef{
+	if !HasClass("AsukaTestDraggingInfo") {
+		DefineClass("AsukaTestDraggingInfo", "NSObject", nil, []objc.MethodDef{
 			Method("draggingPasteboard", func(self ID, _ SEL) ID { return testDrags[self].pb }),
 			Method("draggingLocation", func(self ID, _ SEL) Point { return testDrags[self].at }),
 			Method("draggingSequenceNumber", func(self ID, _ SEL) int { return testDrags[self].seq }),
@@ -210,7 +210,7 @@ func newDragInfo(pb ID, seq int) (ID, *testDrag) {
 			Method("draggingSource", func(self ID, _ SEL) ID { return 0 }),
 		})
 	}
-	info := New("RyUITestDraggingInfo")
+	info := New("AsukaTestDraggingInfo")
 	d := &testDrag{pb: pb, seq: seq, mask: ^uint(0)}
 	testDrags[info] = d
 	return info, d
@@ -409,12 +409,12 @@ func TestDragSource(t *testing.T) {
 				log = append(log, strings.Join(types, ","))
 			}
 			session = view
-			if !HasClass("RyUITestSession") {
-				DefineClass("RyUITestSession", "NSObject", nil, []objc.MethodDef{
+			if !HasClass("AsukaTestSession") {
+				DefineClass("AsukaTestSession", "NSObject", nil, []objc.MethodDef{
 					Method("setAnimatesToStartingPositionsOnCancelOrFail:", func(self ID, _ SEL, on bool) {}),
 				})
 			}
-			return Autorelease(New("RyUITestSession"))
+			return Autorelease(New("AsukaTestSession"))
 		}
 		sendMouse(h, evLeftDown, v, 10, 10)
 		sendMouse(h, evLeftDragged, v, 11, 10) // within the drag distance

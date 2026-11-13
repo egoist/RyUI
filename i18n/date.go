@@ -397,7 +397,7 @@ type dayPeriodRules struct {
 var periodRuleCache sync.Map // string -> *dayPeriodRules
 
 // periodRules returns the rules of day periods of a locale: of the
-// locale, else of its language; nil when CLDR has none RyUI keeps.
+// locale, else of its language; nil when CLDR has none Asuka keeps.
 func periodRules(lang, tag string) *dayPeriodRules {
 	loadDates()
 	i, ok := search(tables.periodLangs, tag)

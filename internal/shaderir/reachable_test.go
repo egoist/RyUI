@@ -19,8 +19,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/egoist/ryui/internal/shader"
-	"github.com/egoist/ryui/internal/shaderir"
+	"github.com/egoist/asuka/internal/shader"
+	"github.com/egoist/asuka/internal/shaderir"
 )
 
 func compileToIR(src []byte) (*shaderir.Program, error) {

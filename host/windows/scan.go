@@ -11,18 +11,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/egoist/ryui/internal/barcode"
-	. "github.com/egoist/ryui/internal/windows"
+	"github.com/egoist/asuka/internal/barcode"
+	. "github.com/egoist/asuka/internal/windows"
 )
 
 // Codes in images on Windows, which has no reader of its own for apps:
 // package barcode's, in Go (QR codes, Data Matrix, EAN-13 and EAN-8,
-// UPC-A and UPC-E, Code 128, Code 39). ryui/scan's "file" (the kinds,
+// UPC-A and UPC-E, Code 128, Code 39). asuka/scan's "file" (the kinds,
 // comma-separated, a newline, the path; answers a u32 count, then each
 // code's kind and value, u32-length strings), vision's codes, and the
 // camera view's frames.
 
-// scanKinds is what ryui/scan asks for ("": every kind).
+// scanKinds is what asuka/scan asks for ("": every kind).
 type scanKinds map[string]bool
 
 func parseScanKinds(s string) scanKinds {
@@ -90,7 +90,7 @@ func scanFile(path string, k scanKinds) (codes []barcode.Code, w, h int, err err
 	return
 }
 
-// encodeCodes is the reply ryui/scan's decode reads.
+// encodeCodes is the reply asuka/scan's decode reads.
 func encodeCodes(codes [][2]string) []byte {
 	le := binary.LittleEndian
 	b := le.AppendUint32(nil, uint32(len(codes)))
@@ -133,7 +133,7 @@ const frameScanEvery = 250 * time.Millisecond
 
 // codeSeen drops repeats of a code in view: a code is reported as it
 // comes into view, and again once it's been out of it for a second (as
-// iOS's RyUICodeSeen).
+// iOS's AsukaCodeSeen).
 type codeSeen struct{ last map[string]time.Time }
 
 func (s *codeSeen) isNew(kind, value string, now time.Time) bool {

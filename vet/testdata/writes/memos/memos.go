@@ -1,6 +1,6 @@
 package memos
 
-import "github.com/egoist/ryui/signal"
+import "github.com/egoist/asuka/signal"
 
 var (
 	count = signal.New(0)

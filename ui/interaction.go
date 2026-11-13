@@ -8,8 +8,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
 )
 
 // A View's interaction states (pressed, hovered, dragged, a drag over

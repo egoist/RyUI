@@ -6,8 +6,8 @@ import (
 	"math"
 	"slices"
 
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
 )
 
 // ShaderProgram is a compiled shader: package shader's *Program, which

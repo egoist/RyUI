@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/ops"
 )
 
 // The kinds and props beyond the controls: each area's file registers

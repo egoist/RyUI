@@ -42,7 +42,7 @@ test("a pin's color is the marker's #rrggbbaa, or none", () => {
   assert.equal(cssColor("red"), "");
 });
 
-test("the host registers ryui.map", () => {
-  assert.equal(typeof natives["ryui.map"], "function");
-  assert.equal(typeof natives["ryui.camera"], "function");
+test("the host registers asuka.map", () => {
+  assert.equal(typeof natives["asuka.map"], "function");
+  assert.equal(typeof natives["asuka.camera"], "function");
 });

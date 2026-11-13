@@ -5,8 +5,8 @@ package windows
 import (
 	"math"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ops"
 )
 
 // Pinches and rotations (OnPinch, OnRotate) on Windows:
@@ -107,7 +107,7 @@ func (h *Host) touchGesture(n *node, hwnd, lp uintptr) bool {
 		}
 		if state != ops.GestureStateBegan {
 			// The angle since it began; Windows's is counterclockwise,
-			// RyUI's clockwise.
+			// Asuka's clockwise.
 			g.Rotation = -float32(RotateAngle(gi.Arguments))
 		}
 		h.emit(n, ops.Event{Kind: ops.EventRotate, G: g})

@@ -8,8 +8,8 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ops"
 )
 
 // A List is a scroll view whose rows the host places itself: as it
@@ -111,7 +111,7 @@ func newList(h *Host, n *node) *list {
 	Send(l.scroll, "setAutohidesScrollers:", 1)
 	Send(l.scroll, "setAutomaticallyAdjustsContentInsets:", 0)
 	Send(l.scroll, "setDrawsBackground:", 0)
-	l.doc = initView("RyUIView")
+	l.doc = initView("AsukaView")
 	Send(l.scroll, "setDocumentView:", uintptr(l.doc))
 	Release(l.doc)
 	clip := Send(l.scroll, "contentView")
@@ -586,7 +586,7 @@ func (l *list) take(h *Host) *rowView {
 		Send(rv.view, "setHidden:", 0)
 		return rv
 	}
-	v := initView("RyUIView")
+	v := initView("AsukaView")
 	Send(v, "setWantsLayer:", 1)
 	Send(l.doc, "addSubview:", uintptr(v))
 	Release(v)
@@ -645,7 +645,7 @@ func (l *list) headerBackground(rv *rowView) {
 func (h *Host) newCell(l *list, rv *rowView) *cell {
 	h.nextCell++
 	id := ops.HostIDBit | h.nextCell
-	v := initView("RyUIView")
+	v := initView("AsukaView")
 	Send(v, "setWantsLayer:", 1)
 	n := &node{id: id, kind: ops.KindView, view: v}
 	c := &cell{n: n, l: l, rv: rv}

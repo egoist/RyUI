@@ -15,7 +15,7 @@ import (
 	"time"
 	"unsafe"
 
-	. "github.com/egoist/ryui/internal/windows"
+	. "github.com/egoist/asuka/internal/windows"
 )
 
 // More of the system's modules on Windows, answering as host/darwin's do
@@ -50,10 +50,10 @@ import (
 //   - background: a Windows app keeps running out of sight; a task keeps
 //     the system from sleeping (SetThreadExecutionState) until the last
 //     one ends, as an activity does on a Mac.
-//   - clipboard (ryui/device's): its image, copying one, and its changes.
+//   - clipboard (asuka/device's): its image, copying one, and its changes.
 //   - library: files go to the user's Downloads, Videos, Music and
 //     Pictures folders.
-//   - ryui/maps' view: the host's own, of OpenStreetMap's tiles
+//   - asuka/maps' view: the host's own, of OpenStreetMap's tiles
 //     (maps.go).
 
 func init() {
@@ -206,7 +206,7 @@ func (h *Host) watchScreenshots() error {
 
 // Sensors.
 
-// sensorsModule is ryui/sensors': none available, as on a Mac. Starting
+// sensorsModule is asuka/sensors': none available, as on a Mac. Starting
 // one fails "not available", and so do "next" (which ends the Go side's
 // watching) and "steps".
 func sensorsModule() map[string]asyncMethod {
@@ -226,7 +226,7 @@ func sensorsModule() map[string]asyncMethod {
 
 var iidAdvertisingManagerStatics = NewGUID("ADD3468C-A273-48CB-B346-3544522D5581")
 
-// trackingModule is ryui/tracking's: u8 not asked, restricted, denied,
+// trackingModule is asuka/tracking's: u8 not asked, restricted, denied,
 // allowed. Windows asks nothing: it's the advertising ID's setting.
 func trackingModule() map[string]asyncMethod {
 	status := func(_ []byte, reply func([]byte, error)) {
@@ -278,7 +278,7 @@ func pushModule() map[string]asyncMethod {
 		return func(_ []byte, reply func([]byte, error)) { pushQueues[kind] = append(pushQueues[kind], reply) }
 	}
 	return map[string]asyncMethod{
-		"register":     failing("ryui/push: Windows gives push channels (WNS) to packaged apps only"),
+		"register":     failing("asuka/push: Windows gives push channels (WNS) to packaged apps only"),
 		"nextReceived": wait("nextReceived"),
 		"nextOpened":   wait("nextOpened"),
 		"stop": func(args []byte, reply func([]byte, error)) {
@@ -289,7 +289,7 @@ func pushModule() map[string]asyncMethod {
 			}
 			reply(nil, nil)
 		},
-		"nextRewrite": failing("ryui/push: rewriting needs a notification service extension, which a Windows app doesn't have"),
+		"nextRewrite": failing("asuka/push: rewriting needs a notification service extension, which a Windows app doesn't have"),
 		"rewritten":   answerNil,
 	}
 }
@@ -302,7 +302,7 @@ var openFile = func(owner uintptr, path string) error { return ShellExecute(owne
 // openForSaving writes a file for the user's app of its type (a vCard,
 // an iCalendar event) to the caches and opens it there.
 func (h *Host) openForSaving(name string, data []byte, none string, reply func([]byte, error)) {
-	dir := filepath.Join(h.cacheDir(), "ryui-personal")
+	dir := filepath.Join(h.cacheDir(), "asuka-personal")
 	os.MkdirAll(dir, 0o755)
 	path := filepath.Join(dir, name)
 	if err := os.WriteFile(path, data, 0o644); err != nil {
@@ -413,8 +413,8 @@ func iCalendar(title, location, notes, link string, startMs, endMs int64, allDay
 		}
 	}
 	var b strings.Builder
-	b.WriteString("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//RyUI//EN\r\nBEGIN:VEVENT\r\n")
-	fmt.Fprintf(&b, "UID:%d@ryui\r\nDTSTAMP:%s\r\n", time.Now().UnixNano(), time.Now().UTC().Format("20060102T150405Z"))
+	b.WriteString("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Asuka//EN\r\nBEGIN:VEVENT\r\n")
+	fmt.Fprintf(&b, "UID:%d@asuka\r\nDTSTAMP:%s\r\n", time.Now().UnixNano(), time.Now().UTC().Format("20060102T150405Z"))
 	if allDay {
 		fmt.Fprintf(&b, "DTSTART;VALUE=DATE:%s\r\nDTEND;VALUE=DATE:%s\r\n", start.Format("20060102"), end.Format("20060102"))
 	} else {
@@ -455,7 +455,7 @@ func safeFileName(s, def string) string {
 
 // Background.
 
-// bgTasks are ryui/background's tasks: a task keeps the system awake
+// bgTasks are asuka/background's tasks: a task keeps the system awake
 // until the last one ends; "update" does nothing (there's no
 // notification to update), and "next" (actions tapped) waits until the
 // last task ends, then fails "ended".
@@ -523,7 +523,7 @@ var clipWatch struct {
 	stop    func()
 }
 
-// clipboardModule is ryui/device's clipboard: "has" (u8 text, image,
+// clipboardModule is asuka/device's clipboard: "has" (u8 text, image,
 // URL), "image" (the clipboard's image as a PNG in the caches; empty:
 // none), "copyImage" (a file's path), and, while watching, "next"
 // (answered at the next change) and "stop".
@@ -540,7 +540,7 @@ func (h *Host) clipboardModule() map[string]asyncMethod {
 				reply(nil, nil)
 				return
 			}
-			dir := filepath.Join(h.cacheDir(), "ryui-clipboard")
+			dir := filepath.Join(h.cacheDir(), "asuka-clipboard")
 			if err := os.MkdirAll(dir, 0o755); err != nil {
 				reply(nil, err)
 				return
@@ -686,7 +686,7 @@ func (h *Host) libraryModule() map[string]asyncMethod {
 // "name (1).ext"... if it's taken, and answers the new path.
 func libSaveFile(src, dir, folder, name string, move bool) (string, error) {
 	if folder != "" {
-		dir = filepath.Join(dir, safeFileName(folder, "RyUI"))
+		dir = filepath.Join(dir, safeFileName(folder, "Asuka"))
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err

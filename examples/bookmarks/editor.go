@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/sqlite"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/sqlite"
+	"github.com/egoist/asuka/ui"
 )
 
 // draft is a bookmark being made: from what another app shared (the

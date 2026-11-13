@@ -1,14 +1,14 @@
 # Shipping
 
-`ryui build` makes an app's release build for one platform, from the
-app's directory (or the one given), into its `dist`. `ryui publish`
+`asuka build` makes an app's release build for one platform, from the
+app's directory (or the one given), into its `dist`. `asuka publish`
 uploads the iOS and Android builds to their stores: to TestFlight and
 App Review, or a Google Play track (see [Publishing](#publishing)).
 
 | `-platform` | What it makes, in `dist` | Builds on | Given to users |
 |---|---|---|---|
-| `ios` | `<Name>.ipa`, signed for the App Store | a Mac with Xcode | TestFlight, the App Store (`ryui publish`) |
-| `android` | `<Name>.aab`, signed with your upload key | any system with a JDK, the Android SDK and the NDK | Google Play (`ryui publish`) |
+| `ios` | `<Name>.ipa`, signed for the App Store | a Mac with Xcode | TestFlight, the App Store (`asuka publish`) |
+| `android` | `<Name>.aab`, signed with your upload key | any system with a JDK, the Android SDK and the NDK | Google Play (`asuka publish`) |
 | `mac` | `<Name>.app`, universal; or a `.pkg` (`-appstore`) | a Mac with Xcode's command line tools | a download, signed and notarized; the Mac App Store |
 | `windows` | `<Name>/`, the `.exe` and its assets | any system | a zip, or an installer or MSIX of yours |
 | `linux` | `linux/`: an install prefix, a `.tar.gz`, a Flatpak manifest | any system | the `.tar.gz`, a Flatpak |
@@ -18,7 +18,7 @@ Without `-platform`, on a Mac, a Windows PC or a Linux machine, it
 builds for that computer. Every build but iOS's and Android's is plain
 Go with `CGO_ENABLED=0`, so it needs no C toolchain.
 
-## ryui.json
+## asuka.json
 
 ```json
 {
@@ -41,9 +41,9 @@ Every key is optional; these apply on every platform:
 - `id` is the bundle ID on iOS and the Mac, the application ID on
   Android and Linux (its desktop file, icon and D-Bus name), the
   AppUserModelID on Windows (its toasts'). The default is
-  `dev.ryui.<directory>`.
+  `dev.asuka.<directory>`.
 - `version` is what users see (default `1.0`); `build` counts the builds
-  uploaded, and must grow with each (default 1). `ryui publish` numbers
+  uploaded, and must grow with each (default 1). `asuka publish` numbers
   each build after the store's highest itself, so `build` is only where
   it starts. On Windows they're the `.exe`'s file version
   (`1.2.0.7` for version 1.2 and build 7), on Linux the metainfo's
@@ -79,8 +79,8 @@ Platform by platform:
 - `linux.*` is what a Linux build's desktop file and AppStream metainfo
   say: see [Linux](#linux).
 - `web.vapidPublicKey` is the app server's VAPID public key, for
-  `ryui/push` on the web (Web Push; see
-  [the web](web.md#ryuipush-web-push)).
+  `asuka/push` on the web (Web Push; see
+  [the web](web.md#asukapush-web-push)).
 - A Windows build needs nothing beyond the keys above; its signing
   certificate is given in the environment ([Windows](#windows)).
 
@@ -102,15 +102,15 @@ These are for the phones and tablets:
   a bundle ID of its own (the app's plus `.share`).
 - `splash` is the launch screen: `{"image": "logo.png", "size": 96,
   "background": "#ffffff", "darkBackground": "#000000"}` (see
-  [Device](device.md#the-launch-screen-ryuisplash)).
+  [Device](device.md#the-launch-screen-asukasplash)).
 - `widgets` are the app's home screen widgets and `shortcuts` its
   actions for Siri, Spotlight and the launcher (see
-  [Device](device.md#home-screen-widgets-ryuiwidget)). The widget
+  [Device](device.md#home-screen-widgets-asukawidget)). The widget
   extension has a bundle ID of its own (the app's plus `.widgets`): a
   release needs a profile for it too, and `ios.widgetProfile` names one.
 - `android.googleServices` is the Firebase project's
-  `google-services.json`, for `ryui/push`; `android.mapsKey`, a Google
-  Maps Platform API key, for `ryui/maps`.
+  `google-services.json`, for `asuka/push`; `android.mapsKey`, a Google
+  Maps Platform API key, for `asuka/maps`.
 - `ios.usage` gives the purpose strings of protected resources
   (`NSCameraUsageDescription`...; the Mac's too), and `ios.infoPlist` adds keys to
   Info.plist; `ios.backgroundModes` adds to `UIBackgroundModes` (`"audio"`,
@@ -118,18 +118,18 @@ These are for the phones and tablets:
   permissions.
 
 The packages an app imports give it the permissions and purpose strings
-they need: `ryui/camera` the camera's, `ryui/location` the location's.
+they need: `asuka/camera` the camera's, `asuka/location` the location's.
 Write your own in `ios.usage`: the default is generic. Some need a
-capability on the App ID too (Push Notifications for `ryui/push`, Sign
-in with Apple for `ryui/appleauth`, App Attest for `ryui/integrity`,
-Declared Age Range for `ryui/agerange`): turn it on at
-developer.apple.com, then make the profile again. `ryui build -platform ios` (and
+capability on the App ID too (Push Notifications for `asuka/push`, Sign
+in with Apple for `asuka/appleauth`, App Attest for `asuka/integrity`,
+Declared Age Range for `asuka/agerange`): turn it on at
+developer.apple.com, then make the profile again. `asuka build -platform ios` (and
 `-platform mac`) says which a profile lacks.
 
 ## iOS
 
 ```sh
-ryui build -platform ios
+asuka build -platform ios
 ```
 
 makes a `.ipa` signed for the App Store, with the team's distribution
@@ -154,15 +154,15 @@ stops, saying so, if a profile lacks the group. The simulator needs
 none of this. An app with its own share sheet (`app.ShareSheet`) needs
 the group too, for its data, whatever it takes.
 
-`ryui publish -platform ios` makes it and uploads it to App Store Connect (see
+`asuka publish -platform ios` makes it and uploads it to App Store Connect (see
 [Publishing](#publishing)); Apple's Transporter uploads one too.
 
 **Privacy manifest.** The App Store requires one, giving a reason for
-each API of Apple's list the app uses. RyUI writes it, from what the
+each API of Apple's list the app uses. Asuka writes it, from what the
 binary uses: Go's runtime reads the clock and file times, SQLite the disk
 space; it declares no tracking and no data collected. If your app
 collects data or tracks, write your own as `ios/PrivacyInfo.xcprivacy`,
-with those reasons in it too; RyUI uses it instead.
+with those reasons in it too; Asuka uses it instead.
 
 ## Android
 
@@ -173,35 +173,35 @@ safe:
 keytool -genkeypair -v -keystore upload.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000
 ```
 
-Name it in `ryui.json` (`android.keystore`, `android.keyAlias`), and give
+Name it in `asuka.json` (`android.keystore`, `android.keyAlias`), and give
 its password in the environment:
 
 ```sh
-RYUI_KEYSTORE_PASSWORD=... ryui build -platform android
+ASUKA_KEYSTORE_PASSWORD=... asuka build -platform android
 ```
 
-(`RYUI_KEY_PASSWORD` too if the key's differs; `RYUI_KEYSTORE` and
-`RYUI_KEY_ALIAS` name them in CI.) It makes an `.aab` for Google Play, for
+(`ASUKA_KEY_PASSWORD` too if the key's differs; `ASUKA_KEYSTORE` and
+`ASUKA_KEY_ALIAS` name them in CI.) It makes an `.aab` for Google Play, for
 64-bit and 32-bit ARM phones and x86_64 (emulators, Chromebooks),
 Android 13 and later; Play makes each phone's APK from it, with only
-that phone's architecture. `ryui publish -platform android` makes it and uploads it to Google Play (see
+that phone's architecture. `asuka publish -platform android` makes it and uploads it to Google Play (see
 [Publishing](#publishing)).
 
 ## Publishing
 
-`ryui publish` makes the release build, as `ryui build` does, and
+`asuka publish` makes the release build, as `asuka build` does, and
 uploads it through the store's API. It asks the store first what could
 stop it (that the app is there and the key may upload to it, that the
 version still takes builds, that the TestFlight groups exist), so
 nothing is built for an upload that would fail. Each build is numbered
-one above the store's highest (and at least `ryui.json`'s `build`):
+one above the store's highest (and at least `asuka.json`'s `build`):
 there's nothing to bump between releases. `-build 42` gives one.
 
 **App Store Connect.** Make an API key in App Store Connect (Users and
 Access › Integrations › App Store Connect API) with the App Manager
-role, download its `.p8`, and name it in `ryui.json`, or in the
-environment (`RYUI_ASC_KEY_ID`, `RYUI_ASC_ISSUER_ID`, and
-`RYUI_ASC_KEY`, the `.p8`'s path or its text). Without a `key`, it's
+role, download its `.p8`, and name it in `asuka.json`, or in the
+environment (`ASUKA_ASC_KEY_ID`, `ASUKA_ASC_ISSUER_ID`, and
+`ASUKA_ASC_KEY`, the `.p8`'s path or its text). Without a `key`, it's
 looked for as `altool` does, `AuthKey_<id>.p8` in
 `~/.appstoreconnect/private_keys`. Keep the `.p8` out of your
 repository. Add the app in App Store Connect first (Apps › + › New
@@ -214,9 +214,9 @@ App), with its bundle ID.
 ```
 
 ```sh
-ryui publish -platform ios                                  # to TestFlight: the team's testers
-ryui publish -platform ios -groups "Friends, QA" -notes "Try the new sync."
-ryui publish -platform ios -review -notes @release-notes/ios -release manual
+asuka publish -platform ios                                  # to TestFlight: the team's testers
+asuka publish -platform ios -groups "Friends, QA" -notes "Try the new sync."
+asuka publish -platform ios -review -notes @release-notes/ios -release manual
 ```
 
 It uploads the `.ipa`, waits for Apple to process it (minutes, usually;
@@ -231,7 +231,7 @@ then:
 - `-groups` gives the build to TestFlight groups, by name. With an
   external group (testers outside your team), the build goes to beta
   review; fill in the test information in TestFlight first.
-- `-review` makes the App Store version (`ryui.json`'s `version`) if
+- `-review` makes the App Store version (`asuka.json`'s `version`) if
   there isn't one, gives it the build, and submits it for review. A
   first submission needs its listing, screenshots and privacy answers
   filled in App Store Connect first; what's missing is printed.
@@ -243,15 +243,15 @@ then:
 (IAM › Service accounts › Keys), in a project with the Google Play
 Android Developer API turned on. Invite its email in the Play Console
 (Users and permissions), with the rights to release the app. Name its
-key in `ryui.json` (`"android": {"serviceAccount": "play.json"}`) or in
-`RYUI_PLAY_SERVICE_ACCOUNT` (its path or its JSON). Play takes an app's
+key in `asuka.json` (`"android": {"serviceAccount": "play.json"}`) or in
+`ASUKA_PLAY_SERVICE_ACCOUNT` (its path or its JSON). Play takes an app's
 first `.aab` only in the Play Console: create the app there and upload
-its first build by hand; `ryui publish` uploads the ones after.
+its first build by hand; `asuka publish` uploads the ones after.
 
 ```sh
-ryui publish -platform android                              # the internal test track
-ryui publish -platform android -track beta -notes @release-notes/android
-ryui publish -platform android -track production -rollout 0.1
+asuka publish -platform android                              # the internal test track
+asuka publish -platform android -track beta -notes @release-notes/android
+asuka publish -platform android -track production -rollout 0.1
 ```
 
 - `-track` is `internal` (default), `alpha` (closed testing), `beta`
@@ -267,13 +267,13 @@ ryui publish -platform android -track production -rollout 0.1
   changes for you to send (after a rejection), they're saved, and you
   send them in the Play Console.
 
-`-file dist/Notes.ipa` (or `.aab`) uploads a build `ryui build` made,
+`-file dist/Notes.ipa` (or `.aab`) uploads a build `asuka build` made,
 instead of making one.
 
 ## macOS
 
 ```sh
-ryui build -platform mac
+asuka build -platform mac
 ```
 
 makes `dist/<Name>.app` on a Mac: a universal app (Apple silicon and
@@ -293,24 +293,24 @@ To give it to others outside the Mac App Store, sign it with your
 Developer ID and have Apple notarize it, so Gatekeeper opens it:
 
 ```sh
-xcrun notarytool store-credentials ryui   # once: your Apple ID, team and an app-specific password
-ryui build -platform mac -sign "Developer ID Application: Your Name (TEAMID)" -notarize ryui
+xcrun notarytool store-credentials asuka   # once: your Apple ID, team and an app-specific password
+asuka build -platform mac -sign "Developer ID Application: Your Name (TEAMID)" -notarize asuka
 ```
 
 `-notarize` sends the signed app to Apple's notary service, waits for
 its verdict (a few minutes, usually), prints the service's log if it's
 rejected, and staples the ticket to the app, so it opens offline too.
-In CI, `-notarize env` takes `RYUI_APPLE_ID`, `RYUI_APPLE_PASSWORD` (an
-app-specific password) and `RYUI_TEAM_ID` from the environment instead
+In CI, `-notarize env` takes `ASUKA_APPLE_ID`, `ASUKA_APPLE_PASSWORD` (an
+app-specific password) and `ASUKA_TEAM_ID` from the environment instead
 of a keychain profile.
 
-Push (`ryui/push`), Sign in with Apple (`ryui/appleauth`) and App Attest
-(`ryui/integrity`) need entitlements only a provisioning profile grants.
+Push (`asuka/push`), Sign in with Apple (`asuka/appleauth`) and App Attest
+(`asuka/integrity`) need entitlements only a provisioning profile grants.
 Make a macOS Developer ID profile for the app's ID at developer.apple.com
 (Profiles), with those capabilities on for the ID, and download it:
 
 ```sh
-ryui build -platform mac -profile Notes.provisionprofile -notarize ryui
+asuka build -platform mac -profile Notes.provisionprofile -notarize asuka
 ```
 
 The profile goes in the app as `Contents/embedded.provisionprofile`, and
@@ -322,7 +322,7 @@ team, and the hardened runtime. The build says which a profile lacks.
 Without `-sign`, the identity is the keychain's certificate the profile
 allows (Developer ID Application); a `-sign` the profile doesn't list is
 an error. `-profile` takes a path, or an installed profile's name or UUID;
-`RYUI_MAC_PROFILE` and ryui.json's `mac.profile` say the same. With none,
+`ASUKA_MAC_PROFILE` and asuka.json's `mac.profile` say the same. With none,
 an app that uses those packages is signed with the best match installed
 for its ID (in Xcode's profile folders), else without one: the build
 says what won't work on the Mac, and the rest of the app does.
@@ -330,17 +330,17 @@ says what won't work on the Mac, and the rest of the app does.
 `-appstore` makes `dist/<Name>.pkg` for the Mac App Store instead: the app in the
 App Sandbox (with the network and the files the user picks), signed
 with a Mac App Store profile's certificate (Apple Distribution;
-ryui.json's `mac.appStoreProfile`, else `-profile`, else the best match),
+asuka.json's `mac.appStoreProfile`, else `-profile`, else the best match),
 and the package with the team's Mac Installer Distribution certificate.
 Upload it with Transporter or `xcrun altool --upload-package`;
-`ryui publish` doesn't upload Mac builds yet. Notarizing is for apps
+`asuka publish` doesn't upload Mac builds yet. Notarizing is for apps
 outside the store: `-notarize` with `-appstore` is an error.
 
 ## Windows
 
 ```sh
-ryui build -platform windows               # x64, which Windows on Arm runs emulated
-ryui build -platform windows -arch arm64   # native on Arm PCs
+asuka build -platform windows               # x64, which Windows on Arm runs emulated
+asuka build -platform windows -arch arm64   # native on Arm PCs
 ```
 
 makes a folder, `dist/<Name>`, from any system: `<Name>.exe` and the
@@ -355,31 +355,31 @@ Sign the `.exe`, so SmartScreen knows who it's from, with a code signing
 certificate exported as a `.pfx`:
 
 ```sh
-RYUI_WINDOWS_CERT=cert.pfx RYUI_WINDOWS_CERT_PASSWORD=... ryui build -platform windows
+ASUKA_WINDOWS_CERT=cert.pfx ASUKA_WINDOWS_CERT_PASSWORD=... asuka build -platform windows
 ```
 
 The build signs it with SHA-256 and has the signature timestamped, so
 it stays valid once the certificate expires, by the first RFC 3161 server
-that answers: `RYUI_WINDOWS_TIMESTAMP`'s (a comma-separated list), else
+that answers: `ASUKA_WINDOWS_TIMESTAMP`'s (a comma-separated list), else
 DigiCert's, Sectigo's and GlobalSign's. When none answers the build
-fails, saying so; `RYUI_WINDOWS_TIMESTAMP=none` signs without a timestamp
+fails, saying so; `ASUKA_WINDOWS_TIMESTAMP=none` signs without a timestamp
 (the signature then ends with the certificate). It signs with `signtool` on
 Windows (the Windows SDK's; on the `PATH`, else the newest installed),
 with `osslsigncode` elsewhere (`brew install osslsigncode`, `apt install
-osslsigncode`). Without `RYUI_WINDOWS_CERT` the `.exe` isn't signed. A
+osslsigncode`). Without `ASUKA_WINDOWS_CERT` the `.exe` isn't signed. A
 certificate on a hardware token or in a cloud service (Azure Trusted
 Signing) signs through its own tool: sign the `.exe` in the folder with
 it after the build.
 
-An app that shows notifications (`ryui/notify`) is given a shortcut in the
+An app that shows notifications (`asuka/notify`) is given a shortcut in the
 user's Start menu the first time, which Windows needs for an app's
-toasts: its AppUserModelID is ryui.json's `id` (else one of its name).
+toasts: its AppUserModelID is asuka.json's `id` (else one of its name).
 
 ## Linux
 
 ```sh
-ryui build -platform linux                # this machine's architecture, else amd64
-ryui build -platform linux -arch arm64    # amd64 or arm64
+asuka build -platform linux                # this machine's architecture, else amd64
+asuka build -platform linux -arch arm64    # amd64 or arm64
 ```
 
 It builds from any system: the host calls GTK 4 and libadwaita without
@@ -420,7 +420,7 @@ shows the first's window), and its data directory
 (`~/.local/share/<id>`); it must be letters, digits, `_` and `-`, in two
 parts or more, none starting with a digit.
 
-What the desktop file and metainfo say, in `ryui.json`:
+What the desktop file and metainfo say, in `asuka.json`:
 
 ```json
 "linux": {
@@ -442,7 +442,7 @@ software centers want the summary, description, license and developer.
 ## The web
 
 ```sh
-ryui build -platform web
+asuka build -platform web
 ```
 
 makes a static site in `dist/web`: `index.html`, the app as
@@ -457,41 +457,41 @@ browser does differently.
 
 ## In an existing app
 
-A RyUI app can live inside an app made in Xcode or Android Studio: a
+A Asuka app can live inside an app made in Xcode or Android Studio: a
 feature written once in Go, shown from a native app. (On the web, the
 build's app runs in an element of a page of yours: see
 [the web](web.md).)
 
-**iOS.** `ryui build -platform ios -xcframework` makes `dist/RyUIApp.xcframework`:
+**iOS.** `asuka build -platform ios -xcframework` makes `dist/AsukaApp.xcframework`:
 the app's Go code and the UIKit host, for devices and the simulator, with
 a Swift module interface and the app's assets. Add it to your target
-(Embed & Sign), then show the RyUI app as any view controller:
+(Embed & Sign), then show the Asuka app as any view controller:
 
 ```swift
-import RyUIApp
+import AsukaApp
 
-present(RyUIViewController(), animated: true)
+present(AsukaViewController(), animated: true)
 // or push it, or make it a tab, or a window's root
 ```
 
-**Android.** `ryui build -platform android -aar` makes a Maven repository in
+**Android.** `asuka build -platform android -aar` makes a Maven repository in
 `dist/maven`: the host library with the app's Go code for each ABI, its
-assets, and `RyUIActivity` declared, with its dependencies (Material,
-AndroidX) in its POM, and the optional modules the app uses (`ryui/push`,
-`ryui/maps`) beside it. Add the repository and the dependency the
+assets, and `AsukaActivity` declared, with its dependencies (Material,
+AndroidX) in its POM, and the optional modules the app uses (`asuka/push`,
+`asuka/maps`) beside it. Add the repository and the dependency the
 command prints, then start the activity:
 
 ```kotlin
 // settings.gradle.kts
 dependencyResolutionManagement { repositories { maven { url = uri("path/to/dist/maven") } } }
 // app/build.gradle.kts
-dependencies { implementation("dev.ryui.counter:counter:1.0.0") }
+dependencies { implementation("dev.asuka.counter:counter:1.0.0") }
 // anywhere
-startActivity(Intent(this, dev.ryui.RyUIActivity::class.java))
+startActivity(Intent(this, dev.asuka.AsukaActivity::class.java))
 ```
 
-The embedded app is one RyUI app, mounted once, as in a standalone
-build. What `ryui.json` sets for a whole app (its icon, URL scheme,
+The embedded app is one Asuka app, mounted once, as in a standalone
+build. What `asuka.json` sets for a whole app (its icon, URL scheme,
 share target, widgets, permissions' texts) is the embedding app's to
 set in its own project.
 
@@ -503,7 +503,7 @@ functions and lines with the build's symbols. Go's own stack traces
 need none (their tables are in the binary), so a Go panic reads as it
 is.
 
-**iOS.** `ryui build -platform ios` compiles the host with debug information,
+**iOS.** `asuka build -platform ios` compiles the host with debug information,
 keeps the Go code's, and makes a dSYM of each binary (the app, its
 framework when it has a share sheet, its extensions), as Xcode's archive
 does, then strips the binaries. They're in `dist/<Name>.dSYMs`, beside
@@ -517,7 +517,7 @@ sentry-cli debug-files upload --org ORG --project PROJECT dist/Notes.dSYMs
 upload-symbols -gsp GoogleService-Info.plist -p ios dist/Notes.dSYMs
 ```
 
-**Android.** `ryui build -platform android` keeps the Go libraries' symbol tables
+**Android.** `asuka build -platform android` keeps the Go libraries' symbol tables
 for Gradle, which strips the libraries it packages and puts their
 symbols in the `.aab`, with R8's map of the Kotlin it renamed: Google
 Play symbolicates native crashes and ANRs, and deobfuscates stack
@@ -535,7 +535,7 @@ traces keep their function names and lines, so its panics read as they
 are, and there are no symbols to upload.
 
 Keep each release's symbols: a crash is symbolicated with those of the
-build it happened in. See [Device](device.md#crash-reports-ryuicrash)
+build it happened in. See [Device](device.md#crash-reports-asukacrash)
 for the reports themselves.
 
 ## Before you release
@@ -543,7 +543,7 @@ for the reports themselves.
 Run the release build where your users will, before you release it:
 
 - On a phone: an iOS build with `-distribution development`, and the
-  Android build from Play's internal test track (`ryui publish
+  Android build from Play's internal test track (`asuka publish
   -platform android -track internal`), which installs the APK Play makes
   from the `.aab`. TestFlight and a Play internal test also check what a
   simulator can't.
@@ -560,7 +560,7 @@ Run the release build where your users will, before you release it:
 
 This GitHub Actions workflow builds both apps when you push a tag like
 `v1.2`, uploads the iOS build to TestFlight and the Android build to
-Play's internal test track with `ryui publish`, and attaches the `.ipa`
+Play's internal test track with `asuka publish`, and attaches the `.ipa`
 and the `.aab` to a draft GitHub release for the tag, each as soon as
 it's uploaded; publish
 the draft when you're ready. (Run by hand, it keeps them as the run's
@@ -596,8 +596,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with: { go-version-file: go.mod }
-      - name: the ryui CLI, at the app's version of ryui
-        run: go install github.com/egoist/ryui/cmd/ryui@$(go list -m -f '{{.Version}}' github.com/egoist/ryui)
+      - name: the asuka CLI, at the app's version of asuka
+        run: go install github.com/egoist/asuka/cmd/asuka@$(go list -m -f '{{.Version}}' github.com/egoist/asuka)
       - name: the distribution certificate and the profile
         env:
           CERTIFICATE: ${{ secrets.IOS_CERTIFICATE }}
@@ -614,15 +614,15 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -k "$PW" "$KC"
           security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
           echo "$PROFILE" | base64 --decode > $RUNNER_TEMP/app.mobileprovision
-          # With shareTarget, the extension's profile, installed where ryui looks:
+          # With shareTarget, the extension's profile, installed where asuka looks:
           # mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           # echo "$SHARE_PROFILE" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/share.mobileprovision
       - name: build, and upload to TestFlight
         env:
-          RYUI_ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          RYUI_ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          RYUI_ASC_KEY: ${{ secrets.ASC_KEY }}
-        run: ryui publish -platform ios -profile $RUNNER_TEMP/app.mobileprovision -no-wait
+          ASUKA_ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASUKA_ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASUKA_ASC_KEY: ${{ secrets.ASC_KEY }}
+        run: asuka publish -platform ios -profile $RUNNER_TEMP/app.mobileprovision -no-wait
       - uses: actions/upload-artifact@v4
         with: { name: ios, path: dist/*.ipa }
       - name: attach to the tag's release
@@ -646,18 +646,18 @@ jobs:
         with: { packages: platform-tools }
       - name: an NDK
         run: sdkmanager "ndk;27.1.12297006"
-      - name: the ryui CLI, at the app's version of ryui
-        run: go install github.com/egoist/ryui/cmd/ryui@$(go list -m -f '{{.Version}}' github.com/egoist/ryui)
+      - name: the asuka CLI, at the app's version of asuka
+        run: go install github.com/egoist/asuka/cmd/asuka@$(go list -m -f '{{.Version}}' github.com/egoist/asuka)
       - name: the upload key
         env:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
         run: echo "$KEYSTORE" | base64 --decode > $RUNNER_TEMP/upload.jks
       - name: build, and upload to Play's internal test track
-        run: ryui publish -platform android -track internal
+        run: asuka publish -platform android -track internal
         env:
-          RYUI_KEYSTORE: ${{ runner.temp }}/upload.jks
-          RYUI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          RYUI_PLAY_SERVICE_ACCOUNT: ${{ secrets.PLAY_SERVICE_ACCOUNT }}
+          ASUKA_KEYSTORE: ${{ runner.temp }}/upload.jks
+          ASUKA_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ASUKA_PLAY_SERVICE_ACCOUNT: ${{ secrets.PLAY_SERVICE_ACCOUNT }}
       - uses: actions/upload-artifact@v4
         with:
           name: android
@@ -683,13 +683,13 @@ base64 (`base64 -i file | pbcopy`):
   Store Connect API key with the App Manager role, from Users and Access
   › Integrations.
 - `ANDROID_KEYSTORE`: the upload key's `.jks`; `ANDROID_KEYSTORE_PASSWORD`
-  its password (add `RYUI_KEY_PASSWORD` if the key's differs).
+  its password (add `ASUKA_KEY_PASSWORD` if the key's differs).
 - `PLAY_SERVICE_ACCOUNT`: a Google Cloud service account's JSON key,
   invited in the Play Console's Users and permissions with the right to
   release to testing tracks.
 
 The CLI carries the iOS and Android hosts, so it's installed at the
-version of RyUI in the app's `go.mod`. Each build is numbered after the
+version of Asuka in the app's `go.mod`. Each build is numbered after the
 store's highest, so nothing is bumped before you tag; `-no-wait` ends
 the iOS job once Apple has the upload, not once it's processed. The App Store takes builds
 made with a recent Xcode only; if the runner's default is older, pick
@@ -702,7 +702,7 @@ tag and attach them to its draft release: the Mac's signed with your
 Developer ID and notarized, Windows' for x64 and Arm, signed, and
 Linux's for amd64 and arm64. Windows' and Linux's build on Linux, so
 one Ubuntu runner makes both. (The app is named Notes here: its files
-are named after `ryui.json`'s `name`.)
+are named after `asuka.json`'s `name`.)
 
 ```yaml
   mac:
@@ -712,8 +712,8 @@ are named after `ryui.json`'s `name`.)
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with: { go-version-file: go.mod }
-      - name: the ryui CLI, at the app's version of ryui
-        run: go install github.com/egoist/ryui/cmd/ryui@$(go list -m -f '{{.Version}}' github.com/egoist/ryui)
+      - name: the asuka CLI, at the app's version of asuka
+        run: go install github.com/egoist/asuka/cmd/asuka@$(go list -m -f '{{.Version}}' github.com/egoist/asuka)
       - name: the Developer ID certificate
         env:
           CERTIFICATE: ${{ secrets.MAC_CERTIFICATE }}
@@ -730,10 +730,10 @@ are named after `ryui.json`'s `name`.)
           security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
       - name: build, sign and notarize
         env:
-          RYUI_APPLE_ID: ${{ secrets.APPLE_ID }}
-          RYUI_APPLE_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
-          RYUI_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: ryui build -platform mac -sign "Developer ID Application: Your Name (TEAMID)" -notarize env
+          ASUKA_APPLE_ID: ${{ secrets.APPLE_ID }}
+          ASUKA_APPLE_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          ASUKA_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: asuka build -platform mac -sign "Developer ID Application: Your Name (TEAMID)" -notarize env
       - name: attach to the tag's release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -749,8 +749,8 @@ are named after `ryui.json`'s `name`.)
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with: { go-version-file: go.mod }
-      - name: the ryui CLI, at the app's version of ryui
-        run: go install github.com/egoist/ryui/cmd/ryui@$(go list -m -f '{{.Version}}' github.com/egoist/ryui)
+      - name: the asuka CLI, at the app's version of asuka
+        run: go install github.com/egoist/asuka/cmd/asuka@$(go list -m -f '{{.Version}}' github.com/egoist/asuka)
       - name: osslsigncode, and the code signing certificate
         env:
           CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
@@ -759,17 +759,17 @@ are named after `ryui.json`'s `name`.)
           echo "$CERTIFICATE" | base64 --decode > $RUNNER_TEMP/cert.pfx
       - name: Windows, x64 and Arm
         env:
-          RYUI_WINDOWS_CERT: ${{ runner.temp }}/cert.pfx
-          RYUI_WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          ASUKA_WINDOWS_CERT: ${{ runner.temp }}/cert.pfx
+          ASUKA_WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         run: |
-          ryui build -platform windows -o dist/x64
-          ryui build -platform windows -arch arm64 -o dist/arm64
+          asuka build -platform windows -o dist/x64
+          asuka build -platform windows -arch arm64 -o dist/arm64
           (cd dist/x64 && zip -r ../Notes-windows-x64.zip Notes)
           (cd dist/arm64 && zip -r ../Notes-windows-arm64.zip Notes)
       - name: Linux, amd64 and arm64
         run: |
-          ryui build -platform linux
-          ryui build -platform linux -arch arm64
+          asuka build -platform linux
+          asuka build -platform linux -arch arm64
       - name: attach to the tag's release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -788,10 +788,10 @@ its architecture.
 
 ## Languages
 
-An app with [catalogs](i18n.md) needs nothing more: `ryui build` declares its
+An app with [catalogs](i18n.md) needs nothing more: `asuka build` declares its
 languages to each store and system (`CFBundleLocalizations` and `.lproj`s on
 iOS and macOS, a `locales_config` on Android), which makes Settings offer the
 app's language. Windows, Linux and web builds declare none: the app
 shows the language the user's settings pick from its catalogs. The app's name and its purpose strings can be translated too,
-with keys `ryui.appName` and `ryui.NSCameraUsageDescription` in the catalogs
+with keys `asuka.appName` and `asuka.NSCameraUsageDescription` in the catalogs
 ([Packaging](i18n.md#what-the-system-shows)).

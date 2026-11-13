@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/egoist/ryui/internal/crashrun"
+	"github.com/egoist/asuka/internal/crashrun"
 )
 
 // keepRuns is how long a run's context is kept once it has ended: a

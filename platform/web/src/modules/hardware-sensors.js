@@ -1,4 +1,4 @@
-// ryui/network, ryui/location and ryui/sensors in the browser.
+// asuka/network, asuka/location and asuka/sensors in the browser.
 //
 //   - network: navigator.onLine and the Network Information API
 //     (navigator.connection, Chrome's): "current", "next" (answered once
@@ -23,7 +23,7 @@ const deg = Math.PI / 180;
 
 // --- network ---
 
-/** networkState is the network as ryui/network's reply: u8 connected, u8 type, u8 metered, u8 constrained. */
+/** networkState is the network as asuka/network's reply: u8 connected, u8 type, u8 metered, u8 constrained. */
 export function networkState(onLine, c) {
   if (!onLine || c?.type === "none") return new Uint8Array([0, 0, 0, 0]);
   const type = { wifi: 1, cellular: 2, ethernet: 3 }[c?.type] ?? 4;
@@ -68,7 +68,7 @@ function network() {
 
 // --- location ---
 
-/** positionJSON is a GeolocationPosition as ryui/location's reply. */
+/** positionJSON is a GeolocationPosition as asuka/location's reply. */
 export function positionJSON(p) {
   const c = p.coords;
   return JSON.stringify({ lat: c.latitude, lon: c.longitude, acc: c.accuracy, alt: c.altitude ?? 0, t: Math.round(p.timestamp) });
@@ -84,7 +84,7 @@ function location() {
   let unseen = null, last = null;
   let next = []; // { resolve, reject }
   const geo = () => {
-    if (!navigator.geolocation) throw new Error("ryui: location isn't in this browser");
+    if (!navigator.geolocation) throw new Error("asuka: location isn't in this browser");
     return navigator.geolocation;
   };
   const stop = () => {
@@ -128,7 +128,7 @@ function location() {
       stop();
       for (const w of next.splice(0)) w.reject(new Error("stopped"));
     },
-    name: () => { throw new Error("ryui: location.name isn't on the web: a browser has no geocoder (ask a geocoding service with net/http)"); },
+    name: () => { throw new Error("asuka: location.name isn't on the web: a browser has no geocoder (ask a geocoding service with net/http)"); },
   };
 }
 
@@ -280,7 +280,7 @@ function sensors() {
   const genericSensor = (Cls, hz, read) => {
     const s = new Cls({ frequency: hz });
     s.addEventListener("reading", () => read(s));
-    s.addEventListener("error", (e) => console.warn("ryui: sensor:", e.error?.message || e));
+    s.addEventListener("error", (e) => console.warn("asuka: sensor:", e.error?.message || e));
     s.start();
     return () => s.stop();
   };

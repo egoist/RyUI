@@ -18,10 +18,10 @@ import (
 	"github.com/ebitengine/purego"
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
+	. "github.com/egoist/asuka/internal/darwin"
 )
 
-// ryui/photos on a Mac, with PhotoKit as on iOS ("photoLibrary"):
+// asuka/photos on a Mac, with PhotoKit as on iOS ("photoLibrary"):
 // "current" and "request" answer what's allowed, "list" JSON (id, width,
 // height, created in ms, screenshot), "thumbnail" a JPEG's path in the
 // caches and "export" JSON (path, name). macOS has no limited library
@@ -29,7 +29,7 @@ import (
 // it, "list" answers none and the others "not allowed", without asking:
 // Request asks, with the app's NSPhotoLibraryUsageDescription.
 //
-// ryui/library ("library": "save"): movies and pictures go to Photos
+// asuka/library ("library": "save"): movies and pictures go to Photos
 // (after asking to add to it, NSPhotoLibraryAddUsageDescription),
 // answering with the asset's identifier; downloads to ~/Downloads and
 // music to ~/Music, under the folder asked, answering with the file's
@@ -99,7 +99,7 @@ var phlLoaded = sync.OnceValue(func() bool {
 
 func phlLoad() bool { return phlLoaded() }
 
-// phlAccess is a status as ryui/photos' wire names it.
+// phlAccess is a status as asuka/photos' wire names it.
 func phlAccess(s int) string {
 	switch s {
 	case 3:
@@ -232,7 +232,7 @@ func (h *Host) photoLibraryModule() map[string]method {
 				if d := Send(a, "modificationDate"); d != 0 {
 					stamp = MsgFloat(d, Sel("timeIntervalSince1970"))
 				}
-				dir, err := phlCacheDir("ryui-photo-thumbs")
+				dir, err := phlCacheDir("asuka-photo-thumbs")
 				if err != nil {
 					return nil, err
 				}
@@ -305,7 +305,7 @@ func (h *Host) photoLibraryModule() map[string]method {
 			if ext == "" {
 				ext = "jpg"
 			}
-			path, err := cacheFile("ryui-photo-exports", "."+ext)
+			path, err := cacheFile("asuka-photo-exports", "."+ext)
 			if err != nil {
 				reply(nil, err)
 				return

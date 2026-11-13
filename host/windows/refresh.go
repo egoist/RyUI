@@ -3,8 +3,8 @@
 package windows
 
 import (
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ops"
 )
 
 // Pull to refresh (OnRefresh) on Windows, the Windows way: F5 refreshes

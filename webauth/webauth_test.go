@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/egoist/ryui/host/fake"
-	"github.com/egoist/ryui/ui"
-	"github.com/egoist/ryui/webauth"
+	"github.com/egoist/asuka/host/fake"
+	"github.com/egoist/asuka/ui"
+	"github.com/egoist/asuka/webauth"
 )
 
 func TestStart(t *testing.T) {

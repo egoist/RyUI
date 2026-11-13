@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // Sensor is a kind of sensor.
@@ -100,7 +100,7 @@ var ErrNotAvailable = errors.New("sensors: not available")
 
 // Available reports whether the device has s. Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Available(s Sensor) bool {
@@ -167,7 +167,7 @@ func WatchSteps(f func(Steps)) (stop func()) {
 // StepsBetween is the steps taken between from and to (iOS keeps a
 // week's). Android keeps none: ErrNotAvailable. Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func StepsBetween(from, to time.Time) (Steps, error) {
@@ -360,7 +360,7 @@ func watch(kind Sensor, every time.Duration, f func(sample)) (stop func()) {
 // setRate starts the sensor at the interval (or changes it): u8 sensor,
 // u32 microseconds. Every Watch calls it.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func setRate(kind Sensor, every time.Duration) {

@@ -11,13 +11,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/egoist/ryui/host"
-	"github.com/egoist/ryui/internal/boot"
-	"github.com/egoist/ryui/internal/devstate"
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/ops"
-	sig "github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/host"
+	"github.com/egoist/asuka/internal/boot"
+	"github.com/egoist/asuka/internal/devstate"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/ops"
+	sig "github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // Host is the core's side of a connection: a host.Host whose calls go
@@ -94,7 +94,7 @@ func (h *Host) serve(method byte, b []byte) []byte {
 	case mEvent:
 		ev, err := ops.DecodeEvent(b)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "ryui:", err)
+			fmt.Fprintln(os.Stderr, "asuka:", err)
 			return nil
 		}
 		if ev.Kind == ops.EventEnvironment && (ev.ID == 0 || h.core == nil) {
@@ -351,7 +351,7 @@ func (s *Server) Loop(conns <-chan net.Conn) {
 
 // Run listens on addr and serves root to the players that connect, and
 // sheet to their share sheets (nil: a sheet opens the app),
-// keeping its signals' values across reloads (in the file RYUI_STATE
+// keeping its signals' values across reloads (in the file ASUKA_STATE
 // names): saved when a player disconnects and when the process is
 // stopped, restored by the next run. It returns if listening fails.
 func Run(addr string, root, sheet func() ui.Node) error {
@@ -359,14 +359,14 @@ func Run(addr string, root, sheet func() ui.Node) error {
 	if err != nil {
 		return err
 	}
-	store := os.Getenv("RYUI_STATE")
+	store := os.Getenv("ASUKA_STATE")
 	if err := devstate.Keep(store); err != nil {
-		fmt.Fprintln(os.Stderr, "ryui: restoring state:", err)
+		fmt.Fprintln(os.Stderr, "asuka: restoring state:", err)
 	}
 	keepDevLocale()
-	if base := os.Getenv("RYUI_ASSETS_URL"); base != "" {
+	if base := os.Getenv("ASUKA_ASSETS_URL"); base != "" {
 		boot.AssetBase = base
-		if a := os.Getenv("RYUI_ASSETS_ADDR"); a != "" {
+		if a := os.Getenv("ASUKA_ASSETS_ADDR"); a != "" {
 			go serveAssets(a, "assets")
 		}
 	}
@@ -374,7 +374,7 @@ func Run(addr string, root, sheet func() ui.Node) error {
 		sig.KeptState() // also for a player reconnecting to this run
 		if store != "" {
 			if err := devstate.Save(store); err != nil {
-				fmt.Fprintln(os.Stderr, "ryui: saving state:", err)
+				fmt.Fprintln(os.Stderr, "asuka: saving state:", err)
 			}
 		}
 	}
@@ -382,7 +382,7 @@ func Run(addr string, root, sheet func() ui.Node) error {
 	srv := NewServer(root, posts)
 	srv.Sheet = sheet
 	srv.Closed = save
-	// Stopped (ryui dev reloading): save on the loop, then exit.
+	// Stopped (asuka dev reloading): save on the loop, then exit.
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	go func() {
@@ -408,7 +408,7 @@ func Run(addr string, root, sheet func() ui.Node) error {
 // state, on this machine: the player runs every app, and its saved language
 // would be theirs too.
 func keepDevLocale() {
-	file := os.Getenv("RYUI_STATE")
+	file := os.Getenv("ASUKA_STATE")
 	if file == "" {
 		return
 	}

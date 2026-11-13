@@ -9,15 +9,15 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
+	. "github.com/egoist/asuka/internal/darwin"
 )
 
-// ryui/transcribe on a Mac, with the Speech framework as on iOS: "check"
+// asuka/transcribe on a Mac, with the Speech framework as on iOS: "check"
 // (the language) answers JSON onDevice, language; "file" (JSON path,
 // language) answers JSON text, segments, language. On the device only:
 // it never falls back to Apple's servers. macOS asks the user once, with
 // the app's NSSpeechRecognitionUsageDescription, which needs the app's
-// bundle (ryui build -platform mac).
+// bundle (asuka build -platform mac).
 
 func init() {
 	moduleHooks = append(moduleHooks, func(h *Host, m map[string]map[string]method) {

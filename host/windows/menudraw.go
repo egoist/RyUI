@@ -5,7 +5,7 @@ package windows
 import (
 	"strings"
 
-	. "github.com/egoist/ryui/internal/windows"
+	. "github.com/egoist/asuka/internal/windows"
 )
 
 // Destructive menu items: a Win32 menu can't color an item's text, so a

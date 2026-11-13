@@ -12,12 +12,12 @@ import (
 	"strings"
 	"syscall"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/internal/localfile"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/internal/localfile"
+	"github.com/egoist/asuka/ops"
 )
 
-// ryui/print and ryui/compose on Linux.
+// asuka/print and asuka/compose on Linux.
 //
 // Printing: a file goes to the print portal (its dialog, then the
 // printer: what CUPS takes, PDFs and images among them), or, without the
@@ -152,7 +152,7 @@ func (h *Host) print(method string, args []byte, reply func([]byte, error)) {
 			})
 		})
 	default:
-		reply(nil, errors.New("ryui: print."+method+" isn't on Linux"))
+		reply(nil, errors.New("asuka: print."+method+" isn't on Linux"))
 	}
 }
 
@@ -246,7 +246,7 @@ func (h *Host) printPDF(v Ptr, a printArgs, path string, done func(error)) {
 	Print.SettingsSet(settings, "output-uri", GoStringFree(Sys.FileGetURI(f)))
 	ObjectUnref(f)
 	setup := Print.PageSetupNew()
-	size := Print.PaperSizeNewCustom("ryui", "Page", a.Width, a.Height, UnitPoints)
+	size := Print.PaperSizeNewCustom("asuka", "Page", a.Width, a.Height, UnitPoints)
 	Print.SetPaperSize(setup, size)
 	Print.PaperSizeFree(size)
 	Print.SetOrientation(setup, 0) // the size says it
@@ -449,7 +449,7 @@ func namedCopies(paths []string, files []modSource, cache string) []string {
 		if name == "" || name == filepath.Base(p) {
 			continue
 		}
-		dir := filepath.Join(cache, "ryui-mail", randomName())
+		dir := filepath.Join(cache, "asuka-mail", randomName())
 		to := filepath.Join(dir, filepath.Base(name))
 		if os.MkdirAll(dir, 0o755) == nil {
 			if _, err := copyFile(p, to); err == nil {

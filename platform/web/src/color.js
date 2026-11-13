@@ -1,5 +1,5 @@
 // Colors: RGBA, or semantic colors the stylesheet defines for light and
-// dark (style.css's --ryui-* variables), so dark mode needs no app code.
+// dark (style.css's --asuka-* variables), so dark mode needs no app code.
 
 const names = [
   "", "label", "secondary-label", "tertiary-label", "background", "secondary-background",
@@ -20,7 +20,7 @@ export function css(h, c) {
     const name = names[lo & 0xffff];
     if (!name) return "";
     const alpha = 255 - ((lo >>> 24) & 255);
-    const v = `var(--ryui-${name})`;
+    const v = `var(--asuka-${name})`;
     return alpha === 255 ? v : `color-mix(in srgb, ${v} ${(alpha / 2.55).toFixed(2)}%, transparent)`;
   }
   return "";
@@ -33,7 +33,7 @@ export function resolve(h, c, fallback = "") {
   if (!v.includes("var(")) return v;
   if (!h.colorProbe) {
     h.colorProbe = document.createElement("div");
-    h.colorProbe.className = "ryui-color-probe";
+    h.colorProbe.className = "asuka-color-probe";
     h.container.appendChild(h.colorProbe);
   }
   h.colorProbe.style.color = v;
@@ -45,11 +45,11 @@ export function setAccent(h, c) {
   const s = h.container.style;
   const v = css(h, c);
   if (v && Math.floor(c / 4294967296) === 2) {
-    s.setProperty("--ryui-accent", v);
-    s.setProperty("--ryui-accent-dark", v);
+    s.setProperty("--asuka-accent", v);
+    s.setProperty("--asuka-accent-dark", v);
   } else {
-    s.removeProperty("--ryui-accent");
-    s.removeProperty("--ryui-accent-dark");
+    s.removeProperty("--asuka-accent");
+    s.removeProperty("--asuka-accent-dark");
   }
 }
 
@@ -65,6 +65,6 @@ export function applyScheme(h) {
   if (h.scheme === 1) c.dataset.scheme = "light";
   else if (h.scheme === 2) c.dataset.scheme = "dark";
   else delete c.dataset.scheme;
-  c.classList.toggle("ryui-dark", isDark(h));
+  c.classList.toggle("asuka-dark", isDark(h));
   h.schemeChanged?.();
 }

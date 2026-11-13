@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/egoist/ryui/internal/boot"
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
+	"github.com/egoist/asuka/internal/boot"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
 )
 
 // palette is libadwaita's colors for the current style (light, dark, high
@@ -94,7 +94,7 @@ func (h *Host) readPalette(w Ptr) palette {
 	return p
 }
 
-// applyAccent puts the app's accent in the palette (ryui.json's, as on
+// applyAccent puts the app's accent in the palette (asuka.json's, as on
 // every platform).
 func (h *Host) applyAccent(p *palette) {
 	if r, g, b, _, ok := h.accent.RGBA(); ok {
@@ -108,7 +108,7 @@ func (h *Host) applyAccent(p *palette) {
 	}
 }
 
-// resolve is a color of RyUI's: semantic colors are the theme's; ok is
+// resolve is a color of Asuka's: semantic colors are the theme's; ok is
 // false for the platform's default (0).
 func (h *Host) resolve(c ops.Color) (RGBA, bool) {
 	if s, ok := c.Semantic(); ok {
@@ -176,16 +176,16 @@ func cssColor(c RGBA) string {
 // The host's style sheet: the app's accent, and classes for what
 // libadwaita has no style of (a tinted button).
 const hostCSS = `
-button.ryui-tinted { background-color: alpha(@accent_bg_color, 0.15); color: @accent_color; }
-button.ryui-tinted:hover { background-color: alpha(@accent_bg_color, 0.2); }
-button.ryui-tinted:active { background-color: alpha(@accent_bg_color, 0.3); }
-button.ryui-plain { color: @accent_color; }
-entry.ryui-plain, text.ryui-plain { background: none; box-shadow: none; outline: none; padding: 0; min-height: 0; }
-ryui-view.ryui-focus-ring:focus-visible { outline: 2px solid alpha(@accent_color, 0.5); outline-offset: -2px; }
-scrolledwindow.ryui-field { background-color: alpha(currentColor, 0.1); border-radius: 6px; outline: 0 solid transparent; outline-offset: 2px; transition: outline-color 200ms ease-out, outline-width 200ms ease-out, outline-offset 200ms ease-out; }
-scrolledwindow.ryui-field:focus-within { outline-color: alpha(@accent_color, 0.5); outline-width: 2px; outline-offset: -2px; }
-scrolledwindow.ryui-field:disabled { filter: opacity(0.5); }
-textview.ryui-clear, textview.ryui-clear > text { background: none; }
+button.asuka-tinted { background-color: alpha(@accent_bg_color, 0.15); color: @accent_color; }
+button.asuka-tinted:hover { background-color: alpha(@accent_bg_color, 0.2); }
+button.asuka-tinted:active { background-color: alpha(@accent_bg_color, 0.3); }
+button.asuka-plain { color: @accent_color; }
+entry.asuka-plain, text.asuka-plain { background: none; box-shadow: none; outline: none; padding: 0; min-height: 0; }
+asuka-view.asuka-focus-ring:focus-visible { outline: 2px solid alpha(@accent_color, 0.5); outline-offset: -2px; }
+scrolledwindow.asuka-field { background-color: alpha(currentColor, 0.1); border-radius: 6px; outline: 0 solid transparent; outline-offset: 2px; transition: outline-color 200ms ease-out, outline-width 200ms ease-out, outline-offset 200ms ease-out; }
+scrolledwindow.asuka-field:focus-within { outline-color: alpha(@accent_color, 0.5); outline-width: 2px; outline-offset: -2px; }
+scrolledwindow.asuka-field:disabled { filter: opacity(0.5); }
+textview.asuka-clear, textview.asuka-clear > text { background: none; }
 `
 
 // loadTheme reads the style (dark, the palette, fonts) and adds the
@@ -239,7 +239,7 @@ func parseAccent(s string) ops.Color {
 // baseFont is the desktop's interface font: GTK's gtk-font-name.
 type baseFont struct {
 	family string
-	px     float32 // its size in points at 96 DPI (CSS pixels): RyUI's points
+	px     float32 // its size in points at 96 DPI (CSS pixels): Asuka's points
 }
 
 func systemFont() baseFont {

@@ -2,7 +2,7 @@
 // checking off and deleting (swipe a note) show as soon as they're
 // written.
 //
-//	go run ./cmd/ryui dev -platform ios examples/notes
+//	go run ./cmd/asuka dev -platform ios examples/notes
 package main
 
 import (
@@ -10,10 +10,10 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/egoist/ryui/app"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/sqlite"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/sqlite"
+	"github.com/egoist/asuka/ui"
 )
 
 type note struct {
@@ -47,7 +47,7 @@ func write(query string, args ...any) {
 
 func App() ui.Node {
 	query := signal.New("")
-	// ryuinotes://add?text=... adds a note (ryui.json's scheme).
+	// asukanotes://add?text=... adds a note (asuka.json's scheme).
 	ui.OnOpenURL(func(raw string) {
 		if u, err := url.Parse(raw); err == nil && u.Host == "add" {
 			if t := u.Query().Get("text"); t != "" {

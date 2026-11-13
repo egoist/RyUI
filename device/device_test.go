@@ -3,9 +3,9 @@ package device_test
 import (
 	"testing"
 
-	"github.com/egoist/ryui/device"
-	"github.com/egoist/ryui/host/fake"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/device"
+	"github.com/egoist/asuka/host/fake"
+	"github.com/egoist/asuka/ui"
 )
 
 // PickFiles sends whether several may be picked and the types, and reads

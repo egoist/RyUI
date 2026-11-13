@@ -3,7 +3,7 @@ package glsl
 import (
 	"fmt"
 
-	"github.com/egoist/ryui/internal/shaderir"
+	"github.com/egoist/asuka/internal/shaderir"
 )
 
 // UniformLanes returns, for each lane of p's uniforms as package interp

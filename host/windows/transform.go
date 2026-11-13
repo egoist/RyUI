@@ -5,7 +5,7 @@ package windows
 import (
 	"math"
 
-	. "github.com/egoist/ryui/internal/windows"
+	. "github.com/egoist/asuka/internal/windows"
 )
 
 // Style.Transform. A child window can't be transformed, so the frame

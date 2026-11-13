@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // await calls an async module's method and runs the thread's messages
@@ -64,13 +64,13 @@ func TestDocuments(t *testing.T) {
 }
 
 // The modules: secureStore keeps a value in the Credential Manager and
-// deletes it; device.info says Windows; ryui/js runs a script (its value,
+// deletes it; device.info says Windows; asuka/js runs a script (its value,
 // a promise's, what it threw) in a WebView2 of its own.
 func TestModules(t *testing.T) {
 	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })
 	onMain(t, func() {
 		sync := func(module, m string, args []byte) ([]byte, error) { return h.module(module)(m, args) }
-		key := fmt.Sprintf("ryui-test-%d", time.Now().UnixNano())
+		key := fmt.Sprintf("asuka-test-%d", time.Now().UnixNano())
 		if b, err := sync("secureStore", "get", []byte(key)); err != nil || len(b) != 1 || b[0] != 0 {
 			fatalf("a missing key: %v, %v", b, err)
 		}

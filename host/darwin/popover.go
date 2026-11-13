@@ -3,8 +3,8 @@
 package darwin
 
 import (
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ops"
 )
 
 // A Popover is an NSPopover pointing at its anchor, below it (AppKit moves

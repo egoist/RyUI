@@ -20,7 +20,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // Result is what the user did with the composer.
@@ -96,7 +96,7 @@ type MailMessage struct {
 // with attachments, Simple MAPI, which Outlook and Thunderbird take (the
 // new Outlook and Windows's Mail app don't: ErrUnavailable).
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Mail(m MailMessage, done func(Result, error)) {
@@ -134,7 +134,7 @@ type TextMessage struct {
 // ACTION_SEND with the attachments). The Mac: a new message in Messages.
 // Windows: ErrUnavailable.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Message(m TextMessage, done func(Result, error)) {
@@ -161,7 +161,7 @@ type Can struct {
 
 // Check is what the device can compose. Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Check() (Can, error) {

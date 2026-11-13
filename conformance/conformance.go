@@ -16,11 +16,11 @@
 //	go test ./host/darwin -run Conformance              # macOS, in process
 //	go test ./host/windows -run Conformance             # Windows, in process
 //	go test -tags e2e ./e2e -run Conformance            # iOS, Android and the web (headless Chrome, at 1×, 1.5× and 2×)
-//	RYUI_CONFORMANCE_OUT=/tmp/c go test ...             # also write each capture, as <host>.png
+//	ASUKA_CONFORMANCE_OUT=/tmp/c go test ...             # also write each capture, as <host>.png
 //
 // Sheet's app (conformance/app) shows it on any platform:
 //
-//	go run ./cmd/ryui dev -platform ios conformance/app
+//	go run ./cmd/asuka dev -platform ios conformance/app
 package conformance
 
 import (
@@ -32,7 +32,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // Feature is something a case relies on that a host may document it
@@ -149,11 +149,11 @@ func Measure(img image.Image, host string) ([]Result, error) {
 }
 
 // Check runs Measure on img and reports each case as a subtest of t. It
-// writes img to $RYUI_CONFORMANCE_OUT/<name>.png when that's set, so
+// writes img to $ASUKA_CONFORMANCE_OUT/<name>.png when that's set, so
 // the captures can be looked at side by side.
 func Check(t *testing.T, name string, img image.Image, host string) {
 	t.Helper()
-	if dir := os.Getenv("RYUI_CONFORMANCE_OUT"); dir != "" {
+	if dir := os.Getenv("ASUKA_CONFORMANCE_OUT"); dir != "" {
 		if err := writePNG(filepath.Join(dir, name+".png"), img); err != nil {
 			t.Log(err)
 		}

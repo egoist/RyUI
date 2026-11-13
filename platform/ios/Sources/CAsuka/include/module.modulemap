@@ -1,0 +1,4 @@
+module CAsuka {
+    header "asuka.h"
+    export *
+}

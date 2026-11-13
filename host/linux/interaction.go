@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
 )
 
 // A screen reader's actions on a view (A11yActions) and adjustable views
@@ -82,7 +82,7 @@ func (h *Host) a11yView(n *node) *a11yView {
 	w := n.widget
 	WidgetSetFocusable(w, true)
 	WidgetSetFocusOnClick(w, false)
-	WidgetAddCSSClass(w, "ryui-focus-ring")
+	WidgetAddCSSClass(w, "asuka-focus-ring")
 	a.keys = EventControllerKeyNew()
 	Connect(a.keys, "key-pressed", func(keyval, keycode, state uint32) bool {
 		return h.a11yKey(n, a, keyval, state)

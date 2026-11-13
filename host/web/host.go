@@ -1,6 +1,6 @@
 //go:build js && wasm
 
-// Package web is RyUI's web host: the app's Go code compiled to
+// Package web is Asuka's web host: the app's Go code compiled to
 // WebAssembly, its views the page's DOM, made and driven by the web
 // platform's JavaScript host (platform/web/src/host.js), as the Swift and
 // Kotlin hosts drive UIKit and Android's views.
@@ -25,14 +25,14 @@ import (
 	"syscall/js"
 	"unsafe"
 
-	"github.com/egoist/ryui/host"
-	"github.com/egoist/ryui/internal/boot"
-	"github.com/egoist/ryui/internal/crashrun"
-	"github.com/egoist/ryui/internal/l10n"
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/host"
+	"github.com/egoist/asuka/internal/boot"
+	"github.com/egoist/asuka/internal/crashrun"
+	"github.com/egoist/asuka/internal/l10n"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // Host is the web host's Go side.
@@ -71,13 +71,13 @@ func Run(root func() ui.Node) {
 }
 
 func newHost() *Host {
-	name := os.Getenv("RYUI_WEB_HOST")
+	name := os.Getenv("ASUKA_WEB_HOST")
 	if name == "" {
-		name = "ryuiHost"
+		name = "asukaHost"
 	}
 	jh := js.Global().Get(name)
 	if jh.IsUndefined() {
-		panic("ryui: no web host on this page (" + name + "); load the app with platform/web's loader, as ryui dev -platform web and ryui build -platform web do")
+		panic("asuka: no web host on this page (" + name + "); load the app with platform/web's loader, as asuka dev -platform web and asuka build -platform web do")
 	}
 	h := &Host{js: jh}
 	theHost = h
@@ -103,7 +103,7 @@ func (h *Host) connect() {
 	fn("event", func(args []js.Value) any {
 		ev, err := ops.DecodeEvent(h.bytes(args[0]))
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "ryui:", err)
+			fmt.Fprintln(os.Stderr, "asuka:", err)
 			return nil
 		}
 		if ev.Kind == ops.EventEnvironment {
@@ -136,7 +136,7 @@ func (h *Host) connect() {
 		crashrun.Notify()
 		return nil
 	})
-	// ryui dev: the page is about to load the new build.
+	// asuka dev: the page is about to load the new build.
 	fn("saveState", func([]js.Value) any {
 		var s string
 		h.enter(func() { s = encodeState(signal.KeptState()) })
@@ -159,7 +159,7 @@ func (h *Host) connect() {
 		js.CopyBytesToGo(code, args[0])
 		src, err := boot.ShaderGLSL(code)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "ryui:", err)
+			fmt.Fprintln(os.Stderr, "asuka:", err)
 			return nil
 		}
 		return src
@@ -179,7 +179,7 @@ func (h *Host) bytes(v js.Value) []byte {
 }
 
 // enter runs f, a call into the core. The goroutine JavaScript called
-// in on is the main thread while it runs (ryui_debug's checks).
+// in on is the main thread while it runs (asuka_debug's checks).
 func (h *Host) enter(f func()) {
 	signal.BindThread()
 	f()
@@ -239,7 +239,7 @@ func (h *Host) runPosted() {
 }
 
 // restoreState gives the app's signals the values the last build saved
-// (ryui dev: the page keeps them in its session storage across the
+// (asuka dev: the page keeps them in its session storage across the
 // reload to the new build).
 func (h *Host) restoreState() {
 	v := h.js.Call("savedState")
@@ -248,7 +248,7 @@ func (h *Host) restoreState() {
 	}
 	var m map[string]json.RawMessage
 	if err := json.Unmarshal([]byte(v.String()), &m); err != nil {
-		fmt.Fprintln(os.Stderr, "ryui: restoring state:", err)
+		fmt.Fprintln(os.Stderr, "asuka: restoring state:", err)
 		return
 	}
 	saved := make(map[string][]byte, len(m))
@@ -265,7 +265,7 @@ func encodeState(vals map[string][]byte) string {
 	}
 	b, err := json.Marshal(m)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "ryui: saving state:", err)
+		fmt.Fprintln(os.Stderr, "asuka: saving state:", err)
 		return ""
 	}
 	return string(b)

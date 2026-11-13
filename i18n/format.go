@@ -364,7 +364,7 @@ var timeFormat atomic.Pointer[func(locale string, t time.Time, kind, style strin
 
 // linkTimes links the formatting of dates and times into messages, for
 // the catalogs and messages an app makes: NewCatalog, NewLibraryCatalog
-// and ParseMessage call it. RyUI's own strings, which every app formats,
+// and ParseMessage call it. Asuka's own strings, which every app formats,
 // have no dates, so an app that formats none does not link the patterns
 // and names of dates of CLDR's locales.
 func linkTimes() {
@@ -376,7 +376,7 @@ func linkTimes() {
 
 // formatTime writes a time of a message for locale (see formatDate), as
 // RFC 3339 before linkTimes linked the formatting of dates, which no
-// message of RyUI's own strings needs.
+// message of Asuka's own strings needs.
 func formatTime(locale string, t time.Time, kind, style string) string {
 	if f := timeFormat.Load(); f != nil {
 		return (*f)(locale, t, kind, style)

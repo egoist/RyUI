@@ -6,10 +6,10 @@ import (
 	"math"
 	"testing"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // richNode is the one RichText of h.

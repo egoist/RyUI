@@ -60,7 +60,7 @@ type ToastActivation struct {
 // ToastCLSID is the CLSID of an app's activator: a name-based UUID of
 // its AppUserModelID, the same for every build of the app.
 func ToastCLSID(aumid string) GUID {
-	sum := sha1.Sum([]byte("ryui.toast-activator:" + aumid))
+	sum := sha1.Sum([]byte("asuka.toast-activator:" + aumid))
 	b := sum[:16]
 	b[6] = b[6]&0x0f | 0x50
 	b[8] = b[8]&0x3f | 0x80
@@ -137,7 +137,7 @@ func RegisterToastActivator(aumid string, clsid GUID, exe string) error {
 	key := activatorKey(clsid)
 	cmd := `"` + exe + `" ` + toastActivatedArg
 	if regUserString(key+`\LocalServer32`, "") != cmd {
-		if err := regSetString(key, "", "RyUI toast activator"); err != nil {
+		if err := regSetString(key, "", "Asuka toast activator"); err != nil {
 			return err
 		}
 		if err := regSetString(key+`\LocalServer32`, "", cmd); err != nil {

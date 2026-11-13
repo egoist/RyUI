@@ -1,4 +1,4 @@
-// maps.View in the browser: the native view "ryui.map", a map the host
+// maps.View in the browser: the native view "asuka.map", a map the host
 // draws of OpenStreetMap's tiles, as the Windows host does (and GNOME
 // Maps' libshumate on Linux): <img> tiles placed in the view, the pins,
 // a callout, the user's location.
@@ -15,7 +15,7 @@
 // Props: region and markers (JSON), type (Satellite and Hybrid have no
 // free imagery source: they show the streets; Muted shows them in
 // quieter colors), showsUser (the user's location, once the page has the
-// location permission: ryui/location asks for it), interactive. The user
+// location permission: asuka/location asks for it), interactive. The user
 // moves it with a drag, zooms with the wheel (a trackpad's pinch comes as
 // Ctrl and the wheel), a finger's pinch, a double click (Shift: out), and
 // + and -; the arrow keys move it. Events: region (lat, lng, latDelta,
@@ -59,7 +59,7 @@ export function tileURL(template, z, x, y) {
   return template.replace("{z}", z).replace("{x}", x).replace("{y}", y);
 }
 
-/** mapView is ryui.map's native view: ctx as ryui.registerNative's. */
+/** mapView is asuka.map's native view: ctx as asuka.registerNative's. */
 export function mapView(ctx) {
   return new MapView(ctx).api();
 }
@@ -94,14 +94,14 @@ class MapView {
     this.suppressClick = false;
 
     const el = (this.el = document.createElement("div"));
-    el.className = "ryui-map";
+    el.className = "asuka-map";
     el.tabIndex = 0;
     el.setAttribute("role", "application");
     el.setAttribute("aria-roledescription", "map");
-    this.layer = div("ryui-map-tiles");
-    this.pins = div("ryui-map-pins");
+    this.layer = div("asuka-map-tiles");
+    this.pins = div("asuka-map-pins");
     this.attribution = document.createElement("a");
-    this.attribution.className = "ryui-map-attribution";
+    this.attribution.className = "asuka-map-attribution";
     this.attribution.href = "https://www.openstreetmap.org/copyright";
     this.attribution.target = "_blank";
     this.attribution.rel = "noopener";
@@ -150,7 +150,7 @@ class MapView {
       }
       case "type":
         // Satellite and Hybrid: no free imagery; Muted: quieter streets.
-        this.el.classList.toggle("ryui-map-muted", Number(value) === 3);
+        this.el.classList.toggle("asuka-map-muted", Number(value) === 3);
         break;
       case "showsUser":
         this.showsUser = !!value;
@@ -159,7 +159,7 @@ class MapView {
       case "interactive":
         this.interactive = !!value;
         this.el.tabIndex = this.interactive ? 0 : -1;
-        this.el.classList.toggle("ryui-map-static", !this.interactive);
+        this.el.classList.toggle("asuka-map-static", !this.interactive);
         break;
     }
   }
@@ -335,7 +335,7 @@ class MapView {
 
   /** tile makes a tile's element: its image, and while it comes one above it that's here. */
   tile(z, x, y, now) {
-    const el = div("ryui-map-tile");
+    const el = div("asuka-map-tile");
     const url = tileURL(this.template, z, x, y);
     const t = { el, url, img: document.createElement("img"), fallback: null, failed: 0 };
     const state = tiles.get(url);
@@ -347,7 +347,7 @@ class MapView {
         f.alt = "";
         f.draggable = false;
         const parts = 2 ** dz;
-        f.className = "ryui-map-fallback";
+        f.className = "asuka-map-fallback";
         f.style.width = f.style.height = parts * 100 + "%";
         f.style.left = -(x & (parts - 1)) * 100 + "%";
         f.style.top = -(y & (parts - 1)) * 100 + "%";
@@ -360,11 +360,11 @@ class MapView {
     img.alt = "";
     img.draggable = false;
     img.decoding = "async";
-    img.className = "ryui-map-img";
+    img.className = "asuka-map-img";
     img.onload = () => {
       if (img.src === blank) return;
       tiles.set(url, "loaded");
-      img.classList.add("ryui-map-loaded");
+      img.classList.add("asuka-map-loaded");
       t.fallback?.remove();
       t.fallback = null;
     };
@@ -396,15 +396,15 @@ class MapView {
     if (this.w <= 0 || this.h <= 0) return;
     if (this.showsUser && this.user) {
       const [x, y] = this.point(this.user.lat, this.user.lng);
-      const d = div("ryui-map-user");
+      const d = div("asuka-map-user");
       d.style.transform = `translate(${x}px, ${y}px)`;
       const acc = (this.user.acc / (40075016.686 * Math.cos((this.user.lat * Math.PI) / 180))) * this.world();
       if (acc > 12) {
-        const a = div("ryui-map-accuracy");
+        const a = div("asuka-map-accuracy");
         a.style.width = a.style.height = 2 * acc + "px";
         d.appendChild(a);
       }
-      d.appendChild(div("ryui-map-dot"));
+      d.appendChild(div("asuka-map-dot"));
       box.appendChild(d);
     }
     let sel = null;
@@ -415,20 +415,20 @@ class MapView {
       if (x < -40 || x > this.w + 40 || y < -10 || y > this.h + 60) continue;
       const b = document.createElement("button");
       b.type = "button";
-      b.className = "ryui-map-pin";
+      b.className = "asuka-map-pin";
       b.tabIndex = this.interactive ? 0 : -1;
       b.dataset.id = m.id ?? "";
       b.setAttribute("aria-label", [m.title, m.subtitle].filter(Boolean).join(", ") || "Marker");
       b.style.transform = `translate(${x - 13}px, ${y - 36}px)`;
       b.innerHTML = pinSVG;
-      b.firstChild.style.color = cssColor(m.color) || "var(--ryui-red)";
+      b.firstChild.style.color = cssColor(m.color) || "var(--asuka-red)";
       box.appendChild(b);
       if (m.id === this.selected && (m.title || m.subtitle)) sel = { m, x, y };
     }
     if (sel) {
-      const c = div("ryui-map-callout");
-      if (sel.m.title) c.appendChild(div("ryui-map-callout-title")).textContent = sel.m.title;
-      if (sel.m.subtitle) c.appendChild(div("ryui-map-callout-subtitle")).textContent = sel.m.subtitle;
+      const c = div("asuka-map-callout");
+      if (sel.m.title) c.appendChild(div("asuka-map-callout-title")).textContent = sel.m.title;
+      if (sel.m.subtitle) c.appendChild(div("asuka-map-callout-subtitle")).textContent = sel.m.subtitle;
       c.style.transform = `translate(${sel.x}px, ${sel.y - 40}px) translate(-50%, -100%)`;
       box.appendChild(c);
     }
@@ -495,14 +495,14 @@ class MapView {
     el.addEventListener("pointercancel", up);
     el.addEventListener("click", (e) => {
       if (this.suppressClick || !this.interactive || e.target === this.attribution) return;
-      const pin = e.target.closest?.(".ryui-map-pin");
+      const pin = e.target.closest?.(".asuka-map-pin");
       if (pin) {
         this.selected = pin.dataset.id;
         this.drawPins();
         this.ctx.emit("marker", { id: pin.dataset.id });
         return;
       }
-      if (e.target.closest?.(".ryui-map-callout")) return;
+      if (e.target.closest?.(".asuka-map-callout")) return;
       if (this.selected) {
         this.selected = "";
         this.drawPins();
@@ -512,7 +512,7 @@ class MapView {
       this.ctx.emit("press", this.at(x, y));
     });
     el.addEventListener("dblclick", (e) => {
-      if (!this.interactive || e.target.closest?.(".ryui-map-pin, .ryui-map-callout") || e.target === this.attribution) return;
+      if (!this.interactive || e.target.closest?.(".asuka-map-pin, .asuka-map-callout") || e.target === this.attribution) return;
       e.preventDefault();
       const { x, y } = this.local(e);
       this.zoomTo(e.shiftKey ? -1 : 1, x, y);

@@ -202,7 +202,7 @@ func Announce(hwnd uintptr, text string) {
 		return
 	}
 	defer Release(host)
-	s, id := SysAllocString(text), SysAllocString("ryui.announce")
+	s, id := SysAllocString(text), SysAllocString("asuka.announce")
 	defer SysFreeString(s)
 	defer SysFreeString(id)
 	const kindOther, processingImportantAll = 4, 0

@@ -1,17 +1,17 @@
 import UIKit
 
-// The share extension (ryui.json's shareTarget) of an app with no share
+// The share extension (asuka.json's shareTarget) of an app with no share
 // sheet of its own: what another app shares from its share sheet goes to
 // the app, which it opens, as Android's ACTION_SEND opens the app;
 // ui.OnShare gets it. It runs no Go: it collects the items
-// (RyUIShareCollector, in the host's sources) and hands them over in a
-// URL of the app's share scheme (Info.plist's RyUIShareScheme,
-// ryuishare.<app ID>), which the app's host turns into the Shared event.
+// (AsukaShareCollector, in the host's sources) and hands them over in a
+// URL of the app's share scheme (Info.plist's AsukaShareScheme,
+// asukashare.<app ID>), which the app's host turns into the Shared event.
 // Texts and links are in the URL; files are in the App Group the two
 // share, which the app moves them out of. An app with a sheet
-// (app.ShareSheet) has RyUIShareSheetController instead, with its Go.
+// (app.ShareSheet) has AsukaShareSheetController instead, with its Go.
 
-@objc(RyUIShareViewController)
+@objc(AsukaShareViewController)
 final class ShareViewController: UIViewController {
     private var started = false
 
@@ -26,10 +26,10 @@ final class ShareViewController: UIViewController {
         super.viewDidAppear(animated)
         guard !started else { return }
         started = true
-        let c = RyUIShareCollector(extensionContext)
+        let c = AsukaShareCollector(extensionContext)
         c.collect { items in
             guard !items.isEmpty, let url = c.shareURL(items) else { return self.finish() }
-            RyUIShareCollector.openApp(url, from: self) { _ in self.finish() }
+            AsukaShareCollector.openApp(url, from: self) { _ in self.finish() }
         }
     }
 

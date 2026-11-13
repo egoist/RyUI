@@ -9,7 +9,7 @@ package shareddir
 
 /*
 #include <stdlib.h>
-extern char *ryui_ios_shared_dir(void);
+extern char *asuka_ios_shared_dir(void);
 */
 import "C"
 
@@ -18,7 +18,7 @@ import "unsafe"
 // Dir is the App Group's Library/Application Support, "" if the app has
 // no share sheet.
 func Dir() string {
-	p := C.ryui_ios_shared_dir()
+	p := C.asuka_ios_shared_dir()
 	if p == nil {
 		return ""
 	}

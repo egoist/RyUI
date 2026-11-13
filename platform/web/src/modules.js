@@ -18,7 +18,7 @@ const enc = new TextEncoder();
 export class Modules {
   constructor(h) {
     this.h = h;
-    this.registered = new Map(); // ryui.registerModule's
+    this.registered = new Map(); // asuka.registerModule's
     this.builtins = null; // made on the first call
   }
 
@@ -35,7 +35,7 @@ export class Modules {
     };
     const m = this.registered.get(module)?.[method] || this.builtin(module)?.[method];
     if (!m) {
-      reply(null, new Error(`ryui: ${module}.${method} isn't on the web`));
+      reply(null, new Error(`asuka: ${module}.${method} isn't on the web`));
       return;
     }
     // Answered once the core has returned: never inside the batch.

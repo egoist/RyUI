@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/egoist/ryui/internal/boot"
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
+	"github.com/egoist/asuka/internal/boot"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
 )
 
 // win is a top-level window of the app's: the main one, holding the root,
@@ -23,7 +23,7 @@ type win struct {
 	toolbar  Ptr // AdwToolbarView
 	header   Ptr // AdwHeaderBar
 	title    Ptr // AdwWindowTitle
-	content  Ptr // the host's RyuiView under the header
+	content  Ptr // the host's AsukaView under the header
 	toasts   Ptr // the AdwToastOverlay around it
 	search   *searchField
 	restored bool
@@ -40,7 +40,7 @@ type win struct {
 
 func (h *Host) newMainWindow() *win {
 	w := h.newWin(AdwApplicationWindowNew(h.app))
-	if os.Getenv("RYUI_TEST") != "" {
+	if os.Getenv("ASUKA_TEST") != "" {
 		WindowSetDecorated(w.window, false)
 	}
 	w.name = h.appName
@@ -296,7 +296,7 @@ func timeZone() string {
 	return "UTC"
 }
 
-// appName is the app's name: ryui.json's, or the executable's.
+// appName is the app's name: asuka.json's, or the executable's.
 func appName() string {
 	if boot.Name != "" {
 		return boot.Name
@@ -304,7 +304,7 @@ func appName() string {
 	return filepath.Base(os.Args[0])
 }
 
-// appID is the application's ID: ryui.json's, else one made of its name
+// appID is the application's ID: asuka.json's, else one made of its name
 // (GApplication wants one with a dot).
 func appID(name string) string {
 	if boot.ID != "" && ApplicationIDIsValid(boot.ID) {
@@ -319,17 +319,17 @@ func appID(name string) string {
 			b.WriteRune('_')
 		}
 	}
-	id := "dev.ryui.app." + b.String()
+	id := "dev.asuka.app." + b.String()
 	if b.Len() == 0 || !ApplicationIDIsValid(id) {
-		return "dev.ryui.App"
+		return "dev.asuka.App"
 	}
 	return id
 }
 
 // assetsDir is where the app's assets are: assets beside the executable
-// (a release), RYUI_ASSETS (ryui dev), or assets in the working directory.
+// (a release), ASUKA_ASSETS (asuka dev), or assets in the working directory.
 func assetsDir() string {
-	if d := os.Getenv("RYUI_ASSETS"); d != "" {
+	if d := os.Getenv("ASUKA_ASSETS"); d != "" {
 		return d
 	}
 	if exe, err := os.Executable(); err == nil {

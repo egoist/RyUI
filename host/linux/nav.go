@@ -5,8 +5,8 @@ package linux
 import (
 	"strconv"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
 )
 
 // Navigation with libadwaita's widgets: a Stack is an AdwNavigationView

@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/egoist/ryui/internal/boot"
+	"github.com/egoist/asuka/internal/boot"
 )
 
 // Place names on Windows: OpenStreetMap's Nominatim, as GNOME's
@@ -28,10 +28,10 @@ import (
 // module's "places"). The names are in the user's languages (the app's
 // first).
 
-// nominatimURL is the server (RYUI_NOMINATIM: another, tests' or one of
+// nominatimURL is the server (ASUKA_NOMINATIM: another, tests' or one of
 // the app's own).
 func nominatimURL() string {
-	if u := os.Getenv("RYUI_NOMINATIM"); u != "" {
+	if u := os.Getenv("ASUKA_NOMINATIM"); u != "" {
 		return strings.TrimSuffix(u, "/")
 	}
 	return "https://nominatim.openstreetmap.org"
@@ -39,7 +39,7 @@ func nominatimURL() string {
 
 // geocoder asks Nominatim, a request at a time, a second apart at
 // least, and keeps what it answered (in memory, and in the caches'
-// ryui-geocode.json across launches).
+// asuka-geocode.json across launches).
 type geocoder struct {
 	mu     sync.Mutex // held for a request: one at a time
 	last   time.Time  // when the last request went
@@ -69,10 +69,10 @@ func (h *Host) geocoder() *geocoder {
 		if app == "" {
 			app = h.appUserModelID()
 		}
-		g.agent = "RyUI/1 (" + app + "; Windows; +https://github.com/egoist/ryui)"
+		g.agent = "Asuka/1 (" + app + "; Windows; +https://github.com/egoist/asuka)"
 	}
 	if g.path == "" {
-		g.path = filepath.Join(h.cacheDir(), "ryui-geocode.json")
+		g.path = filepath.Join(h.cacheDir(), "asuka-geocode.json")
 	}
 	return g
 }

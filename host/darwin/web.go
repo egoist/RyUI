@@ -11,12 +11,12 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ops"
 )
 
 // A WebView is a WKWebView. The page posts to Go with
-// window.ryui.postMessage(text), as on iOS and Android.
+// window.asuka.postMessage(text), as on iOS and Android.
 type web struct {
 	view    ID
 	ucc     ID // its user content controller
@@ -31,7 +31,7 @@ type web struct {
 // The page's state the view reports (WebState), observed as it changes.
 var webKeys = []string{"URL", "title", "loading", "estimatedProgress", "canGoBack", "canGoForward"}
 
-const bridgeJS = `window.ryui = { postMessage: function (m) { window.webkit.messageHandlers.ryui.postMessage(String(m)); } };`
+const bridgeJS = `window.asuka = { postMessage: function (m) { window.webkit.messageHandlers.asuka.postMessage(String(m)); } };`
 
 var webKitLoaded bool
 
@@ -43,7 +43,7 @@ func (h *Host) makeWeb(n *node) ID {
 	conf := New("WKWebViewConfiguration")
 	defer Release(conf)
 	ucc := Send(conf, "userContentController")
-	Send(ucc, "addScriptMessageHandler:name:", uintptr(h.target), uintptr(String("ryui")))
+	Send(ucc, "addScriptMessageHandler:name:", uintptr(h.target), uintptr(String("asuka")))
 	w := &web{ucc: Retain(ucc)}
 	w.addScript(bridgeJS)
 	v := MsgInitRectID(Send(Class("WKWebView"), "alloc"), Sel("initWithFrame:configuration:"), Rect{}, conf)
@@ -146,7 +146,7 @@ func (w *web) close() {
 		Send(w.view, "removeObserver:forKeyPath:", uintptr(theHost.target), uintptr(String(k)))
 	}
 	w.block++ // a rule list still compiling is dropped
-	Send(w.ucc, "removeScriptMessageHandlerForName:", uintptr(String("ryui")))
+	Send(w.ucc, "removeScriptMessageHandlerForName:", uintptr(String("asuka")))
 	Send(w.view, "setNavigationDelegate:", 0)
 	Send(w.view, "setUIDelegate:", 0)
 	Release(w.ucc)
@@ -199,7 +199,7 @@ func (h *Host) webState(v ID) {
 	h.emit(n, ops.Event{Kind: ops.EventWebState, Bytes: b})
 }
 
-// webMethods are RyUITarget's WebKit delegate methods.
+// webMethods are AsukaTarget's WebKit delegate methods.
 func webMethods() []objc.MethodDef {
 	return []objc.MethodDef{
 		Method("userContentController:didReceiveScriptMessage:", func(self ID, _ SEL, ucc, msg ID) {

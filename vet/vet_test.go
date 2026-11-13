@@ -6,12 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/egoist/ryui/vet"
+	"github.com/egoist/asuka/vet"
 	"golang.org/x/tools/go/analysis/analysistest"
 )
 
 // module copies testdata into a module of its own that uses this
-// checkout of RyUI, so the tests run against its real API.
+// checkout of Asuka, so the tests run against its real API.
 func module(t *testing.T) string {
 	t.Helper()
 	root, err := filepath.Abs("..")
@@ -26,8 +26,8 @@ func module(t *testing.T) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	mod := strings.Replace(string(gomod), "module github.com/egoist/ryui", "module example.com/vettest", 1)
-	mod += "\nrequire github.com/egoist/ryui v0.0.0\n\nreplace github.com/egoist/ryui => " + root + "\n"
+	mod := strings.Replace(string(gomod), "module github.com/egoist/asuka", "module example.com/vettest", 1)
+	mod += "\nrequire github.com/egoist/asuka v0.0.0\n\nreplace github.com/egoist/asuka => " + root + "\n"
 	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(mod), 0o644); err != nil {
 		t.Fatal(err)
 	}

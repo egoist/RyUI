@@ -97,11 +97,11 @@ test("the secure store encrypts under a key it can't export", async () => {
 });
 
 test("the secure store takes in what localStorage kept", async () => {
-  const m = new Map([["ryui.app.secure.a", btoa("one")], ["ryui.app.locale", "fr"], ["ryui.app.secure.b", btoa("two")]]);
+  const m = new Map([["asuka.app.secure.a", btoa("one")], ["asuka.app.locale", "fr"], ["asuka.app.secure.b", btoa("two")]]);
   const storage = { get length() { return m.size; }, key: (i) => [...m.keys()][i], getItem: (k) => m.get(k) ?? null, removeItem: (k) => m.delete(k) };
   const s = new SecureStore(memoryBackend());
-  await migrateLocalStorage(s, "ryui.app.", storage);
-  assert.deepEqual([...m.keys()], ["ryui.app.locale"]);
+  await migrateLocalStorage(s, "asuka.app.", storage);
+  assert.deepEqual([...m.keys()], ["asuka.app.locale"]);
   assert.equal(new TextDecoder().decode(await s.get("a")), "one");
   assert.equal(new TextDecoder().decode(await s.get("b")), "two");
 });

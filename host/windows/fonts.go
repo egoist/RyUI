@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	. "github.com/egoist/ryui/internal/windows"
+	. "github.com/egoist/asuka/internal/windows"
 )
 
 // The app's fonts: the files in its assets/fonts, added for the process

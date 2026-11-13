@@ -2,18 +2,18 @@
 // their catalogs (locales), a menu of its languages that changes them at
 // once, and a layout that mirrors in Arabic. Try it in a language with
 //
-//	ryui dev -platform ios -lang ar examples/i18n
-//	ryui dev -platform ios -lang en-XA examples/i18n   (a pseudo locale)
+//	asuka dev -platform ios -lang ar examples/i18n
+//	asuka dev -platform ios -lang en-XA examples/i18n   (a pseudo locale)
 package main
 
 import (
 	"time"
 
-	"github.com/egoist/ryui/app"
-	"github.com/egoist/ryui/examples/i18n/locales"
-	"github.com/egoist/ryui/i18n"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/examples/i18n/locales"
+	"github.com/egoist/asuka/i18n"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 func main() { app.Run(root) }

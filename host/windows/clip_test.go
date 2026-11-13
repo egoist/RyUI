@@ -7,9 +7,9 @@ import (
 	"os"
 	"testing"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // paintNow paints what's waiting to be painted in the main window, the
@@ -63,7 +63,7 @@ func TestRoundedClip(t *testing.T) {
 		var x, y int
 		onMain(t, func() {
 			img = windowImage(h.window)
-			if dir := os.Getenv("RYUI_TEST_PNG"); dir != "" {
+			if dir := os.Getenv("ASUKA_TEST_PNG"); dir != "" {
 				writeWindowPNG(h.window, dir+"/clip-"+what+".png")
 			}
 			o := MapPoint(clipper.hwnd, 0, Point{})

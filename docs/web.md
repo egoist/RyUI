@@ -1,26 +1,26 @@
 # The web
 
 The same app runs in a browser: its Go code compiled to WebAssembly, its
-views the page's DOM. The web is one of RyUI's platforms beside iOS,
+views the page's DOM. The web is one of Asuka's platforms beside iOS,
 Android, the Mac, Windows and Linux, from the same Go code. Each view the core makes is an element placed at
 the frame the core laid out, as each native host places its widgets, so
-the layout is RyUI's own (flexbox and grid, in Go), the same on every
+the layout is Asuka's own (flexbox and grid, in Go), the same on every
 platform; leaves are measured by the real elements, as the native hosts
 measure theirs. Controls are the browser's own (`<button>`, `<input>`,
 `<select>`, `<progress>`, `<dialog>`), so keyboard handling, focus,
 autofill, spelling and screen readers come with them.
 
 ```sh
-ryui dev -platform web examples/counter       # serves it and opens it in your browser; reloads as you save
-ryui build -platform web examples/counter     # a static site, in examples/counter/dist/web
+asuka dev -platform web examples/counter       # serves it and opens it in your browser; reloads as you save
+asuka build -platform web examples/counter     # a static site, in examples/counter/dist/web
 ```
 
 What follows says what the web does, and, where a browser can't do what
 a phone does, what happens instead.
 
-## ryui dev -platform web
+## asuka dev -platform web
 
-`ryui dev -platform web` builds the app for the browser (`GOOS=js GOARCH=wasm`),
+`asuka dev -platform web` builds the app for the browser (`GOOS=js GOARCH=wasm`),
 serves it at `http://localhost:8790/` (or a free port) and opens it. Each
 save rebuilds it, in well under a second for the examples, and the page
 loads the new build with the app's signals' values kept, as the other
@@ -28,7 +28,7 @@ platforms' reloads keep them. The app's output (`fmt.Println`, `log`, a
 panic) and the page's errors print in the terminal; a build that fails
 shows its errors over the page until the next one builds.
 
-The flags, beside `ryui dev`'s own (`-lang`, `-dir`, `-vet`, `-v`):
+The flags, beside `asuka dev`'s own (`-lang`, `-dir`, `-vet`, `-v`):
 
 - `-port`: the server's port.
 - `-lan`: serve to your network too, and print its addresses: open the
@@ -36,17 +36,17 @@ The flags, beside `ryui dev`'s own (`-lang`, `-dir`, `-vet`, `-v`):
 - `-no-open`: don't open the browser.
 - `-once`: build and serve, without watching.
 
-## ryui build -platform web
+## asuka build -platform web
 
-`ryui build -platform web` makes a static site in `dist/web`:
+`asuka build -platform web` makes a static site in `dist/web`:
 
 - `index.html` and `manifest.webmanifest` (a web app manifest, so a
-  browser offers to install the app; its icons from `ryui.json`'s
+  browser offers to install the app; its icons from `asuka.json`'s
   `icon`, with a favicon and iOS's home screen icon);
 - the app, `app.<digest>.wasm`, built stripped and with `-trimpath`;
-- the web host's files in `ryui/<digest>/` (with SQLite's WebAssembly
+- the web host's files in `asuka/<digest>/` (with SQLite's WebAssembly
   build, about 0.9 MB, 0.4 MB gzipped, for an app that imports
-  `ryui/sqlite`), and the app's own scripts (`web/*.js`) in
+  `asuka/sqlite`), and the app's own scripts (`web/*.js`) in
   `web/<digest>/`;
 - the app's service worker, `sw.<digest>.js`, beside `index.html` (its
   scope is the site's folder): it shows the app's notifications and
@@ -129,7 +129,7 @@ The environment a web app sees (`ui.UseEnvironment`) is the browser's:
 
 ## The app's files
 
-`ryui/store`, crash records and the files your app writes in `store.Dir`
+`asuka/store`, crash records and the files your app writes in `store.Dir`
 are kept: the page gives Go a file system in memory, the data directory's
 files loaded from the browser's storage (IndexedDB) before the app starts
 and written back a moment after they change (a large file, such as a
@@ -145,10 +145,10 @@ to the home screen).
 
 ## SQLite
 
-`ryui/sqlite` works as on the other platforms, live queries included.
+`asuka/sqlite` works as on the other platforms, live queries included.
 Its SQLite is SQLite's own WebAssembly build (from sqlite.org, which
-`ryui build -platform web` and `ryui dev -platform web` ship with the
-apps that import `ryui/sqlite`, and load before the app starts), driven
+`asuka build -platform web` and `asuka dev -platform web` ship with the
+apps that import `asuka/sqlite`, and load before the app starts), driven
 from Go synchronously. A database is a file in the app's data directory,
 like any other, so Go's `os` sees it (a backup is `os.ReadFile`), and it
 is kept with the app's other files: each call SQLite answers runs to its
@@ -176,9 +176,9 @@ of the directory with `sqlite3.mjs` and `sqlite3.wasm`, to `start`.
 
 ## Native modules
 
-RyUI's packages call the host's native modules (`ui.Call`). In a browser:
+Asuka's packages call the host's native modules (`ui.Call`). In a browser:
 
-- `ryui/secure`: the values are encrypted (AES-GCM) with a key the
+- `asuka/secure`: the values are encrypted (AES-GCM) with a key the
   browser keeps and won't let out (a non-extractable WebCrypto key), in
   IndexedDB. It isn't a keychain: script running in the app's origin
   can't read the key, but it can ask it to decrypt. It needs `https`
@@ -191,85 +191,85 @@ RyUI's packages call the host's native modules (`ui.Call`). In a browser:
   page shows); `Browse` (a new tab); `PickPhotos` and `PickFiles` (the
   browser's file picker; the files copied to the caches).
 - `ShareFiles`: the share sheet with the files (`navigator.share`),
-  else each file downloaded. `ryui/preview`: the file opened in a new
+  else each file downloaded. `asuka/preview`: the file opened in a new
   tab (images, video, audio, text, PDF, HTML); another type is
   `ErrNoViewer`.
-- `ryui/print`: HTML, files (PDFs in the browser's viewer) and the app's
+- `asuka/print`: HTML, files (PDFs in the browser's viewer) and the app's
   own web views, with the browser's print dialog; the result is always
   `Unknown` (a browser doesn't say). `PDF` isn't on the web: a browser
   makes PDFs only through its print dialog (Save as PDF).
-- `ryui/compose`: `mailto:` and `sms:` links; with attachments, the share
+- `asuka/compose`: `mailto:` and `sms:` links; with attachments, the share
   sheet.
-- `ryui/notify` and `ryui/push`: the Notification API and Web Push,
+- `asuka/notify` and `asuka/push`: the Notification API and Web Push,
   through the app's service worker: see
   [Notifications and Web Push](#notifications-and-web-push).
-- `ryui/network`: online from `navigator.onLine`; Wi-Fi, cellular or
+- `asuka/network`: online from `navigator.onLine`; Wi-Fi, cellular or
   Ethernet where the browser says (Chrome on Android), metered for
   cellular, constrained for Data Saver.
-- `ryui/location`: the Geolocation API; `PlaceName` isn't on the web (a
+- `asuka/location`: the Geolocation API; `PlaceName` isn't on the web (a
   browser has no geocoder).
-- `ryui/sensors`: the Generic Sensor API (Chrome) or device motion and
+- `asuka/sensors`: the Generic Sensor API (Chrome) or device motion and
   orientation events (Safari asks on a tap), in Android's axes and
   units; no barometer or pedometer.
-- `ryui/speech`: `speechSynthesis`, the browser's voices.
-- `ryui/audio`: an audio element per player (the browser's autoplay
-  rules apply: play from a tap). `ryui/audio/record`: `MediaRecorder`,
+- `asuka/speech`: `speechSynthesis`, the browser's voices.
+- `asuka/audio`: an audio element per player (the browser's autoplay
+  rules apply: play from a tap). `asuka/audio/record`: `MediaRecorder`,
   AAC in MPEG-4 where the browser records it, else Opus in WebM.
-- `ryui/camera`: `Take` opens a phone's camera, or a dialog with the live
+- `asuka/camera`: `Take` opens a phone's camera, or a dialog with the live
   camera and a shutter; `camera.View` is the camera in a `<video>`
   (`Capture`, `record`, and scanning codes where the browser has
-  `BarcodeDetector`). `ryui/scan` and `ryui/vision`'s codes use
+  `BarcodeDetector`). `asuka/scan` and `asuka/vision`'s codes use
   `BarcodeDetector`, faces and text only where the browser has them.
-- `ryui/imageedit`: a canvas (JPEG or PNG; a remote image needs CORS).
-- `ryui/maps`: a map the host draws of OpenStreetMap's tiles, as on
+- `asuka/imageedit`: a canvas (JPEG or PNG; a remote image needs CORS).
+- `asuka/maps`: a map the host draws of OpenStreetMap's tiles, as on
   Windows: pins, their callouts, a drag, the wheel, a pinch, a double
   click and the keyboard to move it, and the attribution OpenStreetMap
   asks for. Satellite and Hybrid show the streets (no free imagery);
   `ShowsUser` shows the user's location once the page has the location
-  permission (`ryui/location` asks; the map never does). The tiles come
+  permission (`asuka/location` asks; the map never does). The tiles come
   from `tile.openstreetmap.org` as its usage policy asks of a web page
   (only what's on screen, the browser's cache, its Referer); for heavy
   use, pass `mapTiles` (another server's URL, with `{z}`, `{x}` and
   `{y}`) to `start` ([Embedding](#embedding)).
-- `ryui/crash`: Go's runtime can't write its crash output to a file in a
+- `asuka/crash`: Go's runtime can't write its crash output to a file in a
   browser, so the host keeps what it prints and, as the program ends
   with a panic or a fatal error, writes it to the run's record in the
   app's files: the next launch reports it. An uncaught JavaScript error
   (the host's, or your `web/*.js`) is an `Exception` report at once, not
   fatal (the page goes on). A page marks its run alive in `localStorage`,
   so other open pages of the app leave it alone.
-- `ryui/biometric`: the platform's authenticator through WebAuthn (Touch
+- `asuka/biometric`: the platform's authenticator through WebAuthn (Touch
   ID, Face ID, Windows Hello, Android's screen lock), user verification
   required: the first `Authenticate` makes a passkey for the site, named
   after the app. The prompt is the browser's, so the reason and cancel
   texts don't show.
-- `ryui/webauth`: a popup, done when it comes back to a page of the
+- `asuka/webauth`: a popup, done when it comes back to a page of the
   app's own origin (a custom scheme can't open a page).
-- `ryui/screen`: `Lock` (only full screen, or an installed app); hiding
+- `asuka/screen`: `Lock` (only full screen, or an installed app); hiding
   the bars is full screen.
-- `ryui/library`: `Save` downloads the file. `ryui/contacts`: `Pick`
+- `asuka/library`: `Save` downloads the file. `asuka/contacts`: `Pick`
   where the browser has the Contact Picker (Chrome on Android); `Add`
-  downloads a vCard, and `ryui/calendar`'s `Add` an `.ics` file.
-- `ryui/tracking` answers Denied when the browser sends Global Privacy
+  downloads a vCard, and `asuka/calendar`'s `Add` an `.ics` file.
+- `asuka/tracking` answers Denied when the browser sends Global Privacy
   Control or Do Not Track, else Allowed, without a prompt.
 - Not on the web, with an error that says so (or the package's own
-  "not available"): `ryui/review`, `ryui/integrity`, `ryui/agerange`,
-  `ryui/appleauth`, `ryui/periodic`, `ryui/widget`, `ryui/photos` (Denied:
+  "not available"): `asuka/review`, `asuka/integrity`, `asuka/agerange`,
+  `asuka/appleauth`, `asuka/periodic`, `asuka/widget`, `asuka/photos` (Denied:
   `device.PickPhotos` picks photos), reading contacts and calendars,
-  `ryui/transcribe`'s files, `ryui/screen`'s `PreventCapture` and
+  `asuka/transcribe`'s files, `asuka/screen`'s `PreventCapture` and
   `OnScreenshot`.
 
 ## Notifications and Web Push
 
 Every web app has a service worker, which the CLI writes (`sw.js` under
-`ryui dev`, `sw.<digest>.js` in a build) and the page registers as it
+`asuka dev`, `sw.<digest>.js` in a build) and the page registers as it
 starts, scoped to the app's folder. It has no fetch handler, so the page
 loads as it would without it; it shows the app's notifications and
 pushes, and answers their clicks, whether or not a page of the app is
 open. A browser runs service workers only for pages served over HTTPS,
-or from `localhost` (`ryui dev`'s, but not `-lan`'s addresses).
+or from `localhost` (`asuka dev`'s, but not `-lan`'s addresses).
 
-### ryui/notify
+### asuka/notify
 
 - `Request` asks with the browser's prompt; browsers ask only from a tap
   or a click, so call it from one.
@@ -332,11 +332,11 @@ event wakes it, not on a timer. So `Schedule` does what a browser can:
 For a notification that must show at its time with the app closed, send
 a push from your server at that time.
 
-### ryui/push: Web Push
+### asuka/push: Web Push
 
 Web Push needs a VAPID key pair: the app's server signs its pushes with
 the private key, and the browser subscribes with the public one, which
-goes in `ryui.json`:
+goes in `asuka.json`:
 
 ```json
 { "web": { "vapidPublicKey": "BKpYsAT0ADj2pHQQ..." } }
@@ -410,11 +410,11 @@ been updated in the background") and Safari ends the subscription after
 a few. A payload that isn't JSON shows as the body. A payload is at most
 3993 bytes.
 
-From Go, `github.com/egoist/ryui/push/webpush` encrypts, signs and sends,
+From Go, `github.com/egoist/asuka/push/webpush` encrypts, signs and sends,
 with the standard library only:
 
 ```go
-import "github.com/egoist/ryui/push/webpush"
+import "github.com/egoist/asuka/push/webpush"
 
 var sender = &webpush.Sender{
 	Keys:    webpush.Keys{Public: os.Getenv("VAPID_PUBLIC_KEY"), Private: os.Getenv("VAPID_PRIVATE_KEY")},
@@ -465,7 +465,7 @@ keeps its own history and adds nothing to the tab's.
 
 A page of the app's own site (its assets, HTML, a file it wrote, any URL
 of the page's origin) gets everything: the host loads it into the frame
-with its real URL, `window.ryui.postMessage` and `Preload` there before
+with its real URL, `window.asuka.postMessage` and `Preload` there before
 the page's scripts; `EvalJS` and `EvalJSResult` (a promise awaited); its
 load, failure and state events (URL, title, `pushState`, progress, back
 and forward); back, forward, reload and stop; its links, forms and
@@ -493,20 +493,20 @@ sends script only to the origin that said it's ready):
 
 ```js
 // In the page: messages to the app (OnMessage), its URL and title, and EvalJS.
-const app = (m) => parent.postMessage({ ryui: m.ryui ?? true, ...m }, "*");
+const app = (m) => parent.postMessage({ asuka: m.asuka ?? true, ...m }, "*");
 addEventListener("message", async (e) => {
-  if (e.source !== parent || !e.data?.ryui) return;
-  if (e.data.ryui === "hello") app({ ryui: "ready", url: location.href, title: document.title });
-  if (e.data.ryui === "eval") {
-    try { app({ ryui: "result", id: e.data.id, value: JSON.stringify(await (0, eval)(e.data.script)) }); }
-    catch (err) { app({ ryui: "result", id: e.data.id, error: String(err) }); }
+  if (e.source !== parent || !e.data?.asuka) return;
+  if (e.data.asuka === "hello") app({ asuka: "ready", url: location.href, title: document.title });
+  if (e.data.asuka === "eval") {
+    try { app({ asuka: "result", id: e.data.id, value: JSON.stringify(await (0, eval)(e.data.script)) }); }
+    catch (err) { app({ asuka: "result", id: e.data.id, error: String(err) }); }
   }
 });
-app({ ryui: "ready", url: location.href, title: document.title });
+app({ asuka: "ready", url: location.href, title: document.title });
 app({ text: "Hello from the page" }); // OnMessage
 ```
 
-`ryui/js` runs its script in a hidden sandboxed frame of an origin of its
+`asuka/js` runs its script in a hidden sandboxed frame of an origin of its
 own, so it can't reach the app's page or storage.
 
 ## Native code
@@ -515,11 +515,11 @@ An app's own views and modules for the web are JavaScript, in `web/*.js`
 beside its Go code, as its Swift is in `ios/` and `macos/`, its Kotlin
 in `android/`, and its desktop views and modules in Go are in package
 `native`: see [Native code](native.md). The page loads them before the app starts; they register with
-the global `ryui`:
+the global `asuka`:
 
 ```js
 // web/natives.js
-ryui.registerNative("Stepper", (ctx) => {
+asuka.registerNative("Stepper", (ctx) => {
   const el = document.createElement("input");
   el.type = "number";
   el.oninput = () => ctx.emit("changed", { value: Number(el.value) });
@@ -530,14 +530,14 @@ ryui.registerNative("Stepper", (ctx) => {
   };
 });
 
-ryui.registerModule("greeter", {
+asuka.registerModule("greeter", {
   // a method takes the call's bytes and returns (or resolves to) the result's
   hello: (args) => new TextEncoder().encode("Hello, " + new TextDecoder().decode(args)),
 });
 ```
 
-A kind no script registers shows nothing, and the page logs `ryui: no
-native view "Stepper" is registered`, as the other hosts do. `ryui dev`
+A kind no script registers shows nothing, and the page logs `asuka: no
+native view "Stepper" is registered`, as the other hosts do. `asuka dev`
 reloads the page when a script in `web/` changes.
 
 `examples/media` has a native view, its JavaScript in
@@ -545,15 +545,15 @@ reloads the page when a script in `web/` changes.
 
 ## Embedding
 
-The page `ryui build -platform web` makes runs the app full page. To run it in an
+The page `asuka build -platform web` makes runs the app full page. To run it in an
 element of a page of your own, load the host's loader and start the app
 in it; it then follows the element's size:
 
 ```html
-<link rel="stylesheet" href="ryui/<digest>/style.css">
+<link rel="stylesheet" href="asuka/<digest>/style.css">
 <div id="app" style="width: 390px; height: 700px"></div>
 <script type="module">
-  import { start } from "./ryui/<digest>/ryui.js";
+  import { start } from "./asuka/<digest>/asuka.js";
   start({ container: document.getElementById("app"), wasm: "app.<digest>.wasm", name: "com.example.app", serviceWorker: "sw.<digest>.js" });
 </script>
 ```
@@ -561,8 +561,8 @@ in it; it then follows the element's size:
 Several apps can run on one page, each in its element. `serviceWorker`
 registers the app's worker (the build's `sw.<digest>.js`, from the
 folder whose pages it serves): without it, notifications are the page's
-own and `ryui/push` can't subscribe. Pass `vapidPublicKey` too for
-`ryui/push`, as `index.html` does, and `mapTiles` for `ryui/maps`' tiles
+own and `asuka/push` can't subscribe. Pass `vapidPublicKey` too for
+`asuka/push`, as `index.html` does, and `mapTiles` for `asuka/maps`' tiles
 from a server of your own (`"https://tiles.example.com/{z}/{x}/{y}.png"`;
 OpenStreetMap's by default).
 
@@ -570,6 +570,6 @@ OpenStreetMap's by default).
 
 - A text field's accessory bar shows only where there's an on-screen
   keyboard (a touch screen).
-- A notification scheduled with `ryui/notify` can't show at its time
+- A notification scheduled with `asuka/notify` can't show at its time
   while no page of the app is open: browsers have no way to schedule one
   ([above](#scheduled-notifications)).

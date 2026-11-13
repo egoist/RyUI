@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/ui"
 )
 
 // selectableFixture mounts a Selectable of three texts (the second two

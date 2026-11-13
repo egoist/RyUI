@@ -1,7 +1,7 @@
-// Gallery shows RyUI's components, a destination each in a split view's
+// Gallery shows Asuka's components, a destination each in a split view's
 // sidebar (a drawer on Android, a list that pushes on an iPhone).
 //
-//	go run ./cmd/ryui dev -platform ios examples/gallery
+//	go run ./cmd/asuka dev -platform ios examples/gallery
 package main
 
 import (
@@ -10,24 +10,24 @@ import (
 	"math"
 	"time"
 
-	"github.com/egoist/ryui/app"
-	"github.com/egoist/ryui/audio"
-	"github.com/egoist/ryui/camera"
-	"github.com/egoist/ryui/camera/record"
-	"github.com/egoist/ryui/chart"
-	"github.com/egoist/ryui/compose"
-	"github.com/egoist/ryui/crash"
-	"github.com/egoist/ryui/device"
-	"github.com/egoist/ryui/location"
-	"github.com/egoist/ryui/notify"
-	"github.com/egoist/ryui/preview"
-	"github.com/egoist/ryui/print"
-	"github.com/egoist/ryui/scan"
-	"github.com/egoist/ryui/secure"
-	"github.com/egoist/ryui/shader"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/store"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/audio"
+	"github.com/egoist/asuka/camera"
+	"github.com/egoist/asuka/camera/record"
+	"github.com/egoist/asuka/chart"
+	"github.com/egoist/asuka/compose"
+	"github.com/egoist/asuka/crash"
+	"github.com/egoist/asuka/device"
+	"github.com/egoist/asuka/location"
+	"github.com/egoist/asuka/notify"
+	"github.com/egoist/asuka/preview"
+	"github.com/egoist/asuka/print"
+	"github.com/egoist/asuka/scan"
+	"github.com/egoist/asuka/secure"
+	"github.com/egoist/asuka/shader"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/store"
+	"github.com/egoist/asuka/ui"
 )
 
 func App() ui.Node {
@@ -329,7 +329,7 @@ func popover() ui.Node {
 		ui.Popover(ui.PopoverProps{Open: open, MaxWidth: 280, Content: func() ui.Node {
 			return ui.Column(ui.Style{Padding: ui.All(16), Gap: 8},
 				ui.StaticText("About this gallery", ui.Style{Font: ui.Headline}),
-				ui.StaticText("Every view here is the platform's own, laid out by RyUI's core and driven by signals.",
+				ui.StaticText("Every view here is the platform's own, laid out by Asuka's core and driven by signals.",
 					ui.Style{Color: ui.SecondaryLabel}),
 				ui.Button(ui.ButtonProps{Title: ui.Val("Done"), Variant: ui.ButtonTinted, OnPress: func() { open.Set(false) }}))
 		}}, ui.Button(ui.ButtonProps{Icon: ui.Icon("info.circle"), Label: ui.Val("About"), Tooltip: ui.Val("About"),
@@ -653,7 +653,7 @@ func documents() ui.Node {
 				})
 			}}),
 			ui.Button(ui.ButtonProps{Title: ui.Val("Text a friend"), Icon: "message", Variant: ui.ButtonGray, OnPress: func() {
-				compose.Message(compose.TextMessage{To: []string{"+15555550123"}, Body: "Look at RyUI's gallery."}, func(r compose.Result, err error) {
+				compose.Message(compose.TextMessage{To: []string{"+15555550123"}, Body: "Look at Asuka's gallery."}, func(r compose.Result, err error) {
 					if err != nil {
 						status.Set("Message: " + err.Error())
 						return
@@ -932,7 +932,7 @@ func platform() ui.Node {
 	)
 }
 
-// crashes shows the crash reports kept (ryui/crash): the app's own
+// crashes shows the crash reports kept (asuka/crash): the app's own
 // crashes, from earlier runs, and the errors it recorded. A real app
 // sends each to its server and deletes it; here, Delete only forgets it.
 func crashes() ui.Node {
@@ -1019,8 +1019,8 @@ func topButton(shown signal.Accessor[bool], top func()) ui.Node {
 
 // cameraScreen shows the camera live (camera.View) with a shutter
 // (camera.Capture), and the last photo taken; it records videos
-// (ryui/camera/record), played on a screen of their own, and reads the
-// codes it sees (ryui/scan).
+// (asuka/camera/record), played on a screen of their own, and reads the
+// codes it sees (asuka/scan).
 func cameraScreen() ui.Node {
 	nav := ui.UseNavigator()
 	last := signal.New("")
@@ -1080,7 +1080,7 @@ func cameraScreen() ui.Node {
 var webView ui.Node
 
 // webPage is a web page from markup: its button posts a message to Go
-// (window.ryui.postMessage); the bar's button runs script in it.
+// (window.asuka.postMessage); the bar's button runs script in it.
 func webPage() ui.Node {
 	webView = ui.WebView(ui.WebViewProps{
 		HTML: ui.Val(`<!doctype html><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1088,7 +1088,7 @@ func webPage() ui.Node {
 button { font: inherit; padding: 10px 16px; border-radius: 10px; border: 0; background: #0a84ff; color: white; }</style>
 <h2>A web page</h2>
 <p>Its button talks to Go; the bar's button runs script here.</p>
-<button onclick="ryui.postMessage('Hello from the page')">Post a message</button>
+<button onclick="asuka.postMessage('Hello from the page')">Post a message</button>
 <p id="out"></p>`),
 		OnMessage: func(m string) { ui.Alert(ui.AlertProps{Title: "The page says", Message: m}) },
 	})

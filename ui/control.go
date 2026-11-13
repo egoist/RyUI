@@ -3,9 +3,9 @@ package ui
 import (
 	"reflect"
 
-	"github.com/egoist/ryui/ops"
+	"github.com/egoist/asuka/ops"
 
-	"github.com/egoist/ryui/signal"
+	"github.com/egoist/asuka/signal"
 )
 
 // Show shows then() while when is true, else the first of otherwise if

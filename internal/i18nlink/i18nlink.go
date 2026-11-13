@@ -1,7 +1,7 @@
-// Package i18nlink hands RyUI's own strings (internal/l10n) what package
+// Package i18nlink hands Asuka's own strings (internal/l10n) what package
 // i18n does not export: a library's catalog that does not link the
 // formatting of the dates of messages, which i18n.NewLibraryCatalog does
-// for the catalogs of libraries and apps. RyUI's own strings have no
+// for the catalogs of libraries and apps. Asuka's own strings have no
 // dates, and every app formats them, so the patterns and names of dates
 // of CLDR's locales are linked only into apps that format dates.
 package i18nlink

@@ -15,7 +15,7 @@ import (
 	"encoding/binary"
 	"errors"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // Status is whether the age range came.
@@ -60,7 +60,7 @@ var ErrNotAvailable = errors.New("agerange: not available")
 // 16, 18: up to three; iOS answers which side of each the user is; Play
 // answers its own ranges). Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Request(gates ...int) (Result, error) {

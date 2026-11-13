@@ -1,6 +1,6 @@
 # Getting started
 
-RyUI needs Go, and for each platform you run on, that platform's tools.
+Asuka needs Go, and for each platform you run on, that platform's tools.
 Then one command makes an app, and another runs it, reloading as you
 save.
 
@@ -11,14 +11,14 @@ save.
 - **iOS**: a Mac with Xcode, and its iOS simulator.
 - **Android**: a Mac or Linux, with Android Studio and, from its SDK
   Manager, an NDK (SDK Tools → NDK), and an emulator from its Device
-  Manager, or a phone with USB debugging on. RyUI finds the SDK in its
+  Manager, or a phone with USB debugging on. Asuka finds the SDK in its
   usual place, or at `ANDROID_HOME`, and Android Studio's Java.
 - **macOS**: a Mac, macOS 11 or later. Nothing else to run the app;
   release builds, and an app with Swift of its own (`macos/*.swift`),
   use Xcode's command line tools (`xcode-select --install`), which Xcode
   includes.
 - **Windows**: a PC with Windows 10 or 11, x64 or Arm. Nothing else:
-  RyUI calls Win32 from Go. `ui.WebView` and `ui.Video` use the
+  Asuka calls Win32 from Go. `ui.WebView` and `ui.Video` use the
   Microsoft Edge WebView2 Runtime, which Windows 11 has, as most
   Windows 10 PCs do.
 - **Linux**: GTK 4.14 and libadwaita 1.5 or later (Ubuntu 24.04,
@@ -35,19 +35,19 @@ save.
   isn't there says which, as an error.
 - **The web**: a browser. The app is built as WebAssembly by Go alone.
 
-The desktop hosts call their platform without cgo, so `ryui build`
+The desktop hosts call their platform without cgo, so `asuka build`
 makes a Windows or Linux app from any system, and a Mac app from a Mac.
 
 ## Install the CLI
 
 ```sh
-go install github.com/egoist/ryui/cmd/ryui@latest
+go install github.com/egoist/asuka/cmd/asuka@latest
 ```
 
 ## Make an app
 
 ```sh
-ryui new hello
+asuka new hello
 cd hello
 ```
 
@@ -55,7 +55,7 @@ cd hello
 
 - `main.go`, the app: a function that returns its interface, given to
   `app.Run`.
-- `ryui.json`, its name, its ID (the bundle ID, application ID and
+- `asuka.json`, its name, its ID (the bundle ID, application ID and
   desktop app ID) and version, and what [the stores and each
   platform](shipping.md) need.
 - `go.mod`.
@@ -63,30 +63,30 @@ cd hello
 ## Run it
 
 ```sh
-ryui dev                      # this computer: on a Mac, a PC or Linux
-ryui dev -platform ios        # the iOS simulator
-ryui dev -platform android    # an Android emulator or phone
-ryui dev -platform web        # your browser
+asuka dev                      # this computer: on a Mac, a PC or Linux
+asuka dev -platform ios        # the iOS simulator
+asuka dev -platform android    # an Android emulator or phone
+asuka dev -platform web        # your browser
 ```
 
 Save a Go file and the app reloads in a moment, the values of its
 signals kept. Its output (`fmt.Println`, panics) is in the terminal.
 
-- **On your computer** (`ryui dev`, or `-platform mac`, `windows`,
-  `linux`), the app and its host are one Go program: RyUI builds it,
+- **On your computer** (`asuka dev`, or `-platform mac`, `windows`,
+  `linux`), the app and its host are one Go program: Asuka builds it,
   runs it in a window, and builds and runs it again on each save.
-- **On a phone**, the first run builds and installs RyUI's player app,
+- **On a phone**, the first run builds and installs Asuka's player app,
   which shows your app's views; your Go code runs on your computer and
   talks to it, so a save reloads without reinstalling.
   `-device` picks the simulator (its name or UDID) or the Android device
   (an adb serial or an AVD's name). `-embed` builds your Go code into
   the app instead, as a release build has it; `-once` builds it in and
   launches it once.
-- **In a browser**, RyUI serves the app at `http://localhost:8790/` and
+- **In a browser**, Asuka serves the app at `http://localhost:8790/` and
   opens it; each save reloads the page. `-lan` serves it to your
   network, to try it in a phone's browser. See [the web](web.md).
 
-To run on an iPhone, make a build signed for it: `ryui build -platform ios
+To run on an iPhone, make a build signed for it: `asuka build -platform ios
 -distribution development`, then install the `.ipa` with Xcode's Devices
 window.
 
@@ -95,7 +95,7 @@ devices, logs, and the problems you may meet.
 
 ## Change it
 
-`main.go` from `ryui new` is a counter:
+`main.go` from `asuka new` is a counter:
 
 ```go
 func App() ui.Node {

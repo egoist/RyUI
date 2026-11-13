@@ -11,7 +11,7 @@ import (
 // formats of their system, with the changes they made to them, which may
 // be those of another language than the one they read, as an English
 // reader in Germany who wants weeks to start on Monday and the time in 24
-// hours. RyUI's App.Region reports it, and native UI reads it with
+// hours. Asuka's App.Region reports it, and native UI reads it with
 // Context.Region.
 type Region struct {
 	// Locale is the locale of the formats, a BCP 47 tag such as "en-GB"

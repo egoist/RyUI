@@ -1,10 +1,10 @@
 // The app's service worker: what shows and answers the app's
 // notifications while no page of it is open, or none is in front.
 //
-// The CLI ships it with every web app (ryui build -platform web:
-// sw.<digest>.js beside index.html; ryui dev -platform web: sw.js), as
-// one file: globalThis.ryuiApp (the app's name, title, assets and
-// icon), notify-core.js, then this. The page registers it (ryui.js),
+// The CLI ships it with every web app (asuka build -platform web:
+// sw.<digest>.js beside index.html; asuka dev -platform web: sw.js), as
+// one file: globalThis.asukaApp (the app's name, title, assets and
+// icon), notify-core.js, then this. The page registers it (asuka.js),
 // scoped to the app's directory. It has no fetch handler: the page loads
 // as it would without it.
 //
@@ -23,14 +23,14 @@
 //     it starts (it says "hello").
 //   - notificationclose: the pages forget it.
 //   - pushsubscriptionchange: subscribed again with the app's key.
-//   - periodicsync ("ryui-notify", where the browser runs it: Chrome, an
+//   - periodicsync ("asuka-notify", where the browser runs it: Chrome, an
 //     installed app), and any other time the worker runs with no page
 //     open: the scheduled notifications that are due show.
 
 (() => {
   const g = globalThis;
-  const core = g.ryuiNotify;
-  const cfg = g.ryuiApp || {};
+  const core = g.asukaNotify;
+  const cfg = g.asukaApp || {};
   const name = cfg.name || "app";
   const st = core.store(name);
   const scope = () => g.registration?.scope || g.location?.href || "http://localhost/";
@@ -101,10 +101,10 @@
     const message = core.messageOf(payload, core.newID());
     const ws = await windows();
     const chosen = front(ws) || ws[0] || null;
-    for (const c of ws) if (c !== chosen) c.postMessage({ ryui: "received", app: name, message });
+    for (const c of ws) if (c !== chosen) c.postMessage({ asuka: "received", app: name, message });
     let spec = core.specOfMessage(message, payload), how = 0;
     if (chosen) {
-      const a = await ask(chosen, { ryui: "push", app: name, message }, answerMs);
+      const a = await ask(chosen, { asuka: "push", app: name, message }, answerMs);
       if (a?.spec) spec = { ...a.spec, url: a.spec.url || a.spec.data?.url || "", silent: !!(a.spec.silent || spec.silent) };
       how = a?.how || 0;
     } else {
@@ -120,12 +120,12 @@
   async function onClick(event) {
     const n = event.notification;
     const d = n?.data;
-    if (!d?.ryui) return;
+    if (!d?.asuka) return;
     n.close();
     const action = event.action || "";
     const open = action === "" || (d.opens || []).includes(action);
     const item = {
-      ryui: "response", app: d.app || name, response: core.responseOf(d, action, event.reply),
+      asuka: "response", app: d.app || name, response: core.responseOf(d, action, event.reply),
       push: d.push || null, url: action === "" ? d.shown?.url || "" : "",
     };
     const ws = await windows();
@@ -146,14 +146,14 @@
 
   async function onClose(event) {
     const d = event.notification?.data;
-    if (!d?.ryui) return;
-    for (const c of await windows()) c.postMessage({ ryui: "closed", app: d.app || name, id: d.shown?.id || "" });
+    if (!d?.asuka) return;
+    for (const c of await windows()) c.postMessage({ asuka: "closed", app: d.app || name, id: d.shown?.id || "" });
   }
 
   async function onMessage(event) {
     const m = event.data;
-    if (!m?.ryui) return;
-    if (m.ryui === "hello") {
+    if (!m?.asuka) return;
+    if (m.asuka === "hello") {
       // A page started: the answers that waited for one.
       for (const item of await core.takePending(st, m.app || name)) event.source?.postMessage(item);
     }
@@ -168,7 +168,7 @@
   }
 
   async function onPeriodicSync(event) {
-    if (event.tag === "ryui-notify") await fireDue();
+    if (event.tag === "asuka-notify") await fireDue();
   }
 
   // The browser ended the subscription (it expired, or its keys changed):
@@ -186,13 +186,13 @@
     push: onPush, notificationclick: onClick, notificationclose: onClose, message: onMessage,
     periodicsync: onPeriodicSync, pushsubscriptionchange: onSubscriptionChange,
   };
-  g.ryuiWorker = { ...handlers, fireDue, show };
+  g.asukaWorker = { ...handlers, fireDue, show };
 
   if (typeof g.registration === "object" && g.registration && typeof g.addEventListener === "function" && g.clients) {
     g.addEventListener("install", () => g.skipWaiting?.());
     g.addEventListener("activate", (e) => e.waitUntil(Promise.resolve(g.clients.claim?.()).then(fireDue)));
     for (const [type, f] of Object.entries(handlers)) {
-      g.addEventListener(type, (e) => e.waitUntil(f(e).catch((err) => console.error("ryui: service worker:", type, err))));
+      g.addEventListener(type, (e) => e.waitUntil(f(e).catch((err) => console.error("asuka: service worker:", type, err))));
     }
   }
 })();

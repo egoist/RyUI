@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // A timeline goes sorted by time, its times in ms and its tint as #rrggbbaa.

@@ -7,11 +7,11 @@ package main
 import (
 	"fmt"
 
-	"github.com/egoist/ryui/app"
-	"github.com/egoist/ryui/crash"
-	"github.com/egoist/ryui/maps"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/crash"
+	"github.com/egoist/asuka/maps"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 func App() ui.Node {

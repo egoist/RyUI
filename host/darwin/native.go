@@ -7,19 +7,19 @@ import (
 	"math"
 	"os"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/native"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/native"
+	"github.com/egoist/asuka/ops"
 )
 
 // ui.Native on a Mac: the app's Go registers its views with package
 // native (an NSView it makes through purego). The node's view is a
-// RyUIView holding the app's, which fills it as the core places it. Its
+// AsukaView holding the app's, which fills it as the core places it. Its
 // props go to the view's Set, its events come back with the context's
 // Emit, and it's measured by its Measure, or its fittingSize.
 
-// builtinViews are the host's own native views (ryui/maps' map,
-// ryui/camera's preview), by kind, each file adding its own (from its
+// builtinViews are the host's own native views (asuka/maps' map,
+// asuka/camera's preview), by kind, each file adding its own (from its
 // init). They win over the app's of the same kind.
 var builtinViews = map[string]func(native.Context) native.View{}
 
@@ -42,7 +42,7 @@ func (h *Host) setNativeProp(n *node, p ops.PropID, v *ops.Value) {
 			f = native.ViewFactory(v.Str)
 		}
 		if f == nil {
-			fmt.Fprintf(os.Stderr, "ryui: no native view %q is registered (package native)\n", v.Str)
+			fmt.Fprintf(os.Stderr, "asuka: no native view %q is registered (package native)\n", v.Str)
 			return
 		}
 		id := n.id

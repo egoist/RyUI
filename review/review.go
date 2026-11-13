@@ -7,14 +7,14 @@
 // PlayStoreURL.
 package review
 
-import "github.com/egoist/ryui/ui"
+import "github.com/egoist/asuka/ui"
 
 // Request asks the store to show its rating prompt, and calls done (if
 // not nil) on the main thread once it's been handled: shown, rated,
 // dismissed, or not shown. err is only for a failure (Play's library
 // missing, no Play Store). Main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Request(done func(err error)) {
@@ -33,7 +33,7 @@ func AppStoreURL(id string) string {
 }
 
 // PlayStoreURL is the app's Google Play page, for ui.OpenURL: id is its
-// application ID (ryui.json's id).
+// application ID (asuka.json's id).
 func PlayStoreURL(id string) string {
 	return "https://play.google.com/store/apps/details?id=" + id + "&showAllReviews=true"
 }

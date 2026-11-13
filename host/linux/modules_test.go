@@ -18,9 +18,9 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/internal/notifyspec"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/internal/notifyspec"
+	"github.com/egoist/asuka/ui"
 )
 
 // The native modules that run headless: the keyring (with
@@ -726,7 +726,7 @@ func fdoCall(t *testing.T, method string, params func() Ptr) any {
 		if params != nil {
 			p = params()
 		}
-		DBusCall(conn, fdoDest, fdoPath, "dev.ryui.Test", method, p, -1, func(reply Ptr, err error) {
+		DBusCall(conn, fdoDest, fdoPath, "dev.asuka.Test", method, p, -1, func(reply Ptr, err error) {
 			r.v, r.err, r.done = VariantGo(reply), err, true
 		})
 	})

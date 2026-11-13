@@ -1,12 +1,12 @@
 // Downloader saves videos from links: a link pasted or shared from
 // another app (ui.OnShare), downloaded while the app is out of sight
-// (ryui/background, its progress and Pause and Cancel in a notification),
-// on Wi-Fi only if asked (ryui/network), into the gallery (ryui/library).
+// (asuka/background, its progress and Pause and Cancel in a notification),
+// on Wi-Fi only if asked (asuka/network), into the gallery (asuka/library).
 // Its browser finds the videos a page plays, from a script that runs
 // before the page's own (WebViewProps.Preload), and blocks ads; its icons
-// are SVG (ryui/svg); ryui/js runs a script off screen.
+// are SVG (asuka/svg); asuka/js runs a script off screen.
 //
-//	go run ./cmd/ryui dev -platform android -once examples/downloader
+//	go run ./cmd/asuka dev -platform android -once examples/downloader
 package main
 
 import (
@@ -23,15 +23,15 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/egoist/ryui/app"
-	"github.com/egoist/ryui/background"
-	"github.com/egoist/ryui/js"
-	"github.com/egoist/ryui/library"
-	"github.com/egoist/ryui/network"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/store"
-	"github.com/egoist/ryui/svg"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/background"
+	"github.com/egoist/asuka/js"
+	"github.com/egoist/asuka/library"
+	"github.com/egoist/asuka/network"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/store"
+	"github.com/egoist/asuka/svg"
+	"github.com/egoist/asuka/ui"
 )
 
 // Lucide's icons.

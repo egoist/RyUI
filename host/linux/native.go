@@ -7,10 +7,10 @@ import (
 	"math"
 	"os"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/native"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/native"
+	"github.com/egoist/asuka/ops"
 )
 
 // ui.Native on Linux: the app's Go registers its views with package
@@ -81,10 +81,10 @@ func (h *Host) setNativeProp(n *node, p ops.PropID, v *ops.Value) {
 		nv.kind = v.Str
 		f := native.ViewFactory(v.Str)
 		if f == nil {
-			f = builtinViews[v.Str] // the host's own: ryui.camera, ryui.map...
+			f = builtinViews[v.Str] // the host's own: asuka.camera, asuka.map...
 		}
 		if f == nil {
-			fmt.Fprintf(os.Stderr, "ryui: no native view %q is registered (package native)\n", v.Str)
+			fmt.Fprintf(os.Stderr, "asuka: no native view %q is registered (package native)\n", v.Str)
 			return
 		}
 		id := n.id

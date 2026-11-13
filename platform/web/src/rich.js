@@ -47,13 +47,13 @@ function render(h, n) {
   let next = 0;
   for (const runs of paras) {
     const p = document.createElement("div");
-    p.className = "ryui-paragraph";
+    p.className = "asuka-paragraph";
     for (const run of runs) {
       const st = styles[run.style] || { flags: 0 };
       if (st.flags & 16) {
         const inl = n.inlines[next++];
         const slot = document.createElement("span");
-        slot.className = "ryui-inline";
+        slot.className = "asuka-inline";
         if (inl) { slot.style.width = inl.w + "px"; slot.style.height = inl.h + "px"; slot.dataset.id = inl.id; }
         n.slots.push(slot);
         p.appendChild(slot);
@@ -82,7 +82,7 @@ function render(h, n) {
       const deco = [st.flags & 4 ? "underline" : "", st.flags & 8 ? "line-through" : ""].filter(Boolean).join(" ");
       if (deco) css.textDecorationLine = deco;
       if (st.color) css.color = h.css(st.color);
-      if (st.background) { css.backgroundColor = h.css(st.background); s.classList.add("ryui-marked"); }
+      if (st.background) { css.backgroundColor = h.css(st.background); s.classList.add("asuka-marked"); }
       p.appendChild(s);
     }
     if (!p.childNodes.length) p.appendChild(document.createElement("br"));
@@ -106,9 +106,9 @@ function placeInlines(h, n) {
 const richText = {
   create(h, n) {
     const el = own(n, document.createElement("div"));
-    el.className = "ryui-rich";
+    el.className = "asuka-rich";
     n.text = document.createElement("div");
-    n.text.className = "ryui-rich-text";
+    n.text.className = "asuka-rich-text";
     el.appendChild(n.text);
     n.inlines = [];
     text.applyFont(h, n, el);

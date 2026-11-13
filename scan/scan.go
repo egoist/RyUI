@@ -9,7 +9,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // Kind is a code's symbology.
@@ -65,7 +65,7 @@ func (s *Scanner) CameraScan() (kinds string, found func(kind, value string)) {
 // image at path (a photo taken or picked) and calls done on the main
 // thread with them: none, if there are none. Main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func File(path string, done func([]Code, error), kinds ...Kind) {

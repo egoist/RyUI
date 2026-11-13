@@ -12,20 +12,20 @@ import (
 	"unsafe"
 
 	"github.com/ebitengine/purego"
-	"github.com/egoist/ryui/native"
+	"github.com/egoist/asuka/native"
 )
 
 // An app's native code in Swift (its macos/*.swift): the CLI compiles it,
-// with RyUI's Swift for it (platform/macos), into a library in the
-// app's bundle, Contents/Frameworks/RyUIAppNatives.dylib. The host loads
+// with Asuka's Swift for it (platform/macos), into a library in the
+// app's bundle, Contents/Frameworks/AsukaAppNatives.dylib. The host loads
 // it as it starts and calls its functions through purego, so nothing
-// here needs cgo. What the app's RyUIAppNatives registers there joins
+// here needs cgo. What the app's AsukaAppNatives registers there joins
 // package native's registry: its views are made, set, measured and
 // destroyed by the library's functions, its events and its modules'
 // answers come back through two functions of the host's (callbacks).
 
 // swiftLib is the library's name in Contents/Frameworks.
-const swiftLib = "RyUIAppNatives.dylib"
+const swiftLib = "AsukaAppNatives.dylib"
 
 var swift struct {
 	loaded  bool
@@ -66,23 +66,23 @@ func loadSwiftNatives(path string) error {
 	}
 	lib, err := purego.Dlopen(path, purego.RTLD_NOW|purego.RTLD_LOCAL)
 	if err != nil {
-		return fmt.Errorf("ryui: cannot load the app's Swift (%s): %v", path, err)
+		return fmt.Errorf("asuka: cannot load the app's Swift (%s): %v", path, err)
 	}
 	var boot func(emit, reply uintptr) *byte
 	for _, f := range []struct {
 		fn   any
 		name string
 	}{
-		{&boot, "ryui_natives_boot"},
-		{&swift.make, "ryui_natives_make"},
-		{&swift.set, "ryui_natives_set"},
-		{&swift.measure, "ryui_natives_measure"},
-		{&swift.destroy, "ryui_natives_destroy"},
-		{&swift.call, "ryui_natives_call"},
-		{&swift.free, "ryui_natives_free"},
+		{&boot, "asuka_natives_boot"},
+		{&swift.make, "asuka_natives_make"},
+		{&swift.set, "asuka_natives_set"},
+		{&swift.measure, "asuka_natives_measure"},
+		{&swift.destroy, "asuka_natives_destroy"},
+		{&swift.call, "asuka_natives_call"},
+		{&swift.free, "asuka_natives_free"},
 	} {
 		if _, err := purego.Dlsym(lib, f.name); err != nil {
-			return fmt.Errorf("ryui: the app's Swift (%s) has no %s: rebuild it with this version of RyUI", path, f.name)
+			return fmt.Errorf("asuka: the app's Swift (%s) has no %s: rebuild it with this version of Asuka", path, f.name)
 		}
 		purego.RegisterLibFunc(f.fn, lib, f.name)
 	}
@@ -116,7 +116,7 @@ func loadSwiftNatives(path string) error {
 // count, then for each a u8 (1: a view kind, 2: a module method) and its
 // names.
 func parseSwiftRegistry(b []byte) (kinds []string, modules map[string][]string, err error) {
-	bad := errors.New("ryui: the app's Swift library answered a malformed registry")
+	bad := errors.New("asuka: the app's Swift library answered a malformed registry")
 	take := func(n int) []byte {
 		if n < 0 || len(b) < n {
 			err = bad

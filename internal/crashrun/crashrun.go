@@ -1,11 +1,11 @@
-// Package crashrun keeps the record of this run that ryui/crash reports
+// Package crashrun keeps the record of this run that asuka/crash reports
 // from: Go's crash output (runtime/debug.SetCrashOutput) and the run's
 // context, the device and the app, its breadcrumbs and values, written
 // as they change so they're on disk before a crash. The hosts start it as
-// the app starts, before the app's main; ryui/crash reads what earlier
+// the app starts, before the app's main; asuka/crash reads what earlier
 // runs left.
 //
-// Only an app that imports ryui/crash keeps a record (Enabled): for the
+// Only an app that imports asuka/crash keeps a record (Enabled): for the
 // others, Start does nothing, and the hosts install nothing native.
 //
 // The directory (Dir) has:
@@ -13,8 +13,8 @@
 //	runs/<run>.crash    Go's crash output: empty unless the run crashed
 //	runs/<run>.ctx      the run's context, a JSON object a line (Line)
 //	runs/<run>.stderr   Windows, without a console: the runtime's standard error
-//	inbox/<name>.json   what a host wrote of a native crash, for ryui/crash to read
-//	reports/<id>.json   the reports, as ryui/crash returns them
+//	inbox/<name>.json   what a host wrote of a native crash, for asuka/crash to read
+//	reports/<id>.json   the reports, as asuka/crash returns them
 //
 // A run holds a lock on its .crash file while it lives (flock; on Windows
 // the open file), so a process reading the directory tells a run that
@@ -32,10 +32,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/egoist/ryui/store"
+	"github.com/egoist/asuka/store"
 )
 
-// Enabled is set by ryui/crash as it initializes: the app reports
+// Enabled is set by asuka/crash as it initializes: the app reports
 // crashes.
 var Enabled bool
 
@@ -44,8 +44,8 @@ type Info struct {
 	Model         string `json:"model,omitempty"`         // "iPhone17,1", "Pixel 9", "MacBookPro18,3"; on the web, the browser's system ("macOS 15.1")
 	System        string `json:"system,omitempty"`        // "iOS", "Android", "macOS", "Windows", "Web"
 	SystemVersion string `json:"systemVersion,omitempty"` // "26.0", "16"; on the web, the browser ("Chrome 131")
-	AppVersion    string `json:"appVersion,omitempty"`    // ryui.json's version
-	Build         string `json:"build,omitempty"`         // ryui.json's build
+	AppVersion    string `json:"appVersion,omitempty"`    // asuka.json's version
+	Build         string `json:"build,omitempty"`         // asuka.json's build
 }
 
 // Run is the first line of a run's context.
@@ -68,7 +68,7 @@ type Line struct {
 	Value *string `json:"v,omitempty"`
 	// Whether the app is in the foreground.
 	Foreground *bool `json:"fg,omitempty"`
-	// A report was made of the run, of this kind (ryui/crash, after the
+	// A report was made of the run, of this kind (asuka/crash, after the
 	// run): what a host reports again of the same crash is left out.
 	Reported string `json:"reported,omitempty"`
 }
@@ -94,7 +94,7 @@ var (
 )
 
 // Dir is the directory crash reports are kept in: crashes in the app's
-// data directory (ryui/store's Dir).
+// data directory (asuka/store's Dir).
 func Dir() string { return filepath.Join(store.Dir(), "crashes") }
 
 // ID is this run's: its start in Unix milliseconds and its process ID, ""
@@ -170,7 +170,7 @@ func begin() {
 // process is "share" in the app's share sheet's process (an iOS share
 // extension, Android's :share process), "app" otherwise.
 func process() string {
-	if os.Getenv("RYUI_SHARE_SHEET") == "1" || strings.Contains(os.Args[0], ".appex/") {
+	if os.Getenv("ASUKA_SHARE_SHEET") == "1" || strings.Contains(os.Args[0], ".appex/") {
 		return "share"
 	}
 	if runtime.GOOS == "android" {
@@ -326,7 +326,7 @@ func OnNotify(f func()) {
 
 // Notify says a host wrote a report in the inbox (MetricKit's
 // diagnostics, Android's record of how the last runs ended; on mobile
-// through ryui_crash_notify): ryui/crash reads it. Any goroutine.
+// through asuka_crash_notify): asuka/crash reads it. Any goroutine.
 func Notify() {
 	mu.Lock()
 	fs := append([]func(){}, notify...)
@@ -356,13 +356,13 @@ func reset() {
 	values = map[string]string{}
 }
 
-// Reset forgets the run and starts the next in d (tests, in ryui/crash
+// Reset forgets the run and starts the next in d (tests, in asuka/crash
 // and here).
 func Reset(d string) {
 	mu.Lock()
 	defer mu.Unlock()
 	reset()
 	if d != "" {
-		os.Setenv("RYUI_DATA", d)
+		os.Setenv("ASUKA_DATA", d)
 	}
 }

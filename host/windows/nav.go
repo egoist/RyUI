@@ -3,9 +3,9 @@
 package windows
 
 import (
-	"github.com/egoist/ryui/internal/l10n"
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ops"
+	"github.com/egoist/asuka/internal/l10n"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ops"
 )
 
 // Navigation on Windows:

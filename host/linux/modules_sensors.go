@@ -9,10 +9,10 @@ import (
 	"syscall"
 	"unsafe"
 
-	. "github.com/egoist/ryui/internal/gtk"
+	. "github.com/egoist/asuka/internal/gtk"
 )
 
-// ryui/sensors on Linux: iio-sensor-proxy (net.hadess.SensorProxy, on
+// asuka/sensors on Linux: iio-sensor-proxy (net.hadess.SensorProxy, on
 // the system bus), which convertible laptops and tablets run. It gives
 // the ambient light (in lux, when the sensor says so) and the
 // accelerometer's orientation, not its readings: the accelerometer reads

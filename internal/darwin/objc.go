@@ -118,7 +118,7 @@ var (
 func mustDlopen(path string) uintptr {
 	h, err := purego.Dlopen(path, purego.RTLD_GLOBAL|purego.RTLD_NOW)
 	if err != nil {
-		panic(fmt.Sprintf("ryui: cannot load %s: %v", path, err))
+		panic(fmt.Sprintf("asuka: cannot load %s: %v", path, err))
 	}
 	return h
 }
@@ -126,7 +126,7 @@ func mustDlopen(path string) uintptr {
 func mustDlsym(lib uintptr, name string) uintptr {
 	p, err := purego.Dlsym(lib, name)
 	if err != nil {
-		panic(fmt.Sprintf("ryui: %v", err))
+		panic(fmt.Sprintf("asuka: %v", err))
 	}
 	return p
 }
@@ -227,7 +227,7 @@ func Class(name string) ID {
 	}
 	c = ID(objc.GetClass(name))
 	if c == 0 {
-		panic("ryui: Objective-C class " + name + " not found")
+		panic("asuka: Objective-C class " + name + " not found")
 	}
 	selMu.Lock()
 	clsCache[name] = c
@@ -525,7 +525,7 @@ func DefineClass(name, super string, protocols []string, methods []objc.MethodDe
 	}
 	c, err := objc.RegisterClass(name, objc.GetClass(super), ps, nil, methods)
 	if err != nil {
-		panic(fmt.Sprintf("ryui: cannot register class %s: %v", name, err))
+		panic(fmt.Sprintf("asuka: cannot register class %s: %v", name, err))
 	}
 	selMu.Lock()
 	clsCache[name] = ID(c)

@@ -6,8 +6,8 @@ import (
 	"encoding/binary"
 	"strings"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ops"
 )
 
 // The app's menus (ui.MenuBar): the menu bar is made again with them

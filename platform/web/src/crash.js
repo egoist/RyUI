@@ -1,5 +1,5 @@
-// Crash reports (ryui/crash) in the browser: the web host's side of the
-// run's record (internal/crashrun, which an app that imports ryui/crash
+// Crash reports (asuka/crash) in the browser: the web host's side of the
+// run's record (internal/crashrun, which an app that imports asuka/crash
 // starts as the host does).
 //
 //   - Go's crash output. On js/wasm Go's runtime can't write it to a file
@@ -10,12 +10,12 @@
 //     between, so when the program ends with a nonzero status, what it
 //     printed last from "panic: " or "fatal error: " on is the crash: it
 //     goes in the run's .crash file (crashrun's begin names it), in the
-//     app's files, which IndexedDB keeps; ryui/crash reads it into a
+//     app's files, which IndexedDB keeps; asuka/crash reads it into a
 //     report on the next launch.
 //   - Which runs live. The app's files are the origin's, shared by its
 //     pages (each reads them as it loads), so a page marks its run alive
 //     in localStorage, every page of the origin seeing it, while it's
-//     open: ryui/crash leaves the runs of the others alone.
+//     open: asuka/crash leaves the runs of the others alone.
 //   - Uncaught JavaScript errors (the host's, or the app's web/*.js): an
 //     exception report each, not fatal (the page goes on), written to the
 //     inbox as the mobile hosts write theirs, and Go told (crashNotify),
@@ -24,7 +24,7 @@
 
 import * as fs from "./fs.js";
 
-const aliveKey = (path) => "ryui-run:" + path;
+const aliveKey = (path) => "asuka-run:" + path;
 const heartbeat = 30_000; // how often a live page marks its run
 const stale = 10 * 60_000; // a mark older than this is a page that's gone (a background tab's timers run once a minute at least)
 const maxCrash = 8 << 20; // what's kept of a crash's output

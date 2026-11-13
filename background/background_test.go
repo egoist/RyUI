@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/egoist/ryui/background"
-	"github.com/egoist/ryui/host/fake"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/background"
+	"github.com/egoist/asuka/host/fake"
+	"github.com/egoist/asuka/ui"
 )
 
 // A task starts, updates and ends through the host's module; an action

@@ -532,7 +532,7 @@ func TestCSSFixtures(t *testing.T) {
 	t.Logf("CSS fixtures: %d/%d pass (%s)", pass, total, strings.Join(gs, ", "))
 	if *updateKnown {
 		sort.Strings(failing)
-		body := "# Fixtures ryui's layout doesn't match yet. go test ./layout -run CSS -update-known rewrites this.\n" + strings.Join(failing, "\n") + "\n"
+		body := "# Fixtures asuka's layout doesn't match yet. go test ./layout -run CSS -update-known rewrites this.\n" + strings.Join(failing, "\n") + "\n"
 		if err := os.WriteFile("testdata/css/known_failures.txt", []byte(body), 0o644); err != nil {
 			t.Fatal(err)
 		}

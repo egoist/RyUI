@@ -5,7 +5,7 @@ package ops
 // The schema: every kind of native view, its props, the events hosts
 // send, the commands the core sends and the enums they use. go generate
 // writes the Go constants (schema_gen.go) and the Swift decoder
-// (platform/ios/Sources/RyUIOps/Ops.swift) from it.
+// (platform/ios/Sources/AsukaOps/Ops.swift) from it.
 //
 // Adding a component: add its kind and props here, run go generate, add
 // the component in ui, and its view in every host.
@@ -110,7 +110,7 @@ var Schema = SchemaDef{
 		{Name: "Gradient", Type: TBytes, Doc: "a linear background gradient: u32 count, per stop u64 color and f32 location (0 to 1); f32 start x, y, end x, y (unit points of the view)"},
 		{Name: "Transition", Type: TBytes, Doc: "u8 fade, f32 scale (0: none), offset x, y (points): the state a view comes in from when it's inserted during an animation, and goes out to when it's destroyed during one (the host keeps it until it has)"},
 		{Name: "Material", Type: TEnum, Enum: "Material", Doc: "a translucent background that blurs what's behind (iOS's materials); Android, which can't, shows its surface color, translucent"},
-		{Name: "FontFamily", Type: TString, Doc: "a font file's name in the app's assets/fonts (Inter-Bold.ttf: Inter-Bold), a family of them (Inter: Inter-Regular, Inter-Bold...), a generic family (serif, monospace, rounded) or a system family; scaled as the text style is. Under ryui dev, a font file's URL, which the host loads, then sends FontLoaded"},
+		{Name: "FontFamily", Type: TString, Doc: "a font file's name in the app's assets/fonts (Inter-Bold.ttf: Inter-Bold), a family of them (Inter: Inter-Regular, Inter-Bold...), a generic family (serif, monospace, rounded) or a system family; scaled as the text style is. Under asuka dev, a font file's URL, which the host loads, then sends FontLoaded"},
 		{Name: "SwipeActions", Type: TBytes, Doc: "a List cell's swipe actions, encoded as Menu (iOS: its trailing actions; Android: a full swipe runs the first); Action events on the cell carry the index"},
 		{Name: "LayoutDirection", Type: TEnum, Enum: "LayoutDirection", Doc: "the view lays itself out and aligns its text in this direction, whatever the app's (ui.WithDirection): sent to each view in the subtree, as a platform's view doesn't take it from its parent. Frames are always physical"},
 		{Name: "ContentInset", Type: TEdges, Doc: "the room a measured view's padding and border take inside its frame, in points (top, right, bottom, left: physical): the host draws its content (a text, a field's text, a button's title, an image) inside it, and measures its content alone, as before. Sent when it changes from none"},
@@ -215,7 +215,7 @@ var Schema = SchemaDef{
 		{Name: "RichText", Props: []PropDef{
 			{Name: "Content", Type: TBytes, Doc: "u32 style count, per style: u8 TextStyle (0: the view's), f32 size (0: the view's), u8 FontWeight (0: the view's), u8 flags (1 italic, 2 monospaced, 4 underline, 8 strikethrough, 16 inline: the run is U+FFFC, the next inline component), u64 color (0: the view's), u64 background (0: none), string link; then u32 paragraph count, per paragraph u32 run count, per run u32 style index and a string"},
 			{Name: "Inlines", Type: TBytes, Doc: "the inline components, in the order of their runs: u32 count, per component u32 node id (a child of the view), f32 width, f32 height. Each sits on the baseline at its run's place; the host positions the child there (its frame's origin is 0, 0)"},
-		}, Doc: "styled paragraphs typeset and drawn by ryui's own view (CoreText, StaticLayout); the common text props are its defaults. A tapped link reports Link. Its children are its inline components"},
+		}, Doc: "styled paragraphs typeset and drawn by asuka's own view (CoreText, StaticLayout); the common text props are its defaults. A tapped link reports Link. Its children are its inline components"},
 		{Name: "Selectable", Doc: "a container whose RichText descendants share one selection, across texts: the platform's handles, loupe and edit menu; Copy copies the selected text"},
 		{Name: "Symbol", Props: []PropDef{
 			{Name: "Name", Type: TString, Doc: "an SF Symbol name: iOS draws any; Android the common ones, as Material Symbols"},
@@ -269,7 +269,7 @@ var Schema = SchemaDef{
 			{Name: "UserAgent", Type: TString, Doc: "the User-Agent the page is fetched with, and navigator.userAgent (empty: the platform's)"},
 			{Name: "Block", Type: TBytes, Doc: "requests to block: u32 count, then u32-length patterns, each a host (which matches its subdomains too) or, with a /, a part of the URL (iOS and macOS: a content rule list, the page loading once it's compiled; Android: shouldInterceptRequest; Windows: WebView2's resource filter)"},
 			{Name: "Requests", Type: TBool, Doc: "report each request the page makes with Request (Android, Windows; iOS and macOS can't see them)"},
-		}, Doc: "a web page (WKWebView, android.webkit.WebView). Navigated reports each page loaded (its URL), Failed a page that couldn't load, Message what the page posts with window.ryui.postMessage(text), WebState its URL, title, progress and history, Download a response the page can't show (a file to save), NewWindow a page it would open in a new window (window.open, target=_blank: without a listener, it loads in this view), Request each request (with Requests); the Eval command runs script in it, WebNavigate goes back, forward, reloads or stops"},
+		}, Doc: "a web page (WKWebView, android.webkit.WebView). Navigated reports each page loaded (its URL), Failed a page that couldn't load, Message what the page posts with window.asuka.postMessage(text), WebState its URL, title, progress and history, Download a response the page can't show (a file to save), NewWindow a page it would open in a new window (window.open, target=_blank: without a listener, it loads in this view), Request each request (with Requests); the Eval command runs script in it, WebNavigate goes back, forward, reloads or stops"},
 		{Name: "DatePicker", Props: []PropDef{
 			{Name: "Value", Type: TInt, Doc: "the instant, in Unix milliseconds"},
 			{Name: "Mode", Type: TEnum, Enum: "DateMode"},
@@ -340,9 +340,9 @@ var Schema = SchemaDef{
 		{Name: "Adjust", Payload: PInt, Doc: "a screen reader adjusted the view: 1 up, -1 down"},
 		{Name: "Ended", Payload: PNone, Doc: "a Video played to its end"},
 		{Name: "Navigated", Payload: PString, Doc: "a WebView loaded a page (its URL)"},
-		{Name: "Message", Payload: PString, Doc: "a WebView's page posted a message: window.ryui.postMessage(text)"},
+		{Name: "Message", Payload: PString, Doc: "a WebView's page posted a message: window.asuka.postMessage(text)"},
 		{Name: "IncomingURL", Payload: PString, Doc: "the app was opened with a URL (its scheme, or a universal or app link), at launch or since; to the root"},
-		{Name: "FontLoaded", Payload: PString, Doc: "a font a FontFamily named by URL (under ryui dev) loaded, to the root: text in it is measured again"},
+		{Name: "FontLoaded", Payload: PString, Doc: "a font a FontFamily named by URL (under asuka dev) loaded, to the root: text in it is measured again"},
 		{Name: "Frame", Payload: PFloat, Doc: "a frame the display draws (vsync), while Frames is on: its time in seconds (monotonic); to the root"},
 		{Name: "Result", Payload: PBytes, Doc: "a Call's answer, to the root: u32 call id, u8 ok, then the result's bytes (an error's message when not ok)"},
 		{Name: "ColorChanged", Payload: PInt, Doc: "the user chose a ColorPicker's color: a Color (RGBA)"},
@@ -350,7 +350,7 @@ var Schema = SchemaDef{
 		{Name: "Request", Payload: PString, Doc: "a WebView's page made a request (its URL), with Requests"},
 		{Name: "Download", Payload: PBytes, Doc: "a WebView's page led to a file it can't show: string URL, string MIME type, string file name, i64 size (-1: unknown)"},
 		{Name: "NewWindow", Payload: PString, Doc: "a WebView's page would open a page in a new window (its URL)"},
-		{Name: "Shared", Payload: PBytes, Doc: "another app shared with the app from its share sheet (iOS's share extension, Android's ACTION_SEND and ACTION_SEND_MULTIPLE, with ryui.json's shareTarget), at launch or since; to the root: u32 count, then per item u8 ShareKind, string text (a text, a link's URL), string path (a file: the app's copy), string name (the file's name where it came from), string MIME type, i64 size (-1: unknown)"},
+		{Name: "Shared", Payload: PBytes, Doc: "another app shared with the app from its share sheet (iOS's share extension, Android's ACTION_SEND and ACTION_SEND_MULTIPLE, with asuka.json's shareTarget), at launch or since; to the root: u32 count, then per item u8 ShareKind, string text (a text, a link's URL), string path (a file: the app's copy), string name (the file's name where it came from), string MIME type, i64 size (-1: unknown)"},
 		{Name: "Pressed", Payload: PBool, Doc: "the view is pressed (true): a finger, or the mouse's primary button, went down on it (a moment later in a scrolling container, as the platform's own views are, so a scroll doesn't show it); or isn't any more (false): it lifted, moved off the view (back on, it's pressed again), or a scroll, another gesture, a long press or a drag took the touch. Listened for (or Hover), the host leaves off its own pressed and hover looks (Android's ripple, Windows' fills): the app draws them"},
 		{Name: "Hover", Payload: PBool, Doc: "a pointer (a mouse, a trackpad, an iPad's pointer, a hovering pencil or stylus) came over the view (true) or left it (false); it stays over while on the view's children, as CSS's :hover does"},
 		{Name: "DragOver", Payload: PGesture, Doc: "a drag the view takes (DropAccept) came over it (Began), moved over it (Changed), or left it, ended or was dropped on it (Cancelled); X and Y are its place in the view"},

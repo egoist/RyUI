@@ -1,4 +1,4 @@
-// ryui/push on the web: Web Push, with the app's VAPID key (ryui.json's
+// asuka/push on the web: Web Push, with the app's VAPID key (asuka.json's
 // web.vapidPublicKey, which the page has as options.vapidPublicKey).
 //
 //   - register asks to allow notifications, subscribes the app's service
@@ -6,7 +6,7 @@
 //     site that shows its pushes) and answers push.Registration's JSON:
 //     the token is the subscription's JSON (PushSubscription.toJSON():
 //     endpoint, expirationTime, keys.p256dh, keys.auth), which the app's
-//     server sends to (ryui/push/webpush), service "webpush". A
+//     server sends to (asuka/push/webpush), service "webpush". A
 //     subscription made with another key is replaced.
 //   - The worker (sw.js) shows each push; the page gets it
 //     (nextReceived), and its tap (nextOpened), through worker.js.
@@ -17,7 +17,7 @@
 import "../notify-core.js";
 import { WaitQueue, channel, registration } from "../worker.js";
 
-const core = globalThis.ryuiNotify;
+const core = globalThis.asukaNotify;
 const dec = new TextDecoder();
 const enc = new TextEncoder();
 
@@ -83,16 +83,16 @@ const ios = () => /iPhone|iPad/.test(globalThis.navigator?.userAgent || "");
 
 /** subscribe is push.Register's answer: the subscription, made with key (base64url, an uncompressed P-256 point). */
 export async function subscribe({ key, registration, Notification, PushManager, store }) {
-  if (!key) throw new Error("ryui/push: Web Push needs the app's VAPID public key: set web.vapidPublicKey in ryui.json (see docs/web.md, Web Push)");
+  if (!key) throw new Error("asuka/push: Web Push needs the app's VAPID public key: set web.vapidPublicKey in asuka.json (see docs/web.md, Web Push)");
   if (!PushManager || !Notification) {
-    throw new Error("ryui/push: this browser has no Web Push" + (ios() ? " (on iOS, only an app added to the Home Screen has it)" : ""));
+    throw new Error("asuka/push: this browser has no Web Push" + (ios() ? " (on iOS, only an app added to the Home Screen has it)" : ""));
   }
   const r = await registration();
-  if (!r?.pushManager) throw new Error("ryui/push: the app's service worker isn't registered (a page served over https, or from localhost, has one)");
+  if (!r?.pushManager) throw new Error("asuka/push: the app's service worker isn't registered (a page served over https, or from localhost, has one)");
   const p = Notification.permission === "default" ? await Notification.requestPermission() : Notification.permission;
-  if (p !== "granted") throw new Error("ryui/push: notifications aren't allowed, and a browser subscribes only a site that shows its pushes");
+  if (p !== "granted") throw new Error("asuka/push: notifications aren't allowed, and a browser subscribes only a site that shows its pushes");
   const want = base64url(key);
-  if (want.length !== 65 || want[0] !== 4) throw new Error("ryui/push: web.vapidPublicKey isn't a P-256 public key (65 bytes, base64url)");
+  if (want.length !== 65 || want[0] !== 4) throw new Error("asuka/push: web.vapidPublicKey isn't a P-256 public key (65 bytes, base64url)");
   let sub = await r.pushManager.getSubscription();
   if (sub && !same(sub.options?.applicationServerKey, want)) {
     await sub.unsubscribe().catch(() => {});

@@ -13,9 +13,9 @@ locales/en.json:18: warning: @ghost describes no message
 locales/en.json:19: "notString" is not a string
 locales/en.json:20: warning: "few": en has no plural category of few (its plural categories are one, other)
 locales/en.json:21: "unknown.key": no library has the namespace unknown
-locales/en.json:22: "ryui.nope": ryui has no message nope
-locales/en.json:23: "ryui.quitApp" uses the argument application, but the source message has the arguments app
-locales/en.json:23: warning: "ryui.quitApp" does not use the argument app
+locales/en.json:22: "asuka.nope": asuka has no message nope
+locales/en.json:23: "asuka.quitApp" uses the argument application, but the source message has the arguments app
+locales/en.json:23: warning: "asuka.quitApp" does not use the argument app
 locales/fr.json: not a JSON object of messages
 locales/ru.json:2: @@locale "uk" is not ru, the language the file is named after
 locales/ru.json:3: "ok" uses the argument extra, but the source message has no arguments

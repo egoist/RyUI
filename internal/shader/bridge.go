@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/egoist/ryui/internal/shaderir"
+	"github.com/egoist/asuka/internal/shaderir"
 )
 
 // MaxImages is how many images a shader reads, image0 to image3.

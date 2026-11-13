@@ -2,14 +2,14 @@
 // ID or a fingerprint (expo-local-authentication): to unlock the app, to
 // confirm a payment, before showing a secret. iOS's LocalAuthentication;
 // Android's BiometricPrompt. An app that imports it is given what it
-// needs (iOS's NSFaceIDUsageDescription, which ryui.json's ios.usage
+// needs (iOS's NSFaceIDUsageDescription, which asuka.json's ios.usage
 // says better; Android's USE_BIOMETRIC).
 package biometric
 
 import (
 	"errors"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // Kind is the biometry a device has.
@@ -54,7 +54,7 @@ var (
 
 // Check is what the device can do. Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Check() (State, error) {
@@ -84,7 +84,7 @@ type Options struct {
 // owner: nil, or ErrCanceled, ErrNotAvailable, ErrFailed. Not on the
 // main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Authenticate(o Options) error {

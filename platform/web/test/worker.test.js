@@ -50,7 +50,7 @@ function worker(app = { name: "com.example.app", title: "Example" }) {
     console, URL, Response, MessageChannel, setTimeout, clearTimeout, Promise,
     caches,
     navigator: {},
-    ryuiApp: app,
+    asukaApp: app,
     registration: {
       scope: "https://app.example/chat/",
       async showNotification(title, options) {
@@ -76,9 +76,9 @@ function worker(app = { name: "com.example.app", title: "Example" }) {
     for (const f of listeners[type] || []) f({ ...e, waitUntil: (p) => waits.push(p) });
     await Promise.all(waits);
   };
-  const store = ctx.ryuiNotify.store(app.name);
+  const store = ctx.asukaNotify.store(app.name);
   const pushData = (v) => ({ text: () => (typeof v === "string" ? v : JSON.stringify(v)) });
-  return { ctx, shown, opened, listeners, dispatch, store, pushData, clients: ctx.clients, core: ctx.ryuiNotify };
+  return { ctx, shown, opened, listeners, dispatch, store, pushData, clients: ctx.clients, core: ctx.asukaNotify };
 }
 
 test("the worker listens for pushes, clicks, closes, its pages' messages and periodic sync", () => {
@@ -130,9 +130,9 @@ test("a push asks the page in front (rewrite, Present), the others just get it",
   const back = fakeClient();
   w.clients.list = [back, front];
   await w.dispatch("push", { data: w.pushData({ id: "m2", title: "New message", data: { box: "..." } }) });
-  assert.equal(front.posted[0].ryui, "push");
+  assert.equal(front.posted[0].asuka, "push");
   assert.equal(front.posted[0].message.title, "New message");
-  same(back.posted, [{ ryui: "received", app: "com.example.app", message: front.posted[0].message }]);
+  same(back.posted, [{ asuka: "received", app: "com.example.app", message: front.posted[0].message }]);
   assert.equal(w.shown.length, 1);
   assert.equal(w.shown[0].title, "Grace");
   assert.equal(w.shown[0].body, "decrypted");
@@ -168,7 +168,7 @@ test("a tap goes to the page in front, focused: OnAction's Response, the push's 
   assert.equal(n.closed, true);
   assert.equal(page.focusedBy, 1);
   const m = page.posted[0];
-  assert.equal(m.ryui, "response");
+  assert.equal(m.asuka, "response");
   assert.equal(m.app, "com.example.app");
   assert.equal(m.url, "myapp://chat/3");
   assert.equal(m.response.action, "");
@@ -186,7 +186,7 @@ test("an action with no page open waits for the page it opens, which gets it as 
   same(w.opened, ["https://app.example/chat/"]);
   // The page starts.
   const page = fakeClient();
-  await w.dispatch("message", { data: { ryui: "hello", app: "com.example.app" }, source: page });
+  await w.dispatch("message", { data: { asuka: "hello", app: "com.example.app" }, source: page });
   assert.equal(page.posted.length, 1);
   const m = page.posted[0];
   assert.equal(m.response.action, "reply");
@@ -195,7 +195,7 @@ test("an action with no page open waits for the page it opens, which gets it as 
   assert.equal(m.push.id, "m4");
   // Once.
   const again = fakeClient();
-  await w.dispatch("message", { data: { ryui: "hello", app: "com.example.app" }, source: again });
+  await w.dispatch("message", { data: { asuka: "hello", app: "com.example.app" }, source: again });
   assert.equal(again.posted.length, 0);
 });
 
@@ -211,8 +211,8 @@ test("a background action goes to an open page without focusing it; a dismissal 
   assert.equal(page.posted.at(-1).response.action, "done");
   await w.dispatch("notificationclick", { notification: w.shown[1], action: "go" });
   assert.equal(page.focusedBy, 1);
-  await w.dispatch("notificationclose", { notification: { data: { ryui: 1, app: "com.example.app", shown: { id: "zz" } } } });
-  same(page.posted.at(-1), { ryui: "closed", app: "com.example.app", id: "zz" });
+  await w.dispatch("notificationclose", { notification: { data: { asuka: 1, app: "com.example.app", shown: { id: "zz" } } } });
+  same(page.posted.at(-1), { asuka: "closed", app: "com.example.app", id: "zz" });
   // Not the app's: left alone.
   const other = { data: { foo: 1 }, closed: false, close() { this.closed = true; } };
   await w.dispatch("notificationclick", { notification: other, action: "" });
@@ -226,12 +226,12 @@ test("periodic sync and activation show the scheduled notifications that are due
   await w.core.schedule(w.store, "com.example.app", { id: "later", title: "Later" }, now + 3600_000);
   // A page is open: it shows its own.
   w.clients.list = [fakeClient()];
-  await w.dispatch("periodicsync", { tag: "ryui-notify" });
+  await w.dispatch("periodicsync", { tag: "asuka-notify" });
   assert.equal(w.shown.length, 0);
   w.clients.list = [];
   await w.dispatch("periodicsync", { tag: "something-else" });
   assert.equal(w.shown.length, 0);
-  await w.dispatch("periodicsync", { tag: "ryui-notify" });
+  await w.dispatch("periodicsync", { tag: "asuka-notify" });
   same(w.shown.map((n) => n.title), ["Due"]);
   assert.equal(w.shown[0].data.shown.remote, false);
   await w.dispatch("activate", {});
@@ -258,14 +258,14 @@ function fakeHost(name, extra = {}) {
   return {
     options: { name, ...extra }, assets: "https://app.example/assets", core: {}, dispatched,
     dispatch(b) { dispatched.push(b); },
-    prefix() { return "ryui." + name + "."; },
+    prefix() { return "asuka." + name + "."; },
   };
 }
 
 test("the page keeps what the worker sends before its app attaches, then gives it to the app's queues", async () => {
-  receive({ ryui: "received", app: "early.app", message: { id: "e1", title: "Early" } });
+  receive({ asuka: "received", app: "early.app", message: { id: "e1", title: "Early" } });
   let answered = null;
-  receive({ ryui: "push", app: "early.app", message: { id: "e2", title: "Early 2" } }, { postMessage: (a) => { answered = a; } });
+  receive({ asuka: "push", app: "early.app", message: { id: "e2", title: "Early 2" } }, { postMessage: (a) => { answered = a; } });
   assert.deepEqual(answered, { spec: null, how: 0 });
   const h = fakeHost("early.app");
   attach(h);
@@ -278,7 +278,7 @@ test("a response reaches OnAction, a push's OnOpen, its URL OnOpenURL", async ()
   const h = fakeHost("resp.app");
   attach(h);
   const c = channel(h);
-  receive({ ryui: "response", app: "resp.app", response: { token: "t", action: "", reply: "", seconds: 25, notification: { id: "n" } }, push: { id: "p" }, url: "myapp://x" });
+  receive({ asuka: "response", app: "resp.app", response: { token: "t", action: "", reply: "", seconds: 25, notification: { id: "n" } }, push: { id: "p" }, url: "myapp://x" });
   assert.equal(json(await c.actions.next()).notification.id, "n");
   assert.equal(json(await c.opened.next()).id, "p");
   assert.equal(h.dispatched.length, 1);
@@ -287,7 +287,7 @@ test("a response reaches OnAction, a push's OnOpen, its URL OnOpenURL", async ()
   const late = fakeHost("late.app");
   late.core = null;
   attach(late);
-  receive({ ryui: "response", app: "late.app", response: { notification: {} }, url: "myapp://y" });
+  receive({ asuka: "response", app: "late.app", response: { notification: {} }, url: "myapp://y" });
   assert.equal(late.dispatched.length, 0);
   late.core = {};
   for (const f of late.onConnect) f();
@@ -306,11 +306,11 @@ test("the page's answer to a push: its rewrite, then Present's", async () => {
   assert.equal(asked.remote, true);
 });
 
-// --- ryui/notify's module ---
+// --- asuka/notify's module ---
 
 function notifyEnv() {
   const caches = fakeCaches();
-  const core = globalThis.ryuiNotify;
+  const core = globalThis.asukaNotify;
   const shown = [];
   const registration = {
     async showNotification(title, options) { shown.push({ title, ...options, closed: false, close() { this.closed = true; } }); },
@@ -387,7 +387,7 @@ test("notify: Present hides one that comes while the page is in front", async ()
   }
 });
 
-// --- ryui/push's module ---
+// --- asuka/push's module ---
 
 const vapid = "BP4z9KsN6nGRTbVYI_c7VJSPQTBtkgcy27mlmlMoZIIgDll6e3vCYLocInmYWAmS6TlzAC8wEqKK6PBru3jl7A8";
 
@@ -445,7 +445,7 @@ test("push: OnReceive and OnOpen's queues, and a rewrite through the page", asyn
   const c = channel(h);
   // Not serving rewrites: none.
   assert.equal(await c.rewrite({ id: "1" }), null);
-  receive({ ryui: "received", app: "p.app", message: { id: "r1" } });
+  receive({ asuka: "received", app: "p.app", message: { id: "r1" } });
   assert.equal(json(await m.nextReceived()).id, "r1");
   const opened = m.nextOpened();
   m.stop(enc.encode("nextOpened"));

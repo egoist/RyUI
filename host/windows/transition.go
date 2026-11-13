@@ -3,7 +3,7 @@
 package windows
 
 import (
-	. "github.com/egoist/ryui/internal/windows"
+	. "github.com/egoist/asuka/internal/windows"
 )
 
 // Style.Transition on Windows, as on macOS: a view inserted during an

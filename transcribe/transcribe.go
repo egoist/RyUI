@@ -9,7 +9,7 @@
 //	}()
 //
 // An app that imports it is given the permissions it needs: iOS's speech
-// recognition, with its purpose string (ryui.json's
+// recognition, with its purpose string (asuka.json's
 // ios.usage.NSSpeechRecognitionUsageDescription says it better), and on
 // Android the microphone's, which its recognizer asks for.
 package transcribe
@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 var (
@@ -82,7 +82,7 @@ func fail(err error) error {
 // Check says whether the device can transcribe a language, without asking
 // the user anything. Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Check(language string) (Availability, error) {

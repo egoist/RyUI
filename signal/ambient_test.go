@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/egoist/ryui/signal"
+	"github.com/egoist/asuka/signal"
 )
 
 func TestAmbientEffect(t *testing.T) {

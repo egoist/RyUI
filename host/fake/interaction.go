@@ -3,7 +3,7 @@ package fake
 import (
 	"fmt"
 
-	"github.com/egoist/ryui/ops"
+	"github.com/egoist/asuka/ops"
 )
 
 // The interaction states and drags of a view, as a platform reports

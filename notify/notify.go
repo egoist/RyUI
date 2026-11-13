@@ -3,7 +3,7 @@
 // its URL (ui.OnOpenURL gets it). The user allows them first (Request).
 // An app that imports it is given the permission it needs on Android.
 //
-// What a messaging app needs is here too, for ryui/push's notifications
+// What a messaging app needs is here too, for asuka/push's notifications
 // as well: actions and inline replies (SetCategories, OnAction), threads
 // that group a chat's notifications, Android's channels (SetChannels),
 // messages in conversations (Notification.From), the app icon's badge
@@ -16,8 +16,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/egoist/ryui/internal/notifyspec"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/internal/notifyspec"
+	"github.com/egoist/asuka/ui"
 )
 
 // Notification is what to show, and when.
@@ -30,7 +30,7 @@ type Notification struct {
 	Title string
 	Body  string
 	// URL is what the app is opened with when the user taps it (one of
-	// its scheme's, ryui.json's scheme): ui.OnOpenURL gets it.
+	// its scheme's, asuka.json's scheme): ui.OnOpenURL gets it.
 	URL string
 	// After is how long from now it shows (at least a second; Show shows
 	// it now).
@@ -74,7 +74,7 @@ type Notification struct {
 // it's their answer then, or what they've set in Settings since), and
 // reports whether they're allowed. Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Request() (allowed bool, err error) {
@@ -85,7 +85,7 @@ func Request() (allowed bool, err error) {
 // Schedule sets n to show after n.After (at least a second). Not on the
 // main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Schedule(n Notification) error {
@@ -95,7 +95,7 @@ func Schedule(n Notification) error {
 // Show shows n now; with its ID, it replaces the one showing (a
 // conversation's next message). Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Show(n Notification) error {
@@ -167,7 +167,7 @@ type Delivered struct {
 	Thread   string
 	// Time is when it showed.
 	Time time.Time
-	// Remote: a push's (ryui/push), whose Data are its payload's.
+	// Remote: a push's (asuka/push), whose Data are its payload's.
 	Remote bool
 }
 

@@ -5,8 +5,8 @@ package windows
 import (
 	"strings"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ops"
 )
 
 // Screen readers on Windows (Narrator, NVDA) read the host's views

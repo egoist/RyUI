@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ui"
 )
 
 // await calls m and runs the main run loop until it answers (the

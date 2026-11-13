@@ -2,8 +2,8 @@
 // (native push, pop and back gestures), a refreshable List, bar buttons,
 // a Sheet with detents, an Alert, menus and haptics.
 //
-//	go run ./cmd/ryui dev -platform ios examples/navigation
-//	go run ./cmd/ryui dev -platform android examples/navigation
+//	go run ./cmd/asuka dev -platform ios examples/navigation
+//	go run ./cmd/asuka dev -platform android examples/navigation
 package main
 
 import (
@@ -11,9 +11,9 @@ import (
 	"slices"
 	"time"
 
-	"github.com/egoist/ryui/app"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 type message struct {
@@ -193,7 +193,7 @@ func settings() ui.Node {
 			ui.Button(ui.ButtonProps{Title: ui.Val("About"), OnPress: func() {
 				nav.Push(func() ui.Node {
 					return ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 8},
-						ui.StaticText("ryui", ui.Style{Font: ui.LargeTitle.Weighted(ui.Bold)}),
+						ui.StaticText("asuka", ui.Style{Font: ui.LargeTitle.Weighted(ui.Bold)}),
 						ui.StaticText("Native widgets, driven by Go and fine-grained signals.", ui.Style{Color: ui.SecondaryLabel}),
 					)
 				}, ui.ScreenOptions{Title: ui.Val("About")})

@@ -28,15 +28,15 @@ export function symbolSVG(name, rtl) {
   if (!d) {
     if (name && !missing.has(name)) {
       missing.add(name);
-      console.warn(`ryui: the web host has no symbol ${JSON.stringify(name)}`);
+      console.warn(`asuka: the web host has no symbol ${JSON.stringify(name)}`);
     }
     return null;
   }
   const s = document.createElementNS(svgNS, "svg");
   s.setAttribute("viewBox", "0 -960 960 960");
   s.setAttribute("aria-hidden", "true");
-  s.classList.add("ryui-symbol");
-  if (rtl && /\.(forward|backward)\b/.test(name)) s.classList.add("ryui-mirror");
+  s.classList.add("asuka-symbol");
+  if (rtl && /\.(forward|backward)\b/.test(name)) s.classList.add("asuka-mirror");
   const p = document.createElementNS(svgNS, "path");
   p.setAttribute("d", d);
   p.setAttribute("fill", "currentColor");
@@ -59,7 +59,7 @@ const fits = ["contain", "cover", "fill", "none"];
 const image = {
   create(h, n) {
     const el = own(n, document.createElement("div"));
-    el.className = "ryui-image";
+    el.className = "asuka-image";
     const img = document.createElement("img");
     img.decoding = "async";
     img.alt = "";
@@ -72,7 +72,7 @@ const image = {
       if (img.dataset.placeholder === "1") return;
       n.natural = [img.naturalWidth, img.naturalHeight];
       n.loadedSrc = img.currentSrc;
-      el.classList.remove("ryui-loading");
+      el.classList.remove("asuka-loading");
       tint(h, n);
       h.emit(n, Event.Loaded, (id) => Events.loaded(id, img.naturalWidth, img.naturalHeight));
     });
@@ -111,7 +111,7 @@ const image = {
 function showPlaceholder(h, n) {
   n.el.style.backgroundImage = `url(${JSON.stringify(sourceURL(h, n.placeholder))})`;
   n.el.style.backgroundSize = fits[n.mode] === "fill" ? "100% 100%" : fits[n.mode] === "none" ? "auto" : fits[n.mode];
-  n.el.classList.add("ryui-loading");
+  n.el.classList.add("asuka-loading");
 }
 
 /** tint draws the color through the image's shape (Color on an image). */
@@ -122,7 +122,7 @@ function tint(h, n) {
     n.img.style.visibility = "";
     s.maskImage = s.webkitMaskImage = "";
     if (!n.background) s.backgroundColor = "";
-    if (!n.el.classList.contains("ryui-loading")) s.backgroundImage = "";
+    if (!n.el.classList.contains("asuka-loading")) s.backgroundImage = "";
     return;
   }
   const url = `url(${JSON.stringify(n.img.currentSrc || n.img.src)})`;
@@ -139,7 +139,7 @@ function tint(h, n) {
 const symbol = {
   create(h, n) {
     const el = own(n, document.createElement("div"));
-    el.className = "ryui-symbol-box";
+    el.className = "asuka-symbol-box";
     el.setAttribute("role", "img");
     text.applyFont(h, n, el);
   },
@@ -166,7 +166,7 @@ const symbol = {
 const video = {
   create(h, n) {
     const el = own(n, document.createElement("div"));
-    el.className = "ryui-video";
+    el.className = "asuka-video";
     const v = document.createElement("video");
     v.playsInline = true;
     v.controls = true;

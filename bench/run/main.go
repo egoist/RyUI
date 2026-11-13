@@ -1,9 +1,9 @@
-// Run builds the benchmark apps (bench/ryui, bench/swiftui,
+// Run builds the benchmark apps (bench/asuka, bench/swiftui,
 // bench/compose) as release builds, runs each on a simulator or an
 // emulator, and compares them: bench/README.md.
 //
-//	go run ./bench/run -ios               # RyUI and SwiftUI, on a simulator of its own
-//	go run ./bench/run -android           # RyUI and Compose, on the running emulator or device
+//	go run ./bench/run -ios               # Asuka and SwiftUI, on a simulator of its own
+//	go run ./bench/run -android           # Asuka and Compose, on the running emulator or device
 //	go run ./bench/run -ios -android -runs 7
 package main
 
@@ -53,8 +53,8 @@ var (
 )
 
 func main() {
-	ios := flag.Bool("ios", false, "ryui and SwiftUI on the iOS simulator")
-	android := flag.Bool("android", false, "ryui and Jetpack Compose on Android")
+	ios := flag.Bool("ios", false, "asuka and SwiftUI on the iOS simulator")
+	android := flag.Bool("android", false, "asuka and Jetpack Compose on Android")
 	flag.Parse()
 	if !*ios && !*android {
 		*ios = true
@@ -106,8 +106,8 @@ func collect(r io.Reader) ([]result, error) {
 	s := bufio.NewScanner(r)
 	s.Buffer(make([]byte, 1<<20), 1<<20)
 	for s.Scan() {
-		// "RYUIBENCH {...}" (iOS's console), "I/RYUIBENCH: {...}" (logcat).
-		_, rest, ok := strings.Cut(s.Text(), "RYUIBENCH")
+		// "ASUKABENCH {...}" (iOS's console), "I/ASUKABENCH: {...}" (logcat).
+		_, rest, ok := strings.Cut(s.Text(), "ASUKABENCH")
 		i := strings.IndexByte(rest, '{')
 		if !ok || i < 0 {
 			continue
@@ -277,20 +277,20 @@ func simulator() (string, error) {
 	udid, state := "", ""
 	for _, ds := range list.Devices {
 		for _, d := range ds {
-			if d.Name == "ryui-bench" {
+			if d.Name == "asuka-bench" {
 				udid, state = d.UDID, d.State
 			}
 		}
 	}
 	if udid == "" {
-		out, err := output(root, nil, "xcrun", "simctl", "create", "ryui-bench", "iPhone 17 Pro")
+		out, err := output(root, nil, "xcrun", "simctl", "create", "asuka-bench", "iPhone 17 Pro")
 		if err != nil {
 			return "", err
 		}
 		udid = strings.TrimSpace(out)
 	}
 	if state != "Booted" {
-		fmt.Println("bench: booting the ryui-bench simulator")
+		fmt.Println("bench: booting the asuka-bench simulator")
 		if _, err := output(root, nil, "xcrun", "simctl", "boot", udid); err != nil {
 			return "", err
 		}
@@ -302,12 +302,12 @@ func simulator() (string, error) {
 	return udid, nil
 }
 
-func buildRyUIIOS() (string, error) {
-	out, err := output(root, nil, "go", "run", "./cmd/ryui", "build", "-platform", "ios", "-simulator", "bench/ryui")
+func buildAsukaIOS() (string, error) {
+	out, err := output(root, nil, "go", "run", "./cmd/asuka", "build", "-platform", "ios", "-simulator", "bench/asuka")
 	if err != nil {
 		return "", err
 	}
-	m := regexp.MustCompile(`ryui: (.+\.app) in`).FindStringSubmatch(out)
+	m := regexp.MustCompile(`asuka: (.+\.app) in`).FindStringSubmatch(out)
 	if m == nil {
 		return "", fmt.Errorf("no .app in:\n%s", out)
 	}
@@ -323,13 +323,13 @@ func buildSwiftUI() (string, error) {
 	os.RemoveAll(dir)
 	os.MkdirAll(dir, 0o755)
 	if _, err := output(root, nil, "xcrun", "swiftc", "-O", "-parse-as-library", "-target", "arm64-apple-ios17.0-simulator",
-		"-sdk", strings.TrimSpace(sdk), "bench/swiftui/App.swift", "bench/ryui/ios/Meter.swift", "-o", filepath.Join(dir, "Bench")); err != nil {
+		"-sdk", strings.TrimSpace(sdk), "bench/swiftui/App.swift", "bench/asuka/ios/Meter.swift", "-o", filepath.Join(dir, "Bench")); err != nil {
 		return "", err
 	}
 	plist := `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-<key>CFBundleIdentifier</key><string>dev.ryui.bench.swiftui</string>
+<key>CFBundleIdentifier</key><string>dev.asuka.bench.swiftui</string>
 <key>CFBundleExecutable</key><string>Bench</string>
 <key>CFBundleName</key><string>SwiftUI Bench</string>
 <key>CFBundlePackageType</key><string>APPL</string>
@@ -357,8 +357,8 @@ func runIOS() error {
 		return err
 	}
 	apps := []app{
-		{framework: "ryui", build: buildRyUIIOS, id: "dev.ryui.bench"},
-		{framework: "SwiftUI", build: buildSwiftUI, id: "dev.ryui.bench.swiftui"},
+		{framework: "asuka", build: buildAsukaIOS, id: "dev.asuka.bench"},
+		{framework: "SwiftUI", build: buildSwiftUI, id: "dev.asuka.bench.swiftui"},
 	}
 	for _, a := range apps {
 		fmt.Printf("bench: building %s for iOS\n", a.framework)
@@ -428,27 +428,27 @@ func device() (string, error) {
 // keystore makes (once) a key to sign the release builds with.
 func keystore() ([]string, error) {
 	dir, _ := os.UserCacheDir()
-	ks := filepath.Join(dir, "ryui", "bench.keystore")
-	env := []string{"RYUI_KEYSTORE=" + ks, "RYUI_KEY_ALIAS=bench", "RYUI_KEYSTORE_PASSWORD=ryuibench"}
+	ks := filepath.Join(dir, "asuka", "bench.keystore")
+	env := []string{"ASUKA_KEYSTORE=" + ks, "ASUKA_KEY_ALIAS=bench", "ASUKA_KEYSTORE_PASSWORD=asukabench"}
 	if exists(ks) {
 		return env, nil
 	}
 	os.MkdirAll(filepath.Dir(ks), 0o755)
 	_, err := output(root, nil, "keytool", "-genkeypair", "-keystore", ks, "-alias", "bench", "-keyalg", "RSA", "-keysize", "2048",
-		"-validity", "10000", "-storepass", "ryuibench", "-keypass", "ryuibench", "-dname", "CN=ryui bench")
+		"-validity", "10000", "-storepass", "asukabench", "-keypass", "asukabench", "-dname", "CN=asuka bench")
 	return env, err
 }
 
-func buildRyUIAndroid() (string, error) {
+func buildAsukaAndroid() (string, error) {
 	env, err := keystore()
 	if err != nil {
 		return "", err
 	}
-	out, err := output(root, env, "go", "run", "./cmd/ryui", "build", "-platform", "android", "bench/ryui")
+	out, err := output(root, env, "go", "run", "./cmd/asuka", "build", "-platform", "android", "bench/asuka")
 	if err != nil {
 		return "", err
 	}
-	m := regexp.MustCompile(`ryui: (\S.*\.apk)`).FindStringSubmatch(out)
+	m := regexp.MustCompile(`asuka: (\S.*\.apk)`).FindStringSubmatch(out)
 	if m == nil {
 		return "", fmt.Errorf("no .apk in:\n%s", out)
 	}
@@ -484,8 +484,8 @@ func runAndroid() error {
 	}
 	model, _ := adb(serial, "shell", "getprop", "ro.product.model")
 	apps := []app{
-		{framework: "ryui", build: buildRyUIAndroid, id: "dev.ryui.bench", activity: "dev.ryui.RyUIActivity"},
-		{framework: "Compose", build: buildCompose, id: "dev.ryui.bench.compose", activity: "dev.ryui.bench.compose.MainActivity"},
+		{framework: "asuka", build: buildAsukaAndroid, id: "dev.asuka.bench", activity: "dev.asuka.AsukaActivity"},
+		{framework: "Compose", build: buildCompose, id: "dev.asuka.bench.compose", activity: "dev.asuka.bench.compose.MainActivity"},
 	}
 	for _, a := range apps {
 		fmt.Printf("bench: building %s for Android\n", a.framework)
@@ -498,7 +498,7 @@ func runAndroid() error {
 		}
 		// Ahead of time, all of it: steady-state code for each, rather than
 		// whatever the JIT or a profile (Compose ships baseline profiles,
-		// RyUI's host doesn't yet) has compiled by then.
+		// Asuka's host doesn't yet) has compiled by then.
 		if _, err := adb(serial, "shell", "cmd", "package", "compile", "-m", "speed", "-f", a.id); err != nil {
 			return err
 		}
@@ -507,7 +507,7 @@ func runAndroid() error {
 		adb(serial, "shell", "am", "force-stop", a.id)
 		adb(serial, "logcat", "-c")
 		time.Sleep(time.Second)
-		logs := command(root, nil, "adb", "-s", serial, "logcat", "-v", "tag", "-s", "RYUIBENCH:I")
+		logs := command(root, nil, "adb", "-s", serial, "logcat", "-v", "tag", "-s", "ASUKABENCH:I")
 		out, err := logs.StdoutPipe()
 		if err != nil {
 			return nil, err

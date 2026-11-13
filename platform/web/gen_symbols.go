@@ -19,14 +19,14 @@ import (
 )
 
 var (
-	entryRe = regexp.MustCompile(`"([^"]+)" to R\.drawable\.(ryui_sym_[a-z0-9_]+)`)
+	entryRe = regexp.MustCompile(`"([^"]+)" to R\.drawable\.(asuka_sym_[a-z0-9_]+)`)
 	labelRe = regexp.MustCompile(`"([^"]+)" to "([^"]*)"`)
 	pathRe  = regexp.MustCompile(`android:pathData="([^"]+)"`)
 )
 
 func main() {
-	android := filepath.Join("platform", "android", "ryui", "src", "main")
-	kt, err := os.ReadFile(filepath.Join(android, "java", "dev", "ryui", "Symbols.kt"))
+	android := filepath.Join("platform", "android", "asuka", "src", "main")
+	kt, err := os.ReadFile(filepath.Join(android, "java", "dev", "asuka", "Symbols.kt"))
 	if err != nil {
 		panic(err)
 	}

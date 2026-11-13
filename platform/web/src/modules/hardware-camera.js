@@ -1,11 +1,11 @@
-// ryui/camera, ryui/camera/record, ryui/scan, ryui/vision and
-// ryui/imageedit in the browser.
+// asuka/camera, asuka/camera/record, asuka/scan, asuka/vision and
+// asuka/imageedit in the browser.
 //
 //   - camera.take: a phone's camera app (<input capture>, where the screen
 //     is touch), else a dialog of the page's own: the camera's preview
 //     (getUserMedia) and a shutter. Answers with a JPEG in the caches, ""
 //     if cancelled, or fails "no camera" / "not allowed".
-//   - camera.View is the native view "ryui.camera" (cameraView, which the
+//   - camera.View is the native view "asuka.camera" (cameraView, which the
 //     host registers): a <video> of the camera, front or back; "capture"
 //     takes a JPEG of what it shows, "record" / "stopRecording" record it
 //     with a MediaRecorder (MP4 where the browser records it, else WebM);
@@ -64,7 +64,7 @@ const facingMode = (f) => (f === "front" ? "user" : "environment");
 /** The camera views on the page, newest last: capture and record use the newest. */
 const views = [];
 
-/** cameraView is ryui.camera's native view (camera.View): ctx as ryui.registerNative's. */
+/** cameraView is asuka.camera's native view (camera.View): ctx as asuka.registerNative's. */
 export function cameraView(ctx) {
   const el = document.createElement("div");
   el.style.cssText = "position:relative;overflow:hidden;background:#000";
@@ -160,7 +160,7 @@ const current = () => [...views].reverse().find((v) => v.alive && v.stream);
 async function captureFrame(v) {
   const w = v.video.videoWidth, h = v.video.videoHeight;
   if (!w || !h) throw new Error("the camera isn't ready");
-  return writeImage("ryui-camera", v.video, w, h, false, 0.92);
+  return writeImage("asuka-camera", v.video, w, h, false, 0.92);
 }
 
 /** takeWithDialog shows the camera's preview in a dialog of the page's own, with a shutter. */
@@ -174,7 +174,7 @@ async function takeWithDialog() {
   }
   return new Promise((resolve, reject) => {
     const d = document.createElement("dialog");
-    d.className = "ryui-camera-dialog";
+    d.className = "asuka-camera-dialog";
     d.style.cssText = "padding:0;border:0;background:#000;width:min(100vw,960px);max-width:100vw;max-height:100dvh;overflow:hidden";
     const video = document.createElement("video");
     video.muted = video.playsInline = video.autoplay = true;
@@ -202,7 +202,7 @@ async function takeWithDialog() {
       err ? reject(err) : resolve(path);
     };
     shutter.onclick = async () => {
-      try { end(await writeImage("ryui-camera", video, video.videoWidth, video.videoHeight, false, 0.92)); } catch (e) { end("", e); }
+      try { end(await writeImage("asuka-camera", video, video.videoWidth, video.videoHeight, false, 0.92)); } catch (e) { end("", e); }
     };
     cancel.onclick = () => end("");
     d.addEventListener("cancel", (e) => { e.preventDefault(); end(""); });
@@ -222,7 +222,7 @@ function takeWithInput() {
       const f = i.files?.[0];
       if (!f) return resolve("");
       const ext = f.type === "image/png" ? "png" : f.type === "image/heic" ? "heic" : "jpg";
-      const path = `/tmp/ryui-camera/${uuid()}.${ext}`;
+      const path = `/tmp/asuka-camera/${uuid()}.${ext}`;
       fs.writeFile(path, new Uint8Array(await f.arrayBuffer()));
       resolve(path);
     });
@@ -248,11 +248,11 @@ function camera() {
       if (v.recording) throw new Error("already recording");
       const mute = b[0] === 1;
       const maxMs = b.length >= 5 ? new DataView(b.buffer, b.byteOffset, b.byteLength).getUint32(1, true) : 0;
-      if (typeof MediaRecorder === "undefined") throw new Error("ryui: camera.record isn't in this browser");
+      if (typeof MediaRecorder === "undefined") throw new Error("asuka: camera.record isn't in this browser");
       const tracks = v.stream.getVideoTracks().concat(mute ? [] : v.stream.getAudioTracks());
       const { type, ext } = recordingType((t) => MediaRecorder.isTypeSupported(t), true);
       return new Promise((resolve, reject) => {
-        v.recording = new Recording(new MediaStream(tracks), { type, path: `/tmp/ryui-camera/${uuid()}.${ext}`, video: true, maxMs }, (err, p) => {
+        v.recording = new Recording(new MediaStream(tracks), { type, path: `/tmp/asuka-camera/${uuid()}.${ext}`, video: true, maxMs }, (err, p) => {
           v.recording = null;
           err ? reject(err) : resolve(p);
         });
@@ -264,7 +264,7 @@ function camera() {
 
 // --- codes ---
 
-// ryui/scan's kinds and the Shape Detection API's formats.
+// asuka/scan's kinds and the Shape Detection API's formats.
 const formats = {
   qr: "qr_code", aztec: "aztec", datamatrix: "data_matrix", pdf417: "pdf417", ean13: "ean_13", ean8: "ean_8",
   upca: "upc_a", upce: "upc_e", code128: "code_128", code39: "code_39", code93: "code_93", codabar: "codabar", itf: "itf",
@@ -272,7 +272,7 @@ const formats = {
 const kinds = Object.fromEntries(Object.entries(formats).map(([k, f]) => [f, k]));
 export const kindOf = (format) => kinds[format] || format;
 
-/** formatsOf is the detector's formats for ryui/scan's kinds (a comma-separated list; empty: all). */
+/** formatsOf is the detector's formats for asuka/scan's kinds (a comma-separated list; empty: all). */
 export function formatsOf(list) {
   const ks = (list || "").split(",").map((s) => s.trim()).filter(Boolean);
   return (ks.length ? ks : Object.keys(formats)).map((k) => formats[k]).filter(Boolean);
@@ -284,7 +284,7 @@ async function barcodeDetector(list) {
   return new BarcodeDetector(want.length ? { formats: want } : undefined);
 }
 
-/** encodeCodes is ryui/scan's reply: u32 count, then each code's kind and value, u32-length strings. */
+/** encodeCodes is asuka/scan's reply: u32 count, then each code's kind and value, u32-length strings. */
 export function encodeCodes(codes) {
   const parts = codes.map((c) => [enc.encode(c.kind), enc.encode(c.value)]);
   let n = 4;
@@ -334,7 +334,7 @@ async function decodeImage(h, src) {
 function scanModule(h) {
   return {
     file: async (b) => {
-      if (typeof BarcodeDetector === "undefined") throw new Error("ryui: scan.file isn't in this browser: it has no BarcodeDetector");
+      if (typeof BarcodeDetector === "undefined") throw new Error("asuka: scan.file isn't in this browser: it has no BarcodeDetector");
       const s = dec.decode(b);
       const nl = s.indexOf("\n");
       const img = await decodeImage(h, s.slice(nl + 1));
@@ -350,7 +350,7 @@ function vision(h) {
     analyze: async (b) => {
       const o = JSON.parse(dec.decode(b));
       const want = { codes: o.codes && typeof BarcodeDetector !== "undefined", faces: o.faces && typeof FaceDetector !== "undefined", text: o.text && typeof TextDetector !== "undefined" };
-      if (!want.codes && !want.faces && !want.text) throw new Error("ryui: vision.analyze isn't in this browser: it has no Shape Detection API (BarcodeDetector, FaceDetector, TextDetector)");
+      if (!want.codes && !want.faces && !want.text) throw new Error("asuka: vision.analyze isn't in this browser: it has no Shape Detection API (BarcodeDetector, FaceDetector, TextDetector)");
       const img = await decodeImage(h, o.path);
       const W = img.width, H = img.height;
       const box = (r) => ({ x: r.x / W, y: r.y / H, w: r.width / W, h: r.height / H });
@@ -405,7 +405,7 @@ export function pixelate(data, w, h, x0, y0, x1, y1, block) {
 
 const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
 
-/** applyActions does ryui/imageedit's actions on an image (anything drawImage takes), returning a canvas. */
+/** applyActions does asuka/imageedit's actions on an image (anything drawImage takes), returning a canvas. */
 function applyActions(src, w, h, actions) {
   let c = canvas(w, h);
   c.getContext("2d").drawImage(src, 0, 0, w, h);
@@ -512,7 +512,7 @@ function imageEdit(h) {
     const c = applyActions(src, w, ht, r.actions || []);
     src.close?.();
     if (frame) src.removeAttribute("src");
-    const path = await writeImage("ryui-images", c, c.width, c.height, png, r.quality ?? 0.9);
+    const path = await writeImage("asuka-images", c, c.width, c.height, png, r.quality ?? 0.9);
     return JSON.stringify({ path, width: c.width, height: c.height });
   };
   return {

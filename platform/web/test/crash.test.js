@@ -1,4 +1,4 @@
-// ryui/crash in the browser (crash.js): Go's crash output kept as the
+// asuka/crash in the browser (crash.js): Go's crash output kept as the
 // program ends, the run's mark, uncaught errors as exception records,
 // and what the page says of the browser.
 import { test } from "node:test";
@@ -124,12 +124,12 @@ test("uncaught errors: an exception record each in the inbox, not fatal, each on
 });
 
 test("a stack's frames, V8's and Firefox's and Safari's", () => {
-  assert.deepEqual(frames("    at set (http://localhost/ryui/views.js:12:5)\n    at http://localhost/web/natives.js:3:9"), [
-    { function: "set", file: "http://localhost/ryui/views.js", line: 12 },
+  assert.deepEqual(frames("    at set (http://localhost/asuka/views.js:12:5)\n    at http://localhost/web/natives.js:3:9"), [
+    { function: "set", file: "http://localhost/asuka/views.js", line: 12 },
     { file: "http://localhost/web/natives.js", line: 3 },
   ]);
-  assert.deepEqual(frames("set@http://localhost/ryui/views.js:12:5\n@http://localhost/web/natives.js:3:9"), [
-    { function: "set", file: "http://localhost/ryui/views.js", line: 12 },
+  assert.deepEqual(frames("set@http://localhost/asuka/views.js:12:5\n@http://localhost/web/natives.js:3:9"), [
+    { function: "set", file: "http://localhost/asuka/views.js", line: 12 },
     { file: "http://localhost/web/natives.js", line: 3 },
   ]);
 });

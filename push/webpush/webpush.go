@@ -1,4 +1,4 @@
-// Package webpush is the server's side of ryui/push on the web: it sends
+// Package webpush is the server's side of asuka/push on the web: it sends
 // a Web Push message to a browser's subscription (push.Registration's
 // Token on the web), as the app's service worker expects it, with only
 // the standard library.
@@ -6,7 +6,7 @@
 //   - Encrypt encrypts a payload for a subscription (RFC 8291: aes128gcm,
 //     RFC 8188).
 //   - Keys are the app server's VAPID key pair (RFC 8292): the public one
-//     goes in ryui.json's web.vapidPublicKey, the browser subscribes with
+//     goes in asuka.json's web.vapidPublicKey, the browser subscribes with
 //     it; Authorization signs the push service's token (ES256) with the
 //     private one. GenerateKeys makes a pair.
 //   - Sender.Send sends a Notification (the JSON the app's service worker
@@ -195,7 +195,7 @@ func encrypt(ua *ecdh.PublicKey, auth, payload, salt []byte, as *ecdh.PrivateKey
 }
 
 // Keys are the app server's VAPID key pair, in base64url (unpadded):
-// Public an uncompressed P-256 point (65 bytes; ryui.json's
+// Public an uncompressed P-256 point (65 bytes; asuka.json's
 // web.vapidPublicKey), Private its scalar (32 bytes; keep it secret).
 type Keys struct {
 	Public  string `json:"publicKey"`

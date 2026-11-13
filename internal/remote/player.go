@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/egoist/ryui/host"
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/ops"
+	"github.com/egoist/asuka/host"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/ops"
 )
 
 // Proxy is the player's side: the host.Core its platform host calls,
@@ -53,7 +53,7 @@ func (x *Proxy) serve(method byte, b []byte) []byte {
 	case mApply:
 		var batch ops.Batch
 		if err := batch.Decode(b); err != nil {
-			fmt.Fprintln(os.Stderr, "ryui:", err)
+			fmt.Fprintln(os.Stderr, "asuka:", err)
 			return nil
 		}
 		for i := range batch.Ops {

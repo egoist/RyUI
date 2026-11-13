@@ -41,7 +41,7 @@ var (
 
 // toastGroup is the group of the app's toasts, which their tags (the
 // notifications' IDs) are in.
-const toastGroup = "ryui"
+const toastGroup = "asuka"
 
 // Toaster shows an app's toasts.
 type Toaster struct {

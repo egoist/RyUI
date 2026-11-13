@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/native"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/native"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // testButton is an app's native view: a Win32 button made in its

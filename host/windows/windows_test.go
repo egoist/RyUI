@@ -10,11 +10,11 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/egoist/ryui/internal/l10n"
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/internal/l10n"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // Win32 windows belong to the thread that made them: TestMain keeps the

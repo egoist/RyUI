@@ -3,8 +3,8 @@
 package linux
 
 import (
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
 )
 
 // A screen's search (ScreenOptions.Search): a search button in the header

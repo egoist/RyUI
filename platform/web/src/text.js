@@ -63,8 +63,8 @@ const fileWeights = [
 
 function familyCSS(h, name) {
   if (generic[name]) return generic[name];
-  if (/^https?:\/\//.test(name)) return `"ryui-url-${hash(name)}", ${systemFont}`;
-  if (h.fontFiles(name).length) return `"ryui-${name}", ${systemFont}`;
+  if (/^https?:\/\//.test(name)) return `"asuka-url-${hash(name)}", ${systemFont}`;
+  if (h.fontFiles(name).length) return `"asuka-${name}", ${systemFont}`;
   return `"${name.replace(/"/g, "")}", ${systemFont}`;
 }
 
@@ -79,7 +79,7 @@ export function loadFamily(h, name) {
   if (!name || generic[name] || faces.has(name)) return;
   let loads = [];
   if (/^https?:\/\//.test(name)) {
-    loads = [new FontFace(`ryui-url-${hash(name)}`, `url(${JSON.stringify(name)})`)];
+    loads = [new FontFace(`asuka-url-${hash(name)}`, `url(${JSON.stringify(name)})`)];
   } else {
     for (const file of h.fontFiles(name)) {
       const base = file.replace(/\.[^.]+$/, "");
@@ -89,13 +89,13 @@ export function loadFamily(h, name) {
       const style = /italic|oblique/.test(suffix) ? "italic" : "normal";
       // A file named for itself is the family, at every weight.
       const desc = base === name ? {} : { weight: String(weight), style };
-      loads.push(new FontFace(`ryui-${name}`, `url(${JSON.stringify(h.assets + "/fonts/" + file)})`, desc));
+      loads.push(new FontFace(`asuka-${name}`, `url(${JSON.stringify(h.assets + "/fonts/" + file)})`, desc));
     }
   }
   if (!loads.length) return;
   const p = Promise.all(loads.map((f) => f.load().then((f) => document.fonts.add(f)))).then(
     () => { if (h.root) h.dispatch(Events.fontLoaded(h.root.id, name)); },
-    (err) => console.warn("ryui: font", name, err),
+    (err) => console.warn("asuka: font", name, err),
   );
   faces.set(name, p);
 }

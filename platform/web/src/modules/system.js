@@ -1,7 +1,7 @@
 // The system's modules on the web, as the other hosts have them, with
 // what a browser offers:
 //
-//   - secureStore (ryui/secure): IndexedDB, encrypted under a
+//   - secureStore (asuka/secure): IndexedDB, encrypted under a
 //     non-extractable WebCrypto key (system-secure.js). Not a keychain.
 //   - device: info (the browser's platform, from User-Agent Client Hints
 //     where there are, else the user agent), the clipboard's text,
@@ -33,7 +33,7 @@ import { pushModule } from "./system-push.js";
 
 const dec = new TextDecoder();
 
-const notOnWeb = (module, method, why) => new Error(`ryui: ${module}.${method} isn't on the web: ${why}`);
+const notOnWeb = (module, method, why) => new Error(`asuka: ${module}.${method} isn't on the web: ${why}`);
 
 export function modules(h) {
   const name = h.options.name || "app";
@@ -41,7 +41,7 @@ export function modules(h) {
   let secure = null;
   const store = () => {
     secure ??= (async () => {
-      const s = new SecureStore(idbBackend("ryui-secure:" + name));
+      const s = new SecureStore(idbBackend("asuka-secure:" + name));
       await migrateLocalStorage(s, h.prefix());
       return s;
     })().catch((e) => { secure = null; throw e; });
@@ -289,7 +289,7 @@ async function preview(h, b) {
   if (!viewable(type)) throw new Error("no viewer");
   // The tab opens now, while the user's tap still counts; the file follows.
   const w = window.open("", "_blank");
-  if (!w) throw new Error("ryui: the browser blocked the preview's new tab");
+  if (!w) throw new Error("asuka: the browser blocked the preview's new tab");
   w.opener = null;
   try {
     const url = sourceURL(h, f.source);

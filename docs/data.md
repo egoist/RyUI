@@ -1,13 +1,13 @@
 # Data
 
-An app keeps its data in a few places: small values in `ryui/store`, records
-in SQLite with `ryui/sqlite`, secrets in the platform's keychain with
-`ryui/secure`, and files of its own with Go's `os`. This page covers each,
+An app keeps its data in a few places: small values in `asuka/store`, records
+in SQLite with `asuka/sqlite`, secrets in the platform's keychain with
+`asuka/secure`, and files of its own with Go's `os`. This page covers each,
 the network through `net/http`, and which calls may block the main thread.
 
 ## Where data lives
 
-`store.Dir()` is the app's data directory. `ryui/store`'s file is there,
+`store.Dir()` is the app's data directory. `asuka/store`'s file is there,
 and so are the databases `sqlite.Open` makes from a plain name. Put your
 own files there too.
 
@@ -20,7 +20,7 @@ own files there too.
 | Linux | `$XDG_DATA_HOME/<id>` (`~/.local/share/<id>`; in a Flatpak, the sandbox's own) |
 | The web | `/data/<name>`, in a file system in memory that the page keeps in the browser's storage (IndexedDB) |
 
-`<name>` is `ryui.json`'s `name`, and `<id>` its `id`; either is the
+`<name>` is `asuka.json`'s `name`, and `<id>` its `id`; either is the
 program's name when the app is run without the CLI (`go run`). The
 directory is made by what first writes there. On Windows and Linux, the
 host keeps a few files of its own there too (the main window's size and
@@ -28,20 +28,20 @@ place, the app's chosen language). In a browser, the directory's files
 are loaded before the app starts and written back a moment after they
 change, and as the page is hidden: see [the web](web.md).
 
-Under `ryui dev`, where your Go code runs on your computer (a desktop
+Under `asuka dev`, where your Go code runs on your computer (a desktop
 app, and iOS and Android in the player), `store.Dir()` is a directory of
-`ryui dev`'s own there (in the user's cache directory, under `ryui/`,
+`asuka dev`'s own there (in the user's cache directory, under `asuka/`,
 one for each app and platform), so what you try while developing never
 mixes with an installed build's data. With the player, the store, the
 databases and your files are on the computer, not on the device.
-`ryui/secure` is the exception: it is the platform's store, as in a
+`asuka/secure` is the exception: it is the platform's store, as in a
 release build (under the player, the device's keychain). On the web,
-`ryui dev`'s page keeps its files in the browser, for the dev server's
+`asuka dev`'s page keeps its files in the browser, for the dev server's
 address.
 
-## Small values: ryui/store
+## Small values: asuka/store
 
-`ryui/store` keeps small values across launches: settings, a signed-in
+`asuka/store` keeps small values across launches: settings, a signed-in
 user's name, the tab last open. Values are JSON, in one file
 (`store.json` in `store.Dir()`), written off the main thread a moment
 after they change, and when the app goes to the background (on a Mac,
@@ -86,12 +86,12 @@ if !store.Get("prefs", &p) {
 store.Delete("prefs")
 ```
 
-`store.Flush()` waits until what's pending is written. RyUI calls it when
+`store.Flush()` waits until what's pending is written. Asuka calls it when
 the app goes to the background; you need it only in tests.
 
-## Records: ryui/sqlite
+## Records: asuka/sqlite
 
-`ryui/sqlite` is an app's SQLite database. SQLite is
+`asuka/sqlite` is an app's SQLite database. SQLite is
 [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite), a translation
 of SQLite's C to Go: it needs no cgo, so the same code runs on iOS,
 Android and the desktops. In a browser it's SQLite's own WebAssembly
@@ -267,7 +267,7 @@ func Search() ui.Node {
 
 ### Beyond this package
 
-`db.SQL()` is the `*sql.DB` underneath, for what `ryui/sqlite` doesn't
+`db.SQL()` is the `*sql.DB` underneath, for what `asuka/sqlite` doesn't
 cover. Writes made through it are noted too, but the live queries hear of
 them at the next `Exec` or `Tx`, or at `db.Changed()`.
 
@@ -275,9 +275,9 @@ them at the next `Exec` or `Tx`, or at `db.Changed()`.
 database can't see: another process's, or the file replaced (a backup
 restored).
 
-## Secrets: ryui/secure
+## Secrets: asuka/secure
 
-`ryui/secure` keeps small secrets, tokens and passwords, encrypted by the
+`asuka/secure` keeps small secrets, tokens and passwords, encrypted by the
 platform. It's for secrets, not data: keep everything else in the store
 or a database.
 
@@ -288,7 +288,7 @@ or a database.
   preferences.
 - **macOS**: the login keychain, as generic passwords under the app's
   bundle ID (its name, without one), which Keychain Access shows. An app
-  signed ad hoc can use it, as `ryui dev`'s and a build without a
+  signed ad hoc can use it, as `asuka dev`'s and a build without a
   Developer ID are.
 - **Windows**: the Credential Manager, as the user's generic credentials
   named `<name>/<key>`, kept on this computer (they don't roam), which
@@ -349,8 +349,8 @@ go func() {
 
 ## Files and the network
 
-Files are Go's `os`, and the network is Go's `net/http`: RyUI adds nothing
-of its own. Keep the files in `store.Dir()`. Files RyUI's packages give you
+Files are Go's `os`, and the network is Go's `net/http`: Asuka adds nothing
+of its own. Keep the files in `store.Dir()`. Files Asuka's packages give you
 (a photo taken, a video recorded, photos picked, files dropped or pasted)
 are in the app's caches or temporary directory, which the system may
 clear: move one into `store.Dir()` to keep it. In a browser, `os` works on
@@ -407,9 +407,9 @@ func download(url, file string) error {
 ```
 
 To keep a long download going while the app is out of sight, see
-[`ryui/background`](device.md#background-work-ryuibackground); to know
+[`asuka/background`](device.md#background-work-asukabackground); to know
 whether the connection is Wi-Fi or metered, see
-[`ryui/network`](device.md#network-state-ryuinetwork).
+[`asuka/network`](device.md#network-state-asukanetwork).
 [`examples/downloader`](../examples/downloader) does both.
 
 ## The main thread

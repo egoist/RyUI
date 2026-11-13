@@ -6,8 +6,8 @@ import (
 	"math"
 	"strings"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ops"
 )
 
 // rgba is a resolved color.
@@ -131,7 +131,7 @@ func newPalette(dark bool, accent ops.Color) palette {
 		p.fieldFocusBg = hex(0xFFFFFF)
 	}
 	if r, g, b, _, ok := accent.RGBA(); ok {
-		// The app's accent replaces the system's, as ryui.json's does on
+		// The app's accent replaces the system's, as asuka.json's does on
 		// iOS and Android.
 		a := rgba{r, g, b, 255}
 		p.accent, p.accentHot, p.accentPressed = a, a.withAlpha(0.9), a.withAlpha(0.8)
@@ -146,7 +146,7 @@ func newPalette(dark bool, accent ops.Color) palette {
 	return p
 }
 
-// resolve is a color of RyUI's: semantic colors are the theme's; ok is
+// resolve is a color of Asuka's: semantic colors are the theme's; ok is
 // false for the platform's default (0).
 func (h *Host) resolve(c ops.Color) (rgba, bool) {
 	if s, ok := c.Semantic(); ok {

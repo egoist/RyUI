@@ -15,7 +15,7 @@ export async function clipboardText() {
   try {
     t = await navigator.clipboard.readText();
   } catch (e) {
-    if (e?.name === "NotAllowedError" && document.hasFocus()) throw new Error("ryui: the browser didn't allow reading the clipboard");
+    if (e?.name === "NotAllowedError" && document.hasFocus()) throw new Error("asuka: the browser didn't allow reading the clipboard");
     return new Uint8Array([0]);
   }
   if (t === "") return new Uint8Array([0]);
@@ -143,18 +143,18 @@ export function clipboardModule() {
           if (t) { out[0] = 1; out[2] = urlish.test(t) ? 1 : 0; }
         }
       } catch (e) {
-        if (e?.name === "NotAllowedError" && document.hasFocus()) throw new Error("ryui: the browser didn't allow reading the clipboard");
+        if (e?.name === "NotAllowedError" && document.hasFocus()) throw new Error("asuka: the browser didn't allow reading the clipboard");
       }
       return out;
     },
     // The image's file in the app's caches (a PNG); nothing if there's none.
     image: async () => {
-      if (!navigator.clipboard.read) throw new Error("ryui: clipboard.image isn't on the web in this browser: it reads only text from the clipboard");
+      if (!navigator.clipboard.read) throw new Error("asuka: clipboard.image isn't on the web in this browser: it reads only text from the clipboard");
       let items;
       try {
         items = await navigator.clipboard.read();
       } catch (e) {
-        if (e?.name === "NotAllowedError" && document.hasFocus()) throw new Error("ryui: the browser didn't allow reading the clipboard");
+        if (e?.name === "NotAllowedError" && document.hasFocus()) throw new Error("asuka: the browser didn't allow reading the clipboard");
         return null;
       }
       for (const it of items) {
@@ -162,7 +162,7 @@ export function clipboardModule() {
         if (!t) continue;
         const blob = await it.getType(t);
         const ext = { "image/png": "png", "image/jpeg": "jpg", "image/gif": "gif", "image/webp": "webp", "image/svg+xml": "svg" }[t] || "png";
-        const path = `/tmp/ryui-clipboard/${Date.now().toString(36)}-${++names}.${ext}`;
+        const path = `/tmp/asuka-clipboard/${Date.now().toString(36)}-${++names}.${ext}`;
         fs.writeFile(path, new Uint8Array(await blob.arrayBuffer()));
         return path;
       }
@@ -172,7 +172,7 @@ export function clipboardModule() {
       const path = new TextDecoder().decode(b);
       const bytes = fs.readFile(path);
       if (!bytes) throw new Error("no file at " + path);
-      if (!navigator.clipboard?.write || !globalThis.ClipboardItem) throw new Error("ryui: clipboard.copyImage isn't on the web in this browser: it puts only text on the clipboard");
+      if (!navigator.clipboard?.write || !globalThis.ClipboardItem) throw new Error("asuka: clipboard.copyImage isn't on the web in this browser: it puts only text on the clipboard");
       const copy = bytes.slice();
       // A promise, as Safari wants it, so the write keeps the user's gesture.
       await navigator.clipboard.write([new ClipboardItem({ "image/png": pngOf(copy, typeOf(path)) })]);

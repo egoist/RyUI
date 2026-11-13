@@ -6,11 +6,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/egoist/ryui/internal/boot"
-	"github.com/egoist/ryui/internal/crashrun"
+	"github.com/egoist/asuka/internal/boot"
+	"github.com/egoist/asuka/internal/crashrun"
 )
 
-// startCrash begins the run's crash record (ryui/crash), if the app
+// startCrash begins the run's crash record (asuka/crash), if the app
 // reports crashes: Go's crash output, which has a native crash too (a
 // signal in GTK's code, an abort of GLib's: the runtime's handler prints
 // it, with every goroutine, before the process ends). Before GTK loads,
@@ -25,7 +25,7 @@ func startCrash() {
 
 // linuxInfo is the computer and the app: its model (the firmware's
 // product name), the distribution and its version (the host's, in a
-// Flatpak), ryui.json's version.
+// Flatpak), asuka.json's version.
 func linuxInfo() crashrun.Info {
 	i := crashrun.Info{System: "Linux", AppVersion: boot.Version, Build: boot.Build}
 	if b, err := os.ReadFile("/sys/class/dmi/id/product_name"); err == nil {

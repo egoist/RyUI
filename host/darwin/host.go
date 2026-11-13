@@ -1,6 +1,6 @@
 //go:build darwin && !ios
 
-// Package darwin is RyUI's macOS host: AppKit views made and driven from
+// Package darwin is Asuka's macOS host: AppKit views made and driven from
 // Go through the Objective-C runtime (purego, no cgo), in the app's
 // process. It reads the core's batches as Go structs, without encoding
 // them.
@@ -18,12 +18,12 @@ import (
 
 	"github.com/ebitengine/purego"
 
-	"github.com/egoist/ryui/host"
-	"github.com/egoist/ryui/internal/boot"
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/host"
+	"github.com/egoist/asuka/internal/boot"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/ui"
 )
 
 // AppKit calls come on the main thread, where main starts.
@@ -160,7 +160,7 @@ type Host struct {
 	root    *node
 	window  ID
 	content ID // the window's content view
-	target  ID // RyUITarget: actions, delegates and notifications
+	target  ID // AsukaTarget: actions, delegates and notifications
 	env     host.Environment
 
 	depth   int // calls into the core in progress
@@ -184,16 +184,16 @@ type Host struct {
 	splits        map[ID]*node            // SplitViews, by their sidebar's table
 	shaderTimer   ID                      // animated Shaders' clock, while there are any
 	wheelSwipe    wheelSwipe              // a trackpad's scroll that may be a swipe
-	scripts       map[ID]*script          // ryui/js runs, by their web view
+	scripts       map[ID]*script          // asuka/js runs, by their web view
 	clip          clipboard               // the clipboard module's watching
 	match         matching                // Style.Match (match.go)
-	net           netMonitor              // ryui/network (services.go)
-	speech        speech                  // ryui/speech
-	loc           locator                 // ryui/location
+	net           netMonitor              // asuka/network (services.go)
+	speech        speech                  // asuka/speech
+	loc           locator                 // asuka/location
 	refreshTarget ID                      // the observer of refreshable scroll views (refresh.go)
-	players       map[string]*audioPlayer // ryui/audio's, by ID
+	players       map[string]*audioPlayer // asuka/audio's, by ID
 	sidebarSource ID
-	editors       map[ID]ID         // each window's field editor (RyUIFieldEditor)
+	editors       map[ID]ID         // each window's field editor (AsukaFieldEditor)
 	videos        map[ID]ops.NodeID // by AVPlayerItem
 	main          *win              // the main window, holding the root
 	wins          map[ID]*win       // the Windows' windows, by NSWindow
@@ -235,7 +235,7 @@ func newHost() *Host {
 		a11yActions: map[ID]a11yAction{},
 		exiting:     map[ID]bool{},
 		wins:        map[ID]*win{},
-		target:      New("RyUITarget"),
+		target:      New("AsukaTarget"),
 	}
 	purego.RegisterFunc(&msgShowPicker, MsgSendAddr())
 	theHost = h
@@ -260,7 +260,7 @@ func newHost() *Host {
 // call it from main.
 func Run(root func() ui.Node) {
 	if !IsMainThread() {
-		panic("ryui: darwin.Run must be called from main, on the main thread")
+		panic("asuka: darwin.Run must be called from main, on the main thread")
 	}
 	Load()
 	WithPool(startCrash)
@@ -272,15 +272,15 @@ func Run(root func() ui.Node) {
 			fmt.Fprintln(os.Stderr, err)
 		}
 		restoreState()
-		// ryui/notify: the center's delegate before launch ends.
+		// asuka/notify: the center's delegate before launch ends.
 		h.installNotifications()
 		h.enter(func() { ui.Mount(h, root) })
-		if os.Getenv("RYUI_SNAPSHOT") != "" {
+		if os.Getenv("ASUKA_SNAPSHOT") != "" {
 			// Automation: shown, without taking the user's focus.
 			Send(h.window, "orderFront:", 0)
 		} else {
 			Send(h.window, "makeKeyAndOrderFront:", 0)
-			// A plain executable (go run, ryui dev) doesn't come to the
+			// A plain executable (go run, asuka dev) doesn't come to the
 			// front on its own.
 			Send(Send(Class("NSApplication"), "sharedApplication"), "activateIgnoringOtherApps:", 1)
 		}
@@ -731,7 +731,7 @@ func appName() string {
 }
 
 // assetsDir is where the app's assets are: the bundle's Resources/assets,
-// or assets beside the working directory (ryui dev, go run).
+// or assets beside the working directory (asuka dev, go run).
 func assetsDir() string {
 	b := Send(Class("NSBundle"), "mainBundle")
 	if r := GoString(Send(b, "resourcePath")); r != "" {
@@ -739,12 +739,12 @@ func assetsDir() string {
 			return r + "/assets"
 		}
 	}
-	if d := os.Getenv("RYUI_ASSETS"); d != "" {
+	if d := os.Getenv("ASUKA_ASSETS"); d != "" {
 		return d
 	}
 	return "assets"
 }
 
 func fail(format string, args ...any) {
-	panic(fmt.Sprintf("ryui: the macOS host "+format, args...))
+	panic(fmt.Sprintf("asuka: the macOS host "+format, args...))
 }

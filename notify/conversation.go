@@ -3,7 +3,7 @@ package notify
 import (
 	"time"
 
-	"github.com/egoist/ryui/internal/notifyspec"
+	"github.com/egoist/asuka/internal/notifyspec"
 )
 
 // Person is who sent a message, or the user (Conversation.Me).
@@ -62,7 +62,7 @@ type Message struct {
 // it, a message shows as a plain notification. macOS shows a message as
 // a plain notification, its sender's name its title.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func (n Notification) From(sender Person, c Conversation) Notification {
@@ -77,7 +77,7 @@ func wireMessage(sender Person, c Conversation) (*notifyspec.Person, *notifyspec
 	s := wirePerson(sender)
 	wc := &notifyspec.Conversation{ID: c.ID, Title: c.Title, Group: c.Group, Image: c.Image}
 	if wc.ID == "" {
-		wc.ID = firstOf(sender.ID, sender.Name, "ryui")
+		wc.ID = firstOf(sender.ID, sender.Name, "asuka")
 	}
 	if c.Me != (Person{}) {
 		wc.Me = wirePerson(c.Me)

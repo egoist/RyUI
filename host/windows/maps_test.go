@@ -16,11 +16,11 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/maps"
-	"github.com/egoist/ryui/native"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/maps"
+	"github.com/egoist/asuka/native"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // tileColor is a test tile's color: its zoom level's.
@@ -68,7 +68,7 @@ func newTileServer(t *testing.T) *tileServer {
 		w.Write(b.Bytes())
 	}))
 	t.Cleanup(s.Close)
-	t.Setenv("RYUI_MAP_TILES", s.URL+"/{z}/{x}/{y}.png")
+	t.Setenv("ASUKA_MAP_TILES", s.URL+"/{z}/{x}/{y}.png")
 	return s
 }
 
@@ -92,14 +92,14 @@ func mapPixels(v *mapView) ([]byte, int32) {
 }
 
 // The map shows the region the app sets, of the tiles the server has
-// (two downloads at a time, the request naming RyUI), its markers and
+// (two downloads at a time, the request naming Asuka), its markers and
 // the attribution; a drag moves it and reports the region, the wheel
 // zooms it, a click on a pin reports the marker, one off them the place;
 // tiles are kept on disk and not downloaded again.
 func TestMapView(t *testing.T) {
 	srv := newTileServer(t)
 	saved := tiles
-	tiles = newTileStore(t.TempDir(), "RyUI/1 (test)")
+	tiles = newTileStore(t.TempDir(), "Asuka/1 (test)")
 	defer func() { tiles = saved }()
 	type ev struct{ name string }
 	var events []ev
@@ -242,7 +242,7 @@ func TestMapView(t *testing.T) {
 	srv.mu.Lock()
 	most, agent := srv.most, srv.agents[0]
 	srv.mu.Unlock()
-	if most > mapDownloads || !strings.HasPrefix(agent, "RyUI/") {
+	if most > mapDownloads || !strings.HasPrefix(agent, "Asuka/") {
 		t.Fatalf("%d downloads at once, User-Agent %q", most, agent)
 	}
 
@@ -251,7 +251,7 @@ func TestMapView(t *testing.T) {
 		pumpUntil(func() bool { return len(tiles.want) == 0 })
 		dir := tiles.dir
 		views := tiles.views
-		tiles = newTileStore(dir, "RyUI/1 (test)")
+		tiles = newTileStore(dir, "Asuka/1 (test)")
 		tiles.views = views
 		v.t = tiles
 		before := srv.count()
@@ -273,7 +273,7 @@ func TestMapViewOffline(t *testing.T) {
 	srv := newTileServer(t)
 	srv.fail = true
 	saved := tiles
-	tiles = newTileStore(t.TempDir(), "RyUI/1 (test)")
+	tiles = newTileStore(t.TempDir(), "Asuka/1 (test)")
 	defer func() { tiles = saved }()
 	var errs []string
 	mount(t, func() ui.Node {

@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 	"errors"
 
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
 )
 
 // calls are the Calls waiting for their Result, by call id.
@@ -19,7 +19,7 @@ var (
 // Kotlin), with args; done gets its result, on the main thread. Main
 // thread.
 //
-// Packages wrap the built-in modules (ryui/secure); an app's own modules
+// Packages wrap the built-in modules (asuka/secure); an app's own modules
 // take whatever bytes it gives them, JSON for instance.
 func Call(module, method string, args []byte, done func(result []byte, err error)) {
 	r := activeRoot()
@@ -99,8 +99,8 @@ var (
 )
 
 // OnOpenURL calls f with each URL the app is opened with: its scheme
-// (ryui.json's "scheme", myapp://...), or a universal or app link
-// (ryui.json's "links"), at launch or since. A URL that came before any
+// (asuka.json's "scheme", myapp://...), or a universal or app link
+// (asuka.json's "links"), at launch or since. A URL that came before any
 // handler (the one the app launched with) goes to the first. It stops
 // with the component's owner. Main thread.
 func OnOpenURL(f func(url string)) {

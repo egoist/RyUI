@@ -8,8 +8,8 @@ import (
 	"math"
 	"time"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ops"
 )
 
 func (h *Host) command(n *node, c ops.CommandID, args []byte) {
@@ -382,7 +382,7 @@ func (h *Host) call(root *node, args []byte) {
 	if f := h.module(module); f != nil {
 		res, err = f(method, rest)
 	} else {
-		err = errors.New("ryui: " + module + " isn't on Windows yet")
+		err = errors.New("asuka: " + module + " isn't on Windows yet")
 	}
 	out := binary.LittleEndian.AppendUint32(nil, callID)
 	if err != nil {

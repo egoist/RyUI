@@ -27,7 +27,7 @@ function decodeCode(b) {
 const shader = {
   create(h, n) {
     const el = own(n, document.createElement("div"));
-    el.className = "ryui-shader";
+    el.className = "asuka-shader";
     const c = document.createElement("canvas");
     el.appendChild(c);
     n.canvas = c;
@@ -40,7 +40,7 @@ const shader = {
         n.code = decodeCode(v);
         n.glsl = h.core.shaderGLSL(v.slice());
         n.program = null;
-        if (!n.glsl) console.warn("ryui: the web host can't draw this shader");
+        if (!n.glsl) console.warn("asuka: the web host can't draw this shader");
         break;
       case P.Shader.Uniforms: {
         const k = Math.floor(v.length / 4);
@@ -114,7 +114,7 @@ function draw(h, n) {
   const gl = n.gl;
   if (!gl) return;
   if (!n.program) {
-    try { compile(n); } catch (e) { console.warn("ryui: shader:", e.message); n.glsl = null; return; }
+    try { compile(n); } catch (e) { console.warn("asuka: shader:", e.message); n.glsl = null; return; }
   }
   const code = n.code;
   const lanes = new Uint32Array(Math.max(code.lanes, n.lanes.length));

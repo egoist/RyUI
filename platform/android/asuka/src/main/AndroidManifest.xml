@@ -1,0 +1,27 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- ui.Image loads http(s) URLs. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <application>
+        <!-- app.ShareSheet: the app's sheet over another app that shares, in a
+             process of its own. The CLI gives it the share intent filters
+             (asuka.json's shareTarget) when the app has a sheet. -->
+        <activity
+            android:name="dev.asuka.AsukaShareActivity"
+            android:process=":share"
+            android:theme="@style/Theme.Asuka.ShareSheet"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|fontScale|density|locale|layoutDirection"
+            android:windowSoftInputMode="adjustResize" />
+        <!-- asuka/notify: posts a notification when its alarm goes off. -->
+        <receiver android:name="dev.asuka.AsukaNotifyReceiver" android:exported="false" />
+        <!-- asuka/camera: the camera app writes the photo to a file of the app's; ui.ShareFiles hands files to other apps. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.asuka.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/asuka_files" />
+        </provider>
+    </application>
+</manifest>

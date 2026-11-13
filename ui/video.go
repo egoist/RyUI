@@ -4,9 +4,9 @@ import (
 	"encoding/binary"
 	"math"
 
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
 )
 
 // VideoProps configures a Video.
@@ -34,7 +34,7 @@ type VideoProps struct {
 // then it keeps the video's aspect ratio. Drive it with Play, Pause and
 // Seek.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Video(p VideoProps) Node {

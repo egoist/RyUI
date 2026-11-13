@@ -43,7 +43,7 @@ export function blocked(patterns, url) {
 /** mimeOf is a Content-Type's type, lower case, without its parameters. */
 export const mimeOf = (ct) => (ct || "").split(";")[0].trim().toLowerCase();
 
-/** isHTML reports whether a Content-Type is a page RyUI loads itself (its bridge and Preload before the page's scripts). */
+/** isHTML reports whether a Content-Type is a page Asuka loads itself (its bridge and Preload before the page's scripts). */
 export function isHTML(ct) {
   const m = mimeOf(ct);
   return m === "" || m === "text/html" || m === "application/xhtml+xml";

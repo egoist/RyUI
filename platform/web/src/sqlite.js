@@ -1,10 +1,10 @@
-// SQLite in the browser, for ryui/sqlite (sqlite/driver_js.go): SQLite's
+// SQLite in the browser, for asuka/sqlite (sqlite/driver_js.go): SQLite's
 // own WebAssembly build (sqlite3.mjs and sqlite3.wasm from sqlite.org,
-// which the CLI ships with the apps that import ryui/sqlite), driven
+// which the CLI ships with the apps that import asuka/sqlite), driven
 // synchronously from the app's Go code.
 //
 // Databases are files of the page's file system (fs.js), which Go's os
-// sees too: a VFS ("ryui") reads and writes their bytes in place, and the
+// sees too: a VFS ("asuka") reads and writes their bytes in place, and the
 // data directory's files are kept in IndexedDB as they change. Each call
 // from Go runs to its end before the page does anything else, so what the
 // page keeps is always a state SQLite left between two calls, which its
@@ -150,7 +150,7 @@ export class Engine {
     try {
       const pp = wasm.pstack.allocPtr();
       const flags = capi.SQLITE_OPEN_READWRITE | capi.SQLITE_OPEN_CREATE | capi.SQLITE_OPEN_URI;
-      const rc = capi.sqlite3_open_v2(memory ? ":memory:" : fs.file.clean(path), pp, flags, memory ? null : "ryui");
+      const rc = capi.sqlite3_open_v2(memory ? ":memory:" : fs.file.clean(path), pp, flags, memory ? null : "asuka");
       const db = wasm.peekPtr(pp);
       if (rc) {
         const msg = db ? capi.sqlite3_errmsg(db) : capi.sqlite3_errstr(rc);
@@ -526,7 +526,7 @@ export class Engine {
     vfsStruct.$iVersion = 2;
     vfsStruct.$szOsFile = capi.sqlite3_file.structInfo.sizeof;
     vfsStruct.$mxPathname = 1024;
-    this.sqlite3.vfs.installVfs({ io: { struct: ioStruct, methods: io }, vfs: { struct: vfsStruct, methods: vfs, name: "ryui" } });
+    this.sqlite3.vfs.installVfs({ io: { struct: ioStruct, methods: io }, vfs: { struct: vfsStruct, methods: vfs, name: "asuka" } });
   }
 }
 

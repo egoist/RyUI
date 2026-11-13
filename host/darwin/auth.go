@@ -10,13 +10,13 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/native"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/native"
 )
 
-// Signing in on a Mac, with AuthenticationServices as on iOS: ryui/
+// Signing in on a Mac, with AuthenticationServices as on iOS: asuka/
 // appleauth (ASAuthorizationController, and its button,
-// ASAuthorizationAppleIDButton) and ryui/webauth
+// ASAuthorizationAppleIDButton) and asuka/webauth
 // (ASWebAuthenticationSession). Sign in with Apple needs the app signed
 // with its entitlement (com.apple.developer.applesignin), which only a
 // provisioning profile grants: without it, the controller fails.
@@ -39,7 +39,7 @@ func init() {
 		m["appleAuth"] = h.appleAuthModule()
 		m["webAuth"] = h.webAuthModule()
 	})
-	builtinViews["ryui.appleSignIn"] = newAppleSignInButton
+	builtinViews["asuka.appleSignIn"] = newAppleSignInButton
 }
 
 func loadAuthServices() bool {
@@ -53,7 +53,7 @@ func authDelegate() ID {
 		return authState.delegate
 	}
 	anchor := func(self ID, _ SEL, _ ID) ID { return theHost.keyWin().window }
-	cls := DefineClass("RyUIAuthDelegate", "NSObject", []string{
+	cls := DefineClass("AsukaAuthDelegate", "NSObject", []string{
 		"ASAuthorizationControllerDelegate", "ASAuthorizationControllerPresentationContextProviding",
 		"ASWebAuthenticationPresentationContextProviding",
 	}, []objc.MethodDef{
@@ -70,7 +70,7 @@ func authDelegate() ID {
 	return authState.delegate
 }
 
-// appleAuthModule is ryui/appleauth's: "available"; "signIn" (JSON:
+// appleAuthModule is asuka/appleauth's: "available"; "signIn" (JSON:
 // fullName, email, nonce, state) shows Sign in with Apple and answers the
 // credential as JSON, or fails with "canceled"; "state" (the user ID)
 // answers u8: revoked, authorized, not found, transferred.
@@ -197,7 +197,7 @@ type appleCredential struct {
 	RealUser          bool   `json:"realUser"`
 }
 
-// webAuthModule is ryui/webauth's: "start" (u32 session, u8 flags: 1
+// webAuthModule is asuka/webauth's: "start" (u32 session, u8 flags: 1
 // ephemeral, string URL, string callback scheme, empty for none) answers
 // the callback URL, or the error "canceled"; "cancel" (u32 session)
 // closes it, its start answering "canceled".
@@ -309,7 +309,7 @@ func newAppleSignInButton(ctx native.Context) native.View {
 	}
 	if !appleSignInClasses {
 		appleSignInClasses = true
-		DefineClass("RyUIAppleSignInBox", "NSView", nil, []objc.MethodDef{
+		DefineClass("AsukaAppleSignInBox", "NSView", nil, []objc.MethodDef{
 			Method("isFlipped", func(self ID, _ SEL) bool { return true }),
 			Method("viewDidChangeEffectiveAppearance", func(self ID, _ SEL) {
 				if b := authState.buttons[self]; b != nil && b.style == 3 {
@@ -327,7 +327,7 @@ func newAppleSignInButton(ctx native.Context) native.View {
 		authState.buttons = map[ID]*appleSignInButton{}
 	}
 	b := &appleSignInButton{ctx: ctx, radius: -1}
-	b.box = MsgInitRect(Send(Class("RyUIAppleSignInBox"), "alloc"), Sel("initWithFrame:"), Rect{Size: Size{Width: 200, Height: 32}})
+	b.box = MsgInitRect(Send(Class("AsukaAppleSignInBox"), "alloc"), Sel("initWithFrame:"), Rect{Size: Size{Width: 200, Height: 32}})
 	authState.buttons[b.box] = b
 	b.make()
 	return b

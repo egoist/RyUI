@@ -5,9 +5,9 @@ package windows
 import (
 	"math"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/ops"
 )
 
 const big = 1e6

@@ -7,9 +7,9 @@ import (
 	"os"
 	"testing"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // capture paints what waits and returns the window as it shows, and
@@ -18,7 +18,7 @@ func capture(t *testing.T, h *Host, n *node) (img *stdimage.NRGBA, x, y int) {
 	onMain(t, func() {
 		paintNow(h)
 		img = windowImage(h.window)
-		if dir := os.Getenv("RYUI_TEST_PNG"); dir != "" {
+		if dir := os.Getenv("ASUKA_TEST_PNG"); dir != "" {
 			writeWindowPNG(h.window, dir+"/"+t.Name()+".png")
 		}
 		o := MapPoint(n.hwnd, 0, Point{})

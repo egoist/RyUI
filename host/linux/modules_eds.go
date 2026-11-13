@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/internal/l10n"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/internal/l10n"
 )
 
-// ryui/contacts and ryui/calendar with Evolution Data Server (EDS), the
+// asuka/contacts and asuka/calendar with Evolution Data Server (EDS), the
 // store GNOME's apps share (GNOME Contacts and Calendar, Evolution, the
 // online accounts' address books and calendars): the module's methods
 // as macOS's (host/darwin/contacts.go, calendar.go).
@@ -30,7 +30,7 @@ import (
 // whether they're writable), "events" each occurrence in the range
 // (EDS expands repeating ones), "add" asks with an alert (the title,
 // the dates, the place) and saves the event in its calendar, or the
-// default. ryui/calendar has no edit or remove: none here either.
+// default. asuka/calendar has no edit or remove: none here either.
 
 // edsConfirm asks with an alert over the window: its Add button (the
 // default) or Cancel (Escape) calls done with whether it was Add (tests
@@ -279,7 +279,7 @@ func vUnescape(s string) string {
 }
 
 // vLabel is a phone's or an email's label, of its TYPEs: the label
-// ryui/contacts has on the other platforms ("mobile", "home", "work"...),
+// asuka/contacts has on the other platforms ("mobile", "home", "work"...),
 // "" for none.
 func vLabel(types []string) string {
 	has := map[string]bool{}
@@ -311,7 +311,7 @@ func vLabel(types []string) string {
 	return ""
 }
 
-// vBirthday is a BDAY as ryui/contacts has it: YYYY-MM-DD, or --MM-DD
+// vBirthday is a BDAY as asuka/contacts has it: YYYY-MM-DD, or --MM-DD
 // without a year; "" if it's not a date.
 func vBirthday(s string) string {
 	s = strings.TrimSpace(s)
@@ -328,7 +328,7 @@ func vBirthday(s string) string {
 	return ""
 }
 
-// contactOfVCard is a contact as ryui/contacts' JSON.
+// contactOfVCard is a contact as asuka/contacts' JSON.
 func contactOfVCard(card string) map[string]any {
 	c := map[string]any{"id": "", "name": "", "givenName": "", "familyName": "", "organization": "", "jobTitle": "",
 		"birthday": "", "note": ""}
@@ -570,7 +570,7 @@ func (h *Host) edsCalendar(fallback map[string]method) map[string]method {
 					reply([]byte{0}, nil)
 					return
 				}
-				ev := vEvent(randomName()+"@ryui", o.Title, o.Location, o.Notes, o.URL, start, end, o.AllDay, time.Now())
+				ev := vEvent(randomName()+"@asuka", o.Title, o.Location, o.Notes, o.URL, start, end, o.AllDay, time.Now())
 				h.offMain(func() ([]byte, error) {
 					if _, err := EDSAddEvent(o.CalendarID, ev); err != nil {
 						return nil, err
@@ -645,7 +645,7 @@ func (h *Host) eventDates(startMs, endMs int64, allDay bool) string {
 }
 
 // edsEvents are the occurrences between from and to in the calendars
-// (all: none given), sorted by start, as ryui/calendar's JSON. Off the
+// (all: none given), sorted by start, as asuka/calendar's JSON. Off the
 // main thread.
 func edsEvents(from, to time.Time, calendars []string) ([]byte, error) {
 	srcs, err := EDSSources(EDSCalendar)
@@ -680,7 +680,7 @@ func edsEvents(from, to time.Time, calendars []string) ([]byte, error) {
 	return json.Marshal(out)
 }
 
-// eventOfInstance is an occurrence as ryui/calendar's JSON: the VEVENT's
+// eventOfInstance is an occurrence as asuka/calendar's JSON: the VEVENT's
 // text properties, the occurrence's times.
 func eventOfInstance(calendar string, in EDSInstance) map[string]any {
 	e := map[string]any{"id": "", "calendarId": calendar, "title": "", "location": "", "notes": "", "url": "",

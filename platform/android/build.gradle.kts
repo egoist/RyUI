@@ -4,12 +4,12 @@ plugins {
     id("org.jetbrains.kotlin.android") version "2.1.20" apply false
 }
 
-// ryui build -platform android -aar: the optional modules (ryui-*) an embedded app
-// uses are published beside it, their dependency on :ryui as the app's
+// asuka build -platform android -aar: the optional modules (asuka-*) an embedded app
+// uses are published beside it, their dependency on :asuka as the app's
 // coordinates.
-providers.gradleProperty("ryuiMavenRepo").orNull?.let { repo ->
+providers.gradleProperty("asukaMavenRepo").orNull?.let { repo ->
     subprojects {
-        if (!name.startsWith("ryui-")) return@subprojects
+        if (!name.startsWith("asuka-")) return@subprojects
         apply(plugin = "maven-publish")
         plugins.withId("com.android.library") {
             extensions.configure<com.android.build.gradle.LibraryExtension> { publishing { singleVariant("release") } }
@@ -19,9 +19,9 @@ providers.gradleProperty("ryuiMavenRepo").orNull?.let { repo ->
                     publications {
                         create<MavenPublication>("release") {
                             from(components["release"])
-                            groupId = providers.gradleProperty("ryuiGroup").orNull ?: "dev.ryui"
+                            groupId = providers.gradleProperty("asukaGroup").orNull ?: "dev.asuka"
                             artifactId = project.name
-                            version = providers.gradleProperty("ryuiVersion").orNull ?: "1.0"
+                            version = providers.gradleProperty("asukaVersion").orNull ?: "1.0"
                         }
                     }
                     repositories { maven { name = "embed"; url = uri(repo) } }

@@ -31,5 +31,5 @@
   "@wide": {"description": "Shows which side text starts on."},
   "next": "Next screen",
   "alwaysLtr": "This row is left to right in every language",
-  "ryui.appName": "Languages"
+  "asuka.appName": "Languages"
 }

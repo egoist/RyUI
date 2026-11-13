@@ -1,4 +1,4 @@
-// Debug automation (ryui dev -platform web): the commands the iOS and Android
+// Debug automation (asuka dev -platform web): the commands the iOS and Android
 // hosts' debug builds take, so the same GUI tests (e2e/) drive the page.
 // They come from the dev server one line each:
 //
@@ -46,7 +46,7 @@ export async function run(h, commands) {
 
 /** shown reports whether el shows on screen: visible, not under a dialog, not a covered screen. */
 function shown(el) {
-  if (!el.isConnected || el.closest("[inert], .ryui-hidden, .ryui-hidden-page, .ryui-covered, .ryui-exiting, [hidden]")) return false;
+  if (!el.isConnected || el.closest("[inert], .asuka-hidden, .asuka-hidden-page, .asuka-covered, .asuka-exiting, [hidden]")) return false;
   if (el.checkVisibility && !el.checkVisibility({ visibilityProperty: true, opacityProperty: true })) return false;
   const r = el.getBoundingClientRect();
   if (r.width <= 0 || r.height <= 0) return false;
@@ -56,7 +56,7 @@ function shown(el) {
   return r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth;
 }
 
-const textSelector = ".ryui-text, .ryui-rich, .ryui-button-title, .ryui-bar-title, .ryui-tab span, .ryui-sidebar-item span, .ryui-menu-item span, .ryui-alert-title, .ryui-alert-message, .ryui-alert-buttons button, .ryui-segmented button, .ryui-stepper button, .ryui-bar-text";
+const textSelector = ".asuka-text, .asuka-rich, .asuka-button-title, .asuka-bar-title, .asuka-tab span, .asuka-sidebar-item span, .asuka-menu-item span, .asuka-alert-title, .asuka-alert-message, .asuka-alert-buttons button, .asuka-segmented button, .asuka-stepper button, .asuka-bar-text";
 
 /** texts are what the screen shows: each text, title and field (its text, or its placeholder). */
 function texts(h) {
@@ -80,7 +80,7 @@ function texts(h) {
 /** find is the innermost visible element showing text. */
 function find(h, text) {
   let best = null;
-  for (const el of h.container.querySelectorAll(textSelector + ", button, [role=button], .ryui-view")) {
+  for (const el of h.container.querySelectorAll(textSelector + ", button, [role=button], .asuka-view")) {
     if (el.textContent.trim() !== text && el.getAttribute("aria-label") !== text) continue;
     if (!shown(el)) continue;
     if (!best || best.contains(el)) best = el;
@@ -106,7 +106,7 @@ function tap(h, text) {
 function field() {
   const a = document.activeElement;
   if (a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA")) return a;
-  return [...document.querySelectorAll(".ryui input.ryui-field, .ryui textarea.ryui-field, .ryui input.ryui-search")].find(shown) || null;
+  return [...document.querySelectorAll(".asuka input.asuka-field, .asuka textarea.asuka-field, .asuka input.asuka-search")].find(shown) || null;
 }
 
 function type(h, text) {
@@ -126,7 +126,7 @@ function submit() {
 }
 
 function tab(title) {
-  const b = [...document.querySelectorAll(".ryui-tab")].find((b) => b.textContent.trim() === title && shown(b));
+  const b = [...document.querySelectorAll(".asuka-tab")].find((b) => b.textContent.trim() === title && shown(b));
   if (!b) throw new Error("no tab " + JSON.stringify(title));
   b.click();
 }

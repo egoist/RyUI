@@ -1,4 +1,4 @@
-// ryui/notify on the web: the Notification API, with the user's
+// asuka/notify on the web: the Notification API, with the user's
 // permission (notify.Request asks; browsers ask only from a tap or click).
 //
 //   - Show now, through the app's service worker (sw.js) where it's
@@ -34,13 +34,13 @@ import { WaitQueue, channel, registration } from "../worker.js";
 
 export { WaitQueue };
 
-const core = globalThis.ryuiNotify;
+const core = globalThis.asukaNotify;
 const dec = new TextDecoder();
 const enc = new TextEncoder();
 
 const modules = new WeakMap();
 
-/** notifyFor is h's notify module: one a host (ryui.js makes it as the app starts, to show what came due). */
+/** notifyFor is h's notify module: one a host (asuka.js makes it as the app starts, to show what came due). */
 export function notifyFor(h) {
   let m = modules.get(h);
   if (!m) {
@@ -72,7 +72,7 @@ export function notifyModule(h, env = {}) {
 
   st.get("categories").then((c) => { if (!categoriesSet && Array.isArray(c)) categories = c; }, () => {});
 
-  const unsupported = (m, why) => new Error(`ryui: notify.${m} isn't on the web here: ${why}`);
+  const unsupported = (m, why) => new Error(`asuka: notify.${m} isn't on the web here: ${why}`);
   const noNotifications = () => "this browser has no notifications" + (/iPhone|iPad/.test(globalThis.navigator?.userAgent || "") ? " (on iOS, only an app added to the Home Screen has them)" : "");
   const allowed = () => N()?.permission === "granted";
 
@@ -125,7 +125,7 @@ export function notifyModule(h, env = {}) {
       n = new (N())(title, options);
     } catch (e) {
       // Chrome on Android: only a service worker shows notifications.
-      throw new Error("ryui/notify: this browser shows notifications only through a service worker, and the app's isn't registered (" + (e?.message || e) + ")");
+      throw new Error("asuka/notify: this browser shows notifications only through a service worker, and the app's isn't registered (" + (e?.message || e) + ")");
     }
     const entry = { n, s: options.data.shown };
     own.set(s.id, entry);
@@ -141,13 +141,13 @@ export function notifyModule(h, env = {}) {
 
   // --- Scheduled ones ---
 
-  const others = typeof BroadcastChannel === "function" && !env.store ? new BroadcastChannel("ryui-notify:" + app) : null;
+  const others = typeof BroadcastChannel === "function" && !env.store ? new BroadcastChannel("asuka-notify:" + app) : null;
   const changed = () => others?.postMessage("changed");
 
   /** fire shows the scheduled ones that are due, then waits for the next. */
   const fire = async () => {
     for (const s of await core.takeDue(st, app, Date.now())) {
-      try { await show(s); } catch (e) { console.warn("ryui/notify:", e); }
+      try { await show(s); } catch (e) { console.warn("asuka/notify:", e); }
     }
     await arm();
   };
@@ -172,8 +172,8 @@ export function notifyModule(h, env = {}) {
     try {
       const r = await reg();
       if (!r?.periodicSync) return;
-      if (on) await r.periodicSync.register("ryui-notify", { minInterval: syncInterval });
-      else await r.periodicSync.unregister("ryui-notify");
+      if (on) await r.periodicSync.register("asuka-notify", { minInterval: syncInterval });
+      else await r.periodicSync.unregister("asuka-notify");
     } catch {} // not granted: only an installed app may have it
   };
 
@@ -203,7 +203,7 @@ export function notifyModule(h, env = {}) {
     const r = await reg();
     if (!r?.getNotifications) return [];
     try {
-      return (await r.getNotifications()).filter((n) => n.data?.ryui && (n.data.app || app) === app);
+      return (await r.getNotifications()).filter((n) => n.data?.asuka && (n.data.app || app) === app);
     } catch {
       return [];
     }
@@ -224,7 +224,7 @@ export function notifyModule(h, env = {}) {
     },
     schedule: async (b) => {
       if (!N()) throw unsupported("Show", noNotifications());
-      if (!allowed()) throw new Error("ryui/notify: notifications aren't allowed: ask with notify.Request first");
+      if (!allowed()) throw new Error("asuka/notify: notifications aren't allowed: ask with notify.Request first");
       const s = JSON.parse(dec.decode(b));
       if (!s.id) s.id = core.newID();
       if (s.seconds > 0) {

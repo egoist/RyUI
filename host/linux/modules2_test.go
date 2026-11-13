@@ -20,13 +20,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/egoist/ryui/camera"
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/maps"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/scan"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/camera"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/maps"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/scan"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // The device modules that run headless: every module and method the
@@ -108,7 +108,7 @@ func TestModulesLinuxHas(t *testing.T) {
 				}
 			}
 		}
-		for _, kind := range []string{"ryui.camera", "ryui.map", "ryui.appleSignIn"} {
+		for _, kind := range []string{"asuka.camera", "asuka.map", "asuka.appleSignIn"} {
 			if builtinViews[kind] == nil {
 				t.Errorf("no %s view on Linux", kind)
 			}

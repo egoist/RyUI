@@ -11,7 +11,7 @@ import (
 
 	"github.com/ebitengine/purego"
 
-	. "github.com/egoist/ryui/internal/darwin"
+	. "github.com/egoist/asuka/internal/darwin"
 )
 
 // What the host's modules share: work off the main thread, the main
@@ -61,7 +61,7 @@ var (
 )
 
 // cacheFile is a new file's path in a folder of the app's caches, the
-// folder made (iOS's caches hold the same: ryui-camera, ryui-audio...).
+// folder made (iOS's caches hold the same: asuka-camera, asuka-audio...).
 func cacheFile(folder, ext string) (string, error) {
 	base, err := os.UserCacheDir()
 	if err != nil {
@@ -72,7 +72,7 @@ func cacheFile(folder, ext string) (string, error) {
 		app = theHost.appName
 	}
 	if app == "" {
-		app = "ryui"
+		app = "asuka"
 	}
 	dir := filepath.Join(base, app, folder)
 	if err := os.MkdirAll(dir, 0o755); err != nil {

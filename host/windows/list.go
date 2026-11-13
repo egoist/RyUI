@@ -6,8 +6,8 @@ import (
 	"encoding/binary"
 	"sort"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ops"
 )
 
 // A List is core-virtualized, as DESIGN.md says (no Win32 list hosts

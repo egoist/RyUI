@@ -1,5 +1,5 @@
 // Package notifyspec is the wire format of a notification between Go and
-// the hosts: what ryui/notify schedules and ryui/push's rewrite makes,
+// the hosts: what asuka/notify schedules and asuka/push's rewrite makes,
 // which each host's one builder turns into the platform's notification
 // (iOS's UNNotificationContent, Android's NotificationCompat). JSON: it's
 // sent once for each notification, not on a hot path.
@@ -55,7 +55,7 @@ type Message struct {
 	Time int64 `json:"time,omitempty"`
 }
 
-// Shown is a notification a host reports: one showing (ryui/notify's
+// Shown is a notification a host reports: one showing (asuka/notify's
 // Showing), one coming in the foreground, one the user answered.
 type Shown struct {
 	ID       string            `json:"id"`

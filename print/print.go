@@ -18,7 +18,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // Result is what the user did in the print dialog.
@@ -85,7 +85,7 @@ type Options struct {
 // done (if not nil) gets the result on the main thread once the dialog
 // is closed. Main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func File(source string, o Options, done func(Result, error)) {
@@ -99,7 +99,7 @@ func File(source string, o Options, done func(Result, error)) {
 // done (if not nil) gets the result on the main thread once the dialog
 // is closed. Main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func HTML(html string, o Options, done func(Result, error)) {
@@ -110,7 +110,7 @@ func HTML(html string, o Options, done func(Result, error)) {
 // (if not nil) gets the result on the main thread once the dialog is
 // closed, or an error if web isn't a WebView on screen. Main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func WebView(web ui.Node, o Options, done func(Result, error)) {
@@ -201,7 +201,7 @@ type PDFOptions struct {
 // Windows with WebView2: the text is text in the PDF, searchable and
 // selectable.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func PDF(html string, o PDFOptions) (path string, err error) {

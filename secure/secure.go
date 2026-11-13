@@ -9,7 +9,7 @@ package secure
 import (
 	"encoding/binary"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 func keyValue(key, value string) []byte {

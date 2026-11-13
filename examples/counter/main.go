@@ -1,15 +1,15 @@
-// Counter is the smallest RyUI app: a signal, a Text that reads it and a
+// Counter is the smallest Asuka app: a signal, a Text that reads it and a
 // Button that writes it.
 //
-//	go run ./cmd/ryui dev -platform ios examples/counter
+//	go run ./cmd/asuka dev -platform ios examples/counter
 package main
 
 import (
 	"fmt"
 
-	"github.com/egoist/ryui/app"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 func Counter() ui.Node {

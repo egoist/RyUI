@@ -15,10 +15,10 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
+	. "github.com/egoist/asuka/internal/darwin"
 )
 
-// ryui/device's "files" and "clipboard" modules on a Mac.
+// asuka/device's "files" and "clipboard" modules on a Mac.
 
 // filesModule is device.PickFiles: "pick" shows an open panel (a sheet
 // on the window in use). args: u8 multiple, then MIME types a line each
@@ -54,7 +54,7 @@ func (h *Host) filesModule() map[string]method {
 					reply(nil, nil)
 					return
 				}
-				dir := filepath.Join(cacheDir(), "ryui-files")
+				dir := filepath.Join(cacheDir(), "asuka-files")
 				go func() {
 					out, err := copyPicked(dir, paths)
 					h.Post(func() { reply(out, err) })
@@ -170,7 +170,7 @@ type clipboard struct {
 	timer   ID
 }
 
-// clipboardModule is ryui/device's clipboard: "has" (u8 text, image,
+// clipboardModule is asuka/device's clipboard: "has" (u8 text, image,
 // URL), "image" (the clipboard's image as a file in the caches, in its
 // own format; empty: none), "copyImage" (a file's path), and, while
 // watching, "next" (answered at the next change) and "stop".
@@ -190,7 +190,7 @@ func (h *Host) clipboardModule() map[string]method {
 				reply(nil, nil)
 				return
 			}
-			dir := filepath.Join(cacheDir(), "ryui-clipboard")
+			dir := filepath.Join(cacheDir(), "asuka-clipboard")
 			if err := os.MkdirAll(dir, 0o755); err != nil {
 				reply(nil, err)
 				return

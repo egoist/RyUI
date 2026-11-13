@@ -1,8 +1,8 @@
 package ui
 
 import (
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
 )
 
 // backScope is where the user's going back is taken: a screen (popping

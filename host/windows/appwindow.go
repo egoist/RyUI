@@ -5,8 +5,8 @@ package windows
 import (
 	"math"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ops"
 )
 
 // The app's windows (ui.Window): each a top-level window of its own,

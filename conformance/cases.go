@@ -3,7 +3,7 @@ package conformance
 import (
 	"math"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // Case is one rendering check: a scene in a Cell-point square, on

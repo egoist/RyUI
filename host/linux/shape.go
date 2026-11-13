@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"time"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
 )
 
 // A Shape is drawn by its view with GSK: its outline a GskPath, filled

@@ -7,7 +7,7 @@
 // It's iOS's and macOS's (where the app's signature needs the
 // entitlement from a provisioning profile): on Android, Available is
 // false and SignIn fails with ErrNotAvailable; sign in with Apple there
-// on the web (ryui/webauth).
+// on the web (asuka/webauth).
 // An app that imports it is given the Sign in with Apple entitlement;
 // its App ID needs the capability (developer.apple.com) for a release
 // build.
@@ -20,8 +20,8 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // Scope is what the app asks for, besides who the user is.
@@ -71,7 +71,7 @@ var (
 // Available reports whether Sign in with Apple is on this device (iOS).
 // Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Available() bool {
@@ -82,7 +82,7 @@ func Available() bool {
 // SignIn shows the system's Sign in with Apple sheet and reports the
 // credential, or ErrCanceled. Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func SignIn(o Options) (Credential, error) {
@@ -115,7 +115,7 @@ const (
 // CredentialState is user's standing (Credential.User): check it at
 // launch, and sign out a revoked user. Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func CredentialState(user string) (State, error) {
@@ -173,5 +173,5 @@ func Button(p ButtonProps) ui.Node {
 	if p.OnPress != nil {
 		np.On["press"] = func(ui.NativeEvent) { p.OnPress() }
 	}
-	return ui.Native("ryui.appleSignIn", np)
+	return ui.Native("asuka.appleSignIn", np)
 }

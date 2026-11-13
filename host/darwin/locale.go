@@ -8,11 +8,11 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/egoist/ryui/i18n"
-	"github.com/egoist/ryui/internal/boot"
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/i18n"
+	"github.com/egoist/asuka/internal/boot"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/ui"
 )
 
 // Languages and direction on a Mac.
@@ -104,7 +104,7 @@ func hourCycle(pattern string) uint8 {
 // shows, before there's a core to ask. It may be wrong (the app called
 // SetLocale before it runs): that's a language changing later.
 func launchRTL() bool {
-	if boot.Lang != "" || boot.Direction != "" || os.Getenv("RYUI_LOCALE") != "" || os.Getenv("RYUI_DIRECTION") != "" {
+	if boot.Lang != "" || boot.Direction != "" || os.Getenv("ASUKA_LOCALE") != "" || os.Getenv("ASUKA_DIRECTION") != "" {
 		return ui.IsRTL()
 	}
 	var want []string
@@ -187,7 +187,7 @@ func (h *Host) saveLocale(tag string) {
 }
 
 // menuWords are the words of the standard menus that AppKit has in its own
-// tables, in the languages macOS speaks: each one's table and key. RyUI's
+// tables, in the languages macOS speaks: each one's table and key. Asuka's
 // catalog has the others (internal/l10n).
 var menuWords = map[string][2]string{
 	"Services":           {"Services", "Services"},

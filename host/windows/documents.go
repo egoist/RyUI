@@ -11,15 +11,15 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.com/egoist/ryui/internal/localfile"
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/native"
-	"github.com/egoist/ryui/ops"
+	"github.com/egoist/asuka/internal/localfile"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/native"
+	"github.com/egoist/asuka/ops"
 )
 
-// The modules that hand files to the system: ryui/preview (the file's
-// app), ryui/print (WebView2's printing, the file's app) and
-// ryui/compose (mailto:, Simple MAPI). Their methods answer later (a
+// The modules that hand files to the system: asuka/preview (the file's
+// app), asuka/print (WebView2's printing, the file's app) and
+// asuka/compose (mailto:, Simple MAPI). Their methods answer later (a
 // download, a page loading, a composer the user closes).
 
 type asyncMethod func(args []byte, reply func([]byte, error))

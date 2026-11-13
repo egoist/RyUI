@@ -11,7 +11,7 @@ import (
 )
 
 // The shell's verbs on files (open, print), the app for a URL scheme,
-// and Simple MAPI's mail: ryui/preview, ryui/print and ryui/compose.
+// and Simple MAPI's mail: asuka/preview, asuka/print and asuka/compose.
 
 var (
 	shlwapi = systemDLL("shlwapi.dll")

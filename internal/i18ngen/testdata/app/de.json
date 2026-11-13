@@ -6,7 +6,7 @@
   "replied": "{gender, select, female {Sie} male {Er} other {Sie}} hat am {when, date, short} geantwortet.",
   "place": "Du bist {n}. geworden",
   "guests": "{n, plural, offset:1 =0 {Niemand} =1 {{host}} one {{host} und # weitere Person} other {{host} und # weitere Personen}}",
-  "ryui.cancel": "Abbrechen",
-  "ryui.quitApp": "{app} beenden",
-  "ryui.appName": "Notizen"
+  "asuka.cancel": "Abbrechen",
+  "asuka.quitApp": "{app} beenden",
+  "asuka.appName": "Notizen"
 }

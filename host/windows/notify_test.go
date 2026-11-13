@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/egoist/ryui/internal/notifyspec"
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/notify"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/internal/notifyspec"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/notify"
+	"github.com/egoist/asuka/ui"
 )
 
 // toastCategories are the tests' categories: a message's reply and
@@ -38,7 +38,7 @@ func TestToastActions(t *testing.T) {
 	})
 	onMain(t, func() {
 		await(h, "notify", "categories", toastCategories)
-		spec, _ := json.Marshal(notifyspec.Spec{ID: "ryui-actions", Title: "Ann", Body: "Lunch?", Category: "msg",
+		spec, _ := json.Marshal(notifyspec.Spec{ID: "asuka-actions", Title: "Ann", Body: "Lunch?", Category: "msg",
 			Thread: "chat-1", URL: "myapp://chat/1", Data: map[string]string{"k": "v"}, Silent: true})
 		if _, err, _ := await(h, "notify", "schedule", spec); err != nil {
 			fatalf("notify.schedule with actions: %v", err)
@@ -60,7 +60,7 @@ func TestToastActions(t *testing.T) {
 		t.Logf("showing: %s", b)
 		found := false
 		for _, n := range list {
-			if n.ID == "ryui-actions" {
+			if n.ID == "asuka-actions" {
 				found = n.Title == "Ann" && n.Thread == "chat-1" && n.Data["k"] == "v" && n.URL == "myapp://chat/1" && n.Time > 0
 				if !found {
 					fatalf("showing's toast: %+v", n)
@@ -68,7 +68,7 @@ func TestToastActions(t *testing.T) {
 			}
 		}
 		if !found && h.notes().toaster.Enabled() {
-			fatalf("notify.showing: no ryui-actions in %s", b)
+			fatalf("notify.showing: no asuka-actions in %s", b)
 		}
 
 		var got []notifyspec.Response
@@ -80,7 +80,7 @@ func TestToastActions(t *testing.T) {
 				}
 			})
 		}
-		shown := shownOfSpec(notifyspec.Spec{ID: "ryui-actions", Title: "Ann", URL: "myapp://chat/1", Category: "msg", Thread: "chat-1"}, 1)
+		shown := shownOfSpec(notifyspec.Spec{ID: "asuka-actions", Title: "Ann", URL: "myapp://chat/1", Category: "msg", Thread: "chat-1"}, 1)
 		clsid, aumid := h.toastActivatorID(), h.appUserModelID()
 
 		// A reply, through COM: a background action.
@@ -91,7 +91,7 @@ func TestToastActions(t *testing.T) {
 		if !pumpUntil(func() bool { return len(got) == 1 }) {
 			fatalf("no response to the reply")
 		}
-		if r := got[0]; r.Action != "reply" || r.Reply != "Sure" || r.Notification.ID != "ryui-actions" || r.Notification.Thread != "chat-1" || r.Seconds != actionSeconds {
+		if r := got[0]; r.Action != "reply" || r.Reply != "Sure" || r.Notification.ID != "asuka-actions" || r.Notification.Thread != "chat-1" || r.Seconds != actionSeconds {
 			fatalf("the reply's response: %+v", r)
 		}
 		if h.notes().pendingActions[got[0].Token] == nil {
@@ -121,19 +121,19 @@ func TestToastActions(t *testing.T) {
 			fatalf("an action that opens the app: %+v", got)
 		}
 
-		ids, _ := json.Marshal([]string{"ryui-actions"})
+		ids, _ := json.Marshal([]string{"asuka-actions"})
 		await(h, "notify", "remove", ids)
 		b, _, _ = await(h, "notify", "showing", nil)
-		if strings.Contains(string(b), "ryui-actions") {
+		if strings.Contains(string(b), "asuka-actions") {
 			fatalf("removed, still showing: %s", b)
 		}
 
 		// RemoveThread finds the thread's toasts.
-		spec, _ = json.Marshal(notifyspec.Spec{ID: "ryui-thread", Title: "T", Thread: "chat-2", Silent: true})
+		spec, _ = json.Marshal(notifyspec.Spec{ID: "asuka-thread", Title: "T", Thread: "chat-2", Silent: true})
 		await(h, "notify", "schedule", spec)
 		await(h, "notify", "removeThread", []byte("chat-2"))
 		b, _, _ = await(h, "notify", "showing", nil)
-		if strings.Contains(string(b), "ryui-thread") {
+		if strings.Contains(string(b), "asuka-thread") {
 			fatalf("its thread removed, still showing: %s", b)
 		}
 	})
@@ -150,7 +150,7 @@ func TestToastPresent(t *testing.T) {
 		await(h, "notify", "present", []byte{1})
 		var present notifyspec.Present
 		h.asyncModule("notify")["nextPresent"](nil, func(b []byte, err error) { json.Unmarshal(b, &present) })
-		spec, _ := json.Marshal(notifyspec.Spec{ID: "ryui-present", Title: "P", Silent: true})
+		spec, _ := json.Marshal(notifyspec.Spec{ID: "asuka-present", Title: "P", Silent: true})
 		answered := false
 		h.asyncModule("notify")["schedule"](spec, func(_ []byte, err error) {
 			if err != nil {
@@ -158,7 +158,7 @@ func TestToastPresent(t *testing.T) {
 			}
 			answered = true
 		})
-		if !pumpUntil(func() bool { return present.Token != "" }) || present.Notification.ID != "ryui-present" || answered {
+		if !pumpUntil(func() bool { return present.Token != "" }) || present.Notification.ID != "asuka-present" || answered {
 			fatalf("present: %+v (answered %v)", present, answered)
 		}
 		await(h, "notify", "presented", append([]byte{2}, present.Token...))
@@ -166,7 +166,7 @@ func TestToastPresent(t *testing.T) {
 			fatalf("presented: the schedule isn't answered")
 		}
 		b, _, _ := await(h, "notify", "showing", nil)
-		if strings.Contains(string(b), "ryui-present") {
+		if strings.Contains(string(b), "asuka-present") {
 			fatalf("presented none, showing: %s", b)
 		}
 		await(h, "notify", "present", []byte{0})
@@ -232,7 +232,7 @@ func toastServer() {
 // showing, and it quits once done.
 func TestToastColdLaunch(t *testing.T) {
 	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })
-	out := filepath.Join(os.TempDir(), "ryui-toast-cold.json")
+	out := filepath.Join(os.TempDir(), "asuka-toast-cold.json")
 	os.Remove(out)
 	onMain(t, func() {
 		if _, err := h.toasts(); err != nil {
@@ -243,7 +243,7 @@ func TestToastColdLaunch(t *testing.T) {
 		StopToastActivator()
 		h.notes().activator = false
 		defer h.startActivator()
-		shown := notifyspec.Shown{ID: "ryui-cold", Category: "msg", Data: map[string]string{"out": out}}
+		shown := notifyspec.Shown{ID: "asuka-cold", Category: "msg", Data: map[string]string{"out": out}}
 		if err := ActivateToast(h.toastActivatorID(), h.appUserModelID(), toastArgsJSON(shown, "reply"), map[string]string{"r:reply": "From cold"}); err != nil {
 			fatalf("activating: %v", err)
 		}
@@ -256,7 +256,7 @@ func TestToastColdLaunch(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 	}
 	var got map[string]any
-	if json.Unmarshal(b, &got) != nil || got["action"] != "reply" || got["reply"] != "From cold" || got["id"] != "ryui-cold" || got["visible"] != false {
+	if json.Unmarshal(b, &got) != nil || got["action"] != "reply" || got["reply"] != "From cold" || got["id"] != "asuka-cold" || got["visible"] != false {
 		t.Fatalf("the app COM started: %s", b)
 	}
 }

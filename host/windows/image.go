@@ -17,8 +17,8 @@ import (
 	"strings"
 	"sync"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ops"
 )
 
 // Images are fetched and decoded off the main thread (Go's decoders:
@@ -317,6 +317,6 @@ var warned = map[string]bool{}
 func warnSymbol(name string) {
 	if !warned[name] {
 		warned[name] = true
-		fmt.Fprintf(os.Stderr, "ryui: the Windows host has no glyph for the symbol %q\n", name)
+		fmt.Fprintf(os.Stderr, "asuka: the Windows host has no glyph for the symbol %q\n", name)
 	}
 }

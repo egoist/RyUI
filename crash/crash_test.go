@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/egoist/ryui/host/fake"
-	"github.com/egoist/ryui/internal/crashrun"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/host/fake"
+	"github.com/egoist/asuka/internal/crashrun"
+	"github.com/egoist/asuka/ui"
 )
 
 // start begins a run whose record is in a directory of the test's.
@@ -33,7 +33,7 @@ func start(t *testing.T) string {
 // The child of TestGoCrash: a run that adds a breadcrumb and a value,
 // then panics on a goroutine.
 func init() {
-	if os.Getenv("RYUI_CRASH_CHILD") != "1" {
+	if os.Getenv("ASUKA_CRASH_CHILD") != "1" {
 		return
 	}
 	crashrun.Start(crashrun.Info{AppVersion: "1.2", Build: "7", System: "iOS"})
@@ -57,7 +57,7 @@ func checkout(m map[string]int) { m["items"]++ } // a nil map: panics
 func TestGoCrash(t *testing.T) {
 	dir := start(t)
 	cmd := exec.Command(os.Args[0], "-test.run=^$")
-	cmd.Env = append(os.Environ(), "RYUI_CRASH_CHILD=1", "RYUI_DATA="+filepath.Dir(dir))
+	cmd.Env = append(os.Environ(), "ASUKA_CRASH_CHILD=1", "ASUKA_DATA="+filepath.Dir(dir))
 	out, err := cmd.CombinedOutput()
 	if err == nil {
 		t.Fatalf("the child didn't crash:\n%s", out)
@@ -76,7 +76,7 @@ func TestGoCrash(t *testing.T) {
 	if !strings.Contains(r.Text, "goroutine ") || !strings.Contains(r.Text, "crash.checkout") {
 		t.Fatalf("text:\n%s", r.Text)
 	}
-	if len(r.Threads) < 2 || !r.Threads[0].Crashed || r.Threads[0].Frames[0].Function != "github.com/egoist/ryui/crash.checkout" {
+	if len(r.Threads) < 2 || !r.Threads[0].Crashed || r.Threads[0].Frames[0].Function != "github.com/egoist/asuka/crash.checkout" {
 		t.Fatalf("threads %+v", r.Threads)
 	}
 	if f := r.Threads[0].Frames[0]; !strings.HasSuffix(f.File, "crash_test.go") || f.Line == 0 {
@@ -335,12 +335,12 @@ func TestNativeCrashAndroid(t *testing.T) {
 	began := time.Date(2026, 11, 6, 10, 30, 0, 0, time.Local)
 	writeRun(t, dir, began, 4242, "synced")
 	frame := pb(nil).varint(1, 0x4a1c0).varint(2, 0x7a00004a1c0).str(4, "main.render").varint(5, 12).
-		str(6, "/data/app/~~x/dev.ryui.gallery/lib/arm64/libryui.so").str(8, "a1b2c3")
-	main := pb(nil).varint(1, 4242).str(2, "dev.ryui.gallery").bytes(4, frame)
+		str(6, "/data/app/~~x/dev.asuka.gallery/lib/arm64/libasuka.so").str(8, "a1b2c3")
+	main := pb(nil).varint(1, 4242).str(2, "dev.asuka.gallery").bytes(4, frame)
 	other := pb(nil).varint(1, 4250).str(2, "RenderThread").bytes(4, pb(nil).varint(1, 0x10).str(6, "/system/lib64/libc.so"))
 	sig := pb(nil).varint(1, 11).str(2, "SIGSEGV").varint(3, 1).str(4, "SEGV_MAPERR").varint(8, 1).varint(9, 0)
 	ts := pb(nil).varint(1, 1).str(2, "google/pixel:16/x:user/release-keys").varint(5, 4242).varint(6, 4242).
-		str(9, "dev.ryui.gallery").bytes(10, sig).str(15, "").
+		str(9, "dev.asuka.gallery").bytes(10, sig).str(15, "").
 		bytes(16, pb(nil).varint(1, 4250).bytes(2, other)).
 		bytes(16, pb(nil).varint(1, 4242).bytes(2, main)).varint(20, 61)
 	exit, _ := json.Marshal(map[string]any{"time": began.Add(time.Minute).UnixMilli(), "pid": 4242, "reason": exitCrashNative, "status": 11, "importance": 100})
@@ -354,14 +354,14 @@ func TestNativeCrashAndroid(t *testing.T) {
 	if r.Kind != Native || r.Message != "SIGSEGV (SEGV_MAPERR)" || !r.Context.Foreground || r.Context.Breadcrumbs[0].Message != "synced" {
 		t.Fatalf("report %+v", r)
 	}
-	if len(r.Threads) != 2 || r.Threads[0].Name != "dev.ryui.gallery" || !r.Threads[0].Crashed {
+	if len(r.Threads) != 2 || r.Threads[0].Name != "dev.asuka.gallery" || !r.Threads[0].Crashed {
 		t.Fatalf("threads %+v", r.Threads)
 	}
 	f := r.Threads[0].Frames[0]
-	if f.Function != "main.render" || f.Offset != 0x4a1c0 || f.BinaryID != "a1b2c3" || !strings.HasSuffix(f.Binary, "libryui.so") {
+	if f.Function != "main.render" || f.Offset != 0x4a1c0 || f.BinaryID != "a1b2c3" || !strings.HasSuffix(f.Binary, "libasuka.so") {
 		t.Fatalf("frame %+v", f)
 	}
-	if !strings.Contains(r.Text, "#00 pc 000000000004a1c0  /data/app/~~x/dev.ryui.gallery/lib/arm64/libryui.so (main.render+12) (BuildId: a1b2c3)") {
+	if !strings.Contains(r.Text, "#00 pc 000000000004a1c0  /data/app/~~x/dev.asuka.gallery/lib/arm64/libasuka.so (main.render+12) (BuildId: a1b2c3)") {
 		t.Fatalf("text:\n%s", r.Text)
 	}
 }
@@ -379,7 +379,7 @@ func TestGoAbortReportedOnce(t *testing.T) {
 		t.Fatal(err)
 	}
 	sig := pb(nil).varint(1, 6).str(2, "SIGABRT").varint(3, -6&0xffffffff).str(4, "SI_TKILL")
-	thread := pb(nil).varint(1, 5150).str(2, "dev.ryui.chat").bytes(4, pb(nil).varint(1, 0x10).str(6, "/apex/com.android.runtime/lib64/bionic/libc.so"))
+	thread := pb(nil).varint(1, 5150).str(2, "dev.asuka.chat").bytes(4, pb(nil).varint(1, 0x10).str(6, "/apex/com.android.runtime/lib64/bionic/libc.so"))
 	ts := pb(nil).varint(5, 5150).varint(6, 5150).bytes(10, sig).bytes(16, pb(nil).varint(1, 5150).bytes(2, thread))
 	exit, _ := json.Marshal(map[string]any{"time": began.Add(time.Minute).UnixMilli(), "pid": 5150, "reason": exitCrashNative, "status": 6, "importance": 100})
 	inbox(t, dir, "exit-3-5150.trace", ts)
@@ -417,12 +417,12 @@ func TestANR(t *testing.T) {
 	dir := start(t)
 	trace := `
 ----- pid 4242 at 2026-11-06 10:31:00.000 -----
-Cmd line: dev.ryui.gallery
+Cmd line: dev.asuka.gallery
 
 "main" prio=5 tid=1 Sleeping
   | group="main" sCount=1
   at java.lang.Thread.sleep(Native method)
-  at dev.ryui.RyUIRuntime.apply(RyUIRuntime.kt:120)
+  at dev.asuka.AsukaRuntime.apply(AsukaRuntime.kt:120)
   native: #00 pc 000000000009ab3c  /apex/com.android.runtime/lib64/bionic/libc.so (nanosleep+12) (BuildId: ff00)
 
 "RenderThread" prio=7 tid=12 Native
@@ -441,7 +441,7 @@ Cmd line: dev.ryui.gallery
 	if th.Name != "main" || !th.Crashed || len(th.Frames) != 3 {
 		t.Fatalf("main %+v", th)
 	}
-	if th.Frames[1] != (Frame{Function: "dev.ryui.RyUIRuntime.apply", File: "RyUIRuntime.kt", Line: 120}) ||
+	if th.Frames[1] != (Frame{Function: "dev.asuka.AsukaRuntime.apply", File: "AsukaRuntime.kt", Line: 120}) ||
 		th.Frames[2] != (Frame{Function: "nanosleep", Binary: "/apex/com.android.runtime/lib64/bionic/libc.so", BinaryID: "ff00", Offset: 0x9ab3c}) {
 		t.Fatalf("frames %+v", th.Frames)
 	}
@@ -452,8 +452,8 @@ func TestJVMException(t *testing.T) {
 	dir := start(t)
 	exc, _ := json.Marshal(map[string]any{
 		"time": time.Now().UnixMilli(), "pid": 99, "thread": "main", "name": "java.lang.IllegalStateException", "reason": "no cart",
-		"stack":   "java.lang.IllegalStateException: no cart\n\tat dev.app.Cart.open(Cart.kt:12)\n\tat dev.ryui.RyUIRuntime.apply(Unknown Source)\nCaused by: java.io.IOException\n\tat x.Y.z(Y.java:1)",
-		"threads": []map[string]string{{"name": "ryui-crash", "stack": "\tat java.lang.Object.wait(Native Method)"}},
+		"stack":   "java.lang.IllegalStateException: no cart\n\tat dev.app.Cart.open(Cart.kt:12)\n\tat dev.asuka.AsukaRuntime.apply(Unknown Source)\nCaused by: java.io.IOException\n\tat x.Y.z(Y.java:1)",
+		"threads": []map[string]string{{"name": "asuka-crash", "stack": "\tat java.lang.Object.wait(Native Method)"}},
 	})
 	inbox(t, dir, "exception-J1.json", exc)
 	rs, _ := Reports()
@@ -464,7 +464,7 @@ func TestJVMException(t *testing.T) {
 	if len(fs) != 2 || fs[0] != (Frame{Function: "dev.app.Cart.open", File: "Cart.kt", Line: 12}) || fs[1].File != "" {
 		t.Fatalf("frames %+v", fs)
 	}
-	if len(rs[0].Threads) != 2 || rs[0].Threads[1].Name != "ryui-crash" || rs[0].Context.PID != 99 {
+	if len(rs[0].Threads) != 2 || rs[0].Threads[1].Name != "asuka-crash" || rs[0].Context.PID != 99 {
 		t.Fatalf("threads %+v", rs[0].Threads)
 	}
 }
@@ -492,7 +492,7 @@ func TestRecord(t *testing.T) {
 	if r.Kind != NonFatal || r.Fatal || r.Message != "*crash.cartError: cart c1 is gone" {
 		t.Fatalf("report %+v", r)
 	}
-	if fn := r.Threads[0].Frames[0].Function; fn != "github.com/egoist/ryui/crash.TestRecord" {
+	if fn := r.Threads[0].Frames[0].Function; fn != "github.com/egoist/asuka/crash.TestRecord" {
 		t.Fatalf("top frame %q", fn)
 	}
 	c := r.Context

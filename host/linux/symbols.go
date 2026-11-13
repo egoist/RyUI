@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	. "github.com/egoist/ryui/internal/gtk"
+	. "github.com/egoist/asuka/internal/gtk"
 )
 
 // Symbols are SF Symbol names. Those with a match in the freedesktop and
@@ -146,7 +146,7 @@ func (h *Host) resolveIcon(sf string) string {
 	if name := adwaitaIcons[sf]; name != "" {
 		return name // GTK shows its missing-image icon
 	}
-	println("ryui: no symbol named", sf, "on Linux")
+	println("asuka: no symbol named", sf, "on Linux")
 	return ""
 }
 
@@ -158,13 +158,13 @@ func writeIcon(sf, path string) string {
 		if err != nil {
 			base = os.TempDir()
 		}
-		iconDir = filepath.Join(base, "ryui", "icons")
+		iconDir = filepath.Join(base, "asuka", "icons")
 		if err := os.MkdirAll(iconDir, 0o755); err != nil {
 			return ""
 		}
 		IconThemeAddSearchPath(iconTheme, iconDir)
 	}
-	name := "ryui-" + strings.ReplaceAll(sf, ".", "-") + "-symbolic"
+	name := "asuka-" + strings.ReplaceAll(sf, ".", "-") + "-symbolic"
 	file := filepath.Join(iconDir, name+".svg")
 	svg := `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 -960 960 960"><path fill="#000" d="` + path + `"/></svg>`
 	if old, err := os.ReadFile(file); err != nil || string(old) != svg {

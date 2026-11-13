@@ -58,7 +58,7 @@ func Load() error {
 				}
 			}
 			if *lib == 0 {
-				loadErr = fmt.Errorf("ryui: %s isn't installed (%v): the Linux host needs GTK 4.14 and libadwaita 1.5 or later", sonames[lib][0], err)
+				loadErr = fmt.Errorf("asuka: %s isn't installed (%v): the Linux host needs GTK 4.14 and libadwaita 1.5 or later", sonames[lib][0], err)
 				return
 			}
 		}

@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // AppKit runs on the main thread: TestMain keeps it, and the tests send
@@ -324,7 +324,7 @@ func TestModules(t *testing.T) {
 		if err != nil || !strings.Contains(string(b), `"system":"macOS"`) {
 			fatalf(t, "device.info: %s, %v", b, err)
 		}
-		key := fmt.Sprintf("ryui-test-%d", time.Now().UnixNano())
+		key := fmt.Sprintf("asuka-test-%d", time.Now().UnixNano())
 		if b, err := call("secureStore", "get", []byte(key)); err != nil || len(b) != 1 || b[0] != 0 {
 			fatalf(t, "a missing key: %v, %v", b, err)
 		}
@@ -551,7 +551,7 @@ func TestWindowOptions(t *testing.T) {
 	})
 }
 
-// ryui/notify needs the app's bundle: a test binary has none, and is told
+// asuka/notify needs the app's bundle: a test binary has none, and is told
 // so; what needs no center (the Dock's badge, Android's channels) works.
 func TestNotifyWithoutBundle(t *testing.T) {
 	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })

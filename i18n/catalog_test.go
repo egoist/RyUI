@@ -198,7 +198,7 @@ var libFiles = map[string]string{
 
 func TestLibraryCatalog(t *testing.T) {
 	resetRegistry(t)
-	lib, err := NewLibraryCatalog(files(libFiles), "en", "ryui")
+	lib, err := NewLibraryCatalog(files(libFiles), "en", "asuka")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,9 +211,9 @@ func TestLibraryCatalog(t *testing.T) {
 	}
 
 	app, err := NewCatalog(files(map[string]string{
-		"de.json":      `{"title": "Titel", "ryui.cancel": "Abbrechen"}`,
-		"en.json":      `{"title": "Title", "ryui.close": "Dismiss"}`,
-		"zh-Hans.json": `{"title": "标题", "ryui.quitApp": "退出 {app}"}`,
+		"de.json":      `{"title": "Titel", "asuka.cancel": "Abbrechen"}`,
+		"en.json":      `{"title": "Title", "asuka.close": "Dismiss"}`,
+		"zh-Hans.json": `{"title": "标题", "asuka.quitApp": "退出 {app}"}`,
 		"zh-TW.json":   `{"title": "標題"}`,
 	}), "de")
 	if err != nil {
@@ -330,7 +330,7 @@ func BenchmarkCatalogText(b *testing.B) {
 }
 
 // TestCatalogAdd checks the translations a catalog takes from elsewhere,
-// as RyUI's own strings take those of the packages an app imports.
+// as Asuka's own strings take those of the packages an app imports.
 func TestCatalogAdd(t *testing.T) {
 	c, err := NewLibraryCatalog(files(map[string]string{"en.json": `{"undo": "Undo", "redo": "Redo"}`}), "en", "lib")
 	if err != nil {

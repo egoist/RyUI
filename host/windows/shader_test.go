@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ops"
-	kage "github.com/egoist/ryui/shader"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ops"
+	kage "github.com/egoist/asuka/shader"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 var tint = kage.MustCompile(`package main

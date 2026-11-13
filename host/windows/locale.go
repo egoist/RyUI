@@ -10,10 +10,10 @@ import (
 	"unicode"
 	"unicode/utf16"
 
-	"github.com/egoist/ryui/i18n"
-	"github.com/egoist/ryui/internal/l10n"
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ops"
+	"github.com/egoist/asuka/i18n"
+	"github.com/egoist/asuka/internal/l10n"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ops"
 )
 
 // The language the app shows, and which way it goes.
@@ -307,13 +307,13 @@ func directedGlyph(name string, rtl bool) uint16 {
 const localeName = "locale"
 
 // localeFile is where the app's language is kept, or "" if it isn't: not for
-// a test (go test) or an automation run (RYUI_SNAPSHOT, RYUI_SCRIPT), as the
+// a test (go test) or an automation run (ASUKA_SNAPSHOT, ASUKA_SCRIPT), as the
 // window's placement isn't.
 func localeFile() string {
-	if testing.Testing() || snapshotting() || os.Getenv("RYUI_SCRIPT") != "" {
+	if testing.Testing() || snapshotting() || os.Getenv("ASUKA_SCRIPT") != "" {
 		return ""
 	}
-	d := os.Getenv("RYUI_DATA") // as store.Dir: state.go sets it
+	d := os.Getenv("ASUKA_DATA") // as store.Dir: state.go sets it
 	if d == "" {
 		return ""
 	}

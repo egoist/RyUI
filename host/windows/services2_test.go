@@ -19,8 +19,8 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ui"
 )
 
 // What the modules answer where Windows has nothing to ask: each as the
@@ -313,7 +313,7 @@ func TestClipboardImage(t *testing.T) {
 	})
 }
 
-// Windows Hello's answers, as ryui/biometric's: what the PC has, and the
+// Windows Hello's answers, as asuka/biometric's: what the PC has, and the
 // prompt's outcomes (Windows asked through seams: a test never meets the
 // prompt).
 func TestBiometric(t *testing.T) {
@@ -367,7 +367,7 @@ func TestWebAuth(t *testing.T) {
 			w.Write([]byte(`<title>Sign in</title><script>setTimeout(function(){location.href='/done'},50)</script>`))
 			return
 		}
-		http.Redirect(w, r, "ryuitest://signed-in?code=42", http.StatusFound)
+		http.Redirect(w, r, "asukatest://signed-in?code=42", http.StatusFound)
 	}))
 	defer srv.Close()
 	start := func(id uint32, flags byte, link, scheme string) []byte {
@@ -379,12 +379,12 @@ func TestWebAuth(t *testing.T) {
 		return append(b, scheme...)
 	}
 	onMain(t, func() {
-		b, err, answered := await(h, "webAuth", "start", start(1, 0, srv.URL+"/login", "ryuitest"))
-		if !answered || err != nil || string(b) != "ryuitest://signed-in?code=42" {
+		b, err, answered := await(h, "webAuth", "start", start(1, 0, srv.URL+"/login", "asukatest"))
+		if !answered || err != nil || string(b) != "asukatest://signed-in?code=42" {
 			fatalf("webAuth: %q, %v (answered %v)", b, err, answered)
 		}
-		b, err, answered = await(h, "webAuth", "start", start(2, 1, srv.URL+"/login", "RyUITest"))
-		if !answered || err != nil || string(b) != "ryuitest://signed-in?code=42" {
+		b, err, answered = await(h, "webAuth", "start", start(2, 1, srv.URL+"/login", "AsukaTest"))
+		if !answered || err != nil || string(b) != "asukatest://signed-in?code=42" {
 			fatalf("webAuth, ephemeral: %q, %v (answered %v)", b, err, answered)
 		}
 		var got error
@@ -807,7 +807,7 @@ func TestVision(t *testing.T) {
 func TestCamera(t *testing.T) {
 	var errs []string
 	h, _ := mount(t, func() ui.Node {
-		return ui.Native("ryui.camera", ui.NativeProps{
+		return ui.Native("asuka.camera", ui.NativeProps{
 			Style: ui.Style{Width: ui.Pt(200), Height: ui.Pt(150)},
 			Props: map[string]any{"facing": "back", "video": true},
 			On:    map[string]func(ui.NativeEvent){"error": func(e ui.NativeEvent) { errs = append(errs, e.String("message")) }},
@@ -856,7 +856,7 @@ func TestCamera(t *testing.T) {
 	})
 }
 
-// Every module and method RyUI's packages call has an answer on
+// Every module and method Asuka's packages call has an answer on
 // Windows (the audit: grep ui.Call, ui.CallWait in the packages).
 func TestEveryModuleAnswers(t *testing.T) {
 	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })
@@ -914,7 +914,7 @@ func TestEveryModuleAnswers(t *testing.T) {
 				t.Errorf("%s has no answer on Windows", module)
 			}
 		}
-		for _, kind := range []string{"ryui.camera", "ryui.map"} {
+		for _, kind := range []string{"asuka.camera", "asuka.map"} {
 			if builtinViews[kind] == nil {
 				t.Errorf("no %s view on Windows", kind)
 			}

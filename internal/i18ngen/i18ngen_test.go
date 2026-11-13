@@ -51,12 +51,12 @@ func diffLines(want, got string) string {
 	return ""
 }
 
-// library is the catalog of a library with the namespace ryui.
+// library is the catalog of a library with the namespace asuka.
 func library(t *testing.T) *Catalog {
 	t.Helper()
 	lib, diags, err := Load(fstest.MapFS{
 		"en.json": {Data: []byte(`{"cancel": "Cancel", "quitApp": "Quit {app}"}`)},
-	}, Options{Dir: "l10n", Source: "en", Namespace: "ryui"})
+	}, Options{Dir: "l10n", Source: "en", Namespace: "asuka"})
 	if err != nil || len(diags) > 0 {
 		t.Fatalf("library: %v %v", err, diags)
 	}
@@ -73,7 +73,7 @@ func loadDir(t *testing.T, dir string, opts Options) (*Catalog, Diagnostics) {
 }
 
 func TestApp(t *testing.T) {
-	c, diags := loadDir(t, "testdata/app", Options{Dir: "locales", Source: "en", Libraries: map[string]*Catalog{"ryui": library(t)}})
+	c, diags := loadDir(t, "testdata/app", Options{Dir: "locales", Source: "en", Libraries: map[string]*Catalog{"asuka": library(t)}})
 	var got []string
 	for _, d := range diags {
 		got = append(got, d.String())
@@ -155,7 +155,7 @@ Abbrechen
 }
 
 func TestBad(t *testing.T) {
-	_, diags := loadDir(t, "testdata/bad", Options{Dir: "locales", Source: "en", Libraries: map[string]*Catalog{"ryui": library(t)}})
+	_, diags := loadDir(t, "testdata/bad", Options{Dir: "locales", Source: "en", Libraries: map[string]*Catalog{"asuka": library(t)}})
 	var b strings.Builder
 	for _, d := range diags {
 		b.WriteString(d.String() + "\n")
@@ -192,7 +192,7 @@ func TestLoadSource(t *testing.T) {
 }
 
 func TestLibraryKeys(t *testing.T) {
-	_, diags, err := Load(fstest.MapFS{"en.json": {Data: []byte(`{"a": "A", "other.b": "B"}`)}}, Options{Dir: "l10n", Namespace: "ryui"})
+	_, diags, err := Load(fstest.MapFS{"en.json": {Data: []byte(`{"a": "A", "other.b": "B"}`)}}, Options{Dir: "l10n", Namespace: "asuka"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +203,7 @@ func TestLibraryKeys(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`i18n.NewLibraryCatalog(files, "en", "ryui")`, "func QuitApp(app string) string", `"ryui.<key>"`} {
+	for _, want := range []string{`i18n.NewLibraryCatalog(files, "en", "asuka")`, "func QuitApp(app string) string", `"asuka.<key>"`} {
 		if !bytes.Contains(src, []byte(want)) {
 			t.Errorf("the library's accessors lack %q:\n%s", want, src)
 		}

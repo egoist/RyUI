@@ -13,7 +13,7 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // Player plays one sound. Main thread.
@@ -24,7 +24,7 @@ var next int
 // Load makes a player for source, ready to play. Release it when it's
 // no longer needed.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Load(source string) *Player {

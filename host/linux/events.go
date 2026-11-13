@@ -6,8 +6,8 @@ import (
 	"math"
 	"time"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
 )
 
 // A view's input is GTK's event controllers on its widget, added as the
@@ -143,7 +143,7 @@ func (h *Host) makePressable(n *node) {
 	}
 	WidgetSetFocusable(n.widget, true)
 	WidgetSetFocusOnClick(n.widget, false)
-	WidgetAddCSSClass(n.widget, "ryui-focus-ring")
+	WidgetAddCSSClass(n.widget, "asuka-focus-ring")
 	k := EventControllerKeyNew()
 	ev.key = k
 	Connect(k, "key-pressed", func(keyval, keycode, state uint32) bool {

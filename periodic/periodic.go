@@ -23,7 +23,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // Options are a task's.
@@ -61,7 +61,7 @@ func Handle(name string, run func(ctx context.Context) error) {
 // says; scheduling it again changes it. It holds across launches until
 // Cancel. Main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Schedule(name string, o Options) {

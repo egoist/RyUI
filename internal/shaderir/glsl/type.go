@@ -19,7 +19,7 @@ package glsl
 import (
 	"fmt"
 
-	"github.com/egoist/ryui/internal/shaderir"
+	"github.com/egoist/asuka/internal/shaderir"
 )
 
 func opString(op shaderir.Op) string {

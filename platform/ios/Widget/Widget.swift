@@ -1,22 +1,22 @@
-// The widget extension (ryui.json's widgets): WidgetKit's, so SwiftUI's,
-// the one place RyUI's iOS host uses it. It runs no Go: the app's Go code
-// sets each kind's entries (ryui/widget), which the app keeps in the App
-// Group's defaults (RyUIAppGroup) for this extension to show with one
+// The widget extension (asuka.json's widgets): WidgetKit's, so SwiftUI's,
+// the one place Asuka's iOS host uses it. It runs no Go: the app's Go code
+// sets each kind's entries (asuka/widget), which the app keeps in the App
+// Group's defaults (AsukaAppGroup) for this extension to show with one
 // template, laid out for each size. The CLI compiles this with the app's
-// kinds (Kinds.swift: a WidgetBundle of RyUIKindWidget<...>).
+// kinds (Kinds.swift: a WidgetBundle of AsukaKindWidget<...>).
 import SwiftUI
 import WidgetKit
 
 /// A kind of widget the app declares.
-protocol RyUIWidgetKind {
+protocol AsukaWidgetKind {
     static var kind: String { get }
     static var name: String { get }
     static var summary: String { get }
     static var families: [WidgetFamily] { get }
 }
 
-/// What the app set: as ryui/widget's Entry on the wire.
-struct RyUIWidgetEntry: TimelineEntry, Decodable {
+/// What the app set: as asuka/widget's Entry on the wire.
+struct AsukaWidgetEntry: TimelineEntry, Decodable {
     var date: Date = .now
     var title = "", value = "", body = "", caption = "", symbol = "", url = "", tint = ""
     var progress = 0.0
@@ -44,8 +44,8 @@ struct RyUIWidgetEntry: TimelineEntry, Decodable {
     }
 
     /// The gallery's and the redacted placeholder's: the widget's name.
-    static func sample(_ name: String) -> RyUIWidgetEntry {
-        var e = RyUIWidgetEntry()
+    static func sample(_ name: String) -> AsukaWidgetEntry {
+        var e = AsukaWidgetEntry()
         e.title = name
         e.value = "—"
         e.placeholder = true
@@ -54,25 +54,25 @@ struct RyUIWidgetEntry: TimelineEntry, Decodable {
 }
 
 /// Reads the kind's entries from the App Group.
-struct RyUIWidgetProvider: TimelineProvider {
+struct AsukaWidgetProvider: TimelineProvider {
     let kind: String
     let name: String
 
-    func entries() -> [RyUIWidgetEntry] {
-        guard let group = Bundle.main.object(forInfoDictionaryKey: "RyUIAppGroup") as? String,
-              let data = UserDefaults(suiteName: group)?.data(forKey: "ryui.widget." + kind),
-              let es = try? JSONDecoder().decode([RyUIWidgetEntry].self, from: data) else { return [] }
+    func entries() -> [AsukaWidgetEntry] {
+        guard let group = Bundle.main.object(forInfoDictionaryKey: "AsukaAppGroup") as? String,
+              let data = UserDefaults(suiteName: group)?.data(forKey: "asuka.widget." + kind),
+              let es = try? JSONDecoder().decode([AsukaWidgetEntry].self, from: data) else { return [] }
         return es
     }
 
-    func placeholder(in context: Context) -> RyUIWidgetEntry { .sample(name) }
+    func placeholder(in context: Context) -> AsukaWidgetEntry { .sample(name) }
 
-    func getSnapshot(in context: Context, completion: @escaping (RyUIWidgetEntry) -> Void) {
+    func getSnapshot(in context: Context, completion: @escaping (AsukaWidgetEntry) -> Void) {
         // The gallery: what it shows now, if the app set anything.
         completion(current(entries()) ?? .sample(name))
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<RyUIWidgetEntry>) -> Void) {
+    func getTimeline(in context: Context, completion: @escaping (Timeline<AsukaWidgetEntry>) -> Void) {
         var es = entries()
         if es.isEmpty {
             completion(Timeline(entries: [.sample(name)], policy: .never))
@@ -87,16 +87,16 @@ struct RyUIWidgetProvider: TimelineProvider {
     }
 
     /// The entry whose time has come: the last at or before now (or the first).
-    func current(_ es: [RyUIWidgetEntry]) -> RyUIWidgetEntry? {
+    func current(_ es: [AsukaWidgetEntry]) -> AsukaWidgetEntry? {
         es.last { $0.date <= Date.now } ?? es.first
     }
 }
 
 /// One kind of widget.
-struct RyUIKindWidget<K: RyUIWidgetKind>: Widget {
+struct AsukaKindWidget<K: AsukaWidgetKind>: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: K.kind, provider: RyUIWidgetProvider(kind: K.kind, name: K.name)) { e in
-            RyUIWidgetView(entry: e)
+        StaticConfiguration(kind: K.kind, provider: AsukaWidgetProvider(kind: K.kind, name: K.name)) { e in
+            AsukaWidgetView(entry: e)
         }
         .configurationDisplayName(K.name)
         .description(K.summary)
@@ -106,7 +106,7 @@ struct RyUIKindWidget<K: RyUIWidgetKind>: Widget {
 
 extension Color {
     /// "#rrggbb" or "#rrggbbaa".
-    init?(ryuiHex s: String) {
+    init?(asukaHex s: String) {
         let h = s.hasPrefix("#") ? String(s.dropFirst()) : s
         guard h.count == 6 || h.count == 8, let v = UInt64(h, radix: 16) else { return nil }
         let rgba = h.count == 6 ? v << 8 | 0xff : v
@@ -116,13 +116,13 @@ extension Color {
 }
 
 /// The template: what the entry has, laid out for the family.
-struct RyUIWidgetView: View {
-    let entry: RyUIWidgetEntry
+struct AsukaWidgetView: View {
+    let entry: AsukaWidgetEntry
     @Environment(\.widgetFamily) var family
 
     var tint: Color {
-        Color(ryuiHex: entry.tint)
-            ?? (Bundle.main.object(forInfoDictionaryKey: "RyUIAccent") as? String).flatMap { Color(ryuiHex: $0) }
+        Color(asukaHex: entry.tint)
+            ?? (Bundle.main.object(forInfoDictionaryKey: "AsukaAccent") as? String).flatMap { Color(asukaHex: $0) }
             ?? .accentColor
     }
 
@@ -146,7 +146,7 @@ struct RyUIWidgetView: View {
         content
             .redacted(reason: entry.placeholder ? .placeholder : [])
             .widgetURL(URL(string: entry.url))
-            .modifier(RyUIWidgetBackground())
+            .modifier(AsukaWidgetBackground())
     }
 
     @ViewBuilder var content: some View {
@@ -221,7 +221,7 @@ struct RyUIWidgetView: View {
 
 /// The widget's background: iOS 17's container background (removable on
 /// StandBy and the lock screen), or before, a padded system background.
-struct RyUIWidgetBackground: ViewModifier {
+struct AsukaWidgetBackground: ViewModifier {
     @Environment(\.widgetFamily) var family
 
     func body(content: Content) -> some View {

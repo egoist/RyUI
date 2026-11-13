@@ -112,13 +112,13 @@ export class Motion {
     if (n.match) {
       const r = el.getBoundingClientRect();
       this.gone.set(n.match, { el, rect: r });
-      el.classList.add("ryui-exiting");
+      el.classList.add("asuka-exiting");
       return true; // matchViews takes it out
     }
     const t = transition(n.transition);
     if (!t) return false;
     el.setAttribute("inert", "");
-    el.classList.add("ryui-exiting");
+    el.classList.add("asuka-exiting");
     el.style.pointerEvents = "none";
     const a = el.animate([{ opacity: getComputedStyle(el).opacity, transform: el.style.transform || "none" }, t], { ...this.anim, fill: "forwards", iterations: 1 });
     a.onfinish = a.oncancel = () => el.remove();

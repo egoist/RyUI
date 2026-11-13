@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/egoist/ryui/sqlite"
-	"github.com/egoist/ryui/store"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/sqlite"
+	"github.com/egoist/asuka/store"
+	"github.com/egoist/asuka/ui"
 )
 
 // The bookmarks are in SQLite, in the app's data directory (store.Dir),

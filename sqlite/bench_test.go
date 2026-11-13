@@ -1,4 +1,4 @@
-// The plain modernc.org/sqlite driver, against RyUI's: not on the web.
+// The plain modernc.org/sqlite driver, against Asuka's: not on the web.
 
 //go:build !js
 
@@ -9,11 +9,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/egoist/ryui/sqlite"
+	"github.com/egoist/asuka/sqlite"
 	_ "modernc.org/sqlite"
 )
 
-// Inserting 1000 rows in a transaction: RyUI's driver, whose hooks note
+// Inserting 1000 rows in a transaction: Asuka's driver, whose hooks note
 // each row's table, against the plain one.
 func BenchmarkInsert(b *testing.B) {
 	run := func(b *testing.B, db *sql.DB, tx func(func(exec func(string, ...any) error) error) error) {
@@ -33,7 +33,7 @@ func BenchmarkInsert(b *testing.B) {
 			}
 		}
 	}
-	b.Run("ryui", func(b *testing.B) {
+	b.Run("asuka", func(b *testing.B) {
 		d, err := sqlite.Open(filepath.Join(b.TempDir(), "n.db"))
 		if err != nil {
 			b.Fatal(err)

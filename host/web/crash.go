@@ -5,11 +5,11 @@ package web
 import (
 	"syscall/js"
 
-	"github.com/egoist/ryui/internal/boot"
-	"github.com/egoist/ryui/internal/crashrun"
+	"github.com/egoist/asuka/internal/boot"
+	"github.com/egoist/asuka/internal/crashrun"
 )
 
-// startCrash begins the run's crash record (ryui/crash), if the app
+// startCrash begins the run's crash record (asuka/crash), if the app
 // reports crashes: the page's crash.js keeps what Go's runtime prints of
 // a crash and writes it to the run's .crash file as the program ends,
 // and writes an uncaught JavaScript error (the host's, or the app's

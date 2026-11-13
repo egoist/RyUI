@@ -6,8 +6,8 @@ import (
 	"math"
 	"time"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
 )
 
 // create makes a node's view and, for a control, the control in it.
@@ -247,7 +247,7 @@ func (h *Host) styleButton(n *node) {
 	} else {
 		ButtonSetLabel(b, n.title)
 	}
-	for _, c := range []string{"suggested-action", "flat", "ryui-tinted", "ryui-plain", "pill"} {
+	for _, c := range []string{"suggested-action", "flat", "asuka-tinted", "asuka-plain", "pill"} {
 		WidgetRemoveCSSClass(b, c)
 	}
 	switch ops.ButtonVariant(n.variant) {
@@ -255,9 +255,9 @@ func (h *Host) styleButton(n *node) {
 		WidgetAddCSSClass(b, "suggested-action")
 	case ops.ButtonVariantPlain:
 		WidgetAddCSSClass(b, "flat")
-		WidgetAddCSSClass(b, "ryui-plain")
+		WidgetAddCSSClass(b, "asuka-plain")
 	case ops.ButtonVariantTinted:
-		WidgetAddCSSClass(b, "ryui-tinted")
+		WidgetAddCSSClass(b, "asuka-tinted")
 	}
 	// The button's label takes the node's font and color, when it sets
 	// them.

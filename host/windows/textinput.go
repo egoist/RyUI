@@ -11,8 +11,8 @@ import (
 	"unicode/utf16"
 	"unsafe"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ops"
 )
 
 // A TextField's selection, insertions and pastes of content the app

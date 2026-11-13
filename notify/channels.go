@@ -3,7 +3,7 @@ package notify
 import (
 	"encoding/json"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // Channel is an Android notification channel: a kind of notification the

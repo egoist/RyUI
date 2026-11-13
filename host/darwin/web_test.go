@@ -17,8 +17,8 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ui"
 )
 
 // runUntil runs the main run loop until done, or a long while.
@@ -118,7 +118,7 @@ func TestWebViewBlockDownloadEval(t *testing.T) {
 	})
 }
 
-// ryui/js's module runs a script in a web view of its own: its value,
+// asuka/js's module runs a script in a web view of its own: its value,
 // a promise's, or what it threw.
 func TestJSModule(t *testing.T) {
 	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })
@@ -145,7 +145,7 @@ func TestJSModule(t *testing.T) {
 // one, reads it back in its own format, and tells a waiting "next" of a
 // change; "stop" ends a wait. On a pasteboard of the test's own.
 func TestClipboardModule(t *testing.T) {
-	testPasteboard = fmt.Sprintf("ryui-test-%d", time.Now().UnixNano())
+	testPasteboard = fmt.Sprintf("asuka-test-%d", time.Now().UnixNano())
 	defer func() { testPasteboard = "" }()
 	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })
 	onMain(func() {

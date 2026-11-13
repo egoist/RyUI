@@ -16,9 +16,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // Kind is how a series is drawn.

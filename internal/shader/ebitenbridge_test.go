@@ -24,8 +24,8 @@ import (
 	"io"
 	"regexp"
 
-	"github.com/egoist/ryui/internal/shader"
-	"github.com/egoist/ryui/internal/shaderir"
+	"github.com/egoist/asuka/internal/shader"
+	"github.com/egoist/asuka/internal/shaderir"
 )
 
 // Go's whitespace is U+0020 (SP), U+0009 (\t), U+000d (\r), and U+000A (\n).

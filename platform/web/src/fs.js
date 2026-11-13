@@ -1,8 +1,8 @@
 // The app's files: a file system in memory with the API of Node's fs that
 // Go's syscall package calls on js/wasm, answered at once (Go waits for
-// each call's callback, so its os package works unchanged: ryui/store,
+// each call's callback, so its os package works unchanged: asuka/store,
 // crash records, the app's own files). What's under the app's data
-// directory (RYUI_DATA, /data/<the app's name>) is kept in IndexedDB: loaded before Go
+// directory (ASUKA_DATA, /data/<the app's name>) is kept in IndexedDB: loaded before Go
 // starts, written back shortly after each change and as the page hides.
 // /tmp is the app's caches, kept for the page's life: what's dropped or
 // pasted into it, files it makes to share.
@@ -325,7 +325,7 @@ export function flush() {
     st.saving = new Promise((resolve) => {
       tx.oncomplete = () => resolve();
       tx.onerror = tx.onabort = () => {
-        console.warn("ryui: the app's files weren't saved:", tx.error);
+        console.warn("asuka: the app's files weren't saved:", tx.error);
         resolve();
       };
     });
@@ -360,7 +360,7 @@ export async function mount({ name, dir = "/data", output } = {}) {
   if (!globalThis.indexedDB) return;
   try {
     const db = await new Promise((resolve, reject) => {
-      const req = indexedDB.open("ryui-files:" + (name || location.pathname), 2);
+      const req = indexedDB.open("asuka-files:" + (name || location.pathname), 2);
       req.onupgradeneeded = () => {
         const db = req.result;
         if (!db.objectStoreNames.contains("files")) db.createObjectStore("files");
@@ -385,7 +385,7 @@ export async function mount({ name, dir = "/data", output } = {}) {
     for (const k of keys) mkdirs(parent(k));
     st.db = db;
   } catch (e) {
-    console.warn("ryui: the app's files won't be kept:", e);
+    console.warn("asuka: the app's files won't be kept:", e);
   }
   if (stores.length === 1) {
     addEventListener("pagehide", flush);
@@ -447,7 +447,7 @@ export const file = {
 
 // --- For the host ---
 
-/** log prints a line of the host's to standard error, as Go's are: the console, and ryui dev's terminal. */
+/** log prints a line of the host's to standard error, as Go's are: the console, and asuka dev's terminal. */
 export function log(line) {
   memfs.writeSync(2, new TextEncoder().encode(line + "\n"));
 }

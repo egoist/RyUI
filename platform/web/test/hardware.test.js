@@ -1,4 +1,4 @@
-// The hardware modules' wire formats, as ryui's Go packages read and write
+// The hardware modules' wire formats, as asuka's Go packages read and write
 // them (network, location, sensors, audio, audio/record, scan, imageedit,
 // contacts, calendar, screen, biometric): node --test platform/web.
 import { test } from "node:test";
@@ -13,7 +13,7 @@ const le32 = (n) => { const b = new Uint8Array(4); new DataView(b.buffer).setUin
 const cat = (...parts) => { const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0)); let i = 0; for (const p of parts) { out.set(p, i); i += p.length; } return out; };
 const str = (s) => { const b = new TextEncoder().encode(s); return cat(le32(b.length), b); };
 const f64b = (x) => { const b = new Uint8Array(8); new DataView(b.buffer).setFloat64(0, x, true); return b; };
-const fakeHost = { prefix: () => "ryui.test.", options: {}, assets: "assets" };
+const fakeHost = { prefix: () => "asuka.test.", options: {}, assets: "assets" };
 
 test("network: u8 connected, type, metered, constrained", () => {
   assert.deepEqual([...networkState(false, { type: "wifi" })], [0, 0, 0, 0]);
@@ -152,9 +152,9 @@ test("imageEdit: resize targets, turned sizes, pixelation aligned to the image",
 test("contacts.add's vCard and calendar.add's iCalendar", () => {
   const v = vCard({ name: "Ada Lovelace", givenName: "Ada", familyName: "Lovelace", organization: "Analytical; Engines", phones: [{ label: "mobile", value: "+44 1" }], emails: [{ label: "", value: "ada@example.com" }] });
   assert.match(v, /^BEGIN:VCARD\r\nVERSION:3.0\r\nN:Lovelace;Ada;;;\r\nFN:Ada Lovelace\r\nORG:Analytical\\; Engines\r\nTEL;TYPE=MOBILE:\+44 1\r\nEMAIL:ada@example.com\r\nEND:VCARD\r\n$/);
-  const ics = iCalendar({ title: "Launch, day", startMs: Date.UTC(2026, 0, 2, 9, 30), endMs: Date.UTC(2026, 0, 2, 10), location: "HQ" }, "x@ryui", Date.UTC(2026, 0, 1));
+  const ics = iCalendar({ title: "Launch, day", startMs: Date.UTC(2026, 0, 2, 9, 30), endMs: Date.UTC(2026, 0, 2, 10), location: "HQ" }, "x@asuka", Date.UTC(2026, 0, 1));
   assert.match(ics, /DTSTART:20260102T093000Z\r\nDTEND:20260102T100000Z\r\nSUMMARY:Launch\\, day\r\nLOCATION:HQ\r\n/);
-  assert.match(ics, /UID:x@ryui\r\nDTSTAMP:20260101T000000Z/);
+  assert.match(ics, /UID:x@asuka\r\nDTSTAMP:20260101T000000Z/);
 });
 
 test("screen, biometric, tracking and what the web hasn't", async () => {
@@ -192,5 +192,5 @@ test("every module the hardware file has, and camera.View's native view", () => 
   for (const name of ["network", "location", "sensors", "speech", "audio", "audioRecord", "camera", "scan", "vision", "imageEdit", "biometric", "review", "tracking", "integrity", "ageRange", "appleAuth", "webAuth", "periodic", "background", "widget", "splash", "screen", "transcribe", "photoLibrary", "library", "contacts", "calendar"]) {
     assert.ok(all[name], name);
   }
-  assert.equal(typeof natives["ryui.camera"], "function");
+  assert.equal(typeof natives["asuka.camera"], "function");
 });

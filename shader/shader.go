@@ -1,6 +1,6 @@
 // Package shader compiles the shaders ui.Shader draws: fragment shaders in
 // Go's syntax, Ebitengine's Kage language (through MyGo's port of its
-// compiler), which RyUI translates for each platform: Metal on iOS and
+// compiler), which Asuka translates for each platform: Metal on iOS and
 // macOS, AGSL on Android, and package interp's CPU on Windows.
 //
 // A shader is the source of a Go file of package main whose function
@@ -30,7 +30,7 @@
 package shader
 
 import (
-	"github.com/egoist/ryui/internal/shadercode"
+	"github.com/egoist/asuka/internal/shadercode"
 )
 
 // Program is a compiled shader, which ui.Shader draws.

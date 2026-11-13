@@ -9,14 +9,14 @@
 //		fmt.Println(l.Text, l.Box)
 //	}
 //
-// Nothing leaves the device. ryui/scan reads the value of a code; use this
+// Nothing leaves the device. asuka/scan reads the value of a code; use this
 // package for where a code is.
 package vision
 
 import (
 	"encoding/json"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // Box is a rectangle in an image, as fractions of its width and height
@@ -60,7 +60,7 @@ type Line struct {
 	Words []Word `json:"words"`
 }
 
-// Code is a barcode or QR code: its symbology, as ryui/scan names them
+// Code is a barcode or QR code: its symbology, as asuka/scan names them
 // ("qr", "ean13"...), and what it says.
 type Code struct {
 	Kind  string `json:"kind"`
@@ -90,7 +90,7 @@ type Options struct {
 // Analyze looks in the image at path (a photo taken or picked; what
 // ui.Image's platform decoder reads). Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Analyze(path string, o Options) (Result, error) {

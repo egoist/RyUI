@@ -9,11 +9,11 @@ web.
 
 ## When you need it
 
-RyUI's components and packages cover what most apps show and use. Write
-native code when you need a platform view RyUI doesn't have (a map, a
+Asuka's components and packages cover what most apps show and use. Write
+native code when you need a platform view Asuka doesn't have (a map, a
 vendor's SDK view, a control only one platform has), or a platform API
-no RyUI package wraps. The [comparison with SwiftUI and Expo](parity.md)
-lists what RyUI has.
+no Asuka package wraps. The [comparison with SwiftUI and Expo](parity.md)
+lists what Asuka has.
 
 An app needs native code only for the platforms it runs on, and only
 where it uses it. A view of a kind no host registered shows nothing
@@ -25,18 +25,18 @@ An app's native code lives beside its Go:
 
 | Platform | Language | Files | Registered by |
 | --- | --- | --- | --- |
-| iOS | Swift (UIKit) | `ios/*.swift` | `RyUIAppNatives`, an `@objc` class |
-| Android | Kotlin (Android Views) | `android/*.kt` | `dev.ryui.app.RyUIAppNatives`, an `object` |
-| macOS | Swift (AppKit) | `macos/*.swift` | `RyUIAppNatives`, an `@objc` class |
+| iOS | Swift (UIKit) | `ios/*.swift` | `AsukaAppNatives`, an `@objc` class |
+| Android | Kotlin (Android Views) | `android/*.kt` | `dev.asuka.app.AsukaAppNatives`, an `object` |
+| macOS | Swift (AppKit) | `macos/*.swift` | `AsukaAppNatives`, an `@objc` class |
 | macOS | Go (AppKit through purego's `objc`) | `*.go` built for `darwin && !ios` | package `native`, from an `init` |
 | Windows | Go (Win32 through `syscall`) | `*.go` built for `windows` | package `native`, from an `init` |
 | Linux | Go (GTK 4 through purego) | `*.go` built for `linux && !android` | package `native`, from an `init` |
-| Web | JavaScript (the DOM) | `web/*.js` | `ryui.registerNative`, `ryui.registerModule` |
+| Web | JavaScript (the DOM) | `web/*.js` | `asuka.registerNative`, `asuka.registerModule` |
 
 Only the files directly in `ios/`, `android/` and `macos/` are taken,
 not those in directories under them. On the desktop the native
 code is part of the app's Go, in its package or any package it imports.
-Release builds (`ryui build`) include all of it.
+Release builds (`asuka build`) include all of it.
 
 The web's side is covered in [the web](web.md#native-code). The rest of
 this page covers the others.
@@ -105,12 +105,12 @@ func CallWait(module, method string, args []byte) ([]byte, error)
   on the main thread, where the result comes.
 
 The arguments and the result are bytes, whatever the module and your Go
-code agree on: JSON is fine. RyUI's packages wrap the built-in modules
-the same way: `ryui/secure` calls the `secureStore` module with
+code agree on: JSON is fine. Asuka's packages wrap the built-in modules
+the same way: `asuka/secure` calls the `secureStore` module with
 `CallWait` and with `Call`.
 
 `Call` fails with an error when the module has no such method (`no
-module method battery.level` on iOS and Android, `ryui: battery.level
+module method battery.level` on iOS and Android, `asuka: battery.level
 isn't on macOS yet` on the desktop), when it's called before the app is
 mounted, or when the method replies with an error: the Swift error's
 `localizedDescription`, the Kotlin exception's message, or the Go
@@ -121,18 +121,18 @@ second reply is ignored. Each platform's section below shows its
 method's type, and where its reply can come from.
 
 Give your modules names of their own. The host's modules (`device`,
-`secureStore`, `camera`...) have names RyUI's packages call: on iOS and
+`secureStore`, `camera`...) have names Asuka's packages call: on iOS and
 Android a module of the same name as one of the host's replaces it; on
 the desktop the host's wins.
 
 ## iOS: Swift
 
-A native view is a class that conforms to `RyUINativeView`:
+A native view is a class that conforms to `AsukaNativeView`:
 
 ```swift
-@MainActor public protocol RyUINativeView: AnyObject {
+@MainActor public protocol AsukaNativeView: AnyObject {
     var view: UIView { get }
-    func set(_ name: String, _ value: RyUINativeValue)
+    func set(_ name: String, _ value: AsukaNativeValue)
 }
 ```
 
@@ -140,13 +140,13 @@ A native view is a class that conforms to `RyUINativeView`:
   sizes it to fill.
 - `set` gets each prop, by name, as it's set or changes.
 
-A `RyUINativeValue` is one of `.bool(Bool)`, `.int(Int64)`,
+A `AsukaNativeValue` is one of `.bool(Bool)`, `.int(Int64)`,
 `.float(Double)` and `.string(String)`. Its `bool`, `int`, `float` and
 `string` properties read it; `int` and `float` convert from each other,
 and a value of another type reads as `false`, `0` or `""`. Go's integer
 types come as `.int`, its floats as `.float`.
 
-The factory that makes the view gets a `RyUINativeContext`; its `emit`
+The factory that makes the view gets a `AsukaNativeContext`; its `emit`
 sends an event to the Go handler of that name:
 
 ```swift
@@ -158,26 +158,26 @@ of its name is dropped.
 
 The host looks for one class as it starts, before your Go code runs,
 and calls it to register the app's views and modules: a class named
-`RyUIAppNatives` in Objective-C, an `NSObject` conforming to
-`RyUINativeModule`, whose `register` calls
-`RyUIRuntime.shared.registerNative(kind) { ctx in ... }` for each view
-and `RyUIRuntime.shared.registerModule(name, methods)` for each module:
+`AsukaAppNatives` in Objective-C, an `NSObject` conforming to
+`AsukaNativeModule`, whose `register` calls
+`AsukaRuntime.shared.registerNative(kind) { ctx in ... }` for each view
+and `AsukaRuntime.shared.registerModule(name, methods)` for each module:
 
 ```swift
-@objc(RyUIAppNatives) final class AppNatives: NSObject, RyUINativeModule {
+@objc(AsukaAppNatives) final class AppNatives: NSObject, AsukaNativeModule {
     @MainActor static func register() {
-        RyUIRuntime.shared.registerNative("Stepper") { ctx in Stepper(ctx) }
+        AsukaRuntime.shared.registerNative("Stepper") { ctx in Stepper(ctx) }
     }
 }
 ```
 
 `ios/*.swift` is compiled with the iOS host, in the same Swift module:
-no import of RyUI's host is needed.
+no import of Asuka's host is needed.
 
-A module's method is a `RyUIModuleMethod`:
+A module's method is a `AsukaModuleMethod`:
 
 ```swift
-public typealias RyUIModuleMethod = (_ args: Data, _ reply: @escaping (Result<Data, Error>) -> Void) -> Void
+public typealias AsukaModuleMethod = (_ args: Data, _ reply: @escaping (Result<Data, Error>) -> Void) -> Void
 ```
 
 It's called on the main thread. Its reply can come from any thread: the
@@ -188,10 +188,10 @@ message of yours.
 
 ## Android: Kotlin
 
-A native view implements `RyUINativeView`, in the package `dev.ryui`:
+A native view implements `AsukaNativeView`, in the package `dev.asuka`:
 
 ```kotlin
-interface RyUINativeView {
+interface AsukaNativeView {
     val view: View
     fun set(name: String, value: Any)
 }
@@ -200,46 +200,46 @@ interface RyUINativeView {
 `set`'s value is a `Boolean`, `Long`, `Double` or `String`: Go's
 integer types come as `Long`, its floats as `Double`.
 
-The factory gets a `RyUINativeContext`. Its `context` is the app's
+The factory gets a `AsukaNativeContext`. Its `context` is the app's
 themed context (the Material 3 theme): make views with it, so they look
-as RyUI's do. Its `emit(name, values)` sends an event, with values that
+as Asuka's do. Its `emit(name, values)` sends an event, with values that
 are `Boolean`, `Int` or `Long` (an `Int` in Go), `Float` or `Double` (a
 `Float`); anything else is sent as its `toString()`.
 
 The host loads one object by name as it starts, before your Go code
-runs: `object RyUIAppNatives` in the package `dev.ryui.app`,
-implementing `RyUINativeModule`. Its `register` gets the `RyUIRuntime`:
+runs: `object AsukaAppNatives` in the package `dev.asuka.app`,
+implementing `AsukaNativeModule`. Its `register` gets the `AsukaRuntime`:
 
 ```kotlin
-package dev.ryui.app
+package dev.asuka.app
 
-import dev.ryui.RyUINativeModule
-import dev.ryui.RyUIRuntime
+import dev.asuka.AsukaNativeModule
+import dev.asuka.AsukaRuntime
 
-object RyUIAppNatives : RyUINativeModule {
-    override fun register(runtime: RyUIRuntime) {
+object AsukaAppNatives : AsukaNativeModule {
+    override fun register(runtime: AsukaRuntime) {
         runtime.registerNative("Stepper") { ctx -> Stepper(ctx) }
     }
 }
 ```
 
-Write the file's `package dev.ryui.app` line as shown: the CLI copies
+Write the file's `package dev.asuka.app` line as shown: the CLI copies
 `android/*.kt` into the app's sources, and the host loads
-`dev.ryui.app.RyUIAppNatives` by that name. Release builds keep it
+`dev.asuka.app.AsukaAppNatives` by that name. Release builds keep it
 through R8.
 
-A module's method is a `RyUIModuleMethod`, registered with
+A module's method is a `AsukaModuleMethod`, registered with
 `runtime.registerModule(name, methods)` (an extension function: `import
-dev.ryui.registerModule`):
+dev.asuka.registerModule`):
 
 ```kotlin
-typealias RyUIModuleMethod = (args: ByteArray, reply: (Result<ByteArray>) -> Unit) -> Unit
+typealias AsukaModuleMethod = (args: ByteArray, reply: (Result<ByteArray>) -> Unit) -> Unit
 ```
 
 It's called on the main thread, and its reply can come from any thread,
 as on iOS. An exception the method throws is its error.
 
-On both iOS and Android there is one `RyUIAppNatives` an app: it
+On both iOS and Android there is one `AsukaAppNatives` an app: it
 registers every view and module. The views and modules themselves can
 be in other files.
 
@@ -251,15 +251,15 @@ to share what you know from iOS. The names are iOS's; the view is an
 `NSView`:
 
 ```swift
-@MainActor public protocol RyUINativeView: AnyObject {
+@MainActor public protocol AsukaNativeView: AnyObject {
     var view: NSView { get }
-    func set(_ name: String, _ value: RyUINativeValue)
+    func set(_ name: String, _ value: AsukaNativeValue)
     func sizeThatFits(_ size: CGSize) -> CGSize // default: view.fittingSize
     func destroy()                              // default: nothing
 }
 ```
 
-- `view`, `set`, `RyUINativeValue` and the `RyUINativeContext`'s `emit`
+- `view`, `set`, `AsukaNativeValue` and the `AsukaNativeContext`'s `emit`
   are as on iOS.
 - `sizeThatFits` is the view's size for what the layout offers
   (`CGFloat.greatestFiniteMagnitude` for either: as wide or tall as it
@@ -268,21 +268,21 @@ to share what you know from iOS. The names are iOS's; the view is an
   depends on its width.
 - `destroy` frees what the view holds as the core destroys it.
 
-Register from a class named `RyUIAppNatives` in Objective-C, with
-`RyUIRuntime.shared.registerNative` and `registerModule`, exactly as on
-iOS; a module's method is the same `RyUIModuleMethod`, called on the
+Register from a class named `AsukaAppNatives` in Objective-C, with
+`AsukaRuntime.shared.registerNative` and `registerModule`, exactly as on
+iOS; a module's method is the same `AsukaModuleMethod`, called on the
 main thread and replying from any thread. A view's action needs an
 Objective-C target: make the view an `NSObject` and its action an
 `@objc` method (the complete example below does).
 
 How it runs:
 
-- The CLI compiles `macos/*.swift` with RyUI's Swift for it
+- The CLI compiles `macos/*.swift` with Asuka's Swift for it
   (`platform/macos`), in one module, into a library in the app's bundle,
-  `Contents/Frameworks/RyUIAppNatives.dylib`. No import of RyUI is
+  `Contents/Frameworks/AsukaAppNatives.dylib`. No import of Asuka is
   needed. The host loads it as it starts, before your Go code mounts,
   and calls it through purego: the app's Go still builds with no cgo.
-- `ryui dev` and `ryui build` compile it, with Xcode's command line
+- `asuka dev` and `asuka build` compile it, with Xcode's command line
   tools (`xcode-select --install`; Xcode has them). A release build is
   universal (arm64 and x86_64), and signed with the app. A plain `go run
   .` makes no bundle, so it has no Swift: its views show nothing.
@@ -307,7 +307,7 @@ package `native`, from an `init` in a file built only for its platform:
 
 package main
 
-import "github.com/egoist/ryui/native"
+import "github.com/egoist/asuka/native"
 
 func init() {
 	native.RegisterView("Stepper", newStepper)
@@ -384,7 +384,7 @@ modules of a name win over the app's.
 Everything here runs on the main thread, as the host does: the
 factories, `Set`, `Measure`, `Destroy`, and the platform's callbacks
 (an Objective-C action, a window's message, a GTK signal). Kinds that
-start with `ryui.` are RyUI's own (`ryui.map`, `ryui.camera`): name
+start with `asuka.` are Asuka's own (`asuka.map`, `asuka.camera`): name
 yours otherwise.
 
 Three things differ from Swift and Kotlin:
@@ -399,7 +399,7 @@ Three things differ from Swift and Kotlin:
   `purego.Dlopen` of a library it has (`libgtk-4.so.1`) returns it.
 - **Errors are Go errors**: `reply(nil, err)`.
 
-Only the desktop hosts read what package `native` holds. When `ryui
+Only the desktop hosts read what package `native` holds. When `asuka
 dev` runs an app in the iOS or Android player, its Go runs on your
 computer, built for it, with that platform's files: their `init`
 registers, and nothing uses it.
@@ -417,9 +417,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/egoist/ryui/app"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // Battery is what the app's battery module reports.
@@ -494,10 +494,10 @@ go func() {
 ```swift
 import UIKit
 
-@objc(RyUIAppNatives) final class AppNatives: NSObject, RyUINativeModule {
+@objc(AsukaAppNatives) final class AppNatives: NSObject, AsukaNativeModule {
     @MainActor static func register() {
-        RyUIRuntime.shared.registerNative("Stepper") { ctx in Stepper(ctx) }
-        RyUIRuntime.shared.registerModule("battery", [
+        AsukaRuntime.shared.registerNative("Stepper") { ctx in Stepper(ctx) }
+        AsukaRuntime.shared.registerModule("battery", [
             "level": { _, reply in
                 let device = UIDevice.current
                 device.isBatteryMonitoringEnabled = true
@@ -520,12 +520,12 @@ struct BatteryError: LocalizedError {
 }
 
 /// A UIStepper: props "value" and "max"; event "changed" with "value".
-@MainActor final class Stepper: RyUINativeView {
+@MainActor final class Stepper: AsukaNativeView {
     let stepper = UIStepper()
     var view: UIView { stepper }
     private var wanted = 0.0
 
-    init(_ ctx: RyUINativeContext) {
+    init(_ ctx: AsukaNativeContext) {
         stepper.addAction(UIAction { [weak self] _ in
             guard let self else { return }
             wanted = stepper.value
@@ -533,7 +533,7 @@ struct BatteryError: LocalizedError {
         }, for: .valueChanged)
     }
 
-    func set(_ name: String, _ value: RyUINativeValue) {
+    func set(_ name: String, _ value: AsukaNativeValue) {
         switch name {
         case "value": wanted = value.float
         case "max": stepper.maximumValue = value.float
@@ -550,24 +550,24 @@ struct BatteryError: LocalizedError {
 `android/Natives.kt`:
 
 ```kotlin
-package dev.ryui.app
+package dev.asuka.app
 
 import android.content.Context
 import android.os.BatteryManager
 import android.view.View
 import android.widget.NumberPicker
-import dev.ryui.RyUIModuleMethod
-import dev.ryui.RyUINativeContext
-import dev.ryui.RyUINativeModule
-import dev.ryui.RyUINativeView
-import dev.ryui.RyUIRuntime
-import dev.ryui.registerModule
+import dev.asuka.AsukaModuleMethod
+import dev.asuka.AsukaNativeContext
+import dev.asuka.AsukaNativeModule
+import dev.asuka.AsukaNativeView
+import dev.asuka.AsukaRuntime
+import dev.asuka.registerModule
 import org.json.JSONObject
 
-object RyUIAppNatives : RyUINativeModule {
-    override fun register(runtime: RyUIRuntime) {
+object AsukaAppNatives : AsukaNativeModule {
+    override fun register(runtime: AsukaRuntime) {
         runtime.registerNative("Stepper") { ctx -> Stepper(ctx) }
-        val level: RyUIModuleMethod = { _, reply ->
+        val level: AsukaModuleMethod = { _, reply ->
             val bm = runtime.app.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
             val info = JSONObject()
                 .put("level", bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) / 100.0)
@@ -579,7 +579,7 @@ object RyUIAppNatives : RyUINativeModule {
 }
 
 /** A NumberPicker: props "value" and "max"; event "changed" with "value". */
-class Stepper(ctx: RyUINativeContext) : RyUINativeView {
+class Stepper(ctx: AsukaNativeContext) : AsukaNativeView {
     private val picker = NumberPicker(ctx.context)
     override val view: View get() = picker
     private var wanted = 0
@@ -612,10 +612,10 @@ an `NSObject`; the battery comes from IOKit's power sources.
 import AppKit
 import IOKit.ps
 
-@objc(RyUIAppNatives) final class AppNatives: NSObject, RyUINativeModule {
+@objc(AsukaAppNatives) final class AppNatives: NSObject, AsukaNativeModule {
     @MainActor static func register() {
-        RyUIRuntime.shared.registerNative("Stepper") { ctx in Stepper(ctx) }
-        RyUIRuntime.shared.registerModule("battery", [
+        AsukaRuntime.shared.registerNative("Stepper") { ctx in Stepper(ctx) }
+        AsukaRuntime.shared.registerModule("battery", [
             "level": { _, reply in
                 let info = IOPSCopyPowerSourcesInfo().takeRetainedValue()
                 let sources = IOPSCopyPowerSourcesList(info).takeRetainedValue() as [CFTypeRef]
@@ -643,13 +643,13 @@ struct BatteryError: LocalizedError {
 }
 
 /// An NSStepper: props "value" and "max"; event "changed" with "value".
-@MainActor final class Stepper: NSObject, RyUINativeView {
+@MainActor final class Stepper: NSObject, AsukaNativeView {
     let stepper = NSStepper()
     var view: NSView { stepper }
-    private let ctx: RyUINativeContext
+    private let ctx: AsukaNativeContext
     private var wanted = 0.0
 
-    init(_ ctx: RyUINativeContext) {
+    init(_ ctx: AsukaNativeContext) {
         self.ctx = ctx
         super.init()
         stepper.target = self
@@ -662,7 +662,7 @@ struct BatteryError: LocalizedError {
         ctx.emit("changed", ["value": .int(Int64(stepper.integerValue))])
     }
 
-    func set(_ name: String, _ value: RyUINativeValue) {
+    func set(_ name: String, _ value: AsukaNativeValue) {
         switch name {
         case "value": wanted = value.float
         case "max": stepper.maxValue = value.float
@@ -692,7 +692,7 @@ import (
 
 	"github.com/ebitengine/purego"
 	"github.com/ebitengine/purego/objc"
-	"github.com/egoist/ryui/native"
+	"github.com/egoist/asuka/native"
 )
 
 func init() {
@@ -831,7 +831,7 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/egoist/ryui/native"
+	"github.com/egoist/asuka/native"
 )
 
 func init() {
@@ -945,7 +945,7 @@ import (
 	"strings"
 
 	"github.com/ebitengine/purego"
-	"github.com/egoist/ryui/native"
+	"github.com/egoist/asuka/native"
 )
 
 func init() {
@@ -1074,19 +1074,19 @@ Linux, and radio buttons on the web (`ios/Natives.swift`,
 ## Developing native code
 
 **On the desktop**, native code in Go is part of the app, built with the
-rest: `ryui dev` builds and runs it, and on each save builds it again
+rest: `asuka dev` builds and runs it, and on each save builds it again
 and runs the new one, its signals' values kept, as for any Go change. A
 Mac app's `macos/*.swift` is compiled again as it changes, and the app
 runs again the same way. See
 [Development](development.md#on-the-desktop).
 
-**On iOS and Android**, `ryui dev` can't run an app with native code in
-its player, which holds only RyUI's own: for the platform whose
+**On iOS and Android**, `asuka dev` can't run an app with native code in
+its player, which holds only Asuka's own: for the platform whose
 directory the app has (`ios/`, `android/`), it builds the app with its
 Go code and native code, and rebuilds and reinstalls it on each save,
 Swift and Kotlin included. Its signals' values aren't kept across those
 reloads. See [Development](development.md#on-a-phone-the-player-and-built-apps).
 
-**On the web**, `ryui dev -platform web` reloads the page as a script in
+**On the web**, `asuka dev -platform web` reloads the page as a script in
 `web/` changes, its signals' values kept; see
 [the web](web.md#native-code).

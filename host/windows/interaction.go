@@ -12,8 +12,8 @@ import (
 	"strings"
 	"sync"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ops"
 )
 
 // Interaction states and drag and drop (DESIGN.md, "Interaction states,
@@ -248,7 +248,7 @@ func (h *Host) forgetInteraction(n *node) {
 // Drop targets.
 
 var (
-	cfSource = sync.OnceValue(func() uint16 { return RegisterClipboardFormat("RyUI Drag Source") })
+	cfSource = sync.OnceValue(func() uint16 { return RegisterClipboardFormat("Asuka Drag Source") })
 	cfURLW   = sync.OnceValue(func() uint16 { return RegisterClipboardFormat("UniformResourceLocatorW") })
 	cfURL    = sync.OnceValue(func() uint16 { return RegisterClipboardFormat("UniformResourceLocator") })
 )

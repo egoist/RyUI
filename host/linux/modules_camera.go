@@ -15,31 +15,31 @@ import (
 	"time"
 	"unsafe"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/internal/l10n"
-	"github.com/egoist/ryui/native"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/internal/l10n"
+	"github.com/egoist/asuka/native"
 )
 
-// ryui/camera on Linux, with GStreamer. The camera is the camera
+// asuka/camera on Linux, with GStreamer. The camera is the camera
 // portal's (org.freedesktop.portal.Camera: it asks the user once, and
 // gives a PipeWire remote with the cameras, which pipewiresrc reads),
 // or, where there's no portal or it has no camera (a session without
 // PipeWire's camera support), the first Video4Linux camera (v4l2src).
-// The "ryui.camera" view is a GtkPicture showing the camera's frames
+// The "asuka.camera" view is a GtkPicture showing the camera's frames
 // (an appsink's, mirrored as a camera facing the user is), filling its
 // box; Capture writes its latest frame as a JPEG; in video mode
-// ryui/camera/record records an MPEG-4 file (H.264 and AAC; WebM with
+// asuka/camera/record records an MPEG-4 file (H.264 and AAC; WebM with
 // VP8 and Opus where there's no H.264 encoder), with the microphone
 // unless muted; with scan, GStreamer's zbar element reads codes. "take"
 // shows a dialog of the host's own over the window in use, as macOS
 // does: a live preview with Take Photo and Cancel (Return and Escape).
 // A computer's cameras face the user: front and back both take the
 // first one, as on a Mac. Photos and videos go to the app's caches
-// (ryui-camera).
+// (asuka-camera).
 
 func init() {
 	moduleHooks = append(moduleHooks, func(h *Host, m map[string]map[string]method) { m["camera"] = h.cameraModule() })
-	builtinViews["ryui.camera"] = func(ctx native.Context) native.View {
+	builtinViews["asuka.camera"] = func(ctx native.Context) native.View {
 		return newCameraView(theHost, ctx.Emit, false)
 	}
 }
@@ -256,7 +256,7 @@ func newCameraView(h *Host, emit func(string, map[string]any), sheet bool) *came
 	v.picture = PictureNew()
 	PictureSetContentFit(v.picture, 2) // GTK_CONTENT_FIT_COVER
 	PictureSetCanShrink(v.picture, true)
-	WidgetAddCSSClass(v.picture, "ryui-camera")
+	WidgetAddCSSClass(v.picture, "asuka-camera")
 	v.mapHandlers = append(v.mapHandlers,
 		Connect(v.picture, "map", func() { v.attached(true) }),
 		Connect(v.picture, "unmap", func() { v.attached(false) }),
@@ -502,7 +502,7 @@ func (v *cameraView) capture(reply func([]byte, error)) {
 func (v *cameraView) photoTaken(img *image.RGBA) {
 	reply := v.capturing
 	v.capturing = nil
-	dir := filepath.Join(v.h.modCacheDir(), "ryui-camera")
+	dir := filepath.Join(v.h.modCacheDir(), "asuka-camera")
 	h := v.h
 	go func() {
 		path := filepath.Join(dir, randomName()+".jpg")
@@ -564,7 +564,7 @@ func (v *cameraView) record(mute bool, max time.Duration, reply func([]byte, err
 		return
 	}
 	v.recording, v.recMute, v.stopping = reply, mute, false
-	v.recPath = filepath.Join(v.h.modCacheDir(), "ryui-camera", randomName()+".mp4")
+	v.recPath = filepath.Join(v.h.modCacheDir(), "asuka-camera", randomName()+".mp4")
 	if err := os.MkdirAll(filepath.Dir(v.recPath), 0o755); err != nil {
 		v.recordFailed(err)
 		return
@@ -698,7 +698,7 @@ func (h *Host) cameraModule() map[string]method {
 
 // Codes' kinds and repeats, as macOS's.
 
-// zbarKind is ryui/scan's name of a ZBar symbology ("": none of its).
+// zbarKind is asuka/scan's name of a ZBar symbology ("": none of its).
 func zbarKind(t string) string {
 	switch t {
 	case "QR-Code":
@@ -742,7 +742,7 @@ func newCameraKinds(s string) cameraKinds {
 
 func (k cameraKinds) wants(kind string) bool { return len(k) == 0 || k[kind] }
 
-// named is the code as ryui/scan names it: a UPC-A for an app that asked
+// named is the code as asuka/scan names it: a UPC-A for an app that asked
 // for EAN-13s but not UPC-As is an EAN-13 with a leading 0, as Apple's
 // readers give it.
 func (k cameraKinds) named(kind, value string) (string, string) {

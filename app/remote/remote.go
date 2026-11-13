@@ -1,15 +1,15 @@
-// Package remote serves the app to ryui dev's players: ryui dev runs the
+// Package remote serves the app to asuka dev's players: asuka dev runs the
 // app's Go code on this machine and its views in a player app on a
 // simulator, an emulator or a phone (internal/remote).
 //
-// ryui dev links it into the app it runs that way; an app never imports
+// asuka dev links it into the app it runs that way; an app never imports
 // it. Release builds leave it out, and with it the network code it needs.
 package remote
 
 import (
-	"github.com/egoist/ryui/internal/boot"
-	"github.com/egoist/ryui/internal/remote"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/internal/boot"
+	"github.com/egoist/asuka/internal/remote"
+	"github.com/egoist/asuka/ui"
 )
 
 func init() {

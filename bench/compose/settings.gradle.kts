@@ -13,5 +13,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "ryui-bench-compose"
+rootProject.name = "asuka-bench-compose"
 include(":app")

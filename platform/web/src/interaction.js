@@ -45,7 +45,7 @@ export class Interaction {
   listen(n, e) {
     if (!n.el) return;
     if (pressEvents.has(e)) this.pressable(n);
-    else if (gestureEvents.has(e)) n.el.classList.add("ryui-gesture");
+    else if (gestureEvents.has(e)) n.el.classList.add("asuka-gesture");
     else if (e === Event.Hover) this.hoverable(n);
   }
 
@@ -58,13 +58,13 @@ export class Interaction {
       n.hovered = false;
     }
     if (pressEvents.has(e) && !n.listening(Event.Press) && !n.listening(Event.LongPress) && !n.listening(Event.Pressed) && !n.menu) {
-      n.el.classList.remove("ryui-pressable");
+      n.el.classList.remove("asuka-pressable");
     }
   }
 
   /** pressable marks n as a view that takes presses: a button for screen readers and the keyboard, if it fires one. */
   pressable(n) {
-    n.el.classList.add("ryui-pressable");
+    n.el.classList.add("asuka-pressable");
     if (n.listening(Event.Press) || n.menu) {
       if (!n.el.hasAttribute("role")) n.el.setAttribute("role", "button");
       if (!n.el.hasAttribute("tabindex")) n.el.tabIndex = 0;
@@ -93,7 +93,7 @@ export class Interaction {
 
   nodeOf(el) {
     for (; el && el !== this.h.container; el = el.parentElement) {
-      if (el.ryuiNode) return el.ryuiNode;
+      if (el.asukaNode) return el.asukaNode;
     }
     return null;
   }
@@ -101,8 +101,8 @@ export class Interaction {
   /** pressTarget is the innermost pressable view at el, or null where a control (a button, a field) takes the press. */
   pressTarget(el) {
     for (; el && el !== this.h.container; el = el.parentElement) {
-      if (el.matches("button, input, textarea, select, a[href], [contenteditable=true], .ryui-control")) return null;
-      const n = el.ryuiNode;
+      if (el.matches("button, input, textarea, select, a[href], [contenteditable=true], .asuka-control")) return null;
+      const n = el.asukaNode;
       if (n && (n.listening(Event.Press) || n.listening(Event.LongPress) || n.listening(Event.Pressed) || n.menu)) return n;
     }
     return null;
@@ -110,7 +110,7 @@ export class Interaction {
 
   gestureTarget(el, kinds) {
     for (; el && el !== this.h.container; el = el.parentElement) {
-      const n = el.ryuiNode;
+      const n = el.asukaNode;
       if (n && kinds.some((k) => n.listening(k))) return n;
     }
     return null;
@@ -118,7 +118,7 @@ export class Interaction {
 
   inScroll(el) {
     for (; el && el !== this.h.container; el = el.parentElement) {
-      if (el.classList.contains("ryui-scroller")) return true;
+      if (el.classList.contains("asuka-scroller")) return true;
     }
     return false;
   }
@@ -293,7 +293,7 @@ export class Interaction {
   }
 
   key(e) {
-    const n = e.target.ryuiNode;
+    const n = e.target.asukaNode;
     if (!n || e.target !== n.el) return;
     if (n.adjustable && (e.key === "ArrowUp" || e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === "ArrowLeft")) {
       e.preventDefault();
@@ -405,8 +405,8 @@ export class Interaction {
         if (f && dt.items) dt.items.add(f);
       }
     }
-    dt.setData("application/x-ryui-source", String(n.id));
-    for (const it of n.dragItems) if (it.mime) dt.setData("application/x-ryui-type." + it.mime.toLowerCase(), "1");
+    dt.setData("application/x-asuka-source", String(n.id));
+    for (const it of n.dragItems) if (it.mime) dt.setData("application/x-asuka-type." + it.mime.toLowerCase(), "1");
     dt.effectAllowed = onlyValues ? "move" : "copyMove";
     const r = n.el.getBoundingClientRect();
     dt.setDragImage(n.el, e.clientX - r.left, e.clientY - r.top);
@@ -424,7 +424,7 @@ export class Interaction {
   dropTarget(e) {
     const types = dragTypes(e.dataTransfer);
     for (let el = e.target; el && el !== this.h.container; el = el.parentElement) {
-      const n = el.ryuiNode;
+      const n = el.asukaNode;
       if (n && n.dropAccept && types.some((t) => matchMIME(n.dropAccept, t))) return n;
     }
     return null;
@@ -435,7 +435,7 @@ export class Interaction {
     if (this.over && this.over !== n) this.overState(this.over, 3, e);
     if (!n) return;
     e.preventDefault();
-    e.dataTransfer.dropEffect = e.dataTransfer.types.includes("application/x-ryui-source") ? "move" : "copy";
+    e.dataTransfer.dropEffect = e.dataTransfer.types.includes("application/x-asuka-source") ? "move" : "copy";
     this.overState(n, this.over === n ? 1 : 0, e);
     this.over = n;
   }
@@ -460,7 +460,7 @@ export class Interaction {
     const r = n.el.getBoundingClientRect();
     const x = e.clientX - r.left, y = e.clientY - r.top;
     const dt = e.dataTransfer;
-    const source = Number(dt.getData("application/x-ryui-source")) || 0;
+    const source = Number(dt.getData("application/x-asuka-source")) || 0;
     const items = [];
     if (!source) {
       for (const f of [...dt.files]) {
@@ -511,9 +511,9 @@ function dragTypes(dt) {
     if (t === "Files") {
       for (const it of dt.items || []) if (it.kind === "file") out.push(it.type || "application/octet-stream");
       if (!dt.items) out.push("application/octet-stream");
-    } else if (t.startsWith("application/x-ryui-type.")) {
-      out.push(t.slice("application/x-ryui-type.".length));
-    } else if (t !== "application/x-ryui-source") {
+    } else if (t.startsWith("application/x-asuka-type.")) {
+      out.push(t.slice("application/x-asuka-type.".length));
+    } else if (t !== "application/x-asuka-source") {
       out.push(t);
     }
   }

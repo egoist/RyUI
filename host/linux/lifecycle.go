@@ -7,8 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
 )
 
 // The app's lifecycle on Linux, as on a Mac: it's in the background while
@@ -18,7 +18,7 @@ import (
 // ending (GtkApplication's query-end, through the session manager or, in
 // a sandbox, the portal), or a signal (SIGTERM as a systemd session
 // stops, SIGINT, SIGHUP), which quits it as closing it does. Each sends
-// Lifecycle, and the core's handlers run then: ryui/store writes what's
+// Lifecycle, and the core's handlers run then: asuka/store writes what's
 // pending, so nothing set in the app's last moment is lost. GLib's memory
 // monitor's warnings are LifecycleMemoryWarning.
 
@@ -129,10 +129,10 @@ func (h *Host) watchApp() {
 
 // watchSignals quits the app on SIGTERM, SIGINT and SIGHUP as closing it
 // does, so its last values are written; a second signal ends it at once
-// (the main thread may be stuck). Not under ryui dev, whose SIGINT saves
+// (the main thread may be stuck). Not under asuka dev, whose SIGINT saves
 // the run's state (devstate.go).
 func (h *Host) watchSignals() {
-	if os.Getenv("RYUI_STATE") != "" {
+	if os.Getenv("ASUKA_STATE") != "" {
 		return
 	}
 	sig := make(chan os.Signal, 2)

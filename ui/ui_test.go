@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/egoist/ryui/host/fake"
-	"github.com/egoist/ryui/internal/boot"
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/host/fake"
+	"github.com/egoist/asuka/internal/boot"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 func mount(t *testing.T, root func() ui.Node) (*fake.Host, *ui.Root) {
@@ -382,7 +382,7 @@ func TestListBindsOnlyWhatTheHostAsks(t *testing.T) {
 
 func TestSteadyStateFlushAllocatesNothing(t *testing.T) {
 	if signal.Debug {
-		t.Skip("ryui_debug's main-thread checks allocate")
+		t.Skip("asuka_debug's main-thread checks allocate")
 	}
 	labels := []string{"one", "two"}
 	sel := signal.New(0)
@@ -520,7 +520,7 @@ func TestNilPropsAreZeroValues(t *testing.T) {
 	}
 }
 
-// The app's accent color (ryui.json's) goes to the host when a root
+// The app's accent color (asuka.json's) goes to the host when a root
 // mounts, before its views.
 func TestAccent(t *testing.T) {
 	boot.Accent, boot.DynamicColor = "#7c3aed", "1"
@@ -1196,7 +1196,7 @@ func TestShared(t *testing.T) {
 		ui.OnShare(func(items []ui.SharedItem) { got = append(got, items) })
 		return ui.StaticText("y")
 	})
-	photo := ui.SharedItem{Kind: ui.SharedImage, Path: "/tmp/ryui-shared/1/IMG_1.HEIC", Name: "IMG_1.HEIC", MIME: "image/heic", Size: 2048}
+	photo := ui.SharedItem{Kind: ui.SharedImage, Path: "/tmp/asuka-shared/1/IMG_1.HEIC", Name: "IMG_1.HEIC", MIME: "image/heic", Size: 2048}
 	text := ui.SharedItem{Kind: ui.SharedText, Text: "Look", MIME: "text/plain", Size: -1}
 	h.Dispatch(ops.Event{ID: 0, Kind: ops.EventShared, Bytes: sharedEvent(text, photo)})
 	if len(got) != 2 || len(got[0]) != 1 || got[0][0] != first || len(got[1]) != 2 || got[1][0] != text || got[1][1] != photo {

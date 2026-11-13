@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/ui"
 )
 
 // Path is a layer's outline in viewBox units, transforms applied: per

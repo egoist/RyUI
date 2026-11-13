@@ -5,11 +5,11 @@ import (
 	"math"
 	"testing"
 
-	"github.com/egoist/ryui/internal/shadercode"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/shader"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/internal/shadercode"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/shader"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 var glow = shader.MustCompile(`package main

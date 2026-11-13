@@ -5,8 +5,8 @@ package darwin
 import (
 	"math"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ops"
 )
 
 func initView(cls string) ID {
@@ -23,9 +23,9 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 	var v ID
 	switch kind {
 	case ops.KindView, ops.KindSelectable:
-		v = initView("RyUIView")
+		v = initView("AsukaView")
 	case ops.KindText:
-		v = initView("RyUILabel")
+		v = initView("AsukaLabel")
 		Send(v, "setEditable:", 0)
 		Send(v, "setSelectable:", 0)
 		Send(v, "setBezeled:", 0)
@@ -85,13 +85,13 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 		MsgSetFloat(v, Sel("setMinValue:"), 0)
 		MsgSetFloat(v, Sel("setMaxValue:"), 1)
 	case ops.KindImage:
-		v = initView("RyUIImageView")
+		v = initView("AsukaImageView")
 		Send(v, "setImageScaling:", 3) // proportionally up or down
 		Send(v, "setImageFrameStyle:", 0)
 		Send(v, "setEditable:", 0)
 		Send(v, "setAnimates:", 1)
 	case ops.KindSymbol:
-		v = initView("RyUIImageView")
+		v = initView("AsukaImageView")
 		Send(v, "setImageScaling:", 0)
 		Send(v, "setContentTintColor:", uintptr(Send(Class("NSColor"), "labelColor")))
 	case ops.KindSegmented:
@@ -124,7 +124,7 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 	case ops.KindPageControl:
 		v = h.makePageDots(n)
 	case ops.KindCanvas:
-		v = initView("RyUICanvasView")
+		v = initView("AsukaCanvasView")
 	case ops.KindSplit:
 		v = h.makeSplit(n)
 	case ops.KindShader:
@@ -132,19 +132,19 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 	case ops.KindAccessory:
 		// A field's bar over the keyboard: a Mac has no on-screen keyboard,
 		// so it's made and never shown.
-		v = initView("RyUIView")
+		v = initView("AsukaView")
 	case ops.KindRichText:
 		n.rich = newRich()
 		v = n.rich.makeView()
 	case ops.KindShape:
 		n.shape = &shape{lineWidth: 1}
-		v = initView("RyUIShapeView")
+		v = initView("AsukaShapeView")
 	case ops.KindWebView:
 		v = h.makeWeb(n)
 	case ops.KindVideo:
 		v = h.makeVideo(n)
 	case ops.KindNative:
-		v = initView("RyUIView") // the app's view goes in it (native.go)
+		v = initView("AsukaView") // the app's view goes in it (native.go)
 	default:
 		fail("can't show %s yet", kind)
 	}
@@ -160,14 +160,14 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 // makeField makes a TextField's view: a field, a secure field, or (made
 // multiline) a text view in a scroll view.
 func (h *Host) makeField(n *node, secure bool) ID {
-	cls := "RyUITextField"
+	cls := "AsukaTextField"
 	if secure {
-		cls = "RyUISecureField"
+		cls = "AsukaSecureField"
 	}
 	v := initView(cls)
 	if !secure {
 		// Its own cell, which puts its text inside its padding.
-		cell := Send(Send(Class("RyUITextFieldCell"), "alloc"), "initTextCell:", uintptr(String("")))
+		cell := Send(Send(Class("AsukaTextFieldCell"), "alloc"), "initTextCell:", uintptr(String("")))
 		Send(v, "setCell:", uintptr(cell))
 		Release(cell)
 	}
@@ -585,8 +585,8 @@ func (h *Host) makeMultiline(n *node) {
 	sv := initView("NSScrollView")
 	Send(sv, "setHasVerticalScroller:", 1)
 	Send(sv, "setAutohidesScrollers:", 1)
-	Send(sv, "setBorderType:", 2)     // bezel
-	tv := initView("RyUIFieldEditor") // an NSTextView that pastes the content the field takes
+	Send(sv, "setBorderType:", 2)      // bezel
+	tv := initView("AsukaFieldEditor") // an NSTextView that pastes the content the field takes
 	Send(tv, "setRichText:", 0)
 	Send(tv, "setDelegate:", uintptr(h.target))
 	Send(tv, "setVerticallyResizable:", 1)
@@ -798,7 +798,7 @@ func (h *Host) gesture(g ID, e ops.EventKind) {
 	case ops.EventPinch:
 		gs.Scale = float32(1 + MsgFloat(g, Sel("magnification")))
 	case ops.EventRotate:
-		// AppKit's is counterclockwise; RyUI's clockwise.
+		// AppKit's is counterclockwise; Asuka's clockwise.
 		gs.Rotation = -float32(MsgFloat(g, Sel("rotation")))
 	}
 	h.emit(n, ops.Event{Kind: e, G: gs})

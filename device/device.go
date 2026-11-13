@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // Info is the device and the app.
@@ -16,8 +16,8 @@ type Info struct {
 	Model         string `json:"model"`         // "iPhone", "Pixel 9"
 	System        string `json:"system"`        // "iOS", "Android"
 	SystemVersion string `json:"systemVersion"` // "26.0", "16"
-	AppVersion    string `json:"appVersion"`    // ryui.json's version
-	Build         string `json:"build"`         // ryui.json's build
+	AppVersion    string `json:"appVersion"`    // asuka.json's version
+	Build         string `json:"build"`         // asuka.json's build
 }
 
 // GetInfo is the device and the app. Not on the main thread.
@@ -33,7 +33,7 @@ func GetInfo() (Info, error) {
 // Browse shows a web page in the app: SFSafariViewController, a Custom
 // Tab. (ui.OpenURL leaves the app for the browser.) Main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Browse(url string) {
@@ -45,7 +45,7 @@ func Browse(url string) {
 // files, which ui.Image shows, or none if the user cancelled. Main
 // thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func PickPhotos(limit int, done func(paths []string, err error)) {
@@ -106,7 +106,7 @@ type FileOptions struct {
 // Android's storage picker: no permission asked) and calls done with
 // copies of the files picked, or none if the user cancelled. Main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func PickFiles(o FileOptions, done func(files []File, err error)) {

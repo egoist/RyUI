@@ -17,9 +17,9 @@ import (
 
 // crash is the web host's crash.js, nil without one (a test).
 func crash() js.Value {
-	name := os.Getenv("RYUI_WEB_HOST")
+	name := os.Getenv("ASUKA_WEB_HOST")
 	if name == "" {
-		name = "ryuiHost"
+		name = "asukaHost"
 	}
 	h := js.Global().Get(name)
 	if h.Type() != js.TypeObject {

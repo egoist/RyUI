@@ -17,10 +17,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	. "github.com/egoist/ryui/internal/gtk"
+	. "github.com/egoist/asuka/internal/gtk"
 )
 
-// ryui/imageedit on Linux: "edit", "size" and "videoFrame", each with
+// asuka/imageedit on Linux: "edit", "size" and "videoFrame", each with
 // JSON (source, actions, format, quality, at in ms), answer JSON (path,
 // width, height) or fail "no image". GdkPixbuf's loaders decode (JPEG,
 // PNG, WebP, HEIF, TIFF... as the system has them), upright as the
@@ -58,7 +58,7 @@ type ieRequest struct {
 }
 
 func (h *Host) imageEditModule() map[string]method {
-	assets, cache := h.assets, filepath.Join(h.modCacheDir(), "ryui-images")
+	assets, cache := h.assets, filepath.Join(h.modCacheDir(), "asuka-images")
 	run := func(f func(r *ieRequest) (map[string]any, error)) method {
 		return func(args []byte, reply func([]byte, error)) {
 			var r ieRequest

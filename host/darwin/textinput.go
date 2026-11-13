@@ -10,18 +10,18 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ops"
 )
 
 // A TextField's selection, insertions and pastes of content the app
 // takes (TextFieldProps.Selection, InsertText, PasteTypes). A one-line
 // field is edited by its window's field editor, an NSTextView; the host
-// gives fields a field editor of its own class (RyUIFieldEditor), whose
+// gives fields a field editor of its own class (AsukaFieldEditor), whose
 // paste: hands the app what it takes, and a multiline field's text view
 // is of that class too. Offsets are UTF-16, as NSString's are.
 
-// fieldEditorMethods are RyUIFieldEditor's: Paste for the content the
+// fieldEditorMethods are AsukaFieldEditor's: Paste for the content the
 // field takes, and paste: taking it.
 func fieldEditorMethods() []objc.MethodDef {
 	return []objc.MethodDef{
@@ -29,7 +29,7 @@ func fieldEditorMethods() []objc.MethodDef {
 			if n := theHost.editorNode(self); n != nil && theHost.pasteContent(n) {
 				return
 			}
-			SendSuper(self, "RyUIFieldEditor", "paste:", uintptr(sender))
+			SendSuper(self, "AsukaFieldEditor", "paste:", uintptr(sender))
 		}),
 		Method("validateUserInterfaceItem:", func(self ID, _ SEL, item ID) bool {
 			if Send(item, "action") == ID(Sel("paste:")) {
@@ -37,7 +37,7 @@ func fieldEditorMethods() []objc.MethodDef {
 					return true
 				}
 			}
-			return byte(SendSuper(self, "RyUIFieldEditor", "validateUserInterfaceItem:", uintptr(item))) != 0
+			return byte(SendSuper(self, "AsukaFieldEditor", "validateUserInterfaceItem:", uintptr(item))) != 0
 		}),
 	}
 }
@@ -57,7 +57,7 @@ func (h *Host) editorNode(tv ID) *node {
 }
 
 // fieldEditor is windowWillReturnFieldEditor:toObject:: a field of the
-// app's gets the window's RyUIFieldEditor; anything else the window's own.
+// app's gets the window's AsukaFieldEditor; anything else the window's own.
 func (h *Host) fieldEditor(w, obj ID) ID {
 	if n := h.byView[obj]; n == nil || n.kind != ops.KindTextField {
 		return 0
@@ -65,7 +65,7 @@ func (h *Host) fieldEditor(w, obj ID) ID {
 	if e := h.editors[w]; e != 0 {
 		return e
 	}
-	e := Send(Send(Class("RyUIFieldEditor"), "alloc"), "init")
+	e := Send(Send(Class("AsukaFieldEditor"), "alloc"), "init")
 	Send(e, "setFieldEditor:", 1)
 	h.editors[w] = e
 	return e

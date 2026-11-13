@@ -7,8 +7,8 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ops"
 )
 
 var classesDone bool
@@ -26,8 +26,8 @@ func registerClasses() {
 	flipped := Method("isFlipped", func(self ID, _ SEL) bool { return true })
 	firstMouse := Method("acceptsFirstMouse:", func(self ID, _ SEL, ev ID) bool { return true })
 
-	// A container: RyUI places its subviews itself.
-	DefineClass("RyUIView", "NSView", []string{"NSDraggingDestination", "NSDraggingSource"}, append([]objc.MethodDef{
+	// A container: Asuka places its subviews itself.
+	DefineClass("AsukaView", "NSView", []string{"NSDraggingDestination", "NSDraggingSource"}, append([]objc.MethodDef{
 		flipped, firstMouse,
 		Method("accessibilityPerformPress", func(self ID, _ SEL) bool {
 			n := theHost.byView[self]
@@ -74,12 +74,12 @@ func registerClasses() {
 		// system leaves them to apps), or a two-finger flick (swipe.go).
 		Method("swipeWithEvent:", func(self ID, _ SEL, ev ID) {
 			if !theHost.swipeEvent(self, ev) {
-				SendSuper(self, "RyUIView", "swipeWithEvent:", uintptr(ev))
+				SendSuper(self, "AsukaView", "swipeWithEvent:", uintptr(ev))
 			}
 		}),
 		Method("scrollWheel:", func(self ID, _ SEL, ev ID) {
 			if !theHost.wheel(self, ev) {
-				SendSuper(self, "RyUIView", "scrollWheel:", uintptr(ev))
+				SendSuper(self, "AsukaView", "scrollWheel:", uintptr(ev))
 			}
 		}),
 		Method("cancelOperation:", func(self ID, _ SEL, sender ID) {
@@ -98,13 +98,13 @@ func registerClasses() {
 			return ok
 		})
 	}
-	DefineClass("RyUITextField", "NSTextField", nil, []objc.MethodDef{focus("RyUITextField"), keepsShadow("RyUITextField")})
+	DefineClass("AsukaTextField", "NSTextField", nil, []objc.MethodDef{focus("AsukaTextField"), keepsShadow("AsukaTextField")})
 	// A one-line field's cell: its text, placeholder and field editor
 	// inside the field's padding (ContentInset), as AppKit lays them out
 	// in what this returns.
-	DefineClass("RyUITextFieldCell", "NSTextFieldCell", nil, []objc.MethodDef{
+	DefineClass("AsukaTextFieldCell", "NSTextFieldCell", nil, []objc.MethodDef{
 		Method("drawingRectForBounds:", func(self ID, _ SEL, b Rect) Rect {
-			r := SendSuperRect(self, "RyUITextFieldCell", "drawingRectForBounds:", b)
+			r := SendSuperRect(self, "AsukaTextFieldCell", "drawingRectForBounds:", b)
 			if n := theHost.byView[Send(self, "controlView")]; n != nil {
 				in := n.inset
 				r.Origin.X += float64(in[3])
@@ -115,10 +115,10 @@ func registerClasses() {
 			return r
 		}),
 	})
-	DefineClass("RyUIFieldEditor", "NSTextView", nil, fieldEditorMethods())
-	DefineClass("RyUISecureField", "NSSecureTextField", nil, []objc.MethodDef{focus("RyUISecureField"), keepsShadow("RyUISecureField")})
-	DefineClass("RyUILabel", "NSTextField", nil, []objc.MethodDef{
-		keepsShadow("RyUILabel"),
+	DefineClass("AsukaFieldEditor", "NSTextView", nil, fieldEditorMethods())
+	DefineClass("AsukaSecureField", "NSSecureTextField", nil, []objc.MethodDef{focus("AsukaSecureField"), keepsShadow("AsukaSecureField")})
+	DefineClass("AsukaLabel", "NSTextField", nil, []objc.MethodDef{
+		keepsShadow("AsukaLabel"),
 		// Clicks go to the view under the label (a pressable row).
 		Method("hitTest:", func(self ID, _ SEL, p Point) ID { return 0 }),
 		// Its text inside its padding (ContentInset), as NSTextField draws
@@ -138,8 +138,8 @@ func registerClasses() {
 			MsgRectIDVoid(Send(self, "cell"), Sel("drawWithFrame:inView:"), b, self)
 		}),
 	})
-	DefineClass("RyUIImageView", "NSImageView", nil, []objc.MethodDef{
-		keepsShadow("RyUIImageView"),
+	DefineClass("AsukaImageView", "NSImageView", nil, []objc.MethodDef{
+		keepsShadow("AsukaImageView"),
 		Method("hitTest:", func(self ID, _ SEL, p Point) ID { return 0 }),
 	})
 	registerRichClass(flipped)
@@ -150,11 +150,11 @@ func registerClasses() {
 	registerTarget()
 }
 
-// targetMethods are more of RyUITarget's methods (the application
+// targetMethods are more of AsukaTarget's methods (the application
 // delegate's), each file adding its own (from its init).
 var targetMethods []objc.MethodDef
 
-// registerTarget makes RyUITarget, the one object that takes the views'
+// registerTarget makes AsukaTarget, the one object that takes the views'
 // actions, delegate calls and notifications.
 func registerTarget() {
 	h := func() *Host { return theHost }
@@ -273,7 +273,7 @@ func registerTarget() {
 	methods = append(methods, navMethods()...)
 	methods = append(methods, previewMethods()...)
 	methods = append(methods, targetMethods...)
-	DefineClass("RyUITarget", "NSObject", []string{
+	DefineClass("AsukaTarget", "NSObject", []string{
 		"NSApplicationDelegate", "NSWindowDelegate", "NSTextFieldDelegate", "NSTextViewDelegate",
 		"NSTabViewDelegate", "NSMenuDelegate", "NSGestureRecognizerDelegate",
 		"WKNavigationDelegate", "WKScriptMessageHandler", "WKUIDelegate", "NSToolbarDelegate", "NSSearchFieldDelegate",

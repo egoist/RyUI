@@ -12,10 +12,10 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	. "github.com/egoist/ryui/internal/gtk"
+	. "github.com/egoist/asuka/internal/gtk"
 )
 
-// ryui/scan's "file" and ryui/vision's "analyze" on Linux: ZBar reads
+// asuka/scan's "file" and asuka/vision's "analyze" on Linux: ZBar reads
 // codes (QR, EAN, UPC, Code 128, 39 and 93, Codabar, interleaved 2 of 5,
 // PDF417: it reads no Aztec or Data Matrix codes) and Tesseract reads
 // text, where they're installed (libzbar0; libtesseract5 and its
@@ -39,7 +39,7 @@ func init() {
 	})
 }
 
-// encodeCodes is the reply ryui/scan's decode reads.
+// encodeCodes is the reply asuka/scan's decode reads.
 func encodeCodes(codes [][2]string) []byte {
 	le := binary.LittleEndian
 	b := le.AppendUint32(nil, uint32(len(codes)))

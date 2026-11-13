@@ -5,7 +5,7 @@ package darwin
 import (
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
+	. "github.com/egoist/asuka/internal/darwin"
 )
 
 // ColorPicker's well: the color panel is the app's one (NSColorPanel's
@@ -19,7 +19,7 @@ type colorWellProps struct {
 }
 
 var (
-	colorWells       = map[ID]*colorWellProps{} // by their RyUIColorWell
+	colorWells       = map[ID]*colorWellProps{} // by their AsukaColorWell
 	colorWellClassOK bool
 )
 
@@ -27,14 +27,14 @@ var (
 func newColorWell() ID {
 	if !colorWellClassOK {
 		colorWellClassOK = true
-		DefineClass("RyUIColorWell", "NSColorWell", nil, []objc.MethodDef{
+		DefineClass("AsukaColorWell", "NSColorWell", nil, []objc.MethodDef{
 			Method("activate:", func(self ID, _ SEL, exclusive bool) {
-				SendSuper(self, "RyUIColorWell", "activate:", Bool(exclusive))
+				SendSuper(self, "AsukaColorWell", "activate:", Bool(exclusive))
 				applyColorWell(self)
 			}),
 		})
 	}
-	v := initView("RyUIColorWell")
+	v := initView("AsukaColorWell")
 	colorWells[v] = &colorWellProps{}
 	return v
 }

@@ -7,9 +7,9 @@ import (
 	"unicode/utf16"
 	"unsafe"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/ops"
 )
 
 // A RichText is a rich edit control (msftedit's RICHEDIT50W: its

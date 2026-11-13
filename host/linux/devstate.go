@@ -8,21 +8,21 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/egoist/ryui/internal/devstate"
-	"github.com/egoist/ryui/ops"
+	"github.com/egoist/asuka/internal/devstate"
+	"github.com/egoist/asuka/ops"
 )
 
-// Under ryui dev (RYUI_STATE), the app's signals get the values the last
-// run saved, and they're saved when ryui dev stops the app (SIGINT) to
+// Under asuka dev (ASUKA_STATE), the app's signals get the values the last
+// run saved, and they're saved when asuka dev stops the app (SIGINT) to
 // run the new code, as on macOS. Kept from init: before the app's
 // components make their signals.
 func init() {
-	path := os.Getenv("RYUI_STATE")
+	path := os.Getenv("ASUKA_STATE")
 	if path == "" {
 		return
 	}
 	if err := devstate.Keep(path); err != nil {
-		fmt.Fprintln(os.Stderr, "ryui: restoring state:", err)
+		fmt.Fprintln(os.Stderr, "asuka: restoring state:", err)
 	}
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
@@ -34,7 +34,7 @@ func init() {
 		}
 		h.Post(func() {
 			if err := devstate.Save(path); err != nil {
-				fmt.Fprintln(os.Stderr, "ryui: saving state:", err)
+				fmt.Fprintln(os.Stderr, "asuka: saving state:", err)
 			}
 			h.lifecycle(ops.LifecycleBackground) // the store written, as quitting does
 			os.Exit(0)

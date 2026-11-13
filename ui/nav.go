@@ -5,10 +5,10 @@ import (
 	"encoding/binary"
 	"slices"
 
-	"github.com/egoist/ryui/internal/l10n"
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
+	"github.com/egoist/asuka/internal/l10n"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
 )
 
 // ActionRole is how a button of an alert, a menu item or a bar button

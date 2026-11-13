@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/ops"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/ops"
 )
 
 // Dim is a length: Auto (the zero value), points or a percentage.
@@ -139,15 +139,15 @@ var (
 	// it. White on iOS; Material's on-primary on Android, whose accent is light
 	// in dark mode.
 	OnAccent = semantic(ops.SemanticColorOnAccent)
-	Red                        = semantic(ops.SemanticColorRed)
-	Orange                     = semantic(ops.SemanticColorOrange)
-	Yellow                     = semantic(ops.SemanticColorYellow)
-	Green                      = semantic(ops.SemanticColorGreen)
-	Blue                       = semantic(ops.SemanticColorBlue)
-	Purple                     = semantic(ops.SemanticColorPurple)
-	Pink                       = semantic(ops.SemanticColorPink)
-	Gray                       = semantic(ops.SemanticColorGray)
-	Clear                      = semantic(ops.SemanticColorClear)
+	Red      = semantic(ops.SemanticColorRed)
+	Orange   = semantic(ops.SemanticColorOrange)
+	Yellow   = semantic(ops.SemanticColorYellow)
+	Green    = semantic(ops.SemanticColorGreen)
+	Blue     = semantic(ops.SemanticColorBlue)
+	Purple   = semantic(ops.SemanticColorPurple)
+	Pink     = semantic(ops.SemanticColorPink)
+	Gray     = semantic(ops.SemanticColorGray)
+	Clear    = semantic(ops.SemanticColorClear)
 )
 
 // Weight is a font weight.

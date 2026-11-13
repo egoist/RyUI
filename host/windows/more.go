@@ -6,13 +6,13 @@ import (
 	"errors"
 	"syscall"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/native"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/native"
 )
 
 // More of the host's modules, each file its own, as host/darwin's are:
 // a file adds its modules from its init (moduleHooks) and its native
-// views (builtinViews: ryui/camera's, ryui/maps'). Their windows (the
+// views (builtinViews: asuka/camera's, asuka/maps'). Their windows (the
 // services' message window, the camera and sign-in dialogs, the camera's
 // preview) are of a class of their own, whose messages go to the
 // function each registers (ownWindows), apart from the host's views.
@@ -20,7 +20,7 @@ import (
 // moduleHooks add modules: m's name is the module's.
 var moduleHooks []func(h *Host, m map[string]map[string]asyncMethod)
 
-// builtinViews are the host's own native views (ui.Native kinds RyUI's
+// builtinViews are the host's own native views (ui.Native kinds Asuka's
 // packages make), by kind; an app's of the same kind (package native)
 // comes second.
 var builtinViews = map[string]func(native.Context) native.View{}
@@ -36,7 +36,7 @@ func (h *Host) moreModule(name string) map[string]asyncMethod {
 	return h.more[name]
 }
 
-const classOwn = "RyUIOwn" // the windows of more.go's modules
+const classOwn = "AsukaOwn" // the windows of more.go's modules
 
 var (
 	ownProc    uintptr

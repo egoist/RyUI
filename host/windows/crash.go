@@ -7,12 +7,12 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/egoist/ryui/internal/boot"
-	"github.com/egoist/ryui/internal/crashrun"
-	. "github.com/egoist/ryui/internal/windows"
+	"github.com/egoist/asuka/internal/boot"
+	"github.com/egoist/asuka/internal/crashrun"
+	. "github.com/egoist/asuka/internal/windows"
 )
 
-// startCrash begins the run's crash record (ryui/crash), if the app
+// startCrash begins the run's crash record (asuka/crash), if the app
 // reports crashes: Go's crash output, and with no console what the
 // runtime prints to standard error, where it reports a Windows exception
 // it can't handle (crashrun).
@@ -27,7 +27,7 @@ func startCrash() {
 }
 
 // windowsInfo is the PC and the app: its model (the firmware's product
-// name), Windows's version and build, ryui.json's version.
+// name), Windows's version and build, asuka.json's version.
 func windowsInfo() crashrun.Info {
 	return crashrun.Info{
 		Model:         registryString(`HARDWARE\DESCRIPTION\System\BIOS`, "SystemProductName"),

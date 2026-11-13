@@ -17,8 +17,8 @@ import (
 	"strings"
 	"sync"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
 )
 
 // Images are fetched and decoded off the main thread (Go's decoders:
@@ -155,7 +155,7 @@ func (d *decoded) makeTexture() {
 		BytesUnref(b)
 		d.data = nil
 		if d.texture == 0 {
-			d.err = fmt.Errorf("ryui: an image in a format there's no decoder for")
+			d.err = fmt.Errorf("asuka: an image in a format there's no decoder for")
 			if gerr != 0 {
 				ErrorFree(gerr)
 			}

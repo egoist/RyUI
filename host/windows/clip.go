@@ -5,7 +5,7 @@ package windows
 import (
 	"math"
 
-	. "github.com/egoist/ryui/internal/windows"
+	. "github.com/egoist/asuka/internal/windows"
 )
 
 // Rounded clips. A child window ignores its parent's drawing, so a view

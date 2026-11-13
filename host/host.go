@@ -1,10 +1,10 @@
-// Package host is the interface between RyUI's core and a platform host
+// Package host is the interface between Asuka's core and a platform host
 // (iOS, Android, the fake host for tests, desktop later).
 package host
 
 import (
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/ops"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/ops"
 )
 
 // Environment is what the host reports about a root view.

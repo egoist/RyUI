@@ -1,11 +1,11 @@
-// WebView: an <iframe>, made anew for each page RyUI loads (so the tab's
+// WebView: an <iframe>, made anew for each page Asuka loads (so the tab's
 // history gets no entries of its own: the view keeps its own, as a web
 // view does, and Back and Forward go through it).
 //
 // A page of the app's own origin (its assets, HTML, a file it wrote, any
 // URL of the page's own site) is fetched by the host and written into a
 // fresh frame, its URL set to the page's (history.replaceState), after
-// window.ryui (postMessage) and Preload are in it: so they run before the
+// window.asuka (postMessage) and Preload are in it: so they run before the
 // page's own scripts, as WKUserScript at document start does. The host
 // then has all of it: Eval and EvalJSResult (awaiting a promise), its
 // title and URL as they change (pushState too), Block (its fetch, XHR,
@@ -31,7 +31,7 @@ import { decodeStrings, blocked, isHTML, canShow, isAttachment, filenameOf, size
 
 // The document a WebView wrote, by its load: a frame's document without
 // it was loaded by the browser (a navigation the host didn't make).
-const MARK = Symbol("ryui.webview");
+const MARK = Symbol("asuka.webview");
 
 // Another site's frame: everything a page does but navigate the app
 // away (allow-top-navigation is left out) or reach the app's own origin.
@@ -42,7 +42,7 @@ const warned = new Set();
 function warnOnce(key, msg) {
   if (warned.has(key)) return;
   warned.add(key);
-  console.warn("ryui: " + msg);
+  console.warn("asuka: " + msg);
 }
 
 /** sameOrigin is a frame's window if the host may reach into it. */
@@ -57,7 +57,7 @@ export function sameOrigin(f) {
 export const webView = {
   create(h, n) {
     const el = own(n, document.createElement("div"));
-    el.className = "ryui-webview";
+    el.className = "asuka-webview";
     const s = n.web = {
       el, frame: null,
       preload: "", block: [], requests: false,
@@ -96,7 +96,7 @@ export const webView = {
   command(h, n, cmd, args) {
     switch (cmd) {
       case Command.Eval:
-        evalIn(n, new TextDecoder().decode(args)).catch((e) => console.warn("ryui: WebView script:", e?.message ?? e));
+        evalIn(n, new TextDecoder().decode(args)).catch((e) => console.warn("asuka: WebView script:", e?.message ?? e));
         return true;
       case Command.WebNavigate:
         [back, forward, reload, stop][args[0]]?.(h, n);
@@ -249,13 +249,13 @@ function reset(s, why) {
   for (const p of evals.values()) p.reject(new Error(why));
 }
 
-/** blank is the page a frame loads before RyUI writes one into it: a real
+/** blank is the page a frame loads before Asuka writes one into it: a real
  * document of the app's origin (the initial about:blank has the Navigation
  * API turned off, so its links couldn't be followed through the host). */
 let blankURL = "";
 const blank = () => (blankURL ||= URL.createObjectURL(new Blob(["<!doctype html>"], { type: "text/html" })));
 
-/** mount writes a page of the app's own into a new frame: window.ryui and Preload first. */
+/** mount writes a page of the app's own into a new frame: window.asuka and Preload first. */
 function mount(h, n, gen, html, { docURL, dir }) {
   const s = n.web;
   try {
@@ -488,10 +488,10 @@ function attach(h, n, w, gen) {
   const live = () => gen === s.gen && s.frame?.contentWindow === w;
   const doc = w.document;
   try {
-    w.ryui = { postMessage: (m) => { if (live()) h.emit(n, Event.Message, (id) => Events.message(id, String(m))); } };
+    w.asuka = { postMessage: (m) => { if (live()) h.emit(n, Event.Message, (id) => Events.message(id, String(m))); } };
   } catch {}
   if (s.preload) {
-    try { w.eval(s.preload); } catch (e) { console.warn("ryui: WebView Preload:", e?.message ?? e); }
+    try { w.eval(s.preload); } catch (e) { console.warn("asuka: WebView Preload:", e?.message ?? e); }
   }
   const abs = (u) => { try { return new URL(String(u), doc.baseURI).href; } catch { return ""; } };
   if (s.block.length) blockIn(s, w, abs);
@@ -636,9 +636,9 @@ function blockIn(s, w, abs) {
   const X = w.XMLHttpRequest?.prototype;
   if (X) {
     const open0 = X.open, send0 = X.send;
-    X.open = function (m, u) { this.__ryuiBlocked = no(u); return open0.apply(this, arguments); };
+    X.open = function (m, u) { this.__asukaBlocked = no(u); return open0.apply(this, arguments); };
     X.send = function () {
-      if (!this.__ryuiBlocked) return send0.apply(this, arguments);
+      if (!this.__asukaBlocked) return send0.apply(this, arguments);
       const x = this;
       setTimeout(() => { x.dispatchEvent(new w.ProgressEvent("error")); x.dispatchEvent(new w.ProgressEvent("loadend")); });
     };
@@ -726,19 +726,19 @@ function rewrite(html, block, dir, base) {
 
 /**
  * message is what the view's frame posts (event.source is its window):
- *   { ryui: true, text }             a message (window.ryui.postMessage)
- *   { ryui: "ready", url, title }     the page cooperates: Eval goes to it
- *   { ryui: "state", url, title }     its URL or title changed
- *   { ryui: "result", id, value }     an Eval's value (JSON), or { error }
+ *   { asuka: true, text }             a message (window.asuka.postMessage)
+ *   { asuka: "ready", url, title }     the page cooperates: Eval goes to it
+ *   { asuka: "state", url, title }     its URL or title changed
+ *   { asuka: "result", id, value }     an Eval's value (JSON), or { error }
  */
 function message(h, n, e) {
   const s = n.web;
   if (!s.frame || e.source !== s.frame.contentWindow) return;
   const d = e.data;
   if (!d || typeof d !== "object") return;
-  if (d.ryui === true) {
+  if (d.asuka === true) {
     h.emit(n, Event.Message, (id) => Events.message(id, String(d.text)));
-  } else if (d.ryui === "ready" || d.ryui === "state") {
+  } else if (d.asuka === "ready" || d.asuka === "state") {
     s.coop = e.origin;
     let changed = false;
     if (typeof d.url === "string" && d.url !== s.url) {
@@ -753,7 +753,7 @@ function message(h, n, e) {
       changed = true;
     }
     if (changed) state(h, n);
-  } else if (d.ryui === "result") {
+  } else if (d.asuka === "result") {
     const p = s.evals.get(d.id);
     if (!p) return;
     s.evals.delete(d.id);
@@ -764,7 +764,7 @@ function message(h, n, e) {
 
 /** hello asks another site's page whether it cooperates (it answers "ready"). */
 function hello(s) {
-  try { s.frame?.contentWindow?.postMessage({ ryui: "hello" }, "*"); } catch {}
+  try { s.frame?.contentWindow?.postMessage({ asuka: "hello" }, "*"); } catch {}
 }
 
 /**
@@ -784,10 +784,10 @@ export async function evalIn(n, script) {
     const id = s.nextEval++;
     return new Promise((resolve, reject) => {
       s.evals.set(id, { resolve, reject });
-      s.frame.contentWindow.postMessage({ ryui: "eval", id, script }, s.coop);
+      s.frame.contentWindow.postMessage({ asuka: "eval", id, script }, s.coop);
     });
   }
-  throw new Error("a WebView on the web runs script only in a page of the app's own (its assets, its HTML), or in another site's page that answers RyUI's messages: browsers keep sites apart");
+  throw new Error("a WebView on the web runs script only in a page of the app's own (its assets, its HTML), or in another site's page that answers Asuka's messages: browsers keep sites apart");
 }
 
 /** cookies are the page's own site's cookies for url (document.cookie: not HttpOnly ones), as a Cookie header. */
@@ -801,7 +801,7 @@ export function cookies(url) {
 }
 
 /**
- * runScript runs a script in a page of its own (ryui/js): a hidden frame,
+ * runScript runs a script in a page of its own (asuka/js): a hidden frame,
  * sandboxed (an origin of its own: it can't reach the app or its
  * storage), made for it and let go after. It resolves to the value as
  * JSON, or rejects with what it threw, or "timeout".

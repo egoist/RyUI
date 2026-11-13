@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ops"
-	kage "github.com/egoist/ryui/shader"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ops"
+	kage "github.com/egoist/asuka/shader"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // A popover is an NSPopover as big as its content, shown from its anchor;

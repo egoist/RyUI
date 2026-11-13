@@ -5,8 +5,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
 )
 
 // Curve is an animation's timing.

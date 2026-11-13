@@ -3,8 +3,8 @@
 package windows
 
 import (
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ops"
 )
 
 // A Popover is a popup window over its anchor, as WinUI's Flyout: below

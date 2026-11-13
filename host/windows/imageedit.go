@@ -14,10 +14,10 @@ import (
 	"os"
 	"path/filepath"
 
-	. "github.com/egoist/ryui/internal/windows"
+	. "github.com/egoist/asuka/internal/windows"
 )
 
-// ryui/imageedit on Windows: "edit", "size" and "videoFrame", each with
+// asuka/imageedit on Windows: "edit", "size" and "videoFrame", each with
 // JSON (source, actions, format, quality, at in ms), answer JSON (path,
 // width, height) or fail "no image". Windows's codecs (WIC) decode what
 // the system reads (HEIC, WebP where their extensions are installed),
@@ -147,7 +147,7 @@ func toNRGBA(img stdimage.Image) *stdimage.NRGBA {
 // ieWrite writes the image to the caches as JPEG (quality 0 to 1;
 // transparency on white) or PNG.
 func (h *Host) ieWrite(img *stdimage.NRGBA, format string, quality float64) ([]byte, error) {
-	dir := filepath.Join(h.cacheDir(), "ryui-imageedit")
+	dir := filepath.Join(h.cacheDir(), "asuka-imageedit")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, err
 	}

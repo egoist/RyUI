@@ -20,8 +20,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/native"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/native"
 )
 
 // maps.View on Windows: a map the host draws, of OpenStreetMap's tiles
@@ -29,7 +29,7 @@ import (
 // and needs a Bing Maps key), as GNOME Maps' libshumate does on Linux.
 // The tiles come from tile.openstreetmap.org as its usage policy asks:
 // a User-Agent naming the app, two downloads at a time, the tiles kept
-// on disk (the app's caches, ryui-map-tiles) and used for a week before
+// on disk (the app's caches, asuka-map-tiles) and used for a week before
 // they're asked for again, the attribution "© OpenStreetMap
 // contributors" shown on the map, linking to its copyright page. While
 // a tile comes, the one above it that's there is drawn bigger.
@@ -47,7 +47,7 @@ import (
 // its style gives it one.
 
 func init() {
-	builtinViews["ryui.map"] = func(ctx native.Context) native.View { return newMapView(theHost, ctx) }
+	builtinViews["asuka.map"] = func(ctx native.Context) native.View { return newMapView(theHost, ctx) }
 }
 
 const (
@@ -60,21 +60,21 @@ const (
 	mapTimerZoom  = 2                  // a double click's zoom, animated
 )
 
-// mapTileURL is where tiles come from: RYUI_MAP_TILES ({z}, {x}, {y}),
+// mapTileURL is where tiles come from: ASUKA_MAP_TILES ({z}, {x}, {y}),
 // else OpenStreetMap's.
 func mapTileURL(z, x, y int) string {
-	t := os.Getenv("RYUI_MAP_TILES")
+	t := os.Getenv("ASUKA_MAP_TILES")
 	if t == "" {
 		t = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 	}
 	return strings.NewReplacer("{z}", strconv.Itoa(z), "{x}", strconv.Itoa(x), "{y}", strconv.Itoa(y)).Replace(t)
 }
 
-// userAgent names RyUI and the app (not the user) to OpenStreetMap's
+// userAgent names Asuka and the app (not the user) to OpenStreetMap's
 // servers, as their policies ask.
 func (h *Host) userAgent() string {
 	app := h.appUserModelID()
-	return "RyUI/1 (" + app + "; Windows; +https://github.com/egoist/ryui)"
+	return "Asuka/1 (" + app + "; Windows; +https://github.com/egoist/asuka)"
 }
 
 // The tiles, shared by the maps.
@@ -118,7 +118,7 @@ var tiles *tileStore
 
 func (h *Host) tileStore() *tileStore {
 	if tiles == nil {
-		tiles = newTileStore(filepath.Join(h.cacheDir(), "ryui-map-tiles"), h.userAgent())
+		tiles = newTileStore(filepath.Join(h.cacheDir(), "asuka-map-tiles"), h.userAgent())
 	}
 	return tiles
 }

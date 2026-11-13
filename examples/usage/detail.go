@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/svg"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/svg"
+	"github.com/egoist/asuka/ui"
 )
 
 // detail is an account: every window, the forecasts, which windows its

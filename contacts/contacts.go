@@ -5,7 +5,7 @@
 // Pick and Add need no permission: the user picks, or saves, in the
 // system's own screen. List reads the address book, with the user's
 // permission (Request); an app that imports this package is given what
-// it needs (iOS's NSContactsUsageDescription, which ryui.json's
+// it needs (iOS's NSContactsUsageDescription, which asuka.json's
 // ios.usage says better; Android's READ_CONTACTS).
 package contacts
 
@@ -13,7 +13,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // Contact is a person or a company in the address book.
@@ -58,7 +58,7 @@ var ErrNotAllowed = errors.New("contacts: not allowed")
 // after, it's their answer then, or what they've set in Settings since).
 // Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Request() (Access, error) {
@@ -81,7 +81,7 @@ type Query struct {
 // List reads the contacts, sorted as the platform sorts them. Without
 // access, ErrNotAllowed. Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func List(q Query) ([]Contact, error) {
@@ -103,7 +103,7 @@ func List(q Query) ([]Contact, error) {
 // app sees only the one picked. (On Android, without access, the contact
 // has its name only; with it, all of it.) Main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Pick(done func(c *Contact, err error)) {
@@ -126,7 +126,7 @@ func Pick(done func(c *Contact, err error)) {
 // (iOS; on Android, the contacts app's answer). No permission is asked.
 // Main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Add(c Contact, done func(saved bool, err error)) {

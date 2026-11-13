@@ -7,8 +7,8 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ops"
 )
 
 // A SplitView is an NSSplitViewController: a sidebar item (the source
@@ -33,7 +33,7 @@ type sidebarRow struct {
 }
 
 func registerSplitClasses() {
-	DefineClass("RyUISidebarSource", "NSObject", []string{"NSTableViewDataSource", "NSTableViewDelegate"}, []objc.MethodDef{
+	DefineClass("AsukaSidebarSource", "NSObject", []string{"NSTableViewDataSource", "NSTableViewDelegate"}, []objc.MethodDef{
 		Method("numberOfRowsInTableView:", func(self ID, _ SEL, t ID) int {
 			if s := theHost.splitOf(t); s != nil {
 				return len(s.rows)
@@ -92,7 +92,7 @@ func sidebarCell(r sidebarRow) ID {
 func (h *Host) makeSplit(n *node) ID {
 	s := &split{selected: -1}
 	n.split = s
-	src := New("RyUISidebarSource")
+	src := New("AsukaSidebarSource")
 	h.sidebarSource = src
 	table := initView("NSTableView")
 	col := Send(Send(Class("NSTableColumn"), "alloc"), "initWithIdentifier:", uintptr(String("item")))
@@ -112,7 +112,7 @@ func (h *Host) makeSplit(n *node) ID {
 	sideVC := New("NSViewController")
 	Send(sideVC, "setView:", uintptr(scroll))
 	Release(scroll)
-	s.detail = initView("RyUIView")
+	s.detail = initView("AsukaView")
 	contentVC := New("NSViewController")
 	Send(contentVC, "setView:", uintptr(s.detail))
 	ctl := New("NSSplitViewController")

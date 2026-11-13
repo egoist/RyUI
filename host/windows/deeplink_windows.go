@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/egoist/ryui/internal/boot"
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ops"
+	"github.com/egoist/asuka/internal/boot"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ops"
 )
 
 // msgWinTitle is the message window's title: the one a second launch of a
@@ -19,7 +19,7 @@ var msgWinTitle string
 // hands the running one the URL it was launched with (launch, or "": to
 // come to the front) and reports false. One that COM started for a
 // toast's click is always the instance (COM starts it only when none
-// runs), and an app without an ID, driven by automation or run by ryui
+// runs), and an app without an ID, driven by automation or run by asuka
 // dev runs as often as it's started.
 func takeInstance(launch string) bool {
 	if launchedForToast || !singleInstance(boot.ID, os.Getenv) {
@@ -43,7 +43,7 @@ func (h *Host) startLinks(launch string) {
 					continue
 				}
 				if err := RegSetUserString(v[0], v[1], v[2]); err != nil {
-					fmt.Fprintf(os.Stderr, "ryui: registering the %s: scheme: %v\n", boot.Scheme, err)
+					fmt.Fprintf(os.Stderr, "asuka: registering the %s: scheme: %v\n", boot.Scheme, err)
 					break
 				}
 			}

@@ -22,7 +22,7 @@ import (
 	gconstant "go/constant"
 	"strings"
 
-	"github.com/egoist/ryui/internal/shaderir"
+	"github.com/egoist/asuka/internal/shaderir"
 )
 
 // maxArrayLength is the maximum length of an array type.

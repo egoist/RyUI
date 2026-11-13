@@ -5,10 +5,10 @@ plugins {
 }
 
 android {
-    namespace = "dev.ryui.bench.compose"
+    namespace = "dev.asuka.bench.compose"
     compileSdk = 36
     defaultConfig {
-        applicationId = "dev.ryui.bench.compose"
+        applicationId = "dev.asuka.bench.compose"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

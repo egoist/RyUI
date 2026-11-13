@@ -31,10 +31,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/egoist/ryui/push/webpush"
+	"github.com/egoist/asuka/push/webpush"
 )
 
-// The test app's VAPID keys (e2e/testdata/webpush/ryui.json has the
+// The test app's VAPID keys (e2e/testdata/webpush/asuka.json has the
 // public one): a server's, made with webpush.GenerateKeys.
 var testVAPID = webpush.Keys{
 	Public:  "BKpYsAT0ADj2pHQQZeNsXmA3fgij4OZ_7ZqkS63fvpscgjHLZys0UDBluROJdtDaGlE3WW1_IlFyzVzC2LlHyO0",
@@ -45,14 +45,14 @@ var testVAPID = webpush.Keys{
 // the browser's own push service (Chrome's is Google's, which a test
 // can't stand in for): the page's PushManager is stubbed to subscribe
 // with a key pair the test holds, at a fake push service; push.Register
-// gives the app that subscription; the server's side (ryui/push/webpush)
+// gives the app that subscription; the server's side (asuka/push/webpush)
 // encrypts and signs a push to it; the fake service checks the VAPID
 // token, decrypts the push as a browser would and delivers it to the
 // app's service worker (DevTools' ServiceWorker.deliverPushMessage), which
 // shows it and hands it to the page (push.OnReceive). Its click goes
 // through the worker's own handler (DevTools has no way to click a
 // notification): OnAction, OnOpen, OnOpenURL. Then a notification
-// scheduled with ryui/notify, which comes due while no page is open,
+// scheduled with asuka/notify, which comes due while no page is open,
 // shows as the app's page opens again. What shows is read from the
 // showNotification calls (recorded), not getNotifications: Chrome
 // reconciles that with what the system displays, and may leave out one
@@ -60,7 +60,7 @@ var testVAPID = webpush.Keys{
 func TestWebPushWeb(t *testing.T) {
 	browser := chrome()
 	if browser == "" {
-		t.Skip("no Chrome (RYUI_CHROME)")
+		t.Skip("no Chrome (ASUKA_CHROME)")
 	}
 	pageURL := webServer(t, "e2e/testdata/webpush")
 	u, _ := url.Parse(pageURL)
@@ -122,8 +122,8 @@ func TestWebPushWeb(t *testing.T) {
   PushManager.prototype.getSubscription = async function () { return current; };
   PushManager.prototype.subscribe = async function (o) {
     const key = new Uint8Array(o.applicationServerKey);
-    globalThis.ryuiTestKey = btoa(String.fromCharCode(...key)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-    globalThis.ryuiTestVisibleOnly = o.userVisibleOnly;
+    globalThis.asukaTestKey = btoa(String.fromCharCode(...key)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    globalThis.asukaTestVisibleOnly = o.userVisibleOnly;
     current = { endpoint: sub.endpoint, options: { applicationServerKey: key.buffer, userVisibleOnly: o.userVisibleOnly }, toJSON: () => sub, unsubscribe: async () => { current = null; return true; } };
     return current;
   };
@@ -131,9 +131,9 @@ func TestWebPushWeb(t *testing.T) {
   const show = ServiceWorkerRegistration.prototype.showNotification;
   ServiceWorkerRegistration.prototype.showNotification = function (title, o) {
     // Kept across the tab's pages (the test leaves the app and comes back).
-    const log = JSON.parse(sessionStorage.getItem("ryuiTestShown") || "[]");
+    const log = JSON.parse(sessionStorage.getItem("asukaTestShown") || "[]");
     log.push(o.tag + "|" + title + "|" + (o.data && o.data.shown.time));
-    sessionStorage.setItem("ryuiTestShown", JSON.stringify(log));
+    sessionStorage.setItem("asukaTestShown", JSON.stringify(log));
     return show.call(this, title, o);
   };
 })();`
@@ -175,7 +175,7 @@ func TestWebPushWeb(t *testing.T) {
 	// push.Register: subscribed with the app's key; the token is the subscription.
 	s.tap("Register")
 	showsLine(t, s, "status: registered webpush")
-	if got := c.eval(t, page, `globalThis.ryuiTestKey + " " + globalThis.ryuiTestVisibleOnly`); got != testVAPID.Public+" true" {
+	if got := c.eval(t, page, `globalThis.asukaTestKey + " " + globalThis.asukaTestVisibleOnly`); got != testVAPID.Public+" true" {
 		t.Fatalf("subscribed with %q", got)
 	}
 	token := strings.TrimPrefix(lineOf(s, "token: "), "token: ")
@@ -208,7 +208,7 @@ func TestWebPushWeb(t *testing.T) {
 		js := fmt.Sprintf(`(async () => {
   const { o } = shownLog.find(({ o }) => o.tag === %[1]q);
   let closed = false;
-  await ryuiWorker.notificationclick({ notification: { tag: %[1]q, data: o.data, close() { closed = true; } }, action: %[2]q, reply: %[3]q });
+  await asukaWorker.notificationclick({ notification: { tag: %[1]q, data: o.data, close() { closed = true; } }, action: %[2]q, reply: %[3]q });
   return closed ? "closed" : "open";
 })()`, tag, action, reply)
 		if got := c.eval(t, worker, js); got != "closed" {
@@ -220,13 +220,13 @@ func TestWebPushWeb(t *testing.T) {
 	showsLine(t, s, "opened: Ada")
 
 	// A tap: OnAction's default action, and the push's data's URL.
-	send(webpush.Notification{ID: "m2", Title: "Grace", Body: "Look", Data: map[string]string{"k": "v2", "url": "ryuitest://chat/2"}})
+	send(webpush.Notification{ID: "m2", Title: "Grace", Body: "Look", Data: map[string]string{"k": "v2", "url": "asukatest://chat/2"}})
 	showsLine(t, s, "received: Grace v2")
 	until(t, func() bool { return strings.HasSuffix(shown(), ";m2|Grace|Look|") }, func() string { return shown() + "\n" + c.workerState(t, pageURL) })
 	click("m2", "", "")
 	showsLine(t, s, "action: [] [] m2")
 	showsLine(t, s, "opened: Grace")
-	showsLine(t, s, "url: ryuitest://chat/2")
+	showsLine(t, s, "url: asukatest://chat/2")
 
 	// A notification due while no page of the app is open shows as one opens.
 	s.tap("Schedule")
@@ -245,7 +245,7 @@ func TestWebPushWeb(t *testing.T) {
 	}
 	showsLine(t, s, "status: ready")
 	reminder := func() string {
-		return c.eval(t, page, `JSON.parse(sessionStorage.getItem("ryuiTestShown") || "[]").filter((l) => l.startsWith("later|")).map((l) => l.split("|")[1] + "|" + (+l.split("|")[2] >= `+fmt.Sprint(reopened)+`)).join(";")`)
+		return c.eval(t, page, `JSON.parse(sessionStorage.getItem("asukaTestShown") || "[]").filter((l) => l.startsWith("later|")).map((l) => l.split("|")[1] + "|" + (+l.split("|")[2] >= `+fmt.Sprint(reopened)+`)).join(";")`)
 	}
 	until(t, func() bool { return reminder() == "Reminder|true" }, reminder)
 }

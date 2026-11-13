@@ -31,7 +31,7 @@ import (
 func TestWebCrashAndMap(t *testing.T) {
 	browser := chrome()
 	if browser == "" {
-		t.Skip("no Chrome (RYUI_CHROME)")
+		t.Skip("no Chrome (ASUKA_CHROME)")
 	}
 	pageURL := webServer(t, "e2e/testdata/webcrash")
 	c := launchCDP(t, browser)
@@ -113,13 +113,13 @@ func TestWebCrashAndMap(t *testing.T) {
 	// The native view no script registers: nothing in its place, the rest there.
 	showsLine(t, s, "after: native")
 	// The map's is a native view too, holding its element; the other holds none.
-	if got := c.eval(t, page, `[...document.querySelectorAll(".ryui-native")].map((e) => e.childElementCount).sort().join(",")`); got != "0,1" {
+	if got := c.eval(t, page, `[...document.querySelectorAll(".asuka-native")].map((e) => e.childElementCount).sort().join(",")`); got != "0,1" {
 		t.Fatalf("native views' elements: %q", got)
 	}
 
 	// The map: tiles from OpenStreetMap's server, drawn; the attribution; the pin.
 	loaded := func() string {
-		return c.eval(t, page, `document.querySelectorAll(".ryui-map-img.ryui-map-loaded").length + " " + (document.querySelector(".ryui-map-attribution")?.textContent || "") + " " + document.querySelectorAll(".ryui-map-pin").length`)
+		return c.eval(t, page, `document.querySelectorAll(".asuka-map-img.asuka-map-loaded").length + " " + (document.querySelector(".asuka-map-attribution")?.textContent || "") + " " + document.querySelectorAll(".asuka-map-pin").length`)
 	}
 	until(t, func() bool {
 		f := strings.Fields(loaded())
@@ -130,19 +130,19 @@ func TestWebCrashAndMap(t *testing.T) {
 		t.Fatalf("a tile from %v", u)
 	}
 	// A zoom that shows 0.02° across a phone's width: level 15 or so (×2 on a 2× screen: one more).
-	if got := c.eval(t, page, `(() => { const u = [...document.querySelectorAll(".ryui-map-img")].map((i) => i.src).find((s) => s.includes("openstreetmap")); return u.split("/")[3]; })()`); got < "14" || got > "17" {
+	if got := c.eval(t, page, `(() => { const u = [...document.querySelectorAll(".asuka-map-img")].map((i) => i.src).find((s) => s.includes("openstreetmap")); return u.split("/")[3]; })()`); got < "14" || got > "17" {
 		t.Fatalf("tiles of level %s", got)
 	}
 
 	// The pin: Go hears of it, and its callout shows.
-	c.eval(t, page, `document.querySelector(".ryui-map-pin").click(), "ok"`)
+	c.eval(t, page, `document.querySelector(".asuka-map-pin").click(), "ok"`)
 	showsLine(t, s, "map: marker eiffel")
-	if got := c.eval(t, page, `document.querySelector(".ryui-map-callout")?.textContent || ""`); got != "Eiffel TowerParis" {
+	if got := c.eval(t, page, `document.querySelector(".asuka-map-callout")?.textContent || ""`); got != "Eiffel TowerParis" {
 		t.Fatalf("the callout: %q", got)
 	}
 
 	// A click on the map, and a drag of it, with the mouse.
-	rect := c.eval(t, page, `(() => { const r = document.querySelector(".ryui-map").getBoundingClientRect(); return [r.left, r.top, r.width, r.height].map(Math.round).join(" "); })()`)
+	rect := c.eval(t, page, `(() => { const r = document.querySelector(".asuka-map").getBoundingClientRect(); return [r.left, r.top, r.width, r.height].map(Math.round).join(" "); })()`)
 	var x, y, w, h float64
 	if _, err := fmt.Sscan(rect, &x, &y, &w, &h); err != nil {
 		t.Fatalf("the map's box %q: %v", rect, err)
@@ -178,12 +178,12 @@ func TestWebCrashAndMap(t *testing.T) {
 
 	// A Go panic: the program ends; the next launch reports it.
 	s.tap("Panic")
-	until(t, func() bool { return c.eval(t, page, `document.querySelector(".ryui-error")?.textContent || ""`) != "" }, func() string {
-		return "no error shown; " + c.eval(t, page, `(() => { const k = ryuiHost.crash; return [k.go.exited, k.go.exitCode, k.path, k.ended, k.printed.length].join(" "); })()`)
+	until(t, func() bool { return c.eval(t, page, `document.querySelector(".asuka-error")?.textContent || ""`) != "" }, func() string {
+		return "no error shown; " + c.eval(t, page, `(() => { const k = asukaHost.crash; return [k.go.exited, k.go.exitCode, k.path, k.ended, k.printed.length].join(" "); })()`)
 	})
 	// Its crash kept (the app's files written), the run's mark goes.
 	marked := func() string {
-		return c.eval(t, page, `Object.keys(localStorage).filter((k) => k.startsWith("ryui-run:")).join(",")`)
+		return c.eval(t, page, `Object.keys(localStorage).filter((k) => k.startsWith("asuka-run:")).join(",")`)
 	}
 	until(t, func() bool { return marked() == "" }, marked)
 	var res json.RawMessage

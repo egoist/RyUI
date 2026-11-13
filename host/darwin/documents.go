@@ -11,13 +11,13 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/internal/localfile"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/internal/localfile"
+	"github.com/egoist/asuka/ops"
 )
 
-// The modules that hand files to the system: ryui/preview (Quick Look's
-// panel), ryui/print (NSPrintOperation) and ryui/compose
+// The modules that hand files to the system: asuka/preview (Quick Look's
+// panel), asuka/print (NSPrintOperation) and asuka/compose
 // (NSSharingService, mailto:).
 
 // source is a file a module call names: its source and MIME type.
@@ -52,7 +52,7 @@ func (h *Host) localFiles(sources []source, done func([]string, error)) {
 	}()
 }
 
-// Quick Look's panel: its controller is RyUITarget, the app's and the
+// Quick Look's panel: its controller is AsukaTarget, the app's and the
 // windows' delegate, which the panel finds up the responder chain.
 
 var previewing struct {
@@ -116,7 +116,7 @@ func endPreview() {
 	}
 }
 
-// previewMethods are RyUITarget's: Quick Look's panel controller, data
+// previewMethods are AsukaTarget's: Quick Look's panel controller, data
 // source and delegate.
 func previewMethods() []objc.MethodDef {
 	return []objc.MethodDef{
@@ -163,7 +163,7 @@ type printArgs struct {
 
 var (
 	printClass bool
-	printer    ID                         // RyUIPrintDelegate
+	printer    ID                         // AsukaPrintDelegate
 	printRuns  = map[ID]func(ok bool){}   // by operation
 	printPages = map[ID]func(err error){} // offscreen web views, by view
 )
@@ -171,7 +171,7 @@ var (
 func printDelegate() ID {
 	if !printClass {
 		printClass = true
-		DefineClass("RyUIPrintDelegate", "NSObject", []string{"WKNavigationDelegate"}, []objc.MethodDef{
+		DefineClass("AsukaPrintDelegate", "NSObject", []string{"WKNavigationDelegate"}, []objc.MethodDef{
 			// On the operation's thread, if it spawned one: answered on the main one.
 			Method("printOperationDidRun:success:contextInfo:", func(self ID, _ SEL, op ID, ok bool, ctx uintptr) {
 				theHost.Post(func() {
@@ -191,7 +191,7 @@ func printDelegate() ID {
 			Method("webView:didFailNavigation:withError:", func(self ID, _ SEL, v, nav, err ID) { pageFailed(v, err) }),
 			Method("webView:didFailProvisionalNavigation:withError:", func(self ID, _ SEL, v, nav, err ID) { pageFailed(v, err) }),
 		})
-		printer = Send(Class("RyUIPrintDelegate"), "new")
+		printer = Send(Class("AsukaPrintDelegate"), "new")
 	}
 	return printer
 }
@@ -335,7 +335,7 @@ func (h *Host) print(method string, args []byte, reply func([]byte, error)) {
 		})
 	default:
 		Release(info)
-		reply(nil, errors.New("ryui: print."+method+" isn't on macOS"))
+		reply(nil, errors.New("asuka: print."+method+" isn't on macOS"))
 	}
 }
 
@@ -440,7 +440,7 @@ type composeArgs struct {
 
 var (
 	composeClass   bool
-	composer       ID                             // RyUIComposeDelegate
+	composer       ID                             // AsukaComposeDelegate
 	composeReplies = map[ID]func([]byte, error){} // by service
 )
 
@@ -483,7 +483,7 @@ func (h *Host) compose(method string, args []byte, reply func([]byte, error)) {
 	if method == "message" {
 		name = "NSSharingServiceNameComposeMessage"
 	} else if method != "mail" {
-		reply(nil, errors.New("ryui: compose."+method+" isn't on macOS"))
+		reply(nil, errors.New("asuka: compose."+method+" isn't on macOS"))
 		return
 	}
 	h.localFiles(a.Attachments, func(paths []string, err error) {
@@ -529,7 +529,7 @@ func (h *Host) compose(method string, args []byte, reply func([]byte, error)) {
 		}
 		if !composeClass {
 			composeClass = true
-			DefineClass("RyUIComposeDelegate", "NSObject", []string{"NSSharingServiceDelegate"}, []objc.MethodDef{
+			DefineClass("AsukaComposeDelegate", "NSObject", []string{"NSSharingServiceDelegate"}, []objc.MethodDef{
 				Method("sharingService:didShareItems:", func(self ID, _ SEL, s, items ID) {
 					if r := composeReplies[s]; r != nil {
 						delete(composeReplies, s)
@@ -549,7 +549,7 @@ func (h *Host) compose(method string, args []byte, reply func([]byte, error)) {
 					}
 				}),
 			})
-			composer = Send(Class("RyUIComposeDelegate"), "new")
+			composer = Send(Class("AsukaComposeDelegate"), "new")
 		}
 		Send(s, "setDelegate:", uintptr(composer))
 		composeReplies[Retain(s)] = reply
@@ -564,7 +564,7 @@ func named(path, name string) string {
 	if name == "" || name == filepath.Base(path) {
 		return path
 	}
-	base := filepath.Join(cacheDir(), "ryui-files")
+	base := filepath.Join(cacheDir(), "asuka-files")
 	os.MkdirAll(base, 0o755)
 	dir, err := os.MkdirTemp(base, "named-")
 	if err != nil {

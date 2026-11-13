@@ -14,14 +14,14 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ops"
 )
 
 // More of a WebView, as on iOS: the requests Block names are blocked (a
 // content rule list), a response the page can't show is a Download, the
 // "web" module runs script for its value (EvalJSResult) and reads the
-// cookies (WebCookies), and the "js" module (ryui/js) runs script in a
+// cookies (WebCookies), and the "js" module (asuka/js) runs script in a
 // web view that's never shown.
 
 // setBlock compiles Block's patterns (u32 count, then u32-length
@@ -76,7 +76,7 @@ func (w *web) setBlock(h *Host, n *node, b []byte) {
 	})
 	store := Send(Class("WKContentRuleListStore"), "defaultStore")
 	Send(store, "compileContentRuleListForIdentifier:encodedContentRuleList:completionHandler:",
-		uintptr(String(fmt.Sprintf("ryui-block-%d", n.id))), uintptr(String(string(js))), uintptr(done))
+		uintptr(String(fmt.Sprintf("asuka-block-%d", n.id))), uintptr(String(string(js))), uintptr(done))
 }
 
 // compiling reports whether Block's rule list is being compiled.
@@ -231,7 +231,7 @@ func cookieHeader(u *url.URL, arr ID) string {
 	return strings.Join(parts, "; ")
 }
 
-// script is a ryui/js run: a web view that's never shown, its script,
+// script is a asuka/js run: a web view that's never shown, its script,
 // and who waits for it.
 type script struct {
 	view  ID
@@ -271,7 +271,7 @@ func (h *Host) jsModule() map[string]method {
 	}
 }
 
-// scriptLoaded runs a ryui/js script once its page has loaded: true if
+// scriptLoaded runs a asuka/js script once its page has loaded: true if
 // view is one of theirs.
 func (h *Host) scriptLoaded(view ID) bool {
 	s := h.scripts[view]

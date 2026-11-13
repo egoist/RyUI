@@ -1,7 +1,7 @@
-# RyUI documentation
+# Asuka documentation
 
-RyUI makes native apps in Go, for iOS, Android, macOS, Windows, Linux
-and the web. An app's interface is Go functions that return views; RyUI
+Asuka makes native apps in Go, for iOS, Android, macOS, Windows, Linux
+and the web. An app's interface is Go functions that return views; Asuka
 shows them with each platform's own widgets, and updates only the views
 that read a signal when it changes.
 
@@ -26,7 +26,7 @@ func main() { app.Run(Counter) }
 
 ## How it works
 
-Your app is Go: its components, its state and the rest of its code. RyUI's
+Your app is Go: its components, its state and the rest of its code. Asuka's
 core runs the components, lays the views out (flexbox and grid, in Go),
 and sends what changed to the platform's **host**, in a batch for each
 frame. The host makes and updates the platform's own views:
@@ -60,9 +60,9 @@ something a platform doesn't have (sensors or home screen widgets on a
 Mac) answers there that it isn't available, so the app can check and do
 without.
 
-RyUI needs Go 1.26 or later. Apps run on iOS 16, Android 13 (API 33),
+Asuka needs Go 1.26 or later. Apps run on iOS 16, Android 13 (API 33),
 macOS 11, Windows 10 and Linux with GTK 4.14 and libadwaita 1.5, and
-later; and in current browsers. `ryui dev` runs your app while you work
+later; and in current browsers. `asuka dev` runs your app while you work
 and reloads it as you save: on the simulator, an emulator or a phone,
 with your Go code on your computer; on the computer itself; or in your
 browser.
@@ -98,18 +98,18 @@ browser.
 - [Native code](native.md): views and modules of your own: Swift on
   iOS and macOS, Kotlin on Android, Go on the desktop, JavaScript on the
   web.
-- [Development](development.md): `ryui dev` in depth on each platform,
-  devices, `ryui vet`, tests and common problems.
+- [Development](development.md): `asuka dev` in depth on each platform,
+  devices, `asuka vet`, tests and common problems.
 - [Shipping](shipping.md): builds for the App Store and Google Play, a
   signed and notarized Mac app, a Windows folder, a Linux archive and
-  Flatpak manifest, and what `ryui.json` says of the app.
+  Flatpak manifest, and what `asuka.json` says of the app.
 - [The web](web.md): the same app in a browser, as WebAssembly and the
-  page's DOM; `ryui dev -platform web`, a static site to deploy,
+  page's DOM; `asuka dev -platform web`, a static site to deploy,
   embedding, and what it doesn't do yet.
 
 ## Reference
 
-- [Compared to SwiftUI and Expo](parity.md): what RyUI has, and what it
+- [Compared to SwiftUI and Expo](parity.md): what Asuka has, and what it
   doesn't yet.
-- The Go API: `go doc -all github.com/egoist/ryui/ui`, and the other
+- The Go API: `go doc -all github.com/egoist/asuka/ui`, and the other
   packages of the module.

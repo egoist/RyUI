@@ -39,7 +39,7 @@ func TestResolve(t *testing.T) {
 	defer srv.Close()
 	for path, want := range map[string]string{"/report": "report.pdf", "/named": "Invoice 7.pdf", "/x/photo.jpg": "photo.jpg"} {
 		p, err := Resolve(srv.URL+path, "", assets, cache)
-		if err != nil || filepath.Base(p) != want || !strings.HasPrefix(p, filepath.Join(cache, "ryui-files")) {
+		if err != nil || filepath.Base(p) != want || !strings.HasPrefix(p, filepath.Join(cache, "asuka-files")) {
 			t.Fatalf("%s: %q, %v", path, p, err)
 		}
 		if b, _ := os.ReadFile(p); string(b) != "%PDF-1.4" {

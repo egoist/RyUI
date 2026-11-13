@@ -14,26 +14,26 @@ import (
 	"github.com/ebitengine/purego"
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/internal/l10n"
-	"github.com/egoist/ryui/native"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/internal/l10n"
+	"github.com/egoist/asuka/native"
 )
 
-// ryui/camera on a Mac, with AVFoundation as on iOS. The "ryui.camera"
+// asuka/camera on a Mac, with AVFoundation as on iOS. The "asuka.camera"
 // view is an AVCaptureSession's preview filling its box (the view's
 // backing layer an AVCaptureVideoPreviewLayer), with a photo output for
-// Capture, a movie file output for ryui/camera/record in video mode, and
+// Capture, a movie file output for asuka/camera/record in video mode, and
 // with scan on a metadata output reading codes (macOS 13). "take" has no
 // system camera screen to show on a Mac: it shows a sheet of the host's
 // own over the window in use, a live preview with Take Photo and Cancel
 // (Return and Escape). Photos and videos go to the app's caches
-// (ryui-camera), as on iOS. macOS asks the user once, with the app's
+// (asuka-camera), as on iOS. macOS asks the user once, with the app's
 // NSCameraUsageDescription (and NSMicrophoneUsageDescription for a
 // video's sound), which needs the app's bundle.
 
 func init() {
 	moduleHooks = append(moduleHooks, func(h *Host, m map[string]map[string]method) { m["camera"] = cameraModule(h) })
-	builtinViews["ryui.camera"] = func(ctx native.Context) native.View {
+	builtinViews["asuka.camera"] = func(ctx native.Context) native.View {
 		return newCameraView(theHost, ctx.Emit, false)
 	}
 }
@@ -47,8 +47,8 @@ const (
 var (
 	cameraLoadOnce sync.Once
 	cameraLoaded   bool
-	cameraDelegate ID // RyUICameraDelegate: photos, recordings, codes
-	cameraTakeTgt  ID // RyUICameraTake: the take sheet's buttons
+	cameraDelegate ID // AsukaCameraDelegate: photos, recordings, codes
+	cameraTakeTgt  ID // AsukaCameraTake: the take sheet's buttons
 
 	msgSetCMTime     func(obj ID, sel SEL, t cmTime)
 	msgRecordFor     func(obj ID, sel SEL, seconds float64) bool
@@ -94,21 +94,21 @@ func cameraLoad() bool {
 func registerCameraClasses() {
 	// The preview: its backing layer is its view's preview layer, so it
 	// fills the view as the core places it; it runs while in a window.
-	DefineClass("RyUICameraPreview", "NSView", nil, []objc.MethodDef{
+	DefineClass("AsukaCameraPreview", "NSView", nil, []objc.MethodDef{
 		Method("makeBackingLayer", func(self ID, _ SEL) ID {
 			if v := cameraByView[self]; v != nil && v.layer != 0 {
 				return v.layer
 			}
-			return SendSuper(self, "RyUICameraPreview", "makeBackingLayer")
+			return SendSuper(self, "AsukaCameraPreview", "makeBackingLayer")
 		}),
 		Method("viewDidMoveToWindow", func(self ID, _ SEL) {
-			SendSuper(self, "RyUICameraPreview", "viewDidMoveToWindow")
+			SendSuper(self, "AsukaCameraPreview", "viewDidMoveToWindow")
 			if v := cameraByView[self]; v != nil {
 				v.attached(Send(self, "window") != 0)
 			}
 		}),
 	})
-	DefineClass("RyUICameraDelegate", "NSObject", []string{
+	DefineClass("AsukaCameraDelegate", "NSObject", []string{
 		"AVCapturePhotoCaptureDelegate", "AVCaptureFileOutputRecordingDelegate", "AVCaptureMetadataOutputObjectsDelegate",
 	}, []objc.MethodDef{
 		// On the photo output's queue: the photo is read there.
@@ -161,13 +161,13 @@ func registerCameraClasses() {
 			}
 		}),
 	})
-	cameraDelegate = New("RyUICameraDelegate")
+	cameraDelegate = New("AsukaCameraDelegate")
 
-	DefineClass("RyUICameraTake", "NSObject", nil, []objc.MethodDef{
+	DefineClass("AsukaCameraTake", "NSObject", nil, []objc.MethodDef{
 		Method("take:", func(self ID, _ SEL, sender ID) { cameraTaking.take() }),
 		Method("cancel:", func(self ID, _ SEL, sender ID) { cameraTaking.finish(nil, nil) }),
 	})
-	cameraTakeTgt = New("RyUICameraTake")
+	cameraTakeTgt = New("AsukaCameraTake")
 }
 
 // Authorization, seams for the tests (which can't answer a prompt).
@@ -266,7 +266,7 @@ func cameraRecordArgs(b []byte) (mute bool, max time.Duration, ok bool) {
 type cameraView struct {
 	h        *Host
 	emit     func(string, map[string]any)
-	view     ID // RyUICameraPreview
+	view     ID // AsukaCameraPreview
 	layer    ID // its AVCaptureVideoPreviewLayer
 	session  ID
 	photo    ID // AVCapturePhotoOutput
@@ -299,7 +299,7 @@ func newCameraView(h *Host, emit func(string, map[string]any), sheet bool) *came
 	if g := avConst("AVLayerVideoGravityResizeAspectFill"); g != 0 {
 		Send(v.layer, "setVideoGravity:", uintptr(g))
 	}
-	v.view = New("RyUICameraPreview")
+	v.view = New("AsukaCameraPreview")
 	cameraByView[v.view] = v
 	Send(v.view, "setWantsLayer:", 1)
 	go func() {
@@ -349,7 +349,7 @@ func (v *cameraView) Set(name string, value any) {
 	})
 }
 
-// codeTypes are the metadata types of each kind ryui/scan names.
+// codeTypes are the metadata types of each kind asuka/scan names.
 var codeTypes = []struct {
 	kind  string
 	types []string
@@ -559,7 +559,7 @@ func (v *cameraView) photoDone(data []byte, fail error) {
 		reply(nil, fail)
 		return
 	}
-	path, err := cacheFile("ryui-camera", ".jpg")
+	path, err := cacheFile("asuka-camera", ".jpg")
 	if err == nil {
 		err = os.WriteFile(path, data, 0o644)
 	}
@@ -613,7 +613,7 @@ func (v *cameraView) record(mute bool, max time.Duration, reply func([]byte, err
 			limit = cmTime{Value: int64(max.Seconds() * 600), Timescale: 600, Flags: 1}
 		}
 		msgSetCMTime(v.movie, Sel("setMaxRecordedDuration:"), limit)
-		path, err := cacheFile("ryui-camera", ".mov")
+		path, err := cacheFile("asuka-camera", ".mov")
 		if err != nil {
 			reply(nil, err)
 			return
@@ -678,7 +678,7 @@ func (v *cameraView) Destroy() {
 	Release(v.view)
 }
 
-// Codes' kinds and repeats, as iOS's RyUICodeKinds and RyUICodeSeen.
+// Codes' kinds and repeats, as iOS's AsukaCodeKinds and AsukaCodeSeen.
 
 // cameraKinds are the kinds of code asked for (none: every kind).
 type cameraKinds map[string]bool
@@ -695,7 +695,7 @@ func newCameraKinds(s string) cameraKinds {
 
 func (k cameraKinds) wants(kind string) bool { return len(k) == 0 || k[kind] }
 
-// named is the code as ryui/scan names it: Apple reads a UPC-A as an
+// named is the code as asuka/scan names it: Apple reads a UPC-A as an
 // EAN-13 with a leading 0, a UPC-A again if the app asked for those.
 func (k cameraKinds) named(kind, value string) (string, string) {
 	if kind == "ean13" && len(value) == 13 && value[0] == '0' && k.wants("upca") {

@@ -9,9 +9,9 @@ import (
 	"unicode/utf16"
 	"unsafe"
 
-	"github.com/egoist/ryui/internal/rtf"
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ops"
+	"github.com/egoist/asuka/internal/rtf"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ops"
 )
 
 // A Rich TextField is a rich edit control (msftedit's RICHEDIT50W)
@@ -418,7 +418,7 @@ func init() {
 	// pads the struct to 24 bytes, past the 20 the control reads.
 	var es editStream
 	if unsafe.Offsetof(es.callback) != 12 {
-		panic("ryui: EDITSTREAM's layout")
+		panic("asuka: EDITSTREAM's layout")
 	}
 }
 

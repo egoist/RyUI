@@ -19,7 +19,7 @@ const cardGap = 0; // an inset grouped list's rows touch, as one card
 export const scrollKind = {
   create(h, n) {
     const el = own(n, document.createElement("div"));
-    el.className = "ryui-scroller ryui-vertical";
+    el.className = "asuka-scroller asuka-vertical";
     n.horizontal = false;
     n.paging = false;
     wireScroll(h, n, el);
@@ -28,12 +28,12 @@ export const scrollKind = {
     switch (p) {
       case P.Scroll.Horizontal:
         n.horizontal = !!v;
-        n.el.classList.toggle("ryui-horizontal", !!v);
-        n.el.classList.toggle("ryui-vertical", !v);
+        n.el.classList.toggle("asuka-horizontal", !!v);
+        n.el.classList.toggle("asuka-vertical", !v);
         break;
       case P.Scroll.Paging:
         n.paging = !!v;
-        n.el.classList.toggle("ryui-paging", !!v);
+        n.el.classList.toggle("asuka-paging", !!v);
         pages(n);
         break;
       case P.Scroll.Refreshable:
@@ -101,7 +101,7 @@ function pages(n) {
   n.snaps = [];
   for (let i = 0; i < count; i++) {
     const s = document.createElement("div");
-    s.className = "ryui-snap";
+    s.className = "asuka-snap";
     s.style[n.horizontal ? "left" : "top"] = i * size + "px";
     s.style.width = (n.horizontal ? size : 1) + "px";
     s.style.height = (n.horizontal ? 1 : size) + "px";
@@ -120,7 +120,7 @@ function refreshable(h, n, on) {
   }
   if (n.refresher) return;
   const r = document.createElement("div");
-  r.className = "ryui-refresher";
+  r.className = "asuka-refresher";
   r.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="42 100"/></svg>';
   n.refresher = r;
   n.el.appendChild(r);
@@ -143,7 +143,7 @@ function refreshable(h, n, on) {
 function refreshing(n, on) {
   n.refreshing = on;
   if (!n.refresher) return;
-  n.refresher.classList.toggle("ryui-refreshing", on);
+  n.refresher.classList.toggle("asuka-refreshing", on);
   if (!on) { n.refresher.style.opacity = ""; n.refresher.style.transform = ""; }
 }
 
@@ -152,7 +152,7 @@ function refreshing(n, on) {
 export const listKind = {
   create(h, n) {
     const el = own(n, document.createElement("div"));
-    el.className = "ryui-scroller ryui-vertical ryui-list";
+    el.className = "asuka-scroller asuka-vertical asuka-list";
     el.tabIndex = -1;
     n.list = new List(h, n);
     wireScroll(h, n, el);
@@ -219,7 +219,7 @@ class List {
     this.tiling = false;
     this.rebind = false;
     this.spacer = document.createElement("div");
-    this.spacer.className = "ryui-list-spacer";
+    this.spacer.className = "asuka-list-spacer";
     n.el.appendChild(this.spacer);
   }
 
@@ -235,7 +235,7 @@ class List {
       case P.List.Anchor: this.bottom = v === 1; this.stuck = true; break;
       case P.List.Selecting:
         this.selecting = !!v;
-        this.n.el.classList.toggle("ryui-selecting", this.selecting);
+        this.n.el.classList.toggle("asuka-selecting", this.selecting);
         // The selection control's room, at the rows' leading edge.
         this.h.afterCore(() => this.h.dispatch(Events.rowInset(this.n.id, this.selecting ? 40 : 0, 0)));
         for (const rv of this.shown.values()) this.paintRow(rv);
@@ -490,7 +490,7 @@ class List {
       s.width = w + "px";
       s.height = height + "px";
       rv.el.hidden = false;
-      rv.el.classList.toggle("ryui-pinned", rv.pinned);
+      rv.el.classList.toggle("asuka-pinned", rv.pinned);
       this.placeCells(rv, r);
       this.paintRow(rv);
     }
@@ -504,7 +504,7 @@ class List {
     const rv = this.free.pop();
     if (rv) return rv;
     const el = document.createElement("div");
-    el.className = "ryui-row";
+    el.className = "asuka-row";
     el.setAttribute("role", "listitem");
     this.n.el.appendChild(el);
     const row = { el, cells: [], row: -1, pinned: false };
@@ -519,7 +519,7 @@ class List {
     while (rv.cells.length < k) rv.cells.push(this.newCell(rv));
     rv.cells.forEach((c, i) => { c.n.el.hidden = i >= k; });
     rv.header = row.header;
-    rv.el.classList.toggle("ryui-header", row.header);
+    rv.el.classList.toggle("asuka-header", row.header);
     rv.sep = this.columns <= 1 && this.appearance !== 2 && !row.header && r < this.rows.length - 1 && !this.rows[r + 1].header;
     rv.first = !row.header && (r === 0 || this.rows[r - 1].header);
     rv.last = !row.header && (r === this.rows.length - 1 || this.rows[r + 1].header);
@@ -594,11 +594,11 @@ class List {
 
   paintRow(rv) {
     const el = rv.el;
-    el.classList.toggle("ryui-sep", !!rv.sep);
-    el.classList.toggle("ryui-first", !!rv.first);
-    el.classList.toggle("ryui-last", !!rv.last);
+    el.classList.toggle("asuka-sep", !!rv.sep);
+    el.classList.toggle("asuka-first", !!rv.first);
+    el.classList.toggle("asuka-last", !!rv.last);
     const selected = this.selecting && rv.cells.some((c) => c.selected && !c.header && !c.n.el.hidden);
-    el.classList.toggle("ryui-selected", selected);
+    el.classList.toggle("asuka-selected", selected);
     el.setAttribute("aria-selected", this.selecting ? String(selected) : "false");
   }
 
@@ -667,7 +667,7 @@ class List {
 const cellImpl = {
   create(h, n) {
     const el = document.createElement("div");
-    el.className = "ryui-cell";
+    el.className = "asuka-cell";
     n.el = el;
   },
   frame(h, n, x, y, w, hh) {

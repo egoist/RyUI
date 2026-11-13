@@ -5,7 +5,7 @@
 // Add needs no permission: the user saves the event in the system's own
 // editor. Calendars and Events read the user's calendars, with their
 // permission (Request); an app that imports this package is given what it
-// needs (iOS's calendar purpose strings, which ryui.json's ios.usage says
+// needs (iOS's calendar purpose strings, which asuka.json's ios.usage says
 // better; Android's READ_CALENDAR).
 package calendar
 
@@ -14,7 +14,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // Calendar is one of the user's calendars.
@@ -62,7 +62,7 @@ var ErrNotAllowed = errors.New("calendar: not allowed")
 // time; after, it's their answer then, or what they've set in Settings
 // since). Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Request() (Access, error) {
@@ -75,7 +75,7 @@ func Request() (Access, error) {
 
 // Calendars are the user's event calendars. Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Calendars() ([]Calendar, error) {
@@ -92,7 +92,7 @@ func Calendars() ([]Calendar, error) {
 // repeating one), in the calendars given (none: all), sorted by start.
 // Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Events(from, to time.Time, calendarIDs ...string) ([]Event, error) {
@@ -126,7 +126,7 @@ func Events(from, to time.Time, calendarIDs ...string) ([]Event, error) {
 // No permission is asked (iOS 17 and later; before, it asks for access).
 // Main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Add(e Event, done func(saved bool, err error)) {

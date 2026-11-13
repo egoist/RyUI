@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // Access is what the user has allowed.
@@ -73,7 +73,7 @@ type File struct {
 
 // Current is what the user has allowed, without asking.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Current() (Access, error) {
@@ -83,7 +83,7 @@ func Current() (Access, error) {
 
 // Request asks the user the first time, and says what they've allowed.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Request() (Access, error) {
@@ -95,7 +95,7 @@ func Request() (Access, error) {
 // iOS's limited library picker, Android's permission prompt. It returns
 // once that's closed; list again.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func ManageLimited() error {
@@ -105,7 +105,7 @@ func ManageLimited() error {
 
 // List returns the photos q asks for.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func List(q Query) ([]Asset, error) {
@@ -125,7 +125,7 @@ func List(q Query) ([]Asset, error) {
 // Thumbnail is a JPEG file of the photo, at least size pixels on its short
 // side, for ui.Image; kept in the app's caches for the next time.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Thumbnail(id string, size int) (string, error) {
@@ -137,7 +137,7 @@ func Thumbnail(id string, size int) (string, error) {
 // Export copies the photo's full image, as it is in the library (HEIC,
 // JPEG, PNG), to a file. iCloud photos download first.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Export(id string) (File, error) {

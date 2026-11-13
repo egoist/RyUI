@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // A build that panics shows the fallback, and the views it made before

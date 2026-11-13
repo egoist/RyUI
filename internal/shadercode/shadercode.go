@@ -16,11 +16,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/egoist/ryui/internal/shader"
-	"github.com/egoist/ryui/internal/shaderir"
-	"github.com/egoist/ryui/internal/shaderir/glsl"
-	"github.com/egoist/ryui/internal/shaderir/interp"
-	"github.com/egoist/ryui/internal/shaderir/msl"
+	"github.com/egoist/asuka/internal/shader"
+	"github.com/egoist/asuka/internal/shaderir"
+	"github.com/egoist/asuka/internal/shaderir/glsl"
+	"github.com/egoist/asuka/internal/shaderir/interp"
+	"github.com/egoist/asuka/internal/shaderir/msl"
 )
 
 // Kind is a lane's type.
@@ -44,7 +44,7 @@ type Uniform struct {
 // Code is a compiled shader.
 type Code struct {
 	Source string // the Kage source
-	Metal  string // a whole library: vertex ryui_vertex, fragment ryui_fragment (buffer 0: Uniforms; textures 0 to 3)
+	Metal  string // a whole library: vertex asuka_vertex, fragment asuka_fragment (buffer 0: Uniforms; textures 0 to 3)
 	AGSL   string // a whole RuntimeShader program
 	// MetalOffsets is where each lane goes in the Metal buffer, in bytes,
 	// and MetalBool which lanes are a bool's (a byte); MetalSize its size.
@@ -96,7 +96,7 @@ func Compile(src string) (*Code, error) {
 	if c.AGSL, err = glsl.AGSL(p, scale); err != nil {
 		return nil, fmt.Errorf("shader: Android can't run it: %s", strings.TrimPrefix(err.Error(), "agsl: "))
 	}
-	c.Metal = msl.Fragment(p, "ryui_shade") + fmt.Sprintf(metalEntry, scale)
+	c.Metal = msl.Fragment(p, "asuka_shade") + fmt.Sprintf(metalEntry, scale)
 	offsets, size := msl.UniformLanes(p)
 	c.MetalSize = size
 	for _, u := range c.Uniforms {
@@ -111,18 +111,18 @@ func Compile(src string) (*Code, error) {
 // metalEntry draws a triangle over the whole target and calls the
 // shader's function with the pixel's position, and the position in points.
 const metalEntry = `
-struct RyUIVertex { float4 position [[position]]; };
+struct AsukaVertex { float4 position [[position]]; };
 
-vertex RyUIVertex ryui_vertex(uint id [[vertex_id]]) {
+vertex AsukaVertex asuka_vertex(uint id [[vertex_id]]) {
 	float2 p = float2((id << 1) & 2, id & 2);
-	RyUIVertex v;
+	AsukaVertex v;
 	v.position = float4(p * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 	return v;
 }
 
-fragment float4 ryui_fragment(RyUIVertex in [[stage_in]], constant Uniforms& uniforms [[buffer(0)]],
+fragment float4 asuka_fragment(AsukaVertex in [[stage_in]], constant Uniforms& uniforms [[buffer(0)]],
 	texture2d<float> T0 [[texture(0)]], texture2d<float> T1 [[texture(1)]], texture2d<float> T2 [[texture(2)]], texture2d<float> T3 [[texture(3)]]) {
-	return ryui_shade(uniforms, T0, T1, T2, T3, in.position, in.position.xy / uniforms.U%d);
+	return asuka_shade(uniforms, T0, T1, T2, T3, in.position, in.position.xy / uniforms.U%d);
 }
 `
 
@@ -249,15 +249,15 @@ func GLSL(code []byte) (string, error) {
 	if size < 0 || scale < 0 {
 		return "", errors.New("shader: no size or scale uniform in the bridge")
 	}
-	lib := glsl.Fragment(p, "ryui_shade", glsl.Options{FlipY: "true"})
+	lib := glsl.Fragment(p, "asuka_shade", glsl.Options{FlipY: "true"})
 	return "#version 300 es\nprecision highp float;\nprecision highp int;\n\n" + lib + fmt.Sprintf(glslEntry, size, scale), nil
 }
 
 const glslEntry = `
-out vec4 ryui_color;
+out vec4 asuka_color;
 
 void main() {
 	vec4 p = vec4(gl_FragCoord.x, U%[1]d.y * U%[2]d - gl_FragCoord.y, gl_FragCoord.z, gl_FragCoord.w);
-	ryui_color = ryui_shade(p, p.xy / U%[2]d);
+	asuka_color = asuka_shade(p, p.xy / U%[2]d);
 }
 `

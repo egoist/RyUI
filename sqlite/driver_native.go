@@ -9,7 +9,7 @@ import (
 	msqlite "modernc.org/sqlite"
 )
 
-// The driver RyUI's databases use: modernc.org/sqlite's, with hooks on
+// The driver Asuka's databases use: modernc.org/sqlite's, with hooks on
 // each connection that note the tables it reads and writes (its own, so
 // they're on no one else's connections).
 var driver = &msqlite.Driver{}
@@ -19,7 +19,7 @@ var driver = &msqlite.Driver{}
 const fileConns = 4
 
 func registerDriver() {
-	sql.Register("ryui-sqlite", driver)
+	sql.Register("asuka-sqlite", driver)
 	driver.RegisterConnectionHook(func(c msqlite.ExecQuerierContext, dsn string) error {
 		v, ok := opened.Load(dsn)
 		if !ok {

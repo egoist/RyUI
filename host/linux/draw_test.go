@@ -6,11 +6,11 @@ import (
 	"math"
 	"testing"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/shader"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/shader"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // pixels are a node's view as it draws now (its snapshot), rendered on

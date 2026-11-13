@@ -13,8 +13,8 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ops"
 )
 
 func (h *Host) command(n *node, c ops.CommandID, args []byte) {
@@ -435,7 +435,7 @@ func (h *Host) shareFiles(args []byte, reply func([]byte, error)) {
 	}
 	if !sharePickerClass {
 		sharePickerClass = true
-		DefineClass("RyUISharePickerDelegate", "NSObject", []string{"NSSharingServicePickerDelegate"}, []objc.MethodDef{
+		DefineClass("AsukaSharePickerDelegate", "NSObject", []string{"NSSharingServicePickerDelegate"}, []objc.MethodDef{
 			Method("sharingServicePicker:didChooseSharingService:", func(self ID, _ SEL, picker, service ID) {
 				if r := sharePickers[picker]; r != nil {
 					delete(sharePickers, picker)
@@ -444,7 +444,7 @@ func (h *Host) shareFiles(args []byte, reply func([]byte, error)) {
 				}
 			}),
 		})
-		sharePickerDelegate = Send(Class("RyUISharePickerDelegate"), "new")
+		sharePickerDelegate = Send(Class("AsukaSharePickerDelegate"), "new")
 	}
 	picker := Send(Send(Class("NSSharingServicePicker"), "alloc"), "initWithItems:", uintptr(Array(items...)))
 	Send(picker, "setDelegate:", uintptr(sharePickerDelegate))
@@ -488,7 +488,7 @@ func (h *Host) call(root *node, args []byte) {
 	}
 	m := h.module(module)[method]
 	if m == nil {
-		answer(nil, errors.New("ryui: "+module+"."+method+" isn't on macOS yet"))
+		answer(nil, errors.New("asuka: "+module+"."+method+" isn't on macOS yet"))
 		return
 	}
 	m(rest, answer)

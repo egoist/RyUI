@@ -9,35 +9,35 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/egoist/ryui/internal/boot"
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/internal/devstate"
+	"github.com/egoist/asuka/internal/boot"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/internal/devstate"
 )
 
 func init() {
-	// The app's data (ryui/store, files it keeps): Application Support.
-	if os.Getenv("RYUI_DATA") == "" {
+	// The app's data (asuka/store, files it keeps): Application Support.
+	if os.Getenv("ASUKA_DATA") == "" {
 		if home, err := os.UserHomeDir(); err == nil {
 			name := boot.Name
 			if name == "" {
 				name = filepath.Base(os.Args[0])
 			}
-			// Made by what writes there (ryui/store, ryui/sqlite), not here.
-			os.Setenv("RYUI_DATA", filepath.Join(home, "Library", "Application Support", name))
+			// Made by what writes there (asuka/store, asuka/sqlite), not here.
+			os.Setenv("ASUKA_DATA", filepath.Join(home, "Library", "Application Support", name))
 		}
 	}
 }
 
 // restoreState gives the app's signals the values the last run saved,
-// under ryui dev (RYUI_STATE), and saves them when ryui dev stops the app
+// under asuka dev (ASUKA_STATE), and saves them when asuka dev stops the app
 // to run the new code.
 func restoreState() {
-	path := os.Getenv("RYUI_STATE")
+	path := os.Getenv("ASUKA_STATE")
 	if path == "" {
 		return
 	}
 	if err := devstate.Keep(path); err != nil {
-		fmt.Fprintln(os.Stderr, "ryui: restoring state:", err)
+		fmt.Fprintln(os.Stderr, "asuka: restoring state:", err)
 	}
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
@@ -51,12 +51,12 @@ func restoreState() {
 }
 
 func saveState() {
-	path := os.Getenv("RYUI_STATE")
+	path := os.Getenv("ASUKA_STATE")
 	if path == "" {
 		return
 	}
 	if err := devstate.Save(path); err != nil {
-		fmt.Fprintln(os.Stderr, "ryui: saving state:", err)
+		fmt.Fprintln(os.Stderr, "asuka: saving state:", err)
 	}
 }
 

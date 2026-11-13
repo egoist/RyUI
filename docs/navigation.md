@@ -197,7 +197,7 @@ desktops and the web push and pop as usual.
 
 ## Back
 
-Each platform goes back its own way, and RyUI leaves it so:
+Each platform goes back its own way, and Asuka leaves it so:
 
 - **iOS**: the bar's back button, and a swipe from the screen's leading
   edge. `NoBackGesture` turns the swipe off. The back button still pops.
@@ -631,7 +631,7 @@ interface too, for a phone.
 
 ## Toasts
 
-RyUI has no toast component, since iOS and Android have no standard one
+Asuka has no toast component, since iOS and Android have no standard one
 that apps share. Make one from a view placed over the screen,
 shown with `ui.Show` and brought in with a
 [transition](motion.md#enter-and-exit). The gallery's toast does this, and
@@ -641,7 +641,7 @@ calls `ui.Announce` so that screen readers say it too. See
 ## Deep links
 
 An app opens for URLs of its own scheme, and for https links to its own
-domains, when `ryui.json` lists them:
+domains, when `asuka.json` lists them:
 
 ```json
 {
@@ -659,7 +659,7 @@ domains, when `ryui.json` lists them:
   and on Windows (the app registers it for the user as it starts, under
   `HKEY_CURRENT_USER\Software\Classes`, again if it has moved; a link
   opened while the app runs goes to it). An app with an `id` runs once
-  on Linux and Windows: launched again, it comes to the front. `ryui
+  on Linux and Windows: launched again, it comes to the front. `asuka
   dev` registers no scheme on Linux or Windows, and its runs don't hand
   themselves to an installed copy of the app: try links with a build.
 - `links` opens it for `https://notes.example.com/...`: universal links
@@ -686,14 +686,14 @@ ui.OnOpenURL(func(raw string) {
 ```
 
 [`examples/notes`](../examples/notes) adds a note for
-`ryuinotes://add?text=...`. A notification's URL arrives the same way
+`asukanotes://add?text=...`. A notification's URL arrives the same way
 when the user taps it, on every platform (see [Device](device.md)). A
 web app has no links of its own: its page's address doesn't change as it
 navigates, and opening it doesn't call `OnOpenURL`.
 
 ## Shares from other apps
 
-With `"shareTarget": true` in `ryui.json`, the app shows in other apps'
+With `"shareTarget": true` in `asuka.json`, the app shows in other apps'
 share sheets, for text and links, such as "Share" in a browser or in
 YouTube; `{"types": ["image/*", ...]}` takes files too (see
 [Device](device.md#shares-from-other-apps-uionshare)). `ui.OnShare` gets

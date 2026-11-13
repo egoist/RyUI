@@ -5,10 +5,10 @@ package windows
 import (
 	"errors"
 
-	. "github.com/egoist/ryui/internal/windows"
+	. "github.com/egoist/asuka/internal/windows"
 )
 
-// ryui/biometric on Windows: Windows Hello (UserConsentVerifier).
+// asuka/biometric on Windows: Windows Hello (UserConsentVerifier).
 // "check" answers u8 kind (none, fingerprint, face: the sensor Windows
 // Hello has, from the Windows Biometric Framework), u8 enrolled (a sensor,
 // and Windows Hello set up), u8 passcode (Windows Hello set up: its PIN);

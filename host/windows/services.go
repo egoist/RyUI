@@ -14,7 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	. "github.com/egoist/ryui/internal/windows"
+	. "github.com/egoist/asuka/internal/windows"
 )
 
 // Native modules backed by Windows's services: the share UI (share), the
@@ -86,7 +86,7 @@ func (h *Host) shareText(text string) {
 	}
 	ShowShare(h.inUseWindow(), s, func(err error) {
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "ryui: the share UI: %v; the text is copied instead\n", err)
+			fmt.Fprintf(os.Stderr, "asuka: the share UI: %v; the text is copied instead\n", err)
 			SetClipboardText(h.window, text)
 		}
 	})
@@ -138,7 +138,7 @@ func (h *Host) startNetwork() error {
 	}
 	l, err := NewNetworkList(h.networkChanged)
 	if err != nil {
-		return fmt.Errorf("ryui/network: %w", err)
+		return fmt.Errorf("asuka/network: %w", err)
 	}
 	s.net = l
 	s.netState = encodeNet(l.State())
@@ -174,7 +174,7 @@ func (h *Host) networkChanged() {
 	s.netNext = keep
 }
 
-// networkModule is ryui/network's: "current", and, while watching, "next"
+// networkModule is asuka/network's: "current", and, while watching, "next"
 // (answered once the state isn't the one given) and "stop".
 func (h *Host) networkModule() map[string]asyncMethod {
 	s := &h.svc
@@ -216,7 +216,7 @@ func (h *Host) speechVoice() (*Voice, error) {
 	if s.voice == nil {
 		v, err := NewVoice(h.msgWin, wmSpeech)
 		if err != nil {
-			return nil, fmt.Errorf("ryui/speech: %w", err)
+			return nil, fmt.Errorf("asuka/speech: %w", err)
 		}
 		s.voice, s.spoken = v, map[uint32]func([]byte, error){}
 	}
@@ -237,7 +237,7 @@ func (h *Host) speechEvents() {
 	}
 }
 
-// speechModule is ryui/speech's: "speak" (JSON: text, language, voice,
+// speechModule is asuka/speech's: "speak" (JSON: text, language, voice,
 // pitch, rate, volume) answers once spoken, or fails with "stopped";
 // "stop", "pause", "resume", "speaking" (u8), "voices" (JSON). The voice's
 // pitch is SAPI's XML's; its rate and volume the voice's.
@@ -348,7 +348,7 @@ func voiceFor(lang string) string {
 
 // Location.
 
-// locationModule is ryui/location's: "current" (asking for permission
+// locationModule is asuka/location's: "current" (asking for permission
 // first), "next" (each position as the device moves, while watched),
 // "stop"; "name" and "places" are OpenStreetMap's (geocode.go).
 // Positions are JSON: lat, lon, acc, alt, t.

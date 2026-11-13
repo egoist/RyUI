@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/ebitengine/purego"
-	"github.com/egoist/ryui/native"
+	"github.com/egoist/asuka/native"
 )
 
 func init() {

@@ -11,10 +11,10 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/egoist/ryui/internal/boot"
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/native"
-	"github.com/egoist/ryui/ops"
+	"github.com/egoist/asuka/internal/boot"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/native"
+	"github.com/egoist/asuka/ops"
 )
 
 // method is a native module's method: it answers with reply, at once or
@@ -56,7 +56,7 @@ func (h *Host) call(root *node, args []byte) {
 	}
 	m := h.module(module)[name]
 	if m == nil {
-		answer(nil, errors.New("ryui: "+module+"."+name+" isn't on Linux yet"))
+		answer(nil, errors.New("asuka: "+module+"."+name+" isn't on Linux yet"))
 		return
 	}
 	m(rest, answer)

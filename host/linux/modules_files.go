@@ -15,15 +15,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/internal/localfile"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/internal/localfile"
 )
 
 // The modules that take files from the user and hand them to the system,
 // on Linux: device's pickers (photos, files: GtkFileDialog, the portal's
-// in a sandbox), its clipboard beyond text (GdkClipboard), ryui/library
+// in a sandbox), its clipboard beyond text (GdkClipboard), asuka/library
 // (the user's folders: XDG's Pictures, Videos, Music, Downloads),
-// ryui/preview (the file's app, GtkFileLauncher) and ui.ShareFiles (no
+// asuka/preview (the file's app, GtkFileLauncher) and ui.ShareFiles (no
 // share sheet on Linux: the files are copied, as text is).
 
 func init() {
@@ -128,7 +128,7 @@ func (h *Host) pickFiles(title string, mimes []string, multiple bool, limit int,
 			done(nil, nil)
 			return
 		}
-		dir := filepath.Join(h.modCacheDir(), "ryui-files")
+		dir := filepath.Join(h.modCacheDir(), "asuka-files")
 		go func() {
 			files, err := copyPicked(dir, paths)
 			h.Post(func() { done(files, err) })
@@ -287,7 +287,7 @@ func (h *Host) clipboardModule() map[string]method {
 				var n uintptr
 				b := GoBytes(BytesGetData(png, &n), int(n))
 				BytesUnref(png)
-				dir := filepath.Join(h.modCacheDir(), "ryui-clipboard")
+				dir := filepath.Join(h.modCacheDir(), "asuka-clipboard")
 				if err := os.MkdirAll(dir, 0o755); err != nil {
 					reply(nil, err)
 					return
@@ -354,7 +354,7 @@ func (c *clipWatch) stopWatching() {
 	}
 }
 
-// ryui/library: the file copied into the user's folder for its
+// asuka/library: the file copied into the user's folder for its
 // collection (XDG's), in a folder of the app's if asked; a name taken
 // gets a number. The answer is where it went.
 
@@ -444,7 +444,7 @@ func saveInto(dir, name, src string, move bool) (string, error) {
 	}
 }
 
-// ryui/preview: the start file in its app (Linux has no Quick Look of
+// asuka/preview: the start file in its app (Linux has no Quick Look of
 // its own), answered once it's handed over.
 
 type modSource struct {

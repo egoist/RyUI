@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/internal/l10n"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/internal/l10n"
+	"github.com/egoist/asuka/ops"
 )
 
 const (
@@ -35,7 +35,7 @@ func (h *Host) makeWindow() {
 		r, styleTitled|styleClosable|styleMiniaturizable|styleResizable, backingBuffered, false)
 	Send(w, "setReleasedWhenClosed:", 0)
 	Send(w, "setTitle:", uintptr(String(h.appName)))
-	content := MsgInitRect(Send(Class("RyUIView"), "alloc"), Sel("initWithFrame:"), r)
+	content := MsgInitRect(Send(Class("AsukaView"), "alloc"), Sel("initWithFrame:"), r)
 	Send(content, "setAutoresizesSubviews:", 0)
 	Send(w, "setContentView:", uintptr(content))
 	MsgSetSize(w, Sel("setContentMinSize:"), Size{Width: 320, Height: 320})
@@ -43,8 +43,8 @@ func (h *Host) makeWindow() {
 	Send(w, "center")
 	// The window comes back where the user left it (not a test's, nor
 	// an automation run's: they'd leave theirs in the user's defaults).
-	if !testing.Testing() && os.Getenv("RYUI_SNAPSHOT") == "" {
-		Send(w, "setFrameAutosaveName:", uintptr(String("ryui "+h.appName)))
+	if !testing.Testing() && os.Getenv("ASUKA_SNAPSHOT") == "" {
+		Send(w, "setFrameAutosaveName:", uintptr(String("asuka "+h.appName)))
 	}
 	h.window, h.content = w, content
 	h.main = &win{window: w, content: content, base: h.appName}
@@ -321,7 +321,7 @@ func (h *Host) openWindow(n *node) {
 	w := MsgInitWindow(Send(Class("NSWindow"), "alloc"), Sel("initWithContentRect:styleMask:backing:defer:"),
 		Rect{Size: size}, styleTitled|styleClosable|styleMiniaturizable|styleResizable, backingBuffered, false)
 	Send(w, "setReleasedWhenClosed:", 0)
-	content := MsgInitRect(Send(Class("RyUIView"), "alloc"), Sel("initWithFrame:"), Rect{Size: size})
+	content := MsgInitRect(Send(Class("AsukaView"), "alloc"), Sel("initWithFrame:"), Rect{Size: size})
 	Send(content, "setAutoresizesSubviews:", 0)
 	Send(w, "setContentView:", uintptr(content))
 	Release(content)
@@ -344,7 +344,7 @@ func (h *Host) openWindow(n *node) {
 	MsgPointID(w, Sel("cascadeTopLeftFromPoint:"), Point{X: from.Origin.X + 24, Y: from.Origin.Y + from.Size.Height - 24})
 	h.reportScreen(n, size)
 	h.updateWindowChrome()
-	if os.Getenv("RYUI_SNAPSHOT") != "" {
+	if os.Getenv("ASUKA_SNAPSHOT") != "" {
 		Send(w, "orderFront:", 0)
 	} else {
 		Send(w, "makeKeyAndOrderFront:", 0)
@@ -365,7 +365,7 @@ func (h *Host) windowOptions(args []byte) {
 		MsgSetSize(h.window, Sel("setContentMinSize:"), Size{Width: max(minW, 1), Height: max(minH, 1)})
 	}
 	defaults := Send(Class("NSUserDefaults"), "standardUserDefaults")
-	saved := Send(defaults, "objectForKey:", uintptr(String("NSWindow Frame ryui "+h.appName))) != 0
+	saved := Send(defaults, "objectForKey:", uintptr(String("NSWindow Frame asuka "+h.appName))) != 0
 	if (w > 0 || ht > 0) && !saved {
 		cur := MsgRect(h.content, Sel("bounds")).Size
 		if w <= 0 {

@@ -5,9 +5,9 @@ import (
 	"math"
 	"testing"
 
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 func scrolledTo(t *testing.T, c ops.Op) (x, y float32, animated bool) {

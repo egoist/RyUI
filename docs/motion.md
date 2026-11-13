@@ -1,6 +1,6 @@
 # Motion and gestures
 
-RyUI animates with each platform's own machinery where it has one:
+Asuka animates with each platform's own machinery where it has one:
 UIView animations on iOS, animators on Android, AppKit's implicit
 animations and Core Animation on macOS, the Web Animations API in a
 browser. Windows and GTK have no animations of a view's frame, so the
@@ -658,7 +658,7 @@ OnLongPress: func() { ui.Haptic(ui.HapticMedium) },
 ```
 
 On iOS these are `UIFeedbackGenerator`'s. Android has no exact
-equivalents: RyUI plays the closest of `performHapticFeedback`'s
+equivalents: Asuka plays the closest of `performHapticFeedback`'s
 constants, and success, warning and error are confirm and reject from
 Android 11; before that, a key press or a long press.
 
@@ -685,18 +685,18 @@ less motion. It changes as the user changes the setting:
 - **The web**: the browser's `prefers-reduced-motion`, which follows
   the system's setting.
 
-What RyUI does about it on its own:
+What Asuka does about it on its own:
 
 - **iOS**: transitions dissolve in place instead of moving or scaling,
   as UIKit's own do then, and shared elements (`Match`) don't fly: the
   views come and go with their transitions. Other animations run.
 - **Android**: the system's animator scale is 0, so every animation,
-  RyUI's and the platform's, ends at once.
+  Asuka's and the platform's, ends at once.
 - **macOS, Windows, Linux and the web**: `ui.Animate`'s changes apply at
   once, transitions and shared elements included. A stack pushes and
   pops without sliding on macOS, cross-fades in a browser, and on Linux
   does as libadwaita's navigation does with animations off.
 
-What's left to you is motion RyUI can't tell is decorative: an `OnFrame`
+What's left to you is motion Asuka can't tell is decorative: an `OnFrame`
 loop (as the spinner above stops), a repeating pulse, an animation that
 moves something far. Read `ReduceMotion` and do less.

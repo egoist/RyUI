@@ -1,16 +1,16 @@
 // Todo shows For (keyed rows), TextField, Toggle and SafeArea moving
 // content above the keyboard.
 //
-//	go run ./cmd/ryui dev -platform ios examples/todo
+//	go run ./cmd/asuka dev -platform ios examples/todo
 package main
 
 import (
 	"fmt"
 	"strings"
 
-	"github.com/egoist/ryui/app"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 type todo struct {

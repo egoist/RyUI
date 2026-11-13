@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/native"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/native"
+	"github.com/egoist/asuka/ui"
 )
 
 // cameraDenied makes the camera and microphone denied (a test can't
@@ -38,7 +38,7 @@ func pumpUntil(cond func() bool) bool {
 	return cond()
 }
 
-// The arguments ryui/camera/record and ryui/audio/record send.
+// The arguments asuka/camera/record and asuka/audio/record send.
 func TestCameraArgs(t *testing.T) {
 	args := []byte{1, 0, 0, 0, 0}
 	binary.LittleEndian.PutUint32(args[1:], 1500)
@@ -150,14 +150,14 @@ func TestCameraView(t *testing.T) {
 	cameraDenied(t, 2, nil)
 	onMain(func() {
 		var errs []string
-		nv := builtinViews["ryui.camera"](native.NewContext(0, func(name string, values map[string]any) {
+		nv := builtinViews["asuka.camera"](native.NewContext(0, func(name string, values map[string]any) {
 			if name == "error" {
 				errs = append(errs, values["message"].(string))
 			}
 		}))
 		v := nv.(*cameraView)
 		view := ID(nv.Handle())
-		if view == 0 || !SendBool(view, "isKindOfClass:", uintptr(Class("RyUICameraPreview"))) {
+		if view == 0 || !SendBool(view, "isKindOfClass:", uintptr(Class("AsukaCameraPreview"))) {
 			fatal(t, "no preview view")
 		}
 		if l := Send(view, "layer"); l == 0 || !SendBool(l, "isKindOfClass:", uintptr(Class("AVCaptureVideoPreviewLayer"))) {

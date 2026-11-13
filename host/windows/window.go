@@ -5,14 +5,14 @@ package windows
 import (
 	"syscall"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ops"
 )
 
 const (
-	classWindow  = "RyUIWindow"  // the app's window, sheets
-	classView    = "RyUIView"    // the views the host draws
-	classMessage = "RyUIMessage" // Post's wake-ups
+	classWindow  = "AsukaWindow"  // the app's window, sheets
+	classView    = "AsukaView"    // the views the host draws
+	classMessage = "AsukaMessage" // Post's wake-ups
 
 	wmRunPosted = WM_APP + 1
 	wmFrame     = WM_APP + 2

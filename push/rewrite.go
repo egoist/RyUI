@@ -5,10 +5,10 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/egoist/ryui/internal/boot"
-	"github.com/egoist/ryui/internal/notifyspec"
-	"github.com/egoist/ryui/notify"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/internal/boot"
+	"github.com/egoist/asuka/internal/notifyspec"
+	"github.com/egoist/asuka/notify"
+	"github.com/egoist/asuka/ui"
 )
 
 var (
@@ -24,12 +24,12 @@ var (
 // in main, before app.Run. f runs on its own goroutine, not the main
 // thread; an error (or a panic) shows the push as it came.
 //
-// iOS: a Notification Service Extension, which ryui build makes for an
+// iOS: a Notification Service Extension, which asuka build makes for an
 // app that calls Rewrite, runs the app's Go code in a process of its own
 // for each push with "mutable-content": 1 in its aps (and an alert, which
 // the push shows if the rewrite fails): main runs, then f, but not the
 // root component, so keep main light. It has about 30 seconds and 24 MB;
-// what the app keeps (ryui/store, files in store.Dir, ryui/secure) is the
+// what the app keeps (asuka/store, files in store.Dir, asuka/secure) is the
 // same there. A rewrite can't hide a push on iOS.
 //
 // Android: FCM's data messages are rewritten in the app's process (the Go
@@ -39,9 +39,9 @@ var (
 // that comes while the app is in the background is shown by Firebase,
 // without a rewrite: send data messages.
 //
-// Under ryui dev's player there's no extension: pushes show as they came.
+// Under asuka dev's player there's no extension: pushes show as they came.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui).
+// Never inlined: asuka build looks for its symbol (cmd/asuka).
 //
 //go:noinline
 func Rewrite(f func(m *Message) error) {

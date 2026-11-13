@@ -7,15 +7,15 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/egoist/ryui/i18n"
-	"github.com/egoist/ryui/internal/boot"
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
+	"github.com/egoist/asuka/i18n"
+	"github.com/egoist/asuka/internal/boot"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
 )
 
 // The locale model, as MyGo's: the app shows one language, which its
-// messages, RyUI's own words and the host's views all follow, and the
+// messages, Asuka's own words and the host's views all follow, and the
 // regional formats are a setting of their own. The language is the user's
 // preferred languages (the environment's Languages), or the one the app
 // chose (SetLocale), matched against the languages the app is written in
@@ -81,7 +81,7 @@ func startingLocale() string {
 func forcedLocale() string {
 	tag := boot.Lang
 	if tag == "" {
-		tag = os.Getenv("RYUI_LOCALE")
+		tag = os.Getenv("ASUKA_LOCALE")
 	}
 	return i18n.Normalize(tag)
 }
@@ -90,11 +90,11 @@ func forcedLocale() string {
 // "de" or "zh-Hant-TW", of those it's written in, or "" to follow the user's
 // languages again, which is the default. What follows the language changes
 // at once: every message said in an accessor or an effect, the app's layout
-// direction, RyUI's own words and the host's. It's kept for the next
+// direction, Asuka's own words and the host's. It's kept for the next
 // launches where the system keeps an app's language, which Settings shows:
 // iOS's and macOS's AppleLanguages (UIKit and AppKit say their own words,
 // as Cancel in a date picker, in it from the next launch) and Android 13's
-// per-app language; RyUI keeps it elsewhere. ryui dev -lang chooses a
+// per-app language; Asuka keeps it elsewhere. asuka dev -lang chooses a
 // language for one run, and then nothing is kept.
 //
 // The pseudo locales en-XA and ar-XB always show, to test what translations
@@ -163,7 +163,7 @@ func PreferredLanguages() []string {
 }
 
 // IsRTL reports whether the app is laid out right to left, as the language
-// it shows is written, unless ryui dev -dir says otherwise. Row runs from
+// it shows is written, unless asuka dev -dir says otherwise. Row runs from
 // the right then, Start is the right side, and the platform's views mirror.
 // An effect that calls it follows it. Safe from any goroutine.
 func IsRTL() bool {
@@ -191,7 +191,7 @@ func forcedDirection() string {
 	if boot.Direction != "" {
 		return boot.Direction
 	}
-	return os.Getenv("RYUI_DIRECTION")
+	return os.Getenv("ASUKA_DIRECTION")
 }
 
 // CurrentRegion returns the user's regional formats, with the changes they

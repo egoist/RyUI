@@ -5,9 +5,9 @@ package linux
 import (
 	"math"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/ops"
 )
 
 const big = 1e6

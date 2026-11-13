@@ -7,7 +7,7 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
+	. "github.com/egoist/asuka/internal/darwin"
 )
 
 // Style.Match, as on iOS: when a view with a key is destroyed during an

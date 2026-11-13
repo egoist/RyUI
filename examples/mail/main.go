@@ -3,7 +3,7 @@
 // (Unread, Archive), selecting mails to archive together, and a Rich text
 // field with a formatting toolbar for the message.
 //
-//	go run ./cmd/ryui dev -platform ios examples/mail
+//	go run ./cmd/asuka dev -platform ios examples/mail
 package main
 
 import (
@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/egoist/ryui/app"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 type mail struct {

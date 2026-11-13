@@ -241,7 +241,7 @@ func makeKey(locale string) *localeKey {
 	return k
 }
 
-// readUnicodeExtension reads the keys of a Unicode extension RyUI
+// readUnicodeExtension reads the keys of a Unicode extension Asuka
 // formats with: hc (the hour cycle), fw (the first day of the week) and
 // nu-latn (Latin digits).
 func readUnicodeExtension(k *localeKey, ext string) {

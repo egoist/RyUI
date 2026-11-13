@@ -6,8 +6,8 @@ import (
 	"errors"
 	"math"
 
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
 )
 
 // WebViewProps configures a WebView.
@@ -24,7 +24,7 @@ type WebViewProps struct {
 	// OnError is called when a page couldn't load.
 	OnError func(message string)
 	// OnMessage receives what the page posts: in its script,
-	// window.ryui.postMessage(text).
+	// window.asuka.postMessage(text).
 	OnMessage func(message string)
 
 	// Preload runs before each page's own scripts, in every frame (an
@@ -74,7 +74,7 @@ type WebDownload struct {
 // and no Grow, it grows, as a List does. Talk to the page with OnMessage
 // and EvalJS.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func WebView(p WebViewProps) Node {
@@ -125,7 +125,7 @@ func WebView(p WebViewProps) Node {
 }
 
 // EvalJS runs script in a WebView's page (its result isn't returned:
-// have the script post one, window.ryui.postMessage). Main thread.
+// have the script post one, window.asuka.postMessage). Main thread.
 func EvalJS(web Node, script string) {
 	if e := web.e; e != nil && e.kind == ops.KindWebView && !e.dead {
 		e.r.batch.Command(e.id, ops.CmdEval, []byte(script))

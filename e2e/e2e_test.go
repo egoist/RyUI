@@ -2,18 +2,18 @@
 
 // Package e2e drives the example apps on a simulator and an emulator,
 // through the platform's widgets, not the core. The tests build each app
-// with `ryui dev -once` (its Go code embedded, a debug build), then tap
+// with `asuka dev -once` (its Go code embedded, a debug build), then tap
 // and read the screen through the debug hosts' automation
-// (platform/ios/Sources/RyUIHost/Automation.swift, a notification;
-// platform/android/ryui/src/main/java/dev/ryui/Automation.kt, a broadcast;
-// platform/web/src/automation.js, through ryui dev -web's server;
+// (platform/ios/Sources/AsukaHost/Automation.swift, a notification;
+// platform/android/asuka/src/main/java/dev/asuka/Automation.kt, a broadcast;
+// platform/web/src/automation.js, through asuka dev -web's server;
 // host/linux/automation.go, a file).
 //
 //	go test -tags e2e ./e2e -run IOS      # a booted simulator, else the newest iPhone
 //	go test -tags e2e ./e2e -run Android  # a running emulator or a device
-//	go test -tags e2e ./e2e -run Web      # headless Chrome (RYUI_CHROME: its path)
+//	go test -tags e2e ./e2e -run Web      # headless Chrome (ASUKA_CHROME: its path)
 //	xvfb-run -a dbus-run-session go test -tags e2e ./e2e -run Linux  # GTK 4, on Linux
-//	RYUI_DEVICE=emulator-5556 go test -tags e2e ./e2e -run Android  # one of several
+//	ASUKA_DEVICE=emulator-5556 go test -tags e2e ./e2e -run Android  # one of several
 //
 // They wait for what they expect (bounded, so a broken app fails rather
 // than hangs), never for a fixed time.
@@ -58,21 +58,21 @@ func appDir(app string) string {
 	return "examples/" + app
 }
 
-// launch builds and launches an app (appDir) on the platform with ryui
-// dev -once, and returns what it printed. RYUI_DEVICE picks the
-// simulator, emulator or device (ryui dev's -device), when there's more
+// launch builds and launches an app (appDir) on the platform with asuka
+// dev -once, and returns what it printed. ASUKA_DEVICE picks the
+// simulator, emulator or device (asuka dev's -device), when there's more
 // than one.
 func launch(t *testing.T, platform, app string) string {
 	t.Helper()
-	args := []string{"run", "./cmd/ryui", "dev", "-platform", platform, "-once"}
-	if d := os.Getenv("RYUI_DEVICE"); d != "" {
+	args := []string{"run", "./cmd/asuka", "dev", "-platform", platform, "-once"}
+	if d := os.Getenv("ASUKA_DEVICE"); d != "" {
 		args = append(args, "-device", d)
 	}
 	c := exec.Command("go", append(args, appDir(app))...)
 	c.Dir = root(t)
 	out, err := c.CombinedOutput()
 	if err != nil {
-		t.Fatalf("ryui dev -platform %s -once %s: %v\n%s", platform, appDir(app), err, out)
+		t.Fatalf("asuka dev -platform %s -once %s: %v\n%s", platform, appDir(app), err, out)
 	}
 	return string(out)
 }
@@ -227,7 +227,7 @@ type iosScreen struct {
 }
 
 func (s *iosScreen) command(cmds string) {
-	file := filepath.Join(s.tmp, "ryui-commands.txt")
+	file := filepath.Join(s.tmp, "asuka-commands.txt")
 	// The app removes the file as it reads it. One it hasn't read yet (its main
 	// thread is showing the keyboard, say) mustn't be written over, which would
 	// lose that command. An app just launched may never read one sent before it
@@ -241,11 +241,11 @@ func (s *iosScreen) command(cmds string) {
 	if err := os.WriteFile(file, []byte(cmds+"\n"), 0o644); err != nil {
 		s.t.Fatal(err)
 	}
-	run(s.t, "xcrun", "simctl", "spawn", s.udid, "notifyutil", "-p", "dev.ryui.automation")
+	run(s.t, "xcrun", "simctl", "spawn", s.udid, "notifyutil", "-p", "dev.asuka.automation")
 }
 
 func (s *iosScreen) texts() []string {
-	dump := filepath.Join(s.tmp, "ryui-dump.txt")
+	dump := filepath.Join(s.tmp, "asuka-dump.txt")
 	os.Remove(dump)
 	s.command("dump")
 	for range 50 {
@@ -260,7 +260,7 @@ func (s *iosScreen) texts() []string {
 func (s *iosScreen) tap(text string) { s.command("tap " + text) }
 
 func (s *iosScreen) relaunch() {
-	os.Remove(filepath.Join(s.tmp, "ryui-commands.txt")) // for the run that's ending
+	os.Remove(filepath.Join(s.tmp, "asuka-commands.txt")) // for the run that's ending
 	run(s.t, "xcrun", "simctl", "launch", "--terminate-running-process", s.udid, s.bundle)
 }
 
@@ -277,18 +277,18 @@ func iosApp(t *testing.T, example, bundle string) *iosScreen {
 	return &iosScreen{t: t, udid: m[1], bundle: bundle, tmp: filepath.Join(data, "tmp")}
 }
 
-func TestCounterIOS(t *testing.T) { counter(t, iosApp(t, "counter", "dev.ryui.counter")) }
-func TestNotesIOS(t *testing.T)   { notes(t, iosApp(t, "notes", "dev.ryui.notes")) }
-func TestChatIOS(t *testing.T)    { chat(t, iosApp(t, "chat", "dev.ryui.chat")) }
+func TestCounterIOS(t *testing.T) { counter(t, iosApp(t, "counter", "dev.asuka.counter")) }
+func TestNotesIOS(t *testing.T)   { notes(t, iosApp(t, "notes", "dev.asuka.notes")) }
+func TestChatIOS(t *testing.T)    { chat(t, iosApp(t, "chat", "dev.asuka.chat")) }
 func TestNavigationIOS(t *testing.T) {
-	navigation(t, iosApp(t, "navigation", "dev.ryui.navigation"))
+	navigation(t, iosApp(t, "navigation", "dev.asuka.navigation"))
 }
 
 // TestLanguagesIOS changes examples/i18n's language: at once, from its
 // menu, and kept for the next launch (AppleLanguages) until it follows the
 // system again. The simulator's language is English, as for the other tests.
 func TestLanguagesIOS(t *testing.T) {
-	s := iosApp(t, "i18n", "dev.ryui.i18n")
+	s := iosApp(t, "i18n", "dev.asuka.i18n")
 	reset := func() {
 		exec.Command("xcrun", "simctl", "spawn", s.udid, "defaults", "delete", s.bundle, "AppleLanguages").Run() // none to delete is fine
 	}
@@ -338,7 +338,7 @@ func (s *androidScreen) command(cmds string) {
 	var out string
 	var err error
 	for range 5 {
-		if out, err = s.adb("shell", "am", "broadcast", "-a", "dev.ryui.automation", "-p", s.pkg, "--es", "commands", q); err == nil {
+		if out, err = s.adb("shell", "am", "broadcast", "-a", "dev.asuka.automation", "-p", s.pkg, "--es", "commands", q); err == nil {
 			return
 		}
 		time.Sleep(500 * time.Millisecond)
@@ -347,10 +347,10 @@ func (s *androidScreen) command(cmds string) {
 }
 
 func (s *androidScreen) texts() []string {
-	s.adb("shell", "run-as", s.pkg, "rm", "-f", "files/ryui-dump.txt")
+	s.adb("shell", "run-as", s.pkg, "rm", "-f", "files/asuka-dump.txt")
 	s.command("dump")
 	for range 50 {
-		if out, err := s.adb("exec-out", "run-as", s.pkg, "cat", "files/ryui-dump.txt"); err == nil && strings.HasSuffix(out, "\n") {
+		if out, err := s.adb("exec-out", "run-as", s.pkg, "cat", "files/asuka-dump.txt"); err == nil && strings.HasSuffix(out, "\n") {
 			return strings.Split(strings.TrimSpace(out), "\n")
 		}
 		time.Sleep(100 * time.Millisecond)
@@ -363,7 +363,7 @@ func (s *androidScreen) tap(text string) { s.command("tap " + text) }
 func (s *androidScreen) relaunch() {
 	s.adb("shell", "am", "force-stop", s.pkg)
 	// Not monkey: it refuses to run on recent emulator images, which have no system keys.
-	if out, err := s.adb("shell", "am", "start", "-n", s.pkg+"/dev.ryui.RyUIActivity"); err != nil {
+	if out, err := s.adb("shell", "am", "start", "-n", s.pkg+"/dev.asuka.AsukaActivity"); err != nil {
 		s.t.Fatalf("launch: %v\n%s", err, out)
 	}
 }
@@ -373,21 +373,21 @@ func androidApp(t *testing.T, example, pkg string) *androidScreen {
 		t.Skip("no adb")
 	}
 	out := launch(t, "android", example)
-	m := regexp.MustCompile(`(?m)^ryui: \S+ on (\S+)$`).FindStringSubmatch(out)
+	m := regexp.MustCompile(`(?m)^asuka: \S+ on (\S+)$`).FindStringSubmatch(out)
 	if m == nil {
 		t.Fatalf("no device in:\n%s", out)
 	}
 	return &androidScreen{t: t, serial: m[1], pkg: pkg}
 }
 
-func TestCounterAndroid(t *testing.T) { counter(t, androidApp(t, "counter", "dev.ryui.counter")) }
-func TestNotesAndroid(t *testing.T)   { notes(t, androidApp(t, "notes", "dev.ryui.notes")) }
-func TestChatAndroid(t *testing.T)    { chat(t, androidApp(t, "chat", "dev.ryui.chat")) }
+func TestCounterAndroid(t *testing.T) { counter(t, androidApp(t, "counter", "dev.asuka.counter")) }
+func TestNotesAndroid(t *testing.T)   { notes(t, androidApp(t, "notes", "dev.asuka.notes")) }
+func TestChatAndroid(t *testing.T)    { chat(t, androidApp(t, "chat", "dev.asuka.chat")) }
 func TestNavigationAndroid(t *testing.T) {
-	navigation(t, androidApp(t, "navigation", "dev.ryui.navigation"))
+	navigation(t, androidApp(t, "navigation", "dev.asuka.navigation"))
 }
 func TestLanguagesAndroid(t *testing.T) {
-	s := androidApp(t, "i18n", "dev.ryui.i18n")
+	s := androidApp(t, "i18n", "dev.asuka.i18n")
 	// The language a run before this one kept (Android 13's; before it the
 	// test leaves English): what the test starts from is the app's own.
 	s.adb("shell", "cmd", "locale", "set-app-locales", s.pkg, "--locales", "en")
@@ -397,7 +397,7 @@ func TestLanguagesAndroid(t *testing.T) {
 
 // Web
 
-// webScreen is a page ryui dev -web serves, open in headless Chrome; the
+// webScreen is a page asuka dev -web serves, open in headless Chrome; the
 // automation's commands go through the dev server to the page.
 type webScreen struct {
 	t   *testing.T
@@ -405,7 +405,7 @@ type webScreen struct {
 }
 
 func (s *webScreen) post(cmds string) (string, error) {
-	resp, err := http.Post(s.url+"__ryui/automation", "text/plain", strings.NewReader(cmds))
+	resp, err := http.Post(s.url+"__asuka/automation", "text/plain", strings.NewReader(cmds))
 	if err != nil {
 		return "", err
 	}
@@ -446,7 +446,7 @@ func (s *webScreen) relaunch() {
 
 // chrome is Chrome's (or Chromium's) executable.
 func chrome() string {
-	if p := os.Getenv("RYUI_CHROME"); p != "" {
+	if p := os.Getenv("ASUKA_CHROME"); p != "" {
 		return p
 	}
 	for _, p := range []string{"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/Applications/Chromium.app/Contents/MacOS/Chromium"} {
@@ -465,7 +465,7 @@ func chrome() string {
 func webApp(t *testing.T, example string) *webScreen {
 	browser := chrome()
 	if browser == "" {
-		t.Skip("no Chrome (RYUI_CHROME)")
+		t.Skip("no Chrome (ASUKA_CHROME)")
 	}
 	url := webServer(t, example)
 	page := exec.Command(browser, "--headless=new", "--no-first-run", "--no-default-browser-check", "--disable-gpu",
@@ -477,7 +477,7 @@ func webApp(t *testing.T, example string) *webScreen {
 	return &webScreen{t: t, url: url}
 }
 
-// webServer serves an app (appDir) with ryui dev -platform web, and
+// webServer serves an app (appDir) with asuka dev -platform web, and
 // returns its URL.
 func webServer(t *testing.T, example string) string {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
@@ -487,8 +487,8 @@ func webServer(t *testing.T, example string) string {
 	port := l.Addr().(*net.TCPAddr).Port
 	l.Close()
 	// The CLI built, not go run: killing it then stops the server it is.
-	cli := filepath.Join(t.TempDir(), "ryui")
-	build := exec.Command("go", "build", "-o", cli, "./cmd/ryui")
+	cli := filepath.Join(t.TempDir(), "asuka")
+	build := exec.Command("go", "build", "-o", cli, "./cmd/asuka")
 	build.Dir = root(t)
 	if b, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("building the CLI: %v\n%s", err, b)
@@ -500,7 +500,7 @@ func webServer(t *testing.T, example string) string {
 	dev.Stderr = &logs
 	t.Cleanup(func() {
 		if t.Failed() {
-			t.Logf("ryui dev -web:\n%s", logs.String())
+			t.Logf("asuka dev -web:\n%s", logs.String())
 		}
 	})
 	if err := dev.Start(); err != nil {
@@ -516,7 +516,7 @@ func webServer(t *testing.T, example string) string {
 		}
 	}
 	if url == "" {
-		t.Fatal("ryui dev -web printed no URL")
+		t.Fatal("asuka dev -web printed no URL")
 	}
 	go io.Copy(io.Discard, out)
 	return url
@@ -530,9 +530,9 @@ func TestLanguagesWeb(t *testing.T)  { languages(t, webApp(t, "i18n")) }
 
 // Linux
 
-// linuxScreen is an app ryui dev -platform linux -once runs on this
+// linuxScreen is an app asuka dev -platform linux -once runs on this
 // machine's display (xvfb-run's, in CI); the automation's commands go
-// through a directory (RYUI_COMMANDS), as on iOS.
+// through a directory (ASUKA_COMMANDS), as on iOS.
 type linuxScreen struct {
 	t    *testing.T
 	cli  string
@@ -542,7 +542,7 @@ type linuxScreen struct {
 	logs syncBuffer
 }
 
-// syncBuffer is ryui dev's output, written by its process's copiers.
+// syncBuffer is asuka dev's output, written by its process's copiers.
 type syncBuffer struct {
 	mu sync.Mutex
 	b  strings.Builder
@@ -563,7 +563,7 @@ func (b *syncBuffer) String() string {
 func (s *linuxScreen) start() {
 	c := exec.Command(s.cli, "dev", "-platform", "linux", "-once", "-vet=false", appDir(s.app))
 	c.Dir = root(s.t)
-	c.Env = append(os.Environ(), "RYUI_COMMANDS="+s.dir)
+	c.Env = append(os.Environ(), "ASUKA_COMMANDS="+s.dir)
 	c.Stdout, c.Stderr = &s.logs, &s.logs
 	if err := c.Start(); err != nil {
 		s.t.Fatal(err)
@@ -571,7 +571,7 @@ func (s *linuxScreen) start() {
 	s.dev = c
 }
 
-// stop stops ryui dev, which stops the app (SIGINT: it quits as it
+// stop stops asuka dev, which stops the app (SIGINT: it quits as it
 // would).
 func (s *linuxScreen) stop() {
 	if s.dev == nil {
@@ -590,7 +590,7 @@ func (s *linuxScreen) stop() {
 }
 
 func (s *linuxScreen) command(cmds string) {
-	file := filepath.Join(s.dir, "ryui-commands.txt")
+	file := filepath.Join(s.dir, "asuka-commands.txt")
 	// As on iOS: one the app hasn't read yet isn't written over (bounded:
 	// an app just started may not read it yet).
 	for range 500 {
@@ -609,7 +609,7 @@ func (s *linuxScreen) command(cmds string) {
 }
 
 func (s *linuxScreen) texts() []string {
-	dump := filepath.Join(s.dir, "ryui-dump.txt")
+	dump := filepath.Join(s.dir, "asuka-dump.txt")
 	os.Remove(dump)
 	s.command("dump")
 	for range 50 {
@@ -625,7 +625,7 @@ func (s *linuxScreen) tap(text string) { s.command("tap " + text) }
 
 func (s *linuxScreen) relaunch() {
 	s.stop()
-	os.Remove(filepath.Join(s.dir, "ryui-commands.txt")) // for the run that ended
+	os.Remove(filepath.Join(s.dir, "asuka-commands.txt")) // for the run that ended
 	s.start()
 }
 
@@ -644,13 +644,13 @@ func linuxApp(t *testing.T, example string) *linuxScreen {
 	}
 	// The CLI built once, not go run: stopping it then stops what it runs.
 	linuxCLI.once.Do(func() {
-		dir, err := os.MkdirTemp("", "ryui-e2e")
+		dir, err := os.MkdirTemp("", "asuka-e2e")
 		if err != nil {
 			linuxCLI.err = err
 			return
 		}
-		linuxCLI.path = filepath.Join(dir, "ryui")
-		build := exec.Command("go", "build", "-o", linuxCLI.path, "./cmd/ryui")
+		linuxCLI.path = filepath.Join(dir, "asuka")
+		build := exec.Command("go", "build", "-o", linuxCLI.path, "./cmd/asuka")
 		build.Dir = root(t)
 		if b, err := build.CombinedOutput(); err != nil {
 			linuxCLI.err = fmt.Errorf("building the CLI: %v\n%s", err, b)
@@ -664,7 +664,7 @@ func linuxApp(t *testing.T, example string) *linuxScreen {
 	t.Cleanup(func() {
 		s.stop()
 		if t.Failed() {
-			t.Logf("ryui dev -platform linux:\n%s", s.logs.String())
+			t.Logf("asuka dev -platform linux:\n%s", s.logs.String())
 		}
 	})
 	return s

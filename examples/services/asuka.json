@@ -1,0 +1,46 @@
+{
+  "name": "Services",
+  "id": "dev.asuka.services",
+  "scheme": "asukaservices",
+  "splash": {
+    "image": "logo.png",
+    "size": 96,
+    "background": "#4A63B5",
+    "darkBackground": "#1B2440"
+  },
+  "widgets": [
+    {
+      "kind": "energy",
+      "name": "Energy",
+      "description": "Your moves today",
+      "sizes": [
+        "small",
+        "medium",
+        "large",
+        "circular",
+        "rectangular",
+        "inline"
+      ]
+    }
+  ],
+  "shortcuts": [
+    {
+      "id": "sayHello",
+      "title": "Say Hello",
+      "url": "asukaservices://speak",
+      "symbol": "bell",
+      "phrases": [
+        "Say hello with ${app}"
+      ]
+    },
+    {
+      "id": "openMap",
+      "title": "Open the Map",
+      "url": "asukaservices://map",
+      "symbol": "map",
+      "phrases": [
+        "Open the map in ${app}"
+      ]
+    }
+  ]
+}

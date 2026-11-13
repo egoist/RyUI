@@ -16,7 +16,7 @@ import (
 	"math"
 	"sync"
 
-	"github.com/egoist/ryui/internal/shaderir"
+	"github.com/egoist/asuka/internal/shaderir"
 )
 
 // Image is an image a shader reads: its size in pixels, and its pixels,

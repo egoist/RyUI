@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/egoist/ryui/ops"
+	"github.com/egoist/asuka/ops"
 )
 
 // jsFile is the web host's side of the wire (platform/web/src/ops.js): an
@@ -151,7 +151,7 @@ export function decode(bytes, h) {
       case 8: h.unlisten(id, r.u16()); break;
       case 9: { const cmd = r.u16(); h.command(id, cmd, r.bytes()); break; }
       case 10: h.setRoot(id); break;
-      default: throw new Error("ryui: bad op code " + code);
+      default: throw new Error("asuka: bad op code " + code);
     }
   }
 }
@@ -167,7 +167,7 @@ function readValue(r, t) {
     case 7: return r.i32();
     case 8: return r.bytes();
   }
-  throw new Error("ryui: bad value type " + t);
+  throw new Error("asuka: bad value type " + t);
 }
 
 /** Writes the little-endian wire format. */

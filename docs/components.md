@@ -72,8 +72,8 @@ the `RichText`'s style.
 ```go
 ui.RichText(ui.RichTextProps{
 	Text: ui.Val(ui.Rich{
-		ui.Strong("ryui"), ui.Plain(" draws "), ui.Em("native"), ui.Plain(" views. Run "),
-		ui.Code("ryui dev"), ui.Plain(", or read "), ui.Link("the docs", "https://example.com/docs"),
+		ui.Strong("asuka"), ui.Plain(" draws "), ui.Em("native"), ui.Plain(" views. Run "),
+		ui.Code("asuka dev"), ui.Plain(", or read "), ui.Link("the docs", "https://example.com/docs"),
 		ui.Plain(".\nA second paragraph, "), ui.Plain("in red").Colored(ui.Red), ui.Plain("."),
 	}),
 	OnLink: ui.OpenURL,
@@ -137,7 +137,7 @@ something without a selection, `ui.Copy(text)` puts it on the clipboard.
 
 ### Markdown
 
-Package `ryui/markdown` shows Markdown as native views, built from
+Package `asuka/markdown` shows Markdown as native views, built from
 `RichText`. It parses as text is appended: only the block being written
 parses again, and only its views update.
 
@@ -458,7 +458,7 @@ Icons' glyphs on Windows. A name outside the set shows nothing there
 
 ### SVG icons
 
-For icons of your own, package `ryui/svg` draws SVG with the platform's
+For icons of your own, package `asuka/svg` draws SVG with the platform's
 vector drawing; nothing is rasterized. `svg.MustParse` reads the markup
 (`svg.Parse` returns an error instead), and `svg.View` draws it.
 
@@ -591,7 +591,7 @@ through its history, load the page again, or stop it loading.
 
 ### Talking to the page
 
-The page posts to Go with `window.ryui.postMessage(text)`, which calls
+The page posts to Go with `window.asuka.postMessage(text)`, which calls
 `OnMessage`. Go runs script in the page with `ui.EvalJS`, which returns
 nothing, or `ui.EvalJSResult`, which calls back with the value as JSON:
 the last statement's, or what a returned promise resolves to (`null` for
@@ -600,7 +600,7 @@ the last statement's, or what a returned promise resolves to (`null` for
 ```go
 var web ui.Node
 web = ui.WebView(ui.WebViewProps{
-	HTML: ui.Val(`<button onclick="ryui.postMessage('tapped')">Tap</button>`),
+	HTML: ui.Val(`<button onclick="asuka.postMessage('tapped')">Tap</button>`),
 	OnMessage: func(m string) {
 		ui.EvalJSResult(web, "document.title", func(v json.RawMessage, err error) {
 			fmt.Println(m, string(v), err)
@@ -701,7 +701,7 @@ read by screen readers: give the view around it a `Label`.
 
 ### Charts
 
-`ryui/chart` draws charts on a Canvas: bars, lines, areas and points
+`asuka/chart` draws charts on a Canvas: bars, lines, areas and points
 over a value axis, with the platform's text for their labels (measured
 by it, scaled with the user's text size).
 
@@ -1176,7 +1176,7 @@ a `Scroll`.
 
 ## Your own views
 
-When a platform has a widget RyUI doesn't, write it yourself and show it
+When a platform has a widget Asuka doesn't, write it yourself and show it
 with `ui.Native`: in Swift on iOS, Kotlin on Android, Go on macOS,
 Windows and Linux (AppKit, Win32 and GTK through package `native`), and
 JavaScript on the web. See [Native code](native.md).

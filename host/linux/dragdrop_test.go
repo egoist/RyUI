@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // A drag within the app, as a mouse makes it (xdotool's, through the X
@@ -34,7 +34,7 @@ func TestDragDropInApp(t *testing.T) {
 			ui.View(ui.ViewProps{
 				Drag: &ui.DragSource{
 					Items: func() []ui.DragItem {
-						return []ui.DragItem{{Value: value, MIME: "application/x-ryui-test", Text: "first"}}
+						return []ui.DragItem{{Value: value, MIME: "application/x-asuka-test", Text: "first"}}
 					},
 					OnPhase: func(p ui.DragPhase) { phases = append(phases, p) },
 				},
@@ -42,7 +42,7 @@ func TestDragDropInApp(t *testing.T) {
 			}),
 			ui.View(ui.ViewProps{
 				Drop: &ui.DropTarget{
-					Accept:       []string{"application/x-ryui-test"},
+					Accept:       []string{"application/x-asuka-test"},
 					OnOverChange: func(on bool) { overs = append(overs, on) },
 					OnDrop:       func(d ui.Drop) { drops = append(drops, d) },
 				},
@@ -124,7 +124,7 @@ func TestDropFromOtherApp(t *testing.T) {
 	}
 	items := signal.New(0)
 	sets := [][]ui.DragItem{
-		{{Text: "Hello from RyUI"}},
+		{{Text: "Hello from Asuka"}},
 		{{Kind: ui.SharedFile, Path: "/etc/hostname"}},
 		{{Kind: ui.SharedLink, Text: "https://example.com/a"}},
 	}
@@ -174,7 +174,7 @@ func TestDropFromOtherApp(t *testing.T) {
 		it := d.Items[0]
 		switch i {
 		case 0:
-			if it.Kind != ui.SharedText || it.Text != "Hello from RyUI" || it.MIME != "text/plain" {
+			if it.Kind != ui.SharedText || it.Text != "Hello from Asuka" || it.MIME != "text/plain" {
 				t.Errorf("the text: %+v", it)
 			}
 		case 1:

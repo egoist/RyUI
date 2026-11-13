@@ -5,8 +5,8 @@
 //
 // Android: Google's Maps SDK, which an app that imports this package is
 // built with, and a Google Maps Platform API key (Maps SDK for Android)
-// in ryui.json's android.mapsKey. ShowsUser needs the location
-// permission: import ryui/location and ask for it (location.Current)
+// in asuka.json's android.mapsKey. ShowsUser needs the location
+// permission: import asuka/location and ask for it (location.Current)
 // first.
 package maps
 
@@ -14,8 +14,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // Coordinate is a place on Earth, in degrees.
@@ -87,7 +87,7 @@ type marker struct {
 
 // View is a map.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func View(p Props) ui.Node {
@@ -114,7 +114,7 @@ func View(p Props) ui.Node {
 	if p.OnError != nil {
 		np.On["error"] = func(e ui.NativeEvent) { p.OnError(e.String("message")) }
 	}
-	return ui.Native("ryui.map", np)
+	return ui.Native("asuka.map", np)
 }
 
 func encodeRegion(r Region) string {

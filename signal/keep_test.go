@@ -3,7 +3,7 @@ package signal_test
 import (
 	"testing"
 
-	"github.com/egoist/ryui/signal"
+	"github.com/egoist/asuka/signal"
 )
 
 type private struct{ n int }

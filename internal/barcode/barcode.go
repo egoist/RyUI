@@ -11,7 +11,7 @@ import (
 	"sync"
 )
 
-// Kind is a code's symbology, as ryui/scan names them.
+// Kind is a code's symbology, as asuka/scan names them.
 type Kind string
 
 const (

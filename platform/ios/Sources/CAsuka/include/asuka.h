@@ -1,0 +1,39 @@
+// The C ABI of Asuka's Go core (mobile/mobile.go). Every call comes from
+// the main thread.
+#ifndef ASUKA_H
+#define ASUKA_H
+
+#include <stdint.h>
+#include <stddef.h>
+
+typedef struct {
+	// Applies a batch of encoded ops (ops/ops.go). The buffer is valid
+	// during the call only.
+	void (*apply)(const uint8_t *buf, size_t len);
+	// Measures view id: width/height are known sizes or NaN; avail* are
+	// the space available: a definite size, +inf (max-content) or -inf
+	// (min-content).
+	void (*measure)(uint32_t id, float width, float height, float availWidth, float availHeight, float *outWidth, float *outHeight);
+	// Asks for asuka_run_posted to be called soon on the main thread. Any
+	// thread.
+	void (*post)(void);
+} asuka_host_callbacks;
+
+void asuka_start(asuka_host_callbacks *callbacks);
+void asuka_attach(void);
+void asuka_event(const uint8_t *buf, size_t len);
+int64_t asuka_list_count(uint32_t list);
+void asuka_list_bind(uint32_t list, int64_t index, uint32_t cell);
+void asuka_list_unbind(uint32_t list, uint32_t cell);
+void asuka_run_posted(void);
+// Sets an environment variable for the Go code (os.Setenv), which copied
+// the process's as it loaded.
+void asuka_setenv(const char *key, const char *value);
+// Begins the run's crash record (asuka/crash), with info, JSON of the
+// device and the app: the directory native reports go in, "" if the app
+// doesn't report crashes. Any thread, before asuka_start; free the result.
+char *asuka_crash_start(const char *info);
+// Says the host wrote a report in the directory's inbox. Any thread.
+void asuka_crash_notify(void);
+
+#endif

@@ -5,8 +5,8 @@ package linux
 import (
 	"math"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
 )
 
 func (h *Host) command(n *node, c ops.CommandID, args []byte) {

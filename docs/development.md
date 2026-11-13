@@ -1,22 +1,22 @@
 # Development
 
-`ryui dev` runs an app and reloads it as you save: on the iOS simulator,
+`asuka dev` runs an app and reloads it as you save: on the iOS simulator,
 an Android emulator or phone, your Mac, PC or Linux machine, or your
 browser. This page covers how it does that on each, what a reload keeps,
-devices, assets and logs, what it can't reload, `ryui vet`, the problems
-you may meet, and RyUI's own tests and benchmarks.
+devices, assets and logs, what it can't reload, `asuka vet`, the problems
+you may meet, and Asuka's own tests and benchmarks.
 
-## ryui dev
+## asuka dev
 
 ```sh
-ryui dev [flags] [dir]                     # this computer: macOS, Windows or Linux
-ryui dev -platform ios [flags] [dir]       # the iOS simulator
-ryui dev -platform android [flags] [dir]   # an Android emulator or phone
-ryui dev -platform web [flags] [dir]       # your browser
+asuka dev [flags] [dir]                     # this computer: macOS, Windows or Linux
+asuka dev -platform ios [flags] [dir]       # the iOS simulator
+asuka dev -platform android [flags] [dir]   # an Android emulator or phone
+asuka dev -platform web [flags] [dir]       # your browser
 ```
 
 `-platform` is one of `ios`, `android`, `mac`, `windows`, `linux` and
-`web`; `ryui build` takes it likewise. Without it, the app runs (or
+`web`; `asuka build` takes it likewise. Without it, the app runs (or
 builds) for the computer you're on. One platform per run: run two
 terminals for two.
 
@@ -29,11 +29,11 @@ package that calls `app.Run`. The flags:
   `-dir rtl` lays any app out right to left. See
   [Languages](i18n.md).
 - `-once`: build the app and run it once, without watching. On the
-  desktop, `ryui dev` exits when the app does; on a phone, it builds
+  desktop, `asuka dev` exits when the app does; on a phone, it builds
   the app with its Go code, installs it and launches it, then exits,
   without logs; in a browser, it serves the app.
-- `-v`: print the commands RyUI runs.
-- `-vet=false`: don't run [`ryui vet`](#ryui-vet) beside the builds.
+- `-v`: print the commands Asuka runs.
+- `-vet=false`: don't run [`asuka vet`](#asuka-vet) beside the builds.
 
 On a phone:
 
@@ -45,12 +45,12 @@ On a phone:
 
 In a browser: `-port`, `-lan` (serve to your network, for a phone's
 browser) and `-no-open`; see [the
-web](web.md#ryui-dev--platform-web).
+web](web.md#asuka-dev--platform-web).
 
 ## On the desktop
 
 On macOS, Windows and Linux, the app's Go code and the platform's host
-are one Go program, built for this computer with `CGO_ENABLED=0`. `ryui
+are one Go program, built for this computer with `CGO_ENABLED=0`. `asuka
 dev` builds it and runs it; on each save it builds it again, stops the
 running app, which saves its signals' values as it quits, and runs the
 new one, which takes them back (see [What a reload
@@ -60,14 +60,14 @@ app.
 
 The app reads its `assets/` where they are, so changing one needs no
 copy. Its data (`store.Dir()`, SQLite databases there) is in a `data`
-directory of its own in RyUI's cache (see [Starting
-over](#common-problems)), not the installed app's, so `ryui dev` and a
+directory of its own in Asuka's cache (see [Starting
+over](#common-problems)), not the installed app's, so `asuka dev` and a
 release don't share it. Its output (`fmt.Println`, `log`, panics) prints
 in the terminal.
 
-**macOS.** `ryui dev` on a Mac runs the app from an `.app` like a
-release's, in RyUI's cache: its `Info.plist` (its name, bundle ID, URL
-scheme, purpose strings and languages from `ryui.json`) and icon, signed
+**macOS.** `asuka dev` on a Mac runs the app from an `.app` like a
+release's, in Asuka's cache: its `Info.plist` (its name, bundle ID, URL
+scheme, purpose strings and languages from `asuka.json`) and icon, signed
 ad hoc. So the app is itself to the system, as when it's opened from the
 Finder: the Dock shows its name and icon, notifications are its own, and
 its privacy prompts (the camera, location, contacts) ask for it, with
@@ -76,42 +76,42 @@ provisioning profile's entitlements (push, Sign in with Apple, App
 Attest) work only in a release build signed with one: see
 [Shipping](shipping.md#macos).
 
-**Windows.** `ryui dev` runs only on Windows itself; `ryui build
+**Windows.** `asuka dev` runs only on Windows itself; `asuka build
 -platform windows` builds from any system. The dev build is a console
 program, so its output prints in the terminal; a release has no
-console. To stop the app for a reload, RyUI closes its standard input
+console. To stop the app for a reload, Asuka closes its standard input
 (Windows can't send a process Ctrl-C), and it saves its state as it
 quits.
 
-**Linux.** `ryui dev` on Linux runs the app on GTK 4 and libadwaita,
+**Linux.** `asuka dev` on Linux runs the app on GTK 4 and libadwaita,
 which it needs installed (see [Getting
 started](getting-started.md#what-you-need)), under your session's
 display, Wayland or X11. It gets the name, ID, version and accent of
-`ryui.json`, as a release does; RyUI stops it with SIGINT, and it saves
-its state as it quits. On a Mac or a PC, `ryui dev -platform linux`
+`asuka.json`, as a release does; Asuka stops it with SIGINT, and it saves
+its state as it quits. On a Mac or a PC, `asuka dev -platform linux`
 builds the app for Linux but can't run it there, unless
-`RYUI_LINUX_RUN` names a command that runs a program on a Linux machine
+`ASUKA_LINUX_RUN` names a command that runs a program on a Linux machine
 with a display, which sees this computer's files at the same paths: a
-VM, as `RYUI_LINUX_RUN="orb -m ubuntu"` (OrbStack) or
-`RYUI_LINUX_RUN="limactl shell default"` (Lima). RyUI runs the app with
+VM, as `ASUKA_LINUX_RUN="orb -m ubuntu"` (OrbStack) or
+`ASUKA_LINUX_RUN="limactl shell default"` (Lima). Asuka runs the app with
 it, for that machine's architecture.
 
 ## On a phone: the player and built apps
 
-iOS needs a Mac; Android, a Mac or Linux. By default, `ryui dev` runs
+iOS needs a Mac; Android, a Mac or Linux. By default, `asuka dev` runs
 your Go code on your computer, and its views in the **player**: an app
-named RyUI (`dev.ryui.player`) that is the platform's host with no app
+named Asuka (`dev.asuka.player`) that is the platform's host with no app
 in it. The player is built and installed once, shared by every app, and
-installed again only when it changes (a new version of RyUI). The Go
+installed again only when it changes (a new version of Asuka). The Go
 code and the player talk over a socket.
 
-On a save, RyUI rebuilds the Go code for your computer and restarts it,
+On a save, Asuka rebuilds the Go code for your computer and restarts it,
 in about a second; the player reconnects and shows the new code.
 Nothing is installed.
 
 With `-embed` or `-once`, or when the app has native code for the
 platform (an `ios/` or `android/` directory, see [Native
-code](native.md)), RyUI builds the app itself instead, its Go code inside
+code](native.md)), Asuka builds the app itself instead, its Go code inside
 as a release build has it, under the app's own name and ID:
 
 - **iOS**: the host, with the app's Swift, is compiled once and cached;
@@ -122,8 +122,8 @@ as a release build has it, under the app's own name and ID:
   rebuilds the Go library, pushes it into the app's private files with
   `adb`, where the debug app loads it from, and restarts the app.
 
-The player has every permission any RyUI package needs, and its own
-purpose strings. What `ryui.json` gives the app itself (its name, its
+The player has every permission any Asuka package needs, and its own
+purpose strings. What `asuka.json` gives the app itself (its name, its
 ID, a URL `scheme`, `links`, `ios.usage`) only a built app has: try
 those with `-embed`. The `accent` color applies in the player too.
 
@@ -131,8 +131,8 @@ those with `-embed`. The `accent` color applies in the player too.
 
 A reload keeps the values of the app's signals, with no code of yours:
 in the player, on the desktop and in the browser. The app saves them as
-it stops, to the file the `RYUI_STATE` environment variable names
-(`ryui dev` sets it to `state.json` in the app's directory in RyUI's
+it stops, to the file the `ASUKA_STATE` environment variable names
+(`asuka dev` sets it to `state.json` in the app's directory in Asuka's
 cache), and the next run gives each value back to the signal made at
 the same place: the same call path (function names, not lines), the
 same type, and the same position among the signals of that type made
@@ -141,7 +141,7 @@ there.
 What isn't kept:
 
 - Navigation: a reload starts at the root screen.
-- Signals RyUI makes itself, and values JSON doesn't carry (funcs,
+- Signals Asuka makes itself, and values JSON doesn't carry (funcs,
   unexported fields).
 - Signals whose type changed, and those of a type after one of the same
   type you added at the same place.
@@ -149,33 +149,33 @@ What isn't kept:
 A built phone app (`-embed`, `-once`, native code) starts again from
 nothing on each reload.
 
-Files your Go code writes (`ryui/store`, `ryui/sqlite`) are on your
+Files your Go code writes (`asuka/store`, `asuka/sqlite`) are on your
 computer, in the player as on the desktop: `store.Dir()` is a `data`
-directory of the app's own in RyUI's cache, one for each platform, as
+directory of the app's own in Asuka's cache, one for each platform, as
 two devices would have theirs. Delete it to start the app again with no
 data. In the browser they're the page's (IndexedDB): see [the
 web](web.md#the-apps-files).
 
 ## Reloading
 
-RyUI watches, by polling, the app's directory and its module's:
+Asuka watches, by polling, the app's directory and its module's:
 
 - Go files and `go.mod` (not `_test.go`);
 - Swift and Kotlin files;
 - the language catalogs;
 - files under `assets/`;
 - with `-platform web`, the app's scripts (`web/*.js`), and in a
-  checkout of RyUI the web host's (`platform/web/src`): the page
+  checkout of Asuka the web host's (`platform/web/src`): the page
   reloads with them, without a build.
 
 It skips directories starting with `.`, and `testdata`, `build` and
 `node_modules`. A build that fails prints its errors and keeps the
 running app; the next save tries again.
 
-`ryui.json`'s fields are read as `ryui dev` starts. Stop it and run it
+`asuka.json`'s fields are read as `asuka dev` starts. Stop it and run it
 again after changing them; it rebuilds and reinstalls what changed.
 
-Native code reloads only in a built phone app, where RyUI rebuilds and
+Native code reloads only in a built phone app, where Asuka rebuilds and
 reinstalls it on each save. Gradle runs again when Kotlin changes, which
 takes longer than a Go change. A desktop app's native code in Go
 reloads as the rest of it does; a Mac app's `macos/*.swift` is compiled
@@ -184,28 +184,28 @@ signals' values kept.
 
 ## Devices
 
-**Your computer**: `ryui dev` alone, on a Mac, a PC or Linux.
+**Your computer**: `asuka dev` alone, on a Mac, a PC or Linux.
 
 **The iOS simulator** shares the Mac's network, so the player reaches
-`ryui dev` directly.
+`asuka dev` directly.
 
 **An Android emulator** reaches your computer at `10.0.2.2`, and the
 player connects there.
 
 **An Android phone over USB**: turn on USB debugging in its developer
 options, plug it in and accept the prompt, and check that `adb devices`
-lists it. `ryui dev -platform android` takes the first device adb lists,
+lists it. `asuka dev -platform android` takes the first device adb lists,
 phone or emulator; with several, name it with `-device` and its serial.
-The phone reaches your computer through `adb reverse`, which RyUI sets
-up for ports 7461 (the app) and 7462 (its assets). In development RyUI
+The phone reaches your computer through `adb reverse`, which Asuka sets
+up for ports 7461 (the app) and 7462 (its assets). In development Asuka
 builds for 64-bit phones and emulators (arm64-v8a, x86_64).
 
-**An iPhone**: `ryui dev` runs on the simulator only. To run on an
-iPhone, make a build signed for it, `ryui build -platform ios
+**An iPhone**: `asuka dev` runs on the simulator only. To run on an
+iPhone, make a build signed for it, `asuka build -platform ios
 -distribution development` (see [Shipping](shipping.md#ios)), and
 install the `.ipa` with Xcode's Devices window.
 
-**A phone's browser**: `ryui dev -platform web -lan` serves the app to
+**A phone's browser**: `asuka dev -platform web -lan` serves the app to
 your network, and prints the addresses to open.
 
 ## Assets
@@ -230,7 +230,7 @@ changed.
   through the simulator's console.
 - **A built app on Android**: the app's logcat. Android drops a
   process's standard output, so the Go code's goes to logcat, tagged
-  `ryui`.
+  `asuka`.
 - With `-once` on a phone, nothing: read them with Console.app or `adb
   logcat`.
 
@@ -245,17 +245,17 @@ three minutes; a player that comes back in time takes it up again, with
 its screens as they were. A player that comes back later starts the
 app again, at its root screen.
 
-Stopping `ryui dev` (Ctrl-C) stops the player too, so it doesn't join
+Stopping `asuka dev` (Ctrl-C) stops the player too, so it doesn't join
 the next session, which may be another app's. On the desktop it stops
 the app.
 
-## ryui vet
+## asuka vet
 
 ```sh
-ryui vet [flags] [packages]
+asuka vet [flags] [packages]
 ```
 
-`ryui vet` finds the mistakes that build and run but do the wrong thing.
+`asuka vet` finds the mistakes that build and run but do the wrong thing.
 It reports:
 
 - **reads**: a signal read while a component builds its views, so what
@@ -267,7 +267,7 @@ It reports:
 - **memowrites**: a signal written inside a memo, which panics.
 
 ```
-$ ryui vet
+$ asuka vet
 main.go:14:23: count.Get() is read once, while App builds its views, so the constant made from it never changes: give the prop signal.Func(func() T { ... }) instead, or use count.Peek() to read it once on purpose
 ```
 
@@ -278,12 +278,12 @@ reports.
 
 The packages are `./...` by default, as `go vet` takes them. So are the
 flags (`-tags=...`, `-json`), and one per check: `-reads=false` turns
-reads off. `ryui vet` exits with 1 when it reports anything, for CI.
-It runs the same checks as `go vet -vettool=$(which ryui)`, where `go
+reads off. `asuka vet` exits with 1 when it reports anything, for CI.
+It runs the same checks as `go vet -vettool=$(which asuka)`, where `go
 vet`'s own checks don't run.
 
-`ryui dev` runs it in the background when it starts and after each
-save, and prints what's new as warnings; `ryui build` runs it before it
+`asuka dev` runs it in the background when it starts and after each
+save, and prints what's new as warnings; `asuka build` runs it before it
 builds. Neither stops for what it finds. It takes a second or two, beside
 a build; `-vet=false` turns it off for either.
 
@@ -294,17 +294,17 @@ state and capture it, for checking a change by eye or in CI. Run the app
 with `go run .` in its directory:
 
 ```sh
-RYUI_SNAPSHOT=shot.png go run .                  # the window as a PNG, once it has shown, then quit
-RYUI_SNAPSHOT=shot.png RYUI_DUMP=1 go run .      # and its view tree, in shot.png.txt
-RYUI_SCRIPT="tap:Add;tap:Add" RYUI_SNAPSHOT=shot.png go run .   # Windows, Linux: steps first
+ASUKA_SNAPSHOT=shot.png go run .                  # the window as a PNG, once it has shown, then quit
+ASUKA_SNAPSHOT=shot.png ASUKA_DUMP=1 go run .      # and its view tree, in shot.png.txt
+ASUKA_SCRIPT="tap:Add;tap:Add" ASUKA_SNAPSHOT=shot.png go run .   # Windows, Linux: steps first
 ```
 
-- `RYUI_SNAPSHOT` writes the window as a PNG once it has shown (and
-  the script has run), and quits; `RYUI_SNAPSHOT_STAY=1` keeps the app
+- `ASUKA_SNAPSHOT` writes the window as a PNG once it has shown (and
+  the script has run), and quits; `ASUKA_SNAPSHOT_STAY=1` keeps the app
   running.
-- `RYUI_DUMP` writes the view tree beside it: each view's kind, frame
+- `ASUKA_DUMP` writes the view tree beside it: each view's kind, frame
   and what it shows.
-- `RYUI_SCRIPT` (Windows and Linux) runs steps, separated by `;`,
+- `ASUKA_SCRIPT` (Windows and Linux) runs steps, separated by `;`,
   before the snapshot: `tap:<text>` (the view showing it: a button's
   title, a text, a tab), `type:<text>` (into the focused field), `back`,
   `key:<shortcut>` (`ctrl+shift+k`), `menu:<item>` (the menu bar's),
@@ -318,43 +318,43 @@ RYUI_SCRIPT="tap:Add;tap:Add" RYUI_SNAPSHOT=shot.png go run .   # Windows, Linux
   `no iPhone simulator; add one in Xcode` and `no simulator "..."`
   mean there's no simulator of that name: `xcrun simctl list devices`
   lists them.
-- **`no Android SDK: install Android Studio or set ANDROID_HOME`**: RyUI
+- **`no Android SDK: install Android Studio or set ANDROID_HOME`**: Asuka
   looks in `ANDROID_HOME`, `ANDROID_SDK_ROOT`, then
   `~/Library/Android/sdk` on a Mac and `~/Android/Sdk` on Linux.
 - **`no Android NDK`**: install one from Android Studio's SDK Manager
   (SDK Tools, NDK).
 - **`no Android device or emulator`**: make an AVD in Android Studio's
-  Device Manager, or plug in a phone. RyUI waits up to four minutes for
+  Device Manager, or plug in a phone. Asuka waits up to four minutes for
   an emulator it starts to boot (`the emulator didn't boot`).
 - **Java**: Gradle needs a JDK: `JAVA_HOME`, else Android Studio's own.
 - **The first Android build is slow**: Gradle downloads itself and
   Android's libraries, once.
-- **A release build on the phone**: an app installed by `ryui build`
+- **A release build on the phone**: an app installed by `asuka build`
   (another signing key) is uninstalled, with its data, to install the
   debug one.
-- **`ryui dev -platform windows runs the app on this PC`**: `ryui dev`
-  runs a Windows app on Windows only. Build it elsewhere with `ryui
+- **`asuka dev -platform windows runs the app on this PC`**: `asuka dev`
+  runs a Windows app on Windows only. Build it elsewhere with `asuka
   build -platform windows`, and copy the folder to a PC.
 - **`... isn't installed` on Linux**: the host needs GTK 4.14 and
   libadwaita 1.5 or later (`the Linux host needs GTK 4.14 and libadwaita
   1.5 or later`), and some packages a library of their own: WebKitGTK
   6.0 for `ui.WebView`, GStreamer for video and audio, libsecret for
-  `ryui/secure`. The error names it; install it with your distribution's
+  `asuka/secure`. The error names it; install it with your distribution's
   package manager.
 - **A Linux app that doesn't open**: it needs a display. Over SSH or in
   CI, run it under Xvfb (`xvfb-run -a`), with a session bus
   (`dbus-run-session`) for what goes through D-Bus.
-- **The CLI and the app's RyUI**: the CLI carries the hosts' Swift and
-  Kotlin, and the app's `go.mod` picks RyUI's Go code. Install the CLI at
+- **The CLI and the app's Asuka**: the CLI carries the hosts' Swift and
+  Kotlin, and the app's `go.mod` picks Asuka's Go code. Install the CLI at
   the version the app requires.
-- **Starting over**: RyUI's builds, caches, kept state and the apps'
-  development data are in RyUI's cache directory: `~/Library/Caches/ryui`
-  on a Mac, `~/.cache/ryui` on Linux, `%LocalAppData%\ryui` on Windows.
+- **Starting over**: Asuka's builds, caches, kept state and the apps'
+  development data are in Asuka's cache directory: `~/Library/Caches/asuka`
+  on a Mac, `~/.cache/asuka` on Linux, `%LocalAppData%\asuka` on Windows.
   Delete it to build everything again, with no state or data.
 
 ## Tests
 
-RyUI's own repository tests each host through the platform's real
+Asuka's own repository tests each host through the platform's real
 views.
 
 ```sh
@@ -379,41 +379,41 @@ hosts' automation:
 
 ```sh
 go test -tags e2e ./e2e -run IOS       # the booted simulator, else a recent iPhone
-go test -tags e2e ./e2e -run Android   # the device ryui dev picks
-go test -tags e2e ./e2e -run Web       # headless Chrome (RYUI_CHROME: its path)
+go test -tags e2e ./e2e -run Android   # the device asuka dev picks
+go test -tags e2e ./e2e -run Web       # headless Chrome (ASUKA_CHROME: its path)
 xvfb-run -a dbus-run-session go test -tags e2e ./e2e -run Linux  # GTK 4, on Linux
 ```
 
-Each test builds an example with `ryui dev -once` (a debug build, with
+Each test builds an example with `asuka dev -once` (a debug build, with
 its Go code), then taps, types and reads the screen: through a
 notification on iOS, a broadcast on Android, the dev server on the web
 (`platform/web/src/automation.js`), and a file in the directory
-`RYUI_COMMANDS` names on Linux (`host/linux/automation.go`). The
+`ASUKA_COMMANDS` names on Linux (`host/linux/automation.go`). The
 counter, notes, chat, navigation and languages examples have tests, the
 same on each platform. They wait for the screen to show what they
 expect, up to a minute, never for a set time.
 
 The iOS tests need Xcode (`xcrun`); the Android ones need `adb` on your
-`PATH`, and the SDK and NDK that `ryui dev -platform android` needs; the
+`PATH`, and the SDK and NDK that `asuka dev -platform android` needs; the
 Linux ones a display (Xvfb's, in CI) and a session bus. Without them,
 the tests are skipped. macOS and Windows have no e2e tests yet: their
 host tests drive real windows instead.
 
 ## Benchmarks
 
-`bench/` compares RyUI with SwiftUI and Jetpack Compose: the same app
+`bench/` compares Asuka with SwiftUI and Jetpack Compose: the same app
 written in each, timed frame by frame in release builds.
 
 ```sh
-go run ./bench/run -ios        # ryui and SwiftUI on the simulator
-go run ./bench/run -android    # ryui and Compose on the running emulator or device
+go run ./bench/run -ios        # asuka and SwiftUI on the simulator
+go run ./bench/run -android    # asuka and Compose on the running emulator or device
 ```
 
 `-runs` sets how many runs of each (5 by default); the medians go to
 `bench/results`. [`bench/README.md`](../bench/README.md) has the
 scenarios, how they're measured, and the latest results.
 
-## ryui.json
+## asuka.json
 
-`ryui dev` and `ryui build` read the same `ryui.json`; see
-[Shipping](shipping.md#ryuijson) for its fields.
+`asuka dev` and `asuka build` read the same `asuka.json`; see
+[Shipping](shipping.md#asukajson) for its fields.

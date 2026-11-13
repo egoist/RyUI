@@ -25,7 +25,7 @@
 // breadcrumbs and its values. They're written to the app's data
 // directory as they change, so a crash can't lose them.
 //
-// Nothing is uploaded: RyUI has no backend. A Report is JSON (its fields'
+// Nothing is uploaded: Asuka has no backend. A Report is JSON (its fields'
 // tags), the frames of its threads what a crash service needs to
 // symbolicate native ones (docs/device.md says how, for Sentry and
 // Crashlytics).
@@ -41,9 +41,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/egoist/ryui/internal/boot"
-	"github.com/egoist/ryui/internal/crashrun"
-	"github.com/egoist/ryui/ops"
+	"github.com/egoist/asuka/internal/boot"
+	"github.com/egoist/asuka/internal/crashrun"
+	"github.com/egoist/asuka/ops"
 )
 
 // An app that imports the package keeps its runs' records: the hosts
@@ -144,7 +144,7 @@ type Frame struct {
 	Function string `json:"function,omitempty"`
 	File     string `json:"file,omitempty"`
 	Line     int    `json:"line,omitempty"`
-	// Binary is the image the code is in ("MyApp", "libryui.so"), BinaryID
+	// Binary is the image the code is in ("MyApp", "libasuka.so"), BinaryID
 	// its UUID (Mach-O) or build ID (ELF).
 	Binary   string `json:"binary,omitempty"`
 	BinaryID string `json:"binaryId,omitempty"`
@@ -156,8 +156,8 @@ type Frame struct {
 
 // Context is what the app was doing when it crashed.
 type Context struct {
-	AppVersion    string `json:"appVersion,omitempty"`    // ryui.json's version
-	Build         string `json:"build,omitempty"`         // ryui.json's build
+	AppVersion    string `json:"appVersion,omitempty"`    // asuka.json's version
+	Build         string `json:"build,omitempty"`         // asuka.json's build
 	Model         string `json:"model,omitempty"`         // "iPhone17,1", "Pixel 9"; on the web, the browser's system ("macOS 15.1")
 	System        string `json:"system,omitempty"`        // "iOS", "Android", "macOS", "Windows", "Linux", "Web"
 	SystemVersion string `json:"systemVersion,omitempty"` // "26.0", "16"; on the web, the browser ("Chrome 131")
@@ -235,7 +235,7 @@ func Record(err error) {
 // top of the stack.
 func trimRecord(fs []Frame) []Frame {
 	for i, f := range fs {
-		if f.Function == "github.com/egoist/ryui/crash.Record" {
+		if f.Function == "github.com/egoist/asuka/crash.Record" {
 			return fs[i+1:]
 		}
 	}
@@ -248,7 +248,7 @@ func trimRecord(fs []Frame) []Frame {
 // launch) is in a later call; OnReport hears of it. Not on the main
 // thread: it reads files.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Reports() ([]Report, error) {
@@ -284,7 +284,7 @@ var (
 // until stop: where the app sends its reports. Call it once the app is
 // mounted (in its root component). Main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func OnReport(f func(Report)) (stop func()) {

@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/egoist/ryui/host"
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/host"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // countingCore counts the rows the host binds.
@@ -317,8 +317,8 @@ func TestListSelectionAndActions(t *testing.T) {
 		if !h.rowMenu(c, 10, 10) {
 			fatalf(t, "no menu")
 		}
-		WidgetActivateAction(c.n.widget, "ryuirow.item0", 0)
-		WidgetActivateAction(c.n.widget, "ryuirow.item1", 0)
+		WidgetActivateAction(c.n.widget, "asukarow.item0", 0)
+		WidgetActivateAction(c.n.widget, "asukarow.item1", 0)
 	})
 	settle(t, h, func() bool { return len(pinned) == 1 && len(archived) == 1 })
 	if pinned[0] != 1 || archived[0] != 1 {

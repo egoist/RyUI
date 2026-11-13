@@ -7,18 +7,18 @@ import (
 
 	"github.com/ebitengine/purego"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
 )
 
-// RyuiView: the host's widget class. A node's widget draws what the
+// AsukaView: the host's widget class. A node's widget draws what the
 // node's style gives it (snapshot) and places its children at their
 // frames (size_allocate); it asks for no size of its own (measure), as
 // the core lays everything out.
 
 var (
 	viewType        GType
-	widgetClass     Ptr // GtkWidgetClass, RyuiView's parent class
+	widgetClass     Ptr // GtkWidgetClass, AsukaView's parent class
 	FnQueueAllocate uintptr
 )
 
@@ -57,28 +57,28 @@ func registerClasses() {
 		Call(Vfunc(widgetClass, OffObjectDispose), obj)
 		return 0
 	})
-	viewType = Subclass(widgetType, "RyuiView", func(class, parent Ptr) {
+	viewType = Subclass(widgetType, "AsukaView", func(class, parent Ptr) {
 		widgetClass = parent
 		SetVfunc(class, OffObjectDispose, dispose)
 		SetVfunc(class, OffWidgetSnapshot, snapshot)
 		SetVfunc(class, OffWidgetSizeAllocate, allocate)
 		SetVfunc(class, OffWidgetMeasure, measure)
-		css := CString("ryui-view")
+		css := CString("asuka-view")
 		Call(Sym("gtk_widget_class_set_css_name"), class, Addr(css))
 	})
 }
 
-// newView makes a RyuiView the host holds a reference to.
+// newView makes a AsukaView the host holds a reference to.
 func newView() Ptr {
 	w := NewObject(viewType)
 	ObjectRefSink(w)
 	return w
 }
 
-// isView reports whether w is a RyuiView.
+// isView reports whether w is a AsukaView.
 func isView(w Ptr) bool { return TypeCheckInstanceIsA(w, viewType) }
 
-// measureView is a RyuiView's size request: none, but for a scroll's
+// measureView is a AsukaView's size request: none, but for a scroll's
 // content, whose frame is what scrolls.
 func (h *Host) measureView(w Ptr, orientation int32) (min, nat int32) {
 	n := h.byWidget[w]

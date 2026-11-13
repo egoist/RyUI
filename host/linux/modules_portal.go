@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	. "github.com/egoist/ryui/internal/gtk"
+	. "github.com/egoist/asuka/internal/gtk"
 )
 
 // XDG desktop portals (org.freedesktop.portal.*): what the modules use
@@ -25,7 +25,7 @@ var portalTokens int
 // portalToken is a new handle_token.
 func portalToken() string {
 	portalTokens++
-	return "ryui" + strconv.Itoa(portalTokens)
+	return "asuka" + strconv.Itoa(portalTokens)
 }
 
 // errNoPortal is a portal call's error when the portal (or the

@@ -11,7 +11,7 @@
 //
 // An app's messages are in catalogs (Catalog), a JSON file per language,
 // of messages of ICU MessageFormat (Message), whose plural forms follow
-// the plural rules of CLDR (PluralCategory). `ryui generate` writes typed
+// the plural rules of CLDR (PluralCategory). `asuka generate` writes typed
 // Go and TypeScript functions for them, which say them in the language
 // the app shows (Locale). The data of CLDR is generated from a pinned
 // release (CLDRVersion) by `go generate`.

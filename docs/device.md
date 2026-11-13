@@ -1,6 +1,6 @@
 # Device and services
 
-RyUI's packages reach what the device has beyond views: the camera, codes,
+Asuka's packages reach what the device has beyond views: the camera, codes,
 what's in an image, photos and files, previewing, printing and PDFs, the
 mail and message composers, location, notifications and push, sound and recording,
 the network's state, the shared library, work in the background, shares
@@ -31,46 +31,46 @@ web need nothing declared (see each one's section below).
 
 | Package | Android | iOS |
 | --- | --- | --- |
-| `ryui/camera` | `CAMERA` | `NSCameraUsageDescription` |
-| `ryui/camera/record` | `RECORD_AUDIO` | `NSMicrophoneUsageDescription` |
-| `ryui/location` | `ACCESS_COARSE_LOCATION`, `ACCESS_FINE_LOCATION` | `NSLocationWhenInUseUsageDescription` |
-| `ryui/notify` | `POST_NOTIFICATIONS` | |
-| `ryui/network` | `ACCESS_NETWORK_STATE` | |
-| `ryui/library` | `WRITE_EXTERNAL_STORAGE` (Android 9 and earlier) | `NSPhotoLibraryAddUsageDescription`; the app's Documents shown in Files |
-| `ryui/background` | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC`, `POST_NOTIFICATIONS`, `WAKE_LOCK`; a foreground service | |
-| `ryui/scan` | ML Kit's barcode model (about 2 MB) | |
-| `ryui/vision` | ML Kit's text, face and barcode models (about 30 MB) | |
-| `ryui/photos` | `READ_MEDIA_IMAGES`, `READ_MEDIA_VISUAL_USER_SELECTED`; `READ_EXTERNAL_STORAGE` (Android 12 and earlier) | `NSPhotoLibraryUsageDescription` |
-| `ryui/push` | Firebase Cloud Messaging, `POST_NOTIFICATIONS` | the `aps-environment` entitlement; `remote-notification` background mode |
-| `ryui/appleauth` | | the Sign in with Apple entitlement |
-| `ryui/biometric` | `USE_BIOMETRIC` | `NSFaceIDUsageDescription` |
-| `ryui/audio/record` | `RECORD_AUDIO`, `FOREGROUND_SERVICE_MICROPHONE`; a foreground service | `NSMicrophoneUsageDescription` |
-| `ryui/transcribe` | `RECORD_AUDIO` | `NSSpeechRecognitionUsageDescription` |
-| `ryui/screen` | `DETECT_SCREEN_CAPTURE` | |
-| `ryui/tracking` | | `NSUserTrackingUsageDescription` |
-| `ryui/review` | Play's in-app review library | |
-| `ryui/integrity` | Play Integrity | the App Attest entitlement |
-| `ryui/agerange` | Play Age Signals | the Declared Age Range entitlement |
-| `ryui/maps` | Google's Maps SDK | |
-| `ryui/periodic` | WorkManager | `fetch` and `processing` background modes; the task identifiers |
-| `ryui/sensors` | `ACTIVITY_RECOGNITION` (the pedometer) | `NSMotionUsageDescription` (the pedometer) |
-| `ryui/speech` | the text-to-speech engine's visibility (`<queries>`) | |
-| `ryui/contacts` | `READ_CONTACTS` (for `List`) | `NSContactsUsageDescription` |
-| `ryui/calendar` | `READ_CALENDAR` (for `Calendars`, `Events`) | `NSCalendarsFullAccessUsageDescription`, `NSCalendarsUsageDescription` |
-| `ryui/compose` | the visibility of the apps for `mailto:` and `smsto:` (`<queries>`) | `mailto` in `LSApplicationQueriesSchemes` |
+| `asuka/camera` | `CAMERA` | `NSCameraUsageDescription` |
+| `asuka/camera/record` | `RECORD_AUDIO` | `NSMicrophoneUsageDescription` |
+| `asuka/location` | `ACCESS_COARSE_LOCATION`, `ACCESS_FINE_LOCATION` | `NSLocationWhenInUseUsageDescription` |
+| `asuka/notify` | `POST_NOTIFICATIONS` | |
+| `asuka/network` | `ACCESS_NETWORK_STATE` | |
+| `asuka/library` | `WRITE_EXTERNAL_STORAGE` (Android 9 and earlier) | `NSPhotoLibraryAddUsageDescription`; the app's Documents shown in Files |
+| `asuka/background` | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC`, `POST_NOTIFICATIONS`, `WAKE_LOCK`; a foreground service | |
+| `asuka/scan` | ML Kit's barcode model (about 2 MB) | |
+| `asuka/vision` | ML Kit's text, face and barcode models (about 30 MB) | |
+| `asuka/photos` | `READ_MEDIA_IMAGES`, `READ_MEDIA_VISUAL_USER_SELECTED`; `READ_EXTERNAL_STORAGE` (Android 12 and earlier) | `NSPhotoLibraryUsageDescription` |
+| `asuka/push` | Firebase Cloud Messaging, `POST_NOTIFICATIONS` | the `aps-environment` entitlement; `remote-notification` background mode |
+| `asuka/appleauth` | | the Sign in with Apple entitlement |
+| `asuka/biometric` | `USE_BIOMETRIC` | `NSFaceIDUsageDescription` |
+| `asuka/audio/record` | `RECORD_AUDIO`, `FOREGROUND_SERVICE_MICROPHONE`; a foreground service | `NSMicrophoneUsageDescription` |
+| `asuka/transcribe` | `RECORD_AUDIO` | `NSSpeechRecognitionUsageDescription` |
+| `asuka/screen` | `DETECT_SCREEN_CAPTURE` | |
+| `asuka/tracking` | | `NSUserTrackingUsageDescription` |
+| `asuka/review` | Play's in-app review library | |
+| `asuka/integrity` | Play Integrity | the App Attest entitlement |
+| `asuka/agerange` | Play Age Signals | the Declared Age Range entitlement |
+| `asuka/maps` | Google's Maps SDK | |
+| `asuka/periodic` | WorkManager | `fetch` and `processing` background modes; the task identifiers |
+| `asuka/sensors` | `ACTIVITY_RECOGNITION` (the pedometer) | `NSMotionUsageDescription` (the pedometer) |
+| `asuka/speech` | the text-to-speech engine's visibility (`<queries>`) | |
+| `asuka/contacts` | `READ_CONTACTS` (for `List`) | `NSContactsUsageDescription` |
+| `asuka/calendar` | `READ_CALENDAR` (for `Calendars`, `Events`) | `NSCalendarsFullAccessUsageDescription`, `NSCalendarsUsageDescription` |
+| `asuka/compose` | the visibility of the apps for `mailto:` and `smsto:` (`<queries>`) | `mailto` in `LSApplicationQueriesSchemes` |
 
-`ryui/device`, `ryui/audio`, `ryui/splash`, `ryui/imageedit`,
-`ryui/widget`, `ryui/js`, `ryui/secure`, `ryui/preview` and
-`ryui/print` need none.
+`asuka/device`, `asuka/audio`, `asuka/splash`, `asuka/imageedit`,
+`asuka/widget`, `asuka/js`, `asuka/secure`, `asuka/preview` and
+`asuka/print` need none.
 
 An entitlement needs its capability on the app's App ID
 (developer.apple.com, Identifiers) for a release build: the provisioning
-profile has it then. `ryui build -platform ios` stops with what's missing if the
+profile has it then. `asuka build -platform ios` stops with what's missing if the
 profile lacks one; simulator builds have them all.
 
-The purpose strings RyUI writes are generic ("To take a photo."). iOS
+The purpose strings Asuka writes are generic ("To take a photo."). iOS
 and macOS show them when they ask the user, so write your own in
-`ryui.json`'s `ios.usage`:
+`asuka.json`'s `ios.usage`:
 
 ```json
 {
@@ -91,17 +91,17 @@ The others take a callback, called on the main thread.
 
 ## On a Mac
 
-A Mac app (`ryui dev` and `ryui build`) has the same purpose strings in
+A Mac app (`asuka dev` and `asuka build`) has the same purpose strings in
 its Info.plist (location's as `NSLocationUsageDescription` too). Its
 signature has the hardened runtime's entitlements for what they ask
 (camera, microphone, location, contacts, calendars, photos), without
 which a Developer ID build is refused them. Push's `aps-environment`,
 Sign in with Apple and App Attest are entitlements only a provisioning
-profile grants: `ryui build` embeds one for an app that uses them
-(`ryui.json`'s `mac.profile`, else `RYUI_MAC_PROFILE`, else the best
+profile grants: `asuka build` embeds one for an app that uses them
+(`asuka.json`'s `mac.profile`, else `ASUKA_MAC_PROFILE`, else the best
 match installed). Without one, the app builds, the CLI says what won't
 work, and on the Mac registering for pushes and signing in with Apple
-fail, and App Attest says it isn't supported. `ryui dev` signs ad hoc,
+fail, and App Attest says it isn't supported. `asuka dev` signs ad hoc,
 without a profile, so the same holds there. A Mac App Store build
 (`-appstore`) is sandboxed, with the network and the files the user
 picks. See [Shipping](shipping.md).
@@ -112,29 +112,29 @@ UserNotifications, AuthenticationServices), except where a Mac differs:
 
 | Package | On a Mac |
 | --- | --- |
-| `ryui/device` | `PickPhotos` and `PickFiles`: an open panel, a sheet on the window (no permission), copies in the app's caches. `Browse` opens the page in the user's browser. `GetInfo`: `Model` `"Mac"`, `System` `"macOS"` |
-| `ryui/camera` | `Take`: a sheet over the window with a live preview, Take Photo and Cancel (AppKit has no camera screen). `View`'s "back" is the built-in camera (a Mac has no back one), or the one plugged in; scanning codes in it needs macOS 13 |
-| `ryui/audio/record` | No audio session: other apps' sound plays on; `Background` changes nothing, a Mac app records out of sight anyway |
-| `ryui/contacts`, `ryui/calendar` | `Add` asks in an alert over the window (macOS has no new contact or event screen), then saves, asking for access first |
-| `ryui/photos` | PhotoKit, as on iOS; a Mac has no limited library: `ManageLimited` does nothing |
-| `ryui/library` | Photos and videos go to Photos; `Downloads` and `Music` to the user's `~/Downloads` and `~/Music`, in the folder asked |
-| `ryui/biometric` | Touch ID's prompt, or the user's password (not with `NoPasscode`) |
-| `ryui/push` | APNs, as on iOS; no `Rewrite` (it needs a notification service extension). Needs a provisioning profile (above) |
-| `ryui/appleauth` | Apple's button and sheet, as on iOS. Needs a provisioning profile (above) |
-| `ryui/integrity` | App Attest, as on iOS. Needs a provisioning profile (above): without one `Supported` is false |
-| `ryui/background` | The task keeps App Nap from slowing the app; there's no notification, so `Update` changes nothing |
-| `ryui/periodic` | `NSBackgroundActivityScheduler`: the tasks run while the app runs (it isn't launched for them); one that wants power waits while the Mac is on its battery |
-| `ryui/screen` | `Lock` and `SetBars` do nothing; `PreventCapture` leaves the app's windows out of screenshots and recordings; `OnScreenshot` hears of the screenshots Spotlight finds |
-| `ryui/transcribe` | On the device only; the app's bundle needs its purpose string, which `ryui build` writes |
-| `ryui/sensors` | A Mac has no motion sensors: `Available` is false, watching gets nothing, `StepsBetween` fails with `ErrNotAvailable` |
+| `asuka/device` | `PickPhotos` and `PickFiles`: an open panel, a sheet on the window (no permission), copies in the app's caches. `Browse` opens the page in the user's browser. `GetInfo`: `Model` `"Mac"`, `System` `"macOS"` |
+| `asuka/camera` | `Take`: a sheet over the window with a live preview, Take Photo and Cancel (AppKit has no camera screen). `View`'s "back" is the built-in camera (a Mac has no back one), or the one plugged in; scanning codes in it needs macOS 13 |
+| `asuka/audio/record` | No audio session: other apps' sound plays on; `Background` changes nothing, a Mac app records out of sight anyway |
+| `asuka/contacts`, `asuka/calendar` | `Add` asks in an alert over the window (macOS has no new contact or event screen), then saves, asking for access first |
+| `asuka/photos` | PhotoKit, as on iOS; a Mac has no limited library: `ManageLimited` does nothing |
+| `asuka/library` | Photos and videos go to Photos; `Downloads` and `Music` to the user's `~/Downloads` and `~/Music`, in the folder asked |
+| `asuka/biometric` | Touch ID's prompt, or the user's password (not with `NoPasscode`) |
+| `asuka/push` | APNs, as on iOS; no `Rewrite` (it needs a notification service extension). Needs a provisioning profile (above) |
+| `asuka/appleauth` | Apple's button and sheet, as on iOS. Needs a provisioning profile (above) |
+| `asuka/integrity` | App Attest, as on iOS. Needs a provisioning profile (above): without one `Supported` is false |
+| `asuka/background` | The task keeps App Nap from slowing the app; there's no notification, so `Update` changes nothing |
+| `asuka/periodic` | `NSBackgroundActivityScheduler`: the tasks run while the app runs (it isn't launched for them); one that wants power waits while the Mac is on its battery |
+| `asuka/screen` | `Lock` and `SetBars` do nothing; `PreventCapture` leaves the app's windows out of screenshots and recordings; `OnScreenshot` hears of the screenshots Spotlight finds |
+| `asuka/transcribe` | On the device only; the app's bundle needs its purpose string, which `asuka build` writes |
+| `asuka/sensors` | A Mac has no motion sensors: `Available` is false, watching gets nothing, `StepsBetween` fails with `ErrNotAvailable` |
 | `ui.Haptic` | The trackpad's feedback (a Force Touch trackpad): an alignment for `HapticSelection`, a level change for the others |
-| `ryui/widget`, `ryui/agerange` | Not on a Mac: `widget.Set` does nothing, `agerange.Request` fails with `ErrNotAvailable` |
-| `ryui/splash` | A Mac app has no launch screen: `Hold` and `Hide` do nothing |
-| `ui.OnShare`, `app.ShareSheet`, shortcuts | iOS and Android only: a Mac app isn't offered in other apps' share menus, and `ryui.json`'s `shortcuts` aren't added |
+| `asuka/widget`, `asuka/agerange` | Not on a Mac: `widget.Set` does nothing, `agerange.Request` fails with `ErrNotAvailable` |
+| `asuka/splash` | A Mac app has no launch screen: `Hold` and `Hide` do nothing |
+| `ui.OnShare`, `app.ShareSheet`, shortcuts | iOS and Android only: a Mac app isn't offered in other apps' share menus, and `asuka.json`'s `shortcuts` aren't added |
 
 ## On Windows
 
-A Windows app declares nothing: `ryui build -platform windows` writes no
+A Windows app declares nothing: `asuka build -platform windows` writes no
 capabilities, and Windows asks a desktop app for no permission. The
 privacy switches in Settings (Privacy & security) still hold for the
 camera, the microphone and location: with one off, the camera and
@@ -148,33 +148,33 @@ device without it:
 
 | Package | On Windows |
 | --- | --- |
-| `ryui/device` | `PickPhotos` and `PickFiles`: the open dialog over the window, copies in the app's caches. `Browse` opens the page in the user's browser. The clipboard's images are PNGs. `KeepAwake` keeps the display on. `GetInfo`: `Model` `"PC"`, `System` `"Windows"`, `SystemVersion` `"10.0.<build>"` |
-| `ryui/secure` | The user's generic credentials in the Credential Manager, named `<app>/<key>` (a value up to 2560 bytes) |
-| `ryui/camera` | Media Foundation's capture engine. `Take`: a dialog over the window with a live preview, Take Photo and Cancel (Enter and Escape). `View` picks the camera Windows names front or rear, else the first; with `Scan`, it reads codes in four frames a second with RyUI's own reader (as `ryui/scan`'s `File`). Settings' camera switch off: "not allowed" |
-| `ryui/camera/record` | H.264 and AAC in MPEG-4 (`.mp4`), the default microphone unless muted |
-| `ryui/audio` | MCI (DirectShow's playback); a URL is downloaded to the app's caches first |
-| `ryui/audio/record` | The default microphone, AAC at 44.1 kHz (voice mono, music stereo); `Background` changes nothing |
-| `ryui/speech` | SAPI's voices, those installed (Settings, Time & language, Speech) |
-| `ryui/network` | The Network List Manager: Wi-Fi, cellular or a cable; `Metered` for a connection with a cost, `Constrained` near or over its data limit |
-| `ryui/location` | WinRT's Geolocator. `PlaceName` asks OpenStreetMap's Nominatim (Windows's own geocoder needs a Bing Maps key): one request a second at most, answers kept in the app's caches |
-| `ryui/biometric` | Windows Hello's prompt; `Check`'s kind is the sensor's; Hello always offers its PIN, and names its own cancel button |
-| `ryui/webauth` | A window over the app's with WebView2 in it (the app's web profile; `Ephemeral`: a throwaway one) |
-| `ryui/js` | A WebView2 that's never shown |
-| `ryui/contacts`, `ryui/calendar` | Windows gives the contacts and calendars to packaged apps only: `Request` says denied; `Add` opens a vCard or an event file in the user's contacts or calendar app (`saved` is false: it doesn't say) |
-| `ryui/photos` | The Pictures folder (no permission to ask); screenshots are its Screenshots folder's |
-| `ryui/library` | The user's Downloads, Videos, Music and Pictures folders, in the folder asked |
-| `ryui/vision` | Windows's OCR, in the languages whose OCR is installed (Settings, Time & language), and its face detector; codes as `ryui/scan` reads them |
-| `ryui/scan` | Windows has no reader of codes for apps: RyUI's own, in Go, reads QR codes, Data Matrix, EAN-13 and EAN-8, UPC-A and UPC-E, Code 128 and Code 39 (not Aztec, PDF417, Code 93, Codabar nor ITF) |
-| `ryui/imageedit` | Windows's codecs read (HEIC and WebP where their extensions are installed); a video's frame through Media Foundation |
-| `ryui/maps` | Windows has no map control for desktop apps (its own needs a Bing Maps key): the host draws OpenStreetMap's tiles, downloaded two at a time and kept a week in the app's caches, with "© OpenStreetMap contributors" on the map; drag, the wheel or a pinch, double-click, + and -. Satellite and Hybrid show the streets (no free imagery), and `ShowsUser` shows nothing, as on Linux |
-| `ryui/background` | The task keeps the PC from sleeping; there's no notification, so `Update` changes nothing |
-| `ryui/periodic` | Timers while the app runs (it isn't launched for them); one that wants power waits while the PC is on its battery |
-| `ryui/screen` | `Lock` and `SetBars` do nothing; `PreventCapture` leaves the app's windows out of screenshots and recordings; `OnScreenshot` hears of the screenshots saved in the Screenshots folder (Print Screen with Windows, the Snipping Tool) |
-| `ryui/tracking` | No prompt: allowed while the advertising ID is on in Settings, else denied |
-| `ryui/push`, `ryui/widget`, `ryui/review`, `ryui/integrity` | Packaged (Store) apps' or Apple's and Google's: `push.Register` fails, `widget.Set` does nothing, `review.Request` shows nothing, `integrity.Supported` is false |
-| `ryui/appleauth`, `ryui/agerange`, `ryui/transcribe`, `ryui/sensors` | Not on Windows: unavailable, as on a device without them |
+| `asuka/device` | `PickPhotos` and `PickFiles`: the open dialog over the window, copies in the app's caches. `Browse` opens the page in the user's browser. The clipboard's images are PNGs. `KeepAwake` keeps the display on. `GetInfo`: `Model` `"PC"`, `System` `"Windows"`, `SystemVersion` `"10.0.<build>"` |
+| `asuka/secure` | The user's generic credentials in the Credential Manager, named `<app>/<key>` (a value up to 2560 bytes) |
+| `asuka/camera` | Media Foundation's capture engine. `Take`: a dialog over the window with a live preview, Take Photo and Cancel (Enter and Escape). `View` picks the camera Windows names front or rear, else the first; with `Scan`, it reads codes in four frames a second with Asuka's own reader (as `asuka/scan`'s `File`). Settings' camera switch off: "not allowed" |
+| `asuka/camera/record` | H.264 and AAC in MPEG-4 (`.mp4`), the default microphone unless muted |
+| `asuka/audio` | MCI (DirectShow's playback); a URL is downloaded to the app's caches first |
+| `asuka/audio/record` | The default microphone, AAC at 44.1 kHz (voice mono, music stereo); `Background` changes nothing |
+| `asuka/speech` | SAPI's voices, those installed (Settings, Time & language, Speech) |
+| `asuka/network` | The Network List Manager: Wi-Fi, cellular or a cable; `Metered` for a connection with a cost, `Constrained` near or over its data limit |
+| `asuka/location` | WinRT's Geolocator. `PlaceName` asks OpenStreetMap's Nominatim (Windows's own geocoder needs a Bing Maps key): one request a second at most, answers kept in the app's caches |
+| `asuka/biometric` | Windows Hello's prompt; `Check`'s kind is the sensor's; Hello always offers its PIN, and names its own cancel button |
+| `asuka/webauth` | A window over the app's with WebView2 in it (the app's web profile; `Ephemeral`: a throwaway one) |
+| `asuka/js` | A WebView2 that's never shown |
+| `asuka/contacts`, `asuka/calendar` | Windows gives the contacts and calendars to packaged apps only: `Request` says denied; `Add` opens a vCard or an event file in the user's contacts or calendar app (`saved` is false: it doesn't say) |
+| `asuka/photos` | The Pictures folder (no permission to ask); screenshots are its Screenshots folder's |
+| `asuka/library` | The user's Downloads, Videos, Music and Pictures folders, in the folder asked |
+| `asuka/vision` | Windows's OCR, in the languages whose OCR is installed (Settings, Time & language), and its face detector; codes as `asuka/scan` reads them |
+| `asuka/scan` | Windows has no reader of codes for apps: Asuka's own, in Go, reads QR codes, Data Matrix, EAN-13 and EAN-8, UPC-A and UPC-E, Code 128 and Code 39 (not Aztec, PDF417, Code 93, Codabar nor ITF) |
+| `asuka/imageedit` | Windows's codecs read (HEIC and WebP where their extensions are installed); a video's frame through Media Foundation |
+| `asuka/maps` | Windows has no map control for desktop apps (its own needs a Bing Maps key): the host draws OpenStreetMap's tiles, downloaded two at a time and kept a week in the app's caches, with "© OpenStreetMap contributors" on the map; drag, the wheel or a pinch, double-click, + and -. Satellite and Hybrid show the streets (no free imagery), and `ShowsUser` shows nothing, as on Linux |
+| `asuka/background` | The task keeps the PC from sleeping; there's no notification, so `Update` changes nothing |
+| `asuka/periodic` | Timers while the app runs (it isn't launched for them); one that wants power waits while the PC is on its battery |
+| `asuka/screen` | `Lock` and `SetBars` do nothing; `PreventCapture` leaves the app's windows out of screenshots and recordings; `OnScreenshot` hears of the screenshots saved in the Screenshots folder (Print Screen with Windows, the Snipping Tool) |
+| `asuka/tracking` | No prompt: allowed while the advertising ID is on in Settings, else denied |
+| `asuka/push`, `asuka/widget`, `asuka/review`, `asuka/integrity` | Packaged (Store) apps' or Apple's and Google's: `push.Register` fails, `widget.Set` does nothing, `review.Request` shows nothing, `integrity.Supported` is false |
+| `asuka/appleauth`, `asuka/agerange`, `asuka/transcribe`, `asuka/sensors` | Not on Windows: unavailable, as on a device without them |
 | `ui.Haptic` | A PC has no haptics: it does nothing |
-| `ryui/splash` | A Windows app has no launch screen: `Hold` and `Hide` do nothing |
+| `asuka/splash` | A Windows app has no launch screen: `Hold` and `Hide` do nothing |
 | `ui.OnShare`, `app.ShareSheet`, shortcuts | iOS and Android only |
 
 ## On Linux
@@ -183,7 +183,7 @@ A Linux app declares nothing either. Where the host goes through an XDG
 desktop portal (files, the camera, location, notifications, mail,
 printing, opening files and links, keeping the system awake), the
 portal asks the user as it does, and it works in a Flatpak sandbox as
-out of one. The Flatpak manifest `ryui build -platform linux` writes
+out of one. The Flatpak manifest `asuka build -platform linux` writes
 lets the app reach only the display, the GPU, the network and the
 portals. Services the host reaches without a portal (Speech Dispatcher,
 Evolution Data Server for contacts and calendars, NetworkManager for the
@@ -200,28 +200,28 @@ names what's missing.
 
 | Package | On Linux |
 | --- | --- |
-| `ryui/device` | `PickPhotos` and `PickFiles`: GTK's file dialog (the portal's in a sandbox), copies in the app's caches. Clipboard images and changes through GDK's clipboard. `Browse` opens the page in the user's browser. `KeepAwake` keeps the session from idling. `GetInfo`: `Model` `"PC"`, `System` `"Linux"`, `SystemVersion` the distribution's (`/etc/os-release`) |
-| `ryui/secure` | The keyring (libsecret: GNOME Keyring, KWallet, KeePassXC), an item per key labeled with the app's name; without libsecret or a keyring, the calls fail saying so |
-| `ryui/network` | GNetworkMonitor (the portal's in a sandbox); Wi-Fi, ethernet or cellular from NetworkManager; never constrained |
-| `ryui/location` | The location portal (GeoClue's, which asks the user), else GeoClue itself; `PlaceName` with geocode-glib, when it's installed |
-| `ryui/speech` | Speech Dispatcher (started when it isn't running): its voices, rate, pitch, volume |
-| `ryui/audio`, `ryui/audio/record` | GStreamer: an AAC encoder (FDK, libav's...) records, the default source the microphone |
-| `ryui/library` | The user's folders (XDG's Pictures, Videos, Music, Downloads), in the folder asked |
+| `asuka/device` | `PickPhotos` and `PickFiles`: GTK's file dialog (the portal's in a sandbox), copies in the app's caches. Clipboard images and changes through GDK's clipboard. `Browse` opens the page in the user's browser. `KeepAwake` keeps the session from idling. `GetInfo`: `Model` `"PC"`, `System` `"Linux"`, `SystemVersion` the distribution's (`/etc/os-release`) |
+| `asuka/secure` | The keyring (libsecret: GNOME Keyring, KWallet, KeePassXC), an item per key labeled with the app's name; without libsecret or a keyring, the calls fail saying so |
+| `asuka/network` | GNetworkMonitor (the portal's in a sandbox); Wi-Fi, ethernet or cellular from NetworkManager; never constrained |
+| `asuka/location` | The location portal (GeoClue's, which asks the user), else GeoClue itself; `PlaceName` with geocode-glib, when it's installed |
+| `asuka/speech` | Speech Dispatcher (started when it isn't running): its voices, rate, pitch, volume |
+| `asuka/audio`, `asuka/audio/record` | GStreamer: an AAC encoder (FDK, libav's...) records, the default source the microphone |
+| `asuka/library` | The user's folders (XDG's Pictures, Videos, Music, Downloads), in the folder asked |
 | `ui.ShareFiles` | No share sheet: the files are copied to the clipboard, with a toast |
-| `ryui/camera`, `ryui/camera/record` | The camera portal (it asks the user once; PipeWire's cameras, `gstreamer1.0-pipewire`), else the first Video4Linux camera, through GStreamer. `Take`: a dialog over the window with a live preview, Take Photo and Cancel. `View`: the preview, mirrored, filling its box; front and back are the same camera (a computer's face the user). Videos are MPEG-4 (H.264 from x264 or OpenH264, AAC), else WebM; scanning codes needs GStreamer's `zbar` element. No camera: `ErrNoCamera`; refused: "not allowed" |
-| `ryui/scan`, `ryui/vision` | ZBar (`libzbar0`) reads codes: no Aztec or Data Matrix. Tesseract (`libtesseract5` and a language's data) reads text; nothing finds faces: `Faces` is empty. Without ZBar, `scan.File` fails "not available"; `vision.Analyze` leaves out what isn't installed |
-| `ryui/imageedit` | GdkPixbuf's loaders decode (HEIF and WebP where their loaders are installed), upright; the actions are done in Go; video frames from GStreamer |
-| `ryui/webauth` | A dialog over the window with a WebKitGTK web view (`Ephemeral`: a session of its own); closing it cancels |
-| `ryui/js` | A WebKitGTK web view that's never shown |
-| `ryui/maps` | libshumate's map of OpenStreetMap's tiles (`libshumate-1.0-1`); Satellite and Hybrid show the streets; no user location layer. Without libshumate, the view says so and `OnError` is called |
-| `ryui/background` | The task keeps the system from suspending; no notification, `Update` changes nothing |
-| `ryui/periodic` | The tasks run on a timer while the app runs (it isn't launched for them); one that wants power waits while on the battery, one that wants the network while it's offline |
-| `ryui/screen` | `Lock`, `SetBars` and `PreventCapture` do nothing; `OnScreenshot` hears of new images in Pictures/Screenshots (GNOME's, KDE's) |
-| `ryui/sensors` | iio-sensor-proxy (convertibles, tablets): the light sensor, in lux, and the accelerometer's orientation as 1 g along the axis that's up, as it turns. No others: `Available` is false, `StepsBetween` fails with `ErrNotAvailable` |
-| `ryui/contacts`, `ryui/calendar` | Evolution Data Server's address books and calendars (GNOME Contacts', GNOME Calendar's, the online accounts'): access is `Full` when it has one; `Pick` is a dialog of the contacts with a search field; `Add` asks, then saves in the default address book or the event's calendar. Without it: contacts' access is `Denied`, calendars' `WriteOnly`; `Add` opens a vCard or an iCalendar file in the user's contacts or calendar app (`saved` is false); `contacts.Pick` fails |
-| `ryui/photos`' library, `ryui/appleauth`, `ryui/transcribe`, `ryui/widget` | None on Linux: the library's access is `Denied`; `appleauth.Available` is false and its button shows nothing; `transcribe` fails with `ErrNotAvailable`; `widget.Set` does nothing. `ryui/splash` has nothing to hold |
-| `ryui/biometric`, `ryui/integrity`, `ryui/agerange`, `ryui/push` | None on Linux: not available, not supported. `ryui/review` does nothing; `ryui/tracking` answers allowed |
-| `ryui/crash` | Go's crash output, which has a crash in native code too (a signal in GTK's code, a GLib abort), reported as `Native`; the system's own record (systemd-coredump, apport) isn't read |
+| `asuka/camera`, `asuka/camera/record` | The camera portal (it asks the user once; PipeWire's cameras, `gstreamer1.0-pipewire`), else the first Video4Linux camera, through GStreamer. `Take`: a dialog over the window with a live preview, Take Photo and Cancel. `View`: the preview, mirrored, filling its box; front and back are the same camera (a computer's face the user). Videos are MPEG-4 (H.264 from x264 or OpenH264, AAC), else WebM; scanning codes needs GStreamer's `zbar` element. No camera: `ErrNoCamera`; refused: "not allowed" |
+| `asuka/scan`, `asuka/vision` | ZBar (`libzbar0`) reads codes: no Aztec or Data Matrix. Tesseract (`libtesseract5` and a language's data) reads text; nothing finds faces: `Faces` is empty. Without ZBar, `scan.File` fails "not available"; `vision.Analyze` leaves out what isn't installed |
+| `asuka/imageedit` | GdkPixbuf's loaders decode (HEIF and WebP where their loaders are installed), upright; the actions are done in Go; video frames from GStreamer |
+| `asuka/webauth` | A dialog over the window with a WebKitGTK web view (`Ephemeral`: a session of its own); closing it cancels |
+| `asuka/js` | A WebKitGTK web view that's never shown |
+| `asuka/maps` | libshumate's map of OpenStreetMap's tiles (`libshumate-1.0-1`); Satellite and Hybrid show the streets; no user location layer. Without libshumate, the view says so and `OnError` is called |
+| `asuka/background` | The task keeps the system from suspending; no notification, `Update` changes nothing |
+| `asuka/periodic` | The tasks run on a timer while the app runs (it isn't launched for them); one that wants power waits while on the battery, one that wants the network while it's offline |
+| `asuka/screen` | `Lock`, `SetBars` and `PreventCapture` do nothing; `OnScreenshot` hears of new images in Pictures/Screenshots (GNOME's, KDE's) |
+| `asuka/sensors` | iio-sensor-proxy (convertibles, tablets): the light sensor, in lux, and the accelerometer's orientation as 1 g along the axis that's up, as it turns. No others: `Available` is false, `StepsBetween` fails with `ErrNotAvailable` |
+| `asuka/contacts`, `asuka/calendar` | Evolution Data Server's address books and calendars (GNOME Contacts', GNOME Calendar's, the online accounts'): access is `Full` when it has one; `Pick` is a dialog of the contacts with a search field; `Add` asks, then saves in the default address book or the event's calendar. Without it: contacts' access is `Denied`, calendars' `WriteOnly`; `Add` opens a vCard or an iCalendar file in the user's contacts or calendar app (`saved` is false); `contacts.Pick` fails |
+| `asuka/photos`' library, `asuka/appleauth`, `asuka/transcribe`, `asuka/widget` | None on Linux: the library's access is `Denied`; `appleauth.Available` is false and its button shows nothing; `transcribe` fails with `ErrNotAvailable`; `widget.Set` does nothing. `asuka/splash` has nothing to hold |
+| `asuka/biometric`, `asuka/integrity`, `asuka/agerange`, `asuka/push` | None on Linux: not available, not supported. `asuka/review` does nothing; `asuka/tracking` answers allowed |
+| `asuka/crash` | Go's crash output, which has a crash in native code too (a signal in GTK's code, a GLib abort), reported as `Native`; the system's own record (systemd-coredump, apport) isn't read |
 | `ui.Haptic` | A desktop has no haptics: it does nothing |
 | `ui.OnShare`, `app.ShareSheet`, shortcuts | iOS and Android only |
 
@@ -230,46 +230,46 @@ names what's missing.
 A page declares nothing: the browser asks the user the first time a
 package needs the camera, the microphone, location or notifications.
 Most of these APIs need a secure page, served over `https` or from
-`localhost` (`ryui dev -platform web`'s, but not `-lan`'s addresses).
+`localhost` (`asuka dev -platform web`'s, but not `-lan`'s addresses).
 The packages call the web's APIs; [the web](web.md) has the details,
 and its service worker for notifications and Web Push.
 
 | Package | In a browser |
 | --- | --- |
-| `ryui/device` | `PickPhotos` and `PickFiles`: the browser's file picker, copies in the caches. `Browse`: a new tab. The clipboard: the app's own copies, and other apps' where the user lets the page read it. `KeepAwake`: the Screen Wake Lock. `GetInfo` from the user agent (Chromium's client hints give the system's version and an Android phone's model) |
-| `ryui/secure` | The values encrypted (AES-GCM) in IndexedDB, with a key the browser won't let out; not a keychain (see [the web](web.md)) |
-| `ryui/camera`, `ryui/camera/record` | `Take` opens a phone's camera, or a dialog with the live camera and a shutter; `View` is the camera in a `<video>`, with `Capture`, recording, and scanning codes where the browser has `BarcodeDetector` |
-| `ryui/scan`, `ryui/vision` | `BarcodeDetector` reads codes; faces and text only where the browser has them |
-| `ryui/imageedit` | A canvas: JPEG or PNG; a remote image needs CORS |
-| `ryui/photos` | A page can't read the library: access is `Denied` (`device.PickPhotos` picks photos) |
-| `ryui/library` | `Save` downloads the file |
-| `ryui/location` | The Geolocation API; `PlaceName` isn't on the web (a browser has no geocoder) |
-| `ryui/network` | Online from `navigator.onLine`; Wi-Fi, cellular or Ethernet where the browser says (Chrome on Android), metered for cellular, constrained for Data Saver |
-| `ryui/notify`, `ryui/push` | The Notification API and Web Push, through the app's service worker (`push.Register`'s `Service` is `"webpush"`); a notification due later can't show while no page of the app is open |
-| `ryui/audio`, `ryui/audio/record` | An audio element per player (the browser's autoplay rules apply: play from a tap); `MediaRecorder`, AAC in MPEG-4 where the browser records it, else Opus in WebM |
-| `ryui/speech` | `speechSynthesis`, the browser's voices |
-| `ryui/sensors` | The Generic Sensor API (Chrome) or device motion and orientation events (Safari asks on a tap), in Android's axes and units; no barometer or pedometer |
-| `ryui/biometric` | The platform's authenticator through WebAuthn (Touch ID, Face ID, Windows Hello, Android's screen lock): the first `Authenticate` makes a passkey for the site. The prompt is the browser's: `Reason` and `Cancel` don't show |
-| `ryui/webauth` | A popup, done when it comes back to a page of the app's own origin (a custom scheme can't open a page) |
-| `ryui/js` | A hidden, sandboxed frame |
-| `ryui/contacts`, `ryui/calendar` | `contacts.Pick` where the browser has the Contact Picker (Chrome on Android); `Add` downloads a vCard or an `.ics` file; reading them isn't on the web |
-| `ryui/screen` | `Lock` only full screen or in an installed app; hiding the bars is full screen; no `PreventCapture` or `OnScreenshot` |
-| `ryui/background` | The page runs while it's open; a task adds nothing, and has no notification |
-| `ryui/tracking` | No prompt: `Denied` when the browser sends Global Privacy Control or Do Not Track, else `Allowed` |
+| `asuka/device` | `PickPhotos` and `PickFiles`: the browser's file picker, copies in the caches. `Browse`: a new tab. The clipboard: the app's own copies, and other apps' where the user lets the page read it. `KeepAwake`: the Screen Wake Lock. `GetInfo` from the user agent (Chromium's client hints give the system's version and an Android phone's model) |
+| `asuka/secure` | The values encrypted (AES-GCM) in IndexedDB, with a key the browser won't let out; not a keychain (see [the web](web.md)) |
+| `asuka/camera`, `asuka/camera/record` | `Take` opens a phone's camera, or a dialog with the live camera and a shutter; `View` is the camera in a `<video>`, with `Capture`, recording, and scanning codes where the browser has `BarcodeDetector` |
+| `asuka/scan`, `asuka/vision` | `BarcodeDetector` reads codes; faces and text only where the browser has them |
+| `asuka/imageedit` | A canvas: JPEG or PNG; a remote image needs CORS |
+| `asuka/photos` | A page can't read the library: access is `Denied` (`device.PickPhotos` picks photos) |
+| `asuka/library` | `Save` downloads the file |
+| `asuka/location` | The Geolocation API; `PlaceName` isn't on the web (a browser has no geocoder) |
+| `asuka/network` | Online from `navigator.onLine`; Wi-Fi, cellular or Ethernet where the browser says (Chrome on Android), metered for cellular, constrained for Data Saver |
+| `asuka/notify`, `asuka/push` | The Notification API and Web Push, through the app's service worker (`push.Register`'s `Service` is `"webpush"`); a notification due later can't show while no page of the app is open |
+| `asuka/audio`, `asuka/audio/record` | An audio element per player (the browser's autoplay rules apply: play from a tap); `MediaRecorder`, AAC in MPEG-4 where the browser records it, else Opus in WebM |
+| `asuka/speech` | `speechSynthesis`, the browser's voices |
+| `asuka/sensors` | The Generic Sensor API (Chrome) or device motion and orientation events (Safari asks on a tap), in Android's axes and units; no barometer or pedometer |
+| `asuka/biometric` | The platform's authenticator through WebAuthn (Touch ID, Face ID, Windows Hello, Android's screen lock): the first `Authenticate` makes a passkey for the site. The prompt is the browser's: `Reason` and `Cancel` don't show |
+| `asuka/webauth` | A popup, done when it comes back to a page of the app's own origin (a custom scheme can't open a page) |
+| `asuka/js` | A hidden, sandboxed frame |
+| `asuka/contacts`, `asuka/calendar` | `contacts.Pick` where the browser has the Contact Picker (Chrome on Android); `Add` downloads a vCard or an `.ics` file; reading them isn't on the web |
+| `asuka/screen` | `Lock` only full screen or in an installed app; hiding the bars is full screen; no `PreventCapture` or `OnScreenshot` |
+| `asuka/background` | The page runs while it's open; a task adds nothing, and has no notification |
+| `asuka/tracking` | No prompt: `Denied` when the browser sends Global Privacy Control or Do Not Track, else `Allowed` |
 | `ui.Haptic` | `navigator.vibrate`, where the browser has it (Chrome on Android) |
-| `ryui/review`, `ryui/integrity`, `ryui/agerange`, `ryui/appleauth`, `ryui/periodic`, `ryui/widget`, `ryui/transcribe` | Not on the web: an error that says so, or the package's `ErrNotAvailable` |
-| `ryui/maps` | OpenStreetMap's tiles, drawn by the host, as on Windows; `ShowsUser` once the page has the location permission |
-| `ryui/crash` | Go's crashes (the host keeps the runtime's output) and uncaught JavaScript errors, as `Exception` reports that aren't fatal |
-| `ryui/splash` | `Hold` and `Hide` do nothing |
+| `asuka/review`, `asuka/integrity`, `asuka/agerange`, `asuka/appleauth`, `asuka/periodic`, `asuka/widget`, `asuka/transcribe` | Not on the web: an error that says so, or the package's `ErrNotAvailable` |
+| `asuka/maps` | OpenStreetMap's tiles, drawn by the host, as on Windows; `ShowsUser` once the page has the location permission |
+| `asuka/crash` | Go's crashes (the host keeps the runtime's output) and uncaught JavaScript errors, as `Exception` reports that aren't fatal |
+| `asuka/splash` | `Hold` and `Hide` do nothing |
 | `ui.OnShare`, `app.ShareSheet`, shortcuts | iOS and Android only |
 
-## The camera: ryui/camera
+## The camera: asuka/camera
 
 `camera.Take` shows the system's camera (iOS's camera screen, Android's
 camera app) and calls `done` with the photo's file, a JPEG, or `""` if the
 user cancelled. On a device without a camera (the iOS simulator) the error
 is `camera.ErrNoCamera`. A desktop has no camera screen: there `Take`
-shows a dialog of RyUI's over the window, with a live preview, Take
+shows a dialog of Asuka's over the window, with a live preview, Take
 Photo and Cancel; a browser opens a phone's camera, or a dialog like it.
 
 ```go
@@ -315,11 +315,11 @@ ui.Button(ui.ButtonProps{Title: ui.Val("Photo"), OnPress: func() {
 
 - `Facing`: `camera.Back` (the default) or `camera.Front`.
 - `Mode`: `camera.Photo` (the default), or `camera.Video` for recording
-  with `ryui/camera/record`, which takes photos too.
+  with `asuka/camera/record`, which takes photos too.
 - `Style`: its box.
 - `OnError`: called when the camera can't show: `"not allowed"` if the
   user refused it, `"no camera"` if there's none.
-- `Scan`: reads codes in what it sees; see `ryui/scan`.
+- `Scan`: reads codes in what it sees; see `asuka/scan`.
 
 The view asks for the camera the first time it shows, and the camera is
 on while the view is on screen. Show one at a time: `Capture` and
@@ -328,15 +328,15 @@ there's none.
 
 The files from `Take` and `Capture` are in the app's caches, which the
 system may clear: move one into `store.Dir()` to keep it, or save it to
-the photo library with [`ryui/library`](#saving-to-the-library-ryuilibrary).
+the photo library with [`asuka/library`](#saving-to-the-library-asukalibrary).
 
-**Android**: as `ryui/camera` declares the camera permission (the view
+**Android**: as `asuka/camera` declares the camera permission (the view
 needs it), Android requires it of the camera app too: `Take` asks for it
 first, and fails with `"not allowed"` if the user refuses.
 
-## Recording video: ryui/camera/record
+## Recording video: asuka/camera/record
 
-`ryui/camera/record` records video from the `camera.View` on screen, whose
+`asuka/camera/record` records video from the `camera.View` on screen, whose
 `Mode` is `camera.Video`. `record.Start` records until `record.Stop`, or
 until `MaxDuration` if set, then calls `done` with the video's file (in
 the app's caches: `.mov` on iOS and the Mac, `.mp4` on Android and
@@ -373,14 +373,14 @@ user refuses, the video has no sound. `record.Options{Mute: true}`
 records without sound and without asking. One recording at a time.
 
 The microphone's permission and purpose string come with this package,
-not with `ryui/camera`: an app that only takes photos goes without them.
+not with `asuka/camera`: an app that only takes photos goes without them.
 
-## Barcodes and QR codes: ryui/scan
+## Barcodes and QR codes: asuka/scan
 
-`ryui/scan` reads barcodes and QR codes, live in what a `camera.View`
+`asuka/scan` reads barcodes and QR codes, live in what a `camera.View`
 sees, or in an image file. iOS and the Mac read them with AVFoundation
 and Vision; Android with ML Kit, which only the apps that import
-`ryui/scan` are built with; Windows with a reader of RyUI's own, in Go;
+`asuka/scan` are built with; Windows with a reader of Asuka's own, in Go;
 Linux with ZBar; a browser with `BarcodeDetector`. Not every reader has
 every kind: see [On Windows](#on-windows) and [On Linux](#on-linux).
 
@@ -420,14 +420,14 @@ kinds: `QR`, `Aztec`, `DataMatrix`, `PDF417`, `EAN13`, `EAN8`, `UPCA`,
 `UPCE`, `Code128`, `Code39`, `Code93`, `Codabar`, `ITF`.
 
 **iOS** reads a UPC-A as an EAN-13 with a leading 0; asked for `UPCA`,
-RyUI gives it as a UPC-A again.
+Asuka gives it as a UPC-A again.
 
-## What's in an image: ryui/vision
+## What's in an image: asuka/vision
 
 `vision.Analyze(path, options)` finds text, faces and codes in an image,
 and where each is. It runs on the device: Apple's Vision on iOS and the
 Mac, ML Kit's bundled models on Android, which only the apps that import
-`ryui/vision` are built with, Windows's OCR and face detector, Tesseract
+`asuka/vision` are built with, Windows's OCR and face detector, Tesseract
 on Linux (no faces), and in a browser what its Shape Detection API has.
 Not on the main thread.
 
@@ -451,11 +451,11 @@ go func() {
 
 - A `Box` is in fractions of the image from its top left, with the image
   upright: it's the same at any scale, for a view over the image or
-  `ryui/imageedit`'s pixels.
+  `asuka/imageedit`'s pixels.
 - A `Line` has its `Text`, `Box` and `Words`. A `Word` is what the platform's
   word breaking finds (dictionary-based for Chinese and Japanese), or a mark of
   punctuation. `Start` and `End` are its place in the line's text, in runes.
-- A `Code` has its `Kind` (as `ryui/scan` names them), `Value` and `Box`.
+- A `Code` has its `Kind` (as `asuka/scan` names them), `Value` and `Box`.
 - `Options` turn off what you don't need (`NoText`, `NoFaces`, `NoCodes`).
   `Languages` are the text's, most likely first, iOS only: Vision reads only
   the script of the first's family well, so put Chinese first where it may
@@ -464,15 +464,15 @@ go func() {
 
 **iOS** boxes what it read as one group: words of a Chinese line that share a
 box divide it by their width, so a word's box there is an estimate. A barcode's
-box from Vision can be the line it read along; RyUI grows it to the bars. On
+box from Vision can be the line it read along; Asuka grows it to the bars. On
 **Android** the words' boxes come from each symbol's.
 
 OCR scales what it's given to a size of its own, and loses small text in a very
 long screenshot: slice it with `imageedit.Crop` and analyze each slice.
 
-## The photo library: ryui/photos
+## The photo library: asuka/photos
 
-`ryui/photos` reads the user's library, with their permission: PhotoKit on iOS
+`asuka/photos` reads the user's library, with their permission: PhotoKit on iOS
 and the Mac, MediaStore on Android, the Pictures folder on Windows. Linux
 and the web have no library an app can read: access is `Denied`. It's for an app whose screen is the library. To let the
 user pick a few photos, `device.PickPhotos` asks for no permission: prefer it
@@ -504,9 +504,9 @@ go func() {
 - `photos.Export(id)` copies the full image as it is in the library (HEIC,
   JPEG, PNG), with its name. iCloud photos download first.
 
-## Photos, the browser, the clipboard: ryui/device
+## Photos, the browser, the clipboard: asuka/device
 
-`ryui/device` is what the platform offers beyond views.
+`asuka/device` is what the platform offers beyond views.
 
 ```go
 ui.Button(ui.ButtonProps{Title: ui.Val("Pick photos"), OnPress: func() {
@@ -553,7 +553,7 @@ ui.Button(ui.ButtonProps{Title: ui.Val("Help"), OnPress: func() {
 - `device.GetInfo()` is the device and the app: `Model` ("iPhone", "Pixel
   9", "Mac", "PC"), `System` ("iOS", "Android", "macOS", "Windows",
   "Linux"), `SystemVersion`, and `AppVersion` and
-  `Build`, `ryui.json`'s `version` and `build`. Not on the main thread.
+  `Build`, `asuka.json`'s `version` and `build`. Not on the main thread.
 
 ```go
 func Player() ui.Node {
@@ -569,7 +569,7 @@ func Player() ui.Node {
 }
 ```
 
-## Signing in on the web: ryui/webauth
+## Signing in on the web: asuka/webauth
 
 `webauth.Start` shows a sign-in page in the system's own sign-in sheet:
 `ASWebAuthenticationSession` on iOS (SwiftUI's
@@ -600,7 +600,7 @@ It ends in one of two ways:
 
 - **A callback scheme.** When the page goes to a URL of
   `CallbackScheme` (the app's own), the sheet closes and `done` gets the
-  URL. On Android the scheme must be the app's, ryui.json's `scheme`; it
+  URL. On Android the scheme must be the app's, asuka.json's `scheme`; it
   goes to `done` rather than `ui.OnOpenURL`.
 - **The app ends it.** Without a scheme, the page redirects somewhere
   the app hears from: an OAuth server that allows a redirect to the
@@ -673,10 +673,10 @@ Linux has none: the files go on the clipboard, as a shared text does. A
 browser shares the files with the Web Share sheet where it can, else
 downloads each.
 
-To be opened with URLs yourself, see `ryui.json`'s `scheme` and `links` in
-[Shipping](shipping.md#ryuijson), and `ui.OnOpenURL`.
+To be opened with URLs yourself, see `asuka.json`'s `scheme` and `links` in
+[Shipping](shipping.md#asukajson), and `ui.OnOpenURL`.
 
-## Previewing files: ryui/preview
+## Previewing files: asuka/preview
 
 `preview.Show(sources, options, done)` shows files with the system's
 viewer, as a mail app shows an attachment: PDFs, images, video, audio,
@@ -718,9 +718,9 @@ such file, a download that failed).
 Android has no system viewer, nor one that pages through several files:
 it opens one, as Android's mail apps do with each attachment.
 
-## Printing and PDFs: ryui/print
+## Printing and PDFs: asuka/print
 
-`ryui/print` shows the system's print dialog, with its printers and
+`asuka/print` shows the system's print dialog, with its printers and
 options (copies, pages, paper, orientation; Save as PDF on Android and the
 Mac), for a file, HTML markup or a WebView's page; and lays HTML out on
 pages as a PDF. Each call but `PDF` runs on the main thread, and `done`
@@ -800,9 +800,9 @@ WebKit's print operation, Windows with WebView2 (Chromium's
 makes PDFs only through its print dialog: there `PDF` fails, and
 `print.HTML` lets the user Save as PDF.
 
-## Mail and messages: ryui/compose
+## Mail and messages: asuka/compose
 
-`ryui/compose` opens the system's mail and message composers, filled in
+`asuka/compose` opens the system's mail and message composers, filled in
 for the user to send. Main thread; `done` gets a `compose.Result`:
 `compose.Sent`, `Saved` (a draft), `Cancelled`, or `Unknown` where
 another app has the mail and doesn't say.
@@ -851,9 +851,9 @@ can't do fails with `compose.ErrUnavailable`.
 The iOS simulator has no Mail account and no Messages: try the composers
 on a device.
 
-## Location: ryui/location
+## Location: asuka/location
 
-`ryui/location` is where the device is, now and as it moves, with the
+`asuka/location` is where the device is, now and as it moves, with the
 user's permission, which it asks for the first time. It's Core Location
 on iOS and the Mac, and Android's location manager, which needs no Google
 Play services; WinRT's Geolocator on Windows, the location portal (or
@@ -913,11 +913,11 @@ not known) and `Time`.
 otherwise it waits up to 10 seconds for a new one, then gives the last
 known, or fails with `"no location"`.
 
-## Notifications: ryui/notify
+## Notifications: asuka/notify
 
-`ryui/notify` shows local notifications, now or at a time the app sets,
+`asuka/notify` shows local notifications, now or at a time the app sets,
 whether or not the app is running then. Tapping one opens the app with
-its URL. It also has what a messaging app needs, for `ryui/push`'s
+its URL. It also has what a messaging app needs, for `asuka/push`'s
 notifications too: actions and replies typed in the notification,
 threads, Android's channels, messages in conversations, the badge, the
 notifications showing, and which ones show while the app is open.
@@ -950,7 +950,7 @@ go func() {
 - `notify.Cancel(id)` takes the notification away, waiting or shown. On
   the main thread.
 
-A `Notification`'s `URL` should be one of the app's scheme (`ryui.json`'s
+A `Notification`'s `URL` should be one of the app's scheme (`asuka.json`'s
 `scheme`): `ui.OnOpenURL` gets it when the user taps the notification.
 Its other fields:
 
@@ -959,7 +959,7 @@ Its other fields:
 | `Subtitle` | A line under the title (iOS); Android's sub text beside the app's name |
 | `Data` | The app's own keys, given back in `Showing`, `OnAction` and `Present` |
 | `Category` | A category's ID: the actions it shows (below) |
-| `Thread` | Groups it with the thread's others: iOS's thread, an Android group with a summary notification RyUI keeps |
+| `Thread` | Groups it with the thread's others: iOS's thread, an Android group with a summary notification Asuka keeps |
 | `Summary` | The line under an Android group's summary ("3 new messages"); iOS writes its own |
 | `Channel` | The Android channel it's in (below); iOS has none |
 | `Badge` | The app icon's number when it shows (iOS, macOS); Android's notification number |
@@ -1010,7 +1010,7 @@ notify.OnAction(func(r notify.Response) {
   text field, with its send button's title and placeholder).
 - `notify.OnAction(f)` calls `f` on the main thread with each response,
   until `stop`: a tap (`Action` `""`) or an action, `Reply` the text
-  typed, `Notification` the one answered (`ryui/push`'s too). A response
+  typed, `Notification` the one answered (`asuka/push`'s too). A response
   that came before any `f` (the one that launched the app, or woke it)
   waits for the first, so set it as the app starts.
 - An action without `Open` runs in the background: the app's Go code
@@ -1024,13 +1024,13 @@ notify.OnAction(func(r notify.Response) {
 **Android** takes a background action's notification away, as iOS does,
 unless the app shows it again (`Show`, with its `ID`) by the time it's
 done. After a reply, Android wants the notification posted again (its
-spinner turns until then): RyUI adds the reply to a conversation's
+spinner turns until then): Asuka adds the reply to a conversation's
 notification, under the user's name, and takes another away.
 
 ### Threads and the notifications showing
 
 A `Thread` groups a chat's notifications: iOS stacks them, Android puts
-them in a group under a summary notification, which RyUI keeps as they
+them in a group under a summary notification, which Asuka keeps as they
 come and go.
 
 - `notify.Showing()` lists the app's notifications that show (in
@@ -1140,12 +1140,12 @@ count.
 | Showing, removing | ✓ | ✓ | ✓ | ✓ (the notification center's) | what the app showed this run | ✓ (the service worker's) |
 | Present | ✓ | ✓ | ✓ | ✓ (not scheduled ones) | ✓ | ✓ |
 
-**macOS** needs the app's bundle, which `ryui dev` and `ryui build` run it
+**macOS** needs the app's bundle, which `asuka dev` and `asuka build` run it
 from: an executable run on its own (`go run`) has no bundle ID, and its
 calls fail with an error that says so. **Windows** shows toasts, now or scheduled,
 with their image, a category's actions as buttons and a reply as a text
 box. The app registers itself the first time (a Start menu shortcut with
-its AppUserModelID, ryui.json's `id`, and a COM activator: its executable,
+its AppUserModelID, asuka.json's `id`, and a COM activator: its executable,
 in the user's registry), so that a tap or a button reaches the app,
 which Windows starts for it if it isn't running; for a background
 action it stays out of sight and quits once `OnAction` is done. The
@@ -1158,13 +1158,13 @@ has no desktop file for); taps and buttons reach the app while it runs.
 A notification due later is a systemd user timer (`systemd-run --user`),
 which runs the app's executable without a window to show it, hands it
 to the app if it runs, and launches the app for a tap; without systemd
-(a Flatpak, `ryui dev`) it shows while the app runs. **A browser** shows
-them through the app's service worker, with Web Push for `ryui/push`:
+(a Flatpak, `asuka dev`) it shows while the app runs. **A browser** shows
+them through the app's service worker, with Web Push for `asuka/push`:
 [the web](web.md) has the details.
 
-## Sound: ryui/audio
+## Sound: asuka/audio
 
-`ryui/audio` plays sounds and music with the platform's player (AVPlayer
+`asuka/audio` plays sounds and music with the platform's player (AVPlayer
 on iOS and the Mac; Media3's ExoPlayer on Android; MCI on Windows;
 GStreamer's playbin on Linux; an audio element in a browser, which plays
 only after the user has tapped or clicked in the page). A source is a file in the app's
@@ -1199,9 +1199,9 @@ what it holds. Release a player when it's no longer needed.
 The sound plays with iOS's silent switch on, as a music or game app's
 does, and doesn't mix with other apps' audio.
 
-## Network state: ryui/network
+## Network state: asuka/network
 
-`ryui/network` is the device's network: whether it's online, over Wi-Fi or
+`asuka/network` is the device's network: whether it's online, over Wi-Fi or
 cellular, and whether the connection costs. Use it to download large
 files on Wi-Fi only, or to say the app is offline. It's NWPathMonitor on
 iOS and the Mac, ConnectivityManager on Android, the Network List
@@ -1247,9 +1247,9 @@ Until the platform first answers, `Use`'s value is `Connected` with
 `network.Watch(f)` calls `f` on the main thread with the network now and
 each time it changes, until `stop` is called.
 
-## Saving to the library: ryui/library
+## Saving to the library: asuka/library
 
-`ryui/library` saves files where the user and other apps find them: a
+`asuka/library` saves files where the user and other apps find them: a
 video to the gallery, a song to the music, anything to Downloads.
 
 ```go
@@ -1301,11 +1301,11 @@ writes to the shared folders after asking for the storage permission.
 **iOS** asks to add to Photos (add only: the app can't read the library)
 and answers with the asset's identifier; `Folder` doesn't apply there.
 Other collections go to the app's Documents, under `Folder`, answering
-with the file's path; RyUI makes Documents visible in the Files app.
+with the file's path; Asuka makes Documents visible in the Files app.
 
-## Background work: ryui/background
+## Background work: asuka/background
 
-`ryui/background` keeps the app working while it's out of sight: a
+`asuka/background` keeps the app working while it's out of sight: a
 download, an upload, an export the user started, which takes minutes.
 
 `background.Start` starts a task: the app keeps running, with a
@@ -1381,7 +1381,7 @@ without a task.
 from its share sheet: a link from YouTube or a browser, a text from
 Notes, photos from the gallery, a PDF from Files. It's iOS's and
 Android's: on the desktops and in a browser the app isn't offered in
-other apps' share menus, and `f` isn't called. `ryui.json`'s
+other apps' share menus, and `f` isn't called. `asuka.json`'s
 `shareTarget` says what the app is offered for:
 
 ```json
@@ -1445,9 +1445,9 @@ go from the extension to the app through an App Group,
 `group.<app ID>`, which a device build's profiles must have (see
 [Shipping](shipping.md#ios)).
 
-Under `ryui dev`, the player takes shares of anything, whatever the
+Under `asuka dev`, the player takes shares of anything, whatever the
 app's `shareTarget`. On Android the files' paths are on the device, not
-the Mac the Go code runs on: try files with `ryui dev -platform android -once`.
+the Mac the Go code runs on: try files with `asuka dev -platform android -once`.
 
 What a link leads to (a page, an image, a video) is the app's to find
 out, with `net/http`: expo-sharing's "resolved" payloads, in Go.
@@ -1493,12 +1493,12 @@ shares with the app; on
 **Android** an Activity in a `:share` process, shown as a Material
 bottom sheet over the other app (dragging it down, tapping outside and
 back cancel it). The process ends with the sheet: what's pending in
-`ryui/store` is written as it closes, and `app.OnLifecycle` hears
+`asuka/store` is written as it closes, and `app.OnLifecycle` hears
 `Background`. A file's `Path` is the sheet's until it closes: copy what
 the app keeps.
 
-What the app keeps is the same in its sheet: `ryui/store`, SQLite files
-in `store.Dir()` (`sqlite.Open("app.db")`), `ryui/secure`. Android's
+What the app keeps is the same in its sheet: `asuka/store`, SQLite files
+in `store.Dir()` (`sqlite.Open("app.db")`), `asuka/secure`. Android's
 two processes share the app's files. On iOS the app's data moves to the
 App Group (`group.<app ID>`), once, the first time it runs with a sheet,
 and its keychain group is shared with the extension. The app doesn't
@@ -1508,16 +1508,16 @@ comes back (`app.OnLifecycle`, `db.Changed()`).
 The CLI sees that the app's Go code calls `app.ShareSheet` and builds
 the sheet instead of the extension that opens the app. On iOS the app's
 Go code and the host are then a framework in the app,
-`Frameworks/RyUIApp.framework`, which the app and its extension both
+`Frameworks/AsukaApp.framework`, which the app and its extension both
 load, as Xcode shares code with an extension: the app isn't bigger for
-its sheet. Under `ryui dev` the player's sheet runs the app's sheet from
+its sheet. Under `asuka dev` the player's sheet runs the app's sheet from
 the Mac too. [`examples/bookmarks`](../examples/bookmarks) is a
 sheet as Raindrop's: the page's title, description and image, a note, a
 collection and tags.
 
-## JavaScript: ryui/js
+## JavaScript: asuka/js
 
-`ryui/js` runs JavaScript off screen, in the platform's own engine: a web
+`asuka/js` runs JavaScript off screen, in the platform's own engine: a web
 view that's never shown (WKWebView on iOS and the Mac, Android's WebView,
 WebView2 on Windows, WebKitGTK on Linux), or in a browser a hidden,
 sandboxed frame. It's for code
@@ -1551,7 +1551,7 @@ thrown error's message has its stack.
 For script in a page the user sees, use `ui.WebView`
 ([Web pages](components.md#web-pages)).
 
-## Push notifications: ryui/push
+## Push notifications: asuka/push
 
 `push.Register()` asks the user to allow notifications (the first time),
 registers the device with Apple's (APNs) or Google's (Firebase Cloud
@@ -1582,25 +1582,25 @@ func App() ui.Node {
 - `push.OnOpen(f)` gets each notification the user taps, including the
   one that launched the app, if `f` is set as the app starts. A
   message's data `"url"` also goes to `ui.OnOpenURL`, as
-  `ryui/notify`'s do.
+  `asuka/notify`'s do.
 - A `push.Message` has its `ID`, `Title`, `Body` and `Data` (iOS: the
   payload's keys beside `aps`; Android: the message's data).
 
 iOS needs the Push Notifications capability on the App ID for a release
 build; the simulator gets a token too. Android needs a Firebase project:
 add the Android app to it, download its `google-services.json`, and name
-it in `ryui.json`:
+it in `asuka.json`:
 
 ```json
 { "android": { "googleServices": "google-services.json" } }
 ```
 
-RyUI writes its settings into the app as Google's Gradle plugin would.
+Asuka writes its settings into the app as Google's Gradle plugin would.
 Without it, `Register` fails with what to do.
 
 ### Categories, threads and channels in a push
 
-A push uses `ryui/notify`'s categories (its actions, `notify.OnAction`),
+A push uses `asuka/notify`'s categories (its actions, `notify.OnAction`),
 threads, channels, badge and `Present`, named in its payload:
 
 - **iOS**: `aps`'s `category`, `thread-id` and `badge`, as APNs has them.
@@ -1608,7 +1608,7 @@ threads, channels, badge and `Present`, named in its payload:
   and `image`; a data message's `"title"`, `"body"`, `"subtitle"`,
   `"category"`, `"thread"`, `"summary"`, `"channel"`, `"image"`, `"badge"`
   and `"url"`. A data message with a `"title"` or `"body"` shows as a
-  notification (RyUI builds it, with its actions); one without is
+  notification (Asuka builds it, with its actions); one without is
   silent (`OnReceive` only). A notification message that comes while
   the app is in the background is shown by Firebase, without actions or
   a thread: send data messages for them.
@@ -1627,7 +1627,7 @@ picture, set its thread and category. Call it in `main`, before
 ```go
 func main() {
 	push.Rewrite(func(m *push.Message) error {
-		text, from, err := decrypt(m.Data["box"]) // with a key in ryui/secure
+		text, from, err := decrypt(m.Data["box"]) // with a key in asuka/secure
 		if err != nil {
 			return err // shows the push as it came
 		}
@@ -1645,17 +1645,17 @@ func main() {
 panic, shows the push as it came. `m.Image` is downloaded and attached;
 `m.From` makes it a message, as `notify.Notification`'s `From` does.
 
-**iOS** rewrites in a Notification Service Extension, which `ryui build`
+**iOS** rewrites in a Notification Service Extension, which `asuka build`
 makes for an app that calls `push.Rewrite`: it runs the app's Go code in
 a process of its own for each push with `"mutable-content": 1` in its
 `aps` (and an `alert`, which shows if the rewrite fails). `main` runs,
 then `f`; the root component doesn't, so keep `main` light. iOS gives it
 about 30 seconds and 24 MB, and shows the push as it came when time runs
-out. What the app keeps is the same there: its data (`ryui/store`, files
+out. What the app keeps is the same there: its data (`asuka/store`, files
 in `store.Dir`) is in the App Group the two share, its keychain items
-(`ryui/secure`) in the app's group. A release build needs a provisioning
+(`asuka/secure`) in the app's group. A release build needs a provisioning
 profile for the extension's bundle ID, the app's plus `.notification`
-(`ryui.json`'s `ios.notificationProfile` names one; by default, the best
+(`asuka.json`'s `ios.notificationProfile` names one; by default, the best
 match installed), with the App Groups capability and the app's group.
 A rewrite can't hide a push on iOS.
 
@@ -1664,12 +1664,12 @@ code starts without a screen if the app isn't running, rewrites within
 about ten seconds, and the notification shows. A data message whose
 rewrite leaves no title or body doesn't show.
 
-Under `ryui dev`'s player there's no extension (the app's Go code runs on
-the computer): pushes show as they came. `ryui dev -platform ios -once` and a
+Under `asuka dev`'s player there's no extension (the app's Go code runs on
+the computer): pushes show as they came. `asuka dev -platform ios -once` and a
 build have it. The simulator runs the extension only for pushes that
 come from APNs, not for `xcrun simctl push`.
 
-## Sign in with Apple: ryui/appleauth
+## Sign in with Apple: asuka/appleauth
 
 `appleauth.Button` is Apple's own button (its title, logo and colors, in
 the user's language), and `appleauth.SignIn` shows the system's sheet.
@@ -1700,10 +1700,10 @@ them then. `ErrCanceled` is the user closing the sheet.
 in with Apple for the app (`Revoked`: sign them out). On Android there's
 none: `Button` is nothing, `Available` is false and `SignIn` fails with
 `ErrNotAvailable`; so on Windows, Linux and the web. Sign in with Apple
-there on the web (`ryui/webauth`). The Mac has it as iOS does, with a
+there on the web (`asuka/webauth`). The Mac has it as iOS does, with a
 provisioning profile (see [On a Mac](#on-a-mac)).
 
-## Face ID and fingerprints: ryui/biometric
+## Face ID and fingerprints: asuka/biometric
 
 `biometric.Authenticate(options)` shows the system's prompt (Face ID,
 Touch ID, Android's BiometricPrompt; Touch ID on a Mac, Windows Hello on
@@ -1729,11 +1729,11 @@ go func() {
 Linux has no system prompt for the owner: `Check` says there's nothing,
 and `Authenticate` fails with `ErrNotAvailable`.
 
-## Recording sound: ryui/audio/record
+## Recording sound: asuka/audio/record
 
 `record.Start(options, done)` records from the microphone until
 `record.Stop` (or `MaxDuration`), then calls `done` with the file: AAC in
-an MPEG-4 container (`.m4a`), in the app's caches, which `ryui/audio`
+an MPEG-4 container (`.m4a`), in the app's caches, which `asuka/audio`
 plays. AVAudioRecorder records on iOS and the Mac, Media Foundation on
 Windows, GStreamer on Linux, and `MediaRecorder` in a browser (Opus in
 WebM where it can't record AAC). It asks for the microphone the first time; refused, `done` gets
@@ -1765,13 +1765,13 @@ crash, and make it an `.m4a` for keeping with `record.Finalize(stream, dst)`,
 which seeks properly: after a stop or a crash alike.
 
 `Options.Background` keeps it recording out of sight and with the screen
-locked. iOS needs `"ios": {"backgroundModes": ["audio"]}` in `ryui.json`;
+locked. iOS needs `"ios": {"backgroundModes": ["audio"]}` in `asuka.json`;
 Android runs a foreground service of the microphone type, with an ongoing
 notification (`BackgroundTitle`) and a button to stop. Google Play asks
 what the service is for: declare it before you upload. A desktop app
 records out of sight anyway: there `Background` changes nothing.
 
-## Speech to text: ryui/transcribe
+## Speech to text: asuka/transcribe
 
 `transcribe.File(path, options)` turns a recording into text, on the
 device: the sound never leaves it. Where the device can't do that, it says
@@ -1799,7 +1799,7 @@ missing (`ErrDownloading`: try again later). The Mac uses the Speech
 framework too, on the device only. Windows, Linux and the web have no
 on-device recognizer an app can use: `File` fails with `ErrNotAvailable`.
 
-## The screen: ryui/screen
+## The screen: asuka/screen
 
 ```go
 screen.Lock(screen.Landscape) // a video player
@@ -1810,7 +1810,7 @@ stop := screen.OnScreenshot(func() { note.Set("That screenshot shows your balanc
 
 - `screen.Lock(o)` turns the app to `o` and keeps it there: `Portrait`,
   `PortraitUp`, `Landscape`, `LandscapeLeft`, `LandscapeRight`; `Any`
-  unlocks it. Only the orientations `ryui.json` allows. iPads in Split
+  unlocks it. Only the orientations `asuka.json` allows. iPads in Split
   View or Stage Manager, and Android 16's large screens, ignore it.
 - `screen.SetBars(bars)` sets the status bar's `Style` (`Auto` follows
   dark mode; `Light` is light icons, for a dark picture under them;
@@ -1835,9 +1835,9 @@ going full screen, and has neither `PreventCapture` nor `OnScreenshot`.
 These are the app's, not a screen's: a screen that sets one sets it back
 as it goes (`signal.OnCleanup`).
 
-## The launch screen: ryui/splash
+## The launch screen: asuka/splash
 
-`ryui.json`'s `splash` is the launch screen: an image (a square PNG, a
+`asuka.json`'s `splash` is the launch screen: an image (a square PNG, a
 logo), `size` points wide (default 120, at most 160), in the middle of a
 color, in light and dark mode.
 
@@ -1864,7 +1864,7 @@ func App() ui.Node {
 }
 ```
 
-## Maps: ryui/maps
+## Maps: asuka/maps
 
 `maps.View` is a map: Apple Maps on iOS and the Mac, Google Maps on
 Android, OpenStreetMap's tiles on Windows and in a browser (drawn by the
@@ -1889,12 +1889,12 @@ maps.View(maps.Props{
   taps the map.
 - `Type` is `Standard`, `Satellite`, `Hybrid` or `Muted` (iOS);
   `ShowsUser` shows the user's location, with the location permission
-  (import `ryui/location` and ask for it first); `NoInteraction` makes
+  (import `asuka/location` and ask for it first); `NoInteraction` makes
   it a still preview.
 - A map has no size of its own: give it one, or `Grow`.
 
 Android needs a Google Maps Platform API key with the Maps SDK for
-Android, in `ryui.json`: `{"android": {"mapsKey": "..."}}`. Without it,
+Android, in `asuka.json`: `{"android": {"mapsKey": "..."}}`. Without it,
 the map says so, and `OnError` gets why. On Windows, Linux and the web,
 Satellite and Hybrid show the streets (no free imagery); `ShowsUser`
 shows nothing on Windows and Linux, and the user's location in a browser
@@ -1904,9 +1904,9 @@ tiles come from `tile.openstreetmap.org`, as its usage policy asks, with
 its attribution on the map; a web app can take them from a server of its
 own ([the web](web.md)).
 
-## Background refresh: ryui/periodic
+## Background refresh: asuka/periodic
 
-`ryui/periodic` runs the app's Go code now and then while it isn't on
+`asuka/periodic` runs the app's Go code now and then while it isn't on
 screen: a sync, a fetch of what's new. `Handle` sets a task's code, in
 the root component; `Schedule` asks the system to run it.
 
@@ -1938,7 +1938,7 @@ A desktop doesn't launch an app for its tasks: on macOS
 while the app runs, and one that wants power waits while on the battery.
 A browser runs no page's tasks while it's closed: `Schedule` fails there.
 
-## The stores: ryui/review, ryui/tracking, ryui/integrity, ryui/agerange
+## The stores: asuka/review, asuka/tracking, asuka/integrity, asuka/agerange
 
 `review.Request(done)` asks the store for its rating prompt (the App
 Store's, Google Play's in-app review). The stores decide whether it
@@ -1952,7 +1952,7 @@ with ad networks, and reports `Allowed`, `Denied`, `Restricted` or
 `NotAsked`; `tracking.Current()` reads it without asking. Android has no
 such prompt: it's `Allowed`. Not on the main thread.
 
-`ryui/integrity` proves to your server that a request comes from your
+`asuka/integrity` proves to your server that a request comes from your
 app on a real device. iOS: App Attest. `GenerateKey` makes a key (keep
 its ID), `AttestKey(id, challenge)` has Apple attest it for your server's
 challenge, once, and `Assert(id, data)` signs each request after. Android:
@@ -1978,7 +1978,7 @@ there: Windows answers `Allowed` while the advertising ID is on in
 Settings, Linux `Allowed`, a browser `Denied` when it sends Global
 Privacy Control or Do Not Track.
 
-## Motion and sensors: ryui/sensors
+## Motion and sensors: asuka/sensors
 
 ```go
 stop := sensors.WatchMotion(50*time.Millisecond, func(m sensors.MotionReading) {
@@ -2010,7 +2010,7 @@ reads z = +1 g; iOS's are turned to match), and the attitude computed
 the same way on both. Up to 200 readings a second; readings come on the
 main thread, in batches as the platform delivers them.
 
-## Editing images and video frames: ryui/imageedit
+## Editing images and video frames: asuka/imageedit
 
 `imageedit.Edit(source, actions, options)` reads an image (HEIC, JPEG,
 PNG, WebP: what the camera and the photo picker give), turns it upright
@@ -2048,7 +2048,7 @@ Android's, WIC on Windows, GdkPixbuf's loaders on Linux (HEIC and WebP
 where their codecs or loaders are installed), a canvas in a browser
 (JPEG or PNG; a remote image needs CORS).
 
-## Text to speech: ryui/speech
+## Text to speech: asuka/speech
 
 `speech.Speak(text, options, done)` queues text to be read aloud with the
 platform's voices; `done` gets nil once it's spoken, or `ErrStopped`.
@@ -2060,13 +2060,13 @@ speech.Speak("Turn left in 200 meters", speech.Options{Rate: 1.1}, nil)
 `Options` set the `Language` (a BCP 47 tag), a `Voice` (an ID from
 `speech.Voices()`, with its name, language and quality), `Pitch`, `Rate`
 and `Volume`. `Stop` drops the queue, `Pause` and `Resume` pause at a
-word (on Android too, which can't pause: RyUI speaks on from the word).
+word (on Android too, which can't pause: Asuka speaks on from the word).
 On iOS other apps' sound ducks while it speaks, and it speaks with the
 silent switch on; Android ducks them likewise. The voices are
 AVSpeechSynthesizer's on iOS and the Mac, SAPI's on Windows, Speech
 Dispatcher's on Linux, and `speechSynthesis`'s in a browser.
 
-## Contacts: ryui/contacts
+## Contacts: asuka/contacts
 
 - `contacts.Pick(done)` shows the system's contact picker: the user picks
   one, and the app sees only that one, with no permission asked (on
@@ -2087,7 +2087,7 @@ denied, `Pick` fails, and `Add` opens a vCard in the user's contacts
 app. A browser picks one where it has the Contact Picker (Chrome on
 Android), and `Add` downloads a vCard.
 
-## Calendars: ryui/calendar
+## Calendars: asuka/calendar
 
 - `calendar.Add(event, done)` shows the system's event editor, filled in,
   where the user saves the event; no permission asked (iOS 17 and later).
@@ -2105,9 +2105,9 @@ packaged apps only: `Request` says denied, and `Add` opens an iCalendar
 file in the user's calendar app (`saved` is false: it doesn't say). A
 browser can't read calendars; `Add` downloads an `.ics` file.
 
-## Home screen widgets: ryui/widget
+## Home screen widgets: asuka/widget
 
-`ryui.json`'s `widgets` declares the app's widgets; `widget.Set` fills
+`asuka.json`'s `widgets` declares the app's widgets; `widget.Set` fills
 them, from the app's Go code:
 
 ```json
@@ -2139,7 +2139,7 @@ desktops and the web have none: `widget.Set` does nothing there.
 
 ## Shortcuts: Siri, Spotlight, the launcher
 
-`ryui.json`'s `shortcuts` are actions the system offers for the app.
+`asuka.json`'s `shortcuts` are actions the system offers for the app.
 Each opens the app with its URL, for `ui.OnOpenURL`:
 
 ```json
@@ -2155,7 +2155,7 @@ the app's icon, with the symbol in the accent color. The desktops and
 the web don't add them.
 
 Simulator builds are signed as Xcode signs them, with the keychain's
-Apple Development identity (`ryui.json`'s team's): App Intents only run
+Apple Development identity (`asuka.json`'s team's): App Intents only run
 in an app with a team. Without one, the build is signed ad hoc, and the
 CLI says the shortcuts won't run.
 
@@ -2175,11 +2175,11 @@ ui.Haptic(ui.HapticSuccess)
 
 See [Motion](motion.md) for feedback that goes with animation.
 
-## Crash reports: ryui/crash
+## Crash reports: asuka/crash
 
-An app that imports `ryui/crash` keeps a report of each crash, and reads
+An app that imports `asuka/crash` keeps a report of each crash, and reads
 it on its next launch, to send where it likes: its own server, Sentry,
-Crashlytics. RyUI uploads nothing.
+Crashlytics. Asuka uploads nothing.
 
 ```go
 func App() ui.Node {
@@ -2261,7 +2261,7 @@ has no public endpoint to send to: send the reports to your server, or
 record them in Crashlytics' SDK as non-fatal errors from your own native
 module ([Native code](native.md)). Either way, App Store review asks
 about crash data: if you send it, say so (`ios.collected` in
-`ryui.json`, `{"type": "CrashData", "purposes": ["AppFunctionality"]}`).
+`asuka.json`, `{"type": "CrashData", "purposes": ["AppFunctionality"]}`).
 
 **On each platform.** iOS links MetricKit only into an app that reads
 its reports (`crash.Reports` or `crash.OnReport`), and delivers its
@@ -2275,9 +2275,9 @@ from macOS 12; an uncaught Objective-C exception that ends the app is
 MetricKit's crash (AppKit catches those of the main thread and logs
 them). Windows: Go's runtime handles every exception the process
 doesn't (its last handler): it prints the exception and the goroutines,
-and exits. Without a console (a release, built for the GUI), RyUI sends
+and exits. Without a console (a release, built for the GUI), Asuka sends
 what the runtime prints to a file of the run's, which the next launch
-reads into a `Native` report. RyUI sets no unhandled exception filter of
+reads into a `Native` report. Asuka sets no unhandled exception filter of
 its own: Go's handler runs first, and replacing it would break Go's.
 Windows Error Reporting keeps its record as ever. In a browser, Go's
 runtime can't write its crash output to a file (`SetCrashOutput` needs
@@ -2290,8 +2290,8 @@ context; at most 20 a run, each once. A page marks its run alive in the
 origin's `localStorage`, so the app's other open pages leave its record
 alone.
 
-**Under `ryui dev`** the Go code runs on your Mac (or PC): its crashes
+**Under `asuka dev`** the Go code runs on your Mac (or PC): its crashes
 print in the terminal, as ever, and are kept there, so `crash.Reports`
 on the next run has them. The player's own native crashes aren't the
-app's, and aren't reported to it; a build of the app (`ryui dev -once`,
-`ryui build`) reports everything.
+app's, and aren't reported to it; a build of the app (`asuka dev -once`,
+`asuka build`) reports everything.

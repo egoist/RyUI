@@ -10,10 +10,10 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
+	. "github.com/egoist/asuka/internal/darwin"
 )
 
-// ryui/audio/record on a Mac: AVAudioRecorder, as on iOS. "start" (u8
+// asuka/audio/record on a Mac: AVAudioRecorder, as on iOS. "start" (u8
 // quality: voice, music; u32 max milliseconds, 0: none; u8 flags, 1
 // background, 2 stream; u32-length title; u32-length path, empty for the
 // app's caches) records until "stop" and answers with the file's path;
@@ -31,7 +31,7 @@ func init() {
 var rec struct {
 	recorder ID
 	done     func([]byte, error)
-	delegate ID // RyUIAudioRecorderDelegate
+	delegate ID // AsukaAudioRecorderDelegate
 }
 
 // kAudioFormatMPEG4AAC, 'aac '; AVAudioQualityHigh.
@@ -174,7 +174,7 @@ func recStart(a recArgs, reply func([]byte, error)) {
 			ext = ".aac"
 		}
 		var err error
-		if path, err = cacheFile("ryui-audio", ext); err != nil {
+		if path, err = cacheFile("asuka-audio", ext); err != nil {
 			reply(nil, err)
 			return
 		}
@@ -206,7 +206,7 @@ func recStart(a recArgs, reply func([]byte, error)) {
 // recDelegate makes the recorders' delegate, once.
 func recDelegate() ID {
 	if rec.delegate == 0 {
-		DefineClass("RyUIAudioRecorderDelegate", "NSObject", []string{"AVAudioRecorderDelegate"}, []objc.MethodDef{
+		DefineClass("AsukaAudioRecorderDelegate", "NSObject", []string{"AVAudioRecorderDelegate"}, []objc.MethodDef{
 			Method("audioRecorderDidFinishRecording:successfully:", func(self ID, _ SEL, r ID, ok bool) {
 				path := GoString(Send(Send(r, "url"), "path"))
 				theHost.Post(func() { recFinished(r, path, ok, nil) })
@@ -216,7 +216,7 @@ func recDelegate() ID {
 				theHost.Post(func() { recFinished(r, "", false, fail) })
 			}),
 		})
-		rec.delegate = New("RyUIAudioRecorderDelegate")
+		rec.delegate = New("AsukaAudioRecorderDelegate")
 	}
 	return rec.delegate
 }

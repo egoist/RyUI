@@ -3,7 +3,7 @@ package msl
 import (
 	"fmt"
 
-	"github.com/egoist/ryui/internal/shaderir"
+	"github.com/egoist/asuka/internal/shaderir"
 )
 
 // UniformLayout returns where each of p's uniform variables lies in the

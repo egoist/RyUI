@@ -1,8 +1,8 @@
 // Package i18ngen reads the catalogs of an app's messages, checks them,
 // and writes their typed accessors: Go functions in the catalogs'
 // directory, which embed and register them, and accessors of them for the
-// props of components. `ryui generate`, `ryui dev`, `ryui build` and
-// `ryui i18n check` use it, and so does internal/l10n for RyUI's own strings.
+// props of components. `asuka generate`, `asuka dev`, `asuka build` and
+// `asuka i18n check` use it, and so does internal/l10n for Asuka's own strings.
 package i18ngen
 
 import (
@@ -19,7 +19,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/egoist/ryui/i18n"
+	"github.com/egoist/asuka/i18n"
 )
 
 // Options say what catalogs to read.
@@ -30,13 +30,13 @@ type Options struct {
 	// Source is the language the messages are written in first, whose
 	// file has every key and the metadata (default "en").
 	Source string
-	// Namespace is that of a library's catalog, as "ryui" for RyUI's own
+	// Namespace is that of a library's catalog, as "asuka" for Asuka's own
 	// strings, "" for an app's.
 	Namespace string
 	// Libraries are the catalogs of libraries whose messages an app's
 	// keys "<namespace>.<key>" change, by namespace.
 	Libraries map[string]*Catalog
-	// Own is set for RyUI's own strings (internal/l10n), whose accessors
+	// Own is set for Asuka's own strings (internal/l10n), whose accessors
 	// embed messages/, the catalog of the source language without its
 	// metadata (MessagesJSON), and make the catalog through
 	// internal/i18nlink, which links no formatting of dates: every app
@@ -65,7 +65,7 @@ type File struct {
 	Tag  string
 	Name string // as diagnostics name it, "locales/de.json"
 	// Keys are the keys of its messages in the order they come, those of
-	// libraries ("ryui.cancel") too.
+	// libraries ("asuka.cancel") too.
 	Keys     []string
 	Messages map[string]string
 	// Parsed holds the messages that parse.
@@ -102,7 +102,7 @@ var types = map[string]string{
 	"Object":   "any",
 }
 
-// IsPackagingKey reports whether name, of a key "ryui.<name>", is one that
+// IsPackagingKey reports whether name, of a key "asuka.<name>", is one that
 // no library message has: what packaging writes into the files that list
 // the app, in a language. They are the app's name and description, the
 // purpose strings of protected resources (NSCameraUsageDescription...),
@@ -635,7 +635,7 @@ func (l *loader) checkOverride(f *File, key string) {
 	var params []Param
 	if i := slices.IndexFunc(lib.Keys, func(k *Key) bool { return k.Name == name }); i >= 0 {
 		params = lib.Keys[i].Params
-	} else if !(ns == "ryui" && IsPackagingKey(name)) {
+	} else if !(ns == "asuka" && IsPackagingKey(name)) {
 		l.errorf(f.Name, at, "%q: %s has no message %s", key, ns, name)
 		return
 	}

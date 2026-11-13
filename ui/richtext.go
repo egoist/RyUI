@@ -6,9 +6,9 @@ import (
 	"math"
 	"strings"
 
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
 )
 
 // Rich is styled text: spans in order; a "\n" in a span's text starts a
@@ -251,7 +251,7 @@ type RichTextProps struct {
 }
 
 // RichText shows styled paragraphs, typeset by the platform's engine
-// (CoreText, StaticLayout) and drawn by a view of RyUI's own, so that
+// (CoreText, StaticLayout) and drawn by a view of Asuka's own, so that
 // what's measured is what's drawn. Each paragraph's layout is cached by
 // its content and width: appending to a long text (a streaming reply)
 // typesets only the paragraph that changed. For plain text, Text is the

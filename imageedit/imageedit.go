@@ -16,7 +16,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // Action is a step of an edit, done in order.
@@ -97,7 +97,7 @@ var ErrNoImage = errors.New("imageedit: no image")
 // result. With none, it turns the image upright and writes it in the
 // format asked: a HEIC photo as a JPEG, say. Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Edit(source string, actions []Action, o Options) (Result, error) {
@@ -107,7 +107,7 @@ func Edit(source string, actions []Action, o Options) (Result, error) {
 // Size is the image source's size in pixels, upright, without decoding
 // it. Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Size(source string) (width, height int, err error) {
@@ -119,7 +119,7 @@ func Size(source string) (width, height int, err error) {
 // for 0), upright, as an image, and does the actions on it: a thumbnail,
 // a poster. A remote video is read only as far as the frame needs. Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func VideoFrame(source string, at time.Duration, actions []Action, o Options) (Result, error) {

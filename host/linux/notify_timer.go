@@ -14,34 +14,34 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/internal/notifyspec"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/internal/notifyspec"
 )
 
 // Notifications due later fire whether the app runs or not, as iOS's and
 // Android's do: the system keeps them, a systemd user timer each
 // (systemd-run --user --on-calendar, the time in UTC, to the second),
-// which runs the app's executable with RYUI_NOTIFY set to the
+// which runs the app's executable with ASUKA_NOTIFY set to the
 // notification's ID. The notification itself waits in the app's data
 // (notify/<hex of its ID>.json): there while it's due, removed as it
 // fires or is cancelled (and its timer stopped).
 //
-// Run with RYUI_NOTIFY, the app shows no window and starts no GTK
+// Run with ASUKA_NOTIFY, the app shows no window and starts no GTK
 // (notifyHeadless): if it's running (its ID's name on the session bus:
 // a unique app), it hands the notification over (org.freedesktop.
-// Application's ActivateAction, "ryui-notify-due"), which shows it as
+// Application's ActivateAction, "asuka-notify-due"), which shows it as
 // one due while it runs (OnPresent and all); else it shows it through
 // the freedesktop notification server and waits, outside the app's
 // name, until it's closed (it quits) or the user taps it or a button
 // (ActionInvoked): then it hands the tap to the app if it runs since
-// ("ryui-notify"), else launches the app in a scope of its own
-// (systemd-run --user --scope) with RYUI_NOTIFY_ACTION, the tap, which
+// ("asuka-notify"), else launches the app in a scope of its own
+// (systemd-run --user --scope) with ASUKA_NOTIFY_ACTION, the tap, which
 // the app answers as it starts, as a tap while it runs.
 //
 // The timers are used when the app is unique (an app ID of its own, not
-// a ryui dev, test or automation run), outside a sandbox (a Flatpak
+// a asuka dev, test or automation run), outside a sandbox (a Flatpak
 // can't reach systemd), and the user's systemd runs; else a timer of the
-// app's shows it while it runs, as before. ryui/notify has no repeating
+// app's shows it while it runs, as before. asuka/notify has no repeating
 // schedules: a timer is one time (OnCalendar), gone once it fires
 // (RemainAfterElapse=no).
 
@@ -105,17 +105,17 @@ func notifyUnit(appID, id string) string {
 		}
 		return b.String()
 	}
-	u := "ryui-" + esc(appID) + "-" + esc(id)
+	u := "asuka-" + esc(appID) + "-" + esc(id)
 	if len(u) > 200 { // systemd's names are 255 bytes at most, with ".timer"
 		sum := sha256.Sum256([]byte(id))
-		u = "ryui-" + esc(appID) + "-" + hex.EncodeToString(sum[:16])
+		u = "asuka-" + esc(appID) + "-" + hex.EncodeToString(sum[:16])
 	}
 	return u
 }
 
 // notifyTimerArgs are systemd-run's arguments for a notification's
 // timer: at due (UTC, to the second, within a second), running exe with
-// RYUI_NOTIFY (and the app's data directory, which it reads it from).
+// ASUKA_NOTIFY (and the app's data directory, which it reads it from).
 func notifyTimerArgs(unit, exe, id, data string, due time.Time) []string {
 	return []string{
 		"--user", "--quiet", "--collect",
@@ -123,8 +123,8 @@ func notifyTimerArgs(unit, exe, id, data string, due time.Time) []string {
 		"--on-calendar=" + due.UTC().Format("2006-01-02 15:04:05") + " UTC",
 		"--timer-property=AccuracySec=1s",
 		"--timer-property=RemainAfterElapse=no",
-		"--setenv=RYUI_NOTIFY=" + id,
-		"--setenv=RYUI_DATA=" + data,
+		"--setenv=ASUKA_NOTIFY=" + id,
+		"--setenv=ASUKA_DATA=" + data,
 		exe,
 	}
 }
@@ -177,10 +177,10 @@ func (h *Host) cancelSystemTimer(id string) {
 
 // The application's actions a timer's notification reaches it by: one
 // due (the stored notification's JSON), and a tap (notifyTarget's).
-const notifyDueAction = "ryui-notify-due"
+const notifyDueAction = "asuka-notify-due"
 
 // installNotifyActions adds the application's notification actions, as
-// it starts: a run that hasn't used ryui/notify yet is handed what's
+// it starts: a run that hasn't used asuka/notify yet is handed what's
 // due and what's tapped.
 func (h *Host) installNotifyActions() {
 	if notes.actionsAdded {
@@ -264,10 +264,10 @@ var notifyLaunch = func(target string) error {
 		return err
 	}
 	cmd := exec.Command("systemd-run", "--user", "--scope", "--quiet", "--collect", exe)
-	cmd.Env = append(withoutEnv(os.Environ(), "RYUI_NOTIFY"), "RYUI_NOTIFY_ACTION="+target)
+	cmd.Env = append(withoutEnv(os.Environ(), "ASUKA_NOTIFY"), "ASUKA_NOTIFY_ACTION="+target)
 	if err := cmd.Start(); err != nil {
 		cmd = exec.Command(exe) // no systemd-run: a child, as the last resort
-		cmd.Env = append(withoutEnv(os.Environ(), "RYUI_NOTIFY"), "RYUI_NOTIFY_ACTION="+target)
+		cmd.Env = append(withoutEnv(os.Environ(), "ASUKA_NOTIFY"), "ASUKA_NOTIFY_ACTION="+target)
 		return cmd.Start()
 	}
 	go cmd.Wait()
@@ -284,7 +284,7 @@ func withoutEnv(env []string, name string) []string {
 	return out
 }
 
-// notifyHeadless is a run with RYUI_NOTIFY: it shows the notification
+// notifyHeadless is a run with ASUKA_NOTIFY: it shows the notification
 // due and returns the exit code once it's done with it.
 func (h *Host) notifyHeadless(id string) int {
 	code := -1
@@ -312,7 +312,7 @@ func (h *Host) fireDue(id string, done func(int)) {
 	}
 	conn, err := Bus(BusSession)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "ryui/notify:", err)
+		fmt.Fprintln(os.Stderr, "asuka/notify:", err)
 		done(1)
 		return
 	}
@@ -320,7 +320,7 @@ func (h *Host) fireDue(id string, done func(int)) {
 		if running {
 			activateRemote(conn, h.appID, notifyDueAction, string(b), func(err error) {
 				if err != nil {
-					fmt.Fprintln(os.Stderr, "ryui/notify:", err)
+					fmt.Fprintln(os.Stderr, "asuka/notify:", err)
 					done(1)
 					return
 				}
@@ -368,7 +368,7 @@ func (h *Host) showHeadless(conn Ptr, st storedNote, done func(int)) {
 				return
 			}
 			if err := notifyLaunch(string(tb)); err != nil {
-				fmt.Fprintln(os.Stderr, "ryui/notify:", err)
+				fmt.Fprintln(os.Stderr, "asuka/notify:", err)
 				finish(1)
 				return
 			}
@@ -380,7 +380,7 @@ func (h *Host) showHeadless(conn Ptr, st storedNote, done func(int)) {
 	}
 	h.fdoNotify(s, st.Image, false, func(ok bool) {
 		if !ok {
-			fmt.Fprintln(os.Stderr, "ryui/notify:", errors.New("no notification server"))
+			fmt.Fprintln(os.Stderr, "asuka/notify:", errors.New("no notification server"))
 			finish(1)
 			return
 		}
@@ -388,14 +388,14 @@ func (h *Host) showHeadless(conn Ptr, st storedNote, done func(int)) {
 	})
 }
 
-// notifyActionAtStart is RYUI_NOTIFY_ACTION, a tap the app was launched
+// notifyActionAtStart is ASUKA_NOTIFY_ACTION, a tap the app was launched
 // with: answered once the root is mounted.
 func (h *Host) notifyActionAtStart() {
-	s := os.Getenv("RYUI_NOTIFY_ACTION")
+	s := os.Getenv("ASUKA_NOTIFY_ACTION")
 	if s == "" {
 		return
 	}
-	os.Unsetenv("RYUI_NOTIFY_ACTION")
+	os.Unsetenv("ASUKA_NOTIFY_ACTION")
 	var t notifyTarget
 	if json.Unmarshal([]byte(s), &t) == nil && t.ID != "" {
 		h.afterCore(func() { h.notificationActivated(t) })

@@ -10,10 +10,10 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/native"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/native"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // callNow calls a module's method that answers at once.
@@ -66,7 +66,7 @@ func TestSystemModulesThere(t *testing.T) {
 			"transcribe":   {"check", "file"},
 			"imageEdit":    {"edit", "size", "videoFrame"},
 		}
-		for _, kind := range []string{"ryui.camera", "ryui.map", "ryui.appleSignIn"} {
+		for _, kind := range []string{"asuka.camera", "asuka.map", "asuka.appleSignIn"} {
 			if builtinViews[kind] == nil {
 				t.Errorf("no %s view on macOS", kind)
 			}
@@ -248,7 +248,7 @@ func TestPeriodic(t *testing.T) {
 		if _, err, _ := callNow(t, h, "periodic", "schedule", []byte{1}); errText(err) != "bad args" {
 			t.Errorf("schedule with bad args: %v", err)
 		}
-		name := "ryui-test-task"
+		name := "asuka-test-task"
 		args := binary.LittleEndian.AppendUint32(nil, uint32(len(name)))
 		args = append(args, name...)
 		args = binary.LittleEndian.AppendUint32(args, 3600)
@@ -342,7 +342,7 @@ func TestAuth(t *testing.T) {
 		parent := MsgInitRect(Send(Class("NSView"), "alloc"), Sel("initWithFrame:"), Rect{Size: Size{Width: 300, Height: 40}})
 		defer Release(parent)
 		var pressed int
-		v := builtinViews["ryui.appleSignIn"](native.NewContext(uintptr(parent), func(name string, _ map[string]any) {
+		v := builtinViews["asuka.appleSignIn"](native.NewContext(uintptr(parent), func(name string, _ map[string]any) {
 			if name == "press" {
 				pressed++
 			}
@@ -381,7 +381,7 @@ func TestMapView(t *testing.T) {
 	_, _ = mount(t, func() ui.Node { return ui.StaticText("x") })
 	onMain(func() {
 		var events []string
-		v := builtinViews["ryui.map"](native.NewContext(0, func(name string, _ map[string]any) { events = append(events, name) }))
+		v := builtinViews["asuka.map"](native.NewContext(0, func(name string, _ map[string]any) { events = append(events, name) }))
 		if v == nil {
 			fatal(t, "no map view")
 		}

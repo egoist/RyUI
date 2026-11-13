@@ -8,11 +8,11 @@ import (
 	"github.com/ebitengine/purego"
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ops"
 )
 
-// A Canvas is a RyUICanvasView whose drawRect: replays the canvas's
+// A Canvas is a AsukaCanvasView whose drawRect: replays the canvas's
 // display list with Core Graphics, in the view's appearance (semantic
 // colors follow dark mode), its coordinates flipped as the core's are.
 
@@ -58,8 +58,8 @@ func loadCGContext() {
 }
 
 func registerCanvasClass(flipped objc.MethodDef) {
-	DefineClass("RyUICanvasView", "NSView", nil, []objc.MethodDef{
-		flipped, keepsShadow("RyUICanvasView"),
+	DefineClass("AsukaCanvasView", "NSView", nil, []objc.MethodDef{
+		flipped, keepsShadow("AsukaCanvasView"),
 		Method("hitTest:", func(self ID, _ SEL, p Point) ID { return 0 }),
 		Method("drawRect:", func(self ID, _ SEL, dirty Rect) {
 			if n := theHost.byView[self]; n != nil {

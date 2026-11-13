@@ -9,10 +9,10 @@ import (
 	"runtime"
 	"testing"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // testSwift is an app's macos/*.swift: an NSSlider view, and a module
@@ -21,10 +21,10 @@ import (
 const testSwift = `
 import AppKit
 
-@objc(RyUIAppNatives) final class AppNatives: NSObject, RyUINativeModule {
+@objc(AsukaAppNatives) final class AppNatives: NSObject, AsukaNativeModule {
     @MainActor static func register() {
-        RyUIRuntime.shared.registerNative("TestSwiftSlider") { ctx in Slider(ctx) }
-        RyUIRuntime.shared.registerModule("testSwift", [
+        AsukaRuntime.shared.registerNative("TestSwiftSlider") { ctx in Slider(ctx) }
+        AsukaRuntime.shared.registerModule("testSwift", [
             "echo": { args, reply in reply(.success(Data("echo:".utf8) + args)) },
             "later": { args, reply in
                 DispatchQueue.global().async { reply(.success(args)); reply(.success(Data("twice".utf8))) }
@@ -43,15 +43,15 @@ import AppKit
 
 struct Oops: LocalizedError { var errorDescription: String? { "oops from Swift" } }
 
-@MainActor final class Slider: RyUINativeView {
+@MainActor final class Slider: AsukaNativeView {
     static var last: Slider?
     static var destroyed = 0
-    let ctx: RyUINativeContext
+    let ctx: AsukaNativeContext
     let slider = NSSlider()
     var sets: [String] = []
     var view: NSView { slider }
-    init(_ ctx: RyUINativeContext) { self.ctx = ctx; Slider.last = self }
-    func set(_ name: String, _ value: RyUINativeValue) {
+    init(_ ctx: AsukaNativeContext) { self.ctx = ctx; Slider.last = self }
+    func set(_ name: String, _ value: AsukaNativeValue) {
         sets.append(name)
         if name == "value" { slider.doubleValue = value.float }
     }
@@ -74,9 +74,9 @@ func TestSwiftNatives(t *testing.T) {
 	}
 	arch := map[string]string{"arm64": "arm64", "amd64": "x86_64"}[runtime.GOARCH]
 	lib := filepath.Join(dir, swiftLib)
-	out, err := exec.Command("xcrun", "swiftc", "-swift-version", "5", "-module-name", "RyUIApp",
+	out, err := exec.Command("xcrun", "swiftc", "-swift-version", "5", "-module-name", "AsukaApp",
 		"-target", arch+"-apple-macos11", "-emit-library", "-Onone",
-		"../../platform/macos/Sources/RyUIMac/RyUIMacRuntime.swift", app, "-o", lib).CombinedOutput()
+		"../../platform/macos/Sources/AsukaMac/AsukaMacRuntime.swift", app, "-o", lib).CombinedOutput()
 	if err != nil {
 		t.Fatalf("swiftc: %v\n%s", err, out)
 	}

@@ -1,6 +1,6 @@
 # Accessibility
 
-RyUI shows the platform's own widgets, so most of what screen readers,
+Asuka shows the platform's own widgets, so most of what screen readers,
 the keyboard and the text size settings need is there without code. This
 page covers what you get for free, and the props for the rest: labels,
 roles, grouping, custom actions, adjustable views, announcements, the
@@ -41,7 +41,7 @@ the screen readers read them from there:
   `ui.Headline`...), a fixed size (`ui.System(15)`) and your own fonts,
   follows the user's text size: Dynamic Type, Android's font scale,
   Windows' text size, GNOME's text scaling, the browser's text size.
-  When the user changes it, RyUI measures the text again and lays out
+  When the user changes it, Asuka measures the text again and lays out
   what it moves. A Mac has no text size setting.
 - **Colors adapt.** Semantic colors (`ui.Label`, `ui.SecondaryLabel`,
   `ui.SystemBackground`, `ui.Accent`...) are the platform's (see
@@ -74,7 +74,7 @@ ui.Row(ui.Style{Gap: 12},
   platforms name only a few symbols themselves, and Android only in
   English.
 - An `Image`'s `Label` describes it; without one it's decorative. An
-  icon from [`ryui/svg`](../svg) takes a `Label` the same way.
+  icon from [`asuka/svg`](../svg) takes a `Label` the same way.
 - A `Symbol` has no label of its own: wrap it in a `View` with a
   `Label` and `ui.RoleImage` when it means something.
 - `Hint` is iOS's accessibility hint, read after a pause (users can turn
@@ -162,7 +162,7 @@ Screen reader users jump between headings (VoiceOver's rotor, TalkBack's
 navigation by headings, NVDA's and Orca's H key, a browser screen
 reader's headings list). Mark a section's title as one: a `RichText`
 with `Role: ui.RoleHeader`, or a `View` with a `Label` and the role.
-`Text` takes no role. [`ryui/markdown`](../markdown) marks its headings
+`Text` takes no role. [`asuka/markdown`](../markdown) marks its headings
 already.
 
 ```go
@@ -208,7 +208,7 @@ A view with actions is one element, read as its texts. Where they go:
 
 A `List`'s `SwipeActions` are offered to screen readers for you:
 UIKit's list offers its swipe actions to VoiceOver itself, and on
-Android RyUI adds them to the row as TalkBack actions. Don't list them
+Android Asuka adds them to the row as TalkBack actions. Don't list them
 again in `Actions`.
 
 ```go
@@ -361,12 +361,12 @@ func Adaptive() ui.Node {
 `ui.UseEnvironment()`'s `ReduceMotion` is iOS's and macOS's Reduce
 Motion, Android's animations turned off, Windows' animation effects
 off, GNOME's animations off, or the browser's `prefers-reduced-motion`.
-On iOS RyUI makes transitions dissolve instead of moving; elsewhere its
+On iOS Asuka makes transitions dissolve instead of moving; elsewhere its
 animations end at once. See [Motion](motion.md) for what's left to you.
 
 ## The keyboard
 
-On Windows, Linux and the web, RyUI's views take the keyboard as the
+On Windows, Linux and the web, Asuka's views take the keyboard as the
 platform's own controls do:
 
 - **Tab** moves between the controls and the pressable views, in the
@@ -419,5 +419,5 @@ keyboard alone too.
   Accessibility, Reduce Animation; the system's setting for a
   browser.
 
-`ryui dev` keeps running as you change these: the app follows each
+`asuka dev` keeps running as you change these: the app follows each
 setting as it changes.

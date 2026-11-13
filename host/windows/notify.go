@@ -16,13 +16,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/egoist/ryui/internal/boot"
-	"github.com/egoist/ryui/internal/notifyspec"
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ops"
+	"github.com/egoist/asuka/internal/boot"
+	"github.com/egoist/asuka/internal/notifyspec"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ops"
 )
 
-// ryui/notify on Windows: toasts (WinRT's ToastNotificationManager), the
+// asuka/notify on Windows: toasts (WinRT's ToastNotificationManager), the
 // module's methods as the other hosts have them. The app is registered
 // with the shell as an unpackaged app is (a Start menu shortcut with its
 // AppUserModelID, the AppUserModelId key) with a COM activator of its
@@ -121,7 +121,7 @@ func (h *Host) notes() *notifier {
 	return h.svc.notes
 }
 
-// appUserModelID is the app's ID for the shell: ryui.json's ID, else one
+// appUserModelID is the app's ID for the shell: asuka.json's ID, else one
 // of its name.
 func (h *Host) appUserModelID() string {
 	if boot.ID != "" {
@@ -136,7 +136,7 @@ func (h *Host) appUserModelID() string {
 	if b.Len() == 0 {
 		b.WriteString("App")
 	}
-	return "RyUI." + b.String()
+	return "Asuka." + b.String()
 }
 
 // toastActivatorID is the app's activator's CLSID.
@@ -153,7 +153,7 @@ func (h *Host) toasts() (*Toaster, error) {
 	id := h.appUserModelID()
 	icon := ""
 	if hi := AppIcon(); hi != 0 {
-		p := filepath.Join(h.cacheDir(), "ryui-notify-icon.png")
+		p := filepath.Join(h.cacheDir(), "asuka-notify-icon.png")
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err == nil && WriteIconPNG(hi, 64, p) == nil {
 			icon = p
 		}
@@ -161,15 +161,15 @@ func (h *Host) toasts() (*Toaster, error) {
 	exe, _ := os.Executable()
 	clsid := h.toastActivatorID()
 	if err := RegisterAppID(id, h.appName, icon, exe, clsid); err != nil {
-		return nil, fmt.Errorf("ryui/notify: %w", err)
+		return nil, fmt.Errorf("asuka/notify: %w", err)
 	}
 	if err := RegisterToastActivator(id, clsid, exe); err != nil {
-		return nil, fmt.Errorf("ryui/notify: %w", err)
+		return nil, fmt.Errorf("asuka/notify: %w", err)
 	}
 	h.startActivator()
 	t, err := NewToaster(id)
 	if err != nil {
-		return nil, fmt.Errorf("ryui/notify: %w", err)
+		return nil, fmt.Errorf("asuka/notify: %w", err)
 	}
 	s.toaster = t
 	return t, nil
@@ -186,7 +186,7 @@ func (h *Host) startActivator() {
 		// Activate is a COM call: the work waits until it's returned.
 		h.Post(func() { h.toastActivated(a) })
 	}); err != nil {
-		fmt.Fprintf(os.Stderr, "ryui/notify: %v\n", err)
+		fmt.Fprintf(os.Stderr, "asuka/notify: %v\n", err)
 		return
 	}
 	s.activator = true
@@ -234,7 +234,7 @@ func (h *Host) toFront() {
 // toastArgs are a toast's arguments, and its buttons': the notification
 // and the action.
 type toastArgs struct {
-	RyUI   int              `json:"ryui"`
+	Asuka  int              `json:"asuka"`
 	Action string           `json:"a,omitempty"`
 	Note   notifyspec.Shown `json:"n"`
 }
@@ -250,7 +250,7 @@ func (h *Host) newToken() string {
 func (h *Host) toastActivated(a ToastActivation) {
 	s := h.notes()
 	var args toastArgs
-	if json.Unmarshal([]byte(a.Args), &args) != nil || args.RyUI != 1 {
+	if json.Unmarshal([]byte(a.Args), &args) != nil || args.Asuka != 1 {
 		h.toFront() // not one of ours: the app's opened
 		return
 	}
@@ -306,11 +306,11 @@ type toastCategory struct {
 // categoriesFile keeps the categories across launches: an app COM starts
 // for a click hears of them only once its Go code has set them.
 func (h *Host) categoriesFile() string {
-	d := os.Getenv("RYUI_DATA")
+	d := os.Getenv("ASUKA_DATA")
 	if d == "" {
 		d = h.cacheDir()
 	}
-	return filepath.Join(d, "ryui-notify-categories.json")
+	return filepath.Join(d, "asuka-notify-categories.json")
 }
 
 func (h *Host) category(id string) *toastCategory {
@@ -365,7 +365,7 @@ func toastArgsJSON(n notifyspec.Shown, action string) string {
 	if r := []rune(n.Body); len(r) > 240 {
 		n.Body = string(r[:240])
 	}
-	b, _ := json.Marshal(toastArgs{RyUI: 1, Action: action, Note: n})
+	b, _ := json.Marshal(toastArgs{Asuka: 1, Action: action, Note: n})
 	return string(b)
 }
 
@@ -484,7 +484,7 @@ func (h *Host) toastsShowing(t *Toaster) ([]notifyspec.Shown, error) {
 	out := make([]notifyspec.Shown, 0, len(ts))
 	for _, x := range ts {
 		var a toastArgs
-		if json.Unmarshal([]byte(x.Launch), &a) != nil || a.RyUI != 1 {
+		if json.Unmarshal([]byte(x.Launch), &a) != nil || a.Asuka != 1 {
 			a.Note = notifyspec.Shown{ID: x.Tag}
 		}
 		if a.Note.Data == nil {
@@ -520,7 +520,7 @@ func (h *Host) badgeMessage(m uint32) {
 	}
 }
 
-// notifyModule is ryui/notify's module.
+// notifyModule is asuka/notify's module.
 func (h *Host) notifyModule() map[string]asyncMethod {
 	s := h.notes()
 	ok := func(_ []byte, reply func([]byte, error)) { reply(nil, nil) }

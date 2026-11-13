@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-// ryui/speech on Linux: Speech Dispatcher (the desktop's speech service,
+// asuka/speech on Linux: Speech Dispatcher (the desktop's speech service,
 // which Orca speaks through), over its socket in SSIP, its text protocol:
 // no library to load, and the daemon is started as libspeechd starts it
 // when it isn't running. The connection's reads and writes are a
@@ -80,7 +80,7 @@ func dialSSIP(events func(ssipReply)) (*ssipConn, error) {
 	if err != nil {
 		exe, lerr := exec.LookPath("speech-dispatcher")
 		if lerr != nil {
-			return nil, errors.New("ryui/speech: speech-dispatcher isn't installed")
+			return nil, errors.New("asuka/speech: speech-dispatcher isn't installed")
 		}
 		// As libspeechd autospawns it: it forks, and exits once it listens.
 		cmd := exec.Command(exe, "--spawn", "--communication-method", "unix_socket", "--socket-path", path)
@@ -92,7 +92,7 @@ func dialSSIP(events func(ssipReply)) (*ssipConn, error) {
 			time.Sleep(100 * time.Millisecond)
 		}
 		if err != nil {
-			return nil, fmt.Errorf("ryui/speech: speech-dispatcher doesn't start: %v", err)
+			return nil, fmt.Errorf("asuka/speech: speech-dispatcher doesn't start: %v", err)
 		}
 	}
 	s := &ssipConn{conn: c, r: bufio.NewReader(c), replies: make(chan ssipReply, 4), events: events, closed: make(chan struct{})}
@@ -298,7 +298,7 @@ func ssipScale(x float64) int {
 	return int(math.Round(min(max(100*math.Log2(x), -100), 100)))
 }
 
-// speechModule is ryui/speech's: "speak" (JSON: text, language, voice,
+// speechModule is asuka/speech's: "speak" (JSON: text, language, voice,
 // pitch, rate, volume) answers once spoken, or fails with "stopped";
 // "stop", "pause", "resume", "speaking" (u8), "voices" (JSON).
 func (h *Host) speechModule() map[string]method {

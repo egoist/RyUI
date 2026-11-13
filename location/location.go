@@ -1,7 +1,7 @@
 // Package location is where the device is: now, and as it moves, with
 // the user's permission, which it asks for the first time (Core
 // Location; Android's location manager, which needs no Play services).
-// An app that imports it is given the permissions it needs; ryui.json's
+// An app that imports it is given the permissions it needs; asuka.json's
 // ios.usage.NSLocationWhenInUseUsageDescription says why to the user.
 package location
 
@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // Position is a place the device was at, at a time.
@@ -47,7 +47,7 @@ func decode(b []byte, err error) (Position, error) {
 // Current asks for permission if it hasn't been, then returns where the
 // device is. Not on the main thread: it waits for the user, then a fix.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Current() (Position, error) {
@@ -64,7 +64,7 @@ var (
 // moves, until stop is called; the first is the position now. It asks
 // for permission as Current does; f isn't called if it's denied.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Watch(f func(Position)) (stop func()) {
@@ -119,7 +119,7 @@ func follow() {
 // geocoder, which asks its servers: ask only when the user wants the name.
 // Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func PlaceName(latitude, longitude float64) (string, error) {

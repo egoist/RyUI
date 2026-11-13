@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
-// Place names come from Nominatim: the request names RyUI and asks in
+// Place names come from Nominatim: the request names Asuka and asks in
 // the user's languages, a second after the last at least (counted, not
 // waited for), one at a time; an answer is kept, so the same place
 // isn't asked again. "places" is the other way.
@@ -48,10 +48,10 @@ func TestPlaceNames(t *testing.T) {
 		}
 	}))
 	defer srv.Close()
-	t.Setenv("RYUI_NOMINATIM", srv.URL)
+	t.Setenv("ASUKA_NOMINATIM", srv.URL)
 	waited := time.Duration(0)
 	saved := geo
-	geo = &geocoder{client: srv.Client(), sleep: func(d time.Duration) { waited += d }, now: time.Now, path: filepath.Join(t.TempDir(), "ryui-geocode.json")}
+	geo = &geocoder{client: srv.Client(), sleep: func(d time.Duration) { waited += d }, now: time.Now, path: filepath.Join(t.TempDir(), "asuka-geocode.json")}
 	defer func() { geo = saved }()
 	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })
 	onMain(t, func() {
@@ -93,7 +93,7 @@ func TestPlaceNames(t *testing.T) {
 		t.Fatalf("waited %v between requests", waited)
 	}
 	for i := range agents {
-		if !strings.HasPrefix(agents[i], "RyUI/") || langs[i] != "fr-FR,en-US" {
+		if !strings.HasPrefix(agents[i], "Asuka/") || langs[i] != "fr-FR,en-US" {
 			t.Fatalf("request %d: agent %q, languages %q", i, agents[i], langs[i])
 		}
 	}
@@ -102,11 +102,11 @@ func TestPlaceNames(t *testing.T) {
 	}
 }
 
-// One real request, when asked for (RYUI_NET=1): Nominatim names the
+// One real request, when asked for (ASUKA_NET=1): Nominatim names the
 // Ferry Building's neighborhood.
 func TestPlaceNameNominatim(t *testing.T) {
-	if os.Getenv("RYUI_NET") == "" {
-		t.Skip("RYUI_NET=1: asks openstreetmap.org")
+	if os.Getenv("ASUKA_NET") == "" {
+		t.Skip("ASUKA_NET=1: asks openstreetmap.org")
 	}
 	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })
 	onMain(t, func() {

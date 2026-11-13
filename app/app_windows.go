@@ -2,6 +2,6 @@
 
 package app
 
-import "github.com/egoist/ryui/host/windows"
+import "github.com/egoist/asuka/host/windows"
 
 func init() { desktop = windows.Run }

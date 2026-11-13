@@ -10,15 +10,15 @@ import (
 	"github.com/ebitengine/purego"
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
+	. "github.com/egoist/asuka/internal/darwin"
 )
 
-// ryui/location on a Mac, with Core Location as on iOS: the position now
+// asuka/location on a Mac, with Core Location as on iOS: the position now
 // ("current"), each next one while watching ("next", "stop"), a place's
 // name ("name"). Replies are JSON: lat, lon, acc (meters), alt, t (Unix
 // ms); "denied" fails when the user hasn't allowed it. macOS asks the
-// user once, with the app's NSLocationUsageDescription (ryui.json's
-// ios.usage), which needs the app's bundle (ryui build -platform mac).
+// user once, with the app's NSLocationUsageDescription (asuka.json's
+// ios.usage), which needs the app's bundle (asuka build -platform mac).
 
 type locator struct {
 	manager     ID

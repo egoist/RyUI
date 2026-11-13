@@ -1,8 +1,8 @@
 {
-  "name": "@ryui/web",
+  "name": "@asuka/web",
   "private": true,
   "type": "module",
-  "description": "RyUI's web host: the DOM, driven by the app's Go code compiled to WebAssembly",
+  "description": "Asuka's web host: the DOM, driven by the app's Go code compiled to WebAssembly",
   "scripts": {
     "test": "node --test test/"
   }

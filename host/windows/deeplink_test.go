@@ -44,7 +44,7 @@ func TestURLSchemeValues(t *testing.T) {
 	}
 }
 
-// An app with an ID runs once, unless automation or ryui dev runs it;
+// An app with an ID runs once, unless automation or asuka dev runs it;
 // its mutex is the session's.
 func TestSingleInstance(t *testing.T) {
 	env := func(kv ...string) func(string) string {
@@ -63,16 +63,16 @@ func TestSingleInstance(t *testing.T) {
 	if singleInstance("", env()) {
 		t.Error("an app without an ID (go run) runs once")
 	}
-	for _, k := range []string{"RYUI_SNAPSHOT", "RYUI_SCRIPT", "RYUI_COMMANDS", "RYUI_STATE"} {
+	for _, k := range []string{"ASUKA_SNAPSHOT", "ASUKA_SCRIPT", "ASUKA_COMMANDS", "ASUKA_STATE"} {
 		if singleInstance("com.example.app", env(k, "x")) {
 			t.Errorf("an app run with %s runs once", k)
 		}
 	}
 	mutex, title := instanceNames(`com.example.app`)
-	if mutex != `Local\RyUI.com.example.app` || title != "RyUI instance com.example.app" {
+	if mutex != `Local\Asuka.com.example.app` || title != "Asuka instance com.example.app" {
 		t.Errorf("instanceNames = %q, %q", mutex, title)
 	}
-	if mutex, _ := instanceNames(`a\b`); mutex != `Local\RyUI.a_b` {
+	if mutex, _ := instanceNames(`a\b`); mutex != `Local\Asuka.a_b` {
 		t.Errorf("a backslash in the mutex's name: %q", mutex)
 	}
 }

@@ -7,11 +7,11 @@ import (
 	"errors"
 	"strings"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/internal/l10n"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/internal/l10n"
 )
 
-// ryui/webauth on Linux, as ASWebAuthenticationSession on a Mac: a
+// asuka/webauth on Linux, as ASWebAuthenticationSession on a Mac: a
 // dialog over the window in use with a WebKitGTK web view (opened as the
 // app's WebViews open it) that loads the URL; the session finishes when
 // a page navigates to the callback scheme (the navigation is stopped and

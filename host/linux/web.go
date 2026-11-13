@@ -15,12 +15,12 @@ import (
 	"regexp"
 	"strings"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
 )
 
 // A WebView is a WebKitWebView (WebKitGTK 6.0, opened the first time one
-// is made). The page posts to Go with window.ryui.postMessage(text), as
+// is made). The page posts to Go with window.asuka.postMessage(text), as
 // on the other platforms (a script message handler); Preload is a user
 // script at document start in every frame; Block is a content filter (the
 // rule list format of Safari's content blockers), the page loading once
@@ -47,7 +47,7 @@ type web struct {
 	closed   bool
 }
 
-const bridgeJS = `window.ryui = { postMessage: function (m) { window.webkit.messageHandlers.ryui.postMessage(String(m)); } };`
+const bridgeJS = `window.asuka = { postMessage: function (m) { window.webkit.messageHandlers.asuka.postMessage(String(m)); } };`
 
 var webKitWarned bool
 
@@ -103,7 +103,7 @@ func webKit() error {
 	err := LoadWebKit()
 	if err != nil && !webKitWarned {
 		webKitWarned = true
-		fmt.Fprintln(os.Stderr, "ryui:", err)
+		fmt.Fprintln(os.Stderr, "asuka:", err)
 	}
 	return err
 }
@@ -121,10 +121,10 @@ func (h *Host) makeWeb(n *node) {
 	settings := WebKitWebViewGetSettings(v)
 	WebKitSettingsSetEnableDeveloperExtras(settings, true)
 	// Connected before the handler is registered, as WebKit asks.
-	w.connect(w.ucc, "script-message-received::ryui", func(val uintptr) {
+	w.connect(w.ucc, "script-message-received::asuka", func(val uintptr) {
 		h.emit(n, ops.Event{Kind: ops.EventMessage, Str: GoStringFree(JSCValueToString(val))})
 	})
-	WebKitUserContentManagerRegisterScriptMessageHandler(w.ucc, "ryui", 0)
+	WebKitUserContentManagerRegisterScriptMessageHandler(w.ucc, "asuka", 0)
 	w.addScript(bridgeJS)
 	on := func(signal string, f any) { w.connect(v, signal, f) }
 	on("load-changed", func(ev uintptr) {
@@ -445,14 +445,14 @@ func (w *web) setBlock(h *Host, b []byte) {
 	}
 	w.pending = gen
 	bytes := BytesNew(&js[0], uintptr(len(js)))
-	id := fmt.Sprintf("ryui-block-%d", w.n.id)
+	id := fmt.Sprintf("asuka-block-%d", w.n.id)
 	Async(func(a AsyncCall) {
 		WebKitUserContentFilterStoreSave(filterStore, id, bytes, 0, a.Callback, a.Data)
 	}, func(src, res Ptr) {
 		var gerr Ptr
 		f := WebKitUserContentFilterStoreSaveFinish(src, res, &gerr)
 		if gerr != 0 {
-			fmt.Fprintln(os.Stderr, "ryui: the WebView's Block didn't compile:", webKitErrorMessage(gerr))
+			fmt.Fprintln(os.Stderr, "asuka: the WebView's Block didn't compile:", webKitErrorMessage(gerr))
 			ErrorFree(gerr)
 		}
 		if f != 0 {
@@ -481,7 +481,7 @@ func (w *web) released() {
 	}
 }
 
-// The web module and ryui/js.
+// The web module and asuka/js.
 
 // evalBody runs s in the page's world and answers with its value as
 // JSON: the last statement's, or what its promise resolves to.
@@ -583,7 +583,7 @@ func (n *node) extWeb() (*web, bool) {
 	return w, ok
 }
 
-// script is a ryui/js run: a web view that's never shown, and who waits
+// script is a asuka/js run: a web view that's never shown, and who waits
 // for it.
 type script struct {
 	view    Ptr
@@ -592,7 +592,7 @@ type script struct {
 	reply   func([]byte, error)
 }
 
-// scriptsRunning counts the ryui/js runs under way.
+// scriptsRunning counts the asuka/js runs under way.
 var scriptsRunning int
 
 // jsModule is the "js" module: "eval" (args: u32 timeout ms, then the

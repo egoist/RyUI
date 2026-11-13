@@ -1,6 +1,6 @@
 // Package localfile finds the file a source names, for the desktop
-// hosts' modules that hand files to the system (ryui/preview,
-// ryui/print, ryui/compose): a path, a file:// URL, an asset's path, or
+// hosts' modules that hand files to the system (asuka/preview,
+// asuka/print, asuka/compose): a path, a file:// URL, an asset's path, or
 // an http(s) URL, downloaded first. The mobile hosts do the same in
 // Swift and Kotlin.
 package localfile
@@ -78,7 +78,7 @@ func download(source, typ, cache string) (string, error) {
 	}
 	var id [8]byte
 	rand.Read(id[:])
-	dir := filepath.Join(cache, "ryui-files", hex.EncodeToString(id[:]))
+	dir := filepath.Join(cache, "asuka-files", hex.EncodeToString(id[:]))
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
@@ -105,7 +105,7 @@ func CacheDir(app string) string {
 }
 
 // NewPDF is a path for a new PDF in a folder of its own under cache
-// (ryui-print/), named after title ("Document" if it has none), as it's
+// (asuka-print/), named after title ("Document" if it has none), as it's
 // shared or mailed.
 func NewPDF(cache, title string) (string, error) {
 	name := strings.TrimSpace(strings.NewReplacer("/", "-", "\\", "-", ":", "-").Replace(title))
@@ -114,7 +114,7 @@ func NewPDF(cache, title string) (string, error) {
 	}
 	var id [8]byte
 	rand.Read(id[:])
-	dir := filepath.Join(cache, "ryui-print", hex.EncodeToString(id[:]))
+	dir := filepath.Join(cache, "asuka-print", hex.EncodeToString(id[:]))
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}

@@ -5,18 +5,18 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/egoist/ryui/host/fake"
-	"github.com/egoist/ryui/i18n"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/host/fake"
+	"github.com/egoist/asuka/i18n"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // catalog is an app's catalog, registered once: its languages are the app's
 // for the rest of the tests, whose hosts' language is English.
 var catalog = sync.OnceValue(func() *i18n.Catalog {
 	c, err := i18n.NewCatalog(fstest.MapFS{
-		"en.json":      {Data: []byte(`{"hello": "Hello", "files": "{n, plural, one {# file} other {# files}}", "ryui.ok": "Okay"}`)},
+		"en.json":      {Data: []byte(`{"hello": "Hello", "files": "{n, plural, one {# file} other {# files}}", "asuka.ok": "Okay"}`)},
 		"de.json":      {Data: []byte(`{"hello": "Hallo", "files": "{n, plural, one {# Datei} other {# Dateien}}"}`)},
 		"ar.json":      {Data: []byte(`{"hello": "مرحبا", "files": "{n, plural, zero {لا ملفات} one {ملف} two {ملفان} few {# ملفات} many {# ملفًا} other {# ملف}}"}`)},
 		"zh-Hant.json": {Data: []byte(`{"hello": "哈囉"}`)},
@@ -229,7 +229,7 @@ func TestOwnWords(t *testing.T) {
 	r.Flush()
 	alert = h.OfKind(ops.KindAlert)
 	if got := alert[len(alert)-1].Actions(ops.PropAlertButtons); len(got) != 1 || got[0] != "Okay" {
-		t.Errorf("the app's ryui.ok: %q", got)
+		t.Errorf("the app's asuka.ok: %q", got)
 	}
 }
 

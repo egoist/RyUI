@@ -12,14 +12,14 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
-	"github.com/egoist/ryui/internal/crashrun"
-	. "github.com/egoist/ryui/internal/darwin"
+	"github.com/egoist/asuka/internal/crashrun"
+	. "github.com/egoist/asuka/internal/darwin"
 )
 
-// startCrash begins the run's crash record (ryui/crash), if the app
+// startCrash begins the run's crash record (asuka/crash), if the app
 // reports crashes, and subscribes to MetricKit's diagnostics (macOS 12
 // and later): its native crashes, hangs, and CPU and disk exceptions,
-// delivered on a later launch, which ryui/crash reads into reports.
+// delivered on a later launch, which asuka/crash reads into reports.
 //
 // No handler of uncaught Objective-C exceptions: AppKit catches those on
 // the main thread itself (and logs them), and MetricKit reports the ones
@@ -33,7 +33,7 @@ func startCrash() {
 		return
 	}
 	inbox := filepath.Join(dir, "inbox")
-	cls := DefineClass("RyUIMetricSubscriber", "NSObject", []string{"MXMetricManagerSubscriber"}, []objc.MethodDef{
+	cls := DefineClass("AsukaMetricSubscriber", "NSObject", []string{"MXMetricManagerSubscriber"}, []objc.MethodDef{
 		// On a queue of MetricKit's.
 		Method("didReceiveDiagnosticPayloads:", func(self ID, _ SEL, payloads ID) {
 			WithPool(func() {

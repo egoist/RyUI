@@ -27,7 +27,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/egoist/ryui/internal/shaderir"
+	"github.com/egoist/asuka/internal/shaderir"
 )
 
 type variable struct {

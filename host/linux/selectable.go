@@ -7,8 +7,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
 )
 
 // A Selectable selects across the RichTexts in it as one text, as macOS
@@ -122,7 +122,7 @@ func (h *Host) makeSelectable(n *node) {
 	s := &selectArea{}
 	selectAreas[n] = s
 	w := n.widget
-	WidgetAddCSSClass(w, "ryui-selectable")
+	WidgetAddCSSClass(w, "asuka-selectable")
 	WidgetSetFocusable(w, true)
 	WidgetSetFocusOnClick(w, false) // the drag grabs it when it selects
 

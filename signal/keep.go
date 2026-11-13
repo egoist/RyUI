@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// Keeping state across reloads (ryui dev): the app's Go code restarts on a
+// Keeping state across reloads (asuka dev): the app's Go code restarts on a
 // change, and its signals come back with their values, as React's Fast
 // Refresh keeps hooks' state. A signal is known by where it's made: the
 // call path (function names, not lines, so edits elsewhere don't move
@@ -54,11 +54,11 @@ func KeptState() map[string][]byte {
 	return out
 }
 
-// core is the prefix of RyUI's own packages: their signals (the
+// core is the prefix of Asuka's own packages: their signals (the
 // environment, list rows) are the framework's state, not the app's.
 var core = []string{
-	"github.com/egoist/ryui/ui.", "github.com/egoist/ryui/signal.", "github.com/egoist/ryui/app.",
-	"github.com/egoist/ryui/internal/remote.", "github.com/egoist/ryui/internal/boot.",
+	"github.com/egoist/asuka/ui.", "github.com/egoist/asuka/signal.", "github.com/egoist/asuka/app.",
+	"github.com/egoist/asuka/internal/remote.", "github.com/egoist/asuka/internal/boot.",
 }
 
 func callPath() (string, bool) {

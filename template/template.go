@@ -1,4 +1,4 @@
-// Package template is what `ryui new` copies.
+// Package template is what `asuka new` copies.
 package template
 
 import "embed"

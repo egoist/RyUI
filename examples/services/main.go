@@ -12,29 +12,29 @@ import (
 	"strings"
 	"time"
 
-	"github.com/egoist/ryui/agerange"
-	"github.com/egoist/ryui/app"
-	"github.com/egoist/ryui/appleauth"
-	"github.com/egoist/ryui/audio"
-	"github.com/egoist/ryui/audio/record"
-	"github.com/egoist/ryui/biometric"
-	"github.com/egoist/ryui/calendar"
-	"github.com/egoist/ryui/contacts"
-	"github.com/egoist/ryui/device"
-	"github.com/egoist/ryui/imageedit"
-	"github.com/egoist/ryui/integrity"
-	"github.com/egoist/ryui/maps"
-	"github.com/egoist/ryui/periodic"
-	"github.com/egoist/ryui/push"
-	"github.com/egoist/ryui/review"
-	"github.com/egoist/ryui/screen"
-	"github.com/egoist/ryui/sensors"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/speech"
-	"github.com/egoist/ryui/splash"
-	"github.com/egoist/ryui/tracking"
-	"github.com/egoist/ryui/ui"
-	"github.com/egoist/ryui/widget"
+	"github.com/egoist/asuka/agerange"
+	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/appleauth"
+	"github.com/egoist/asuka/audio"
+	"github.com/egoist/asuka/audio/record"
+	"github.com/egoist/asuka/biometric"
+	"github.com/egoist/asuka/calendar"
+	"github.com/egoist/asuka/contacts"
+	"github.com/egoist/asuka/device"
+	"github.com/egoist/asuka/imageedit"
+	"github.com/egoist/asuka/integrity"
+	"github.com/egoist/asuka/maps"
+	"github.com/egoist/asuka/periodic"
+	"github.com/egoist/asuka/push"
+	"github.com/egoist/asuka/review"
+	"github.com/egoist/asuka/screen"
+	"github.com/egoist/asuka/sensors"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/speech"
+	"github.com/egoist/asuka/splash"
+	"github.com/egoist/asuka/tracking"
+	"github.com/egoist/asuka/ui"
+	"github.com/egoist/asuka/widget"
 )
 
 func App() ui.Node {
@@ -49,11 +49,11 @@ func App() ui.Node {
 	push.OnOpen(func(m push.Message) { log.Printf("services: opened push %q", m.Title) })
 	status := signal.New("Tap a service.")
 	setUpMessages(status)
-	// ryui.json's shortcuts and the widget open the app with these.
+	// asuka.json's shortcuts and the widget open the app with these.
 	ui.OnOpenURL(func(u string) {
 		status.Set("Opened with " + u)
-		if u == "ryuiservices://speak" {
-			speech.Speak("Hello from RyUI", speech.Options{}, nil)
+		if u == "asukaservices://speak" {
+			speech.Speak("Hello from Asuka", speech.Options{}, nil)
 		}
 	})
 
@@ -232,7 +232,7 @@ func App() ui.Node {
 					return fmt.Sprintf("%d steps today", s.Steps)
 				})),
 				item("Say hello", func() {
-					speech.Speak("Hello from RyUI. This sentence is long enough to pause.", speech.Options{}, func(err error) {
+					speech.Speak("Hello from Asuka. This sentence is long enough to pause.", speech.Options{}, func(err error) {
 						if err != nil {
 							status.Set("speech: " + err.Error())
 						} else {
@@ -324,7 +324,7 @@ func App() ui.Node {
 				}),
 				item("Add an event", func() {
 					start := time.Now().Add(time.Hour).Truncate(time.Hour)
-					calendar.Add(calendar.Event{Title: "RyUI demo", Location: "Online", Start: start, End: start.Add(30 * time.Minute)},
+					calendar.Add(calendar.Event{Title: "Asuka demo", Location: "Online", Start: start, End: start.Add(30 * time.Minute)},
 						func(saved bool, err error) { status.Set(fmt.Sprint("event saved: ", saved, " ", err)) })
 				}),
 				item("Calendars", run(func() string {
@@ -363,7 +363,7 @@ func App() ui.Node {
 				item("Update the widget", func() {
 					widget.Set("energy", widget.Entry{
 						Title: "Energy", Symbol: "bolt.fill", Value: "72%", Body: "Moving well today", Caption: time.Now().Format("15:04"),
-						Progress: 0.72, ShowProgress: true, Until: time.Now().Add(25 * time.Minute), URL: "ryuiservices://speak",
+						Progress: 0.72, ShowProgress: true, Until: time.Now().Add(25 * time.Minute), URL: "asukaservices://speak",
 					})
 					status.Set("Widget updated")
 				}),

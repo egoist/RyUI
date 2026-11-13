@@ -7,9 +7,9 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/internal/l10n"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/internal/l10n"
+	"github.com/egoist/asuka/ops"
 )
 
 // Navigation on a Mac:
@@ -53,11 +53,11 @@ type nav struct {
 func (h *Host) createNav(n *node) bool {
 	switch n.kind {
 	case ops.KindStack:
-		n.view = initView("RyUIView")
+		n.view = initView("AsukaView")
 		h.layer(n)
 		Send(Send(n.view, "layer"), "setMasksToBounds:", 1)
 	case ops.KindScreen:
-		n.view = initView("RyUIView")
+		n.view = initView("AsukaView")
 		n.nav = &nav{backGesture: true}
 		return true
 	case ops.KindTabs:
@@ -66,9 +66,9 @@ func (h *Host) createNav(n *node) bool {
 		Send(v, "setTabViewType:", 0) // top tabs, bezeled
 		n.view = v
 	case ops.KindSheet, ops.KindWindow:
-		n.view = initView("RyUIView")
+		n.view = initView("AsukaView")
 	case ops.KindPopover:
-		n.view = initView("RyUIView")
+		n.view = initView("AsukaView")
 		n.popover = &popover{}
 	case ops.KindAlert:
 	default:
@@ -486,7 +486,7 @@ func (h *Host) present(n *node) {
 		w := MsgInitWindow(Send(Class("NSWindow"), "alloc"), Sel("initWithContentRect:styleMask:backing:defer:"),
 			Rect{Size: size}, styleTitled|styleResizable, backingBuffered, false)
 		Send(w, "setReleasedWhenClosed:", 0)
-		content := initView("RyUIView")
+		content := initView("AsukaView")
 		Send(content, "setAutoresizesSubviews:", 0)
 		Send(w, "setContentView:", uintptr(content))
 		Release(content)
@@ -692,7 +692,7 @@ func (h *Host) updateChrome(w *win) {
 	if stack != nil {
 		c.back = h.liveScreens(stack) > 1
 		if c.back {
-			ids = append(ids, "ryui.back")
+			ids = append(ids, "asuka.back")
 		}
 		ids = append(ids, "NSToolbarFlexibleSpaceItem")
 		c.actions, c.search = nil, ""
@@ -700,10 +700,10 @@ func (h *Host) updateChrome(w *win) {
 			c.actions, c.search = screen.actions, screen.nav.search
 		}
 		if c.search != "" {
-			ids = append(ids, "ryui.search")
+			ids = append(ids, "asuka.search")
 		}
 		for i := range c.actions {
-			ids = append(ids, "ryui.action."+itoa(i))
+			ids = append(ids, "asuka.action."+itoa(i))
 		}
 		if h.toolbarReversed() {
 			slices.Reverse(ids)
@@ -721,7 +721,7 @@ func (h *Host) updateChrome(w *win) {
 	if c.toolbar == 0 {
 		// Its own identifier: toolbars that share one keep the same items, which
 		// the windows' don't.
-		t := Send(Send(Class("NSToolbar"), "alloc"), "initWithIdentifier:", uintptr(String("ryui."+itoa(int(w.window)))))
+		t := Send(Send(Class("NSToolbar"), "alloc"), "initWithIdentifier:", uintptr(String("asuka."+itoa(int(w.window)))))
 		Send(t, "setDelegate:", uintptr(h.target))
 		Send(t, "setDisplayMode:", 2) // icons
 		Send(t, "setAllowsUserCustomization:", 0)
@@ -794,7 +794,7 @@ func (h *Host) toolbarItem(w *win, ident string) ID {
 		return Autorelease(it)
 	}
 	switch {
-	case ident == "ryui.back":
+	case ident == "asuka.back":
 		it := item()
 		back := l10n.Back(h.locale)
 		Send(it, "setImage:", uintptr(symbolImage(h.backSymbol())))
@@ -811,7 +811,7 @@ func (h *Host) toolbarItem(w *win, ident string) ID {
 			Send(it, "setBordered:", 1)
 		}
 		return it
-	case ident == "ryui.search":
+	case ident == "asuka.search":
 		var it ID
 		if HasClass("NSSearchToolbarItem") {
 			it = Autorelease(Send(Send(Class("NSSearchToolbarItem"), "alloc"), "initWithItemIdentifier:", uintptr(String(ident))))
@@ -835,8 +835,8 @@ func (h *Host) toolbarItem(w *win, ident string) ID {
 			Send(f, "setStringValue:", uintptr(String(c.screen.nav.searchText)))
 		}
 		return it
-	case len(ident) > len("ryui.action.") && ident[:len("ryui.action.")] == "ryui.action.":
-		i := atoi(ident[len("ryui.action."):])
+	case len(ident) > len("asuka.action.") && ident[:len("asuka.action.")] == "asuka.action.":
+		i := atoi(ident[len("asuka.action."):])
 		if i < 0 || i >= len(c.actions) {
 			return 0
 		}
@@ -953,7 +953,7 @@ func (h *Host) searchCommand(control ID, cmd SEL) bool {
 	return false
 }
 
-// navMethods are RyUITarget's toolbar delegate methods, Escape and the
+// navMethods are AsukaTarget's toolbar delegate methods, Escape and the
 // windows' closing.
 func navMethods() []objc.MethodDef {
 	return []objc.MethodDef{

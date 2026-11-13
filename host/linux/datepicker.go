@@ -5,8 +5,8 @@ package linux
 import (
 	"time"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
 )
 
 // Date pickers: a button showing the date (and time), opening a popover

@@ -16,8 +16,8 @@ import (
 
 	"github.com/ebitengine/purego"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ui"
 )
 
 // visWritePNG writes a CGImage as a PNG.
@@ -138,12 +138,12 @@ func TestScanFile(t *testing.T) {
 	dir := t.TempDir()
 	qr := filepath.Join(dir, "qr.png")
 	onMain(func() {
-		visQR(t, "https://ryui.dev/scan", qr)
+		visQR(t, "https://asuka.dev/scan", qr)
 		b, err := await(h, "scan", "file", []byte("\n"+qr))
 		if err != nil {
 			fatal(t, "scan.file:", err)
 		}
-		if want := string(encodeCodes([][2]string{{"qr", "https://ryui.dev/scan"}})); string(b) != want {
+		if want := string(encodeCodes([][2]string{{"qr", "https://asuka.dev/scan"}})); string(b) != want {
 			fatalf(t, "scan.file: %q, want %q", b, want)
 		}
 		if b, err := await(h, "scan", "file", []byte("ean13,code128\n"+qr)); err != nil || string(b) != "\x00\x00\x00\x00" {
@@ -172,7 +172,7 @@ func TestVisionAnalyze(t *testing.T) {
 	text, qr := filepath.Join(dir, "text.png"), filepath.Join(dir, "qr.png")
 	onMain(func() {
 		visTextImage(t, "Hello, world 42", text)
-		visQR(t, "ryui", qr)
+		visQR(t, "asuka", qr)
 		args, _ := json.Marshal(map[string]any{"path": text, "faces": false, "codes": false, "languages": []string{"en-US"}})
 		b, err := await(h, "vision", "analyze", args)
 		if err != nil {
@@ -216,7 +216,7 @@ func TestVisionAnalyze(t *testing.T) {
 		}
 		r = visResult{}
 		json.Unmarshal(b, &r)
-		if len(r.Codes) != 1 || r.Codes[0].Kind != "qr" || r.Codes[0].Value != "ryui" || r.Lines != nil && len(r.Lines) != 0 {
+		if len(r.Codes) != 1 || r.Codes[0].Kind != "qr" || r.Codes[0].Value != "asuka" || r.Lines != nil && len(r.Lines) != 0 {
 			fatalf(t, "codes: %s", b)
 		}
 		if c := r.Codes[0].Box; c.X < 0.1 || c.X > 0.3 || c.W < 0.5 || c.H < 0.5 {

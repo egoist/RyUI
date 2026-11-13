@@ -1,4 +1,4 @@
-// ryui/secure on the web. A browser has no keychain: the values are kept
+// asuka/secure on the web. A browser has no keychain: the values are kept
 // in the app's IndexedDB database, each encrypted (AES-GCM, 256 bits)
 // under a key WebCrypto made non-extractable, kept in the same database
 // (IndexedDB keeps a CryptoKey as it is, so no script, the app's own
@@ -22,7 +22,7 @@ export class SecureStore {
 
   key() {
     this.keyP ??= (async () => {
-      if (!this.subtle) throw new Error("ryui: secureStore isn't on the web here: the page has no WebCrypto (it needs https or localhost)");
+      if (!this.subtle) throw new Error("asuka: secureStore isn't on the web here: the page has no WebCrypto (it needs https or localhost)");
       let k = await this.backend.get("keys", "key");
       if (!k) {
         k = await this.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
@@ -62,7 +62,7 @@ export function idbBackend(name) {
   let dbP = null;
   const db = () => {
     dbP ??= new Promise((resolve, reject) => {
-      if (!globalThis.indexedDB) return reject(new Error("ryui: secureStore isn't on the web here: the browser keeps no IndexedDB for this page"));
+      if (!globalThis.indexedDB) return reject(new Error("asuka: secureStore isn't on the web here: the browser keeps no IndexedDB for this page"));
       const r = indexedDB.open(name, 1);
       r.onupgradeneeded = () => {
         r.result.createObjectStore("keys");

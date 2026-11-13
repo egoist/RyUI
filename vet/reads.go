@@ -40,7 +40,7 @@ import (
 var Reads = &analysis.Analyzer{
 	Name:      "reads",
 	Doc:       "report a signal read while a component builds its tree, which runs once\n\n" + readsDoc,
-	URL:       "https://github.com/egoist/ryui/blob/main/docs/concepts.md#what-updates",
+	URL:       "https://github.com/egoist/asuka/blob/main/docs/concepts.md#what-updates",
 	Run:       runReads,
 	FactTypes: []analysis.Fact{new(ReadsFact)},
 }
@@ -153,7 +153,7 @@ type readers struct {
 }
 
 func runReads(pass *analysis.Pass) (any, error) {
-	if !usesRyUI(pass.Pkg) || pass.Pkg.Path() == signalPath {
+	if !usesAsuka(pass.Pkg) || pass.Pkg.Path() == signalPath {
 		return nil, nil
 	}
 	r := &readers{

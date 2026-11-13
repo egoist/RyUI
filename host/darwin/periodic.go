@@ -11,10 +11,10 @@ import (
 	"github.com/ebitengine/purego"
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
+	. "github.com/egoist/asuka/internal/darwin"
 )
 
-// ryui/periodic on a Mac: NSBackgroundActivityScheduler, which runs a
+// asuka/periodic on a Mac: NSBackgroundActivityScheduler, which runs a
 // task about every interval while the app runs (in the background too:
 // a Mac app keeps running out of sight), when the system has the time
 // and power for it; unlike iOS's BGTaskScheduler it doesn't launch the
@@ -26,7 +26,7 @@ import (
 // power waits while the Mac runs on its battery, one that wants the
 // network while it has none (deferred: the scheduler tries again soon).
 
-const periodicKey = "ryui.periodic"
+const periodicKey = "asuka.periodic"
 
 type periodicTask struct {
 	Every    float64 `json:"every"`
@@ -147,7 +147,7 @@ func (h *Host) periodicSchedule(name string, t periodicTask) {
 	}
 	id := GoString(Send(Send(Class("NSBundle"), "mainBundle"), "bundleIdentifier"))
 	if id == "" {
-		id = "dev.ryui." + h.appName
+		id = "dev.asuka." + h.appName
 	}
 	sch := Send(Send(Class("NSBackgroundActivityScheduler"), "alloc"), "initWithIdentifier:", uintptr(String(id+".periodic."+name)))
 	Send(sch, "setRepeats:", 1)
@@ -237,7 +237,7 @@ func periodicFinished(name string, ok bool) {
 	Release(ID(done))
 }
 
-// online reports whether the Mac has a network path (ryui/network's
+// online reports whether the Mac has a network path (asuka/network's
 // monitor, started for it: unknown yet counts as online).
 func (h *Host) online() bool {
 	if h.startNetwork() != nil || len(h.net.path) == 0 {

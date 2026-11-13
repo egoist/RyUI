@@ -6,7 +6,7 @@ package mobile
 #include <android/log.h>
 #include <stdlib.h>
 
-static void ryui_log(int prio, const char *msg) { __android_log_write(prio, "ryui", msg); }
+static void asuka_log(int prio, const char *msg) { __android_log_write(prio, "asuka", msg); }
 */
 import "C"
 
@@ -17,7 +17,7 @@ import (
 )
 
 // Android drops a process's stdout and stderr: send the app's (fmt.Print,
-// panics' messages before the crash) to logcat, tagged RyUI.
+// panics' messages before the crash) to logcat, tagged Asuka.
 func init() {
 	for _, f := range []struct {
 		file **os.File
@@ -33,7 +33,7 @@ func init() {
 			s.Buffer(make([]byte, 64<<10), 1<<20)
 			for s.Scan() {
 				m := C.CString(s.Text())
-				C.ryui_log(prio, m)
+				C.asuka_log(prio, m)
 				C.free(unsafe.Pointer(m))
 			}
 		}(f.prio)

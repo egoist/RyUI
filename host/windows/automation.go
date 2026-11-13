@@ -11,19 +11,19 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ops"
 )
 
-func snapshotting() bool { return os.Getenv("RYUI_SNAPSHOT") != "" }
+func snapshotting() bool { return os.Getenv("ASUKA_SNAPSHOT") != "" }
 
-// automation starts the debug automation: RYUI_SCRIPT's steps (tap a
-// view by its text, back, wait, snap), then RYUI_SNAPSHOT (write the
-// window as a PNG once it has shown, RYUI_DUMP the view tree beside it)
+// automation starts the debug automation: ASUKA_SCRIPT's steps (tap a
+// view by its text, back, wait, snap), then ASUKA_SNAPSHOT (write the
+// window as a PNG once it has shown, ASUKA_DUMP the view tree beside it)
 // and quit.
 func (h *Host) automation() {
-	script := os.Getenv("RYUI_SCRIPT")
-	path := os.Getenv("RYUI_SNAPSHOT")
+	script := os.Getenv("ASUKA_SCRIPT")
+	path := os.Getenv("ASUKA_SNAPSHOT")
 	if script == "" && path == "" {
 		return
 	}
@@ -53,10 +53,10 @@ func (h *Host) automation() {
 		}
 		h.Post(func() {
 			h.snapshot(path)
-			if os.Getenv("RYUI_DUMP") != "" {
+			if os.Getenv("ASUKA_DUMP") != "" {
 				os.WriteFile(path+".txt", []byte(h.dump()), 0o644)
 			}
-			if os.Getenv("RYUI_SNAPSHOT_STAY") == "" {
+			if os.Getenv("ASUKA_SNAPSHOT_STAY") == "" {
 				saveState()
 				for _, n := range h.nodes {
 					if n.web != nil {
@@ -89,7 +89,7 @@ func (h *Host) step(verb, arg string) {
 		}
 		n := h.showing(arg)
 		if n == nil {
-			fmt.Fprintf(os.Stderr, "ryui: automation: nothing shows %q\n", arg)
+			fmt.Fprintf(os.Stderr, "asuka: automation: nothing shows %q\n", arg)
 			return
 		}
 		c := ClientRect(n.hwnd)
@@ -101,7 +101,7 @@ func (h *Host) step(verb, arg string) {
 			t = t.parent
 		}
 		if t == nil || t.hwnd == 0 {
-			fmt.Fprintf(os.Stderr, "ryui: automation: nothing to press shows %q\n", arg)
+			fmt.Fprintf(os.Stderr, "asuka: automation: nothing to press shows %q\n", arg)
 			return
 		}
 		c := ClientRect(n.hwnd)
@@ -115,7 +115,7 @@ func (h *Host) step(verb, arg string) {
 		held = [2]uintptr{}
 	case "tap":
 		if !h.tap(arg) {
-			fmt.Fprintf(os.Stderr, "ryui: automation: nothing shows %q\n", arg)
+			fmt.Fprintf(os.Stderr, "asuka: automation: nothing shows %q\n", arg)
 		}
 	case "type":
 		if f := Focus(); f != 0 {
@@ -154,7 +154,7 @@ func (h *Host) step(verb, arg string) {
 			})
 			return
 		}
-		fmt.Fprintf(os.Stderr, "ryui: automation: no menu %q\n", arg)
+		fmt.Fprintf(os.Stderr, "asuka: automation: no menu %q\n", arg)
 	case "menu":
 		for _, it := range h.appItems {
 			if it.title == arg {
@@ -162,7 +162,7 @@ func (h *Host) step(verb, arg string) {
 				return
 			}
 		}
-		fmt.Fprintf(os.Stderr, "ryui: automation: no menu item %q\n", arg)
+		fmt.Fprintf(os.Stderr, "asuka: automation: no menu item %q\n", arg)
 	case "close":
 		w := h.windowInUse()
 		if len(h.wins) > 0 && w == h.window {
@@ -224,7 +224,7 @@ func (h *Host) step(verb, arg string) {
 		}
 	case "snap":
 		h.snapshot(arg)
-		if os.Getenv("RYUI_DUMP") != "" {
+		if os.Getenv("ASUKA_DUMP") != "" {
 			os.WriteFile(arg+".txt", []byte(h.dump()), 0o644)
 		}
 	}
@@ -378,7 +378,7 @@ func (h *Host) pressKeys(spec string) {
 	}
 	a, ok := accelerator(parts[len(parts)-1], mods)
 	if !ok {
-		fmt.Fprintf(os.Stderr, "ryui: automation: no key %q\n", spec)
+		fmt.Fprintf(os.Stderr, "asuka: automation: no key %q\n", spec)
 		return
 	}
 	if w := OpenMenuWindow(); w != 0 {

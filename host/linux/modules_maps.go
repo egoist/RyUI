@@ -7,8 +7,8 @@ import (
 	"math"
 	"strings"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/native"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/native"
 )
 
 // maps.View on Linux: libshumate's ShumateSimpleMap (GNOME Maps' map),
@@ -22,7 +22,7 @@ import (
 // gives it one.
 
 func init() {
-	builtinViews["ryui.map"] = func(ctx native.Context) native.View { return newMapView(theHost, ctx) }
+	builtinViews["asuka.map"] = func(ctx native.Context) native.View { return newMapView(theHost, ctx) }
 }
 
 type mapRegion struct {
@@ -260,7 +260,7 @@ func (h *Host) colorPin(pin Ptr, color string) {
 	if len(c) != 8 {
 		return
 	}
-	class := "ryui-pin-" + c
+	class := "asuka-pin-" + c
 	if !mapPinClasses[class] {
 		mapPinClasses[class] = true
 		mapPinCSS += "." + class + " { color: #" + c + "; }\n"

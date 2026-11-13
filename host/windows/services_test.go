@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // The modules of Windows's services answer: the network's state, SAPI's
@@ -56,15 +56,15 @@ func TestServices(t *testing.T) {
 		if b, err, _ := await(h, "notify", "request", nil); err != nil || len(b) != 1 {
 			fatalf("notify.request: %v, %v", b, err)
 		}
-		spec, _ := json.Marshal(map[string]any{"id": "ryui-test", "title": "RyUI", "body": "A test toast", "silent": true})
+		spec, _ := json.Marshal(map[string]any{"id": "asuka-test", "title": "Asuka", "body": "A test toast", "silent": true})
 		if _, err, _ := await(h, "notify", "schedule", spec); err != nil {
 			fatalf("notify.schedule: %v", err)
 		}
-		spec, _ = json.Marshal(map[string]any{"id": "ryui-later", "title": "Later", "seconds": 3600})
+		spec, _ = json.Marshal(map[string]any{"id": "asuka-later", "title": "Later", "seconds": 3600})
 		if _, err, _ := await(h, "notify", "schedule", spec); err != nil {
 			fatalf("notify.schedule in an hour: %v", err)
 		}
-		await(h, "notify", "cancel", []byte("ryui-later"))
+		await(h, "notify", "cancel", []byte("asuka-later"))
 		await(h, "notify", "removeAll", nil)
 
 		// A second of a tone, as a WAV file.

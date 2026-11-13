@@ -1,4 +1,4 @@
-# RyUI website
+# Asuka website
 
 The home page and, at `/docs`, the guides of [`../docs`](../docs), built
 with TanStack Start and shadcn/ui. Every page is prerendered at build

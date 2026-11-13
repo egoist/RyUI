@@ -1,13 +1,13 @@
 // Package camera takes a photo with the system's camera (iOS's camera
 // screen, Android's camera app) and gives the app the file. An app that
 // imports it is given what it needs (iOS's camera purpose string, which
-// ryui.json's ios.usage.NSCameraUsageDescription says better).
+// asuka.json's ios.usage.NSCameraUsageDescription says better).
 package camera
 
 import (
 	"errors"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // ErrNoCamera is the error on a device without one (the iOS simulator).
@@ -38,7 +38,7 @@ type Mode int
 
 const (
 	Photo Mode = iota // photos (Capture)
-	Video             // videos (ryui/camera/record), and photos
+	Video             // videos (asuka/camera/record), and photos
 )
 
 // ViewProps configures a View.
@@ -52,7 +52,7 @@ type ViewProps struct {
 	Scan Scanner
 }
 
-// Scanner reads codes in a View: ryui/scan's Codes.
+// Scanner reads codes in a View: asuka/scan's Codes.
 type Scanner interface {
 	// CameraScan is the kinds of code, comma-separated (every kind, if
 	// none), and the function to call with each code read.
@@ -64,7 +64,7 @@ type Scanner interface {
 // own. It asks for the camera the first time. Capture takes a photo from
 // it. One at a time.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func View(p ViewProps) ui.Node {
@@ -82,7 +82,7 @@ func View(p ViewProps) ui.Node {
 		np.Props["codes"] = kinds
 		np.On["code"] = func(e ui.NativeEvent) { found(e.String("kind"), e.String("value")) }
 	}
-	return ui.Native("ryui.camera", np)
+	return ui.Native("asuka.camera", np)
 }
 
 // Capture takes a photo from the View on screen and calls done, on the

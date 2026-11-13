@@ -16,15 +16,15 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/internal/notifyspec"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/internal/notifyspec"
 )
 
-// ryui/notify on Linux: GNotification through the app's GApplication
+// asuka/notify on Linux: GNotification through the app's GApplication
 // (GNOME Shell's notifications, the portal's in a sandbox, the
 // freedesktop server elsewhere), the module's methods as the other
 // hosts have them. A notification's tap and its buttons are actions of
-// the application ("app.ryui-notify", the notification's ID and the
+// the application ("app.asuka-notify", the notification's ID and the
 // action's as its target), which reach the app while it runs.
 //
 // A notification due later is a systemd user timer's, which shows it
@@ -32,7 +32,7 @@ import (
 // app's, kept while it runs. What Linux lacks: a list of what's showing (the host keeps what it
 // showed and wasn't withdrawn or tapped), inline replies (a reply action
 // is a button that opens the app), Android's channels (ignored, as on
-// iOS) and pushes (ryui/push isn't on Linux). The badge is the launcher
+// iOS) and pushes (asuka/push isn't on Linux). The badge is the launcher
 // API's (com.canonical.Unity.LauncherEntry: Dash to Dock, Plasma's task
 // manager); GNOME's own dash has none.
 
@@ -96,7 +96,7 @@ type notifier struct {
 	badgePath      string
 	actionsAdded   bool // the application's actions (installNotifyActions)
 
-	// A run with RYUI_NOTIFY's (notify_timer.go): its notification tapped,
+	// A run with ASUKA_NOTIFY's (notify_timer.go): its notification tapped,
 	// closed.
 	headlessTap    func(notifyTarget)
 	headlessClosed func(id string)
@@ -143,7 +143,7 @@ func hasDesktopFile(appID string) bool {
 const actionSeconds = 25
 
 // notifyAction is the application's action notifications activate.
-const notifyAction = "ryui-notify"
+const notifyAction = "asuka-notify"
 
 // notifyTarget is an activation's target: the notification and the
 // action (empty: the notification itself).
@@ -172,7 +172,7 @@ func (h *Host) installNotifications() error {
 		return nil
 	}
 	if h.app == 0 || !Sys.ApplicationGetIsRegistered(h.app) {
-		return errors.New("ryui/notify: the application isn't registered (no session bus?)")
+		return errors.New("asuka/notify: the application isn't registered (no session bus?)")
 	}
 	h.installNotifyActions()
 	switch notifyBackend {
@@ -558,7 +558,7 @@ func (h *Host) setBadge(n int) error {
 func notifyImageFile(src, assets, cache string) (string, error) {
 	switch {
 	case strings.HasPrefix(src, "http://") || strings.HasPrefix(src, "https://"):
-		dir := filepath.Join(cache, "ryui-notify")
+		dir := filepath.Join(cache, "asuka-notify")
 		os.MkdirAll(dir, 0o755)
 		c := &http.Client{Timeout: 15 * time.Second}
 		resp, err := c.Get(src)
@@ -595,7 +595,7 @@ func notifyImageFile(src, assets, cache string) (string, error) {
 	}
 }
 
-// notifyModule is ryui/notify's module.
+// notifyModule is asuka/notify's module.
 func (h *Host) notifyModule() map[string]method {
 	ready := func(reply func([]byte, error)) bool {
 		if err := h.installNotifications(); err != nil {

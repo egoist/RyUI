@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 	"time"
 
-	. "github.com/egoist/ryui/internal/windows"
+	. "github.com/egoist/asuka/internal/windows"
 )
 
-// ryui/periodic on Windows: timers while the app runs (out of sight too:
+// asuka/periodic on Windows: timers while the app runs (out of sight too:
 // a Windows app keeps running), as a Mac's NSBackgroundActivityScheduler
 // runs them; nothing launches the app. "schedule" (string name, u32
 // seconds, u8 flags: 1 network, 2 charging) and "cancel" (the name) keep
@@ -48,11 +48,11 @@ const periodicRetry = 5 * time.Minute
 // periodicFile is where the tasks are kept: the app's data. A test
 // replaces it.
 var periodicFile = func(h *Host) string {
-	d := os.Getenv("RYUI_DATA")
+	d := os.Getenv("ASUKA_DATA")
 	if d == "" {
 		d = filepath.Join(os.Getenv("LOCALAPPDATA"), h.appName)
 	}
-	return filepath.Join(d, "ryui-periodic.json")
+	return filepath.Join(d, "asuka-periodic.json")
 }
 
 func (h *Host) periodicTasks() map[string]periodicTask {
@@ -228,7 +228,7 @@ func (h *Host) periodicFinished(name string, ok bool) {
 	h.periodicAfter(name, time.Duration(max(t.Every, 60)*float64(time.Second)))
 }
 
-// online reports whether the PC has a network (ryui/network's list,
+// online reports whether the PC has a network (asuka/network's list,
 // started for it: unknown counts as online).
 func (h *Host) online() bool {
 	if h.startNetwork() != nil || h.svc.net == nil {

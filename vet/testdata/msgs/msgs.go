@@ -1,9 +1,9 @@
-// Package msgs is a catalog's functions, as ryui generate writes them.
+// Package msgs is a catalog's functions, as asuka generate writes them.
 package msgs
 
 import (
-	"github.com/egoist/ryui/i18n"
-	"github.com/egoist/ryui/signal"
+	"github.com/egoist/asuka/i18n"
+	"github.com/egoist/asuka/signal"
 )
 
 type Messages struct{ locale string }

@@ -5,7 +5,7 @@ package windows
 import (
 	"math"
 
-	. "github.com/egoist/ryui/internal/windows"
+	. "github.com/egoist/asuka/internal/windows"
 )
 
 // Opacity between 0 and 1 fades a view and what's in it as one picture,

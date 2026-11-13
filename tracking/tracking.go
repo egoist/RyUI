@@ -3,14 +3,14 @@
 // Tracking Transparency prompt, which an app must show before it reads
 // the advertising identifier (IDFA) or shares data with ad networks and
 // data brokers. An app that imports it is given the prompt's purpose
-// string (NSUserTrackingUsageDescription; say yours in ryui.json's
+// string (NSUserTrackingUsageDescription; say yours in asuka.json's
 // ios.usage).
 //
 // Android has no such prompt: the user turns personalized ads off in
 // Settings, and Status there is Allowed.
 package tracking
 
-import "github.com/egoist/ryui/ui"
+import "github.com/egoist/asuka/ui"
 
 // Status is the user's answer.
 type Status uint8
@@ -36,7 +36,7 @@ func (s Status) String() string {
 // answer. iOS shows it only while the app is active: ask once the app's
 // on screen, not at launch. Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Request() (Status, error) {
@@ -45,7 +45,7 @@ func Request() (Status, error) {
 
 // Current is the answer now, without asking. Not on the main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Current() (Status, error) {

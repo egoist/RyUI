@@ -18,9 +18,9 @@ import (
 	"go/constant"
 	"testing"
 
-	"github.com/egoist/ryui/internal/shaderir"
-	"github.com/egoist/ryui/internal/shaderir/glsl"
-	"github.com/egoist/ryui/internal/shaderir/msl"
+	"github.com/egoist/asuka/internal/shaderir"
+	"github.com/egoist/asuka/internal/shaderir/glsl"
+	"github.com/egoist/asuka/internal/shaderir/msl"
 )
 
 func block(localVars []shaderir.Type, offset int, stmts ...shaderir.Stmt) *shaderir.Block {

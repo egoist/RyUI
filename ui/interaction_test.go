@@ -5,9 +5,9 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // A view's pressed and hover states reach the app as they change, once
@@ -195,7 +195,7 @@ func TestDropFromAnotherApp(t *testing.T) {
 	v := h.OfKind(ops.KindView)[1]
 	photo := ops.Item{Kind: ui.SharedImage, Path: "/caches/IMG_1.heic", Name: "IMG_1.heic", MIME: "image/heic", Size: 1200}
 	note := ops.Item{Kind: ui.SharedText, Text: "hello", MIME: "text/plain; charset=utf-8", Size: -1}
-	link := ops.Item{Kind: ui.SharedLink, Text: "https://ryui.dev", MIME: "text/uri-list", Size: -1}
+	link := ops.Item{Kind: ui.SharedLink, Text: "https://asuka.dev", MIME: "text/uri-list", Size: -1}
 	h.DropItems(v, 3, 4, true, photo, note, link)
 	if !slices.Equal(overs, []bool{true, false}) || len(drops) != 1 {
 		t.Fatalf("overs %v, drops %+v", overs, drops)
@@ -218,7 +218,7 @@ func TestDragItemsOnTheWire(t *testing.T) {
 			return []ui.DragItem{
 				{Path: path.Get()},
 				{Text: "plain words"},
-				{Kind: ui.SharedLink, Text: "https://ryui.dev"},
+				{Kind: ui.SharedLink, Text: "https://asuka.dev"},
 				{Value: 42},
 			}
 		}}})
@@ -229,7 +229,7 @@ func TestDragItemsOnTheWire(t *testing.T) {
 	want := []ops.Item{
 		{Kind: ui.SharedImage, Path: abs, Name: "cat.png", MIME: "image/png", Size: -1},
 		{Kind: ui.SharedText, Text: "plain words", MIME: "text/plain", Size: -1},
-		{Kind: ui.SharedLink, Text: "https://ryui.dev", MIME: "text/uri-list", Size: -1},
+		{Kind: ui.SharedLink, Text: "https://asuka.dev", MIME: "text/uri-list", Size: -1},
 		{Kind: ui.SharedText, MIME: "application/octet-stream", Size: -1, Value: true},
 	}
 	if !slices.Equal(got, want) {

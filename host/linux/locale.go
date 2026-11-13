@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
 )
 
 // Languages: the environment's Languages are the app's own language
@@ -18,7 +18,7 @@ import (
 // with the default direction, and each view takes its node's.
 
 func (h *Host) initLocale() {
-	h.localePath = filepath.Join(dataDir(), "ryui-locale")
+	h.localePath = filepath.Join(dataDir(), "asuka-locale")
 	if b, err := os.ReadFile(h.localePath); err == nil {
 		h.savedLocale = strings.TrimSpace(string(b))
 	}
@@ -102,13 +102,13 @@ func (h *Host) applyDirection(n *node) {
 	}
 }
 
-// dataDir is the app's data directory: RYUI_DATA, which init sets to the
+// dataDir is the app's data directory: ASUKA_DATA, which init sets to the
 // XDG data directory's (Flatpak's own) folder for the app.
 func dataDir() string {
-	if d := os.Getenv("RYUI_DATA"); d != "" {
+	if d := os.Getenv("ASUKA_DATA"); d != "" {
 		return d
 	}
-	return filepath.Join(xdgDataHome(), "ryui")
+	return filepath.Join(xdgDataHome(), "asuka")
 }
 
 func xdgDataHome() string {

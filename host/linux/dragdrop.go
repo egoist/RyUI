@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
 )
 
 // Drag and drop (DESIGN.md, "Interaction states, drag and drop"), with
@@ -79,7 +79,7 @@ var (
 )
 
 // dragTypeLocal is the private type the app's drags carry.
-const dragTypeLocal = "application/x-ryui-drag"
+const dragTypeLocal = "application/x-asuka-drag"
 
 func init() {
 	propHooks = append(propHooks, func(h *Host, n *node, p ops.PropID, v *ops.Value) bool {

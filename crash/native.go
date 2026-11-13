@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/egoist/ryui/internal/crashrun"
+	"github.com/egoist/asuka/internal/crashrun"
 )
 
 // An uncaught exception, as the iOS host (NSSetUncaughtExceptionHandler)
@@ -101,7 +101,7 @@ func jvmFrame(l string) (Frame, bool) {
 }
 
 // nativeFrame reads an Android native frame: "#00 pc 000000000004a1c0
-// /data/app/.../libryui.so (main.f+12) (BuildId: 1a2b)".
+// /data/app/.../libasuka.so (main.f+12) (BuildId: 1a2b)".
 func nativeFrame(l string) (Frame, bool) {
 	f := strings.Fields(l)
 	if len(f) < 4 || !strings.HasPrefix(f[0], "#") || f[1] != "pc" {

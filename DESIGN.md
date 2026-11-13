@@ -1,6 +1,6 @@
-# RyUI — design
+# Asuka — design
 
-RyUI (working name) is a UI framework in Go that renders with each
+Asuka (working name) is a UI framework in Go that renders with each
 platform's own widgets. **Mobile comes first: iOS and Android.** Desktop
 (macOS, Windows, Linux) comes after mobile's v0 is done, on the same core
 (see "Desktop, later"). Apps are written in Go. The goals, in order:
@@ -25,13 +25,13 @@ and an implementation later.
 | Language | Go | Fast compiles; GC and closures make UI code quick to write; MyGo's purego/Objective-C experience carries over. The cost per frame is in the platform toolkits, so a faster core language would not show. |
 | Retained or immediate | Retained | Native widgets are retained objects that own focus, selection, IME, scroll and accessibility state. Rebuilding a description every frame would mean diffing it against them. |
 | Reactivity | Fine-grained signals (Solid-like), no virtual tree | A signal write re-runs only the effects that read it, and each effect emits exactly the property change it causes. |
-| Threads | Core runs on the platform's main thread | Native callbacks that need answers synchronously (list data sources, text field delegates, measurement, layout inside the keyboard's animation) call straight into the core. Frameworks that run logic and layout off the main thread (React Native, Texture, Litho) do it so slow or garbage-collected app logic can't drop frames, and pay with asynchronous interop: blank cells, input races, layout a frame late. Fabric added synchronous layout and Flutter merged its UI and platform threads (3.29) for that reason; SwiftUI and Compose stay on main. RyUI's logic is compiled Go with fine-grained updates, so the main thread suffices; slow work runs on goroutines that post results back. The place off-main work does pay, preparing long, rich or streaming text, is handled without moving the core (see "Rich text"). |
+| Threads | Core runs on the platform's main thread | Native callbacks that need answers synchronously (list data sources, text field delegates, measurement, layout inside the keyboard's animation) call straight into the core. Frameworks that run logic and layout off the main thread (React Native, Texture, Litho) do it so slow or garbage-collected app logic can't drop frames, and pay with asynchronous interop: blank cells, input races, layout a frame late. Fabric added synchronous layout and Flutter merged its UI and platform threads (3.29) for that reason; SwiftUI and Compose stay on main. Asuka's logic is compiled Go with fine-grained updates, so the main thread suffices; slow work runs on goroutines that post results back. The place off-main work does pay, preparing long, rich or streaming text, is handled without moving the core (see "Rich text"). |
 | Core ↔ native contract | Batched mount operations (`ops`) | One crossing per batch. The same stream works in process and over a socket. |
 | Layout | Our own engine in Go: CSS block, flexbox and grid (Taffy-like, checked against Chrome), measured by the host | One layout engine for every platform, with the semantics web and React Native developers know; native widgets report their own sizes. Designed for our tree and for zero allocation, not ported from Yoga or Taffy. |
 | iOS host | Swift + UIKit, with Go linked as a `c-archive` | UIKit subclasses and delegates are trivial in Swift. Not SwiftUI: it is a second reconciler. |
 | Android host | Kotlin + Android Views (Material Components 3), with Go loaded as a `c-shared` library | Views are imperative targets for mount ops; JNI is crossed once per batch. Not Compose: it is a second reconciler, it measures only inside its own layout pass (the core measures synchronously during a flush), and it applies changes on the next frame. Views aren't deprecated, but new Material and Jetpack UI (Material 3 Expressive, adaptive scaffolds) often lands in Compose first or only. A component that exists only in Compose is mounted as a `ComposeView` for that one node, driven by the node's props and measured with `ComposeView.measure`; the core and the ops don't change. Not in list rows: each `ComposeView` is its own composition. Revisit only if Material Components is deprecated. |
 | Text and controls | The platform's own views (`UILabel`, `TextView`, ...), measured by the real widget on the main thread | Native behavior for free: accessibility, Dynamic Type and font scale, selection, truncation, line breaking. What's measured is what's drawn. The alternative, laying text out off the main thread with CoreText / `StaticLayout` and drawing it in a custom view (as frameworks whose core runs off the main thread do), would re-implement all of that. The cost: text is measured on the main thread, and each widget's measuring quirks are ours. Mitigations: per-node layout caches, and a shared measure cache keyed by content (below). If profiling ever shows main-thread text measuring hurting (List cells), measure with CoreText / `StaticLayout` while still drawing with the platform view. |
-| Web | The DOM, from a JavaScript host (`platform/web`) the app's Go code drives as WebAssembly (`host/web`) | As the mobile hosts: the core hands over each batch encoded, decoded in place out of the WebAssembly memory by a generated decoder, one crossing per batch; driving the DOM from Go through `syscall/js` would cross per property. Each view is an element at the frame the core laid out, so layout is RyUI's, as on every platform; leaves are measured by the real elements. Not a canvas: the browser's text, controls, focus, autofill and accessibility come with its elements. |
+| Web | The DOM, from a JavaScript host (`platform/web`) the app's Go code drives as WebAssembly (`host/web`) | As the mobile hosts: the core hands over each batch encoded, decoded in place out of the WebAssembly memory by a generated decoder, one crossing per batch; driving the DOM from Go through `syscall/js` would cross per property. Each view is an element at the frame the core laid out, so layout is Asuka's, as on every platform; leaves are measured by the real elements. Not a canvas: the browser's text, controls, focus, autofill and accessibility come with its elements. |
 | cgo | Allowed only in `mobile/` (build tags `ios`, `android`) | Go's `c-archive` and `c-shared` build modes need it. Everything else builds with `CGO_ENABLED=0`, so desktop hosts can stay cgo-free later. |
 
 Open decisions, with the default to use until they are settled:
@@ -39,7 +39,7 @@ Open decisions, with the default to use until they are settled:
 - Minimum versions: **iOS 16, Android API 33 (13)**: Android 13 brought RuntimeShader (ui.Shader) and per-app languages, and what came before it is a small share of devices.
 - Android widgets: Material Components 3 (decided in M2), with the
   Material 3 Expressive theme and styles (Material Components 1.14).
-- Module path: `github.com/egoist/ryui`.
+- Module path: `github.com/egoist/asuka`.
 
 ## Architecture
 
@@ -120,7 +120,7 @@ func Effect(f func())               // runs at flush, after memos
 func RenderEffect(f func())         // runs now; ui's prop effects
 func NewOwner() *Owner              // disposed with the current owner
 func RunWithOwner(o *Owner, f func())
-func BindThread()                   // ryui_debug: the main thread
+func BindThread()                   // asuka_debug: the main thread
 func Untrack[T any](f func() T) T
 func Batch(f func())                // one flush for all writes in f
 
@@ -141,7 +141,7 @@ Rules:
   subscribed effect: disposal is explicit and must be tested.
 - Writes during an event handler are batched until the handler returns.
   `Set` is legal only on the main thread; goroutines use `ui.Post`.
-  Builds with the `ryui_debug` tag check this and panic.
+  Builds with the `asuka_debug` tag check this and panic.
 - Effects run in creation order within a flush: render effects (those
   `ui` makes for props) before user effects (`signal.Effect`).
 - Writing a signal inside a memo is a panic. Writing inside an effect
@@ -198,8 +198,8 @@ field.
 Go has no compile step to hide this, as Solid's JSX compiler does when
 it turns `refreshing={r()}` into a getter, and we don't add one: `go
 build`, `go test`, gopls and the debugger would all see code that means
-something else. Instead, `ryui vet` (package `vet`, analyzers on
-`golang.org/x/tools/go/analysis`, which `ryui dev` and `ryui build` run
+something else. Instead, `asuka vet` (package `vet`, analyzers on
+`golang.org/x/tools/go/analysis`, which `asuka dev` and `asuka build` run
 as warnings) reports a signal read in a component's body outside any
 effect, which runs once and never updates (Solid's most common bug,
 too), when what it reads goes into the tree; with shortcuts for the
@@ -207,7 +207,7 @@ common reactive cases planned. A JSX-like syntax, if ever, would be a
 separate file type that generates Go (as templ does), once the
 component API has settled.
 
-**`ryui vet`** reports only what's certain from the code, as the
+**`asuka vet`** reports only what's certain from the code, as the
 compiler would; a check that cries wolf gets turned off. Its analyzers:
 
 - `reads`: what's built is a function returning a `Node` (or `[]Node`)
@@ -231,9 +231,9 @@ compiler would; a check that cries wolf gets turned off. Its analyzers:
   functions that write), not inside `ui.Post`.
 - `memowrites`: a write inside a memo's function, which panics.
 
-`ryui` is its own `-vettool`: run by `go vet` (`-V=full`, `-flags`, a
-`.cfg`), it serves the analyzers by `unitchecker`'s protocol, so `ryui
-vet` is `go vet -vettool=ryui` with go vet's caching, build flags and
+`asuka` is its own `-vettool`: run by `go vet` (`-V=full`, `-flags`, a
+`.cfg`), it serves the analyzers by `unitchecker`'s protocol, so `asuka
+vet` is `go vet -vettool=asuka` with go vet's caching, build flags and
 facts across packages; dev and build read its `-json`.
 
 ### Control flow
@@ -349,7 +349,7 @@ scale), so dark mode and Dynamic Type / font scale need no app code.
 of the app's, by its name in `assets/fonts`; a family of them (`Inter`:
 `Inter-Regular`, `Inter-Bold`..., picked by `Weight`); a generic family
 (`serif`, `monospace`, `rounded`: on iOS the system font's designs); or
-a system family. It scales as its text style does. Under `ryui dev` the
+a system family. It scales as its text style does. Under `asuka dev` the
 core sends a font file's URL instead, since the player hasn't the app's
 assets: the host loads it, then sends `FontLoaded`, and the core
 measures text again (its measure cache cleared).
@@ -365,15 +365,15 @@ controls go through this.
 An app's native code lives beside its Go: `ios/*.swift` is compiled
 with the iOS host (same module), `android/*.kt` is built into the
 Android app. Each registers its kinds from a well-known class the host
-looks up at start: `@objc(RyUIAppNatives)` conforming to
-`RyUINativeModule` in Swift, `object dev.ryui.app.RyUIAppNatives :
-RyUINativeModule` in Kotlin, calling `registerNative(kind) { ctx -> view }`.
+looks up at start: `@objc(AsukaAppNatives)` conforming to
+`AsukaNativeModule` in Swift, `object dev.asuka.app.AsukaAppNatives :
+AsukaNativeModule` in Kotlin, calling `registerNative(kind) { ctx -> view }`.
 A native view implements `set(name, value)` and sends events with
 `ctx.emit(name, values)`; the host measures it as it measures any view.
 On the desktop the app's Go registers views and modules with package
 `native`. On the Mac its Swift can too: `macos/*.swift` is compiled with
 `platform/macos` (the iOS names, an `NSView`) into
-`Contents/Frameworks/RyUIAppNatives.dylib`, which `host/darwin` loads
+`Contents/Frameworks/AsukaAppNatives.dylib`, which `host/darwin` loads
 at start through purego and drives through C functions (`@_cdecl`):
 make, set (the wire's prop bytes), measure, destroy, call; events and
 replies come back through two purego callbacks. What it registers joins
@@ -804,7 +804,7 @@ Activity: views are made with the app's Material theme
 (`ContextThemeWrapper` over the application). The Activity handles
 rotation, size, dark mode, font scale and density itself
 (`configChanges`); any other configuration change remakes it, and the
-new Activity takes over the existing tree: `ryui_attach` resends the
+new Activity takes over the existing tree: `asuka_attach` resends the
 root (`ui.Reattach`) and every frame, with no app state lost. Android
 views resolve theme colors and text sizes when they're made, so after a
 dark mode, font scale or density change the host makes its text and
@@ -814,43 +814,43 @@ user's state (text, selection, checked, value). There's one Activity
 views. Process death loses state, as in any native app; saving state to
 the device for that is later, under a name that says storage (say
 `signal.Saved(key, initial)` over `UserDefaults` / `SharedPreferences`),
-not to be confused with keeping state across `ryui dev` reloads (below),
+not to be confused with keeping state across `asuka dev` reloads (below),
 which needs no code.
 
 The core can also start without a screen: when the system runs a
-background task (`ryui/periodic`: BGTaskScheduler, WorkManager) with the
+background task (`asuka/periodic`: BGTaskScheduler, WorkManager) with the
 app closed, the host starts the core headless (`startHeadless`): `main`
 runs, the root component mounts into views no window holds yet, and the
 task's Go code runs. A screen that comes later (the user opens the app)
-takes that root as a recreated Activity does (`ryui_attach` on Android;
+takes that root as a recreated Activity does (`asuka_attach` on Android;
 the root controller mounts the existing root view on iOS).
 
 Packages that need a framework or library of their own cost only the
 apps that use them. On iOS, the host's Swift for them is compiled under a
-flag (`RYUI_MAPS`...) set when the app's Go archive has the package's
+flag (`ASUKA_MAPS`...) set when the app's Go archive has the package's
 symbol (`iosFeatures`). On Android, each is an optional Gradle module
-(`ryui-maps`, `ryui-push`...) built in for the apps that import its
-package (`featurePermissions`), whose `RyUIPlugin` registers its methods
+(`asuka-maps`, `asuka-push`...) built in for the apps that import its
+package (`featurePermissions`), whose `AsukaPlugin` registers its methods
 and views by name at start.
 
-What runs outside the app's process is built from `ryui.json`. iOS's
+What runs outside the app's process is built from `asuka.json`. iOS's
 widget extension is WidgetKit's, so SwiftUI's (the one place the host
 uses it): one template (platform/ios/Widget) with the app's kinds,
-reading the entries the app's Go code sets (`ryui/widget`) from the App
+reading the entries the app's Go code sets (`asuka/widget`) from the App
 Group they share; it runs no Go. The shortcuts are App Intents the CLI
 generates and links into the executable, their metadata extracted as
 Xcode does (swiftc's constant values, appintentsmetadataprocessor); each
 opens the app with its URL. On Android, the CLI generates an App Widget
-provider for each kind (over the host's `RyUIWidgetProvider`, with
+provider for each kind (over the host's `AsukaWidgetProvider`, with
 RemoteViews) and the launcher's static shortcuts.
 
 Two extensions run the app's Go code, from the app's own symbols rather
-than `ryui.json`: the share sheet (`app.ShareSheet`) and the
+than `asuka.json`: the share sheet (`app.ShareSheet`) and the
 Notification Service Extension (`push.Rewrite`). With either, the app's
-Go code and the host are one dynamic framework (RyUIApp.framework) that
+Go code and the host are one dynamic framework (AsukaApp.framework) that
 the app and the extension link, their data in the App Group they share.
 The extension starts the core headless with a root of its own
-(`RYUI_SHARE_SHEET`, `RYUI_NOTIFICATION_SERVICE`). Android runs both in
+(`ASUKA_SHARE_SHEET`, `ASUKA_NOTIFICATION_SERVICE`). Android runs both in
 the app's package: the share sheet's activity, and the push rewrite in
 Firebase's service, starting the core headless as a background task does.
 Notifications' responses work the same way: a background action starts
@@ -862,74 +862,74 @@ and hands Go the response, keeping the process until Go reports it done.
 `mobile/` (build tags `ios || android`, cgo) exports a C ABI:
 
 ```c
-void      ryui_start(ryui_host_callbacks*);   // apply, measure, post; calls main
-void      ryui_attach(void);                 // mount the tree again (new Activity)
-void      ryui_event(const uint8_t*, size_t);
-int64_t   ryui_list_count(uint32_t list);
-void      ryui_list_bind(uint32_t list, int64_t index, uint32_t cell);
-void      ryui_list_unbind(uint32_t list, uint32_t cell);
-void      ryui_run_posted(void);             // the host's main-thread hop
+void      asuka_start(asuka_host_callbacks*);   // apply, measure, post; calls main
+void      asuka_attach(void);                 // mount the tree again (new Activity)
+void      asuka_event(const uint8_t*, size_t);
+int64_t   asuka_list_count(uint32_t list);
+void      asuka_list_bind(uint32_t list, int64_t index, uint32_t cell);
+void      asuka_list_unbind(uint32_t list, uint32_t cell);
+void      asuka_run_posted(void);             // the host's main-thread hop
 ```
 
 All calls come on the main thread. `post` from Go calls the host's
 callback, which hops with `DispatchQueue.main.async` / `Handler.post`
-and calls `ryui_run_posted`. The header Swift and Kotlin compile against
-is `platform/ios/Sources/CRyUI/include/ryui.h`.
+and calls `asuka_run_posted`. The header Swift and Kotlin compile against
+is `platform/ios/Sources/CAsuka/include/asuka.h`.
 
 An app is a `main` package whose `main` calls `app.Run(root)`. The CLI
 adds a file to it with `go build -overlay` that imports `mobile` and
-sets `mobile.Main = main`; `ryui_start` calls it, and `app.Run` mounts the
+sets `mobile.Main = main`; `asuka_start` calls it, and `app.Run` mounts the
 root on the mobile host.
 
 - iOS: `GOOS=ios GOARCH=arm64 CGO_ENABLED=1 go build
   -buildmode=c-archive`, with the SDK's clang (iphonesimulator for the
   simulator, arm64 and x86_64; iphoneos and an XCFramework for devices
-  in M6). `platform/ios` is a Swift package with the decoder (`RyUIOps`),
-  the UIKit host (`RyUIHost`) and the C header (`CRyUI`); `App/` holds the
+  in M6). `platform/ios` is a Swift package with the decoder (`AsukaOps`),
+  the UIKit host (`AsukaHost`) and the C header (`CAsuka`); `App/` holds the
   `@main` app delegate. The CLI embeds them.
 - Android: `GOOS=android CGO_ENABLED=1 go build -buildmode=c-shared` per
   ABI (arm64-v8a, x86_64; armeabi-v7a optional) with the NDK's clang,
   linked with 16 KB pages (`-z max-page-size=16384`) as new devices
   require. `mobile/jni_android.c` is the JNI side of the same C ABI:
-  Kotlin's `dev.ryui.RyUINative` calls in; the core calls
-  `RyUIRuntime.apply(ByteBuffer)` (a direct buffer over the encoded
+  Kotlin's `dev.asuka.AsukaNative` calls in; the core calls
+  `AsukaRuntime.apply(ByteBuffer)` (a direct buffer over the encoded
   batch, one call per batch), `measure` and `post` back.
-  `platform/android` is a Gradle project: the `ryui` library (decoder,
+  `platform/android` is a Gradle project: the `asuka` library (decoder,
   Views host, JNI bindings) and `app`, the shell app the CLI builds per
   app (application ID and name passed as Gradle properties).
 
 The CLI does these builds itself (no gomobile).
 
-## CLI (`cmd/ryui`)
+## CLI (`cmd/asuka`)
 
 ```
-ryui new <dir>                             a project from the template
-ryui dev -platform ios|android <dir>       build, run, rebuild and restart on save
-ryui build -platform ios|android <dir>     a release build for the stores
-ryui publish -platform ios|android <dir>   the release build, uploaded: TestFlight, App Review; a Play track
-ryui dev -platform mac <dir>               build and run on this Mac, rerun on save
-ryui build -platform mac <dir>             a universal .app, signed (-sign; default ad hoc), its profile embedded (-profile); -appstore: a .pkg
-ryui dev -platform windows <dir>           build and run on this PC, rerun on save
-ryui build -platform windows <dir>         a folder: the .exe (icon, manifest, version; signed with RYUI_WINDOWS_CERT) and its assets (-arch arm64)
-ryui dev -platform web <dir>               serve it to the browser, rebuild and reload on save
-ryui build -platform web <dir>             a static site: WebAssembly, the web host, a manifest
-ryui dev|build <dir>                       no -platform: this computer's, on macOS (mac) and Windows (windows)
-ryui generate <dir>                        the typed functions of the app's catalogs
-ryui i18n init|add|check                   start, add languages to, and check the catalogs
-ryui vet [packages]                        what builds but runs wrong: a signal read once, written off the main thread
+asuka new <dir>                             a project from the template
+asuka dev -platform ios|android <dir>       build, run, rebuild and restart on save
+asuka build -platform ios|android <dir>     a release build for the stores
+asuka publish -platform ios|android <dir>   the release build, uploaded: TestFlight, App Review; a Play track
+asuka dev -platform mac <dir>               build and run on this Mac, rerun on save
+asuka build -platform mac <dir>             a universal .app, signed (-sign; default ad hoc), its profile embedded (-profile); -appstore: a .pkg
+asuka dev -platform windows <dir>           build and run on this PC, rerun on save
+asuka build -platform windows <dir>         a folder: the .exe (icon, manifest, version; signed with ASUKA_WINDOWS_CERT) and its assets (-arch arm64)
+asuka dev -platform web <dir>               serve it to the browser, rebuild and reload on save
+asuka build -platform web <dir>             a static site: WebAssembly, the web host, a manifest
+asuka dev|build <dir>                       no -platform: this computer's, on macOS (mac) and Windows (windows)
+asuka generate <dir>                        the typed functions of the app's catalogs
+asuka i18n init|add|check                   start, add languages to, and check the catalogs
+asuka vet [packages]                        what builds but runs wrong: a signal read once, written off the main thread
 ```
 
-**An app's metadata** is `ryui.json` beside its Go code, all optional:
+**An app's metadata** is `asuka.json` beside its Go code, all optional:
 name, ID (bundle ID and application ID), version and build number, a
 1024×1024 icon, orientations (the phone's: an iPad or a large Android
 screen turns the app any way, for split screen), the iOS team (and
 whether it's iPhone only), provisioning profile, usage
 descriptions and extra Info.plist keys, the Android permissions and
-upload key. `ryui dev` and `ryui build` read it alike.
+upload key. `asuka dev` and `asuka build` read it alike.
 
 **The accent color** (`"accent": "#7c3aed"`) is the one color an app's
 brand sets on native controls; the controls are the platform's, so
-RyUI has no theme of its own over them (`Style` changes one view). It
+Asuka has no theme of its own over them (`Style` changes one view). It
 travels with the Go code, not the shell: the CLI builds it in
 (`-ldflags -X`, `internal/boot`), and each root, as it mounts, sends
 the `Accent` command before any view is made. That way the dev player,
@@ -938,13 +938,13 @@ it's the windows' tint color, which UIKit's controls and `ui.Accent`
 take. On Android it's the seed of a Material 3 color scheme
 (`SchemeContent`, light and dark, as Material's `DynamicColors` makes
 it) on Android 12 and later; before that, Material's baseline colors,
-with RyUI's own uses of the accent (links, `ui.Accent`) taking the color
+with Asuka's own uses of the accent (links, `ui.Accent`) taking the color
 itself. `"android": {"dynamicColor": true}` takes the wallpaper's colors
 instead, where the system has them. The theme context is made again
 and the views that resolved theme colors are rebuilt, as on a dark mode
 change.
 
-**`ryui build -platform ios`** makes an `.ipa`, still without an Xcode project:
+**`asuka build -platform ios`** makes an `.ipa`, still without an Xcode project:
 the host compiled optimized (no debug automation), the Go archive for
 `arm64` devices, linked with dead stripping; an Info.plist with the
 keys App Store validation checks (`DT*` from the SDK and Xcode,
@@ -957,26 +957,26 @@ entitlements, with a wildcard app ID made the app's; `codesign` with
 the identity's SHA-1, verified. `-simulator` makes the same release build
 for the simulator.
 
-**`ryui build -platform android`** makes an `.aab` for Google Play (no
+**`asuka build -platform android`** makes an `.aab` for Google Play (no
 `.apk`: Play makes each device's from it, with only that device's ABI):
 the Go code as a stripped `.so` for arm64-v8a, armeabi-v7a and x86_64,
 the assets, launcher icons (legacy per density, and adaptive: the icon
 inside the safe zone over its corner color), the permissions, the
 version; Kotlin shrunk by R8 (the classes JNI and reflection reach are
-kept); signed with the upload key named in `ryui.json` or `RYUI_KEYSTORE`,
+kept); signed with the upload key named in `asuka.json` or `ASUKA_KEYSTORE`,
 its passwords from the environment (never on a command line). A
 release build never loads a library from the app's files, as debug
 builds do in development; cleartext HTTP (the player's assets) is
 debug-only, as is iOS's local networking exception.
 
-**`ryui publish -platform ios`** and **`-platform android`** make the release build and
+**`asuka publish -platform ios`** and **`-platform android`** make the release build and
 upload it, through the stores' APIs from Go (no altool, no Gradle
 plugin), so a release is one command, in CI too. Everything the store
 can refuse is asked first, before the build: the app (App Store Connect
 by bundle ID; Play by package, in an edit opened to look and deleted),
 whether the version still takes builds (approved or released: no), the
 TestFlight groups by name, and the store's highest build number. The
-build is numbered one above it (and at least `ryui.json`'s `build`), so
+build is numbered one above it (and at least `asuka.json`'s `build`), so
 `build` needn't be raised by hand; `-build` sets one. iOS: a JWT signed
 with the App Store Connect API key (ES256, renewed every 10 minutes);
 the `.ipa` sent as `buildUploads` says, in parts, a few at a time, each
@@ -995,14 +995,14 @@ Console, committed unsent. Requests are retried when rate limited
 (`Retry-After`) and, where safe to repeat, when the server or the
 network fails.
 
-**`ryui dev` runs the app's Go code on the Mac, and its views in a
+**`asuka dev` runs the app's Go code on the Mac, and its views in a
 player** (`internal/remote`): the platform host with a small Go library
 (`mobile/player`) in place of an app, built and installed once and
 shared by every app. A change rebuilds the Go code for the Mac and
 restarts that process, under a second; the player reconnects and shows
 the new code, with no install. The app's logs are the process's output.
 
-- **Only in that process**: `ryui dev` links `app/remote` into it (an
+- **Only in that process**: `asuka dev` links `app/remote` into it (an
   `-overlay` file in the app's main package), and with it the socket
   and the assets' HTTP server. An app's own builds (on the device, for
   release, on a desktop) carry none of that code, which is half of a
@@ -1026,7 +1026,7 @@ the new code, with no install. The app's logs are the process's output.
   keeps hooks' state: the process saves every app signal's value as it
   stops, and the next run gives it back to the signal made at the same
   place: the same call path (function names), type and position among
-  the live signals of that type there. A signal made by RyUI itself
+  the live signals of that type there. A signal made by Asuka itself
   isn't kept, nor a value JSON would change (funcs, unexported fields).
   Adding a signal before others of its type made at the same place, or
   changing its type, resets those. Navigation isn't kept (screens are
@@ -1039,7 +1039,7 @@ the new code, with no install. The app's logs are the process's output.
   (`boot.AssetBase`).
 - **Not in the player**: an app's own native code (`ios/`, `android/`),
   which only an app built with it can show. Such apps, `-once` and
-  `-embed` build the app with its Go code, as before: `ryui dev`
+  `-embed` build the app with its Go code, as before: `asuka dev`
   rebuilds the library and relaunches on the iOS simulator (no Xcode
   project: `swiftc` compiles the embedded host, with the app's Swift,
   into one object, cached; each change rebuilds the archive, links,
@@ -1053,22 +1053,22 @@ the new code, with no install. The app's logs are the process's output.
 ## Repository layout
 
 ```
-ryui/
+asuka/
   signal/            reactivity
   ui/                components, nodes, flush, flattening, navigation
   layout/            flexbox
   ops/               schema, Go encoder; generate writes Swift/Kotlin decoders
   i18n/              languages, catalogs, ICU messages, CLDR's formats
-  vet/               ryui vet's analyzers
+  vet/               asuka vet's analyzers
   host/              Host interface, Environment
     fake/            records ops, measures by fixed rules; for tests
   mobile/            C ABI (cgo, ios||android)
   platform/ios/      Swift package
   platform/android/  Kotlin/Gradle library
   app/               app.Root, lifecycle
-    remote/          what ryui dev links in to serve a player
-  cmd/ryui/           CLI
-  template/          what `ryui new` copies
+    remote/          what asuka dev links in to serve a player
+  cmd/asuka/           CLI
+  template/          what `asuka new` copies
   examples/counter/  examples/todo/  examples/list10k/  examples/navigation/
   conformance/       what every host draws for a Style, measured on its pixels
 ```
@@ -1107,15 +1107,15 @@ Desktop adds `host/darwin` and `internal/darwin` (macOS),
   screen, and disposal destroying every window.
 - `ops`: the Go encoder and the generated Swift, Kotlin and JavaScript
   decoders round-trip the same golden batches (`swift test --package-path
-  platform/ios`; `./gradlew :ryui:testDebugUnitTest` in `platform/android`;
+  platform/ios`; `./gradlew :asuka:testDebugUnitTest` in `platform/android`;
   `node --test platform/web`).
 - Hosts: GUI tests (`e2e/`, build tag `e2e`, in CI on a simulator and
-  an emulator) build `examples/` with `ryui dev -once` and drive them
+  an emulator) build `examples/` with `asuka dev -once` and drive them
   through the native views. Debug builds take automation commands (tap,
   type, submit, back, tab, rotate, dump: what the screen shows), on iOS from a file in the
-  app's container on the `dev.ryui.automation` Darwin notification
-  (`platform/ios/Sources/RyUIHost/Automation.swift`), on Android from a
-  `dev.ryui.automation` broadcast (`Automation.kt`; the dump read with
+  app's container on the `dev.asuka.automation` Darwin notification
+  (`platform/ios/Sources/AsukaHost/Automation.swift`), on Android from a
+  `dev.asuka.automation` broadcast (`Automation.kt`; the dump read with
   `run-as`). So both platforms run the same test, and neither needs
   UI Automator's single connection, which device tools hold. Each test
   waits for the screen to show what it expects, bounded so a broken app
@@ -1144,12 +1144,12 @@ Each one ends with its examples running and its tests in CI.
 - **M0, core without UI** (done): `signal`, `ui` with `host/fake`,
   `layout`, `ops` with the Go encoder. Everything above under `go test`.
 - **M1, iOS** (done): Swift codegen for `ops`, `mobile/`, `platform/ios`,
-  `ryui new`, `ryui dev -platform ios` on the simulator. Counter, todo (`For`,
+  `asuka new`, `asuka dev -platform ios` on the simulator. Counter, todo (`For`,
   `TextField`, `Toggle`, `SafeArea` with the keyboard) and list10k
   (`List`) run. Not yet: XCUITest GUI tests and CI on macOS runners.
 - **M2, Android** (done): Kotlin codegen, `platform/android`,
-  `ryui dev -platform android` on the emulator, Activity recreation
-  (`ryui_attach`). The same examples run unchanged; live rotation, dark
+  `asuka dev -platform android` on the emulator, Activity recreation
+  (`asuka_attach`). The same examples run unchanged; live rotation, dark
   mode, font scale and the keyboard (insets, animated) work. Not yet:
   Espresso GUI tests.
 - **M3, mobile app structure** (done): `Stack` with native back
@@ -1167,8 +1167,8 @@ Each one ends with its examples running and its tests in CI.
   player apps (iOS simulator, Android emulator and devices); app state
   survives a reload with no code. Not yet: physical iOS devices (the
   player would need signing and the Mac's address).
-- **M6, shipping** (done): `ryui.json`, `ryui build -platform ios` (signed `.ipa`;
-  `-simulator`), `ryui build -platform android` (`.aab`), `ryui
+- **M6, shipping** (done): `asuka.json`, `asuka build -platform ios` (signed `.ipa`;
+  `-simulator`), `asuka build -platform android` (`.aab`), `asuka
   publish` (the build uploaded through the stores' APIs: TestFlight's
   groups and beta review, App Review; a Play track, staged). Not yet:
   screenshots and store listings (App Store Connect and the Play Console
@@ -1206,23 +1206,23 @@ Each one ends with its examples running and its tests in CI.
     Loop, Muted, `OnEnd`; `ui.Play`, `ui.Pause`, `ui.Seek`.
   - `ui.WebView` (WKWebView, Android's WebView): a URL, an asset or
     markup; `OnLoad`, `OnError`; the page posts to Go with
-    `window.ryui.postMessage`, the same on both, and `ui.EvalJS` runs
+    `window.asuka.postMessage`, the same on both, and `ui.EvalJS` runs
     script in it.
   - Grids: `ListProps.Columns` and `Gap` (a compositional grid on iOS,
     a GridLayoutManager on Android); the core lays each cell out at
     exactly the column width the host gives it.
-  - `ryui/store` (small values kept across launches, `store.Signal`),
+  - `asuka/store` (small values kept across launches, `store.Signal`),
     `ui.Copy`, `ui.Share`.
-  - The app's accent color (`ryui.json`).
+  - The app's accent color (`asuka.json`).
   - The device's time zone as Go's `time.Local`.
   - Motion: `Style.Transform`, shadows, gradients, `Style.Material`
     (blur), repeating animations, enter and exit `Transition`s.
-  - `ryui/sqlite` (pure Go, live queries with `sqlite.Watch`), native
-    modules (`ui.Call`: `ryui/secure`, the keychain and Keystore;
-    `ryui/device`: info, an in-app browser, the photo picker).
+  - `asuka/sqlite` (pure Go, live queries with `sqlite.Watch`), native
+    modules (`ui.Call`: `asuka/secure`, the keychain and Keystore;
+    `asuka/device`: info, an in-app browser, the photo picker).
   - A search field in the navigation bar (`ScreenOptions.Search`).
-  - Incoming links: `ryui.json`'s `scheme` and `links`, `ui.OnOpenURL`.
-  - Shares from other apps: `ryui.json`'s `shareTarget` (`true`, or
+  - Incoming links: `asuka.json`'s `scheme` and `links`, `ui.OnOpenURL`.
+  - Shares from other apps: `asuka.json`'s `shareTarget` (`true`, or
     `{"types": [...], "max": n}`), `ui.OnShare` (a list of
     `SharedItem`s: texts, links and files). Android takes `ACTION_SEND`
     and `ACTION_SEND_MULTIPLE` in the app's Activity, with intent
@@ -1231,7 +1231,7 @@ Each one ends with its examples running and its tests in CI.
     `.appex` in the app's PlugIns, built by the CLI with no Go in it),
     whose activation rule comes from the types: it takes texts, web
     links and files, then opens the app with them in a URL of a scheme
-    of the app's (`ryuishare.<app ID>`; the items as JSON), through the
+    of the app's (`asukashare.<app ID>`; the items as JSON), through the
     application at the end of its responder chain, as an extension has
     no `UIApplication.shared`. Files go through the App Group
     `group.<app ID>`: the extension copies them there, the app moves
@@ -1246,22 +1246,22 @@ Each one ends with its examples running and its tests in CI.
     `Shared` event comes to its root (`OnShare`'s handlers are the
     root's they were made in), and `ShareClose` (done, cancelled, open
     the app) ends it. The process says it's a sheet's with
-    `RYUI_SHARE_SHEET`; `app.Run` mounts the sheet then. iOS: the host
+    `ASUKA_SHARE_SHEET`; `app.Run` mounts the sheet then. iOS: the host
     and the app's Go code are a dynamic framework,
-    `Frameworks/RyUIApp.framework` (Go's runtime starts as it loads);
+    `Frameworks/AsukaApp.framework` (Go's runtime starts as it loads);
     the app's executable is a main that starts the host's delegate
-    (`RyUIAppDelegate`), the extension's links the framework and starts
+    (`AsukaAppDelegate`), the extension's links the framework and starts
     at `NSExtensionMain`, its principal class
-    `RyUIShareSheetController`, which collects the items
-    (`RyUIShareCollector`, shared with the standalone extension). An
+    `AsukaShareSheetController`, which collects the items
+    (`AsukaShareCollector`, shared with the standalone extension). An
     app without a sheet stays one executable.
     The app's data is in the App Group for both (`store.Dir`, from the
     host through `mobile/shareddir`, a cgo call, since `store.Signal`s
     in package variables read it as packages initialize), moved there
     once; the keychain group is the app's in both. Android:
-    `RyUIShareActivity`, in a `:share` process, translucent, a
+    `AsukaShareActivity`, in a `:share` process, translucent, a
     `BottomSheetBehavior` sheet; the process ends with the sheet.
-    `ryui dev`: a share sheet's player tells the core (`mShareSheet`)
+    `asuka dev`: a share sheet's player tells the core (`mShareSheet`)
     and its session mounts the sheet; on iOS the player's extension
     finds the address in the App Group. The CLI looks for
     `app.ShareSheet`'s symbol (in the archive on iOS; in the function
@@ -1281,10 +1281,10 @@ Each one ends with its examples running and its tests in CI.
   - GUI tests on CI (`e2e/`): the counter; notes (a text field,
     SQLite, a List, a relaunch); navigation (a push, a sheet with a
     field, back, tabs); chat (a list anchored at its bottom staying at
-    its end as messages come), on both platforms. `RYUI_DEVICE` picks
+    its end as messages come), on both platforms. `ASUKA_DEVICE` picks
     one of several simulators or emulators.
   - Images fetched over http(s) kept on disk across launches (256 MB,
-    least recently used first; not a `no-store` response, nor ryui dev's
+    least recently used first; not a `no-store` response, nor asuka dev's
     assets from this machine), and `ImageProps.Placeholder`.
   - `examples/gallery` shows each; `examples/notes` is SQLite's.
 
@@ -1312,7 +1312,7 @@ Each one ends with its examples running and its tests in CI.
     content-sized layout root, `fits`); `TextFieldProps.Accessory` (a
     full-width content-sized root: `inputAccessoryView`, and a bar on the
     keyboard on Android); `ui.Canvas` (a display list, re-recorded with no
-    allocation) and `ryui/chart` on it; `ui.Shader` (a Kage shader, Go's
+    allocation) and `asuka/chart` on it; `ui.Shader` (a Kage shader, Go's
     syntax, compiled in Go by package `shader`: Metal on iOS and macOS,
     AGSL on Android, package interp's CPU on Windows, and GLSL kept for
     Linux); `ui.SplitView`
@@ -1320,9 +1320,9 @@ Each one ends with its examples running and its tests in CI.
     navigation drawer; `Replace` resets a stack at once); springs with
     `Damping` and `Velocity`, `Delay` and `OnDone`; `ToggleProps.Checkbox`;
     named `ContentType`s; and embedding in an existing app
-    (`ryui build -platform ios -xcframework`, `ryui build -platform android -aar`).
+    (`asuka build -platform ios -xcframework`, `asuka build -platform android -aar`).
 
-  docs/parity.md has what RyUI has against SwiftUI and Expo;
+  docs/parity.md has what Asuka has against SwiftUI and Expo;
   docs/device-checklist.md, what's left to check on real devices.
 
   Next:
@@ -1333,9 +1333,9 @@ Each one ends with its examples running and its tests in CI.
   Linux and the web, each its own host, done.
 - **macOS** (done): `host/darwin`, AppKit in the app's process
   through purego (`internal/darwin`, MyGo's Objective-C runtime layer),
-  no cgo; `app.Run` runs it on macOS. `ryui dev -platform mac` (an `.app` like a
+  no cgo; `app.Run` runs it on macOS. `asuka dev -platform mac` (an `.app` like a
   release's, its assets read in place, its privacy prompts its own;
-  rebuild and rerun on save, signals' state kept) and `ryui build -platform mac` (a universal,
+  rebuild and rerun on save, signals' state kept) and `asuka build -platform mac` (a universal,
   signed `.app` with its icon and assets). The examples run. Done: the
   v0 components, navigation (below), rich text (an `NSTextView`), shapes,
   images, symbols, gestures, menus, animation, `WebView`, `Video`; tests
@@ -1353,13 +1353,13 @@ Each one ends with its examples running and its tests in CI.
   disabled item is off through `validateMenuItem:`, as is Back with no
   screen to go back from. Swipes, the inline date picker; the WebView's
   blocked requests, downloads and state, `EvalJSResult`, `WebCookies`
-  and ryui/js; device's files and clipboard modules; network
+  and asuka/js; device's files and clipboard modules; network
   (NWPathMonitor), location (Core Location), speech
   (AVSpeechSynthesizer), audio (AVPlayer), biometric (Touch ID), review;
   matched views (`Match`); pull to refresh (a trackpad's elastic pull
   past the top); `ui.Native` and the app's modules in Go (package
   `native`, below) or Swift (`macos/*.swift`, loaded from the bundle);
-  notarization (`ryui build -platform mac -notarize`).
+  notarization (`asuka build -platform mac -notarize`).
   Every module the packages call answers (below): the camera (its view,
   capture, recording, codes; `Take` a sheet of the host's), audio
   recording, contacts, calendars, the photo library and saving to it,
@@ -1369,7 +1369,7 @@ Each one ends with its examples running and its tests in CI.
   sensors, widgets and the age range aren't a Mac's ("not available").
   The CLI gives a Mac app its purpose strings and its hardened runtime's
   entitlements for them, and its provisioning profile (`-profile`,
-  `RYUI_MAC_PROFILE`, ryui.json's `mac.profile`, else the best match
+  `ASUKA_MAC_PROFILE`, asuka.json's `mac.profile`, else the best match
   installed for an app that needs one): embedded as
   `Contents/embedded.provisionprofile`, the app signed with its app ID,
   team and what its packages need of the profile's entitlements (push's
@@ -1379,15 +1379,15 @@ Each one ends with its examples running and its tests in CI.
   app sandboxed, signed with a Mac App Store profile, in a `.pkg`
   (`productbuild`, Mac Installer Distribution). Not yet: `ZoomFrom`'s
   zoom (a push slides), beginning a List's selection with a gesture
-  (`RowSelectBegin`), a development profile for `ryui dev`.
+  (`RowSelectBegin`), a development profile for `asuka dev`.
 - **Windows** (done): `host/windows`, Win32 and the common
   controls (version 6) in the app's process through `syscall`
   (`internal/windows`, much of it MyGo's), no cgo, no WinUI; `app.Run`
-  runs it on Windows (amd64 and arm64). `ryui dev -platform windows` (rebuild and rerun on
-  save, signals' state kept) and `ryui build -platform windows` (a folder of the
+  runs it on Windows (amd64 and arm64). `asuka dev -platform windows` (rebuild and rerun on
+  save, signals' state kept) and `asuka build -platform windows` (a folder of the
   `.exe`, with its icon, manifest and version built in, signed and
-  timestamped with `RYUI_WINDOWS_CERT` (by the first timestamp server
-  that answers, `RYUI_WINDOWS_TIMESTAMP`'s or DigiCert's, Sectigo's,
+  timestamped with `ASUKA_WINDOWS_CERT` (by the first timestamp server
+  that answers, `ASUKA_WINDOWS_TIMESTAMP`'s or DigiCert's, Sectigo's,
   GlobalSign's; signtool on Windows, osslsigncode elsewhere), and its
   assets; for amd64, or
   `-arch arm64`; from any system). The examples run (counter, todo, list10k,
@@ -1403,7 +1403,7 @@ Each one ends with its examples running and its tests in CI.
   window's title, client size and least size; tests in `host/windows`
   drive real windows. Pinch and rotate (touch, the touchpad, Ctrl and
   the wheel), the header's search field, the inline date picker, the
-  native modules: every module RyUI's packages call answers (below:
+  native modules: every module Asuka's packages call answers (below:
   implemented where Windows has it, an answer of the package's protocol
   saying it hasn't where it hasn't; `TestEveryModuleAnswers` checks);
   `ui.Native` and the app's modules in Go (package `native`); screen
@@ -1427,15 +1427,15 @@ Each one ends with its examples running and its tests in CI.
   Nominatim), codes in images and the camera's frames (`internal/barcode`,
   in Go), a map view of OpenStreetMap's tiles.
 - **Web** (done): `host/web` and `platform/web` (below); `app.Run`
-  runs it on `js/wasm`. `ryui dev -platform web` (serve, rebuild and reload on
+  runs it on `js/wasm`. `asuka dev -platform web` (serve, rebuild and reload on
   save, signals' state kept; the app's output and the page's errors in
-  the terminal) and `ryui build -platform web` (a static site). The examples run,
+  the terminal) and `asuka build -platform web` (a static site). The examples run,
   light and dark, left to right and right to left, at any size;
   GUI tests (`e2e`, `-run Web`) drive them in headless Chrome. Done: the
   v0 components, navigation (the browser's back included), rich text and rich text fields (an editable element; formatting through the browser's editing, so its undo covers it),
   shapes, canvas, shaders (WebGL 2), images, symbols, video,
   gestures, drag and drop, menus, animation, transitions, matched views,
-  the app's files kept (IndexedDB, large files in chunks), `ryui/sqlite`
+  the app's files kept (IndexedDB, large files in chunks), `asuka/sqlite`
   (SQLite's WebAssembly build, below; live queries), the native modules
   a browser has (`platform/web/src/modules`: the secure store under a
   non-extractable WebCrypto key, device, clipboard, pickers, share,
@@ -1449,9 +1449,9 @@ Each one ends with its examples running and its tests in CI.
   app, named by its digest, beside `index.html`): notifications with
   their actions and inline replies that stay and answer after the page
   closes (a tap opens a page, which gets the response as it starts),
-  `ryui/push` as Web Push with the app's VAPID key (`web.vapidPublicKey`;
+  `asuka/push` as Web Push with the app's VAPID key (`web.vapidPublicKey`;
   the subscription is the token; the page in front rewrites and presents
-  a push), `ryui/push/webpush` for servers (RFC 8291's encryption and RFC
+  a push), `asuka/push/webpush` for servers (RFC 8291's encryption and RFC
   8292's VAPID tokens, in Go's standard library). Scheduled
   notifications: browsers have no API to show one at a time with no page
   open (Notification Triggers were abandoned), so they show at their
@@ -1460,9 +1460,9 @@ Each one ends with its examples running and its tests in CI.
   wakes first (a push, periodic background sync where Chrome grants it).
 - **Linux** (done): `host/linux`, GTK 4 and libadwaita in the app's
   process through purego (`internal/gtk`), no cgo; `app.Run` runs it on
-  Linux (amd64 and arm64; GTK 4.14 and libadwaita 1.5 or later). `ryui
+  Linux (amd64 and arm64; GTK 4.14 and libadwaita 1.5 or later). `asuka
   dev -platform linux` (on Linux: rebuild and rerun on save, signals'
-  state kept; `RYUI_LINUX_RUN` runs it on another machine) and `ryui
+  state kept; `ASUKA_LINUX_RUN` runs it on another machine) and `asuka
   build -platform linux` (from any system: an install prefix with the
   binary, its assets, its desktop file, icons and AppStream metainfo, a
   `.tar.gz`, and a Flatpak manifest on GNOME's runtime). The examples
@@ -1513,7 +1513,7 @@ platform label, with native accessibility, Dynamic Type and behavior.
   paragraphs' runs, each a style index and text. The core sends it only
   when the encoding changed.
 - Each host typesets with its platform's engine (CoreText's typesetter
-  on iOS, `StaticLayout` on Android) and draws in a view of RyUI's own
+  on iOS, `StaticLayout` on Android) and draws in a view of Asuka's own
   exactly the layout it measured: backgrounds per line fragment with
   rounded corners (fitted to the text, not past a line's end), then the
   text, then underlines and strikethroughs (CoreText draws neither).
@@ -1599,7 +1599,7 @@ it's built. Package `i18n` and the catalog generator (`internal/i18ngen`) are
 MyGo's, whose data comes from a pinned release of CLDR.
 
 - **Catalogs** are ARB files of ICU MessageFormat, one per language, in
-  `locales/`. `ryui generate` (and `dev`, `build`, as a catalog changes)
+  `locales/`. `asuka generate` (and `dev`, `build`, as a catalog changes)
   writes `locales/catalog_gen.go`, a package with a typed function per message,
   which embeds and registers the catalogs. `locales.Unread(3)` says a string;
   `locales.Live.Unread(count)` is an accessor over accessors, for props;
@@ -1627,9 +1627,9 @@ MyGo's, whose data comes from a pinned release of CLDR.
   `FirstWeekday` and `HourCycle`, with `ui.FormatLocale()` putting them
   together with the language (`en-GB-u-fw-mon-hc-h23`), as Apple's
   `Locale.current` does.
-- **RyUI's own words** (`internal/l10n`) are the few the platforms don't supply:
+- **Asuka's own words** (`internal/l10n`) are the few the platforms don't supply:
   an alert's only button, a search field's placeholder, a desktop back button.
-  They're a library's catalog an app overrides with keys `ryui.<key>`.
+  They're a library's catalog an app overrides with keys `asuka.<key>`.
 
 **Right to left.** The layout engine implements CSS `direction`, against
 Chrome's results on Taffy's fixtures. The core sets it on each layout root
@@ -1661,10 +1661,10 @@ What every host does:
 - **`SaveLocale`** keeps the language: AppleLanguages of the app's defaults
   (iOS, macOS), which Settings shows and UIKit and AppKit read at launch;
   `LocaleManager` (Android), or the host's own preferences on Windows. Android declares its languages in `locales_config`, iOS and macOS
-  in `CFBundleLocalizations` and `.lproj`s: `ryui build` writes them from the
+  in `CFBundleLocalizations` and `.lproj`s: `asuka build` writes them from the
   catalogs, with the app's name and purpose strings in each.
 
-Under `ryui dev` the player runs every app, so `boot.SaveLocale` keeps the
+Under `asuka dev` the player runs every app, so `boot.SaveLocale` keeps the
 choice beside the kept state on the Mac, not in the player.
 
 What each host does by its own means:
@@ -1675,7 +1675,7 @@ What each host does by its own means:
   asks for its cells as its direction changes. UIKit's own words stay in the
   process's language until the next launch.
 - **Android**: the themed context carries the locale and direction, views are
-  made again as for a dark mode change, and `RyUIActivity` overrides
+  made again as for a dark mode change, and `AsukaActivity` overrides
   `getResources` and `getTheme` for Material's pickers, which are `DialogFragment`s
   on the Activity's context. It takes no recreation.
 - **macOS**: `setUserInterfaceLayoutDirection:` per view. `NSApplication`'s
@@ -1710,13 +1710,13 @@ runs the platform's event loop there, and reads the batch's Go structs
 without encoding. purego callbacks are made once per signature and
 routed by user data, never per view.
 
-How the macOS host maps RyUI (`host/darwin`):
+How the macOS host maps Asuka (`host/darwin`):
 
 - One window holds the root, its content a flipped view; the
   environment is the content's size, the display's scale, dark mode,
   Reduce Motion, locale and time zone (no safe area, keyboard or text
   size). Frames are set directly: AppKit's coordinates are flipped to
-  RyUI's (top left) by flipped container views.
+  Asuka's (top left) by flipped container views.
 - Controls are AppKit's: `NSTextField` (labels and fields; secure ones
   swap to `NSSecureTextField`, multiline ones to an `NSTextView`),
   `NSButton` (Plain is borderless text in the accent color, Filled the
@@ -1745,7 +1745,7 @@ How the macOS host maps RyUI (`host/darwin`):
   too), a response it can't show a `Download`, its state observed (KVO)
   and reported once a turn; the `web` module runs script for its value
   (`callAsyncJavaScript`) and reads the cookies, the `js` module runs
-  ryui/js's scripts in a web view that's never shown.
+  asuka/js's scripts in a web view that's never shown.
 - `RichText` is a non-editable `NSTextView` (TextKit lays it out and
   draws it, links, selection and accessibility come with it); outside
   a `Selectable` it takes clicks only on links. Inline components are
@@ -1793,11 +1793,11 @@ How the macOS host maps RyUI (`host/darwin`):
   while the app does; `PreventCapture` keeps its windows out of
   screenshots and recordings (`NSWindowSharingNone`) and `OnScreenshot`
   sees the files Spotlight finds (`kMDItemIsScreenCapture`).
-- Debug automation: `RYUI_SNAPSHOT=file.png` renders the window to a PNG
-  once it has shown, without taking focus (`RYUI_DUMP=1` writes the view
+- Debug automation: `ASUKA_SNAPSHOT=file.png` renders the window to a PNG
+  once it has shown, without taking focus (`ASUKA_DUMP=1` writes the view
   tree beside it), then quits.
 
-How the Windows host maps RyUI (`host/windows`):
+How the Windows host maps Asuka (`host/windows`):
 
 - One thread: the main goroutine is locked to the main thread (the
   package's `init`), which runs the message loop; `Post` queues work and
@@ -1980,9 +1980,9 @@ How the Windows host maps RyUI (`host/windows`):
   and its least size (320 points square if the app gives none).
 - The main window comes back where the user left it, as macOS's frame
   autosave has it: its normal rectangle (screen pixels, and the DPI it
-  was at) and whether it was maximized, in `ryui-window.json` in the
-  app's data directory (`RYUI_DATA`, Local AppData\<name>; a file rather
-  than the registry, so it goes with the app's other data, and `ryui
+  was at) and whether it was maximized, in `asuka-window.json` in the
+  app's data directory (`ASUKA_DATA`, Local AppData\<name>; a file rather
+  than the registry, so it goes with the app's other data, and `asuka
   dev` keeps it in its work directory). It's saved when a move or
   resize ends (`WM_EXITSIZEMOVE`), on maximize and restore and keyboard
   snaps (`WM_SIZE`, `WM_MOVE` outside a drag), and on close, not on
@@ -1993,7 +1993,7 @@ How the Windows host maps RyUI (`host/windows`):
   monitor's work area (`MonitorFromRect`) if it's off the monitors or
   mostly off one. The host keeps the normal rectangle itself, in screen
   coordinates (`GetWindowPlacement`'s are workspace coordinates). Tests
-  (`go test`) and automation runs (`RYUI_SNAPSHOT`, `RYUI_SCRIPT`) keep
+  (`go test`) and automation runs (`ASUKA_SNAPSHOT`, `ASUKA_SCRIPT`) keep
   none, and the data directory is made by what writes there.
 - `List` is core-virtualized, as on macOS: rows the host places at
   their offsets in the list's window (one `DeferWindowPos`), binds
@@ -2047,7 +2047,7 @@ How the Windows host maps RyUI (`host/windows`):
   `BadgeUpdateManager`'s for a packaged app) and `location` (WinRT's
   `Geolocator`, `RequestAccessAsync` first; place names from
   OpenStreetMap's Nominatim, a request at a time and a second apart,
-  with a User-Agent naming RyUI, answers cached, as geocode-glib asks
+  with a User-Agent naming Asuka, answers cached, as geocode-glib asks
   it). WinRT is called from Go
   (`internal/windows/winrt.go`): HSTRINGs, activation factories, the IIDs
   of parameterized interfaces computed from their signatures, delegates
@@ -2087,9 +2087,9 @@ How the Windows host maps RyUI (`host/windows`):
   app), and Apple's, Google's and packaged apps' modules (`appleAuth`,
   `ageRange`, `integrity`, `push`, `widget`, `review`), `splash`,
   `sensors` and `transcribe` answer what they would on a device without
-  them. `ryui.map` is a view the host draws (Windows's MapControl is
+  them. `asuka.map` is a view the host draws (Windows's MapControl is
   UWP's and needs a Bing Maps key): OpenStreetMap's raster tiles,
-  two downloads at a time with a User-Agent naming RyUI, kept a week in
+  two downloads at a time with a User-Agent naming Asuka, kept a week in
   the caches, the attribution on the map; dragged, zoomed with the
   wheel, a pinch, a double click and the keys; pins with a callout; the
   region reported once the user has moved it.
@@ -2124,7 +2124,7 @@ How the Windows host maps RyUI (`host/windows`):
   156's `CdpHelper`). DevTools answers come on a later turn too.
 - `WebView` is WebView2 (the runtime found in EdgeUpdate's registry
   keys, as its loader finds it, so no loader DLL ships); the app's
-  assets are served from `https://ryui.assets/`; pages follow the app's
+  assets are served from `https://asuka.assets/`; pages follow the app's
   dark mode. `Video` is a WebView2 page of a `<video>`, with Edge's
   controls: Win32 has no video view with controls.
 - Frames are set with `SetWindowPos`, without copying the old pixels
@@ -2138,12 +2138,12 @@ How the Windows host maps RyUI (`host/windows`):
   float arguments and jumps to the function. A `RECT` by value goes in
   two registers on arm64 (by reference on x64). WebView2's client
   library is the runtime's of the process's architecture.
-- Debug automation: `RYUI_SNAPSHOT=file.png` writes the window (and the
+- Debug automation: `ASUKA_SNAPSHOT=file.png` writes the window (and the
   top sheet's, `file.sheet.png`, and each `Window`'s, `file.window.png`,
   `file.window2.png`…) with `PrintWindow`, and a menu open, `file.menu.png`,
   from the screen, once it has shown, without
-  taking focus, then quits (`RYUI_DUMP=1`: the view tree and the menu
-  bar beside it); `RYUI_SCRIPT` runs steps first (`tap:<text>`,
+  taking focus, then quits (`ASUKA_DUMP=1`: the view tree and the menu
+  bar beside it); `ASUKA_SCRIPT` runs steps first (`tap:<text>`,
   `type:<text>`, `submit`, `back`, `escape`, `scroll:<y>`,
   `resize:<w>,<h>`, `key:<shortcut>` such as `key:ctrl+shift+k`,
   `key:` also goes to a menu open (`key:down`, `key:d`), `menu:<item
@@ -2153,21 +2153,21 @@ How the Windows host maps RyUI (`host/windows`):
   DPI: `WM_DPICHANGED`, the title bar Windows draws keeping its own),
   `wait:<duration>`, `snap:<file>`), through the controls'
   own messages and the message loop's key handling;
-  `RYUI_COLOR_SCHEME` is light or dark whatever the system's.
+  `ASUKA_COLOR_SCHEME` is light or dark whatever the system's.
 
-How the Linux host maps RyUI (`host/linux`):
+How the Linux host maps Asuka (`host/linux`):
 
 - GTK 4 and libadwaita in the app's process through purego, no cgo
   (`internal/gtk`: typed functions purego builds once, and raw function
   pointers called through `SyscallN` on the hot paths, allocating frames
   and drawing, so they use no reflection). `app.Run` makes an
-  `AdwApplication` (its ID ryui.json's `id`, `boot.ID`; unique, so a
+  `AdwApplication` (its ID asuka.json's `id`, `boot.ID`; unique, so a
   second launch activates the first, but in tests and automation runs)
   and runs GLib's main loop on the main thread. `Post` queues the
   function and adds an idle source (`g_idle_add`, thread-safe). Signals
   are connected through one C callback per signature, made once,
   routed by the data pointer to the connection's Go function.
-- Every node's view is a `RyuiView`, a `GtkWidget` subclass the host
+- Every node's view is a `AsukaView`, a `GtkWidget` subclass the host
   registers (`g_type_register_static_simple`, its class's vfuncs set from
   Go at GTK 4's stable offsets): `size_allocate` places its children at
   the frames the core gave them (whole sizes, the fractional origin in
@@ -2190,7 +2190,7 @@ How the Linux host maps RyUI (`host/linux`):
   (/etc/localtime). `Environment.Platform` is `PlatformLinux`.
 - Colors are libadwaita's named colors (`window_bg_color`,
   `card_bg_color`, `accent_color`...), read from the theme for the
-  current style; ryui.json's accent is the theme's accent, through a
+  current style; asuka.json's accent is the theme's accent, through a
   style sheet of the host's. The text styles are libadwaita's type
   classes relative to the interface font (gtk-font-name): LargeTitle is
   `.title-1`, Title `.title-2`, Title2 `.title-3`, Title3 `.title-4`,
@@ -2262,7 +2262,7 @@ How the Linux host maps RyUI (`host/linux`):
   shows (hidden, or its GdkToplevel minimized or suspended), and as it
   quits (its last window closing, GtkApplication's `query-end` as the
   session ends, `shutdown`, or SIGTERM, SIGINT and SIGHUP, which quit it
-  as closing it does), so `ryui/store` writes what's pending; GLib's
+  as closing it does), so `asuka/store` writes what's pending; GLib's
   memory monitor's warnings are MemoryWarning. Crash reports: Go's crash
   output (`crashrun`), which has a signal in native code too (Native).
   Windows are placed by the desktop: GTK 4 has no way to place one.
@@ -2314,14 +2314,14 @@ How the Linux host maps RyUI (`host/linux`):
   keys.
 - The main window comes back at the size the user left it, and
   maximized if it was (a Wayland app can't place its window), in
-  `ryui-window.json` in the app's data directory: `RYUI_DATA`, which the
+  `asuka-window.json` in the app's data directory: `ASUKA_DATA`, which the
   host sets to the XDG data directory's folder for the app (Flatpak's
   own).
 - Screen readers (Orca) read GTK's accessibility tree: a view's role (a
   pressable view a button, a header a heading), label and description.
-- Debug automation, as on macOS and Windows: `RYUI_SCRIPT` runs steps,
-  then `RYUI_SNAPSHOT=file.png` renders each window to a PNG
-  (`RYUI_DUMP=1`: the view tree beside it) and quits.
+- Debug automation, as on macOS and Windows: `ASUKA_SCRIPT` runs steps,
+  then `ASUKA_SNAPSHOT=file.png` renders each window to a PNG
+  (`ASUKA_DUMP=1`: the view tree beside it) and quits.
 - Tests (`go test ./host/linux`) drive real GTK windows; they need a
   display and a session bus (`xvfb-run dbus-run-session`), and skip
   without GTK.
@@ -2415,11 +2415,11 @@ calls:
   uniforms' lanes by their GLSL types.
 - Files: Go's `os` on `js/wasm` calls Node's `fs` API; the page gives
   it a file system in memory that answers at once (Go waits for each
-  callback), the app's data directory (`/data/<name>`, `RYUI_DATA`)
+  callback), the app's data directory (`/data/<name>`, `ASUKA_DATA`)
   loaded from IndexedDB before Go starts and written back as it changes
   (a large file in chunks of 64 KiB, only those changed; each data
   directory's changes in one IndexedDB transaction).
-- SQLite: `modernc.org/sqlite` has no `js/wasm` build, so `ryui/sqlite`
+- SQLite: `modernc.org/sqlite` has no `js/wasm` build, so `asuka/sqlite`
   has a second driver there (`sqlite/driver_js.go`) over SQLite's own
   WebAssembly build (`platform/web/sqlite`, vendored from sqlite.org;
   the CLI ships it with the apps whose wasm has `sqlite.Open`, and the
@@ -2443,18 +2443,18 @@ calls:
   as the native hosts do; what a browser can't do answers an error that
   says so.
 - Web views: a page of the app's origin is fetched and written into a
-  fresh `<iframe>` (its URL set to its own), with `window.ryui` and
+  fresh `<iframe>` (its URL set to its own), with `window.asuka` and
   `Preload` before its scripts, so the host has its script, events,
   `Block` and navigation; another site's is a sandboxed frame that only
-  loads, unless it answers RyUI's `postMessage` protocol (docs/web.md).
+  loads, unless it answers Asuka's `postMessage` protocol (docs/web.md).
 - Symbols are the Android host's Material Symbols, as SVG paths
   (`platform/web/gen_symbols.go` reads its drawables).
-- `ryui dev -platform web` serves the page, the host's files (a checkout's, so
+- `asuka dev -platform web` serves the page, the host's files (a checkout's, so
   changing them reloads the page too), the build and the assets, and
   keeps a connection to the page (server-sent events): a new build
   reloads it (the signals' values saved in its session storage first),
   a failed one shows its errors over it, and the GUI tests' automation
-  commands go through it. `ryui build -platform web` names the files by their
+  commands go through it. `asuka build -platform web` names the files by their
   content's digest, so only `index.html` and the manifest need fetching
   again.
 

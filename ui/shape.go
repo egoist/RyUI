@@ -5,8 +5,8 @@ import (
 	"math"
 	"slices"
 
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
 )
 
 // Path is an outline: lines, curves and shapes, in points from the top

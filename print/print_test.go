@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/egoist/ryui/host/fake"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/host/fake"
+	"github.com/egoist/asuka/ui"
 )
 
 // File, HTML and WebView send what to print and the dialog's options, and
@@ -118,7 +118,7 @@ func TestPDF(t *testing.T) {
 	var got []byte
 	h.Modules = map[string]func(string, []byte) ([]byte, error){"print": func(m string, a []byte) ([]byte, error) {
 		got = a
-		return []byte("/caches/ryui-print/x.pdf"), nil
+		return []byte("/caches/asuka-print/x.pdf"), nil
 	}}
 	r := ui.Mount(h, func() ui.Node { return ui.StaticText("x") })
 	t.Cleanup(r.Dispose)
@@ -136,7 +136,7 @@ func TestPDF(t *testing.T) {
 		r.Flush()
 		select {
 		case v := <-done:
-			if v.err != nil || v.path != "/caches/ryui-print/x.pdf" || len(got) == 0 {
+			if v.err != nil || v.path != "/caches/asuka-print/x.pdf" || len(got) == 0 {
 				t.Fatalf("%v %q", v.err, v.path)
 			}
 			return

@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/egoist/ryui/host/fake"
-	"github.com/egoist/ryui/preview"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/host/fake"
+	"github.com/egoist/asuka/preview"
+	"github.com/egoist/asuka/ui"
 )
 
 // Show sends the files with their types, the start and the view it grows

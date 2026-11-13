@@ -1,6 +1,6 @@
 //go:build windows
 
-// Package windows is RyUI's Windows host: Win32 windows and the common
+// Package windows is Asuka's Windows host: Win32 windows and the common
 // controls (version 6), made and driven from Go through syscall (no cgo),
 // in the app's process. It reads the core's batches as Go structs,
 // without encoding them.
@@ -12,19 +12,19 @@ package windows
 
 import (
 	"fmt"
-	"github.com/egoist/ryui/internal/rtf"
+	"github.com/egoist/asuka/internal/rtf"
 	"math"
 	"os"
 	"runtime"
 	"sync"
 	"syscall"
 
-	"github.com/egoist/ryui/host"
-	"github.com/egoist/ryui/internal/boot"
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/host"
+	"github.com/egoist/asuka/internal/boot"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/ui"
 )
 
 // Win32 windows belong to the thread that made them: the main thread,
@@ -333,7 +333,7 @@ func newHost() *Host {
 	h.msgWin = CreateWindow(0, classMessage, msgWinTitle, 0, 0, 0, 0, 0, ^uintptr(2), 0)
 	h.park = CreateWindow(0, classWindow, "", WS_POPUP|WS_CLIPCHILDREN, 0, 0, 0, 0, 0, 0)
 	h.dark = !AppsUseLightTheme()
-	switch os.Getenv("RYUI_COLOR_SCHEME") { // automation: snapshots in either
+	switch os.Getenv("ASUKA_COLOR_SCHEME") { // automation: snapshots in either
 	case "light":
 		h.dark, scheme = false, ops.ColorSchemeLight
 	case "dark":
@@ -374,7 +374,7 @@ func Run(root func() ui.Node) {
 func (h *Host) showMain() {
 	// Where the user left it, over WindowOptions' size.
 	maximized := h.restorePlacement()
-	if os.Getenv("RYUI_SNAPSHOT") != "" {
+	if os.Getenv("ASUKA_SNAPSHOT") != "" {
 		// Automation: shown, without taking the user's focus.
 		ShowWindow(h.window, SW_SHOWNOACTIVATE)
 	} else {
@@ -936,14 +936,14 @@ func (h *Host) Measure(id ops.NodeID, c layout.Constraints) layout.Size {
 	return h.measure(n, c)
 }
 
-// appName is the app's name: ryui.json's, or the executable's.
+// appName is the app's name: asuka.json's, or the executable's.
 func appName() string {
 	if boot.Name != "" {
 		return boot.Name
 	}
 	exe, err := os.Executable()
 	if err != nil {
-		return "ryui"
+		return "asuka"
 	}
 	name := exe
 	for i := len(name) - 1; i >= 0; i-- {
@@ -959,10 +959,10 @@ func appName() string {
 }
 
 // assetsDir is where the app's assets are: assets beside the executable
-// (ryui build), RYUI_ASSETS, or assets in the working directory (ryui dev,
+// (asuka build), ASUKA_ASSETS, or assets in the working directory (asuka dev,
 // go run).
 func assetsDir() string {
-	if d := os.Getenv("RYUI_ASSETS"); d != "" {
+	if d := os.Getenv("ASUKA_ASSETS"); d != "" {
 		return d
 	}
 	if exe, err := os.Executable(); err == nil {
@@ -981,7 +981,7 @@ func assetsDir() string {
 }
 
 func fail(format string, args ...any) {
-	panic(fmt.Sprintf("ryui: the Windows host "+format, args...))
+	panic(fmt.Sprintf("asuka: the Windows host "+format, args...))
 }
 
 // topOfChildren is where a child inserted last goes in its parent's

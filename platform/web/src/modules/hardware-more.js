@@ -28,7 +28,7 @@ import { Reader } from "../ops.js";
 import * as fs from "../fs.js";
 
 const dec = new TextDecoder();
-const notOnWeb = (what, why) => new Error(`ryui: ${what} isn't on the web: ${why}`);
+const notOnWeb = (what, why) => new Error(`asuka: ${what} isn't on the web: ${why}`);
 const fail = (what, why) => () => { throw notOnWeb(what, why); };
 
 // --- biometric ---
@@ -127,7 +127,7 @@ function webAuth() {
       r.u8(); // flags: ephemeral, which a page can't ask of the browser
       const url = r.string(), scheme = r.string();
       return new Promise((resolve, reject) => {
-        const w = window.open(url, "ryui-webauth-" + id, "popup,width=500,height=700");
+        const w = window.open(url, "asuka-webauth-" + id, "popup,width=500,height=700");
         if (!w) return reject(new Error("canceled"));
         const end = (u, err) => {
           clearInterval(t);
@@ -174,7 +174,7 @@ function background() {
 
 // --- screen ---
 
-/** orientation is the Screen Orientation API's lock for ryui/screen's Orientation (null: unlock). */
+/** orientation is the Screen Orientation API's lock for asuka/screen's Orientation (null: unlock). */
 export function orientation(o) {
   return [null, "portrait", "portrait-primary", "landscape", "landscape-primary", "landscape-secondary"][o] ?? null;
 }
@@ -212,7 +212,7 @@ function download(bytes, name, type) {
 
 const vEscape = (s) => String(s ?? "").replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/([,;])/g, "\\$1");
 
-/** vCard is a contact (ryui/contacts' JSON) as a vCard 3.0. */
+/** vCard is a contact (asuka/contacts' JSON) as a vCard 3.0. */
 export function vCard(c) {
   const lines = ["BEGIN:VCARD", "VERSION:3.0"];
   const fn = c.name || [c.givenName, c.familyName].filter(Boolean).join(" ") || c.organization || "";
@@ -234,12 +234,12 @@ const icsDate = (ms, allDay) => {
   return `${d.getUTCFullYear()}${p(d.getUTCMonth() + 1)}${p(d.getUTCDate())}T${p(d.getUTCHours())}${p(d.getUTCMinutes())}${p(d.getUTCSeconds())}Z`;
 };
 
-/** iCalendar is an event (ryui/calendar's add JSON) as an iCalendar file. */
+/** iCalendar is an event (asuka/calendar's add JSON) as an iCalendar file. */
 export function iCalendar(e, uid, now = Date.now()) {
   const all = !!e.allDay;
   const end = all && e.endMs <= e.startMs ? e.startMs + 86400000 : e.endMs;
   const lines = [
-    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//RyUI//web//EN", "BEGIN:VEVENT",
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Asuka//web//EN", "BEGIN:VEVENT",
     `UID:${uid}`, `DTSTAMP:${icsDate(now, false)}`,
     all ? `DTSTART;VALUE=DATE:${icsDate(e.startMs, true)}` : `DTSTART:${icsDate(e.startMs, false)}`,
     all ? `DTEND;VALUE=DATE:${icsDate(end, true)}` : `DTEND:${icsDate(end, false)}`,
@@ -288,7 +288,7 @@ function calendar() {
     events: () => { throw new Error("not allowed"); },
     add: (b) => {
       const e = JSON.parse(dec.decode(b));
-      const uid = (globalThis.crypto?.randomUUID?.() ?? String(Date.now())) + "@ryui";
+      const uid = (globalThis.crypto?.randomUUID?.() ?? String(Date.now())) + "@asuka";
       download(iCalendar(e, uid), fileName(e.title, ".ics"), "text/calendar");
       return new Uint8Array([0]);
     },

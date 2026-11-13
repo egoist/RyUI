@@ -18,18 +18,18 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/internal/notifyspec"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/internal/notifyspec"
 )
 
-// ryui/notify on macOS: UNUserNotificationCenter, as iOS's host has it
+// asuka/notify on macOS: UNUserNotificationCenter, as iOS's host has it
 // (platform/ios's Notify.swift), the module's methods the same. What macOS
 // lacks of it: Android's channels (ignored, as on iOS) and communication
 // notifications (a message shows as a notification, its sender's name its
-// title). Pushes (APNs) shown or tapped go to ryui/push too (push.go),
+// title). Pushes (APNs) shown or tapped go to asuka/push too (push.go),
 // their data the payload's keys beside aps. The center needs the
-// app's bundle (ryui build -platform mac): an executable run on its own (go run,
-// ryui dev) has no bundle ID, and gets an error.
+// app's bundle (asuka build -platform mac): an executable run on its own (go run,
+// asuka dev) has no bundle ID, and gets an error.
 
 // Presentation options (UNNotificationPresentationOptions).
 const (
@@ -40,7 +40,7 @@ const (
 )
 
 // waitQueue is what Go waits for ("next..." methods), as the iOS host's
-// RyUIWaitQueue. Main thread.
+// AsukaWaitQueue. Main thread.
 type waitQueue struct {
 	items   [][]byte
 	waiting []func([]byte, error)
@@ -93,7 +93,7 @@ var notes = &notifier{pendingPresent: map[string]func(uint){}, pendingActions: m
 // actionSeconds: what a background action has, as on iOS.
 const actionSeconds = 25
 
-const categoriesKey = "ryui.notify.categories"
+const categoriesKey = "asuka.notify.categories"
 
 // bundled reports whether the process is an app bundle, which the
 // center needs.
@@ -101,7 +101,7 @@ func bundled() bool {
 	return Send(Send(Class("NSBundle"), "mainBundle"), "bundleIdentifier") != 0
 }
 
-var errNoBundle = errors.New("ryui/notify: macOS's notifications need the app's bundle: build it with ryui build -platform mac")
+var errNoBundle = errors.New("asuka/notify: macOS's notifications need the app's bundle: build it with asuka build -platform mac")
 
 // installNotifications makes the center's delegate, if the app is a
 // bundle: before it finishes launching, to see a response that launched
@@ -111,7 +111,7 @@ func (h *Host) installNotifications() {
 		if !bundled() || Dlopen("/System/Library/Frameworks/UserNotifications.framework/UserNotifications") == 0 || !HasClass("UNUserNotificationCenter") {
 			return
 		}
-		cls := DefineClass("RyUINotifyDelegate", "NSObject", []string{"UNUserNotificationCenterDelegate"}, []objc.MethodDef{
+		cls := DefineClass("AsukaNotifyDelegate", "NSObject", []string{"UNUserNotificationCenterDelegate"}, []objc.MethodDef{
 			Method("userNotificationCenter:willPresentNotification:withCompletionHandler:", func(self ID, _ SEL, center, n, handler ID) {
 				done := Retain(Send(handler, "copy"))
 				Retain(n)
@@ -242,7 +242,7 @@ func shownOf(n ID) notifyspec.Shown {
 	remote := isPush(n)
 	if remote {
 		data = pushData(jsonObject(info))
-	} else if d := Send(info, "objectForKey:", uintptr(String("ryui.data"))); d != 0 {
+	} else if d := Send(info, "objectForKey:", uintptr(String("asuka.data"))); d != 0 {
 		for _, k := range ArrayItems(Send(d, "allKeys")) {
 			data[GoString(k)] = GoString(Send(d, "objectForKey:", uintptr(k)))
 		}
@@ -320,7 +320,7 @@ func categorySet(b []byte) ID {
 // http(s) URL, a file, an asset), which the system moves into its store,
 // and its extension. Off the main thread.
 func imageFile(src string) (string, error) {
-	dir := filepath.Join(os.TempDir(), "ryui-notify")
+	dir := filepath.Join(os.TempDir(), "asuka-notify")
 	os.MkdirAll(dir, 0o755)
 	var r io.Reader
 	ext := filepath.Ext(src)
@@ -390,7 +390,7 @@ func content(s notifyspec.Spec, image string) ID {
 	for k, v := range s.Data {
 		kv = append(kv, String(k), String(v))
 	}
-	info := []ID{String("ryui.data"), Dict(kv...)}
+	info := []ID{String("asuka.data"), Dict(kv...)}
 	if s.URL != "" {
 		info = append(info, String("url"), String(s.URL))
 	}
@@ -410,7 +410,7 @@ func content(s notifyspec.Spec, image string) ID {
 	return c
 }
 
-// notifyModule is ryui/notify's module.
+// notifyModule is asuka/notify's module.
 func (h *Host) notifyModule() map[string]method {
 	center := func(reply func([]byte, error)) bool {
 		h.installNotifications()

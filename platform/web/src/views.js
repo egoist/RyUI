@@ -28,7 +28,7 @@ function div(cls) {
 /** own makes el the node's, so events find their view. */
 export function own(n, el) {
   n.el = el;
-  el.ryuiNode = n;
+  el.asukaNode = n;
   return el;
 }
 
@@ -78,7 +78,7 @@ const view = {
 
 const textView = {
   create(h, n) {
-    own(n, div("ryui-text"));
+    own(n, div("asuka-text"));
     n.text = "";
     text.applyFont(h, n, n.el);
   },
@@ -96,8 +96,8 @@ const textView = {
 };
 
 export function lineClamp(el, lines) {
-  el.classList.toggle("ryui-one-line", lines === 1);
-  el.classList.toggle("ryui-clamp", lines > 1);
+  el.classList.toggle("asuka-one-line", lines === 1);
+  el.classList.toggle("asuka-clamp", lines > 1);
   el.style.webkitLineClamp = lines > 1 ? String(lines) : "";
 }
 
@@ -109,10 +109,10 @@ const button = {
   create(h, n) {
     const b = own(n, document.createElement("button"));
     b.type = "button";
-    b.className = "ryui-button ryui-control";
+    b.className = "asuka-button asuka-control";
     b.dataset.variant = "plain";
     n.label = document.createElement("span");
-    n.label.className = "ryui-button-title";
+    n.label.className = "asuka-button-title";
     b.appendChild(n.label);
     n.title = "";
     n.icon = "";
@@ -139,7 +139,7 @@ const button = {
         break;
       case P.Button.Icon:
         n.icon = v;
-        n.el.querySelector(".ryui-symbol")?.remove();
+        n.el.querySelector(".asuka-symbol")?.remove();
         if (v) {
           const s = symbolSVG(v, h.rtl);
           if (s) n.el.insertBefore(s, n.label);
@@ -147,7 +147,7 @@ const button = {
         break;
     }
   },
-  color(h, n) { n.el.style.setProperty("--tint", h.css(n.color) || "var(--ryui-accent)"); },
+  color(h, n) { n.el.style.setProperty("--tint", h.css(n.color) || "var(--asuka-accent)"); },
   background(h, n) {
     n.el.style.setProperty("--fill", h.css(n.background) || "");
     if (!n.background) n.el.style.removeProperty("--fill");
@@ -229,7 +229,7 @@ const textField = {
         }
         break;
       case P.TextField.Plain:
-        n.el.classList.toggle("ryui-plain", !!v);
+        n.el.classList.toggle("asuka-plain", !!v);
         break;
       case P.TextField.Selection: {
         if (v.length < 8) break;
@@ -302,7 +302,7 @@ const textField = {
 /** makeField makes the field's input or textarea (Multiline comes before it's inserted). */
 function makeField(h, n, input) {
   const old = n.input;
-  input.className = "ryui-field ryui-control";
+  input.className = "asuka-field asuka-control";
   if (old) {
     for (const a of ["placeholder", "autocomplete", "inputmode", "enterkeyhint", "autocapitalize", "autocorrect", "spellcheck"]) {
       const v = old.getAttribute(a);
@@ -317,7 +317,7 @@ function makeField(h, n, input) {
   n.focusEl = input;
   if (input.tagName === "TEXTAREA") input.rows = 1;
   if (!n.el) {
-    const wrap = own(n, div("ryui-field-box"));
+    const wrap = own(n, div("asuka-field-box"));
     wrap.appendChild(input);
   }
   text.applyFont(h, n, input);
@@ -404,10 +404,10 @@ function fieldResized(h, n) {
 
 const toggle = {
   create(h, n) {
-    const box = own(n, div("ryui-toggle-box"));
+    const box = own(n, div("asuka-toggle-box"));
     const i = document.createElement("input");
     i.type = "checkbox";
-    i.className = "ryui-switch ryui-control";
+    i.className = "asuka-switch asuka-control";
     i.setAttribute("role", "switch");
     i.setAttribute("switch", "");
     box.appendChild(i);
@@ -417,7 +417,7 @@ const toggle = {
   prop(h, n, p, v) {
     if (p === P.Toggle.On) n.input.checked = !!v;
     if (p === P.Toggle.Checkbox) {
-      n.input.className = v ? "ryui-checkbox ryui-control" : "ryui-switch ryui-control";
+      n.input.className = v ? "asuka-checkbox asuka-control" : "asuka-switch asuka-control";
       if (v) { n.input.removeAttribute("role"); n.input.removeAttribute("switch"); }
     }
   },
@@ -440,13 +440,13 @@ function rectOf(h, el, inner) {
 
 const slider = {
   create(h, n) {
-    const box = own(n, div("ryui-slider-box"));
+    const box = own(n, div("asuka-slider-box"));
     const i = document.createElement("input");
     i.type = "range";
     i.step = "any";
     i.min = "0";
     i.max = "1";
-    i.className = "ryui-slider ryui-control";
+    i.className = "asuka-slider asuka-control";
     box.appendChild(i);
     n.input = n.focusEl = i;
     i.addEventListener("input", () => h.emit(n, Event.ValueChanged, (id) => Events.valueChanged(id, parseFloat(i.value))));
@@ -465,13 +465,13 @@ const slider = {
 
 const stepper = {
   create(h, n) {
-    const box = own(n, div("ryui-stepper"));
+    const box = own(n, div("asuka-stepper"));
     box.setAttribute("role", "group");
     n.value = 0; n.min = 0; n.max = 100; n.step = 1;
     const mk = (label, sign) => {
       const b = document.createElement("button");
       b.type = "button";
-      b.className = "ryui-control";
+      b.className = "asuka-control";
       b.textContent = sign > 0 ? "+" : "−";
       b.setAttribute("aria-label", label);
       b.addEventListener("click", () => {
@@ -508,7 +508,7 @@ function stepperState(n) {
 
 const segmented = {
   create(h, n) {
-    const box = own(n, div("ryui-segmented ryui-control"));
+    const box = own(n, div("asuka-segmented asuka-control"));
     box.setAttribute("role", "radiogroup");
     n.segments = [];
     n.selected = 0;
@@ -549,9 +549,9 @@ function segmentState(n) {
 
 const wheel = {
   create(h, n) {
-    const box = own(n, div("ryui-select-box"));
+    const box = own(n, div("asuka-select-box"));
     const s = document.createElement("select");
-    s.className = "ryui-select ryui-control";
+    s.className = "asuka-select asuka-control";
     box.appendChild(s);
     n.input = n.focusEl = s;
     s.addEventListener("change", () => h.emit(n, Event.Selected, (id) => Events.selected(id, s.selectedIndex)));
@@ -577,10 +577,10 @@ const wheel = {
 
 const colorPicker = {
   create(h, n) {
-    const box = own(n, div("ryui-color-box"));
+    const box = own(n, div("asuka-color-box"));
     const i = document.createElement("input");
     i.type = "color";
-    i.className = "ryui-color ryui-control";
+    i.className = "asuka-color asuka-control";
     box.appendChild(i);
     n.input = n.focusEl = i;
     i.addEventListener("input", () => {
@@ -608,9 +608,9 @@ const colorPicker = {
 
 const progress = {
   create(h, n) {
-    const box = own(n, div("ryui-progress-box"));
+    const box = own(n, div("asuka-progress-box"));
     const p = document.createElement("progress");
-    p.className = "ryui-progress";
+    p.className = "asuka-progress";
     p.max = 1;
     p.value = 0;
     box.appendChild(p);
@@ -631,10 +631,10 @@ const dateTypes = ["date", "time", "datetime-local"];
 
 const datePicker = {
   create(h, n) {
-    const box = own(n, div("ryui-date-box"));
+    const box = own(n, div("asuka-date-box"));
     const i = document.createElement("input");
     i.type = "date";
-    i.className = "ryui-date ryui-control";
+    i.className = "asuka-date asuka-control";
     box.appendChild(i);
     n.input = n.focusEl = i;
     n.mode = 0;
@@ -693,7 +693,7 @@ function parseLocal(s, mode, prev) {
 
 const pageControl = {
   create(h, n) {
-    const box = own(n, div("ryui-dots"));
+    const box = own(n, div("asuka-dots"));
     box.setAttribute("role", "tablist");
     n.count = 0;
     n.page = 0;
@@ -723,19 +723,19 @@ const pageControl = {
 
 const activity = {
   create(h, n) {
-    const el = own(n, div("ryui-activity"));
+    const el = own(n, div("asuka-activity"));
     el.setAttribute("role", "progressbar");
     el.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="42 100"/></svg>';
   },
   prop(h, n, p, v) {
-    if (p === P.Activity.Animating) n.el.classList.toggle("ryui-animating", !!v);
+    if (p === P.Activity.Animating) n.el.classList.toggle("asuka-animating", !!v);
   },
   color(h, n) { n.el.style.color = h.css(n.color); },
   measure() { return [20, 20]; },
 };
 
 const selectable = {
-  create(h, n) { own(n, div("ryui-selectable")); },
+  create(h, n) { own(n, div("asuka-selectable")); },
   command(h, n, cmd) {
     if (cmd === Command.Copy) {
       const s = getSelection()?.toString();
@@ -748,17 +748,17 @@ const selectable = {
 };
 
 // Native: a view of a kind the app registers with the page:
-// ryui.registerNative(kind, (ctx) => ({ el, set(name, value), measure?(c) })).
+// asuka.registerNative(kind, (ctx) => ({ el, set(name, value), measure?(c) })).
 const native = {
   create(h, n) {
-    own(n, div("ryui-native"));
+    own(n, div("asuka-native"));
   },
   prop(h, n, p, v) {
     if (p === P.Native.Type) {
       const factory = h.natives.get(v);
       if (!factory) {
         // As the other hosts: said, and nothing shown in its place.
-        fs.log(`ryui: no native view ${JSON.stringify(v)} is registered (ryui.registerNative, in the app's web/*.js)`);
+        fs.log(`asuka: no native view ${JSON.stringify(v)} is registered (asuka.registerNative, in the app's web/*.js)`);
         return;
       }
       const ctx = {

@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/ops"
 )
 
 // PageControls and paging Scrolls. GTK has no page control that stands
@@ -103,7 +103,7 @@ func (h *Host) makePageDots(n *node) {
 	setRole(w, "slider")
 	WidgetSetFocusable(w, true)
 	WidgetSetFocusOnClick(w, false)
-	WidgetAddCSSClass(w, "ryui-focus-ring")
+	WidgetAddCSSClass(w, "asuka-focus-ring")
 	d.click = GestureClickNew()
 	GestureSingleSetButton(d.click, 1)
 	Connect(d.click, "pressed", func(count int, x, y float64) {

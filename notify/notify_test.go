@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/egoist/ryui/host/fake"
-	"github.com/egoist/ryui/internal/notifyspec"
-	"github.com/egoist/ryui/notify"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/host/fake"
+	"github.com/egoist/asuka/internal/notifyspec"
+	"github.com/egoist/asuka/notify"
+	"github.com/egoist/asuka/ui"
 )
 
 type call struct {

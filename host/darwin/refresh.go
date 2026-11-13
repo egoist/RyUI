@@ -3,8 +3,8 @@
 package darwin
 
 import (
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ops"
 )
 
 // Pull to refresh (OnRefresh) on a Mac: a trackpad's or a Magic Mouse's
@@ -27,10 +27,10 @@ type refresher struct {
 }
 
 // refreshObserver is the observer of refreshable scroll views' live
-// scrolls: a RyUITarget of its own.
+// scrolls: a AsukaTarget of its own.
 func (h *Host) refreshObserver() ID {
 	if h.refreshTarget == 0 {
-		h.refreshTarget = New("RyUITarget")
+		h.refreshTarget = New("AsukaTarget")
 	}
 	return h.refreshTarget
 }

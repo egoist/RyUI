@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 const svgNS = "http://www.w3.org/2000/svg"

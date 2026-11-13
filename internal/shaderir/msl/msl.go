@@ -25,7 +25,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/egoist/ryui/internal/shaderir"
+	"github.com/egoist/asuka/internal/shaderir"
 )
 
 const (

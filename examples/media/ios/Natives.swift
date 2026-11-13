@@ -1,27 +1,27 @@
-// The app's native views for ui.Native. The RyUI CLI compiles this file
+// The app's native views for ui.Native. The Asuka CLI compiles this file
 // with the iOS host.
 import UIKit
 
-@objc(RyUIAppNatives) final class AppNatives: NSObject, RyUINativeModule {
+@objc(AsukaAppNatives) final class AppNatives: NSObject, AsukaNativeModule {
     @MainActor static func register() {
-        RyUIRuntime.shared.registerNative("Segmented") { ctx in Segmented(ctx) }
+        AsukaRuntime.shared.registerNative("Segmented") { ctx in Segmented(ctx) }
     }
 }
 
 /// A UISegmentedControl: props "items" (comma-separated) and "selected";
 /// event "changed" with "index".
-@MainActor final class Segmented: RyUINativeView {
+@MainActor final class Segmented: AsukaNativeView {
     let control = UISegmentedControl()
     var view: UIView { control }
 
-    init(_ ctx: RyUINativeContext) {
+    init(_ ctx: AsukaNativeContext) {
         control.addAction(UIAction { [weak control] _ in
             guard let control else { return }
             ctx.emit("changed", ["index": .int(Int64(control.selectedSegmentIndex))])
         }, for: .valueChanged)
     }
 
-    func set(_ name: String, _ value: RyUINativeValue) {
+    func set(_ name: String, _ value: AsukaNativeValue) {
         switch name {
         case "items":
             let sel = control.selectedSegmentIndex

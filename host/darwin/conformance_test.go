@@ -8,9 +8,9 @@ import (
 	"unsafe"
 
 	"github.com/ebitengine/purego"
-	"github.com/egoist/ryui/conformance"
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/conformance"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ui"
 )
 
 // TestConformance draws the conformance sheet in a real window and

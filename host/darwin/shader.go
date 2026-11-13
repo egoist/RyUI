@@ -12,10 +12,10 @@ import (
 
 	"github.com/ebitengine/purego"
 
-	"github.com/egoist/ryui/internal/shadercode"
+	"github.com/egoist/asuka/internal/shadercode"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ops"
 )
 
 // A Shader is a view whose layer holds a CAMetalLayer, under its
@@ -63,7 +63,7 @@ func loadMetal() {
 func (h *Host) makeShader(n *node) ID {
 	loadMetal()
 	n.shader = &shader{start: time.Now()}
-	v := initView("RyUIView")
+	v := initView("AsukaView")
 	Send(v, "setWantsLayer:", 1)
 	if mtlDevice != 0 {
 		l := New("CAMetalLayer")
@@ -109,12 +109,12 @@ func (s *shader) makePipeline() ID {
 	var errID ID
 	lib := Send(mtlDevice, "newLibraryWithSource:options:error:", uintptr(String(src)), 0, uintptr(unsafe.Pointer(&errID)))
 	if lib == 0 {
-		fmt.Fprintf(os.Stderr, "ryui: a ui.Shader's Metal library doesn't compile: %s\n", GoString(Send(errID, "localizedDescription")))
+		fmt.Fprintf(os.Stderr, "asuka: a ui.Shader's Metal library doesn't compile: %s\n", GoString(Send(errID, "localizedDescription")))
 		return 0
 	}
 	d := New("MTLRenderPipelineDescriptor")
-	Send(d, "setVertexFunction:", uintptr(Send(lib, "newFunctionWithName:", uintptr(String("ryui_vertex")))))
-	Send(d, "setFragmentFunction:", uintptr(Send(lib, "newFunctionWithName:", uintptr(String("ryui_fragment")))))
+	Send(d, "setVertexFunction:", uintptr(Send(lib, "newFunctionWithName:", uintptr(String("asuka_vertex")))))
+	Send(d, "setFragmentFunction:", uintptr(Send(lib, "newFunctionWithName:", uintptr(String("asuka_fragment")))))
 	Send(Send(Send(d, "colorAttachments"), "objectAtIndexedSubscript:", 0), "setPixelFormat:", 80)
 	p := Send(mtlDevice, "newRenderPipelineStateWithDescriptor:error:", uintptr(d), uintptr(unsafe.Pointer(&errID)))
 	Release(d)

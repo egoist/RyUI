@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"unicode"
 
-	"github.com/egoist/ryui/internal/i18nlink"
+	"github.com/egoist/asuka/internal/i18nlink"
 )
 
 // A Catalog holds the messages of an app, or of a library, in the
@@ -30,7 +30,7 @@ import (
 //	}
 //
 // A key starting with @ holds metadata, which only the file of the source
-// language (the one the app is written in) needs. `ryui generate` writes
+// language (the one the app is written in) needs. `asuka generate` writes
 // typed functions for the keys of an app's catalog, which register it
 // (Register), so that an app rarely uses a Catalog itself.
 //
@@ -88,7 +88,7 @@ type candidates struct {
 // to. Their names must be BCP 47 tags in their canonical form; their
 // contents are read as they are needed. A message that does not parse, or
 // a file that does not, is left out, and its keys fall back as missing ones
-// do: `ryui generate` and `ryui i18n check` report them.
+// do: `asuka generate` and `asuka i18n check` report them.
 func NewCatalog(fsys fs.FS, source string) (*Catalog, error) {
 	linkTimes()
 	return newCatalog(fsys, source)
@@ -144,7 +144,7 @@ func catalogFiles(fsys fs.FS) (map[string]*langMsgs, error) {
 
 // Add adds the languages of the JSON files at the root of fsys, named as
 // NewCatalog's, to the catalog: translations kept apart from it, as those
-// of RyUI's own strings are, each in a package an app imports for a
+// of Asuka's own strings are, each in a package an app imports for a
 // language it ships. It fails on a language the catalog has already, and
 // on files not named after a language; an app's registered catalog ships
 // the languages it adds. Add is safe for concurrent use with formatting,
@@ -185,11 +185,11 @@ func (c *Catalog) Add(fsys fs.FS) error {
 
 // NewLibraryCatalog returns the catalog of a library, as NewCatalog does,
 // whose messages an app changes, or translates to other languages, with
-// keys of its own catalogs named "<namespace>.<key>": RyUI's own strings,
+// keys of its own catalogs named "<namespace>.<key>": Asuka's own strings,
 // those of its controls and menus, are a library's catalog whose
-// namespace is "ryui", and an app's de.json that says
+// namespace is "asuka", and an app's de.json that says
 //
-//	"ryui.cancel": "Abbrechen"
+//	"asuka.cancel": "Abbrechen"
 //
 // translates the controls' "cancel" to German.
 //
@@ -203,7 +203,7 @@ func NewLibraryCatalog(fsys fs.FS, source, namespace string) (*Catalog, error) {
 }
 
 // newLibraryCatalog is NewLibraryCatalog without linking the formatting
-// of dates, for RyUI's own strings (internal/i18nlink), which have none.
+// of dates, for Asuka's own strings (internal/i18nlink), which have none.
 func newLibraryCatalog(fsys fs.FS, source, namespace string) (*Catalog, error) {
 	if namespace == "" || strings.ContainsAny(namespace, ".@ ") {
 		return nil, fmt.Errorf("i18n: %q is not a namespace", namespace)
@@ -429,7 +429,7 @@ func (c *Catalog) message(tag, key string) *Message {
 }
 
 // load reads the messages of a language. A message that does not parse is
-// left out, as ryui generate reports it: its key falls back.
+// left out, as asuka generate reports it: its key falls back.
 func (l *langMsgs) load() map[string]*Message {
 	data, err := fs.ReadFile(l.fsys, path.Clean(l.file))
 	if err != nil {
@@ -463,9 +463,9 @@ var registry struct {
 }
 
 // Register adds an app's catalog to those the app ships, which the
-// TypeScript and Go code `ryui generate` writes for it does: its
+// TypeScript and Go code `asuka generate` writes for it does: its
 // languages become the app's (Languages), and its keys "<namespace>.<key>"
-// change the messages of libraries, as RyUI's own. A library's catalog is
+// change the messages of libraries, as Asuka's own. A library's catalog is
 // not registered.
 func Register(c *Catalog) {
 	if c.namespace != "" {
@@ -493,7 +493,7 @@ func registered() []*Catalog {
 var localeFunc atomic.Pointer[func() string]
 
 // SetLocaleFunc sets the function that returns the language the app shows,
-// in which Locale, and so the functions `ryui generate` writes, say their
+// in which Locale, and so the functions `asuka generate` writes, say their
 // messages. Package ui sets it to its Locale; apps change the
 // language with ui.SetLocale, not here. f must be safe to call from
 // any goroutine.

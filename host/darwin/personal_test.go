@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ui"
 )
 
 // The personal data modules (contacts, calendar, photos, library) never

@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/egoist/ryui/conformance"
+	"github.com/egoist/asuka/conformance"
 )
 
 // The conformance sheet (package conformance) on each platform: the app
@@ -46,7 +46,7 @@ func sheetShot(t *testing.T, shot func() ([]byte, error)) image.Image {
 }
 
 func TestConformanceIOS(t *testing.T) {
-	s := iosApp(t, "conformance/app", "dev.ryui.conformance")
+	s := iosApp(t, "conformance/app", "dev.asuka.conformance")
 	shot := filepath.Join(t.TempDir(), "screen.png")
 	img := sheetShot(t, func() ([]byte, error) {
 		if out, err := exec.Command("xcrun", "simctl", "io", s.udid, "screenshot", "--type=png", shot).CombinedOutput(); err != nil {
@@ -58,7 +58,7 @@ func TestConformanceIOS(t *testing.T) {
 }
 
 func TestConformanceAndroid(t *testing.T) {
-	s := androidApp(t, "conformance/app", "dev.ryui.conformance")
+	s := androidApp(t, "conformance/app", "dev.asuka.conformance")
 	img := sheetShot(t, func() ([]byte, error) {
 		return exec.Command("adb", "-s", s.serial, "exec-out", "screencap", "-p").Output()
 	})
@@ -71,7 +71,7 @@ func TestConformanceAndroid(t *testing.T) {
 func TestConformanceWeb(t *testing.T) {
 	browser := chrome()
 	if browser == "" {
-		t.Skip("no Chrome (RYUI_CHROME)")
+		t.Skip("no Chrome (ASUKA_CHROME)")
 	}
 	url := webServer(t, "conformance/app")
 	for _, scale := range []string{"1", "1.5", "2"} {

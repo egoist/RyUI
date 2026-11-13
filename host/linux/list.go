@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
 )
 
 // A List is core-virtualized, as on macOS and Windows: a
@@ -1059,9 +1059,9 @@ func (h *Host) rowMenu(c *cell, x, y float64) bool {
 		ActionMapAddAction(group, a)
 		ObjectUnref(a)
 	}
-	WidgetInsertActionGroup(c.n.widget, "ryuirow", group)
+	WidgetInsertActionGroup(c.n.widget, "asukarow", group)
 	ObjectUnref(group)
-	model := h.menuModel(all, "ryuirow.item")
+	model := h.menuModel(all, "asukarow.item")
 	pop := PopoverMenuNewFromModel(model)
 	ObjectUnref(model)
 	WidgetSetParent(pop, c.n.widget)

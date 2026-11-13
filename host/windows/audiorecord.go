@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 	"sync/atomic"
 
-	. "github.com/egoist/ryui/internal/windows"
+	. "github.com/egoist/asuka/internal/windows"
 )
 
-// ryui/audio/record on Windows: the default microphone (waveIn) encoded
+// asuka/audio/record on Windows: the default microphone (waveIn) encoded
 // to AAC by Media Foundation as it records, in an MPEG-4 file (.m4a) or,
 // streaming, ADTS (.aac). "start" (u8 quality: voice, music; u32 max
 // milliseconds, 0: none; u8 flags, 1 background, 2 stream; u32-length
@@ -97,7 +97,7 @@ func (h *Host) recModule() map[string]asyncMethod {
 				if stream {
 					ext = ".aac"
 				}
-				dir := filepath.Join(h.cacheDir(), "ryui-audio")
+				dir := filepath.Join(h.cacheDir(), "asuka-audio")
 				os.MkdirAll(dir, 0o755)
 				f, err := os.CreateTemp(dir, "*"+ext)
 				if err != nil {

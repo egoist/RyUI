@@ -5,11 +5,11 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/egoist/ryui/internal/shaderir"
+	"github.com/egoist/asuka/internal/shaderir"
 )
 
 // AGSL returns p's fragment entry point as an AGSL program, Android's
-// RuntimeShader language (RyUI's): its uniforms U0, U1, ... (no textures),
+// RuntimeShader language (Asuka's): its uniforms U0, U1, ... (no textures),
 // the functions it reaches, and the main that calls the entry point,
 //
 //	half4 main(float2 p)

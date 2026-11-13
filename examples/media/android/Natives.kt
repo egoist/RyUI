@@ -1,18 +1,18 @@
-// The app's native views for ui.Native. The RyUI CLI builds this file into
+// The app's native views for ui.Native. The Asuka CLI builds this file into
 // the Android app.
-package dev.ryui.app
+package dev.asuka.app
 
 import android.view.View
 import androidx.appcompat.view.ContextThemeWrapper
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
-import dev.ryui.RyUINativeContext
-import dev.ryui.RyUINativeModule
-import dev.ryui.RyUINativeView
-import dev.ryui.RyUIRuntime
+import dev.asuka.AsukaNativeContext
+import dev.asuka.AsukaNativeModule
+import dev.asuka.AsukaNativeView
+import dev.asuka.AsukaRuntime
 
-object RyUIAppNatives : RyUINativeModule {
-    override fun register(runtime: RyUIRuntime) {
+object AsukaAppNatives : AsukaNativeModule {
+    override fun register(runtime: AsukaRuntime) {
         runtime.registerNative("Segmented") { ctx -> Segmented(ctx) }
     }
 }
@@ -21,7 +21,7 @@ object RyUIAppNatives : RyUINativeModule {
  * Material's segmented buttons: props "items" (comma-separated) and
  * "selected"; event "changed" with "index".
  */
-class Segmented(private val ctx: RyUINativeContext) : RyUINativeView {
+class Segmented(private val ctx: AsukaNativeContext) : AsukaNativeView {
     private val group = MaterialButtonToggleGroup(ctx.context).apply {
         isSingleSelection = true
         isSelectionRequired = true
@@ -42,7 +42,7 @@ class Segmented(private val ctx: RyUINativeContext) : RyUINativeView {
                 val sel = group.indexOfChild(group.findViewById(group.checkedButtonId))
                 group.removeAllViews()
                 for (t in (value as String).split(",")) {
-                    val b = MaterialButton(ContextThemeWrapper(ctx.context, dev.ryui.R.style.ThemeOverlay_RyUI_OutlinedButton))
+                    val b = MaterialButton(ContextThemeWrapper(ctx.context, dev.asuka.R.style.ThemeOverlay_Asuka_OutlinedButton))
                     b.id = View.generateViewId()
                     b.text = t
                     b.isAllCaps = false

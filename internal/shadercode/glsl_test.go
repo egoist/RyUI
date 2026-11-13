@@ -23,7 +23,7 @@ func Fragment(dst vec4, pos vec2) vec4 {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"#version 300 es", "vec4 ryui_shade(", "out vec4 ryui_color;", "void main()"} {
+	for _, want := range []string{"#version 300 es", "vec4 asuka_shade(", "out vec4 asuka_color;", "void main()"} {
 		if !strings.Contains(src, want) {
 			t.Errorf("GLSL lacks %q:\n%s", want, src)
 		}

@@ -6,8 +6,8 @@ import (
 	"bytes"
 	"strings"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
 )
 
 // A Rich TextField: its text view's buffer, styled with a text tag per

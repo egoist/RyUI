@@ -3,8 +3,8 @@
 package windows
 
 import (
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ops"
 )
 
 // A Scroll's or List's scroll bar is an indicator over its content, as

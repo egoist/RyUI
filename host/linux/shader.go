@@ -10,11 +10,11 @@ import (
 	"sync"
 	"time"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/internal/shader"
-	"github.com/egoist/ryui/internal/shadercode"
-	"github.com/egoist/ryui/internal/shaderir/interp"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/internal/shader"
+	"github.com/egoist/asuka/internal/shadercode"
+	"github.com/egoist/asuka/internal/shaderir/interp"
+	"github.com/egoist/asuka/ops"
 )
 
 // A Shader on Linux, as on Windows: its Kage program run on the CPU
@@ -110,7 +110,7 @@ func (h *Host) setShaderProp(n *node, p ops.PropID, v *ops.Value) {
 			}
 		}
 		if err != nil {
-			log.Printf("ryui: a ui.Shader doesn't run: %v", err)
+			log.Printf("asuka: a ui.Shader doesn't run: %v", err)
 		}
 		if s.code != nil && len(s.words) != s.code.Lanes {
 			s.words = make([]uint32, s.code.Lanes)
@@ -253,7 +253,7 @@ func kageShade(prog *interp.Program, words []uint32, buf []byte, pw, ph int, sx,
 				if r := recover(); r != nil {
 					failed.Do(func() {
 						ok = false
-						log.Printf("ryui: a ui.Shader failed: %v", r)
+						log.Printf("asuka: a ui.Shader failed: %v", r)
 					})
 				}
 			}()

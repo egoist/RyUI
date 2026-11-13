@@ -28,7 +28,7 @@ function format(s) {
 export function makeRich(h, n, wire) {
   const old = n.input;
   const ed = document.createElement("div");
-  ed.className = (old?.className || "ryui-field ryui-control") + " ryui-richfield";
+  ed.className = (old?.className || "asuka-field asuka-control") + " asuka-richfield";
   ed.contentEditable = "true";
   ed.setAttribute("role", "textbox");
   ed.setAttribute("aria-multiline", "true");
@@ -82,13 +82,13 @@ export function makeRich(h, n, wire) {
       s.addRange(f.range);
     }
   });
-  if (!document.ryuiRichSelection) {
-    document.ryuiRichSelection = true;
+  if (!document.asukaRichSelection) {
+    document.asukaRichSelection = true;
     document.addEventListener("selectionchange", () => {
       const s = getSelection();
       const node = s.anchorNode;
-      const el = node && (node.nodeType === 1 ? node : node.parentElement)?.closest(".ryui-richfield");
-      const m = el?.parentElement?.ryuiNode;
+      const el = node && (node.nodeType === 1 ? node : node.parentElement)?.closest(".asuka-richfield");
+      const m = el?.parentElement?.asukaNode;
       if (!m?.richField) return;
       if (s.rangeCount) m.richField.range = s.getRangeAt(0).cloneRange();
       reportSelection(m.richField.h, m);
@@ -167,7 +167,7 @@ function spanOf(h, n, s, t) {
   const deco = [s.flags & 4 ? "underline" : "", s.flags & 8 ? "line-through" : ""].filter(Boolean).join(" ");
   if (deco) css.textDecorationLine = deco;
   if (s.color) css.color = h.css(s.color);
-  if (s.bg) { css.backgroundColor = h.css(s.bg); span.classList.add("ryui-marked"); }
+  if (s.bg) { css.backgroundColor = h.css(s.bg); span.classList.add("asuka-marked"); }
   if (!s.link) return span;
   const a = document.createElement("a");
   a.href = s.link;
@@ -291,7 +291,7 @@ function changed(h, n) {
 }
 
 function updateEmpty(n) {
-  n.input.classList.toggle("ryui-empty", plainText(n.input) === "");
+  n.input.classList.toggle("asuka-empty", plainText(n.input) === "");
 }
 
 export function setPlaceholder(n, v) { n.input.dataset.placeholder = v; }

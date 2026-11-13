@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"testing/fstest"
 
-	"github.com/egoist/ryui/i18n"
-	locales "github.com/egoist/ryui/internal/i18ngen/testdata/app"
+	"github.com/egoist/asuka/i18n"
+	locales "github.com/egoist/asuka/internal/i18ngen/testdata/app"
 )
 
 func main() {
 	lib, err := i18n.NewLibraryCatalog(fstest.MapFS{
 		"en.json": {Data: []byte(`{"cancel": "Cancel"}`)},
-	}, "en", "ryui")
+	}, "en", "asuka")
 	if err != nil {
 		panic(err)
 	}

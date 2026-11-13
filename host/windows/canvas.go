@@ -5,8 +5,8 @@ package windows
 import (
 	"encoding/binary"
 
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ops"
 )
 
 // A Canvas's display list, replayed with GDI+ as its view paints, in

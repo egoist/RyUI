@@ -5,10 +5,10 @@ import (
 	"encoding/binary"
 	"time"
 
-	"github.com/egoist/ryui/host"
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
+	"github.com/egoist/asuka/host"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
 )
 
 // Role is what a view is to assistive technologies.
@@ -303,7 +303,7 @@ type Environment = host.Environment
 
 // Platform is the system the app runs on, the environment's Platform:
 // for the few places an app follows each platform's own design (a
-// section's heading, a card's corners) where RyUI has no view that does
+// section's heading, a card's corners) where Asuka has no view that does
 // it for it.
 type Platform = ops.Platform
 

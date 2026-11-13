@@ -9,13 +9,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	. "github.com/egoist/ryui/internal/windows"
+	. "github.com/egoist/asuka/internal/windows"
 )
 
 // The main window comes back where the user left it, as macOS's frame
 // autosave has it: its normal rectangle (in screen pixels, at the DPI it
 // was at) and whether it was maximized, kept in a file in the app's data
-// directory (RYUI_DATA: Local AppData\<name>), saved when the user is done
+// directory (ASUKA_DATA: Local AppData\<name>), saved when the user is done
 // moving or sizing it, maximizes or restores it, or closes it, not on
 // every pixel of a drag. It's restored before the window shows, onto a
 // monitor that's there (the nearest, if the one it was on is gone), and
@@ -24,7 +24,7 @@ import (
 // (GetWindowPlacement's are workspace coordinates, off by the taskbar
 // when it's on the top or left).
 
-const placementName = "ryui-window.json"
+const placementName = "asuka-window.json"
 
 type placement struct {
 	X, Y, Width, Height int32
@@ -33,13 +33,13 @@ type placement struct {
 }
 
 // placementFile is where the main window's placement is kept, or "" if
-// it isn't: not for a test (go test) or an automation run (RYUI_SNAPSHOT,
-// RYUI_SCRIPT), which would leave theirs on the machine.
+// it isn't: not for a test (go test) or an automation run (ASUKA_SNAPSHOT,
+// ASUKA_SCRIPT), which would leave theirs on the machine.
 func placementFile() string {
-	if testing.Testing() || snapshotting() || os.Getenv("RYUI_SCRIPT") != "" {
+	if testing.Testing() || snapshotting() || os.Getenv("ASUKA_SCRIPT") != "" {
 		return ""
 	}
-	d := os.Getenv("RYUI_DATA")
+	d := os.Getenv("ASUKA_DATA")
 	if d == "" {
 		return ""
 	}

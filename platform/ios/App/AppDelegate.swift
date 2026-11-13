@@ -1,31 +1,31 @@
 import UIKit
 
-// The app around the RyUI host: one window scene showing the core's root.
+// The app around the Asuka host: one window scene showing the core's root.
 
-// RyUIAppDelegate: the name an app with a share sheet's main starts it by
-// (its code is a framework, Frameworks/RyUIApp.framework).
+// AsukaAppDelegate: the name an app with a share sheet's main starts it by
+// (its code is a framework, Frameworks/AsukaApp.framework).
 @main
-@objc(RyUIAppDelegate)
+@objc(AsukaAppDelegate)
 final class AppDelegate: UIResponder, UIApplicationDelegate {
     override init() {
         super.init()
-        // ryui.json's shortcuts: their App Intents hand the host their URL.
-        NotificationCenter.default.addObserver(forName: Notification.Name("RyUIOpenURL"), object: nil, queue: .main) { n in
+        // asuka.json's shortcuts: their App Intents hand the host their URL.
+        NotificationCenter.default.addObserver(forName: Notification.Name("AsukaOpenURL"), object: nil, queue: .main) { n in
             guard let s = n.userInfo?["url"] as? String, let u = URL(string: s) else { return }
-            MainActor.assumeIsolated { RyUIRuntime.shared.openURL(u) }
+            MainActor.assumeIsolated { AsukaRuntime.shared.openURL(u) }
         }
     }
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions options: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-        #if RYUI_PERIODIC
-        // ryui/periodic: its tasks' handlers, which the system wants before launch ends.
-        RyUIPeriodic.shared.registerAtLaunch()
+        #if ASUKA_PERIODIC
+        // asuka/periodic: its tasks' handlers, which the system wants before launch ends.
+        AsukaPeriodic.shared.registerAtLaunch()
         #endif
-        #if RYUI_NOTIFY || RYUI_PUSH || RYUI_NOTIFICATION_SERVICE
-        // ryui/notify, ryui/push: the center's delegate before launch
+        #if ASUKA_NOTIFY || ASUKA_PUSH || ASUKA_NOTIFICATION_SERVICE
+        // asuka/notify, asuka/push: the center's delegate before launch
         // ends, to see the response that launched the app (a background
         // action launches it without a scene).
-        RyUINotifyCenter.shared.install()
+        AsukaNotifyCenter.shared.install()
         #endif
         return true
     }
@@ -37,26 +37,26 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         return c
     }
 
-    #if RYUI_PUSH
-    // ryui/push: APNs' token, and data messages.
+    #if ASUKA_PUSH
+    // asuka/push: APNs' token, and data messages.
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken token: Data) {
-        RyUIPush.shared.registered(token)
+        AsukaPush.shared.registered(token)
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        RyUIPush.shared.failed(error)
+        AsukaPush.shared.failed(error)
     }
 
     func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any],
                      fetchCompletionHandler done: @escaping (UIBackgroundFetchResult) -> Void) {
         // A notification with an alert comes through the center's delegate.
-        if (userInfo["aps"] as? [String: Any])?["alert"] == nil { RyUIPush.shared.received(userInfo) }
+        if (userInfo["aps"] as? [String: Any])?["alert"] == nil { AsukaPush.shared.received(userInfo) }
         done(.newData)
     }
     #endif
 
     func applicationDidReceiveMemoryWarning(_ application: UIApplication) {
-        RyUIRuntime.shared.lifecycle(.memoryWarning)
+        AsukaRuntime.shared.lifecycle(.memoryWarning)
     }
 }
 
@@ -66,26 +66,26 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options: UIScene.ConnectionOptions) {
         guard let ws = scene as? UIWindowScene else { return }
         let w = UIWindow(windowScene: ws)
-        w.rootViewController = RyUIViewController()
+        w.rootViewController = AsukaViewController()
         w.makeKeyAndVisible()
         window = w
         // Opened with a URL, or a universal link.
-        for c in options.urlContexts { RyUIRuntime.shared.openURL(c.url) }
+        for c in options.urlContexts { AsukaRuntime.shared.openURL(c.url) }
         for a in options.userActivities where a.activityType == NSUserActivityTypeBrowsingWeb {
-            if let u = a.webpageURL { RyUIRuntime.shared.openURL(u) }
+            if let u = a.webpageURL { AsukaRuntime.shared.openURL(u) }
         }
     }
 
     func scene(_ scene: UIScene, openURLContexts contexts: Set<UIOpenURLContext>) {
-        for c in contexts { RyUIRuntime.shared.openURL(c.url) }
+        for c in contexts { AsukaRuntime.shared.openURL(c.url) }
     }
 
     func scene(_ scene: UIScene, continue activity: NSUserActivity) {
         if activity.activityType == NSUserActivityTypeBrowsingWeb, let u = activity.webpageURL {
-            RyUIRuntime.shared.openURL(u)
+            AsukaRuntime.shared.openURL(u)
         }
     }
 
-    func sceneWillEnterForeground(_ scene: UIScene) { RyUIRuntime.shared.lifecycle(.foreground) }
-    func sceneDidEnterBackground(_ scene: UIScene) { RyUIRuntime.shared.lifecycle(.background) }
+    func sceneWillEnterForeground(_ scene: UIScene) { AsukaRuntime.shared.lifecycle(.foreground) }
+    func sceneDidEnterBackground(_ scene: UIScene) { AsukaRuntime.shared.lifecycle(.background) }
 }

@@ -22,7 +22,7 @@ XML = """
     <signal name="ActionInvoked"><arg type="u"/><arg type="s"/></signal>
     <signal name="NotificationClosed"><arg type="u"/><arg type="u"/></signal>
   </interface>
-  <interface name="dev.ryui.Test">
+  <interface name="dev.asuka.Test">
     <method name="Shown"><arg type="a(ussas)" direction="out"/></method>
     <method name="Invoke"><arg type="u" direction="in"/><arg type="s" direction="in"/></method>
   </interface>
@@ -53,7 +53,7 @@ def call(c, sender, path, iface, method, params, inv):
     elif method == "GetCapabilities":
         inv.return_value(GLib.Variant("(as)", (["actions", "body", "body-markup"],)))
     elif method == "GetServerInformation":
-        inv.return_value(GLib.Variant("(ssss)", ("test", "ryui", "1", "1.2")))
+        inv.return_value(GLib.Variant("(ssss)", ("test", "asuka", "1", "1.2")))
     elif method == "Shown":
         inv.return_value(GLib.Variant("(a(ussas))", ([(n, s, b, a) for n, (s, b, a) in sorted(shown.items())],)))
     elif method == "Invoke":

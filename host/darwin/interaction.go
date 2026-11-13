@@ -14,14 +14,14 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/ops"
 )
 
 // Interaction states and drag and drop (DESIGN.md, "Interaction states,
 // drag and drop").
 //
-// Presses are the views' own mouse tracking (RyUIView's mouseDown:,
+// Presses are the views' own mouse tracking (AsukaView's mouseDown:,
 // mouseDragged:, mouseUp:), not a click recognizer: Pressed and Press
 // then come from the same events and agree. The recognizers the views
 // have (long press, pan, …) don't delay the mouse's events (their
@@ -30,12 +30,12 @@ import (
 // view under the mouse is pressed: a control (a button, a field) takes
 // its clicks itself and never passes them on.
 //
-// Hover is an NSTrackingArea per view; drops come to RyUIView as an
+// Hover is an NSTrackingArea per view; drops come to AsukaView as an
 // NSDraggingDestination, drags from it as an NSDraggingSource.
 
 // dragType is the private pasteboard type of the app's own drags: its
 // process's ID and the source view's, "pid:id".
-const dragType = "dev.ryui.drag"
+const dragType = "dev.asuka.drag"
 
 // dragDistance is how far the mouse moves with the button down, in
 // points, before a draggable view's drag begins (AppKit's own views
@@ -982,24 +982,24 @@ func (h *Host) endDrag(op uint) {
 	}
 }
 
-// interactionMethods are RyUIView's methods for presses, hover and drag
+// interactionMethods are AsukaView's methods for presses, hover and drag
 // and drop.
 func interactionMethods() []objc.MethodDef {
 	h := func() *Host { return theHost }
 	return []objc.MethodDef{
 		Method("mouseDown:", func(self ID, _ SEL, ev ID) {
 			if !h().mouseDown(self, ev) {
-				SendSuper(self, "RyUIView", "mouseDown:", uintptr(ev))
+				SendSuper(self, "AsukaView", "mouseDown:", uintptr(ev))
 			}
 		}),
 		Method("mouseDragged:", func(self ID, _ SEL, ev ID) {
 			if !h().mouseDragged(ev) {
-				SendSuper(self, "RyUIView", "mouseDragged:", uintptr(ev))
+				SendSuper(self, "AsukaView", "mouseDragged:", uintptr(ev))
 			}
 		}),
 		Method("mouseUp:", func(self ID, _ SEL, ev ID) {
 			if !h().mouseUp(ev) {
-				SendSuper(self, "RyUIView", "mouseUp:", uintptr(ev))
+				SendSuper(self, "AsukaView", "mouseUp:", uintptr(ev))
 			}
 		}),
 		Method("mouseEntered:", func(self ID, _ SEL, ev ID) {
@@ -1013,7 +1013,7 @@ func interactionMethods() []objc.MethodDef {
 			}
 		}),
 		Method("viewDidMoveToWindow", func(self ID, _ SEL) {
-			SendSuper(self, "RyUIView", "viewDidMoveToWindow")
+			SendSuper(self, "AsukaView", "viewDidMoveToWindow")
 			n := h().byView[self]
 			if n == nil {
 				return
@@ -1026,13 +1026,13 @@ func interactionMethods() []objc.MethodDef {
 			}
 		}),
 		Method("viewDidHide", func(self ID, _ SEL) {
-			SendSuper(self, "RyUIView", "viewDidHide")
+			SendSuper(self, "AsukaView", "viewDidHide")
 			if n := h().byView[self]; n != nil {
 				h().viewLeft(n)
 			}
 		}),
 		Method("viewDidUnhide", func(self ID, _ SEL) {
-			SendSuper(self, "RyUIView", "viewDidUnhide")
+			SendSuper(self, "AsukaView", "viewDidUnhide")
 			if n := h().byView[self]; n != nil {
 				h().checkHover(n)
 			}

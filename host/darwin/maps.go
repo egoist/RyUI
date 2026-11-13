@@ -11,8 +11,8 @@ import (
 	"github.com/ebitengine/purego"
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/native"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/native"
 )
 
 // maps.View on a Mac: an MKMapView, as on iOS. Props: region and markers
@@ -46,7 +46,7 @@ func loadMaps() bool {
 		if msgCoordinate == nil {
 			purego.RegisterFunc(&msgCoordinate, MsgSendAddr())
 		}
-		DefineClass("RyUIMapDelegate", "NSObject", []string{"MKMapViewDelegate", "NSGestureRecognizerDelegate"}, []objc.MethodDef{
+		DefineClass("AsukaMapDelegate", "NSObject", []string{"MKMapViewDelegate", "NSGestureRecognizerDelegate"}, []objc.MethodDef{
 			Method("mapView:regionWillChangeAnimated:", func(self ID, _ SEL, m ID, animated bool) {
 				if v := mapViews[m]; v != nil {
 					v.userMoving = userEventNow()
@@ -82,7 +82,7 @@ func loadMaps() bool {
 			}),
 			Method("gestureRecognizer:shouldRecognizeSimultaneouslyWithGestureRecognizer:", func(self ID, _ SEL, a, b ID) bool { return true }),
 		})
-		mapDelegate = Send(Class("RyUIMapDelegate"), "new")
+		mapDelegate = Send(Class("AsukaMapDelegate"), "new")
 		mapsOK = true
 	})
 	return mapsOK
@@ -125,7 +125,7 @@ type mapView struct {
 }
 
 func init() {
-	builtinViews["ryui.map"] = newMapView
+	builtinViews["asuka.map"] = newMapView
 }
 
 func newMapView(ctx native.Context) native.View {
@@ -271,9 +271,9 @@ func (v *mapView) viewFor(a ID) ID {
 	if m == nil || !HasClass("MKMarkerAnnotationView") {
 		return 0
 	}
-	av := Send(v.view, "dequeueReusableAnnotationViewWithIdentifier:", uintptr(String("ryui")))
+	av := Send(v.view, "dequeueReusableAnnotationViewWithIdentifier:", uintptr(String("asuka")))
 	if av == 0 {
-		av = Autorelease(Send(Send(Class("MKMarkerAnnotationView"), "alloc"), "initWithAnnotation:reuseIdentifier:", uintptr(a), uintptr(String("ryui"))))
+		av = Autorelease(Send(Send(Class("MKMarkerAnnotationView"), "alloc"), "initWithAnnotation:reuseIdentifier:", uintptr(a), uintptr(String("asuka"))))
 	}
 	Send(av, "setAnnotation:", uintptr(a))
 	Send(av, "setMarkerTintColor:", uintptr(markerColor(m.Color)))
@@ -320,7 +320,7 @@ func (v *mapView) clicked(g ID) {
 }
 
 // askLocationForMap asks for the location the first time the map shows
-// the user, if the app says why (ryui/location's purpose string).
+// the user, if the app says why (asuka/location's purpose string).
 func askLocationForMap() {
 	info := Send(Send(Class("NSBundle"), "mainBundle"), "infoDictionary")
 	if info == 0 {

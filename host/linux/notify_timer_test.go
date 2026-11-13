@@ -15,26 +15,26 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/internal/notifyspec"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/internal/notifyspec"
 )
 
 // The timer's unit name and systemd-run's arguments.
 func TestNotifyTimerArgs(t *testing.T) {
-	if u := notifyUnit("com.example.Notes", "chat-42"); u != `ryui-com.example.Notes-chat\x2d42` {
+	if u := notifyUnit("com.example.Notes", "chat-42"); u != `asuka-com.example.Notes-chat\x2d42` {
 		t.Fatalf("unit %q", u)
 	}
-	if u := notifyUnit("com.example.Notes", ".a b/é"); u != `ryui-com.example.Notes-\x2ea\x20b\x2f\xc3\xa9` {
+	if u := notifyUnit("com.example.Notes", ".a b/é"); u != `asuka-com.example.Notes-\x2ea\x20b\x2f\xc3\xa9` {
 		t.Fatalf("unit %q", u)
 	}
-	if u := notifyUnit("com.example.Notes", strings.Repeat("x", 300)); len(u) > 200 || !strings.HasPrefix(u, "ryui-com.example.Notes-") {
+	if u := notifyUnit("com.example.Notes", strings.Repeat("x", 300)); len(u) > 200 || !strings.HasPrefix(u, "asuka-com.example.Notes-") {
 		t.Fatalf("a long ID's unit %q", u)
 	}
 	due := time.Date(2026, 11, 13, 18, 30, 5, 0, time.FixedZone("CET", 3600))
 	got := notifyTimerArgs("u", "/opt/notes/bin/notes", "chat-42", "/home/a/.local/share/notes", due)
 	want := []string{"--user", "--quiet", "--collect", "--unit=u", "--on-calendar=2026-11-13 17:30:05 UTC",
 		"--timer-property=AccuracySec=1s", "--timer-property=RemainAfterElapse=no",
-		"--setenv=RYUI_NOTIFY=chat-42", "--setenv=RYUI_DATA=/home/a/.local/share/notes", "/opt/notes/bin/notes"}
+		"--setenv=ASUKA_NOTIFY=chat-42", "--setenv=ASUKA_DATA=/home/a/.local/share/notes", "/opt/notes/bin/notes"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("%q\nwant %q", got, want)
 	}
@@ -44,7 +44,7 @@ func TestNotifyTimerArgs(t *testing.T) {
 // app's), which cancel stops; if systemd-run fails, the app's timer
 // shows it.
 func TestNotifySystemTimer(t *testing.T) {
-	t.Setenv("RYUI_DATA", t.TempDir())
+	t.Setenv("ASUKA_DATA", t.TempDir())
 	var mu sync.Mutex
 	var ran []string
 	fail := false
@@ -85,7 +85,7 @@ func TestNotifySystemTimer(t *testing.T) {
 	onMain(func() { unit = notifyUnit(h.appID, "later") })
 	c := commands()
 	if len(c) != 2 || c[0] != "systemctl --user stop "+unit+".timer" || !strings.HasPrefix(c[1], "systemd-run --user --quiet --collect --unit="+unit+" --on-calendar=") ||
-		!strings.Contains(c[1], "--setenv=RYUI_NOTIFY=later") {
+		!strings.Contains(c[1], "--setenv=ASUKA_NOTIFY=later") {
 		t.Fatalf("ran %q", c)
 	}
 	onMain(func() {
@@ -124,7 +124,7 @@ func TestNotifySystemTimer(t *testing.T) {
 	})
 }
 
-// A run with RYUI_NOTIFY: the notification shows through the
+// A run with ASUKA_NOTIFY: the notification shows through the
 // freedesktop server, and a tap launches the app with it (here: a test's
 // launcher), or is the running app's; closed, the run ends. With the app
 // running, it's handed over and shown as one due.
@@ -132,7 +132,7 @@ func TestNotifyHeadless(t *testing.T) {
 	if exec.Command("python3", "-c", "from gi.repository import Gio").Run() != nil {
 		t.Skip("no python3-gi for the test's notification server")
 	}
-	t.Setenv("RYUI_DATA", t.TempDir())
+	t.Setenv("ASUKA_DATA", t.TempDir())
 	server := exec.Command("python3", "testdata/notifications.py")
 	in, _ := server.StdinPipe()
 	out, _ := server.StdoutPipe()
@@ -220,13 +220,13 @@ func TestNotifyHeadless(t *testing.T) {
 	store("n3", "Three")
 	code = -1
 	onMain(func() {
-		app := Call(Sym("g_application_new"), Addr(CString("dev.ryui.HostTestUnique")), 0)
+		app := Call(Sym("g_application_new"), Addr(CString("dev.asuka.HostTestUnique")), 0)
 		var gerr Ptr
 		if !ApplicationRegister(app, 0, &gerr) {
 			fatalf(t, "register: %v", GError(gerr))
 		}
 		addNotifyActions(app)
-		h.appID = "dev.ryui.HostTestUnique"
+		h.appID = "dev.asuka.HostTestUnique"
 		notes.headlessTap, notes.headlessClosed = nil, nil
 		h.fireDue("n3", func(c int) { code = c })
 	})
@@ -242,7 +242,7 @@ func mustSpec(s string) (sp notifyspec.Spec) {
 
 // systemd itself (the user's manager, where it runs): the arguments make
 // a timer that fires once at its time, running the program with
-// RYUI_NOTIFY, and is gone after; stopped, it's gone.
+// ASUKA_NOTIFY, and is gone after; stopped, it's gone.
 func TestNotifySystemdReal(t *testing.T) {
 	notifyUnique = true
 	ok := systemdTimers()
@@ -253,8 +253,8 @@ func TestNotifySystemdReal(t *testing.T) {
 	dir := t.TempDir()
 	script := filepath.Join(dir, "app")
 	outFile := filepath.Join(dir, "fired")
-	os.WriteFile(script, []byte("#!/bin/sh\necho \"$RYUI_NOTIFY $RYUI_DATA\" > "+outFile+"\n"), 0o755)
-	unit := notifyUnit("dev.ryui.HostTest", "real-"+filepath.Base(dir))
+	os.WriteFile(script, []byte("#!/bin/sh\necho \"$ASUKA_NOTIFY $ASUKA_DATA\" > "+outFile+"\n"), 0o755)
+	unit := notifyUnit("dev.asuka.HostTest", "real-"+filepath.Base(dir))
 	defer userSystemd("systemctl", "--user", "stop", unit+".timer")
 	due := time.Now().Add(2 * time.Second)
 	if err := userSystemd("systemd-run", notifyTimerArgs(unit, script, "real one", dir, due)...); err != nil {

@@ -1,4 +1,4 @@
-// ryui/speech, ryui/audio and ryui/audio/record in the browser.
+// asuka/speech, asuka/audio and asuka/audio/record in the browser.
 //
 //   - speech: speechSynthesis. "speak" (JSON: id, text, language, voice,
 //     pitch, rate, volume) answers once spoken, or fails "stopped"; "stop",
@@ -41,7 +41,7 @@ export function sourceURL(h, src) {
   return h.assets + "/" + src.replace(/^\.?\//, "");
 }
 
-/** status is a player's status as ryui/audio's reply: f64 position, f64 duration, u8 playing, u8 ended. */
+/** status is a player's status as asuka/audio's reply: f64 position, f64 duration, u8 playing, u8 ended. */
 export function encodeStatus(position, duration, playing, ended) {
   const b = new Uint8Array(18);
   const v = new DataView(b.buffer);
@@ -56,7 +56,7 @@ export function encodeStatus(position, duration, playing, ended) {
 
 function speech() {
   const synth = () => {
-    if (!globalThis.speechSynthesis) throw new Error("ryui: speech isn't in this browser");
+    if (!globalThis.speechSynthesis) throw new Error("asuka: speech isn't in this browser");
     return speechSynthesis;
   };
   const pending = new Map(); // utterance -> { resolve, reject } (kept: Chrome drops an utterance's events if it's collected)
@@ -124,7 +124,7 @@ function audio(h) {
     if (!p) return;
     if (p.ended) { p.ended = false; p.el.currentTime = 0; }
     p.el.playbackRate = p.rate;
-    p.el.play().catch((e) => console.warn("ryui: audio:", e.message));
+    p.el.play().catch((e) => console.warn("asuka: audio:", e.message));
   };
   const m = (f) => (b) => {
     const [id, rest] = splitID(b);
@@ -284,7 +284,7 @@ function audioRecord() {
       if (rec) throw new Error("already recording");
       const o = parseRecordArgs(b);
       const music = o.quality === 1;
-      if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") throw new Error("ryui: audioRecord isn't in this browser");
+      if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") throw new Error("asuka: audioRecord isn't in this browser");
       let stream;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
@@ -296,7 +296,7 @@ function audioRecord() {
         throw mediaError(e) || new Error("no microphone");
       }
       const { type, ext } = recordingType((t) => MediaRecorder.isTypeSupported(t));
-      const path = o.path || `/tmp/ryui-audio/${uuid()}.${ext}`;
+      const path = o.path || `/tmp/asuka-audio/${uuid()}.${ext}`;
       try {
         const ctx = new AudioContext();
         ctx.resume().catch(() => {});

@@ -5,16 +5,16 @@ package mobile
 /*
 #cgo android LDFLAGS: -landroid -llog
 #include <stdlib.h>
-#include "ryui_host.h"
+#include "asuka_host.h"
 
-static ryui_host_callbacks ryui_cb;
+static asuka_host_callbacks asuka_cb;
 
-static void ryui_set_callbacks(ryui_host_callbacks *cb) { ryui_cb = *cb; }
-static void ryui_call_apply(const uint8_t *buf, size_t len) { ryui_cb.apply(buf, len); }
-static void ryui_call_measure(uint32_t id, float w, float h, float aw, float ah, float *ow, float *oh) {
-	ryui_cb.measure(id, w, h, aw, ah, ow, oh);
+static void asuka_set_callbacks(asuka_host_callbacks *cb) { asuka_cb = *cb; }
+static void asuka_call_apply(const uint8_t *buf, size_t len) { asuka_cb.apply(buf, len); }
+static void asuka_call_measure(uint32_t id, float w, float h, float aw, float ah, float *ow, float *oh) {
+	asuka_cb.measure(id, w, h, aw, ah, ow, oh);
 }
-static void ryui_call_post(void) { ryui_cb.post(); }
+static void asuka_call_post(void) { asuka_cb.post(); }
 */
 import "C"
 
@@ -25,12 +25,12 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/egoist/ryui/host"
-	"github.com/egoist/ryui/internal/boot"
-	"github.com/egoist/ryui/internal/crashrun"
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/host"
+	"github.com/egoist/asuka/internal/boot"
+	"github.com/egoist/asuka/internal/crashrun"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/ui"
 )
 
 type mobileHost struct {
@@ -56,12 +56,12 @@ func SetCore(c host.Core) { core = c }
 
 func (h *mobileHost) Apply(b *ops.Batch) {
 	buf := b.Encode()
-	C.ryui_call_apply((*C.uint8_t)(unsafe.Pointer(&buf[0])), C.size_t(len(buf)))
+	C.asuka_call_apply((*C.uint8_t)(unsafe.Pointer(&buf[0])), C.size_t(len(buf)))
 }
 
 func (h *mobileHost) Measure(id ops.NodeID, c layout.Constraints) layout.Size {
 	var w, hh C.float
-	C.ryui_call_measure(C.uint32_t(id), C.float(c.Width), C.float(c.Height), C.float(c.AvailW), C.float(c.AvailH), &w, &hh)
+	C.asuka_call_measure(C.uint32_t(id), C.float(c.Width), C.float(c.Height), C.float(c.AvailW), C.float(c.AvailH), &w, &hh)
 	return layout.Size{W: float32(w), H: float32(hh)}
 }
 
@@ -69,34 +69,34 @@ func (h *mobileHost) Post(f func()) {
 	h.mu.Lock()
 	h.posted = append(h.posted, f)
 	h.mu.Unlock()
-	C.ryui_call_post()
+	C.asuka_call_post()
 }
 
 func (h *mobileHost) Environment() host.Environment { return h.env }
 
-//export ryui_start
-func ryui_start(cb *C.ryui_host_callbacks) {
+//export asuka_start
+func asuka_start(cb *C.asuka_host_callbacks) {
 	if started {
 		return
 	}
 	started = true
-	C.ryui_set_callbacks(cb)
+	C.asuka_set_callbacks(cb)
 	boot.Runner = func(root any) {
 		f, ok := root.(func() ui.Node)
 		if !ok {
-			panic(fmt.Sprintf("ryui: app.Run wants a func() ui.Node, got %T", root))
+			panic(fmt.Sprintf("asuka: app.Run wants a func() ui.Node, got %T", root))
 		}
 		ui.Mount(theHost, f)
 	}
 	if Main == nil {
-		fmt.Fprintln(os.Stderr, "ryui: no main function; build the app with the ryui CLI")
+		fmt.Fprintln(os.Stderr, "asuka: no main function; build the app with the asuka CLI")
 		return
 	}
 	Main()
 }
 
-//export ryui_attach
-func ryui_attach() {
+//export asuka_attach
+func asuka_attach() {
 	// A new Activity took over the existing views (Android): tell it
 	// which view is the root again.
 	if !started {
@@ -109,12 +109,12 @@ func ryui_attach() {
 	}
 }
 
-//export ryui_event
-func ryui_event(buf *C.uint8_t, n C.size_t) {
+//export asuka_event
+func asuka_event(buf *C.uint8_t, n C.size_t) {
 	data := unsafe.Slice((*byte)(unsafe.Pointer(buf)), int(n))
 	ev, err := ops.DecodeEvent(data)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "ryui:", err)
+		fmt.Fprintln(os.Stderr, "asuka:", err)
 		return
 	}
 	if ev.Kind == ops.EventEnvironment {
@@ -125,32 +125,32 @@ func ryui_event(buf *C.uint8_t, n C.size_t) {
 	}
 }
 
-//export ryui_list_count
-func ryui_list_count(list C.uint32_t) C.int64_t {
+//export asuka_list_count
+func asuka_list_count(list C.uint32_t) C.int64_t {
 	return C.int64_t(core.ListCount(ops.NodeID(list)))
 }
 
-//export ryui_list_bind
-func ryui_list_bind(list C.uint32_t, index C.int64_t, cell C.uint32_t) {
+//export asuka_list_bind
+func asuka_list_bind(list C.uint32_t, index C.int64_t, cell C.uint32_t) {
 	core.ListBind(ops.NodeID(list), int(index), ops.NodeID(cell))
 }
 
-//export ryui_list_unbind
-func ryui_list_unbind(list C.uint32_t, cell C.uint32_t) {
+//export asuka_list_unbind
+func asuka_list_unbind(list C.uint32_t, cell C.uint32_t) {
 	core.ListUnbind(ops.NodeID(list), ops.NodeID(cell))
 }
 
-// ryui_crash_start begins this run's crash record, if the app reports
-// crashes (ryui/crash): Go's crash output, and the run's context, with
+// asuka_crash_start begins this run's crash record, if the app reports
+// crashes (asuka/crash): Go's crash output, and the run's context, with
 // info, the host's JSON of the device and the app (model, system,
 // systemVersion, appVersion, build) and, if it knows, whether the app
 // starts in the foreground (foreground). The host calls it as early as it
-// can, before ryui_start, from any thread. It returns the directory the
+// can, before asuka_start, from any thread. It returns the directory the
 // host writes its native reports in (inbox), "" if the app doesn't report
 // crashes: the host installs nothing then. The caller frees it.
 //
-//export ryui_crash_start
-func ryui_crash_start(info *C.char) *C.char {
+//export asuka_crash_start
+func asuka_crash_start(info *C.char) *C.char {
 	var i struct {
 		crashrun.Info
 		Foreground *bool `json:"foreground"`
@@ -165,25 +165,25 @@ func ryui_crash_start(info *C.char) *C.char {
 	return C.CString(dir)
 }
 
-// ryui_crash_notify says the host wrote a report in the inbox (MetricKit's
-// diagnostics, Android's record of how the last runs ended): ryui/crash
+// asuka_crash_notify says the host wrote a report in the inbox (MetricKit's
+// diagnostics, Android's record of how the last runs ended): asuka/crash
 // reads it, for OnReport. Any thread.
 //
-//export ryui_crash_notify
-func ryui_crash_notify() { crashrun.Notify() }
+//export asuka_crash_notify
+func asuka_crash_notify() { crashrun.Notify() }
 
-// ryui_setenv sets an environment variable for the Go code: Android
+// asuka_setenv sets an environment variable for the Go code: Android
 // hands a library the environment the process started with, so a
-// variable the host sets later (RYUI_DATA, the app's files directory) is
+// variable the host sets later (ASUKA_DATA, the app's files directory) is
 // given here.
 //
-//export ryui_setenv
-func ryui_setenv(key, value *C.char) {
+//export asuka_setenv
+func asuka_setenv(key, value *C.char) {
 	os.Setenv(C.GoString(key), C.GoString(value))
 }
 
-//export ryui_run_posted
-func ryui_run_posted() {
+//export asuka_run_posted
+func asuka_run_posted() {
 	h := theHost
 	h.mu.Lock()
 	fs := h.posted

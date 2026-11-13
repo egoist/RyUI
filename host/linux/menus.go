@@ -7,14 +7,14 @@ import (
 	"strconv"
 	"strings"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
 )
 
 // Menus are GMenu models in GtkPopoverMenus: a button's drops from it, a
 // view's LongPress menu is its context menu (a secondary click, a long
 // press) at the pointer. Items are actions of a group on the view
-// ("ryui.item<i>"); choosing one sends Action with its index.
+// ("asuka.item<i>"); choosing one sends Action with its index.
 
 func (h *Host) menuChanged(n *node) {
 	if n.widget == 0 {
@@ -78,9 +78,9 @@ func (h *Host) popupMenu(n *node, x, y float64) {
 		ActionMapAddAction(group, a)
 		ObjectUnref(a)
 	}
-	WidgetInsertActionGroup(n.widget, "ryui", group)
+	WidgetInsertActionGroup(n.widget, "asuka", group)
 	ObjectUnref(group)
-	model := h.menuModel(n.menu, "ryui.item")
+	model := h.menuModel(n.menu, "asuka.item")
 	pop := PopoverMenuNewFromModel(model)
 	ObjectUnref(model)
 	WidgetSetParent(pop, n.widget)
@@ -177,7 +177,7 @@ func (h *Host) setMenuBar(b []byte) {
 					section = MenuNew()
 					continue
 				}
-				name := "ryui-menu-" + strconv.Itoa(it.index)
+				name := "asuka-menu-" + strconv.Itoa(it.index)
 				var a Ptr
 				if it.flags&itemChecked != 0 {
 					a = SimpleActionNewStateful(name, 0, VariantNewBoolean(true))

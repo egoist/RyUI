@@ -13,8 +13,8 @@ import (
 	"unicode/utf16"
 	"unicode/utf8"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
 )
 
 // Text fields: a GtkEntry (GtkPasswordEntry when Secure), or for a
@@ -81,7 +81,7 @@ func (h *Host) makeField(n *node) {
 		tv := TextViewNew()
 		TextViewSetWrapMode(tv, 3) // GTK_WRAP_WORD_CHAR
 		TextViewSetAcceptsTab(tv, false)
-		WidgetAddCSSClass(tv, "ryui-clear")
+		WidgetAddCSSClass(tv, "asuka-clear")
 		ScrolledWindowSetChild(sw, tv)
 		px, py := n.fieldPad()
 		TextViewSetTopMargin(tv, int32(py))
@@ -89,7 +89,7 @@ func (h *Host) makeField(n *node) {
 		TextViewSetLeftMargin(tv, int32(px))
 		TextViewSetRightMargin(tv, int32(px))
 		if !n.plain {
-			WidgetAddCSSClass(sw, "ryui-field")
+			WidgetAddCSSClass(sw, "asuka-field")
 			WidgetSetOverflow(sw, OverflowHidden)
 		}
 		// The placeholder: a dim label where the text starts, shown while
@@ -126,7 +126,7 @@ func (h *Host) makeField(n *node) {
 		if !n.secure {
 			EntrySetHasFrame(w, false)
 		}
-		WidgetAddCSSClass(w, "ryui-plain")
+		WidgetAddCSSClass(w, "asuka-plain")
 	}
 	h.connectField(n)
 	h.styleField(n)
@@ -878,7 +878,7 @@ func pasteDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	app := "ryui"
+	app := "asuka"
 	if theHost != nil && theHost.appID != "" {
 		app = theHost.appID
 	}

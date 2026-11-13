@@ -15,10 +15,10 @@ import (
 	"github.com/ebitengine/purego"
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
+	. "github.com/egoist/asuka/internal/darwin"
 )
 
-// ryui/imageedit on a Mac, as on iOS: "edit", "size" and "videoFrame",
+// asuka/imageedit on a Mac, as on iOS: "edit", "size" and "videoFrame",
 // each with JSON (source, actions, format, quality, at in ms), answer
 // JSON (path, width, height) or fail "no image". ImageIO decodes (HEIC,
 // JPEG, PNG, WebP...) upright, at the size the first resize needs; Core
@@ -596,7 +596,7 @@ func ieWrite(img uintptr, r *ieRequest) (map[string]any, error) {
 	if png {
 		ext, typ = ".png", "public.png"
 	}
-	path, err := cacheFile("ryui-images", ext)
+	path, err := cacheFile("asuka-images", ext)
 	if err != nil {
 		return nil, err
 	}

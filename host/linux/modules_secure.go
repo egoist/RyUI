@@ -6,10 +6,10 @@ import (
 	"encoding/binary"
 	"errors"
 
-	. "github.com/egoist/ryui/internal/gtk"
+	. "github.com/egoist/asuka/internal/gtk"
 )
 
-// ryui/secure on Linux: the user's keyring through libsecret (the Secret
+// asuka/secure on Linux: the user's keyring through libsecret (the Secret
 // Service: GNOME Keyring, KWallet, KeePassXC), each key an item of the
 // app's own schema (its ID), labeled with the app's name and the key.
 // Without libsecret, or a keyring, the calls fail saying so.

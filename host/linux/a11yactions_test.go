@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ui"
 )
 
 // Titles as GAction names: what AT-SPI lists of a view's actions.

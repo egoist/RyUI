@@ -1,4 +1,4 @@
-//go:build ryui_debug
+//go:build asuka_debug
 
 package signal
 
@@ -33,5 +33,5 @@ func goroutineID() uint64 {
 	return id
 }
 
-// Debug reports whether this is a ryui_debug build (with main-thread checks).
+// Debug reports whether this is a asuka_debug build (with main-thread checks).
 const Debug = true

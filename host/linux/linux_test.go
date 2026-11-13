@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // GTK runs on the main thread: TestMain runs GLib's main loop there, and
@@ -28,14 +28,14 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	os.Setenv("RYUI_TEST", "1")
+	os.Setenv("ASUKA_TEST", "1")
 	os.Setenv("GTK_A11Y", "none")
 	if err := Load(); err != nil {
 		fmt.Println("skipping the Linux host's tests:", err)
 		os.Exit(0)
 	}
 	registerClasses()
-	testApp = AdwApplicationNew("dev.ryui.HostTest", 1<<5) // non-unique
+	testApp = AdwApplicationNew("dev.asuka.HostTest", 1<<5) // non-unique
 	var gerr Ptr
 	if !ApplicationRegister(testApp, 0, &gerr) {
 		fmt.Println("skipping the Linux host's tests: the application doesn't register (no display or session bus?)")

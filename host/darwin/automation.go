@@ -8,26 +8,26 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/egoist/ryui/internal/darwin"
+	. "github.com/egoist/asuka/internal/darwin"
 )
 
-// automation starts the debug automation (RYUI_SNAPSHOT: write the
+// automation starts the debug automation (ASUKA_SNAPSHOT: write the
 // window as a PNG once it has shown, then quit).
 func (h *Host) automation() {
-	if os.Getenv("RYUI_PRINT_WINDOW") != "" {
-		println("ryui: window", SendInt(h.window, "windowNumber"))
+	if os.Getenv("ASUKA_PRINT_WINDOW") != "" {
+		println("asuka: window", SendInt(h.window, "windowNumber"))
 	}
-	if path := os.Getenv("RYUI_SNAPSHOT"); path != "" {
+	if path := os.Getenv("ASUKA_SNAPSHOT"); path != "" {
 		go func() {
 			time.Sleep(1500 * time.Millisecond) // images and fonts load
 			h.Post(func() {
 				WithPool(func() {
 					h.snapshot(path)
-					if os.Getenv("RYUI_DUMP") != "" {
+					if os.Getenv("ASUKA_DUMP") != "" {
 						os.WriteFile(path+".txt", []byte(h.dump()), 0o644)
 					}
 				})
-				if os.Getenv("RYUI_SNAPSHOT_STAY") == "" {
+				if os.Getenv("ASUKA_SNAPSHOT_STAY") == "" {
 					os.Exit(0)
 				}
 			})

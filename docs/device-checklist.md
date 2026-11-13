@@ -7,17 +7,17 @@ should see; note anything that doesn't match.
 ## Getting the apps on a phone
 
 - **Android**: plug the phone in with USB debugging on, then
-  `go run ./cmd/ryui dev -platform android examples/gallery` (the player; your
+  `go run ./cmd/asuka dev -platform android examples/gallery` (the player; your
   code runs on the Mac and reloads on save), or add `-once` for a build
   with the Go code in it.
-- **iPhone**: `go run ./cmd/ryui build -platform ios examples/gallery` makes a
-  signed `.ipa` (it needs your team in `ryui.json`'s `ios.team` and a
+- **iPhone**: `go run ./cmd/asuka build -platform ios examples/gallery` makes a
+  signed `.ipa` (it needs your team in `asuka.json`'s `ios.team` and a
   provisioning profile); install it with Xcode's Devices window or
   `xcrun devicectl device install app`.
 - The benchmarks: `go run ./bench/run -android` runs on a connected
-  phone as it does on the emulator. On iPhone, build `bench/ryui` and
+  phone as it does on the emulator. On iPhone, build `bench/asuka` and
   `bench/swiftui` and run each from Xcode with the console open: they
-  print `RYUIBENCH` lines.
+  print `ASUKABENCH` lines.
 
 ## VoiceOver (iPhone) and TalkBack (Android)
 
@@ -78,7 +78,7 @@ Turn the screen reader on (Settings → Accessibility), open the gallery.
       (Android's can be later: it's an inexact alarm).
 - [ ] **Keychain / Keystore**: "Keep a secret" says "Kept: s3cr3t-…";
       after killing and reopening the app, pressing it again still works.
-- [ ] **Links**: in the notes example, open `ryuinotes://add?text=hello`
+- [ ] **Links**: in the notes example, open `asukanotes://add?text=hello`
       from Safari / a browser: a note "hello" is added.
 
 ## Performance
@@ -86,7 +86,7 @@ Turn the screen reader on (Settings → Accessibility), open the gallery.
 - [ ] The gallery scrolls without stutter, top to bottom, including the
       photo grid (gallery → Open the photos).
 - [ ] `go run ./bench/run -android` on the phone: the update and scroll
-      rows' "dropped frames" are near 0 for RyUI (the emulator's GPU made
+      rows' "dropped frames" are near 0 for Asuka (the emulator's GPU made
       them high).
 - [ ] Startup: the counter example shows within about half a second of
       tapping its icon.
@@ -99,7 +99,7 @@ fix what didn't match.
 - On an iPhone: choose the app's language in Settings; the app relaunches in it, with
   UIKit's own words. `ui.SetLocale`, then relaunch.
 - iOS 16: the navigation bar's back chevron in a language forced against the system's.
-- On Android 12 or earlier: `ui.SetLocale`, kill the app, relaunch (RyUI's preferences).
+- On Android 12 or earlier: `ui.SetLocale`, kill the app, relaunch (Asuka's preferences).
 - Android, in Arabic: predictive back, a sheet, dragging selection handles, TalkBack.
 - Windows: Arabic and English Windows, the mirrored title
   and menu bars, clicks landing on the right views, a runtime switch with a sheet and a
@@ -136,7 +136,7 @@ In the gallery's Documents section.
 
 ## On the desktop
 
-Run the examples on each with `go run ./cmd/ryui dev examples/gallery`
+Run the examples on each with `go run ./cmd/asuka dev examples/gallery`
 (and `examples/notes`) on a Mac, a Windows PC and a Linux machine with
 GNOME, on real hardware rather than a VM where you can.
 
@@ -168,7 +168,7 @@ GNOME, on real hardware rather than a VM where you can.
 - [ ] Trackpad and touch: two-finger scrolling with momentum, pinch and
       rotate on Motion's purple square, a touch screen's taps and pans
       (Windows, GNOME).
-- [ ] A release build (`ryui build`), installed as a user would: the
+- [ ] A release build (`asuka build`), installed as a user would: the
       Mac app notarized and opened from the Finder, the Windows folder's
       `.exe` signed (SmartScreen names the publisher), the Linux
       `.tar.gz` extracted into `~/.local` and opened from the launcher,

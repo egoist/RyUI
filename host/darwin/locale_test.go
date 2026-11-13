@@ -9,17 +9,17 @@ import (
 	"strconv"
 	"testing"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/internal/l10n"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/internal/l10n"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
-// shot writes the window as a PNG when RYUI_TEST_SHOTS names a directory, to
+// shot writes the window as a PNG when ASUKA_TEST_SHOTS names a directory, to
 // look at what a test built.
 func shot(h *Host, name string) {
-	if dir := os.Getenv("RYUI_TEST_SHOTS"); dir != "" {
+	if dir := os.Getenv("ASUKA_TEST_SHOTS"); dir != "" {
 		Send(h.window, "orderFront:", 0)
 		h.snapshot(filepath.Join(dir, name+".png"))
 	}
@@ -34,7 +34,7 @@ func setLocale(h *Host, tag string) {
 
 // mountLocale mounts root in an app written in English and Arabic, showing
 // the language of tag, and puts the language back when the test ends. A
-// process with RYUI_LOCALE set shows that one instead.
+// process with ASUKA_LOCALE set shows that one instead.
 func mountLocale(t *testing.T, tag string, root func() ui.Node) *Host {
 	t.Helper()
 	onMain(func() { ui.SetLanguages("en", "ar") })
@@ -638,13 +638,13 @@ func TestLiveLocale(t *testing.T) {
 		h.runPosted()
 		// The back button comes first where AppKit reads the way the app does.
 		ids := h.main.chrome.ids
-		if len(ids) < 4 || (ids[0] == "ryui.back") == h.appRTL {
+		if len(ids) < 4 || (ids[0] == "asuka.back") == h.appRTL {
 			fatalf(t, "the toolbar, left to right, AppKit's right to left %v: %v", h.appRTL, ids)
 		}
 		shot(h, "live-en")
 		toolbarBack := func() ID {
 			for _, it := range ArrayItems(Send(h.main.chrome.toolbar, "items")) {
-				if GoString(Send(it, "itemIdentifier")) == "ryui.back" {
+				if GoString(Send(it, "itemIdentifier")) == "asuka.back" {
 					return it
 				}
 			}
@@ -696,10 +696,10 @@ func TestLiveLocale(t *testing.T) {
 		// The toolbar: the host orders it where AppKit doesn't.
 		back := h.main.chrome.ids
 		if h.appRTL {
-			if back[0] != "ryui.back" {
+			if back[0] != "asuka.back" {
 				fatalf(t, "AppKit's order, reading right to left: %v", back)
 			}
-		} else if back[len(back)-1] != "ryui.back" {
+		} else if back[len(back)-1] != "asuka.back" {
 			fatalf(t, "the toolbar, right to left: %v", back)
 		}
 		shot(h, "live-ar")
@@ -896,7 +896,7 @@ func menuTitles() map[string]bool {
 	return out
 }
 
-// The standard menus say the language shown: AppKit's own words, RyUI's for
+// The standard menus say the language shown: AppKit's own words, Asuka's for
 // the rest, and again as it changes. The app's name goes in those that take it.
 func TestMenusInLanguage(t *testing.T) {
 	h := mountLocale(t, "ar", func() ui.Node { return ui.StaticText("x") })
@@ -930,7 +930,7 @@ func TestMenusInLanguage(t *testing.T) {
 				fatalf(t, "no %q in English: %v", s, got)
 			}
 		}
-		// A language macOS doesn't speak: AppKit's are English, RyUI's aren't.
+		// A language macOS doesn't speak: AppKit's are English, Asuka's aren't.
 		h.locale = "sr"
 		if s := h.menuWord("Copy"); s != "Copy" {
 			fatalf(t, "Copy in Serbian says %q", s)

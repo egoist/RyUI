@@ -1,6 +1,6 @@
 //go:build windows
 
-// Package windows is the Win32 layer of RyUI's Windows host: user32, gdi32,
+// Package windows is the Win32 layer of Asuka's Windows host: user32, gdi32,
 // GDI+, the common controls (version 6), uxtheme and DWM, called through
 // the syscall package, no cgo. Much of it comes from MyGo's Windows
 // backend.
@@ -815,7 +815,7 @@ func RegisterClass(name string, style uint32, proc uintptr, icon uintptr) bool {
 	return r != 0
 }
 
-// AppIcon is the executable's icon (resource 1, as ryui build embeds it),
+// AppIcon is the executable's icon (resource 1, as asuka build embeds it),
 // or 0.
 func AppIcon() uintptr {
 	h, _, _ := user32.NewProc("LoadIconW").Call(Instance(), 1)

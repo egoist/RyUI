@@ -5,8 +5,8 @@ package testapp
 import (
 	"fmt"
 
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // Counter is a button that counts its taps.

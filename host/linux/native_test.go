@@ -5,11 +5,11 @@ package linux
 import (
 	"testing"
 
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/native"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/native"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 // testScale is an app's native view: a GtkScale whose "value" prop it

@@ -189,21 +189,21 @@ func Parse(data []byte, d Doc) []Run {
 }
 
 type parser struct {
-	data   []byte
-	i      int
-	stack  []state
-	st     state
-	runs   []Run
-	fonts  map[int]bool // font number: monospaced
-	colors []*Color     // \colortbl's, index 0 the auto color
-	color  Color        // the table entry being read
-	text   []uint16     // UTF-16 units waiting (a surrogate pair's halves)
-	cur     Run    // the style text is appended in
-	pend    int    // characters to skip after \u
-	link     string // the URL of the field whose result is read
-	fontNum  int    // the font table entry being read
-	fontName []rune // its name, so far
-	monoFace string // the document's monospaced face: a font of that name is
+	data     []byte
+	i        int
+	stack    []state
+	st       state
+	runs     []Run
+	fonts    map[int]bool // font number: monospaced
+	colors   []*Color     // \colortbl's, index 0 the auto color
+	color    Color        // the table entry being read
+	text     []uint16     // UTF-16 units waiting (a surrogate pair's halves)
+	cur      Run          // the style text is appended in
+	pend     int          // characters to skip after \u
+	link     string       // the URL of the field whose result is read
+	fontNum  int          // the font table entry being read
+	fontName []rune       // its name, so far
+	monoFace string       // the document's monospaced face: a font of that name is
 }
 
 func (p *parser) parse() {

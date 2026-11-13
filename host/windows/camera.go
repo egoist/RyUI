@@ -10,23 +10,23 @@ import (
 	"strings"
 	"time"
 
-	"github.com/egoist/ryui/internal/l10n"
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/native"
+	"github.com/egoist/asuka/internal/l10n"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/native"
 )
 
-// ryui/camera on Windows, with Media Foundation's capture engine. The
-// "ryui.camera" view is a window of its own the engine's preview sink
+// asuka/camera on Windows, with Media Foundation's capture engine. The
+// "asuka.camera" view is a window of its own the engine's preview sink
 // draws the camera into, filling it (cropped to keep its aspect); its
 // photo sink takes Capture's photos (JPEG), its record sink
-// ryui/camera/record's videos in video mode (H.264 and AAC in MPEG-4).
+// asuka/camera/record's videos in video mode (H.264 and AAC in MPEG-4).
 // With scan on, the preview comes to the view as frames (the preview
 // sink's sample callback), which it draws itself and reads codes in, four
 // times a second, with package barcode (scan.go): each code reported as
 // it comes into view, again once it's been out of view for a second. "take" has no system camera screen to show: it
 // shows a dialog of the host's own over the window in use, a live preview
 // with Take Photo and Cancel (Enter and Escape), as on a Mac. Photos and
-// videos go to the app's caches (ryui-camera). Settings' camera privacy
+// videos go to the app's caches (asuka-camera). Settings' camera privacy
 // switch refused: "not allowed".
 //
 // The camera is chosen by its facing as Windows names it ("Front",
@@ -34,7 +34,7 @@ import (
 
 func init() {
 	moduleHooks = append(moduleHooks, func(h *Host, m map[string]map[string]asyncMethod) { m["camera"] = h.cameraModule() })
-	builtinViews["ryui.camera"] = func(ctx native.Context) native.View { return newCameraView(theHost, ctx.Parent(), ctx.Emit, false) }
+	builtinViews["asuka.camera"] = func(ctx native.Context) native.View { return newCameraView(theHost, ctx.Parent(), ctx.Emit, false) }
 }
 
 // cameraCurrent is the view on screen Capture and record use: the last
@@ -80,9 +80,9 @@ func (h *Host) cameraModule() map[string]asyncMethod {
 	}
 }
 
-// cameraFile is a new file in the caches' ryui-camera.
+// cameraFile is a new file in the caches' asuka-camera.
 func (h *Host) cameraFile(ext string) (string, error) {
-	dir := filepath.Join(h.cacheDir(), "ryui-camera")
+	dir := filepath.Join(h.cacheDir(), "asuka-camera")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}

@@ -4,11 +4,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/egoist/ryui/host/fake"
-	"github.com/egoist/ryui/markdown"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/host/fake"
+	"github.com/egoist/asuka/markdown"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 func mount(t *testing.T, root func() ui.Node) (*fake.Host, *ui.Root) {
@@ -124,14 +124,14 @@ func TestCodeTabs(t *testing.T) {
 // An image in a paragraph's text is an inline component of its
 // RichText, built once while the text after it streams in.
 func TestInlineImage(t *testing.T) {
-	src := signal.New("Built with ![ryui](ryui.png) and")
+	src := signal.New("Built with ![asuka](asuka.png) and")
 	h, r := mount(t, func() ui.Node { return markdown.View(markdown.Props{Text: src}) })
 	rt := h.OfKind(ops.KindRichText)[0]
-	if len(rt.Children) != 1 || len(h.OfKind(ops.KindImage)) != 1 || h.OfKind(ops.KindImage)[0].String(ops.PropImageSource) != "ryui.png" {
+	if len(rt.Children) != 1 || len(h.OfKind(ops.KindImage)) != 1 || h.OfKind(ops.KindImage)[0].String(ops.PropImageSource) != "asuka.png" {
 		t.Fatalf("rich text:\n%s", rt.Tree())
 	}
 	h.Reset()
-	src.Set("Built with ![ryui](ryui.png) and Go.")
+	src.Set("Built with ![asuka](asuka.png) and Go.")
 	r.Flush()
 	if h.Count(ops.OpCreate) != 0 {
 		t.Fatalf("%d creates while streaming", h.Count(ops.OpCreate))

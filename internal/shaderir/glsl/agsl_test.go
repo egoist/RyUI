@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/egoist/ryui/internal/shader"
-	"github.com/egoist/ryui/internal/shaderir/glsl"
+	"github.com/egoist/asuka/internal/shader"
+	"github.com/egoist/asuka/internal/shaderir/glsl"
 )
 
 const glow = `package main

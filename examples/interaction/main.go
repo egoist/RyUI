@@ -5,17 +5,17 @@
 // columns, carrying Go values) and with other apps (files, photos,
 // links, text).
 //
-//	go run ./cmd/ryui dev -platform ios examples/interaction
-//	go run ./cmd/ryui dev -platform mac examples/interaction
+//	go run ./cmd/asuka dev -platform ios examples/interaction
+//	go run ./cmd/asuka dev -platform mac examples/interaction
 package main
 
 import (
 	"fmt"
 	"strings"
 
-	"github.com/egoist/ryui/app"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/ui"
 )
 
 func main() { app.Run(Interaction) }
@@ -150,7 +150,7 @@ func board() ui.Node {
 		})
 		return ui.View(ui.ViewProps{
 			Drop: &ui.DropTarget{
-				Accept: []string{"application/x-ryui-task"},
+				Accept: []string{"application/x-asuka-task"},
 				OnDrop: func(d ui.Drop) {
 					for _, it := range d.Items {
 						if t, ok := it.Value.(*task); ok && t.done != done {
@@ -168,7 +168,7 @@ func board() ui.Node {
 				return ui.View(ui.ViewProps{
 					Drag: &ui.DragSource{
 						Items: func() []ui.DragItem {
-							return []ui.DragItem{{Value: t.Get(), MIME: "application/x-ryui-task", Text: t.Get().title}}
+							return []ui.DragItem{{Value: t.Get(), MIME: "application/x-asuka-task", Text: t.Get().title}}
 						},
 					},
 					Style: ui.Style{Padding: ui.All(12), CornerRadius: 8, Background: ui.SystemBackground,
@@ -224,7 +224,7 @@ func sources() ui.Node {
 		}, ui.StaticText(label))
 	}
 	return ui.Row(ui.Style{Gap: 8, Wrap: true},
-		chip("Some text", ui.DragItem{Text: "Hello from RyUI"}),
-		chip("A link", ui.DragItem{Kind: ui.SharedLink, Text: "https://github.com/egoist/ryui"}),
+		chip("Some text", ui.DragItem{Text: "Hello from Asuka"}),
+		chip("A link", ui.DragItem{Kind: ui.SharedLink, Text: "https://github.com/egoist/asuka"}),
 	)
 }

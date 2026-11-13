@@ -42,7 +42,7 @@ function div(cls) {
 function iconButton(symbol, label, rtl) {
   const b = document.createElement("button");
   b.type = "button";
-  b.className = "ryui-bar-button ryui-control";
+  b.className = "asuka-bar-button asuka-control";
   b.setAttribute("aria-label", label);
   const s = symbolSVG(symbol, rtl);
   if (s) b.appendChild(s);
@@ -174,7 +174,7 @@ export class Navigation {
     s.title.textContent = top?.title || "";
     if (top && this.live(stack) > 1) {
       const b = iconButton("chevron.backward", this.word("back"), rtl);
-      b.classList.add("ryui-back");
+      b.classList.add("asuka-back");
       b.addEventListener("click", () => this.goBack(stack));
       s.leading.appendChild(b);
     } else if (this.drawerButton(stack)) {
@@ -186,10 +186,10 @@ export class Navigation {
       const b = a.icon ? iconButton(a.icon, a.title, rtl) : document.createElement("button");
       if (!a.icon) {
         b.type = "button";
-        b.className = "ryui-bar-button ryui-bar-text ryui-control";
+        b.className = "asuka-bar-button asuka-bar-text asuka-control";
         b.textContent = a.title;
       }
-      if (a.role === 2) b.classList.add("ryui-destructive");
+      if (a.role === 2) b.classList.add("asuka-destructive");
       b.addEventListener("click", () => this.h.emit(top, Event.Action, (id) => Events.action(id, i)));
       s.trailing.appendChild(b);
     });
@@ -209,7 +209,7 @@ export class Navigation {
   updateTitle() {
     let title = "";
     const visit = (n) => {
-      if (!n || (n.el && n.el.closest(".ryui-hidden-page"))) return;
+      if (!n || (n.el && n.el.closest(".asuka-hidden-page"))) return;
       if (n.kind === Kind.Stack) {
         const t = this.topScreen(n);
         if (t?.title) title = t.title;
@@ -266,7 +266,7 @@ export class Navigation {
 
   popScreen(stack, top) {
     top.leaving = true;
-    top.el.classList.add("ryui-exiting");
+    top.el.classList.add("asuka-exiting");
     top.el.setAttribute("inert", "");
     const below = this.topScreen(stack);
     if (below) this.showScreen(below, true);
@@ -275,7 +275,7 @@ export class Navigation {
   }
 
   showScreen(s, on) {
-    s.el.classList.toggle("ryui-covered", !on);
+    s.el.classList.toggle("asuka-covered", !on);
     if (on) s.el.removeAttribute("inert"); else s.el.setAttribute("inert", "");
   }
 
@@ -300,11 +300,11 @@ export class Navigation {
   presentSheet(n) {
     if (n.shown) return;
     const d = document.createElement("dialog");
-    d.className = "ryui-sheet-dialog";
+    d.className = "asuka-sheet-dialog";
     this.h.container.appendChild(d);
     d.appendChild(n.el);
     if (n.grabber) {
-      const g = div("ryui-grabber");
+      const g = div("asuka-grabber");
       d.appendChild(g);
       this.swipeDown(n, g);
     }
@@ -333,7 +333,7 @@ export class Navigation {
       d.style.top = n.win.y + "px";
     } else {
       const wide = this.wide();
-      d.classList.toggle("ryui-wide", wide);
+      d.classList.toggle("asuka-wide", wide);
       // It opens at its smallest detent, as iOS's sheets do; the keyboard expands it.
       const medium = (n.detents & 1) !== 0 && !n.expanded;
       if (wide) {
@@ -375,11 +375,11 @@ export class Navigation {
     n.shown = false;
     n.dialog = null;
     this.dialogs = this.dialogs.filter((x) => x !== n);
-    d.classList.add("ryui-exiting");
+    d.classList.add("asuka-exiting");
     const done = () => { d.close(); d.remove(); };
     if (matchMedia("(prefers-reduced-motion: reduce)").matches || !d.isConnected) done();
     else {
-      const wide = d.classList.contains("ryui-wide") || n.kind !== Kind.Sheet;
+      const wide = d.classList.contains("asuka-wide") || n.kind !== Kind.Sheet;
       d.animate(wide ? [{ opacity: 1 }, { opacity: 0 }] : [{ transform: "none" }, { transform: "translateY(100%)" }], { duration: 220, easing: "ease-in", fill: "forwards" }).onfinish = done;
     }
     this.updateGuard();
@@ -410,27 +410,27 @@ export class Navigation {
     if (n.shown) return;
     const d = document.createElement("dialog");
     const sheet = n.alertStyle === 1;
-    d.className = sheet ? "ryui-alert ryui-action-sheet" : "ryui-alert";
+    d.className = sheet ? "asuka-alert asuka-action-sheet" : "asuka-alert";
     d.setAttribute("role", "alertdialog");
-    const body = div("ryui-alert-body");
-    if (n.title) { const t = div("ryui-alert-title"); t.textContent = n.title; body.appendChild(t); d.setAttribute("aria-label", n.title); }
-    if (n.message) { const m = div("ryui-alert-message"); m.textContent = n.message; body.appendChild(m); }
+    const body = div("asuka-alert-body");
+    if (n.title) { const t = div("asuka-alert-title"); t.textContent = n.title; body.appendChild(t); d.setAttribute("aria-label", n.title); }
+    if (n.message) { const m = div("asuka-alert-message"); m.textContent = n.message; body.appendChild(m); }
     d.appendChild(body);
-    const buttons = div("ryui-alert-buttons");
+    const buttons = div("asuka-alert-buttons");
     const actions = n.actions?.length ? n.actions : [{ role: 0, title: this.word("ok"), icon: "", ok: true }];
     // The cancel button goes last in a sheet's list and first in a row of two, as platforms place it.
     const order = actions.map((a, i) => i);
     order.sort((a, b) => (actions[a].role === 1) - (actions[b].role === 1));
     if (!sheet && actions.length <= 2) order.sort((a, b) => (actions[b].role === 1) - (actions[a].role === 1));
-    buttons.classList.toggle("ryui-stacked", sheet || actions.length > 2);
+    buttons.classList.toggle("asuka-stacked", sheet || actions.length > 2);
     for (const i of order) {
       const a = actions[i];
       const b = document.createElement("button");
       b.type = "button";
-      b.className = "ryui-control";
+      b.className = "asuka-control";
       b.textContent = a.title;
-      if (a.role === 1) b.classList.add("ryui-cancel");
-      if (a.role === 2) b.classList.add("ryui-destructive");
+      if (a.role === 1) b.classList.add("asuka-cancel");
+      if (a.role === 2) b.classList.add("asuka-destructive");
       b.addEventListener("click", () => {
         if (!n.shown) return;
         this.closeDialog(n);
@@ -454,7 +454,7 @@ export class Navigation {
     d.addEventListener("cancel", (e) => { e.preventDefault(); cancel(); });
     d.addEventListener("click", (e) => { if (e.target === d && sheet) cancel(); });
     d.showModal();
-    const def = buttons.querySelector("button:not(.ryui-cancel)") || buttons.querySelector("button");
+    const def = buttons.querySelector("button:not(.asuka-cancel)") || buttons.querySelector("button");
     def?.focus();
     if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
       d.animate([{ opacity: 0, transform: sheet && !this.wide() ? "translateY(40px)" : "scale(1.08)" }, { opacity: 1, transform: "none" }], { duration: 200, easing: "ease-out" });
@@ -464,7 +464,7 @@ export class Navigation {
 
   presentPopover(n) {
     if (n.shown) return;
-    const p = div("ryui-popover");
+    const p = div("asuka-popover");
     p.popover = "auto";
     p.appendChild(n.el);
     this.h.container.appendChild(p);
@@ -520,16 +520,16 @@ export class Navigation {
     const w = Math.min(n.win.width || 480, c.width - 16), h = Math.min((n.win.height || 600) + bar, c.height - 16);
     const open = this.dialogs.filter((x) => x.kind === Kind.Window).length;
     n.win = { ...n.win, w, h, x: Math.max(8, (c.width - w) / 2 + open * 24), y: Math.max(8, (c.height - h) / 2 + open * 24), bar };
-    const d = div("ryui-window");
+    const d = div("asuka-window");
     d.setAttribute("role", "dialog");
-    const title = div("ryui-window-bar");
-    const name = div("ryui-window-title");
+    const title = div("asuka-window-bar");
+    const name = div("asuka-window-title");
     name.textContent = n.title || "";
     const close = iconButton("xmark", "Close", false);
     close.addEventListener("click", () => this.h.emit(n, Event.Dismissed, Events.dismissed));
     title.append(name, close);
     d.append(title, n.el);
-    const grip = div("ryui-window-grip");
+    const grip = div("asuka-window-grip");
     d.appendChild(grip);
     this.h.container.appendChild(d);
     n.dialog = d;
@@ -578,7 +578,7 @@ export class Navigation {
     const beside = w >= 700;
     if (beside !== s.beside) {
       s.beside = beside;
-      n.el.classList.toggle("ryui-split-beside", beside);
+      n.el.classList.toggle("asuka-split-beside", beside);
       this.closeDrawer(n);
       for (const c of n.children) if (c.kind === Kind.Stack && c.stack) this.updateHeader(c);
     }
@@ -599,14 +599,14 @@ export class Navigation {
   }
 
   openDrawer(n) {
-    n.el.classList.add("ryui-drawer-open");
+    n.el.classList.add("asuka-drawer-open");
     n.split.sidebar.removeAttribute("inert");
     this.dialogs.push(n);
     this.updateGuard();
   }
 
   closeDrawer(n) {
-    n.el.classList.remove("ryui-drawer-open");
+    n.el.classList.remove("asuka-drawer-open");
     const i = this.dialogs.indexOf(n);
     if (i >= 0) this.dialogs.splice(i, 1);
     this.updateGuard();
@@ -686,9 +686,9 @@ export class Navigation {
     queueMicrotask(() => {
       const want = this.canGoBack() || !!this.h.root?.interceptBack;
       if (want && !this.guard && !this.dropping) {
-        history.pushState({ ryui: true }, "");
+        history.pushState({ asuka: true }, "");
         this.guard = true;
-      } else if (!want && this.guard && history.state?.ryui && !this.dropping) {
+      } else if (!want && this.guard && history.state?.asuka && !this.dropping) {
         // Once: the guard is gone as this back's popstate comes.
         this.guard = false;
         this.dropping = true;
@@ -746,7 +746,7 @@ export class Navigation {
 
 function showAccessory(h, a, on) {
   if (!matchMedia("(pointer: coarse)").matches) return; // no on-screen keyboard
-  a.el.classList.toggle("ryui-accessory-shown", on);
+  a.el.classList.toggle("asuka-accessory-shown", on);
   if (!a.el.isConnected) h.container.appendChild(a.el);
   const place = () => {
     const vv = window.visualViewport;
@@ -766,19 +766,19 @@ function showAccessory(h, a, on) {
 
 const stack = {
   create(h, n) {
-    const el = own(n, div("ryui-stack"));
-    const bar = div("ryui-bar");
-    const row = div("ryui-bar-row");
-    const leading = div("ryui-bar-leading");
-    const title = div("ryui-bar-title");
+    const el = own(n, div("asuka-stack"));
+    const bar = div("asuka-bar");
+    const row = div("asuka-bar-row");
+    const leading = div("asuka-bar-leading");
+    const title = div("asuka-bar-title");
     title.setAttribute("role", "heading");
     title.setAttribute("aria-level", "1");
-    const trailing = div("ryui-bar-trailing");
+    const trailing = div("asuka-bar-trailing");
     row.append(leading, title, trailing);
-    const search = div("ryui-bar-search");
+    const search = div("asuka-bar-search");
     const input = document.createElement("input");
     input.type = "search";
-    input.className = "ryui-search ryui-control";
+    input.className = "asuka-search asuka-control";
     input.enterKeyHint = "search";
     search.appendChild(input);
     search.hidden = true;
@@ -841,7 +841,7 @@ const stack = {
 
 const screen = {
   create(h, n) {
-    own(n, div("ryui-screen"));
+    own(n, div("asuka-screen"));
     n.title = "";
     n.actions = [];
     n.search = null;
@@ -908,8 +908,8 @@ const screen = {
 
 const tabs = {
   create(h, n) {
-    const el = own(n, div("ryui-tabs"));
-    const bar = div("ryui-tabbar");
+    const el = own(n, div("asuka-tabs"));
+    const bar = div("asuka-tabbar");
     bar.setAttribute("role", "tablist");
     el.appendChild(bar);
     n.tabs = {
@@ -921,7 +921,7 @@ const tabs = {
         n.children.forEach((s, i) => {
           const b = document.createElement("button");
           b.type = "button";
-          b.className = "ryui-tab ryui-control";
+          b.className = "asuka-tab asuka-control";
           b.setAttribute("role", "tab");
           b.setAttribute("aria-selected", String(i === this.selected));
           if (s.icon) {
@@ -947,7 +947,7 @@ const tabs = {
       },
       show(h, n) {
         n.children.forEach((s, i) => {
-          s.el.classList.toggle("ryui-hidden-page", i !== this.selected);
+          s.el.classList.toggle("asuka-hidden-page", i !== this.selected);
           if (i !== this.selected) s.el.setAttribute("inert", ""); else s.el.removeAttribute("inert");
         });
         [...bar.children].forEach((b, i) => b.setAttribute("aria-selected", String(i === this.selected)));
@@ -986,7 +986,7 @@ const tabs = {
 
 const sheet = {
   create(h, n) {
-    own(n, div("ryui-sheet"));
+    own(n, div("asuka-sheet"));
     n.detents = 0;
   },
   prop(h, n, p, v) {
@@ -1025,7 +1025,7 @@ const alert = {
 
 const popover = {
   create(h, n) {
-    own(n, div("ryui-popover-content"));
+    own(n, div("asuka-popover-content"));
     n.pop = { anchor: 0, w: 0, h: 0 };
   },
   prop(h, n, p, v) {
@@ -1050,7 +1050,7 @@ const popover = {
 
 const windowKind = {
   create(h, n) {
-    own(n, div("ryui-window-content"));
+    own(n, div("asuka-window-content"));
     n.win = {};
     n.title = "";
   },
@@ -1078,7 +1078,7 @@ const windowKind = {
 
 const accessory = {
   create(h, n) {
-    own(n, div("ryui-accessory"));
+    own(n, div("asuka-accessory"));
   },
   prop(h, n, p, v) {
     if (p === P.Accessory.Width) n.el.style.width = v + "px";
@@ -1090,13 +1090,13 @@ const accessory = {
 
 const split = {
   create(h, n) {
-    const el = own(n, div("ryui-split"));
-    const sidebar = div("ryui-sidebar");
+    const el = own(n, div("asuka-split"));
+    const sidebar = div("asuka-sidebar");
     sidebar.setAttribute("role", "navigation");
-    const head = div("ryui-sidebar-title");
-    const list = div("ryui-sidebar-list");
+    const head = div("asuka-sidebar-title");
+    const list = div("asuka-sidebar-list");
     sidebar.append(head, list);
-    const scrim = div("ryui-scrim");
+    const scrim = div("asuka-scrim");
     scrim.addEventListener("click", () => h.nav.closeDrawer(n));
     el.append(sidebar, scrim);
     n.split = { sidebar, head, list, scrim, sections: [], selected: -1, beside: null };
@@ -1139,7 +1139,7 @@ function renderSidebar(h, n) {
   let index = 0;
   for (const sec of s.sections) {
     if (sec.title) {
-      const t = div("ryui-sidebar-section");
+      const t = div("asuka-sidebar-section");
       t.textContent = sec.title;
       s.list.appendChild(t);
     }
@@ -1147,7 +1147,7 @@ function renderSidebar(h, n) {
       const i = index++;
       const b = document.createElement("button");
       b.type = "button";
-      b.className = "ryui-sidebar-item ryui-control";
+      b.className = "asuka-sidebar-item asuka-control";
       b.setAttribute("aria-current", String(i === s.selected));
       if (it.icon) { const sym = symbolSVG(it.icon, h.rtl); if (sym) b.appendChild(sym); }
       const t = document.createElement("span");

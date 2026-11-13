@@ -1,13 +1,13 @@
 // Conformance shows package conformance's sheet, for its runners to
 // capture (e2e's TestConformance*), or to look at:
 //
-//	go run ./cmd/ryui dev -platform ios conformance/app
+//	go run ./cmd/asuka dev -platform ios conformance/app
 package main
 
 import (
-	"github.com/egoist/ryui/app"
-	"github.com/egoist/ryui/conformance"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/conformance"
+	"github.com/egoist/asuka/ui"
 )
 
 func main() {

@@ -1,5 +1,5 @@
 // Package widget fills the app's home screen widgets (expo-widgets): the
-// kinds ryui.json's widgets declare, each shown with the platform's own
+// kinds asuka.json's widgets declare, each shown with the platform's own
 // widget template (WidgetKit on iOS, home screen and lock screen; an
 // App Widget on Android), and what they show, set from the app's Go code.
 //
@@ -18,7 +18,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/ui"
 )
 
 // Entry is what a widget shows. Each field is optional; the template
@@ -33,7 +33,7 @@ type Entry struct {
 	Body string `json:"body,omitempty"`
 	// Caption is small text at the bottom.
 	Caption string `json:"caption,omitempty"`
-	// Symbol is an SF Symbol name, as ui.Symbol takes it (Android: RyUI's
+	// Symbol is an SF Symbol name, as ui.Symbol takes it (Android: Asuka's
 	// Material set for the same names).
 	Symbol ui.Icon `json:"symbol,omitempty"`
 	// Progress, with ShowProgress, is a bar (a ring on the lock screen),
@@ -65,7 +65,7 @@ type wire struct {
 // (each from its At on), and updates the widgets on the home screen. It's
 // kept until set again, across launches. Main thread.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui iosFeatures).
+// Never inlined: asuka build looks for its symbol (cmd/asuka iosFeatures).
 //
 //go:noinline
 func Set(kind string, entries ...Entry) {

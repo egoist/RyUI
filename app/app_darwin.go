@@ -2,6 +2,6 @@
 
 package app
 
-import "github.com/egoist/ryui/host/darwin"
+import "github.com/egoist/asuka/host/darwin"
 
 func init() { desktop = darwin.Run }

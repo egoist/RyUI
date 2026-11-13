@@ -8,9 +8,9 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
-	. "github.com/egoist/ryui/internal/darwin"
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/ops"
+	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/ops"
 )
 
 // A RichText is an NSTextView (TextKit's typesetter, links, selection
@@ -36,9 +36,9 @@ type inlineSize struct {
 func newRich() *rich { return &rich{dirty: true} }
 
 func registerRichClass(flipped objc.MethodDef) {
-	DefineClass("RyUITextView", "NSTextView", nil, []objc.MethodDef{
+	DefineClass("AsukaTextView", "NSTextView", nil, []objc.MethodDef{
 		Method("hitTest:", func(self ID, _ SEL, p Point) ID {
-			hit := SendSuperPointID(self, "RyUITextView", "hitTest:", p)
+			hit := SendSuperPointID(self, "AsukaTextView", "hitTest:", p)
 			n := theHost.byView[self]
 			if n == nil || n.rich == nil || n.rich.selectOK || hit != self {
 				return hit
@@ -55,7 +55,7 @@ func registerRichClass(flipped objc.MethodDef) {
 }
 
 func (r *rich) makeView() ID {
-	v := initView("RyUITextView")
+	v := initView("AsukaTextView")
 	Send(v, "setEditable:", 0)
 	Send(v, "setSelectable:", 1)
 	Send(v, "setRichText:", 1)
@@ -193,7 +193,7 @@ func (r *rich) build(h *Host, n *node) {
 				Send(attrs, "setObject:forKey:", uintptr(String(link)), uintptr(linkKey))
 			}
 			if flags&16 != 0 {
-				Send(attrs, "setObject:forKey:", uintptr(NumberInt(1)), uintptr(String("ryui.inline")))
+				Send(attrs, "setObject:forKey:", uintptr(NumberInt(1)), uintptr(String("asuka.inline")))
 			}
 			styles = append(styles, style{attrs})
 		}
@@ -221,7 +221,7 @@ func (r *rich) build(h *Host, n *node) {
 				}
 				attrs := styles[si].attrs
 				last = attrs
-				if Send(attrs, "objectForKey:", uintptr(String("ryui.inline"))) != 0 {
+				if Send(attrs, "objectForKey:", uintptr(String("asuka.inline"))) != 0 {
 					// An inline component: an attachment of its size, on
 					// the baseline.
 					a := New("NSTextAttachment")

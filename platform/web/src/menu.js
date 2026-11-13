@@ -32,15 +32,15 @@ export class Menus {
   show(items, x, y, anchor) {
     this.close();
     const m = document.createElement("div");
-    m.className = "ryui-menu";
+    m.className = "asuka-menu";
     m.popover = "auto";
     m.setAttribute("role", "menu");
     for (const it of items) {
       const b = document.createElement("button");
       b.type = "button";
-      b.className = "ryui-menu-item ryui-control";
+      b.className = "asuka-menu-item asuka-control";
       b.setAttribute("role", "menuitem");
-      if (it.role === 2) b.classList.add("ryui-destructive");
+      if (it.role === 2) b.classList.add("asuka-destructive");
       if (it.icon) { const s = symbolSVG(it.icon, this.h.rtl); if (s) b.appendChild(s); }
       const t = document.createElement("span");
       t.textContent = it.title;

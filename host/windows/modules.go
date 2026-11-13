@@ -13,14 +13,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/egoist/ryui/internal/boot"
-	. "github.com/egoist/ryui/internal/windows"
-	"github.com/egoist/ryui/ops"
+	"github.com/egoist/asuka/internal/boot"
+	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/ops"
 )
 
 // The native modules (ui.Call) on Windows, as the other hosts have them:
 //
-//   - secureStore (ryui/secure): the user's generic credentials in the
+//   - secureStore (asuka/secure): the user's generic credentials in the
 //     Credential Manager, named "<app>/<key>" (values up to 2560 bytes).
 //   - device: info, the clipboard's text, keeping the display on
 //     (SetThreadExecutionState).
@@ -30,7 +30,7 @@ import (
 //     as iOS and Android give them.
 //   - web (EvalJSResult, WebCookies): WebView2's DevTools protocol
 //     (Runtime.evaluate, awaiting a promise; Network.getCookies).
-//   - js (ryui/js): a script run in a WebView2 that's never shown.
+//   - js (asuka/js): a script run in a WebView2 that's never shown.
 
 // syncModules are the modules that answer at once.
 func (h *Host) syncModules() map[string]func(method string, args []byte) ([]byte, error) {
@@ -48,7 +48,7 @@ func (h *Host) syncModules() map[string]func(method string, args []byte) ([]byte
 }
 
 func errNoMethod(module, method string) error {
-	return fmt.Errorf("ryui: %s.%s isn't on Windows yet", module, method)
+	return fmt.Errorf("asuka: %s.%s isn't on Windows yet", module, method)
 }
 
 // credentialTarget is a key's credential's name.
@@ -111,7 +111,7 @@ func (h *Host) pickFiles(filters []FileFilter, multiple bool, limit int, done fu
 		if limit > 0 && len(paths) > limit {
 			paths = paths[:limit]
 		}
-		dir := filepath.Join(h.cacheDir(), "ryui-files")
+		dir := filepath.Join(h.cacheDir(), "asuka-files")
 		go func() {
 			files, err := copyPicked(dir, paths)
 			h.Post(func() { done(files, err) })
@@ -367,7 +367,7 @@ func (h *Host) webModules(name string) map[string]asyncMethod {
 	return nil
 }
 
-// runScript runs a ryui/js script in a WebView2 that's never shown (a
+// runScript runs a asuka/js script in a WebView2 that's never shown (a
 // blank page in the host's hidden window), and lets it go after.
 func (h *Host) runScript(args []byte, reply func([]byte, error)) {
 	if len(args) < 4 {

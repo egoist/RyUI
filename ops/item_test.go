@@ -38,7 +38,7 @@ func TestItemsRoundTrip(t *testing.T) {
 		t.Fatalf("items: %+v", got)
 	}
 	drag := []Item{
-		{Kind: ShareKindLink, Text: "https://ryui.dev", MIME: "text/uri-list", Size: -1, Value: true},
+		{Kind: ShareKindLink, Text: "https://asuka.dev", MIME: "text/uri-list", Size: -1, Value: true},
 		{Kind: ShareKindFile, Path: "/x.pdf", Name: "x.pdf", MIME: "application/pdf", Size: -1},
 	}
 	if got := DecodeDragItems(AppendDragItems(nil, drag)); !slices.Equal(got, drag) {

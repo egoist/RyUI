@@ -9,11 +9,11 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/egoist/ryui/notify"
-	"github.com/egoist/ryui/push"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/store"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/notify"
+	"github.com/egoist/asuka/push"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/store"
+	"github.com/egoist/asuka/ui"
 )
 
 // What a messaging app does with notifications: a chat's messages as a
@@ -190,8 +190,8 @@ func messagesScreen() ui.Node {
 // pushHelp says how to send this app a push that's rewritten.
 func pushHelp() string {
 	box := base64.StdEncoding.EncodeToString([]byte("See you at the crag at 9"))
-	if os.Getenv("RYUI_REMOTE") != "" {
-		return "Under ryui dev's player, pushes aren't rewritten: run with -once to try it."
+	if os.Getenv("ASUKA_REMOTE") != "" {
+		return "Under asuka dev's player, pushes aren't rewritten: run with -once to try it."
 	}
 	keys := `"box":"` + box + `","sender":"Ana","senderID":"ana","chat":"climbing","chatTitle":"Climbing"`
 	if runtime.GOOS == "android" {

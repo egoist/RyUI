@@ -1,4 +1,4 @@
-// Package app starts a RyUI app.
+// Package app starts a Asuka app.
 //
 //	func main() { app.Run(Counter) }
 //
@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/egoist/ryui/internal/boot"
-	"github.com/egoist/ryui/internal/crashrun"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/internal/boot"
+	"github.com/egoist/asuka/internal/crashrun"
+	"github.com/egoist/asuka/ui"
 )
 
 // Run mounts root as the app's screen. The root fills the screen; use
@@ -22,25 +22,25 @@ func Run(root func() ui.Node) {
 	sheet := ui.ShareSheetRoot(shareScreen)
 	// A share sheet's process (an iOS share extension, Android's share
 	// activity): the sheet is the root.
-	if os.Getenv("RYUI_SHARE_SHEET") == "1" {
+	if os.Getenv("ASUKA_SHARE_SHEET") == "1" {
 		root = sheet
 	}
 	// iOS's Notification Service Extension (push.Rewrite): main has set
 	// the rewrite, which needs no screen.
-	if os.Getenv("RYUI_NOTIFICATION_SERVICE") == "1" {
+	if os.Getenv("ASUKA_NOTIFICATION_SERVICE") == "1" {
 		root = func() ui.Node { return ui.View(ui.ViewProps{}) }
 	}
 	if boot.Runner != nil {
 		boot.Runner(root)
 		return
 	}
-	// `ryui dev` runs the app here and its views in a player app
+	// `asuka dev` runs the app here and its views in a player app
 	// (app/remote, which it links in): its Go crashes are kept on this
 	// machine.
-	if addr := os.Getenv("RYUI_REMOTE"); addr != "" && boot.Remote != nil {
-		crashrun.Start(crashrun.Info{System: "ryui dev"})
+	if addr := os.Getenv("ASUKA_REMOTE"); addr != "" && boot.Remote != nil {
+		crashrun.Start(crashrun.Info{System: "asuka dev"})
 		if err := boot.Remote(addr, root, sheet); err != nil {
-			fmt.Fprintln(os.Stderr, "ryui:", err)
+			fmt.Fprintln(os.Stderr, "asuka:", err)
 			os.Exit(1)
 		}
 		return
@@ -50,24 +50,24 @@ func Run(root func() ui.Node) {
 		desktop(root)
 		return
 	}
-	panic("ryui: no host on this platform yet; run the app with `ryui dev -platform ios` (or -platform android)")
+	panic("asuka: no host on this platform yet; run the app with `asuka dev -platform ios` (or -platform android)")
 }
 
 var shareScreen func(*ui.ShareSheet) ui.Node
 
 // ShareSheet shows screen when another app shares with this one, over
 // that app, instead of opening this one: the app's own sheet, as "Save
-// to Raindrop" or "Add to Notes". Call it before Run. ryui.json's
+// to Raindrop" or "Add to Notes". Call it before Run. asuka.json's
 // shareTarget says what the app takes; screen gets it in s.Items, and
 // ends the sheet with s.Close, s.Cancel or s.OpenApp.
 //
 // It runs in a process of its own, with a root of its own: on iOS the
 // app's share extension, which iOS shows as a sheet; on Android an
 // activity shown as a bottom sheet over the other app. What the app
-// keeps (ryui/store, sqlite in store.Dir, ryui/secure) is the same
+// keeps (asuka/store, sqlite in store.Dir, asuka/secure) is the same
 // there as in the app.
 //
-// Never inlined: ryui build looks for its symbol (cmd/ryui).
+// Never inlined: asuka build looks for its symbol (cmd/asuka).
 //
 //go:noinline
 func ShareSheet(screen func(s *ui.ShareSheet) ui.Node) { shareScreen = screen }

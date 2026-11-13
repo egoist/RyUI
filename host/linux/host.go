@@ -1,6 +1,6 @@
 //go:build linux && !android
 
-// Package linux is RyUI's Linux host: GTK 4 widgets, with libadwaita's
+// Package linux is Asuka's Linux host: GTK 4 widgets, with libadwaita's
 // navigation, dialogs and styles, made and driven from Go through purego
 // (internal/gtk, no cgo), in the app's process. It reads the core's
 // batches as Go structs, without encoding them.
@@ -9,7 +9,7 @@
 // (this package's init does), makes the application and a window whose
 // content is the root, and runs GLib's main loop.
 //
-// Each node is a RyuiView, a widget of the host's own class: it draws the
+// Each node is a AsukaView, a widget of the host's own class: it draws the
 // node's background, border, corners, gradient and shadow, and places its
 // children at the frames the core gives them. A control (a label, a
 // button, an entry) is the only child of its node's view, filling it less
@@ -23,12 +23,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/egoist/ryui/host"
-	"github.com/egoist/ryui/internal/boot"
-	. "github.com/egoist/ryui/internal/gtk"
-	"github.com/egoist/ryui/layout"
-	"github.com/egoist/ryui/ops"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/host"
+	"github.com/egoist/asuka/internal/boot"
+	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/ops"
+	"github.com/egoist/asuka/ui"
 )
 
 // GTK calls come on the main thread, where main starts.
@@ -38,7 +38,7 @@ func init() { LockMain() }
 type node struct {
 	id       ops.NodeID
 	kind     ops.Kind
-	widget   Ptr // its RyuiView
+	widget   Ptr // its AsukaView
 	inner    Ptr // the control in it (0: none), filling it less the inset
 	children []*node
 	parent   *node
@@ -57,7 +57,7 @@ type node struct {
 	lineLimit                        int
 	inset                            [4]float32 // ContentInset: top, right, bottom, left points
 
-	// Visual props, drawn by the RyuiView.
+	// Visual props, drawn by the AsukaView.
 	background, borderColor ops.Color
 	cornerRadius            float32
 	borderWidth             float32
@@ -213,15 +213,15 @@ func newHost() *Host {
 func (h *Host) run(root func() ui.Node) {
 	// A notification's systemd timer runs the app to show it: no window,
 	// no GTK (notify_timer.go).
-	if id := os.Getenv("RYUI_NOTIFY"); id != "" {
+	if id := os.Getenv("ASUKA_NOTIFY"); id != "" {
 		os.Exit(h.notifyHeadless(id))
 	}
 	// One instance per app ID (a second launch activates the first, and
 	// hands it the URLs it was opened with), but not in automation runs,
-	// tests and ryui dev, nor without an ID of the app's.
+	// tests and asuka dev, nor without an ID of the app's.
 	flags := uint32(1 << 2) // G_APPLICATION_HANDLES_OPEN: its URL scheme
-	if os.Getenv("RYUI_SNAPSHOT") != "" || os.Getenv("RYUI_SCRIPT") != "" || os.Getenv("RYUI_STATE") != "" ||
-		os.Getenv("RYUI_COMMANDS") != "" || boot.ID == "" {
+	if os.Getenv("ASUKA_SNAPSHOT") != "" || os.Getenv("ASUKA_SCRIPT") != "" || os.Getenv("ASUKA_STATE") != "" ||
+		os.Getenv("ASUKA_COMMANDS") != "" || boot.ID == "" {
 		flags |= 1 << 5 // G_APPLICATION_NON_UNIQUE
 	}
 	h.app = AdwApplicationNew(h.appID, flags)
@@ -629,5 +629,5 @@ func (h *Host) batchApplied() {
 }
 
 func fail(format string, args ...any) {
-	panic(fmt.Sprintf("ryui: the Linux host "+format, args...))
+	panic(fmt.Sprintf("asuka: the Linux host "+format, args...))
 }

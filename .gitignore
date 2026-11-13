@@ -3,14 +3,14 @@ platform/ios/.build/
 platform/ios/.swiftpm/
 .DS_Store
 
-# go build in cmd/ryui
-cmd/ryui/ryui
+# go build in cmd/asuka
+cmd/asuka/asuka
 
-# ryui build output
+# asuka build output
 examples/*/dist/
 
-# go build ./cmd/ryui at the root
-/ryui
+# go build ./cmd/asuka at the root
+/asuka
 
 # The benchmarks' builds
 bench/*/dist/

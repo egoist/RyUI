@@ -3,8 +3,8 @@ package notify
 import (
 	"encoding/json"
 
-	"github.com/egoist/ryui/internal/notifyspec"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/internal/notifyspec"
+	"github.com/egoist/asuka/ui"
 )
 
 // Presentation is how a notification shows while the app is in the

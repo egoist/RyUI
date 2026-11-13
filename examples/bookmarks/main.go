@@ -4,17 +4,17 @@
 // from it, a note, a collection and tags. Save, and the sheet closes back
 // to the app you were in; the bookmark is in the app's list.
 //
-//	go run ./cmd/ryui dev -platform ios examples/bookmarks
+//	go run ./cmd/asuka dev -platform ios examples/bookmarks
 package main
 
 import (
 	"strings"
 
-	"github.com/egoist/ryui/app"
-	"github.com/egoist/ryui/device"
-	"github.com/egoist/ryui/signal"
-	"github.com/egoist/ryui/sqlite"
-	"github.com/egoist/ryui/ui"
+	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/device"
+	"github.com/egoist/asuka/signal"
+	"github.com/egoist/asuka/sqlite"
+	"github.com/egoist/asuka/ui"
 )
 
 // ShareSheet is what "Share" in another app shows: the editor, filled
