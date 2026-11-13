@@ -90,7 +90,7 @@ browser.
   queries, and secure storage.
 - [Device and services](device.md): the camera, code scanning, photos
   and files, previewing, printing and PDFs, the mail and message
-  composers, location, notifications and push, audio and recording,
+  composers, location, notifications and push, audio, Now Playing and recording,
   network, the media library, work in the background, sign-in and
   biometrics, the screen and the launch screen, maps, the stores'
   services, sensors, image editing, speech, contacts and calendars, home
