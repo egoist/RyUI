@@ -169,6 +169,7 @@ func (h *Host) connectField(n *node) {
 		)
 		if d := EditableGetDelegate(e); d != 0 {
 			Connect(d, "paste-clipboard", func() { h.pasteContent(n, d) })
+			watchPreedit(d)
 		}
 		WidgetAddController(e, focus)
 		return
@@ -189,6 +190,7 @@ func (h *Host) connectField(n *node) {
 		h.reportFormats(n)
 	})
 	Connect(tv, "paste-clipboard", func() { h.pasteContent(n, tv) })
+	watchPreedit(tv)
 	keys := EventControllerKeyNew()
 	EventControllerSetPropagationPhase(keys, PhaseCapture)
 	Connect(keys, "key-pressed", func(keyval, keycode, state uint32) bool { return h.richKey(n, keyval, state) })

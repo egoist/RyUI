@@ -100,6 +100,12 @@ func (h *Host) showPopover(n *node) {
 	PopoverSetChild(pop, n.widget)
 	PopoverSetPosition(pop, 3) // GTK_POS_BOTTOM
 	WidgetSetParent(pop, a.widget)
+	h.keyController(pop, func() (*win, *node) {
+		if h.nodes[n.id] != n {
+			return nil, nil
+		}
+		return h.winOf(a), n
+	})
 	k := EventControllerKeyNew()
 	EventControllerSetPropagationPhase(k, PhaseCapture)
 	Connect(k, "key-pressed", func(keyval, keycode, state uint32) bool {

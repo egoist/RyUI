@@ -503,9 +503,10 @@ func findWidgets(w Ptr, text string, out []Ptr) []Ptr {
 	return out
 }
 
-// key presses a shortcut (ctrl+shift+k, f5, alt+left): an action of the
-// app's that has it as its accelerator (the app's menus), else the key
-// itself through xdotool, on X11.
+// key presses a shortcut (ctrl+shift+k, f5, alt+left): a view's Keys
+// that have it, else an action of the app's that has it as its
+// accelerator (the app's menus), else the key itself through xdotool, on
+// X11.
 func (h *Host) key(shortcut string) error {
 	mods, key := uint8(0), shortcut
 	for {
@@ -522,6 +523,10 @@ func (h *Host) key(shortcut string) error {
 			mods |= 4
 		}
 		key = rest
+	}
+	// A view's Keys first, as a key from the keyboard (keys.go).
+	if h.keyToNodes(strings.ToLower(key), mods) {
+		return nil
 	}
 	if accel := accelerator(strings.ToLower(key), mods); accel != "" && h.app != 0 {
 		list := ApplicationGetActionsForAccel(h.app, accel)
