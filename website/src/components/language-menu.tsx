@@ -52,7 +52,7 @@ export function LanguageMenu() {
         <LanguagesIcon />
         <span className="hidden sm:inline">{locale === "zh" ? "中文" : "EN"}</span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-44">
+      <DropdownMenuContent align="end" positionMethod="fixed" className="w-44">
         <DropdownMenuRadioGroup value={preference} onValueChange={(v) => choose(v as Preference)}>
           <DropdownMenuRadioItem value="auto" className="min-h-9">
             {t.auto}

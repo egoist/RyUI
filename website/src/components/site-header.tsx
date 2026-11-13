@@ -41,7 +41,7 @@ export function SiteHeader() {
           <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="sm:hidden" aria-label={t.menu} />}>
             <MenuIcon />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44 sm:hidden">
+          <DropdownMenuContent align="end" positionMethod="fixed" className="w-44 sm:hidden">
             <DropdownMenuItem className={mobileNavLink} render={<Link to={zh ? "/zh/docs" : "/docs"} />}>
               {t.docs}
             </DropdownMenuItem>
