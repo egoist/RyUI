@@ -44,3 +44,22 @@ func TestWindowStateAndAction(t *testing.T) {
 		t.Fatal("a short Position decoded")
 	}
 }
+
+func TestFlyoutAndFit(t *testing.T) {
+	f := Flyout{Tray: 3, X: 10, Y: 20, Width: 30, Height: 40, Placement: PlacementTopEnd, Gap: 4}
+	b := AppendFlyout(nil, f)
+	if got, ok := DecodeFlyout(b); !ok || got != f {
+		t.Fatalf("flyout %+v %v", got, ok)
+	}
+	for n := range len(b) {
+		if _, ok := DecodeFlyout(b[:n]); ok {
+			t.Fatalf("a flyout cut to %d bytes decoded", n)
+		}
+	}
+	if a, x, y, ok := DecodeWindowAction(AppendWindowAction(nil, WindowActionFit, 280, 120)); !ok || a != WindowActionFit || x != 280 || y != 120 {
+		t.Fatalf("fit %v %v %v %v", a, x, y, ok)
+	}
+	if a, _, _, ok := DecodeWindowAction(AppendWindowAction(nil, WindowActionClickThrough, 0, 0)); !ok || a != WindowActionClickThrough {
+		t.Fatal("click-through")
+	}
+}

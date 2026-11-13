@@ -335,6 +335,7 @@ public enum AsukaProp {
     public enum Window {
         public static let title: UInt16 = 64
         public static let config: UInt16 = 65
+        public static let flyout: UInt16 = 66
     }
 }
 
@@ -705,6 +706,24 @@ public enum AsukaWindowAction: Int32 {
     case alwaysOnTop = 11
     case notAlwaysOnTop = 12
     case close = 13
+    case clickThrough = 14
+    case notClickThrough = 15
+    case fit = 16
+}
+
+public enum AsukaPlacement: Int32 {
+    case bottom = 0
+    case bottomStart = 1
+    case bottomEnd = 2
+    case top = 3
+    case topStart = 4
+    case topEnd = 5
+    case right = 6
+    case rightStart = 7
+    case rightEnd = 8
+    case left = 9
+    case leftStart = 10
+    case leftEnd = 11
 }
 
 public enum AsukaTitleBar: Int32 {

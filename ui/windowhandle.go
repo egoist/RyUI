@@ -34,9 +34,9 @@ type WindowHandle struct {
 	watched   bool
 	listening uint8 // what the open window's element listens for: 1 state, 2 close requests
 
-	visible, focused, minimized, maximized, fullscreen, onTop *signal.Signal[bool]
-	pos                                                       *signal.Signal[Point]
-	size                                                      *signal.Signal[Size]
+	visible, focused, minimized, maximized, fullscreen, onTop, through *signal.Signal[bool]
+	pos                                                                *signal.Signal[Point]
+	size                                                               *signal.Signal[Size]
 }
 
 // Size is a size in points.
@@ -47,7 +47,7 @@ type Size struct{ Width, Height float32 }
 func NewWindowHandle() *WindowHandle {
 	return &WindowHandle{
 		visible: signal.New(false), focused: signal.New(false), minimized: signal.New(false),
-		maximized: signal.New(false), fullscreen: signal.New(false), onTop: signal.New(false),
+		maximized: signal.New(false), fullscreen: signal.New(false), onTop: signal.New(false), through: signal.New(false),
 		pos: signal.New(Point{}), size: signal.New(Size{}),
 	}
 }
@@ -246,6 +246,19 @@ func (w *WindowHandle) SetPosition(x, y float32) { w.do(ops.WindowActionPosition
 // Center centers it on its display (not on Linux).
 func (w *WindowHandle) Center() { w.do(ops.WindowActionCenter, 0, 0) }
 
+// SetClickThrough lets the mouse go through the window to what's behind
+// it (another app's window, the desktop), or takes it back: an
+// overlay's or a HUD's that the user can work through, as
+// WindowProps.ClickThrough opens it. On the web, a Window in the page
+// lets clicks through to the page.
+func (w *WindowHandle) SetClickThrough(on bool) {
+	a := ops.WindowActionNotClickThrough
+	if on {
+		a = ops.WindowActionClickThrough
+	}
+	w.do(a, 0, 0)
+}
+
 // SetAlwaysOnTop keeps it above other apps' windows, or not (not on
 // Linux).
 func (w *WindowHandle) SetAlwaysOnTop(on bool) {
@@ -332,6 +345,7 @@ func (w *WindowHandle) setState(s ops.WindowState) {
 	w.maximized.Set(s.Flags&ops.WindowMaximizedState != 0)
 	w.fullscreen.Set(s.Flags&ops.WindowFullscreenState != 0)
 	w.onTop.Set(s.Flags&ops.WindowOnTop != 0)
+	w.through.Set(s.Flags&ops.WindowClickThroughState != 0)
 	w.pos.Set(Point{X: s.X, Y: s.Y})
 	w.size.Set(Size{Width: s.Width, Height: s.Height})
 }
@@ -363,3 +377,6 @@ func (w *WindowHandle) Position() signal.Accessor[Point] { return w.pos }
 // Size is its content's size, in points (as its environment's Width and
 // Height).
 func (w *WindowHandle) Size() signal.Accessor[Size] { return w.size }
+
+// ClickThrough is whether the mouse goes through it (SetClickThrough).
+func (w *WindowHandle) ClickThrough() signal.Accessor[bool] { return w.through }

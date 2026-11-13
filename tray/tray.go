@@ -143,11 +143,28 @@ var (
 
 type dock struct{ items []ui.MenuItem }
 
+// Icon is an icon Show shows.
+type Icon struct{ id uint32 }
+
+// Anchor is the icon as a flyout's anchor (ui.Flyout's): a window that
+// hangs from it, a menu bar app's panel, goes below it in the Mac's menu
+// bar (under the copy of the menu bar the user clicked, on a Mac with
+// several displays) and above it in a taskbar at the bottom of the
+// screen, on the side the flyout's Placement names, flipped where the
+// display has no room. Linux's panels don't say where their icons are:
+// there the flyout goes where the pointer was as the icon was clicked
+// (X11), or where the desktop puts a new window (Wayland).
+//
+//	icon := tray.Show(tray.Props{Symbol: ui.Val("bolt"), OnClick: func() { open.Set(!open.Peek()) }})
+//	ui.Window(ui.WindowProps{Open: open, Flyout: &ui.Flyout{Anchor: icon.Anchor()}, FitContent: true, Content: panel})
+func (i *Icon) Anchor() signal.Accessor[ui.Anchor] { return ui.Val(ui.Anchor{Tray: i.id}) }
+
 // Show shows an icon in the tray while the component that calls it is
 // mounted: it follows p's signals, and goes when the component's owner
 // is disposed. Several icons may show; on macOS a new one goes left of
-// those there. Main thread.
-func Show(p Props) {
+// those there. It returns the icon, which a flyout can hang from
+// (Icon.Anchor). Main thread.
+func Show(p Props) *Icon {
 	nextID++
 	id := nextID
 	t := &icon{p: p}
@@ -183,6 +200,7 @@ func Show(p Props) {
 		ui.Call(module, "remove", binary.LittleEndian.AppendUint32(nil, id), nil)
 		unfollow()
 	})
+	return &Icon{id}
 }
 
 // DockMenu adds items to the menu of the app's icon in the Dock (macOS),

@@ -338,6 +338,7 @@ object AsukaProp {
     object Window {
         const val TITLE = 64
         const val CONFIG = 65
+        const val FLYOUT = 66
     }
 }
 
@@ -708,6 +709,24 @@ object AsukaWindowAction {
     const val ALWAYS_ON_TOP = 11
     const val NOT_ALWAYS_ON_TOP = 12
     const val CLOSE = 13
+    const val CLICK_THROUGH = 14
+    const val NOT_CLICK_THROUGH = 15
+    const val FIT = 16
+}
+
+object AsukaPlacement {
+    const val BOTTOM = 0
+    const val BOTTOM_START = 1
+    const val BOTTOM_END = 2
+    const val TOP = 3
+    const val TOP_START = 4
+    const val TOP_END = 5
+    const val RIGHT = 6
+    const val RIGHT_START = 7
+    const val RIGHT_END = 8
+    const val LEFT = 9
+    const val LEFT_START = 10
+    const val LEFT_END = 11
 }
 
 object AsukaTitleBar {

@@ -463,11 +463,13 @@ const (
 	PropWindowTitle PropID = 64
 	// PropWindowConfig: its options when it opens, as the WindowOptions command's args (ops.WindowConfig, ops.AppendWindowConfig); set before Present.
 	PropWindowConfig PropID = 65
+	// PropWindowFlyout: a flyout's anchor (with WindowFlyout; ops.Flyout, ops.AppendFlyout): u32 tray icon (asuka/tray's id; 0: none), f32 x, y, width, height (without a tray icon: a rectangle of its parent's content, in points), u8 Placement, f32 gap (points); set before Present and again when the anchor changes, which places it again.
+	PropWindowFlyout PropID = 66
 )
 
 var commonProps = [...]propInfo{{}, {"Background", TColor}, {"CornerRadius", TFloat}, {"BorderWidth", TFloat}, {"BorderColor", TColor}, {"Opacity", TFloat}, {"Hidden", TBool}, {"Clip", TBool}, {"A11yLabel", TString}, {"A11yHint", TString}, {"A11yRole", TEnum}, {"A11yActions", TBytes}, {"A11yAdjustable", TBool}, {"A11yHidden", TBool}, {"Color", TColor}, {"TextStyle", TEnum}, {"FontSize", TFloat}, {"FontWeight", TEnum}, {"TextAlign", TEnum}, {"LineLimit", TInt}, {"Disabled", TBool}, {"Menu", TBytes}, {"MenuTrigger", TEnum}, {"Transform", TBytes}, {"Shadow", TBytes}, {"Gradient", TBytes}, {"Transition", TBytes}, {"Material", TEnum}, {"FontFamily", TString}, {"SwipeActions", TBytes}, {"LayoutDirection", TEnum}, {"ContentInset", TEdges}, {"LeadingSwipeActions", TBytes}, {"Selected", TBool}, {"Match", TString}, {"InterceptBack", TBool}, {"Tooltip", TString}}
 
-var kindProps = [...][]propInfo{nil, {{"DropAccept", TBytes}, {"DragItems", TBytes}}, {{"Text", TString}}, {{"Title", TString}, {"Variant", TEnum}, {"Icon", TString}}, {{"Value", TString}, {"Placeholder", TString}, {"Keyboard", TEnum}, {"ReturnKey", TEnum}, {"Secure", TBool}, {"Autocapitalize", TEnum}, {"Autocorrect", TEnum}, {"ContentType", TString}, {"Multiline", TBool}, {"Plain", TBool}, {"Selection", TBytes}, {"Rich", TBytes}, {"PasteTypes", TBytes}, {"Accessory", TInt}}, {{"On", TBool}, {"Checkbox", TBool}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}}, {{"Horizontal", TBool}, {"Refreshable", TBool}, {"Refreshing", TBool}, {"Paging", TBool}}, {{"Refreshable", TBool}, {"Refreshing", TBool}, {"Columns", TInt}, {"Gap", TFloat}, {"Appearance", TEnum}, {"Inset", TFloat}, {"Anchor", TEnum}, {"Selecting", TBool}}, {{"Animating", TBool}}, {}, {{"Title", TString}, {"Actions", TBytes}, {"BackGesture", TBool}, {"Icon", TString}, {"Search", TString}, {"SearchText", TString}, {"SearchButton", TBool}, {"ZoomFrom", TString}, {"LargeTitle", TBool}, {"BarColor", TColor}}, {{"Selected", TInt}}, {{"Detents", TInt}, {"Grabber", TBool}}, {{"Title", TString}, {"Message", TString}, {"Buttons", TBytes}, {"Style", TEnum}}, {{"Source", TString}, {"Mode", TEnum}, {"Placeholder", TString}}, {{"Type", TString}, {"Prop", TBytes}}, {{"Content", TBytes}, {"Inlines", TBytes}}, {}, {{"Name", TString}}, {{"Segments", TBytes}, {"Selected", TInt}}, {{"Items", TBytes}, {"Selected", TInt}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}, {"Step", TFloat}}, {{"Value", TColor}, {"Alpha", TBool}, {"Title", TString}}, {{"Value", TFloat}, {"Indeterminate", TBool}}, {{"Path", TBytes}, {"Fill", TColor}, {"Stroke", TColor}, {"LineWidth", TFloat}, {"LineCap", TEnum}, {"LineJoin", TEnum}, {"TrimStart", TFloat}, {"TrimEnd", TFloat}, {"Dash", TBytes}}, {{"Source", TString}, {"Mode", TEnum}, {"HideControls", TBool}, {"AutoPlay", TBool}, {"Loop", TBool}, {"Muted", TBool}}, {{"URL", TString}, {"HTML", TString}, {"Preload", TString}, {"UserAgent", TString}, {"Block", TBytes}, {"Requests", TBool}}, {{"Value", TInt}, {"Mode", TEnum}, {"Min", TInt}, {"Max", TInt}, {"Inline", TBool}}, {{"Count", TInt}, {"Page", TInt}}, {{"Anchor", TInt}, {"Width", TFloat}, {"Height", TFloat}}, {{"Width", TFloat}, {"Height", TFloat}}, {{"Commands", TBytes}}, {{"Items", TBytes}, {"Selected", TInt}, {"Title", TString}}, {{"Code", TBytes}, {"Uniforms", TBytes}, {"Animated", TBool}}, {{"Title", TString}, {"Config", TBytes}}}
+var kindProps = [...][]propInfo{nil, {{"DropAccept", TBytes}, {"DragItems", TBytes}}, {{"Text", TString}}, {{"Title", TString}, {"Variant", TEnum}, {"Icon", TString}}, {{"Value", TString}, {"Placeholder", TString}, {"Keyboard", TEnum}, {"ReturnKey", TEnum}, {"Secure", TBool}, {"Autocapitalize", TEnum}, {"Autocorrect", TEnum}, {"ContentType", TString}, {"Multiline", TBool}, {"Plain", TBool}, {"Selection", TBytes}, {"Rich", TBytes}, {"PasteTypes", TBytes}, {"Accessory", TInt}}, {{"On", TBool}, {"Checkbox", TBool}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}}, {{"Horizontal", TBool}, {"Refreshable", TBool}, {"Refreshing", TBool}, {"Paging", TBool}}, {{"Refreshable", TBool}, {"Refreshing", TBool}, {"Columns", TInt}, {"Gap", TFloat}, {"Appearance", TEnum}, {"Inset", TFloat}, {"Anchor", TEnum}, {"Selecting", TBool}}, {{"Animating", TBool}}, {}, {{"Title", TString}, {"Actions", TBytes}, {"BackGesture", TBool}, {"Icon", TString}, {"Search", TString}, {"SearchText", TString}, {"SearchButton", TBool}, {"ZoomFrom", TString}, {"LargeTitle", TBool}, {"BarColor", TColor}}, {{"Selected", TInt}}, {{"Detents", TInt}, {"Grabber", TBool}}, {{"Title", TString}, {"Message", TString}, {"Buttons", TBytes}, {"Style", TEnum}}, {{"Source", TString}, {"Mode", TEnum}, {"Placeholder", TString}}, {{"Type", TString}, {"Prop", TBytes}}, {{"Content", TBytes}, {"Inlines", TBytes}}, {}, {{"Name", TString}}, {{"Segments", TBytes}, {"Selected", TInt}}, {{"Items", TBytes}, {"Selected", TInt}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}, {"Step", TFloat}}, {{"Value", TColor}, {"Alpha", TBool}, {"Title", TString}}, {{"Value", TFloat}, {"Indeterminate", TBool}}, {{"Path", TBytes}, {"Fill", TColor}, {"Stroke", TColor}, {"LineWidth", TFloat}, {"LineCap", TEnum}, {"LineJoin", TEnum}, {"TrimStart", TFloat}, {"TrimEnd", TFloat}, {"Dash", TBytes}}, {{"Source", TString}, {"Mode", TEnum}, {"HideControls", TBool}, {"AutoPlay", TBool}, {"Loop", TBool}, {"Muted", TBool}}, {{"URL", TString}, {"HTML", TString}, {"Preload", TString}, {"UserAgent", TString}, {"Block", TBytes}, {"Requests", TBool}}, {{"Value", TInt}, {"Mode", TEnum}, {"Min", TInt}, {"Max", TInt}, {"Inline", TBool}}, {{"Count", TInt}, {"Page", TInt}}, {{"Anchor", TInt}, {"Width", TFloat}, {"Height", TFloat}}, {{"Width", TFloat}, {"Height", TFloat}}, {{"Commands", TBytes}}, {{"Items", TBytes}, {"Selected", TInt}, {"Title", TString}}, {{"Code", TBytes}, {"Uniforms", TBytes}, {"Animated", TBool}}, {{"Title", TString}, {"Config", TBytes}, {"Flyout", TBytes}}}
 
 // Events.
 const (
@@ -565,7 +567,7 @@ const (
 	EventBack EventKind = 52
 	// EventPaged: a Paging Scroll's swipe is settling on a page: its index from the content's physical start (left or top), page = offset / the scroll's size.
 	EventPaged EventKind = 53
-	// EventWindowState: a window's state changed (the user's doing or the app's), to its Window node or, for the main window, the root, while the core listens (and once as it starts listening): f32 x, y (its frame's top left on the screen, in points from the main display's; 0, 0 where the host can't tell, as on Wayland), f32 width, height (its content's size, in points), u8 WindowStateFlags bits (1 visible, 2 focused, 4 minimized, 8 maximized, 16 full screen, 32 always on top).
+	// EventWindowState: a window's state changed (the user's doing or the app's), to its Window node or, for the main window, the root, while the core listens (and once as it starts listening): f32 x, y (its frame's top left on the screen, in points from the main display's; 0, 0 where the host can't tell, as on Wayland), f32 width, height (its content's size, in points), u8 WindowStateFlags bits (1 visible, 2 focused, 4 minimized, 8 maximized, 16 full screen, 32 always on top, 64 click-through).
 	EventWindowState EventKind = 54
 	// EventCloseRequest: the user asked to close a window (its close button, a shortcut, the taskbar's or Dock's menu) while the core listens for this on its Window node or, for the main window, the root: the window stays open, and the core closes it (a Window: Destroy; the main window: WindowAction Close) if the app lets it.
 	EventCloseRequest EventKind = 55
@@ -633,7 +635,7 @@ const (
 	CmdWebNavigate CommandID = 21
 	// CmdMenuBar: args: the app's menus (desktop): u32 count, per menu a u32-length title and its items, a menu (ops/menu.go): u32 count, per item u8 flags (1 separator, 2 disabled, 4 checked, 8 destructive, 16 submenu), a u32-length title, a u32-length key (a character, or enter, escape, tab, space, delete, backspace, up, down, left, right, home, end, pageup, pagedown, f1-f12; empty: no shortcut), u8 modifiers (1 primary: ⌘ on macOS, Ctrl on Windows; 2 shift; 4 alt, a Mac's option; 8 control) and u8 MenuRole (1 quit: the host quits the app), then with flag 16 its submenu, a menu; sent to the root, again when they change: the host shows them with its own (a Mac's app, Edit and Window menus), and reports a chosen item, or its shortcut, with Action on the root carrying the item's index among all the menus' items, depth first (a submenu's items after the item that opens it; separators and submenus count).
 	CmdMenuBar CommandID = 22
-	// CmdWindowOptions: args: the main window's options (ops.WindowConfig, ops.AppendWindowConfig): f32 width, height, min width, min height, max width, max height (its content's, in points; 0: the host's, or no most), f32 x, y (its frame's top left on the screen, points from the main display's; with WindowPositioned), u32 WindowFlags (1 not resizable, 2 no minimize, 4 no maximize, 8 no close, 16 always on top, 32 hidden, 64 skip the taskbar, 128 centered, 256 positioned, 512 transparent, 1024 maximized, 2048 full screen, 4096 child of its parent, 8192 modal to its parent), u8 TitleBar, u64 background Color (0: the platform's), u32 parent (a Window's: the Window node or root it belongs to; 0: none), u32-length state key (where the host remembers its place; empty: not remembered, but the main window's is "main" then), then the title (rest of the args; empty: the app's name); sent to the root when it mounts.
+	// CmdWindowOptions: args: the main window's options (ops.WindowConfig, ops.AppendWindowConfig): f32 width, height, min width, min height, max width, max height (its content's, in points; 0: the host's, or no most), f32 x, y (its frame's top left on the screen, points from the main display's; with WindowPositioned), u32 WindowFlags (1 not resizable, 2 no minimize, 4 no maximize, 8 no close, 16 always on top, 32 hidden, 64 skip the taskbar, 128 centered, 256 positioned, 512 transparent, 1024 maximized, 2048 full screen, 4096 child of its parent, 8192 modal to its parent, 16384 a panel: floating, non-activating, on every Space, 32768 a flyout: frameless, hanging from its Flyout prop's anchor, closed as it loses the keyboard, 65536 sized to its content: WindowAction Fit sizes it, 131072 click-through: the mouse goes to what's behind it), u8 TitleBar, u64 background Color (0: the platform's), u32 parent (a Window's: the Window node or root it belongs to; 0: none), u32-length state key (where the host remembers its place; empty: not remembered, but the main window's is "main" then), then the title (rest of the args; empty: the app's name); sent to the root when it mounts.
 	CmdWindowOptions CommandID = 23
 	// CmdWindowTitle: args: the title (empty: the app's name); sent to the root when the main window's changes (desktop; mobile hosts have none).
 	CmdWindowTitle CommandID = 24
@@ -657,7 +659,7 @@ const (
 	CmdBackExit CommandID = 33
 	// CmdReplace: sent to a Stack: its screens destroyed after it, and the screen inserted next (its new first), change at once, with no pop or push: a SplitView's destination changing.
 	CmdReplace CommandID = 34
-	// CmdWindowAction: args: u8 WindowAction, then for Size f32 width, height (its content's, points) and for Position f32 x, y (its frame's top left, points from the main display's top left); sent to a Window node or, for the main window, the root (desktop and the web; mobile hosts have none).
+	// CmdWindowAction: args: u8 WindowAction, then for Size and Fit f32 width, height (its content's, points; Fit: what its content measures, for a window sized to it, which a flyout is placed again at and a panel grows down from its top at) and for Position f32 x, y (its frame's top left, points from the main display's top left); sent to a Window node or, for the main window, the root (desktop and the web; mobile hosts have none).
 	CmdWindowAction CommandID = 35
 )
 
@@ -1003,6 +1005,26 @@ const (
 	WindowActionAlwaysOnTop
 	WindowActionNotAlwaysOnTop
 	WindowActionClose
+	WindowActionClickThrough
+	WindowActionNotClickThrough
+	WindowActionFit
+)
+
+type Placement int32
+
+const (
+	PlacementBottom Placement = iota
+	PlacementBottomStart
+	PlacementBottomEnd
+	PlacementTop
+	PlacementTopStart
+	PlacementTopEnd
+	PlacementRight
+	PlacementRightStart
+	PlacementRightEnd
+	PlacementLeft
+	PlacementLeftStart
+	PlacementLeftEnd
 )
 
 type TitleBar int32

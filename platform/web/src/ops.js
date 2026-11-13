@@ -116,7 +116,7 @@ export const KindProp = Object.freeze({
   Canvas: Object.freeze({ Commands: 64 }),
   Split: Object.freeze({ Items: 64, Selected: 65, Title: 66 }),
   Shader: Object.freeze({ Code: 64, Uniforms: 65, Animated: 66 }),
-  Window: Object.freeze({ Title: 64, Config: 65 }),
+  Window: Object.freeze({ Title: 64, Config: 65, Flyout: 66 }),
 });
 
 /** Events hosts send. */
@@ -247,7 +247,8 @@ export const SemanticColor = Object.freeze({ None: 0, Label: 1, SecondaryLabel: 
 export const ShareKind = Object.freeze({ Text: 0, Link: 1, Image: 2, Video: 3, Audio: 4, File: 5 });
 export const DragPhase = Object.freeze({ Began: 0, Dropped: 1, Cancelled: 2 });
 export const ScrollAnchor = Object.freeze({ Top: 0, Bottom: 1 });
-export const WindowAction = Object.freeze({ Show: 0, Hide: 1, Focus: 2, Minimize: 3, Maximize: 4, Restore: 5, Fullscreen: 6, ExitFullscreen: 7, Center: 8, Size: 9, Position: 10, AlwaysOnTop: 11, NotAlwaysOnTop: 12, Close: 13 });
+export const WindowAction = Object.freeze({ Show: 0, Hide: 1, Focus: 2, Minimize: 3, Maximize: 4, Restore: 5, Fullscreen: 6, ExitFullscreen: 7, Center: 8, Size: 9, Position: 10, AlwaysOnTop: 11, NotAlwaysOnTop: 12, Close: 13, ClickThrough: 14, NotClickThrough: 15, Fit: 16 });
+export const Placement = Object.freeze({ Bottom: 0, BottomStart: 1, BottomEnd: 2, Top: 3, TopStart: 4, TopEnd: 5, Right: 6, RightStart: 7, RightEnd: 8, Left: 9, LeftStart: 10, LeftEnd: 11 });
 export const TitleBar = Object.freeze({ Default: 0, Hidden: 1 });
 
 const utf8 = new TextDecoder();

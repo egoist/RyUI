@@ -108,6 +108,10 @@ func Mount(h host.Host, root func() Node) *Root {
 			st.Width, st.Height = layout.Pct(100), layout.Pct(100)
 			st.Direction = rootDirection(isRTLNow())
 			r.el.box.SetStyle(st)
+			if o := mainWindow; o != nil && o.FitContent && r.win.desktop() {
+				c := o.config()
+				fitWindow(r.el, &c)
+			}
 			var n Node
 			windowCtx.Provide(r.win, func() {
 				envCtx.Provide(r.env, func() { n = root() })
@@ -238,7 +242,9 @@ func (r *Root) layout() {
 	if len(r.inlines) > 0 {
 		r.layoutInlines(size.W, p)
 	}
-	if r.el.box.Dirty() || size != r.size {
+	if r.el.fitWin {
+		r.layoutFitWindow(r.el, p)
+	} else if r.el.box.Dirty() || size != r.size {
 		r.size = size
 		r.el.box.Layout(size, p)
 	}
@@ -248,6 +254,10 @@ func (r *Root) layout() {
 			continue
 		}
 		live = append(live, e)
+		if e.fitWin {
+			r.layoutFitWindow(e, p)
+			continue
+		}
 		if e.fits {
 			r.layoutFit(e, p)
 			continue
@@ -272,6 +282,49 @@ func (r *Root) layout() {
 	}
 	clear(p.Changed)
 	p.Changed = p.Changed[:0]
+}
+
+// fitWindow makes e, a window's content (the root, or a Window node), a
+// window sized to its content, within c's least and most size: laid out
+// at its content's size (layoutFitWindow), not the window's.
+func fitWindow(e *element, c *ops.WindowConfig) {
+	e.fitWin = true
+	st := e.box.Style
+	st.Width, st.Height = layout.Auto, layout.Auto
+	st.MinWidth, st.MinHeight, st.MaxWidth, st.MaxHeight = layout.Auto, layout.Auto, layout.Auto, layout.Auto
+	for _, x := range [...]struct {
+		v float32
+		l *layout.Length
+	}{{c.MinWidth, &st.MinWidth}, {c.MinHeight, &st.MinHeight}, {c.MaxWidth, &st.MaxWidth}, {c.MaxHeight, &st.MaxHeight}} {
+		if x.v > 0 {
+			*x.l = layout.Pt(x.v)
+		}
+	}
+	e.box.SetStyle(st)
+}
+
+// layoutFitWindow lays a window sized to its content out at its
+// content's size: as wide as its widest line (max-content), within its
+// least and most width, at which its text wraps, and as tall as that
+// makes it, within its least and most height (beyond which a Scroll in it
+// scrolls). It sends WindowAction Fit with that size as it changes, in
+// the frames' batch, so the host sizes the window as it places the
+// content.
+func (r *Root) layoutFitWindow(e *element, p *layout.Pass) {
+	if !e.box.Dirty() && e.fitSent {
+		return
+	}
+	s := e.box.Layout(layout.Size{W: layout.MaxContentSpace, H: layout.MaxContentSpace}, p)
+	if mw := e.box.Style.MaxWidth; !mw.IsAuto() && s.W >= mw.V {
+		s = e.box.Layout(layout.Size{W: mw.V, H: layout.MaxContentSpace}, p)
+	}
+	if e.fitSent && s == e.laidSize {
+		return
+	}
+	e.laidSize, e.fitSent = s, true
+	r.batch.CommandArgs(e.id, ops.CmdWindowAction, func(dst []byte) []byte {
+		return ops.AppendWindowAction(dst, ops.WindowActionFit, s.W, s.H)
+	})
 }
 
 // layoutFit lays a content-sized root out at its content's size, no
