@@ -173,13 +173,14 @@ type Host struct {
 	menusVersion  int
 	appMenu       Ptr
 	appActions    []string
-	appItems      []appItem
+	appItems      []ops.MenuItem // the app menu's items, flattened
 	popups        []Ptr
 	tweens        map[*node]*tween
 	ticking       bool
 	frames        bool
 	inhibit       uint32
-	inBackground  bool // no window of the app's shows (lifecycle.go)
+	inBackground  bool       // no window of the app's shows (lifecycle.go)
+	tray          *trayState // asuka/tray's icons and Dock menu (tray.go)
 	quitting      bool
 	fontFamilies  map[string]string
 }
@@ -284,7 +285,15 @@ func (h *Host) incomingURL(u string) {
 func (h *Host) start(root func() ui.Node) {
 	h.setup()
 	h.enter(func() { ui.Mount(h, root) })
-	WindowPresent(h.main.window)
+	// An app that keeps running with no window is held: GApplication
+	// would quit as its last window goes. One in the background shows no
+	// window at launch (but in automation runs, which look at it).
+	if boot.KeepsRunning() {
+		ApplicationHold(h.app)
+	}
+	if !boot.InBackground() || automating() {
+		WindowPresent(h.main.window)
+	}
 	h.notifyActionAtStart() // launched by a notification's tap
 	h.automation()
 }
@@ -298,6 +307,12 @@ func (h *Host) setup() {
 	h.theme = h.readPalette(h.main.content)
 	h.env = h.environment(h.main)
 	h.watchSettings()
+}
+
+// automating reports whether an automation run drives the app
+// (ASUKA_SNAPSHOT, ASUKA_SCRIPT, ASUKA_COMMANDS).
+func automating() bool {
+	return os.Getenv("ASUKA_SNAPSHOT") != "" || os.Getenv("ASUKA_SCRIPT") != "" || os.Getenv("ASUKA_COMMANDS") != ""
 }
 
 // Connect implements host.Connector.

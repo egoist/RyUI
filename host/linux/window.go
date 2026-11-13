@@ -56,8 +56,15 @@ func (h *Host) newMainWindow() *win {
 	}
 	WindowSetDefaultSize(w.window, int32(width), int32(height)+headerHeight)
 	h.restoreWindow(w)
+	// Closing it ends the app, or, for one that keeps running with no
+	// window (app.KeepRunning, app.RunInBackground), hides it: the root
+	// stays mounted, the app in the background (lifecycle.go).
 	Connect(w.window, "close-request", func() bool {
 		h.saveWindow(w)
+		if boot.KeepsRunning() && !h.quitting {
+			WidgetSetVisible(w.window, false)
+			return true
+		}
 		return false
 	})
 	return w
@@ -193,6 +200,7 @@ func (h *Host) watchSettings() {
 	Connect(sm, "notify::dark", func(uintptr) {
 		h.dark = AdwStyleManagerGetDark(sm)
 		h.themeChanged()
+		h.trayStyleChanged()
 	})
 	Connect(sm, "notify::high-contrast", func(uintptr) { h.themeChanged() })
 	if s := SettingsGetDefault(); s != 0 {
