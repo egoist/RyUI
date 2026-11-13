@@ -111,6 +111,9 @@ browser.
   Windows and Linux.
 - [Development](development.md): `asuka dev` in depth on each platform,
   devices, `asuka vet`, tests and common problems.
+- [Testing](testing.md): your app's interface in `go test`, with no
+  device or display: tap, type and check what the screen shows,
+  snapshots, and waiting for the app's goroutines.
 - [Shipping](shipping.md): builds for the App Store and Google Play, a
   signed and notarized Mac app, a Windows folder, a Linux archive and
   Flatpak manifest, desktop apps' signed updates, and what

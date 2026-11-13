@@ -392,8 +392,9 @@ ASUKA_SCRIPT="tap:Add;tap:Add" ASUKA_SNAPSHOT=shot.png go run .   # Windows, Lin
 
 ## Tests
 
-Asuka's own repository tests each host through the platform's real
-views.
+To test your app's interface in `go test`, with no device or display,
+see [Testing](testing.md). Asuka's own repository tests each host
+through the platform's real views.
 
 ```sh
 go test ./...                                      # the core, against host/fake

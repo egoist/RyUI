@@ -1403,6 +1403,17 @@ Desktop adds `host/darwin` and `internal/darwin` (macOS),
   - a flattened container makes no native view;
   - popping a screen disposes every owner it made;
   - steady-state flushes allocate nothing (`testing.AllocsPerRun`).
+- Apps: `uitest` mounts an app's components on `host/fake` in its own
+  `go test` and drives them by what the screen shows (tap, type, back,
+  a row's swipe action), as a user would: only what shows counts (a
+  stack's top screen, the selected tab, a list's rows that fit, which
+  it binds as a collection view does), and taps reach only the top
+  modal layer. It settles after each action (posted work, flushes, list
+  binding), waits on the app's goroutines through the host's posts
+  (never a sleep), and on cleanup fails the test if a view outlives
+  the root. Text is measured by the fake host's rules, so frames hold
+  relative to each other, not to the point. `Snapshot` describes the
+  screen for golden files (`-uitest.update`).
 - `host/darwin` (macOS): tests mount components on the real AppKit
   host, on the main thread (`TestMain` keeps it), and check the views
   (their text, frames, clicks, list binding, navigation, disposal).

@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/egoist/asuka/host"
 	"github.com/egoist/asuka/internal/fileurl"
@@ -89,6 +90,7 @@ type Host struct {
 	core     host.Core
 	posted   []func()
 	postMu   sync.Mutex
+	wake     chan struct{} // a Post's signal to WaitPost
 	nextCell ops.NodeID
 	opsAlloc []byte
 	wins     map[ops.NodeID]*WindowInfo // window.go
@@ -99,6 +101,7 @@ type Host struct {
 func New() *Host {
 	return &Host{
 		Views: map[ops.NodeID]*View{},
+		wake:  make(chan struct{}, 1),
 		Env: host.Environment{
 			Width: 390, Height: 844, SafeTop: 47, SafeBottom: 34,
 			Scale: 3, FontScale: 1, Locale: "en_US", Languages: "en-US",
@@ -118,6 +121,41 @@ func (h *Host) Post(f func()) {
 	h.postMu.Lock()
 	h.posted = append(h.posted, f)
 	h.postMu.Unlock()
+	select {
+	case h.wake <- struct{}{}:
+	default:
+	}
+}
+
+// Pending reports how many posted functions wait for RunPosted.
+func (h *Host) Pending() int {
+	h.postMu.Lock()
+	defer h.postMu.Unlock()
+	return len(h.posted)
+}
+
+// WaitPost waits until a function is posted, or d has passed, and
+// reports whether one waits for RunPosted: what a test waits on while
+// the app's goroutines work. Main thread.
+func (h *Host) WaitPost(d time.Duration) bool {
+	if h.Pending() > 0 {
+		return true
+	}
+	if h.wake == nil {
+		return false
+	}
+	t := time.NewTimer(d)
+	defer t.Stop()
+	for {
+		select {
+		case <-h.wake:
+			if h.Pending() > 0 {
+				return true
+			}
+		case <-t.C:
+			return h.Pending() > 0
+		}
+	}
 }
 
 // RunPosted runs what was posted, in order, as the main thread would.
