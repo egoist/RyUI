@@ -139,18 +139,32 @@ function codeBlock(pre: Element, shiki: Highlighter): Element {
     tagName: "div",
     properties: { className: ["code-block"] },
     children: [
-      highlight(shiki, toString(code ?? pre).replace(/\n$/, ""), lang),
       {
         type: "element",
-        tagName: "button",
-        properties: { type: "button", className: ["copy-button"], ariaLabel: "Copy code" },
+        tagName: "div",
+        properties: { className: ["code-header"] },
         children: [
-          icon("icon-copy", ["M8 8h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2z", "M4 16a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2"]),
-          icon("icon-check", ["M20 6 9 17l-5-5"]),
+          { type: "element", tagName: "span", properties: { className: ["code-lang"] }, children: [{ type: "text", value: langName(lang) }] },
+          {
+            type: "element",
+            tagName: "button",
+            properties: { type: "button", className: ["copy-button"], ariaLabel: "Copy code" },
+            children: [
+              icon("icon-copy", ["M8 8h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2z", "M4 16a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2"]),
+              icon("icon-check", ["M20 6 9 17l-5-5"]),
+            ],
+          },
         ],
       },
+      highlight(shiki, toString(code ?? pre).replace(/\n$/, ""), lang),
     ],
   }
+}
+
+/** A code block's language, as its header names it. */
+function langName(lang: string) {
+  const names: Record<string, string> = { sh: "Shell", bash: "Shell", text: "Text", ts: "TypeScript", tsx: "TSX", js: "JavaScript", kotlin: "Kotlin", swift: "Swift", go: "Go", json: "JSON", yaml: "YAML", xml: "XML", html: "HTML", css: "CSS" }
+  return names[lang] ?? lang
 }
 
 function icon(className: string, paths: string[]): Element {

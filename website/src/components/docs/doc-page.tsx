@@ -8,6 +8,7 @@ import { DocsNav } from "@/components/docs/docs-nav"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { getDoc, type Doc, type Navs } from "@/lib/docs"
+import { episodeKanji, episodeNumber } from "@/lib/episode"
 
 /**
  * The loader of a page: null, before anything is fetched, for a slug without
@@ -64,34 +65,55 @@ export function DocPage({ doc }: { doc: Doc }) {
       </div>
 
       <article className="max-w-[52rem] px-4 pt-10 pb-20 sm:px-10 lg:pt-14">
+        {/* The page's title card: its episode, its title, a band of hazard stripes. */}
         <header>
-          {doc.section && <p className="label flex items-center gap-2"><span className="size-1.5 bg-unit" />{doc.section}</p>}
-          <h1 className="display mt-3 text-4xl leading-[1.05] sm:text-5xl">{doc.title}</h1>
-          {doc.summary && <p className="mt-3 text-lg leading-8 text-muted-foreground">{doc.summary}</p>}
+          <div className="label flex items-center justify-between gap-4">
+            <span className="flex items-center gap-2">
+              <span className="size-1.5 bg-unit" />
+              {doc.section}
+            </span>
+            {doc.episode !== undefined && <span>Episode {episodeNumber(doc.episode)}</span>}
+          </div>
+          {doc.episode !== undefined && (
+            <p lang="ja" className="display mt-8 text-lg text-unit-ink sm:text-xl">
+              {episodeKanji(doc.episode)}
+            </p>
+          )}
+          <h1 className="display mt-2 text-[clamp(2.6rem,6.5vw,4.5rem)] leading-[1.02] text-balance">
+            <span className="block origin-bottom-left scale-y-[1.12]">{doc.title}</span>
+          </h1>
+          {doc.summary && <p className="mt-5 max-w-2xl text-lg leading-8 text-foreground/70">{doc.summary}</p>}
+          <div className="hazard mt-8 h-2" />
         </header>
 
         <div className="mt-10">
           <DocContent html={doc.html} />
         </div>
 
-        <footer className="mt-16">
-          <nav className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2">
+        <footer className="mt-20">
+          <nav className="grid gap-px border bg-border sm:grid-cols-2">
             {doc.prev ? (
-              <DocLink slug={doc.prev.slug} className="flex flex-col gap-1 bg-background p-4 transition-colors hover:bg-code">
+              <DocLink slug={doc.prev.slug} className="group flex flex-col gap-2 bg-background p-5 transition-colors hover:bg-code">
                 <span className="label flex items-center gap-1.5">
-                  <ArrowLeftIcon className="size-3" /> Previous
+                  <ArrowLeftIcon className="size-3" /> Previous episode
                 </span>
-                <span className="font-medium">{doc.prev.title}</span>
+                <span lang="ja" className="display text-sm text-unit-ink">
+                  {episodeKanji(doc.prev.episode)}
+                </span>
+                <span className="display text-xl leading-tight transition-colors group-hover:text-unit-ink">{doc.prev.title}</span>
               </DocLink>
             ) : (
               <span className="hidden bg-background sm:block" />
             )}
             {doc.next && (
-              <DocLink slug={doc.next.slug} className="flex flex-col items-end gap-1 bg-background p-4 text-right transition-colors hover:bg-code">
-                <span className="label flex items-center gap-1.5">
-                  Next <ArrowRightIcon className="size-3" />
+              <DocLink slug={doc.next.slug} className="group flex flex-col items-end gap-2 bg-background p-5 text-right transition-colors hover:bg-code">
+                <span className="label flex items-center gap-1.5 text-signal-ink">
+                  Next episode <ArrowRightIcon className="size-3" />
                 </span>
-                <span className="font-medium">{doc.next.title}</span>
+                <span lang="ja" className="display text-sm text-unit-ink">
+                  {episodeKanji(doc.next.episode)}
+                </span>
+                <span className="display text-xl leading-tight transition-colors group-hover:text-unit-ink">{doc.next.title}</span>
               </DocLink>
             )}
           </nav>

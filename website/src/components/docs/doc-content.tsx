@@ -13,7 +13,7 @@ export function DocContent({ html }: { html: string }) {
       const target = e.target as Element
       const copy = target.closest<HTMLButtonElement>(".copy-button")
       if (copy) {
-        const code = copy.parentElement?.querySelector("pre")?.textContent ?? ""
+        const code = copy.closest(".code-block")?.querySelector("pre")?.textContent ?? ""
         void navigator.clipboard.writeText(code).then(() => {
           copy.dataset.copied = ""
           setTimeout(() => delete copy.dataset.copied, 1500)

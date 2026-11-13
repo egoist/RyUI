@@ -33,10 +33,12 @@ export interface Doc {
   summary?: string
   /** The sidebar section of the page. */
   section?: string
+  /** Where the page comes in the sidebar, from 0: its episode. */
+  episode?: number
   html: string
   toc: TocItem[]
-  prev?: { slug: string; title: string }
-  next?: { slug: string; title: string }
+  prev?: { slug: string; title: string; episode: number }
+  next?: { slug: string; title: string; episode: number }
   editUrl: string
 }
 

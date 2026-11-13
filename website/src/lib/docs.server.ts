@@ -110,17 +110,21 @@ export async function loadDoc(slug: string): Promise<Doc | undefined> {
   const order = sections.flatMap((s) => s.items).filter((i) => i.slug !== undefined)
   const index = order.findIndex((i) => i.slug === slug)
   const item = order[index]
-  const link = (i: NavItem | undefined) => (i?.slug === undefined ? undefined : { slug: i.slug, title: i.title })
+  const link = (at: number) => {
+    const i = order[at]
+    return i?.slug === undefined ? undefined : { slug: i.slug, title: i.title, episode: at }
+  }
   return {
     slug,
     title: page.title,
     description: item?.description || page.lead,
     summary: item?.description,
     section: sections.find((s) => s.items.includes(item!))?.title,
+    episode: index >= 0 ? index : undefined,
     html: page.html,
     toc: page.toc,
-    prev: index > 0 ? link(order[index - 1]) : undefined,
-    next: index >= 0 ? link(order[index + 1]) : undefined,
+    prev: index > 0 ? link(index - 1) : undefined,
+    next: index >= 0 ? link(index + 1) : undefined,
     editUrl: `${site.repo}/edit/main/docs/${file}`,
   }
 }

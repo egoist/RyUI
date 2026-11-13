@@ -11,6 +11,7 @@
   --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-display: "Shippori Mincho B1", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --font-code: "Ioskeley Mono", "Geist Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
   --color-unit: var(--unit);
   --color-unit-ink: var(--unit-ink);
   --color-signal: var(--signal);
@@ -52,6 +53,28 @@
   font-weight: 800;
   font-display: swap;
   src: url("/fonts/shippori-mincho-b1-800.woff2") format("woff2");
+}
+
+/* Code's face: Ioskeley Mono (Iosevka, set as Berkeley Mono is), cut down to
+   Latin, Cyrillic and the symbols code uses (public/fonts, under the OFL). */
+@font-face {
+  font-family: "Ioskeley Mono";
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/ioskeley-mono-regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Ioskeley Mono";
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+  src: url("/fonts/ioskeley-mono-italic.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Ioskeley Mono";
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/ioskeley-mono-bold.woff2") format("woff2");
 }
 
 /* Ink, as a title card: paper for text, Unit red the one accent, the field's
@@ -209,7 +232,7 @@
   font-weight: var(--shiki-dark-font-weight);
 }
 .shiki {
-  @apply font-mono;
+  @apply font-code;
   font-size: 13px;
   line-height: 1.7;
   font-variant-ligatures: none;
@@ -219,6 +242,7 @@
 /* The pages of the docs, rendered from markdown. */
 .prose-docs {
   @apply text-[15.5px] leading-7 text-foreground/85;
+  counter-reset: section;
 
   & > :first-child {
     margin-top: 0;
@@ -228,8 +252,18 @@
   & h4 {
     @apply text-foreground;
   }
+  /* Each section numbered, as a readout over its heading: § 01. */
   & h2 {
-    @apply mt-16 mb-4 border-t pt-10 display text-[1.75rem] leading-tight;
+    @apply relative mt-16 mb-4 border-t pt-9 display text-[1.9rem] leading-tight;
+    counter-increment: section;
+  }
+  & h2::before {
+    content: "§ " counter(section, decimal-leading-zero);
+    @apply mb-3 block font-mono text-[11px] font-medium tracking-[0.16em] text-signal-ink;
+  }
+  & h2::after {
+    content: "";
+    @apply absolute -top-px left-0 h-0.5 w-12 bg-unit;
   }
   & h3 {
     @apply mt-10 mb-3 text-[1.0625rem] font-semibold tracking-tight;
@@ -281,7 +315,7 @@
     @apply my-12;
   }
   & :not(pre) > code {
-    @apply rounded-[5px] bg-muted px-[0.35em] py-[0.12em] font-mono text-[0.84em] font-normal text-foreground;
+    @apply rounded-[5px] bg-muted px-[0.35em] py-[0.12em] font-code text-[0.88em] font-normal text-foreground;
     overflow-wrap: anywhere;
   }
   & .table-wrap {
@@ -305,12 +339,28 @@
   }
 }
 
-/* A code block of the docs, with its copy button. */
+/* A code block of the docs: a bar with its language and copy button over
+   the code, corner brackets round it, as a monitor's readout. */
 .code-block {
-  @apply relative my-6 overflow-hidden rounded-lg border bg-code;
+  @apply hud my-6 border bg-code;
+  --hud: var(--signal);
 
+  &::before {
+    inset: -1px;
+  }
   & pre {
     @apply overflow-x-auto px-5 py-4;
+  }
+}
+.code-header {
+  @apply flex h-9 items-center justify-between border-b pr-1.5 pl-5;
+}
+.code-lang {
+  @apply flex items-center gap-2 font-mono text-[10.5px] font-medium tracking-[0.16em] text-muted-foreground uppercase;
+
+  &::before {
+    content: "";
+    @apply size-1.5 bg-signal;
   }
 }
 
@@ -377,11 +427,8 @@
 }
 
 .copy-button {
-  @apply absolute top-2 right-2 flex size-7 items-center justify-center rounded-md border bg-card text-muted-foreground opacity-0 transition-all hover:text-foreground focus-visible:opacity-100;
+  @apply flex size-7 items-center justify-center text-muted-foreground transition-colors hover:text-foreground;
 
-  .code-block:hover & {
-    @apply opacity-100;
-  }
   & svg {
     @apply size-3.5;
   }

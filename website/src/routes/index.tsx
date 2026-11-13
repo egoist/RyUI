@@ -152,7 +152,7 @@ function Home() {
                 </span>
                 <span>Every platform</span>
               </p>
-              <pre className="overflow-x-auto px-4 py-5 font-mono text-[13px] leading-[1.7] sm:px-6">
+              <pre className="overflow-x-auto px-4 py-5 font-code text-[13.5px] leading-[1.7] sm:px-6">
                 {runs.map(([command, comment]) => (
                   <span key={command} className="block">
                     <span className="text-signal-ink select-none">$ </span>

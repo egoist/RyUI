@@ -120,11 +120,11 @@ export function Translation() {
           </span>
         </div>
 
-        <div className="px-5 pt-4 font-mono text-[13px] text-muted-foreground md:pb-1">ui.Column(ui.Style{"{"}Gap: 12{"}"},</div>
+        <div className="px-5 pt-4 font-code text-[13.5px] text-muted-foreground md:pb-1">ui.Column(ui.Style{"{"}Gap: 12{"}"},</div>
         <ol>
           {rows.map((row, i) => (
             <li key={row.call} className="grid items-center gap-x-0 gap-y-3 border-b border-dashed px-5 py-4 last:border-b-0 md:grid-cols-[minmax(0,1fr)_7rem_minmax(0,1.1fr)] md:px-0 md:py-3">
-              <code className="min-w-0 truncate pl-0 font-mono text-[13px] md:pl-10">
+              <code className="min-w-0 truncate pl-0 font-code text-[13.5px] md:pl-10">
                 <span className="text-muted-foreground">ui.</span>
                 <span className="text-foreground">{row.call}</span>
                 <span className="text-muted-foreground">(ui.{row.call}Props</span>
@@ -133,7 +133,7 @@ export function Translation() {
               </code>
               <span aria-hidden className="wire relative hidden h-px bg-signal/40 md:block" style={{ ["--delay" as string]: `${i * 0.35}s` }} />
               <span className="flex min-w-0 items-center justify-between gap-4 md:px-5" data-platform={current}>
-                <span className="min-w-0 truncate font-mono text-[12.5px] text-signal-ink">{row.native[current]}</span>
+                <span className="min-w-0 truncate font-code text-[13px] text-signal-ink">{row.native[current]}</span>
                 {/* As tall as the tallest platform's widget, so switching doesn't move the rows. */}
                 <span aria-hidden className="flex h-12 w-44 shrink-0 items-center justify-end">
                   <Mock widget={row.widget} />
@@ -142,7 +142,7 @@ export function Translation() {
             </li>
           ))}
         </ol>
-        <div className="px-5 pt-1 pb-4 font-mono text-[13px] text-muted-foreground">)</div>
+        <div className="px-5 pt-1 pb-4 font-code text-[13.5px] text-muted-foreground">)</div>
       </div>
       <p className="mt-3 text-sm text-muted-foreground">
         The widgets here are sketches of each platform&apos;s, in its colors; on a device they are the platform&apos;s own.

@@ -3,6 +3,7 @@ import { ArrowUpRightIcon } from "lucide-react"
 import { DocLink } from "@/components/docs/doc-link"
 import { useActiveHeading } from "@/components/docs/toc"
 import type { NavSection, TocItem } from "@/lib/docs"
+import { episodeNumber } from "@/lib/episode"
 
 const item = "flex items-center gap-1 rounded-md px-2.5 py-1.5 text-muted-foreground transition-colors hover:text-foreground"
 
@@ -10,16 +11,29 @@ const item = "flex items-center gap-1 rounded-md px-2.5 py-1.5 text-muted-foregr
 export function DocsNav({ sections, page, onNavigate }: { sections: NavSection[]; page?: { slug: string; toc: TocItem[] }; onNavigate?: () => void }) {
   const headings = page?.toc.filter((t) => t.depth === 2) ?? []
   const active = useActiveHeading(headings)
+  // Each page's episode: where it comes among the pages, from 0.
+  const pages = sections.flatMap((s) => s.items).filter((i) => i.slug !== undefined)
   return (
     <nav className="flex flex-col gap-6 text-sm">
       {sections.map((section) => (
         <div key={section.title}>
-          <h4 className="label mb-2 px-2.5">{section.title}</h4>
+          <h4 className="label mb-2 flex items-center gap-2 px-2.5">
+            <span className="size-1 bg-signal" />
+            {section.title}
+          </h4>
           <ul className="flex flex-col gap-px">
             {section.items.map((p) => (
               <li key={p.slug ?? p.href}>
                 {p.slug !== undefined ? (
-                  <DocLink slug={p.slug} onClick={onNavigate} className={item} activeProps={{ className: "bg-muted font-medium text-foreground! shadow-[inset_2px_0_0_var(--unit)]" }}>
+                  <DocLink
+                    slug={p.slug}
+                    onClick={onNavigate}
+                    className={`group ${item}`}
+                    activeProps={{ className: "bg-muted font-medium text-foreground! shadow-[inset_2px_0_0_var(--unit)]" }}
+                  >
+                    <span className="w-5 shrink-0 font-mono text-[10.5px] text-muted-foreground/60 group-data-[status=active]:text-unit-ink">
+                      {episodeNumber(pages.indexOf(p))}
+                    </span>
                     {p.title}
                   </DocLink>
                 ) : (

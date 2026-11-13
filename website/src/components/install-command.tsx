@@ -16,7 +16,7 @@ export function InstallCommand({ command = "go install github.com/egoist/asuka/c
         })
       }
       className={cn(
-        "group inline-flex h-11 max-w-full items-center gap-3 hud border bg-card pr-3 pl-4 font-mono text-[13.5px] transition-colors hover:border-foreground/30",
+        "group inline-flex h-11 max-w-full items-center gap-3 hud border bg-card pr-3 pl-4 font-code text-[14px] transition-colors hover:border-foreground/30",
         className
       )}
     >
