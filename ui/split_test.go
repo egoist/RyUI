@@ -1,6 +1,7 @@
 package ui_test
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/egoist/asuka/ops"
@@ -55,5 +56,53 @@ func TestSplitView(t *testing.T) {
 	r.Flush()
 	if runs != 0 {
 		t.Fatal("the old destination's effect still runs")
+	}
+}
+
+// A destination's badge is sent in the sidebar's Items, which are sent
+// again, alone, as it changes; the split view gone, no more.
+func TestSplitViewBadges(t *testing.T) {
+	unread := signal.New("3")
+	shown := signal.New(true)
+	h, r := mount(t, func() ui.Node {
+		return ui.Show(shown, func() ui.Node {
+			return ui.SplitView(ui.SplitViewProps{Sections: []ui.SidebarSection{
+				{Destinations: []ui.Destination{
+					{Title: ui.Val("Inbox"), Icon: "tray", Badge: unread, Content: func() ui.Node { return ui.StaticText("inbox") }},
+					{Title: ui.Val("Drafts"), Content: func() ui.Node { return ui.StaticText("drafts") }},
+				}},
+				{Title: ui.Val("Mailboxes"), Destinations: []ui.Destination{
+					{Title: ui.Val("Work"), Badge: ui.Val("New"), Content: func() ui.Node { return ui.StaticText("work") }},
+				}},
+			}})
+		})
+	})
+	split := h.OfKind(ops.KindSplit)[0]
+	want := []ops.SidebarSection{
+		{Items: []ops.SidebarItem{{Title: "Inbox", Icon: "tray", Badge: "3"}, {Title: "Drafts"}}},
+		{Title: "Mailboxes", Items: []ops.SidebarItem{{Title: "Work", Badge: "New"}}},
+	}
+	if got := split.Sidebar(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("sidebar %+v", got)
+	}
+	h.Reset()
+	unread.Set("4")
+	r.Flush()
+	if h.Count(ops.OpSetProp) != 1 || h.Count(ops.OpCreate) != 0 || split.Sidebar()[0].Items[0].Badge != "4" {
+		t.Fatalf("a badge changing:\n%s", h.Log())
+	}
+	h.Reset()
+	unread.Set("4")
+	r.Flush()
+	if h.Count(ops.OpSetProp) != 0 {
+		t.Fatal("the same sidebar sent again")
+	}
+	shown.Set(false)
+	r.Flush()
+	h.Reset()
+	unread.Set("5")
+	r.Flush()
+	if h.Count(ops.OpSetProp) != 0 {
+		t.Fatalf("a gone sidebar is still sent:\n%s", h.Log())
 	}
 }

@@ -84,6 +84,16 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 		Send(v, "setIndeterminate:", 0)
 		MsgSetFloat(v, Sel("setMinValue:"), 0)
 		MsgSetFloat(v, Sel("setMaxValue:"), 1)
+	case ops.KindProgressRing:
+		// The spinning style, determinate: AppKit's own circle, filling
+		// clockwise; indeterminate, the spinner. VoiceOver reads it as a
+		// progress indicator, with its percentage.
+		v = initView("NSProgressIndicator")
+		Send(v, "setStyle:", 1) // spinning
+		Send(v, "setIndeterminate:", 0)
+		Send(v, "setControlSize:", 0)
+		MsgSetFloat(v, Sel("setMinValue:"), 0)
+		MsgSetFloat(v, Sel("setMaxValue:"), 1)
 	case ops.KindImage:
 		v = initView("AsukaImageView")
 		Send(v, "setImageScaling:", 3) // proportionally up or down
@@ -99,12 +109,15 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 		Send(v, "setTrackingMode:", 0) // select one
 		Send(v, "setTarget:", uintptr(h.target))
 		Send(v, "setAction:", uintptr(Sel("act:")))
-	case ops.KindWheel:
+	case ops.KindWheel, ops.KindPicker:
 		// macOS picks one of many from a pop-up button.
 		v = MsgInitRect(Send(Class("NSPopUpButton"), "alloc"), Sel("initWithFrame:"), Rect{})
 		Send(v, "setPullsDown:", 0)
 		Send(v, "setTarget:", uintptr(h.target))
 		Send(v, "setAction:", uintptr(Sel("act:")))
+		if kind == ops.KindPicker {
+			n.selected = -1 // none, till the core says
+		}
 	case ops.KindDatePicker:
 		v = initView("NSDatePicker")
 		Send(v, "setDatePickerStyle:", 0)       // text field and stepper
@@ -317,6 +330,18 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 				Send(n.view, "stopAnimation:", 0)
 			}
 		}
+	case ops.KindProgressRing:
+		switch p {
+		case ops.PropProgressRingValue:
+			MsgSetFloat(n.view, Sel("setDoubleValue:"), v.Float)
+		case ops.PropProgressRingIndeterminate:
+			Send(n.view, "setIndeterminate:", Bool(v.Int != 0))
+			if v.Int != 0 {
+				Send(n.view, "startAnimation:", 0)
+			} else {
+				Send(n.view, "stopAnimation:", 0)
+			}
+		}
 	case ops.KindImage:
 		h.setImageProp(n, p, v)
 	case ops.KindSymbol:
@@ -351,6 +376,26 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 		case ops.PropWheelSelected:
 			n.selected = int(v.Int)
 			Send(n.view, "selectItemAtIndex:", uintptr(v.Int))
+		}
+	case ops.KindPicker:
+		switch p {
+		case ops.PropPickerItems:
+			n.items = decodeStrings(v.Bytes)
+			h.fillPicker(n, n.view)
+		case ops.PropPickerSelected:
+			n.selected = int(v.Int)
+			h.selectPicker(n)
+		case ops.PropPickerLabel:
+			n.pickerLabel = v.Str
+			if SendInt(n.view, "numberOfItems") == 0 {
+				h.fillPicker(n, n.view)
+			} else {
+				Send(Send(n.view, "itemAtIndex:", 0), "setTitle:", uintptr(String(v.Str)))
+			}
+			if n.a11yLabel == "" {
+				Send(n.view, "setAccessibilityLabel:", uintptr(String(v.Str)))
+			}
+			Send(n.view, "synchronizeTitleAndSelectedItem")
 		}
 	case ops.KindDatePicker:
 		switch p {
@@ -628,7 +673,9 @@ func (h *Host) textViewChanged(tv ID) {
 func (h *Host) textChanged(field ID) {
 	n := h.byView[field]
 	if n == nil || n.kind != ops.KindTextField {
-		h.searchChanged(field)
+		if !h.alertFieldChanged(field) {
+			h.searchChanged(field)
+		}
 		return
 	}
 	s := GoString(Send(field, "stringValue"))
@@ -644,6 +691,9 @@ func (h *Host) textCommand(control, tv ID, cmd SEL) bool {
 	}
 	n := h.byView[control]
 	if n == nil {
+		if handled, ok := h.alertFieldCommand(control, cmd); ok {
+			return handled
+		}
 		return h.searchCommand(control, cmd)
 	}
 	if cmd == Sel("insertNewline:") {
@@ -661,6 +711,8 @@ func (h *Host) act(sender ID) {
 		return
 	}
 	switch n.kind {
+	case ops.KindSnackbar:
+		h.snackPressed(n, sender)
 	case ops.KindButton:
 		if n.menu != 0 && n.menuTrigger == int32(ops.MenuTriggerTap) {
 			h.popUp(n)
@@ -677,12 +729,42 @@ func (h *Host) act(sender ID) {
 	case ops.KindWheel:
 		n.selected = SendInt(sender, "indexOfSelectedItem")
 		h.emit(n, ops.Event{Kind: ops.EventSelected, Int: int64(n.selected)})
+	case ops.KindPicker:
+		// Its first item is the label's (fillPicker).
+		n.selected = SendInt(sender, "indexOfSelectedItem") - 1
+		h.emit(n, ops.Event{Kind: ops.EventSelected, Int: int64(n.selected)})
 	case ops.KindDatePicker:
 		t := MsgFloat(Send(sender, "dateValue"), Sel("timeIntervalSince1970"))
 		h.emit(n, ops.Event{Kind: ops.EventValueChanged, Float: math.Round(t * 1000)})
 	case ops.KindColorPicker:
 		h.emit(n, ops.Event{Kind: ops.EventColorChanged, Int: int64(h.goColor(Send(sender, "color")))})
 	}
+}
+
+// fillPicker fills a Picker's pop-up button: first a hidden item whose
+// title is its label, shown while none is chosen (AppKit shows the
+// selected item's title, and a hidden item isn't in the menu), then its
+// items.
+func (h *Host) fillPicker(n *node, v ID) {
+	Send(v, "removeAllItems")
+	m := Send(v, "menu")
+	label := Send(m, "addItemWithTitle:action:keyEquivalent:", uintptr(String(n.pickerLabel)), 0, uintptr(String("")))
+	Send(label, "setHidden:", 1)
+	for _, s := range n.items {
+		// addItemWithTitle: drops duplicate titles; menu items don't.
+		Send(m, "addItemWithTitle:action:keyEquivalent:", uintptr(String(s)), 0, uintptr(String("")))
+	}
+	setMenuDirection(m, h.isRTL(n))
+	h.selectPicker(n)
+}
+
+// selectPicker selects a Picker's chosen item, or its label's.
+func (h *Host) selectPicker(n *node) {
+	i := n.selected + 1
+	if n.selected < 0 || n.selected >= len(n.items) {
+		i = 0
+	}
+	Send(n.view, "selectItemAtIndex:", uintptr(i))
 }
 
 // goColor is an NSColor as an RGBA ops.Color.
@@ -810,4 +892,29 @@ func (h *Host) gesture(g ID, e ops.EventKind) {
 		gs.Rotation = -float32(MsgFloat(g, Sel("rotation")))
 	}
 	h.emit(n, ops.Event{Kind: e, G: gs})
+}
+
+// ringRegular is the size AppKit draws a regular spinning
+// NSProgressIndicator at, its determinate circle and its spinner.
+const ringRegular = 32
+
+// ringFrame fits a ProgressRing's NSProgressIndicator to the frame the
+// core gave it: AppKit draws its circle at its control sizes only (16
+// points small, 32 regular; scaled, its drawing breaks apart), so it
+// takes the largest that fits the frame's shorter side, centered in it,
+// and a frame smaller still shrinks the small one.
+func ringFrame(v ID, r Rect) Rect {
+	side := min(r.Size.Width, r.Size.Height)
+	size, at := uintptr(0), float64(ringRegular) // regular
+	if side < ringRegular {
+		size, at = 1, 16 // small
+	}
+	if SendInt(v, "controlSize") != int(size) {
+		Send(v, "setControlSize:", size)
+	}
+	at = min(at, side)
+	return Rect{
+		Origin: Point{X: r.Origin.X + (r.Size.Width-at)/2, Y: r.Origin.Y + (r.Size.Height-at)/2},
+		Size:   Size{Width: at, Height: at},
+	}
 }

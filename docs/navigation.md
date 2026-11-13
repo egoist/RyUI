@@ -105,6 +105,10 @@ the root and to `Push` for the others.
   the web, to continue a background the screen draws itself. iOS's bar is
   clear at the top of a screen already; the desktops' bars keep their
   own.
+- `Toolbar` are buttons in a bar at the bottom of the screen, and
+  `Primary` is the screen's main action (see [Toolbar and primary
+  action](#toolbar-and-primary-action)); `PrimaryExtended` makes it
+  Android's extended floating action button.
 
 ### Bar buttons
 
@@ -126,6 +130,68 @@ On Android, actions go in the top app bar as there's room, and the rest
 go in its overflow menu. A long press on an icon shows its title. On a
 Mac they're toolbar items, on Windows buttons at the header bar's end,
 and on Linux buttons in the header bar.
+
+### Toolbar and primary action
+
+`Toolbar` puts buttons in a bar at the bottom of the screen, as SwiftUI's
+`ToolbarItem(placement: .bottomBar)`, and `Primary` is the screen's main
+action, such as compose or add: Material's floating action button.
+They're `ui.Action`s, as the bar's buttons are: an `Icon` is what the
+button shows and its `Title` what screen readers say, `Disabled` dims
+one, `Children` make one open a menu, and their accessors are followed.
+
+```go
+nav.Push(func() ui.Node { return Message(m) }, ui.ScreenOptions{
+	Title: ui.Val(m.From),
+	Toolbar: []ui.Action{
+		{Title: ui.Val("Delete"), Icon: ui.IconTrash, Role: ui.ActionDestructive, OnPress: remove},
+		{Title: ui.Val("Reply"), Icon: "arrowshape.turn.up.left", Children: []ui.Action{
+			{Title: ui.Val("Reply"), OnPress: reply},
+			{Title: ui.Val("Forward"), OnPress: forward},
+		}},
+		{Title: ui.Val("Mark as unread"), Icon: "envelope", Disabled: unread},
+	},
+	Primary: &ui.Action{Title: ui.Val("Compose"), Icon: "square.and.pencil", OnPress: compose},
+})
+```
+
+- iOS: the navigation controller's toolbar, with flexible space between
+  the buttons, shown while the screen is on top and sliding with pushes
+  and pops. iOS has no floating button, so `Primary` is the toolbar's
+  trailing item, prominent on iOS 26 (Mail's Compose); a screen with only
+  a `Primary` gets the toolbar for it. The screen's safe area takes the
+  toolbar, as UIKit's does. A pushed screen with a `Toolbar` hides its
+  tabs' tab bar (from iOS 18), as a message in Mail does: iOS 26's
+  floating tab bar would lie over the toolbar.
+- Android: Material 3's `BottomAppBar`, the buttons as icon buttons from
+  its start, those that don't fit in its overflow menu. `Primary` is a
+  `FloatingActionButton` at the bottom end of the screen, or docked in
+  the bar (with no shadow) when there's a `Toolbar`. With
+  `PrimaryExtended` it's an `ExtendedFloatingActionButton`, its title
+  beside its icon, which shrinks to the icon as the screen's content
+  scrolls down and extends as it scrolls up (above the bar when there's
+  one). Both are the screen's own, so they go with it in pushes, pops and
+  predictive back; the bar takes the navigation bar under it, and the
+  screen's safe area takes the bar. A pushed screen with a `Toolbar`
+  hides its tabs' navigation bar, as Material has it.
+- macOS: SwiftUI's bottom bar is iOS's, so a Mac shows the `Toolbar`'s
+  buttons in the window's toolbar after the bar's, and `Primary` last,
+  prominent (macOS 26's accent-tinted toolbar item).
+- Windows: a command bar under the screen (Fluent's `CommandBar`): the
+  buttons with their icons and titles from the leading edge, the ones
+  that don't fit in a More options (…) menu, and `Primary` as an accent
+  button at the trailing end.
+- Linux: a `GtkActionBar` at the bottom of the page, in an
+  `AdwToolbarView` (GNOME's action bar): the buttons at its start,
+  `Primary` at its end as a `suggested-action` button with its icon and
+  title.
+- The web: a bar at the bottom of the stack (the buttons that don't fit
+  in a More options menu), and `Primary` a floating button over the
+  bottom trailing corner; an extended one shows its title, folding to its
+  icon as the content scrolls down.
+
+A press reports its action to the screen; `host/fake`'s `PressToolbar`
+and `PressPrimary` do it in tests.
 
 ### Search
 
@@ -266,7 +332,8 @@ It belongs to where the component is built, and goes with it:
   apps) and Android doesn't preview the pop. iOS's back button is the
   screen's `backAction`.
 - **A sheet**: a swipe down, a tap outside, Android's back, Escape on a
-  desktop or in a browser, a sheet window's close button on Windows.
+  desktop or in a browser, a sheet window's close button on Windows. A
+  full-screen sheet has only Android's back and Escape.
   While it has a handler, the sheet can't be swiped away: trying asks
   the handler (iOS's `isModalInPresentation`; a sheet that isn't
   cancelable on Android). When the handler lets it go, the sheet closes
@@ -310,6 +377,30 @@ writes it, and writing it shows another.
 | Linux | under 500 points wide, libadwaita's collapsed split view: the sidebar, then the chosen destination's screens, with a back button to the sidebar | `AdwNavigationSplitView`: a sidebar page of its own, its title in its own header bar, beside the content under the window's |
 | The web | a drawer, opened from the detail's header | a sidebar beside the detail |
 
+A destination's `Badge` is shown at its row's trailing end, as Mail
+counts a mailbox's unread messages (SwiftUI's `badge` on a sidebar row):
+usually a count, though any short text works, and empty or nil for none.
+It's an accessor, so it can follow your data; the row changes in place,
+keeping the sidebar's selection, scroll and focus.
+
+```go
+{Title: ui.Val("Inbox"), Icon: ui.IconMail, Content: inbox,
+	Badge: signal.Func(func() string { return strconv.Itoa(unread.Get()) })},
+```
+
+| | A destination's badge |
+|---|---|
+| iOS | a label accessory at the cell's trailing end, in the secondary color |
+| Android | a counter at the drawer item's end, as Gmail's |
+| macOS | the source list's count, in the secondary color, as Mail's mailboxes |
+| Windows | Fluent's `InfoBadge` at the pane item's trailing end |
+| Linux | a dimmed count at the row's end |
+| The web | a count at the row's end |
+
+Screen readers say it with the row's title, a count as so many items:
+"Inbox, 3 items" (Android: Material's badge words, "3 new
+notifications").
+
 ## Tabs
 
 `ui.Tabs` shows one page at a time, with a tab bar:
@@ -340,6 +431,33 @@ return ui.Tabs(ui.TabsProps{Selected: tab},
 	}},
 )
 ```
+
+A tab's `Badge` is shown on it (SwiftUI's `badge` on a tab item,
+Compose's `BadgedBox` on a `NavigationBarItem`): usually a count, "3",
+though any short text works, and empty or nil for none. It's an
+accessor: as it changes, the tab alone changes.
+
+```go
+ui.Tab{Title: ui.Val("Inbox"), Icon: ui.IconMail, Content: inbox,
+	Badge: signal.Func(func() string {
+		if n := unread.Get(); n > 0 {
+			return strconv.Itoa(n)
+		}
+		return ""
+	})},
+```
+
+| | A tab's badge |
+|---|---|
+| iOS | `UITabBarItem`'s `badgeValue`, the system's red badge |
+| Android | the item's `BadgeDrawable`: a count as its number (999+ past 999), other text as its text |
+| macOS | in the tab's label, "Inbox (3)": `NSTabView` draws its tabs' labels alone |
+| Windows | Fluent's `InfoBadge` at the tab's trailing end |
+| Linux | a count as the page's `badge-number`, beside its icon in the view switcher; other text as `needs-attention`'s dot |
+| The web | a red badge at the tab's icon |
+
+Screen readers say it with the tab's title, a count as so many items:
+"Inbox, 3 items" (the platform's own words on iOS and Android).
 
 Give each tab its own `Stack` so that it has a bar and keeps its own
 history, as the platforms' apps do. Every tab's content is built when
@@ -398,6 +516,45 @@ return ui.Column(nil,
   bottom sheet).
 - `Content` is built when it opens and disposed when it closes, so state
   made in it starts fresh each time.
+
+### Full-screen sheets
+
+`FullScreen` covers the whole screen instead, for a task that takes the
+user's attention until it's done or given up: composing a message,
+signing in, editing a photo (SwiftUI's `fullScreenCover`, Material's
+full-screen dialog). `Detents` and `Grabber` don't apply, and nothing
+outside it can be tapped or swiped away: it closes when `Open` goes
+false, so give it its own Cancel and Done. Android's back, and Escape on
+a desktop or in a browser, dismiss it as they do a sheet, unless
+`ui.OnBack` keeps it (a draft to discard first).
+
+```go
+ui.Sheet(ui.SheetProps{Open: composing, FullScreen: true, Content: func() ui.Node {
+	draft := signal.New("")
+	ui.OnBack(func() bool { return draft.Peek() != "" }) // back doesn't lose a draft
+	return ui.SafeArea(ui.Style{Grow: 1, Padding: ui.All(16), Gap: 12},
+		ui.Row(ui.Style{Align: ui.AlignCenter},
+			ui.Button(ui.ButtonProps{Title: ui.Val("Cancel"), Variant: ui.ButtonPlain, OnPress: func() { composing.Set(false) }}),
+			ui.StaticText("New Message", ui.Style{Grow: 1, TextAlign: ui.TextCenter}),
+			ui.Button(ui.ButtonProps{Title: ui.Val("Send"), Variant: ui.ButtonFilled, OnPress: send})),
+		ui.TextField(ui.TextFieldProps{Value: draft, Multiline: true, Style: ui.Style{Grow: 1}}),
+	)
+}})
+```
+
+Its environment is the screen's own: on a phone its whole size, and the
+safe area of the status bar, the notch, the home indicator or
+navigation bar, and the keyboard, so `SafeArea` keeps its content clear
+of them as it does the root's.
+
+| | What it is |
+|---|---|
+| iOS | the controller presented `.fullScreen`: it slides up over everything, the screen under it gone until it closes |
+| Android | a full-screen `Dialog` in a theme of its own, edge to edge (the status and navigation bars' insets, the cutout, the keyboard), sliding up with Material's emphasized easing; predictive back shrinks it toward the edge it's swiped from, its corners rounding, unless `OnBack` intercepts |
+| macOS | a sheet as big as all of its window's content under the title bar and toolbar, following the window as it resizes, which the user doesn't resize: a Mac has no full-screen modal, and a sheet is how AppKit gives a window over to one task |
+| Windows | a borderless window over all of its window's content (the title bar stays the window's, which is disabled meanwhile), following it as it moves and resizes, its bottom corners rounded as Windows 11 rounds the window's: Fluent's full-size `ContentDialog` |
+| Linux | a floating `AdwDialog` as big as its window, which libadwaita shows over all of it, as it shows a dialog that doesn't fit (on a phone, in a narrow window); it follows the window as it resizes |
+| The web | a modal `<dialog>` over the whole page (focus stays in it; Escape and the browser's back dismiss it), or over a Window panel's content for a sheet declared in one; it slides up |
 
 The user dismisses a sheet by swiping it down, on Android with back
 or a tap outside it, and on a desktop or in a browser with Escape (on
@@ -498,6 +655,107 @@ command links; on Linux it's an alert dialog with no default button; on
 a Mac it's an alert as any other; on the web, a dialog whose buttons are
 a list. An alert closed some other way, such as back or a tap outside it
 on Android, runs no button's `OnPress`.
+
+### Text fields
+
+An alert can ask for text, a name or a password, as SwiftUI's alert
+with a `TextField` and a `SecureField` does. Its `Fields` show under
+the message. Each field's `Text` starts with its value and is written
+as the user types, so an action's `Disabled` can follow it: here,
+Sign In stays disabled until both fields are filled in, and the alert
+updates the button while it's up.
+
+```go
+user, pass := signal.New(""), signal.New("")
+ui.Alert(ui.AlertProps{
+	Title: "Sign in",
+	Fields: []ui.AlertField{
+		{Text: user, Placeholder: "Name", ContentType: ui.ContentUsername},
+		{Text: pass, Placeholder: "Password", Secure: true, ContentType: ui.ContentPassword},
+	},
+	Actions: []ui.Action{
+		{Title: ui.Val("Cancel"), Role: ui.ActionCancel},
+		{Title: ui.Val("Sign In"), OnPress: signIn,
+			Disabled: signal.Func(func() bool { return user.Get() == "" || pass.Get() == "" })},
+	},
+})
+```
+
+A field also takes a `Keyboard` and a `ContentType` for AutoFill, as
+`TextFieldProps` does. `Secure` hides what's typed. The first field has
+the focus, with the keyboard up. Return in a field moves to the next
+one. In the last field it presses the default action, which is the
+first `ui.ActionDefault` one (UIAlertController's `preferredAction`),
+but only while that action is enabled. Writing a field's `Text` while
+the alert is up doesn't change what the field shows. An action sheet
+shows no fields.
+
+| Platform | The fields |
+| --- | --- |
+| iOS | `UIAlertController`'s text fields; the default action is its `preferredAction`, in bold |
+| Android | outlined `TextInputLayout`s in the Material dialog (a password's with its toggle); the IME's action goes to the next field, and from the last presses the default action's button |
+| macOS | `NSTextField`s and an `NSSecureTextField` as the `NSAlert`'s accessory view; Tab moves between them |
+| Windows | a dialog of the host's own, laid out as WinUI's `ContentDialog` (a task dialog can't hold fields): the title, the message, Fluent text boxes, then the buttons with the default one in the accent color; Tab, Enter and Escape work as in a dialog, and Narrator reads each field by its placeholder |
+| Linux | a boxed list of `AdwEntryRow`s and `AdwPasswordEntryRow`s, the `AdwAlertDialog`'s extra child |
+| The web | inputs in the `<dialog>`, labeled by their placeholders, with `type=password`, `inputmode` and `autocomplete` |
+
+## Snackbars
+
+`ui.Snackbar` shows a brief message at the bottom of the window now,
+with an optional action such as Undo, and returns a func that dismisses
+it:
+
+- **iOS**: UIKit has none, so the host draws one as iOS draws its own
+  brief messages: a capsule in the system material (Liquid Glass on iOS
+  26), centered above the tab bar or toolbar and the keyboard, on the
+  topmost presented content. It springs in and out (it fades with Reduce
+  Motion) and a swipe down dismisses it.
+- **Android**: Material's `Snackbar`, which a swipe dismisses, above the
+  screen's bottom navigation bar or floating action button (its anchor)
+  and the keyboard; over a sheet, at the bottom of the sheet.
+- **macOS**: an overlay at the bottom of the window in an
+  `NSVisualEffectView`, with a close button.
+- **Windows**: an overlay at the bottom of the window drawn as Fluent's
+  InfoBar, with a close button.
+- **Linux**: an `AdwToast` in the window's `AdwToastOverlay`.
+- **The web**: an element with role `status` at the bottom of the
+  window (a popover, in the top layer), with a close button; a swipe
+  down dismisses it.
+
+```go
+ui.Snackbar(ui.SnackbarProps{
+	Message: "Note deleted",
+	Action:  &ui.Action{Title: ui.Val("Undo"), OnPress: restore},
+	OnDismiss: func() { deleteForGood() },
+})
+```
+
+`Message` is shown once, so it's a string, as an alert's is. The
+action's `Title` follows the app's language while it shows; its
+`Role`, `Icon`, `Disabled` and `Children` aren't shown. Pressing it
+dismisses the snackbar and runs its `OnPress`. `OnDismiss` runs when it
+goes any other way: its time ran out, the user swiped or closed it,
+another snackbar replaced it, or the func `ui.Snackbar` returned was
+called. So after an Undo, `OnDismiss` doesn't run: it's where what the
+action could undo is done for good.
+
+`Duration` is how long it shows: `ui.SnackbarShort` (the default, about
+four seconds, Material's), `ui.SnackbarLong` (about ten) or
+`ui.SnackbarIndefinite` (until it's dismissed or its action pressed).
+Hosts lengthen it as the platform recommends for accessibility: Android
+by `AccessibilityManager.getRecommendedTimeoutMillis`, which keeps one
+with an action longer while TalkBack is on; on iOS, macOS and Linux,
+which have no recommended timeout, one with an action stays until it's
+dismissed while a screen reader is on, as Material does without one;
+Windows also takes its "Dismiss notifications after" setting. On the
+desktops and the web its time waits while the mouse is over it or the
+keyboard's focus is in it. Screen readers announce it as it shows and
+reach its buttons.
+
+Only one shows at a time: a new snackbar replaces the one showing, as
+Android's does (the old one's `OnDismiss` runs first). On a desktop it
+goes on the window an alert would: that of the view whose event shows
+it, else of the component calling it, else the main window.
 
 ## Menus
 

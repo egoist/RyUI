@@ -936,14 +936,6 @@ export function decodeStrings(b) {
   return out;
 }
 
-/** decodeActions reads a Menu: per item a role, a title and an icon. */
-export function decodeActions(b) {
-  if (!b || b.length < 4) return [];
-  const r = new Reader(b);
-  const n = r.u32();
-  const out = [];
-  for (let i = 0; i < n && !r.atEnd; i++) out.push({ role: r.u8(), title: r.string(), icon: r.string() });
-  return out;
-}
+export { decodeActions } from "./actions.js";
 
 export { Kind, Prop, Event, Command, Events, Type };

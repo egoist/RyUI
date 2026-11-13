@@ -2,6 +2,7 @@
   "ok": "OK",
   "search": "検索",
   "back": "戻る",
+  "moreOptions": "その他のオプション",
   "decrease": "減らす",
   "increase": "増やす",
   "about": "{app}について",
@@ -37,5 +38,7 @@
   "updateCheckError": "アップデートの確認中にエラーが起きました。後でもう一度お試しください。",
   "updateInstallError": "アップデートのインストール中にエラーが起きました。後でもう一度お試しください。",
   "updateUnavailable": "アップデートを利用できません",
-  "updateUnavailableMessage": "{app} はインストールされている場所では自動でアップデートできません。パッケージマネージャまたはアプリストアからインストールした場合は、そちらでアップデートしてください。"
+  "updateUnavailableMessage": "{app} はインストールされている場所では自動でアップデートできません。パッケージマネージャまたはアプリストアからインストールした場合は、そちらでアップデートしてください。",
+  "badgeCount": "{count, plural, other {# 件の項目}}",
+  "close": "閉じる"
 }

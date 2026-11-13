@@ -3,8 +3,6 @@
 package windows
 
 import (
-	"encoding/binary"
-
 	. "github.com/egoist/asuka/internal/windows"
 	"github.com/egoist/asuka/ops"
 )
@@ -24,9 +22,9 @@ type splitPane struct {
 }
 
 type paneRow struct {
-	title, icon string
-	header      bool
-	index       int // a destination's, among them all
+	title, icon, badge string
+	header             bool
+	index              int // a destination's, among them all
 }
 
 func (h *Host) makeSplit(n *node) {
@@ -56,32 +54,14 @@ func (h *Host) setSplitProp(n *node, p ops.PropID, v *ops.Value) {
 }
 
 func decodePane(b []byte) []paneRow {
-	le := binary.LittleEndian
-	i := 0
-	u32 := func() int {
-		if i+4 > len(b) {
-			i = len(b)
-			return 0
-		}
-		v := int(le.Uint32(b[i:]))
-		i += 4
-		return v
-	}
-	str := func() string {
-		n := min(u32(), len(b)-i)
-		s := string(b[i : i+n])
-		i += n
-		return s
-	}
 	var rows []paneRow
 	flat := 0
-	for range u32() {
-		if t := str(); t != "" {
-			rows = append(rows, paneRow{title: t, header: true})
+	for _, sec := range ops.DecodeSidebar(b) {
+		if sec.Title != "" {
+			rows = append(rows, paneRow{title: sec.Title, header: true})
 		}
-		for range u32() {
-			t := str()
-			rows = append(rows, paneRow{title: t, icon: str(), index: flat})
+		for _, it := range sec.Items {
+			rows = append(rows, paneRow{title: it.Title, icon: it.Icon, badge: it.Badge, index: flat})
 			flat++
 		}
 	}
@@ -162,9 +142,11 @@ func paneMessage(h *Host, b *node, m uint32, wp, lp uintptr) (uintptr, bool) {
 		switch wp {
 		case VK_UP:
 			h.choosePane(b, pane.selected-1)
+			h.announceChoice(b)
 			return 0, true
 		case VK_DOWN:
 			h.choosePane(b, pane.selected+1)
+			h.announceChoice(b)
 			return 0, true
 		}
 	}
@@ -225,6 +207,9 @@ func (h *Host) paintPane(b *node, dc uintptr, g Graphics, r Rect) {
 				}
 				g.FillRoundRect(p.accent.argb(), x, float32(tr.Top+tr.Bottom)/2-ph/2, pw, ph, pw/2)
 			}
+			if row.badge != "" {
+				h.paintBadge(b, 0, g, h.paneBadge(b, row, tr), row.badge)
+			}
 		}
 		return
 	}
@@ -266,11 +251,29 @@ func (h *Host) paintPane(b *node, dc uintptr, g Graphics, r Rect) {
 		}
 		x += h.px(b, 16+12)
 		old := SelectObject(dc, body)
-		lr := Rect{Left: x, Top: tr.Top, Right: tr.Right - h.px(b, 8), Bottom: tr.Bottom}
+		end := tr.Right - h.px(b, 8)
+		if bw, _ := h.badgeSize(b, row.badge); bw > 0 {
+			end -= bw + h.px(b, 8)
+		}
+		lr := Rect{Left: x, Top: tr.Top, Right: end, Bottom: tr.Bottom}
 		if rtl {
 			lr = flipIn(lr, tr)
 		}
 		DrawText(dc, UTF16Units(row.title), &lr, DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX|DT_END_ELLIPSIS|startSide(rtl))
 		SelectObject(dc, old)
+		if row.badge != "" {
+			h.paintBadge(b, dc, 0, h.paneBadge(b, row, tr), row.badge)
+		}
 	}
+}
+
+// paneBadge is the place of an item's badge: at its trailing end, as
+// WinUI's NavigationViewItem puts an InfoBadge.
+func (h *Host) paneBadge(b *node, row paneRow, tr Rect) Rect {
+	rtl := h.isRTL(b)
+	end := tr.Right - h.px(b, 12)
+	if rtl {
+		end = tr.Left + h.px(b, 12)
+	}
+	return h.badgeAt(b, row.badge, end, tr.Top, tr.Bottom, rtl)
 }

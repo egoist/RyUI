@@ -70,9 +70,15 @@ const (
 	KindShader Kind = 34
 	// KindWindow: a desktop window of the app's (macOS, Windows, Linux; on the web a window in the page; mobile hosts can't show one), with one child, its content: Present opens it (shown, unless its Config says hidden), Destroy closes it; the user closing it is reported with Dismissed, or with CloseRequest while the core listens for that, and the window stays. Sized by the host (and the user), which reports its Environment, and its WindowState while the core listens; WindowAction commands control it.
 	KindWindow Kind = 35
+	// KindPicker: one of many options, showing the chosen one and choosing from a menu (SwiftUI's Picker in its menu style: a UIButton whose menu changes its selection, with the pop-up indicator; Material 3's exposed dropdown menu, a TextInputLayout over a MaterialAutoCompleteTextView; NSPopUpButton; a drop-down list combo box drawn as Fluent's on Windows; GtkDropDown; a <select> on the web); measured. The user's choice is reported with Selected.
+	KindPicker Kind = 36
+	// KindProgressRing: a circular progress indicator (SwiftUI's circular ProgressView with a value, drawn in UIKit; Material's CircularProgressIndicator; NSProgressIndicator's determinate circle; Fluent's ProgressRing, drawn; drawn in GNOME's style on Linux; an SVG ring on the web); measured, the platform's size unless the style sizes it. Color is its fill (the accent by default). Screen readers read it as a progress indicator, with its percentage.
+	KindProgressRing Kind = 37
+	// KindSnackbar: a brief message at the bottom of the window, with an optional action (Material's Snackbar; AdwToast): Present shows it, Destroy dismisses it, animated. Its action reports Action; timing out or the user's swipe reports Dismissed. The core destroys it after either.
+	KindSnackbar Kind = 38
 )
 
-var kindNames = [...]string{"", "View", "Text", "Button", "TextField", "Toggle", "Slider", "Scroll", "List", "Activity", "Stack", "Screen", "Tabs", "Sheet", "Alert", "Image", "Native", "RichText", "Selectable", "Symbol", "Segmented", "Wheel", "Stepper", "ColorPicker", "Progress", "Shape", "Video", "WebView", "DatePicker", "PageControl", "Popover", "Accessory", "Canvas", "Split", "Shader", "Window"}
+var kindNames = [...]string{"", "View", "Text", "Button", "TextField", "Toggle", "Slider", "Scroll", "List", "Activity", "Stack", "Screen", "Tabs", "Sheet", "Alert", "Image", "Native", "RichText", "Selectable", "Symbol", "Segmented", "Wheel", "Stepper", "ColorPicker", "Progress", "Shape", "Video", "WebView", "DatePicker", "PageControl", "Popover", "Accessory", "Canvas", "Split", "Shader", "Window", "Picker", "ProgressRing", "Snackbar"}
 
 func (k Kind) String() string {
 	if int(k) < len(kindNames) && k > 0 {
@@ -108,7 +114,7 @@ const (
 	// PropLineLimit: 0: no limit.
 	PropLineLimit PropID = 19
 	PropDisabled  PropID = 20
-	// PropMenu: a menu: u32 count, then per item u8 role (AlertButtonRole), a u32-length title and a u32-length icon (Symbol.Name; empty: none); Action events carry the item's index.
+	// PropMenu: a menu (ops/actions.go: ops.AppendActions, ops.DecodeActions): u32 count, then per item u8 role (AlertButtonRole), a u32-length title, a u32-length icon (Symbol.Name; empty: none) and u8 MenuFlags (2 disabled, 4 checked, 16 submenu, 32 inline: with submenu, a section shown in place, between dividers, under its title if it has one), then with flag 16 its items, a menu. Items are numbered depth first, a submenu or section before its own items; Action events carry the chosen item's number.
 	PropMenu        PropID = 21
 	PropMenuTrigger PropID = 22
 	// PropTransform: f32 translate x, y (points), scale x, y, rotation (degrees, clockwise), around the view's center; layout doesn't see it.
@@ -123,7 +129,7 @@ const (
 	PropMaterial PropID = 27
 	// PropFontFamily: a font file's name in the app's assets/fonts (Inter-Bold.ttf: Inter-Bold), a family of them (Inter: Inter-Regular, Inter-Bold...), a generic family (serif, monospace, rounded) or a system family; scaled as the text style is. Under asuka dev, a font file's URL, which the host loads, then sends FontLoaded.
 	PropFontFamily PropID = 28
-	// PropSwipeActions: a List cell's swipe actions, encoded as Menu (iOS: its trailing actions; Android: a full swipe runs the first); Action events on the cell carry the index.
+	// PropSwipeActions: a List cell's swipe actions, encoded as Menu, flat: a swipe has no submenus, and shows each action enabled (iOS: its trailing actions; Android: a full swipe runs the first); Action events on the cell carry the index.
 	PropSwipeActions PropID = 29
 	// PropLayoutDirection: the view lays itself out and aligns its text in this direction, whatever the app's (ui.WithDirection): sent to each view in the subtree, as a platform's view doesn't take it from its parent. Frames are always physical.
 	PropLayoutDirection PropID = 30
@@ -239,7 +245,7 @@ const (
 // Screen props.
 const (
 	PropScreenTitle PropID = 64
-	// PropScreenActions: bar buttons, encoded as Menu; Action events carry the index.
+	// PropScreenActions: bar buttons, encoded as Menu: a disabled one is dimmed, one with a submenu opens it as a menu (SwiftUI's Menu in a toolbar); Action events carry the item's number.
 	PropScreenActions PropID = 65
 	// PropScreenBackGesture: false: no interactive back.
 	PropScreenBackGesture PropID = 66
@@ -257,6 +263,14 @@ const (
 	PropScreenLargeTitle PropID = 72
 	// PropScreenBarColor: Android: the top app bar's color while this screen is on top, so it can continue the screen's own background (0: the surface). iOS's bar is clear at the top of a screen and blurs what's under it, so it has no need of one.
 	PropScreenBarColor PropID = 73
+	// PropScreenToolbar: buttons in a bar at the bottom of the screen, encoded as Menu (iOS: the navigation controller's toolbar; Android: Material's BottomAppBar, with an overflow; macOS: the window's toolbar; Windows: a command bar; Linux: a GtkActionBar in an AdwToolbarView; the web: a bar). Action events carry ScreenToolbarActions (1<<32) + the item's number.
+	PropScreenToolbar PropID = 74
+	// PropScreenPrimary: the screen's main action (compose, add), encoded as Menu with one item (its children open a menu): Android's FloatingActionButton (docked in the BottomAppBar with a Toolbar), iOS's toolbar's trailing, prominent item, a prominent toolbar item on macOS, an accent button on Windows, a suggested-action button on Linux, a floating button on the web. Action events carry ScreenPrimaryAction (2<<32) + the item's number (0: the action).
+	PropScreenPrimary PropID = 75
+	// PropScreenPrimaryExtended: Android: Primary is an ExtendedFloatingActionButton, its title beside its icon, shrinking to the icon as the screen's content scrolls down and extending again as it scrolls up.
+	PropScreenPrimaryExtended PropID = 76
+	// PropScreenBadge: a tab's badge (empty: none): usually a count, any short text; on its tab item (UITabBarItem's badgeValue, Material's BadgeDrawable), read with the tab's title by screen readers.
+	PropScreenBadge PropID = 77
 )
 
 // Tabs props.
@@ -271,17 +285,21 @@ const (
 	PropSheetGrabber PropID = 65
 	// PropSheetWindow: the window it's declared in: the root's or a Window node's ID. A desktop host presents it on that window, and a key goes on from it to that window's root; a phone's one window takes it and ignores it.
 	PropSheetWindow PropID = 66
+	// PropSheetFullScreen: it covers the whole screen (iOS's full-screen cover, Material's full-screen dialog; a desktop's sheet over all of its window's content, the web's dialog over the viewport), sent before Present: Detents and Grabber don't apply, and no swipe or tap outside dismisses it.
+	PropSheetFullScreen PropID = 67
 )
 
 // Alert props.
 const (
 	PropAlertTitle   PropID = 64
 	PropAlertMessage PropID = 65
-	// PropAlertButtons: encoded as Menu.
+	// PropAlertButtons: encoded as Menu, flat; a disabled button is dimmed and can't be pressed, and the prop is set again while the alert shows when that changes.
 	PropAlertButtons PropID = 66
 	PropAlertStyle   PropID = 67
 	// PropAlertWindow: the window it's declared in: the root's or a Window node's ID. A desktop host presents it on that window; a phone's one window takes it and ignores it.
 	PropAlertWindow PropID = 68
+	// PropAlertFields: an alert's text fields (ops/alert.go: ops.AppendAlertFields, ops.DecodeAlertFields): u32 count, then per field a string placeholder, a string text (its starting text), u8 AlertFieldFlags (1 secure) and u8 Keyboard, then a string content type (AutoFill's hint, as TextField's ContentType); set before Present, never for an action sheet. The first field has the focus, the keyboard up; return in the last presses the default button (the first whose role is Default) if it's enabled. Typing is reported with FieldChanged.
+	PropAlertFields PropID = 69
 )
 
 // Image props.
@@ -446,7 +464,7 @@ const (
 
 // Split props.
 const (
-	// PropSplitItems: the sidebar's destinations: u32 section count, per section a string title (empty: none) and u32 item count, per item a string title and a string icon (Symbol.Name; empty: none).
+	// PropSplitItems: the sidebar's destinations (AppendSidebar): u32 section count, per section a string title (empty: none) and u32 item count, per item a string title, a string icon (Symbol.Name; empty: none) and a string badge (empty: none). Set again when one changes: a host updates its rows in place when the sections' and items' counts stay.
 	PropSplitItems PropID = 64
 	// PropSplitSelected: the selected destination, its index among all the sections' items (-1: none).
 	PropSplitSelected PropID = 65
@@ -477,9 +495,38 @@ const (
 	PropWindowFile PropID = 68
 )
 
+// Picker props.
+const (
+	// PropPickerItems: u32 count, then each item's u32-length title.
+	PropPickerItems PropID = 64
+	// PropPickerSelected: the chosen item's index (-1, or out of range: none, and the Label shows).
+	PropPickerSelected PropID = 65
+	// PropPickerLabel: what it picks: Material's floating label on Android; shown while none is chosen, and read by screen readers elsewhere.
+	PropPickerLabel PropID = 66
+)
+
+// ProgressRing props.
+const (
+	// PropProgressRingValue: done, from 0 to 1: the ring fills clockwise from the top, animating as it changes.
+	PropProgressRingValue PropID = 64
+	// PropProgressRingIndeterminate: under way, how far unknown: the platform's indeterminate circular indicator (UIActivityIndicatorView, NSProgressIndicator's spinner, AdwSpinner; Material's and Fluent's turning arc).
+	PropProgressRingIndeterminate PropID = 65
+)
+
+// Snackbar props.
+const (
+	PropSnackbarMessage PropID = 64
+	// PropSnackbarAction: its button's title (Undo); empty: none. Pressing it reports Action (0) and dismisses it.
+	PropSnackbarAction PropID = 65
+	// PropSnackbarDuration: how long it shows: the host lengthens it as the platform recommends for accessibility (Android's AccessibilityManager.getRecommendedTimeoutMillis, a screen reader on).
+	PropSnackbarDuration PropID = 66
+	// PropSnackbarWindow: the window it's shown on: the root's or a Window node's ID. A desktop host shows it at the bottom of that window; a phone's one window takes it and ignores it.
+	PropSnackbarWindow PropID = 67
+)
+
 var commonProps = [...]propInfo{{}, {"Background", TColor}, {"CornerRadius", TFloat}, {"BorderWidth", TFloat}, {"BorderColor", TColor}, {"Opacity", TFloat}, {"Hidden", TBool}, {"Clip", TBool}, {"A11yLabel", TString}, {"A11yHint", TString}, {"A11yRole", TEnum}, {"A11yActions", TBytes}, {"A11yAdjustable", TBool}, {"A11yHidden", TBool}, {"Color", TColor}, {"TextStyle", TEnum}, {"FontSize", TFloat}, {"FontWeight", TEnum}, {"TextAlign", TEnum}, {"LineLimit", TInt}, {"Disabled", TBool}, {"Menu", TBytes}, {"MenuTrigger", TEnum}, {"Transform", TBytes}, {"Shadow", TBytes}, {"Gradient", TBytes}, {"Transition", TBytes}, {"Material", TEnum}, {"FontFamily", TString}, {"SwipeActions", TBytes}, {"LayoutDirection", TEnum}, {"ContentInset", TEdges}, {"LeadingSwipeActions", TBytes}, {"Selected", TBool}, {"Match", TString}, {"InterceptBack", TBool}, {"Tooltip", TString}, {"Keys", TBytes}}
 
-var kindProps = [...][]propInfo{nil, {{"DropAccept", TBytes}, {"DragItems", TBytes}}, {{"Text", TString}}, {{"Title", TString}, {"Variant", TEnum}, {"Icon", TString}}, {{"Value", TString}, {"Placeholder", TString}, {"Keyboard", TEnum}, {"ReturnKey", TEnum}, {"Secure", TBool}, {"Autocapitalize", TEnum}, {"Autocorrect", TEnum}, {"ContentType", TString}, {"Multiline", TBool}, {"Plain", TBool}, {"Selection", TBytes}, {"Rich", TBytes}, {"PasteTypes", TBytes}, {"Accessory", TInt}}, {{"On", TBool}, {"Checkbox", TBool}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}}, {{"Horizontal", TBool}, {"Refreshable", TBool}, {"Refreshing", TBool}, {"Paging", TBool}}, {{"Refreshable", TBool}, {"Refreshing", TBool}, {"Columns", TInt}, {"Gap", TFloat}, {"Appearance", TEnum}, {"Inset", TFloat}, {"Anchor", TEnum}, {"Selecting", TBool}}, {{"Animating", TBool}}, {}, {{"Title", TString}, {"Actions", TBytes}, {"BackGesture", TBool}, {"Icon", TString}, {"Search", TString}, {"SearchText", TString}, {"SearchButton", TBool}, {"ZoomFrom", TString}, {"LargeTitle", TBool}, {"BarColor", TColor}}, {{"Selected", TInt}}, {{"Detents", TInt}, {"Grabber", TBool}, {"Window", TInt}}, {{"Title", TString}, {"Message", TString}, {"Buttons", TBytes}, {"Style", TEnum}, {"Window", TInt}}, {{"Source", TString}, {"Mode", TEnum}, {"Placeholder", TString}}, {{"Type", TString}, {"Prop", TBytes}}, {{"Content", TBytes}, {"Inlines", TBytes}}, {}, {{"Name", TString}}, {{"Segments", TBytes}, {"Selected", TInt}}, {{"Items", TBytes}, {"Selected", TInt}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}, {"Step", TFloat}}, {{"Value", TColor}, {"Alpha", TBool}, {"Title", TString}}, {{"Value", TFloat}, {"Indeterminate", TBool}}, {{"Path", TBytes}, {"Fill", TColor}, {"Stroke", TColor}, {"LineWidth", TFloat}, {"LineCap", TEnum}, {"LineJoin", TEnum}, {"TrimStart", TFloat}, {"TrimEnd", TFloat}, {"Dash", TBytes}}, {{"Source", TString}, {"Mode", TEnum}, {"HideControls", TBool}, {"AutoPlay", TBool}, {"Loop", TBool}, {"Muted", TBool}}, {{"URL", TString}, {"HTML", TString}, {"Preload", TString}, {"UserAgent", TString}, {"Block", TBytes}, {"Requests", TBool}}, {{"Value", TInt}, {"Mode", TEnum}, {"Min", TInt}, {"Max", TInt}, {"Inline", TBool}}, {{"Count", TInt}, {"Page", TInt}}, {{"Anchor", TInt}, {"Width", TFloat}, {"Height", TFloat}}, {{"Width", TFloat}, {"Height", TFloat}}, {{"Commands", TBytes}}, {{"Items", TBytes}, {"Selected", TInt}, {"Title", TString}}, {{"Code", TBytes}, {"Uniforms", TBytes}, {"Animated", TBool}}, {{"Title", TString}, {"Config", TBytes}, {"Flyout", TBytes}, {"Edited", TBool}, {"File", TString}}}
+var kindProps = [...][]propInfo{nil, {{"DropAccept", TBytes}, {"DragItems", TBytes}}, {{"Text", TString}}, {{"Title", TString}, {"Variant", TEnum}, {"Icon", TString}}, {{"Value", TString}, {"Placeholder", TString}, {"Keyboard", TEnum}, {"ReturnKey", TEnum}, {"Secure", TBool}, {"Autocapitalize", TEnum}, {"Autocorrect", TEnum}, {"ContentType", TString}, {"Multiline", TBool}, {"Plain", TBool}, {"Selection", TBytes}, {"Rich", TBytes}, {"PasteTypes", TBytes}, {"Accessory", TInt}}, {{"On", TBool}, {"Checkbox", TBool}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}}, {{"Horizontal", TBool}, {"Refreshable", TBool}, {"Refreshing", TBool}, {"Paging", TBool}}, {{"Refreshable", TBool}, {"Refreshing", TBool}, {"Columns", TInt}, {"Gap", TFloat}, {"Appearance", TEnum}, {"Inset", TFloat}, {"Anchor", TEnum}, {"Selecting", TBool}}, {{"Animating", TBool}}, {}, {{"Title", TString}, {"Actions", TBytes}, {"BackGesture", TBool}, {"Icon", TString}, {"Search", TString}, {"SearchText", TString}, {"SearchButton", TBool}, {"ZoomFrom", TString}, {"LargeTitle", TBool}, {"BarColor", TColor}, {"Toolbar", TBytes}, {"Primary", TBytes}, {"PrimaryExtended", TBool}, {"Badge", TString}}, {{"Selected", TInt}}, {{"Detents", TInt}, {"Grabber", TBool}, {"Window", TInt}, {"FullScreen", TBool}}, {{"Title", TString}, {"Message", TString}, {"Buttons", TBytes}, {"Style", TEnum}, {"Window", TInt}, {"Fields", TBytes}}, {{"Source", TString}, {"Mode", TEnum}, {"Placeholder", TString}}, {{"Type", TString}, {"Prop", TBytes}}, {{"Content", TBytes}, {"Inlines", TBytes}}, {}, {{"Name", TString}}, {{"Segments", TBytes}, {"Selected", TInt}}, {{"Items", TBytes}, {"Selected", TInt}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}, {"Step", TFloat}}, {{"Value", TColor}, {"Alpha", TBool}, {"Title", TString}}, {{"Value", TFloat}, {"Indeterminate", TBool}}, {{"Path", TBytes}, {"Fill", TColor}, {"Stroke", TColor}, {"LineWidth", TFloat}, {"LineCap", TEnum}, {"LineJoin", TEnum}, {"TrimStart", TFloat}, {"TrimEnd", TFloat}, {"Dash", TBytes}}, {{"Source", TString}, {"Mode", TEnum}, {"HideControls", TBool}, {"AutoPlay", TBool}, {"Loop", TBool}, {"Muted", TBool}}, {{"URL", TString}, {"HTML", TString}, {"Preload", TString}, {"UserAgent", TString}, {"Block", TBytes}, {"Requests", TBool}}, {{"Value", TInt}, {"Mode", TEnum}, {"Min", TInt}, {"Max", TInt}, {"Inline", TBool}}, {{"Count", TInt}, {"Page", TInt}}, {{"Anchor", TInt}, {"Width", TFloat}, {"Height", TFloat}}, {{"Width", TFloat}, {"Height", TFloat}}, {{"Commands", TBytes}}, {{"Items", TBytes}, {"Selected", TInt}, {"Title", TString}}, {{"Code", TBytes}, {"Uniforms", TBytes}, {"Animated", TBool}}, {{"Title", TString}, {"Config", TBytes}, {"Flyout", TBytes}, {"Edited", TBool}, {"File", TString}}, {{"Items", TBytes}, {"Selected", TInt}, {"Label", TString}}, {{"Value", TFloat}, {"Indeterminate", TBool}}, {{"Message", TString}, {"Action", TString}, {"Duration", TEnum}, {"Window", TInt}}}
 
 // Events.
 const (
@@ -583,11 +630,13 @@ const (
 	EventCloseRequest EventKind = 55
 	// EventKey: a key of the view's Keys went down, or repeated, while the keyboard's focus was in it: its index.
 	EventKey EventKind = 56
+	// EventFieldChanged: the user changed the text of an Alert's field (ops.AppendFieldChanged, ops.DecodeFieldChanged): u32 the field's index, then a string, its text.
+	EventFieldChanged EventKind = 57
 )
 
-var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh", "Pan", "Pinch", "Rotate", "Swipe", "Loaded", "Failed", "Native", "Link", "A11yAction", "Adjust", "Ended", "Navigated", "Message", "IncomingURL", "FontLoaded", "Frame", "Result", "ColorChanged", "WebState", "Request", "Download", "NewWindow", "Shared", "Pressed", "Hover", "DragOver", "Drop", "SelectionChanged", "RichChanged", "Formats", "Pasted", "RowSelected", "RowSelectBegin", "RowInset", "Dragging", "Back", "Paged", "WindowState", "CloseRequest", "Key"}
+var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh", "Pan", "Pinch", "Rotate", "Swipe", "Loaded", "Failed", "Native", "Link", "A11yAction", "Adjust", "Ended", "Navigated", "Message", "IncomingURL", "FontLoaded", "Frame", "Result", "ColorChanged", "WebState", "Request", "Download", "NewWindow", "Shared", "Pressed", "Hover", "DragOver", "Drop", "SelectionChanged", "RichChanged", "Formats", "Pasted", "RowSelected", "RowSelectBegin", "RowInset", "Dragging", "Back", "Paged", "WindowState", "CloseRequest", "Key", "FieldChanged"}
 
-var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone, PGesture, PGesture, PGesture, PInt, PPoint, PString, PBytes, PString, PInt, PInt, PNone, PString, PString, PString, PString, PFloat, PBytes, PInt, PBytes, PString, PBytes, PString, PBytes, PBool, PBool, PGesture, PBytes, PBytes, PBytes, PBytes, PBytes, PBool, PNone, PPoint, PInt, PNone, PInt, PBytes, PNone, PInt}
+var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone, PGesture, PGesture, PGesture, PInt, PPoint, PString, PBytes, PString, PInt, PInt, PNone, PString, PString, PString, PString, PFloat, PBytes, PInt, PBytes, PString, PBytes, PString, PBytes, PBool, PBool, PGesture, PBytes, PBytes, PBytes, PBytes, PBytes, PBool, PNone, PPoint, PInt, PNone, PInt, PBytes, PNone, PInt, PBytes}
 
 func (e EventKind) String() string {
 	if int(e) < len(eventNames) && e > 0 {
@@ -1044,4 +1093,12 @@ type TitleBar int32
 const (
 	TitleBarDefault TitleBar = iota
 	TitleBarHidden
+)
+
+type SnackbarDuration int32
+
+const (
+	SnackbarDurationShort SnackbarDuration = iota
+	SnackbarDurationLong
+	SnackbarDurationIndefinite
 )

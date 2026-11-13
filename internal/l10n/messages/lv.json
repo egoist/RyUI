@@ -2,6 +2,7 @@
   "ok": "Labi",
   "search": "Meklēt",
   "back": "Atpakaļ",
+  "moreOptions": "Vairāk opciju",
   "decrease": "Samazināt",
   "increase": "Palielināt",
   "about": "Par {app}",
@@ -37,5 +38,7 @@
   "updateCheckError": "Pārbaudot atjauninājumus, radās kļūda. Lūdzu, vēlāk mēģiniet vēlreiz.",
   "updateInstallError": "Instalējot atjauninājumu, radās kļūda. Lūdzu, vēlāk mēģiniet vēlreiz.",
   "updateUnavailable": "Atjauninājumi nav pieejami",
-  "updateUnavailableMessage": "{app} nevar atjaunināt sevi tur, kur tā ir instalēta. Ja to instalēja pakotņu pārvaldnieks vai lietotņu veikals, atjauniniet to tur."
+  "updateUnavailableMessage": "{app} nevar atjaunināt sevi tur, kur tā ir instalēta. Ja to instalēja pakotņu pārvaldnieks vai lietotņu veikals, atjauniniet to tur.",
+  "badgeCount": "{count, plural, zero {# vienumu} one {# vienums} other {# vienumi}}",
+  "close": "Aizvērt"
 }

@@ -5,6 +5,7 @@ import android.view.ContextThemeWrapper
 import android.view.View
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
+import com.google.android.material.progressindicator.CircularProgressIndicator
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import java.nio.ByteBuffer
 
@@ -114,6 +115,60 @@ fun AsukaRuntime.makeProgress() = LinearProgressIndicator(themed).apply {
 }
 
 fun AsukaRuntime.setProgress(p: LinearProgressIndicator, v: Double) {
+    p.setProgressCompat(Math.round(v * 1000).toInt(), p.isAttachedToWindow)
+}
+
+/**
+ * A ProgressRing: Material's circular indicator, in thousandths, or
+ * indeterminate. Its own size is Material 3's medium one (40dp, a 4dp
+ * track, 4dp around); sized by its style, it takes the M3 size that fits
+ * (extra small, small, medium: their track thicknesses, insets and gaps)
+ * and fills its frame, its track 4dp wide beyond. TalkBack reads it as
+ * a ProgressBar, with its percentage.
+ */
+@SuppressLint("ViewConstructor")
+class AsukaProgressRing(ctx: android.content.Context) : CircularProgressIndicator(ctx) {
+    init {
+        max = 1000
+        isIndeterminate = false
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        if (MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.EXACTLY && MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.EXACTLY) {
+            fit(minOf(MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.getSize(heightMeasureSpec)))
+        }
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+    }
+
+    /** Material 3's size for a ring side px across. */
+    private fun fit(side: Int) {
+        val d = resources.displayMetrics.density
+        val (thickness, inset, gap) = when {
+            side < Math.round(36 * d) -> Triple(2.5f, 2f, 2f) // extra small: 20dp in 24dp
+            side < Math.round(48 * d) -> Triple(3f, 4f, 4f) // small: 28dp in 36dp
+            else -> Triple(4f, 4f, 4f) // medium: 40dp in 48dp, and larger
+        }
+        val i = Math.round(inset * d)
+        val size = maxOf(side - 2 * i, 1)
+        if (indicatorInset != i) indicatorInset = i
+        val t = minOf(Math.round(thickness * d), size / 2)
+        // The size first: Material keeps the track within half of it.
+        if (indicatorSize != size) {
+            if (trackThickness > size / 2) trackThickness = t
+            indicatorSize = size
+        }
+        if (trackThickness != t) trackThickness = t
+        val g = Math.round(gap * d)
+        if (indicatorTrackGapSize != g) indicatorTrackGapSize = g
+    }
+
+    companion object {
+        /** Its own size, in dp: Material 3's medium indicator and its inset. */
+        const val SIZE = 48f
+    }
+}
+
+fun AsukaRuntime.setProgressRing(p: AsukaProgressRing, v: Double) {
     p.setProgressCompat(Math.round(v * 1000).toInt(), p.isAttachedToWindow)
 }
 

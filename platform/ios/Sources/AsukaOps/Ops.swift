@@ -38,6 +38,9 @@ public enum AsukaKind: UInt16 {
     case split = 33
     case shader = 34
     case window = 35
+    case picker = 36
+    case progressRing = 37
+    case snackbar = 38
 
     public var name: String {
         switch self {
@@ -76,6 +79,9 @@ public enum AsukaKind: UInt16 {
         case .split: return "Split"
         case .shader: return "Shader"
         case .window: return "Window"
+        case .picker: return "Picker"
+        case .progressRing: return "ProgressRing"
+        case .snackbar: return "Snackbar"
         }
     }
 }
@@ -197,6 +203,10 @@ public enum AsukaProp {
         public static let zoomFrom: UInt16 = 71
         public static let largeTitle: UInt16 = 72
         public static let barColor: UInt16 = 73
+        public static let toolbar: UInt16 = 74
+        public static let primary: UInt16 = 75
+        public static let primaryExtended: UInt16 = 76
+        public static let badge: UInt16 = 77
     }
 
     public enum Tabs {
@@ -207,6 +217,7 @@ public enum AsukaProp {
         public static let detents: UInt16 = 64
         public static let grabber: UInt16 = 65
         public static let window: UInt16 = 66
+        public static let fullScreen: UInt16 = 67
     }
 
     public enum Alert {
@@ -215,6 +226,7 @@ public enum AsukaProp {
         public static let buttons: UInt16 = 66
         public static let style: UInt16 = 67
         public static let window: UInt16 = 68
+        public static let fields: UInt16 = 69
     }
 
     public enum Image {
@@ -342,6 +354,24 @@ public enum AsukaProp {
         public static let edited: UInt16 = 67
         public static let file: UInt16 = 68
     }
+
+    public enum Picker {
+        public static let items: UInt16 = 64
+        public static let selected: UInt16 = 65
+        public static let label: UInt16 = 66
+    }
+
+    public enum ProgressRing {
+        public static let value: UInt16 = 64
+        public static let indeterminate: UInt16 = 65
+    }
+
+    public enum Snackbar {
+        public static let message: UInt16 = 64
+        public static let action: UInt16 = 65
+        public static let duration: UInt16 = 66
+        public static let window: UInt16 = 67
+    }
 }
 
 public enum AsukaEventKind: UInt16 {
@@ -401,6 +431,7 @@ public enum AsukaEventKind: UInt16 {
     case windowState = 54
     case closeRequest = 55
     case key = 56
+    case fieldChanged = 57
 }
 
 public enum AsukaCommand: UInt16 {
@@ -737,6 +768,12 @@ public enum AsukaTitleBar: Int32 {
     case hidden = 1
 }
 
+public enum AsukaSnackbarDuration: Int32 {
+    case short = 0
+    case long = 1
+    case indefinite = 2
+}
+
 /// A prop value. Bytes are valid only during the handler call.
 public enum AsukaValue {
     case bool(Bool)
@@ -1065,5 +1102,8 @@ public enum AsukaEvents {
     }
     public static func key(_ id: UInt32, _ v: Int64) -> [UInt8] {
         var w = AsukaWriter(); w.header(id, 56); w.u64(UInt64(bitPattern: v)); return w.bytes
+    }
+    public static func fieldChanged(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
+        var w = AsukaWriter(); w.header(id, 57); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
     }
 }

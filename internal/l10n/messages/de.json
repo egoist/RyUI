@@ -2,6 +2,7 @@
   "ok": "OK",
   "search": "Suchen",
   "back": "Zurück",
+  "moreOptions": "Weitere Optionen",
   "decrease": "Verringern",
   "increase": "Erhöhen",
   "about": "Über „{app}“",
@@ -37,5 +38,7 @@
   "updateCheckError": "Beim Suchen nach Updates ist ein Fehler aufgetreten. Bitte versuchen Sie es später erneut.",
   "updateInstallError": "Beim Installieren des Updates ist ein Fehler aufgetreten. Bitte versuchen Sie es später erneut.",
   "updateUnavailable": "Updates nicht verfügbar",
-  "updateUnavailableMessage": "{app} kann sich an seinem Installationsort nicht selbst aktualisieren. Wurde es mit einer Paketverwaltung oder aus einem App-Store installiert, aktualisieren Sie es dort."
+  "updateUnavailableMessage": "{app} kann sich an seinem Installationsort nicht selbst aktualisieren. Wurde es mit einer Paketverwaltung oder aus einem App-Store installiert, aktualisieren Sie es dort.",
+  "badgeCount": "{count, plural, one {# Element} other {# Elemente}}",
+  "close": "Schließen"
 }

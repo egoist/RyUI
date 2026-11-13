@@ -2,6 +2,9 @@ package ui_test
 
 import (
 	"fmt"
+	"reflect"
+	"slices"
+	"strconv"
 	"testing"
 
 	"github.com/egoist/asuka/colors"
@@ -145,6 +148,53 @@ func TestTabs(t *testing.T) {
 	}
 }
 
+// A tab's badge is its page's Badge, sent again alone as it changes,
+// and no more once the tabs are gone.
+func TestTabBadges(t *testing.T) {
+	unread := signal.New(3)
+	shown := signal.New(true)
+	h, r := mount(t, func() ui.Node {
+		return ui.Show(shown, func() ui.Node {
+			return ui.Tabs(ui.TabsProps{},
+				ui.Tab{Title: ui.Val("Inbox"), Badge: signal.Func(func() string {
+					if n := unread.Get(); n > 0 {
+						return strconv.Itoa(n)
+					}
+					return ""
+				}), Content: func() ui.Node { return ui.StaticText("inbox") }},
+				ui.Tab{Title: ui.Val("Archive"), Content: func() ui.Node { return ui.StaticText("archive") }},
+				ui.Tab{Title: ui.Val("Settings"), Badge: ui.Val("New"), Content: func() ui.Node { return ui.StaticText("settings") }},
+			)
+		})
+	})
+	tabs := h.OfKind(ops.KindTabs)[0]
+	if got := tabs.Badges(); !slices.Equal(got, []string{"3", "", "New"}) {
+		t.Fatalf("badges %q", got)
+	}
+	if _, sent := tabs.Children[1].Props[ops.PropScreenBadge]; sent {
+		t.Fatal("a tab without a badge was sent one")
+	}
+	h.Reset()
+	unread.Set(12)
+	r.Flush()
+	if h.Count(ops.OpSetProp) != 1 || h.Count(ops.OpCreate) != 0 || tabs.Badges()[0] != "12" {
+		t.Fatalf("a badge changing:\n%s", h.Log())
+	}
+	unread.Set(0)
+	r.Flush()
+	if tabs.Badges()[0] != "" {
+		t.Fatal("the badge stayed")
+	}
+	shown.Set(false)
+	r.Flush()
+	h.Reset()
+	unread.Set(5)
+	r.Flush()
+	if h.Count(ops.OpSetProp) != 0 {
+		t.Fatalf("a gone tab's badge is still sent:\n%s", h.Log())
+	}
+}
+
 func TestSheet(t *testing.T) {
 	open := signal.New(false)
 	runs, dismissed := 0, 0
@@ -187,6 +237,135 @@ func TestSheet(t *testing.T) {
 	r.Flush()
 	if runs != 1 { // the new content's effect ran once; the old one's never
 		t.Fatalf("runs %d", runs)
+	}
+}
+
+// A full-screen sheet: FullScreen goes before Present, without Detents
+// or Grabber; its environment is the screen's own, so its safe area pads
+// its content under the status bar and above the home indicator; going
+// back dismisses it unless OnBack keeps it; closing disposes its content.
+func TestSheetFullScreen(t *testing.T) {
+	open := signal.New(false)
+	keep := false
+	var env ui.Environment
+	runs, cleanups, dismissed := 0, 0, 0
+	h, r := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{},
+			ui.StaticText("main"),
+			ui.Sheet(ui.SheetProps{Open: open, FullScreen: true, Detents: ui.DetentMedium, Grabber: true,
+				OnDismiss: func() { dismissed++ },
+				Content: func() ui.Node {
+					e := ui.UseEnvironment()
+					signal.Effect(func() {
+						env = e.Get()
+						runs++
+						signal.OnCleanup(func() { cleanups++ })
+					})
+					ui.OnBack(func() bool { return keep })
+					return ui.SafeArea(ui.Style{Padding: ui.All(16)}, ui.StaticText("covers the screen"))
+				}}),
+		)
+	})
+	h.Ops = nil
+	open.Set(true)
+	r.Flush()
+	ps := h.Presented()
+	if len(ps) != 1 || ps[0].Kind != ops.KindSheet || !ps[0].Bool(ops.PropSheetFullScreen) {
+		t.Fatalf("presented %v", ps)
+	}
+	s := ps[0]
+	if _, ok := s.Props[ops.PropSheetDetents]; ok {
+		t.Fatal("a full-screen sheet's Detents sent")
+	}
+	if _, ok := s.Props[ops.PropSheetGrabber]; ok {
+		t.Fatal("a full-screen sheet's Grabber sent")
+	}
+	full, present := -1, -1
+	for i, op := range h.Ops {
+		if op.ID != s.ID {
+			continue
+		}
+		if op.Code == ops.OpSetProp && op.Prop == ops.PropSheetFullScreen {
+			full = i
+		}
+		if op.Code == ops.OpCommand && op.Cmd == ops.CmdPresent {
+			present = i
+		}
+	}
+	if full < 0 || present < 0 || full > present {
+		t.Fatalf("FullScreen at op %d, Present at %d\n%s", full, present, h.Log())
+	}
+
+	// The host reports the screen's own environment: its whole size and
+	// safe area.
+	h.ReportSheet(s)
+	r.Flush()
+	if env.Width != 390 || env.Height != 844 || env.SafeTop != 47 || env.SafeBottom != 34 {
+		t.Fatalf("its environment %+v", env)
+	}
+	text := h.One(ops.KindText, "covers the screen")
+	if text.Frame[1] != 47+16 {
+		t.Fatalf("the content at y %v, not under the status bar", text.Frame[1])
+	}
+	area := text.Parent
+	if area.Frame[2] != 390 || area.Frame[3] != 844 {
+		t.Fatalf("the content %v, not the screen's size", area.Frame)
+	}
+	// Rotated: the host reports it again.
+	h.Env = ui.Environment{Width: 844, Height: 390, SafeLeft: 47, SafeRight: 47, SafeBottom: 21, Scale: 3, FontScale: 1}
+	h.ReportSheet(s)
+	r.Flush()
+	if env.Width != 844 || env.SafeLeft != 47 || env.SafeTop != 0 || text.Frame[0] != 47+16 {
+		t.Fatalf("rotated: %+v, the text at %v", env, text.Frame)
+	}
+
+	// Going back (Android's back, Escape): OnBack keeps it, or it's dismissed.
+	keep = true
+	h.Dismiss(s)
+	r.Flush()
+	if !open.Peek() || dismissed != 0 || len(h.OfKind(ops.KindSheet)) != 1 {
+		t.Fatal("an intercepted back closed it")
+	}
+	keep = false
+	h.Dismiss(s)
+	r.Flush()
+	if open.Peek() || dismissed != 1 || len(h.OfKind(ops.KindSheet)) != 0 {
+		t.Fatalf("back: open %v, dismissed %d", open.Peek(), dismissed)
+	}
+	if cleanups != runs {
+		t.Fatalf("its content's effects: %d runs, %d cleaned up", runs, cleanups)
+	}
+
+	// Closed from code: gone, its content disposed, nothing left listening.
+	open.Set(true)
+	r.Flush()
+	h.ReportSheet(h.Presented()[0])
+	open.Set(false)
+	r.Flush()
+	if len(h.Presented()) != 0 || len(h.OfKind(ops.KindSheet)) != 0 || cleanups != runs {
+		t.Fatalf("after closing: %d presented, %d runs, %d cleanups", len(h.Presented()), runs, cleanups)
+	}
+}
+
+// A sheet that isn't full screen is told the height under the status
+// bar, and no safe area at its top.
+func TestSheetEnvironment(t *testing.T) {
+	var env ui.Environment
+	h, r := mount(t, func() ui.Node {
+		return ui.Sheet(ui.SheetProps{Open: signal.New(true), Content: func() ui.Node {
+			e := ui.UseEnvironment()
+			signal.Effect(func() { env = e.Get() })
+			return ui.StaticText("sheet")
+		}})
+	})
+	s := h.Presented()[0]
+	if s.Bool(ops.PropSheetFullScreen) {
+		t.Fatal("FullScreen sent for a sheet")
+	}
+	h.ReportSheet(s)
+	r.Flush()
+	if env.Height != 844-47-10 || env.SafeTop != 0 || env.SafeBottom != 34 {
+		t.Fatalf("its environment %+v", env)
 	}
 }
 
@@ -393,5 +572,329 @@ func TestZoomFrom(t *testing.T) {
 	screens := h.OfKind(ops.KindScreen)
 	if len(screens) != 2 || screens[1].String(ops.PropScreenZoomFrom) != "photo-1" || screens[0].String(ops.PropScreenZoomFrom) != "" {
 		t.Fatalf("\n%s", h.Log())
+	}
+}
+
+// A menu's items can be disabled and checked, open submenus and group
+// sections; they're numbered depth first, and follow their signals.
+func TestRichMenu(t *testing.T) {
+	var picked []string
+	sort := signal.New("name")
+	locked := signal.New(true)
+	pick := func(s string) func() { return func() { picked = append(picked, s) } }
+	h, r := mount(t, func() ui.Node {
+		return ui.Button(ui.ButtonProps{Title: ui.Val("More"), Menu: []ui.Action{
+			ui.MenuSection(ui.Val("Sort by"),
+				ui.Action{Title: ui.Val("Name"), Checked: signal.Func(func() bool { return sort.Get() == "name" }), OnPress: func() { sort.Set("name") }},
+				ui.Action{Title: ui.Val("Date"), Checked: signal.Func(func() bool { return sort.Get() == "date" }), OnPress: func() { sort.Set("date") }},
+			),
+			ui.Submenu(ui.Val("Move to"), ui.IconFolder,
+				ui.Action{Title: ui.Val("Inbox"), OnPress: pick("inbox")},
+				ui.Submenu(ui.Val("More"), "", ui.Action{Title: ui.Val("Archive"), OnPress: pick("archive")}),
+			),
+			{Title: ui.Val("Delete"), Role: ui.ActionDestructive, Disabled: locked, OnPress: pick("delete")},
+		}})
+	})
+	b := h.One(ops.KindButton, "More")
+	want := []ops.ActionItem{
+		{Index: 0, Title: "Sort by", Flags: ops.MenuSubmenu | ops.MenuInline, Items: []ops.ActionItem{
+			{Index: 1, Title: "Name", Flags: ops.MenuChecked},
+			{Index: 2, Title: "Date"},
+		}},
+		{Index: 3, Title: "Move to", Icon: "folder", Flags: ops.MenuSubmenu, Items: []ops.ActionItem{
+			{Index: 4, Title: "Inbox"},
+			{Index: 5, Title: "More", Flags: ops.MenuSubmenu, Items: []ops.ActionItem{{Index: 6, Title: "Archive"}}},
+		}},
+		{Index: 7, Title: "Delete", Role: ops.AlertButtonRoleDestructive, Flags: ops.MenuDisabled},
+	}
+	if got := b.ActionItems(ops.PropMenu); !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %+v", got)
+	}
+	// Numbered depth first: a nested item runs; a section, a submenu and a
+	// disabled item don't.
+	h.Choose(b, b.ActionNamed(ops.PropMenu, "Archive"))
+	h.Choose(b, 4)
+	h.Choose(b, 3)
+	h.Choose(b, 0)
+	h.Choose(b, 7)
+	if fmt.Sprint(picked) != "[archive inbox]" {
+		t.Fatal(picked)
+	}
+	// The checkmark follows the choice: one prop set.
+	h.Reset()
+	h.Choose(b, 2)
+	items := b.ActionItems(ops.PropMenu)
+	if sort.Peek() != "date" || h.Count(ops.OpSetProp) != 1 || items[0].Items[0].Is(ops.MenuChecked) || !items[0].Items[1].Is(ops.MenuChecked) {
+		t.Fatalf("\n%s", h.Log())
+	}
+	// Enabled, Delete runs.
+	locked.Set(false)
+	r.Flush()
+	h.Choose(b, 7)
+	if fmt.Sprint(picked) != "[archive inbox delete]" {
+		t.Fatal(picked)
+	}
+	// What changes nothing the menu shows sends nothing.
+	h.Reset()
+	locked.Set(false)
+	sort.Set("date")
+	r.Flush()
+	if h.Count(ops.OpSetProp) != 0 {
+		t.Fatalf("\n%s", h.Log())
+	}
+}
+
+// A live menu's re-encoding that comes out the same allocates nothing.
+func TestMenuUpdateAllocs(t *testing.T) {
+	if signal.Debug {
+		t.Skip("asuka_debug's main-thread checks allocate")
+	}
+	n := signal.New(0)
+	odd := signal.Func(func() bool { return n.Get()%2 == 1 })
+	h, r := mount(t, func() ui.Node {
+		return ui.Menu(ui.MenuProps{Actions: []ui.Action{
+			{Title: ui.Val("Even"), Checked: signal.Func(func() bool { return !odd.Get() })},
+			ui.Submenu(ui.Val("More"), "", ui.Action{Title: ui.Val("Odd"), Checked: odd}),
+		}}, ui.StaticText("x"))
+	})
+	i := 0
+	allocs := testing.AllocsPerRun(200, func() {
+		i += 2 // the same parity: the same menu
+		h.Reset()
+		n.Set(i)
+		r.Flush()
+	})
+	if allocs != 0 || h.Count(ops.OpSetProp) != 0 {
+		t.Fatalf("%v allocations, %d props", allocs, h.Count(ops.OpSetProp))
+	}
+}
+
+// An alert's buttons follow Disabled while it shows, and stop following
+// once it's gone; it shows no children.
+func TestAlertDisabledButton(t *testing.T) {
+	name := signal.New("")
+	saved := 0
+	h, r := mount(t, func() ui.Node {
+		return ui.Button(ui.ButtonProps{Title: ui.Val("Save"), OnPress: func() {
+			ui.Alert(ui.AlertProps{Title: "Save?", Actions: []ui.Action{
+				{Title: ui.Val("Cancel"), Role: ui.ActionCancel},
+				{Title: ui.Val("Save"), Disabled: signal.Func(func() bool { return name.Get() == "" }), OnPress: func() { saved++ },
+					Children: []ui.Action{{Title: ui.Val("not shown")}}},
+			}})
+		}})
+	})
+	h.Tap(h.One(ops.KindButton, "Save"))
+	a := h.Presented()[0]
+	items := a.ActionItems(ops.PropAlertButtons)
+	if len(items) != 2 || !items[1].Is(ops.MenuDisabled) || items[1].Items != nil {
+		t.Fatalf("%+v", items)
+	}
+	name.Set("notes.txt")
+	r.Flush()
+	if a.ActionItems(ops.PropAlertButtons)[1].Is(ops.MenuDisabled) {
+		t.Fatal("still disabled")
+	}
+	h.Choose(a, 1)
+	if saved != 1 || len(h.OfKind(ops.KindAlert)) != 0 {
+		t.Fatal(saved)
+	}
+	// Gone, it follows nothing.
+	h.Reset()
+	name.Set("")
+	r.Flush()
+	if h.Count(ops.OpSetProp) != 0 {
+		t.Fatalf("\n%s", h.Log())
+	}
+}
+
+// An alert's fields start with their Text, typing writes it, and the
+// buttons' Disabled follows it while the alert shows; return in the last
+// field presses the default button once it's enabled. Gone, nothing
+// follows the fields.
+func TestAlertFields(t *testing.T) {
+	name := signal.New("Untitled")
+	pass := signal.New("")
+	var created []string
+	h, r := mount(t, func() ui.Node {
+		return ui.Button(ui.ButtonProps{Title: ui.Val("New"), OnPress: func() {
+			ui.Alert(ui.AlertProps{Title: "New folder", Fields: []ui.AlertField{
+				{Text: name, Placeholder: "Name", ContentType: ui.ContentName},
+				{Text: pass, Placeholder: "Password", Secure: true, Keyboard: ui.KeyboardEmail},
+			}, Actions: []ui.Action{
+				{Title: ui.Val("Cancel"), Role: ui.ActionCancel},
+				{Title: ui.Val("Create"), Disabled: signal.Func(func() bool { return name.Get() == "" || pass.Get() == "" }),
+					OnPress: func() { created = append(created, name.Peek()+":"+pass.Peek()) }},
+			}})
+		}})
+	})
+	h.Tap(h.One(ops.KindButton, "New"))
+	a := h.Presented()[0]
+	fs := a.AlertFields()
+	want := []ops.AlertField{
+		{Placeholder: "Name", Text: "Untitled", ContentType: "name"},
+		{Placeholder: "Password", Flags: ops.AlertFieldSecure, Keyboard: ops.KeyboardEmail},
+	}
+	if !reflect.DeepEqual(fs, want) || !a.Listens[ops.EventFieldChanged] {
+		t.Fatalf("%+v", fs)
+	}
+	if !a.ActionItems(ops.PropAlertButtons)[1].Is(ops.MenuDisabled) {
+		t.Fatal("Create enabled with no password")
+	}
+	if h.ReturnInAlert(a) {
+		t.Fatal("return pressed a disabled button")
+	}
+	// Typing writes Text, and the button follows: one Buttons prop per
+	// change of Disabled, none for typing that doesn't change it.
+	h.Reset()
+	h.TypeInAlert(a, 1, "s")
+	if pass.Peek() != "s" || a.ActionItems(ops.PropAlertButtons)[1].Is(ops.MenuDisabled) || h.Count(ops.OpSetProp) != 1 {
+		t.Fatalf("%q\n%s", pass.Peek(), h.Log())
+	}
+	h.Reset()
+	h.TypeInAlert(a, 1, "secret")
+	if pass.Peek() != "secret" || h.Count(ops.OpSetProp) != 0 {
+		t.Fatalf("%q\n%s", pass.Peek(), h.Log())
+	}
+	h.TypeInAlert(a, 0, "")
+	if name.Peek() != "" || !a.ActionItems(ops.PropAlertButtons)[1].Is(ops.MenuDisabled) {
+		t.Fatal("Create enabled with no name")
+	}
+	h.TypeInAlert(a, 0, "Notes")
+	if a.AlertFields()[0].Text != "Notes" {
+		t.Fatal(a.AlertFields())
+	}
+	if !h.ReturnInAlert(a) || len(created) != 1 || created[0] != "Notes:secret" || len(h.OfKind(ops.KindAlert)) != 0 {
+		t.Fatal(created)
+	}
+	// Gone, it follows nothing.
+	h.Reset()
+	name.Set("")
+	pass.Set("")
+	r.Flush()
+	if h.Count(ops.OpSetProp) != 0 {
+		t.Fatalf("\n%s", h.Log())
+	}
+}
+
+// An action sheet shows no fields; an alert without fields sends none,
+// nor listens for FieldChanged.
+func TestAlertFieldsNotSent(t *testing.T) {
+	text := signal.New("x")
+	h, _ := mount(t, func() ui.Node {
+		return ui.Button(ui.ButtonProps{Title: ui.Val("Go"), OnPress: func() {
+			ui.Alert(ui.AlertProps{Title: "Sheet", ActionSheet: true, Fields: []ui.AlertField{{Text: text}}})
+			ui.Alert(ui.AlertProps{Title: "Plain"})
+		}})
+	})
+	h.Tap(h.One(ops.KindButton, "Go"))
+	for _, a := range h.Presented() {
+		if _, ok := a.Props[ops.PropAlertFields]; ok || a.Listens[ops.EventFieldChanged] {
+			t.Fatalf("%s: fields sent", a.String(ops.PropAlertTitle))
+		}
+	}
+}
+
+// A screen's bar button can open a menu, and be disabled.
+func TestScreenMenuButton(t *testing.T) {
+	var picked []string
+	h, _ := mount(t, func() ui.Node {
+		return ui.Stack(func() ui.Node { return ui.StaticText("home") }, ui.ScreenOptions{Title: ui.Val("Home"), Actions: []ui.Action{
+			{Title: ui.Val("Add"), Icon: ui.IconPlus, Children: []ui.Action{
+				{Title: ui.Val("Note"), OnPress: func() { picked = append(picked, "note") }},
+				{Title: ui.Val("Folder"), OnPress: func() { picked = append(picked, "folder") }},
+			}},
+			{Title: ui.Val("Edit"), Disabled: ui.Val(true), OnPress: func() { picked = append(picked, "edit") }},
+		}})
+	})
+	s := h.OfKind(ops.KindScreen)[0]
+	items := s.ActionItems(ops.PropScreenActions)
+	if len(items) != 2 || len(items[0].Items) != 2 || items[1].Index != 3 || !items[1].Is(ops.MenuDisabled) {
+		t.Fatalf("%+v", items)
+	}
+	h.Choose(s, 2)
+	h.Choose(s, 3)
+	if fmt.Sprint(picked) != "[folder]" {
+		t.Fatal(picked)
+	}
+}
+
+// A screen's Toolbar and Primary are sent with their own props, follow
+// their accessors, and report their presses apart from the bar buttons'.
+func TestScreenToolbarAndPrimary(t *testing.T) {
+	var picked []string
+	pick := func(s string) func() { return func() { picked = append(picked, s) } }
+	empty := signal.New(true)
+	title := signal.New("Compose")
+	var nav *ui.Navigator
+	h, r := mount(t, func() ui.Node {
+		return ui.Stack(func() ui.Node {
+			nav = ui.UseNavigator()
+			return ui.StaticText("inbox")
+		}, ui.ScreenOptions{
+			Title:   ui.Val("Inbox"),
+			Actions: []ui.Action{{Title: ui.Val("Edit"), OnPress: pick("edit")}},
+			Toolbar: []ui.Action{
+				{Title: ui.Val("Filter"), Icon: "line.3.horizontal.decrease", OnPress: pick("filter")},
+				{Title: ui.Val("Sort"), Icon: "arrow.up.arrow.down", Children: []ui.Action{
+					{Title: ui.Val("Date"), OnPress: pick("date")},
+					{Title: ui.Val("Sender"), OnPress: pick("sender")},
+				}},
+				{Title: ui.Val("Delete all"), Disabled: empty, OnPress: pick("delete")},
+			},
+			Primary:         &ui.Action{Title: title, Icon: ui.IconPlus, OnPress: pick("compose")},
+			PrimaryExtended: true,
+		})
+	})
+	s := h.OfKind(ops.KindScreen)[0]
+	items := s.ToolbarItems()
+	if len(items) != 3 || items[1].Title != "Sort" || len(items[1].Items) != 2 || items[2].Index != 4 || !items[2].Is(ops.MenuDisabled) {
+		t.Fatalf("toolbar %+v", items)
+	}
+	if p := s.PrimaryItem(); p == nil || p.Title != "Compose" || p.Icon != string(ui.IconPlus) || !s.Bool(ops.PropScreenPrimaryExtended) {
+		t.Fatalf("primary %+v", p)
+	}
+	// Each press reaches its own action: the bar's, the toolbar's (one
+	// in a menu, and not a disabled one), the primary's.
+	h.Choose(s, 0)
+	for _, title := range []string{"Filter", "Sender", "Delete all", "Sort"} {
+		if !h.PressToolbar(s, title) {
+			t.Fatalf("no %s", title)
+		}
+	}
+	h.PressPrimary(s)
+	if fmt.Sprint(picked) != "[edit filter sender compose]" {
+		t.Fatal(picked)
+	}
+	// They follow their accessors: one prop each, nothing else.
+	h.Reset()
+	empty.Set(false)
+	title.Set("New message")
+	r.Flush()
+	if h.Count(ops.OpSetProp) != 2 || s.ToolbarItems()[2].Is(ops.MenuDisabled) || s.PrimaryItem().Title != "New message" {
+		t.Fatalf("%d props\n%s", h.Count(ops.OpSetProp), h.Log())
+	}
+	h.PressToolbar(s, "Delete all")
+	if picked[len(picked)-1] != "delete" {
+		t.Fatal(picked)
+	}
+
+	// A pushed screen's live toolbar goes with it.
+	disabled := signal.New(false)
+	nav.Push(func() ui.Node { return ui.StaticText("detail") }, ui.ScreenOptions{
+		Toolbar: []ui.Action{{Title: ui.Val("Reply"), Disabled: disabled}},
+		Primary: &ui.Action{Title: ui.Val("Forward"), Children: []ui.Action{{Title: ui.Val("As attachment"), OnPress: pick("attach")}}},
+	})
+	r.Flush()
+	detail := h.OfKind(ops.KindScreen)[1]
+	if detail.Bool(ops.PropScreenPrimaryExtended) || !h.PressPrimaryItem(detail, "As attachment") || picked[len(picked)-1] != "attach" {
+		t.Fatalf("detail primary %+v, %v", detail.PrimaryItem(), picked)
+	}
+	nav.Pop()
+	r.Flush()
+	h.Reset()
+	disabled.Set(true)
+	r.Flush()
+	if h.Count(ops.OpSetProp) != 0 {
+		t.Fatalf("a popped screen's toolbar was sent:\n%s", h.Log())
 	}
 }

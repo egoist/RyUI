@@ -2,6 +2,7 @@
   "ok": "OK",
   "search": "Keresés",
   "back": "Vissza",
+  "moreOptions": "További lehetőségek",
   "decrease": "Csökkentés",
   "increase": "Növelés",
   "about": "A(z) {app} névjegye",
@@ -37,5 +38,7 @@
   "updateCheckError": "Hiba történt a frissítések keresése közben. Próbálja újra később.",
   "updateInstallError": "Hiba történt a frissítés telepítése közben. Próbálja újra később.",
   "updateUnavailable": "A frissítések nem érhetők el",
-  "updateUnavailableMessage": "A(z) {app} nem tudja frissíteni magát a telepítési helyén. Ha csomagkezelő vagy alkalmazásbolt telepítette, ott frissítse."
+  "updateUnavailableMessage": "A(z) {app} nem tudja frissíteni magát a telepítési helyén. Ha csomagkezelő vagy alkalmazásbolt telepítette, ott frissítse.",
+  "badgeCount": "{count, plural, one {# elem} other {# elem}}",
+  "close": "Bezárás"
 }

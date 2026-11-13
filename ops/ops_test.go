@@ -122,12 +122,167 @@ func encodeEvents(evs []Event) []byte {
 	return out
 }
 
+// goldenActions is a menu with every kind of item. The Swift, Kotlin and
+// JavaScript hosts' tests decode testdata/actions.bin and must print
+// testdata/actions.txt: per item, depth first, its number, depth, role,
+// flags, title and icon, tab separated.
+func goldenActions() []ActionItem {
+	return []ActionItem{
+		{Title: "Copy", Icon: "doc.on.doc"},
+		{Title: "Sort by", Flags: MenuInline, Items: []ActionItem{
+			{Title: "Name", Flags: MenuChecked},
+			{Title: "Date", Flags: MenuDisabled | MenuChecked},
+		}},
+		{Flags: MenuInline, Items: []ActionItem{{Title: "Untitled section"}}},
+		{Title: "Move to", Icon: "folder", Items: []ActionItem{
+			{Title: "Inbox"},
+			{Title: "Nested", Items: []ActionItem{{Title: "Archive"}}},
+		}},
+		{Title: "Löschen…", Role: AlertButtonRoleDestructive, Flags: MenuDisabled},
+		{Title: "Cancel", Role: AlertButtonRoleCancel},
+	}
+}
+
+func dumpActions(items []ActionItem) string {
+	var b strings.Builder
+	var walk func(items []ActionItem, depth int)
+	walk = func(items []ActionItem, depth int) {
+		for _, it := range items {
+			fmt.Fprintf(&b, "%d\t%d\t%d\t%d\t%s\t%s\n", it.Index, depth, it.Role, it.Flags, it.Title, it.Icon)
+			walk(it.Items, depth+1)
+		}
+	}
+	walk(items, 0)
+	return b.String()
+}
+
+// goldenSidebar is a sidebar with an untitled and a titled section, and
+// items with and without icons and badges. The Swift, Kotlin and
+// JavaScript hosts' tests decode testdata/sidebar.bin and must print
+// testdata/sidebar.txt: per section a line "#", its title; per item its
+// section, title, icon and badge, tab separated.
+func goldenSidebar() []SidebarSection {
+	return []SidebarSection{
+		{Items: []SidebarItem{
+			{Title: "Inbox", Icon: "tray", Badge: "3"},
+			{Title: "Drafts", Icon: "doc"},
+		}},
+		{Title: "Mailboxes", Items: []SidebarItem{
+			{Title: "Archiv", Badge: "Neu"},
+			{Title: "Gelöscht", Icon: "trash", Badge: "1234"},
+		}},
+		{Title: "Empty"},
+	}
+}
+
+func dumpSidebar(sections []SidebarSection) string {
+	var b strings.Builder
+	for i, s := range sections {
+		fmt.Fprintf(&b, "#\t%s\n", s.Title)
+		for _, it := range s.Items {
+			fmt.Fprintf(&b, "%d\t%s\t%s\t%s\n", i, it.Title, it.Icon, it.Badge)
+		}
+	}
+	return b.String()
+}
+
+// goldenAlertFields are an alert's fields with every option. The Swift,
+// Kotlin and JavaScript hosts' tests decode testdata/alertfields.bin and
+// must print testdata/alertfields.txt: per field its placeholder, text,
+// flags, keyboard and content type, tab separated; and encode
+// FieldChanged's payload for field 2, "Grüße", as
+// testdata/fieldchanged.bin.
+func goldenAlertFields() []AlertField {
+	return []AlertField{
+		{Placeholder: "Name", Text: "Untitled", ContentType: "name"},
+		{Placeholder: "Passwort", Flags: AlertFieldSecure, ContentType: "password"},
+		{Placeholder: "Email", Text: "a@b.c", Keyboard: KeyboardEmail},
+		{},
+	}
+}
+
+func dumpAlertFields(fs []AlertField) string {
+	var b strings.Builder
+	for _, f := range fs {
+		fmt.Fprintf(&b, "%s\t%s\t%d\t%d\t%s\n", f.Placeholder, f.Text, f.Flags, f.Keyboard, f.ContentType)
+	}
+	return b.String()
+}
+
+func TestSidebar(t *testing.T) {
+	want := goldenSidebar()
+	b := AppendSidebar(nil, want)
+	if got := dumpSidebar(DecodeSidebar(b)); got != dumpSidebar(want) {
+		t.Fatalf("got\n%s", got)
+	}
+	// Cut short, it ends where it's cut, with whole items.
+	cut := DecodeSidebar(b[:len(b)-18])
+	if len(cut) != 2 || len(cut[1].Items) != 1 || cut[1].Items[0].Badge != "Neu" {
+		t.Errorf("cut: %+v", cut)
+	}
+	if DecodeSidebar(nil) != nil {
+		t.Error("nothing decoded to something")
+	}
+	same := goldenSidebar()
+	same[0].Items[0].Badge = "4"
+	if !SameSidebarShape(want, same) {
+		t.Error("a badge changed the shape")
+	}
+	same[2].Items = append(same[2].Items, SidebarItem{Title: "Spam"})
+	if SameSidebarShape(want, same) {
+		t.Error("an item more kept the shape")
+	}
+	for s, want := range map[string]int{"0": 0, "3": 3, "1234": 1234, "999999999": 999999999} {
+		if n, ok := BadgeNumber(s); !ok || n != want {
+			t.Errorf("BadgeNumber(%q) = %d, %v", s, n, ok)
+		}
+	}
+	for _, s := range []string{"", "New", "99+", "-1", "1.5", "٣", "1234567890"} {
+		if _, ok := BadgeNumber(s); ok {
+			t.Errorf("BadgeNumber(%q) is a number", s)
+		}
+	}
+}
+
+func TestAlertFields(t *testing.T) {
+	fs := goldenAlertFields()
+	b := AppendAlertFields(nil, fs)
+	if got, want := dumpAlertFields(DecodeAlertFields(b)), dumpAlertFields(fs); got != want {
+		t.Fatalf("got\n%s\nwant\n%s", got, want)
+	}
+	if got := DecodeAlertFields(b[:len(b)-3]); len(got) != 3 {
+		t.Fatalf("a cut list decoded %d fields, want 3", len(got))
+	}
+	if DecodeAlertFields(nil) != nil {
+		t.Fatal("no bytes decoded fields")
+	}
+	i, s, ok := DecodeFieldChanged(AppendFieldChanged(nil, 2, "Grüße"))
+	if !ok || i != 2 || s != "Grüße" {
+		t.Fatalf("FieldChanged decoded %d %q %v", i, s, ok)
+	}
+	if _, _, ok := DecodeFieldChanged([]byte{2, 0, 0, 0, 9, 0, 0, 0, 'x'}); ok {
+		t.Fatal("a cut FieldChanged decoded")
+	}
+	items := []ActionItem{{Index: 0, Role: AlertButtonRoleCancel}, {Index: 1, Role: AlertButtonRoleDestructive}, {Index: 2}, {Index: 3}}
+	if got := DefaultAlertAction(items); got != 2 {
+		t.Fatalf("default action %d, want 2", got)
+	}
+	if got := DefaultAlertAction(items[:2]); got != -1 {
+		t.Fatalf("default action %d, want -1", got)
+	}
+}
+
 func TestGolden(t *testing.T) {
 	b := goldenBatch()
 	bin := b.Encode()
 	txt := dump(b)
 	evs := encodeEvents(goldenEvents())
-	files := map[string][]byte{"golden.bin": bin, "golden.txt": []byte(txt), "events.bin": evs}
+	acts := goldenActions()
+	files := map[string][]byte{"golden.bin": bin, "golden.txt": []byte(txt), "events.bin": evs,
+		"actions.bin": AppendActions(nil, acts), "actions.txt": []byte(dumpActions(DecodeActions(AppendActions(nil, acts)))),
+		"sidebar.bin": AppendSidebar(nil, goldenSidebar()), "sidebar.txt": []byte(dumpSidebar(goldenSidebar())),
+		"alertfields.bin": AppendAlertFields(nil, goldenAlertFields()), "alertfields.txt": []byte(dumpAlertFields(goldenAlertFields())),
+		"fieldchanged.bin": AppendFieldChanged(nil, 2, "Grüße")}
 	for name, want := range files {
 		path := filepath.Join("testdata", name)
 		if *update {

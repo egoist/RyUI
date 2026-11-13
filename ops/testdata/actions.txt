@@ -1,0 +1,12 @@
+0	0	0	0	Copy	doc.on.doc
+1	0	0	48	Sort by	
+2	1	0	4	Name	
+3	1	0	6	Date	
+4	0	0	48		
+5	1	0	0	Untitled section	
+6	0	0	16	Move to	folder
+7	1	0	0	Inbox	
+8	1	0	16	Nested	
+9	2	0	0	Archive	
+10	0	2	2	Löschen…	
+11	0	1	0	Cancel	

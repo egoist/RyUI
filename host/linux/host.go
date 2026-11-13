@@ -123,6 +123,25 @@ type action struct {
 	role  ops.AlertButtonRole
 	title string
 	icon  string
+	index int64 // its number in its menu, depth first: what Action carries
+	flags ops.MenuFlags
+	items []action // a submenu's or section's (ops.MenuSubmenu)
+}
+
+func (a *action) is(f ops.MenuFlags) bool { return a.flags&f == f }
+
+// sameActions reports whether two menus show the same.
+func sameActions(a, b []action) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		x, y := &a[i], &b[i]
+		if x.role != y.role || x.title != y.title || x.icon != y.icon || x.index != y.index || x.flags != y.flags || !sameActions(x.items, y.items) {
+			return false
+		}
+	}
+	return true
 }
 
 // Host is the Linux host.

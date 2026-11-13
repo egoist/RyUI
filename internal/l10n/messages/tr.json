@@ -2,6 +2,7 @@
   "ok": "Tamam",
   "search": "Ara",
   "back": "Geri",
+  "moreOptions": "Diğer seçenekler",
   "decrease": "Azalt",
   "increase": "Artır",
   "about": "{app} Hakkında",
@@ -37,5 +38,7 @@
   "updateCheckError": "Güncellemeler denetlenirken bir hata oluştu. Lütfen daha sonra yeniden deneyin.",
   "updateInstallError": "Güncelleme yüklenirken bir hata oluştu. Lütfen daha sonra yeniden deneyin.",
   "updateUnavailable": "Güncellemeler Kullanılamıyor",
-  "updateUnavailableMessage": "{app} yüklü olduğu konumda kendini güncelleyemiyor. Bir paket yöneticisiyle veya bir uygulama mağazasından yüklendiyse oradan güncelleyin."
+  "updateUnavailableMessage": "{app} yüklü olduğu konumda kendini güncelleyemiyor. Bir paket yöneticisiyle veya bir uygulama mağazasından yüklendiyse oradan güncelleyin.",
+  "badgeCount": "{count, plural, one {# öğe} other {# öğe}}",
+  "close": "Kapat"
 }

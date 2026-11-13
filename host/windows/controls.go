@@ -24,8 +24,17 @@ func (h *Host) buttonGlyph(n *node, ctl uintptr) (glyph uint16, title string) {
 		return 0xE948, "" // Add
 	case kindHeader:
 		return n.nav.headerButton(ctl, h.isRTL(n))
+	case kindCommandBar:
+		return n.nav.cmd.button(ctl, h.isRTL(n))
 	case ops.KindButton:
 		return directedGlyph(n.icon, h.isRTL(n)), n.title
+	case kindAlertWindow:
+		return 0, WindowText(ctl) // an alert's dialog's button
+	case ops.KindSnackbar:
+		if ctl == n.snack.close {
+			return 0xE711, "" // Cancel: an ×
+		}
+		return 0, n.title
 	}
 	return 0, ""
 }
@@ -78,8 +87,18 @@ func (h *Host) drawButton(n *node, cd *NMCustomDraw) uintptr {
 			variant = ops.ButtonVariantFilled
 		}
 	}
-	if n.kind == kindHeader {
+	if n.kind == kindHeader || n.kind == ops.KindSnackbar && ctl == n.snack.close {
+		variant = ops.ButtonVariantPlain // subtle: a header's buttons, a snackbar's close
+	}
+	if n.kind == kindCommandBar {
+		// Fluent's AppBarButtons; the primary action an accent button.
 		variant = ops.ButtonVariantPlain
+		if ctl == n.nav.cmd.primary {
+			variant = ops.ButtonVariantFilled
+		}
+	}
+	if n.kind == kindAlertWindow && h.alertDialogDefaultButton(n, ctl) {
+		variant = ops.ButtonVariantFilled // the default button: the accent one
 	}
 	text := p.label
 	var fill rgba
@@ -99,7 +118,7 @@ func (h *Host) drawButton(n *node, cd *NMCustomDraw) uintptr {
 		}
 	case ops.ButtonVariantPlain:
 		text = p.accentText
-		if n.kind == kindHeader {
+		if n.kind == kindHeader || n.kind == kindCommandBar || n.kind == ops.KindSnackbar {
 			text = p.label
 		}
 		if hot {
@@ -664,7 +683,7 @@ func (h *Host) layoutField(n *node) {
 			y := r.Top + (r.H()-lh)/2
 			SetWindowPos(n.ctl, 0, r.Left+x, y, max(r.W()-2*x, 1), lh, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 		}
-	case ops.KindWheel:
+	case ops.KindWheel, ops.KindPicker:
 		// The selection field fills the view; the list drops below it.
 		SendMessage(n.ctl, CB_SETITEMHEIGHT, ^uintptr(0), uintptr(max(r.H()-h.px(n, 8), 1)))
 		SetWindowPos(n.ctl, 0, 0, 0, r.W(), r.H()+h.px(n, 300), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)

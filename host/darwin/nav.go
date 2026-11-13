@@ -19,7 +19,11 @@ import (
 //     button, the top screen's bar buttons and search field, and the
 //     screen's title as the window's.
 //   - Tabs are an NSTabView, its pages the Screens.
-//   - A Sheet is a sheet window over the app's; Escape dismisses it.
+//   - A Sheet is a sheet window over the app's; Escape dismisses it. A
+//     FullScreen one is as big as all of its window's content under the
+//     title bar and toolbar, and follows the window as it resizes: a
+//     Mac has no full-screen modal of its own, and a sheet is how AppKit
+//     takes a window for a task; so does Escape.
 //   - An Alert is an NSAlert, shown as a sheet.
 //
 // Screens and sheets are sized by the host, which reports each one's
@@ -36,6 +40,11 @@ type nav struct {
 	search      string
 	searchText  string
 	tabItem     ID
+	// Its Toolbar's and Primary's items, numbered as their Action events
+	// are (ops.ScreenToolbarActions, ops.ScreenPrimaryAction + the item's
+	// number): the window's toolbar shows them after its bar buttons.
+	toolbar, primary []action
+	badge            string // a tab's
 
 	// Tabs.
 	setting  bool
@@ -46,8 +55,12 @@ type nav struct {
 	window   ID
 	on       ops.NodeID
 	deferred bool // presenting waits for its window to open
+	full     bool // a Sheet's FullScreen: as big as its window's content
 	alert    ID
 	order    []int // an alert's buttons' indexes, in the alert's order
+	fields   []ops.AlertField
+	inputs   []ID // its fields' NSTextFields, while it shows
+	defBtn   ID   // its default button, which return in its last field presses
 
 	// Window: its options (Config), a flyout's anchor (Flyout), and the
 	// document it shows: edited, its file.
@@ -78,6 +91,8 @@ func (h *Host) createNav(n *node) bool {
 		n.view = initView("AsukaView")
 		n.popover = &popover{}
 	case ops.KindAlert:
+	case ops.KindSnackbar:
+		n.snack = &snack{}
 	default:
 		return false
 	}
@@ -130,8 +145,8 @@ func (h *Host) insertNav(p, c *node, index int) bool {
 		copy(p.children[i+1:], p.children[i:])
 		p.children[i] = c
 		c.parent = p
-		it := Send(Send(Class("NSTabViewItem"), "alloc"), "initWithIdentifier:", uintptr(NumberInt(int(c.id))))
-		Send(it, "setLabel:", uintptr(String(c.title)))
+		it := Send(Send(Class("AsukaTabViewItem"), "alloc"), "initWithIdentifier:", uintptr(NumberInt(int(c.id))))
+		Send(it, "setLabel:", uintptr(String(tabLabel(c))))
 		Send(it, "setView:", uintptr(c.view))
 		c.nav.tabItem = it
 		p.nav.setting = true
@@ -143,6 +158,35 @@ func (h *Host) insertNav(p, c *node, index int) bool {
 		return true
 	}
 	return false
+}
+
+// tabLabel is a tab's label: its title, and its badge after it in
+// parentheses, as Mac apps count things in a tab's or a window's title
+// ("Inbox (3)"). NSTabView draws its tabs itself, its items' labels
+// alone (it never calls an item's drawLabel:inRect:), so a badge can't
+// be drawn beside it.
+func tabLabel(n *node) string {
+	if n.nav == nil || n.nav.badge == "" {
+		return n.title
+	}
+	return n.title + " (" + n.nav.badge + ")"
+}
+
+// registerTabClasses defines AsukaTabViewItem, a tab whose title for
+// VoiceOver says its badge after its title, a count as so many items
+// ("Inbox, 3 items"), rather than its label's parentheses.
+func registerTabClasses() {
+	DefineClass("AsukaTabViewItem", "NSTabViewItem", nil, []objc.MethodDef{
+		Method("accessibilityAttributeValue:", func(self ID, _ SEL, attr ID) ID {
+			if GoString(attr) == "AXTitle" {
+				id := ops.NodeID(SendInt(Send(self, "identifier"), "integerValue"))
+				if n := theHost.nodes[id]; n != nil && n.nav != nil && n.nav.badge != "" {
+					return String(l10n.Badged(theHost.locale, n.title, n.nav.badge))
+				}
+			}
+			return SendSuper(self, "AsukaTabViewItem", "accessibilityAttributeValue:", uintptr(attr))
+		}),
+	})
 }
 
 func (h *Host) removeNav(p, c *node) bool {
@@ -258,6 +302,7 @@ func (h *Host) destroyNav(n *node) bool {
 		return true
 	case ops.KindAlert:
 		n.dying = true
+		h.forgetAlertFields(n)
 		if a := n.nav.alert; a != 0 {
 			if w := Send(a, "window"); SendBool(w, "isVisible") {
 				if p := Send(w, "sheetParent"); p != 0 {
@@ -267,6 +312,10 @@ func (h *Host) destroyNav(n *node) bool {
 			Release(a)
 			n.nav.alert = 0
 		}
+		return true
+	case ops.KindSnackbar:
+		n.dying = true
+		h.destroySnack(n)
 		return true
 	}
 	// A stack or tabs: an ordinary view.
@@ -361,12 +410,16 @@ func (h *Host) layoutNav() {
 			h.layoutScreens(n)
 		case ops.KindSheet, ops.KindWindow:
 			if n.nav.window != 0 {
+				if n.nav.full {
+					h.fitCover(n)
+				}
 				b := MsgRect(Send(n.nav.window, "contentView"), Sel("bounds"))
 				MsgSetRect(n.view, selSetFrame, b)
 				h.reportScreen(n, b.Size)
 			}
 		}
 	}
+	h.placeSnacks()
 }
 
 // reportScreen sends a screen's or sheet's environment if it changed.
@@ -403,10 +456,21 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 		case ops.PropScreenTitle:
 			n.title = v.Str
 			if n.nav.tabItem != 0 {
-				Send(n.nav.tabItem, "setLabel:", uintptr(String(v.Str)))
+				Send(n.nav.tabItem, "setLabel:", uintptr(String(tabLabel(n))))
 			}
+		case ops.PropScreenBadge:
+			// The tab's label alone changes.
+			n.nav.badge = v.Str
+			if n.nav.tabItem != 0 {
+				Send(n.nav.tabItem, "setLabel:", uintptr(String(tabLabel(n))))
+			}
+			return
 		case ops.PropScreenActions:
 			n.actions = decodeActions(v.Bytes)
+		case ops.PropScreenToolbar:
+			n.nav.toolbar = decodeActionsFrom(v.Bytes, ops.ScreenToolbarActions)
+		case ops.PropScreenPrimary:
+			n.nav.primary = decodeActionsFrom(v.Bytes, ops.ScreenPrimaryAction)
 		case ops.PropScreenBackGesture:
 			n.nav.backGesture = v.Int != 0
 		case ops.PropScreenIcon:
@@ -440,6 +504,8 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 			n.detents = v.Int
 		case ops.PropSheetWindow:
 			n.nav.on = ops.NodeID(v.Int)
+		case ops.PropSheetFullScreen:
+			n.nav.full = v.Int != 0
 		}
 	case ops.KindPopover:
 		h.setPopoverProp(n, p, v)
@@ -476,11 +542,16 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 			n.message = v.Str
 		case ops.PropAlertButtons:
 			n.actions = decodeActions(v.Bytes)
+			h.updateAlertButtons(n)
 		case ops.PropAlertStyle:
 			n.alertStyle = int32(v.Int)
 		case ops.PropAlertWindow:
 			n.nav.on = ops.NodeID(v.Int)
+		case ops.PropAlertFields:
+			n.nav.fields = ops.DecodeAlertFields(v.Bytes)
 		}
+	case ops.KindSnackbar:
+		h.setSnackProp(n, p, v)
 	}
 }
 
@@ -533,7 +604,7 @@ func (h *Host) onWin(n *node) *win {
 // present shows a sheet or an alert, on the window it's declared in;
 // once the batch is applied if that window isn't open yet.
 func (h *Host) present(n *node) {
-	if n.kind == ops.KindSheet || n.kind == ops.KindAlert {
+	if n.kind == ops.KindSheet || n.kind == ops.KindAlert || n.kind == ops.KindSnackbar {
 		if w := h.onWin(n); w == nil || w.window == 0 {
 			if n.nav.deferred {
 				return // its window never opened
@@ -558,8 +629,13 @@ func (h *Host) present(n *node) {
 		if n.detents == 1 { // medium only
 			size.Height = max(cs.Height/2, 240)
 		}
+		style := uint(styleTitled | styleResizable)
+		if n.nav.full {
+			// Its size is its window's, so the user doesn't resize it.
+			size, style = coverSize(over.window), styleTitled
+		}
 		w := MsgInitWindow(Send(Class("NSWindow"), "alloc"), Sel("initWithContentRect:styleMask:backing:defer:"),
-			Rect{Size: size}, styleTitled|styleResizable, backingBuffered, false)
+			Rect{Size: size}, style, backingBuffered, false)
 		Send(w, "setReleasedWhenClosed:", 0)
 		content := initView("AsukaView")
 		Send(content, "setAutoresizesSubviews:", 0)
@@ -577,6 +653,8 @@ func (h *Host) present(n *node) {
 		h.openWindow(n)
 	case ops.KindPopover:
 		h.presentPopover(n)
+	case ops.KindSnackbar:
+		h.presentSnack(n)
 	case ops.KindAlert:
 		a := New("NSAlert")
 		Send(a, "setMessageText:", uintptr(String(n.title)))
@@ -604,15 +682,24 @@ func (h *Host) present(n *node) {
 					Send(btn, "setHasDestructiveAction:", 1)
 				}
 			}
+			if b.is(ops.MenuDisabled) {
+				Send(btn, "setEnabled:", 0)
+			}
 		}
 		if len(order) == 0 {
 			Send(a, "addButtonWithTitle:", uintptr(String(l10n.OK(h.locale))))
 		}
 		n.nav.alert = a
 		n.nav.order = order
+		if n.alertStyle == int32(ops.AlertStyleAlert) && len(n.nav.fields) > 0 {
+			h.addAlertFields(n, a)
+		}
 		id := n.id
 		done := NewBlock(func(_ objc.Block, resp int) {
 			n := h.nodes[id]
+			if n != nil {
+				h.forgetAlertFields(n)
+			}
 			if n == nil || n.dying {
 				return
 			}
@@ -624,6 +711,183 @@ func (h *Host) present(n *node) {
 			}
 		})
 		Send(a, "beginSheetModalForWindow:completionHandler:", uintptr(h.onWin(n).window), uintptr(done))
+		if len(n.nav.inputs) > 0 {
+			h.alertDefaultButton(n, a)
+			Send(Send(a, "window"), "makeFirstResponder:", uintptr(n.nav.inputs[0]))
+		}
+	}
+}
+
+// alertField is a text field of an alert showing: its node and index.
+type alertField struct {
+	id    ops.NodeID
+	index int
+}
+
+// alertFieldWidth is an alert's fields' width, in points: as wide as the
+// alert's text (NSAlert's own is about this wide).
+const alertFieldWidth = 228
+
+// addAlertFields gives an alert its text fields: a column of
+// NSTextFields (NSSecureTextFields for passwords) as its accessory view,
+// the first the window's first responder, Tab going from one to the
+// next. Typing reports FieldChanged; return presses the default button,
+// the first whose role is Default, which takes the key equivalent.
+func (h *Host) addAlertFields(n *node, a ID) {
+	const height, gap = 22, 8
+	count := len(n.nav.fields)
+	total := float64(count*height + (count-1)*gap)
+	box := Send(Send(Class("NSView"), "alloc"), "initWithFrame:", 0)
+	MsgSetRect(box, selSetFrame, Rect{Size: Size{Width: alertFieldWidth, Height: total}})
+	if h.alertFields == nil {
+		h.alertFields = map[ID]alertField{}
+	}
+	n.nav.inputs = n.nav.inputs[:0]
+	for i, f := range n.nav.fields {
+		cls := "NSTextField"
+		if f.Secure() {
+			cls = "NSSecureTextField"
+		}
+		tf := Send(Send(Class(cls), "alloc"), "initWithFrame:", 0)
+		// From the top: a view's y is from its bottom.
+		MsgSetRect(tf, selSetFrame, Rect{Origin: Point{Y: total - float64((i+1)*height+i*gap)}, Size: Size{Width: alertFieldWidth, Height: height}})
+		Send(tf, "setStringValue:", uintptr(String(f.Text)))
+		Send(tf, "setPlaceholderString:", uintptr(String(f.Placeholder)))
+		Send(tf, "setAccessibilityLabel:", uintptr(String(f.Placeholder)))
+		Send(tf, "setUsesSingleLineMode:", 1)
+		Send(Send(tf, "cell"), "setScrollable:", 1)
+		if RespondsTo(tf, "setContentType:") && f.ContentType != "" {
+			if t := contentType(f.ContentType); t != 0 {
+				Send(tf, "setContentType:", uintptr(t))
+			}
+		}
+		Send(tf, "setDelegate:", uintptr(h.target))
+		Send(box, "addSubview:", uintptr(tf))
+		h.alertFields[tf] = alertField{id: n.id, index: i}
+		n.nav.inputs = append(n.nav.inputs, tf)
+		Release(tf)
+	}
+	for i, tf := range n.nav.inputs {
+		Send(tf, "setNextKeyView:", uintptr(n.nav.inputs[(i+1)%count]))
+	}
+	Send(a, "setAccessoryView:", uintptr(box))
+	Release(box)
+	Send(a, "layout")
+	Send(Send(a, "window"), "setInitialFirstResponder:", uintptr(n.nav.inputs[0]))
+}
+
+// alertDefaultButton gives return to an alert's default button, the
+// first whose role is Default, wherever it is among them (NSAlert gives
+// it to the first, as it shows).
+func (h *Host) alertDefaultButton(n *node, a ID) {
+	def := -1
+	for i := range n.actions {
+		if n.actions[i].role == ops.AlertButtonRoleDefault {
+			def = i
+			break
+		}
+	}
+	btns := Send(a, "buttons")
+	for k, i := range n.nav.order {
+		btn := Send(btns, "objectAtIndex:", uintptr(k))
+		switch {
+		case i == def:
+			Send(btn, "setKeyEquivalent:", uintptr(String("\r")))
+			n.nav.defBtn = btn
+		case GoString(Send(btn, "keyEquivalent")) == "\r":
+			Send(btn, "setKeyEquivalent:", uintptr(String("")))
+		}
+	}
+}
+
+// forgetAlertFields forgets an alert's fields, gone or going.
+func (h *Host) forgetAlertFields(n *node) {
+	for _, tf := range n.nav.inputs {
+		Send(tf, "setDelegate:", 0)
+		delete(h.alertFields, tf)
+	}
+	n.nav.inputs = nil
+	n.nav.defBtn = 0
+}
+
+// alertFieldChanged reports the user's typing in an alert's field; false
+// if field isn't one.
+func (h *Host) alertFieldChanged(field ID) bool {
+	f, ok := h.alertFields[field]
+	if !ok {
+		return false
+	}
+	if n := h.nodes[f.id]; n != nil && !n.dying {
+		s := GoString(Send(field, "stringValue"))
+		h.emit(n, ops.Event{Kind: ops.EventFieldChanged, Bytes: ops.AppendFieldChanged(nil, f.index, s)})
+	}
+	return true
+}
+
+// alertFieldCommand handles return in an alert's field: before the last
+// field it goes on to the next; in the last it presses the default
+// button, if it's enabled. ok is false if field isn't one.
+func (h *Host) alertFieldCommand(field ID, cmd SEL) (handled, ok bool) {
+	f, ok := h.alertFields[field]
+	if !ok {
+		return false, false
+	}
+	if cmd != Sel("insertNewline:") {
+		return false, true
+	}
+	n := h.nodes[f.id]
+	if n == nil || n.dying {
+		return true, true
+	}
+	if f.index+1 < len(n.nav.inputs) {
+		Send(Send(field, "window"), "makeFirstResponder:", uintptr(n.nav.inputs[f.index+1]))
+		return true, true
+	}
+	if b := n.nav.defBtn; b != 0 && SendBool(b, "isEnabled") {
+		Send(b, "performClick:", 0)
+	}
+	return true, true
+}
+
+// coverSize is the size of a full-screen sheet over window w: all of
+// its content under the title bar and toolbar (contentLayoutRect), where
+// AppKit hangs a sheet.
+func coverSize(w ID) Size {
+	return MsgRect(w, Sel("contentLayoutRect")).Size
+}
+
+// fitCover sizes a full-screen sheet's window to its window's content
+// again (that window resized; AppKit keeps the sheet where it hangs).
+func (h *Host) fitCover(n *node) {
+	w := n.nav.window
+	p := Send(w, "sheetParent")
+	if p == 0 {
+		return
+	}
+	want := coverSize(p)
+	if MsgRect(Send(w, "contentView"), Sel("bounds")).Size == want {
+		return
+	}
+	MsgSetSize(w, Sel("setContentSize:"), want)
+}
+
+// updateAlertButtons shows a presented alert's buttons' new titles and
+// whether they're enabled.
+func (h *Host) updateAlertButtons(n *node) {
+	a := n.nav.alert
+	if a == 0 || n.dying {
+		return
+	}
+	btns := Send(a, "buttons")
+	count := int(SendInt(btns, "count"))
+	for k, i := range n.nav.order {
+		if k >= count || i >= len(n.actions) {
+			break
+		}
+		b := &n.actions[i]
+		btn := Send(btns, "objectAtIndex:", uintptr(k))
+		Send(btn, "setTitle:", uintptr(String(b.title)))
+		Send(btn, "setEnabled:", Bool(!b.is(ops.MenuDisabled)))
 	}
 }
 
@@ -681,6 +945,7 @@ type chrome struct {
 	searchField   ID
 	ids           []string
 	toolbar       ID
+	menus         []ID // the bar buttons' menus (+1), registered in byMenu
 }
 
 // winOf returns the window w is (nil: not one of the app's).
@@ -803,7 +1068,12 @@ func (h *Host) updateChrome(w *win) {
 		ids = append(ids, "NSToolbarFlexibleSpaceItem")
 		c.actions, c.search = nil, ""
 		if screen != nil {
+			// SwiftUI's bottomBar is iOS's: a Mac's toolbar has the screen's
+			// Toolbar after its bar buttons, and its Primary last, prominent.
 			c.actions, c.search = screen.actions, screen.nav.search
+			if len(screen.nav.toolbar) > 0 || len(screen.nav.primary) > 0 {
+				c.actions = slices.Concat(screen.actions, screen.nav.toolbar, screen.nav.primary)
+			}
 		}
 		if c.search != "" {
 			ids = append(ids, "asuka.search")
@@ -820,6 +1090,7 @@ func (h *Host) updateChrome(w *win) {
 			Send(w.window, "setToolbar:", 0)
 			Release(c.toolbar)
 			c.toolbar = 0
+			h.releaseBarMenus(c)
 			h.environmentChanged()
 		}
 		return
@@ -843,6 +1114,7 @@ func (h *Host) updateChrome(w *win) {
 	for SendInt(Send(t, "items"), "count") > 0 {
 		Send(t, "removeItemAtIndex:", 0)
 	}
+	h.releaseBarMenus(c)
 	c.searchField = 0
 	c.ids = ids
 	for i, id := range ids {
@@ -946,8 +1218,23 @@ func (h *Host) toolbarItem(w *win, ident string) ID {
 		if i < 0 || i >= len(c.actions) {
 			return 0
 		}
-		a := c.actions[i]
-		it := item()
+		a := &c.actions[i]
+		var it ID
+		if a.is(ops.MenuSubmenu) && len(a.items) > 0 && HasClass("NSMenuToolbarItem") {
+			// A bar button with children opens them as a menu.
+			it = Autorelease(Send(Send(Class("NSMenuToolbarItem"), "alloc"), "initWithItemIdentifier:", uintptr(String(ident))))
+			m := h.makeMenuOf(a.items, "menuItem:")
+			Send(it, "setMenu:", uintptr(m))
+			Send(it, "setShowsIndicator:", 1)
+			c.menus = append(c.menus, m)
+			if c.screen != nil {
+				h.byMenu[m] = c.screen
+			}
+		} else {
+			it = item()
+			Send(it, "setTarget:", uintptr(h.target))
+			Send(it, "setAction:", uintptr(Sel("barItem:")))
+		}
 		Send(it, "setLabel:", uintptr(String(a.title)))
 		Send(it, "setToolTip:", uintptr(String(a.title)))
 		if img := h.barSymbol(a.icon); img != 0 {
@@ -958,12 +1245,29 @@ func (h *Host) toolbarItem(w *win, ident string) ID {
 		if RespondsTo(it, "setBordered:") {
 			Send(it, "setBordered:", 1)
 		}
-		Send(it, "setTag:", uintptr(i))
-		Send(it, "setTarget:", uintptr(h.target))
-		Send(it, "setAction:", uintptr(Sel("barItem:")))
+		Send(it, "setTag:", uintptr(a.index))
+		if a.index >= ops.ScreenPrimaryAction && RespondsTo(it, "setStyle:") {
+			// The screen's main action: tinted with the accent (macOS 26's
+			// NSToolbarItemStyleProminent).
+			Send(it, "setStyle:", 1)
+		}
+		if a.is(ops.MenuDisabled) {
+			// Dimmed, and kept so: validation would enable it again.
+			Send(it, "setAutovalidates:", 0)
+			Send(it, "setEnabled:", 0)
+		}
 		return it
 	}
 	return 0
+}
+
+// releaseBarMenus lets go of the menus of a window's bar buttons.
+func (h *Host) releaseBarMenus(c *chrome) {
+	for _, m := range c.menus {
+		delete(h.byMenu, m)
+		Release(m)
+	}
+	c.menus = c.menus[:0]
 }
 
 // barItem is a screen's bar button.

@@ -87,12 +87,14 @@ type node struct {
 	list           *list
 	cell           *cell
 	nav            *nav
+	snack          *snack // a Snackbar's (snackbar.go)
 	rich           *rich
 	field          *richField // a Rich TextField's
 	shape          *shape
 	web            *web
 	video          *video
 	selected       int
+	pickerLabel    string // a Picker's Label
 	min, max       float64
 	scroll         bool // observes its scroll position
 	dying          bool
@@ -150,7 +152,12 @@ type action struct {
 	role  ops.AlertButtonRole
 	title string
 	icon  string
+	index int64 // its number in its menu, depth first: what Action carries
+	flags ops.MenuFlags
+	items []action // a submenu's or section's (ops.MenuSubmenu)
 }
+
+func (a *action) is(f ops.MenuFlags) bool { return a.flags&f == f }
 
 // Host is the macOS host.
 type Host struct {
@@ -196,6 +203,7 @@ type Host struct {
 	sidebarSource ID
 	editors       map[ID]ID         // each window's field editor (AsukaFieldEditor)
 	videos        map[ID]ops.NodeID // by AVPlayerItem
+	alertFields   map[ID]alertField // the text fields of the alerts showing, by NSTextField
 	main          *win              // the main window, holding the root
 	wins          map[ID]*win       // the Windows' windows, by NSWindow
 	appMenus      []ops.MenuBarMenu // MenuBar's
@@ -652,6 +660,9 @@ func (h *Host) place(n *node, f [4]float32) {
 	}
 	n.frame = r
 	v := n.view
+	if n.kind == ops.KindProgressRing {
+		r = ringFrame(v, r)
+	}
 	// A horizontal Scroll keeps its distance from the end it starts at as its
 	// content or its width changes.
 	keep := h.horizontalScroll(n)

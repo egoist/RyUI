@@ -2,6 +2,7 @@
   "ok": "OK",
   "search": "Sök",
   "back": "Tillbaka",
+  "moreOptions": "Fler alternativ",
   "decrease": "Minska",
   "increase": "Öka",
   "about": "Om {app}",
@@ -37,5 +38,7 @@
   "updateCheckError": "Ett fel inträffade vid sökning efter uppdateringar. Försök igen senare.",
   "updateInstallError": "Ett fel inträffade när uppdateringen installerades. Försök igen senare.",
   "updateUnavailable": "Uppdateringar är inte tillgängliga",
-  "updateUnavailableMessage": "{app} kan inte uppdatera sig själv där den är installerad. Om den installerades med en pakethanterare eller från en appbutik uppdaterar du den där."
+  "updateUnavailableMessage": "{app} kan inte uppdatera sig själv där den är installerad. Om den installerades med en pakethanterare eller från en appbutik uppdaterar du den där.",
+  "badgeCount": "{count, plural, one {# objekt} other {# objekt}}",
+  "close": "Stäng"
 }

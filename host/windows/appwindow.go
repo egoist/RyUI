@@ -299,6 +299,7 @@ func (h *Host) windowFrameMessage(fw *node, m uint32, wp, lp uintptr) (uintptr, 
 			SetWindowPos(n.hwnd, 0, 0, 0, cr.W(), cr.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 			h.reportScreen(n, h.pt(n, cr.W()), h.pt(n, cr.H()))
 		}
+		h.placeSnacks()
 		return 0, true
 	case WM_ERASEBKGND:
 		FillColor(wp, ClientRect(fw.hwnd), h.bgOf(fw.hwnd).ref())

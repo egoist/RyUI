@@ -2,6 +2,7 @@
   "ok": "D'acord",
   "search": "Cerca",
   "back": "Enrere",
+  "moreOptions": "Més opcions",
   "decrease": "Redueix",
   "increase": "Augmenta",
   "about": "Sobre l’app {app}",
@@ -37,5 +38,7 @@
   "updateCheckError": "S’ha produït un error en cercar actualitzacions. Torna-ho a provar més tard.",
   "updateInstallError": "S’ha produït un error en instal·lar l’actualització. Torna-ho a provar més tard.",
   "updateUnavailable": "Actualitzacions no disponibles",
-  "updateUnavailableMessage": "L’app {app} no es pot actualitzar a si mateixa allà on està instal·lada. Si la va instal·lar un gestor de paquets o una botiga d’apps, actualitza-la des d’allà."
+  "updateUnavailableMessage": "L’app {app} no es pot actualitzar a si mateixa allà on està instal·lada. Si la va instal·lar un gestor de paquets o una botiga d’apps, actualitza-la des d’allà.",
+  "badgeCount": "{count, plural, one {# element} many {# d’elements} other {# elements}}",
+  "close": "Tanca"
 }

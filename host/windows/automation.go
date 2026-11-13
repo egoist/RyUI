@@ -271,6 +271,9 @@ func (h *Host) tap(text string) bool {
 				}
 			}
 		}
+		if n.kind == kindCommandBar && h.tapCommandBar(n, text) {
+			return true
+		}
 		if n.kind == kindHeader && n.nav.screen != nil {
 			for i, a := range n.nav.screen.actions {
 				if a.title == text && i < len(n.nav.buttons) {
@@ -549,6 +552,8 @@ func kindName(k ops.Kind) string {
 		return "Header"
 	case kindTabBar:
 		return "TabBar"
+	case kindCommandBar:
+		return "CommandBar"
 	case kindWindowFrame:
 		return "WindowFrame"
 	}

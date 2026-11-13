@@ -2,6 +2,7 @@
   "ok": "OK",
   "search": "Tìm kiếm",
   "back": "Quay lại",
+  "moreOptions": "Tùy chọn khác",
   "decrease": "Giảm",
   "increase": "Tăng",
   "about": "Giới thiệu về {app}",
@@ -37,5 +38,7 @@
   "updateCheckError": "Đã xảy ra lỗi khi kiểm tra bản cập nhật. Vui lòng thử lại sau.",
   "updateInstallError": "Đã xảy ra lỗi khi cài đặt bản cập nhật. Vui lòng thử lại sau.",
   "updateUnavailable": "Không thể cập nhật",
-  "updateUnavailableMessage": "{app} không thể tự cập nhật tại vị trí được cài đặt. Nếu ứng dụng được cài đặt bằng trình quản lý gói hoặc cửa hàng ứng dụng, hãy cập nhật ở đó."
+  "updateUnavailableMessage": "{app} không thể tự cập nhật tại vị trí được cài đặt. Nếu ứng dụng được cài đặt bằng trình quản lý gói hoặc cửa hàng ứng dụng, hãy cập nhật ở đó.",
+  "badgeCount": "{count, plural, other {# mục}}",
+  "close": "Đóng"
 }

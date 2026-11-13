@@ -3,8 +3,6 @@
 package linux
 
 import (
-	"slices"
-
 	. "github.com/egoist/asuka/internal/gtk"
 	"github.com/egoist/asuka/ops"
 )
@@ -28,7 +26,7 @@ type chrome struct {
 }
 
 func (c *chrome) same(o *chrome) bool {
-	return c.back == o.back && c.title == o.title && slices.Equal(c.actions, o.actions) &&
+	return c.back == o.back && c.title == o.title && sameActions(c.actions, o.actions) &&
 		c.screen == o.screen && c.stack == o.stack && c.tabs == o.tabs && c.search == o.search && c.menus == o.menus &&
 		c.split == o.split
 }
@@ -190,23 +188,40 @@ func (h *Host) updateWinChrome(w *win) {
 	}
 	screen := c.screen
 	for i := len(c.actions) - 1; i >= 0; i-- {
-		a := c.actions[i]
-		b := ButtonNew()
-		if a.icon != "" {
-			ButtonSetIconName(b, h.iconName(a.icon))
-			WidgetSetTooltipText(b, a.title)
+		a := &c.actions[i]
+		var b Ptr
+		if a.is(ops.MenuSubmenu) && screen != nil {
+			// A bar button with children opens them as a menu.
+			b = MenuButtonNew()
+			if a.icon != "" {
+				MenuButtonSetIconName(b, h.iconName(a.icon))
+				WidgetSetTooltipText(b, a.title)
+			} else {
+				MenuButtonSetLabel(b, a.title)
+			}
+			h.insertMenuActions(b, "asukabar", screen.id, a.items)
+			model := h.menuModel(a.items, "asukabar.item")
+			MenuButtonSetMenuModel(b, model)
+			ObjectUnref(model)
 		} else {
-			ButtonSetLabel(b, a.title)
+			b = ButtonNew()
+			if a.icon != "" {
+				ButtonSetIconName(b, h.iconName(a.icon))
+				WidgetSetTooltipText(b, a.title)
+			} else {
+				ButtonSetLabel(b, a.title)
+			}
+			index := a.index
+			Connect(b, "clicked", func() {
+				if screen != nil {
+					h.emit(screen, ops.Event{Kind: ops.EventAction, Int: index})
+				}
+			})
 		}
 		if a.role == ops.AlertButtonRoleDestructive {
 			WidgetAddCSSClass(b, "destructive-action")
 		}
-		i := i
-		Connect(b, "clicked", func() {
-			if screen != nil {
-				h.emit(screen, ops.Event{Kind: ops.EventAction, Int: int64(i)})
-			}
-		})
+		WidgetSetSensitive(b, !a.is(ops.MenuDisabled))
 		AdwHeaderBarPackEnd(w.header, b)
 		c.packed = append(c.packed, b)
 	}

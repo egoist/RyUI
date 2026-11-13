@@ -3,6 +3,7 @@
 package windows
 
 import (
+	"math"
 	"syscall"
 	"unsafe"
 )
@@ -23,6 +24,7 @@ var (
 	procUiaHostProviderFromHwnd     = uiautomationcore.NewProc("UiaHostProviderFromHwnd")
 	procUiaRaiseNotificationEvent   = uiautomationcore.NewProc("UiaRaiseNotificationEvent")
 	procUiaClientsAreListening      = uiautomationcore.NewProc("UiaClientsAreListening")
+	procUiaRaisePropertyChanged     = uiautomationcore.NewProc("UiaRaiseAutomationPropertyChangedEvent")
 	procSysAllocString              = oleaut32.NewProc("SysAllocString")
 	procSysFreeString               = oleaut32.NewProc("SysFreeString")
 )
@@ -38,27 +40,35 @@ const (
 	UIA_IsControlElementPropertyId = 30016
 	UIA_IsContentElementPropertyId = 30017
 	UIA_HeadingLevelPropertyId     = 30173
+	UIA_RangeValueValuePropertyId  = 30047
+	UIA_ItemStatusPropertyId       = 30026
 
 	// Control types.
-	UIA_ButtonControlTypeId    = 50000
-	UIA_EditControlTypeId      = 50004
-	UIA_HyperlinkControlTypeId = 50005
-	UIA_ImageControlTypeId     = 50006
-	UIA_TextControlTypeId      = 50020
-	UIA_GroupControlTypeId     = 50026
+	UIA_ButtonControlTypeId      = 50000
+	UIA_EditControlTypeId        = 50004
+	UIA_HyperlinkControlTypeId   = 50005
+	UIA_ImageControlTypeId       = 50006
+	UIA_ListItemControlTypeId    = 50007
+	UIA_ProgressBarControlTypeId = 50012
+	UIA_TabItemControlTypeId     = 50019
+	UIA_TextControlTypeId        = 50020
+	UIA_GroupControlTypeId       = 50026
 
 	HeadingLevel1 = 80051
 
-	uiaInvokePatternId = 10000
+	uiaInvokePatternId     = 10000
+	uiaRangeValuePatternId = 10003
 )
 
 var (
 	iidIRawElementProviderSimple = NewGUID("d6dd68d1-86fd-4332-8666-9abedea2d24c")
 	iidIInvokeProvider           = NewGUID("54fcb24b-e18e-47a2-b4d3-eccbe77599a2")
+	iidIRangeValueProvider       = NewGUID("36dc7aef-33e6-4691-afe1-2be7274b3d33")
 
 	uiaOnce      bool
 	providerVtbl [7]uintptr
 	invokeVtbl   [4]uintptr
+	rangeVtbl    [10]uintptr
 	uiaAvailable bool
 )
 
@@ -69,6 +79,14 @@ type Accessible interface {
 	Property(id int32) any
 	Invokes() bool
 	Invoke()
+}
+
+// Ranged is an Accessible with a value in a range that screen readers
+// read and the user doesn't set (a progress indicator): UI Automation's
+// RangeValue pattern, read only. Range reports the value and its bounds,
+// and whether it has one now (an indeterminate indicator hasn't).
+type Ranged interface {
+	Range() (value, min, max float64, ok bool)
 }
 
 type uiaProvider struct {
@@ -115,17 +133,59 @@ func uiaInit() bool {
 			return 0
 		}),
 	}
+	// IRangeValueProvider, read only: SetValue (a double, which a
+	// callback of Go's can't take) refuses; the getters write doubles.
+	getter := func(f func(v, lo, hi float64) float64) uintptr {
+		return syscall.NewCallback(func(this, out uintptr) uintptr {
+			*(*float64)(native(out)) = 0
+			if p, _ := comImpl(this).(*uiaProvider); p != nil {
+				if r, ok := p.acc.(Ranged); ok {
+					if v, lo, hi, ok := r.Range(); ok {
+						*(*float64)(native(out)) = f(v, lo, hi)
+					}
+				}
+			}
+			return 0
+		})
+	}
+	rangeVtbl = [10]uintptr{qi, addRef, release,
+		syscall.NewCallback(func(this, value uintptr) uintptr { return uiaElementNotEnabled }), // SetValue
+		getter(func(v, _, _ float64) float64 { return v }),                                     // get_Value
+		syscall.NewCallback(func(this, out uintptr) uintptr { // get_IsReadOnly
+			*(*int32)(native(out)) = 1
+			return 0
+		}),
+		getter(func(_, _, hi float64) float64 { return hi }),               // get_Maximum
+		getter(func(_, lo, _ float64) float64 { return lo }),               // get_Minimum
+		getter(func(_, lo, hi float64) float64 { return (hi - lo) / 10 }),  // get_LargeChange
+		getter(func(_, lo, hi float64) float64 { return (hi - lo) / 100 }), // get_SmallChange
+	}
 	uiaAvailable = true
 	return true
 }
 
+// uiaElementNotEnabled is UIA_E_ELEMENTNOTENABLED: a read-only value
+// refuses to be set.
+const uiaElementNotEnabled = 0x80040200
+
 func providerPattern(this uintptr, id int32, out uintptr) uintptr {
 	*(*uintptr)(native(out)) = 0
 	p, _ := comImpl(this).(*uiaProvider)
-	if p == nil || id != uiaInvokePatternId || !p.acc.Invokes() {
+	if p == nil {
 		return 0
 	}
-	*(*uintptr)(native(out)) = newComObject(&invokeVtbl[0], &iidIInvokeProvider, p)
+	switch id {
+	case uiaInvokePatternId:
+		if p.acc.Invokes() {
+			*(*uintptr)(native(out)) = newComObject(&invokeVtbl[0], &iidIInvokeProvider, p)
+		}
+	case uiaRangeValuePatternId:
+		if r, ok := p.acc.(Ranged); ok {
+			if _, _, _, ok := r.Range(); ok {
+				*(*uintptr)(native(out)) = newComObject(&rangeVtbl[0], &iidIRangeValueProvider, p)
+			}
+		}
+	}
 	return 0
 }
 
@@ -207,6 +267,19 @@ func Announce(hwnd uintptr, text string) {
 	defer SysFreeString(id)
 	const kindOther, processingImportantAll = 4, 0
 	procUiaRaiseNotificationEvent.Call(host, kindOther, processingImportantAll, s, id)
+}
+
+// RaiseRangeValueChanged tells screen readers a provider's RangeValue
+// changed, so they read a progress indicator's new value as it fills.
+// The VARIANTs go by reference, as the 64-bit ABIs pass a struct their
+// size.
+func RaiseRangeValueChanged(provider uintptr, old, now float64) {
+	if provider == 0 || procUiaRaisePropertyChanged.Find() != nil || unsafe.Sizeof(uintptr(0)) != 8 || !ClientsListening() {
+		return
+	}
+	o := variant{vt: 5, val: uintptr(math.Float64bits(old))} // VT_R8
+	n := variant{vt: 5, val: uintptr(math.Float64bits(now))}
+	procUiaRaisePropertyChanged.Call(provider, UIA_RangeValueValuePropertyId, uintptr(unsafe.Pointer(&o)), uintptr(unsafe.Pointer(&n)))
 }
 
 // SysAllocString is a BSTR of s, which its taker frees.

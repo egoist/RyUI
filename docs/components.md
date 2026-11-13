@@ -30,6 +30,7 @@ instead, and writes it. See [Concepts](concepts.md).
 | `ColorPicker` | `UIColorWell` | a swatch and a Material dialog | `NSColorWell` and the color panel | a swatch and the color dialog (`ChooseColor`) | `GtkColorDialogButton` | `<input type="color">` |
 | `DatePicker` | `UIDatePicker` | buttons opening Material's pickers | `NSDatePicker` | the date and time picker (`SysDateTimePick32`) | a button opening `GtkCalendar` and spin buttons | `<input type="date">`, `time`, `datetime-local` |
 | `Progress` | `UIProgressView` | `LinearProgressIndicator` | `NSProgressIndicator` | drawn as Fluent's | `GtkProgressBar` | `<progress>` |
+| `ProgressRing` | drawn as SwiftUI's circular gauge; `UIActivityIndicatorView` without a value | `CircularProgressIndicator` | `NSProgressIndicator`, spinning | Fluent's `ProgressRing`, drawn | drawn in GNOME's style; `AdwSpinner` without a value | an SVG ring |
 | `Activity` | `UIActivityIndicatorView` | `CircularProgressIndicator` | `NSProgressIndicator`, spinning | Fluent's progress ring, drawn | `AdwSpinner` (`GtkSpinner` before libadwaita 1.6) | a spinner, drawn |
 | `Image` | `UIImageView` | `ImageView` | `NSImageView` | drawn with GDI+ | drawn from GDK textures | `<img>` |
 | `Symbol` | SF Symbols | Material Symbols | SF Symbols | Segoe Fluent Icons | the icon theme's, else Material Symbols | Material Symbols |
@@ -216,6 +217,42 @@ ui.Button(ui.ButtonProps{Icon: ui.IconMore, Label: ui.Val("More"), Menu: []ui.Ac
 }})
 ```
 
+An action can be `Disabled` (dimmed, it can't be chosen) or `Checked`
+(a checkmark by it), and both follow their signals while the menu is
+open. `Children` make it a submenu; `ui.Submenu` makes one. With
+`Inline` its children are a section of the menu instead, set off by
+dividers under its title (SwiftUI's `Section` in a `Menu`);
+`ui.MenuSection` makes one. A section with a checked item is a choice:
+
+```go
+sortBy := signal.New("Name")
+sorted := func(by string) ui.Action {
+	return ui.Action{Title: ui.Val(by), Checked: signal.Func(func() bool { return sortBy.Get() == by }),
+		OnPress: func() { sortBy.Set(by) }}
+}
+ui.Button(ui.ButtonProps{Icon: ui.IconMore, Label: ui.Val("More"), Menu: []ui.Action{
+	ui.MenuSection(ui.Val("Sort by"), sorted("Name"), sorted("Date")),
+	ui.Submenu(ui.Val("Move to"), ui.IconFolder,
+		ui.Action{Title: ui.Val("Inbox"), OnPress: moveToInbox},
+		ui.Action{Title: ui.Val("Archive"), OnPress: archive},
+	),
+	{Title: ui.Val("Delete"), Role: ui.ActionDestructive, Disabled: locked, OnPress: remove},
+}})
+```
+
+| | iOS | Android | macOS | Windows | Linux | Web |
+|---|---|---|---|---|---|---|
+| `Disabled` | `.disabled` | disabled item | disabled item | grayed item | disabled action | `disabled`, `aria-disabled` |
+| `Checked` | `state = .on` | checked item; a section's choice as radio buttons | `state = on` | `MF_CHECKED` | stateful action (a check) | `menuitemcheckbox` |
+| `Children` | nested `UIMenu` | `SubMenu` | submenu | submenu | GMenu submenu | submenu (the arrow key toward it opens it) |
+| `Inline` | `displayInline` `UIMenu` | group with dividers, its title a disabled item | separators, a section header (macOS 14) | separators, an owner-drawn header | GMenu section with its label | `group` between separators, under a heading |
+
+The same holds for a screen's bar buttons (`ScreenOptions.Actions`): a
+disabled one is dimmed, and one with `Children` opens them as a menu
+(SwiftUI's `Menu` in a toolbar). An alert's buttons can be disabled too,
+and follow `Disabled` while it shows (an OK that waits for a name).
+Swipe actions show neither.
+
 `ui.Menu` puts a menu on any content. With `LongPress` it's a context
 menu, shown on a long press; with a mouse (macOS, Windows, Linux, the
 web), on a secondary click:
@@ -306,7 +343,7 @@ stays above it.
 ## Controls
 
 Each control takes the signal it changes, and a `Disabled` accessor.
-None of them has a label of its own: put a `Text` beside it.
+None of them has a label of its own but `Picker`: put a `Text` beside it.
 
 ```go
 return ui.Column(ui.Style{Gap: 16},
@@ -319,6 +356,7 @@ return ui.Column(ui.Style{Gap: 16},
 		ui.Text(signal.Func(func() string { return fmt.Sprintf("%.0f cups", cups.Get()) }), ui.Style{Grow: 1}),
 		ui.Stepper(ui.StepperProps{Value: cups, Min: 1, Max: 8})),
 	ui.Wheel(ui.WheelProps{Items: ui.Val(sizes), Selected: size}),
+	ui.Picker(ui.PickerProps{Items: ui.Val(milks), Selected: milk, Label: ui.Val("Milk")}),
 	ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
 		ui.StaticText("Tint", ui.Style{Grow: 1}),
 		ui.ColorPicker(ui.ColorPickerProps{Value: tint, Alpha: true, Title: ui.Val("Tint")})),
@@ -347,6 +385,21 @@ return ui.Column(ui.Style{Gap: 16},
   `UIPickerView`, Android's `NumberPicker`. The desktop and the web
   have no wheel: it's a pop-up menu of the items there (`NSPopUpButton`,
   a drop-down combo box, `GtkDropDown`, `<select>`).
+- **Picker** picks one of many `Items` from a menu, showing the chosen
+  one (SwiftUI's `Picker` in its menu style; Material's exposed dropdown
+  menu). `Selected` out of range (-1) is none chosen, and the picker
+  shows its `Label`, which also names it for screen readers; on Android
+  the label is the field's, floating above the chosen item. The
+  `Selected` signal can be nil: the picker keeps the user's choice.
+
+  | | Picker |
+  |---|---|
+  | iOS | a plain `UIButton` in the tint color with the pop-up indicator, its menu checking the chosen item (`changesSelectionAsPrimaryAction`) |
+  | Android | an outlined `TextInputLayout` in the exposed dropdown menu style over a `MaterialAutoCompleteTextView` the user can't type in; TalkBack reads a drop-down list |
+  | macOS | `NSPopUpButton` (the label a hidden item, shown while none is chosen) |
+  | Windows | a drop-down list combo box, in the system's light or dark style; the label its cue banner and its name for UI Automation |
+  | Linux | `GtkDropDown` over a `GtkStringList`, the label a dim label where the chosen item goes |
+  | Web | `<select>`, its first option a hidden placeholder showing the label |
 - **ColorPicker** is a swatch that opens the platform's picker, writing
   a `ui.Color`. `Alpha` lets the user pick an opacity, `Title` names the
   picker. On iOS it's `UIColorWell` and the system's picker; Android has
@@ -372,16 +425,35 @@ return ui.Column(ui.Style{Gap: 16},
 ## Progress and activity
 
 `ui.Progress` is a progress bar: its value from 0 to 1, or `nil` when
-how far is unknown. Its style's `Color` is its fill. `ui.Activity` is a
-spinner.
+how far is unknown. Its style's `Color` is its fill. `ui.ProgressRing`
+is the same in a circle: the ring fills clockwise from the top,
+animating as the value changes, and `nil` shows the platform's
+indeterminate circular indicator. `ui.Activity` is a spinner.
 
 ```go
 return ui.Column(ui.Style{Gap: 12},
 	ui.Progress(done),
 	ui.Progress(nil),
+	ui.ProgressRing(done),
+	ui.ProgressRing(done, ui.Style{Width: ui.Pt(24), Color: colors.Green}),
+	ui.ProgressRing(nil),
 	ui.Activity(),
 )
 ```
+
+A ring is measured. Each platform gives it its own size (iOS 58 points,
+Android 48dp, a Mac and Windows 32, Linux and the web 32). A style that
+sets one side sets the other too, so the ring stays square. Screen
+readers read it as a progress indicator with its percentage.
+
+| | ring | without a value |
+|---|---|---|
+| iOS | UIKit has no determinate ring, and SwiftUI's circular `ProgressView` ignores its value there. So the ring is drawn as SwiftUI's circular capacity `Gauge` is: a round-capped stroke in the tint over a track of the tint at 30%, the stroke a tenth of the ring's size | `UIActivityIndicatorView` |
+| Android | Material's `CircularProgressIndicator`, at Material 3's size for its frame (extra small, small or medium: their tracks, insets and gaps) | the same, indeterminate |
+| macOS | `NSProgressIndicator`'s determinate circle, in the accent color. AppKit draws it only at 16 and 32 points, so a larger frame centers the 32-point circle, and AppKit doesn't tint it | its spinner |
+| Windows | Fluent's `ProgressRing` (WinUI's): an arc with no track. Narrator reads it as a progress bar | the arc turning, as `Activity`'s |
+| Linux | drawn as `AdwSpinner` draws its circle: a track of the text color at 15%, and an arc in the accent color | `AdwSpinner` (`GtkSpinner` before libadwaita 1.6) |
+| Web | an SVG ring, `role="progressbar"` with `aria-valuenow` | the arc turning, slower with `prefers-reduced-motion` |
 
 ## Images
 

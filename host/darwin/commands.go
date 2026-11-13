@@ -209,28 +209,88 @@ func (h *Host) setMenu(n *node) {
 }
 
 // makeMenuOf makes an NSMenu (+1) of actions whose items send action to
-// the target, tagged with their index.
+// the target, tagged with their number: disabled items dimmed, checked
+// ones with a checkmark, submenus, and sections between separators under
+// a section header (macOS 14's) where they have a title.
 func (h *Host) makeMenuOf(actions []action, sel string) ID {
 	m := menu("")
 	Send(m, "setAutoenablesItems:", 0)
 	Send(m, "setUserInterfaceLayoutDirection:", direction(h.rtl))
-	for i, a := range actions {
+	h.addActionItems(m, actions, sel)
+	trimSeparators(m)
+	return m
+}
+
+func (h *Host) addActionItems(m ID, actions []action, sel string) {
+	for i := range actions {
+		a := &actions[i]
 		if a.role == ops.AlertButtonRoleCancel {
 			continue
 		}
-		it := item(m, a.title, sel, "", 0)
-		Send(it, "setTarget:", uintptr(h.target))
-		Send(it, "setTag:", uintptr(i))
+		if a.is(ops.MenuSubmenu | ops.MenuInline) {
+			// A section: set off by separators (trimSeparators drops the ones
+			// at the menu's ends and doubled ones).
+			sep(m)
+			if a.title != "" {
+				if HasClass("NSMenuItem") && RespondsTo(Class("NSMenuItem"), "sectionHeaderWithTitle:") {
+					Send(m, "addItem:", uintptr(Send(Class("NSMenuItem"), "sectionHeaderWithTitle:", uintptr(String(a.title)))))
+				} else {
+					it := item(m, a.title, "", "", 0)
+					Send(it, "setEnabled:", 0)
+				}
+			}
+			h.addActionItems(m, a.items, sel)
+			sep(m)
+			continue
+		}
+		var it ID
+		if a.is(ops.MenuSubmenu) {
+			it = item(m, a.title, "", "", 0)
+			s := menu(a.title)
+			Send(s, "setAutoenablesItems:", 0)
+			Send(s, "setUserInterfaceLayoutDirection:", direction(h.rtl))
+			h.addActionItems(s, a.items, sel)
+			trimSeparators(s)
+			Send(it, "setSubmenu:", uintptr(s))
+			Release(s)
+		} else {
+			it = item(m, a.title, sel, "", 0)
+			Send(it, "setTarget:", uintptr(h.target))
+			Send(it, "setTag:", uintptr(a.index))
+			if a.is(ops.MenuChecked) {
+				Send(it, "setState:", 1) // NSControlStateValueOn
+			}
+		}
+		Send(it, "setEnabled:", Bool(!a.is(ops.MenuDisabled)))
 		if img := symbolImage(a.icon); img != 0 {
 			Send(it, "setImage:", uintptr(img))
 		}
 		if a.role == ops.AlertButtonRoleDestructive {
-			attrs := Dict(Const(AppKit(), "NSForegroundColorAttributeName"), Send(Class("NSColor"), "systemRedColor"))
-			s := Send(Send(Class("NSAttributedString"), "alloc"), "initWithString:attributes:", uintptr(String(a.title)), uintptr(attrs))
-			Send(it, "setAttributedTitle:", uintptr(Autorelease(s)))
+			destructiveTitle(it, a.title)
 		}
 	}
-	return m
+}
+
+// trimSeparators removes a menu's separators at its ends and those that
+// follow another.
+func trimSeparators(m ID) {
+	prevSep := true // the start
+	for i := 0; i < int(SendInt(m, "numberOfItems")); {
+		it := Send(m, "itemAtIndex:", uintptr(i))
+		if SendBool(it, "isSeparatorItem") {
+			if prevSep {
+				Send(m, "removeItemAtIndex:", uintptr(i))
+				continue
+			}
+			prevSep = true
+		} else {
+			prevSep = false
+		}
+		i++
+	}
+	if n := int(SendInt(m, "numberOfItems")); n > 0 && SendBool(Send(m, "itemAtIndex:", uintptr(n-1)), "isSeparatorItem") {
+		Send(m, "removeItemAtIndex:", uintptr(n-1))
+	}
 }
 
 func (h *Host) popUp(n *node) {
@@ -243,8 +303,13 @@ func (h *Host) popUp(n *node) {
 }
 
 func (h *Host) menuItem(it ID) {
+	// A submenu's item: its menu is the one that opens it, or further up.
 	m := Send(it, "menu")
 	n := h.byMenu[m]
+	for n == nil && m != 0 {
+		m = Send(m, "supermenu")
+		n = h.byMenu[m]
+	}
 	if n == nil {
 		return
 	}

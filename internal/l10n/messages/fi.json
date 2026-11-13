@@ -2,6 +2,7 @@
   "ok": "OK",
   "search": "Haku",
   "back": "Takaisin",
+  "moreOptions": "Lisää vaihtoehtoja",
   "decrease": "Vähennä",
   "increase": "Lisää",
   "about": "Tietoja: {app}",
@@ -37,5 +38,7 @@
   "updateCheckError": "Päivityksiä tarkistettaessa tapahtui virhe. Yritä myöhemmin uudelleen.",
   "updateInstallError": "Päivitystä asennettaessa tapahtui virhe. Yritä myöhemmin uudelleen.",
   "updateUnavailable": "Päivitykset eivät ole saatavilla",
-  "updateUnavailableMessage": "{app} ei voi päivittää itseään sijainnissa, johon se on asennettu. Jos sen asensi paketinhallinta tai sovelluskauppa, päivitä se sieltä."
+  "updateUnavailableMessage": "{app} ei voi päivittää itseään sijainnissa, johon se on asennettu. Jos sen asensi paketinhallinta tai sovelluskauppa, päivitä se sieltä.",
+  "badgeCount": "{count, plural, one {# kohde} other {# kohdetta}}",
+  "close": "Sulje"
 }

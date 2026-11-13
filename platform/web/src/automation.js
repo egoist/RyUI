@@ -8,6 +8,7 @@
 //	submit         the focused field's return key
 //	back           the user's back
 //	tab <title>    the tab with that title
+//	choose <text>  the item with that text of a picker or wheel showing (a <select>)
 //	dump           what the screen shows: a text a line
 //	reload         the page loads again: the app relaunches
 //
@@ -30,6 +31,7 @@ export async function run(h, commands) {
       case "submit": submit(); break;
       case "back": h.afterCore(() => h.nav.back()); break;
       case "tab": tab(arg); break;
+      case "choose": choose(arg); break;
       case "dump": out = texts(h).join("\n") + "\n"; break;
       case "reload":
         // A relaunch: what the app keeps (its files, its language) stays,
@@ -57,7 +59,7 @@ function shown(el) {
   return r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth;
 }
 
-const textSelector = ".asuka-text, .asuka-rich, .asuka-button-title, .asuka-bar-title, .asuka-tab span, .asuka-sidebar-item span, .asuka-menu-item span, .asuka-alert-title, .asuka-alert-message, .asuka-alert-buttons button, .asuka-segmented button, .asuka-stepper button, .asuka-bar-text";
+const textSelector = ".asuka-text, .asuka-rich, .asuka-button-title, .asuka-bar-title, .asuka-tab span, .asuka-sidebar-item span, .asuka-menu-item span, .asuka-menu-header, .asuka-alert-title, .asuka-alert-message, .asuka-alert-buttons button, .asuka-segmented button, .asuka-stepper button, .asuka-bar-text, .asuka-fab span, .asuka-snackbar-message, .asuka-snackbar-action";
 
 /** texts are what the screen shows: each text, title and field (its text, or its placeholder). */
 function texts(h) {
@@ -68,6 +70,10 @@ function texts(h) {
   // A control that shows only an icon says its label, as screen readers have it.
   for (const el of h.container.querySelectorAll("button[aria-label], [role=button][aria-label], [role=img][aria-label]")) {
     if (shown(el) && !el.textContent.trim()) out.push(el.getAttribute("aria-label"));
+  }
+  // A progress indicator with a value says it, as screen readers read it.
+  for (const el of h.container.querySelectorAll("[role=progressbar][aria-valuenow]")) {
+    if (shown(el)) out.push("progress " + el.getAttribute("aria-valuenow") + "%");
   }
   for (const el of h.container.querySelectorAll("input, textarea, select")) {
     if (!shown(el)) continue;
@@ -128,8 +134,24 @@ function submit() {
   f.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true }));
 }
 
+/** choose chooses the option with text of a visible <select>, as the user does from its list. */
+function choose(text) {
+  for (const s of document.querySelectorAll(".asuka select")) {
+    if (!shown(s) || s.disabled) continue;
+    const i = [...s.options].findIndex((o) => !o.disabled && o.textContent === text);
+    if (i < 0) continue;
+    s.focus();
+    s.selectedIndex = i;
+    s.dispatchEvent(new Event("input", { bubbles: true }));
+    s.dispatchEvent(new Event("change", { bubbles: true }));
+    return;
+  }
+  throw new Error("no picker offers " + JSON.stringify(text));
+}
+
 function tab(title) {
-  const b = [...document.querySelectorAll(".asuka-tab")].find((b) => b.textContent.trim() === title && shown(b));
+  // Its title, not its badge.
+  const b = [...document.querySelectorAll(".asuka-tab")].find((b) => b.dataset.title === title && shown(b));
   if (!b) throw new Error("no tab " + JSON.stringify(title));
   b.click();
 }

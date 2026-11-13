@@ -2,6 +2,7 @@
   "ok": "OK",
   "search": "Otsi",
   "back": "Tagasi",
+  "moreOptions": "Rohkem valikuid",
   "decrease": "Vähenda",
   "increase": "Suurenda",
   "about": "Teave: {app}",
@@ -37,5 +38,7 @@
   "updateCheckError": "Uuenduste otsimisel ilmnes viga. Proovige hiljem uuesti.",
   "updateInstallError": "Uuenduse installimisel ilmnes viga. Proovige hiljem uuesti.",
   "updateUnavailable": "Uuendused pole saadaval",
-  "updateUnavailableMessage": "Rakendus {app} ei saa end oma installikohas ise uuendada. Kui selle installis paketihaldur või rakenduste pood, uuendage seda seal."
+  "updateUnavailableMessage": "Rakendus {app} ei saa end oma installikohas ise uuendada. Kui selle installis paketihaldur või rakenduste pood, uuendage seda seal.",
+  "badgeCount": "{count, plural, one {# üksus} other {# üksust}}",
+  "close": "Sulge"
 }

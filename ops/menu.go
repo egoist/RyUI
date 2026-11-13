@@ -28,6 +28,11 @@ const (
 	MenuDestructive
 	// MenuSubmenu: the item opens a submenu, which follows it.
 	MenuSubmenu
+	// MenuInline: with MenuSubmenu, an action menu's section rather than a
+	// submenu: its items shown in place, between dividers, under the
+	// item's title if it has one (UIMenu's displayInline; SwiftUI's
+	// Section in a Menu). Only action menus (ActionItem) use it.
+	MenuInline
 )
 
 // MenuRole is what a menu item does that the host does itself, with its

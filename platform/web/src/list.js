@@ -616,8 +616,9 @@ class List {
     if (!c || (!c.swipe.length && !c.leading.length)) return;
     if (e.defaultPrevented) return;
     e.preventDefault();
-    const items = [...c.leading.map((a, i) => ({ ...a, pick: () => this.h.dispatch(Events.action(c.n.id, -1 - i)) })),
-      ...c.swipe.map((a, i) => ({ ...a, pick: () => this.h.dispatch(Events.action(c.n.id, i)) }))];
+    // Flat: a swipe's actions have no children, and none is disabled.
+    const items = [...c.leading.map((a, i) => ({ ...a, flags: 0, items: [], pick: () => this.h.dispatch(Events.action(c.n.id, -1 - i)) })),
+      ...c.swipe.map((a, i) => ({ ...a, flags: 0, items: [], pick: () => this.h.dispatch(Events.action(c.n.id, i)) }))];
     this.h.menus.show(items, e.clientX, e.clientY);
   }
 

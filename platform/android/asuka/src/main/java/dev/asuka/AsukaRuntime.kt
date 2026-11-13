@@ -555,7 +555,9 @@ class AsukaRuntime private constructor(val app: Application) : AsukaOpHandler {
                 n.list?.restyle()
                 (n.view as? AsukaStack)?.restyle()
                 (n.view as? AsukaTabs)?.restyle()
+                (n.view as? AsukaScreen)?.bottom?.restyle()
                 (n.view as? AsukaSegmented)?.restyle()
+                (n.view as? AsukaPicker)?.restyle()
                 (n.view as? AsukaDatePicker)?.refresh() // says the date in the language
             }
         }
@@ -566,7 +568,7 @@ class AsukaRuntime private constructor(val app: Application) : AsukaOpHandler {
     private var fontScale = app.resources.configuration.fontScale
     private var densityDpi = app.resources.configuration.densityDpi
 
-    private val rebuilt = setOf(AsukaKind.TEXT, AsukaKind.BUTTON, AsukaKind.TEXT_FIELD, AsukaKind.TOGGLE, AsukaKind.SLIDER, AsukaKind.ACTIVITY)
+    private val rebuilt = setOf(AsukaKind.TEXT, AsukaKind.BUTTON, AsukaKind.TEXT_FIELD, AsukaKind.TOGGLE, AsukaKind.SLIDER, AsukaKind.ACTIVITY, AsukaKind.PROGRESS_RING)
 
     /** Makes n's view again with the current theme, replaying its props and keeping the user's state. */
     private fun rebuild(n: AsukaNode) {
@@ -682,9 +684,11 @@ class AsukaRuntime private constructor(val app: Application) : AsukaOpHandler {
             AsukaKind.SYMBOL -> AsukaSymbol(this)
             AsukaKind.SEGMENTED -> AsukaSegmented(this, id)
             AsukaKind.WHEEL -> AsukaWheel(this, id)
+            AsukaKind.PICKER -> AsukaPicker(this, id)
             AsukaKind.STEPPER -> AsukaStepper(this, id)
             AsukaKind.COLOR_PICKER -> AsukaColorPicker(this, id)
             AsukaKind.PROGRESS -> makeProgress()
+            AsukaKind.PROGRESS_RING -> AsukaProgressRing(ctx)
             AsukaKind.PAGE_CONTROL -> AsukaPageDots(this, id)
             AsukaKind.ACCESSORY -> AsukaContainer(ctx)
             AsukaKind.CANVAS -> AsukaCanvas(this)
@@ -695,6 +699,7 @@ class AsukaRuntime private constructor(val app: Application) : AsukaOpHandler {
             AsukaKind.TABS -> AsukaTabs(ctx, id, this)
             AsukaKind.SCREEN, AsukaKind.SHEET, AsukaKind.POPOVER -> AsukaScreen(ctx, id, this)
             AsukaKind.ALERT -> View(ctx)
+            AsukaKind.SNACKBAR -> AsukaSnackbar(this, id)
             AsukaKind.IMAGE -> androidx.appcompat.widget.AppCompatImageView(ctx).apply { scaleType = android.widget.ImageView.ScaleType.FIT_CENTER }
             AsukaKind.NATIVE -> AsukaNativeHost(ctx)
             AsukaKind.RICH_TEXT -> AsukaRichText(this, id)
@@ -869,6 +874,7 @@ class AsukaRuntime private constructor(val app: Application) : AsukaOpHandler {
         val n = nodes[id] ?: return
         if (n.kind == AsukaKind.SHAPE && setShapeProp(n, prop, v)) return
         if (n.kind == AsukaKind.WHEEL && setWheelProp(n, prop, v)) return
+        if (n.kind == AsukaKind.PICKER && setPickerProp(n, prop, v)) return
         if (n.kind == AsukaKind.WEB_VIEW && prop == AsukaProp.WebView.BLOCK) { (n.view as AsukaWebView).setBlock(v); return }
         if (n.kind == AsukaKind.TEXT_FIELD && prop == AsukaProp.TextField.SELECTION) { setFieldSelection(n, v); return }
         if (n.kind == AsukaKind.TEXT_FIELD && prop == AsukaProp.TextField.RICH) {
@@ -931,6 +937,7 @@ class AsukaRuntime private constructor(val app: Application) : AsukaOpHandler {
         (n.view as? AsukaVideo)?.release()
         stacks.remove(n)
         if (n.underDying) return // its views leave with the animating screen or sheet
+        if (n.kind == AsukaKind.SNACKBAR) { (n.view as AsukaSnackbar).dismiss(); return }
         if ((n.kind == AsukaKind.SCREEN || n.kind == AsukaKind.SHEET || n.kind == AsukaKind.POPOVER || n.kind == AsukaKind.ALERT) && destroyNav(n)) return
         if (matchOut(n)) {
             n.parent?.children?.remove(n)

@@ -198,7 +198,7 @@ func (h *Host) applyFont(n *node) {
 	switch {
 	case n.rich != nil:
 		n.rich.invalidate(h, n)
-	case n.kind == ops.KindTextField || n.kind == ops.KindWheel || n.kind == ops.KindDatePicker:
+	case n.kind == ops.KindTextField || n.kind == ops.KindWheel || n.kind == ops.KindPicker || n.kind == ops.KindDatePicker:
 		if n.ctl != 0 {
 			SendMessage(n.ctl, WM_SETFONT, h.nodeFont(n), 1)
 			if n.ctl2 != 0 {
@@ -217,23 +217,29 @@ func (h *Host) applyFont(n *node) {
 	h.redraw(n)
 }
 
-// decodeActions reads a Menu prop's items.
-func decodeActions(b []byte) []action {
-	if len(b) < 4 {
+// decodeActions reads a Menu prop's items (ops.DecodeActions).
+func decodeActions(b []byte) []action { return toActions(ops.DecodeActions(b)) }
+
+func toActions(items []ops.ActionItem) []action {
+	if len(items) == 0 {
 		return nil
 	}
-	n := int(le.Uint32(b))
-	b = b[4:]
-	out := make([]action, 0, n)
-	for range n {
-		if len(b) < 5 {
-			break
-		}
-		a := action{role: ops.AlertButtonRole(b[0])}
-		b = b[1:]
-		a.title, b = readString(b)
-		a.icon, b = readString(b)
-		out = append(out, a)
+	out := make([]action, len(items))
+	for i := range items {
+		it := &items[i]
+		out[i] = action{role: it.Role, title: it.Title, icon: it.Icon, index: int64(it.Index), flags: it.Flags, items: toActions(it.Items)}
+	}
+	return out
+}
+
+// flatActions are actions numbered by their place, without children:
+// a row's swipe actions in its context menu, a view's screen reader
+// actions.
+func flatActions(as []action) []action {
+	out := make([]action, len(as))
+	for i, a := range as {
+		a.index, a.flags, a.items = int64(i), 0, nil
+		out[i] = a
 	}
 	return out
 }

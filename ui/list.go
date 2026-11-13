@@ -156,6 +156,7 @@ type listCell[T any, K comparable] struct {
 	sent    []byte   // as last sent
 	leading []Action // its leading swipe actions
 	sentL   []byte   // as last sent
+	buf     []byte   // where they're encoded
 	sel     int8     // 1: the host shows it selected; -1: unknown
 	// A section header's.
 	header  bool
@@ -363,16 +364,16 @@ func (st *listState[T, K]) swipeActions(c *listCell[T, K], i int) {
 	// In an effect, the titles and what the actions depend on are followed.
 	if st.swipe != nil {
 		c.actions = st.swipe(i)
-		if b := encodeActions(c.actions); string(b) != string(c.sent) {
-			c.sent = b
-			st.e.r.batch.SetBytes(c.el.id, ops.PropSwipeActions, b)
+		if c.buf = appendSwipeActions(c.buf[:0], c.actions); string(c.buf) != string(c.sent) {
+			c.sent, c.buf = c.buf, c.sent
+			st.e.r.batch.SetBytes(c.el.id, ops.PropSwipeActions, c.sent)
 		}
 	}
 	if st.lead != nil {
 		c.leading = st.lead(i)
-		if b := encodeActions(c.leading); string(b) != string(c.sentL) {
-			c.sentL = b
-			st.e.r.batch.SetBytes(c.el.id, ops.PropLeadingSwipeActions, b)
+		if c.buf = appendSwipeActions(c.buf[:0], c.leading); string(c.buf) != string(c.sentL) {
+			c.sentL, c.buf = c.buf, c.sentL
+			st.e.r.batch.SetBytes(c.el.id, ops.PropLeadingSwipeActions, c.sentL)
 		}
 	}
 }
@@ -454,9 +455,9 @@ func (st *listState[T, K]) bind(i int, cell ops.NodeID) {
 	if st.swipe != nil || st.lead != nil {
 		el.handlers().action = func(k int64) {
 			if k < 0 {
-				runAction(c.leading, -1-k)
+				runSwipeAction(c.leading, -1-k)
 			} else {
-				runAction(c.actions, k)
+				runSwipeAction(c.actions, k)
 			}
 		}
 		el.listen(ops.EventAction)

@@ -77,3 +77,73 @@ final class GoldenTests: XCTestCase {
         XCTAssertEqual(Data(w.bytes), want)
     }
 }
+
+final class ActionsTests: XCTestCase {
+    /// The Swift reader of action menus agrees with Go's: it decodes
+    /// actions.bin to actions.txt.
+    func testDecodesGoldenMenu() throws {
+        let bin = try Data(contentsOf: testdata.appendingPathComponent("actions.bin"))
+        let want = try String(contentsOf: testdata.appendingPathComponent("actions.txt"), encoding: .utf8)
+        var out = ""
+        func walk(_ items: [AsukaActionItem], _ depth: Int) {
+            for a in items {
+                out += "\(a.index)\t\(depth)\t\(a.role)\t\(a.flags)\t\(a.title)\t\(a.icon)\n"
+                walk(a.items, depth + 1)
+            }
+        }
+        walk(bin.withUnsafeBytes { AsukaActions.decode($0) }, 0)
+        XCTAssertEqual(out, want)
+        // Cut short, it ends where it's cut.
+        let cut = bin.prefix(bin.count - 3).withUnsafeBytes { AsukaActions.decode($0) }
+        var n = 0
+        func count(_ items: [AsukaActionItem]) { for a in items { n += 1; count(a.items) } }
+        count(cut)
+        XCTAssertEqual(n, 11)
+        XCTAssertEqual(Data().withUnsafeBytes { AsukaActions.decode($0) }, [])
+    }
+}
+
+final class SidebarTests: XCTestCase {
+    /// The Swift reader of a sidebar agrees with Go's: it decodes
+    /// sidebar.bin to sidebar.txt.
+    func testDecodesGoldenSidebar() throws {
+        let bin = try Data(contentsOf: testdata.appendingPathComponent("sidebar.bin"))
+        let want = try String(contentsOf: testdata.appendingPathComponent("sidebar.txt"), encoding: .utf8)
+        let sections = bin.withUnsafeBytes { AsukaSidebar.decode($0) }
+        var out = ""
+        for (i, s) in sections.enumerated() {
+            out += "#\t\(s.title)\n"
+            for it in s.items { out += "\(i)\t\(it.title)\t\(it.icon)\t\(it.badge)\n" }
+        }
+        XCTAssertEqual(out, want)
+        // Cut short, it ends where it's cut, with whole items.
+        let cut = bin.prefix(bin.count - 18).withUnsafeBytes { AsukaSidebar.decode($0) }
+        XCTAssertEqual(cut.count, 2)
+        XCTAssertEqual(cut[1].items.map(\.title), ["Archiv"])
+        XCTAssertEqual(Data().withUnsafeBytes { AsukaSidebar.decode($0) }, [])
+        var more = sections
+        more[0].items[0].badge = "4"
+        XCTAssertTrue(AsukaSidebar.sameShape(sections, more))
+        more[2].items.append(.init(title: "Spam"))
+        XCTAssertFalse(AsukaSidebar.sameShape(sections, more))
+    }
+}
+
+final class AlertFieldsTests: XCTestCase {
+    /// The Swift reader of an alert's fields agrees with Go's: it decodes
+    /// alertfields.bin to alertfields.txt, and writes FieldChanged's
+    /// payload as fieldchanged.bin.
+    func testDecodesGoldenFields() throws {
+        let bin = try Data(contentsOf: testdata.appendingPathComponent("alertfields.bin"))
+        let want = try String(contentsOf: testdata.appendingPathComponent("alertfields.txt"), encoding: .utf8)
+        var out = ""
+        for f in bin.withUnsafeBytes({ AsukaAlertFields.decode($0) }) {
+            out += "\(f.placeholder)\t\(f.text)\t\(f.flags)\t\(f.keyboard)\t\(f.contentType)\n"
+        }
+        XCTAssertEqual(out, want)
+        XCTAssertEqual(bin.prefix(bin.count - 3).withUnsafeBytes { AsukaAlertFields.decode($0) }.count, 3)
+        XCTAssertEqual(Data().withUnsafeBytes { AsukaAlertFields.decode($0) }, [])
+        let changed = try Data(contentsOf: testdata.appendingPathComponent("fieldchanged.bin"))
+        XCTAssertEqual(Data(AsukaAlertFields.changed(2, "Grüße")), changed)
+    }
+}

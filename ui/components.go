@@ -457,8 +457,8 @@ func Button(p ButtonProps) Node {
 	}
 	if len(p.Menu) > 0 {
 		menu := p.Menu
-		bindActions(menu, func(b []byte) { e.r.batch.SetBytes(e.id, ops.PropMenu, b) })
-		e.handlers().action = func(i int64) { runAction(menu, i) }
+		bindActions(menu, actionDepth, func(b []byte) { e.r.batch.SetBytes(e.id, ops.PropMenu, b) })
+		e.handlers().action = func(i int64) { runAction(menu, i, actionDepth) }
 		e.listen(ops.EventAction)
 	}
 	return Node{e}
@@ -957,6 +957,32 @@ func Progress(value signal.Accessor[float64], style ...Styler) Node {
 	return Node{e}
 }
 
+// ProgressRing is circular progress: value is done, from 0 to 1, the
+// ring filling clockwise from the top and animating as it changes; a nil
+// value is under way, how far unknown, and shows the platform's
+// indeterminate circular indicator. iOS draws what SwiftUI's circular
+// ProgressView with a value draws (UIKit has none), and shows a
+// UIActivityIndicatorView without one; Android's is Material's
+// CircularProgressIndicator; a Mac's NSProgressIndicator in its spinning
+// style, determinate; Windows draws Fluent's ProgressRing; Linux draws a
+// ring in GNOME's style, and shows an AdwSpinner without a value; the web
+// an SVG ring. Its Style's Color is its fill (the accent color by
+// default). It's measured: the platform's size, unless its Style sizes
+// it. Screen readers read it as a progress indicator, with its
+// percentage.
+func ProgressRing(value signal.Accessor[float64], style ...Styler) Node {
+	e := newElement(ops.KindProgressRing, true)
+	if value == nil {
+		e.r.batch.SetBool(e.id, ops.PropProgressRingIndeterminate, true) // before it's measured: its view is the spinner
+	}
+	e.measure()
+	e.setStyle(firstStyle(style), false)
+	if value != nil {
+		bind(value, func(v float64) { e.r.batch.SetFloat(e.id, ops.PropProgressRingValue, min(max(v, 0), 1)) })
+	}
+	return Node{e}
+}
+
 // DateMode is what a DatePicker picks.
 type DateMode = ops.DateMode
 
@@ -1274,6 +1300,77 @@ func Wheel(p WheelProps) Node {
 		}
 		e.listen(ops.EventSelected)
 	}
+	return Node{e}
+}
+
+// PickerProps configures a Picker.
+type PickerProps struct {
+	// Items are what they say; they can follow the app's language.
+	Items signal.Accessor[[]string]
+	// Selected is the chosen item's index: the user's choice writes it.
+	// Out of range (-1): none is chosen, and the picker shows its Label.
+	Selected *signal.Signal[int]
+	// Label says what it picks: Android's floating label over the chosen
+	// item (Material's text field label); elsewhere shown while none is
+	// chosen, and read by screen readers.
+	Label    signal.Accessor[string]
+	Disabled signal.Accessor[bool]
+	Style    Styler
+}
+
+// Picker picks one of many options from a menu, showing the chosen one
+// (SwiftUI's Picker in its menu style: a pop-up button on iOS and the
+// Mac; Material 3's exposed dropdown menu on Android; a drop-down list on
+// Windows, a GtkDropDown on Linux, a <select> on the web). For a few
+// options side by side, use Segmented; on a spinning wheel, Wheel.
+func Picker(p PickerProps) Node {
+	e := newElement(ops.KindPicker, true)
+	e.measure()
+	e.setStyle(p.Style, false)
+	first := true
+	bindStrings(p.Items, func(b []byte) {
+		e.r.batch.SetBytes(e.id, ops.PropPickerItems, b)
+		if !first {
+			e.remeasure()
+		}
+		first = false
+	})
+	firstLabel := true
+	bind(p.Label, func(v string) {
+		e.r.batch.SetString(e.id, ops.PropPickerLabel, v)
+		if !firstLabel {
+			e.remeasure()
+		}
+		firstLabel = false
+	})
+	bind(p.Disabled, func(v bool) { e.r.batch.SetBool(e.id, ops.PropDisabled, v) })
+	reported := -1 // what the host shows
+	if p.Selected != nil {
+		known := false
+		signal.RenderEffect(func() {
+			v := p.Selected.Get()
+			if known && v == reported {
+				return
+			}
+			if known {
+				e.remeasure() // a pop-up button is as wide as its title
+			}
+			reported, known = v, true
+			e.r.batch.SetInt(e.id, ops.PropPickerSelected, int64(v))
+		})
+	} else {
+		e.r.batch.SetInt(e.id, ops.PropPickerSelected, -1)
+	}
+	e.handlers().selected = func(i int64) {
+		if int(i) != reported {
+			e.remeasure()
+		}
+		reported = int(i)
+		if p.Selected != nil {
+			p.Selected.Set(int(i))
+		}
+	}
+	e.listen(ops.EventSelected)
 	return Node{e}
 }
 

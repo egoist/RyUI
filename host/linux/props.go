@@ -60,17 +60,32 @@ func (r *reader) str() string {
 }
 func (r *reader) rest() []byte { b := r.b[r.off:]; r.off = len(r.b); return b }
 
-// decodeMenu reads a Menu-encoded list: u32 count, per item u8 role, a
-// title and an icon.
-func decodeMenu(b []byte) []action {
-	r := reader{b: b}
-	n := int(r.u32())
-	out := make([]action, 0, min(n, 256))
-	for i := 0; i < n && r.off < len(b); i++ {
-		role := ops.AlertButtonRole(r.u8())
-		title := r.str()
-		icon := r.str()
-		out = append(out, action{role: role, title: title, icon: icon})
+// decodeMenu reads a Menu-encoded list (ops.DecodeActions).
+func decodeMenu(b []byte) []action { return toActions(ops.DecodeActions(b)) }
+
+// decodeMenuFrom decodes a menu whose Action events carry base + an
+// item's number (a screen's Toolbar's and Primary's).
+func decodeMenuFrom(b []byte, base int64) []action {
+	as := decodeMenu(b)
+	rebase(as, base)
+	return as
+}
+
+func rebase(as []action, base int64) {
+	for i := range as {
+		as[i].index += base
+		rebase(as[i].items, base)
+	}
+}
+
+func toActions(items []ops.ActionItem) []action {
+	if len(items) == 0 {
+		return nil
+	}
+	out := make([]action, len(items))
+	for i := range items {
+		it := &items[i]
+		out[i] = action{role: it.Role, title: it.Title, icon: it.Icon, index: int64(it.Index), flags: it.Flags, items: toActions(it.Items)}
 	}
 	return out
 }
@@ -201,6 +216,10 @@ func (h *Host) setCommon(n *node, p ops.PropID, v *ops.Value) {
 		}
 	case ops.PropInterceptBack:
 		n.interceptBack = v.Int != 0
+		if n.kind == ops.KindSheet && n.nav != nil && n.nav.dialog != 0 {
+			// Escape asks the core (close-attempt) rather than closing it.
+			AdwDialogSetCanClose(n.nav.dialog, !n.interceptBack)
+		}
 	default:
 		h.setCommonMore(n, p, v)
 	}

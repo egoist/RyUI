@@ -26,6 +26,8 @@ open class AsukaActivity : AppCompatActivity() {
     private var keyboard = 0
     /** The keyboard's height over the window, as it animates, in px. */
     val keyboardPx get() = keyboard
+    /** The frame that holds the root's view (and the overlay snackbars show in). */
+    val rootFrame: FrameLayout get() = frame
     private var last: AsukaEnvironment? = null
     // The app's language and direction, where they aren't the Activity's
     // configuration's: what it makes (dialogs, Material's pickers) is in them.

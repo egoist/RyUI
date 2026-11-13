@@ -43,6 +43,9 @@ object AsukaKind {
     const val SPLIT = 33
     const val SHADER = 34
     const val WINDOW = 35
+    const val PICKER = 36
+    const val PROGRESS_RING = 37
+    const val SNACKBAR = 38
 
     fun name(kind: Int): String = when (kind) {
         1 -> "View"
@@ -80,6 +83,9 @@ object AsukaKind {
         33 -> "Split"
         34 -> "Shader"
         35 -> "Window"
+        36 -> "Picker"
+        37 -> "ProgressRing"
+        38 -> "Snackbar"
         else -> "Kind($kind)"
     }
 }
@@ -200,6 +206,10 @@ object AsukaProp {
         const val ZOOM_FROM = 71
         const val LARGE_TITLE = 72
         const val BAR_COLOR = 73
+        const val TOOLBAR = 74
+        const val PRIMARY = 75
+        const val PRIMARY_EXTENDED = 76
+        const val BADGE = 77
     }
 
     object Tabs {
@@ -210,6 +220,7 @@ object AsukaProp {
         const val DETENTS = 64
         const val GRABBER = 65
         const val WINDOW = 66
+        const val FULL_SCREEN = 67
     }
 
     object Alert {
@@ -218,6 +229,7 @@ object AsukaProp {
         const val BUTTONS = 66
         const val STYLE = 67
         const val WINDOW = 68
+        const val FIELDS = 69
     }
 
     object Image {
@@ -345,6 +357,24 @@ object AsukaProp {
         const val EDITED = 67
         const val FILE = 68
     }
+
+    object Picker {
+        const val ITEMS = 64
+        const val SELECTED = 65
+        const val LABEL = 66
+    }
+
+    object ProgressRing {
+        const val VALUE = 64
+        const val INDETERMINATE = 65
+    }
+
+    object Snackbar {
+        const val MESSAGE = 64
+        const val ACTION = 65
+        const val DURATION = 66
+        const val WINDOW = 67
+    }
 }
 
 object AsukaEventKind {
@@ -404,6 +434,7 @@ object AsukaEventKind {
     const val WINDOW_STATE = 54
     const val CLOSE_REQUEST = 55
     const val KEY = 56
+    const val FIELD_CHANGED = 57
 }
 
 object AsukaCommand {
@@ -740,6 +771,12 @@ object AsukaTitleBar {
     const val HIDDEN = 1
 }
 
+object AsukaSnackbarDuration {
+    const val SHORT = 0
+    const val LONG = 1
+    const val INDEFINITE = 2
+}
+
 /** Receives decoded ops, in order, on the main thread. */
 interface AsukaOpHandler {
     fun create(id: Int, kind: Int)
@@ -940,4 +977,5 @@ object AsukaEvents {
     fun windowState(id: Int, v: ByteArray): ByteArray = AsukaWriter().apply { header(id, 54); u32(v.size); raw(v) }.bytes()
     fun closeRequest(id: Int): ByteArray = AsukaWriter().apply { header(id, 55) }.bytes()
     fun key(id: Int, v: Long): ByteArray = AsukaWriter().apply { header(id, 56); u64(v) }.bytes()
+    fun fieldChanged(id: Int, v: ByteArray): ByteArray = AsukaWriter().apply { header(id, 57); u32(v.size); raw(v) }.bytes()
 }

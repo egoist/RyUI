@@ -2,6 +2,7 @@
   "ok": "V redu",
   "search": "Iskanje",
   "back": "Nazaj",
+  "moreOptions": "Več možnosti",
   "decrease": "Zmanjšaj",
   "increase": "Povečaj",
   "about": "O aplikaciji {app}",
@@ -37,5 +38,7 @@
   "updateCheckError": "Pri preverjanju posodobitev je prišlo do napake. Poskusite znova pozneje.",
   "updateInstallError": "Pri nameščanju posodobitve je prišlo do napake. Poskusite znova pozneje.",
   "updateUnavailable": "Posodobitve niso na voljo",
-  "updateUnavailableMessage": "Aplikacija {app} se ne more sama posodobiti na mestu, kjer je nameščena. Če jo je namestil upravitelj paketov ali trgovina z aplikacijami, jo posodobite tam."
+  "updateUnavailableMessage": "Aplikacija {app} se ne more sama posodobiti na mestu, kjer je nameščena. Če jo je namestil upravitelj paketov ali trgovina z aplikacijami, jo posodobite tam.",
+  "badgeCount": "{count, plural, one {# element} two {# elementa} few {# elementi} other {# elementov}}",
+  "close": "Zapri"
 }

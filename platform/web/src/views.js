@@ -170,13 +170,13 @@ function padInset(n) {
 
 // --- TextField ---
 
-const autocomplete = {
+export const autocomplete = {
   username: "username", password: "current-password", newPassword: "new-password", oneTimeCode: "one-time-code",
   email: "email", phone: "tel", name: "name", givenName: "given-name", familyName: "family-name",
   address: "street-address", postalCode: "postal-code", city: "address-level2", country: "country-name",
   cardNumber: "cc-number", url: "url",
 };
-const inputModes = ["text", "numeric", "decimal", "email", "url", "tel"];
+export const inputModes = ["text", "numeric", "decimal", "email", "url", "tel"];
 const enterKeys = ["", "done", "go", "next", "search", "send"];
 const capitalize = ["sentences", "none", "words", "characters"];
 
@@ -401,7 +401,7 @@ function fieldResized(h, n) {
   }
 }
 
-// --- Toggle, Slider, Stepper, Segmented, Wheel, ColorPicker, Progress, DatePicker, PageControl, Activity ---
+// --- Toggle, Slider, Stepper, Segmented, Wheel, Picker, ColorPicker, Progress, DatePicker, PageControl, Activity ---
 
 const toggle = {
   create(h, n) {
@@ -576,6 +576,63 @@ const wheel = {
   },
 };
 
+/**
+ * A Picker: a <select>, its first option a placeholder (disabled and
+ * hidden, so it isn't in the list) showing the label while none is chosen.
+ * The label names it for screen readers unless the app's own label does.
+ */
+const picker = {
+  create(h, n) {
+    const box = own(n, div("asuka-select-box"));
+    const s = document.createElement("select");
+    s.className = "asuka-select asuka-control";
+    const ph = new Option("", "");
+    ph.disabled = ph.hidden = true;
+    s.add(ph);
+    box.appendChild(s);
+    n.input = n.focusEl = s;
+    n.selected = -1;
+    n.items = [];
+    s.addEventListener("change", () => {
+      n.selected = s.selectedIndex - 1;
+      h.emit(n, Event.Selected, (id) => Events.selected(id, n.selected));
+    });
+    text.applyFont(h, n, s);
+  },
+  prop(h, n, p, v) {
+    const s = n.input;
+    if (p === P.Picker.Items) {
+      n.items = decodeStrings(v);
+      while (s.options.length > 1) s.remove(1);
+      for (const t of n.items) s.add(new Option(t));
+    }
+    if (p === P.Picker.Selected) n.selected = v;
+    if (p === P.Picker.Label) {
+      s.options[0].text = v;
+      if (!n.ownLabel) {
+        if (v) s.setAttribute("aria-label", v);
+        else s.removeAttribute("aria-label");
+      }
+    }
+    if (p === P.Picker.Items || p === P.Picker.Selected) {
+      // None (out of range): the placeholder, the label.
+      s.selectedIndex = n.selected >= 0 && n.selected < n.items.length ? n.selected + 1 : 0;
+    }
+  },
+  font(h, n) { text.applyFont(h, n, n.input); },
+  disabled(h, n) { n.input.disabled = n.disabled; },
+  label(h, n, v) {
+    n.ownLabel = !!v;
+    if (v) n.input.setAttribute("aria-label", v);
+    else if (n.input.options[0].text) n.input.setAttribute("aria-label", n.input.options[0].text);
+    else n.input.removeAttribute("aria-label");
+  },
+  measure(h, n, c) {
+    const r = rectOf(h, n.el, n.input);
+    return [fitWidth(c, r.width, r.width), r.height];
+  },
+};
+
 const colorPicker = {
   create(h, n) {
     const box = own(n, div("asuka-color-box"));
@@ -735,6 +792,60 @@ const activity = {
   measure() { return [20, 20]; },
 };
 
+// A ProgressRing: an SVG ring, its arc (the tint) from the top,
+// clockwise, over a track, easing to its value; indeterminate, the arc
+// turns, slowly with reduced motion. A progressbar to screen readers,
+// with its percentage (none when indeterminate, as ARIA has it). Its
+// stroke is a tenth of its size; 32 pixels across, unless its style
+// sizes it (one side: square).
+const ringSize = 32;
+
+const progressRing = {
+  create(h, n) {
+    const el = own(n, div("asuka-ring"));
+    el.setAttribute("role", "progressbar");
+    el.setAttribute("aria-valuemin", "0");
+    el.setAttribute("aria-valuemax", "100");
+    el.setAttribute("aria-valuenow", "0");
+    el.innerHTML = '<svg viewBox="0 0 40 40" aria-hidden="true">' +
+      '<circle class="asuka-ring-track" cx="20" cy="20" r="18" pathLength="100"/>' +
+      '<circle class="asuka-ring-fill" cx="20" cy="20" r="18" pathLength="100"/></svg>';
+    n.value = 0;
+    setRing(n);
+  },
+  prop(h, n, p, v) {
+    if (p === P.ProgressRing.Value) {
+      n.value = Math.min(Math.max(v, 0), 1);
+      setRing(n);
+    }
+    if (p === P.ProgressRing.Indeterminate) {
+      n.indeterminate = !!v;
+      n.el.classList.toggle("asuka-ring-indeterminate", n.indeterminate);
+      setRing(n);
+    }
+  },
+  color(h, n) { n.el.style.setProperty("--tint", h.css(n.color) || ""); },
+  measure(h, n, c) {
+    if (c.width === c.width) return [c.width, c.width];
+    if (c.height === c.height) return [c.height, c.height];
+    return [ringSize, ringSize];
+  },
+};
+
+function setRing(n) {
+  const fill = n.el.querySelector(".asuka-ring-fill");
+  if (n.indeterminate) {
+    n.el.removeAttribute("aria-valuenow");
+    fill.style.strokeDashoffset = fill.style.opacity = "";
+    return;
+  }
+  n.el.setAttribute("aria-valuenow", String(Math.round(n.value * 100)));
+  // pathLength 100: the dash is the value's part of the circle (none at
+  // 0, where a round cap would still show a dot).
+  fill.style.strokeDashoffset = String(100 - n.value * 100);
+  fill.style.opacity = n.value > 0 ? "" : "0";
+}
+
 const selectable = {
   create(h, n) { own(n, div("asuka-selectable")); },
   command(h, n, cmd) {
@@ -806,9 +917,11 @@ export const kinds = {
   [Kind.Activity]: activity,
   [Kind.Segmented]: segmented,
   [Kind.Wheel]: wheel,
+  [Kind.Picker]: picker,
   [Kind.Stepper]: stepper,
   [Kind.ColorPicker]: colorPicker,
   [Kind.Progress]: progress,
+  [Kind.ProgressRing]: progressRing,
   [Kind.DatePicker]: datePicker,
   [Kind.PageControl]: pageControl,
   [Kind.Selectable]: selectable,

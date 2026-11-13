@@ -122,6 +122,8 @@ func (h *Host) message(hwnd uintptr, m uint32, wp, lp uintptr) (uintptr, bool) {
 		return h.popoverMessage(n, m, wp, lp)
 	case kindWindowFrame:
 		return h.windowFrameMessage(n, m, wp, lp)
+	case kindAlertWindow:
+		return h.alertDialogMessage(n, m, wp, lp)
 	}
 	return h.viewMessage(n, hwnd, m, wp, lp)
 }
@@ -351,7 +353,7 @@ func (h *Host) setScale(hwnd uintptr, k float32) []*node {
 	list = append(list, hwnd)
 	ns := make([]*node, 0, len(list))
 	for _, w := range list {
-		if n := h.byHwnd[w]; n != nil && n.hwnd == w && n.kind != kindWindowFrame && n.kind != kindSheetWindow {
+		if n := h.byHwnd[w]; n != nil && n.hwnd == w && n.kind != kindWindowFrame && n.kind != kindSheetWindow && n.kind != kindAlertWindow {
 			n.k = h.kFor(k, h.zoomUpTo(w, hwnd)) // transform.go
 			ns = append(ns, n)
 		}
@@ -396,6 +398,12 @@ func (h *Host) setDark(dark bool) {
 	}
 	for _, w := range h.wins {
 		SetDarkTitleBar(w.nav.window, dark)
+	}
+	for _, n := range h.nodes {
+		if n.kind == ops.KindAlert && n.nav != nil && n.nav.dlg != nil {
+			SetDarkTitleBar(n.nav.dlg.win, dark)
+			RedrawWindow(n.nav.dlg.win, RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_ERASE)
+		}
 	}
 	for _, n := range h.nodes {
 		h.themeControl(n)
@@ -456,6 +464,10 @@ func (h *Host) keyMessage(m *Msg) bool {
 			}
 			if n := h.byHwnd[w]; n != nil && n.kind == kindPopoverWindow {
 				h.cancelPopover(n)
+				return true
+			}
+			if n := h.byHwnd[w]; n != nil && n.kind == kindAlertWindow {
+				h.cancelAlertDialog(n)
 				return true
 			}
 		}

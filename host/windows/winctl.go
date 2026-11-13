@@ -564,8 +564,11 @@ func (h *Host) ctlMessage(c *wctl, m uint32, wp, lp uintptr) (uintptr, bool) {
 	case WM_SIZE:
 		h.layoutChrome(c)
 		h.reportState(c)
+		h.fitCovers(c.hwnd) // its full-screen sheets (nav.go)
+		h.roundCovers(c.hwnd)
 	case WM_MOVE, WM_WINDOWPOSCHANGED:
 		h.reportState(c)
+		h.fitCovers(c.hwnd)
 	}
 	return 0, false
 }

@@ -274,10 +274,18 @@ func (h *Host) applyDirection(n *node) {
 		if n.textAlign != 0 {
 			h.applyTextAlign(n)
 		}
-	case ops.KindWheel:
+	case ops.KindWheel, ops.KindPicker:
 		setMenuDirection(Send(n.view, "menu"), rtl)
 	case ops.KindTabs:
 		h.orderTabs(n)
+	case ops.KindSplit:
+		if changed && n.split != nil {
+			// The rows lay out from their leading edge.
+			n.split.reloading = true
+			Send(n.split.table, "reloadData")
+			n.split.reloading = false
+			h.showSidebarSelection(n.split)
+		}
 	case ops.KindRichText:
 		if changed {
 			n.rich.directionChanged(h, n)

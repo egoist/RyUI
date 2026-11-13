@@ -73,6 +73,18 @@ func uiTextStyle(_ v: Int32) -> UIFont.TextStyle {
 }
 
 /// A TextField's ContentType (ui.Content...) as UIKit names it; another a
+/// A Keyboard as UIKit's keyboard type.
+func keyboardType(_ v: Int32) -> UIKeyboardType {
+    switch AsukaKeyboard(rawValue: v) {
+    case .number: return .numberPad
+    case .decimal: return .decimalPad
+    case .email: return .emailAddress
+    case .url: return .URL
+    case .phone: return .phonePad
+    default: return .default
+    }
+}
+
 /// UITextContentType's own.
 func contentType(_ s: String) -> UITextContentType {
     switch s {
@@ -179,6 +191,7 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
         case let b as AsukaCheckbox: b.tintColor = c
         case let a as UIActivityIndicatorView: a.color = c ?? .secondaryLabel
         case let p as UIProgressView: p.progressTintColor = c
+        case let r as AsukaProgressRing: r.color = c
         case let s as UISegmentedControl: s.selectedSegmentTintColor = c
         case let r as AsukaRichTextView:
             r.base.color = color
@@ -453,15 +466,7 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             (n.view as? AsukaTextField)?.plain = v.bool
             (n.view as? AsukaTextView)?.plain = v.bool
         case (.textField, AsukaProp.TextField.keyboard):
-            let t: UIKeyboardType
-            switch AsukaKeyboard(rawValue: v.enumValue) {
-            case .number: t = .numberPad
-            case .decimal: t = .decimalPad
-            case .email: t = .emailAddress
-            case .url: t = .URL
-            case .phone: t = .phonePad
-            default: t = .default
-            }
+            let t = keyboardType(v.enumValue)
             (n.view as? UITextField)?.keyboardType = t
             (n.view as? AsukaTextView)?.keyboardType = t
         case (.textField, AsukaProp.TextField.returnKey):
@@ -543,7 +548,7 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
             guard let a = n.view as? UIActivityIndicatorView else { return }
             if v.bool { a.startAnimating() } else { a.stopAnimating() }
         default:
-            if !setShapeProp(n, prop, v), !setWheelProp(n, prop, v), !setMediaProp(n, prop, v) { setNavProp(n, prop, v) }
+            if !setShapeProp(n, prop, v), !setWheelProp(n, prop, v), !setPickerProp(n, prop, v), !setMediaProp(n, prop, v) { setNavProp(n, prop, v) }
         }
     }
 
@@ -600,6 +605,11 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
         case let p as UIProgressView:
             // As wide as it's let be; as tall as UIKit makes it.
             s = CGSize(width: w.isNaN ? (aw.isFinite ? CGFloat(max(aw, 0)) : 100) : CGFloat(w), height: p.intrinsicContentSize.height)
+        case let r as AsukaProgressRing:
+            // Its own size, or square: a style that sizes one side sizes the other.
+            s = r.sizeThatFits(.zero)
+            if !w.isNaN && h.isNaN { s.height = CGFloat(w) }
+            if w.isNaN && !h.isNaN { s.width = CGFloat(h) }
         case let sym as AsukaSymbolView:
             sym.refresh()
             s = sym.image?.size ?? .zero

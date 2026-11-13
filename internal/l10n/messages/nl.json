@@ -2,6 +2,7 @@
   "ok": "OK",
   "search": "Zoeken",
   "back": "Terug",
+  "moreOptions": "Meer opties",
   "decrease": "Verlagen",
   "increase": "Verhogen",
   "about": "Over {app}",
@@ -37,5 +38,7 @@
   "updateCheckError": "Er is een fout opgetreden bij het zoeken naar updates. Probeer het later opnieuw.",
   "updateInstallError": "Er is een fout opgetreden bij het installeren van de update. Probeer het later opnieuw.",
   "updateUnavailable": "Updates niet beschikbaar",
-  "updateUnavailableMessage": "{app} kan zichzelf niet bijwerken op de plek waar het is geïnstalleerd. Als een pakketbeheerder of een appwinkel het heeft geïnstalleerd, werk het daar bij."
+  "updateUnavailableMessage": "{app} kan zichzelf niet bijwerken op de plek waar het is geïnstalleerd. Als een pakketbeheerder of een appwinkel het heeft geïnstalleerd, werk het daar bij.",
+  "badgeCount": "{count, plural, one {# item} other {# items}}",
+  "close": "Sluiten"
 }

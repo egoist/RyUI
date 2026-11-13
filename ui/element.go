@@ -36,6 +36,7 @@ type handlers struct {
 	rowSelected         func(bool)                // a List cell's
 	rowSelectBegin      func()                    // a List cell's
 	selection, pasted   func([]byte)              // a TextField's
+	fieldChanged        func([]byte)              // an Alert's
 	rich, formats       func([]byte)              // a Rich TextField's
 	navigated, message  func(string)
 	ended               func()

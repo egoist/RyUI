@@ -880,10 +880,12 @@ func (h *Host) cellMenu(c *cell) ID {
 	c.menuTags = c.menuTags[:0]
 	var all []action
 	for i, a := range c.leading {
+		a.index, a.flags, a.items = int64(len(all)), 0, nil // a swipe's: flat
 		all = append(all, a)
 		c.menuTags = append(c.menuTags, int64(-1-i))
 	}
 	for i, a := range c.swipe {
+		a.index, a.flags, a.items = int64(len(all)), 0, nil
 		all = append(all, a)
 		c.menuTags = append(c.menuTags, int64(i))
 	}

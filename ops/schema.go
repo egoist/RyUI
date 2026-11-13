@@ -103,7 +103,7 @@ var Schema = SchemaDef{
 		{Name: "TextAlign", Type: TEnum, Enum: "TextAlign"},
 		{Name: "LineLimit", Type: TInt, Doc: "0: no limit"},
 		{Name: "Disabled", Type: TBool},
-		{Name: "Menu", Type: TBytes, Doc: "a menu: u32 count, then per item u8 role (AlertButtonRole), a u32-length title and a u32-length icon (Symbol.Name; empty: none); Action events carry the item's index"},
+		{Name: "Menu", Type: TBytes, Doc: "a menu (ops/actions.go: ops.AppendActions, ops.DecodeActions): u32 count, then per item u8 role (AlertButtonRole), a u32-length title, a u32-length icon (Symbol.Name; empty: none) and u8 MenuFlags (2 disabled, 4 checked, 16 submenu, 32 inline: with submenu, a section shown in place, between dividers, under its title if it has one), then with flag 16 its items, a menu. Items are numbered depth first, a submenu or section before its own items; Action events carry the chosen item's number"},
 		{Name: "MenuTrigger", Type: TEnum, Enum: "MenuTrigger"},
 		{Name: "Transform", Type: TBytes, Doc: "f32 translate x, y (points), scale x, y, rotation (degrees, clockwise), around the view's center; layout doesn't see it"},
 		{Name: "Shadow", Type: TBytes, Doc: "u64 color (0: none), f32 blur radius, offset x, y (points), from the view's shape"},
@@ -111,7 +111,7 @@ var Schema = SchemaDef{
 		{Name: "Transition", Type: TBytes, Doc: "u8 fade, f32 scale (0: none), offset x, y (points): the state a view comes in from when it's inserted during an animation, and goes out to when it's destroyed during one (the host keeps it until it has)"},
 		{Name: "Material", Type: TEnum, Enum: "Material", Doc: "a translucent background that blurs what's behind (iOS's materials); Android, which can't, shows its surface color, translucent"},
 		{Name: "FontFamily", Type: TString, Doc: "a font file's name in the app's assets/fonts (Inter-Bold.ttf: Inter-Bold), a family of them (Inter: Inter-Regular, Inter-Bold...), a generic family (serif, monospace, rounded) or a system family; scaled as the text style is. Under asuka dev, a font file's URL, which the host loads, then sends FontLoaded"},
-		{Name: "SwipeActions", Type: TBytes, Doc: "a List cell's swipe actions, encoded as Menu (iOS: its trailing actions; Android: a full swipe runs the first); Action events on the cell carry the index"},
+		{Name: "SwipeActions", Type: TBytes, Doc: "a List cell's swipe actions, encoded as Menu, flat: a swipe has no submenus, and shows each action enabled (iOS: its trailing actions; Android: a full swipe runs the first); Action events on the cell carry the index"},
 		{Name: "LayoutDirection", Type: TEnum, Enum: "LayoutDirection", Doc: "the view lays itself out and aligns its text in this direction, whatever the app's (ui.WithDirection): sent to each view in the subtree, as a platform's view doesn't take it from its parent. Frames are always physical"},
 		{Name: "ContentInset", Type: TEdges, Doc: "the room a measured view's padding and border take inside its frame, in points (top, right, bottom, left: physical): the host draws its content (a text, a field's text, a button's title, an image) inside it, and measures its content alone, as before. Sent when it changes from none"},
 		{Name: "LeadingSwipeActions", Type: TBytes, Doc: "a List cell's swipe actions from its leading edge (Mail's Unread), encoded as Menu; Action events on the cell carry -1 - the index"},
@@ -181,7 +181,7 @@ var Schema = SchemaDef{
 		{Name: "Stack", Doc: "a navigation stack; its children are Screens: an Insert pushes, a Destroy pops (animated when it's the top). A pop the user makes (back gesture, back button) is reported with Popped, the screen's ID"},
 		{Name: "Screen", Props: []PropDef{
 			{Name: "Title", Type: TString},
-			{Name: "Actions", Type: TBytes, Doc: "bar buttons, encoded as Menu; Action events carry the index"},
+			{Name: "Actions", Type: TBytes, Doc: "bar buttons, encoded as Menu: a disabled one is dimmed, one with a submenu opens it as a menu (SwiftUI's Menu in a toolbar); Action events carry the item's number"},
 			{Name: "BackGesture", Type: TBool, Doc: "false: no interactive back"},
 			{Name: "Icon", Type: TString, Doc: "a tab's icon: an SF Symbol name (Android maps the common ones)"},
 			{Name: "Search", Type: TString, Doc: "a search field in the bar, with this placeholder (UISearchController; a toolbar search action expanding to a SearchView): typing is reported with TextChanged, the search key with Submit"},
@@ -190,6 +190,10 @@ var Schema = SchemaDef{
 			{Name: "ZoomFrom", Type: TString, Doc: "a Match key: the view with it on the screen below, which the screen zooms out of as it's pushed and into as it's popped (iOS 18's zoom transition, whose back swipe shrinks it into the view; on Android, Material's container transform)"},
 			{Name: "LargeTitle", Type: TBool, Doc: "iOS: the bar's large title, collapsing as the screen scrolls; Android's top app bar stays as it is"},
 			{Name: "BarColor", Type: TColor, Doc: "Android: the top app bar's color while this screen is on top, so it can continue the screen's own background (0: the surface). iOS's bar is clear at the top of a screen and blurs what's under it, so it has no need of one"},
+			{Name: "Toolbar", Type: TBytes, Doc: "buttons in a bar at the bottom of the screen, encoded as Menu (iOS: the navigation controller's toolbar; Android: Material's BottomAppBar, with an overflow; macOS: the window's toolbar; Windows: a command bar; Linux: a GtkActionBar in an AdwToolbarView; the web: a bar). Action events carry ScreenToolbarActions (1<<32) + the item's number"},
+			{Name: "Primary", Type: TBytes, Doc: "the screen's main action (compose, add), encoded as Menu with one item (its children open a menu): Android's FloatingActionButton (docked in the BottomAppBar with a Toolbar), iOS's toolbar's trailing, prominent item, a prominent toolbar item on macOS, an accent button on Windows, a suggested-action button on Linux, a floating button on the web. Action events carry ScreenPrimaryAction (2<<32) + the item's number (0: the action)"},
+			{Name: "PrimaryExtended", Type: TBool, Doc: "Android: Primary is an ExtendedFloatingActionButton, its title beside its icon, shrinking to the icon as the screen's content scrolls down and extending again as it scrolls up"},
+			{Name: "Badge", Type: TString, Doc: "a tab's badge (empty: none): usually a count, any short text; on its tab item (UITabBarItem's badgeValue, Material's BadgeDrawable), read with the tab's title by screen readers"},
 		}, Doc: "a screen of a Stack, or a page of Tabs: sized by the host, which reports its Environment"},
 		{Name: "Tabs", Props: []PropDef{
 			{Name: "Selected", Type: TInt},
@@ -198,13 +202,15 @@ var Schema = SchemaDef{
 			{Name: "Detents", Type: TInt, Doc: "bits: 1 medium, 2 large (0: large)"},
 			{Name: "Grabber", Type: TBool},
 			{Name: "Window", Type: TInt, Doc: "the window it's declared in: the root's or a Window node's ID. A desktop host presents it on that window, and a key goes on from it to that window's root; a phone's one window takes it and ignores it"},
+			{Name: "FullScreen", Type: TBool, Doc: "it covers the whole screen (iOS's full-screen cover, Material's full-screen dialog; a desktop's sheet over all of its window's content, the web's dialog over the viewport), sent before Present: Detents and Grabber don't apply, and no swipe or tap outside dismisses it"},
 		}, Doc: "a modal sheet with one child, its content: Present shows it, Destroy dismisses it; the user's dismissal is reported with Dismissed. Sized by the host, which reports its Environment"},
 		{Name: "Alert", Props: []PropDef{
 			{Name: "Title", Type: TString},
 			{Name: "Message", Type: TString},
-			{Name: "Buttons", Type: TBytes, Doc: "encoded as Menu"},
+			{Name: "Buttons", Type: TBytes, Doc: "encoded as Menu, flat; a disabled button is dimmed and can't be pressed, and the prop is set again while the alert shows when that changes"},
 			{Name: "Style", Type: TEnum, Enum: "AlertStyle"},
 			{Name: "Window", Type: TInt, Doc: "the window it's declared in: the root's or a Window node's ID. A desktop host presents it on that window; a phone's one window takes it and ignores it"},
+			{Name: "Fields", Type: TBytes, Doc: "an alert's text fields (ops/alert.go: ops.AppendAlertFields, ops.DecodeAlertFields): u32 count, then per field a string placeholder, a string text (its starting text), u8 AlertFieldFlags (1 secure) and u8 Keyboard, then a string content type (AutoFill's hint, as TextField's ContentType); set before Present, never for an action sheet. The first field has the focus, the keyboard up; return in the last presses the default button (the first whose role is Default) if it's enabled. Typing is reported with FieldChanged"},
 		}, Doc: "an alert or action sheet: Present shows it; a button reports Action with its index and dismisses it; dismissing otherwise reports Dismissed"},
 		{Name: "Image", Props: []PropDef{
 			{Name: "Source", Type: TString, Doc: "an http(s) URL, or a file in the app's assets"},
@@ -297,7 +303,7 @@ var Schema = SchemaDef{
 			{Name: "Commands", Type: TBytes, Doc: "what it draws, in points from its top left, in order: per command a u8 CanvasOp and its arguments. Save, Restore: none; Translate, Scale: f32 x, y; Rotate: f32 degrees, clockwise; Alpha: f32 (multiplies what's drawn after); Clip: a path; Fill: u64 color, a path; Stroke: u64 color, f32 width, u8 LineCap, u8 LineJoin, u32 dash count, f32 dash phase, f32 each dash, a path; Gradient: u32 stop count, per stop u64 color and f32 location, f32 start x, y, end x, y, a path (filled); Text: u64 color, f32 size, u8 FontWeight, u8 TextAlign (Start: its left edge at x, Center, End: its right edge at x), f32 x, y (its baseline), u32-length string. A path is u32 length, then Shape's Path format. Colors may be semantic, resolved in the view's appearance"},
 		}, Doc: "drawn by the app (SwiftUI's Canvas; Compose's and Android's Canvas): a display list replayed with Core Graphics, Android's Canvas, GDI+; it takes the size its style gives it"},
 		{Name: "Split", Props: []PropDef{
-			{Name: "Items", Type: TBytes, Doc: "the sidebar's destinations: u32 section count, per section a string title (empty: none) and u32 item count, per item a string title and a string icon (Symbol.Name; empty: none)"},
+			{Name: "Items", Type: TBytes, Doc: "the sidebar's destinations (AppendSidebar): u32 section count, per section a string title (empty: none) and u32 item count, per item a string title, a string icon (Symbol.Name; empty: none) and a string badge (empty: none). Set again when one changes: a host updates its rows in place when the sections' and items' counts stay"},
 			{Name: "Selected", Type: TInt, Doc: "the selected destination, its index among all the sections' items (-1: none)"},
 			{Name: "Title", Type: TString, Doc: "the sidebar's title"},
 		}, Doc: "destinations in a sidebar and the selected one's screens beside it (UISplitViewController's sidebar on iPad, collapsing into a stack on iPhone, the list its first screen; Material's navigation drawer on Android, modal on a phone and standing beside the content on a wide screen; a source list on macOS; a navigation pane on Windows). Its one child is a Stack, the detail, which the host places; choosing a destination sends Selected"},
@@ -313,6 +319,21 @@ var Schema = SchemaDef{
 			{Name: "Edited", Type: TBool, Doc: "the document it shows has unsaved changes: a dot in a Mac's close button (setDocumentEdited:), a * before the title on Windows, Linux and the web"},
 			{Name: "File", Type: TString, Doc: "the path of the file the document it shows is (empty: none): a Mac's title bar shows its icon, which drags the file, and Command-clicking the title lists its folders (setRepresentedURL:)"},
 		}, Doc: "a desktop window of the app's (macOS, Windows, Linux; on the web a window in the page; mobile hosts can't show one), with one child, its content: Present opens it (shown, unless its Config says hidden), Destroy closes it; the user closing it is reported with Dismissed, or with CloseRequest while the core listens for that, and the window stays. Sized by the host (and the user), which reports its Environment, and its WindowState while the core listens; WindowAction commands control it"},
+		{Name: "Picker", Props: []PropDef{
+			{Name: "Items", Type: TBytes, Doc: "u32 count, then each item's u32-length title"},
+			{Name: "Selected", Type: TInt, Doc: "the chosen item's index (-1, or out of range: none, and the Label shows)"},
+			{Name: "Label", Type: TString, Doc: "what it picks: Material's floating label on Android; shown while none is chosen, and read by screen readers elsewhere"},
+		}, Doc: "one of many options, showing the chosen one and choosing from a menu (SwiftUI's Picker in its menu style: a UIButton whose menu changes its selection, with the pop-up indicator; Material 3's exposed dropdown menu, a TextInputLayout over a MaterialAutoCompleteTextView; NSPopUpButton; a drop-down list combo box drawn as Fluent's on Windows; GtkDropDown; a <select> on the web); measured. The user's choice is reported with Selected"},
+		{Name: "ProgressRing", Props: []PropDef{
+			{Name: "Value", Type: TFloat, Doc: "done, from 0 to 1: the ring fills clockwise from the top, animating as it changes"},
+			{Name: "Indeterminate", Type: TBool, Doc: "under way, how far unknown: the platform's indeterminate circular indicator (UIActivityIndicatorView, NSProgressIndicator's spinner, AdwSpinner; Material's and Fluent's turning arc)"},
+		}, Doc: "a circular progress indicator (SwiftUI's circular ProgressView with a value, drawn in UIKit; Material's CircularProgressIndicator; NSProgressIndicator's determinate circle; Fluent's ProgressRing, drawn; drawn in GNOME's style on Linux; an SVG ring on the web); measured, the platform's size unless the style sizes it. Color is its fill (the accent by default). Screen readers read it as a progress indicator, with its percentage"},
+		{Name: "Snackbar", Props: []PropDef{
+			{Name: "Message", Type: TString},
+			{Name: "Action", Type: TString, Doc: "its button's title (Undo); empty: none. Pressing it reports Action (0) and dismisses it"},
+			{Name: "Duration", Type: TEnum, Enum: "SnackbarDuration", Doc: "how long it shows: the host lengthens it as the platform recommends for accessibility (Android's AccessibilityManager.getRecommendedTimeoutMillis, a screen reader on)"},
+			{Name: "Window", Type: TInt, Doc: "the window it's shown on: the root's or a Window node's ID. A desktop host shows it at the bottom of that window; a phone's one window takes it and ignores it"},
+		}, Doc: "a brief message at the bottom of the window, with an optional action (Material's Snackbar; AdwToast): Present shows it, Destroy dismisses it, animated. Its action reports Action; timing out or the user's swipe reports Dismissed. The core destroys it after either"},
 	},
 	Events: []EventDef{
 		{Name: "Press", Payload: PNone},
@@ -371,6 +392,7 @@ var Schema = SchemaDef{
 		{Name: "WindowState", Payload: PBytes, Doc: "a window's state changed (the user's doing or the app's), to its Window node or, for the main window, the root, while the core listens (and once as it starts listening): f32 x, y (its frame's top left on the screen, in points from the main display's; 0, 0 where the host can't tell, as on Wayland), f32 width, height (its content's size, in points), u8 WindowStateFlags bits (1 visible, 2 focused, 4 minimized, 8 maximized, 16 full screen, 32 always on top, 64 click-through)"},
 		{Name: "CloseRequest", Payload: PNone, Doc: "the user asked to close a window (its close button, a shortcut, the taskbar's or Dock's menu) while the core listens for this on its Window node or, for the main window, the root: the window stays open, and the core closes it (a Window: Destroy; the main window: WindowAction Close) if the app lets it"},
 		{Name: "Key", Payload: PInt, Doc: "a key of the view's Keys went down, or repeated, while the keyboard's focus was in it: its index"},
+		{Name: "FieldChanged", Payload: PBytes, Doc: "the user changed the text of an Alert's field (ops.AppendFieldChanged, ops.DecodeFieldChanged): u32 the field's index, then a string, its text"},
 	},
 	Commands: []CommandDef{
 		{Name: "Focus"},
@@ -443,5 +465,6 @@ var Schema = SchemaDef{
 		{Name: "WindowAction", Values: []string{"Show", "Hide", "Focus", "Minimize", "Maximize", "Restore", "Fullscreen", "ExitFullscreen", "Center", "Size", "Position", "AlwaysOnTop", "NotAlwaysOnTop", "Close", "ClickThrough", "NotClickThrough", "Fit"}},
 		{Name: "Placement", Values: []string{"Bottom", "BottomStart", "BottomEnd", "Top", "TopStart", "TopEnd", "Right", "RightStart", "RightEnd", "Left", "LeftStart", "LeftEnd"}},
 		{Name: "TitleBar", Values: []string{"Default", "Hidden"}},
+		{Name: "SnackbarDuration", Values: []string{"Short", "Long", "Indefinite"}},
 	},
 }

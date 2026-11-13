@@ -245,7 +245,7 @@ func (h *Host) cornersPainted(hwnd uintptr) {
 	var r Rect
 	for w := hwnd; w != 0; w = Parent(w) {
 		c := h.byHwnd[w]
-		if c == nil || c.hwnd != w || c.kind == kindSheetWindow || c.kind == kindWindowFrame || c.kind == kindPopoverWindow || w == h.window {
+		if c == nil || c.hwnd != w || c.kind == kindSheetWindow || c.kind == kindWindowFrame || c.kind == kindPopoverWindow || c.kind == kindAlertWindow || w == h.window {
 			return
 		}
 		if c.clipRects == nil {

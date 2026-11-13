@@ -2,6 +2,7 @@
   "ok": "Gerai",
   "search": "Ieškoti",
   "back": "Atgal",
+  "moreOptions": "Daugiau parinkčių",
   "decrease": "Sumažinti",
   "increase": "Padidinti",
   "about": "Apie {app}",
@@ -37,5 +38,7 @@
   "updateCheckError": "Tikrinant, ar yra naujinių, įvyko klaida. Bandykite dar kartą vėliau.",
   "updateInstallError": "Diegiant naujinį įvyko klaida. Bandykite dar kartą vėliau.",
   "updateUnavailable": "Naujiniai nepasiekiami",
-  "updateUnavailableMessage": "{app} negali savęs atnaujinti ten, kur yra įdiegta. Jei ją įdiegė paketų tvarkytuvė arba programų parduotuvė, atnaujinkite ją ten."
+  "updateUnavailableMessage": "{app} negali savęs atnaujinti ten, kur yra įdiegta. Jei ją įdiegė paketų tvarkytuvė arba programų parduotuvė, atnaujinkite ją ten.",
+  "badgeCount": "{count, plural, one {# elementas} few {# elementai} many {# elemento} other {# elementų}}",
+  "close": "Uždaryti"
 }

@@ -39,7 +39,7 @@ draws its own UI, see [Asuka and MyGo](mygo.md).
 | | SwiftUI | Expo | Asuka |
 |---|---|---|---|
 | Text, styled text, links | `Text`, `AttributedString` | `Text` | ✓ `Text`, `RichText` (spans, links, inline views, selection), `asuka/sdk/markdown` |
-| Buttons (variants, icons, menus) | `Button`, `Menu` | `Pressable` | ✓ `Button` (filled, tinted, gray, bordered; icon; menu), `Menu`, context menus |
+| Buttons (variants, icons, menus) | `Button`, `Menu` | `Pressable` | ✓ `Button` (filled, tinted, gray, bordered; icon; menu), `Menu`, context menus; menu items disabled, checked, in submenus and titled sections (`Action.Disabled`, `Checked`, `Children`, `Inline`; `ui.Submenu`, `ui.MenuSection`), bar buttons that open menus |
 | Text fields | `TextField`, `SecureField`, `TextEditor` | `TextInput` | ✓ `TextField` (secure, keyboards, return keys, multiline) |
 | The cursor, inserting at it | `TextSelection` | `selection`, `onSelectionChange` | ✓ `TextFieldProps.Selection`, `ui.InsertText` |
 | Rich text editing (a mail's body) | `TextEditor` with `AttributedString` (iOS 26) | community (10tap, pell) | ✓ `TextFieldProps.Rich`, `ToggleFormat`, `SetLink`, `OnFormats` |
@@ -48,8 +48,8 @@ draws its own UI, see [Asuka and MyGo](mygo.md).
 | Toggle, slider | `Toggle`, `Slider` | community | ✓ `Toggle`, `Slider` |
 | Segmented control | `Picker(.segmented)` | community | ✓ `Segmented` |
 | Date and time | `DatePicker` | community | ✓ `DatePicker` (date, time, both) |
-| Progress, spinner | `ProgressView` | `ActivityIndicator` | ✓ `Progress`, `Activity` |
-| Wheel and menu pickers, stepper | `Picker`, `Stepper` | community | ✓ `Wheel`, `Stepper`, a menu from `Button.Menu` |
+| Progress, spinner | `ProgressView` | `ActivityIndicator` | ✓ `Progress`, `ProgressRing` (circular, with a value or without), `Activity` |
+| Wheel and menu pickers, stepper | `Picker`, `Stepper` | community | ✓ `Wheel`, `Picker` (a pop-up button on iOS and the Mac, Material's exposed dropdown menu on Android), `Stepper` |
 | Color picker | `ColorPicker` | community | ✓ `ColorPicker` (iOS's system picker; on Android, which has none, a Material dialog of Google's palette, with opacity) |
 | Icons | SF Symbols | `@expo/vector-icons` | ✓ `Symbol` (SF Symbols on iOS and the Mac; for the same names, Material Symbols on Android and the web, Segoe Fluent Icons on Windows, the icon theme's or Material Symbols on Linux: a curated set) |
 | Images (remote, cached, placeholders) | `AsyncImage` | `expo-image` | ✓ `Image` (memory and disk cache, `Placeholder`) |
@@ -70,11 +70,15 @@ draws its own UI, see [Asuka and MyGo](mygo.md).
 | Stacks with native push, pop, back gestures | `NavigationStack` | Stack | ✓ `Stack`, `UseNavigator` |
 | Tabs | `TabView` | Tabs | ✓ `Tabs` |
 | Sidebar, drawer | `NavigationSplitView` | Drawer | ✓ `SplitView` (a stack on iPhone, a drawer on Android; `NSSplitViewController` on the Mac, a navigation pane on Windows, libadwaita's split view on Linux) |
+| Badges on tabs and sidebar rows | `badge` | `tabBarBadge`, `drawerItem` counts | ✓ `Tab.Badge`, `Destination.Badge` (`badgeValue`, `BadgeDrawable`, a drawer counter; the label on the Mac's `NSTabView`, the source list's count; Fluent's `InfoBadge`; libadwaita's `badge-number`) |
 | Bar buttons, titles, search | `.toolbar`, `.searchable` | header options | ✓ `ScreenOptions` (`Actions`, `Search`) |
+| Bottom toolbar, primary action (FAB) | `ToolbarItem(placement: .bottomBar)` | — | ✓ `ScreenOptions` (`Toolbar`, `Primary`, `PrimaryExtended`): UIKit's toolbar with a prominent trailing item, Material's `BottomAppBar` and (extended) FAB, the window's toolbar on a Mac, a command bar on Windows, a `GtkActionBar` on Linux, a bar and a floating button on the web |
 | Sheets with detents | `.sheet`, `.presentationDetents` | modal | ✓ `Sheet` (`Detents`, `Grabber`) |
+| Full-screen modals | `.fullScreenCover` | `presentation: "fullScreenModal"` | ✓ `Sheet` with `FullScreen` (iOS's `.fullScreen`; Material's full-screen dialog, edge to edge, predictive back; a sheet or window over all of a desktop window's content; a `<dialog>` over the page) |
 | Taking back, preventing dismissal | `.navigationBarBackButtonHidden`, `.interactiveDismissDisabled` | `BackHandler`, `usePreventRemove` | ✓ `OnBack` (screens, sheets, the app) |
 | Popovers | `.popover` | — | ✓ `Popover` (a popover on iPhone too) |
-| Alerts, action sheets | `.alert`, `.confirmationDialog` | `Alert` | ✓ `Alert` (both styles) |
+| Alerts, action sheets | `.alert`, `.confirmationDialog` | `Alert` | ✓ `Alert` (both styles; an alert's text fields: `Fields`, a password's `Secure`, buttons following them through `Disabled`) |
+| Snackbars, toasts (a brief message with Undo) | — | community (react-native-paper's `Snackbar`) | ✓ `Snackbar` (Material's on Android, `AdwToast` on Linux; drawn as the platform's on iOS, macOS, Windows and the web) |
 | Deep links, universal and app links | `.onOpenURL` | Linking | ✓ `OnOpenURL`, `asuka.json` scheme and links |
 | Pull to refresh, swipe actions | `.refreshable`, `.swipeActions` | `RefreshControl` | ✓ (both edges: `SwipeActions`, `LeadingSwipeActions`) |
 
