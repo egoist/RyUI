@@ -306,6 +306,10 @@ func macEntitlements(cfg *appConfig, prof *macProfile, appStore bool) (map[strin
 			ents[e] = true
 		}
 	}
+	// The app's plugins' (pluginNeeds).
+	for k := range cfg.entitlementsFor {
+		ents[k] = cfg.entitlements[k]
+	}
 	if appStore {
 		ents["com.apple.security.app-sandbox"] = true
 		ents["com.apple.security.network.client"] = true

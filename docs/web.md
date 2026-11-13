@@ -530,37 +530,33 @@ own, so it can't reach the app's page or storage.
 
 ## Native code
 
-An app's own views and modules for the web are JavaScript, in `web/*.js`
-beside its Go code, as its Swift is in `ios/` and `macos/`, its Kotlin
-in `android/`, and its desktop views and modules in Go are in package
-`native`: see [Native code](native.md). The page loads them before the app starts; they register with
-the global `asuka`:
+A [native package](native.md)'s JavaScript is its `web/` directory: the
+generated `<package>.asuka.js` and the package's own `<package>.js`, which
+exports the functions that make its modules and views:
 
 ```js
-// web/natives.js
-asuka.registerNative("Stepper", (ctx) => {
-  const el = document.createElement("input");
-  el.type = "number";
-  el.oninput = () => ctx.emit("changed", { value: Number(el.value) });
+// segmented/web/segmented.js
+export function makeSegmented(events) {
+  const el = document.createElement("div");
+  let items = [], selected = 0;
+  const render = () => { /* a button per item; a click calls events.changed(i) */ };
   return {
     el, // the view, sized to the frame the core gives it
-    set(name, value) { if (name === "value") el.value = value; },
-    measure(c) { return [120, 36]; }, // its size within c ({width, height, availW, availH}, NaN when free)
+    setItems(v) { items = v; render(); },
+    setSelected(v) { selected = v; render(); },
+    measure: (c) => [items.length * 72, 32], // its size within c ({width, height, availW, availH}, NaN when free)
   };
-});
-
-asuka.registerModule("greeter", {
-  // a method takes the call's bytes and returns (or resolves to) the result's
-  hello: (args) => new TextEncoder().encode("Hello, " + new TextDecoder().decode(args)),
-});
+}
 ```
 
-A kind no script registers shows nothing, and the page logs `asuka: no
-native view "Stepper" is registered`, as the other hosts do. `asuka dev`
-reloads the page when a script in `web/` changes.
+Each package's `web/` ships at `asuka/<digest>/packages/<package>/`,
+and the page imports the app's packages before the app starts. A
+package's other files (its helpers, its assets) ship beside it, so it
+can import them or fetch them relative to `import.meta.url`. `asuka dev`
+reloads the page when one changes.
 
-`examples/media` has a native view, its JavaScript in
-`examples/media/web/natives.js`.
+`examples/media/segmented` has a native view, its JavaScript in
+`examples/media/segmented/web/segmented.js`.
 
 ## Embedding
 

@@ -22,6 +22,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -29,6 +30,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/egoist/asuka/internal/nativegen"
 	webhost "github.com/egoist/asuka/platform/web"
 )
 
@@ -158,9 +160,8 @@ type webPage struct {
 	Host, Wasm, Exec string // the URLs of the host's directory, the app's wasm, wasm_exec.js
 	Options          map[string]any
 	Icon, Manifest   bool
-	// Scripts are the app's own (web/*.js), loaded before it starts: they
-	// register its native views and modules (asuka.registerNative,
-	// asuka.registerModule), as its ios/*.swift and android/*.kt do.
+	// Scripts are its native packages' generated JavaScript, loaded
+	// before it starts: they register the packages' modules and views.
 	Scripts []string
 }
 
@@ -209,6 +210,48 @@ globalThis.asuka = asuka;
 	return b.String()
 }
 
+// webScript is a native package's file among the host's
+// (packages/<package>/<file>): its path there, its file here, and whether
+// the page imports it (its generated JavaScript, which imports the rest).
+type webScript struct {
+	path, file string
+	entry      bool
+}
+
+// nativeScripts are the files of the native packages' web/.
+func nativeScripts(natives []nativePackage) ([]webScript, error) {
+	var out []webScript
+	for _, p := range natives {
+		dir := filepath.Join(p.dir, "web")
+		entry := nativegen.JSFile(&nativegen.Package{Name: p.name})
+		err := filepath.WalkDir(dir, func(f string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return err
+			}
+			r, _ := filepath.Rel(dir, f)
+			r = filepath.ToSlash(r)
+			out = append(out, webScript{path: "packages/" + nativegen.Sanitize(p.path) + "/" + r, file: f, entry: r == entry})
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
+// scriptPaths are the paths, among the host's files, of the scripts the
+// page imports.
+func scriptPaths(scripts []webScript) []string {
+	var out []string
+	for _, sc := range scripts {
+		if sc.entry {
+			out = append(out, sc.path)
+		}
+	}
+	return out
+}
+
 // imports are the page's imports of the app's scripts.
 func imports(scripts []string) string {
 	var b strings.Builder
@@ -217,19 +260,6 @@ func imports(scripts []string) string {
 		fmt.Fprintf(&b, "await import(%s);\n", q)
 	}
 	return b.String()
-}
-
-// appScripts are the app's own JavaScript (web/*.js), by name.
-func appScripts(app *goApp) []string {
-	var out []string
-	es, _ := os.ReadDir(filepath.Join(app.dir, "web"))
-	for _, e := range es {
-		if !e.IsDir() && path.Ext(e.Name()) == ".js" {
-			out = append(out, e.Name())
-		}
-	}
-	sort.Strings(out)
-	return out
 }
 
 // webWorker is the app's service worker: its settings (globalThis.asukaApp:
@@ -330,7 +360,11 @@ func devWeb(dir string, o *devOptions, stop <-chan os.Signal) error {
 	roots := []string{app.moduleDir, app.dir}
 	w := newWatcher(roots...)
 	hostWatch := newWebWatcher(srcDir)
-	appWatch := newWebWatcher(filepath.Join(app.dir, "web"))
+	var nativeWatch []*webWatcher // the native packages' JavaScript, wherever it is
+	natives, _ := nativeFor(app, "web", "wasm")
+	for _, d := range nativeDirsOf(natives, "web") {
+		nativeWatch = append(nativeWatch, newWebWatcher(d))
+	}
 	tick := time.NewTicker(300 * time.Millisecond)
 	defer tick.Stop()
 	for {
@@ -338,7 +372,7 @@ func devWeb(dir string, o *devOptions, stop <-chan os.Signal) error {
 		case <-stop:
 			return nil
 		case <-tick.C:
-			if hostWatch.changed() || appWatch.changed() {
+			if hostWatch.changed() || slices.ContainsFunc(nativeWatch, (*webWatcher).changed) {
 				// The host's own JavaScript (a checkout of Asuka): the page loads it again.
 				s.stamp = strconv.FormatInt(time.Now().UnixNano(), 36)
 				s.send("reload", "")
@@ -374,6 +408,7 @@ type devServer struct {
 	app     *goApp
 	src     fs.FS
 	plugins atomic.Pointer[map[string]pluginLib] // webPluginFiles, as of the last build
+	scripts atomic.Pointer[[]webScript]          // the plugins' scripts (pluginScripts), likewise
 	exec    []byte
 	wasm    string
 	vapid   string // asuka.json's web.vapidPublicKey
@@ -456,7 +491,8 @@ func (s *devServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		webPluginOptions(*s.plugins.Load(), "asuka/", opts)
 		io.WriteString(w, webIndex(webPage{
 			Name: s.app.displayName(), Lang: devLangOr("en"),
-			Host: "asuka", Wasm: "app.wasm?" + s.stamp, Exec: "asuka/wasm_exec.js", Scripts: prefixed("web/", appScripts(s.app)),
+			Host: "asuka", Wasm: "app.wasm?" + s.stamp, Exec: "asuka/wasm_exec.js",
+			Scripts: prefixed("asuka/", scriptPaths(*s.scripts.Load())),
 			Options: opts,
 		}))
 	case p == "/app.wasm":
@@ -473,6 +509,14 @@ func (s *devServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case p == "/asuka/wasm_exec.js":
 		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 		w.Write(s.exec)
+	case strings.HasPrefix(p, "/asuka/packages/"):
+		i := slices.IndexFunc(*s.scripts.Load(), func(sc webScript) bool { return "/asuka/"+sc.path == p })
+		if i < 0 {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", contentType(p))
+		http.ServeFile(w, r, (*s.scripts.Load())[i].file)
 	case strings.HasPrefix(p, "/asuka/lib/"):
 		l, ok := (*s.plugins.Load())[strings.TrimPrefix(p, "/asuka/")]
 		if !ok {
@@ -700,13 +744,26 @@ func buildWeb(app *goApp, o *buildOptions) error {
 		}
 		return nil
 	})
-	// The plugins' files.
+	// The plugins' files, and their modules' scripts.
 	plugins, err := webPluginFiles(app)
 	if err != nil {
 		return err
 	}
 	for p, l := range plugins {
 		if files[p], err = l.read(); err != nil {
+			return err
+		}
+	}
+	natives, err := nativeFor(app, "web", "wasm")
+	if err != nil {
+		return err
+	}
+	pscripts, err := nativeScripts(natives)
+	if err != nil {
+		return err
+	}
+	for _, sc := range pscripts {
+		if files[sc.path], err = os.ReadFile(sc.file); err != nil {
 			return err
 		}
 	}
@@ -734,28 +791,9 @@ func buildWeb(app *goApp, o *buildOptions) error {
 	if err := copyDir(filepath.Join(app.dir, "assets"), filepath.Join(out, "assets")); err != nil {
 		return err
 	}
-	// The app's scripts, in a directory named by their digest too.
-	var scripts []string
-	if names := appScripts(app); len(names) > 0 {
-		h := sha256.New()
-		data := map[string][]byte{}
-		for _, n := range names {
-			b, err := os.ReadFile(filepath.Join(app.dir, "web", n))
-			if err != nil {
-				return err
-			}
-			data[n] = b
-			h.Write([]byte(n))
-			h.Write(b)
-		}
-		dir := "web/" + hex.EncodeToString(h.Sum(nil))[:12]
-		for _, n := range names {
-			if err := writeWeb(filepath.Join(out, filepath.FromSlash(dir), n), data[n]); err != nil {
-				return err
-			}
-			scripts = append(scripts, dir+"/"+n)
-		}
-	}
+	// The native packages' JavaScript, which the page imports (in the
+	// host's directory, named by its digest).
+	scripts := prefixed(hostDir+"/", scriptPaths(pscripts))
 	name := app.displayName()
 	icon := app.cfg.Icon != ""
 	if icon {
@@ -901,6 +939,16 @@ func (s *devServer) findPlugins() error {
 	if err != nil {
 		return err
 	}
+	forgetNatives(s.app.dir)
+	natives, err := nativeFor(s.app, "web", "wasm")
+	if err != nil {
+		return err
+	}
+	scripts, err := nativeScripts(natives)
+	if err != nil {
+		return err
+	}
 	s.plugins.Store(&files)
+	s.scripts.Store(&scripts)
 	return nil
 }

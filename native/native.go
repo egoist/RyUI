@@ -1,21 +1,17 @@
-// Package native is an app's own native code on the desktop hosts, which
-// run the app's Go in their process: views shown with ui.Native and
-// modules called with ui.Call, written in Go against the platform (AppKit
-// through purego's objc package on macOS; Win32 through syscall on
-// Windows; GTK 4 through purego on Linux). The mobile hosts take Swift
-// and Kotlin instead (ios/*.swift, android/*.kt), the web JavaScript
-// (web/*.js).
+// Package native is the runtime of native packages (asuka native): a Go
+// package declares a module (//asuka:native on an interface) or a view
+// (//asuka:view on a props struct), each platform implements it in its
+// own language (Swift on iOS and macOS, Kotlin on Android, JavaScript on
+// the web, Go on Windows and Linux), and asuka native generates the typed
+// glue on every side, which calls what's here: the wire's codec (Writer,
+// Reader), modules' objects and calls (Module, Object), and views
+// (ViewKind, GoView).
 //
-// Register in an init function of a file built for the platform:
+// The hosts' side of ui.Native is here too: a native view's kind, made by
+// a factory (RegisterView: where a package implements a view in Go, on the
+// desktop), its props and events in the wire format below.
 //
-//	//go:build darwin && !ios
-//
-//	func init() {
-//		native.RegisterView("Stepper", func(ctx native.Context) native.View { return newStepper(ctx) })
-//		native.RegisterModule("haptics", native.Module{"tap": tap})
-//	}
-//
-// Everything here runs on the main thread, as the host does.
+// Everything a view does runs on the main thread, as the host does.
 package native
 
 import (
@@ -89,15 +85,9 @@ func (c Context) Emit(name string, values map[string]any) {
 	}
 }
 
-// Module is a native module's methods, by name: each gets the call's
-// arguments (ui.Call's bytes) and answers once, now or later, on the main
-// thread.
-type Module map[string]func(args []byte, reply func(result []byte, err error))
-
 var (
-	mu      sync.Mutex
-	views   = map[string]func(Context) View{}
-	modules = map[string]Module{}
+	mu    sync.Mutex
+	views = map[string]func(Context) View{}
 )
 
 // RegisterView registers a native view kind: ui.Native(kind, ...) makes
@@ -108,26 +98,11 @@ func RegisterView(kind string, factory func(Context) View) {
 	views[kind] = factory
 }
 
-// RegisterModule registers a native module: ui.Call(name, method, ...)
-// runs its methods. The host's own modules of that name win.
-func RegisterModule(name string, m Module) {
-	mu.Lock()
-	defer mu.Unlock()
-	modules[name] = m
-}
-
 // ViewFactory is for hosts: the factory of a kind, or nil.
 func ViewFactory(kind string) func(Context) View {
 	mu.Lock()
 	defer mu.Unlock()
 	return views[kind]
-}
-
-// ModuleNamed is for hosts: the module of a name, or nil.
-func ModuleNamed(name string) Module {
-	mu.Lock()
-	defer mu.Unlock()
-	return modules[name]
 }
 
 // The wire format of ui.Native's props and events (ops' Native.Prop and
@@ -137,6 +112,7 @@ const (
 	typeInt    = 2
 	typeFloat  = 3
 	typeString = 4
+	typeBytes  = 5 // a typed view's prop or event (//asuka:view): its values, encoded
 )
 
 // DecodeProp is for hosts: a Native.Prop's name and value.
@@ -152,6 +128,8 @@ func DecodeProp(b []byte) (name string, value any, ok bool) {
 		value = math.Float64frombits(r.u64())
 	case typeString:
 		value = r.str()
+	case typeBytes:
+		value = []byte(r.str())
 	default:
 		return "", nil, false
 	}
@@ -176,6 +154,9 @@ func EncodeProp(name string, value any) []byte {
 		return le.AppendUint64(append(b, typeFloat), math.Float64bits(v))
 	case string:
 		b = le.AppendUint32(append(b, typeString), uint32(len(v)))
+		return append(b, v...)
+	case []byte:
+		b = le.AppendUint32(append(b, typeBytes), uint32(len(v)))
 		return append(b, v...)
 	}
 	return nil
@@ -215,6 +196,8 @@ func EncodeEvent(name string, values map[string]any) []byte {
 			v = le.AppendUint64([]byte{typeFloat}, math.Float64bits(x))
 		case string:
 			v = str([]byte{typeString}, x)
+		case []byte:
+			v = str([]byte{typeBytes}, string(x))
 		default:
 			continue // not a value an event carries
 		}
@@ -244,6 +227,8 @@ func DecodeEvent(b []byte) (name string, values map[string]any, ok bool) {
 			values[k] = math.Float64frombits(r.u64())
 		case typeString:
 			values[k] = r.str()
+		case typeBytes:
+			values[k] = []byte(r.str())
 		default:
 			return "", nil, false
 		}

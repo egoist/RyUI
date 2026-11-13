@@ -59,6 +59,10 @@ go generate ./i18n                  # CLDR's tables, from the pinned release
 go generate ./sdk/sqlite        # the sqlite plugin's library for every platform, into sdk/sqlite/build (Xcode, the NDK, Zig)
 go run ./cmd/asuka plugin publish sdk/sqlite  # upload a plugin's build to its GitHub release, record it in its asuka-plugin.json
 go run ./cmd/asuka generate examples/i18n  # an app's catalog functions (dev and build do it too)
+go run ./cmd/asuka native generate examples/media/segmented  # a native package's glue: Go, Swift, Kotlin, JavaScript (dev and build do it too; `native check`: CI)
+go test ./internal/nativegen -update     # after changing the generator: refresh its golden files (testdata/kitchen)
+go test ./host/darwin -run SwiftNatives  # a native package's Swift (the kitchen), built and called through the Mac's library
+go test -tags e2e ./e2e -run NativePackages  # native packages on the simulator, the emulator and headless Chrome
 go run ./cmd/asuka vet ./...                # the analyzers (package vet): a signal read once, written off the main thread
 go run ./cmd/asuka dev --platform ios --lang ar examples/i18n  # a language for one run; --lang ar-XB, en-XA: pseudo locales; --dir rtl: any app right to left
 go run ./cmd/asuka dev --platform ios examples/counter       # iOS simulator (Xcode): the Go code runs here, in the player
@@ -122,4 +126,13 @@ go test -tags e2e ./e2e -run Updater               # a desktop app updates itsel
 - Every prop that shows text is an accessor, so it can follow the app's
   language (`locales.Live.Title()`); only what's shown once (an alert) takes a
   string. Frames are always physical: a host never mirrors what the core places.
-- Keep generated files (`ops` decoders, `locales/catalog_gen.go`) committed and up to date.
+- Keep generated files (`ops` decoders, `locales/catalog_gen.go`, native
+  packages' `*_native.go` and `*.asuka.*`) committed and up to date.
+- Platform code an app needs is a native package (docs/native.md): a Go
+  interface or props struct, implemented in each platform's own project
+  (Package.swift, an android/ Gradle module, web/, Go on the desktop).
+  Changing `internal/nativegen` or package `native`'s wire means
+  regenerating every native package in the repo (`asuka native generate`
+  from the root) and the platforms' runtimes (NativeModules.swift, kept
+  identical in platform/ios and platform/macos; NativeModules.kt;
+  native.js).

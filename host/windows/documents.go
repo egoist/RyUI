@@ -13,7 +13,6 @@ import (
 
 	"github.com/egoist/asuka/internal/localfile"
 	. "github.com/egoist/asuka/internal/windows"
-	"github.com/egoist/asuka/native"
 	"github.com/egoist/asuka/ops"
 )
 
@@ -36,18 +35,6 @@ func (h *Host) asyncModule(name string) map[string]asyncMethod {
 		return h.pickerModules(name)
 	case "web", "js":
 		return h.webModules(name)
-	default:
-		// The app's own (package native), unless the host has its own.
-		if h.module(name) != nil {
-			return nil
-		}
-		if am := native.ModuleNamed(name); am != nil {
-			m := make(map[string]asyncMethod, len(am))
-			for k, f := range am {
-				m[k] = f
-			}
-			return m
-		}
 	case "preview":
 		return map[string]asyncMethod{"show": h.preview}
 	case "print":

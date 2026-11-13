@@ -272,13 +272,9 @@ private fun writeNative(w: AsukaWriter, k: String, v: Any) {
         is Long -> { w.u8(2); w.u64(v) }
         is Float -> { w.u8(3); w.f64(v.toDouble()) }
         is Double -> { w.u8(3); w.f64(v) }
+        is ByteArray -> { w.u8(5); w.u32(v.size); w.raw(v) }
         else -> { w.u8(4); w.string(v.toString()) }
     }
-}
-
-/** Apps register native views from an object dev.asuka.app.AsukaAppNatives implementing this. */
-interface AsukaNativeModule {
-    fun register(runtime: AsukaRuntime)
 }
 
 /** Holds a native view, which fills it; it measures as the native view. */
@@ -294,24 +290,21 @@ class AsukaNativeHost(context: Context) : FrameLayout(context) {
 fun AsukaRuntime.registerNatives() {
     registerNative("asuka.camera") { ctx -> AsukaCameraView(this, ctx) }
     registerPlugins() // asuka-maps' view, the optional modules' methods
-    try {
-        val c = Class.forName("dev.asuka.app.AsukaAppNatives")
-        (c.getField("INSTANCE").get(null) as AsukaNativeModule).register(this)
-    } catch (_: ClassNotFoundException) {
-    } catch (e: Exception) {
-        Log.e("asuka", "registering native views", e)
-    }
+    // Packages' typed views are found as they're shown (AsukaModules.makeView).
 }
 
 fun AsukaRuntime.setNativeProp(n: AsukaNode, prop: Int, v: Any): Boolean {
     when (prop) {
         AsukaProp.Native.TYPE -> {
-            val make = nativeFactories[v as String]
-            if (make == null) {
-                Log.e("asuka", "no native view \"$v\" is registered")
+            // The host's own kinds, else a package's typed view (its
+            // module's class # its name).
+            val ctx = AsukaNativeContext(n.id, this)
+            val nv = nativeFactories[v as String]?.invoke(ctx) ?: AsukaModules.makeView(v, ctx)
+            if (nv == null) {
+                Log.e("asuka", "no native view \"$v\": build the app with its packages' native code")
                 return true
             }
-            (n.view as AsukaNativeHost).native = make(AsukaNativeContext(n.id, this))
+            (n.view as AsukaNativeHost).native = nv
         }
         AsukaProp.Native.PROP -> {
             val b = v as ByteBuffer
@@ -320,6 +313,7 @@ fun AsukaRuntime.setNativeProp(n: AsukaNode, prop: Int, v: Any): Boolean {
                 1 -> b.get().toInt() != 0
                 2 -> b.long
                 3 -> b.double
+                5 -> ByteArray(b.int).also { b.get(it) }
                 else -> readString(b)
             }
             (n.view as AsukaNativeHost).native?.set(name, value)

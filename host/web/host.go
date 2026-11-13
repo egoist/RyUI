@@ -31,6 +31,7 @@ import (
 	"github.com/egoist/asuka/internal/jsloop"
 	"github.com/egoist/asuka/internal/l10n"
 	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/native"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
@@ -86,6 +87,7 @@ func newHost() *Host {
 	h.measureFn = jh.Get("measure").Call("bind", jh)
 	h.postFn = jh.Get("post").Call("bind", jh)
 	h.connect()
+	native.SetBackend(webNative{h})
 	if ev, err := ops.DecodeEvent(h.bytes(jh.Call("environment"))); err == nil {
 		h.env = ev.Env
 	}
@@ -131,6 +133,19 @@ func (h *Host) connect() {
 	fn("runPosted", func([]js.Value) any {
 		h.runPosted()
 		return nil
+	})
+	// Typed native modules (native.js): a started call's answer; a Go
+	// callback's call, answered now (null for a notification).
+	fn("nativeDone", func(args []js.Value) any {
+		native.Done(uint64(args[0].Float()), h.bytes(args[1]))
+		return nil
+	})
+	fn("nativeInvoke", func(args []js.Value) any {
+		a := native.Invoke(uint64(args[0].Float()), h.bytes(args[1]))
+		if a == nil {
+			return js.Null()
+		}
+		return jsBytes(a)
 	})
 	// crash.js wrote a report in the inbox (an uncaught JavaScript error).
 	fn("crashNotify", func([]js.Value) any {
@@ -274,3 +289,39 @@ func encodeState(vals map[string][]byte) string {
 	}
 	return string(b)
 }
+
+// webNative is package native's Backend on the web: the page's typed
+// modules (platform/web/src/native.js), through the host.
+type webNative struct{ h *Host }
+
+// jsBytes is b as a Uint8Array.
+func jsBytes(b []byte) js.Value {
+	a := js.Global().Get("Uint8Array").New(len(b))
+	js.CopyBytesToJS(a, b)
+	return a
+}
+
+// answer copies a Uint8Array answer into out when it fits.
+func (w webNative) answer(v js.Value, out []byte) []byte {
+	n := v.Get("length").Int()
+	if n > len(out) {
+		out = make([]byte, n)
+	}
+	js.CopyBytesToGo(out[:n], v)
+	return out[:n]
+}
+
+func (w webNative) New(m *native.Module, iface uint32, out []byte) []byte {
+	return w.answer(w.h.js.Call("nativeNew", m.ID, iface), out)
+}
+
+func (w webNative) Call(h uint64, method uint32, in, out []byte) []byte {
+	return w.answer(w.h.js.Call("nativeCall", float64(h), method, jsBytes(in)), out)
+}
+
+func (w webNative) Start(h uint64, method uint32, in []byte, call uint64) {
+	w.h.js.Call("nativeStart", float64(h), method, jsBytes(in), float64(call))
+}
+
+func (w webNative) Cancel(call uint64) { w.h.js.Call("nativeCancel", float64(call)) }
+func (w webNative) Release(h uint64)   { w.h.js.Call("nativeRelease", float64(h)) }

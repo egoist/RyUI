@@ -232,11 +232,11 @@ func (t *androidToolchain) buildAPK(app *goApp, work string) (apk, hash string, 
 	if err := os.WriteFile(manifest, []byte(man), 0o644); err != nil {
 		return "", "", err
 	}
-	mods := app.cfg.gradleModules()
+	extra := app.cfg.gradleProps()
+	mods := strings.Join(extra, " ")
 	// The splash and Firebase's settings (androidRes).
 	res := filepath.Join(work, "res")
 	os.RemoveAll(res)
-	extra := []string{mods}
 	if wrote, err := androidRes(app.cfg, res); err != nil {
 		return "", "", err
 	} else if wrote {
@@ -307,22 +307,15 @@ func prepareAndroidHost(app *goApp, work string) (src, hash string, err error) {
 		}
 	}
 	removeStaleSources(src, files)
-	// The app's own Kotlin (android/*.kt: native views for ui.Native)
-	// builds into the shell app.
-	own := filepath.Join(src, "app", "src", "main", "java", "dev", "asuka", "app", "own")
-	os.RemoveAll(own)
-	kts, _ := filepath.Glob(filepath.Join(app.dir, "android", "*.kt"))
-	sort.Strings(kts)
-	for _, f := range kts {
-		data, err := os.ReadFile(f)
-		if err != nil {
+	// The app's native packages' Kotlin: their android/, each a Gradle
+	// module of the shell app's (the build's asukaNativeModules), their
+	// manifests merged into the app's by Gradle.
+	if app.cfg != nil {
+		if err := app.cfg.androidNatives(app); err != nil {
 			return "", "", err
 		}
-		h.Write([]byte(filepath.Base(f)))
-		h.Write(data)
-		os.MkdirAll(own, 0o755)
-		if err := os.WriteFile(filepath.Join(own, filepath.Base(f)), data, 0o644); err != nil {
-			return "", "", err
+		for _, m := range app.cfg.nativeModules {
+			fmt.Fprintln(h, m[0], m[1], dirDigest(m[1]))
 		}
 	}
 	// The widgets' providers (asuka.json's widgets).
@@ -467,7 +460,8 @@ func devAndroid(dir string, o *devOptions, stop <-chan os.Signal) error {
 		return nil
 	}
 	fmt.Println("asuka: watching for changes (Ctrl-C to stop)")
-	w := newWatcher(app.moduleDir, app.dir)
+	natives, _ := nativeFor(app, "android", "arm64") // its native packages' Kotlin, wherever they are
+	w := newWatcher(append([]string{app.moduleDir, app.dir}, nativeDirsOf(natives, "android")...)...)
 	tick := time.NewTicker(400 * time.Millisecond)
 	defer tick.Stop()
 	for {

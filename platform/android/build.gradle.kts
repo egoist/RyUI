@@ -30,3 +30,27 @@ providers.gradleProperty("asukaMavenRepo").orNull?.let { repo ->
         }
     }
 }
+
+// The app's native packages' modules (settings.gradle.kts): built where
+// the host is (not in the package, which may be read-only), with the
+// host's SDK levels and Java, and its Kotlin to call (dev.asuka): a
+// package's build.gradle.kts says only its namespace and its own
+// dependencies.
+subprojects {
+    if (!name.startsWith("native-")) return@subprojects
+    layout.buildDirectory.set(rootProject.layout.buildDirectory.dir("native/$name"))
+    plugins.withId("com.android.library") {
+        extensions.configure<com.android.build.gradle.LibraryExtension> {
+            compileSdk = 36
+            defaultConfig { minSdk = 33 }
+            compileOptions {
+                sourceCompatibility = JavaVersion.VERSION_17
+                targetCompatibility = JavaVersion.VERSION_17
+            }
+        }
+        dependencies { add("implementation", project(":asuka")) }
+    }
+    plugins.withId("org.jetbrains.kotlin.android") {
+        extensions.configure<org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension> { jvmToolchain(17) }
+    }
+}

@@ -1,10 +1,9 @@
 # Plugins
 
-A plugin is a Go package that brings native libraries with it: code in
-C, Zig or Rust, prebuilt for each platform, that its Go code calls
-without cgo. Using one is importing it; the CLI ships its libraries with
-the app, on every platform. `asuka/sdk/sqlite` is one
-([Data](data.md#records-the-sqlite-plugin)).
+A plugin is a Go package that brings libraries with it: C, Zig or Rust,
+prebuilt for each platform, that its Go code calls without cgo. Using
+one means importing it, and the CLI ships its libraries with the app on
+every platform. `asuka/sdk/sqlite` is one ([Data](data.md#records-the-sqlite-plugin)).
 
 ## Using a plugin
 
@@ -17,8 +16,8 @@ db, err := sqlite.Open("notes.db")
 ```
 
 Nothing else. `asuka build` (and `asuka dev` on a phone) finds the
-plugins among the app's dependencies and ships each one's libraries for
-the build's platform. `go run`, `go test` and `asuka dev` on a desktop
+plugins among the app's dependencies and ships each one's libraries for the
+build's platform. `go run`, `go test` and `asuka dev` on a desktop
 download them the first time, into the user's cache, and use them from
 there after. Every file is checked against the SHA-256 the plugin's
 manifest names before it's used.
@@ -125,8 +124,10 @@ manifest, which is what you commit. A file a release has is never
 replaced, so every manifest a commit had keeps working. A build older
 than the plugin's sources stops it: build again first.
 
-### Native modules
+## Native code for the platforms' hosts
 
-Plugins will bring native modules too, as an app's own (Swift on iOS,
-Kotlin on Android, JavaScript on the web, [Native code](native.md)):
-the manifest's `modules`, beside its `libraries`.
+A package that calls a platform's APIs (Swift on iOS and macOS, Kotlin on
+Android, JavaScript on the web), or shows a platform's view, is a
+[native package](native.md). It needs no manifest: its Swift package
+and its Gradle module are its own, and they bring their dependencies.
+A package can be a plugin and a native package at once.

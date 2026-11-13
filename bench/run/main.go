@@ -323,7 +323,7 @@ func buildSwiftUI() (string, error) {
 	os.RemoveAll(dir)
 	os.MkdirAll(dir, 0o755)
 	if _, err := output(root, nil, "xcrun", "swiftc", "-O", "-parse-as-library", "-target", "arm64-apple-ios17.0-simulator",
-		"-sdk", strings.TrimSpace(sdk), "bench/swiftui/App.swift", "bench/asuka/ios/Meter.swift", "-o", filepath.Join(dir, "Bench")); err != nil {
+		"-sdk", strings.TrimSpace(sdk), "bench/swiftui/App.swift", "bench/asuka/meter/swift/Meter.swift", "-o", filepath.Join(dir, "Bench")); err != nil {
 		return "", err
 	}
 	plist := `<?xml version="1.0" encoding="UTF-8"?>

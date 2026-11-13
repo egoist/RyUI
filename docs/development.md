@@ -109,12 +109,13 @@ On a save, Asuka rebuilds the Go code for your computer and restarts it,
 in about a second; the player reconnects and shows the new code.
 Nothing is installed.
 
-With `--embed` or `--once`, or when the app has native code for the
-platform (an `ios/` or `android/` directory, see [Native
+With `--embed` or `--once`, or when the app uses native packages with code
+for the platform (a `Package.swift` or `android/`, see [Native
 code](native.md)), Asuka builds the app itself instead, its Go code inside
 as a release build has it, under the app's own name and ID:
 
-- **iOS**: the host, with the app's Swift, is compiled once and cached;
+- **iOS**: the host, with the native packages' Swift, is built once
+  and again only as it changes;
   each save rebuilds the Go code, links the app, signs it for the
   simulator and reinstalls it with `xcrun simctl`.
 - **Android**: Gradle builds the app, with its Kotlin, once for each
@@ -178,8 +179,8 @@ again after changing them; it rebuilds and reinstalls what changed.
 Native code reloads only in a built phone app, where Asuka rebuilds and
 reinstalls it on each save. Gradle runs again when Kotlin changes, which
 takes longer than a Go change. A desktop app's native code in Go
-reloads as the rest of it does; a Mac app's `macos/*.swift` is compiled
-again as it changes (a second or two), and the app runs again with its
+reloads as the rest of it does; a Mac app's native packages' Swift is
+built again as it changes (a second or two), and the app runs again with its
 signals' values kept.
 
 ## Devices

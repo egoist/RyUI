@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"strings"
 
 	. "github.com/egoist/asuka/internal/darwin"
 	"github.com/egoist/asuka/native"
@@ -37,12 +38,18 @@ func (h *Host) setNativeProp(n *node, p ops.PropID, v *ops.Value) {
 			return
 		}
 		n.native = &nativeView{kind: v.Str}
+		// The host's own, a package's in Go (native.RegisterView), else a
+		// package's in Swift (its module's class # its name).
 		f := builtinViews[v.Str]
 		if f == nil {
 			f = native.ViewFactory(v.Str)
 		}
+		if f == nil && swift.loaded && strings.Contains(v.Str, "#") {
+			kind := v.Str
+			f = func(ctx native.Context) native.View { return newSwiftView(kind, ctx) }
+		}
 		if f == nil {
-			fmt.Fprintf(os.Stderr, "asuka: no native view %q is registered (package native)\n", v.Str)
+			fmt.Fprintf(os.Stderr, "asuka: no native view %q: build the app with its packages' native code\n", v.Str)
 			return
 		}
 		id := n.id

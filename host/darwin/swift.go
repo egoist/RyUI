@@ -3,29 +3,28 @@
 package darwin
 
 import (
-	"encoding/binary"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
+	"runtime"
 	"unsafe"
 
 	"github.com/ebitengine/purego"
 	"github.com/egoist/asuka/native"
 )
 
-// An app's native code in Swift (its macos/*.swift): the CLI compiles it,
-// with Asuka's Swift for it (platform/macos), into a library in the
-// app's bundle, Contents/Frameworks/AsukaAppNatives.dylib. The host loads
-// it as it starts and calls its functions through purego, so nothing
-// here needs cgo. What the app's AsukaAppNatives registers there joins
-// package native's registry: its views are made, set, measured and
-// destroyed by the library's functions, its events and its modules'
-// answers come back through two functions of the host's (callbacks).
+// Packages' native code in Swift (//asuka:native, //asuka:view): the CLI
+// builds it, with Asuka's Swift for it (platform/macos), into a library
+// in the app's bundle, Contents/Frameworks/AsukaNatives.dylib. The
+// host loads it as it starts and calls its functions through purego, so
+// nothing here needs cgo: its views are made, set, measured and destroyed
+// by the library's functions, their events come back through a function
+// of the host's (a callback); and typed modules' calls go straight to it
+// from any goroutine (package native's Backend), their answers and Go
+// callbacks' calls coming back through two more, from any thread.
 
 // swiftLib is the library's name in Contents/Frameworks.
-const swiftLib = "AsukaAppNatives.dylib"
+const swiftLib = "AsukaNatives.dylib"
 
 var swift struct {
 	loaded  bool
@@ -33,13 +32,15 @@ var swift struct {
 	set     func(id uint64, p unsafe.Pointer, n int)
 	measure func(id uint64, w, h float64, out *[2]float64)
 	destroy func(id uint64)
-	call    func(module, method string, p unsafe.Pointer, n int, call uint64)
-	free    func(p *byte)
+	free    func(p unsafe.Pointer)
+
+	// Typed modules' functions, called with purego.SyscallN on their
+	// addresses (no reflection: a call allocates nothing of its own).
+	newObj, call, start, cancel, release uintptr
+	malloc                               func(n uintptr) unsafe.Pointer
 
 	nextID   uint64
 	contexts map[uint64]native.Context
-	nextCall uint64
-	replies  map[uint64]func([]byte, error)
 }
 
 // swiftLibPath is where the app's library is: in its bundle, beside its
@@ -56,7 +57,8 @@ func swiftLibPath() string {
 }
 
 // loadSwiftNatives loads the app's Swift library, if it has one, and
-// registers what it registers. Main thread, before the root is mounted.
+// makes it typed modules' backend. Main thread, before the root is
+// mounted.
 func loadSwiftNatives(path string) error {
 	if swift.loaded || path == "" {
 		return nil
@@ -68,7 +70,7 @@ func loadSwiftNatives(path string) error {
 	if err != nil {
 		return fmt.Errorf("asuka: cannot load the app's Swift (%s): %v", path, err)
 	}
-	var boot func(emit, reply uintptr) *byte
+	var boot func(emit, done, invoke uintptr)
 	for _, f := range []struct {
 		fn   any
 		name string
@@ -78,7 +80,6 @@ func loadSwiftNatives(path string) error {
 		{&swift.set, "asuka_natives_set"},
 		{&swift.measure, "asuka_natives_measure"},
 		{&swift.destroy, "asuka_natives_destroy"},
-		{&swift.call, "asuka_natives_call"},
 		{&swift.free, "asuka_natives_free"},
 	} {
 		if _, err := purego.Dlsym(lib, f.name); err != nil {
@@ -86,80 +87,96 @@ func loadSwiftNatives(path string) error {
 		}
 		purego.RegisterLibFunc(f.fn, lib, f.name)
 	}
-	swift.loaded = true
-	swift.contexts = map[uint64]native.Context{}
-	swift.replies = map[uint64]func([]byte, error){}
-	list := boot(purego.NewCallback(swiftEmit), purego.NewCallback(swiftReply))
-	if list == nil {
-		return nil
+	for _, f := range []struct {
+		p    *uintptr
+		name string
+	}{
+		{&swift.newObj, "asuka_native_new"},
+		{&swift.call, "asuka_native_call"},
+		{&swift.start, "asuka_native_start"},
+		{&swift.cancel, "asuka_native_cancel"},
+		{&swift.release, "asuka_native_release"},
+	} {
+		if *f.p, err = purego.Dlsym(lib, f.name); err != nil {
+			return fmt.Errorf("asuka: the app's Swift (%s) has no %s: rebuild it with this version of Asuka", path, f.name)
+		}
 	}
-	defer swift.free(list)
-	n := binary.LittleEndian.Uint32(unsafe.Slice(list, 4))
-	kinds, modules, err := parseSwiftRegistry(unsafe.Slice(list, n)[4:])
+	libc, err := purego.Dlopen("/usr/lib/libSystem.B.dylib", purego.RTLD_NOW|purego.RTLD_GLOBAL)
 	if err != nil {
 		return err
 	}
-	for _, kind := range kinds {
-		native.RegisterView(kind, func(ctx native.Context) native.View { return newSwiftView(kind, ctx) })
-	}
-	for name, methods := range modules {
-		m := native.Module{}
-		for _, method := range methods {
-			m[method] = func(args []byte, reply func([]byte, error)) { swiftCall(name, method, args, reply) }
-		}
-		native.RegisterModule(name, m)
-	}
+	purego.RegisterLibFunc(&swift.malloc, libc, "malloc")
+	swift.loaded = true
+	swift.contexts = map[uint64]native.Context{}
+	boot(purego.NewCallback(swiftEmit), purego.NewCallback(swiftDone), purego.NewCallback(swiftInvoke))
+	native.SetBackend(swiftBackend{})
 	return nil
 }
 
-// parseSwiftRegistry reads what the library's boot registered: u32
-// count, then for each a u8 (1: a view kind, 2: a module method) and its
-// names.
-func parseSwiftRegistry(b []byte) (kinds []string, modules map[string][]string, err error) {
-	bad := errors.New("asuka: the app's Swift library answered a malformed registry")
-	take := func(n int) []byte {
-		if n < 0 || len(b) < n {
-			err = bad
-			return nil
-		}
-		v := b[:n]
-		b = b[n:]
-		return v
-	}
-	u32 := func() int {
-		v := take(4)
-		if v == nil {
-			return 0
-		}
-		return int(binary.LittleEndian.Uint32(v))
-	}
-	str := func() string { return string(take(u32())) }
-	modules = map[string][]string{}
-	count := u32()
-	for i := 0; i < count && err == nil; i++ {
-		t := take(1)
-		if t == nil {
-			break
-		}
-		switch t[0] {
-		case 1:
-			kinds = append(kinds, str())
-		case 2:
-			name, method := str(), str()
-			modules[name] = append(modules[name], method)
-		default:
-			err = bad
-		}
-	}
-	if err != nil {
-		return nil, nil, err
-	}
-	sort.Strings(kinds)
-	return kinds, modules, nil
+// swiftBackend is package native's Backend: the library's typed modules.
+type swiftBackend struct{}
+
+// The buffers passed are Go's heap memory (pooled), which doesn't move;
+// big is the library's.
+
+func (swiftBackend) New(m *native.Module, iface uint32, out []byte) []byte {
+	var big unsafe.Pointer
+	n, _, _ := purego.SyscallN(swift.newObj, uintptr(unsafe.Pointer(unsafe.StringData(m.Swift))), uintptr(len(m.Swift)), uintptr(iface),
+		uintptr(unsafe.Pointer(unsafe.SliceData(out))), uintptr(len(out)), uintptr(unsafe.Pointer(&big)))
+	runtime.KeepAlive(m)
+	runtime.KeepAlive(out)
+	return swiftAnswer(out, int(n), big)
 }
 
-// swiftView is a view of the app's Swift, by the id the library knows it
-// by.
+func (swiftBackend) Call(h uint64, method uint32, in, out []byte) []byte {
+	var big unsafe.Pointer
+	n, _, _ := purego.SyscallN(swift.call, uintptr(h), uintptr(method), uintptr(unsafe.Pointer(unsafe.SliceData(in))), uintptr(len(in)),
+		uintptr(unsafe.Pointer(unsafe.SliceData(out))), uintptr(len(out)), uintptr(unsafe.Pointer(&big)))
+	runtime.KeepAlive(in)
+	runtime.KeepAlive(out)
+	return swiftAnswer(out, int(n), big)
+}
+
+func (swiftBackend) Start(h uint64, method uint32, in []byte, call uint64) {
+	purego.SyscallN(swift.start, uintptr(h), uintptr(method), uintptr(unsafe.Pointer(unsafe.SliceData(in))), uintptr(len(in)), uintptr(call))
+	runtime.KeepAlive(in)
+}
+
+func (swiftBackend) Cancel(call uint64) { purego.SyscallN(swift.cancel, uintptr(call)) }
+func (swiftBackend) Release(h uint64)   { purego.SyscallN(swift.release, uintptr(h)) }
+
+// swiftAnswer is an answer the library wrote: in out, else in memory of
+// its own (big), copied and freed.
+func swiftAnswer(out []byte, n int, big unsafe.Pointer) []byte {
+	if big == nil {
+		return out[:n]
+	}
+	b := append([]byte(nil), unsafe.Slice((*byte)(big), n)...)
+	swift.free(big)
+	return b
+}
+
+// swiftDone answers a started call (a purego callback, from any thread).
+func swiftDone(call uint64, p *byte, n int) {
+	native.Done(call, unsafe.Slice(p, n))
+}
+
+// swiftInvoke calls a Go callback (a purego callback, from any thread):
+// its answer goes into memory the library frees (none: 0).
+func swiftInvoke(id uint64, p *byte, n int, out *unsafe.Pointer) int {
+	a := native.Invoke(id, unsafe.Slice(p, n))
+	if a == nil {
+		*out = nil
+		return 0
+	}
+	m := swift.malloc(uintptr(max(len(a), 1)))
+	copy(unsafe.Slice((*byte)(m), len(a)), a)
+	*out = m
+	return len(a)
+}
+
+// swiftView is a view of a package's Swift, by the id the library knows
+// it by.
 type swiftView struct {
 	id   uint64
 	view uintptr
@@ -215,35 +232,4 @@ func swiftEmit(id uint64, p *byte, n int) {
 		return
 	}
 	ctx.Emit(name, values)
-}
-
-// swiftCall runs a module's method in the library.
-func swiftCall(module, method string, args []byte, reply func([]byte, error)) {
-	swift.nextCall++
-	id := swift.nextCall
-	swift.replies[id] = reply
-	var p unsafe.Pointer
-	if len(args) > 0 {
-		p = unsafe.Pointer(&args[0])
-	}
-	swift.call(module, method, p, len(args), id)
-}
-
-// swiftReply is the library's answer to a call (a purego callback, on the
-// main thread): ok 1 with the result, 0 with the error's message.
-func swiftReply(id uint64, ok int32, p *byte, n int) {
-	reply, found := swift.replies[id]
-	if !found {
-		return
-	}
-	delete(swift.replies, id)
-	var b []byte
-	if p != nil && n > 0 {
-		b = append([]byte(nil), unsafe.Slice(p, n)...)
-	}
-	if ok == 0 {
-		reply(nil, errors.New(string(b)))
-		return
-	}
-	reply(b, nil)
 }

@@ -138,9 +138,20 @@ func (t *iosToolchain) buildEmbedded(work string, app *goApp, lib string, featur
 	if err != nil {
 		return "", err
 	}
-	own, _ := filepath.Glob(filepath.Join(app.dir, "ios", "*.swift"))
-	sort.Strings(own)
-	swift = append(swift, own...)
+	// The app's native packages' Swift is packages of its own, which the
+	// framework's module (AsukaApp, built as one module with swiftc for
+	// the embedding app to import) can't be built with.
+	natives, err := nativeFor(app, "ios", t.goarch)
+	if err != nil {
+		return "", err
+	}
+	if len(natives) > 0 {
+		var names []string
+		for _, p := range natives {
+			names = append(names, p.path)
+		}
+		return "", fmt.Errorf("--xcframework: the app's native packages have Swift (%s), which the framework can't hold yet: build the app itself (asuka build --platform ios)", strings.Join(names, ", "))
+	}
 	fw := filepath.Join(work, embedModule+".framework")
 	os.RemoveAll(fw)
 	mods := filepath.Join(fw, "Modules", embedModule+".swiftmodule")

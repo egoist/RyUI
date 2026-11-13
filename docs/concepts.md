@@ -381,20 +381,19 @@ load := func() {
 }
 ```
 
-`ui.Call` calls a native module from the main thread, and gives the
-result to a callback, on the main thread. `ui.CallWait` is the same from
-a goroutine: it waits for the result. Never call `CallWait` on the main
-thread, which the result has to come on. See [Native code](native.md).
+A [native package](native.md)'s methods run on the thread that calls
+them. Call a slow one from a goroutine, or give it a context, and post
+its result back:
 
 ```go
 go func() {
-	b, err := ui.CallWait("myModule", "hello", []byte(`{"name":"Ada"}`))
+	level, err := b.Level() // a native package's module
 	ui.Post(func() {
 		if err != nil {
 			status.Set(err.Error())
 			return
 		}
-		status.Set(string(b))
+		status.Set(fmt.Sprintf("%.0f%%", level*100))
 	})
 }()
 ```

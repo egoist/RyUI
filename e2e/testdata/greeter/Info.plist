@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- What the greeter's Swift needs of the app's Info.plist (iOS, macOS):
+     a purpose string, which the app's asuka.json may say better, and keys
+     joined with the app's. -->
+<plist version="1.0">
+<dict>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>To greet the devices nearby.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>bluetooth-central</string>
+	</array>
+	<key>GreeterEnabled</key>
+	<true/>
+</dict>
+</plist>

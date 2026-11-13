@@ -166,7 +166,7 @@ func TestShareTargetConfig(t *testing.T) {
 func TestFeaturesFromImports(t *testing.T) {
 	var c appConfig
 	c.permissionsFor([]string{"github.com/egoist/asuka/ui", "github.com/egoist/asuka/sdk/scan", "github.com/egoist/asuka/sdk/camera"})
-	if got := c.gradleModules(); got != "-PasukaModules=scan" {
+	if got := strings.Join(c.gradleProps(), " "); got != "-PasukaModules=scan" {
 		t.Errorf("modules: %s", got)
 	}
 	if !slices.Contains(c.Android.Permissions, "android.permission.CAMERA") || slices.Contains(c.Android.Permissions, "android.permission.POST_NOTIFICATIONS") {
@@ -174,7 +174,7 @@ func TestFeaturesFromImports(t *testing.T) {
 	}
 	var pics appConfig
 	pics.permissionsFor([]string{"github.com/egoist/asuka/sdk/vision", "github.com/egoist/asuka/sdk/photos"})
-	if got := pics.gradleModules(); got != "-PasukaModules=vision" {
+	if got := strings.Join(pics.gradleProps(), " "); got != "-PasukaModules=vision" {
 		t.Errorf("modules: %s", got)
 	}
 	if !slices.Contains(pics.Android.Permissions, "android.permission.READ_MEDIA_IMAGES") || pics.IOS.Usage["NSPhotoLibraryUsageDescription"] == "" {
@@ -182,7 +182,7 @@ func TestFeaturesFromImports(t *testing.T) {
 	}
 	var none appConfig
 	none.permissionsFor([]string{"github.com/egoist/asuka/ui"})
-	if got := none.gradleModules(); got != "-PasukaModules=" {
+	if got := strings.Join(none.gradleProps(), " "); got != "-PasukaModules=" {
 		t.Errorf("no modules: %s", got)
 	}
 	if p := playerConfig(); !slices.Contains(p.androidModules, "scan") {

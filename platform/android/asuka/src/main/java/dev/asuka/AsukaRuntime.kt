@@ -36,7 +36,10 @@ import java.nio.ByteBuffer
 class AsukaRuntime private constructor(val app: Application) : AsukaOpHandler {
     companion object {
         @SuppressLint("StaticFieldLeak")
-        private var instance: AsukaRuntime? = null
+        @Volatile private var instance: AsukaRuntime? = null
+
+        /** The runtime, once the host made it. */
+        internal val current: AsukaRuntime? get() = instance
 
         fun get(context: Context): AsukaRuntime =
             instance ?: AsukaRuntime(context.applicationContext as Application).also {

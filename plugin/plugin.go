@@ -27,6 +27,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"runtime"
+	"strings"
 )
 
 // ManifestFile is a plugin's manifest, in its package's directory.
@@ -109,8 +110,8 @@ func Parse(data []byte) (*Manifest, error) {
 	if err := json.Unmarshal(data, &m); err != nil {
 		return nil, fmt.Errorf("plugin: %s: %w", ManifestFile, err)
 	}
-	if m.Name == "" {
-		return nil, fmt.Errorf("plugin: %s: no name", ManifestFile)
+	if !pluginName(m.Name) {
+		return nil, fmt.Errorf("plugin: %s: name %q: letters, digits, '-', '_' and '.', not first", ManifestFile, m.Name)
 	}
 	for _, l := range m.Libraries {
 		if l.Name == "" {
@@ -133,6 +134,20 @@ func (m *Manifest) Library(name string) (Library, bool) {
 		}
 	}
 	return Library{}, false
+}
+
+// pluginName reports whether s may name a plugin: plain, as the CLI's
+// messages and its release's name say it.
+func pluginName(s string) bool {
+	if s == "" || strings.ContainsAny(s[:1], "-_.") {
+		return false
+	}
+	for _, r := range s {
+		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("-_.", r)) {
+			return false
+		}
+	}
+	return true
 }
 
 // hostTarget is the target of the platform this program runs on.

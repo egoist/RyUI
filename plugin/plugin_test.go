@@ -17,7 +17,8 @@ func TestParse(t *testing.T) {
 	if _, ok := m.Library("nope"); ok {
 		t.Error("a library that isn't there")
 	}
-	for _, bad := range []string{`{`, `{"libraries": []}`, `{"name": "x", "libraries": [{"files": {}}]}`,
+	for _, bad := range []string{`{`, `{"libraries": []}`, `{"name": "a b", "libraries": []}`, `{"name": ".x", "libraries": []}`,
+		`{"name": "x", "libraries": [{"files": {}}]}`,
 		`{"name": "x", "libraries": [{"name": "l", "files": {"darwin": {}}}]}`} {
 		if _, err := Parse([]byte(bad)); err == nil {
 			t.Errorf("%s: no error", bad)

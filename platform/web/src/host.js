@@ -11,6 +11,7 @@
 // focus event as the core focuses it, a list tiling as its frame changes)
 // waits until Go has returned.
 
+import * as nativeModules from "./native.js";
 import { decode, Reader, Events, Kind, Prop, Event, Command, environment as newEnvironment, Type } from "./ops.js";
 import { kinds } from "./views.js";
 import { Interaction } from "./interaction.js";
@@ -183,6 +184,20 @@ export class Host {
   }
 
   listCount(id) { return this.callNow(() => this.core.listCount(id)); }
+
+  // Typed native modules (native.js), from the app's Go: its calls'
+  // answers are bytes; its way back is its core's.
+  get nativeBack() {
+    return this._nativeBack ??= {
+      done: (call, b) => this.core.nativeDone(call, b),
+      invoke: (id, b) => this.core.nativeInvoke(id, b),
+    };
+  }
+  nativeNew(id, iface) { return nativeModules.makeObject(id, iface, this.nativeBack); }
+  nativeCall(h, method, input) { return nativeModules.call(h, method, input, this.nativeBack); }
+  nativeStart(h, method, input, call) { nativeModules.start(h, method, input, call, this.nativeBack); }
+  nativeCancel(call) { nativeModules.cancel(call); }
+  nativeRelease(h) { nativeModules.release(h); }
   listBind(id, index, cell) { this.callNow(() => this.core.listBind(id, index, cell)); }
   listUnbind(id, cell) { this.callNow(() => this.core.listUnbind(id, cell)); }
 

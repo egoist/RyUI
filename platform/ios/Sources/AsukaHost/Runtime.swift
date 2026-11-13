@@ -380,6 +380,15 @@ final class AsukaTextField: UITextField {
         AsukaAutomation.start()
         #endif
         registerNatives()
+        // Typed native modules' way back to Go.
+        AsukaNative.done = { call, b in b.withUnsafeBufferPointer { asuka_native_done(call, $0.baseAddress, $0.count) } }
+        AsukaNative.invoke = { id, b in
+            var out: UnsafeMutablePointer<UInt8>? = nil
+            let n = b.withUnsafeBufferPointer { asuka_native_invoke(id, $0.baseAddress, $0.count, &out) }
+            guard let out else { return nil }
+            defer { free(out) }
+            return Array(UnsafeBufferPointer(start: out, count: n))
+        }
         if let c = controller { AsukaSplash.shared.show(over: c) }
         var cb = asuka_host_callbacks(
             apply: { buf, len in
@@ -398,7 +407,20 @@ final class AsukaTextField: UITextField {
                 DispatchQueue.main.async {
                     MainActor.assumeIsolated { AsukaRuntime.shared.enter { asuka_run_posted() } }
                 }
-            }
+            },
+            native_new: { cls, len, iface, out, cap, big in
+                let name = String(decoding: UnsafeBufferPointer(start: cls, count: len), as: UTF8.self)
+                return AsukaNative.write(AsukaNative.new(name, iface), out, cap, big)
+            },
+            native_call: { h, method, p, n, out, cap, big in
+                AsukaNative.write(AsukaNative.call(h, method, Array(UnsafeBufferPointer(start: p, count: n))), out, cap, big)
+            },
+            native_start: { h, method, p, n, call in
+                AsukaNative.start(h, method, Array(UnsafeBufferPointer(start: p, count: n)), call)
+            },
+            native_cancel: { AsukaNative.cancel($0) },
+            native_release: { AsukaNative.release($0) },
+            native_free: { free($0) }
         )
         enter { asuka_start(&cb) }
         AsukaSplash.shared.started()

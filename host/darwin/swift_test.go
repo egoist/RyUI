@@ -3,83 +3,70 @@
 package darwin
 
 import (
-	"os"
+	"context"
+	"errors"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"runtime"
+	"slices"
 	"testing"
+	"time"
 
 	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/internal/nativegen"
+	"github.com/egoist/asuka/internal/nativegen/testdata/kitchen"
+	"github.com/egoist/asuka/native"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )
 
-// testSwift is an app's macos/*.swift: an NSSlider view, and a module
-// that answers now, later from another thread, with an error, and that
-// makes the view send an event.
-const testSwift = `
-import AppKit
-
-@objc(AsukaAppNatives) final class AppNatives: NSObject, AsukaNativeModule {
-    @MainActor static func register() {
-        AsukaRuntime.shared.registerNative("TestSwiftSlider") { ctx in Slider(ctx) }
-        AsukaRuntime.shared.registerModule("testSwift", [
-            "echo": { args, reply in reply(.success(Data("echo:".utf8) + args)) },
-            "later": { args, reply in
-                DispatchQueue.global().async { reply(.success(args)); reply(.success(Data("twice".utf8))) }
-            },
-            "fail": { _, reply in reply(.failure(Oops())) },
-            "fire": { _, reply in
-                Slider.last?.ctx.emit("changed", ["value": .float(0.5), "label": .string("x"), "n": .int(3), "on": .bool(true)])
-                reply(.success(Data()))
-            },
-            "state": { _, reply in
-                reply(.success(Data("\(Slider.last?.sets.joined(separator: ",") ?? "")|\(Slider.destroyed)".utf8)))
-            },
-        ])
-    }
-}
-
-struct Oops: LocalizedError { var errorDescription: String? { "oops from Swift" } }
-
-@MainActor final class Slider: AsukaNativeView {
-    static var last: Slider?
-    static var destroyed = 0
-    let ctx: AsukaNativeContext
-    let slider = NSSlider()
-    var sets: [String] = []
-    var view: NSView { slider }
-    init(_ ctx: AsukaNativeContext) { self.ctx = ctx; Slider.last = self }
-    func set(_ name: String, _ value: AsukaNativeValue) {
-        sets.append(name)
-        if name == "value" { slider.doubleValue = value.float }
-    }
-    func sizeThatFits(_ size: CGSize) -> CGSize { CGSize(width: 160, height: 24) }
-    func destroy() { Slider.destroyed += 1 }
-}
-`
-
-// The app's Swift, compiled as the CLI compiles it, loaded by the host:
-// its view made, set, measured, sending events and destroyed; its
-// module's methods answering, once each, on the main thread.
-func TestSwiftNatives(t *testing.T) {
+// buildKitchenSwift builds the kitchen package's Swift (nativegen's
+// testdata) as the CLI does for an app's packages: Asuka's Swift (module
+// Asuka) and the package's (its generated Swift and its own), in one
+// library.
+func buildKitchenSwift(t *testing.T) string {
+	t.Helper()
 	if _, err := exec.LookPath("xcrun"); err != nil {
 		t.Skip("no Xcode command line tools")
 	}
-	dir := t.TempDir()
-	app := filepath.Join(dir, "Natives.swift")
-	if err := os.WriteFile(app, []byte(testSwift), 0o644); err != nil {
+	pkg := "../../internal/nativegen/testdata/kitchen"
+	p, err := nativegen.Load(pkg)
+	if err != nil {
 		t.Fatal(err)
 	}
-	arch := map[string]string{"arm64": "arm64", "amd64": "x86_64"}[runtime.GOARCH]
-	lib := filepath.Join(dir, swiftLib)
-	out, err := exec.Command("xcrun", "swiftc", "-swift-version", "5", "-module-name", "AsukaApp",
-		"-target", arch+"-apple-macos11", "-emit-library", "-Onone",
-		"../../platform/macos/Sources/AsukaMac/AsukaMacRuntime.swift", app, "-o", lib).CombinedOutput()
-	if err != nil {
-		t.Fatalf("swiftc: %v\n%s", err, out)
+	if stale, err := nativegen.Stale(p); err != nil || len(stale) > 0 {
+		t.Fatalf("the kitchen package's generated files are stale (go test ./internal/nativegen -update): %v %v", stale, err)
 	}
+	dir := t.TempDir()
+	// Its Swift: its own and what asuka native generated.
+	srcs, _ := filepath.Glob(filepath.Join(pkg, nativegen.SwiftDir, "*.swift"))
+	arch := map[string]string{"arm64": "arm64", "amd64": "x86_64"}[runtime.GOARCH]
+	target := arch + "-apple-macos11"
+	run := func(args ...string) {
+		t.Helper()
+		out, err := exec.Command("xcrun", append([]string{"swiftc", "-swift-version", "5", "-target", target, "-parse-as-library", "-Onone"}, args...)...).CombinedOutput()
+		if err != nil {
+			t.Fatalf("swiftc: %v\n%s", err, out)
+		}
+	}
+	src := "../../platform/macos/Sources/AsukaMac/"
+	run("-module-name", "Asuka", "-emit-module", "-emit-module-path", filepath.Join(dir, "Asuka.swiftmodule"), "-wmo", "-c",
+		src+"AsukaMacRuntime.swift", src+"NativeModules.swift", "-o", filepath.Join(dir, "Asuka.o"))
+	run(append([]string{"-module-name", "KitchenNative", "-I", dir, "-wmo", "-c", "-o", filepath.Join(dir, "KitchenNative.o")}, srcs...)...)
+	lib := filepath.Join(dir, swiftLib)
+	run("-emit-library", filepath.Join(dir, "Asuka.o"), filepath.Join(dir, "KitchenNative.o"), "-o", lib)
+	return lib
+}
+
+// A package's Swift, built and loaded as the host loads an app's: its
+// typed module's calls from Go, on any goroutine, with every kind of
+// value; its errors; an async method, its progress and its cancelation;
+// a question callback; a main-thread object, closed; and its typed view,
+// made, set, measured, sending events and destroyed.
+func TestSwiftNatives(t *testing.T) {
+	lib := buildKitchenSwift(t)
 	onMain(func() {
 		if err := loadSwiftNatives(lib); err != nil {
 			fatal(t, err)
@@ -87,30 +74,113 @@ func TestSwiftNatives(t *testing.T) {
 	})
 	value := signal.New(0.25)
 	shown := signal.New(true)
-	var got []map[string]any
+	var changed []float64
+	var picked []string
+	var progress []float64
 	h, _ := mount(t, func() ui.Node {
 		return ui.Column(ui.Style{Padding: ui.All(10), Align: ui.AlignStart},
 			ui.Show(shown, func() ui.Node {
-				return ui.Native("TestSwiftSlider", ui.NativeProps{
-					Props: map[string]any{"value": signal.Accessor[float64](value), "label": "Volume"},
-					On: map[string]func(ui.NativeEvent){"changed": func(e ui.NativeEvent) {
-						got = append(got, e.Values())
-					}},
+				return kitchen.Dial(kitchen.DialProps{
+					Value:   value,
+					Label:   "Heat",
+					Items:   signal.Static([]kitchen.Item{{Name: "a"}, {Name: "b", Tags: []string{"t"}}}),
+					Changed: func(v float64) { changed = append(changed, v) },
+					Picked:  func(it kitchen.Item, i int) { picked = append(picked, it.Name, string(rune('0'+i))) },
 				})
 			}))
 	})
+
+	k, err := kitchen.NewKitchen()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := k.Name(); n != "home" {
+		t.Errorf("Name %q", n)
+	}
+	items, err := k.Items("x")
+	best := time.Unix(1_700_000_000, 250_000_000)
+	want := kitchen.Item{Name: "x", Weight: 1.5, Unit: kitchen.UnitGram, Tags: []string{"a", "b"}, Notes: map[string]string{"k": "v"},
+		Best: &best, Next: &kitchen.Item{Name: "inner"}, Data: []byte{1, 2, 3}, Took: 2500 * time.Millisecond, ID: ^uint64(0), Count: -3, Ratio: 0.5, Fresh: true}
+	if err != nil || len(items) != 1 || !reflect.DeepEqual(items[0], want) {
+		t.Errorf("Items: %+v, %v\nwant %+v", items, err, want)
+	}
+	if err := k.Add(kitchen.Item{}); !errors.Is(err, kitchen.ErrBusy) {
+		t.Errorf("Add: %v, want ErrBusy", err)
+	}
+	if err := k.Add(kitchen.Item{Name: "y"}); err != nil {
+		t.Errorf("Add: %v", err)
+	}
+	if l := k.Level(); l != kitchen.LevelHigh {
+		t.Errorf("Level %v", l)
+	}
+	if c := k.Counts(); !reflect.DeepEqual(c, map[string]int64{"a": 1, "b": -2}) {
+		t.Errorf("Counts %v", c)
+	}
+	at := time.Unix(100, 0)
+	if w, err := k.When(at, time.Minute); err != nil || w == nil || !w.Equal(at.Add(time.Minute)) {
+		t.Errorf("When: %v, %v", w, err)
+	}
+	if w, err := k.When(at, 0); err != nil || w != nil {
+		t.Errorf("When (none): %v, %v", w, err)
+	}
+
+	// A question: Go's func answers on the Swift's thread.
+	var asked string
+	if ok, err := k.Ask(func(q string) bool { asked = q; return true }); !ok || err != nil || asked != "ok?" {
+		t.Errorf("Ask: %v, %v, %q", ok, err, asked)
+	}
+
+	// Async: the Swift's task answers from its thread; its progress is
+	// posted to the main thread.
+	item, err := k.Cook(context.Background(), "soup", func(done float64) { progress = append(progress, done) })
+	if err != nil || item.Name != "soup done" {
+		t.Errorf("Cook: %+v, %v", item, err)
+	}
+	onMain(func() { h.runPosted() })
+	if !slices.Equal(progress, []float64{0.5, 1}) {
+		t.Errorf("progress %v", progress)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	start := time.Now()
+	if _, err := k.Cook(ctx, "slow", nil); !errors.Is(err, context.DeadlineExceeded) || time.Since(start) > 5*time.Second {
+		t.Errorf("a canceled Cook: %v after %v", err, time.Since(start))
+	}
+
+	// An error the package doesn't declare: its domain, code and message.
+	var ne *native.Error
+	if _, err := k.Open("none"); !errors.As(err, &ne) || ne.Domain != "Oven" || ne.Code != 7 || ne.Message != "no oven" {
+		t.Errorf("Open(none): %#v", err)
+	}
+	var oven kitchen.Oven
+	onMain(func() {
+		// Its Oven is the main thread's (//asuka:mainthread): made there.
+		if oven, err = k.Open("main"); err != nil {
+			fatal(t, err)
+		}
+		if err := oven.Heat(180, kitchen.UnitGram); err != nil {
+			fatal(t, err)
+		}
+		if err := oven.Heat(1, kitchen.UnitOunce); !errors.Is(err, errors.ErrUnsupported) {
+			fatalf(t, "Heat in ounces: %v", err)
+		}
+		if err := oven.Close(); err != nil {
+			fatal(t, err)
+		}
+		if err := oven.Heat(1, kitchen.UnitGram); !errors.Is(err, native.ErrClosed) {
+			fatalf(t, "after Close: %v", err)
+		}
+	})
+
+	// The view.
 	onMain(func() {
 		n := find(h, ops.KindNative)[0]
 		if f := MsgRect(n.view, Sel("frame")); f.Size.Width != 160 || f.Size.Height != 24 {
-			fatalf(t, "the native view's frame %+v, want 160x24 (its sizeThatFits)", f.Size)
+			fatalf(t, "the view's frame %+v, want 160x24 (its sizeThatFits)", f.Size)
 		}
-		slider := ID(Send(n.view, "subviews"))
-		slider = Send(slider, "firstObject")
+		slider := Send(Send(n.view, "subviews"), "firstObject")
 		if GoString(Send(Send(slider, "className"), "description")) != "NSSlider" {
 			fatal(t, "the Swift view isn't in its node's view")
-		}
-		if MsgRect(slider, Sel("frame")).Size.Width != 160 {
-			fatal(t, "the Swift view doesn't fill its node's")
 		}
 		if v := MsgFloat(slider, Sel("doubleValue")); v != 0.25 {
 			fatalf(t, "value %v", v)
@@ -119,32 +189,37 @@ func TestSwiftNatives(t *testing.T) {
 		if v := MsgFloat(slider, Sel("doubleValue")); v != 0.75 {
 			fatalf(t, "value after a change %v", v)
 		}
-
-		if b, err := await(h, "testSwift", "echo", []byte("hi")); err != nil || string(b) != "echo:hi" {
-			fatalf(t, "echo: %q, %v", b, err)
+		if !slices.Equal(changed, []float64{0.5, 1.5}) {
+			fatalf(t, "Changed %v", changed)
 		}
-		if b, err := await(h, "testSwift", "later", []byte("bye")); err != nil || string(b) != "bye" {
-			fatalf(t, "later: %q, %v", b, err)
-		}
-		if _, err := await(h, "testSwift", "fail", nil); err == nil || err.Error() != "oops from Swift" {
-			fatalf(t, "fail: %v", err)
-		}
-		if _, err := await(h, "testSwift", "fire", nil); err != nil {
-			fatal(t, err)
-		}
-		if len(got) != 1 || got[0]["value"] != 0.5 || got[0]["label"] != "x" || got[0]["n"] != int64(3) || got[0]["on"] != true {
-			fatalf(t, "events %v", got)
-		}
-		b, _ := await(h, "testSwift", "state", nil)
-		if string(b) != "label,value,value|0" && string(b) != "value,label,value|0" {
-			fatalf(t, "props set %q", b)
+		if !slices.Equal(picked, []string{"b", "1"}) {
+			fatalf(t, "Picked %v", picked)
 		}
 		inCore(h, func() { shown.Set(false) })
-		if b, _ := await(h, "testSwift", "state", nil); string(b[len(b)-2:]) != "|1" {
-			fatalf(t, "not destroyed with its node: %q", b)
-		}
 		if len(swift.contexts) != 0 {
 			fatalf(t, "contexts kept: %d", len(swift.contexts))
 		}
 	})
+}
+
+// A typed call into the Swift and back (purego both ways), its answer a
+// string: the module's steady state.
+func BenchmarkSwiftCall(b *testing.B) {
+	t := &testing.T{}
+	lib := buildKitchenSwift(t)
+	onMain(func() {
+		if err := loadSwiftNatives(lib); err != nil {
+			b.Fatal(err)
+		}
+	})
+	k, err := kitchen.NewKitchen()
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.ReportAllocs()
+	for b.Loop() {
+		if k.Name() != "home" {
+			b.Fatal("name")
+		}
+	}
 }

@@ -65,6 +65,26 @@ func (c *appConfig) plistExtras() map[string]any {
 		m["UILaunchScreen"] = ls
 		m["AsukaSplash"] = true
 	}
+	// The app's plugins' (pluginNeeds): their arrays join the packages',
+	// and the rest go where nothing else set the key.
+	for k, v := range c.nativePlist {
+		if vs, ok := v.([]string); ok {
+			have, _ := m[k].([]string)
+			have = slices.Clone(have)
+			for _, s := range vs {
+				if !slices.Contains(have, s) {
+					have = append(have, s)
+				}
+			}
+			sort.Strings(have)
+			m[k] = have
+			continue
+		}
+		if _, set := m[k]; set || slices.Contains(c.iosTrue, k) || c.IOS.Usage[k] != "" {
+			continue
+		}
+		m[k] = v
+	}
 	return m
 }
 
@@ -100,6 +120,9 @@ func (c *appConfig) missingEntitlements(ent string) []string {
 	var missing []string
 	for k := range c.entitlements {
 		if !strings.Contains(string(data), "<key>"+k+"</key>") {
+			if what[k] == "" {
+				what[k] = c.entitlementsFor[k] // a plugin's
+			}
 			missing = append(missing, what[k])
 		}
 	}
@@ -356,7 +379,13 @@ func firebaseValues(path, id string) (string, error) {
 func dirDigest(dir string) string {
 	h := crc32.NewIEEE()
 	filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
+		if err != nil {
+			return nil
+		}
+		if d.IsDir() {
+			if p != dir && (d.Name() == "build" || d.Name() == ".gradle" || d.Name() == ".cxx") {
+				return filepath.SkipDir // what a build makes
+			}
 			return nil
 		}
 		h.Write([]byte(p))

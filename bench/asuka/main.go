@@ -1,6 +1,6 @@
 // The Asuka side of the benchmarks (bench/README.md): the same scenarios,
 // frame by frame, as bench/swiftui and bench/compose, written as a Asuka
-// app would be. The meter is the native module in ios/ and android/.
+// app would be. The meter is a native package's module (meter/).
 //
 //	go run ./bench/run -ios        # builds this and the others, runs them, compares
 package main
@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/bench/asuka/meter"
 	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/signal"
@@ -27,9 +28,21 @@ const (
 	list
 )
 
-func call(method, arg string) { ui.Call("bench", method, []byte(arg), nil) }
+// noMeter is the meter where the package has none (the desktop, the web):
+// the scenarios run, unmeasured.
+type noMeter struct{}
+
+func (noMeter) Begin(string)  {}
+func (noMeter) End()          {}
+func (noMeter) Startup()      {}
+func (noMeter) Memory(string) {}
+func (noMeter) Done()         {}
 
 func App() ui.Node {
+	var m meter.Meter = noMeter{}
+	if mm, err := meter.NewMeter(); err == nil {
+		m = mm
+	}
 	ph := signal.New(ready)
 	values := make([]*signal.Signal[int], rows)
 	for i := range values {
@@ -43,39 +56,39 @@ func App() ui.Node {
 		frame++
 		switch f := frame; {
 		case f == 2:
-			call("startup", "")
-			call("memory", "memory-idle")
+			m.Startup()
+			m.Memory("memory-idle")
 		case f == 29: // a frame ahead: what's measured starts with the next
-			call("begin", "mount")
+			m.Begin("mount")
 		case f == 30:
 			ph.Set(mounted)
 		case f == 36:
-			call("end", "")
-			call("memory", "memory-mount")
+			m.End()
+			m.Memory("memory-mount")
 		case f == 60:
-			call("begin", "update-one")
+			m.Begin("update-one")
 		case f > 60 && f <= 300:
 			v := values[(f-61)%rows]
 			v.Set(v.Peek() + 1)
 		case f == 301:
-			call("end", "")
+			m.End()
 		case f == 330:
-			call("begin", "update-all")
+			m.Begin("update-all")
 		case f > 330 && f <= 450:
 			tick.Set(tick.Peek() + 1)
 		case f == 451:
-			call("end", "")
+			m.End()
 		case f == 480:
 			ph.Set(list)
 		case f == 500:
-			call("begin", "scroll")
+			m.Begin("scroll")
 		case f > 500 && f <= 800:
 			ui.ScrollTo(scroller, 0, float32(f-500)*8, false)
 		case f == 801:
-			call("end", "")
-			call("memory", "memory-list")
+			m.End()
+			m.Memory("memory-list")
 		case f == 830:
-			call("done", "")
+			m.Done()
 		}
 	})
 	items := make([]int, listRows)

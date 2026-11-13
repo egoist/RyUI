@@ -180,6 +180,14 @@ type appConfig struct {
 	entitlements map[string]any
 	plistArrays  map[string][]string
 	androidTop   []string
+	// What the app's native packages' Swift needs (their Info.plist and
+	// entitlements, nativeNeeds): Info.plist's keys, and what each of
+	// their entitlements is for.
+	nativePlist     map[string]any
+	entitlementsFor map[string]string
+	// nativeModules are the app's native packages' Gradle modules: each
+	// one's name and directory.
+	nativeModules [][2]string
 	// Linux is what a Linux build says of the app, in its desktop file
 	// and its AppStream metainfo (what software centers and Flathub show).
 	Linux struct {
@@ -586,9 +594,18 @@ func (c *appConfig) permissionsFor(deps []string) {
 	}
 }
 
-// gradleModules is the Gradle property naming the app's optional modules.
-func (c *appConfig) gradleModules() string {
-	return "-PasukaModules=" + strings.Join(c.androidModules, ",")
+// gradleProps are the Gradle properties naming the app's optional
+// modules, and its native packages' modules (name=directory, ;-separated).
+func (c *appConfig) gradleProps() []string {
+	props := []string{"-PasukaModules=" + strings.Join(c.androidModules, ",")}
+	if len(c.nativeModules) > 0 {
+		var ms []string
+		for _, m := range c.nativeModules {
+			ms = append(ms, m[0]+"="+m[1])
+		}
+		props = append(props, "-PasukaNativeModules="+strings.Join(ms, ";"))
+	}
+	return props
 }
 
 func (c *appConfig) androidManifest(debug bool) string {

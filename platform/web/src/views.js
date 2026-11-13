@@ -16,6 +16,7 @@ import { shaderKind } from "./shader.js";
 import * as color from "./color.js";
 import * as fs from "./fs.js";
 import * as rich from "./richfield.js";
+import * as nativeModules from "./native.js";
 
 const enc = new TextEncoder();
 
@@ -747,32 +748,32 @@ const selectable = {
   measure() { return [0, 0]; },
 };
 
-// Native: a view of a kind the app registers with the page:
-// asuka.registerNative(kind, (ctx) => ({ el, set(name, value), measure?(c) })).
+// Native: a view of a kind registered with the page (asuka.registerNative),
+// else a package's typed view (//asuka:view: its module's id # its name),
+// ({ el, set(name, value), measure?(c), destroy?() }).
 const native = {
   create(h, n) {
     own(n, div("asuka-native"));
   },
   prop(h, n, p, v) {
     if (p === P.Native.Type) {
-      const factory = h.natives.get(v);
-      if (!factory) {
-        // As the other hosts: said, and nothing shown in its place.
-        fs.log(`asuka: no native view ${JSON.stringify(v)} is registered (asuka.registerNative, in the app's web/*.js)`);
-        return;
-      }
       const ctx = {
         emit: (name, values = {}) => h.dispatch(Events.native(n.id, encodeNative(name, values))),
         host: h,
       };
-      n.native = factory(ctx);
+      n.native = h.natives.get(v)?.(ctx) ?? nativeModules.makeView(v, ctx);
+      if (!n.native) {
+        // As the other hosts: said, and nothing shown in its place.
+        fs.log(`asuka: no native view ${JSON.stringify(v)}: build the app with its packages' native code`);
+        return;
+      }
       n.el.appendChild(n.native.el);
       n.native.el.style.width = n.native.el.style.height = "100%";
     }
     if (p === P.Native.Prop && n.native) {
       const r = new Reader(v);
       const name = r.string(), t = r.u8();
-      const value = t === 1 ? r.u8() !== 0 : t === 2 ? r.i64() : t === 3 ? r.f64() : r.string();
+      const value = t === 1 ? r.u8() !== 0 : t === 2 ? r.i64() : t === 3 ? r.f64() : t === 5 ? r.bytes().slice() : r.string();
       n.native.set?.(name, value);
     }
   },
@@ -789,6 +790,7 @@ function encodeNative(name, values) {
     if (typeof v === "boolean") w.u8(1).u8(v ? 1 : 0);
     else if (typeof v === "number" && Number.isInteger(v)) w.u8(2).i64(v);
     else if (typeof v === "number") w.u8(3).f64(v);
+    else if (v instanceof Uint8Array) w.u8(5).u32(v.length).raw(v);
     else w.u8(4).string(String(v));
   }
   return w.done();

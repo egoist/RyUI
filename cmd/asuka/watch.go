@@ -40,8 +40,11 @@ func (w *watcher) scan() string {
 				}
 				return nil
 			}
-			// Go, the app's native code (ios/, android/) and its assets.
-			code := strings.HasSuffix(name, ".go") || name == "go.mod" || strings.HasSuffix(name, ".swift") || strings.HasSuffix(name, ".kt")
+			// Go, native packages' code and projects (Swift, Kotlin, their
+			// Gradle files, manifests, Info.plist and entitlements) and the
+			// app's assets.
+			code := strings.HasSuffix(name, ".go") || name == "go.mod" || strings.HasSuffix(name, ".swift") || strings.HasSuffix(name, ".kt") ||
+				strings.HasSuffix(name, ".kts") || name == "AndroidManifest.xml" || name == "Info.plist" || strings.HasSuffix(name, ".entitlements")
 			asset := strings.Contains(filepath.ToSlash(path), "/assets/")
 			catalog := strings.HasSuffix(name, ".json") && (name == "asuka.json" || isCatalogDir(filepath.Dir(path)))
 			if !code && !asset && !catalog || strings.HasSuffix(name, "_test.go") {

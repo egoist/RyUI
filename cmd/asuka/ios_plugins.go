@@ -84,8 +84,12 @@ func (t *iosToolchain) writePluginFramework(dir string, l pluginLib) (string, er
 }
 
 // embedPlugins puts the frameworks of the plugins app uses in bundle's
-// Frameworks; signFrameworks signs them.
+// Frameworks, with those of its Swift packages, and their resource
+// bundles in it; signFrameworks signs the frameworks.
 func (t *iosToolchain) embedPlugins(bundle string, app *goApp) error {
+	if err := t.packages.embed(filepath.Join(bundle, "Frameworks"), bundle); err != nil {
+		return err
+	}
 	libs, err := t.pluginLibs(app)
 	if err != nil {
 		return err

@@ -10,37 +10,31 @@ import (
 	"time"
 )
 
-// An app's macos/*.swift is compiled with Asuka's Swift into the bundle's
-// library, with Swift's concurrency runtime beside it for macOS 11, and
-// signed with the app; unchanged, it isn't compiled again; taken away,
-// the library goes too.
+// An app's native packages' Swift (testdata/nativeapp's: the kitchen,
+// internal/nativegen's testdata) is built with Asuka's Swift into the
+// bundle's library, with Swift's concurrency runtime beside it for macOS
+// 11, and signed with the app; unchanged, it isn't built again; for an app
+// without native packages, the library goes.
 func TestMacSwift(t *testing.T) {
 	if runtime.GOOS != "darwin" {
 		t.Skip("Swift for the Mac builds on a Mac")
 	}
-	if _, err := exec.LookPath("xcrun"); err != nil {
-		t.Skip("no Xcode command line tools")
+	if _, err := exec.LookPath("xcodebuild"); err != nil {
+		t.Skip("no Xcode")
 	}
-	dir := t.TempDir()
-	app := &goApp{dir: filepath.Join(dir, "app"), name: "app", cfg: &appConfig{}}
-	os.MkdirAll(filepath.Join(app.dir, "macos", "sub"), 0o755)
-	src := `import AppKit
-@objc(AsukaAppNatives) final class AppNatives: NSObject, AsukaNativeModule {
-    @MainActor static func register() {
-        AsukaRuntime.shared.registerNative("Box") { _ in Box() }
-    }
-}
-@MainActor final class Box: AsukaNativeView {
-    let view: NSView = NSBox()
-    func set(_ name: String, _ value: AsukaNativeValue) {}
-}
-`
-	os.WriteFile(filepath.Join(app.dir, "macos", "Natives.swift"), []byte(src), 0o644)
-	// Only the files directly in macos/.
-	os.WriteFile(filepath.Join(app.dir, "macos", "sub", "Broken.swift"), []byte("this isn't Swift"), 0o644)
-	bundle := filepath.Join(dir, "App.app")
+	dir, err := filepath.Abs(filepath.Join("testdata", "nativeapp"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := loadConfig(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	app := &goApp{dir: dir, name: "nativeapp", cfg: cfg}
+	tmp := t.TempDir()
+	bundle := filepath.Join(tmp, "App.app")
 	os.MkdirAll(filepath.Join(bundle, "Contents", "MacOS"), 0o755)
-	work := filepath.Join(dir, "work")
+	work := filepath.Join(tmp, "work")
 	run := macRunner(false)
 	if err := macSwift(app, bundle, work, []string{runtime.GOARCH}, false, run); err != nil {
 		t.Fatal(err)
@@ -51,10 +45,13 @@ func TestMacSwift(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, sym := range []string{"_asuka_natives_boot", "_asuka_natives_make", "_asuka_natives_call"} {
+	for _, sym := range []string{"_asuka_natives_boot", "_asuka_natives_make", "_asuka_native_new", "_asuka_native_call", "_asuka_native_start"} {
 		if !containsField(string(out), sym) {
 			t.Errorf("the library doesn't export %s", sym)
 		}
+	}
+	if !strings.Contains(string(out), "AsukaModule_github_com_egoist_asuka_internal_nativegen_testdata_kitchen") {
+		t.Error("the library hasn't the kitchen's Swift")
 	}
 	if macImports(lib, "@rpath/libswift_Concurrency.dylib") {
 		if _, err := os.Stat(filepath.Join(fw, "libswift_Concurrency.dylib")); err != nil {
@@ -62,14 +59,14 @@ func TestMacSwift(t *testing.T) {
 		}
 	}
 
-	// Unchanged: not compiled again.
+	// Unchanged: not built again.
 	st, _ := os.Stat(lib)
 	time.Sleep(10 * time.Millisecond)
 	if err := macSwift(app, bundle, work, []string{runtime.GOARCH}, false, run); err != nil {
 		t.Fatal(err)
 	}
 	if st2, _ := os.Stat(lib); !st2.ModTime().Equal(st.ModTime()) {
-		t.Error("compiled again with nothing changed")
+		t.Error("built again with nothing changed")
 	}
 
 	// Signed with the app, its libraries first.
@@ -83,13 +80,13 @@ func TestMacSwift(t *testing.T) {
 		t.Errorf("the library isn't signed: %v", err)
 	}
 
-	// No Swift any more: no library.
-	os.Remove(filepath.Join(app.dir, "macos", "Natives.swift"))
-	if err := macSwift(app, bundle, work, []string{runtime.GOARCH}, false, run); err != nil {
+	// An app without native packages: no library.
+	plain := sqliteTestApp(t)
+	if err := macSwift(plain, bundle, work, []string{runtime.GOARCH}, false, run); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(fw); err == nil {
-		t.Error("the library stayed with the app's Swift gone")
+	if _, err := os.Stat(lib); err == nil {
+		t.Error("the library stayed for an app without native packages")
 	}
 }
 

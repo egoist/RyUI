@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/egoist/asuka/colors"
@@ -127,6 +128,34 @@ func TestNative(t *testing.T) {
 	h.Dispatch(ops.Event{ID: v.ID, Kind: ops.EventNative, Bytes: ui.EncodeNativeEventForTest("changed", map[string]any{"index": int64(1)})})
 	if len(changed) != 1 || changed[0] != 1 || sel.Peek() != 1 {
 		t.Fatal(changed)
+	}
+}
+
+// A native view listens before its props are set: a view that sends an
+// event as a prop is set (its first ones too) reaches its handler. The
+// type, which picks the factory, comes first.
+func TestNativeListensBeforeProps(t *testing.T) {
+	h, _ := mount(t, func() ui.Node {
+		return ui.Native("Badge", ui.NativeProps{
+			Props: map[string]any{"name": "Asuka"},
+			On:    map[string]func(ui.NativeEvent){"shown": func(ui.NativeEvent) {}},
+		})
+	})
+	id := h.OfKind(ops.KindNative)[0].ID
+	var order []string
+	for _, op := range h.Ops {
+		switch {
+		case op.ID != id:
+		case op.Code == ops.OpListen && op.Event == ops.EventNative:
+			order = append(order, "listen")
+		case op.Code == ops.OpSetProp && op.Prop == ops.PropNativeType:
+			order = append(order, "type")
+		case op.Code == ops.OpSetProp && op.Prop == ops.PropNativeProp:
+			order = append(order, "prop")
+		}
+	}
+	if strings.Join(order, " ") != "type listen prop" {
+		t.Fatalf("%v, want type, listen, then the props", order)
 	}
 }
 

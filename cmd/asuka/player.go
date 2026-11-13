@@ -34,15 +34,20 @@ const (
 	devicePort = 7461
 )
 
-// usePlayer reports whether to run app with the player: not when it has
-// its own native code for platform (ios, android), which only an app
-// built with it can show.
+// usePlayer reports whether to run app with the player: not when its
+// native packages (it, or its dependencies) have native code for platform
+// (ios, android), which only an app built with it can show.
 func usePlayer(app *goApp, o *devOptions, platform string) bool {
 	if o.embed || o.once {
 		return false
 	}
-	if exists(filepath.Join(app.dir, platform)) {
-		fmt.Printf("asuka: %s has native code in %s/: building it into the app (no player)\n", app.name, platform)
+	natives, err := nativeFor(app, platform, "arm64")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "asuka:", err)
+		return false // the build says so again
+	}
+	if len(natives) > 0 {
+		fmt.Printf("asuka: %s has native code for %s (%s): building it into the app (no player)\n", app.name, platform, natives[0].path)
 		return false
 	}
 	return true
@@ -214,12 +219,13 @@ func (p *hostProcess) stop() {
 	p.proc = nil
 }
 
-// watchHost rebuilds and restarts the app's process on each change.
+// watchHost rebuilds and restarts the app's process on each change: to
+// its module, or to more (its plugins' native code, wherever they are).
 // When it's done it stops the player too, so that it doesn't join the
 // next session, which may be another app's.
-func watchHost(p *hostProcess, stop <-chan os.Signal, stopPlayer func()) error {
+func watchHost(p *hostProcess, stop <-chan os.Signal, stopPlayer func(), more ...string) error {
 	fmt.Println("asuka: watching for changes (Ctrl-C to stop)")
-	w := newWatcher(p.app.moduleDir, p.app.dir)
+	w := newWatcher(append([]string{p.app.moduleDir, p.app.dir}, more...)...)
 	tick := time.NewTicker(300 * time.Millisecond)
 	defer tick.Stop()
 	defer stopPlayer()

@@ -1,7 +1,7 @@
 // The Compose side of the benchmarks (bench/README.md): the same
 // scenarios, frame by frame, as bench/asuka and bench/swiftui, written as a
 // Compose app would be (state per row; the shared tick read through a
-// lambda, so only the rows recompose). The meter is bench/asuka's Meter.kt.
+// lambda, so only the rows recompose). The meter is bench/asuka/meter's Meter.kt.
 package dev.asuka.bench.compose
 
 import android.os.Bundle

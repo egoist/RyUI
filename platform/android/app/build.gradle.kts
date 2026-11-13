@@ -78,4 +78,6 @@ dependencies {
     implementation(project(":asuka"))
     // The optional modules the app's packages need (the CLI's asukaModules).
     prop("asukaModules")?.split(',')?.filter { it.isNotEmpty() }?.forEach { implementation(project(":asuka-$it")) }
+    // The app's native packages' modules (the CLI's asukaNativeModules).
+    prop("asukaNativeModules")?.split(';')?.filter { it.isNotEmpty() }?.forEach { implementation(project(":" + it.substringBefore('='))) }
 }

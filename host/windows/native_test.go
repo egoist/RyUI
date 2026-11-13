@@ -44,15 +44,12 @@ func (b *testButton) ParentMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
 
 // A native view the app registers: made in its node's view, filling it,
 // its props set, its control's notifications its events; destroyed with
-// the node. A module the app registers answers ui.Call.
+// the node.
 func TestNativeView(t *testing.T) {
 	var made *testButton
 	native.RegisterView("TestButton", func(ctx native.Context) native.View {
 		made = &testButton{ctx: ctx, hwnd: CreateWindow(0, "BUTTON", "", WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON, 0, 0, 0, 0, ctx.Parent(), 1)}
 		return made
-	})
-	native.RegisterModule("testEcho", native.Module{
-		"echo": func(args []byte, reply func([]byte, error)) { reply(append([]byte("echo:"), args...), nil) },
 	})
 	title := signal.New("One")
 	shown := signal.New(true)
@@ -88,9 +85,6 @@ func TestNativeView(t *testing.T) {
 		SendMessage(made.hwnd, BM_CLICK, 0, 0)
 		if clicks != 1 {
 			fatalf("clicks %d", clicks)
-		}
-		if b, err, _ := await(h, "testEcho", "echo", []byte("hi")); err != nil || string(b) != "echo:hi" {
-			fatalf("the app's module: %q, %v", b, err)
 		}
 		h.enter(func() { ui.Post(func() { shown.Set(false) }) })
 		h.runPosted()

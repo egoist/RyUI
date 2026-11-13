@@ -1,7 +1,7 @@
 // The SwiftUI side of the benchmarks (bench/README.md): the same
 // scenarios, frame by frame, as bench/asuka and bench/compose, written as
 // a SwiftUI app would be (Observation, a row's value observed by its row
-// alone). The meter is bench/asuka/ios/Meter.swift, compiled in.
+// alone). The meter is bench/asuka/meter/swift/Meter.swift, compiled in.
 import SwiftUI
 import Observation
 import UIKit

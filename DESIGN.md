@@ -361,33 +361,89 @@ core sends a font file's URL instead, since the player hasn't the app's
 assets: the host loads it, then sends `FontLoaded`, and the core
 measures text again (its measure cache cleared).
 
-### Native escape hatch
+### Native packages
 
-`ui.Native(kind string, props ui.NativeProps) ui.Node` makes a view of a
-kind the app registers with each host. Props are named bools, ints,
-floats and strings (or accessors of them); events come back by name with
-named values. Maps, video, camera previews, web views and platform-only
-controls go through this.
+Platform code an app needs that Asuka doesn't wrap lives in **native
+packages** (package `native`, `internal/nativegen`, `asuka native`): a
+Go package declares a module, `//asuka:native` on an interface, or a
+view, `//asuka:view` on a `<View>Props` struct. Each platform
+implements it in its own language, in a project of that platform's own
+beside the Go:
 
-An app's native code lives beside its Go: `ios/*.swift` is compiled
-with the iOS host (same module), `android/*.kt` is built into the
-Android app. Each registers its kinds from a well-known class the host
-looks up at start: `@objc(AsukaAppNatives)` conforming to
-`AsukaNativeModule` in Swift, `object dev.asuka.app.AsukaAppNatives :
-AsukaNativeModule` in Kotlin, calling `registerNative(kind) { ctx -> view }`.
-A native view implements `set(name, value)` and sends events with
-`ctx.emit(name, values)`; the host measures it as it measures any view.
-On the desktop the app's Go registers views and modules with package
-`native`. On the Mac its Swift can too: `macos/*.swift` is compiled with
-`platform/macos` (the iOS names, an `NSView`) into
-`Contents/Frameworks/AsukaAppNatives.dylib`, which `host/darwin` loads
-at start through purego and drives through C functions (`@_cdecl`):
-make, set (the wire's prop bytes), measure, destroy, call; events and
-replies come back through two purego callbacks. What it registers joins
-package `native`'s registry, so the rest of the host doesn't know the
-difference, and nothing needs cgo.
-On the wire it's one kind (`Native`) whose `Type` prop, sent right
-after `Create`, picks the factory.
+- `Package.swift` (sources in `swift/`) for iOS and macOS;
+- a Gradle library module in `android/`;
+- `web/<pkg>.js`;
+- Go for Windows and Linux.
+
+The generator writes the typed glue on every side:
+
+- Go: `<pkg>_native.go`, with `NewT`, a client per interface, the view's
+  constructor, and `implementT` for Go implementations.
+- Swift: protocols, structs and enums, a provider class
+  `@objc(AsukaModule_<path>)`.
+- Kotlin: interfaces, data classes, `object AsukaModule`, in the package
+  `KotlinPackage(path)`.
+- JavaScript: frozen enums and a provider registered by import path.
+
+The platform side writes only `makeT` functions. The types are the
+scalars, strings, bytes, times and durations, slices, `map[string]T`,
+`*T`, the package's structs and string or integer enums, native
+interfaces (as parameters or results), and funcs (notifications, run on
+the main thread with `ui.Post`; questions, run synchronously).
+
+Values cross as one buffer each way, in a fixed little-endian layout
+(`native.Writer`/`Reader`, pooled), with no reflection or JSON:
+
+- the arguments in declaration order;
+- the answer's status byte: ok, a declared error by index, a platform
+  error (domain, code, message), unsupported, or canceled.
+
+A call runs synchronously on the calling goroutine's thread, through the
+host's transport (`native.Backend`):
+
+- iOS: C function pointers in `asuka_host_callbacks`;
+- Android: JNI into `dev.asuka.AsukaModules`;
+- macOS: the Swift library's `@_cdecl` functions through purego;
+- the web: the JavaScript host.
+
+`//asuka:mainthread` hops to the platform's main thread. A first
+`context.Context` makes a method asynchronous (Swift `async`, Kotlin
+`suspend`, JavaScript with an `AbortSignal`): Go's `CallContext` blocks
+on a channel that `native.Done` answers, and cancels the platform's task
+when the context is done. Objects are handles. Go releases them with
+`runtime.AddCleanup` or `io.Closer`'s `Close`, and the platform's last
+reference goes on its main thread.
+
+A view is `ui.Native` of the kind `native.ViewKind` names (the module's
+Swift class or Kotlin class or import path, `#`, the view), each prop
+its encoded bytes (the wire's bytes value). Accessor props are effects
+owned by the node. Each host finds a `#` kind through the module's
+provider, `makeView`, and, on the desktop, first in package `native`'s
+registry, where `implementT` puts a Go view.
+
+`ui.Native` is the mechanism under it: a node whose `Type` prop, sent
+right after `Create`, picks the factory, with props of bools, ints,
+floats, strings and bytes, and events back by name. The hosts' own
+native views (`asuka.camera`, `asuka.map`) use it directly.
+
+The CLI generates the app's own module's native packages before each
+build (others must ship current generated code, which is checked by
+hash). It builds:
+
+- iOS: one `xcodebuild` of a root package depending on the materialized
+  host package `asuka` (the iOS host and the app's feature defines) and
+  the app's native packages, its objects merged with `clang -r`, its
+  frameworks embedded and its bundles copied;
+- macOS: the same per architecture, into the Swift library, then lipo;
+- Android: each module included as `:native-<pkg>` (`-PasukaNativeModules`),
+  given the SDK levels and `:asuka`;
+- the web: each `web/` shipped at `packages/<pkg>/`, imported before the
+  app starts.
+
+A package's `Info.plist`, `iOS.entitlements` and `macOS.entitlements`
+merge into the app's: usage strings defer to asuka.json, arrays join,
+and other keys are set if absent. Android's manifest merger takes the
+module's `AndroidManifest.xml`.
 
 ### Images, gestures, animation
 
@@ -965,8 +1021,10 @@ need: SQLite, Xcode, the NDK and Zig), which writes each with
 `plugin.StoreBuild` and the hash of the plugin's sources (the manifest's
 `sources`); `asuka plugin publish` uploads them, refusing a build older
 than its sources, downloads each back to check it, and records them in
-the manifest. Native modules (Swift, Kotlin and JavaScript for the
-hosts) are to be a manifest's `modules`, beside its `libraries`.
+the manifest.
+
+A plugin's name, which goes in those paths, is letters, digits, `-`, `_` and `.`; two of an app's plugins can't
+share one.
 
 ### SQLite
 
@@ -1230,6 +1288,8 @@ asuka/
                      and libraries over ui (chart, markdown, svg, store…);
                      sdk/sqlite is a plugin (SQLite's own C, no cgo)
   plugin/            plugins' manifests, fetching and linking
+  native/            native packages' runtime: the codec, modules, views
+  internal/nativegen/ asuka native's generator (Go, Swift, Kotlin, JavaScript)
   cmd/asuka/         CLI
   template/          what `asuka new` copies
   examples/counter/  examples/todo/  examples/list10k/  examples/navigation/
@@ -1522,8 +1582,8 @@ Each one ends with its examples running and its tests in CI.
   (NWPathMonitor), location (Core Location), speech
   (AVSpeechSynthesizer), audio (AVPlayer), biometric (Touch ID), review;
   matched views (`Match`); pull to refresh (a trackpad's elastic pull
-  past the top); `ui.Native` and the app's modules in Go (package
-  `native`, below) or Swift (`macos/*.swift`, loaded from the bundle);
+  past the top); native packages in Swift (loaded from the bundle) or Go (package
+  `native`, below);
   notarization (`asuka build --platform mac --notarize`).
   Every module the packages call answers (below): the camera (its view,
   capture, recording, codes; `Take` a sheet of the host's), audio
@@ -1571,7 +1631,7 @@ Each one ends with its examples running and its tests in CI.
   native modules: every module Asuka's packages call answers (below:
   implemented where Windows has it, an answer of the package's protocol
   saying it hasn't where it hasn't; `TestEveryModuleAnswers` checks);
-  `ui.Native` and the app's modules in Go (package `native`); screen
+  native packages' views and modules in Go (package `native`); screen
   readers through UI Automation (below); shadows (drawn by the parent);
   enter and exit transitions and matched views (the frame carries them);
   pull to refresh (F5). Rounded clips (a window region, the corners
@@ -1608,8 +1668,8 @@ Each one ends with its examples running and its tests in CI.
   `camera.View`, image editing, codes, WebAuthn for biometrics, web
   auth; the others answer that the web hasn't them), web views (all of
   it for the app's own origin; another site's page loads, and talks
-  through `postMessage` if it cooperates), the app's own native views and
-  modules (`web/*.js`), several apps on one page; the app's service
+  through `postMessage` if it cooperates), native packages' views and
+  modules (their `web/`), several apps on one page; the app's service
   worker (`platform/web/src/sw.js`, which the CLI ships with every web
   app, named by its digest, beside `index.html`): notifications with
   their actions and inline replies that stay and answer after the page
@@ -1640,7 +1700,7 @@ Each one ends with its examples running and its tests in CI.
   Symbols as symbolic icons), gestures, drag and drop, menus and the
   main menu with its shortcuts, windows, animation, transitions,
   matched views, the app's links (its scheme), `WebView` (WebKitGTK
-  6.0), `Video` (GStreamer), `ui.Native` and the app's modules in Go,
+  6.0), `Video` (GStreamer), native packages' views and modules in Go,
   and every native module the packages call, through the desktop
   portals where there's one: the secure store (libsecret), pickers,
   notifications, network, location, speech (Speech Dispatcher), audio,
@@ -1923,14 +1983,13 @@ How the macOS host maps Asuka (`host/darwin`):
   go of beyond 60 points; a spinner above the content (the scroll view's
   top content inset) while it refreshes. Matched views move the old view
   into its window's content view and the frames carry the motion.
-- `ui.Native` and the app's modules: the app's Go registers them with
-  package `native` (`RegisterView`, `RegisterModule`): a view is an
-  `NSView` the app makes through purego's objc package, put in the
-  node's view and filling it; on Windows a child window made in the
-  context's `Parent`, its controls' notifications given to it. On the
-  Mac the app's Swift registers into the same registry (`host/darwin/
-  swift.go`: the library the CLI compiles from `macos/*.swift`). The
-  mobile hosts keep Swift and Kotlin, the web JavaScript.
+- Native packages: their Swift is built into the app's Swift library
+  (`host/darwin/swift.go` loads it through purego and calls its
+  `@_cdecl` entry points with `SyscallN`). A package's Go view
+  (`implementT`) registers with package `native`: an `NSView` made
+  through purego's objc package, put in the node's view and filling
+  it; on Windows a child window made in the context's `Parent`, its
+  controls' notifications given to it.
 - Visual props are the views' layers'. The layers under the window's
   flipped content view have y down: gradients' points, shadows' offsets
   and transforms are given so. AppKit owns a layer-backed view's

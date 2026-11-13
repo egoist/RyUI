@@ -149,6 +149,8 @@ struct AsukaImageError: LocalizedError {
 /// A value of a native view's prop or event.
 public enum AsukaNativeValue {
     case bool(Bool), int(Int64), float(Double), string(String)
+    /// A typed view's prop or event (//asuka:view): its values, encoded.
+    case bytes(Data)
 
     public var bool: Bool { if case .bool(let v) = self { return v }; return false }
     public var int: Int64 {
@@ -158,6 +160,7 @@ public enum AsukaNativeValue {
         switch self { case .float(let v): return v; case .int(let v): return Double(v); default: return 0 }
     }
     public var string: String { if case .string(let v) = self { return v }; return "" }
+    public var bytes: Data { if case .bytes(let v) = self { return v }; return Data() }
 }
 
 /// A view an app registers for ui.Native.
@@ -190,13 +193,8 @@ func writeNative(_ w: inout AsukaWriter, _ k: String, _ v: AsukaNativeValue) {
     case .int(let i): w.u8(2); w.u64(UInt64(bitPattern: i))
     case .float(let f): w.u8(3); w.f64(f)
     case .string(let s): w.u8(4); w.string(s)
+    case .bytes(let d): w.u8(5); w.u32(UInt32(d.count)); w.bytes.append(contentsOf: d)
     }
-}
-
-/// Apps register native views from a class named AsukaAppNatives that
-/// conforms to this (the CLI compiles the app's ios/*.swift with the host).
-@objc public protocol AsukaNativeModule {
-    @MainActor static func register()
 }
 
 /// Holds a native view, which fills it; it measures as the native view.
@@ -253,11 +251,12 @@ final class AsukaGestureDelegate: NSObject, UIGestureRecognizerDelegate {
         #if ASUKA_APPLEAUTH
         registerNative("asuka.appleSignIn") { AsukaAppleSignInButton($0) }
         #endif
-        (NSClassFromString("AsukaAppNatives") as? AsukaNativeModule.Type)?.register()
+        // Packages' typed views are found as they're shown
+        // (AsukaNative.makeView).
     }
 
-    /// Registers a native view kind for ui.Native.
-    public func registerNative(_ type: String, _ make: @escaping (AsukaNativeContext) -> AsukaNativeView) {
+    /// Registers one of the host's native view kinds for ui.Native.
+    func registerNative(_ type: String, _ make: @escaping (AsukaNativeContext) -> AsukaNativeView) {
         nativeFactories[type] = make
     }
 
@@ -346,11 +345,13 @@ final class AsukaGestureDelegate: NSObject, UIGestureRecognizerDelegate {
             default: iv.contentMode = .scaleAspectFit
             }
         case (.native, AsukaProp.Native.type):
-            guard let make = nativeFactories[v.string] else {
-                print("asuka: no native view \"\(v.string)\" is registered")
+            // The host's own kinds, else a package's typed view (its
+            // module's class # its name).
+            let ctx = AsukaNativeContext(id: n.id)
+            guard let nv = nativeFactories[v.string]?(ctx) ?? AsukaNative.makeView(v.string, ctx) else {
+                print("asuka: no native view \"\(v.string)\": build the app with its packages' native code")
                 return true
             }
-            let nv = make(AsukaNativeContext(id: n.id))
             n.native = nv
             (n.view as? AsukaNativeHostView)?.content = nv.view
         case (.richText, AsukaProp.RichText.content):
@@ -368,6 +369,7 @@ final class AsukaGestureDelegate: NSObject, UIGestureRecognizerDelegate {
             case 1: value = .bool(r.u8() != 0)
             case 2: value = .int(Int64(bitPattern: r.u64()))
             case 3: value = .float(r.f64())
+            case 5: value = .bytes(Data(r.bytes()))
             default: value = .string(r.string())
             }
             n.native?.set(name, value)

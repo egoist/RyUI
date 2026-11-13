@@ -6,6 +6,7 @@ import (
 
 	"github.com/egoist/asuka/app"
 	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/examples/media/segmented"
 	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
@@ -131,12 +132,11 @@ func animation() ui.Node {
 func nativeView() ui.Node {
 	selected := signal.New(1)
 	return ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 16},
-		ui.StaticText("A segmented control the app registers on each platform: Swift on iOS (ios/) and macOS (macos/), Kotlin on Android (android/), JavaScript on the web (web/), and Go on Windows and Linux (natives_*.go):", ui.Style{Color: colors.SecondaryLabel}),
-		ui.Native("Segmented", ui.NativeProps{
-			Props: map[string]any{"items": "Day,Week,Month", "selected": selected},
-			On: map[string]func(ui.NativeEvent){"changed": func(e ui.NativeEvent) {
-				selected.Set(int(e.Int("index")))
-			}},
+		ui.StaticText("A segmented control, a native view of a package's (segmented/): Swift on iOS and macOS, Kotlin on Android, JavaScript on the web, and Go on Windows and Linux:", ui.Style{Color: colors.SecondaryLabel}),
+		segmented.Segmented(segmented.SegmentedProps{
+			Items:    []string{"Day", "Week", "Month"},
+			Selected: selected,
+			Changed:  func(i int) { selected.Set(i) },
 		}),
 		ui.Text(signal.Func(func() string { return fmt.Sprint("Selected: ", []string{"Day", "Week", "Month"}[selected.Get()]) })),
 		ui.Button(ui.ButtonProps{Title: ui.Val("Select Month from Go"), OnPress: func() { selected.Set(2) }}),

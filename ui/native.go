@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"math"
@@ -29,6 +30,7 @@ func (e NativeEvent) Bool(key string) bool         { v, _ := e.values[key].(bool
 func (e NativeEvent) Int(key string) int64         { v, _ := e.values[key].(int64); return v }
 func (e NativeEvent) Float(key string) float64     { v, _ := e.values[key].(float64); return v }
 func (e NativeEvent) String(key string) string     { v, _ := e.values[key].(string); return v }
+func (e NativeEvent) Bytes(key string) []byte      { v, _ := e.values[key].([]byte); return v }
 func (e NativeEvent) Has(key string) bool          { _, ok := e.values[key]; return ok }
 func (e NativeEvent) Values() map[string]any       { return e.values }
 func (e NativeEvent) GoString() string             { return fmt.Sprintf("%s%v", e.Name, e.values) }
@@ -46,9 +48,8 @@ func Native(kind string, p NativeProps) Node {
 	e := newElement(ops.KindNative, true)
 	id := e.id
 	e.r.batch.SetString(id, ops.PropNativeType, kind)
-	for name, v := range p.Props {
-		bindNative(e, name, v)
-	}
+	// Listening before the props: a view may send an event as a prop is
+	// set, its first ones included.
 	if len(p.On) > 0 {
 		on := p.On
 		e.handlers().native = func(b []byte) {
@@ -62,6 +63,9 @@ func Native(kind string, p NativeProps) Node {
 		}
 		e.listen(ops.EventNative)
 	}
+	for name, v := range p.Props {
+		bindNative(e, name, v)
+	}
 	e.measure()
 	e.setStyle(p.Style, false)
 	return Node{e}
@@ -73,7 +77,7 @@ func bindNative(e *element, name string, v any) {
 		e.remeasure()
 	}
 	switch a := v.(type) {
-	case bool, int, int64, float64, float32, string:
+	case bool, int, int64, float64, float32, string, []byte:
 		set(a)
 	case signal.Accessor[bool]:
 		bind(a, func(x bool) { set(x) })
@@ -85,8 +89,10 @@ func bindNative(e *element, name string, v any) {
 		bind(a, func(x float64) { set(x) })
 	case signal.Accessor[string]:
 		bind(a, func(x string) { set(x) })
+	case signal.Accessor[[]byte]:
+		bindBytes(a, func(x []byte) { set(x) })
 	default:
-		panic(fmt.Sprintf("ui.Native: prop %q is a %T; use a bool, int, float64 or string, or an accessor of one", name, v))
+		panic(fmt.Sprintf("ui.Native: prop %q is a %T; use a bool, int, float64, string or []byte, or an accessor of one", name, v))
 	}
 }
 
@@ -96,6 +102,7 @@ const (
 	nativeInt    = 2
 	nativeFloat  = 3
 	nativeString = 4
+	nativeBytes  = 5 // a typed view's (//asuka:view): its values, encoded (package native)
 )
 
 func appendNativeString(b []byte, s string) []byte {
@@ -127,6 +134,9 @@ func appendNativeValue(b []byte, name string, v any) []byte {
 	case string:
 		b = append(b, nativeString)
 		b = appendNativeString(b, x)
+	case []byte:
+		b = append(b, nativeBytes)
+		b = appendNativeString(b, string(x))
 	}
 	return b
 }
@@ -157,6 +167,8 @@ func decodeNativeEvent(b []byte) (NativeEvent, error) {
 			ev.values[k] = math.Float64frombits(r.u64())
 		case nativeString:
 			ev.values[k] = r.str()
+		case nativeBytes:
+			ev.values[k] = []byte(r.str())
 		default:
 			r.err = fmt.Errorf("ui: bad native value type")
 		}
@@ -183,3 +195,24 @@ func (r *nativeReader) u8() byte    { return r.take(1)[0] }
 func (r *nativeReader) u32() uint32 { return binary.LittleEndian.Uint32(r.take(4)) }
 func (r *nativeReader) u64() uint64 { return binary.LittleEndian.Uint64(r.take(8)) }
 func (r *nativeReader) str() string { return string(r.take(int(r.u32()))) }
+
+// bindBytes is bind for []byte: only a change of its bytes is sent.
+func bindBytes(a signal.Accessor[[]byte], apply func([]byte)) {
+	if a == nil {
+		return
+	}
+	if v, ok := signal.StaticValue(a); ok {
+		apply(v)
+		return
+	}
+	var last []byte
+	first := true
+	signal.RenderEffect(func() {
+		v := a.Get()
+		if !first && bytes.Equal(v, last) {
+			return
+		}
+		first, last = false, v
+		apply(v)
+	})
+}

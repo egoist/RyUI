@@ -38,8 +38,10 @@ each row, so a change to it updates the rows, not the screen.
 
 ## The meter
 
-The same file in every app on a platform (`asuka/ios/Meter.swift`,
-`asuka/android/Meter.kt`, which the Compose app links to):
+The same file in every app on a platform (`asuka/meter/swift/Meter.swift`,
+`asuka/meter/android/src/main/kotlin/dev/asuka/app/Meter.kt`, which the
+Compose app links to; the Asuka app calls them through its native
+package, `asuka/meter`):
 
 - **iOS**: a frame's cost is the main thread's busy time between two
   vsyncs: the run loop's time awake, from a `CFRunLoopObserver`'s

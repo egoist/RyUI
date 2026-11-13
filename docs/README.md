@@ -100,10 +100,11 @@ browser.
   opening files, one instance, quitting, recent documents, starting at
   login, updates, the displays, power and progress on the app's icon.
 - [Plugins](plugins.md): packages that bring native libraries, prebuilt
-  for each platform and shipped with the app; SQLite is one.
-- [Native code](native.md): views and modules of your own: Swift on
-  iOS and macOS, Kotlin on Android, Go on the desktop, JavaScript on the
-  web.
+  for each platform, shipped with the app; SQLite is one.
+- [Native code](native.md): native packages, typed modules and views
+  declared in Go and implemented in each platform's own project: Swift
+  on iOS and macOS, Kotlin on Android, JavaScript on the web, Go on
+  Windows and Linux.
 - [Development](development.md): `asuka dev` in depth on each platform,
   devices, `asuka vet`, tests and common problems.
 - [Shipping](shipping.md): builds for the App Store and Google Play, a

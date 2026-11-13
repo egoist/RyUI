@@ -25,6 +25,8 @@ import { natives as builtinNatives } from "./modules/hardware.js";
 import * as worker from "./worker.js";
 import { notifyFor } from "./modules/system-notify.js";
 import { Crash } from "./crash.js";
+// What packages' generated JavaScript (asuka native) builds on: globalThis.asuka.native.
+export * as native from "./native.js";
 
 let hosts = 0;
 const natives = new Map();

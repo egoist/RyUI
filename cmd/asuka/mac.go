@@ -63,6 +63,15 @@ func devMac(dir string, o *devOptions, stop <-chan os.Signal) error {
 	}
 	fmt.Printf("asuka: %s on this Mac\n", app.name)
 	start := time.Now()
+	// What its native packages' Swift needs goes in its Info.plist and
+	// signature.
+	natives, err := nativeFor(app, "macos", "arm64")
+	if err != nil {
+		return err
+	}
+	if err := app.cfg.nativeNeeds(natives, "macos"); err != nil {
+		return err
+	}
 	// The app runs from an .app, as built: its Info.plist (the bundle's
 	// identifier, which notifications and the Dock need; its URL schemes,
 	// purpose strings and languages) and its icon. Its assets stay where
@@ -109,7 +118,7 @@ func devMac(dir string, o *devOptions, stop <-chan os.Signal) error {
 		<-proc.done
 		return nil
 	}
-	return watchHost(proc, stop, func() {})
+	return watchHost(proc, stop, func() {}, nativeDirsOf(natives, "macos")...)
 }
 
 // macRunner runs a tool for a Mac build, its output shown only when it
@@ -165,6 +174,13 @@ func writeMacBundle(app *goApp, bundle, work string, release bool, run func(dir 
 	// In the background (a menu bar app): no Dock icon, from launch.
 	if app.cfg.Background {
 		info["LSUIElement"] = true
+	}
+	// What the app's plugins' Swift adds (pluginNeeds), where the app
+	// doesn't set the key.
+	for k, v := range app.cfg.nativePlist {
+		if _, set := info[k]; !set {
+			info[k] = v
+		}
 	}
 	// The purpose strings are the same keys on macOS (camera, contacts...);
 	// location's is NSLocationUsageDescription there.
@@ -269,12 +285,14 @@ func signMac(bundle, identity, entitlements string, run func(dir string, env []s
 	}
 	dir := filepath.Dir(bundle)
 	// What the bundle holds first (the app's Swift library and the
-	// runtime it ships, its plugins' libraries), each signed as the app is,
+	// runtime it ships, its plugins' libraries, its Swift packages'
+	// frameworks), each signed as the app is,
 	// without the entitlements, which are the executable's: with the
 	// hardened runtime, the program loads only libraries signed by its
 	// own team.
 	libs, _ := filepath.Glob(filepath.Join(bundle, "Contents", "Frameworks", "*.dylib"))
-	for _, lib := range libs {
+	fws, _ := filepath.Glob(filepath.Join(bundle, "Contents", "Frameworks", "*.framework")) // its Swift packages'
+	for _, lib := range append(libs, fws...) {
 		if err := run(dir, nil, "codesign", append(slices.Clip(args), lib)...); err != nil {
 			return err
 		}
@@ -294,6 +312,15 @@ func buildMac(app *goApp, o *buildOptions) error {
 	}
 	work, err := workDir(app, "mac-release")
 	if err != nil {
+		return err
+	}
+	// What the native packages' Swift needs goes in the Info.plist and
+	// signature.
+	natives, err := nativeFor(app, "macos", "arm64")
+	if err != nil {
+		return err
+	}
+	if err := app.cfg.nativeNeeds(natives, "macos"); err != nil {
 		return err
 	}
 	// The profile first: no point building for one that isn't there.

@@ -68,8 +68,18 @@ func loadApp(dir string) (*goApp, error) {
 	if err := cfg.generateCatalogs(); err != nil {
 		return nil, err
 	}
+	app := &goApp{dir: f[2], name: filepath.Base(abs), moduleDir: f[1], bundleID: cfg.ID, cfg: cfg}
+	// Its native packages' generated code (asuka native), before its Go
+	// builds.
+	if err := generateNatives(app); err != nil {
+		return nil, err
+	}
 	beforeRebuild = func() {
 		if err := cfg.generateCatalogs(); err != nil {
+			fmt.Fprintln(os.Stderr, "asuka:", err)
+		}
+		forgetNatives(app.dir)
+		if err := generateNatives(app); err != nil {
 			fmt.Fprintln(os.Stderr, "asuka:", err)
 		}
 	}
@@ -79,13 +89,16 @@ func loadApp(dir string) (*goApp, error) {
 	warnDevLang(cfg)
 	warnFrozenMessages(cfg, f[1])
 	startDevVet(f[2])
-	return &goApp{dir: f[2], name: filepath.Base(abs), moduleDir: f[1], bundleID: cfg.ID, cfg: cfg}, nil
+	return app, nil
 }
 
 type iosToolchain struct {
 	sdk, sdkName, clang, target, goarch string
 	release                             bool // optimized, without the debug automation
 	verbose                             bool
+	// packages is what the app's Swift packages bring besides the host's
+	// object, as the last buildHost built them (nil without any).
+	packages *swiftPackageOutput
 }
 
 func newIOSToolchain(verbose bool) (*iosToolchain, error) {
@@ -191,18 +204,20 @@ func (t *iosToolchain) buildHost(work string, app *goApp, features []string) (st
 		}
 	}
 	if app != nil {
-		own, _ := filepath.Glob(filepath.Join(app.dir, "ios", "*.swift"))
-		sort.Strings(own)
-		for _, f := range own {
-			data, err := os.ReadFile(f)
-			if err != nil {
+		// The app's native packages' Swift: then the host's is a Swift
+		// package, built with theirs; what they need goes in its Info.plist.
+		natives, err := nativeFor(app, "ios", t.goarch)
+		if err != nil {
+			return "", err
+		}
+		if len(natives) > 0 {
+			if err := app.cfg.nativeNeeds(natives, "ios"); err != nil {
 				return "", err
 			}
-			h.Write([]byte(f))
-			h.Write(data)
-			swift = append(swift, f)
+			return t.buildHostPackage(work, natives, features)
 		}
 	}
+	t.packages = nil
 	obj := filepath.Join(shared, hex.EncodeToString(h.Sum(nil))[:16]+".o")
 	if _, err := os.Stat(obj); err == nil {
 		return obj, nil
@@ -217,6 +232,35 @@ func (t *iosToolchain) buildHost(work string, app *goApp, features []string) (st
 	if err := t.run(shared, nil, "xcrun", append(args, swift...)...); err != nil {
 		return "", err
 	}
+	return obj, nil
+}
+
+// buildHostPackage builds the host's Swift with the app's native
+// packages' (native_swift.go) into one object, as buildHost's swiftc
+// build is: the packages' objects linked together. What else they bring
+// (static libraries, frameworks, resource bundles) is t.packages, which
+// linkApp links and embedPlugins puts in the app.
+func (t *iosToolchain) buildHostPackage(work string, natives []nativePackage, features []string) (string, error) {
+	host, err := swiftSources(iosHost.Files, "Sources/AsukaHost", "Sources/AsukaOps", "App")
+	if err != nil {
+		return "", err
+	}
+	cAsuka, err := filesUnder(iosHost.Files, "Sources/CAsuka")
+	if err != nil {
+		return "", err
+	}
+	b := &swiftBuild{dir: filepath.Join(work, "swift-"+t.sdkName), platform: "ios", sdkName: t.sdkName,
+		arch: macSwiftArch(t.goarch), release: t.release, defines: features, host: host, cAsuka: cAsuka, natives: natives, run: t.run}
+	out, err := b.build()
+	if err != nil {
+		return "", err
+	}
+	obj := filepath.Join(b.dir, "AsukaApp-linked.o")
+	args := append([]string{"--sdk", t.sdkName, "clang", "-target", t.target, "-r", "-o", obj}, out.objects...)
+	if err := t.run(work, nil, "xcrun", args...); err != nil {
+		return "", err
+	}
+	t.packages = out
 	return obj, nil
 }
 
@@ -785,7 +829,8 @@ func devIOS(dir string, o *devOptions, stop <-chan os.Signal) error {
 		return nil
 	}
 	fmt.Println("asuka: watching for changes (Ctrl-C to stop)")
-	w := newWatcher(app.moduleDir, app.dir)
+	natives, _ := nativeFor(app, "ios", tc.goarch) // its native packages' Swift, wherever they are
+	w := newWatcher(append([]string{app.moduleDir, app.dir}, nativeDirsOf(natives, "ios")...)...)
 	tick := time.NewTicker(400 * time.Millisecond)
 	defer tick.Stop()
 	for {

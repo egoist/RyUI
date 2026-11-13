@@ -82,16 +82,3 @@ func TestNativeView(t *testing.T) {
 		}
 	})
 }
-
-// A module the app registers answers ui.Call; the host's own win.
-func TestNativeModule(t *testing.T) {
-	native.RegisterModule("testEcho", native.Module{
-		"echo": func(args []byte, reply func([]byte, error)) { reply(append([]byte("echo:"), args...), nil) },
-	})
-	h, _ := mount(t, func() ui.Node { return ui.StaticText("x") })
-	onMain(func() {
-		if b, err := await(h, "testEcho", "echo", []byte("hi")); err != nil || string(b) != "echo:hi" {
-			fatalf(t, "echo: %q, %v", b, err)
-		}
-	})
-}

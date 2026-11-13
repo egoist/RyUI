@@ -15,7 +15,7 @@ import (
 func TestPackageExtras(t *testing.T) {
 	var c appConfig
 	c.permissionsFor([]string{"github.com/egoist/asuka/sdk/push", "github.com/egoist/asuka/sdk/periodic", "github.com/egoist/asuka/sdk/appleauth"})
-	if got := c.gradleModules(); got != "-PasukaModules=push,periodic" {
+	if got := strings.Join(c.gradleProps(), " "); got != "-PasukaModules=push,periodic" {
 		t.Errorf("modules: %s", got)
 	}
 	if c.entitlements["aps-environment"] != "development" || c.entitlements["com.apple.developer.applesignin"] == nil {

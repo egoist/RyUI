@@ -15,6 +15,19 @@ static void asuka_call_measure(uint32_t id, float w, float h, float aw, float ah
 	asuka_cb.measure(id, w, h, aw, ah, ow, oh);
 }
 static void asuka_call_post(void) { asuka_cb.post(); }
+static int asuka_has_native(void) { return asuka_cb.native_new != NULL; }
+static size_t asuka_call_native_new(const uint8_t *cls, size_t n, uint32_t iface, uint8_t *out, size_t cap, uint8_t **big) {
+	return asuka_cb.native_new(cls, n, iface, out, cap, big);
+}
+static size_t asuka_call_native_call(uint64_t h, uint32_t m, const uint8_t *in, size_t n, uint8_t *out, size_t cap, uint8_t **big) {
+	return asuka_cb.native_call(h, m, in, n, out, cap, big);
+}
+static void asuka_call_native_start(uint64_t h, uint32_t m, const uint8_t *in, size_t n, uint64_t call) {
+	asuka_cb.native_start(h, m, in, n, call);
+}
+static void asuka_call_native_cancel(uint64_t call) { asuka_cb.native_cancel(call); }
+static void asuka_call_native_release(uint64_t h) { asuka_cb.native_release(h); }
+static void asuka_call_native_free(void *p) { asuka_cb.native_free(p); }
 */
 import "C"
 
@@ -22,6 +35,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime"
 	"sync"
 	"unsafe"
 
@@ -29,6 +43,7 @@ import (
 	"github.com/egoist/asuka/internal/boot"
 	"github.com/egoist/asuka/internal/crashrun"
 	"github.com/egoist/asuka/layout"
+	"github.com/egoist/asuka/native"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/ui"
 )
@@ -81,6 +96,9 @@ func asuka_start(cb *C.asuka_host_callbacks) {
 	}
 	started = true
 	C.asuka_set_callbacks(cb)
+	if C.asuka_has_native() != 0 {
+		native.SetBackend(mobileNative{})
+	}
 	boot.Runner = func(root any) {
 		f, ok := root.(func() ui.Node)
 		if !ok {
@@ -192,4 +210,68 @@ func asuka_run_posted() {
 	for _, f := range fs {
 		f()
 	}
+}
+
+// mobileNative is package native's Backend: the host's typed modules
+// (Swift on iOS, Kotlin through JNI on Android), called from any
+// goroutine.
+type mobileNative struct{}
+
+func cbytes(b []byte) *C.uint8_t { return (*C.uint8_t)(unsafe.Pointer(unsafe.SliceData(b))) }
+
+// answer is an answer the host wrote: in out, else in memory of its own
+// (big), copied and freed.
+func answer(out []byte, n C.size_t, big *C.uint8_t) []byte {
+	if big == nil {
+		return out[:n]
+	}
+	b := C.GoBytes(unsafe.Pointer(big), C.int(n))
+	C.asuka_call_native_free(unsafe.Pointer(big))
+	return b
+}
+
+func (mobileNative) New(m *native.Module, iface uint32, out []byte) []byte {
+	cls := m.Swift
+	if runtime.GOOS == "android" {
+		cls = m.Kotlin
+	}
+	var big *C.uint8_t
+	n := C.asuka_call_native_new((*C.uint8_t)(unsafe.Pointer(unsafe.StringData(cls))), C.size_t(len(cls)), C.uint32_t(iface), cbytes(out), C.size_t(len(out)), &big)
+	return answer(out, n, big)
+}
+
+func (mobileNative) Call(h uint64, method uint32, in, out []byte) []byte {
+	var big *C.uint8_t
+	n := C.asuka_call_native_call(C.uint64_t(h), C.uint32_t(method), cbytes(in), C.size_t(len(in)), cbytes(out), C.size_t(len(out)), &big)
+	return answer(out, n, big)
+}
+
+func (mobileNative) Start(h uint64, method uint32, in []byte, call uint64) {
+	C.asuka_call_native_start(C.uint64_t(h), C.uint32_t(method), cbytes(in), C.size_t(len(in)), C.uint64_t(call))
+}
+
+func (mobileNative) Cancel(call uint64) { C.asuka_call_native_cancel(C.uint64_t(call)) }
+func (mobileNative) Release(h uint64)   { C.asuka_call_native_release(C.uint64_t(h)) }
+
+// asuka_native_done answers a started call (the host, from any thread).
+//
+//export asuka_native_done
+func asuka_native_done(call C.uint64_t, p *C.uint8_t, n C.size_t) {
+	native.Done(uint64(call), unsafe.Slice((*byte)(unsafe.Pointer(p)), int(n)))
+}
+
+// asuka_native_invoke calls a Go callback (the host, from any thread):
+// its answer into *out, which the host frees (none: 0).
+//
+//export asuka_native_invoke
+func asuka_native_invoke(id C.uint64_t, p *C.uint8_t, n C.size_t, out **C.uint8_t) C.size_t {
+	a := native.Invoke(uint64(id), unsafe.Slice((*byte)(unsafe.Pointer(p)), int(n)))
+	if a == nil {
+		*out = nil
+		return 0
+	}
+	m := (*C.uint8_t)(C.malloc(C.size_t(max(len(a), 1))))
+	copy(unsafe.Slice((*byte)(unsafe.Pointer(m)), len(a)), a)
+	*out = m
+	return C.size_t(len(a))
 }

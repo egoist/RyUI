@@ -13,7 +13,6 @@ import (
 
 	"github.com/egoist/asuka/internal/boot"
 	. "github.com/egoist/asuka/internal/gtk"
-	"github.com/egoist/asuka/native"
 	"github.com/egoist/asuka/ops"
 )
 
@@ -67,14 +66,6 @@ func (h *Host) module(name string) map[string]method {
 		h.modules = h.builtinModules()
 	}
 	if m := h.modules[name]; m != nil {
-		return m
-	}
-	// The app's own (package native).
-	if am := native.ModuleNamed(name); am != nil {
-		m := make(map[string]method, len(am))
-		for k, f := range am {
-			m[k] = f
-		}
 		return m
 	}
 	return nil

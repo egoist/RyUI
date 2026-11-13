@@ -127,10 +127,10 @@ gives the main window its title and size, and `ui.Window` and
   ui.Val("photo.jpg")})`, and fonts in `assets/fonts`.
 - `locales/`: the app's messages in each language (see
   [Languages](i18n.md)).
-- Native code of your own, for views shown with `ui.Native` and modules
-  your Go code calls with `ui.Call` (see [Native code](native.md)):
-  `ios/*.swift`, `android/*.kt`, `macos/*.swift`, `web/*.js`, and, for
-  macOS, Windows and Linux, Go files built for that platform.
+- Native packages of your own: Go packages that declare a module or a
+  view, which each platform implements in its own project (a Swift
+  package, a Gradle module, JavaScript, Go on the desktop). `asuka native
+  new ./battery` makes one; see [Native code](native.md).
 
 ## Next
 

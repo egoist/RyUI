@@ -84,7 +84,8 @@ and give its password in ASUKA_KEYSTORE_PASSWORD (and ASUKA_KEY_PASSWORD if the 
 		"-PasukaApplicationId=" + androidPackage(cfg.ID), "-PasukaAppName=" + cfg.androidLabel(),
 		"-PasukaVersionCode=" + strconv.Itoa(cfg.Build), "-PasukaVersionName=" + cfg.Version,
 		"-PasukaIcon=" + icon, "-PasukaJniLibs=" + jni, "-PasukaRes=" + res, "-PasukaManifest=" + manifest,
-		"-PasukaKeystore=" + keystore, "-PasukaKeyAlias=" + alias, "-PasukaNdkVersion=" + filepath.Base(tc.ndk), cfg.gradleModules()}
+		"-PasukaKeystore=" + keystore, "-PasukaKeyAlias=" + alias, "-PasukaNdkVersion=" + filepath.Base(tc.ndk)}
+	args = append(args, cfg.gradleProps()...)
 	// Passwords go in the environment, not on a command line.
 	secrets := []string{"ORG_GRADLE_PROJECT_asukaKeystorePassword=" + storePass}
 	if kp := os.Getenv("ASUKA_KEY_PASSWORD"); kp != "" {

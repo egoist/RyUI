@@ -27,9 +27,8 @@ struct AsukaModuleError: LocalizedError {
 }
 
 @MainActor extension AsukaRuntime {
-    /// Registers a module's methods for ui.Call(module, method, ...): an
-    /// app's (from its AsukaAppNatives.register), alongside the host's own.
-    public func registerModule(_ name: String, _ methods: [String: AsukaModuleMethod]) {
+    /// Registers one of the host's modules for ui.Call(module, method, ...).
+    func registerModule(_ name: String, _ methods: [String: AsukaModuleMethod]) {
         modules[name] = methods
     }
 
