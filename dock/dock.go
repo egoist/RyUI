@@ -26,10 +26,11 @@ const (
 	// Normal shows how far the task is, Progress.Value.
 	Normal
 	// Indeterminate shows the task under way, how far unknown: Windows's
-	// marquee; a Mac's bar, and Linux's, full.
+	// marquee, a third of the bar sliding across on a Mac, a full bar on
+	// Linux.
 	Indeterminate
-	// Paused shows the task stopped where it is: yellow on Windows; as
-	// Normal elsewhere.
+	// Paused shows the task stopped where it is: yellow on Windows and
+	// on a Mac; as Normal on Linux.
 	Paused
 	// Error shows the task failed where it is: red on Windows and on a
 	// Mac; as Normal on Linux.

@@ -3,11 +3,11 @@
 // screen reader): the accent color the system's own controls take, and
 // the accessibility settings Increase Contrast and Reduce Transparency.
 //
-// The host already follows them where it draws: a control in the
-// system's accent (ui.Accent is it, unless asuka.json sets the app's),
-// materials opaque with Reduce Transparency. An app reads them for what
-// it draws itself: a chart in the accent, borders on its own cards with
-// Increase Contrast, an opaque backdrop instead of a blur.
+// The platform's controls already follow them, and on desktops
+// ui.Accent is the system's accent unless asuka.json sets the app's. An
+// app reads them for what it draws itself: a chart in the user's accent
+// whatever the app's, borders on its own cards with Increase Contrast,
+// an opaque backdrop instead of a blur with Reduce Transparency.
 package appearance
 
 import (
