@@ -248,6 +248,15 @@ func TestChildWindow(t *testing.T) {
 	if c.Parent != ps[1].ID || c.Flags != ops.WindowChild {
 		t.Fatalf("child %+v", c)
 	}
+	// A parent opens before the child declared in it, so the host knows
+	// it by the time the child names it.
+	order := map[ops.NodeID]int{}
+	for i, op := range h.Commands(ops.CmdPresent) {
+		order[op.ID] = i
+	}
+	if order[ps[1].ID] > order[ps[2].ID] {
+		t.Fatal("the child opened before its parent")
+	}
 	// The parent closes: the child goes with it.
 	outer.Set(false)
 	h.CloseWindow(ps[1]) // already closing; no-op for the core

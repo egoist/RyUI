@@ -205,6 +205,9 @@ func Window(p WindowProps) Node {
 					if p.Title != nil {
 						bind(p.Title, func(v string) { r.batch.SetString(w.id, ops.PropWindowTitle, v) })
 					}
+					// Opened before its content is built: a Window declared
+					// in it, a child of it, opens after it.
+					r.batch.Command(w.id, ops.CmdPresent, nil)
 					windowCtx.Provide(wh, func() {
 						envCtx.Provide(w.env, func() {
 							if n := p.Content(); n.e != nil {
@@ -215,7 +218,6 @@ func Window(p WindowProps) Node {
 					})
 				})
 			})
-			r.batch.Command(w.id, ops.CmdPresent, nil)
 			return Node{}
 		})
 	})
