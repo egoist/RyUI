@@ -1,6 +1,7 @@
 // Notes keeps notes in SQLite: a live query feeds the list, so adding,
 // checking off and deleting (swipe a note) show as soon as they're
-// written.
+// written. On a desktop, a global shortcut (⌥⌘N, Ctrl+Alt+N) adds
+// what's on the clipboard as a note, from whichever app is in front.
 //
 //	go run ./cmd/asuka dev --platform ios examples/notes
 package main
@@ -11,6 +12,8 @@ import (
 	"net/url"
 
 	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/device"
+	"github.com/egoist/asuka/hotkey"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/sqlite"
 	"github.com/egoist/asuka/ui"
@@ -84,6 +87,20 @@ func App() ui.Node {
 			}})
 			return false
 		})
+		// A global shortcut: the clipboard's text as a note, whichever app
+		// has the keyboard (read off the main thread, as device asks).
+		// Phones and the web have none (ErrNotAvailable).
+		clip := hotkey.Register(hotkey.Props{
+			Shortcut:    ui.Val(ui.Cmd("n").With(ui.Alt)),
+			Description: ui.Val("Add the clipboard as a note"),
+			OnPress: func() {
+				go func() {
+					if t, ok, _ := device.Clipboard(); ok && t != "" {
+						ui.Post(func() { write(`insert into notes (text) values (?)`, t) })
+					}
+				}()
+			},
+		})
 		return ui.SafeArea(ui.Style{Grow: 1},
 			// On a desktop: the menu bar's commands, with shortcuts, and a
 			// window of statistics, which floats over other apps' windows
@@ -110,6 +127,10 @@ func App() ui.Node {
 							return fmt.Sprintf("%d done", done)
 						}), ui.Style{Color: ui.SecondaryLabel}))
 				}}),
+			ui.Show(signal.Func(func() bool { err := clip.Err(); return err != nil && err != hotkey.ErrNotAvailable }), func() ui.Node {
+				return ui.Text(signal.Func(func() string { return fmt.Sprint("The shortcut to add the clipboard: ", clip.Err()) }),
+					ui.Style{Padding: ui.Symmetric(4, 16), Font: ui.Footnote, Color: ui.SecondaryLabel})
+			}),
 			ui.Row(ui.Style{Gap: 8, Padding: ui.Symmetric(8, 16), Align: ui.AlignEnd},
 				ui.TextField(ui.TextFieldProps{Value: draft, Placeholder: ui.Val("New note"), ReturnKey: ui.ReturnDone,
 					OnSubmit: add, Style: ui.Style{Grow: 1}}),

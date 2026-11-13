@@ -424,7 +424,8 @@ func measureText(text string, c layout.Constraints) layout.Size {
 	return layout.Size{W: w, H: float32(lines * 20)}
 }
 
-// call runs a Call with h.Modules and posts its Result.
+// call runs a Call with h.Modules (or h.AsyncModules) and posts its
+// Result.
 func (h *Host) call(root ops.NodeID, b []byte) {
 	le := binary.LittleEndian
 	id := le.Uint32(b)
