@@ -270,11 +270,10 @@ func TestKeysInSheetDarwin(t *testing.T) {
 			fatalf(t, "got %q, want %q", got, want)
 		}
 		got = nil
-		post(h, func() { open.Set(false); win.Set(true) })
+		// The Window and its sheet open in one batch, the main window in
+		// use: the sheet goes on the Window.
+		post(h, func() { open.Set(false); winSheet.Set(true); win.Set(true) })
 		x := onlyWin(t, h)
-		Send(x.window, "makeKeyAndOrderFront:", 0)
-		Send(h.window, "orderOut:", 0) // the app isn't active: the Window in use
-		post(h, func() { winSheet.Set(true) })
 		n = nil
 		for _, f := range find(h, ops.KindTextField) {
 			if v := Send(f.view, "window"); v != 0 && Send(v, "sheetParent") == x.window {
@@ -282,7 +281,7 @@ func TestKeysInSheetDarwin(t *testing.T) {
 			}
 		}
 		if n == nil {
-			fatal(t, "the field isn't in a sheet of the Window")
+			fatal(t, "the Window's sheet isn't on the Window")
 		}
 		w = focus(n)
 		pressKey(w, kcDown, "\uf701", 0, false)
@@ -290,6 +289,47 @@ func TestKeysInSheetDarwin(t *testing.T) {
 		if want := []string{"window down"}; !slices.Equal(got, want) {
 			fatalf(t, "got %q, want %q", got, want)
 		}
+		// The main window's sheet, with the Window in use: on the main
+		// window.
+		Send(x.window, "makeKeyAndOrderFront:", 0)
+		post(h, func() { open.Set(true) })
+		var sheet *node
+		for _, s := range find(h, ops.KindSheet) {
+			if !s.dying && s.nav.window != 0 && Send(s.nav.window, "sheetParent") != x.window {
+				sheet = s
+			}
+		}
+		if sheet == nil || Send(sheet.nav.window, "sheetParent") != h.window {
+			fatal(t, "the main window's sheet isn't on the main window")
+		}
+	})
+}
+
+// An alert goes on the window of the view whose event shows it: a
+// button's in a Window, that Window, whichever window is in use.
+func TestAlertWindowDarwin(t *testing.T) {
+	open := signal.New(false)
+	h, _ := mount(t, func() ui.Node {
+		return ui.Window(ui.WindowProps{Open: open, Width: 300, Height: 200, Content: func() ui.Node {
+			return ui.Button(ui.ButtonProps{Title: ui.Val("Alert"), OnPress: func() { ui.Alert(ui.AlertProps{Title: "In the Window"}) }})
+		}})
+	})
+	onMain(func() {
+		Send(h.window, "makeKeyAndOrderFront:", 0)
+		post(h, func() { open.Set(true) })
+		x := onlyWin(t, h)
+		Send(h.window, "makeKeyAndOrderFront:", 0) // the main window in use
+		h.enter(func() { h.emit(find(h, ops.KindButton)[0], ops.Event{Kind: ops.EventPress}) })
+		alerts := find(h, ops.KindAlert)
+		if len(alerts) != 1 || alerts[0].nav.alert == 0 {
+			fatal(t, "no alert")
+		}
+		a := alerts[0].nav.alert
+		if p := Send(Send(a, "window"), "sheetParent"); p != x.window {
+			fatalf(t, "the alert is on %x, the Window is %x", p, x.window)
+		}
+		Send(Send(a, "window"), "orderOut:", 0)
+		Send(x.window, "endSheet:", uintptr(Send(a, "window")))
 	})
 }
 

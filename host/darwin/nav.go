@@ -41,11 +41,13 @@ type nav struct {
 	setting  bool
 	reversed bool // its items are in the reverse order of its children
 
-	// Sheet and Alert; over, the window a sheet is a sheet of.
-	window ID
-	over   ID
-	alert  ID
-	order  []int // an alert's buttons' indexes, in the alert's order
+	// Sheet and Alert; on, the node of the window it's declared in (its
+	// Window prop: the root, a Window node), which it goes on.
+	window   ID
+	on       ops.NodeID
+	deferred bool // presenting waits for its window to open
+	alert    ID
+	order    []int // an alert's buttons' indexes, in the alert's order
 
 	// Window: its options (Config), a flyout's anchor (Flyout), and the
 	// document it shows: edited, its file.
@@ -433,8 +435,11 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 			h.updateWindowChrome()
 		}
 	case ops.KindSheet:
-		if p == ops.PropSheetDetents {
+		switch p {
+		case ops.PropSheetDetents:
 			n.detents = v.Int
+		case ops.PropSheetWindow:
+			n.nav.on = ops.NodeID(v.Int)
 		}
 	case ops.KindPopover:
 		h.setPopoverProp(n, p, v)
@@ -473,6 +478,8 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 			n.actions = decodeActions(v.Bytes)
 		case ops.PropAlertStyle:
 			n.alertStyle = int32(v.Int)
+		case ops.PropAlertWindow:
+			n.nav.on = ops.NodeID(v.Int)
 		}
 	}
 }
@@ -497,14 +504,55 @@ func (h *Host) tabSelected(tv, item ID) {
 	h.updateWindowChrome()
 }
 
-// present shows a sheet or an alert.
+// onNode is the node of the window a sheet or an alert is declared in
+// (its Window prop): the root, or a Window node; the root without one.
+func (h *Host) onNode(n *node) *node {
+	if x := h.nodes[n.nav.on]; x != nil && !x.dying && (x.kind == ops.KindWindow || h.main != nil && x == h.main.root) {
+		return x
+	}
+	if h.main != nil {
+		return h.main.root
+	}
+	return nil
+}
+
+// onWin is the window a sheet or an alert goes on: the one it's
+// declared in, whichever is in use; nil while it isn't open yet (a
+// Window opening in the same batch, after it).
+func (h *Host) onWin(n *node) *win {
+	x := h.onNode(n)
+	if x == nil {
+		return h.main
+	}
+	if x.kind == ops.KindWindow {
+		return h.wins[x.nav.window]
+	}
+	return h.main
+}
+
+// present shows a sheet or an alert, on the window it's declared in;
+// once the batch is applied if that window isn't open yet.
 func (h *Host) present(n *node) {
+	if n.kind == ops.KindSheet || n.kind == ops.KindAlert {
+		if w := h.onWin(n); w == nil || w.window == 0 {
+			if n.nav.deferred {
+				return // its window never opened
+			}
+			n.nav.deferred = true
+			h.afterCore(func() {
+				if h.nodes[n.id] == n && !n.dying {
+					h.present(n)
+				}
+			})
+			return
+		}
+	}
 	switch n.kind {
 	case ops.KindSheet:
 		if n.nav.window != 0 {
 			return
 		}
-		over := h.keyWin()
+		over := h.onWin(n)
 		cs := MsgRect(over.content, Sel("bounds")).Size
 		size := Size{Width: min(max(cs.Width-80, 320), 640), Height: max(cs.Height-100, 240)}
 		if n.detents == 1 { // medium only
@@ -522,7 +570,6 @@ func (h *Host) present(n *node) {
 		Send(content, "addSubview:", uintptr(n.view))
 		h.byView[content] = n
 		n.nav.window = w
-		n.nav.over = over.window
 		n.presented = true
 		h.reportScreen(n, size)
 		Send(over.window, "beginSheet:completionHandler:", uintptr(w), 0)
@@ -576,7 +623,7 @@ func (h *Host) present(n *node) {
 				h.emit(n, ops.Event{Kind: ops.EventDismissed})
 			}
 		})
-		Send(a, "beginSheetModalForWindow:completionHandler:", uintptr(h.keyWin().window), uintptr(done))
+		Send(a, "beginSheetModalForWindow:completionHandler:", uintptr(h.onWin(n).window), uintptr(done))
 	}
 }
 

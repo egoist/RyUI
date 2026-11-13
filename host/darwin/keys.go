@@ -29,7 +29,7 @@ import (
 // focus, at the window's root node (the root, a Window's, a sheet's or
 // a popover's node). It goes out through the nodes' parents, as the core
 // has them, and on from a node with none where it shows (keyOut): a
-// list's cell to its list, a sheet's node to the window it's a sheet of
+// list's cell to its list, a sheet's node to the window it's declared in
 // and a popover's to its anchor's window (a sheet's node, for a popover
 // in a sheet), ending at that window's root (the root, or a Window node:
 // another window's keys are its own). The first node whose Keys have it
@@ -105,8 +105,8 @@ func (h *Host) keyDown(ev ID) bool {
 
 // keyOut is where a key goes on from n, not taking it: n's parent; for
 // a node the core leaves without one, where it shows: a list's cell its
-// list, a sheet's node the root of the window it's a sheet of (the main
-// window's root, a Window node), a popover's node the root of what its
+// list, a sheet's node the window it's declared in (its Window prop: the
+// root, a Window node), a popover's node the root of what its
 // anchor is in (a window's, or a sheet's node). The root and a Window
 // node are ends (nil).
 func (h *Host) keyOut(n *node) *node {
@@ -121,12 +121,7 @@ func (h *Host) keyOut(n *node) *node {
 	}
 	switch n.kind {
 	case ops.KindSheet:
-		if w := h.winOf(n.nav.over); w != nil && w.root != n {
-			return w.root
-		}
-		if h.main != nil {
-			return h.main.root
-		}
+		return h.onNode(n)
 	case ops.KindPopover:
 		a := h.nodes[n.popover.anchor]
 		for a != nil && (a.parent != nil || a.cell != nil) {
