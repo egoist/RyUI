@@ -1,10 +1,14 @@
 # Motion and gestures
 
-RyUI animates with each platform's own machinery: UIView animations on
-iOS, animators on Android. You change state inside `ui.Animate`, and
-what that change moves on screen animates. This page covers animating
-changes, transitions in and out, shared elements, frame-driven
-animation, gestures, haptics and Reduce Motion.
+RyUI animates with each platform's own machinery where it has one:
+UIView animations on iOS, animators on Android, AppKit's implicit
+animations and Core Animation on macOS, the Web Animations API in a
+browser. Windows and GTK have no animations of a view's frame, so the
+Windows and Linux hosts step them themselves, each frame, with the same
+curves. You change state inside `ui.Animate`, and what that change moves
+on screen animates. This page covers animating changes, transitions in
+and out, shared elements, frame-driven animation, gestures with touch,
+mouse and trackpad, haptics and Reduce Motion.
 
 ## Animate a change
 
@@ -45,7 +49,7 @@ call it inside `ui.Post`.
 - `Curve` is `ui.EaseInOut` (the default), `ui.Linear`, `ui.EaseIn`,
   `ui.EaseOut` or `ui.Spring`. A spring is a damped spring that settles
   by the end of `Duration`: UIKit's spring animation on iOS, the same
-  spring's interpolator on Android and Windows.
+  spring's interpolator on Android, Windows, Linux and the web.
 - `Damping` is a spring's damping ratio: 1 settles without passing its
   end, less overshoots and comes back (0 means 0.85, a little).
   `Velocity` is its speed at the start, as a fraction of the change per
@@ -57,7 +61,8 @@ call it inside `ui.Post`.
   delays: a bouncy spring overshoots on a curve, and a delay is skipped.
 - `Repeat` runs it again this many times more; `ui.Forever` repeats it
   until the props change again. With `Autoreverses`, each run goes back
-  before the next.
+  before the next. macOS and Windows don't repeat: the animation runs
+  once.
 
 ```go
 func Pulse() ui.Node {
@@ -114,19 +119,20 @@ ui.AnimateWith(ui.Animation{OnDone: func() {
 
 A repeating animation stops when its props are set again without an
 animation. On Android, only opacity and transforms repeat; on iOS,
-everything that animates does.
+Linux and the web, everything that animates does; macOS and Windows run
+it once.
 
 ## What animates
 
-| Change | iOS | Android |
-| --- | --- | --- |
-| Frames (position and size, from layout) | yes | yes |
-| `Opacity` | yes | yes |
-| `Transform` | yes | yes |
-| `Background` (a color) | yes | yes |
-| `CornerRadius` | yes | yes |
-| A `Shape`'s `TrimStart` and `TrimEnd` | yes | yes |
-| A `Shape`'s path | yes | no |
+| Change | iOS | Android | macOS | Windows | Linux | Web |
+| --- | --- | --- | --- | --- | --- | --- |
+| Frames (position and size, from layout) | yes | yes | yes | yes | yes | yes |
+| `Opacity` | yes | yes | yes | no | yes | yes |
+| `Transform` | yes | yes | yes | yes | yes | yes |
+| `Background` (a color) | yes | yes | no | no | no | yes |
+| `CornerRadius` | yes | yes | yes | no | no | no |
+| A `Shape`'s `TrimStart` and `TrimEnd` | yes | yes | yes | no | yes | no |
+| A `Shape`'s path | yes | no | yes | no | no | no |
 
 Other props (`BorderColor`, `Shadow`, `Gradient`, text color and fonts)
 change at once. A view only animates if it's on screen; views that
@@ -235,6 +241,7 @@ func Matched() ui.Node {
 }
 ```
 
+- Every platform runs it, desktops and the web included.
 - Both views must change in the same `ui.Animate`: one removed, one
   added.
 - Keys belong to the root: one view at a time has each.
@@ -277,10 +284,11 @@ func Photos() ui.Node {
 - **Android** runs Material's container transform: the screen grows
   from the view into its bounds, rounded, the two cross-fading near the
   view. A predictive back gesture shrinks it back.
+- **macOS, Windows, Linux and the web** push as usual.
 - If no view with the key is on the screen below, it pushes as usual.
 
 You don't need `ui.Animate` for this: pushes animate on their own. See
-[navigation](navigation.md#stacks).
+[navigation](navigation.md).
 
 ## Shapes that draw themselves
 
@@ -346,6 +354,25 @@ A `View` takes gestures, recognized by the platform's recognizers:
 - `OnRotate`: two fingers turning.
 - `OnSwipe`: a quick flick, with its `ui.SwipeDirection`: `ui.SwipeLeft`,
   `ui.SwipeRight`, `ui.SwipeUp` or `ui.SwipeDown`.
+
+With a mouse or a trackpad, the same handlers get what the desktop
+does for each:
+
+| Gesture | macOS | Windows | Linux | Web |
+| --- | --- | --- | --- | --- |
+| `OnPress` | a click | a click, or Enter or Space on a focused view | a click, or Enter or Space on a focused view | a click, or Enter or Space on a focused view |
+| `OnLongPress` | a secondary click, or the button held | a right-click, or the button held | a secondary click, or the button held | a right-click, or the button or a touch held |
+| `OnPan` | a drag with the button down | a drag with the button down | a drag with the button down, a touch or the touchpad | a drag with the pointer down |
+| `OnSwipe` | a drag that ends fast; a trackpad's two-finger flick; a three-finger swipe, where the system leaves it to apps | a drag that ends fast | a drag that ends fast; a touchscreen's flick | a drag that ends fast |
+| `OnPinch` | a trackpad's pinch | a touchpad's pinch, Ctrl and the wheel, or two fingers on a touch screen | a touchpad's or touch screen's pinch, or Ctrl and the wheel | a trackpad's pinch, Ctrl and the wheel, or two fingers on a touch screen |
+| `OnRotate` | a trackpad's rotation | two fingers turning on a touch screen | a touchpad's or touch screen's rotation | two fingers turning on a touch screen |
+
+Few people hold a mouse button down to see what it does, so give what
+`OnLongPress` does another way in too where it matters: a menu item, a
+button. On Windows and Linux, Ctrl and the wheel pinch 10% a notch, and
+the pinch ends once the wheel rests. A two-finger flick on a Mac's
+trackpad still scrolls what's around the view: it swipes up or down only
+where nothing around it scrolls that way.
 
 Pan, pinch and rotate call their function with a `ui.Gesture` as it goes:
 
@@ -415,7 +442,7 @@ view around it doesn't take it over, and a pressable view inside it
 gets no press, as a drag that starts on a button doesn't press it.
 
 A swipe or a pan can't be done with a screen reader on. Offer what it
-does as an [accessibility action](accessibility.md#custom-actions) too.
+does as an [accessibility action](accessibility.md) too.
 
 ## Pressed and hover states
 
@@ -605,8 +632,10 @@ a link from a browser) come once their items are loaded:
 - On iOS and Android, files are copied into the app's caches first and
   `Drop.Copied` is true. Move them where the app keeps them, or remove
   them when done.
-- On macOS and Windows, `Path` is the user's file itself. Don't remove
-  it.
+- On macOS, Windows and Linux, `Path` is the user's file itself. Don't
+  remove it.
+- In a browser, a dropped file is copied into the app's files (the
+  page's, in memory) and `Drop.Copied` is true.
 
 ## Haptics
 
@@ -633,12 +662,28 @@ equivalents: RyUI plays the closest of `performHapticFeedback`'s
 constants, and success, warning and error are confirm and reject from
 Android 11; before that, a key press or a long press.
 
+On a Mac with a Force Touch trackpad, `ui.HapticSelection` is
+`NSHapticFeedbackManager`'s alignment and the others its level change;
+the trackpad plays them while a finger is on it. Windows and Linux have
+no haptics: `ui.Haptic` does nothing there. In a browser it's a short
+vibration where the browser has `navigator.vibrate` (Chrome on
+Android), and nothing elsewhere.
+
 ## Reduce Motion
 
 `ui.UseEnvironment().Get().ReduceMotion` is true when the user asked for
-less motion: iOS's Reduce Motion, or Android's animations turned off
-(Developer options, or Accessibility, Remove animations). It changes as
-the user changes the setting.
+less motion. It changes as the user changes the setting:
+
+- **iOS**: Settings, Accessibility, Motion, Reduce Motion.
+- **Android**: animations turned off (Developer options, or
+  Accessibility, Remove animations).
+- **macOS**: System Settings, Accessibility, Display, Reduce motion.
+- **Windows**: Settings, Accessibility, Visual effects, Animation
+  effects off.
+- **Linux**: GNOME's animations off (Settings, Accessibility, Reduce
+  Animation; GTK's `gtk-enable-animations`).
+- **The web**: the browser's `prefers-reduced-motion`, which follows
+  the system's setting.
 
 What RyUI does about it on its own:
 
@@ -647,6 +692,10 @@ What RyUI does about it on its own:
   views come and go with their transitions. Other animations run.
 - **Android**: the system's animator scale is 0, so every animation,
   RyUI's and the platform's, ends at once.
+- **macOS, Windows, Linux and the web**: `ui.Animate`'s changes apply at
+  once, transitions and shared elements included. A stack pushes and
+  pops without sliding on macOS, cross-fades in a browser, and on Linux
+  does as libadwaita's navigation does with animations off.
 
 What's left to you is motion RyUI can't tell is decorative: an `OnFrame`
 loop (as the spinner above stops), a repeating pulse, an animation that

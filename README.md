@@ -36,8 +36,10 @@ func main() { app.Run(Counter) }
   mirror with no code.
 - **Batteries**: SQLite with live queries, secure storage, the camera and
   code scanning, photos, location, notifications, audio.
-- **`ryui dev`**: your Go code runs on your Mac and reloads on save, the
-  app's state kept, on the simulator, an emulator or a phone.
+- **`ryui dev`**: your Go code reloads on save, the app's state kept: on
+  the simulator, an emulator or a phone (the Go code runs on your
+  computer), in a browser, or as a window on your Mac, PC or Linux
+  machine.
 - **`ryui build`**: a signed `.ipa` for the App Store, and an `.aab` for
   Google Play; **`ryui publish`** uploads them, numbered after the store's
   last build, to TestFlight (its groups, App Review) or a Play track.
@@ -57,14 +59,16 @@ func main() { app.Run(Counter) }
 
 ## Quick start
 
-You need Go 1.26 or later, and Xcode (iOS) or Android Studio with an NDK
-(Android).
+You need Go 1.26 or later, and for phones Xcode (iOS) or Android Studio
+with an NDK (Android). The Mac, Windows and the web need nothing more,
+Linux GTK 4.14 and libadwaita 1.5; see [Getting
+started](docs/getting-started.md).
 
 ```sh
 go install github.com/egoist/ryui/cmd/ryui@latest
 ryui new hello
 cd hello
-ryui dev -platform ios     # or android, web; on a Mac or PC, ryui dev alone runs it there
+ryui dev -platform ios     # or android, web; on a Mac, PC or Linux, ryui dev alone runs it there
 ```
 
 See [the documentation](docs/README.md) for the guides, and

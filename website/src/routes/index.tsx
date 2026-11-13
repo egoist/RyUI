@@ -15,7 +15,7 @@ export const Route = createFileRoute("/")({
 const features = [
   {
     title: "The platform's own widgets",
-    text: "UIKit on iOS, Android Views and Material 3 on Android: navigation, lists, fields, pickers, sheets and menus that look and feel as each platform's do.",
+    text: "UIKit on iOS, Material 3 on Android, AppKit on the Mac, Win32 drawn as Windows 11's, GTK 4 and libadwaita on Linux, the DOM in a browser: navigation, lists, fields, pickers, sheets and menus that look and feel as each platform's do.",
     href: "/docs/parity",
   },
   {
@@ -24,9 +24,9 @@ const features = [
     href: "/docs/getting-started#change-it",
   },
   {
-    title: "Live on your phone",
-    text: "ryui dev runs your Go code on your Mac and the views on the simulator, an emulator or a phone, reloading on save with the app's state kept.",
-    href: "/docs/getting-started#run-it",
+    title: "Live as you save",
+    text: "ryui dev runs the app on your computer, the simulator, an emulator, a phone or a browser, and reloads it on save with the app's state kept.",
+    href: "/docs/development",
   },
   {
     title: "Motion",
@@ -40,7 +40,7 @@ const features = [
   },
   {
     title: "Ready to ship",
-    text: "ryui build makes a signed .ipa for the App Store, with its privacy manifest, and an .aab for Google Play.",
+    text: "ryui build makes a signed .ipa for the App Store, an .aab for Google Play, a notarized Mac app, a signed Windows .exe, a Linux archive and Flatpak manifest, and a static site.",
     href: "/docs/shipping",
   },
 ]
@@ -52,14 +52,14 @@ function Home() {
       <section className="px-4 py-20 sm:px-10 md:py-28">
         <p className="label inline-flex items-center gap-2">
           <span className="size-1.5 rounded-full bg-gopher" />
-          iOS and Android · Go {__GO_VERSION__}+
+          iOS · Android · macOS · Windows · Linux · Web · Go {__GO_VERSION__}+
         </p>
         <h1 className="mt-6 text-4xl leading-[1.05] font-semibold tracking-[-0.04em] sm:text-5xl md:text-6xl">
           Native apps in Go.
           <span className="block text-muted-foreground">The platform&apos;s widgets, not a web view.</span>
         </h1>
         <p className="mt-6 max-w-xl text-lg leading-8 text-muted-foreground">
-          Write an iOS and Android app in Go alone. RyUI shows it with UIKit and Material 3, and updates only what changed.
+          Write one app in Go alone, for phones, desktops and the web. RyUI shows it with each platform&apos;s own widgets, and updates only what changed.
         </p>
         <div className="mt-10 flex flex-wrap items-center gap-3">
           <InstallCommand />
@@ -80,9 +80,13 @@ function Home() {
             <span className="text-gopher-ink select-none">$ </span>
             {"ryui new hello && cd hello\n"}
             <span className="text-gopher-ink select-none">$ </span>
+            {"ryui dev                    # this computer: Mac, PC or Linux\n"}
+            <span className="text-gopher-ink select-none">$ </span>
             {"ryui dev -platform ios      # the iOS simulator\n"}
             <span className="text-gopher-ink select-none">$ </span>
             {"ryui dev -platform android  # an emulator or a phone\n"}
+            <span className="text-gopher-ink select-none">$ </span>
+            {"ryui dev -platform web      # your browser\n"}
           </pre>
           <p className="mt-auto border-t px-4 py-4 text-sm leading-6 text-muted-foreground sm:px-6">
             Save a Go file and the app reloads in a moment, its state kept. See{" "}

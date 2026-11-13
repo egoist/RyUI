@@ -1,7 +1,8 @@
 # On real devices: what to check
 
-What the simulators and emulators couldn't show. Each item says what to
-do and what you should see; note anything that doesn't match.
+What the simulators, emulators and automated tests couldn't show, on
+phones and on desktop machines. Each item says what to do and what you
+should see; note anything that doesn't match.
 
 ## Getting the apps on a phone
 
@@ -100,7 +101,7 @@ fix what didn't match.
 - iOS 16: the navigation bar's back chevron in a language forced against the system's.
 - On Android 12 or earlier: `ui.SetLocale`, kill the app, relaunch (RyUI's preferences).
 - Android, in Arabic: predictive back, a sheet, dragging selection handles, TalkBack.
-- Windows (nothing has run there yet): Arabic and English Windows, the mirrored title
+- Windows: Arabic and English Windows, the mirrored title
   and menu bars, clicks landing on the right views, a runtime switch with a sheet and a
   window open, Arabic font fallback and punctuation in `DT_RTLREADING`, `TPM_LAYOUTRTL`
   menus opening on the right side, RichEdit's paragraph direction. Then
@@ -128,7 +129,48 @@ In the gallery's Documents section.
       mail apps are offered, and the PDF is attached.
 - [ ] "Text a friend": Messages' composer (iPhone), the SMS app (Android),
       with the number and the text.
-- [ ] Windows (nothing has run there yet): Preview opens the PDF in its
+- [ ] Windows: Preview opens the PDF in its
       app; Print shows the system's print dialog; the PDF is made
       (`go test ./host/windows -run Documents`); Mail with Outlook classic
       or Thunderbird set as the mail app shows its composer with the PDF.
+
+## On the desktop
+
+Run the examples on each with `go run ./cmd/ryui dev examples/gallery`
+(and `examples/notes`) on a Mac, a Windows PC and a Linux machine with
+GNOME, on real hardware rather than a VM where you can.
+
+- [ ] Screen readers: VoiceOver (macOS: ⌘F5), Narrator (Windows:
+      Ctrl+Win+Enter), Orca (GNOME: Super+Alt+S). Tabbing and the
+      reader's own navigation reach each control of the gallery, read
+      with its title and role; `ui.Announce` (the toast) is spoken.
+- [ ] Keyboard: Tab and Shift+Tab move through the controls in order,
+      with a visible focus ring; Space and Enter press buttons; Escape
+      closes a sheet, an alert and a menu.
+- [ ] The menu bar (notes): File → Add Note, Edit → Clear Completed and
+      Window → Statistics work from the menu and from their shortcuts
+      (⌘ on a Mac, Ctrl elsewhere); Statistics opens a window of its
+      own, which follows the notes as they change.
+- [ ] Resizing: the window resizes smoothly to its least size (notes:
+      320×360), and the gallery's layout follows; a width past 600 and
+      840 points changes the size class (a sidebar beside the content
+      where an example has one).
+- [ ] Scaling: move the window between a 100% and a 150% or 200%
+      display (Windows, Linux with fractional scaling): text and images
+      stay sharp, and nothing moves or is cut off.
+- [ ] Text size (Windows: Accessibility → Text size; GNOME: Large
+      Text): texts grow, and nothing is cut off.
+- [ ] Dark mode, switched with the app open: every screen, sheet and
+      menu follows at once.
+- [ ] Reduce motion (macOS: Accessibility → Display; Windows: Animation
+      effects off; GNOME: Animations off): pushes and the toast don't
+      slide.
+- [ ] Trackpad and touch: two-finger scrolling with momentum, pinch and
+      rotate on Motion's purple square, a touch screen's taps and pans
+      (Windows, GNOME).
+- [ ] A release build (`ryui build`), installed as a user would: the
+      Mac app notarized and opened from the Finder, the Windows folder's
+      `.exe` signed (SmartScreen names the publisher), the Linux
+      `.tar.gz` extracted into `~/.local` and opened from the launcher,
+      and the Flatpak. Each shows its name and icon in the Dock, taskbar
+      or dash, and keeps its data across launches.

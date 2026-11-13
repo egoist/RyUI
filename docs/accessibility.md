@@ -1,34 +1,59 @@
 # Accessibility
 
-RyUI shows the platform's own widgets, so most of what VoiceOver,
-TalkBack and the text size settings need is there without code. This
+RyUI shows the platform's own widgets, so most of what screen readers,
+the keyboard and the text size settings need is there without code. This
 page covers what you get for free, and the props for the rest: labels,
-roles, grouping, custom actions, adjustable views, announcements, text
-size and Reduce Motion, and how to test it.
+roles, grouping, custom actions, adjustable views, announcements, the
+keyboard, text size and Reduce Motion, and how to test it.
+
+Each host gives the same props to its platform's accessibility API, and
+the screen readers read them from there:
+
+| Platform | Accessibility API | Screen readers |
+| --- | --- | --- |
+| iOS | UIAccessibility | VoiceOver |
+| Android | Android's accessibility framework (`AccessibilityNodeInfo`) | TalkBack |
+| macOS | NSAccessibility | VoiceOver |
+| Windows | UI Automation | Narrator, NVDA |
+| Linux | GTK's accessibility, over AT-SPI | Orca |
+| The web | ARIA roles and attributes on the page's elements | the browser's: VoiceOver, NVDA, TalkBack... |
 
 ## What you get without asking
 
 - **Controls are the platform's.** `Button`, `Toggle`, `Slider`,
   `TextField`, `Segmented`, `Stepper`, `DatePicker` and the rest are
-  UIKit's and Material's views, read and operated as in any app.
+  UIKit's, Material's, AppKit's, Win32's, GTK's and the browser's own
+  controls, read and operated as in any app.
 - **Pressable views are buttons.** A `View` with `OnPress` is one
-  element: on iOS, a button read as the texts and labeled images in it,
-  joined, and a double tap presses it; on Android, a clickable view,
-  whose texts TalkBack reads together.
-- **Text scales.** `Text` is `UILabel` and `TextView`, and every font
-  follows Dynamic Type and Android's font scale: the semantic ones
-  (`ui.Body`, `ui.Headline`...), a fixed size (`ui.System(15)`) and your
-  own fonts too. When the user changes the size, RyUI measures the text
-  again and lays out what it moves.
+  element:
+  - iOS: a button read as the texts and labeled images in it, joined;
+    a double tap presses it.
+  - Android: a clickable view, whose texts TalkBack reads together.
+  - macOS: a button (`AXButton`).
+  - Windows: a button named by the texts in it, joined, which a screen
+    reader presses (UI Automation's Invoke).
+  - Linux: a button.
+  - The web: an element with the `button` role.
+
+  On Windows, Linux and the web the keyboard reaches it too (see
+  [The keyboard](#the-keyboard)).
+- **Text scales.** Every font, the semantic ones (`ui.Body`,
+  `ui.Headline`...), a fixed size (`ui.System(15)`) and your own fonts,
+  follows the user's text size: Dynamic Type, Android's font scale,
+  Windows' text size, GNOME's text scaling, the browser's text size.
+  When the user changes it, RyUI measures the text again and lays out
+  what it moves. A Mac has no text size setting.
 - **Colors adapt.** Semantic colors (`ui.Label`, `ui.SecondaryLabel`,
-  `ui.SystemBackground`, `ui.Accent`...) are UIKit's semantic colors and
-  Material 3's color roles: they follow dark mode, and on iOS, Increase
-  Contrast.
+  `ui.SystemBackground`, `ui.Accent`...) are the platform's (see
+  [Layout and style](layout.md)): they follow dark mode, on iOS and
+  macOS Increase Contrast, and on Linux GNOME's High Contrast.
 - **Layout-only views stay out of the way.** A `View`, `Row` or `Column`
   with no events and no accessibility props makes no native view, so it
   never shows in the accessibility tree.
 - **Pictures are quiet until described.** An `Image` without a `Label`,
-  a `Symbol` and a `Shape` are hidden from screen readers.
+  a `Symbol` and a `Shape` are hidden from screen readers. On Linux and
+  the web, a common symbol is the exception: it's read by an English
+  name (Back, Archive) unless it's labeled.
 
 ## Labels and hints
 
@@ -53,8 +78,10 @@ ui.Row(ui.Style{Gap: 12},
 - A `Symbol` has no label of its own: wrap it in a `View` with a
   `Label` and `ui.RoleImage` when it means something.
 - `Hint` is iOS's accessibility hint, read after a pause (users can turn
-  hints off), and Android's state description, read with the label.
-  Keep it short: "Opens the message".
+  hints off), and Android's state description, read with the label. On
+  macOS it's the view's help (`accessibilityHelp`), on Windows its help
+  text, on Linux its accessible description, and on the web its
+  `aria-description`. Keep it short: "Opens the message".
 
 `Label`, `Hint`, `Role` and `Decorative` are set once, when the view is
 made. A label that must change is a different view: make it in a
@@ -65,19 +92,20 @@ its texts, which do change, are read.
 
 `Role` says what a view is:
 
-| Role | iOS | Android |
-| --- | --- | --- |
-| `ui.RoleNone` | nothing (the default) | nothing |
-| `ui.RoleButton` | button trait | read as a button |
-| `ui.RoleLink` | link trait | read as a button |
-| `ui.RoleHeader` | header trait | heading |
-| `ui.RoleImage` | image trait | read as an image |
-| `ui.RoleText` | static text trait | nothing |
-| `ui.RoleSearch` | search field trait | nothing |
+| Role | iOS | Android | macOS | Windows | Linux | Web |
+| --- | --- | --- | --- | --- | --- | --- |
+| `ui.RoleNone` | nothing (the default) | nothing | nothing | nothing | nothing | nothing |
+| `ui.RoleButton` | button trait | read as a button | `AXButton` | Button | `button` | `button` |
+| `ui.RoleLink` | link trait | read as a button | `AXLink` | Hyperlink | `link` | `link` |
+| `ui.RoleHeader` | header trait | heading | `AXHeading` | Text, heading level 1 | `heading` | `heading` |
+| `ui.RoleImage` | image trait | read as an image | `AXImage` | Image | `img` | `img` |
+| `ui.RoleText` | static text trait | nothing | `AXStaticText` | Text | `label` | nothing |
+| `ui.RoleSearch` | search field trait | nothing | `AXTextField` | Edit | `search` | `searchbox` |
 
-A pressable `View` is a button already. A view with a `Role` is an
-element of its own on iOS, so give it a `Label` too, or it's read as
-nothing but its role.
+Windows' are UI Automation's control types, Linux's GTK's accessible
+roles, the web's ARIA roles. A pressable `View` is a button already. A
+view with a `Role` is an element of its own on iOS and macOS, so give it
+a `Label` too, or it's read as nothing but its role.
 
 ## Grouping
 
@@ -104,8 +132,9 @@ func Row(m message, open func()) ui.Node {
 ```
 
 - **Give it a `Label`.** A `View` with a `Label` is read as its label.
-  On iOS what's in it isn't read separately; on Android the label is
-  the view's content description. Say what the eye takes in at a
+  On iOS and macOS what's in it isn't read separately; on Android the
+  label is the view's content description; on Windows it's the view's
+  name, on Linux its accessible label, on the web its `aria-label`. Say what the eye takes in at a
   glance, in words: "Night Drive by Ada, 4 minutes", not "4:00".
 
 ```go
@@ -130,7 +159,8 @@ ui.View(ui.ViewProps{Decorative: true}, ui.Symbol(ui.IconCheck, ui.Style{Color: 
 ## Headings
 
 Screen reader users jump between headings (VoiceOver's rotor, TalkBack's
-navigation by headings). Mark a section's title as one: a `RichText`
+navigation by headings, NVDA's and Orca's H key, a browser screen
+reader's headings list). Mark a section's title as one: a `RichText`
 with `Role: ui.RoleHeader`, or a `View` with a `Label` and the role.
 `Text` takes no role. [`ryui/markdown`](../markdown) marks its headings
 already.
@@ -159,7 +189,22 @@ ui.View(ui.ViewProps{
 }, ui.Text(subject))
 ```
 
-A view with actions is one element, read as its texts.
+A view with actions is one element, read as its texts. Where they go:
+
+- **iOS** and **macOS**: the view's custom actions
+  (`UIAccessibilityCustomAction`, `NSAccessibilityCustomAction`), in
+  VoiceOver's Actions rotor on iOS and its Actions menu on a Mac
+  (VO-Command-Space).
+- **Android**: TalkBack's actions menu.
+- **Windows**: the view's context menu, which the keyboard opens too
+  (Shift+F10, the Menu key) and the mouse with a right-click. The view
+  becomes a tab stop, so the keyboard reaches it.
+- **Linux**: the view's actions over AT-SPI, which Orca lists and does,
+  and its context menu (a secondary click, the Menu key, Shift+F10). The
+  view becomes a tab stop.
+- **The web**: ARIA has no custom actions, so they aren't offered
+  there. Give a view the same commands another way too (a button, a
+  `Menu`) when the app runs in a browser.
 
 A `List`'s `SwipeActions` are offered to screen readers for you:
 UIKit's list offers its swipe actions to VoiceOver itself, and on
@@ -185,6 +230,12 @@ accessible as they are.
 and down, and TalkBack's (or the volume keys), step it by 1 or -1. Use
 it for a control of your own that picks a value; a `Slider` or
 `Stepper` already is one.
+
+On a Mac the view is an incrementor (`AXIncrementor`), which VoiceOver
+steps with VO-Up and VO-Down. On Windows, Linux and the web it's a tab
+stop that the arrow keys step: up and right by 1, down and left by -1
+(on Windows and Linux, left and right swap in a right-to-left
+language). Linux and the web give it the slider role.
 
 ```go
 func Rating() ui.Node {
@@ -220,9 +271,12 @@ ui.Animate(func() { shown.Set(true) })
 ui.Announce("Saved") // a screen reader wouldn't notice the toast
 ```
 
-It's `UIAccessibility`'s announcement on iOS and
-`announceForAccessibility` on Android. Without a screen reader, it does
-nothing. Don't announce what the focused view says already.
+It's `UIAccessibility`'s announcement on iOS,
+`announceForAccessibility` on Android, an announcement request on
+macOS, a UI Automation notification on Windows, GTK's announcement on
+Linux (GTK 4.14 and later), and a polite `aria-live` region on the web.
+Without a screen reader, it does nothing. Don't announce what the
+focused view says already.
 
 ## Moving focus
 
@@ -246,14 +300,27 @@ It's sent with the next flush, once the view exists and has its frame:
 `UIAccessibility`'s screen-changed notification with the view on iOS,
 `ACTION_ACCESSIBILITY_FOCUS` on Android, a layout change naming the view
 on macOS and the focus event on Windows. A container with no view of
-its own focuses its first view. Without a screen reader it does nothing,
-and it never moves the keyboard's focus (that's `ui.Focus`).
+its own focuses its first view. On those four, without a screen reader
+it does nothing, and it never moves the keyboard's focus (that's
+`ui.Focus`).
+
+On Linux and the web it moves the keyboard's focus to the view, and the
+screen reader follows it: GTK and the page have no other way to point a
+screen reader at a view.
 
 ## Is a screen reader on
 
-`ui.UseEnvironment()`'s `ScreenReader` is true while VoiceOver, TalkBack
-or Narrator is on, and follows it being turned on or off. Use it for
-what works differently by ear, not to hide things: keep a toast up until
+`ui.UseEnvironment()`'s `ScreenReader` is true while a screen reader is
+on, and follows it being turned on or off:
+
+- iOS and macOS: VoiceOver.
+- Android: TalkBack.
+- Windows: the system's screen reader flag, which Narrator and other
+  screen readers set.
+- Linux: GNOME's screen reader setting (Orca).
+- The web: never. Browsers don't say whether a screen reader is on.
+
+Use it for what works differently by ear, not to hide things: keep a toast up until
 it's dismissed rather than for three seconds, or turn a carousel that
 advances by itself into one that waits.
 
@@ -268,9 +335,11 @@ large sizes:
 - Put long rows in a `Scroll` or a `List`.
 
 `ui.UseEnvironment()`'s `FontScale` is the user's text size, 1 being the
-default (Dynamic Type's Large, Android's default font scale). Read it in
-a `StyleFunc` to change a layout at large sizes, as iOS's own apps stack
-a row's label and value:
+default: Dynamic Type's Large, Android's default font scale, Windows'
+100% (Settings, Accessibility, Text size), GNOME's scaling of 1, the
+browser's default text size (16 CSS pixels). On a Mac it's always 1.
+Read it in a `StyleFunc` to change a layout at large sizes, as iOS's
+own apps stack a row's label and value:
 
 ```go
 func Adaptive() ui.Node {
@@ -289,16 +358,35 @@ func Adaptive() ui.Node {
 
 ## Reduce Motion
 
-`ui.UseEnvironment()`'s `ReduceMotion` is iOS's Reduce Motion, or
-Android's animations turned off. On iOS RyUI makes transitions dissolve
-instead of moving; on Android every animation already ends at once. See
-[Motion](motion.md#reduce-motion) for what's left to you.
+`ui.UseEnvironment()`'s `ReduceMotion` is iOS's and macOS's Reduce
+Motion, Android's animations turned off, Windows' animation effects
+off, GNOME's animations off, or the browser's `prefers-reduced-motion`.
+On iOS RyUI makes transitions dissolve instead of moving; elsewhere its
+animations end at once. See [Motion](motion.md) for what's left to you.
 
-## Testing with VoiceOver and TalkBack
+## The keyboard
+
+On Windows, Linux and the web, RyUI's views take the keyboard as the
+platform's own controls do:
+
+- **Tab** moves between the controls and the pressable views, in the
+  views' order; Shift+Tab goes back.
+- **Enter** and **Space** press a focused pressable view, as a button.
+- A focused view shows a focus ring: Fluent's on Windows, an outline in
+  the accent on Linux, the browser's on the web.
+- A view with `Actions` or `OnAdjust` is a tab stop: its context menu
+  opens with Shift+F10 or the Menu key (Windows, Linux), and the arrow
+  keys step it.
+
+`ui.Focus` and `ui.Blur` move the keyboard's focus to a field and away
+(see [Components](components.md)).
+
+## Testing with a screen reader
 
 Try each screen with the screen reader on, eyes off the screen if you
 can: can you reach everything, does each stop say what it is, does
-every swipe and drag have an action?
+every swipe and drag have an action? On a desktop, try it with the
+keyboard alone too.
 
 - **VoiceOver** runs on an iPhone: Settings, Accessibility, VoiceOver.
   Set the Accessibility Shortcut (a triple click of the side button) to
@@ -308,11 +396,28 @@ every swipe and drag have an action?
 - **TalkBack** runs on an Android phone, or an emulator with Google
   Play, from the Android Accessibility Suite: Settings, Accessibility,
   TalkBack.
+- **VoiceOver on a Mac**: Command-F5, or System Settings,
+  Accessibility, VoiceOver. Accessibility Inspector (Xcode, Open
+  Developer Tool) inspects the macOS app's elements directly.
+- **Narrator** on Windows: Ctrl+Windows+Enter. NVDA is a free download.
+  Accessibility Insights for Windows shows each element's UI Automation
+  name, control type and patterns.
+- **Orca** on Linux: Super+Alt+S in GNOME, or Settings, Accessibility,
+  Screen Reader. Accerciser shows the AT-SPI tree.
+- **The web**: the browser's developer tools show the accessibility
+  tree (Chrome's and Firefox's Accessibility panels); try VoiceOver with
+  Safari, NVDA with Chrome or Firefox.
 - **Text size**: iOS's Settings, Accessibility, Display & Text Size,
   Larger Text, or Xcode's Environment Overrides on the simulator;
-  Android's Settings, Display, Font size. Try the largest.
+  Android's Settings, Display, Font size; Windows' Settings,
+  Accessibility, Text size; GNOME's Settings, Accessibility, Large Text;
+  the browser's text size. Try the largest.
 - **Reduce Motion**: iOS's Settings, Accessibility, Motion; Android's
-  Settings, Accessibility, Remove animations.
+  Settings, Accessibility, Remove animations; macOS's System Settings,
+  Accessibility, Display, Reduce motion; Windows' Settings,
+  Accessibility, Visual effects, Animation effects; GNOME's Settings,
+  Accessibility, Reduce Animation; the system's setting for a
+  browser.
 
 `ryui dev` keeps running as you change these: the app follows each
 setting as it changes.

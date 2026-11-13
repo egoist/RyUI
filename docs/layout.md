@@ -2,15 +2,27 @@
 
 A `ui.Style` says how a view is laid out and how it looks. Layout is CSS
 flexbox, in points; the look is colors, corners, borders, shadows and
-text. This page covers both, and styles that change.
+text. This page covers both, and styles that change. The layout is the
+same on every platform: RyUI computes it in Go and places the platform's
+views where it says.
 
 ## Platform defaults
 
 A style you don't set keeps the platform's default. An app that sets no
-style looks as the platform's own apps do: UIKit's on iOS, Material 3's
-on Android, with their fonts, colors, dark mode and text sizes. Set only
-what you mean to change, and prefer the semantic colors and fonts below
-to fixed ones, so the app keeps following the platform.
+style looks as the platform's own apps do, with their fonts, colors,
+dark mode and text sizes:
+
+- **iOS**: UIKit's.
+- **Android**: Material 3's.
+- **macOS**: AppKit's.
+- **Windows**: Windows 11's (WinUI's Fluent look, which the host draws
+  on Win32's controls).
+- **Linux**: GNOME's (GTK 4 and libadwaita).
+- **The web**: the browser's controls, with a light and dark palette of
+  RyUI's own around them (see [the web](web.md)).
+
+Set only what you mean to change, and prefer the semantic colors and
+fonts below to fixed ones, so the app keeps following the platform.
 
 ## Style
 
@@ -99,7 +111,9 @@ ui.Row(ui.Style{Wrap: true, Gap: 8},
 
 Lengths are a `ui.Dim`:
 
-- `ui.Pt(v)`: points (iOS points, Android dp).
+- `ui.Pt(v)`: points: iOS's and macOS's points, Android's dp, a pixel
+  at 100% scaling on Windows (1/96 inch), GTK's logical pixels on
+  Linux, and CSS pixels on the web.
 - `ui.Pct(v)`: a percentage of the parent's size along the same axis.
 - `ui.Auto`, the zero value: the content's size, or what flexbox gives.
 
@@ -119,6 +133,13 @@ ui.View(ui.ViewProps{Style: ui.Style{
 
 Text and controls measure themselves, with the platform's own
 measuring: give them a size only to change it.
+
+A point is as many pixels as the display's scale: 2 or 3 on a phone, 2
+on a Retina Mac, the display's scaling on Windows and Linux (1.5 at
+150%), the browser's device pixel ratio on the web. `ui.UseEnvironment()`'s
+`Scale` says which. A desktop window moved to a display of another
+scale is drawn at that display's scale; its layout, in points, stays as
+it was.
 
 ## Padding and margin
 
@@ -144,7 +165,7 @@ text starts or ends on, say `Start` or `End`:
 ui.Style{Padding: ui.Edges{Start: 16, End: 8}} // 16 on the left in English, on the right in Arabic
 ```
 
-See [Languages](i18n.md#right-to-left).
+See [Languages](i18n.md).
 
 ## Absolute positioning
 
@@ -182,15 +203,15 @@ ui.View(ui.ViewProps{Style: ui.Style{Gap: 8, Grid: &ui.Grid{
 ```
 
 For a grid of many items that scrolls, use a `ui.List` with `Columns`
-(see [Components](components.md#lists)).
+(see [Components](components.md)).
 
-## The safe area and the keyboard
+## The safe area, the keyboard and the window
 
-The root fills the screen, under the status bar, the notch and the home
-indicator. `ui.SafeArea` is a `Column` padded by the safe area's insets,
-on top of its own padding. Its bottom padding is the keyboard's height
-while the keyboard is up, so what's at its bottom (a text field, a send
-button) stays above it.
+On a phone, the root fills the screen, under the status bar, the notch
+and the home indicator. `ui.SafeArea` is a `Column` padded by the safe
+area's insets, on top of its own padding. Its bottom padding is the
+keyboard's height while the keyboard is up, so what's at its bottom (a
+text field, a send button) stays above it.
 
 ```go
 ui.SafeArea(ui.Style{Padding: ui.All(16), Gap: 12},
@@ -203,7 +224,33 @@ ui.SafeArea(ui.Style{Padding: ui.All(16), Gap: 12},
 The insets are those of the screen it's in: in a stack screen, a tab or
 a sheet, that screen's. `ui.UseEnvironment` gives them, and the
 keyboard's height, for placing things yourself (see
-[Concepts](concepts.md#the-environment)).
+[Concepts](concepts.md)).
+
+On macOS, Windows and Linux the root fills the window's content, below
+its title bar (Linux's header bar). A desktop window has no safe area
+and no on-screen keyboard over it: the insets and the keyboard's height
+are 0, and `ui.SafeArea` is a `Column` with its own padding. Use it
+anyway; the same screen then fits a phone too.
+
+The window is 800 by 600 points unless the app says otherwise. Give
+its size, and the least the user can make it, with `app.RunWindow`:
+
+```go
+func main() {
+	app.RunWindow(ui.WindowOptions{Width: 960, Height: 640, MinWidth: 480, MinHeight: 360}, App)
+}
+```
+
+A phone ignores these options. As the user resizes the window, the
+environment's `Width` and `Height` change and layout runs again: there's
+nothing to handle. To change the layout at a size (a sidebar that shows
+when there's room), read the environment's `WidthClass` in a
+`StyleFunc` or a `Show`, as on a tablet.
+
+In a browser, an app that fills the page takes the device's safe area
+(`env(safe-area-inset-*)`, on a phone with a notch) and the on-screen
+keyboard's height from the visual viewport. An app embedded in a part of
+a page has neither.
 
 ## Scrolling
 
@@ -219,16 +266,16 @@ ui.Scroll(ui.ScrollProps{Style: ui.Style{Grow: 1}, ContentStyle: ui.Style{Paddin
 ```
 
 Pull to refresh and scroll positions are in
-[Components](components.md#scroll), and long lists in
-[Lists](components.md#lists).
+[Components](components.md), and long lists in
+[Lists](components.md).
 
 ## Colors
 
 A `ui.Color` is one of:
 
 - **The platform's default**: the zero value, a prop left unset.
-- **A semantic color**, resolved by the platform (UIKit's semantic
-  colors, Material 3's color roles), so it follows dark mode:
+- **A semantic color**, resolved by the platform, so it follows dark
+  mode:
   - text: `ui.Label`, `ui.SecondaryLabel`, `ui.TertiaryLabel`;
   - backgrounds: `ui.SystemBackground`, `ui.SecondaryBackground`,
     `ui.GroupedBackground`, and `ui.SecondaryGroupedBackground` for
@@ -241,6 +288,21 @@ A `ui.Color` is one of:
 - **A fixed color**: `ui.RGB(r, g, b)`, `ui.RGBA(r, g, b, a)`,
   `ui.Hex(0x7c3aed)`, or `ui.ParseHex("#7c3aed")` (also `"#rrggbbaa"`),
   which reports whether it parsed.
+
+Where the semantic colors come from:
+
+| Platform | Semantic colors |
+| --- | --- |
+| iOS | UIKit's (`labelColor`, `systemBackground`, `systemRed`...) |
+| Android | Material 3's color roles |
+| macOS | AppKit's (`labelColor`, `windowBackgroundColor`, `controlBackgroundColor`, `separatorColor`, `systemRedColor`...) |
+| Windows | Windows 11's theme colors (WinUI's Fluent theme resources), light or dark |
+| Linux | libadwaita's named colors (`window_fg_color`, `window_bg_color`, `card_bg_color`, `destructive_color`...), as the theme defines them, high contrast included |
+| The web | RyUI's palette, as CSS variables, light and dark |
+
+On the desktops the grouped backgrounds are the plain ones:
+`ui.GroupedBackground` is the window's background, and
+`ui.SecondaryGroupedBackground` a card's, as `ui.SecondaryBackground` is.
 
 ```go
 ui.Column(ui.Style{Padding: ui.All(16), Gap: 4, Background: ui.SystemBackground, CornerRadius: 12},
@@ -269,16 +331,26 @@ alike: a chip's background, a chart's fill, a track.
   children (`Clip`) still casts it, as a rounded card that clips its
   image does. Android draws its elevation shadow instead: the radius is
   the elevation, the color tints it, and the light sets the offset.
+  macOS, Windows, Linux and the web draw it as iOS does, with the same
+  blur and offset.
 - **`Gradient`**: a linear gradient over the background.
   `ui.LinearGradient(colors...)` goes from top to bottom; a
   `ui.Gradient` sets `Start` and `End` as `ui.Point`s, in units of the
   view's size ((0, 0) its top leading corner, (1, 1) its bottom trailing
   one), and `Locations`, one per color. Android draws it along the
-  nearest of eight directions.
+  nearest of eight directions; the other platforms along the line you
+  give.
 - **`Material`**: a translucent background that blurs what's behind it,
   iOS's materials: `ui.MaterialUltraThin`, `ui.MaterialThin`,
-  `ui.MaterialRegular`, `ui.MaterialThick`, `ui.MaterialBar`. Android,
-  which can't blur behind a view, shows its surface color, translucent.
+  `ui.MaterialRegular`, `ui.MaterialThick`, `ui.MaterialBar`.
+  - iOS: `UIVisualEffectView`'s blurs.
+  - macOS: an `NSVisualEffectView` behind the view's content, blurring
+    what's behind it in the window.
+  - Windows: Fluent's acrylic, which the host draws: what's behind the
+    view, blurred and tinted light or dark.
+  - The web: CSS's `backdrop-filter`, a blur and saturation.
+  - Android and Linux, which can't blur behind a view, show the surface
+    color (Linux: libadwaita's card color), translucent.
 - **`Clip`**: clips the children to the view's bounds and corners.
 
 ```go
@@ -306,13 +378,13 @@ ui.View(ui.ViewProps{Style: ui.Style{
 prop does: `Opacity: 0.5` is half transparent, `Opacity: 0` is fully
 opaque. To hide a view, set `Hidden`. A hidden view still takes its
 space in the layout; to take it out, and its views with it, use
-`ui.Show` (see [Concepts](concepts.md#showing-and-repeating)).
+`ui.Show` (see [Concepts](concepts.md)).
 
 ## Transforms
 
 `Transform` moves, scales and rotates a view as it's drawn
 (`TranslateX`, `TranslateY`, `Scale`, `ScaleX`, `ScaleY`, `Rotate` in
-degrees); layout doesn't see it. Transforms, `Transition` and `Match` are
+degrees); layout doesn't see it. Every platform draws it. Transforms, `Transition` and `Match` are
 for animation: see [Motion](motion.md).
 
 ## Text
@@ -320,9 +392,9 @@ for animation: see [Motion](motion.md).
 `Font` sets a text's font:
 
 - **Semantic fonts**, the platform's text styles, scaled with the
-  user's text size (Dynamic Type, Android's font scale): `ui.LargeTitle`,
-  `ui.Title`, `ui.Title2`, `ui.Title3`, `ui.Headline`, `ui.Subheadline`,
-  `ui.Body`, `ui.Callout`, `ui.Footnote`, `ui.Caption`, `ui.Caption2`.
+  user's text size: `ui.LargeTitle`, `ui.Title`, `ui.Title2`,
+  `ui.Title3`, `ui.Headline`, `ui.Subheadline`, `ui.Body`, `ui.Callout`,
+  `ui.Footnote`, `ui.Caption`, `ui.Caption2`.
 - **`ui.System(size)`**: the system font at a size, in points.
 - **`.Weighted(w)`** gives a font a weight: `ui.Ultralight`, `ui.Thin`,
   `ui.Light`, `ui.Regular`, `ui.Medium`, `ui.Semibold`, `ui.Bold`,
@@ -339,7 +411,42 @@ ui.StaticText("Fixed size", ui.Style{Font: ui.System(20).Weighted(ui.Medium)})
 ```
 
 For text with several styles in it, links and inline views, see
-[RichText](components.md#richtext).
+[RichText](components.md).
+
+The text styles are iOS's names; each platform maps them to its own
+type ramp, so `ui.Body` is the size the platform's apps use for body
+text:
+
+| Platform | Text styles | `ui.Body` |
+| --- | --- | --- |
+| iOS | UIKit's text styles, in San Francisco | 17 |
+| Android | Material 3's type scale (`ui.Body` is Body Large), in Roboto | 16 |
+| macOS | AppKit's text styles (`NSFont.preferredFont(forTextStyle:)`), in San Francisco | 13 |
+| Windows | Windows 11's type ramp, in Segoe UI Variable (Segoe UI before Windows 11) | 14 |
+| Linux | libadwaita's type classes (`.title-1`, `.heading`, `.caption`...), relative to the desktop's interface font | the interface font's size |
+| The web | RyUI's ramp, in the system's font (`system-ui`) | 16 |
+
+On Windows the styles take the nearest of the ramp's: `ui.LargeTitle` is
+Title Large (40), `ui.Title` Title (28), `ui.Title2` Subtitle (20),
+`ui.Headline` Body Strong (14, semibold), `ui.Footnote` and `ui.Caption`
+Caption (12). On Linux, with GNOME's 11 pt interface font, `ui.LargeTitle`
+is `.title-1` (181%, heavy), `ui.Title` `.title-2`, `ui.Headline`
+`.heading` (bold), and `ui.Caption` `.caption` (82%).
+
+What scales with the user's text size:
+
+- **iOS** (Dynamic Type) and **Android** (font scale): every font,
+  semantic, fixed and custom.
+- **Windows**: every font, by Settings, Accessibility, Text size.
+- **Linux**: every font, by the desktop's text scaling (GNOME's Large
+  Text, GTK's font DPI). The interface font the styles are relative to
+  is the desktop's too (GTK's `gtk-font-name`).
+- **The web**: every font, by the browser's text size: fonts are set in
+  `rem`.
+- **macOS** has no text size setting: fonts stay as they are.
+
+`ui.UseEnvironment()`'s `FontScale` is that size, 1 by default (see
+[Accessibility](accessibility.md)).
 
 ## Custom fonts
 
@@ -349,12 +456,17 @@ Put font files (`.ttf`, `.otf`) in the app's `assets/fonts`. A font's
 - a file's name: `assets/fonts/Inter-Bold.ttf` is `"Inter-Bold"`;
 - a family of files: `"Inter"` is `Inter-Regular`, `Inter-Bold`... as
   the font's weight says;
-- a generic family: `"serif"`, `"monospace"`, `"rounded"` (the system
-  font's designs on iOS; Android has no rounded one);
+- a generic family: `"serif"`, `"monospace"`, `"rounded"`. On iOS and
+  macOS they're the system font's designs (New York, SF Mono, SF
+  Rounded); on Windows Georgia and Cascadia Mono; on Linux and Android
+  the system's serif and monospace families; on the web `ui-serif`,
+  `ui-monospace` and `ui-rounded`, where the browser has them. Android,
+  Windows and Linux have no rounded one, and show the system font;
 - a family the system has, such as `"Georgia"`.
 
 A custom font scales as its text style does. One the platform doesn't
-have shows in the system font.
+have shows in the system font. Every platform loads the files in
+`assets/fonts` for the app alone: they aren't installed for other apps.
 
 ```go
 ui.StaticText("Inter Bold", ui.Style{Font: ui.Custom("Inter-Bold", ui.Title)})
@@ -416,15 +528,25 @@ from `ryui.json`:
 It's the tint on iOS, and the seed of the Material 3 color scheme on
 Android (Android 12 and later). With `"android": {"dynamicColor": true}`,
 Android takes the colors from the user's wallpaper where the system has
-them, as Material apps do. Without an accent, the platform's is used.
-See [Shipping](shipping.md#ryuijson).
+them, as Material apps do. On macOS, Windows and Linux it replaces the
+system's accent in RyUI's controls and colors; on the web it's the
+controls' `accent-color` too.
+
+Without an accent, the platform's is used. On macOS and Windows that's
+the accent the user picked (macOS's System Settings, Appearance;
+Windows' Settings, Personalization, Colors), on Linux libadwaita's
+blue, and on the web a blue of RyUI's. See [Shipping](shipping.md).
 
 ## Light and dark
 
-The app follows the system's appearance. `ui.SetColorScheme` shows it
-light or dark whatever the system's is, as an app's own appearance
-setting does (SwiftUI's `preferredColorScheme`; on Android, AppCompat's
-night mode), and `ui.ColorSchemeSystem` follows the system again. The
+The app follows the system's appearance: iOS's and macOS's Dark Mode,
+Android's dark theme, Windows' app mode (Settings, Personalization,
+Colors), GNOME's dark style, the browser's `prefers-color-scheme`.
+`ui.SetColorScheme` shows it light or dark whatever the system's is, as
+an app's own appearance setting does (SwiftUI's
+`preferredColorScheme`; on Android, AppCompat's night mode; on macOS,
+the app's `NSAppearance`; on Linux, libadwaita's style manager), and
+`ui.ColorSchemeSystem` follows the system again. The
 semantic colors, the platform's controls and the system bars follow,
 without remaking the app, and `ui.UseEnvironment()`'s `Dark` says which
 it is. Keep the choice with [`store`](data.md) and set it as the app

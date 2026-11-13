@@ -3,14 +3,42 @@
 A component is a Go function that returns a `ui.Node`. This page covers
 the views package `ui` gives you, grouped by what they do, and the
 packages next to it for Markdown and SVG. Each one is the platform's own
-widget where the platform has one (UIKit on iOS, Material 3 on Android).
-How views are sized and placed is in [Layout](layout.md); screens, tabs
-and sheets are in [Navigation](navigation.md).
+widget where the platform has one: UIKit on iOS, Android Views and
+Material 3 on Android, AppKit on macOS, Win32's controls drawn as
+Windows 11's (Fluent) on Windows, GTK 4 and libadwaita on Linux, the
+page's elements in a browser. How views are sized and placed is in
+[Layout](layout.md); screens, tabs and sheets are in
+[Navigation](navigation.md).
 
 Most props that can change take a `signal.Accessor`: pass a signal, a
 `signal.Func`, or `ui.Val(v)` for a value that never changes. A control
 that the user changes (a field, a toggle) takes a `*signal.Signal`
 instead, and writes it. See [Concepts](concepts.md).
+
+## Each platform's widgets
+
+| Component | iOS | Android | macOS | Windows | Linux | Web |
+|---|---|---|---|---|---|---|
+| `Text` | `UILabel` | `TextView` | `NSTextField` (a label) | drawn by the host's view | `GtkLabel` | the page's text |
+| `Button` | `UIButton` | `MaterialButton` | `NSButton` | `BUTTON`, drawn as Fluent's | `GtkButton` | `<button>` |
+| `TextField` | `UITextField`; `UITextView` multiline | `EditText` | `NSTextField`, `NSSecureTextField`; `NSTextView` multiline | `EDIT` in a frame drawn as Fluent's | `GtkEntry`, `GtkPasswordEntry`; `GtkTextView` multiline | `<input>`; `<textarea>` multiline |
+| `Toggle` | `UISwitch` | `MaterialSwitch` | `NSSwitch` | a `BUTTON` check box drawn as a toggle switch | `GtkSwitch` | `<input type="checkbox" switch>` |
+| `Slider` | `UISlider` | Material `Slider` | `NSSlider` | a trackbar | `GtkScale` | `<input type="range">` |
+| `Segmented` | `UISegmentedControl` | Material segmented buttons | `NSSegmentedControl` | drawn, as the Windows Community Toolkit's | linked `GtkToggleButton`s | buttons in a radio group |
+| `Stepper` | `UIStepper` | two Material icon buttons | `NSStepper` | two buttons | linked − and + buttons | two buttons |
+| `Wheel` | `UIPickerView` | `NumberPicker` | `NSPopUpButton` | a drop-down `COMBOBOX` | `GtkDropDown` | `<select>` |
+| `ColorPicker` | `UIColorWell` | a swatch and a Material dialog | `NSColorWell` and the color panel | a swatch and the color dialog (`ChooseColor`) | `GtkColorDialogButton` | `<input type="color">` |
+| `DatePicker` | `UIDatePicker` | buttons opening Material's pickers | `NSDatePicker` | the date and time picker (`SysDateTimePick32`) | a button opening `GtkCalendar` and spin buttons | `<input type="date">`, `time`, `datetime-local` |
+| `Progress` | `UIProgressView` | `LinearProgressIndicator` | `NSProgressIndicator` | drawn as Fluent's | `GtkProgressBar` | `<progress>` |
+| `Activity` | `UIActivityIndicatorView` | `CircularProgressIndicator` | `NSProgressIndicator`, spinning | Fluent's progress ring, drawn | `AdwSpinner` (`GtkSpinner` before libadwaita 1.6) | a spinner, drawn |
+| `Image` | `UIImageView` | `ImageView` | `NSImageView` | drawn with GDI+ | drawn from GDK textures | `<img>` |
+| `Symbol` | SF Symbols | Material Symbols | SF Symbols | Segoe Fluent Icons | the icon theme's, else Material Symbols | Material Symbols |
+| `Video` | `AVPlayerViewController` | Media3's player | `AVPlayerView` | a `<video>` in WebView2 | `GtkVideo` (GStreamer) | `<video>` |
+| `WebView` | `WKWebView` | `WebView` | `WKWebView` | WebView2 | `WebKitWebView` (WebKitGTK 6.0) | `<iframe>` |
+| `Scroll` | `UIScrollView` | `NestedScrollView` | `NSScrollView` | the host's view, Fluent's scroll indicator | `GtkScrolledWindow` | a scrolling element |
+| `List` | `UICollectionView` | `RecyclerView` | rows the host recycles, in an `NSScrollView` | rows the host recycles | rows the host recycles, in a `GtkScrolledWindow` | rows the host recycles |
+
+The sections below say where a platform behaves differently.
 
 ## Text
 
@@ -62,9 +90,12 @@ ui.RichText(ui.RichTextProps{
   do nothing.
 - `Role: ui.RoleHeader` makes it a heading to screen readers.
 
-Each paragraph is typeset by the platform's engine (CoreText,
-StaticLayout) and cached by its content and width. Appending to a long
-text, a reply streaming in, typesets only the paragraph that changed.
+On iOS and Android each paragraph is typeset by the platform's engine
+(CoreText, StaticLayout) and cached by its content and width: appending
+to a long text, a reply streaming in, typesets only the paragraph that
+changed. On macOS it's a read-only `NSTextView` (TextKit), on Windows a
+read-only rich edit (`RICHEDIT50W`), on Linux a `GtkLabel` styled with
+Pango's attributes, and in a browser spans in paragraphs.
 [`examples/richtext`](../examples/richtext) streams one.
 
 For plain text, use `Text`: it is the platform's label, with its native
@@ -89,7 +120,10 @@ ui.RichText(ui.RichTextProps{Text: ui.Val(ui.Rich{
 
 `ui.Selectable` makes the `RichText` views inside it selectable, as one
 text across all of them: a long press selects a word, the platform's
-handles extend the selection, and its edit menu copies it.
+handles extend the selection, and its edit menu copies it. With a
+mouse, a drag selects and the platform's copy shortcut copies. Linux
+and the web select across the texts as one too; on macOS and Windows
+each text selects on its own.
 
 ```go
 ui.Selectable(ui.SelectableProps{Style: ui.Style{Gap: 12}},
@@ -121,7 +155,9 @@ GitHub's extensions. See [`examples/markdown`](../examples/markdown).
 ## Buttons
 
 `ui.Button` is the platform's button: a `UIButton` configuration on
-iOS, a Material button on Android.
+iOS, a Material button on Android, an `NSButton` on macOS, a `BUTTON`
+drawn as Fluent's on Windows, a `GtkButton` on Linux, a `<button>` in a
+browser.
 
 ```go
 saving := signal.New(false)
@@ -139,9 +175,10 @@ return ui.Row(ui.Style{Gap: 12, Wrap: true},
 - `Label` is what VoiceOver and TalkBack read, the title by default.
   Give an icon-only button one.
 - `Tooltip` is a short text shown while a pointer rests on it: an
-  iPad's pointer or a Mac's (`UIToolTipInteraction`), a mouse on
-  Android, where a long press shows it too (`tooltipText`), and on
-  Windows. Give an icon-only button one, its name. `ViewProps.Tooltip`
+  iPad's pointer (`UIToolTipInteraction`), a mouse on Android, where a
+  long press shows it too (`tooltipText`), and on macOS, Windows, Linux
+  and the web (the element's `title`). Give an icon-only button one, its
+  name. `ViewProps.Tooltip`
   is the same for any view. A touch screen alone never shows it on iOS,
   so it can't be the only place something is said.
 - `Disabled` disables it, the platform's way.
@@ -149,24 +186,25 @@ return ui.Row(ui.Style{Gap: 12, Wrap: true},
 
 `Variant` is its look:
 
-| Variant | iOS | Android |
-| --- | --- | --- |
-| `ButtonPlain` (default) | plain | text button |
-| `ButtonFilled` | filled | filled button |
-| `ButtonTinted` | tinted | tonal button |
-| `ButtonGray` | gray | tonal button |
-| `ButtonBordered` | bordered | outlined button |
-| `ButtonGlass` | Liquid Glass (`glass()`, iOS 26; gray before) | tonal button |
-| `ButtonGlassProminent` | tinted Liquid Glass (`prominentGlass()`, iOS 26; filled before) | filled button |
+| Variant | iOS | Android | macOS | Windows | Linux | Web |
+| --- | --- | --- | --- | --- | --- | --- |
+| `ButtonPlain` (default) | plain | text button | borderless, in the accent color | subtle, in the accent color | flat, in the accent color | plain |
+| `ButtonFilled` | filled | filled button | push button in the accent color | accent button | suggested action | filled |
+| `ButtonTinted` | tinted | tonal button | push button, its title in the accent color | a wash of the accent | a wash of the accent | tinted |
+| `ButtonGray` | gray | tonal button | push button | standard button | standard button | gray |
+| `ButtonBordered` | bordered | outlined button | push button | standard button | standard button | outlined |
+| `ButtonGlass` | Liquid Glass (`glass()`, iOS 26; gray before) | tonal button | as `ButtonGray` | as `ButtonGray` | standard button | as `ButtonGray` |
+| `ButtonGlassProminent` | tinted Liquid Glass (`prominentGlass()`, iOS 26; filled before) | filled button | as `ButtonFilled` | as `ButtonFilled` | suggested action | as `ButtonFilled` |
 
 The glass buttons are capsules, and a glass button with an icon alone is
-a circle: a sheet's close button, as iOS 26's own. A Mac and Windows
-show them as `ButtonGray` and `ButtonFilled`.
+a circle: a sheet's close button, as iOS 26's own.
 
 ### Menus
 
 A button with `Menu` shows its actions when it's tapped, instead of
-calling `OnPress` (a `UIMenu` on iOS, a `PopupMenu` on Android). Each
+calling `OnPress` (a `UIMenu` on iOS, a `PopupMenu` on Android, an
+`NSMenu` on macOS, a pop-up menu on Windows, a `GtkPopoverMenu` on
+Linux, a popover in a browser). Each
 `ui.Action` has a `Title`, an optional `Icon` beside it, a `Role`, and
 `OnPress`. `ui.ActionDestructive` shows it in red.
 
@@ -179,7 +217,8 @@ ui.Button(ui.ButtonProps{Icon: ui.IconMore, Label: ui.Val("More"), Menu: []ui.Ac
 ```
 
 `ui.Menu` puts a menu on any content. With `LongPress` it's a context
-menu, shown on a long press:
+menu, shown on a long press; with a mouse (macOS, Windows, Linux, the
+web), on a secondary click:
 
 ```go
 ui.Menu(ui.MenuProps{LongPress: true, Actions: []ui.Action{
@@ -227,6 +266,15 @@ return ui.Column(ui.Style{Gap: 12}, em, pw)
   `AutocorrectNo`.
 - `OnFocus` and `OnBlur` follow the keyboard. `ui.Focus(field)` asks for
   it, `ui.Blur(field)` dismisses it.
+
+A desktop has no on-screen keyboard to change, so `Keyboard` and
+`ReturnKey` mostly don't show there; Return still calls `OnSubmit`. On
+macOS `ContentType` is the field's AutoFill content type. On Windows
+`KeyboardNumber` takes digits only. On Linux `Keyboard`, `ContentType`,
+`Autocapitalize` and `Autocorrect` tell the input method what the field
+takes (GTK's input purpose and hints). In a browser they're the input's
+`inputmode`, `enterkeyhint`, `autocomplete`, `autocapitalize` and
+`spellcheck`, which a phone's keyboard follows.
 
 **Lines of text.** `Multiline` makes it a text area, for a message or a
 comment: return starts a new line instead of calling `OnSubmit`, and it
@@ -282,29 +330,44 @@ return ui.Column(ui.Style{Gap: 16},
 
 - **Toggle** is a switch, `*signal.Signal[bool]`. With `Checkbox` it's a
   checkbox: Android's `MaterialCheckBox`, a Mac's and Windows' check
-  box, and on iOS, which has none, a circle that fills with a
-  checkmark, as Reminders' does.
+  box, a `GtkCheckButton`, a browser's check box, and on iOS, which has
+  none, a circle that fills with a checkmark, as Reminders' does.
 - **Slider** picks a `float64` from `Min` to `Max`; with both 0, from 0
   to 1.
 - **Segmented** is one of a few options side by side, `Selected` the
   index: UIKit's segmented control, Material's segmented buttons.
+  Windows has none: the host draws one, as the Windows Community
+  Toolkit's `Segmented`.
 - **Stepper** steps a `float64` with minus and plus, by `Step` (default
   1), from `Min` to `Max` (both 0: 0 to 100). It's a `UIStepper` on
-  iOS; Android has none, so it's two Material icon buttons.
+  iOS and an `NSStepper` on macOS; elsewhere it's two buttons (Material
+  icon buttons on Android, linked buttons on Linux, as GNOME's spin
+  buttons show them).
 - **Wheel** picks one of many `Items` on a spinning wheel:
-  `UIPickerView`, Android's `NumberPicker`.
+  `UIPickerView`, Android's `NumberPicker`. The desktop and the web
+  have no wheel: it's a pop-up menu of the items there (`NSPopUpButton`,
+  a drop-down combo box, `GtkDropDown`, `<select>`).
 - **ColorPicker** is a swatch that opens the platform's picker, writing
   a `ui.Color`. `Alpha` lets the user pick an opacity, `Title` names the
   picker. On iOS it's `UIColorWell` and the system's picker; Android has
   none, so it's a Material dialog of a palette, with an opacity slider
-  for `Alpha`.
+  for `Alpha`. On macOS it's an `NSColorWell` opening the color panel,
+  on Linux a `GtkColorDialogButton`, in a browser `<input
+  type="color">`. Windows' color dialog has no opacity, so `Alpha` does
+  nothing there.
 - **DatePicker** picks a `time.Time`, shown in the device's time zone.
-  `Inline` shows iOS's calendar and time in place, for a sheet of its own;
-  Android keeps its buttons.
   `Mode` is `ui.DateOnly` (the default), `ui.TimeOnly` or
-  `ui.DateAndTime`; `Min` and `Max` bound it. On iOS it's UIKit's
-  compact date picker; on Android, buttons showing the date and time
-  that open Material's pickers. A zero `Value` shows the current time.
+  `ui.DateAndTime`; `Min` and `Max` bound it. A zero `Value` shows the
+  current time.
+
+  | | Compact (default) | `Inline` |
+  |---|---|---|
+  | iOS | UIKit's compact date picker | the calendar and time in place, for a sheet of its own |
+  | Android | buttons showing the date and time, opening Material's pickers | the same buttons |
+  | macOS | `NSDatePicker`'s text field and stepper | its calendar and clock |
+  | Windows | the date and time picker, its calendar dropping down | a month calendar, a time picker under it for `DateAndTime` (`TimeOnly` stays compact) |
+  | Linux | a button opening a popover of GTK's calendar and hour and minute spin buttons | the calendar and spin buttons in place |
+  | Web | `<input type="date">`, `"time"`, `"datetime-local"` | the same input |
 
 ## Progress and activity
 
@@ -323,8 +386,10 @@ return ui.Column(ui.Style{Gap: 12},
 ## Images
 
 `ui.Image` shows a picture. The platform loads and decodes it off the
-main thread, and caches it: in memory, and on disk across launches when
-it came over http(s).
+main thread, and caches it in memory. iOS and Android keep an image that
+came over http(s) on disk too, across launches; the desktop hosts keep
+it in memory only, and a browser in its own cache. Windows decodes PNG,
+JPEG and GIF; Linux those and what GDK's loaders read.
 
 ```go
 return ui.Column(ui.Style{Gap: 12},
@@ -360,8 +425,11 @@ one side set (a `Width`, or `Grow` in a row) it keeps its aspect ratio;
 
 ## Symbols and icons
 
-`ui.Symbol` shows a symbol. It's an SF Symbol on iOS, and the Material
-Symbol for it on Android. It's sized as text in its style's `Font`, so
+`ui.Symbol` shows a symbol. It's an SF Symbol on iOS and macOS, the
+Material Symbol for it on Android and the web, the Segoe Fluent Icons
+glyph for it on Windows (Segoe MDL2 Assets before Windows 11), and on
+Linux the icon theme's symbolic icon for it (Adwaita's), else the
+Material Symbol. It's sized as text in its style's `Font`, so
 it follows the text size, and colored with its `Color` (the label color
 by default).
 
@@ -379,11 +447,14 @@ tabs take one too. The `Icon` constants are the common ones:
 `IconTrash`, `IconShare`, `IconMore` and about fifty more.
 `icon.Filled()` is its filled form (`"star.fill"`).
 
-iOS draws any SF Symbol. Android draws a curated set: the constants and
-more, mapped to Material Symbols in
-[`platform/android/gen_symbols.go`](../platform/android/gen_symbols.go). A
-name outside that set shows nothing on Android (it logs a warning), so
-check a name you write as a string, like `"archivebox"`, on both.
+iOS and macOS draw any SF Symbol. The others draw a curated set: the
+constants and more, mapped to Material Symbols in
+[`platform/android/gen_symbols.go`](../platform/android/gen_symbols.go)
+(the web's and Linux's are generated from it), and to Segoe Fluent
+Icons' glyphs on Windows. A name outside the set shows nothing there
+(the host logs a warning), so check a name you write as a string, like
+`"archivebox"`, on each platform you ship. On Linux a name ending in
+`-symbolic` is an icon theme's name, used as it is.
 
 ### SVG icons
 
@@ -413,9 +484,12 @@ filters and `fill-rule="evenodd"`.
 
 ## Video
 
-`ui.Video` plays a video with the platform's player
-(`AVPlayerViewController`, Media3's ExoPlayer) and its controls.
-`ui.Play`, `ui.Pause` and `ui.Seek` drive it.
+`ui.Video` plays a video with the platform's player and its controls:
+`AVPlayerViewController` on iOS, Media3's ExoPlayer on Android,
+`AVPlayerView` on macOS, a `GtkVideo` (GStreamer) on Linux, a
+`<video>` in a browser. Win32 has no video view, so on Windows it's a
+`<video>` in WebView2, with Edge's controls. `ui.Play`, `ui.Pause` and
+`ui.Seek` drive it.
 
 ```go
 var v ui.Node
@@ -444,9 +518,14 @@ ratio. `Seek` takes seconds from the start.
 
 ## Web pages
 
-`ui.WebView` shows a web page in the platform's web view (`WKWebView`,
-Android's `WebView`), with its scrolling, zooming and selection. With
-no height and no `Grow` it grows to fill the space it's given.
+`ui.WebView` shows a web page in the platform's web view, with its
+scrolling, zooming and selection: `WKWebView` on iOS and macOS,
+Android's `WebView`, WebView2 (Edge's runtime) on Windows, WebKitGTK
+6.0's `WebKitWebView` on Linux. Without WebKitGTK installed, it shows
+nothing on Linux and calls `OnError` once, saying what to install. In a
+browser it's an `<iframe>`, which can do all of what follows only for
+pages of the app's own site; see [the web](web.md#web-views). With no
+height and no `Grow` it grows to fill the space it's given.
 
 ```go
 state := signal.New(ui.WebState{})
@@ -504,8 +583,8 @@ What it reports:
   `ui.WebDownload` with its `URL`, `MIME`, `Filename` and `Size` (-1 when
   unknown). It doesn't download it.
 - `OnRequest` gets the URL of each request the page makes (scripts,
-  images, media, `fetch`). **Android only**: iOS doesn't let an app see
-  them.
+  images, media, `fetch`). **Not on iOS and macOS**: `WKWebView`
+  doesn't let an app see them.
 
 `ui.WebBack`, `ui.WebForward`, `ui.WebReload` and `ui.WebStop` move
 through its history, load the page again, or stop it loading.
@@ -614,7 +693,8 @@ It draws once it's laid out, and again when its size changes or the
 signals the function read change, like an effect. Each draw records a
 display list, sent only when it differs from the last, and the platform
 replays it: Core Graphics on iOS and macOS, Android's `Canvas`, GDI+ on
-Windows. Recording allocates nothing once the canvas has drawn as much
+Windows, GTK's snapshots (GSK) on Linux, a 2D `<canvas>` in a browser.
+Recording allocates nothing once the canvas has drawn as much
 before. A canvas has no presses of its own: wrap it in a `ui.View` with
 `OnPress` or `OnPan`, which report points in its coordinates. It isn't
 read by screen readers: give the view around it a `Label`.
@@ -694,11 +774,13 @@ ui.Shader(ui.ShaderProps{
   integer remainders (`mod` of floats does), derivatives, or loops
   between values that aren't constants.
 
-It's Metal on iOS and macOS (a `CAMetalLayer`) and AGSL on Android (a
-`RuntimeShader`). Windows runs the same program on the CPU, across the
-cores and off the main thread: a frame shows when it's ready, and a
-large or animated box renders at a fraction of its resolution, scaled
-up. Give the box a `Background` that stands in until the first frame.
+It's Metal on iOS and macOS (a `CAMetalLayer`), AGSL on Android (a
+`RuntimeShader`) and WebGL 2 in a browser (the program translated to
+GLSL ES 3.00). Windows and Linux run the same program on the CPU,
+across the cores and off the main thread: a frame shows when it's
+ready, and a large or animated box renders at a fraction of its
+resolution, scaled up. Give the box a `Background` that stands in until
+the first frame.
 
 ## Containers
 
@@ -791,10 +873,10 @@ return ui.Column(ui.Style{Gap: 8},
 	ui.PageControl(ui.PageControlProps{Count: ui.Val(3), Page: page}))
 ```
 
-| | iOS | Android | macOS | Windows |
-|---|---|---|---|---|
-| Paging | `isPagingEnabled` | each swipe snaps to the next page, or back | settles on the nearest page when a swipe ends | a page per wheel notch (FlipView's) |
-| `PageControl` | `UIPageControl` | dots in the theme's primary color (Material has none) | dots in the accent color | pips (PipsPager's) |
+| | iOS | Android | macOS | Windows | Linux | Web |
+|---|---|---|---|---|---|---|
+| Paging | `isPagingEnabled` | each swipe snaps to the next page, or back | settles on the nearest page when a swipe ends | a page per wheel notch (FlipView's) | a page per wheel notch; a touchpad's or touchscreen's swipe settles on a page; the arrow keys, Page Up and Page Down move a page | CSS scroll snapping |
+| `PageControl` | `UIPageControl` | dots in the theme's primary color (Material has none) | dots in the accent color | pips (PipsPager's) | dots drawn as libadwaita's, the current one larger and darker | dots, the current one in the label color |
 
 Pages count from the reading start: right to left, the first is the
 rightmost. When the scroll view's size changes (a rotation), it stays on
@@ -803,7 +885,11 @@ its page. Screen readers say "page 2 of 3" on the dots and adjust them.
 **Pull to refresh.** `OnRefresh` turns it on (`UIRefreshControl`,
 `SwipeRefreshLayout`). Set `Refreshing` true while you refresh; the
 spinner hides when it turns false. Without `Refreshing`, it hides as
-soon as `OnRefresh` returns.
+soon as `OnRefresh` returns. On macOS a trackpad's or Magic Mouse's
+scroll pulls it past its top, as on iOS. Windows and Linux refresh the
+desktop's way: F5 (on Linux, Ctrl+R too) refreshes the scroll view the
+focus is in, or else the innermost one on screen, a spinner over its
+top meanwhile. In a browser a touch pulls it down.
 
 ```go
 refreshing := signal.New(false)
@@ -838,8 +924,9 @@ field = ui.TextField(ui.TextFieldProps{Value: note, Multiline: true, Accessory: 
 On iOS it's the field's `inputAccessoryView`: it moves with the
 keyboard, through its interactive dismissal too. Android has none of its
 own: the bar goes in the field's window (a sheet's too) at the top of the
-keyboard, following it frame by frame. A Mac and Windows, with no
-on-screen keyboard, don't show it.
+keyboard, following it frame by frame. macOS, Windows and Linux, with no
+on-screen keyboard, don't show it; a browser shows it only on a touch
+screen.
 
 **Styled text.** `Rich` makes a field a text area of styled text, for a
 mail's body or a formatted message: bold, italic, underline,
@@ -863,11 +950,11 @@ bold := ui.Button(ui.ButtonProps{Icon: "bold", Label: ui.Val("Bold"),
 	OnPress: func() { ui.ToggleFormat(field, ui.FormatBold) }})
 ```
 
-| | iOS | Android | macOS | Windows |
-|---|---|---|---|---|
-| The view | `UITextView`, its attributed text | `EditText`, its spans | `NSTextView`, rich | a rich edit (`RICHEDIT50W`), through RTF |
-| The user's formatting | the edit menu's B/I/U | a hardware keyboard's Ctrl+B, Ctrl+I, Ctrl+U | the Format menu, ⌘B ⌘I ⌘U | Ctrl+B, Ctrl+I, Ctrl+U |
-| Undo of formatting | yes | yes: the field's own history (Android's keeps text only), Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y | yes | yes |
+| | iOS | Android | macOS | Windows | Linux | Web |
+|---|---|---|---|---|---|---|
+| The view | `UITextView`, its attributed text | `EditText`, its spans | `NSTextView`, rich | a rich edit (`RICHEDIT50W`), through RTF | `GtkTextView`, its buffer's tags | a `contenteditable` element |
+| The user's formatting | the edit menu's B/I/U | a hardware keyboard's Ctrl+B, Ctrl+I, Ctrl+U | the Format menu, ⌘B ⌘I ⌘U | Ctrl+B, Ctrl+I, Ctrl+U | Ctrl+B, Ctrl+I, Ctrl+U | the browser's ⌘B ⌘I ⌘U (Ctrl elsewhere) |
+| Undo of formatting | yes | yes: the field's own history (Android's keeps text only), Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y | yes | yes | GTK's history (Ctrl+Z, Ctrl+Shift+Z), which keeps text only | yes: the page's editing commands |
 
 [`examples/mail`](../examples/mail) has a composer with a toolbar.
 
@@ -878,7 +965,9 @@ it, its text is drawn inside it, and a field's editing happens inside it.
 ## Lists
 
 `ui.List` shows a row per item in the platform's recycling list
-(`UICollectionView`, `RecyclerView`). Rows are made only for the cells
+(`UICollectionView`, `RecyclerView`). The desktop and the web have no
+list that holds rows of any view, so there the host recycles rows
+itself, in the platform's scroll view. Rows are made only for the cells
 on screen; a cell scrolled away is reused for another item, and only the
 props that differ are updated. [`examples/list10k`](../examples/list10k)
 has ten thousand rows.
@@ -911,14 +1000,18 @@ grows. It draws the platform's separators between rows.
 - `SwipeActions`, the actions of row `i`, revealed by swiping it. On
   iOS they are its trailing actions, a destructive one red, the first
   run by a full swipe. On Android a full swipe runs the first, over its
-  color and icon, as Material's swipe to dismiss. Give the row the same
-  as accessibility `Actions`, for screen readers.
+  color and icon, as Material's swipe to dismiss. On macOS, Windows,
+  Linux and the web they're the row's context menu (a secondary click;
+  on Linux and the web a long press too), leading then trailing. Give the
+  row the same as accessibility `Actions`, for screen readers.
 - `OnEndReached`, called when the last rows are about to show, once for
   each length the list has: load more there.
-- `OnRefresh` and `Refreshing`, pull to refresh as on a `Scroll`.
+- `OnRefresh` and `Refreshing`, pull to refresh as on a `Scroll` (F5 on
+  Windows and Linux).
 - `OnScroll`, as on a `Scroll`.
 - `Appearance`, its look. `ui.ListPlain` is rows edge to edge, apart by
-  separators; `ui.ListInsetGrouped` is the platform's grouped list;
+  separators; `ui.ListInsetGrouped` is the platform's grouped list
+  (libadwaita's boxed lists on Linux);
   `ui.ListBare` has no separators and nothing behind its rows, so what's
   behind the list shows through, for rows that draw their own cards. A bare
   list's rows leave their own space, and can still be swiped.
@@ -1002,10 +1095,11 @@ ui.List(ui.ListProps{
 A plain or bare list's header stays at the top while its section's rows
 scroll under it, and the next header pushes it up (UITableView's plain
 style; on Android, which has none, a cell over the list, bound to the
-section at the top; on desktop, the header row itself). A plain list's
-header is on the list's background; a bare list's draws its own (a
-chat's pill over the messages). An inset grouped list's sections are
-groups of their own, each under its header, which scrolls with it.
+section at the top; on the desktop and the web, the header row
+itself). A plain list's header is on the list's background; a bare
+list's draws its own (a chat's pill over the messages). An inset grouped
+list's sections are groups of their own, each under its header, which
+scrolls with it.
 
 ### Selecting rows
 
@@ -1035,14 +1129,11 @@ ui.List(ui.ListProps{
 }, msgs, key, row)
 ```
 
-| | iOS | Android | macOS, Windows |
-|---|---|---|---|
-| The control | UIKit's edit mode circles | a Material checkbox at the row's end | the row highlighted (the accent's selection color; a WinUI list's pill) |
-| `OnSelectBegin` | a two-finger pan over rows, which goes on to select the rows it crosses | a long press (Gmail's) | — |
-| Screen readers | each row selectable | each row a checkbox, its text the label | — |
-
-On desktop a row's swipe actions, leading then trailing, are its context
-menu (a secondary click).
+| | iOS | Android | macOS, Windows, Linux | Web |
+|---|---|---|---|---|
+| The control | UIKit's edit mode circles | a Material checkbox at the row's end | the row highlighted (the accent's selection color; a WinUI list's pill on Windows) | a circle at the row's leading edge that fills with a checkmark, the row tinted |
+| `OnSelectBegin` | a two-finger pan over rows, which goes on to select the rows it crosses | a long press (Gmail's) | — | — |
+| Screen readers | each row selectable | each row a checkbox, its text the label | — | each row selected or not (`aria-selected`) |
 
 ### Grids
 
@@ -1085,5 +1176,7 @@ a `Scroll`.
 
 ## Your own views
 
-When a platform has a widget RyUI doesn't, write it in Swift and Kotlin
-and show it with `ui.Native`. See [Native code](native.md).
+When a platform has a widget RyUI doesn't, write it yourself and show it
+with `ui.Native`: in Swift on iOS, Kotlin on Android, Go on macOS,
+Windows and Linux (AppKit, Win32 and GTK through package `native`), and
+JavaScript on the web. See [Native code](native.md).

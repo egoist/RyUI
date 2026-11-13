@@ -1,10 +1,22 @@
 # Shipping
 
-`ryui build` makes the builds the stores take, from the app's directory
-(or the one given), into its `dist`, and `ryui publish` uploads them:
-to TestFlight and App Review, or a Google Play track (see
-[Publishing](#publishing)). `ryui build -platform web` makes a static
-site instead, to serve from any web server: see [the web](web.md#ryui-build--platform-web).
+`ryui build` makes an app's release build for one platform, from the
+app's directory (or the one given), into its `dist`. `ryui publish`
+uploads the iOS and Android builds to their stores: to TestFlight and
+App Review, or a Google Play track (see [Publishing](#publishing)).
+
+| `-platform` | What it makes, in `dist` | Builds on | Given to users |
+|---|---|---|---|
+| `ios` | `<Name>.ipa`, signed for the App Store | a Mac with Xcode | TestFlight, the App Store (`ryui publish`) |
+| `android` | `<Name>.aab`, signed with your upload key | any system with a JDK, the Android SDK and the NDK | Google Play (`ryui publish`) |
+| `mac` | `<Name>.app`, universal; or a `.pkg` (`-appstore`) | a Mac with Xcode's command line tools | a download, signed and notarized; the Mac App Store |
+| `windows` | `<Name>/`, the `.exe` and its assets | any system | a zip, or an installer or MSIX of yours |
+| `linux` | `linux/`: an install prefix, a `.tar.gz`, a Flatpak manifest | any system | the `.tar.gz`, a Flatpak |
+| `web` | `web/`, a static site | any system | any web server or CDN |
+
+Without `-platform`, on a Mac, a Windows PC or a Linux machine, it
+builds for that computer. Every build but iOS's and Android's is plain
+Go with `CGO_ENABLED=0`, so it needs no C toolchain.
 
 ## ryui.json
 
@@ -20,11 +32,59 @@ site instead, to serve from any web server: see [the web](web.md#ryui-build--pla
 }
 ```
 
-- `name` is under the icon; `id` is the bundle ID and application ID.
-- `version` is what users see; `build` counts the builds uploaded, and
-  must grow with each. `ryui publish` numbers each build after the
-  store's highest itself, so `build` is only where it starts.
-- `icon` is a square PNG, 1024×1024, without transparency for iOS.
+Every key is optional; these apply on every platform:
+
+- `name` is the app's name: under the icon, in the Mac's menu bar, the
+  window's title on Windows, the launcher's on Linux, the web page's
+  title. It names the build's files too (`Notes.app`, `Notes.exe`).
+  The default is the directory's name.
+- `id` is the bundle ID on iOS and the Mac, the application ID on
+  Android and Linux (its desktop file, icon and D-Bus name), the
+  AppUserModelID on Windows (its toasts'). The default is
+  `dev.ryui.<directory>`.
+- `version` is what users see (default `1.0`); `build` counts the builds
+  uploaded, and must grow with each (default 1). `ryui publish` numbers
+  each build after the store's highest itself, so `build` is only where
+  it starts. On Windows they're the `.exe`'s file version
+  (`1.2.0.7` for version 1.2 and build 7), on Linux the metainfo's
+  release.
+- `icon` is a square PNG, 1024×1024, without transparency for iOS. Each
+  build makes the sizes its platform wants: an asset catalog on iOS,
+  the launcher's on Android, an `.icns` on the Mac, an `.ico` in the
+  `.exe` on Windows, the hicolor theme's from 16 to 512 pixels on
+  Linux, the web manifest's, the favicon and iOS's home screen icon on
+  the web.
+- `accent` is the app's accent color, `"#rrggbb"`: the tint on iOS, the
+  seed of the Material 3 color scheme on Android, the color of `Accent`,
+  filled buttons and links on the Mac (AppKit's own controls keep the
+  accent the user picks), the controls' accent on Windows in place of
+  the system's, libadwaita's accent on Linux, and on the web the page's
+  accent and its manifest's `theme_color`. Without it, each platform's
+  own.
+- `scheme` opens the app for `myapp://` URLs: on iOS, Android, the Mac
+  (`CFBundleURLTypes`) and Linux (the desktop file's
+  `x-scheme-handler`); a Windows build doesn't register it. `links`
+  opens it for https links to your domains (universal links, App Links;
+  iOS and Android). `ui.OnOpenURL` gets them.
+
+Platform by platform:
+
+- `ios.*` is the iOS build's ([iOS](#ios)); `ios.team` is the Mac
+  build's team too, and `ios.usage`'s purpose strings go in the Mac's
+  Info.plist as well.
+- `android.*` is the Android build's ([Android](#android)).
+- `mac.profile` is a Mac build's provisioning profile, and
+  `mac.appStoreProfile` the Mac App Store's: see [macOS](#macos).
+- `linux.*` is what a Linux build's desktop file and AppStream metainfo
+  say: see [Linux](#linux).
+- `web.vapidPublicKey` is the app server's VAPID public key, for
+  `ryui/push` on the web (Web Push; see
+  [the web](web.md#ryuipush-web-push)).
+- A Windows build needs nothing beyond the keys above; its signing
+  certificate is given in the environment ([Windows](#windows)).
+
+These are for the phones and tablets:
+
 - `orientations`: `portrait`, `landscape` (both by default), on phones.
   On iPad the app takes every orientation, as Split View, Slide Over
   and Stage Manager need; Android 16 likewise ignores it on tablets and
@@ -34,15 +94,6 @@ site instead, to serve from any web server: see [the web](web.md#ryui-build--pla
   resizable for split screen and desktop windows. Lay out from
   `ui.UseEnvironment()`'s `Width` and `Height`, the window's size, not
   the device's.
-- `accent` is the app's accent color, `"#rrggbb"`: the tint on iOS, the
-  seed of the Material 3 color scheme on Android, libadwaita's accent on
-  Linux.
-- `linux` is what a Linux build's desktop file and AppStream metainfo
-  say: see [Linux](#linux).
-- `mac.profile` is a Mac build's provisioning profile, and
-  `mac.appStoreProfile` the Mac App Store's: see [macOS](#macos).
-- `scheme` opens the app for `myapp://` URLs, and `links` for https links
-  to your domains (universal links, App Links); `ui.OnOpenURL` gets them.
 - `shareTarget` offers the app in other apps' share sheets: `true` for
   texts and links, or `{"types": ["text", "image/*"], "max": 10}` for
   files too (see [Device](device.md#shares-from-other-apps-uionshare));
@@ -59,11 +110,8 @@ site instead, to serve from any web server: see [the web](web.md#ryui-build--pla
 - `android.googleServices` is the Firebase project's
   `google-services.json`, for `ryui/push`; `android.mapsKey`, a Google
   Maps Platform API key, for `ryui/maps`.
-- `web.vapidPublicKey` is the app server's VAPID public key, for
-  `ryui/push` on the web (Web Push; see
-  [the web](web.md#ryuipush-web-push)).
 - `ios.usage` gives the purpose strings of protected resources
-  (`NSCameraUsageDescription`...), and `ios.infoPlist` adds keys to
+  (`NSCameraUsageDescription`...; the Mac's too), and `ios.infoPlist` adds keys to
   Info.plist; `ios.backgroundModes` adds to `UIBackgroundModes` (`"audio"`,
   to record and play with the screen locked); `android.permissions` adds
   permissions.
@@ -223,10 +271,23 @@ instead of making one.
 
 ## macOS
 
-`ryui build -platform mac` makes a universal `.app` (Apple silicon and Intel),
-signed ad hoc: it runs on your Mac. To give it to others outside the
-Mac App Store, sign it with your Developer ID and have Apple notarize
-it, so Gatekeeper opens it:
+```sh
+ryui build -platform mac
+```
+
+makes `dist/<Name>.app` on a Mac: a universal app (Apple silicon and
+Intel), for macOS 11 and later, with its Info.plist, icon, languages and
+assets, signed ad hoc: it runs on your Mac. The packages the app imports
+give it their purpose strings, as on iOS, from `ios.usage` (location's
+is `NSLocationUsageDescription` on the Mac, taken from
+`NSLocationWhenInUseUsageDescription`), and the hardened runtime's
+entitlements for them (`com.apple.security.device.camera`,
+`...audio-input`, `...personal-information.location`...), without which
+an app signed with a Developer ID is refused the camera, the microphone
+or the user's data.
+
+To give it to others outside the Mac App Store, sign it with your
+Developer ID and have Apple notarize it, so Gatekeeper opens it:
 
 ```sh
 xcrun notarytool store-credentials ryui   # once: your Apple ID, team and an app-specific password
@@ -263,20 +324,29 @@ an app that uses those packages is signed with the best match installed
 for its ID (in Xcode's profile folders), else without one: the build
 says what won't work on the Mac, and the rest of the app does.
 
-`-appstore` makes a `.pkg` for the Mac App Store instead: the app in the
+`-appstore` makes `dist/<Name>.pkg` for the Mac App Store instead: the app in the
 App Sandbox (with the network and the files the user picks), signed
 with a Mac App Store profile's certificate (Apple Distribution;
 ryui.json's `mac.appStoreProfile`, else `-profile`, else the best match),
 and the package with the team's Mac Installer Distribution certificate.
-Upload it with Transporter or `xcrun altool --upload-package`.
+Upload it with Transporter or `xcrun altool --upload-package`;
+`ryui publish` doesn't upload Mac builds yet. Notarizing is for apps
+outside the store: `-notarize` with `-appstore` is an error.
 
 ## Windows
 
-`ryui build -platform windows` makes a folder, from any system: the
-`.exe` (its icon, manifest and version information built in) and the
-app's assets beside it. It's for x64 PCs, which Windows on Arm runs
-emulated; `-arch arm64` makes it native for Arm PCs instead. Zip the
-folder, or package it (an installer, MSIX).
+```sh
+ryui build -platform windows               # x64, which Windows on Arm runs emulated
+ryui build -platform windows -arch arm64   # native on Arm PCs
+```
+
+makes a folder, `dist/<Name>`, from any system: `<Name>.exe` and the
+app's assets beside it. The `.exe` is a GUI program (no console window)
+with its resources built in: the icon at Windows's sizes, its version
+information (`version` and `build`), and a manifest that asks for the
+common controls 6, per-monitor DPI awareness and UTF-8, for Windows 10
+and 11. An app with a `.syso` of its own in its directory has its own
+resources instead. Zip the folder, or package it (an installer, MSIX).
 
 Sign the `.exe`, so SmartScreen knows who it's from, with a code signing
 certificate exported as a `.pfx`:
@@ -366,10 +436,28 @@ What the desktop file and metainfo say, in `ryui.json`:
 (`Utility` by default); `license` is an SPDX expression; Flathub and
 software centers want the summary, description, license and developer.
 
+## The web
+
+```sh
+ryui build -platform web
+```
+
+makes a static site in `dist/web`: `index.html`, the app as
+WebAssembly, the web host's scripts, the app's service worker, its
+assets, a web app manifest with its icons, gzipped copies, and a
+`_headers` file for Cloudflare and Netlify. The files are named by their
+digests, so all but `index.html` and the manifest can be cached for
+good. Serve the folder from any web server or CDN, `.wasm` as
+`application/wasm`, over HTTPS (service workers, Web Push and the secure
+store need it). See [the web](web.md) for what's in it and what a
+browser does differently.
+
 ## In an existing app
 
 A RyUI app can live inside an app made in Xcode or Android Studio: a
-feature written once in Go, shown from a native app.
+feature written once in Go, shown from a native app. (On the web, the
+build's app runs in an element of a page of yours: see
+[the web](web.md).)
 
 **iOS.** `ryui build -platform ios -xcframework` makes `dist/RyUIApp.xcframework`:
 the app's Go code and the UIKit host, for devices and the simulator, with
@@ -438,17 +526,32 @@ sentry-cli debug-files upload --org ORG --project PROJECT dist/Notes-native-debu
 sentry-cli upload-proguard --org ORG --project PROJECT dist/Notes-mapping.txt
 ```
 
+**The Mac, Windows, Linux and the web.** The app is one Go binary, built
+without its symbol table and debug information (`-s -w`); Go's stack
+traces keep their function names and lines, so its panics read as they
+are, and there are no symbols to upload.
+
 Keep each release's symbols: a crash is symbolicated with those of the
 build it happened in. See [Device](device.md#crash-reports-ryuicrash)
 for the reports themselves.
 
-## What the stores check
+## Before you release
 
-Run the release build on a phone before you release it: an iOS build
-with `-distribution development`, and the Android build from Play's
-internal test track (`ryui publish -platform android -track internal`),
-which installs the APK Play makes from the `.aab`. TestFlight and a Play
-internal test also check what a simulator can't.
+Run the release build where your users will, before you release it:
+
+- On a phone: an iOS build with `-distribution development`, and the
+  Android build from Play's internal test track (`ryui publish
+  -platform android -track internal`), which installs the APK Play makes
+  from the `.aab`. TestFlight and a Play internal test also check what a
+  simulator can't.
+- On the Mac: the signed, notarized `.app`, downloaded on another Mac
+  (a download is what Gatekeeper checks); `spctl --assess --type execute
+  -vv Notes.app` says what Gatekeeper will make of it.
+- On Windows and Linux: the folder, or the `.tar.gz` or Flatpak, on a
+  machine that has never had the app (Linux: with GTK 4.14 and
+  libadwaita 1.5 or later).
+- On the web: the built site served over HTTPS, in each browser you
+  support.
 
 ## In CI
 
@@ -589,11 +692,103 @@ the iOS job once Apple has the upload, not once it's processed. The App Store ta
 made with a recent Xcode only; if the runner's default is older, pick
 one with `sudo xcode-select -s /Applications/Xcode_<version>.app`.
 
+### The desktop
+
+These jobs, added to the same workflow, build the desktop apps for the
+tag and attach them to its draft release: the Mac's signed with your
+Developer ID and notarized, Windows' for x64 and Arm, signed, and
+Linux's for amd64 and arm64. Windows' and Linux's build on Linux, so
+one Ubuntu runner makes both. (The app is named Notes here: its files
+are named after `ryui.json`'s `name`.)
+
+```yaml
+  mac:
+    needs: release
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
+      - name: the ryui CLI, at the app's version of ryui
+        run: go install github.com/egoist/ryui/cmd/ryui@$(go list -m -f '{{.Version}}' github.com/egoist/ryui)
+      - name: the Developer ID certificate
+        env:
+          CERTIFICATE: ${{ secrets.MAC_CERTIFICATE }}
+          CERTIFICATE_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
+        run: |
+          KC=$RUNNER_TEMP/signing.keychain-db
+          PW=$(openssl rand -hex 16)
+          security create-keychain -p "$PW" "$KC"
+          security set-keychain-settings -lut 3600 "$KC"
+          security unlock-keychain -p "$PW" "$KC"
+          echo "$CERTIFICATE" | base64 --decode > $RUNNER_TEMP/certificate.p12
+          security import $RUNNER_TEMP/certificate.p12 -k "$KC" -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -k "$PW" "$KC"
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+      - name: build, sign and notarize
+        env:
+          RYUI_APPLE_ID: ${{ secrets.APPLE_ID }}
+          RYUI_APPLE_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          RYUI_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: ryui build -platform mac -sign "Developer ID Application: Your Name (TEAMID)" -notarize env
+      - name: attach to the tag's release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          ditto -c -k --keepParent dist/Notes.app dist/Notes-mac.zip
+          gh release upload "$GITHUB_REF_NAME" dist/Notes-mac.zip --clobber
+
+  windows-linux:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
+      - name: the ryui CLI, at the app's version of ryui
+        run: go install github.com/egoist/ryui/cmd/ryui@$(go list -m -f '{{.Version}}' github.com/egoist/ryui)
+      - name: osslsigncode, and the code signing certificate
+        env:
+          CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+        run: |
+          sudo apt-get install -y osslsigncode
+          echo "$CERTIFICATE" | base64 --decode > $RUNNER_TEMP/cert.pfx
+      - name: Windows, x64 and Arm
+        env:
+          RYUI_WINDOWS_CERT: ${{ runner.temp }}/cert.pfx
+          RYUI_WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          ryui build -platform windows -o dist/x64
+          ryui build -platform windows -arch arm64 -o dist/arm64
+          (cd dist/x64 && zip -r ../Notes-windows-x64.zip Notes)
+          (cd dist/arm64 && zip -r ../Notes-windows-arm64.zip Notes)
+      - name: Linux, amd64 and arm64
+        run: |
+          ryui build -platform linux
+          ryui build -platform linux -arch arm64
+      - name: attach to the tag's release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release upload "$GITHUB_REF_NAME" dist/*.zip dist/linux/*.tar.gz --clobber
+```
+
+Their secrets: `MAC_CERTIFICATE`, your Developer ID Application
+certificate with its private key (a `.p12`), and
+`MAC_CERTIFICATE_PASSWORD`; `APPLE_ID`, `APPLE_APP_PASSWORD` (an
+app-specific password, from account.apple.com) and `APPLE_TEAM_ID`, for
+the notary service; `WINDOWS_CERTIFICATE`, a code signing certificate
+(a `.pfx`), and `WINDOWS_CERTIFICATE_PASSWORD`. Each Linux build makes
+its own `.tar.gz`; the Flatpak manifest packages the last one built, for
+its architecture.
+
 ## Languages
 
 An app with [catalogs](i18n.md) needs nothing more: `ryui build` declares its
 languages to each store and system (`CFBundleLocalizations` and `.lproj`s on
 iOS and macOS, a `locales_config` on Android), which makes Settings offer the
-app's language. The app's name and its purpose strings can be translated too,
+app's language. Windows, Linux and web builds declare none: the app
+shows the language the user's settings pick from its catalogs. The app's name and its purpose strings can be translated too,
 with keys `ryui.appName` and `ryui.NSCameraUsageDescription` in the catalogs
 ([Packaging](i18n.md#what-the-system-shows)).

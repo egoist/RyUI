@@ -7,22 +7,46 @@ the network through `net/http`, and which calls may block the main thread.
 
 ## Where data lives
 
-`store.Dir()` is the app's data directory: on iOS, Application Support in
-the app's container; on Android, the app's files directory. `ryui/store`'s
-file is there, and so are the databases `sqlite.Open` makes from a plain
-name. Put your own files there too.
+`store.Dir()` is the app's data directory. `ryui/store`'s file is there,
+and so are the databases `sqlite.Open` makes from a plain name. Put your
+own files there too.
 
-Under `ryui dev`, your Go code runs on your Mac, so `store.Dir()` is a
-directory on the Mac (in the user's config directory, under `ryui/`), and
-the store, the databases and your files are there. `ryui/secure` is the
-exception: it is the device's keychain, as in a release build.
+| | `store.Dir()` |
+|---|---|
+| iOS | Application Support in the app's container (in its App Group, with a [share sheet](device.md#the-apps-own-share-sheet-appsharesheet)) |
+| Android | the app's files directory |
+| macOS | `~/Library/Application Support/<name>` |
+| Windows | `%LOCALAPPDATA%\<name>` |
+| Linux | `$XDG_DATA_HOME/<id>` (`~/.local/share/<id>`; in a Flatpak, the sandbox's own) |
+| The web | `/data/<name>`, in a file system in memory that the page keeps in the browser's storage (IndexedDB) |
+
+`<name>` is `ryui.json`'s `name`, and `<id>` its `id`; either is the
+program's name when the app is run without the CLI (`go run`). The
+directory is made by what first writes there. On Windows and Linux, the
+host keeps a few files of its own there too (the main window's size and
+place, the app's chosen language). In a browser, the directory's files
+are loaded before the app starts and written back a moment after they
+change, and as the page is hidden: see [the web](web.md).
+
+Under `ryui dev`, where your Go code runs on your computer (a desktop
+app, and iOS and Android in the player), `store.Dir()` is a directory of
+`ryui dev`'s own there (in the user's cache directory, under `ryui/`,
+one for each app and platform), so what you try while developing never
+mixes with an installed build's data. With the player, the store, the
+databases and your files are on the computer, not on the device.
+`ryui/secure` is the exception: it is the platform's store, as in a
+release build (under the player, the device's keychain). On the web,
+`ryui dev`'s page keeps its files in the browser, for the dev server's
+address.
 
 ## Small values: ryui/store
 
 `ryui/store` keeps small values across launches: settings, a signed-in
 user's name, the tab last open. Values are JSON, in one file
 (`store.json` in `store.Dir()`), written off the main thread a moment
-after they change, and when the app goes to the background. It's not a
+after they change, and when the app goes to the background (on a Mac,
+as it's hidden or minimized or quits; on Windows, as its window loses
+focus; in a browser, as the page is hidden). It's not a
 database: for many or large records, use SQLite.
 
 `store.Signal` is a signal whose value is kept. It starts with the value
@@ -105,7 +129,7 @@ logging and foreign keys, and sets a busy timeout of 5 seconds.
 database, in order: its SQL (statements separated by semicolons) runs
 once, in a transaction, and the version is recorded in `PRAGMA
 user_version`. Add a step to change the schema; never change a step that
-has shipped, since phones that ran it won't run it again.
+has shipped, since devices that ran it won't run it again.
 
 `db.Close()` closes it. Most apps open one database at launch and keep
 it.
@@ -260,6 +284,24 @@ or a database.
 - **Android**: each value is encrypted (AES-GCM) with a key in the Android
   Keystore, which never leaves it, and kept in the app's private
   preferences.
+- **macOS**: the login keychain, as generic passwords under the app's
+  bundle ID (its name, without one), which Keychain Access shows. An app
+  signed ad hoc can use it, as `ryui dev`'s and a build without a
+  Developer ID are.
+- **Windows**: the Credential Manager, as the user's generic credentials
+  named `<name>/<key>`, kept on this computer (they don't roam), which
+  Control Panel's Credential Manager shows. A value is at most 2560 bytes.
+- **Linux**: the user's keyring, through libsecret and the Secret
+  Service (GNOME Keyring, KWallet, KeePassXC): an item of the app's own
+  schema (its ID) for each key, labeled `<name>: <key>`, in the default
+  collection, which the keyring's app (GNOME's Passwords and Keys) shows. Without
+  libsecret or a keyring running, the calls fail, saying so.
+- **The web**: a browser has no keychain. Each value is encrypted
+  (AES-GCM, 256 bits) under a key WebCrypto made non-extractable, and
+  kept with it in the app's IndexedDB database, so no script can read the
+  key's bytes, and the values aren't on the disk in the clear. Anything
+  running in the app's origin can still have the key decrypt them: it's
+  a web app's best, not a keychain. It needs https or localhost.
 
 On the main thread, `Load`, `Save` and `Remove` take a callback, called
 on the main thread:
@@ -307,9 +349,13 @@ go func() {
 
 Files are Go's `os`, and the network is Go's `net/http`: RyUI adds nothing
 of its own. Keep the files in `store.Dir()`. Files RyUI's packages give you
-(a photo taken, a video recorded, photos picked) are in the app's caches
-or temporary directory, which the system may clear: move one into
-`store.Dir()` to keep it.
+(a photo taken, a video recorded, photos picked, files dropped or pasted)
+are in the app's caches or temporary directory, which the system may
+clear: move one into `store.Dir()` to keep it. In a browser, `os` works on
+the page's file system: `store.Dir()` is kept, and the rest (`/tmp`, the
+caches) lasts as long as the page. `net/http` there is the browser's
+`fetch`, so a request to another origin needs that origin's CORS
+headers.
 
 Both wait, so do them in a goroutine, and `ui.Post` the result back to
 the main thread:

@@ -1,8 +1,18 @@
 # What RyUI has, against SwiftUI and Expo
 
 Each row is something apps often need: how SwiftUI and Expo do it, and
-what RyUI has for it. In a browser, what each package does instead where a browser can't do
+what RyUI has for it. A ✓ is on every platform RyUI runs on (iOS,
+Android, the Mac, Windows, Linux and the web) unless the row says
+otherwise; where a platform hasn't something (a Mac has no sensors, a
+browser no home screen widgets), its package answers that it hasn't.
+In a browser, what each package does instead where a browser can't do
 what a phone does is in [The web](web.md#native-modules).
+
+SwiftUI also runs on the Mac. Expo runs on iOS, Android and the web;
+React Native reaches Windows and the Mac through Microsoft's React
+Native for Windows and macOS, outside Expo. For RyUI against the
+desktop's own frameworks (Electron, Tauri, Wails), see
+[On the desktop](#on-the-desktop).
 
 ✓ has it · ◐ in part (what's missing is said) · ✗ not yet
 
@@ -13,7 +23,7 @@ what a phone does is in [The web](web.md#native-modules).
 | Stacks, spacing, padding, alignment | `HStack`, `VStack`, `Spacer` | flexbox | ✓ `Row`, `Column`, `Style` (flexbox: `Grow`, `Gap`, `Align`, `Justify`, `Wrap`) |
 | Overlays, absolute placement | `ZStack`, `.overlay` | `position: absolute` | ✓ `Style.Absolute`, `Top`/`Left`/... |
 | Scrolling | `ScrollView` | `ScrollView` | ✓ `Scroll` (vertical, horizontal; out-of-sight rows leave the tree) |
-| Lazy lists, cell recycling | `List`, `LazyVStack` | `FlatList` | ✓ `List` (the platform's: UICollectionView, RecyclerView) |
+| Lazy lists, cell recycling | `List`, `LazyVStack` | `FlatList` | ✓ `List` (the platform's: UICollectionView, RecyclerView; on the Mac, Windows, Linux and the web, the host binds and recycles the rows in view) |
 | Grids | `LazyVGrid` | `FlatList numColumns` | ✓ `ListProps.Columns`, `Gap` |
 | Chat lists: start at the end, load older above | `defaultScrollAnchor(.bottom)`, `scrollPosition` | `FlatList inverted`, `maintainVisibleContentPosition` | ✓ `ListProps.Anchor`, `OnStartReached`; rows added above what shows leave it in place, in every list |
 | Sections, sticky headers | `Section` in a `List` | `SectionList`, `stickySectionHeadersEnabled` | ✓ `ListProps.Section`, `Header` (sticky in plain and bare lists) |
@@ -39,15 +49,15 @@ what a phone does is in [The web](web.md#native-modules).
 | Progress, spinner | `ProgressView` | `ActivityIndicator` | ✓ `Progress`, `Activity` |
 | Wheel and menu pickers, stepper | `Picker`, `Stepper` | community | ✓ `Wheel`, `Stepper`, a menu from `Button.Menu` |
 | Color picker | `ColorPicker` | community | ✓ `ColorPicker` (iOS's system picker; on Android, which has none, a Material dialog of Google's palette, with opacity) |
-| Icons | SF Symbols | `@expo/vector-icons` | ✓ `Symbol` (SF Symbols; Material Symbols on Android, a curated set) |
+| Icons | SF Symbols | `@expo/vector-icons` | ✓ `Symbol` (SF Symbols on iOS and the Mac; for the same names, Material Symbols on Android and the web, Segoe Fluent Icons on Windows, the icon theme's or Material Symbols on Linux: a curated set) |
 | Images (remote, cached, placeholders) | `AsyncImage` | `expo-image` | ✓ `Image` (memory and disk cache, `Placeholder`) |
-| Video | `VideoPlayer` | `expo-video` | ✓ `Video` |
-| Web content | `WKWebView` | `react-native-webview` | ✓ `WebView` (URL, HTML, messages both ways, scripts before the page's, blocked requests, its state and history, downloads, new windows, cookies, a script's value; each request on Android; on the web, all of it for the app's own site and for pages that cooperate through `postMessage`, while another site's page only loads); `ryui/js` runs JavaScript off screen |
+| Video | `VideoPlayer` | `expo-video` | ✓ `Video` (AVKit on iOS and the Mac, Media3 on Android, WebView2 on Windows, GStreamer on Linux, `<video>` on the web) |
+| Web content | `WKWebView` | `react-native-webview` | ✓ `WebView` (WKWebView on iOS and the Mac, Android's WebView, WebView2 on Windows, WebKitGTK on Linux; URL, HTML, messages both ways, scripts before the page's, blocked requests, its state and history, downloads, new windows, cookies, a script's value; each request on Android; on the web, all of it for the app's own site and for pages that cooperate through `postMessage`, while another site's page only loads); `ryui/js` runs JavaScript off screen |
 | Maps | `Map` | `expo-maps` | ✓ `ryui/maps` (Apple Maps; Google Maps with an API key: region, markers, the user's location, taps; libshumate's OpenStreetMap map on Linux; on Windows the host draws OpenStreetMap's tiles itself) |
 | Custom drawing | `Shape`, `Path`, `Canvas` | `react-native-svg`, Skia | ✓ `Shape` and `Path` (fill, stroke, caps, joins, dashes, an animatable trim); `Canvas` (paths, gradients, text, transforms, clips, opacity); SVG icons drawn natively (`ryui/svg`) |
 | Charts | Swift Charts | `victory-native`, community | ✓ `ryui/chart` (bars, lines, areas, points) |
-| Shaders | `.colorEffect(ShaderLibrary...)` | Skia's runtime effects | ✓ `Shader` (Kage, Go's syntax: Metal on Apple, AGSL on Android, the CPU on Windows) |
-| Native escape hatch | `UIViewRepresentable` | native modules | ✓ `ui.Native` views, `ui.Call` modules |
+| Shaders | `.colorEffect(ShaderLibrary...)` | Skia's runtime effects | ✓ `Shader` (Kage, Go's syntax: Metal on iOS and the Mac, AGSL on Android, WebGL 2 on the web, the CPU on Windows and Linux) |
+| Native escape hatch | `UIViewRepresentable` | native modules | ✓ `ui.Native` views, `ui.Call` modules (Swift on iOS, Kotlin on Android, Go on the desktop, JavaScript on the web: [Native code](native.md)) |
 | Paging, page dots | `.scrollTargetBehavior(.paging)`, `TabView(.page)` | `react-native-pager-view` | ✓ `ScrollProps.Paging`, `PageControl` |
 | Checkbox | `Toggle` (`.checkbox`, macOS) | community | ✓ `ToggleProps.Checkbox` |
 
@@ -57,7 +67,7 @@ what a phone does is in [The web](web.md#native-modules).
 |---|---|---|---|
 | Stacks with native push, pop, back gestures | `NavigationStack` | Stack | ✓ `Stack`, `UseNavigator` |
 | Tabs | `TabView` | Tabs | ✓ `Tabs` |
-| Sidebar, drawer | `NavigationSplitView` | Drawer | ✓ `SplitView` (a stack on iPhone, a drawer on Android) |
+| Sidebar, drawer | `NavigationSplitView` | Drawer | ✓ `SplitView` (a stack on iPhone, a drawer on Android; `NSSplitViewController` on the Mac, a navigation pane on Windows, libadwaita's split view on Linux) |
 | Bar buttons, titles, search | `.toolbar`, `.searchable` | header options | ✓ `ScreenOptions` (`Actions`, `Search`) |
 | Sheets with detents | `.sheet`, `.presentationDetents` | modal | ✓ `Sheet` (`Detents`, `Grabber`) |
 | Taking back, preventing dismissal | `.navigationBarBackButtonHidden`, `.interactiveDismissDisabled` | `BackHandler`, `usePreventRemove` | ✓ `OnBack` (screens, sheets, the app) |
@@ -144,7 +154,7 @@ what a phone does is in [The web](web.md#native-modules).
 
 | | SwiftUI | Expo | RyUI |
 |---|---|---|---|
-| Dark mode, semantic colors, accent | automatic | `useColorScheme` | ✓ semantic colors, `ryui.json` accent (Material 3 dynamic color) |
+| Dark mode, semantic colors, accent | automatic | `useColorScheme` | ✓ semantic colors, `ryui.json` accent (Material 3 dynamic color on Android; on the Mac, AppKit's own controls keep the user's accent) |
 | Dynamic Type, font scale | automatic | `allowFontScaling` | ✓ text styles and custom fonts scale |
 | Screen reader labels, roles, hiding | `.accessibilityLabel`... | `accessibilityLabel`... | ✓ `Label`, `Hint`, `Role`, `Decorative`; pressable views are buttons |
 | Announcements | `AccessibilityNotification.Announcement` | `announceForAccessibility` | ✓ `Announce` |
@@ -156,16 +166,41 @@ what a phone does is in [The web](web.md#native-modules).
 
 | | Xcode / Expo | RyUI |
 |---|---|---|
-| Live reload, keeping state | previews, Fast Refresh | ✓ `ryui dev`: the Go code runs on the Mac, reloads on save, keeps signals' values |
-| Release builds and signing | Xcode, EAS Build | ✓ `ryui build -platform ios` (.ipa), `ryui build -platform android` (.aab) |
-| GUI tests | XCUITest, Detox, Maestro | ✓ `e2e/` (both platforms; a CI job for each, not yet run on GitHub) |
+| Live reload, keeping state | previews, Fast Refresh | ✓ `ryui dev`: reloads on save, keeps signals' values (on a phone the Go code runs on your computer; on the desktop the app is rebuilt and run again; in the browser the page reloads) |
+| Release builds and signing | Xcode, EAS Build | ✓ `ryui build`: an `.ipa`, an `.aab`, a universal `.app` signed and notarized (or a Mac App Store `.pkg`), a Windows folder with its `.exe` signed, a Linux install prefix with a `.tar.gz` and a Flatpak manifest, a static site ([Shipping](shipping.md)) |
+| Uploading to the stores | Xcode, EAS Submit | ✓ `ryui publish`: TestFlight, App Review, Google Play's tracks; not the Mac App Store yet |
+| GUI tests | XCUITest, Detox, Maestro | ✓ `e2e/`: the examples on the iOS simulator, an Android emulator, Linux under Xvfb and headless Chrome; the Mac's and Windows' host tests drive real AppKit views and Win32 windows |
 | Benchmarks | Instruments | ✓ `bench/` (against SwiftUI and Compose) |
 | Embedding in an existing app | — | brownfield (React Native's) | ✓ `ryui build -platform ios -xcframework`, `ryui build -platform android -aar` |
 | Over-the-air updates | — | EAS Update: ✗ |
+
+## On the desktop
+
+On the Mac, Windows and Linux, apps are often made with a web view
+around HTML instead. How those frameworks compare with RyUI:
+
+| | Electron | Tauri | Wails | React Native for Windows and macOS | RyUI |
+|---|---|---|---|---|---|
+| Platforms | Mac, Windows, Linux | Mac, Windows, Linux; iOS and Android (Tauri 2) | Mac, Windows, Linux | Windows, Mac (with React Native's iOS and Android) | Mac, Windows, Linux, iOS, Android, the web |
+| What shows the interface | HTML and CSS in Chromium | HTML and CSS in the system's web view (WKWebView, WebView2, WebKitGTK) | HTML and CSS in the system's web view | the platform's native views | the platform's widgets: AppKit; Win32 and the common controls, drawn as Windows 11's; GTK 4 and libadwaita |
+| The app's language | JavaScript (Node.js beside the page) | Rust, and JavaScript in the page | Go, and JavaScript in the page | JavaScript | Go |
+| What ships with the app | Chromium and Node.js | the app's binary (the web view is the system's) | the app's binary (likewise) | a JavaScript engine and React Native's runtime | the app's Go binary (on Linux, GTK 4 and libadwaita come from the system); no web view unless the app shows a `WebView` |
+
+A web view app looks the same on every system, as its HTML and CSS
+say, and uses the web's libraries. A RyUI app looks as each platform's
+apps do (an app that sets no style is a Mac app on the Mac, a GNOME app
+on Linux, a Windows 11 app on Windows) and gets their accessibility,
+text input and menus, with one layout engine, in Go, for all of them.
+The desktop hosts run the app's Go in its own process, calling the
+platform without cgo, so `ryui build` makes Windows and Linux builds
+from any system.
 
 ## Not yet
 
 In order of what apps miss most: App Intents with parameters and
 entities (shortcuts take none yet), widgets of the app's own layout (one
 template for now), and over-the-air updates (EAS Update's; RyUI apps are compiled Go, which the
-stores don't let an app replace).
+stores don't let an app replace). On the Mac: `ScreenOptions.ZoomFrom`'s
+zoom (a push slides instead), beginning a list's selection with a
+gesture, and uploading to the Mac App Store with `ryui publish` (upload
+the `.pkg` with Transporter).

@@ -1,9 +1,9 @@
 # RyUI documentation
 
-RyUI makes native iOS and Android apps in Go. An app's interface is Go
-functions that return views; RyUI shows them with each platform's own
-widgets (UIKit on iOS, Android Views and Material 3 on Android), and
-updates only the views that read a signal when it changes.
+RyUI makes native apps in Go, for iOS, Android, macOS, Windows, Linux
+and the web. An app's interface is Go functions that return views; RyUI
+shows them with each platform's own widgets, and updates only the views
+that read a signal when it changes.
 
 ```go
 func Counter() ui.Node {
@@ -26,36 +26,60 @@ func main() { app.Run(Counter) }
 
 ## How it works
 
-Your app is Go: its components, its state and the rest of its code, in
-one library built into the app. RyUI's core runs the components, lays the
-views out (flexbox, in Go), and sends the platform what changed, in a
-batch for each frame; the app's host, in Swift on iOS and Kotlin on
-Android, makes and updates the platform's own views. A text field is a
-`UITextField` or an `EditText`, a list a `UICollectionView` or a
-`RecyclerView`, a stack of screens a `UINavigationController` or
-Material's app bar with its back gesture. So an app that sets no style
-looks as the platform's apps do, and gets their accessibility, text
-input and scrolling as they have them.
+Your app is Go: its components, its state and the rest of its code. RyUI's
+core runs the components, lays the views out (flexbox and grid, in Go),
+and sends what changed to the platform's **host**, in a batch for each
+frame. The host makes and updates the platform's own views:
+
+| Platform | Host | Its views |
+| --- | --- | --- |
+| iOS | Swift, with the app's Go built in as a library | UIKit |
+| Android | Kotlin, with the app's Go built in as a library | Android Views and Material 3 |
+| macOS | Go, in the app's process (AppKit through purego) | AppKit |
+| Windows | Go, in the app's process (Win32 through `syscall`) | Win32 and the common controls, drawn as Windows 11's |
+| Linux | Go, in the app's process (GTK through purego) | GTK 4 and libadwaita |
+| The web | JavaScript, with the app's Go as WebAssembly | The page's DOM and the browser's own controls |
+
+A text field is a `UITextField`, an `EditText`, an `NSTextField`, an
+`EDIT` control, a `GtkEntry` or an `<input>`; a stack of screens is a
+`UINavigationController`, Material's app bar with its back gesture, the
+Mac window's toolbar with its back button, or libadwaita's navigation
+view. So an app that sets no style looks as the platform's apps do, and
+gets their accessibility, text input and scrolling as they have them.
+The desktop hosts call the system's libraries from Go, without cgo, so
+a Windows or Linux app builds with Go alone, from any system.
 
 Signals hold the state. A component runs once; when a signal changes,
 only the props that read it are sent again, without diffing a tree.
 
-RyUI needs Go 1.26 or later, and runs on iOS 16 and Android 13 (API 33)
-and later. `ryui dev` runs your Go code on your Mac while you work, and
-reloads it as you save, on the simulator, an emulator or a phone.
+The same app runs everywhere. On a phone it fills the screen; on a
+desktop it's a window the user resizes, and it can open more windows
+(`ui.Window`, which a phone hasn't) and have a menu bar with
+keyboard shortcuts (`ui.MenuBar`, ignored on a phone). A package for
+something a platform doesn't have (sensors or home screen widgets on a
+Mac) answers there that it isn't available, so the app can check and do
+without.
+
+RyUI needs Go 1.26 or later. Apps run on iOS 16, Android 13 (API 33),
+macOS 11, Windows 10 and Linux with GTK 4.14 and libadwaita 1.5, and
+later; and in current browsers. `ryui dev` runs your app while you work
+and reloads it as you save: on the simulator, an emulator or a phone,
+with your Go code on your computer; on the computer itself; or in your
+browser.
 
 ## Guides
 
-- [Getting started](getting-started.md): install the CLI, make an app and
-  run it on the simulator or a phone.
-- [Concepts](concepts.md): components, signals, owners, and the main
-  thread.
+- [Getting started](getting-started.md): install the CLI, make an app
+  and run it on a phone, the simulator, your computer or a browser.
+- [Concepts](concepts.md): components, signals, owners, the main
+  thread, and the environment.
 - [Layout and style](layout.md): flexbox, sizes, the safe area, colors,
   text, shadows and gradients.
 - [Components](components.md): text, buttons, inputs, images, lists,
   video, web views and drawing.
 - [Navigation](navigation.md): stacks, tabs, sheets, alerts and menus,
-  links into the app, and shares from other apps.
+  windows and the menu bar, links into the app, and shares from other
+  apps.
 - [Motion and gestures](motion.md): animations, transitions, shared
   elements, gestures and haptics.
 - [Accessibility](accessibility.md): labels, roles, custom actions,
@@ -70,16 +94,17 @@ reloads it as you save, on the simulator, an emulator or a phone.
   network, the media library, work in the background, sign-in and
   biometrics, the screen and the launch screen, maps, the stores'
   services, sensors, image editing, speech, contacts and calendars, home
-  screen widgets and shortcuts, and crash reports.
-- [Native code](native.md): views and modules of your own, in Swift and
-  Kotlin.
-- [Development](development.md): `ryui dev` in depth, devices, tests and
-  common problems.
-- [Shipping](shipping.md): builds for the App Store and Google Play, and
-  what `ryui.json` says of the app.
+  screen widgets and shortcuts, and crash reports, on each platform.
+- [Native code](native.md): views and modules of your own, in Swift,
+  Kotlin, Go and JavaScript.
+- [Development](development.md): `ryui dev` in depth on each platform,
+  devices, `ryui vet`, tests and common problems.
+- [Shipping](shipping.md): builds for the App Store and Google Play, a
+  signed and notarized Mac app, a Windows folder, a Linux archive and
+  Flatpak manifest, and what `ryui.json` says of the app.
 - [The web](web.md): the same app in a browser, as WebAssembly and the
-  page's DOM; `ryui dev -platform web`, a static site to deploy, embedding, and
-  what it doesn't do yet.
+  page's DOM; `ryui dev -platform web`, a static site to deploy,
+  embedding, and what it doesn't do yet.
 
 ## Reference
 

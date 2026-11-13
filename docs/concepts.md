@@ -24,11 +24,27 @@ func Greeting(name string) ui.Node {
 func main() { app.Run(App) }
 ```
 
-The root fills the screen, under the notch and the home indicator;
-`ui.SafeArea` keeps its content clear of them and of the keyboard (see
-[Layout and style](layout.md#the-safe-area-and-the-keyboard)). On iOS
-and Android the platform starts the app and calls `main`; `app.Run`
-mounts the root and returns.
+The root fills the screen on a phone, under the notch and the home
+indicator, and the window on a desktop; `ui.SafeArea` keeps its content
+clear of what covers it, and of the keyboard (see [Layout and
+style](layout.md#the-safe-area-the-keyboard-and-the-window)).
+
+How `app.Run` runs depends on the platform:
+
+- **iOS and Android**: the platform starts the app, whose host (Swift,
+  Kotlin) loads the Go code and calls `main`; `app.Run` mounts the root
+  and returns.
+- **macOS, Windows and Linux**: the app is one Go program, its host
+  included. `app.Run` opens the main window, mounts the root in it and
+  runs the platform's event loop on the main thread, until the app
+  quits. Call it from `main`, as above.
+- **The web**: the page loads the app's WebAssembly; `app.Run` mounts
+  the root in the page.
+
+`app.RunWindow` is `app.Run` with the main window's options (its title,
+size and least size), which a phone ignores. A desktop app can open more
+windows with `ui.Window`, and have a menu bar with `ui.MenuBar`: see
+[Navigation](navigation.md).
 
 ## Components
 
@@ -334,8 +350,12 @@ is hidden, and a new one starts when it's shown again.
 ## The main thread
 
 Components, event handlers, effects and every signal write run on the
-platform's main thread. Don't block it: a slow request or a big file
-belongs in a goroutine.
+platform's main thread: the UI thread on iOS and Android, the process's
+first thread on macOS, Windows and Linux, which the host keeps for
+itself, and the page's thread in a browser. Don't block it: while it
+waits, the app can't draw, scroll or take input (a desktop marks the
+window as not responding). A slow request or a big file belongs in a
+goroutine.
 
 A goroutine doesn't touch signals or views itself. It hands a function
 to `ui.Post`, which runs it on the main thread, then updates the views
@@ -402,25 +422,31 @@ Its fields:
 
 - `Width`, `Height`: the screen's size, in points. It's the app's
   window, not the device: in split screen (iPad's Split View, Stage
-  Manager, Android's split screen and desktop windows) it's the app's
-  part, and it changes as the user resizes it.
+  Manager, Android's split screen) it's the app's part, and on a
+  desktop or in a browser it's the window's content; it changes as the
+  user resizes it.
 - `SafeTop`, `SafeRight`, `SafeBottom`, `SafeLeft`: the safe area's
-  insets.
-- `Keyboard`: how much of the bottom the keyboard covers.
-- `Scale`: pixels per point.
+  insets. A desktop window has none: they're 0.
+- `Keyboard`: how much of the bottom the on-screen keyboard covers.
+- `Scale`: pixels per point: 2 or 3 on a phone, 2 on a Retina Mac, the
+  display's scaling on Windows and Linux (1.5 at 150%).
 - `FontScale`: the user's text size (Dynamic Type, Android's font
-  scale); 1 is the default.
+  scale, Windows' text size, GNOME's text scaling); 1 is the default,
+  and on a Mac, which has no such setting, it stays 1.
 - `Dark`: dark mode is on.
-- `ReduceMotion`: the user asked for less motion (iOS's Reduce Motion,
-  Android's animations off). See [Motion](motion.md).
-- `ScreenReader`: VoiceOver, TalkBack or Narrator is on. See
+- `ReduceMotion`: the user asked for less motion (iOS's and macOS's
+  Reduce Motion, Android's animations off, Windows' animation effects
+  off, GNOME's animations off). See [Motion](motion.md).
+- `ScreenReader`: VoiceOver, TalkBack, Narrator or Orca is on. See
   [Accessibility](accessibility.md#is-a-screen-reader-on).
-- `Platform`: `ui.PlatformIOS` or `ui.PlatformAndroid`, the system the
-  app runs on (the device's, also in `ryui dev`, where the Go code runs
-  on the Mac). The platform's views look as they should by themselves;
-  use it for what an app draws itself, to follow each platform's
-  design, as [`examples/usage`](../examples/usage) draws UIKit's inset
-  grouped lists on iOS and Material 3's on Android.
+- `Platform`: the system the app runs on: `ui.PlatformIOS`,
+  `ui.PlatformAndroid`, `ui.PlatformMacOS`, `ui.PlatformWindows`,
+  `ui.PlatformLinux` or `ui.PlatformWeb` (the device's, also in `ryui
+  dev`, where a phone's Go code runs on your computer). The platform's
+  views look as they should by themselves; use it for what an app
+  draws itself, to follow each platform's design, as
+  [`examples/usage`](../examples/usage) draws UIKit's inset grouped
+  lists on iOS and Material 3's on Android.
 - `WidthClass`, `HeightClass`: how much room the window gives the app
   along each axis, as the platform classes it: `ui.SizeClassCompact`,
   `ui.SizeClassMedium` or `ui.SizeClassExpanded`. Branch on them, not
@@ -431,8 +457,8 @@ Its fields:
   480 dp tall, medium under 900). So an iPad mini in portrait, which
   UIKit calls regular, is Expanded on iOS, and a tablet the same size
   is Medium on Android, where Material still shows one pane: each
-  follows its platform. macOS and Windows have none of their own, and
-  take Material's.
+  follows its platform. macOS, Windows, Linux and the web have none of
+  their own, and take Material's from the window's size.
 - `Locale`, `Languages`, `FirstWeekday`, `HourCycle`: the locale of the
   user's regional formats, the languages they read, the day their weeks
   start on and their clock. Most apps read them through

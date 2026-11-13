@@ -21,7 +21,7 @@ func App() ui.Node {
 			item("Images", images),
 			item("Gestures", gestures),
 			item("Animation", animation),
-			item("Native view", native),
+			item("Native view", nativeView),
 		)
 	}, ui.ScreenOptions{Title: ui.Val("Media")})
 }
@@ -126,10 +126,10 @@ func animation() ui.Node {
 	)
 }
 
-func native() ui.Node {
+func nativeView() ui.Node {
 	selected := signal.New(1)
 	return ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 16},
-		ui.StaticText("A segmented control the app registers in Swift, Kotlin and JavaScript (ios/, android/, web/):", ui.Style{Color: ui.SecondaryLabel}),
+		ui.StaticText("A segmented control the app registers on each platform: in Swift (ios/), Kotlin (android/), JavaScript (web/), and Go on macOS, Windows and Linux (natives_*.go):", ui.Style{Color: ui.SecondaryLabel}),
 		ui.Native("Segmented", ui.NativeProps{
 			Props: map[string]any{"items": "Day,Week,Month", "selected": selected},
 			On: map[string]func(ui.NativeEvent){"changed": func(e ui.NativeEvent) {

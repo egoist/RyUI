@@ -1,7 +1,8 @@
 # The web
 
 The same app runs in a browser: its Go code compiled to WebAssembly, its
-views the page's DOM. Each view the core makes is an element placed at
+views the page's DOM. The web is one of RyUI's platforms beside iOS,
+Android, the Mac, Windows and Linux, from the same Go code. Each view the core makes is an element placed at
 the frame the core laid out, as each native host places its widgets, so
 the layout is RyUI's own (flexbox and grid, in Go), the same on every
 platform; leaves are measured by the real elements, as the native hosts
@@ -103,7 +104,8 @@ The environment a web app sees (`ui.UseEnvironment`) is the browser's:
   buttons a list. A `Popover` and a menu are popovers next to what they
   point at. A `ui.Window` is a panel in the page the user can move and
   resize.
-- A `List` is virtualized by the host, as on the desktop: only the rows
+- A `List` is virtualized by the host, as on the Mac, Windows and
+  Linux: only the rows
   in view (and half a screen around them) are bound; sections' headers
   stick; a chat's list stays at its end. Its rows' swipe actions are
   their context menu (a right-click, or a long press).
@@ -121,7 +123,9 @@ The environment a web app sees (`ui.UseEnvironment`) is the browser's:
   with a mouse, a pen or touch; drag and drop is the browser's, files
   from other apps included.
 - `MenuBar`'s items' shortcuts work in the page (⌘ on a Mac, Ctrl
-  elsewhere); the page shows no menu bar of its own.
+  elsewhere); the page shows no menu bar of its own, where the desktop
+  apps show the app's menus: the Mac's menu bar, the window's menu bar
+  on Windows, the header bar's main menu on Linux.
 
 ## The app's files
 
@@ -491,8 +495,9 @@ own, so it can't reach the app's page or storage.
 ## Native code
 
 An app's own views and modules for the web are JavaScript, in `web/*.js`
-beside its Go code, as its Swift is in `ios/` and its Kotlin in
-`android/`. The page loads them before the app starts; they register with
+beside its Go code, as its Swift is in `ios/`, its Kotlin in
+`android/`, and its desktop views and modules are Go (package `native`):
+see [Native code](native.md). The page loads them before the app starts; they register with
 the global `ryui`:
 
 ```js
@@ -514,7 +519,8 @@ ryui.registerModule("greeter", {
 });
 ```
 
-`examples/media` has a native view with its Swift, Kotlin and JavaScript.
+`examples/media` has a native view, its JavaScript in
+`examples/media/web/natives.js`.
 
 ## Embedding
 
@@ -543,4 +549,4 @@ own and `ryui/push` can't subscribe. Pass `vapidPublicKey` too for
   keyboard (a touch screen).
 - A notification scheduled with `ryui/notify` can't show at its time
   while no page of the app is open: browsers have no way to schedule one
-  ([below](#scheduled-notifications)).
+  ([above](#scheduled-notifications)).
