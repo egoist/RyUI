@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -113,6 +114,12 @@ type appConfig struct {
 	// FileTypes are the kinds of files the app opens (filetypes.go):
 	// ui.OnOpenFiles gets them.
 	FileTypes []fileTypeConfig `json:"fileTypes"`
+	// SingleInstance false lets the app run as often as it's started on
+	// Windows and Linux, each launch its own; by default (true) a second
+	// launch hands its arguments to the running one
+	// (app.OnSecondInstance, ui.OnOpenFiles) and quits. macOS's Launch
+	// Services runs an app once either way.
+	SingleInstance *bool `json:"singleInstance"`
 	// Links are the web domains whose https links open the app: iOS's
 	// universal links (the domain serves apple-app-site-association) and
 	// Android's App Links (assetlinks.json).
@@ -224,6 +231,15 @@ var (
 	scheme   = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9+.-]*$`)
 	domain   = regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)+$`)
 )
+
+// multipleInstances is the -ldflags -X of an app that runs as often as
+// it's started (asuka.json's "singleInstance": false), or "".
+func (c *appConfig) multipleInstances() string {
+	if c == nil || c.SingleInstance == nil || *c.SingleInstance {
+		return ""
+	}
+	return " -X " + strconv.Quote("github.com/egoist/asuka/internal/boot.MultipleInstances=1")
+}
 
 // loadConfig reads dir/asuka.json, filling in the defaults.
 func loadConfig(dir string) (*appConfig, error) {

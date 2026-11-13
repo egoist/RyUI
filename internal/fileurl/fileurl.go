@@ -68,3 +68,41 @@ func Split(s string) (paths, urls []string) {
 	}
 	return paths, urls
 }
+
+// FromArgs is the IncomingURL string of a launch's arguments (os.Args[1:]
+// on Windows and Linux, a second launch's handed to the first): its
+// files, as file:// URLs, and the URLs of the app's scheme, in order; ""
+// if there are none. dir is the launch's working directory, which
+// relative paths are taken from. A file is an argument that names one
+// that exists (a folder too), or a file:// URL (the desktop file's %U);
+// flags (-x, --x) and other words are the app's own (OnSecondInstance).
+// stat reports whether a path exists (os.Stat's, tests replace it).
+func FromArgs(args []string, dir, scheme string, stat func(string) bool) string {
+	var b strings.Builder
+	add := func(s string) {
+		if b.Len() > 0 {
+			b.WriteByte('\n')
+		}
+		b.WriteString(s)
+	}
+	for _, a := range args {
+		switch {
+		case a == "" || strings.HasPrefix(a, "-"):
+		case scheme != "" && len(a) > len(scheme) && strings.EqualFold(a[:len(scheme)], scheme) && a[len(scheme)] == ':':
+			add(strings.NewReplacer("\r", "%0D", "\n", "%0A").Replace(a))
+		case len(a) > 7 && strings.EqualFold(a[:7], "file://"):
+			if p, ok := ToPath(a); ok {
+				add(FromPath(p))
+			}
+		default:
+			p := a
+			if !filepath.IsAbs(p) && dir != "" && !(len(p) >= 2 && p[1] == ':') {
+				p = filepath.Join(dir, p)
+			}
+			if stat(p) {
+				add(FromPath(filepath.Clean(p)))
+			}
+		}
+	}
+	return b.String()
+}

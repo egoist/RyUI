@@ -51,3 +51,25 @@ func TestToPath(t *testing.T) {
 		t.Errorf("FromPath of a drive's path: %q", u)
 	}
 }
+
+// A launch's arguments: files that exist (relative to its directory),
+// file URLs and the scheme's URLs, not flags nor other words.
+func TestFromArgs(t *testing.T) {
+	exists := map[string]bool{
+		filepath.FromSlash("/home/a/notes/a b.md"): true,
+		filepath.FromSlash("/tmp/x.md"):            true,
+	}
+	stat := func(p string) bool { return exists[p] }
+	args := []string{"--new-window", "a b.md", "missing.md", "/tmp/x.md", "file:///srv/y%20z.md", "MyApp://note/1", "https://example.com", "-v"}
+	got := FromArgs(args, filepath.FromSlash("/home/a/notes"), "myapp", stat)
+	want := "file:///home/a/notes/a%20b.md\nfile:///tmp/x.md\nfile:///srv/y%20z.md\nMyApp://note/1"
+	if runtime.GOOS == "windows" {
+		return // paths with drives: covered by TestToPath
+	}
+	if got != want {
+		t.Fatalf("FromArgs = %q\nwant %q", got, want)
+	}
+	if FromArgs([]string{"--flag", "word"}, "/", "", stat) != "" {
+		t.Fatal("flags and words aren't files")
+	}
+}

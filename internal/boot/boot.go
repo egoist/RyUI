@@ -2,7 +2,11 @@
 // cycles.
 package boot
 
-import "sync"
+import (
+	"os"
+	"slices"
+	"sync"
+)
 
 // Runner, set by a platform host (mobile/), mounts the app's root
 // component (a func() ui.Node).
@@ -37,10 +41,28 @@ var QuitRequested func(ending bool) (cancel bool)
 // arguments on to ui.OnOpenFiles and ui.OnOpenURL.
 var SecondInstance func(args []string, dir string)
 
+// MultipleInstances is "1" when asuka.json's "singleInstance" is false,
+// set by the Asuka CLI (-ldflags -X): on Windows and Linux the app then
+// runs as often as it's started, each launch its own (no
+// OnSecondInstance).
+var MultipleInstances string
+
 // LoginArg is the argument a login entry starts the app with on
 // Windows and Linux (asuka/login), so that it knows it was opened at
 // login: the host takes it out of os.Args before main reads them.
 const LoginArg = "--asuka-opened-at-login"
+
+// OpenedAtLogin: the app was started with LoginArg (TakeLoginArg).
+var OpenedAtLogin bool
+
+// TakeLoginArg takes LoginArg out of os.Args, and remembers it
+// (OpenedAtLogin): a host's init calls it, before main reads them.
+func TakeLoginArg() {
+	if i := slices.Index(os.Args, LoginArg); i > 0 {
+		os.Args = slices.Delete(os.Args, i, i+1)
+		OpenedAtLogin = true
+	}
+}
 
 // Accent is the app's accent color from asuka.json ("#rrggbb" or
 // "#rrggbbaa"), and DynamicColor "1" when its Android colors are the

@@ -58,6 +58,7 @@ func windowsLdflags(app *goApp, release bool) string {
 			}
 			f += " -X " + strconv.Quote("github.com/egoist/asuka/internal/boot.FileTypes="+filetype.Encode(windowsFileTypes(types, ids)))
 		}
+		f += app.cfg.multipleInstances()
 		f += " -X " + strconv.Quote("github.com/egoist/asuka/internal/boot.Version="+app.cfg.Version)
 		f += " -X " + strconv.Quote("github.com/egoist/asuka/internal/boot.Build="+strconv.Itoa(app.cfg.Build))
 	}

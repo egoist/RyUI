@@ -55,6 +55,7 @@ func linuxLdflags(app *goApp, release bool) string {
 	for _, kv := range set {
 		f += " -X " + strconv.Quote("github.com/egoist/asuka/internal/boot."+kv[0]+"="+kv[1])
 	}
+	f += app.cfg.multipleInstances()
 	return "-ldflags=" + strings.TrimSpace(f)
 }
 

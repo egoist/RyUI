@@ -48,6 +48,13 @@ func TestLinuxLdflags(t *testing.T) {
 	if strings.Contains(linuxLdflags(app, false), "-s -w") {
 		t.Error("a dev build is stripped")
 	}
+	if strings.Contains(got, "MultipleInstances") {
+		t.Error("a single instance's ldflags say multiple")
+	}
+	multi := linuxTestApp(t, `{"name":"Notes","id":"com.example.notes","singleInstance":false}`)
+	if !strings.Contains(linuxLdflags(multi, false), "boot.MultipleInstances=1") {
+		t.Error(`"singleInstance": false isn't in the ldflags`)
+	}
 }
 
 func TestLinuxExe(t *testing.T) {
