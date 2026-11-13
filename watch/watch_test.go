@@ -1,4 +1,3 @@
-//go:build !js
 
 package watch
 
@@ -34,7 +33,7 @@ func eachBackend(t *testing.T, test func(t *testing.T, backend string)) {
 	for _, b := range backends() {
 		name := b
 		if name == "" {
-			name = map[string]string{"darwin": "fsevents", "linux": "inotify", "android": "inotify", "windows": "readdirectorychanges"}[runtime.GOOS]
+			name = map[string]string{"darwin": "fsevents", "linux": "inotify", "android": "inotify", "windows": "readdirectorychanges", "js": "fs.watch"}[runtime.GOOS]
 		}
 		t.Run(name, func(t *testing.T) { test(t, b) })
 	}
@@ -351,7 +350,9 @@ func TestSystemSymlink(t *testing.T) {
 		outside := t.TempDir()
 		write(t, filepath.Join(outside, "target"), "t")
 		r := start(t, backend, dir, Options{Recursive: true})
-		if err := os.Symlink(outside, filepath.Join(dir, "l")); err != nil {
+		if err := os.Symlink(outside, filepath.Join(dir, "l")); errors.Is(err, errors.ErrUnsupported) {
+			t.Skip("no symlinks here")
+		} else if err != nil {
 			t.Fatal(err)
 		}
 		r.expect(Event{Op: Create, Path: "l"}, "l")
@@ -389,7 +390,7 @@ func TestSystemAttributes(t *testing.T) {
 // A directory the watch can't read is not watched, and the rest is; one
 // it can't open can't be watched at all.
 func TestSystemPermissions(t *testing.T) {
-	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+	if runtime.GOOS == "windows" || os.Geteuid() <= 0 {
 		t.Skip("needs Unix permissions that apply")
 	}
 	eachBackend(t, func(t *testing.T, backend string) {

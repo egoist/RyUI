@@ -9,6 +9,9 @@
 //
 // IndexedDB keeps a small file whole, and a large one (a SQLite database)
 // in chunks of 64 KiB: a write stores only the chunks it changed.
+//
+// memfs.watch is Node's fs.watch, which asuka/watch calls: it tells what
+// changes in a directory, a moment after the app's Go changed it.
 
 const S_IFDIR = 0o040000, S_IFREG = 0o100000;
 
@@ -25,7 +28,12 @@ let onOutput = null;
 
 const now = () => Date.now();
 const pageID = 1 + Math.floor(Math.random() * 0x7ffffffe);
-const put = (path, entry) => { files.set(path, entry); markDirty(path); };
+const put = (path, entry) => {
+  const existed = files.has(path);
+  files.set(path, entry);
+  markDirty(path);
+  changed(path, existed ? "change" : "rename");
+};
 
 function err(code) {
   const e = new Error(code);
@@ -52,20 +60,18 @@ function mkdirs(p) {
   put(p, { dir: true, mode: S_IFDIR | 0o755, mtime: now(), size: 0, data: null });
 }
 
+// lastInode numbers the entries, each its own inode kept as it's renamed,
+// as a disk's is: asuka/watch tells a file renamed from one replaced.
+let lastInode = 0;
+
 function stat(e, path) {
   const mtime = e.mtime;
   return {
-    dev: 1, ino: hashPath(path), mode: e.mode, nlink: 1, uid: 0, gid: 0, rdev: 0,
+    dev: 1, ino: (e.ino ??= ++lastInode), mode: e.mode, nlink: 1, uid: 0, gid: 0, rdev: 0,
     size: e.dir ? 0 : e.size, blksize: 4096, blocks: Math.ceil((e.size || 0) / 512),
     atimeMs: mtime, mtimeMs: mtime, ctimeMs: mtime,
     isDirectory: () => !!e.dir,
   };
-}
-
-function hashPath(s) {
-  let x = 7;
-  for (let i = 0; i < s.length; i++) x = (x * 31 + s.charCodeAt(i)) | 0;
-  return x >>> 0;
 }
 
 function grow(e, need) {
@@ -230,9 +236,11 @@ export const memfs = {
     cb(null);
   },
   chmod(path, mode, cb) {
-    const e = files.get(clean(path));
+    path = clean(path);
+    const e = files.get(path);
     if (!e) return cb(err("ENOENT"));
     e.mode = (e.mode & ~0o777) | (mode & 0o777);
+    changed(path, "rename"); // not a write: the watch looks
     cb(null);
   },
   fchmod(fd, mode, cb) { const f = fds.get(fd); f ? this.chmod(f.path, mode, cb) : cb(err("EBADF")); },
@@ -242,7 +250,59 @@ export const memfs = {
   link(path, link, cb) { cb(err("ENOSYS")); },
   symlink(path, link, cb) { cb(err("ENOSYS")); },
   readlink(path, cb) { cb(err("EINVAL")); },
+  /**
+   * watch is Node's fs.watch: listener(eventType, filename) hears of what
+   * changes in the directory (and in its directories, recursive), or of
+   * the directory itself (filename null): "change" for an entry written,
+   * "rename" for one that appeared or went away, or whose mode changed.
+   * It's told a moment later, once the call that changed it is done, of
+   * every change.
+   */
+  watch(path, options, listener) {
+    if (typeof options === "function") [options, listener] = [{}, options];
+    path = clean(path);
+    if (!files.has(path)) throw err("ENOENT");
+    const w = { path, recursive: !!options?.recursive, listener, closed: false };
+    watchers.add(w);
+    const watcher = {
+      close() { w.closed = true; watchers.delete(w); },
+      on() { return watcher; },
+      ref() { return watcher; },
+      unref() { return watcher; },
+    };
+    return watcher;
+  },
 };
+
+// --- Watching ---
+
+const watchers = new Set(); // { path, recursive, listener, closed }
+let told = []; // [watcher, eventType, filename], to tell
+let telling = 0;
+
+// changed tells the watchers of path, and of the directories above it,
+// that it changed, once the call that changed it is done.
+function changed(path, type) {
+  if (!watchers.size) return;
+  for (const w of watchers) {
+    const prefix = w.path === "/" ? "/" : w.path + "/";
+    let name = null;
+    if (path !== w.path) {
+      if (!path.startsWith(prefix)) continue;
+      name = path.slice(prefix.length);
+      if (!w.recursive && name.includes("/")) continue;
+    }
+    told.push([w, type, name]);
+  }
+  if (told.length && !telling) telling = setTimeout(tell, 0);
+}
+
+function tell() {
+  const now = told;
+  told = [];
+  telling = 0;
+  for (const [w, type, name] of now) if (!w.closed) w.listener(type, name);
+}
 
 function resize(path, e, length) {
   grow(e, length);
@@ -251,6 +311,7 @@ function resize(path, e, length) {
   e.size = length;
   e.mtime = now();
   markDirty(path, Math.min(old, length), Math.max(old, length));
+  changed(path, "change");
 }
 
 function writeAt(fd, buf, offset, length, position) {
@@ -266,12 +327,14 @@ function writeAt(fd, buf, offset, length, position) {
   e.mtime = now();
   if (position == null) f.pos = at + length;
   markDirty(f.path, at, at + length);
+  changed(f.path, "change");
   return length;
 }
 
 function remove(path) {
   files.delete(path);
   markDirty(path);
+  changed(path, "rename");
 }
 
 // --- Keeping the data directory ---

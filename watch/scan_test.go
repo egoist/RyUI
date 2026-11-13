@@ -146,12 +146,20 @@ func TestBackpressure(t *testing.T) {
 		}
 		notifyAt(t, w, ".", notice{name: name, kind: kindCreate})
 	}
-	seen := 0
-	for seen < 20 {
-		seen += len(batch(t, w))
-	}
-	if seen != 20 {
-		t.Fatalf("%d events", seen)
+	// Each created once; one the watch saw before it was written (the
+	// web's file system marks it written by a write of nothing) is
+	// written too.
+	created := map[string]bool{}
+	for len(created) < 20 {
+		for _, e := range batch(t, w) {
+			switch {
+			case e.Op == Create && !created[e.Path]:
+				created[e.Path] = true
+			case e.Op == Write && created[e.Path]:
+			default:
+				t.Fatalf("unexpected %v", e)
+			}
+		}
 	}
 }
 
@@ -601,7 +609,9 @@ func TestEntryInfo(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "a"), []byte("x"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink("a", filepath.Join(dir, "l")); err != nil {
+	if err := os.Symlink("a", filepath.Join(dir, "l")); errors.Is(err, errors.ErrUnsupported) {
+		t.Skip("no symlinks here")
+	} else if err != nil {
 		t.Fatal(err)
 	}
 	want, err := os.Lstat(filepath.Join(dir, "a"))
@@ -857,7 +867,7 @@ func TestInaccessible(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "busy"), nil, 0600); err != nil {
 		t.Fatal(err)
 	}
-	locked := runtime.GOOS != "windows" && os.Geteuid() != 0
+	locked := runtime.GOOS != "windows" && os.Geteuid() > 0
 	if locked {
 		for _, p := range []string{"locked/a", "unsearchable/b"} {
 			if err := os.MkdirAll(filepath.Join(dir, filepath.Dir(p)), 0700); err != nil {
