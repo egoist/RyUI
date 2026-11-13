@@ -27,7 +27,7 @@
 }
 ```
 
-所有键都是可选的。下面这些对每个平台都生效：
+所有键都是可选的；[asuka.json 参考](asuka-json.md) 列出了全部的键及其类型和默认值。下面这些对每个平台都生效：
 
 - `name` 是应用的名称：显示在图标下方和 Mac 的菜单栏里，也是 Windows 上的窗口标题、Linux 启动器里显示的名字以及网页的标题。构建产物的文件名也取自它（`Notes.app`、`Notes.exe`）。默认使用目录名。
 - `id` 在 iOS 和 Mac 上是 bundle ID；在 Android 和 Linux 上是 application ID（Linux 的 desktop 文件、图标和 D-Bus 名称都用它）；在 Windows 上是 AppUserModelID（通知要用到它）。默认是 `dev.asuka.<directory>`。

@@ -68,6 +68,7 @@ Asuka 需要 Go 1.26 或更高版本。应用可运行在 iOS 16、Android 13（
 
 ## 参考
 
+- [asuka.json](asuka-json.md)：应用 `asuka.json` 里的每一个键，它的类型、默认值，以及在各个平台上的作用。
 - [与 SwiftUI 和 Expo 对比](parity.md)：Asuka 已经有什么，还缺什么。
 - [Asuka 与 MyGo](mygo.md)：平台原生控件与框架自绘界面、覆盖手机与只做桌面的区别，以及什么时候该选哪个。
 - Go API: `go doc -all github.com/egoist/asuka/ui`，以及模块中的其他包。

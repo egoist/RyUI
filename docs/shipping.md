@@ -34,7 +34,8 @@ Go with `CGO_ENABLED=0`, so it needs no C toolchain.
 }
 ```
 
-Every key is optional; these apply on every platform:
+Every key is optional; [the asuka.json reference](asuka-json.md) lists
+them all, with their types and defaults. These apply on every platform:
 
 - `name` is the app's name: under the icon, in the Mac's menu bar, the
   window's title on Windows, the launcher's on Linux, the web page's

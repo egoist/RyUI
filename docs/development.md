@@ -455,4 +455,6 @@ scenarios, how they're measured, and the latest results.
 ## asuka.json
 
 `asuka dev` and `asuka build` read the same `asuka.json`; see
-[Shipping](shipping.md#asukajson) for its fields.
+[the asuka.json reference](asuka-json.md) for its keys, and
+[Shipping](shipping.md#asukajson) for how they come together for a
+release.
