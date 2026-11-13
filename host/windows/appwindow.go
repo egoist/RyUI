@@ -58,7 +58,9 @@ func (h *Host) openWindow(n *node) {
 	SetWindowPos(n.hwnd, 0, 0, 0, cr.W(), cr.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 	h.wins = append(h.wins, n)
 	h.reportScreen(n, h.pt(n, cr.W()), h.pt(n, cr.H()))
-	if IsWindowVisible(h.window) {
+	// It shows once the app has (the main window may be hidden: the app
+	// runs in the background, or keeps running with it closed).
+	if IsWindowVisible(h.window) || h.started {
 		h.showWindow(win)
 	}
 }

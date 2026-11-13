@@ -3,10 +3,10 @@
 package windows
 
 import (
-	"encoding/binary"
 	"strings"
 	"unicode"
 
+	"github.com/egoist/asuka/internal/l10n"
 	. "github.com/egoist/asuka/internal/windows"
 	"github.com/egoist/asuka/ops"
 )
@@ -14,32 +14,15 @@ import (
 // The app's menus (ui.MenuBar): a menu bar (an HMENU) on the main window,
 // made again each time they change, and an accelerator table for their
 // shortcuts, which the message loop translates for any of the app's
-// windows. A chosen item, clicked or by its shortcut, comes as WM_COMMAND
-// and sends Action to the root with its index among all the menus'
-// items. Popup menus follow the app's dark mode through uxtheme
-// (SetAppDark); the bar itself is drawn dark by the window (the UAH
-// messages) while the app is. A destructive item is drawn red by the
-// host (menudraw.go).
-
-type appMenu struct {
-	title string
-	items []appItem
-}
-
-type appItem struct {
-	index int // among all the menus' items
-	flags byte
-	title string
-	key   string
-	mods  byte
-}
+// windows. A submenu is a popup of the menu it's in. A chosen item,
+// clicked or by its shortcut, comes as WM_COMMAND and sends Action to
+// the root with its number among all the menus' items (ops/menu.go); a
+// quit item quits the app. Popup menus follow the app's dark mode
+// through uxtheme (SetAppDark); the bar itself is drawn dark by the
+// window (the UAH messages) while the app is. A destructive item is
+// drawn red by the host (menudraw.go).
 
 const (
-	itemSeparator   = 1
-	itemDisabled    = 2
-	itemChecked     = 4
-	itemDestructive = 8
-
 	modPrimary = 1
 	modShift   = 2
 	modAlt     = 4
@@ -52,8 +35,76 @@ const (
 // setMenuBar takes the MenuBar command's menus and makes the menu bar
 // and the accelerators again.
 func (h *Host) setMenuBar(b []byte) {
-	h.appMenus = parseMenus(b)
+	h.appMenus = ops.DecodeMenuBar(b)
 	h.buildMenuBar()
+}
+
+// menuBuild makes popup menus of the app's items (the menu bar's, a tray
+// icon's): an item's command ID is base plus its number; the menus it
+// owner-draws go in owned, for forget once the menus are gone.
+type menuBuild struct {
+	h         *Host
+	base      int
+	order     uint32 // MF_RIGHTORDER, right to left
+	shortcuts bool   // items show their shortcuts
+	owned     []*ownerMenu
+}
+
+// itemTitle is what an item says: a quit item's own title, else the
+// platform's.
+func (h *Host) itemTitle(it *ops.MenuItem) string {
+	if it.Title == "" && it.Role == ops.MenuRoleQuit {
+		return l10n.Quit(h.locale, h.appName)
+	}
+	return it.Title
+}
+
+// popup makes a popup menu of items, their submenus popups of it.
+func (b *menuBuild) popup(items []ops.MenuItem) uintptr {
+	pop := CreatePopupMenu()
+	var names []string
+	for i := range items {
+		if !items[i].Is(ops.MenuSeparator) {
+			names = append(names, b.h.itemTitle(&items[i]))
+		}
+	}
+	names = accessKeys(names)
+	k := 0
+	var drawn []menuItem
+	destructive := false
+	for i := range items {
+		it := &items[i]
+		if it.Is(ops.MenuSeparator) {
+			AppendMenu(pop, MF_SEPARATOR, 0, "")
+			drawn = append(drawn, menuItem{separator: true})
+			continue
+		}
+		flags := uint32(MF_STRING) | b.order
+		if it.Is(ops.MenuDisabled) {
+			flags |= MF_GRAYED
+		}
+		text := names[k]
+		k++
+		if len(it.Items) > 0 {
+			AppendMenu(pop, flags|MF_POPUP, b.popup(it.Items), text)
+			drawn = append(drawn, menuItem{text: text, submenu: true})
+			continue
+		}
+		if it.Is(ops.MenuChecked) {
+			flags |= MF_CHECKED
+		}
+		if s := shortcutText(it.Key, it.Mods); s != "" && b.shortcuts {
+			text += "\t" + s
+		}
+		AppendMenu(pop, flags, uintptr(b.base+it.Index), text)
+		d := it.Is(ops.MenuDestructive)
+		drawn = append(drawn, menuItem{text: text, destructive: d})
+		destructive = destructive || d
+	}
+	if destructive {
+		b.owned = append(b.owned, b.h.ownerDrawMenu(pop, drawn, b.order))
+	}
+	return pop
 }
 
 // buildMenuBar makes the menu bar and the accelerators from the menus, in
@@ -72,54 +123,21 @@ func (h *Host) buildMenuBar() {
 	h.barOwned = h.barOwned[:0]
 	h.appItems = h.appItems[:0]
 	for _, m := range h.appMenus {
-		h.appItems = append(h.appItems, m.items...)
+		h.appItems = append(h.appItems, ops.FlattenMenu(m.Items)...)
 	}
 	var bar uintptr
 	if len(h.appMenus) > 0 {
 		bar = CreateMenu()
 		titles := make([]string, len(h.appMenus))
 		for i, m := range h.appMenus {
-			titles[i] = m.title
+			titles[i] = m.Title
 		}
+		titles = accessKeys(titles)
+		b := &menuBuild{h: h, base: menuBase, order: order, shortcuts: true}
 		for i, m := range h.appMenus {
-			pop := CreatePopupMenu()
-			var names []string
-			for _, it := range m.items {
-				if it.flags&itemSeparator == 0 {
-					names = append(names, it.title)
-				}
-			}
-			names = accessKeys(names)
-			k := 0
-			var items []menuItem
-			destructive := false
-			for _, it := range m.items {
-				if it.flags&itemSeparator != 0 {
-					AppendMenu(pop, MF_SEPARATOR, 0, "")
-					items = append(items, menuItem{separator: true})
-					continue
-				}
-				flags := uint32(MF_STRING) | order
-				if it.flags&itemDisabled != 0 {
-					flags |= MF_GRAYED
-				}
-				if it.flags&itemChecked != 0 {
-					flags |= MF_CHECKED
-				}
-				text := names[k]
-				k++
-				if s := shortcutText(it.key, it.mods); s != "" {
-					text += "\t" + s
-				}
-				AppendMenu(pop, flags, uintptr(menuBase+it.index), text)
-				items = append(items, menuItem{text: text, destructive: it.flags&itemDestructive != 0})
-				destructive = destructive || it.flags&itemDestructive != 0
-			}
-			if destructive {
-				h.barOwned = append(h.barOwned, h.ownerDrawMenu(pop, items, order))
-			}
-			AppendMenu(bar, MF_POPUP|order, pop, accessKeys(titles)[i])
+			AppendMenu(bar, MF_POPUP|order, b.popup(m.Items), titles[i])
 		}
+		h.barOwned = append(h.barOwned, b.owned...)
 	}
 	// A menu bar coming or going before the window shows keeps its client
 	// size (WindowOptions'), and the window centered.
@@ -140,58 +158,15 @@ func (h *Host) buildMenuBar() {
 	DestroyAcceleratorTable(h.accel)
 	var accels []Accel
 	for _, it := range h.appItems {
-		if it.flags&(itemSeparator|itemDisabled) != 0 {
+		if it.Flags&(ops.MenuSeparator|ops.MenuDisabled|ops.MenuSubmenu) != 0 {
 			continue
 		}
-		if a, ok := accelerator(it.key, it.mods); ok {
-			a.Cmd = uint16(menuBase + it.index)
+		if a, ok := accelerator(it.Key, it.Mods); ok {
+			a.Cmd = uint16(menuBase + it.Index)
 			accels = append(accels, a)
 		}
 	}
 	h.accel = CreateAcceleratorTable(accels)
-}
-
-func parseMenus(b []byte) []appMenu {
-	str := func() string {
-		if len(b) < 4 || int(binary.LittleEndian.Uint32(b)) > len(b)-4 {
-			b = nil
-			return ""
-		}
-		n := int(binary.LittleEndian.Uint32(b))
-		s := string(b[4 : 4+n])
-		b = b[4+n:]
-		return s
-	}
-	u32 := func() int {
-		if len(b) < 4 {
-			b = nil
-			return 0
-		}
-		v := int(binary.LittleEndian.Uint32(b))
-		b = b[4:]
-		return v
-	}
-	var menus []appMenu
-	index := 0
-	for range u32() {
-		m := appMenu{title: str()}
-		for range u32() {
-			if len(b) < 1 {
-				break
-			}
-			it := appItem{index: index, flags: b[0]}
-			b = b[1:]
-			it.title, it.key = str(), str()
-			if len(b) > 0 {
-				it.mods = b[0]
-				b = b[1:]
-			}
-			index++
-			m.items = append(m.items, it)
-		}
-		menus = append(menus, m)
-	}
-	return menus
 }
 
 // accessKeys gives each title an access key (Alt and the underlined
@@ -325,14 +300,20 @@ func accelerator(key string, mods byte) (Accel, bool) {
 }
 
 // menuCommand is a menu item chosen, clicked or by its accelerator, in
-// one of the app's windows: Action on the root, unless it's off.
+// one of the app's windows: Action on the root, unless it's off; a quit
+// item quits.
 func (h *Host) menuCommand(id int) bool {
 	i := id - menuBase
 	if i < 0 || i >= len(h.appItems) {
 		return false
 	}
-	if it := h.appItems[i]; it.flags&(itemSeparator|itemDisabled) == 0 && h.root != nil {
-		h.emit(h.root, ops.Event{Kind: ops.EventAction, Int: int64(it.index)})
+	it := h.appItems[i]
+	switch {
+	case it.Flags&(ops.MenuSeparator|ops.MenuDisabled|ops.MenuSubmenu) != 0:
+	case it.Role == ops.MenuRoleQuit:
+		h.quit()
+	case h.root != nil:
+		h.emit(h.root, ops.Event{Kind: ops.EventAction, Int: int64(it.Index)})
 	}
 	return true
 }

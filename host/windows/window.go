@@ -5,6 +5,7 @@ package windows
 import (
 	"syscall"
 
+	"github.com/egoist/asuka/internal/boot"
 	. "github.com/egoist/asuka/internal/windows"
 	"github.com/egoist/asuka/ops"
 )
@@ -214,10 +215,17 @@ func (h *Host) windowMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
 		return 0, false
 	case WM_CLOSE:
 		h.savePlacement()
+		if boot.KeepsRunning() && !h.quitting {
+			// The app keeps running: the window hides, its root mounted.
+			ShowWindow(h.window, SW_HIDE)
+			h.lifecycle(ops.LifecycleBackground)
+			return 0, true
+		}
 		h.quitting = true
 		DestroyWindow(h.window)
 		return 0, true
 	case WM_DESTROY:
+		h.removeTrayIcons()
 		PostQuitMessage(0)
 		return 0, true
 	}
@@ -398,6 +406,23 @@ func (h *Host) applyFonts() {
 	for _, n := range h.nodes {
 		h.applyFont(n)
 	}
+}
+
+// quit quits the app, as closing its window does when it doesn't keep
+// running (a quit menu item, ui.MenuQuit): Lifecycle Background, so
+// asuka/store writes what's pending, the window's placement kept, its
+// tray icons taken away, and the main window destroyed, which ends the
+// message loop. Once the core has returned.
+func (h *Host) quit() {
+	h.afterCore(func() {
+		if h.quitting || !IsWindow(h.window) {
+			return
+		}
+		h.lifecycle(ops.LifecycleBackground)
+		h.savePlacement()
+		h.quitting = true
+		DestroyWindow(h.window)
+	})
 }
 
 func (h *Host) lifecycle(s ops.Lifecycle) {

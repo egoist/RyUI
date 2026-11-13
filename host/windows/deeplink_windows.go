@@ -65,6 +65,12 @@ func (h *Host) startLinks(launch string) {
 // any. Handled after the message is answered, so that the launch it came
 // from can quit.
 func (h *Host) launchedAgain(u string) {
+	// A jump list task's launch: the Dock menu's item, chosen (tray.go),
+	// which says itself whether the app comes to the front.
+	if n, ok := dockItemPayload(u); ok {
+		h.Post(func() { h.trayEvent(0, 2, n) })
+		return
+	}
 	h.Post(func() {
 		h.toFront()
 		if u != "" {

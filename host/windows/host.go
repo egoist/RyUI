@@ -258,14 +258,15 @@ type Host struct {
 	modal       int               // modal loops (menus, dialogs) running
 	sheets      []*node
 	quitting    bool
+	started     bool // Run has shown the app (or, in the background, hasn't): Windows show as they open
 
-	wins     []*node          // the Windows open, in the order they opened
-	inUse    uintptr          // the app's window activated last
-	minSize  [2]float32       // the main window's least client size (WindowOptions), in points
-	appMenus []appMenu        // MenuBar's
-	appItems []appItem        // their items, in order
-	accel    uintptr          // their shortcuts' accelerator table
-	coreEnv  host.Environment // the environment the core was last told
+	wins     []*node           // the Windows open, in the order they opened
+	inUse    uintptr           // the app's window activated last
+	minSize  [2]float32        // the main window's least client size (WindowOptions), in points
+	appMenus []ops.MenuBarMenu // MenuBar's
+	appItems []ops.MenuItem    // their items, in order, submenus' too (ops.FlattenMenu)
+	accel    uintptr           // their shortcuts' accelerator table
+	coreEnv  host.Environment  // the environment the core was last told
 
 	// The user's languages and formats, and the app's own language (locale.go).
 	intl        intl
@@ -284,6 +285,7 @@ type Host struct {
 	ownedNext  uintptr
 	ownedMenus []*ownerMenu // the owner-drawn menus
 	barOwned   []*ownerMenu // the menu bar's
+	tray       *trayState   // the tray module's icons (tray.go)
 	menuStyles map[menuStyleKey]*menuStyle
 
 	// Interaction states and drags (interaction.go).
@@ -350,6 +352,9 @@ func newHost() *Host {
 // it from main.
 func Run(root func() ui.Node) {
 	launch := launchURL(os.Args, boot.Scheme)
+	if launchDockItem >= 0 {
+		launch = dockItemLaunch + itoa(launchDockItem) // tray.go
+	}
 	if !takeInstance(launch) {
 		return // the running instance has it
 	}
@@ -357,11 +362,20 @@ func Run(root func() ui.Node) {
 	h := newHost()
 	restoreState()
 	h.enter(func() { ui.Mount(h, root) })
+	if launchDockItem >= 0 {
+		h.trayEvent(0, 2, launchDockItem)
+		launch = ""
+	}
 	h.startLinks(launch)
 	h.startToasts()
-	if launchedForToast {
+	switch {
+	case launchedForToast:
 		h.waitForToast() // notify.go: shown if the click opens the app
-	} else {
+	case boot.InBackground() && os.Getenv("ASUKA_SNAPSHOT") == "" && os.Getenv("ASUKA_SCRIPT") == "":
+		// In the background: no window at launch (automation shows it,
+		// to see it).
+		h.started = true
+	default:
 		h.showMain()
 	}
 	h.automation()
@@ -389,6 +403,7 @@ func (h *Host) showMain() {
 		h.normal = WindowRect(h.window)
 	}
 	h.placed = true
+	h.started = true
 	UpdateWindow(h.window)
 	for _, n := range h.wins {
 		h.showWindow(n.nav.window)
