@@ -1048,6 +1048,31 @@ const popover = {
   measure() { return [0, 0]; },
 };
 
+/**
+ * decodeWindowConfig reads a window's options (ops.WindowConfig): the
+ * Window kind's Config prop, the root's WindowOptions command.
+ */
+export function decodeWindowConfig(b) {
+  const c = { width: 0, height: 0, minWidth: 0, minHeight: 0, maxWidth: 0, maxHeight: 0, x: 0, y: 0, flags: 0, titleBar: 0, background: 0, parent: 0, stateKey: "", title: "" };
+  const r = new Reader(b);
+  if (b.length < 32) {
+    if (b.length >= 16) {
+      c.width = r.f32(); c.height = r.f32(); c.minWidth = r.f32(); c.minHeight = r.f32();
+      c.title = new TextDecoder().decode(b.subarray(16));
+    }
+    return c;
+  }
+  c.width = r.f32(); c.height = r.f32(); c.minWidth = r.f32(); c.minHeight = r.f32();
+  c.maxWidth = r.f32(); c.maxHeight = r.f32(); c.x = r.f32(); c.y = r.f32();
+  if (b.length < 32 + 4 + 1 + 8 + 4 + 4) return c;
+  c.flags = r.u32(); c.titleBar = r.u8(); c.background = r.u64(); c.parent = r.u32();
+  const n = r.u32();
+  if (r.p + n > b.length) return c;
+  c.stateKey = new TextDecoder().decode(b.subarray(r.p, r.p + n));
+  c.title = new TextDecoder().decode(b.subarray(r.p + n));
+  return c;
+}
+
 const windowKind = {
   create(h, n) {
     own(n, div("asuka-window-content"));
@@ -1057,10 +1082,12 @@ const windowKind = {
   prop(h, n, p, v) {
     switch (p) {
       case P.Window.Title: n.title = v; if (n.winTitle) n.winTitle.textContent = v; break;
-      case P.Window.Width: n.win.width = v; break;
-      case P.Window.Height: n.win.height = v; break;
-      case P.Window.MinWidth: n.win.minWidth = v; break;
-      case P.Window.MinHeight: n.win.minHeight = v; break;
+      case P.Window.Config: {
+        const c = decodeWindowConfig(v);
+        n.win.width = c.width; n.win.height = c.height;
+        n.win.minWidth = c.minWidth; n.win.minHeight = c.minHeight;
+        break;
+      }
     }
   },
   frame() { return true; },

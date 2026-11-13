@@ -519,8 +519,9 @@ type Shadow struct {
 	X, Y   float32 // its offset, in points
 }
 
-// Point is a point in a view, in units of its size: (0, 0) its top
-// leading corner, (1, 1) its bottom trailing one.
+// Point is a point: in a view, in units of its size, (0, 0) its top
+// leading corner and (1, 1) its bottom trailing one (a gradient's); on
+// the screen, in points (a window's position).
 type Point struct{ X, Y float32 }
 
 // Gradient is a linear gradient, from Start to End through Colors.

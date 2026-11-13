@@ -427,14 +427,10 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 				w.base = v.Str
 				h.updateWindowChrome()
 			}
-		case ops.PropWindowWidth:
-			n.nav.size.Width = v.Float
-		case ops.PropWindowHeight:
-			n.nav.size.Height = v.Float
-		case ops.PropWindowMinWidth:
-			n.nav.minSize.Width = v.Float
-		case ops.PropWindowMinHeight:
-			n.nav.minSize.Height = v.Float
+		case ops.PropWindowConfig:
+			c := ops.DecodeWindowConfig(v.Bytes)
+			n.nav.size = Size{Width: float64(c.Width), Height: float64(c.Height)}
+			n.nav.minSize = Size{Width: float64(c.MinWidth), Height: float64(c.MinHeight)}
 		}
 	case ops.KindAlert:
 		switch p {

@@ -116,7 +116,7 @@ export const KindProp = Object.freeze({
   Canvas: Object.freeze({ Commands: 64 }),
   Split: Object.freeze({ Items: 64, Selected: 65, Title: 66 }),
   Shader: Object.freeze({ Code: 64, Uniforms: 65, Animated: 66 }),
-  Window: Object.freeze({ Title: 64, Width: 65, Height: 66, MinWidth: 67, MinHeight: 68 }),
+  Window: Object.freeze({ Title: 64, Config: 65 }),
 });
 
 /** Events hosts send. */
@@ -174,6 +174,8 @@ export const Event = Object.freeze({
   Dragging: 51,
   Back: 52,
   Paged: 53,
+  WindowState: 54,
+  CloseRequest: 55,
 });
 
 /** Commands the core sends. */
@@ -212,6 +214,7 @@ export const Command = Object.freeze({
   A11yFocus: 32,
   BackExit: 33,
   Replace: 34,
+  WindowAction: 35,
 });
 
 export const Role = Object.freeze({ None: 0, Button: 1, Header: 2, Image: 3, Link: 4, Text: 5, Search: 6 });
@@ -244,6 +247,8 @@ export const SemanticColor = Object.freeze({ None: 0, Label: 1, SecondaryLabel: 
 export const ShareKind = Object.freeze({ Text: 0, Link: 1, Image: 2, Video: 3, Audio: 4, File: 5 });
 export const DragPhase = Object.freeze({ Began: 0, Dropped: 1, Cancelled: 2 });
 export const ScrollAnchor = Object.freeze({ Top: 0, Bottom: 1 });
+export const WindowAction = Object.freeze({ Show: 0, Hide: 1, Focus: 2, Minimize: 3, Maximize: 4, Restore: 5, Fullscreen: 6, ExitFullscreen: 7, Center: 8, Size: 9, Position: 10, AlwaysOnTop: 11, NotAlwaysOnTop: 12, Close: 13 });
+export const TitleBar = Object.freeze({ Default: 0, Hidden: 1 });
 
 const utf8 = new TextDecoder();
 const utf8Out = new TextEncoder();
@@ -432,4 +437,6 @@ export const Events = Object.freeze({
   dragging: (id, v) => new Writer().header(id, 51).i64(v).done(),
   back: (id) => new Writer().header(id, 52).done(),
   paged: (id, v) => new Writer().header(id, 53).i64(v).done(),
+  windowState: (id, v) => new Writer().header(id, 54).bytes(v).done(),
+  closeRequest: (id) => new Writer().header(id, 55).done(),
 });

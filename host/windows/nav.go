@@ -333,14 +333,10 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 			if n.nav.window != 0 {
 				SetWindowText(n.nav.window, h.windowTitle(n))
 			}
-		case ops.PropWindowWidth:
-			n.nav.size[0] = float32(v.Float)
-		case ops.PropWindowHeight:
-			n.nav.size[1] = float32(v.Float)
-		case ops.PropWindowMinWidth:
-			n.nav.minSize[0] = float32(v.Float)
-		case ops.PropWindowMinHeight:
-			n.nav.minSize[1] = float32(v.Float)
+		case ops.PropWindowConfig:
+			c := ops.DecodeWindowConfig(v.Bytes)
+			n.nav.size = [2]float32{c.Width, c.Height}
+			n.nav.minSize = [2]float32{c.MinWidth, c.MinHeight}
 		}
 	case ops.KindAlert:
 		switch p {

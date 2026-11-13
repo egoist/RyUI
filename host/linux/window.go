@@ -352,9 +352,8 @@ type windowOptions struct {
 }
 
 func (h *Host) setWindowOptions(args []byte) {
-	r := reader{b: args}
-	o := windowOptions{width: r.f32(), height: r.f32(), minWidth: r.f32(), minHeight: r.f32()}
-	o.title = string(r.rest())
+	c := ops.DecodeWindowConfig(args)
+	o := windowOptions{width: c.Width, height: c.Height, minWidth: c.MinWidth, minHeight: c.MinHeight, title: c.Title}
 	h.windowOptions = o
 	w := h.main
 	if w == nil {

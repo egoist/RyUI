@@ -46,9 +46,10 @@ type handlers struct {
 	pressed, hover      func(bool)
 	drag                *dragHandlers
 	drop                *dropHandlers
-	state               uint8        // the interaction states last reported (statePressed...)
-	listens             uint8        // the states the view listens for (statePressed, stateHovered)
-	ia                  *Interaction // the view's states, for styles to read
+	state               uint8         // the interaction states last reported (statePressed...)
+	listens             uint8         // the states the view listens for (statePressed, stateHovered)
+	ia                  *Interaction  // the view's states, for styles to read
+	win                 *WindowHandle // a Window's or the root's: its state and close requests
 }
 
 // webHandlers are a WebView's own events'.

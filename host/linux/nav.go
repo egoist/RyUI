@@ -236,15 +236,10 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) bool {
 		case ops.PropWindowTitle:
 			w.name = v.Str
 			h.updateTitle(w)
-		case ops.PropWindowWidth:
-			w.width = float32(v.Float)
-		case ops.PropWindowHeight:
-			w.height = float32(v.Float)
-		case ops.PropWindowMinWidth:
-			n.minWidth = float32(v.Float)
-			WidgetSetSizeRequest(w.content, windowSize(n.minWidth), windowSize(n.minHeight))
-		case ops.PropWindowMinHeight:
-			n.minHeight = float32(v.Float)
+		case ops.PropWindowConfig:
+			c := ops.DecodeWindowConfig(v.Bytes)
+			w.width, w.height = c.Width, c.Height
+			n.minWidth, n.minHeight = c.MinWidth, c.MinHeight
 			WidgetSetSizeRequest(w.content, windowSize(n.minWidth), windowSize(n.minHeight))
 		}
 	default:

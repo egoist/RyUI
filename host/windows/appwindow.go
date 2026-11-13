@@ -285,12 +285,10 @@ func (h *Host) setWindowTitle(title string) {
 // least size, and its client size, centered in the work area (a placement
 // the host remembers, restored after, wins over it).
 func (h *Host) windowOptions(args []byte) {
-	if len(args) < 16 {
-		return
-	}
-	w, ht := f32(args, 0), f32(args, 4)
-	h.minSize = [2]float32{f32(args, 8), f32(args, 12)}
-	if title := string(args[16:]); title != "" {
+	c := ops.DecodeWindowConfig(args)
+	w, ht := c.Width, c.Height
+	h.minSize = [2]float32{c.MinWidth, c.MinHeight}
+	if title := c.Title; title != "" {
 		h.setWindowTitle(title)
 	}
 	if w <= 0 && ht <= 0 {

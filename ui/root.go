@@ -59,6 +59,8 @@ type Root struct {
 	menuItems  []MenuItem // the menus' items, in order (Action's index)
 	menuSent   []byte
 	menuListen bool
+
+	win *WindowHandle // the main window's
 }
 
 var (
@@ -90,6 +92,7 @@ func Mount(h host.Host, root func() Node) *Root {
 		signal.Root(func(dispose func()) {
 			r.dispose = dispose
 			r.el = newElement(ops.KindView, true)
+			r.win = newMainWindow(r)
 			r.sendAccent()
 			r.sendLocale(shown.Load(), false)
 			if pendingSave != nil {
@@ -106,7 +109,9 @@ func Mount(h host.Host, root func() Node) *Root {
 			st.Direction = rootDirection(isRTLNow())
 			r.el.box.SetStyle(st)
 			var n Node
-			envCtx.Provide(r.env, func() { n = root() })
+			windowCtx.Provide(r.win, func() {
+				envCtx.Provide(r.env, func() { n = root() })
+			})
 			if n.e != nil {
 				fill(n)
 				r.el.appendKid(n.e)
@@ -538,6 +543,14 @@ func dispatch(ev ops.Event) {
 		}
 	case ops.EventDismissed:
 		call(h.dismissed)
+	case ops.EventWindowState:
+		if h.win != nil {
+			h.win.setState(ops.DecodeWindowState(ev.Bytes))
+		}
+	case ops.EventCloseRequest:
+		if h.win != nil {
+			h.win.closeRequested()
+		}
 	case ops.EventBack:
 		call(h.back)
 	case ops.EventPaged:

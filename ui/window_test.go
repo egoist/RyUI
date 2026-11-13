@@ -1,8 +1,6 @@
 package ui_test
 
 import (
-	"encoding/binary"
-	"math"
 	"testing"
 
 	"github.com/egoist/asuka/host/fake"
@@ -39,9 +37,9 @@ func TestWindow(t *testing.T) {
 		t.Fatalf("presented %v", ps)
 	}
 	w := ps[0]
-	if w.String(ops.PropWindowTitle) != "Inspector" || w.Float(ops.PropWindowWidth) != 320 ||
-		w.Float(ops.PropWindowHeight) != 240 || w.Float(ops.PropWindowMinWidth) != 200 {
-		t.Fatalf("window props %v", w.Props)
+	if c := h.Window(w).Config; w.String(ops.PropWindowTitle) != "Inspector" || c.Width != 320 ||
+		c.Height != 240 || c.MinWidth != 200 || c.Flags != 0 {
+		t.Fatalf("window props %v, config %+v", w.Props, c)
 	}
 	// The host sizes it and reports its environment: the content follows.
 	h.Dispatch(ops.Event{ID: w.ID, Kind: ops.EventEnvironment, Env: ops.Environment{Width: 320, Height: 240, Scale: 2, FontScale: 1}})
@@ -133,10 +131,8 @@ func TestWindowOptions(t *testing.T) {
 	if len(cmds) != 1 {
 		t.Fatalf("%d WindowOptions", len(cmds))
 	}
-	b := cmds[0].Value.Bytes
-	f := func(i int) float32 { return math.Float32frombits(binary.LittleEndian.Uint32(b[i*4:])) }
-	if f(0) != 800 || f(1) != 600 || f(2) != 400 || f(3) != 0 || string(b[16:]) != "Notes" {
-		t.Fatalf("args %v", b)
+	if c := ops.DecodeWindowConfig(cmds[0].Value.Bytes); c != (ops.WindowConfig{Width: 800, Height: 600, MinWidth: 400, Title: "Notes"}) {
+		t.Fatalf("config %+v", c)
 	}
 }
 

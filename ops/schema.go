@@ -305,11 +305,8 @@ var Schema = SchemaDef{
 		}, Doc: "a box a GPU program draws, under its children: a Kage shader, as Metal on iOS and macOS (a CAMetalLayer), AGSL on Android (RuntimeShader), on the CPU on Windows (package interp)"},
 		{Name: "Window", Props: []PropDef{
 			{Name: "Title", Type: TString},
-			{Name: "Width", Type: TFloat, Doc: "its content's width when it opens, in points (0: the host's default)"},
-			{Name: "Height", Type: TFloat},
-			{Name: "MinWidth", Type: TFloat, Doc: "the least the user can resize its content to (0: the host's)"},
-			{Name: "MinHeight", Type: TFloat},
-		}, Doc: "a desktop window of the app's (macOS, Windows; mobile hosts can't show one), with one child, its content: Present opens it, Destroy closes it; the user closing it is reported with Dismissed. Sized by the host (and the user), which reports its Environment"},
+			{Name: "Config", Type: TBytes, Doc: "its options when it opens, as the WindowOptions command's args (ops.WindowConfig, ops.AppendWindowConfig); set before Present"},
+		}, Doc: "a desktop window of the app's (macOS, Windows, Linux; on the web a window in the page; mobile hosts can't show one), with one child, its content: Present opens it (shown, unless its Config says hidden), Destroy closes it; the user closing it is reported with Dismissed, or with CloseRequest while the core listens for that, and the window stays. Sized by the host (and the user), which reports its Environment, and its WindowState while the core listens; WindowAction commands control it"},
 	},
 	Events: []EventDef{
 		{Name: "Press", Payload: PNone},
@@ -365,6 +362,8 @@ var Schema = SchemaDef{
 		{Name: "Dragging", Payload: PInt, Doc: "the view's drag (DragItems): a DragPhase. Began as it lifts, then Dropped (a target took it, the app's or another app's) or Cancelled"},
 		{Name: "Back", Payload: PNone, Doc: "the user went back from a Screen, Sheet or the root with InterceptBack, which the host didn't do"},
 		{Name: "Paged", Payload: PInt, Doc: "a Paging Scroll's swipe is settling on a page: its index from the content's physical start (left or top), page = offset / the scroll's size"},
+		{Name: "WindowState", Payload: PBytes, Doc: "a window's state changed (the user's doing or the app's), to its Window node or, for the main window, the root, while the core listens (and once as it starts listening): f32 x, y (its frame's top left on the screen, in points from the main display's; 0, 0 where the host can't tell, as on Wayland), f32 width, height (its content's size, in points), u8 WindowStateFlags bits (1 visible, 2 focused, 4 minimized, 8 maximized, 16 full screen, 32 always on top)"},
+		{Name: "CloseRequest", Payload: PNone, Doc: "the user asked to close a window (its close button, a shortcut, the taskbar's or Dock's menu) while the core listens for this on its Window node or, for the main window, the root: the window stays open, and the core closes it (a Window: Destroy; the main window: WindowAction Close) if the app lets it"},
 	},
 	Commands: []CommandDef{
 		{Name: "Focus"},
@@ -389,7 +388,7 @@ var Schema = SchemaDef{
 		{Name: "Accent", Doc: "args: u64 Color (0: the platform's), u8 flags (1: on Android, the wallpaper's colors where the system has them); sent to the root when it mounts: the app's accent color, which the platform's controls and Accent take (iOS: the tint color; Android: a Material 3 color scheme made from it)"},
 		{Name: "WebNavigate", Doc: "args: u8 0 back, 1 forward, 2 reload, 3 stop; sent to a WebView"},
 		{Name: "MenuBar", Doc: "args: the app's menus (desktop): u32 count, per menu a u32-length title and u32 item count, per item u8 flags (1 separator, 2 disabled, 4 checked, 8 destructive), a u32-length title, a u32-length key (a character, or enter, escape, tab, space, delete, backspace, up, down, left, right, home, end, pageup, pagedown, f1-f12; empty: no shortcut) and u8 modifiers (1 primary: ⌘ on macOS, Ctrl on Windows; 2 shift; 4 alt, a Mac's option; 8 control); sent to the root, again when they change: the host shows them with its own (a Mac's app, Edit and Window menus), and reports a chosen item, or its shortcut, with Action on the root carrying the item's index among all the menus' items"},
-		{Name: "WindowOptions", Doc: "args: f32 width, height, min width, min height (points, 0: the host's), then the title (rest of the args; empty: the app's name); sent to the root when it mounts: the main window's"},
+		{Name: "WindowOptions", Doc: "args: the main window's options (ops.WindowConfig, ops.AppendWindowConfig): f32 width, height, min width, min height, max width, max height (its content's, in points; 0: the host's, or no most), f32 x, y (its frame's top left on the screen, points from the main display's; with WindowPositioned), u32 WindowFlags (1 not resizable, 2 no minimize, 4 no maximize, 8 no close, 16 always on top, 32 hidden, 64 skip the taskbar, 128 centered, 256 positioned, 512 transparent, 1024 maximized, 2048 full screen, 4096 child of its parent, 8192 modal to its parent), u8 TitleBar, u64 background Color (0: the platform's), u32 parent (a Window's: the Window node or root it belongs to; 0: none), u32-length state key (where the host remembers its place; empty: not remembered, but the main window's is \"main\" then), then the title (rest of the args; empty: the app's name); sent to the root when it mounts"},
 		{Name: "WindowTitle", Doc: "args: the title (empty: the app's name); sent to the root when the main window's changes (desktop; mobile hosts have none)"},
 		{Name: "ColorScheme", Doc: "args: u8 ColorScheme; sent to the root: the app shows light or dark whatever the system's setting, or follows it again (iOS: the windows' overrideUserInterfaceStyle; Android: AppCompat's night mode)"},
 		{Name: "Locale", Doc: "args: u8 flags (1: right to left), then the BCP 47 tag of the language the app shows; sent to the root as it mounts (before any view is made, after Accent) and when it changes. The host mirrors what it draws itself (navigation, transitions, a list's swipes), its views' natural text alignment, and its own words in that language where the platform lets it"},
@@ -401,6 +400,7 @@ var Schema = SchemaDef{
 		{Name: "A11yFocus", Doc: "sent to a view: a screen reader, if one is on, moves its focus there (UIAccessibility's screenChanged with the view; Android's ACTION_ACCESSIBILITY_FOCUS)"},
 		{Name: "BackExit", Doc: "sent to the root: the app's OnBack handlers let the user's back go on from the root, so the host does what the system would have (Android's back: the activity finishes or goes to the background)"},
 		{Name: "Replace", Doc: "sent to a Stack: its screens destroyed after it, and the screen inserted next (its new first), change at once, with no pop or push: a SplitView's destination changing"},
+		{Name: "WindowAction", Doc: "args: u8 WindowAction, then for Size f32 width, height (its content's, points) and for Position f32 x, y (its frame's top left, points from the main display's top left); sent to a Window node or, for the main window, the root (desktop and the web; mobile hosts have none)"},
 	},
 	Enums: []EnumDef{
 		{Name: "Role", Values: []string{"None", "Button", "Header", "Image", "Link", "Text", "Search"}},
@@ -433,5 +433,7 @@ var Schema = SchemaDef{
 		{Name: "ShareKind", Values: []string{"Text", "Link", "Image", "Video", "Audio", "File"}},
 		{Name: "DragPhase", Values: []string{"Began", "Dropped", "Cancelled"}},
 		{Name: "ScrollAnchor", Values: []string{"Top", "Bottom"}},
+		{Name: "WindowAction", Values: []string{"Show", "Hide", "Focus", "Minimize", "Maximize", "Restore", "Fullscreen", "ExitFullscreen", "Center", "Size", "Position", "AlwaysOnTop", "NotAlwaysOnTop", "Close"}},
+		{Name: "TitleBar", Values: []string{"Default", "Hidden"}},
 	},
 }

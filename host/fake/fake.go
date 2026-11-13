@@ -79,6 +79,7 @@ type Host struct {
 	postMu   sync.Mutex
 	nextCell ops.NodeID
 	opsAlloc []byte
+	wins     map[ops.NodeID]*WindowInfo // window.go
 }
 
 // New makes a fake host with a 390×844 portrait phone environment.
@@ -204,6 +205,7 @@ func (h *Host) apply(op *ops.Op) {
 			c.Parent = nil
 		}
 		delete(h.Views, op.ID)
+		delete(h.wins, op.ID)
 	case ops.OpInsert:
 		p, c := h.view(op.ID, "Insert"), h.view(op.Child, "Insert")
 		if c.Parent != nil {
@@ -236,7 +238,11 @@ func (h *Host) apply(op *ops.Op) {
 	case ops.OpSetFrame:
 		h.view(op.ID, "SetFrame").Frame = op.Frame
 	case ops.OpListen:
-		h.view(op.ID, "Listen").Listens[op.Event] = true
+		v := h.view(op.ID, "Listen")
+		v.Listens[op.Event] = true
+		if op.Event == ops.EventWindowState {
+			h.reportWindow(v)
+		}
 	case ops.OpUnlisten:
 		delete(h.view(op.ID, "Unlisten").Listens, op.Event)
 	case ops.OpCommand:
@@ -254,6 +260,7 @@ func (h *Host) apply(op *ops.Op) {
 			}
 			v.presented = true
 		}
+		h.windowCommand(v, op.Cmd, op.Value.Bytes)
 	case ops.OpSetRoot:
 		for _, v := range h.Views {
 			v.Root = false

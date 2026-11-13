@@ -14,7 +14,7 @@
 import { decode, Reader, Events, Kind, Prop, Event, Command, environment as newEnvironment, Type } from "./ops.js";
 import { kinds } from "./views.js";
 import { Interaction } from "./interaction.js";
-import { Navigation } from "./nav.js";
+import { Navigation, decodeWindowConfig } from "./nav.js";
 import { Modules } from "./modules.js";
 import { Menus } from "./menu.js";
 import { Motion } from "./motion.js";
@@ -698,10 +698,8 @@ export class Host {
         } catch {}
         break;
       case Command.WindowOptions: {
-        const r = new Reader(args);
-        r.f32(); r.f32(); r.f32(); r.f32();
-        const title = new TextDecoder().decode(args.subarray(16));
-        this.windowTitle = title;
+        const c = decodeWindowConfig(args);
+        this.windowTitle = c.title;
         this.nav.updateTitle();
         break;
       }

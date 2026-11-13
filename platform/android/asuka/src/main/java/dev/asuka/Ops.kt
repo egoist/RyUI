@@ -337,10 +337,7 @@ object AsukaProp {
 
     object Window {
         const val TITLE = 64
-        const val WIDTH = 65
-        const val HEIGHT = 66
-        const val MIN_WIDTH = 67
-        const val MIN_HEIGHT = 68
+        const val CONFIG = 65
     }
 }
 
@@ -398,6 +395,8 @@ object AsukaEventKind {
     const val DRAGGING = 51
     const val BACK = 52
     const val PAGED = 53
+    const val WINDOW_STATE = 54
+    const val CLOSE_REQUEST = 55
 }
 
 object AsukaCommand {
@@ -435,6 +434,7 @@ object AsukaCommand {
     const val A11Y_FOCUS = 32
     const val BACK_EXIT = 33
     const val REPLACE = 34
+    const val WINDOW_ACTION = 35
 }
 
 object AsukaRole {
@@ -693,6 +693,28 @@ object AsukaScrollAnchor {
     const val BOTTOM = 1
 }
 
+object AsukaWindowAction {
+    const val SHOW = 0
+    const val HIDE = 1
+    const val FOCUS = 2
+    const val MINIMIZE = 3
+    const val MAXIMIZE = 4
+    const val RESTORE = 5
+    const val FULLSCREEN = 6
+    const val EXIT_FULLSCREEN = 7
+    const val CENTER = 8
+    const val SIZE = 9
+    const val POSITION = 10
+    const val ALWAYS_ON_TOP = 11
+    const val NOT_ALWAYS_ON_TOP = 12
+    const val CLOSE = 13
+}
+
+object AsukaTitleBar {
+    const val DEFAULT = 0
+    const val HIDDEN = 1
+}
+
 /** Receives decoded ops, in order, on the main thread. */
 interface AsukaOpHandler {
     fun create(id: Int, kind: Int)
@@ -890,4 +912,6 @@ object AsukaEvents {
     fun dragging(id: Int, v: Long): ByteArray = AsukaWriter().apply { header(id, 51); u64(v) }.bytes()
     fun back(id: Int): ByteArray = AsukaWriter().apply { header(id, 52) }.bytes()
     fun paged(id: Int, v: Long): ByteArray = AsukaWriter().apply { header(id, 53); u64(v) }.bytes()
+    fun windowState(id: Int, v: ByteArray): ByteArray = AsukaWriter().apply { header(id, 54); u32(v.size); raw(v) }.bytes()
+    fun closeRequest(id: Int): ByteArray = AsukaWriter().apply { header(id, 55) }.bytes()
 }

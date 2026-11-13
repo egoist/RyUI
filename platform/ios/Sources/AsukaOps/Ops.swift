@@ -334,10 +334,7 @@ public enum AsukaProp {
 
     public enum Window {
         public static let title: UInt16 = 64
-        public static let width: UInt16 = 65
-        public static let height: UInt16 = 66
-        public static let minWidth: UInt16 = 67
-        public static let minHeight: UInt16 = 68
+        public static let config: UInt16 = 65
     }
 }
 
@@ -395,6 +392,8 @@ public enum AsukaEventKind: UInt16 {
     case dragging = 51
     case back = 52
     case paged = 53
+    case windowState = 54
+    case closeRequest = 55
 }
 
 public enum AsukaCommand: UInt16 {
@@ -432,6 +431,7 @@ public enum AsukaCommand: UInt16 {
     case a11yFocus = 32
     case backExit = 33
     case replace = 34
+    case windowAction = 35
 }
 
 public enum AsukaRole: Int32 {
@@ -688,6 +688,28 @@ public enum AsukaDragPhase: Int32 {
 public enum AsukaScrollAnchor: Int32 {
     case top = 0
     case bottom = 1
+}
+
+public enum AsukaWindowAction: Int32 {
+    case show = 0
+    case hide = 1
+    case focus = 2
+    case minimize = 3
+    case maximize = 4
+    case restore = 5
+    case fullscreen = 6
+    case exitFullscreen = 7
+    case center = 8
+    case size = 9
+    case position = 10
+    case alwaysOnTop = 11
+    case notAlwaysOnTop = 12
+    case close = 13
+}
+
+public enum AsukaTitleBar: Int32 {
+    case `default` = 0
+    case hidden = 1
 }
 
 /// A prop value. Bytes are valid only during the handler call.
@@ -1009,5 +1031,11 @@ public enum AsukaEvents {
     }
     public static func paged(_ id: UInt32, _ v: Int64) -> [UInt8] {
         var w = AsukaWriter(); w.header(id, 53); w.u64(UInt64(bitPattern: v)); return w.bytes
+    }
+    public static func windowState(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
+        var w = AsukaWriter(); w.header(id, 54); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
+    }
+    public static func closeRequest(_ id: UInt32) -> [UInt8] {
+        var w = AsukaWriter(); w.header(id, 55); return w.bytes
     }
 }

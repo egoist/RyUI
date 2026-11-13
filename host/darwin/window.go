@@ -354,11 +354,9 @@ func (h *Host) openWindow(n *node) {
 // windowOptions applies WindowOptions to the main window: its title, its
 // least size, and its size unless the user's is remembered.
 func (h *Host) windowOptions(args []byte) {
-	if len(args) < 16 {
-		return
-	}
-	w, ht, minW, minH := float64(f32(args, 0)), float64(f32(args, 4)), float64(f32(args, 8)), float64(f32(args, 12))
-	if title := string(args[16:]); title != "" {
+	c := ops.DecodeWindowConfig(args)
+	w, ht, minW, minH := float64(c.Width), float64(c.Height), float64(c.MinWidth), float64(c.MinHeight)
+	if title := c.Title; title != "" {
 		h.main.base = title
 	}
 	if minW > 0 || minH > 0 {
