@@ -32,6 +32,13 @@ func (t *iosToolchain) pluginLibs(app *goApp) ([]pluginLib, error) {
 	if goarch == "" {
 		goarch = "arm64"
 	}
+	if app.pkg != "" {
+		ps, err := pkgPlugins(app.pkgIn, app.pkg, "ios", goarch)
+		if err != nil {
+			return nil, err
+		}
+		return pluginLibs(ps, t.pluginTarget())
+	}
 	return appLibs(app.dir, "ios", goarch, t.pluginTarget())
 }
 

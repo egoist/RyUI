@@ -1216,6 +1216,32 @@ shared by every app. A change rebuilds the Go code for the Mac and
 restarts that process, under a second; the player reconnects and shows
 the new code, with no install. The app's logs are the process's output.
 
+- **Noticing a change**: the system says when a file under the app's
+  module changes (`asuka/sdk/watch`: FSEvents, inotify,
+  ReadDirectoryChangesW; 25 ms for a burst to end), and a scan of the
+  files' modification times decides whether it needs a build; where the
+  system can't watch (too many files, no way to), `asuka dev` polls.
+  Development builds leave out DWARF (`-ldflags=-w`), much of the
+  linker's time; tracebacks and `runtime.Callers` use the symbol table.
+- **The next run starts behind the last** (`internal/devstate`'s
+  `Wait`): `asuka dev` starts the new build while the old one runs, and
+  it waits on a control connection (`ASUKA_CONTROL`: it connects, sends
+  its process ID, and waits for a byte), before it makes a window,
+  listens or reads its kept state. Once it waits, the old run is stopped
+  (its connection closed: it saves its state and exits), and the new one
+  is let go on and takes the state back. So its start (the runtime, its
+  packages' `init`, the frameworks loaded, and on macOS the system's
+  check of a program it hasn't seen run, a few hundred milliseconds
+  unless the terminal is a developer tool) happens behind the old one;
+  a build that quits as it starts leaves the old one running. A run that
+  takes over 10 s to wait doesn't hold the old one longer; one run
+  elsewhere (`ASUKA_LINUX_RUN`) is stopped and started in turn.
+- **The player's port outlives the runs**: `asuka dev` listens, and each
+  run takes the listener (and the assets' one) as an inherited
+  descriptor (`ASUKA_REMOTE_FD`, `ASUKA_ASSETS_FD`), so the player,
+  reconnecting as its connection ends, waits in the queue for the next
+  run instead of being refused and trying again.
+
 - **Only in that process**: `asuka dev` links `app/remote` into it (an
   `-overlay` file in the app's main package), and with it the socket
   and the assets' HTTP server. An app's own builds (on the device, for
@@ -1239,13 +1265,29 @@ the new code, with no install. The app's logs are the process's output.
 - **State survives a reload** without code, as React's Fast Refresh
   keeps hooks' state: the process saves every app signal's value as it
   stops, and the next run gives it back to the signal made at the same
-  place: the same call path (function names), type and position among
-  the live signals of that type there. A signal made by Asuka itself
-  isn't kept, nor a value JSON would change (funcs, unexported fields).
-  Adding a signal before others of its type made at the same place, or
-  changing its type, resets those. Navigation isn't kept (screens are
-  closures): a reload starts at the root screen. Off in a built app,
-  where `signal.New` pays one nil check.
+  place: the same call path (function names), name, type and position
+  among the live signals of that name and type there. A signal made by
+  Asuka itself isn't kept, nor a value JSON would change (funcs,
+  unexported fields). Changing a signal's type resets it. Navigation
+  isn't kept (screens are closures): a reload starts at the root
+  screen. Off in a built app, where `signal.New` pays one nil check.
+- **Places are named from the source** (`signal.KeepPlaces`): Go names
+  closures by their order in their function (`Screen.func2`), so adding
+  one, a button's handler, renumbers those after it. `asuka dev` reads
+  the app's own packages as it builds them (`go/ast`; `go list` once,
+  and again only for an import it hadn't seen) and adds a table to the
+  build's overlay: each function literal's lines, depth and place among
+  its siblings, named by what it is in its function (the variable or
+  field it's assigned to, the call and argument it's passed as, a
+  `go`, `defer` or `return`: `Screen>body`, `Screen>ui.Show#1`, a second
+  of a name `~2`), and each `signal.New` and `NewFunc` by the variable
+  or field it's made for. The run finds a frame's literal by its file
+  and line, at the depth its runtime name says past its function's
+  (`.funcN`, `.N` as inlined, `-rangeN` a range-over-func loop's body,
+  no literal), and of siblings on one line by their place; what the
+  table can't tell keeps the runtime's name. A file that says
+  `//asuka:reset` has its signals start over when it's edited (its
+  digest is in their names).
 - **Reaching the Mac**: the simulator shares its loopback; an Android
   emulator reaches it at `10.0.2.2`, directly (`adb reverse` adds a
   round trip's worth of latency to every call); a device goes through

@@ -30,8 +30,8 @@ func init() {
 
 // restoreState gives the app's signals the values the last run saved,
 // under asuka dev (ASUKA_STATE), and saves them when asuka dev stops the app
-// to run the new code.
-func restoreState() {
+// to run the new code: it closes stopped (devstate.Wait), or sends SIGINT.
+func restoreState(stopped <-chan struct{}) {
 	path := os.Getenv("ASUKA_STATE")
 	if path == "" {
 		return
@@ -42,7 +42,10 @@ func restoreState() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	go func() {
-		<-stop
+		select {
+		case <-stop:
+		case <-stopped:
+		}
 		theHost.Post(func() {
 			saveState()
 			os.Exit(0)

@@ -24,7 +24,8 @@ func TestAccent(t *testing.T) {
 	if got := c.ldflags(true); got != want {
 		t.Fatalf("ldflags %q", got)
 	}
-	if got := (&appConfig{}).ldflags(false); got != "-ldflags=" {
+	// A development build: no DWARF, which it doesn't use.
+	if got := (&appConfig{}).ldflags(false); got != "-ldflags=-w" {
 		t.Fatalf("no accent: %q", got)
 	}
 	// Releases that keep symbols for crash reports: iOS all (its dSYM),
@@ -37,7 +38,7 @@ func TestAccent(t *testing.T) {
 	}
 	// A background app says so to the desktop hosts.
 	write(`{"background": true}`)
-	if c, err := loadConfig(dir); err != nil || c.ldflags(false) != "-ldflags=-X github.com/egoist/asuka/internal/boot.Background=1" {
+	if c, err := loadConfig(dir); err != nil || c.ldflags(false) != "-ldflags=-w -X github.com/egoist/asuka/internal/boot.Background=1" {
 		t.Fatalf("background: %v, %v", c, err)
 	}
 	write(`{"accent": "purple"}`)

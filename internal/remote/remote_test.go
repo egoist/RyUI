@@ -336,3 +336,54 @@ func TestShareSheetSession(t *testing.T) {
 	s.until("the sheet again", func() bool { return len(s.h.OfKind(ops.KindButton)) == 1 })
 	s.h.One(ops.KindButton, "Save https://go.dev")
 }
+
+// TestConnectFollowsTheCoreAcrossRuns: the player's Connect, over TCP, to
+// a core that stops (its connection ends, as asuka dev's run quits) and a
+// next one that takes the next connection: the player shows the next
+// run's app.
+func TestConnectFollowsTheCoreAcrossRuns(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	h := fake.New()
+	h.Env = env
+	x := NewProxy(h)
+	h.Connect(x)
+	h.SetEnvironment(env)
+	s := &player{t: t, h: h, x: x}
+	go x.Connect(ln.Addr().String())
+
+	// run serves text to the next connection, until stop.
+	run := func(text string) (stop func()) {
+		conns := make(chan net.Conn, 1)
+		done := make(chan struct{})
+		srv := NewServer(func() ui.Node { return ui.StaticText(text) }, make(chan func(), 16))
+		go func() {
+			srv.Loop(conns)
+			close(done)
+		}()
+		accepted := make(chan net.Conn, 1)
+		go func() {
+			c, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			conns <- c
+			accepted <- c
+		}()
+		return func() {
+			c := <-accepted
+			c.Close() // the run quits: its connection ends
+			close(conns)
+			<-done
+		}
+	}
+	stop := run("one")
+	s.until("the first run's app", func() bool { return hasText(h, "one") })
+	next := run("two")
+	stop()
+	s.until("the next run's app", func() bool { return hasText(h, "two") && !hasText(h, "one") })
+	next()
+}

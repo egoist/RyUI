@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -12,6 +14,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -73,10 +76,9 @@ type hostProcess struct {
 	env  []string
 	// bin is the built executable (default: app-host in the work
 	// directory).
-	bin  string
-	proc *os.Process
-	done chan struct{}
-	v    bool
+	bin string
+	run *hostRun // nil when none runs
+	v   bool
 	// flags is the build's -ldflags (default: asuka.json's).
 	flags string
 	// goos and goarch are the build's GOOS and GOARCH (default: this
@@ -86,9 +88,6 @@ type hostProcess struct {
 	// (Linux: ASUKA_LINUX_RUN, a VM with this computer's paths): the
 	// process is wrap, given env, the directory and the executable.
 	wrap []string
-	// stdin, when the process is told to stop by closing it (Windows,
-	// which can't send it SIGINT).
-	stdin io.WriteCloser
 	// afterBuild, when set, runs after each build (macOS: signs the app).
 	afterBuild func() error
 	// own: the process answers for itself, not for asuka (macOS: its
@@ -97,18 +96,39 @@ type hostProcess struct {
 	// remote: the process serves the app to a player (app/remote, linked
 	// in only here, so the app's own builds carry no network code).
 	remote bool
+	// listeners are the ones the runs take (inherit), kept across them.
+	listeners []inherited
+	// ctl is the runs' control connections' listener.
+	ctl *control
+	// places reads the source for kept state's names.
+	places *devPlaces
 }
 
-// remoteOverlay writes the -overlay that links app/remote into the app's
-// main package.
-func remoteOverlay(app *goApp, work string) (string, error) {
-	stub := filepath.Join(work, "zz_asuka_remote.go")
-	code := "package main\n\nimport _ \"github.com/egoist/asuka/app/remote\"\n"
-	if err := os.WriteFile(stub, []byte(code), 0o644); err != nil {
+// devOverlay writes the -overlay of a development build: a file in the
+// app's main package that gives the run the names of its source's places
+// (devPlaces, signal.KeepPlaces), and with remote links app/remote in.
+func devOverlay(app *goApp, work string, remote bool, places *devPlaces) (string, error) {
+	var b strings.Builder
+	b.WriteString("package main\n\n")
+	if remote {
+		b.WriteString("import _ \"github.com/egoist/asuka/app/remote\"\n")
+	}
+	if places != nil {
+		table, err := places.table()
+		if err != nil {
+			// Kept state is known by the runtime's names instead.
+			fmt.Fprintln(os.Stderr, "asuka: reading the source for kept state's names:", err)
+		}
+		if table != "" {
+			fmt.Fprintf(&b, "import zzAsukaSignal \"github.com/egoist/asuka/signal\"\n\nfunc init() { zzAsukaSignal.KeepPlaces(%s) }\n", strconv.Quote(table))
+		}
+	}
+	stub := filepath.Join(work, "zz_asuka_dev.go")
+	if err := os.WriteFile(stub, []byte(b.String()), 0o644); err != nil {
 		return "", err
 	}
-	overlay, _ := json.Marshal(map[string]map[string]string{"Replace": {filepath.Join(app.dir, "zz_asuka_remote.go"): stub}})
-	ovPath := filepath.Join(work, "remote-overlay.json")
+	overlay, _ := json.Marshal(map[string]map[string]string{"Replace": {filepath.Join(app.dir, "zz_asuka_dev.go"): stub}})
+	ovPath := filepath.Join(work, "dev-overlay.json")
 	return ovPath, os.WriteFile(ovPath, overlay, 0o644)
 }
 
@@ -123,17 +143,17 @@ func (p *hostProcess) build() error {
 	if flags == "" {
 		flags = p.app.cfg.ldflags(false)
 	}
-	args := []string{"build", flags, "-o", p.bin}
-	if p.remote {
-		ov, err := remoteOverlay(p.app, p.work)
-		if err != nil {
-			return err
-		}
-		args = append(args, "-overlay", ov)
+	if p.places == nil {
+		p.places = newDevPlaces(p.app, p.goos, p.goarch)
 	}
+	ov, err := devOverlay(p.app, p.work, p.remote, p.places)
+	if err != nil {
+		return err
+	}
+	args := []string{"build", flags, "-overlay", ov, "-o", p.bin}
 	c := exec.Command("go", append(args, ".")...)
 	c.Dir = p.app.dir
-	c.Env = append(os.Environ(), "CGO_ENABLED=0")
+	c.Env = goEnv(p.app.dir, "CGO_ENABLED=0")
 	if p.goos != "" {
 		c.Env = append(c.Env, "GOOS="+p.goos)
 	}
@@ -149,19 +169,74 @@ func (p *hostProcess) build() error {
 	return nil
 }
 
-// restart stops the running process (it saves its persisted state on
-// the way out) and starts the new build.
+// restart runs the new build in place of the running one. Under the
+// control of asuka dev (devstate.Wait), the new process starts while the
+// old one still runs, and waits; once it waits (it has started: on macOS,
+// the system has checked the program it hasn't seen run), the old one
+// stops, saving its state, and the new one goes on and takes it back. A
+// build that quits before it waits leaves the old one running. Run
+// elsewhere (ASUKA_LINUX_RUN), the old one stops first.
 func (p *hostProcess) restart() error {
-	p.stop()
-	env := append(os.Environ(), p.env...)
-	p.stdin = nil
+	if len(p.wrap) > 0 {
+		p.stop()
+		return p.start(nil)
+	}
+	if p.ctl == nil {
+		ctl, err := newControl()
+		if err != nil {
+			return err
+		}
+		p.ctl = ctl
+	}
+	old := p.run
+	began := time.Now()
+	if err := p.start([]string{"ASUKA_CONTROL=" + p.ctl.ln.Addr().String()}); err != nil {
+		return err
+	}
+	conn, exited := p.ctl.wait(p.run.proc.Pid, p.run.done, controlWait)
+	if exited && old != nil {
+		p.run = old
+		return errors.New("the new build quit as it started (its output is above); the app keeps running the last one")
+	}
+	took := time.Since(began)
+	old.stop()
+	switch {
+	case conn != nil:
+		p.run.setConn(conn)
+		conn.Write([]byte{'g'})
+	case !exited:
+		// Slower than asuka dev waited: it goes on once it waits.
+		p.ctl.later(p.run, p.run.proc.Pid)
+	}
+	if runtime.GOOS == "darwin" && !p.own && took > slowStart && !slowStartTold {
+		slowStartTold = true
+		fmt.Printf("asuka: the new build took %.1fs to start: macOS checks a program the first time it runs, unless what runs it is a developer tool (System Settings > Privacy & Security > Developer Tools: add your terminal)\n", took.Seconds())
+	}
+	return nil
+}
+
+const (
+	// controlWait is how long a new run may take to start before the old
+	// one stops anyway.
+	controlWait = 10 * time.Second
+	// slowStart is a start slower than a Go program's (a few
+	// milliseconds) by the system's check of a new program on macOS.
+	slowStart = 150 * time.Millisecond
+)
+
+var slowStartTold bool
+
+// start starts the build, with more in its environment.
+func (p *hostProcess) start(more []string) error {
+	env := append(append(os.Environ(), p.env...), more...)
+	r := &hostRun{done: make(chan struct{})}
 	var wait func()
 	if p.own {
 		proc, err := spawnOwn(p.bin, p.app.dir, env) // assets/ is served from here
 		if err != nil {
 			return err
 		}
-		p.proc = proc
+		r.proc = proc
 		wait = func() { proc.Wait() }
 	} else {
 		c := exec.Command(p.bin)
@@ -178,6 +253,11 @@ func (p *hostProcess) restart() error {
 			c = exec.Command(p.wrap[0], args...)
 		}
 		c.Dir = p.app.dir // assets/ is served from here
+		// The listeners asuka dev keeps, from descriptor 3 on.
+		for i, l := range p.listeners {
+			c.ExtraFiles = append(c.ExtraFiles, l.file)
+			env = append(env, fmt.Sprintf("%s=%d", l.env, 3+i))
+		}
 		c.Env = env
 		c.Stdout, c.Stderr = os.Stdout, os.Stderr
 		if slices.Contains(p.env, "ASUKA_STOP=stdin") {
@@ -185,38 +265,206 @@ func (p *hostProcess) restart() error {
 			if err != nil {
 				return err
 			}
-			p.stdin = in
+			r.stdin = in
 		}
 		if err := c.Start(); err != nil {
 			return err
 		}
-		p.proc = c.Process
+		r.proc = c.Process
 		wait = func() { c.Wait() }
 	}
-	p.done = make(chan struct{})
-	go func(done chan struct{}) {
+	go func() {
 		wait()
-		close(done)
-	}(p.done)
+		close(r.done)
+	}()
+	p.run = r
 	return nil
 }
 
+// stop stops the running build: it saves its state and quits.
 func (p *hostProcess) stop() {
-	if p.proc == nil {
+	p.run.stop()
+	p.run = nil
+}
+
+// done is closed when the running build exits (nil when none runs).
+func (p *hostProcess) done() <-chan struct{} {
+	if p.run == nil {
+		return nil
+	}
+	return p.run.done
+}
+
+// inherit listens on addr for the app's runs, which take the listener
+// on a descriptor that the environment variable env names
+// (internal/remote): it stays across reloads.
+func (p *hostProcess) inherit(env, addr string) error {
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+	f, err := ln.(*net.TCPListener).File()
+	ln.Close() // f is a copy
+	if err != nil {
+		return err
+	}
+	p.listeners = append(p.listeners, inherited{env: env, file: f})
+	return nil
+}
+
+// inheritRemote keeps the player's port, and the assets' after it, for
+// the runs (internal/remote's listen).
+func (p *hostProcess) inheritRemote(port int) error {
+	if err := p.inherit("ASUKA_REMOTE_FD", fmt.Sprintf("127.0.0.1:%d", port)); err != nil {
+		return err
+	}
+	return p.inherit("ASUKA_ASSETS_FD", fmt.Sprintf("127.0.0.1:%d", port+1))
+}
+
+type inherited struct {
+	env  string
+	file *os.File
+}
+
+// hostRun is one run of the app's build.
+type hostRun struct {
+	proc *os.Process
+	done chan struct{}
+	// stdin, when the process is told to stop by closing it (Windows,
+	// which can't send it SIGINT).
+	stdin io.WriteCloser
+	// ctl is its control connection (devstate.Wait), once it waits: closed
+	// to stop it.
+	mu  sync.Mutex
+	ctl net.Conn
+}
+
+func (r *hostRun) setConn(c net.Conn) {
+	r.mu.Lock()
+	r.ctl = c
+	r.mu.Unlock()
+}
+
+func (r *hostRun) conn() net.Conn {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.ctl
+}
+
+func (r *hostRun) stop() {
+	if r == nil {
 		return
 	}
-	if p.stdin != nil {
-		p.stdin.Close() // it saves its state and quits
-	} else {
-		p.proc.Signal(syscall.SIGINT)
+	ctl := r.conn()
+	switch {
+	case ctl != nil:
+		ctl.Close() // it saves its state and quits
+	case r.stdin != nil:
+		r.stdin.Close() // likewise
+	default:
+		r.proc.Signal(syscall.SIGINT)
 	}
 	select {
-	case <-p.done:
+	case <-r.done:
 	case <-time.After(3 * time.Second):
-		p.proc.Kill()
-		<-p.done
+		r.proc.Kill()
+		<-r.done
 	}
-	p.proc = nil
+	if c := r.conn(); c != nil && ctl == nil {
+		c.Close() // it connected meanwhile
+	}
+}
+
+// control is asuka dev's end of its runs' control connections: each run
+// connects, sends its process ID and waits for a byte (devstate.Wait).
+type control struct {
+	ln    net.Listener
+	mu    sync.Mutex
+	slots map[int]chan net.Conn // by process ID
+}
+
+func newControl() (*control, error) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return nil, err
+	}
+	c := &control{ln: ln, slots: map[int]chan net.Conn{}}
+	go c.accept()
+	return c, nil
+}
+
+func (c *control) slot(pid int) chan net.Conn {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	ch := c.slots[pid]
+	if ch == nil {
+		ch = make(chan net.Conn, 1)
+		c.slots[pid] = ch
+	}
+	return ch
+}
+
+func (c *control) drop(pid int) {
+	c.mu.Lock()
+	delete(c.slots, pid)
+	c.mu.Unlock()
+}
+
+func (c *control) accept() {
+	for {
+		conn, err := c.ln.Accept()
+		if err != nil {
+			return
+		}
+		go func() {
+			conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+			line, err := bufio.NewReader(conn).ReadString('\n')
+			conn.SetReadDeadline(time.Time{})
+			pid, perr := strconv.Atoi(strings.TrimSpace(line))
+			if err != nil || perr != nil {
+				conn.Close()
+				return
+			}
+			select {
+			case c.slot(pid) <- conn:
+			default:
+				conn.Close() // one per run
+			}
+		}()
+	}
+}
+
+// wait waits for the run of process pid to connect, for it to exit
+// (done), or for limit.
+func (c *control) wait(pid int, done <-chan struct{}, limit time.Duration) (conn net.Conn, exited bool) {
+	slot := c.slot(pid)
+	t := time.NewTimer(limit)
+	defer t.Stop()
+	select {
+	case conn = <-slot:
+		c.drop(pid)
+		return conn, false
+	case <-done:
+		c.drop(pid)
+		return nil, true
+	case <-t.C:
+		return nil, false
+	}
+}
+
+// later lets the run of process pid go on once it connects (it started
+// slower than asuka dev waited), unless it exits first.
+func (c *control) later(r *hostRun, pid int) {
+	slot := c.slot(pid)
+	go func() {
+		defer c.drop(pid)
+		select {
+		case conn := <-slot:
+			r.setConn(conn)
+			conn.Write([]byte{'g'})
+		case <-r.done:
+		}
+	}()
 }
 
 // watchHost rebuilds and restarts the app's process on each change: to
@@ -226,15 +474,13 @@ func (p *hostProcess) stop() {
 func watchHost(p *hostProcess, stop <-chan os.Signal, stopPlayer func(), more ...string) error {
 	fmt.Println("asuka: watching for changes (Ctrl-C to stop)")
 	w := newWatcher(append([]string{p.app.moduleDir, p.app.dir}, more...)...)
-	tick := time.NewTicker(300 * time.Millisecond)
-	defer tick.Stop()
 	defer stopPlayer()
 	defer p.stop()
 	for {
 		select {
 		case <-stop:
 			return nil
-		case <-tick.C:
+		case <-w.wake:
 			if !w.changed() {
 				continue
 			}
@@ -279,6 +525,9 @@ func devIOSPlayer(app *goApp, tc *iosToolchain, work string, sim *simDevice, sto
 		fmt.Sprintf("ASUKA_ASSETS_URL=http://127.0.0.1:%d/", port+1),
 		fmt.Sprintf("ASUKA_ASSETS_ADDR=127.0.0.1:%d", port+1),
 	}}
+	if err := proc.inheritRemote(port); err != nil {
+		return err
+	}
 	if err := proc.build(); err != nil {
 		return err
 	}
@@ -314,7 +563,7 @@ func devIOSPlayer(app *goApp, tc *iosToolchain, work string, sim *simDevice, sto
 		return strings.TrimSpace(string(out))
 	}
 	if prev, _ := os.ReadFile(marker); string(prev) != sum+"\n"+container() {
-		player := &goApp{dir: dir, name: playerName, bundleID: playerID, cfg: playerConfig()}
+		player := &goApp{dir: dir, name: playerName, bundleID: playerID, cfg: playerConfig(), pkg: playerPkg, pkgIn: app.dir}
 		bundle, err := tc.link(player, dir, hostObj, lib)
 		if err != nil {
 			return err
@@ -358,6 +607,9 @@ func devAndroidPlayer(app *goApp, tc *androidToolchain, work, serial string, sto
 		"ASUKA_ASSETS_URL=" + assets,
 		fmt.Sprintf("ASUKA_ASSETS_ADDR=127.0.0.1:%d", port+1),
 	}}
+	if err := proc.inheritRemote(port); err != nil {
+		return err
+	}
 	if err := proc.build(); err != nil {
 		return err
 	}

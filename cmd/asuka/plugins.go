@@ -49,7 +49,13 @@ var (
 // appPlugins are the plugins of the main package in dir, built for goos
 // and goarch: its dependencies with a manifest.
 func appPlugins(dir, goos, goarch string) ([]appPlugin, error) {
-	key := dir + "\x00" + goos + "\x00" + goarch
+	return pkgPlugins(dir, ".", goos, goarch)
+}
+
+// pkgPlugins are the plugins of package pkg, as the go command in dir
+// builds it (the player: mobile/player, in the app's module).
+func pkgPlugins(dir, pkg, goos, goarch string) ([]appPlugin, error) {
+	key := dir + "\x00" + pkg + "\x00" + goos + "\x00" + goarch
 	pluginsMu.Lock()
 	ps, ok := pluginsCache[key]
 	pluginsMu.Unlock()
@@ -60,7 +66,7 @@ func appPlugins(dir, goos, goarch string) ([]appPlugin, error) {
 	if goos == "ios" || goos == "android" {
 		cgo = "1" // their build modes'
 	}
-	c := exec.Command("go", "-C", dir, "list", "-deps", "-f", "{{.Dir}}", ".")
+	c := exec.Command("go", "-C", dir, "list", "-deps", "-f", "{{.Dir}}", pkg)
 	c.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+goarch, "CGO_ENABLED="+cgo)
 	var stderr bytes.Buffer
 	c.Stderr = &stderr

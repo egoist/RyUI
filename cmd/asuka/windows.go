@@ -99,7 +99,7 @@ func devWindows(dir string, o *devOptions, stop <-chan os.Signal) error {
 	}
 	fmt.Printf("asuka: built and started in %.1fs\n", time.Since(start).Seconds())
 	if o.once {
-		<-proc.done
+		<-proc.done()
 		return nil
 	}
 	return watchHost(proc, stop, func() {})

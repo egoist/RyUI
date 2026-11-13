@@ -355,7 +355,9 @@ func (s *Server) Loop(conns <-chan net.Conn) {
 // names): saved when a player disconnects and when the process is
 // stopped, restored by the next run. It returns if listening fails.
 func Run(addr string, root, sheet func() ui.Node) error {
-	ln, err := net.Listen("tcp", addr)
+	// The run before this one stopped, and saved its state, first.
+	stopped := devstate.Wait()
+	ln, err := listen(addr, "ASUKA_REMOTE_FD")
 	if err != nil {
 		return err
 	}
@@ -367,7 +369,11 @@ func Run(addr string, root, sheet func() ui.Node) error {
 	if base := os.Getenv("ASUKA_ASSETS_URL"); base != "" {
 		boot.AssetBase = base
 		if a := os.Getenv("ASUKA_ASSETS_ADDR"); a != "" {
-			go serveAssets(a, "assets")
+			assets, err := listen(a, "ASUKA_ASSETS_FD")
+			if err != nil {
+				return err
+			}
+			go serveAssets(assets, "assets")
 		}
 	}
 	save := func() {
@@ -386,7 +392,10 @@ func Run(addr string, root, sheet func() ui.Node) error {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	go func() {
-		<-stop
+		select {
+		case <-stop:
+		case <-stopped:
+		}
 		posts <- func() { save(); os.Exit(0) }
 	}()
 	conns := make(chan net.Conn)

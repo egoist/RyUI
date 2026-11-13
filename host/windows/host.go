@@ -21,6 +21,7 @@ import (
 
 	"github.com/egoist/asuka/host"
 	"github.com/egoist/asuka/internal/boot"
+	"github.com/egoist/asuka/internal/devstate"
 	. "github.com/egoist/asuka/internal/windows"
 	"github.com/egoist/asuka/internal/winstate"
 	"github.com/egoist/asuka/layout"
@@ -362,6 +363,9 @@ func newHost() *Host {
 // Run runs root as the app's window until it's closed. Main thread: call
 // it from main.
 func Run(root func() ui.Node) {
+	// Under asuka dev, until the run before this one has stopped: this one
+	// starts behind it (state.go).
+	stopped := devstate.Wait()
 	dir, _ := os.Getwd()
 	args := os.Args[1:]
 	if launchDockItem >= 0 {
@@ -374,7 +378,7 @@ func Run(root func() ui.Node) {
 	launch := launchOpens(os.Args[1:], dir)
 	startCrash()
 	h := newHost()
-	restoreState()
+	restoreState(stopped)
 	h.enter(func() { ui.Mount(h, root) })
 	if launchDockItem >= 0 {
 		h.trayEvent(0, 2, launchDockItem)
