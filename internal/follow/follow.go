@@ -26,6 +26,11 @@ type Module struct {
 	mu       sync.Mutex
 	watchers map[*func([]byte)]bool
 	running  bool
+	// gen is the goroutine that follows: one that wakes to a gen moved
+	// on (the last watcher stopped, perhaps another began) ends without
+	// touching the module, so a new watch never waits on a goroutine
+	// whose "next" the stop answers later, or never (a root gone).
+	gen int
 }
 
 // Watch calls f, on the main thread, with each answer of "next": the
@@ -40,9 +45,13 @@ func (m *Module) Watch(f func(reply []byte)) (stop func()) {
 	m.watchers[fp] = true
 	start := !m.running
 	m.running = true
+	if start {
+		m.gen++
+	}
+	gen := m.gen
 	m.mu.Unlock()
 	if start {
-		go m.follow()
+		go m.follow(gen)
 	} else {
 		// The goroutine waits for a change: this watcher gets the state
 		// now of its own.
@@ -67,6 +76,12 @@ func (m *Module) Watch(f func(reply []byte)) (stop func()) {
 			m.mu.Lock()
 			delete(m.watchers, fp)
 			last := len(m.watchers) == 0
+			if last {
+				// The goroutine's "next" is answered "stopped" (or never);
+				// a watch from now on starts one of its own.
+				m.running = false
+				m.gen++
+			}
 			m.mu.Unlock()
 			if last {
 				ui.Post(func() { ui.Call(m.Name, "stop", nil, nil) })
@@ -75,19 +90,24 @@ func (m *Module) Watch(f func(reply []byte)) (stop func()) {
 	}
 }
 
-// follow asks for each change until no one watches.
-func (m *Module) follow() {
+// follow asks for each change until no one watches: until the module's
+// gen isn't gen.
+func (m *Module) follow(gen int) {
 	var last []byte
 	for {
 		b, err := ui.CallWait(m.Name, "next", last)
 		m.mu.Lock()
+		if m.gen != gen {
+			m.mu.Unlock()
+			return
+		}
 		fs := make([]func([]byte), 0, len(m.watchers))
 		for f := range m.watchers {
 			fs = append(fs, *f)
 		}
-		// Stopped as another began watching: wait on for that one.
 		if len(fs) == 0 || err != nil && err.Error() != "stopped" {
 			m.running = false
+			m.gen++
 			m.mu.Unlock()
 			return
 		}

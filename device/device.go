@@ -171,6 +171,10 @@ var (
 	clipMu       sync.Mutex
 	clipWatchers = map[*func()]bool{}
 	clipRunning  bool
+	// clipGen is the goroutine that follows: one that wakes to it moved
+	// on (the last watcher stopped) ends, so a new watch never waits on
+	// one whose "next" the stop answers later, or never.
+	clipGen int
 )
 
 // OnClipboardChange calls f, on the main thread, each time the clipboard
@@ -183,9 +187,13 @@ func OnClipboardChange(f func()) (stop func()) {
 	clipWatchers[fp] = true
 	start := !clipRunning
 	clipRunning = true
+	if start {
+		clipGen++
+	}
+	gen := clipGen
 	clipMu.Unlock()
 	if start {
-		go followClipboard()
+		go followClipboard(gen)
 	}
 	var once sync.Once
 	return func() {
@@ -193,6 +201,10 @@ func OnClipboardChange(f func()) (stop func()) {
 			clipMu.Lock()
 			delete(clipWatchers, fp)
 			last := len(clipWatchers) == 0
+			if last {
+				clipRunning = false
+				clipGen++
+			}
 			clipMu.Unlock()
 			if last {
 				ui.Post(func() { ui.Call("clipboard", "stop", nil, nil) })
@@ -201,18 +213,23 @@ func OnClipboardChange(f func()) (stop func()) {
 	}
 }
 
-// followClipboard waits for each change ("next" answers at the next).
-func followClipboard() {
+// followClipboard waits for each change ("next" answers at the next),
+// until clipGen isn't gen.
+func followClipboard(gen int) {
 	for {
 		_, err := ui.CallWait("clipboard", "next", nil)
 		clipMu.Lock()
+		if clipGen != gen {
+			clipMu.Unlock()
+			return
+		}
 		fs := make([]func(), 0, len(clipWatchers))
 		for f := range clipWatchers {
 			fs = append(fs, *f)
 		}
-		// Stopped as another began watching: wait on for that one.
 		if len(fs) == 0 || err != nil && err.Error() != "stopped" {
 			clipRunning = false
+			clipGen++
 			clipMu.Unlock()
 			return
 		}

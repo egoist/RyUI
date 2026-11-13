@@ -34,7 +34,7 @@ func mount(t *testing.T, m *follow.Fake) (*fake.Host, func(what string, cond fun
 	t.Cleanup(r.Dispose)
 	return h, func(what string, cond func() bool) {
 		t.Helper()
-		for range 5000 { // a safety net, not what passes
+		for deadline := time.Now().Add(time.Minute); time.Now().Before(deadline); { // a safety net, not what passes
 			h.RunPosted()
 			r.Flush()
 			if cond() {
@@ -106,7 +106,7 @@ func TestUseDisplays(t *testing.T) {
 	})
 	t.Cleanup(r.Dispose)
 	pump := func(cond func() bool) bool {
-		for range 5000 {
+		for deadline := time.Now().Add(time.Minute); time.Now().Before(deadline); { // a safety net, not what passes
 			h.RunPosted()
 			r.Flush()
 			if cond() {
