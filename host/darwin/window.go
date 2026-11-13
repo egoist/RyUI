@@ -97,6 +97,10 @@ func (h *Host) makeMenu(app ID) {
 		h.addAppItems(file, m)
 		sep(file)
 	}
+	if h.hasOpenRecent() { // files.go
+		h.addOpenRecent(file)
+		sep(file)
+	}
 	item(file, h.menuWord("Close Window"), "performClose:", "w", 0)
 	sub(bar, h.menuWord("File"), file)
 

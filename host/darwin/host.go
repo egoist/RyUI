@@ -274,6 +274,8 @@ func Run(root func() ui.Node) {
 		restoreState()
 		// asuka/notify: the center's delegate before launch ends.
 		h.installNotifications()
+		// app.Quit, OnQuit's signals and the launch's Apple Event (files.go).
+		h.startQuit()
 		h.enter(func() { ui.Mount(h, root) })
 		if os.Getenv("ASUKA_SNAPSHOT") != "" {
 			// Automation: shown, without taking the user's focus.
