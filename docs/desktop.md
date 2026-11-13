@@ -73,9 +73,11 @@ ui.Window(ui.WindowProps{
 })
 ```
 
-- It has no frame and no taskbar button; with no `Background` it shows
-  the system's material behind its content (a Mac's menus'), with
-  rounded corners and a shadow, so give its content no background.
+- It has no frame and no taskbar button. On a Mac, with no `Background`,
+  it shows the material of menus behind its content, with rounded
+  corners and a shadow, so give its content no background there;
+  Windows 11 rounds it and casts a shadow over the window color; Linux
+  draws neither.
 - `Placement` is the side of the anchor it goes to and how it lines up
   with it (`PlacementBottom`: below, centered). Where the display has
   no room there it flips to the other side (below a Mac's menu bar
@@ -192,8 +194,9 @@ func Launcher() ui.Node {
 }
 ```
 
-- It has no frame; with no `Background` it shows the system's material
-  behind its content, with rounded corners and a shadow.
+- It has no frame. On a Mac, with no `Background`, it shows the
+  material of popovers behind its content, rounded and with a shadow;
+  Windows 11 rounds it; Linux draws it as a window's content.
 - Without `X` and `Y` (or a `StateKey`), it shows on the display with
   the pointer, centered across it, a third of the way down, each time
   it shows; `SetPosition` and `Center` place it for good. With
