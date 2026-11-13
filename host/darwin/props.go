@@ -168,6 +168,10 @@ func (h *Host) setCommon(n *node, p ops.PropID, v *ops.Value) {
 		h.applyDirection(n)
 		return
 	}
+	if p == ops.PropKeys {
+		n.setKeys(v.Bytes)
+		return
+	}
 	if n.view == 0 {
 		h.setNavCommon(n, p, v)
 		return

@@ -37,6 +37,7 @@ type node struct {
 	children []*node
 	parent   *node
 	listens  [2]uint64 // bits by EventKind
+	keys     []ops.Key // its Keys prop, decoded (keys.go)
 
 	// Text props.
 	textStyle, fontWeight, textAlign int32
@@ -257,6 +258,7 @@ func newHost() *Host {
 	h.makeWindow()
 	h.env = h.environment()
 	h.observe()
+	watchKeys()
 	return h
 }
 
