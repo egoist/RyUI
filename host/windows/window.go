@@ -170,6 +170,11 @@ const (
 func (h *Host) makeWindow() {
 	style := uint32(WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN)
 	h.window = CreateWindow(0, classWindow, h.appName, style, 0, 0, 100, 100, 0, 0)
+	// Before anything that sends the window messages: SetWindowPos sends
+	// WM_WINDOWPOSCHANGING before it returns, which windowMessage hands
+	// the main control.
+	h.mainCtl = &wctl{hwnd: h.window, main: true, key: mainKey(&ops.WindowConfig{})}
+	h.ctls[h.window] = h.mainCtl
 	h.dpi = DPI(h.window)
 	h.scale = dpiScale(h.dpi)
 	SetDarkTitleBar(h.window, h.dark)
@@ -181,11 +186,14 @@ func (h *Host) makeWindow() {
 	y := work.Top + (work.H()-ht)/2
 	SetWindowPos(h.window, 0, x, y, w, ht, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 	h.acceptDrops(h.window)
-	h.mainCtl = &wctl{hwnd: h.window, main: true, key: mainKey(&ops.WindowConfig{})}
-	h.ctls[h.window] = h.mainCtl
 }
 
 func (h *Host) windowMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
+	if h.mainCtl == nil {
+		// CreateWindow's own messages (WM_NCCREATE, WM_CREATE...): the
+		// window's default handling.
+		return 0, false
+	}
 	if r, ok := h.ctlMessage(h.mainCtl, m, wp, lp); ok {
 		return r, true
 	}
