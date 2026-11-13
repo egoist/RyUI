@@ -99,6 +99,8 @@ browser.
   background, global shortcuts, file dialogs and the file manager,
   opening files, one instance, quitting, recent documents, starting at
   login, updates, the displays, power and progress on the app's icon.
+- [Plugins](plugins.md): packages that bring native libraries, prebuilt
+  for each platform and shipped with the app; SQLite is one.
 - [Native code](native.md): views and modules of your own: Swift on
   iOS and macOS, Kotlin on Android, Go on the desktop, JavaScript on the
   web.

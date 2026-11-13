@@ -176,19 +176,42 @@ func (t *androidToolchain) goArch(serial string) (goarch, clang string, err erro
 	return "", "", fmt.Errorf("unsupported Android ABI %q", abi)
 }
 
-func (t *androidToolchain) buildGo(app *goApp, work, serial string) (string, error) {
+// buildGo builds the app's Go code for the device, work/libasuka.so, and
+// writes its plugins' libraries beside it (plugins: their paths).
+func (t *androidToolchain) buildGo(app *goApp, work, serial string) (lib string, plugins []string, err error) {
 	goarch, clang, err := t.goArch(serial)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	ov, err := writeOverlay(app, work)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
-	lib := filepath.Join(work, "libasuka.so")
+	lib = filepath.Join(work, "libasuka.so")
 	env := []string{"GOOS=android", "GOARCH=" + goarch, "CGO_ENABLED=1", "CC=" + filepath.Join(t.ndkBin, clang),
 		"CGO_LDFLAGS=-Wl,-z,max-page-size=16384"}
-	return lib, t.run(app.dir, env, "go", "build", "-buildmode=c-shared", app.cfg.ldflags(false), "-overlay", ov, "-o", lib, ".")
+	if err := t.run(app.dir, env, "go", "build", "-buildmode=c-shared", app.cfg.ldflags(false), "-overlay", ov, "-o", lib, "."); err != nil {
+		return "", nil, err
+	}
+	// An earlier build's plugins' libraries go.
+	old, _ := filepath.Glob(filepath.Join(work, "*.so"))
+	for _, p := range old {
+		if p != lib {
+			os.Remove(p)
+		}
+	}
+	libs, err := appLibs(app.dir, "android", goarch, "android-"+goarch)
+	if err != nil {
+		return "", nil, err
+	}
+	for _, l := range libs {
+		p := filepath.Join(work, l.file.Name)
+		if err := l.write(p); err != nil {
+			return "", nil, err
+		}
+		plugins = append(plugins, p)
+	}
+	return lib, plugins, nil
 }
 
 // buildAPK builds the shell app for app with Gradle, cached by the host
@@ -379,7 +402,7 @@ func devAndroid(dir string, o *devOptions, stop <-chan os.Signal) error {
 	build := func() error {
 		start := time.Now()
 		// The Go code first: whether it has a share sheet is the manifest's.
-		lib, err := tc.buildGo(app, work, serial)
+		lib, plugins, err := tc.buildGo(app, work, serial)
 		if err != nil {
 			return err
 		}
@@ -397,14 +420,22 @@ func devAndroid(dir string, o *devOptions, stop <-chan os.Signal) error {
 			logs.Wait()
 			logs = nil
 		}
+		// The Go library, and its plugins' beside it.
 		tmp := "/data/local/tmp/asuka-" + pkg + ".so"
 		if err := tc.run(work, nil, tc.adb, "-s", serial, "push", lib, tmp); err != nil {
 			return err
 		}
+		var pushed []devLib
+		for _, p := range plugins {
+			l := devLib{tmp: "/data/local/tmp/asuka-" + pkg + "-" + filepath.Base(p), name: filepath.Base(p)}
+			if err := tc.run(work, nil, tc.adb, "-s", serial, "push", p, l.tmp); err != nil {
+				return err
+			}
+			pushed = append(pushed, l)
+		}
 		tc.run(work, nil, tc.adb, "-s", serial, "shell", "am", "force-stop", pkg)
 		if err := tc.run(work, nil, tc.adb, "-s", serial, "shell", "run-as", pkg, "sh", "-c",
-			// Read-only: Android refuses to load writable libraries.
-			"'mkdir -p files/asuka && rm -f files/asuka/libasuka.so && cp "+tmp+" files/asuka/libasuka.so && chmod 444 files/asuka/libasuka.so'"); err != nil {
+			"'"+devLibsScript(tmp, pushed)+"'"); err != nil {
 			return err
 		}
 		if err := tc.pushAssets(app, work, serial, pkg); err != nil {
@@ -456,6 +487,22 @@ func devAndroid(dir string, o *devOptions, stop <-chan os.Signal) error {
 			}
 		}
 	}
+}
+
+// devLib is a plugin's library asuka dev pushed: where, and its name.
+type devLib struct{ tmp, name string }
+
+// devLibsScript is the shell script (run as the app) that puts the
+// libraries asuka dev pushed to the device's tmp in the app's
+// files/asuka: the Go code's, and its plugins' (an earlier build's go).
+// Read-only: Android refuses to load writable libraries.
+func devLibsScript(goTmp string, plugins []devLib) string {
+	s := "mkdir -p files/asuka && rm -f files/asuka/*.so" +
+		" && cp " + goTmp + " files/asuka/libasuka.so && chmod 444 files/asuka/libasuka.so"
+	for _, l := range plugins {
+		s += " && cp " + l.tmp + " files/asuka/" + l.name + " && chmod 444 files/asuka/" + l.name
+	}
+	return s
 }
 
 // androidPackage makes an Android package name from a bundle ID: no

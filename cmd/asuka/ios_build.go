@@ -97,6 +97,9 @@ func buildIOS(app *goApp, o *buildOptions) error {
 	if err != nil {
 		return err
 	}
+	if err := tc.embedPlugins(bundle, app); err != nil {
+		return err
+	}
 	os.RemoveAll(filepath.Join(work, "dSYMs"))
 	if cfg.sharedLayout() {
 		if err := tc.dsym(work, code, fwName+".framework"); err != nil {

@@ -93,18 +93,31 @@ func webSource(app *goApp) (fs.FS, string) {
 	return sub, ""
 }
 
-// sqliteSymbol is in the apps that import asuka/sqlite, which the page
-// gives SQLite's WebAssembly build (platform/web/sqlite).
-const sqliteSymbol = "github.com/egoist/asuka/sqlite.Open"
-
-// webSQLite is SQLite's WebAssembly build: the checkout's, as webSource
-// has the host's, else the CLI's.
-func webSQLite(app *goApp) fs.FS {
-	if _, dir := webSource(app); dir != "" {
-		return os.DirFS(filepath.Join(filepath.Dir(dir), "sqlite"))
+// webPluginFiles are the web's files of the plugins app uses (their
+// libraries' wasm files, plugins.go), by their paths in the host's
+// directory: plugins/<plugin>/<file>.
+func webPluginFiles(app *goApp) (map[string]pluginLib, error) {
+	libs, err := appLibs(app.dir, "js", "wasm", "wasm")
+	if err != nil {
+		return nil, err
 	}
-	sub, _ := fs.Sub(webhost.SQLite, "sqlite")
-	return sub
+	files := map[string]pluginLib{}
+	for _, l := range libs {
+		files["plugins/"+l.m.Name+"/"+l.file.Name] = l
+	}
+	return files, nil
+}
+
+// webPluginOptions sets the page's options for the plugins the host
+// itself drives, their files under base (the host's directory, with a
+// slash): the sqlite plugin's module, which the host's SQLite worker runs
+// (platform/web/src/sqlite.js).
+func webPluginOptions(files map[string]pluginLib, base string, opts map[string]any) {
+	for _, l := range files {
+		if l.m.Name == "sqlite" {
+			opts["sqlite"] = base + "plugins/sqlite/"
+		}
+	}
 }
 
 // wasmExec is the Go release's JavaScript side of its WebAssembly port,
@@ -271,12 +284,14 @@ func devWeb(dir string, o *devOptions, stop <-chan os.Signal) error {
 		return err
 	}
 	src, srcDir := webSource(app)
-	s := &devServer{app: app, src: src, sqlite: webSQLite(app), exec: exec_, wasm: filepath.Join(work, "app.wasm"), vapid: vapid, clients: map[chan string]bool{}}
+	s := &devServer{app: app, src: src, exec: exec_, wasm: filepath.Join(work, "app.wasm"), vapid: vapid, clients: map[chan string]bool{}}
 	start := time.Now()
 	if err := buildWasm(app, s.wasm, false, o.verbose); err != nil {
 		return err
 	}
-	s.useSQLite.Store(hasSymbol(s.wasm, sqliteSymbol))
+	if err := s.findPlugins(); err != nil {
+		return err
+	}
 	s.stamp = strconv.FormatInt(time.Now().UnixNano(), 36)
 	host := "127.0.0.1"
 	if o.lan {
@@ -339,7 +354,9 @@ func devWeb(dir string, o *devOptions, stop <-chan os.Signal) error {
 				s.failed = false
 				s.send("fixed", "")
 			}
-			s.useSQLite.Store(hasSymbol(s.wasm, sqliteSymbol))
+			if err := s.findPlugins(); err != nil {
+				fmt.Fprintln(os.Stderr, "asuka:", err)
+			}
 			s.stamp = strconv.FormatInt(time.Now().UnixNano(), 36)
 			s.send("reload", "")
 			fmt.Printf("asuka: rebuilt in %.1fs\n", time.Since(t).Seconds())
@@ -351,19 +368,18 @@ func devWeb(dir string, o *devOptions, stop <-chan os.Signal) error {
 // files, the build, the app's assets, and its connection back (the
 // reloads it waits for, the logs it sends).
 type devServer struct {
-	app       *goApp
-	src       fs.FS
-	sqlite    fs.FS       // SQLite's WebAssembly build
-	useSQLite atomic.Bool // the app imports asuka/sqlite
-	exec      []byte
-	wasm      string
-	vapid     string // asuka.json's web.vapidPublicKey
-	stamp     string // the build's, so the page never loads an old one
-	failed    bool
-	mu        sync.Mutex
-	clients   map[chan string]bool
-	nextID    int64
-	waiting   map[int64]chan struct {
+	app     *goApp
+	src     fs.FS
+	plugins atomic.Pointer[map[string]pluginLib] // webPluginFiles, as of the last build
+	exec    []byte
+	wasm    string
+	vapid   string // asuka.json's web.vapidPublicKey
+	stamp   string // the build's, so the page never loads an old one
+	failed  bool
+	mu      sync.Mutex
+	clients map[chan string]bool
+	nextID  int64
+	waiting map[int64]chan struct {
 		ID         int64
 		Out, Error string
 	}
@@ -434,9 +450,7 @@ func (s *devServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if s.vapid != "" {
 			opts["vapidPublicKey"] = s.vapid
 		}
-		if s.useSQLite.Load() {
-			opts["sqlite"] = "asuka/sqlite/"
-		}
+		webPluginOptions(*s.plugins.Load(), "asuka/", opts)
 		io.WriteString(w, webIndex(webPage{
 			Name: s.app.displayName(), Lang: devLangOr("en"),
 			Host: "asuka", Wasm: "app.wasm?" + s.stamp, Exec: "asuka/wasm_exec.js", Scripts: prefixed("web/", appScripts(s.app)),
@@ -456,10 +470,15 @@ func (s *devServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case p == "/asuka/wasm_exec.js":
 		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 		w.Write(s.exec)
-	case strings.HasPrefix(p, "/asuka/sqlite/"):
-		b, err := fs.ReadFile(s.sqlite, strings.TrimPrefix(p, "/asuka/sqlite/"))
-		if err != nil {
+	case strings.HasPrefix(p, "/asuka/plugins/"):
+		l, ok := (*s.plugins.Load())[strings.TrimPrefix(p, "/asuka/")]
+		if !ok {
 			http.NotFound(w, r)
+			return
+		}
+		b, err := l.read()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", contentType(p))
@@ -678,16 +697,14 @@ func buildWeb(app *goApp, o *buildOptions) error {
 		}
 		return nil
 	})
-	// SQLite, for the apps that import asuka/sqlite.
-	useSQLite := hasSymbol(tmp, sqliteSymbol)
-	if useSQLite {
-		sq := webSQLite(app)
-		for _, n := range []string{"sqlite3.mjs", "sqlite3.wasm"} {
-			b, err := fs.ReadFile(sq, n)
-			if err != nil {
-				return fmt.Errorf("SQLite's WebAssembly build: %w", err)
-			}
-			files["sqlite/"+n] = b
+	// The plugins' files.
+	plugins, err := webPluginFiles(app)
+	if err != nil {
+		return err
+	}
+	for p, l := range plugins {
+		if files[p], err = l.read(); err != nil {
+			return err
 		}
 	}
 	names := make([]string, 0, len(files))
@@ -788,9 +805,7 @@ func buildWeb(app *goApp, o *buildOptions) error {
 	if vapid != "" {
 		opts["vapidPublicKey"] = vapid
 	}
-	if useSQLite {
-		opts["sqlite"] = hostDir + "/sqlite/"
-	}
+	webPluginOptions(plugins, hostDir+"/", opts)
 	page := webIndex(webPage{
 		Name: name, Lang: "en", Host: hostDir, Wasm: wasmName, Exec: hostDir + "/wasm_exec.js",
 		Options:  opts,
@@ -872,5 +887,17 @@ func webIcons(src, dir string) error {
 			return err
 		}
 	}
+	return nil
+}
+
+// findPlugins finds the plugins the app uses again (its imports may have
+// changed), and their files for the pages.
+func (s *devServer) findPlugins() error {
+	forgetPlugins(s.app.dir)
+	files, err := webPluginFiles(s.app)
+	if err != nil {
+		return err
+	}
+	s.plugins.Store(&files)
 	return nil
 }

@@ -1,5 +1,7 @@
 package sqlite
 
+import "time"
+
 // Fetches is how many times each of d's live queries has fetched, by
 // query.
 func Fetches(d *DB) map[string]int {
@@ -28,3 +30,6 @@ func Running(d *DB) bool {
 	}
 	return false
 }
+
+// SetBusy sets d's busy timeout.
+func SetBusy(d *DB, t time.Duration) { d.busy = t }

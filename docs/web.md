@@ -46,7 +46,7 @@ The flags, beside `asuka dev`'s own (`--lang`, `--dir`, `--no-vet`, `-v`):
 - the app, `app.<digest>.wasm`, built stripped and with `-trimpath`;
 - the web host's files in `asuka/<digest>/` (with SQLite's WebAssembly
   build, about 0.9 MB, 0.4 MB gzipped, for an app that imports
-  `asuka/sqlite`), and the app's own scripts (`web/*.js`) in
+  `asuka/plugins/sqlite`), and the app's own scripts (`web/*.js`) in
   `web/<digest>/`;
 - the app's service worker, `sw.<digest>.js`, beside `index.html` (its
   scope is the site's folder): it shows the app's notifications and
@@ -132,9 +132,12 @@ The environment a web app sees (`ui.UseEnvironment`) is the browser's:
 `asuka/store`, crash records and the files your app writes in `store.Dir`
 are kept: the page gives Go a file system in memory, the data directory's
 files loaded from the browser's storage (IndexedDB) before the app starts
-and written back a moment after they change (a large file, such as a
-database, in chunks of 64 KiB: only the chunks that changed), and as the
-page is hidden or closed. What the user drops, pastes or picks is copied
+and written back a moment after they change (a large file in chunks of
+64 KiB: only the chunks that changed), and as the page is hidden or
+closed. Tabs of the app share them: a tab's writes reach the others,
+which read the files again (a file a tab changed and hasn't written yet
+stays its own, until it's written: the last tab to write a file keeps
+it). What the user drops, pastes or picks is copied
 into the app's caches (`/tmp`), as on iOS and Android, and comes to the
 app as a path.
 
@@ -145,34 +148,50 @@ to the home screen).
 
 ## SQLite
 
-`asuka/sqlite` works as on the other platforms, live queries included.
-Its SQLite is SQLite's own WebAssembly build (from sqlite.org, which
-`asuka build --platform web` and `asuka dev --platform web` ship with the
-apps that import `asuka/sqlite`, and load before the app starts), driven
-from Go synchronously. A database is a file in the app's data directory,
-like any other, so Go's `os` sees it (a backup is `os.ReadFile`), and it
-is kept with the app's other files: each call SQLite answers runs to its
-end before the page does anything else, so what's kept is always a
-state between two calls, which SQLite's rollback journal recovers from,
-as after a crash.
+`asuka/plugins/sqlite` works as on the other platforms, live queries included.
+It's the same SQLite and the same library of Asuka's, built to
+WebAssembly (`asqlite.wasm`, which `asuka dev --platform web` and `asuka
+build --platform web` ship with the apps that import `asuka/plugins/sqlite`). It
+runs in a worker of the page's, which keeps the databases of the app's
+data directory in the browser's origin private file system: a database
+isn't loaded into memory whole, and a commit is on disk when it returns.
+Each statement is a message to the worker and its answer, about 30
+microseconds: a transaction of 1000 inserts takes some 30 ms, a query of
+10,000 rows 3 ms.
 
 What differs:
 
-- The journal is a rollback journal, not write-ahead logging (which
-  needs memory shared between connections), and a database has one
-  connection, so reads wait for a write in progress rather than running
-  beside it. The page has one thread: a write blocks it while it runs,
-  as on any platform's main thread; `ExecAsync`, `TxAsync` and `Watch`
-  run between the page's events.
-- Two `sqlite.Open`s of one file lock each other out, as two processes
-  would; a statement that finds the file locked is run again once the
-  other has had its turn, for the busy timeout's 5 seconds.
-- A transaction committed in the last moment before the tab closes may
-  not be kept (the browser may close it before IndexedDB has written
-  it).
+- `Exec`, `Tx`, `Query`, `QueryOne` and `Migrate` wait for the worker,
+  which the page's main thread can't do: there they fail at once with an
+  error that says so. Use `ExecAsync`, `TxAsync` and live queries, or a
+  goroutine, as on every platform; `main`, before `app.Run`, may wait.
+- The journal is a rollback journal, not write-ahead logging (which needs
+  memory shared between connections), and a database has one connection,
+  so reads wait for a write in progress rather than running beside it.
+- Several tabs of the app may use one database. A tab holds it while it
+  uses it, and lets it go when another asks (between transactions, never
+  in one); a statement that finds another tab holding it is run again
+  until the tab lets it go, for the busy timeout's 5 seconds, as SQLite
+  waits for another process's lock. A tab's live queries don't hear of
+  another tab's writes (as another process's, natively: `db.Changed()`
+  runs them again).
+- A database is a file of the worker's, not of the page's file system:
+  Go's `os` doesn't see it. `db.Serialize()` is a copy of it (a backup to
+  write anywhere, or to give `Restore`). A database anywhere but the data
+  directory (`/tmp`) lasts as long as the page.
+- Without the origin private file system (a page that isn't served over
+  `https` or from `localhost`, as `asuka dev --lan`'s; some browsers'
+  private windows), the worker keeps databases in IndexedDB, in memory
+  while it uses them: a commit is kept a moment after it returns. A page
+  that isn't a secure context has no Web Locks either: two tabs writing
+  one database there may lose each other's writes (the console says so).
+- A database an earlier version of Asuka kept among the app's files (in
+  IndexedDB) moves to the worker as the app first opens it.
 
-A page of your own that embeds an app (below) passes `sqlite`, the URL
-of the directory with `sqlite3.mjs` and `sqlite3.wasm`, to `start`.
+A page of your own that embeds an app (below) passes `sqlite`, the URL of
+the directory of `asqlite.wasm` (the build's `asuka/<digest>/plugins/sqlite/`), to
+`start`; the worker's script is the host's (`sqlite-worker.js`, beside
+`asuka.js`).
 
 ## Native modules
 

@@ -24,7 +24,10 @@ import (
 //	present(AsukaViewController(), animated: true)
 //
 // The host's own app delegate isn't in it: the app around it is the
-// other one. Assets go in the framework, where the host finds them.
+// other one. Assets go in the framework, where the host finds them. An
+// app's plugins' libraries come beside it, an XCFramework each
+// (ios_plugins.go), which the app around it embeds too: the Go code loads
+// them from that app's Frameworks.
 
 const embedModule = "AsukaApp"
 
@@ -32,6 +35,7 @@ func buildIOSFramework(app *goApp, o *buildOptions) error {
 	start := time.Now()
 	cfg := app.cfg
 	var slices []string
+	pluginSlices := map[string][]string{} // by library
 	for _, sdk := range []string{"iphoneos", "iphonesimulator"} {
 		tc, err := newIOSToolchainFor(sdk, o.verbose)
 		if err != nil {
@@ -55,21 +59,56 @@ func buildIOSFramework(app *goApp, o *buildOptions) error {
 			return err
 		}
 		slices = append(slices, fw)
+		// The plugins' libraries, which the Go code loads from the app's
+		// Frameworks: a framework each, for the app to embed too.
+		libs, err := tc.pluginLibs(app)
+		if err != nil {
+			return err
+		}
+		for _, l := range libs {
+			pfw, err := tc.writePluginFramework(filepath.Join(work, "plugins"), l)
+			if err != nil {
+				return err
+			}
+			pluginSlices[l.lib.Name] = append(pluginSlices[l.lib.Name], pfw)
+		}
 	}
-	out := filepath.Join(o.out, embedModule+".xcframework")
-	os.RemoveAll(out)
-	args := []string{"xcodebuild", "-create-xcframework"}
-	for _, fw := range slices {
-		args = append(args, "-framework", fw)
-	}
-	args = append(args, "-output", out)
 	tc := &iosToolchain{verbose: o.verbose}
-	if err := tc.run(o.out, nil, "xcrun", args...); err != nil {
+	out := filepath.Join(o.out, embedModule+".xcframework")
+	if err := tc.createXCFramework(o.out, out, slices); err != nil {
 		return err
 	}
+	var extra []string
+	var names []string
+	for name := range pluginSlices {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		pout := filepath.Join(o.out, name+".xcframework")
+		if err := tc.createXCFramework(o.out, pout, pluginSlices[name]); err != nil {
+			return err
+		}
+		extra = append(extra, pout)
+	}
 	fmt.Printf("asuka: %s in %s\n", out, time.Since(start).Round(time.Second))
+	if len(extra) > 0 {
+		fmt.Printf("asuka: beside it, the libraries of its plugins, which the app's Go code loads: %s\n", strings.Join(extra, ", "))
+		fmt.Println("asuka: add them all to your Xcode target (Embed & Sign), then: import AsukaApp; present(AsukaViewController(), animated: true)")
+		return nil
+	}
 	fmt.Println("asuka: add it to your Xcode target (Embed & Sign), then: import AsukaApp; present(AsukaViewController(), animated: true)")
 	return nil
+}
+
+// createXCFramework makes the XCFramework out of the frameworks.
+func (t *iosToolchain) createXCFramework(dir, out string, frameworks []string) error {
+	os.RemoveAll(out)
+	args := []string{"xcodebuild", "-create-xcframework"}
+	for _, fw := range frameworks {
+		args = append(args, "-framework", fw)
+	}
+	return t.run(dir, nil, "xcrun", append(args, "-output", out)...)
 }
 
 // buildEmbedded compiles the host (without its app delegate) and links it

@@ -133,14 +133,17 @@ func (t *iosToolchain) linkExtension(work, bin, name string, ents []string) (str
 	return exe, t.run(work, nil, "xcrun", append(args, ents...)...)
 }
 
-// signFrameworks signs the app's framework, if it has one, before the
-// app (whose signature seals it): identity "-" ad hoc.
+// signFrameworks signs the app's frameworks (its code's, its plugins'), if
+// it has any, before the app (whose signature seals them): identity "-"
+// ad hoc.
 func (t *iosToolchain) signFrameworks(work, bundle, identity string) error {
-	fw := filepath.Join(bundle, "Frameworks", fwName+".framework")
-	if !exists(fw) {
-		return nil
+	fws, _ := filepath.Glob(filepath.Join(bundle, "Frameworks", "*.framework"))
+	for _, fw := range fws {
+		if err := t.run(work, nil, "codesign", "--force", "--sign", identity, fw); err != nil {
+			return err
+		}
 	}
-	return t.run(work, nil, "codesign", "--force", "--sign", identity, fw)
+	return nil
 }
 
 func (t *iosToolchain) device() bool { return t.sdkName == "iphoneos" }

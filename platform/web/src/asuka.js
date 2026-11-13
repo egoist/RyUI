@@ -10,8 +10,8 @@
 // default), assets (where its assets are served: "assets"), name (the
 // app's: its stored data is kept under it), fonts (the app's font files,
 // assets/fonts), env (more environment variables for the Go code), sqlite
-// (the URL of the directory of SQLite's sqlite3.mjs and sqlite3.wasm, for
-// an app that imports asuka/sqlite: loaded before the app starts),
+// (the URL of the directory of SQLite's module, asqlite.wasm, for an app
+// that imports asuka/sqlite: its worker starts with the app),
 // serviceWorker (the URL of the app's service worker, sw.js with the
 // app's settings, which the page registers: its notifications and
 // pushes), vapidPublicKey (the app's VAPID key, for asuka/push), icon (a
@@ -45,7 +45,7 @@ export async function start(options = {}) {
   // The app's service worker, listened to before the app starts: a tap
   // on a notification may be what opened the page.
   worker.register(options.serviceWorker);
-  // SQLite loads beside the app (asuka/sqlite: its databases open at once, in main).
+  // SQLite's worker starts beside the app (asuka/sqlite), loading its module meanwhile.
   const sqlite = options.sqlite ? import("./sqlite.js").then((m) => m.load(new URL(options.sqlite, document.baseURI))) : null;
   sqlite?.catch(() => {});
   const data = "/data/" + name.replace(/[^\w.-]/g, "_");
@@ -86,7 +86,7 @@ export async function start(options = {}) {
   host.attach(instance.exports.mem);
   if (sqlite) {
     try {
-      host.sqlite = (await sqlite).api(() => host.mem);
+      host.sqlite = (await sqlite).api(() => host.mem, data);
     } catch (e) {
       console.error("asuka: SQLite didn't load:", e);
     }

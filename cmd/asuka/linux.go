@@ -31,7 +31,8 @@ import (
 //
 // asuka build --platform linux makes a folder laid out as an install
 // prefix: bin/<exe>; share/<exe>/assets, where the host finds them from
-// the executable; the desktop file, icons and AppStream metainfo named
+// the executable; its plugins' libraries in lib/<exe>, where package
+// plugin finds them likewise; the desktop file, icons and AppStream metainfo named
 // for the app's ID, as desktops and software centers look them up; a
 // .tar.gz of it, to unpack into ~/.local or /usr/local; and a Flatpak
 // manifest that packages it, for flatpak-builder.
@@ -220,7 +221,12 @@ func buildLinux(app *goApp, o *buildOptions) error {
 		return err
 	}
 	target := "linux-" + arch
-	args := []string{"build", "-trimpath", linuxLdflags(app, true) + updateLdflags(app, target), "-o", filepath.Join(out, "bin", exe), "."}
+	libs, err := appLibs(app.dir, "linux", arch, target)
+	if err != nil {
+		return err
+	}
+	args := append([]string{"build", "-trimpath", linuxLdflags(app, true) + updateLdflags(app, target)}, pluginBuildFlags(libs)...)
+	args = append(args, "-o", filepath.Join(out, "bin", exe), ".")
 	if o.verbose {
 		fmt.Println("+ GOOS=linux GOARCH="+arch+" CGO_ENABLED=0 go", strings.Join(args, " "))
 	}
@@ -229,6 +235,9 @@ func buildLinux(app *goApp, o *buildOptions) error {
 	c.Env = append(os.Environ(), "GOOS=linux", "GOARCH="+arch, "CGO_ENABLED=0")
 	if b, err := c.CombinedOutput(); err != nil {
 		return fmt.Errorf("go build failed: %v\n%s", err, b)
+	}
+	if err := writeLibs(libs, linuxPluginLibs(out, exe)); err != nil {
+		return err
 	}
 	if err := writeLinuxShare(app, out, exe); err != nil {
 		return err
@@ -253,7 +262,7 @@ func buildLinux(app *goApp, o *buildOptions) error {
 		}
 	}
 	manifest := filepath.Join(base, app.bundleID+".yml")
-	if err := os.WriteFile(manifest, []byte(flatpakManifest(app, exe)), 0o644); err != nil {
+	if err := os.WriteFile(manifest, []byte(flatpakManifest(app, exe, len(libs) > 0)), 0o644); err != nil {
 		return err
 	}
 	fmt.Printf("asuka: %s (linux/%s; it needs GTK 4.14 and libadwaita 1.5 or later)\n", filepath.Join(out, "bin", exe), arch)
@@ -267,6 +276,14 @@ func buildLinux(app *goApp, o *buildOptions) error {
 		fmt.Println("asuka: software centers and Flathub want linux.summary, description, license and developer in asuka.json (the AppStream metainfo's)")
 	}
 	return nil
+}
+
+// linuxPluginLibs is where a Linux build puts its plugins' libraries in
+// the prefix out: lib/<exe>, the program's own directory in lib, where
+// package plugin finds them from bin/<exe>, and where they can't be taken
+// for the system's libraries.
+func linuxPluginLibs(out, exe string) string {
+	return filepath.Join(out, "lib", exe)
 }
 
 // writeLinuxShare writes the build's share/ in the prefix out: the
@@ -442,11 +459,16 @@ func metainfo(app *goApp, icon bool, now time.Time) string {
 }
 
 // flatpakManifest is a flatpak-builder manifest that packages the build's
-// prefix (beside it, in the directory named exe) on the GNOME runtime.
-func flatpakManifest(app *goApp, exe string) string {
+// prefix (beside it, in the directory named exe) on the GNOME runtime:
+// its bin and share, and its lib with its plugins' libraries (lib).
+func flatpakManifest(app *goApp, exe string, lib bool) string {
 	rt := app.cfg.Linux.FlatpakRuntime
 	if rt == "" {
 		rt = flatpakRuntime
+	}
+	dirs := "bin share"
+	if lib {
+		dirs = "bin lib share"
 	}
 	return fmt.Sprintf(`# A Flatpak of %[1]s, from asuka build --platform linux (the binary it built,
 # for one architecture): flatpak-builder --user --install --force-clean build %[2]s.yml
@@ -466,11 +488,11 @@ modules:
   - name: %[4]s
     buildsystem: simple
     build-commands:
-      - cp -a bin share /app/
+      - cp -a %[5]s /app/
     sources:
       - type: dir
         path: %[4]s
-`, app.displayName(), app.bundleID, rt, exe)
+`, app.displayName(), app.bundleID, rt, exe, dirs)
 }
 
 // tarGz writes dir to file as a gzipped tar, its entries under dir's

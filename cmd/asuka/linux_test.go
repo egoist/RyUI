@@ -3,12 +3,16 @@ package main
 import (
 	"archive/tar"
 	"compress/gzip"
+	"debug/elf"
 	"encoding/xml"
 	"image"
 	"image/color"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -207,7 +211,7 @@ func TestLinuxShareDefaults(t *testing.T) {
 
 func TestFlatpakManifest(t *testing.T) {
 	app := linuxTestApp(t, `{"id":"com.example.notes"}`)
-	m := flatpakManifest(app, "my-notes")
+	m := flatpakManifest(app, "my-notes", false)
 	for _, want := range []string{
 		"\napp-id: com.example.notes\n", "\nruntime: org.gnome.Platform\n", "\nruntime-version: '" + flatpakRuntime + "'\n",
 		"\nsdk: org.gnome.Sdk\n", "\ncommand: my-notes\n", "--socket=wayland", "cp -a bin share /app/", "\n        path: my-notes\n",
@@ -217,7 +221,111 @@ func TestFlatpakManifest(t *testing.T) {
 		}
 	}
 	app.cfg.Linux.FlatpakRuntime = "47"
-	if !strings.Contains(flatpakManifest(app, "my-notes"), "runtime-version: '47'") {
+	if !strings.Contains(flatpakManifest(app, "my-notes", false), "runtime-version: '47'") {
 		t.Error("linux.flatpakRuntime")
+	}
+	// With SQLite's library: lib too.
+	if m := flatpakManifest(app, "my-notes", true); !strings.Contains(m, "cp -a bin lib share /app/") {
+		t.Errorf("with lib:\n%s", m)
+	}
+}
+
+// SQLite's library goes in the prefix's lib/<exe>, where the package
+// finds it from bin/<exe> (sqlite/locate_linux.go); it's built for the
+// build's architecture, and shows only its entry points, so a system
+// SQLite in the same process (GTK's, say) never takes its symbols, nor
+// it the system's.
+func TestLinuxSQLiteLib(t *testing.T) {
+	out := t.TempDir()
+	lib := filepath.Join(linuxPluginLibs(out, "my-notes"), "libasqlite.so")
+	if rel, _ := filepath.Rel(filepath.Join(out, "bin"), lib); rel != filepath.Join("..", "lib", "my-notes", "libasqlite.so") {
+		t.Errorf("from the executable: %s", rel)
+	}
+	for arch, machine := range map[string]elf.Machine{"amd64": elf.EM_X86_64, "arm64": elf.EM_AARCH64} {
+		if err := writeTestPluginLib("linux-"+arch, lib); err != nil {
+			t.Fatal(err)
+		}
+		f, err := elf.Open(lib)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if f.Machine != machine {
+			t.Errorf("%s: %v", arch, f.Machine)
+		}
+		syms, err := f.DynamicSymbols()
+		if err != nil {
+			t.Fatal(err)
+		}
+		var exported []string
+		for _, s := range syms {
+			if s.Section != elf.SHN_UNDEF && elf.ST_BIND(s.Info) != elf.STB_LOCAL && elf.ST_TYPE(s.Info) == elf.STT_FUNC {
+				exported = append(exported, s.Name)
+			}
+		}
+		slices.Sort(exported)
+		if !slices.Equal(exported, []string{"asq_call", "asq_version"}) {
+			t.Errorf("%s exports %v", arch, exported)
+		}
+		f.Close()
+	}
+}
+
+// A Linux build of an app that uses asuka/sqlite puts the library in
+// the prefix, the tarball and the Flatpak, and is built without the copy
+// the package embeds; on Linux, it runs from the prefix, finding it.
+func TestBuildLinuxSQLite(t *testing.T) {
+	app := sqliteTestApp(t)
+	for _, arch := range []string{"amd64", "arm64"} {
+		out := t.TempDir()
+		if err := buildLinux(app, &buildOptions{out: out, arch: arch}); err != nil {
+			t.Fatal(err)
+		}
+		prefix := filepath.Join(out, "linux", "sqliteapp")
+		bin := filepath.Join(prefix, "bin", "sqliteapp")
+		lib := filepath.Join(prefix, "lib", "sqliteapp", "libasqlite.so")
+		if _, err := os.Stat(lib); err != nil {
+			t.Fatal(err)
+		}
+		if tags := buildTags(t, bin); tags != pluginTag {
+			t.Errorf("%s: tags %q", arch, tags)
+		}
+		m, _ := os.ReadFile(filepath.Join(out, "linux", app.bundleID+".yml"))
+		if !strings.Contains(string(m), "cp -a bin lib share /app/") {
+			t.Errorf("%s: the Flatpak leaves lib out:\n%s", arch, m)
+		}
+		tgz, _ := filepath.Glob(filepath.Join(out, "linux", "*.tar.gz"))
+		if len(tgz) != 1 {
+			t.Fatalf("%s: %v", arch, tgz)
+		}
+		f, _ := os.Open(tgz[0])
+		gz, err := gzip.NewReader(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var names []string
+		tr := tar.NewReader(gz)
+		for h, err := tr.Next(); err == nil; h, err = tr.Next() {
+			names = append(names, h.Name)
+		}
+		f.Close()
+		if !slices.Contains(names, "sqliteapp/lib/sqliteapp/libasqlite.so") {
+			t.Errorf("%s: the tarball has %v", arch, names)
+		}
+		if runtime.GOOS != "linux" || runtime.GOARCH != arch {
+			continue
+		}
+		db := filepath.Join(t.TempDir(), "runs.db")
+		for _, want := range []string{"runs 1, SQLite 3.", "runs 2, SQLite 3."} {
+			c := exec.Command(bin, db)
+			c.Env = append(os.Environ(), "ASUKA_SQLITE_LIB=")
+			b, err := c.CombinedOutput()
+			if err != nil || !strings.HasPrefix(string(b), want) {
+				t.Fatalf("%v: %s, want %s", err, b, want)
+			}
+		}
+		os.Remove(lib)
+		if b, err := exec.Command(bin).CombinedOutput(); err == nil || !strings.Contains(string(b), "lib/sqliteapp/libasqlite.so") {
+			t.Errorf("without the library: %v, %s", err, b)
+		}
 	}
 }

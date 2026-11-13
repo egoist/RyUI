@@ -27,10 +27,12 @@ import (
 // privacy prompts), and on each change rebuilds it and runs it again (its
 // signals' state kept, as with the player). asuka build --platform mac
 // makes an .app: a universal binary (arm64 and x86_64), its Info.plist,
-// icon and assets, signed (ad hoc unless --sign names an identity), with
-// its provisioning profile (Contents/embedded.provisionprofile) and the
-// entitlements the app's packages need of it (mac_profile.go); with
-// --appstore, sandboxed, in a .pkg for the Mac App Store.
+// icon and assets, and its plugins' libraries (Contents/Frameworks),
+// signed (ad hoc unless --sign names an
+// identity), with its provisioning profile
+// (Contents/embedded.provisionprofile) and the entitlements the app's
+// packages need of it (mac_profile.go); with --appstore, sandboxed, in a
+// .pkg for the Mac App Store.
 
 const macMin = "11.0"
 
@@ -212,6 +214,14 @@ func writeMacBundle(app *goApp, bundle, work string, release bool, run func(dir 
 	return exe, nil
 }
 
+// macPluginLibs is where a Mac build puts its plugins' libraries: the
+// app's Frameworks, where package plugin finds them from Contents/MacOS.
+// They're loaded by their paths, so the program needs no rpath for them;
+// signMac signs them (a .dylib each).
+func macPluginLibs(bundle string) string {
+	return filepath.Join(bundle, "Contents", "Frameworks")
+}
+
 // macResourceEntitlements are the hardened runtime's entitlements an
 // app needs for what its purpose strings ask for: without them, an app
 // signed with a Developer ID (the hardened runtime) is refused the
@@ -258,9 +268,11 @@ func signMac(bundle, identity, entitlements string, run func(dir string, env []s
 		args = append(args, "--options", "runtime", "--timestamp")
 	}
 	dir := filepath.Dir(bundle)
-	// What the bundle holds first (the app's Swift library, and the
-	// runtime it ships), each signed as the app is, without the
-	// entitlements, which are the executable's.
+	// What the bundle holds first (the app's Swift library and the
+	// runtime it ships, its plugins' libraries), each signed as the app is,
+	// without the entitlements, which are the executable's: with the
+	// hardened runtime, the program loads only libraries signed by its
+	// own team.
 	libs, _ := filepath.Glob(filepath.Join(bundle, "Contents", "Frameworks", "*.dylib"))
 	for _, lib := range libs {
 		if err := run(dir, nil, "codesign", append(slices.Clip(args), lib)...); err != nil {
@@ -306,11 +318,16 @@ func buildMac(app *goApp, o *buildOptions) error {
 	if !o.appStore {
 		ldflags += updateLdflags(app, macTarget)
 	}
+	libs, err := appLibs(app.dir, "darwin", "arm64", "darwin")
+	if err != nil {
+		return err
+	}
 	var parts []string
 	for _, arch := range []string{"arm64", "amd64"} {
 		out := filepath.Join(work, "app-"+arch)
 		env := []string{"GOOS=darwin", "GOARCH=" + arch, "CGO_ENABLED=0", "MACOSX_DEPLOYMENT_TARGET=" + macMin}
-		if err := run(app.dir, env, "go", "build", "-trimpath", ldflags, "-o", out, "."); err != nil {
+		args := append(append([]string{"build", "-trimpath", ldflags}, pluginBuildFlags(libs)...), "-o", out, ".")
+		if err := run(app.dir, env, "go", args...); err != nil {
 			return err
 		}
 		parts = append(parts, out)
@@ -321,6 +338,10 @@ func buildMac(app *goApp, o *buildOptions) error {
 	}
 
 	if err := macSwift(app, bundle, work, []string{"arm64", "amd64"}, true, run); err != nil {
+		return err
+	}
+	// The plugins' libraries, in Frameworks: signed with the app (signMac).
+	if err := writeLibs(libs, macPluginLibs(bundle)); err != nil {
 		return err
 	}
 

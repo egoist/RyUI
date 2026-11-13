@@ -56,6 +56,8 @@ node --test platform/web                # the JavaScript decoder, likewise
 go generate ./ops                   # Go constants, Swift, Kotlin and JavaScript decoders
 go run platform/web/gen_symbols.go  # the web host's symbols, from the Android host's
 go generate ./i18n                  # CLDR's tables, from the pinned release
+go generate ./plugins/sqlite        # the sqlite plugin's library for every platform, into plugins/sqlite/build (Xcode, the NDK, Zig)
+go run ./cmd/asuka plugin publish plugins/sqlite  # upload a plugin's build to its GitHub release, record it in its asuka-plugin.json
 go run ./cmd/asuka generate examples/i18n  # an app's catalog functions (dev and build do it too)
 go run ./cmd/asuka vet ./...                # the analyzers (package vet): a signal read once, written off the main thread
 go run ./cmd/asuka dev --platform ios --lang ar examples/i18n  # a language for one run; --lang ar-XB, en-XA: pseudo locales; --dir rtl: any app right to left

@@ -1,15 +1,14 @@
 package sqlite_test
 
 import (
-	"database/sql"
 	"errors"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/egoist/asuka/host/fake"
+	"github.com/egoist/asuka/plugins/sqlite"
 	"github.com/egoist/asuka/signal"
-	"github.com/egoist/asuka/sqlite"
 	"github.com/egoist/asuka/ui"
 )
 
@@ -219,10 +218,13 @@ func watchTables(t *testing.T, db *sqlite.DB) {
 	expect("rolled back")
 	db.Exec(`delete from tags`)
 	expect("every tag", "tags", "none")
-	// A write through the raw handle is noted, and heard at the next.
-	db.SQL().Exec(`insert into log values ('raw')`)
+	// A query that writes is heard too.
+	if _, err := sqlite.Query[int64](db, `insert into log values ('returning') returning rowid`); err != nil {
+		t.Fatal(err)
+	}
+	expect("a query that writes", "log", "none")
 	db.Exec(`insert into tags values (2, 'work')`)
-	expect("raw, then a tag", "tags", "log", "none")
+	expect("a tag", "tags", "log", "none")
 	db.Changed()
 	expect("Changed", "notes", "tags", "view", "log", "count", "none")
 }
@@ -259,4 +261,4 @@ func TestAsyncWrites(t *testing.T) {
 	}
 }
 
-type sqlResult = sql.Result
+type sqlResult = sqlite.Changes

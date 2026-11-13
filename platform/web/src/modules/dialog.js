@@ -97,7 +97,7 @@ function pickerOptions(a) {
   const o = {};
   const types = pickerTypes(a.filters);
   if (types) o.types = types;
-  const start = a.start && handles.get(fs.file.clean(a.start));
+  const start = a.start && handles.get(fs.clean(a.start));
   if (start) o.startIn = start;
   return o;
 }
@@ -218,7 +218,7 @@ async function save(a, win) {
 // not a folder a dialog gave).
 function suggested(a) {
   if (a.name) return a.name;
-  if (!a.start || handles.get(fs.file.clean(a.start))?.kind === "directory") return "";
+  if (!a.start || handles.get(fs.clean(a.start))?.kind === "directory") return "";
   return a.start.slice(a.start.lastIndexOf("/") + 1);
 }
 

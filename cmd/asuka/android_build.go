@@ -190,7 +190,8 @@ func androidIcons(path, res string) error {
 }
 
 // buildAndroidLibs builds the app's Go code as a shared library for each
-// ABI a release carries, in work/jniLibs/<abi>/libasuka.so.
+// ABI a release carries, in work/jniLibs/<abi>/libasuka.so, with its
+// plugins' libraries beside it (plugins.go).
 func buildAndroidLibs(app *goApp, tc *androidToolchain, work string) (string, error) {
 	cfg := app.cfg
 	jni := filepath.Join(work, "jniLibs")
@@ -214,6 +215,13 @@ func buildAndroidLibs(app *goApp, tc *androidToolchain, work string) (string, er
 			return "", fmt.Errorf("%s: %v", a.abi, err)
 		}
 		os.Remove(strings.TrimSuffix(out, ".so") + ".h")
+		libs, err := appLibs(app.dir, "android", a.goarch, "android-"+a.goarch)
+		if err != nil {
+			return "", fmt.Errorf("%s: %v", a.abi, err)
+		}
+		if err := writeLibs(libs, filepath.Dir(out)); err != nil {
+			return "", fmt.Errorf("%s: %v", a.abi, err)
+		}
 		cfg.shareSheet = hasSheet(out)
 		cfg.pushRewrite = hasSymbol(out, rewriteSymbol)
 	}

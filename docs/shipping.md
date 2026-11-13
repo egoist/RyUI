@@ -174,6 +174,11 @@ match installed. `--distribution ad-hoc` or `development` signs it for the
 devices of its profile instead, and `--simulator` makes an unsigned `.app`
 for the simulator.
 
+An app that uses `asuka/plugins/sqlite` has SQLite in its `Frameworks`, as
+`asqlite.framework` (the device's or the simulator's), signed with the
+app, which loads it the first time it opens a database. Its extensions
+(the share sheet, the Notification Service Extension) load the app's.
+
 With `shareTarget`, the share extension is signed too, with a profile
 for its own ID (`com.example.notes.share` for `com.example.notes`), from
 the app's team: `ios.shareProfile`, else the best match installed. A
@@ -194,10 +199,12 @@ the group too, for its data, whatever it takes.
 
 **Privacy manifest.** The App Store requires one, giving a reason for
 each API of Apple's list the app uses. Asuka writes it, from what the
-binary uses: Go's runtime reads the clock and file times, SQLite the disk
-space; it declares no tracking and no data collected. If your app
-collects data or tracks, write your own as `ios/PrivacyInfo.xcprivacy`,
-with those reasons in it too; Asuka uses it instead.
+binary uses: Go's runtime reads the clock and file times; it declares no
+tracking and no data collected. If your app collects data or tracks,
+write your own as `ios/PrivacyInfo.xcprivacy`, with those reasons in it
+too; Asuka uses it instead. `asqlite.framework` has a manifest of its
+own, for what SQLite uses (file times, the disk's free space), whichever
+the app's is.
 
 ## Android
 
@@ -219,7 +226,9 @@ ASUKA_KEYSTORE_PASSWORD=... asuka build --platform android
 `ASUKA_KEY_ALIAS` name them in CI.) It makes an `.aab` for Google Play, for
 64-bit and 32-bit ARM phones and x86_64 (emulators, Chromebooks),
 Android 13 and later; Play makes each phone's APK from it, with only
-that phone's architecture. `asuka publish --platform android` makes it and uploads it to Google Play (see
+that phone's architecture. An app that uses `asuka/plugins/sqlite` has SQLite
+beside its Go code in each architecture, `libasqlite.so`, which Android
+loads from the APK as it does the app's (uncompressed, on 16 KB pages). `asuka publish --platform android` makes it and uploads it to Google Play (see
 [Publishing](#publishing)).
 
 ## Publishing
@@ -322,7 +331,11 @@ entitlements for them (`com.apple.security.device.camera`,
 an app signed with a Developer ID is refused the camera, the microphone
 or the user's data. An app with Swift of its own (`macos/*.swift`) has it
 compiled for both architectures into `Contents/Frameworks`, signed with
-the app (see [Native code](native.md)).
+the app (see [Native code](native.md)). An app that uses `asuka/plugins/sqlite`
+has SQLite's library there too (`libasqlite.dylib`, for both
+architectures), signed as the app is: with a Developer ID, the hardened
+runtime loads only libraries signed by the app's own team, and the
+notary service checks each one ([The library](data.md#the-library)).
 
 To give it to others outside the Mac App Store, sign it with your
 Developer ID and have Apple notarize it, so Gatekeeper opens it:
@@ -379,11 +392,13 @@ asuka build --platform windows --arch arm64  # native on Arm PCs
 ```
 
 makes a folder, `dist/<Name>`, from any system: `<Name>.exe` and the
-app's assets beside it. The `.exe` is a GUI program (no console window)
-with its resources built in: the icon at Windows's sizes, its version
-information (`version` and `build`), and a manifest that asks for the
-common controls 6, per-monitor DPI awareness and UTF-8, for Windows 10
-and 11. An app with a `.syso` of its own in its directory has its own
+app's assets beside it, and for an app that uses `asuka/plugins/sqlite`,
+SQLite's library, `asqlite.dll`, for the same architecture (it needs
+only what every Windows 10 and 11 has: the Universal C Runtime). The
+`.exe` is a GUI program (no console window) with its resources built
+in: the icon at Windows's sizes, its version information (`version` and
+`build`), and a manifest that asks for the common controls 6,
+per-monitor DPI awareness and UTF-8, for Windows 10 and 11. An app with a `.syso` of its own in its directory has its own
 resources instead. Zip the folder, or package it (an installer, MSIX).
 
 Sign the `.exe`, so SmartScreen knows who it's from, with a code signing
@@ -401,10 +416,10 @@ fails, saying so; `ASUKA_WINDOWS_TIMESTAMP=none` signs without a timestamp
 (the signature then ends with the certificate). It signs with `signtool` on
 Windows (the Windows SDK's; on the `PATH`, else the newest installed),
 with `osslsigncode` elsewhere (`brew install osslsigncode`, `apt install
-osslsigncode`). Without `ASUKA_WINDOWS_CERT` the `.exe` isn't signed. A
-certificate on a hardware token or in a cloud service (Azure Trusted
-Signing) signs through its own tool: sign the `.exe` in the folder with
-it after the build.
+osslsigncode`), and `asqlite.dll` with it. Without `ASUKA_WINDOWS_CERT`
+the `.exe` isn't signed. A certificate on a hardware token or in a cloud
+service (Azure Trusted Signing) signs through its own tool: sign the
+`.exe` (and `asqlite.dll`) in the folder with it after the build.
 
 An app that shows notifications (`asuka/notify`) is given a shortcut in the
 user's Start menu the first time, which Windows needs for an app's
@@ -425,6 +440,10 @@ cgo. In `dist/linux` it makes:
   - `bin/my-notes`, the app;
   - `share/my-notes/assets`, its assets, which it finds from
     `bin/`;
+  - `lib/my-notes/libasqlite.so`, SQLite's library, for an app that
+    uses `asuka/plugins/sqlite`, which it finds from `bin/` too (glibc 2.17 or
+    later; it shows none of SQLite's own symbols, so a system SQLite in
+    the same process doesn't mind it);
   - `share/applications/<id>.desktop`, what launchers show and run;
   - `share/icons/hicolor/<size>/apps/<id>.png`, the `icon` at each size
     from 16 to 512 pixels;
@@ -440,7 +459,7 @@ cgo. In `dist/linux` it makes:
 
 - `my-notes-<version>-linux-<arch>.tar.gz`, that folder, to hand out.
 - `<id>.yml`, a [Flatpak](https://flatpak.org) manifest that packages
-  that folder on the GNOME runtime:
+  that folder (its `bin`, `lib` and `share`) on the GNOME runtime:
 
   ```sh
   flatpak install flathub org.gnome.Platform//50 org.gnome.Sdk//50   # once
@@ -733,11 +752,16 @@ present(AsukaViewController(), animated: true)
 // or push it, or make it a tab, or a window's root
 ```
 
+An app that uses `asuka/plugins/sqlite` comes with `dist/asqlite.xcframework`
+beside it, SQLite's library: embed it too (Embed & Sign). The Go code
+loads it from your app's `Frameworks`; it has its own privacy manifest.
+
 **Android.** `asuka build --platform android --aar` makes a Maven repository in
 `dist/maven`: the host library with the app's Go code for each ABI, its
 assets, and `AsukaActivity` declared, with its dependencies (Material,
 AndroidX) in its POM, and the optional modules the app uses (`asuka/push`,
-`asuka/maps`) beside it. Add the repository and the dependency the
+`asuka/maps`) beside it, and SQLite's library for each ABI when the app
+uses `asuka/plugins/sqlite`. Add the repository and the dependency the
 command prints, then start the activity:
 
 ```kotlin
@@ -768,7 +792,9 @@ framework when it has a share sheet, its extensions), as Xcode's archive
 does, then strips the binaries. They're in `dist/<Name>.dSYMs`, beside
 the `.ipa` (or the simulator's `.app`), and their symbols in the `.ipa`
 (`Symbols/`), so App Store Connect and Xcode's Organizer symbolicate
-the crashes they show. Upload the dSYMs to your crash service:
+the crashes they show. SQLite's library (`asqlite.framework`) ships
+stripped, without a dSYM: its frames show as `asq_call`. Upload the
+dSYMs to your crash service:
 
 ```sh
 sentry-cli debug-files upload --org ORG --project PROJECT dist/Notes.dSYMs

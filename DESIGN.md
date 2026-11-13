@@ -935,6 +935,69 @@ Notifications' responses work the same way: a background action starts
 the core headless (iOS's center delegate, Android's broadcast receiver)
 and hands Go the response, keeping the process until Go reports it done.
 
+### Plugins
+
+A plugin is a Go package with a manifest beside it, `asuka-plugin.json`
+(package `plugin`), naming the native libraries it brings: for each
+target (`darwin`, universal; `ios`, `ios-simulator`; `android-<goarch>`;
+`linux-<goarch>`; `windows-<goarch>`; `wasm`) a file, published to the
+plugin's GitHub release gzipped and named for its hash, with the
+SHA-256 of both. Only the manifest is checked in. The plugin's Go code
+loads its library through purego or `syscall`, from the path
+`plugin.LibraryPath` gives it: where the CLI shipped it with the app;
+else, in `go run`, `go test` and `asuka dev` on a desktop, the plugin's
+checkout's build (`build/<target>` beside the manifest) or the
+published file, downloaded once into the user's cache and verified. A
+shipped app (`asuka_bundled`) and a phone's never download.
+
+The CLI finds an app's plugins among its dependencies for the build's
+platform (`go list -deps`, a manifest beside the package) and ships each
+library's file where `LibraryPath` looks: `Contents/Frameworks` on macOS
+(signed with the app), beside the `.exe` on Windows, `lib/<exe>` of the
+prefix on Linux, a framework of its own on iOS (named for the library;
+an Info.plist, a privacy manifest from the binary's imports, signed with
+the app), beside `libasuka.so` in each Android ABI, and `plugins/<name>`
+on the web. A desktop build that ships any builds with `asuka_bundled`.
+A plugin builds its libraries with its own tool (they need what they
+need: SQLite, Xcode, the NDK and Zig), which writes each with
+`plugin.StoreBuild` and the hash of the plugin's sources (the manifest's
+`sources`); `asuka plugin publish` uploads them, refusing a build older
+than its sources, downloads each back to check it, and records them in
+the manifest. Native modules (Swift, Kotlin and JavaScript for the
+hosts) are to be a manifest's `modules`, beside its `libraries`.
+
+### SQLite
+
+`asuka/plugins/sqlite` is a plugin: SQLite's own C, one pinned release
+built with the same options for every platform by
+`plugins/sqlite/internal/build` (Xcode, the NDK, Zig). With it, one library of Asuka's
+(`plugins/sqlite/csrc/asq.c`) and one entry point: `asq_call(op, conn, arg, in,
+inLen, out, outCap)`, every argument pointer-sized. A call is a whole
+statement: its SQL and arguments in, its answer (a query's columns and
+first rows, as many as fit the buffer) out; `next` brings the rest a
+chunk at a time, and an answer too long for the buffer is kept for the
+caller to take with a bigger one. Statements are cached by SQL in C
+(64 per connection). The tables a call's commits wrote (the authorizer,
+the preupdate and commit hooks) and its queries read come back with
+each answer, so the live queries need no callbacks from C into Go.
+
+Go crosses into C once per call, never per column, which is what makes
+purego as fast as cgo here (a crossing costs more than a row): macOS,
+Linux, iOS and Android load the library with `dlopen` through purego
+(the mobile build modes' cgo is purego's way to `dlopen`, not
+Asuka's), Windows with `LoadLibrary` through `syscall`, and the web
+calls the same C built to WebAssembly from JavaScript. Every symbol but
+`asq_call` and `asq_version` is hidden, so a system SQLite in the same
+process (GTK may load one) never clashes. The CLI ships it with the app
+as any plugin's library ([Plugins](#plugins)).
+
+A database has one writer connection and, for a file, up to three
+readers (write-ahead logging), handed out by the Go side. Writes take
+turns on the writer: a semaphore that times out as SQLite's busy timeout
+does, so a write inside another's transaction fails with `ErrBusy`
+rather than hanging. Rows scan into structs by a plan made once per
+type (field offsets and kinds), written in place; no reflection per row.
+
 ## mobile
 
 `mobile/` (build tags `ios || android`, cgo) exports a C ABI:
@@ -977,6 +1040,17 @@ root on the mobile host.
   app (application ID and name passed as Gradle properties).
 
 The CLI does these builds itself (no gomobile).
+
+An app's plugins' libraries ([Plugins](#plugins)) ship with it: on iOS a
+framework each in `Frameworks` (`asqlite.framework` for SQLite: an
+Info.plist, a privacy manifest of its own, signed with the app; not
+linked, `dlopen`ed by its path from the executable's directory, or
+`../../Frameworks` from an extension), and an XCFramework each beside
+`AsukaApp.xcframework` for an app embedded in another; on Android each
+beside `libasuka.so` in each ABI's `jniLibs`, loaded by name from the
+APK. `asuka dev --once` pushes them with the Go library to the app's
+`files/asuka`, and package plugin looks first beside the file its own
+code was mapped from (`/proc/self/maps`).
 
 ## CLI (`cmd/asuka`)
 
@@ -1299,7 +1373,7 @@ Each one ends with its examples running and its tests in CI.
   - The device's time zone as Go's `time.Local`.
   - Motion: `Style.Transform`, shadows, gradients, `Style.Material`
     (blur), repeating animations, enter and exit `Transition`s.
-  - `asuka/sqlite` (pure Go, live queries with `sqlite.Watch`), native
+  - `asuka/plugins/sqlite` (SQLite's C, no cgo; live queries with `sqlite.Watch`), native
     modules (`ui.Call`: `asuka/secure`, the keychain and Keystore;
     `asuka/device`: info, an in-app browser, the photo picker).
   - A search field in the navigation bar (`ScreenOptions.Search`).
@@ -1519,8 +1593,8 @@ Each one ends with its examples running and its tests in CI.
   v0 components, navigation (the browser's back included), rich text and rich text fields (an editable element; formatting through the browser's editing, so its undo covers it),
   shapes, canvas, shaders (WebGL 2), images, symbols, video,
   gestures, drag and drop, menus, animation, transitions, matched views,
-  the app's files kept (IndexedDB, large files in chunks), `asuka/sqlite`
-  (SQLite's WebAssembly build, below; live queries), the native modules
+  the app's files kept (IndexedDB, large files in chunks), `asuka/plugins/sqlite`
+  (its C built to WebAssembly, in a worker, below; live queries), the native modules
   a browser has (`platform/web/src/modules`: the secure store under a
   non-extractable WebCrypto key, device, clipboard, pickers, share,
   preview, print, compose, notifications, Web Push, network, location, sensors, speech, audio, recording, the camera and
@@ -3499,26 +3573,40 @@ calls:
   callback), the app's data directory (`/data/<name>`, `ASUKA_DATA`)
   loaded from IndexedDB before Go starts and written back as it changes
   (a large file in chunks of 64 KiB, only those changed; each data
-  directory's changes in one IndexedDB transaction).
-- SQLite: `modernc.org/sqlite` has no `js/wasm` build, so `asuka/sqlite`
-  has a second driver there (`sqlite/driver_js.go`) over SQLite's own
-  WebAssembly build (`platform/web/sqlite`, vendored from sqlite.org;
-  the CLI ships it with the apps whose wasm has `sqlite.Open`, and the
-  loader loads it before Go starts, since `Open` is synchronous).
-  `platform/web/src/sqlite.js` drives it from Go synchronously: one call
-  per statement (arguments read from Go's memory, the answer written
-  into it), a query's rows a chunk at a time, statements cached by SQL.
-  Its VFS keeps databases as files of the page's file system, so the
-  data directory's persistence keeps them, and Go's `os` sees them;
-  each call runs to its end before the page does anything else, so a
-  kept state is always one SQLite's rollback journal recovers from.
-  The tables commits write (the preupdate and commit hooks, the
-  authorizer) and queries read come back with each answer, for the live
-  queries, as modernc's hooks give them natively. One connection per
-  file (no shared memory, so no write-ahead logging; the page can't
-  block on a lock): locks between two opens of a file are the VFS's,
-  and a statement that finds the file locked is retried from Go, which
-  lets the other run.
+  directory's changes in one IndexedDB transaction). Tabs share it: a
+  tab writes holding the directory's Web Lock, then names the files on a
+  `BroadcastChannel`, and the others read them again (one a tab changed
+  and hasn't written stays its own, written whole: last writer wins,
+  never a mix of chunks).
+- SQLite: `asuka/plugins/sqlite`'s C (SQLite and `plugins/sqlite/csrc/asq.c`), built to
+  WebAssembly by `plugins/sqlite/internal/build` (zig, `wasm32-wasi`, `-Os`) with
+  `plugins/sqlite/csrc/asq_wasm.c` as its system (`SQLITE_OS_OTHER`, one thread:
+  a VFS, the time zone and randomness imported from JavaScript, no WASI
+  imports): the plugin's `wasm` file, which the CLI ships with the apps
+  that use it, in `plugins/sqlite` (as any plugin's, [Plugins](#plugins)),
+  and passes the page as its `sqlite` option. It runs in a worker of the
+  page's (`platform/web/src/sqlite-worker.js`; `sqlite-engine.js` the
+  module, `sqlite-vfs.js` its files, `sqlite-store.js` where they're
+  kept). Go's side (`plugins/sqlite/lib_js.go`) posts each call to the worker
+  through `sqlite.js` and waits on a channel; the page writes the answer
+  into Go's buffer (one too long is kept page-side for `TAKE`, answered
+  at once) and wakes the goroutine. The page's callbacks can't wait (the
+  page waits for them), so a call on the goroutine a callback runs on
+  fails at once: `host/web` brackets them with `internal/jsloop`, which
+  tells that goroutine by its `g` (other goroutines run while the page
+  calls back into Go, and may wait). The data directory's databases are
+  files of the origin private file system, read and written in place
+  through sync access handles; without them, IndexedDB in 64 KiB chunks,
+  written once each call returns. One connection per file, a rollback
+  journal. Tabs take turns as wa-sqlite's `OPFSCoopSyncVFS` has them: a
+  tab uses a database only holding its Web Lock (its handles open), and
+  keeps it until another tab asks on a `BroadcastChannel` and it isn't
+  in a transaction; a statement that needs it meanwhile gets
+  `SQLITE_BUSY` at once while the lock comes (SQLite never sleeps there),
+  and Go runs it again (`library.waits` is false). Between the page's own
+  connections to a file, the VFS locks as the unix VFS does between
+  processes. A database the page's files kept (before) moves to the
+  worker as it's first opened.
 - Native modules: `platform/web/src/modules` (`system.js`,
   `hardware.js`, `web.js`), each method decoding the Go package's bytes
   as the native hosts do; what a browser can't do answers an error that

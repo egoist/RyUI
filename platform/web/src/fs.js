@@ -7,8 +7,14 @@
 // /tmp is the app's caches, kept for the page's life: what's dropped or
 // pasted into it, files it makes to share.
 //
-// IndexedDB keeps a small file whole, and a large one (a SQLite database)
-// in chunks of 64 KiB: a write stores only the chunks it changed.
+// IndexedDB keeps a small file whole, and a large one in chunks of 64
+// KiB: a write stores only the chunks it changed.
+//
+// Several tabs of an app share its data directory: a tab writes its
+// changes holding the directory's Web Lock, then tells the others on a
+// BroadcastChannel which files it wrote, and they read those again (a
+// file a tab changed and hasn't written yet stays its own: written whole
+// once it's written, the last tab's to write it).
 //
 // memfs.watch is Node's fs.watch, which asuka/watch calls: it tells what
 // changes in a directory, a moment after the app's Go changed it.
@@ -20,7 +26,7 @@ const fds = new Map(); // fd -> { path, pos, append, write }
 let nextFD = 100;
 // The data directories kept in IndexedDB: an app's each (several apps
 // may run on one page, each with its own), and its database.
-const stores = []; // { dir, db, dirty: Map<path, Set<chunk> | true (all of it)> }
+const stores = []; // { dir, name, db, channel, dirty: Map<path, Set<chunk> | true (all of it)>, writing: Set<path> }
 const CHUNK = 64 * 1024;
 let flushTimer = 0;
 let out = { 1: "", 2: "" };
@@ -358,10 +364,11 @@ const chunksOf = (path, from = 0) => IDBKeyRange.bound([path, from], [path, Infi
 
 /**
  * flush writes the changed files of the data directories to IndexedDB,
- * each directory's in one transaction; it resolves once they're written
- * (and those before them).
+ * each directory's in one transaction, holding the directory's Web Lock
+ * (now, without it, when urgent: the page is going away); it resolves
+ * once they're written (and those before them).
  */
-export function flush() {
+export function flush(urgent) {
   clearTimeout(flushTimer);
   flushTimer = 0;
   const done = [];
@@ -370,37 +377,103 @@ export function flush() {
     if (!st.db || !st.dirty.size) continue;
     const dirty = st.dirty;
     st.dirty = new Map();
-    const tx = st.db.transaction(["files", "chunks"], "readwrite");
-    const meta = tx.objectStore("files"), chunks = tx.objectStore("chunks");
-    for (const [p, d] of dirty) {
-      const e = files.get(p);
-      if (!e) {
-        meta.delete(p);
-        chunks.delete(chunksOf(p));
-      } else if (e.dir || e.size <= CHUNK) {
-        meta.put({ dir: !!e.dir, mode: e.mode, mtime: e.mtime, data: e.dir ? null : e.data.slice(0, e.size) }, p);
-        chunks.delete(chunksOf(p));
-      } else {
-        const n = Math.ceil(e.size / CHUNK);
-        meta.put({ dir: false, mode: e.mode, mtime: e.mtime, size: e.size, chunked: true }, p);
-        const put = (i) => chunks.put(e.data.slice(i * CHUNK, Math.min(e.size, (i + 1) * CHUNK)), [p, i]);
-        // A file that was small has no chunks yet: all of them.
-        if (d === true || !e.chunked) for (let i = 0; i < n; i++) put(i);
-        else for (const i of d) if (i < n) put(i);
-        chunks.delete(chunksOf(p, n));
-      }
-      if (e && !e.dir) e.chunked = e.size > CHUNK;
-    }
-    st.saving = new Promise((resolve) => {
-      tx.oncomplete = () => resolve();
-      tx.onerror = tx.onabort = () => {
-        console.warn("asuka: the app's files weren't saved:", tx.error);
-        resolve();
-      };
+    for (const p of dirty.keys()) st.writing.add(p);
+    const locks = globalThis.navigator?.locks;
+    const write = () => writeFiles(st, dirty);
+    const saving = urgent === true || !locks ? write() : locks.request("asuka-files:" + st.name, write);
+    st.saving = Promise.all([st.saving, saving]).then(() => {
+      for (const p of dirty.keys()) st.writing.delete(p);
     });
     done.push(st.saving);
   }
   return Promise.all(done).then(() => {});
+}
+
+// writeFiles writes dirty's files as they are now, in one transaction,
+// then tells the other tabs which.
+function writeFiles(st, dirty) {
+  const tx = st.db.transaction(["files", "chunks"], "readwrite");
+  const meta = tx.objectStore("files"), chunks = tx.objectStore("chunks");
+  for (const [p, d] of dirty) {
+    const e = files.get(p);
+    if (!e) {
+      meta.delete(p);
+      chunks.delete(chunksOf(p));
+    } else if (e.dir || e.size <= CHUNK) {
+      meta.put({ dir: !!e.dir, mode: e.mode, mtime: e.mtime, data: e.dir ? null : e.data.slice(0, e.size) }, p);
+      chunks.delete(chunksOf(p));
+    } else {
+      const n = Math.ceil(e.size / CHUNK);
+      meta.put({ dir: false, mode: e.mode, mtime: e.mtime, size: e.size, chunked: true }, p);
+      const put = (i) => chunks.put(e.data.slice(i * CHUNK, Math.min(e.size, (i + 1) * CHUNK)), [p, i]);
+      // A file that was small has no chunks yet: all of them.
+      if (d === true || !e.chunked) for (let i = 0; i < n; i++) put(i);
+      else for (const i of d) if (i < n) put(i);
+      chunks.delete(chunksOf(p, n));
+    }
+    if (e && !e.dir) e.chunked = e.size > CHUNK;
+  }
+  return new Promise((resolve) => {
+    tx.oncomplete = () => {
+      st.channel?.postMessage({ paths: [...dirty.keys()] });
+      resolve();
+    };
+    tx.onerror = tx.onabort = () => {
+      console.warn("asuka: the app's files weren't saved:", tx.error);
+      resolve();
+    };
+  });
+}
+
+/**
+ * reload reads files another tab wrote (paths) again from IndexedDB, and
+ * tells the watches. One this tab changed and hasn't written stays as it
+ * is, to be written whole (the other tab's chunks of it aren't its).
+ */
+async function reload(st, paths) {
+  const want = [];
+  for (const p of paths) {
+    if (st.dirty.has(p) || st.writing.has(p)) markDirty(p);
+    else want.push(p);
+  }
+  if (!want.length || !st.db) return;
+  const got = new Map();
+  try {
+    const tx = st.db.transaction(["files", "chunks"], "readonly");
+    const meta = tx.objectStore("files"), chunks = tx.objectStore("chunks");
+    await Promise.all(want.map(async (p) => {
+      const v = await req(meta.get(p));
+      let parts = null;
+      if (v?.chunked) parts = await Promise.all([req(chunks.getAllKeys(chunksOf(p))), req(chunks.getAll(chunksOf(p)))]);
+      got.set(p, [v, parts]);
+    }));
+  } catch (e) {
+    console.warn("asuka: another tab's files couldn't be read:", e);
+    return;
+  }
+  for (const [p, [v, parts]] of got) {
+    if (st.dirty.has(p) || st.writing.has(p)) continue; // changed here meanwhile
+    const old = files.get(p);
+    if (!v) {
+      if (old) {
+        files.delete(p);
+        changed(p, "rename");
+      }
+      continue;
+    }
+    let e;
+    if (v.dir) {
+      if (old?.dir) continue;
+      e = { dir: true, mode: v.mode, mtime: v.mtime, size: 0, data: null };
+    } else if (v.chunked) {
+      e = { dir: false, mode: v.mode, mtime: v.mtime, size: v.size, data: new Uint8Array(v.size), chunked: true };
+      parts[0].forEach(([, i], j) => { if (i * CHUNK < v.size) e.data.set(parts[1][j].subarray(0, v.size - i * CHUNK), i * CHUNK); });
+    } else e = { dir: false, mode: v.mode, mtime: v.mtime, size: v.data.length, data: v.data };
+    if (old) e.ino = old.ino;
+    for (let d = parent(p); !files.has(d); d = parent(d)) files.set(d, { dir: true, mode: S_IFDIR | 0o755, mtime: v.mtime, size: 0, data: null });
+    files.set(p, e);
+    changed(p, old ? "change" : "rename");
+  }
 }
 
 /**
@@ -410,7 +483,8 @@ export function flush() {
  */
 export async function mount({ name, dir = "/data", output } = {}) {
   if (output) onOutput = output;
-  const st = { dir, db: null, dirty: new Map() };
+  name ||= location.pathname;
+  const st = { dir, name, db: null, channel: null, dirty: new Map(), writing: new Set() };
   stores.push(st);
   for (const d of ["/", "/tmp", "/home", dir]) mkdirs(d);
   globalThis.fs = memfs;
@@ -429,7 +503,7 @@ export async function mount({ name, dir = "/data", output } = {}) {
   if (!globalThis.indexedDB) return;
   try {
     const db = await new Promise((resolve, reject) => {
-      const req = indexedDB.open("asuka-files:" + (name || location.pathname), 2);
+      const req = indexedDB.open("asuka-files:" + name, 2);
       req.onupgradeneeded = () => {
         const db = req.result;
         if (!db.objectStoreNames.contains("files")) db.createObjectStore("files");
@@ -453,66 +527,21 @@ export async function mount({ name, dir = "/data", output } = {}) {
     });
     for (const k of keys) mkdirs(parent(k));
     st.db = db;
+    if (globalThis.BroadcastChannel) {
+      st.channel = new BroadcastChannel("asuka-files:" + name);
+      st.channel.onmessage = (e) => reload(st, e.data?.paths ?? []);
+    }
   } catch (e) {
     console.warn("asuka: the app's files won't be kept:", e);
   }
   if (stores.length === 1) {
-    addEventListener("pagehide", flush);
-    document.addEventListener("visibilitychange", () => { if (document.hidden) flush(); });
+    // Written at once as the page goes (or may go: hidden).
+    addEventListener("pagehide", () => flush(true));
+    document.addEventListener("visibilitychange", () => { if (document.hidden) flush(true); });
   }
 }
 
 const req = (r) => new Promise((resolve, reject) => { r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); });
-
-// --- For SQLite (sqlite.js's VFS) ---
-
-/**
- * file is a file SQLite opens, by its (clean) path: its bytes read and
- * written in place, as a disk's are, and kept as the data directory's
- * other files are.
- */
-export const file = {
-  /** exists reports whether there's a file at path. */
-  exists(path) { const e = files.get(path); return !!e && !e.dir; },
-  /** open makes the file if create is set and there's none; false if there's none (or it's a directory, or its directory isn't there). */
-  open(path, create) {
-    const e = files.get(path);
-    if (e) return !e.dir;
-    if (!create) return false;
-    if (!files.get(parent(path))?.dir) return false;
-    put(path, { dir: false, mode: S_IFREG | 0o644, mtime: now(), size: 0, data: new Uint8Array(0) });
-    return true;
-  },
-  size(path) { return files.get(path)?.size ?? 0; },
-  /** read copies the bytes at offset into dst, and returns how many there were. */
-  read(path, dst, offset) {
-    const e = files.get(path);
-    if (!e || e.dir || offset >= e.size) return 0;
-    const n = Math.min(dst.length, e.size - offset);
-    dst.set(e.data.subarray(offset, offset + n));
-    return n;
-  },
-  write(path, src, offset) {
-    const e = files.get(path);
-    if (!e || e.dir) throw err("ENOENT");
-    const end = offset + src.length;
-    grow(e, end);
-    if (offset > e.size) e.data.fill(0, e.size, offset);
-    e.data.set(src, offset);
-    e.size = Math.max(e.size, end);
-    e.mtime = now();
-    markDirty(path, offset, end);
-  },
-  truncate(path, n) {
-    const e = files.get(path);
-    if (e && !e.dir) resize(path, e, n);
-  },
-  remove(path) {
-    const e = files.get(path);
-    if (e && !e.dir) remove(path);
-  },
-  clean,
-};
 
 // --- For the host ---
 
@@ -532,6 +561,16 @@ export function writeFile(path, bytes) {
   path = clean(path);
   mkdirs(parent(path));
   put(path, { dir: false, mode: S_IFREG | 0o644, mtime: now(), size: bytes.length, data: bytes });
+}
+
+/** clean is path made absolute, without . and .. and doubled slashes. */
+export { clean };
+
+/** removeFile removes a file, if there's one. */
+export function removeFile(path) {
+  path = clean(path);
+  const e = files.get(path);
+  if (e && !e.dir) remove(path);
 }
 
 /** makeDir makes a directory (and those it's in). */

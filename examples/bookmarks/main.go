@@ -14,8 +14,8 @@ import (
 	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/device"
 	"github.com/egoist/asuka/fonts"
+	"github.com/egoist/asuka/plugins/sqlite"
 	"github.com/egoist/asuka/signal"
-	"github.com/egoist/asuka/sqlite"
 	"github.com/egoist/asuka/ui"
 )
 

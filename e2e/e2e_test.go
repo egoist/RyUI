@@ -522,9 +522,33 @@ func webServer(t *testing.T, example string) string {
 	return url
 }
 
-func TestCounterWeb(t *testing.T)    { counter(t, webApp(t, "counter")) }
-func TestChatWeb(t *testing.T)       { chat(t, webApp(t, "chat")) }
-func TestNotesWeb(t *testing.T)      { notes(t, webApp(t, "notes")) }
+func TestCounterWeb(t *testing.T) { counter(t, webApp(t, "counter")) }
+func TestChatWeb(t *testing.T)    { chat(t, webApp(t, "chat")) }
+func TestNotesWeb(t *testing.T)   { notes(t, webApp(t, "notes")) }
+
+// TestBookmarksWeb: a bookmark added in the editor, in a collection made
+// there, is written to SQLite and listed (a live query), and is still
+// there after a reload.
+func TestBookmarksWeb(t *testing.T) {
+	s := webApp(t, "bookmarks")
+	waitFor(t, s, []string{"Bookmarks"})
+	title := fmt.Sprintf("e2e bookmark %d", time.Now().UnixNano())
+	s.tap("Add")
+	waitFor(t, s, []string{"Save", "Title"})
+	s.command("type " + title)
+	s.tap("https://")
+	s.command("type https://example.com/e2e")
+	s.tap("Unsorted")
+	waitFor(t, s, []string{"Collection", "New collection"})
+	s.tap("New collection")
+	s.command("type E2E")
+	s.command("submit")
+	waitFor(t, s, []string{"E2E", "Save"}, "New collection")
+	s.tap("Save")
+	waitFor(t, s, []string{title}, "Save")
+	s.relaunch()
+	waitFor(t, s, []string{"Bookmarks", title})
+}
 func TestNavigationWeb(t *testing.T) { navigation(t, webApp(t, "navigation")) }
 func TestLanguagesWeb(t *testing.T)  { languages(t, webApp(t, "i18n")) }
 

@@ -1,0 +1,115 @@
+{
+  "name": "sqlite",
+  "sources": [
+    "csrc",
+    "internal/build"
+  ],
+  "libraries": [
+    {
+      "name": "asqlite",
+      "version": "3.54.1",
+      "release": "https://github.com/egoist/asuka/releases/download/plugin-sqlite",
+      "files": {
+        "android-amd64": {
+          "name": "libasqlite.so",
+          "asset": "asqlite-android-amd64-4dca7bda672f-libasqlite.so.gz",
+          "size": 809196,
+          "sha256": "f596b43c95663f15a339eb1da5b23b9b1b68cbd424a102e53956797873a1efe5",
+          "rawSize": 1515568,
+          "rawSHA256": "4dca7bda672fad3d1eca17c37e7a36f464c06b339c2f4c050dc21ed6f536a10b",
+          "source": "4d1c05435c5d508802b5f255ba9b4433a120f2c5eb0135d838d0915ae129092e"
+        },
+        "android-arm": {
+          "name": "libasqlite.so",
+          "asset": "asqlite-android-arm-91591af7126b-libasqlite.so.gz",
+          "size": 783113,
+          "sha256": "dfa926c7c91c30436d474f07d52884bf204ea01a83e29a70efbd9f081b68429f",
+          "rawSize": 1470040,
+          "rawSHA256": "91591af7126b851a5f67410a8ca353822f5362017f19c55d066c62363d8002ff",
+          "source": "4d1c05435c5d508802b5f255ba9b4433a120f2c5eb0135d838d0915ae129092e"
+        },
+        "android-arm64": {
+          "name": "libasqlite.so",
+          "asset": "asqlite-android-arm64-b728b6e30803-libasqlite.so.gz",
+          "size": 781358,
+          "sha256": "43e5331aa07d274735f5eaf3c412444aba779a7c785ca3587ae0d8e0e3bb6465",
+          "rawSize": 1459216,
+          "rawSHA256": "b728b6e308038492fb8fe82506323f95ff8fffa5fc40f659024b99afeee292c1",
+          "source": "4d1c05435c5d508802b5f255ba9b4433a120f2c5eb0135d838d0915ae129092e"
+        },
+        "darwin": {
+          "name": "libasqlite.dylib",
+          "asset": "asqlite-darwin-1982f596dd7c-libasqlite.dylib.gz",
+          "size": 1539903,
+          "sha256": "8267faae401fadb14297d36f603264dd5b7d51a5c8b96a91ab8cdce0e57b5416",
+          "rawSize": 2822624,
+          "rawSHA256": "1982f596dd7cebafde5156b49f1f3b3bb23d4f9fb4a79dd25193e2ad385a8f1f",
+          "source": "4d1c05435c5d508802b5f255ba9b4433a120f2c5eb0135d838d0915ae129092e"
+        },
+        "ios": {
+          "name": "asqlite",
+          "asset": "asqlite-ios-145c43f60404-asqlite.gz",
+          "size": 723061,
+          "sha256": "0872e6547e2a7e2d567308a956ea520f54f2731bcdeef5d17c5b0cad16b74276",
+          "rawSize": 1368536,
+          "rawSHA256": "145c43f6040421fceb04e5a58f464d2d7d416068e238b9f48b71f0515aee3446",
+          "source": "4d1c05435c5d508802b5f255ba9b4433a120f2c5eb0135d838d0915ae129092e"
+        },
+        "ios-simulator": {
+          "name": "asqlite",
+          "asset": "asqlite-ios-simulator-9c47931ddbfb-asqlite.gz",
+          "size": 1536312,
+          "sha256": "03f8afcb8eb9d1b2c459b8123a51cf9e0e1d874bdad5e4501adb9c1832c01e02",
+          "rawSize": 2821240,
+          "rawSHA256": "9c47931ddbfb85c444ddcc986e7af4197b4659a4754642d149b4bf97b33b81e8",
+          "source": "4d1c05435c5d508802b5f255ba9b4433a120f2c5eb0135d838d0915ae129092e"
+        },
+        "linux-amd64": {
+          "name": "libasqlite.so",
+          "asset": "asqlite-linux-amd64-3c60962065b6-libasqlite.so.gz",
+          "size": 811729,
+          "sha256": "0d5815961b4f38bee6989035d8e81534e0e2d4723124d20b4f35743b9e7c75b7",
+          "rawSize": 1502800,
+          "rawSHA256": "3c60962065b673391428769b58ec6149514ebf3690ebce5306cef0b354c68e46",
+          "source": "4d1c05435c5d508802b5f255ba9b4433a120f2c5eb0135d838d0915ae129092e"
+        },
+        "linux-arm64": {
+          "name": "libasqlite.so",
+          "asset": "asqlite-linux-arm64-cd5d6e61e673-libasqlite.so.gz",
+          "size": 779985,
+          "sha256": "e0d438a33da1e3257b0bbfdd85a6c02f81f4091e673e764dace99d363722d306",
+          "rawSize": 1457960,
+          "rawSHA256": "cd5d6e61e6731b368b4c2c730bb00d8ab5d3921393aea2f7b39e6b4a93cab66a",
+          "source": "4d1c05435c5d508802b5f255ba9b4433a120f2c5eb0135d838d0915ae129092e"
+        },
+        "wasm": {
+          "name": "asqlite.wasm",
+          "asset": "asqlite-wasm-a4b153cf09bd-asqlite.wasm.gz",
+          "size": 418226,
+          "sha256": "0b8d7bc6573d8ae20025019efae226a2ff3c88bd6a0d62085a677684f624b7ea",
+          "rawSize": 981342,
+          "rawSHA256": "a4b153cf09bd92de657ca4cdd8f52200131f0f6f81eb163478b83a83d36935cc",
+          "source": "4d1c05435c5d508802b5f255ba9b4433a120f2c5eb0135d838d0915ae129092e"
+        },
+        "windows-amd64": {
+          "name": "asqlite.dll",
+          "asset": "asqlite-windows-amd64-67f964f30fbf-asqlite.dll.gz",
+          "size": 826229,
+          "sha256": "29cea0213ad8393f8c66e0984b9868ac0f9ed01173ccf93bb1b845e419ba4f29",
+          "rawSize": 1517568,
+          "rawSHA256": "67f964f30fbf7904e7eb3be46e84850f8e6803b451eed4cb91961b953bcda77e",
+          "source": "4d1c05435c5d508802b5f255ba9b4433a120f2c5eb0135d838d0915ae129092e"
+        },
+        "windows-arm64": {
+          "name": "asqlite.dll",
+          "asset": "asqlite-windows-arm64-45fbb89d1319-asqlite.dll.gz",
+          "size": 767120,
+          "sha256": "8843dc0fa3df14548c8532f75e6e643f1581c5056eb6c564c8773f0e359c41f4",
+          "rawSize": 1376768,
+          "rawSHA256": "45fbb89d131974c28b75e8ddc31f84b3ce753d798995569bb243bdbf0f375f49",
+          "source": "4d1c05435c5d508802b5f255ba9b4433a120f2c5eb0135d838d0915ae129092e"
+        }
+      }
+    }
+  ]
+}

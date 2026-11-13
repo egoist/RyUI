@@ -28,9 +28,11 @@ import (
 // and it saves its state and quits). asuka build --platform windows makes a folder
 // with the .exe, its icon, manifest and version information built in
 // (a .syso written beside the app's Go code for the build), and its
-// assets beside it; it builds from any system. With ASUKA_WINDOWS_CERT
+// assets beside it, with its plugins' libraries (asqlite.dll for
+// asuka's sqlite plugin); it builds from any system. With ASUKA_WINDOWS_CERT
 // (a .pfx) and ASUKA_WINDOWS_CERT_PASSWORD set, it signs the .exe,
-// timestamped: with signtool on Windows, osslsigncode elsewhere.
+// timestamped (and its plugins' libraries with it): with signtool on Windows,
+// osslsigncode elsewhere.
 
 // windowsLdflags is the -ldflags of a Windows build: asuka.json's, the
 // app's name (its window title), ID (its AppUserModelID, and what makes
@@ -154,7 +156,12 @@ func buildWindows(app *goApp, o *buildOptions) error {
 		fmt.Println("asuka: using the app's own .syso resources")
 	}
 	target := "windows-" + goarch
-	args := []string{"build", "-trimpath", windowsLdflags(app, true) + updateLdflags(app, target), "-o", filepath.Join(out, exe), "."}
+	libs, err := appLibs(app.dir, "windows", goarch, target)
+	if err != nil {
+		return err
+	}
+	args := append([]string{"build", "-trimpath", windowsLdflags(app, true) + updateLdflags(app, target)}, pluginBuildFlags(libs)...)
+	args = append(args, "-o", filepath.Join(out, exe), ".")
 	if o.verbose {
 		fmt.Println("+ go", strings.Join(args, " "))
 	}
@@ -167,6 +174,17 @@ func buildWindows(app *goApp, o *buildOptions) error {
 	signed, err := signWindows(filepath.Join(out, exe), name, o.verbose)
 	if err != nil {
 		return err
+	}
+	// The plugins' libraries, beside the .exe (where package plugin finds
+	// them), signed as it is.
+	for _, l := range libs {
+		dll := filepath.Join(out, l.file.Name)
+		if err := l.write(dll); err != nil {
+			return err
+		}
+		if _, err := signWindows(dll, name, o.verbose); err != nil {
+			return err
+		}
 	}
 	if err := copyDir(filepath.Join(app.dir, "assets"), filepath.Join(out, "assets")); err != nil {
 		return err

@@ -1,15 +1,14 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/fonts"
+	"github.com/egoist/asuka/plugins/sqlite"
 	"github.com/egoist/asuka/signal"
-	"github.com/egoist/asuka/sqlite"
 	"github.com/egoist/asuka/ui"
 )
 
@@ -97,7 +96,7 @@ func (d *draft) save(done func()) {
 	db.ExecAsync(`insert into bookmarks (url, title, description, note, cover, collection, tags, created) values (?, ?, ?, ?, ?, ?, ?, ?)`,
 		[]any{strings.TrimSpace(d.URL.Peek()), title, strings.TrimSpace(d.Description.Peek()), strings.TrimSpace(d.Note.Peek()),
 			d.Cover.Peek(), d.Collection.Peek(), strings.Join(d.Tags.Peek(), ","), time.Now().Unix()},
-		func(_ sql.Result, err error) {
+		func(_ sqlite.Changes, err error) {
 			if err != nil {
 				ui.Alert(ui.AlertProps{Title: "Couldn't save", Message: err.Error()})
 				return
@@ -214,14 +213,19 @@ func CollectionPicker(collections signal.Accessor[sqlite.Result[collection]], ch
 		if n == "" {
 			return
 		}
-		db.ExecAsync(`insert or ignore into collections (name) values (?)`, []any{n}, func(_ sql.Result, err error) {
-			if err == nil {
-				if c, ok, _ := sqlite.QueryOne[collection](db, `select * from collections where name = ?`, n); ok {
+		// Off the main thread: written, then read back for its id.
+		go func() {
+			if _, err := db.Exec(`insert or ignore into collections (name) values (?)`, n); err != nil {
+				return
+			}
+			c, ok, _ := sqlite.QueryOne[collection](db, `select * from collections where name = ?`, n)
+			ui.Post(func() {
+				if ok {
 					chosen.Set(c.ID)
 					done()
 				}
-			}
-		})
+			})
+		}()
 		name.Set("")
 	}
 	all := signal.Func(func() []collection {

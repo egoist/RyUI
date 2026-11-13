@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/egoist/asuka/sqlite"
+	"github.com/egoist/asuka/plugins/sqlite"
 )
 
 // The search's SQL: a match anywhere, any case; % and _ are text.

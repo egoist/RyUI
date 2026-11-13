@@ -28,6 +28,7 @@ import (
 	"github.com/egoist/asuka/host"
 	"github.com/egoist/asuka/internal/boot"
 	"github.com/egoist/asuka/internal/crashrun"
+	"github.com/egoist/asuka/internal/jsloop"
 	"github.com/egoist/asuka/internal/l10n"
 	"github.com/egoist/asuka/layout"
 	"github.com/egoist/asuka/ops"
@@ -179,9 +180,12 @@ func (h *Host) bytes(v js.Value) []byte {
 }
 
 // enter runs f, a call into the core. The goroutine JavaScript called
-// in on is the main thread while it runs (asuka_debug's checks).
+// in on is the main thread while it runs (asuka_debug's checks), and the
+// page waits for it: what would wait for the page fails (jsloop).
 func (h *Host) enter(f func()) {
 	signal.BindThread()
+	jsloop.Enter()
+	defer jsloop.Leave()
 	f()
 }
 

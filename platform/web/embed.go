@@ -10,13 +10,3 @@ import "embed"
 //
 //go:embed src
 var Src embed.FS
-
-// SQLite is SQLite's own WebAssembly build, as sqlite/: sqlite3.mjs and
-// sqlite3.wasm, which src/sqlite.js loads for the apps that import
-// asuka/sqlite (the CLI ships it with them only). SQLite 3.54.1, from
-// https://sqlite.org/2026/sqlite-wasm-3540100.zip (SHA3-256
-// 87e24f6a4588692310b7942dc2fa7c7275bb9ba2e01d553e4115aa4a904a0050),
-// its jswasm/ files unchanged. SQLite is in the public domain.
-//
-//go:embed sqlite
-var SQLite embed.FS

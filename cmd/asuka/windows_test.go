@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"debug/pe"
 	"encoding/binary"
 	"os"
 	"os/exec"
@@ -219,5 +220,77 @@ func TestWindowsLdflags(t *testing.T) {
 	app.cfg.SingleInstance = &no
 	if f := windowsLdflags(app, false); !strings.Contains(f, `"github.com/egoist/asuka/internal/boot.MultipleInstances=1"`) {
 		t.Errorf("singleInstance false: %s", f)
+	}
+}
+
+// SQLite's library for Windows needs only what every Windows 10 and 11
+// has: the Universal C Runtime (its api-ms-win-crt sets) and KERNEL32,
+// nothing of MinGW's (libgcc, libwinpthread); and it exports only its
+// entry points.
+func TestWindowsSQLiteImports(t *testing.T) {
+	for arch, machine := range map[string]uint16{"amd64": pe.IMAGE_FILE_MACHINE_AMD64, "arm64": pe.IMAGE_FILE_MACHINE_ARM64} {
+		dll := filepath.Join(t.TempDir(), "asqlite.dll")
+		if filepath.Base(dll) != "asqlite.dll" {
+			t.Errorf("%s: %s", arch, dll)
+		}
+		if err := writeTestPluginLib("windows-"+arch, dll); err != nil {
+			t.Fatal(err)
+		}
+		f, err := pe.Open(dll)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if f.Machine != machine {
+			t.Errorf("%s: machine %#x", arch, f.Machine)
+		}
+		libs, err := f.ImportedLibraries()
+		f.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, l := range libs {
+			l = strings.ToLower(l)
+			if l != "kernel32.dll" && !strings.HasPrefix(l, "api-ms-win-crt-") {
+				t.Errorf("%s: imports %s", arch, l)
+			}
+		}
+	}
+}
+
+// A Windows build of an app that uses asuka/sqlite puts the library for
+// its architecture beside the .exe (sqlite/locate_windows.go), and is
+// built without the copy the package embeds, with GOFLAGS' tags.
+func TestBuildWindowsSQLite(t *testing.T) {
+	t.Setenv("ASUKA_WINDOWS_CERT", "")
+	t.Setenv("GOFLAGS", "-tags=extra")
+	app := sqliteTestApp(t)
+	for arch, machine := range map[string]uint16{"amd64": pe.IMAGE_FILE_MACHINE_AMD64, "arm64": pe.IMAGE_FILE_MACHINE_ARM64} {
+		out := t.TempDir()
+		if err := buildWindows(app, &buildOptions{out: out, arch: arch}); err != nil {
+			t.Fatal(err)
+		}
+		dir := filepath.Join(out, sanitizeExe(app.displayName()))
+		entries, _ := os.ReadDir(dir)
+		var names []string
+		for _, e := range entries {
+			names = append(names, e.Name())
+		}
+		if want := []string{"asqlite.dll", "sqliteapp.exe"}; !slices.Equal(names, want) {
+			t.Errorf("%s: %v, want %v", arch, names, want)
+		}
+		f, err := pe.Open(filepath.Join(dir, "asqlite.dll"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if f.Machine != machine {
+			t.Errorf("%s: the library's machine is %#x", arch, f.Machine)
+		}
+		f.Close()
+		if tags := buildTags(t, filepath.Join(dir, "sqliteapp.exe")); tags != "extra,"+pluginTag {
+			t.Errorf("%s: tags %q", arch, tags)
+		}
+	}
+	if m, _ := filepath.Glob(filepath.Join(app.dir, "*.syso")); len(m) > 0 {
+		t.Errorf("left in the app: %v", m)
 	}
 }

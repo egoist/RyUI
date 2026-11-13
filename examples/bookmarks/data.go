@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"html"
 	"io"
 	"net/http"
@@ -14,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/egoist/asuka/sqlite"
+	"github.com/egoist/asuka/plugins/sqlite"
 	"github.com/egoist/asuka/store"
 	"github.com/egoist/asuka/ui"
 )
@@ -67,7 +66,7 @@ func openDB() {
 
 // write runs a statement off the main thread; a failure shows.
 func write(query string, args ...any) {
-	db.ExecAsync(query, args, func(_ sql.Result, err error) {
+	db.ExecAsync(query, args, func(_ sqlite.Changes, err error) {
 		if err != nil {
 			ui.Alert(ui.AlertProps{Title: "Couldn't save", Message: err.Error()})
 		}

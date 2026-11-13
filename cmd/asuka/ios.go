@@ -464,6 +464,9 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 	if err != nil {
 		return "", err
 	}
+	if err := t.embedPlugins(bundle, app); err != nil {
+		return "", err
+	}
 	if err := copyDir(filepath.Join(app.dir, "assets"), filepath.Join(bundle, "assets")); err != nil {
 		return "", err
 	}

@@ -2,7 +2,8 @@
 // hosts' debug builds take, so the same GUI tests (e2e/) drive the page.
 // They come from the dev server one line each:
 //
-//	tap <text>     the visible view showing text (a press, or a control's click)
+//	tap <text>     the visible view showing text (a press, or a control's click;
+//	               a field showing it, its text or its placeholder, is focused)
 //	type <text>    typed into the focused field (or the first one showing)
 //	submit         the focused field's return key
 //	back           the user's back
@@ -80,8 +81,9 @@ function texts(h) {
 /** find is the innermost visible element showing text. */
 function find(h, text) {
   let best = null;
-  for (const el of h.container.querySelectorAll(textSelector + ", button, [role=button], .asuka-view")) {
-    if (el.textContent.trim() !== text && el.getAttribute("aria-label") !== text) continue;
+  for (const el of h.container.querySelectorAll(textSelector + ", button, [role=button], .asuka-view, input, textarea")) {
+    const field = el.tagName === "INPUT" || el.tagName === "TEXTAREA";
+    if (field ? (el.value || el.placeholder) !== text : el.textContent.trim() !== text && el.getAttribute("aria-label") !== text) continue;
     if (!shown(el)) continue;
     if (!best || best.contains(el)) best = el;
   }
@@ -93,7 +95,8 @@ function tap(h, text) {
   if (!el) throw new Error("nothing shows " + JSON.stringify(text));
   const control = el.closest("button, a[href], input, select, textarea");
   if (control) {
-    control.click();
+    if (control.tagName === "INPUT" || control.tagName === "TEXTAREA") control.focus();
+    else control.click();
     return;
   }
   const r = el.getBoundingClientRect();

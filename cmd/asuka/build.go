@@ -6,6 +6,7 @@ import (
 	"html"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -171,4 +172,25 @@ func writePlist(b *strings.Builder, v any, depth int) {
 	default:
 		fmt.Fprintf(b, "%s<string>%s</string>\n", ind, html.EscapeString(fmt.Sprint(x)))
 	}
+}
+
+// goTags is go build's -tags flag for tags, with those GOFLAGS sets: a
+// -tags on the command line replaces GOFLAGS' own.
+func goTags(goflags string, tags ...string) string {
+	var all []string
+	for _, f := range strings.Fields(goflags) {
+		f = strings.TrimPrefix(f, "-")
+		if v, ok := strings.CutPrefix(f, "-tags="); ok {
+			f = "tags=" + v
+		}
+		if v, ok := strings.CutPrefix(f, "tags="); ok {
+			all = append(all, strings.FieldsFunc(v, func(r rune) bool { return r == ',' || r == ' ' })...)
+		}
+	}
+	for _, t := range tags {
+		if !slices.Contains(all, t) {
+			all = append(all, t)
+		}
+	}
+	return "-tags=" + strings.Join(all, ",")
 }

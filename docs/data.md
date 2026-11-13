@@ -1,7 +1,7 @@
 # Data
 
 An app keeps its data in a few places: small values in `asuka/store`, records
-in SQLite with `asuka/sqlite`, secrets in the platform's keychain with
+in SQLite with `asuka/plugins/sqlite`, secrets in the platform's keychain with
 `asuka/secure`, and files of its own with Go's `os`. This page covers each,
 the network through `net/http`, watching files, and which calls may block
 the main thread.
@@ -90,14 +90,18 @@ store.Delete("prefs")
 `store.Flush()` waits until what's pending is written. Asuka calls it when
 the app goes to the background; you need it only in tests.
 
-## Records: asuka/sqlite
+## Records: the sqlite plugin
 
-`asuka/sqlite` is an app's SQLite database. SQLite is
-[modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite), a translation
-of SQLite's C to Go: it needs no cgo, so the same code runs on iOS,
-Android and the desktops. In a browser it's SQLite's own WebAssembly
-build, which the web's builds ship with the app ([The web](web.md#sqlite)).
-[`examples/notes`](../examples/notes) uses it.
+`asuka/plugins/sqlite` is an app's SQLite database, a
+[plugin](plugins.md): import it, and the CLI ships its library with the
+app. It's SQLite itself, its C, one release built the same way for
+every platform, with a small library of Asuka's that runs a whole
+statement, and hands back its rows a chunk at a time, in one call from
+Go. Go calls it without cgo: through purego
+on macOS, Linux, iOS and Android, and syscall on Windows. In a browser
+it's the same C built to WebAssembly ([The web](web.md#sqlite)).
+[`examples/notes`](../examples/notes) uses it; [The library](#the-library)
+says how it ships.
 
 ### Open and migrate
 
@@ -127,6 +131,14 @@ func main() {
 `Open` takes a name, a file in `store.Dir()` (the directory is made if it
 isn't there), an absolute path, or `":memory:"`. It turns on write-ahead
 logging and foreign keys, and sets a busy timeout of 5 seconds.
+
+A database has one connection that writes, and, for a file, up to three
+that read beside it, opened as reads need them. Writes take turns on the
+writer: one waits for another, a transaction holds it to its end, and a
+write that waits longer than the busy timeout fails with `ErrBusy` (as a
+`db.Exec` inside `db.Tx`'s function would: use `tx.Exec` there). Reads
+never wait for a write, and see the database as the last commit left it.
+`":memory:"` has one connection for both.
 
 `Migrate` brings the schema up to date. Each argument is a version of the
 database, in order: its SQL (statements separated by semicolons) runs
@@ -164,10 +176,38 @@ count, _, err := sqlite.QueryOne[int](db, `select count(*) from notes`)
 
 `QueryOne` is the first row; `ok` is false if there's none.
 
+A column's value converts to its field's type as it can: an integer into
+a `string` field as its digits, text into an `int` field if it's one, an
+integer into a `bool` as nonzero; a value that doesn't fit (a real into
+an `int`, 300 into an `int8`) is an error. NULL leaves the zero value,
+or nil in a pointer field (`*string`). A `time.Time` field reads text
+(`sqlite.TimeFormat`, what SQLite's date and time functions write, RFC
+3339) or seconds since 1970 (`unixepoch()`). A field whose pointer is a
+`sqlite.Scanner` (`sql.NullString`, an app's own type) scans the value
+itself. The fields of an embedded struct are the struct's own.
+
+### Arguments
+
+`?` takes the arguments in order, `?2` the second; `:name`, `@name` and
+`$name` take `sqlite.Named` arguments:
+
+```go
+db.Exec(`update notes set text = :text where id = :id`,
+	sqlite.Named("id", 1), sqlite.Named("text", "Buy milk"))
+```
+
+An argument is an integer, a float, a bool (1 or 0), a string, a
+`[]byte` (a blob; nil is NULL), a `time.Time` (text, as
+`sqlite.TimeFormat`: `2006-01-02 15:04:05.999999999-07:00`, which
+SQLite's date functions read and which sorts by time within one zone),
+nil, a pointer to one of them (nil is NULL), an app's own type of one
+(`type Status string`), or a `driver.Valuer` (`sql.NullString`).
+
 ### Exec and transactions
 
-`db.Exec` runs a statement (insert, update, delete, create...) and returns
-its `sql.Result`. `db.Tx` runs a function in a transaction: committed if
+`db.Exec` runs a statement (insert, update, delete, create...), or several
+separated by semicolons, and returns its `sqlite.Changes`: `LastInsertID`
+and `RowsAffected`. `db.Tx` runs a function in a transaction: committed if
 it returns nil, rolled back if it returns an error (which `Tx` returns) or
 panics. In it, `tx.Exec` writes and `sqlite.Query` and `sqlite.QueryOne`
 read, given the `*sqlite.Tx` instead of the database:
@@ -194,13 +234,12 @@ call `done` on the main thread. With a nil `done`, an error is logged.
 
 ```go
 db.ExecAsync(`insert into notes (text, created_at) values (?, ?)`, []any{"Buy milk", time.Now().Unix()},
-	func(r sql.Result, err error) {
+	func(r sqlite.Changes, err error) {
 		if err != nil {
 			status.Set("Couldn't save: " + err.Error())
 			return
 		}
-		id, _ := r.LastInsertId()
-		status.Set(fmt.Sprintf("Saved note %d", id))
+		status.Set(fmt.Sprintf("Saved note %d", r.LastInsertID))
 	})
 
 db.TxAsync(func(tx *sqlite.Tx) error {
@@ -266,15 +305,68 @@ func Search() ui.Node {
 }
 ```
 
-### Beyond this package
+A query that writes (`insert ... returning`) is heard as an `Exec` is.
 
-`db.SQL()` is the `*sql.DB` underneath, for what `asuka/sqlite` doesn't
-cover. Writes made through it are noted too, but the live queries hear of
-them at the next `Exec` or `Tx`, or at `db.Changed()`.
+### Errors
+
+An error SQLite returns is a `*sqlite.Error`: its result code (extended:
+`2067` is `SQLITE_CONSTRAINT_UNIQUE`) and message. `errors.Is` matches it
+against the package's `Err` values by code; one for a whole kind matches
+every code of it:
+
+```go
+_, err := db.Exec(`insert into users (email) values (?)`, email)
+switch {
+case errors.Is(err, sqlite.ErrConstraintUnique):
+	status.Set("That email is taken")
+case errors.Is(err, sqlite.ErrConstraint): // any other constraint
+	status.Set("Check the form")
+case err != nil:
+	status.Set(err.Error()) // sqlite: no such table: users (SQLITE_ERROR)
+}
+```
+
+### Backups
+
+`db.Serialize()` is the database's bytes, as its file would hold them:
+save them anywhere, share them, upload them. `db.Restore(data)` replaces
+the database with them and runs every live query again. On every
+platform, the web's included, they're the way to copy a database whole;
+`VACUUM INTO 'path'` writes a copy to a file where there are files.
 
 `db.Changed()` runs every live query again. Call it after a change the
-database can't see: another process's, or the file replaced (a backup
-restored).
+database can't see: another process's, or the file replaced.
+
+### The library
+
+SQLite is release 3.54.1 on every platform, with FTS5, R*Tree, Geopoly,
+the math functions, `dbstat`, `STAT4` and `soundex` built in, loadable
+extensions left out, and temporary tables kept in memory (a phone may
+have no temporary directory). It's the plugin's library, `asqlite`,
+built for each platform and published to the plugin's GitHub release;
+its manifest (`plugins/sqlite/asuka-plugin.json`) names each file and
+its SHA-256, and the CLI and the package download them from there,
+once, into the user's cache. An app's developers need no C compiler.
+
+- **`asuka build`** ships the library with the app, as it does every
+  plugin's ([Plugins](plugins.md#where-the-libraries-go)): in the app's
+  `Contents/Frameworks` on macOS (signed with it), beside the `.exe` on
+  Windows, in `lib/<app>` of the install prefix on Linux, as
+  `asqlite.framework` in an iOS app, and in each of an APK's ABIs.
+- **`go run`, `go test`, `asuka dev`** on a desktop load the published
+  library, from the user's cache; `asuka dev` on a phone puts it in the
+  app as a build does. An app embedded in another (`asuka build
+  --xcframework`) comes with `asqlite.xcframework`, for that app to embed
+  too ([Shipping](shipping.md#in-an-existing-app)).
+- **`ASUKA_SQLITE_LIB`** names a library to load instead (one of the
+  plugin's; the package checks its SQLite version).
+
+To change SQLite or the plugin's C, in a checkout: `go generate
+./plugins/sqlite` builds every platform's library (Xcode for Apple's
+platforms, the Android NDK, Zig for Linux, Windows and the web) into
+`plugins/sqlite/build`, which the checkout's own tests and examples use
+from then on, and `go run ./cmd/asuka plugin publish plugins/sqlite`
+publishes it.
 
 ## Secrets: asuka/secure
 
