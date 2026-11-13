@@ -314,7 +314,7 @@ func Relaunch() { app.Relaunch() }
 // refreshDesktop tells a Linux desktop of the app's new desktop file, MIME
 // types and icons, as a package manager would; desktops also notice the
 // files change, so a tool that's missing is no matter.
-func refreshDesktop(prefix string) {
+var refreshDesktop = func(prefix string) {
 	share := filepath.Join(prefix, "share")
 	for _, c := range [][]string{
 		{"update-desktop-database", filepath.Join(share, "applications")},

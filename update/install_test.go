@@ -298,6 +298,15 @@ func TestInstallPrefix(t *testing.T) {
 	prefix := tree(t, map[string]string{"bin/notes": "v1", "bin/theirs": "x", "share/notes/assets/a": "a1", "share/applications/notes.desktop": "e1"})
 	iupdate.WriteFileList(filepath.Join(prefix, "share/notes", iupdate.FileList), []string{"bin/notes", "share/notes/assets/a", "share/applications/notes.desktop"})
 	installAt(t, "linux", filepath.Join(prefix, "bin", "notes"))
+	// The desktop's caches are told (update-desktop-database...).
+	refreshed := ""
+	defer func(f func(string)) { refreshDesktop = f }(refreshDesktop)
+	refreshDesktop = func(p string) { refreshed = p }
+	defer func() {
+		if real, _ := filepath.EvalSymlinks(prefix); refreshed != real {
+			t.Errorf("the desktop's caches were told of %q", refreshed)
+		}
+	}()
 	// asuka build's tarball: notes/bin/notes...
 	build := tree(t, map[string]string{"notes/bin/notes": "v2", "notes/share/notes/assets/a": "a2", "notes/share/applications/notes.desktop": "e2"})
 	f.publish("2.0.0", "", filepath.Join(build, "notes"), build)
