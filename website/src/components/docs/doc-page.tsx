@@ -57,10 +57,13 @@ export function DocPage({ doc }: { doc: Doc }) {
   const nav = useNav()
   const t = useMessages().docs
   const [menuOpen, setMenuOpen] = React.useState(false)
+  const article = React.useRef<HTMLElement>(null)
+  const bar = React.useRef<HTMLDivElement>(null)
+  useReadingProgress(article, bar)
 
   return (
     <div className="min-w-0">
-      <div className="sticky top-14 z-30 flex h-11 items-center gap-1 border-b bg-background/85 px-2 backdrop-blur-xl lg:hidden">
+      <div ref={bar} className="reading sticky top-14 z-30 flex h-11 items-center gap-1 border-b bg-background/85 px-2 backdrop-blur-xl lg:hidden">
         <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
           <SheetTrigger render={<Button variant="ghost" size="sm" />}>
             <MenuIcon /> {t.menu}
@@ -75,10 +78,14 @@ export function DocPage({ doc }: { doc: Doc }) {
           </SheetContent>
         </Sheet>
         <ChevronRightIcon className="size-3.5 shrink-0 text-muted-foreground" />
-        <span className="truncate text-sm">{doc.title}</span>
+        <span className="min-w-0 flex-1 truncate text-sm">{doc.title}</span>
+        <span aria-hidden className="label shrink-0 pr-2 pl-3 text-signal-ink">
+          {t.sync} <span className="reading-rate" />
+        </span>
+        <span aria-hidden className="reading-bar absolute inset-x-0 -bottom-px h-0.5 origin-left bg-signal" />
       </div>
 
-      <article className="max-w-[52rem] px-4 pt-10 pb-20 sm:px-10 lg:pt-14">
+      <article ref={article} className="max-w-[52rem] px-4 pt-10 pb-20 sm:px-10 lg:pt-14">
         {/* The page's title card: its episode, its title, a band of hazard stripes. */}
         <header>
           <div className="label flex items-center justify-between gap-4">
@@ -138,4 +145,43 @@ export function DocPage({ doc }: { doc: Doc }) {
       </article>
     </div>
   )
+}
+
+/**
+ * How much of the page has been read, as the sync rate of the docs' bar on a
+ * phone: 0% with the page's top under the bar, 100% with its end at the
+ * bottom of the window. It sets --read (0 to 1) and --read-percent on the
+ * bar, which CSS shows; the page's height is watched too, for a frame that
+ * loads late or a window turned on its side.
+ */
+function useReadingProgress(article: React.RefObject<HTMLElement | null>, bar: React.RefObject<HTMLElement | null>) {
+  React.useEffect(() => {
+    const page = article.current
+    const out = bar.current
+    if (!page || !out) return
+    let frame = 0
+    function update() {
+      frame = 0
+      const rect = page!.getBoundingClientRect()
+      const top = out!.getBoundingClientRect().bottom
+      const span = rect.height - (window.innerHeight - top)
+      const read = span <= 0 ? 1 : Math.min(1, Math.max(0, (top - rect.top) / span))
+      out!.style.setProperty("--read", String(read))
+      out!.style.setProperty("--read-percent", String(Math.round(read * 100)))
+    }
+    function schedule() {
+      frame ||= requestAnimationFrame(update)
+    }
+    update()
+    const resize = new ResizeObserver(schedule)
+    resize.observe(page)
+    window.addEventListener("scroll", schedule, { passive: true })
+    window.addEventListener("resize", schedule)
+    return () => {
+      resize.disconnect()
+      window.removeEventListener("scroll", schedule)
+      window.removeEventListener("resize", schedule)
+      cancelAnimationFrame(frame)
+    }
+  }, [article, bar])
 }

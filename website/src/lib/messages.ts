@@ -28,6 +28,7 @@ const en = {
     next: "Next episode",
     edit: "Edit this page on GitHub",
     copyCode: "Copy code",
+    sync: "Sync",
   },
   notFound: {
     label: "Error 404 / Pattern unknown",
@@ -66,6 +67,7 @@ const zh: Messages = {
     next: "下一话",
     edit: "在 GitHub 上编辑此页",
     copyCode: "复制代码",
+    sync: "同步率",
   },
   notFound: {
     label: "Error 404 / 图形不明",
