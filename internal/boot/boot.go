@@ -93,6 +93,25 @@ func Mounted() {
 	}
 }
 
+// Background is "1" for a desktop app that runs in the background
+// (app.RunInBackground, or asuka.json's "background", set by the Asuka CLI
+// with -ldflags -X): no window shows at launch, and on macOS it has no
+// Dock icon (an accessory app). It keeps running with no window, as
+// KeepRunning.
+var Background string
+
+// KeepRunning keeps a desktop app running when its last window closes
+// (app.KeepRunning): closing the main window hides it.
+var KeepRunning bool
+
+// InBackground reports whether the app runs in the background
+// (Background).
+func InBackground() bool { return Background == "1" || Background == "true" }
+
+// KeepsRunning reports whether the app keeps running with no window
+// (KeepRunning, or InBackground).
+func KeepsRunning() bool { return KeepRunning || InBackground() }
+
 // ShaderGLSL, set where the app links the shader compiler (package
 // shader, on js/wasm), turns a ui.Shader's code into the GLSL ES 3.00
 // fragment shader the web host draws it with.
