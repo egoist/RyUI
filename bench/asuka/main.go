@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )
@@ -95,12 +97,12 @@ func App() ui.Node {
 			scroller = ui.List(ui.ListProps{}, ui.Val(items), func(i int) int { return i },
 				func(i signal.Accessor[int], _ signal.Accessor[int]) ui.Node {
 					return ui.Column(ui.Style{Padding: ui.Symmetric(8, 16), Gap: 2},
-						ui.Text(signal.Func(func() string { return "Row " + strconv.Itoa(i.Get()) }), ui.Style{Font: ui.Headline}),
-						ui.Text(signal.Func(func() string { return "Detail " + strconv.Itoa(i.Get()*7%1000) }), ui.Style{Color: ui.SecondaryLabel}))
+						ui.Text(signal.Func(func() string { return "Row " + strconv.Itoa(i.Get()) }), ui.Style{Font: fonts.Headline}),
+						ui.Text(signal.Func(func() string { return "Detail " + strconv.Itoa(i.Get()*7%1000) }), ui.Style{Color: colors.SecondaryLabel}))
 				})
 			return scroller
 		}
-		return ui.StaticText("Ready", ui.Style{Font: ui.LargeTitle})
+		return ui.StaticText("Ready", ui.Style{Font: fonts.LargeTitle})
 	}))
 }
 

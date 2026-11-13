@@ -3,6 +3,7 @@ package conformance
 import (
 	"math"
 
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/ui"
 )
 
@@ -17,10 +18,10 @@ type Case struct {
 }
 
 var (
-	cRed    = ui.RGB(255, 0, 0)
-	cBlue   = ui.RGB(0, 0, 255)
-	cYellow = ui.RGB(255, 255, 0)
-	cBlack  = ui.RGB(0, 0, 0)
+	cRed    = colors.RGB(255, 0, 0)
+	cBlue   = colors.RGB(0, 0, 255)
+	cYellow = colors.RGB(255, 255, 0)
+	cBlack  = colors.RGB(0, 0, 0)
 	yellow  = RGB{255, 255, 0}
 )
 

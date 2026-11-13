@@ -5,6 +5,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/host/fake"
 	"github.com/egoist/asuka/i18n"
 	"github.com/egoist/asuka/ops"
@@ -388,7 +389,7 @@ func TestWithDirection(t *testing.T) {
 					ui.Row(ui.Style{Height: ui.Pt(10)},
 						ui.View(ui.ViewProps{Label: ui.Val("rtl"), Style: ui.Style{Width: ui.Pt(30)}})),
 					ui.Scroll(ui.ScrollProps{Horizontal: true, Style: ui.Style{Width: ui.Pt(100), Height: ui.Pt(10)}},
-						ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(300), Height: ui.Pt(10), Background: ui.Red}})),
+						ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(300), Height: ui.Pt(10), Background: colors.Red}})),
 					ui.StaticText("t"),
 				)
 			}),

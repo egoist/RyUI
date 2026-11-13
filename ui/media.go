@@ -184,16 +184,16 @@ func (e *element) listenGestures(p *ViewProps) {
 	}
 }
 
-// fonts maps a font family to what a player gets it as: its file's URL
+// fontURLs maps a font family to what a player gets it as: its file's URL
 // when the app has one in assets/fonts (asuka dev runs the app in its
 // directory), or the family as it is.
-var fonts = map[string]string{}
+var fontURLs = map[string]string{}
 
 func fontFamily(family string) string {
 	if boot.AssetBase == "" || family == "" {
 		return family
 	}
-	if v, ok := fonts[family]; ok {
+	if v, ok := fontURLs[family]; ok {
 		return v
 	}
 	v := family
@@ -203,6 +203,6 @@ func fontFamily(family string) string {
 			break
 		}
 	}
-	fonts[family] = v
+	fontURLs[family] = v
 	return v
 }

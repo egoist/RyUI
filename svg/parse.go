@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/ui"
 )
 
@@ -423,7 +424,7 @@ func (st *state) resolve(c paint, op float64) Paint {
 		if a == 0 {
 			return Paint{}
 		}
-		return Paint{Color: ui.RGBA(r, g, b, a)}
+		return Paint{Color: colors.RGBA(r, g, b, a)}
 	case paintCurrent:
 		return Paint{Current: true, Opacity: float32(min(op, 1))}
 	}
@@ -469,7 +470,7 @@ func parseColor(v string) (paint, bool) {
 		return paint{}, false
 	}
 	if c, ok := named[lv]; ok {
-		return paint{kind: paintColor, color: ui.Hex(c)}, true
+		return paint{kind: paintColor, color: colors.Hex(c)}, true
 	}
 	if strings.HasPrefix(lv, "#") {
 		h := lv[1:]
@@ -481,7 +482,7 @@ func parseColor(v string) (paint, bool) {
 			}
 			h = b.String()
 		}
-		if c, ok := ui.ParseHex(h); ok {
+		if c, ok := colors.ParseHex(h); ok {
 			return paint{kind: paintColor, color: c}, true
 		}
 		return paint{}, false
@@ -513,7 +514,7 @@ func parseColor(v string) (paint, bool) {
 			}
 			ch[i] = uint8(math.Round(min(max(x, 0), 255)))
 		}
-		return paint{kind: paintColor, color: ui.RGBA(ch[0], ch[1], ch[2], ch[3])}, true
+		return paint{kind: paintColor, color: colors.RGBA(ch[0], ch[1], ch[2], ch[3])}, true
 	}
 	return paint{}, false
 }

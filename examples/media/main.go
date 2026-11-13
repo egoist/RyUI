@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )
@@ -30,17 +32,17 @@ func images() ui.Node {
 	status := signal.New("Loading…")
 	return ui.Scroll(ui.ScrollProps{Style: ui.Style{Grow: 1}},
 		ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 12},
-			ui.StaticText("From the network, filling a 16:9 box", ui.Style{Font: ui.Headline}),
+			ui.StaticText("From the network, filling a 16:9 box", ui.Style{Font: fonts.Headline}),
 			ui.Image(ui.ImageProps{
 				Source:  ui.Val("https://picsum.photos/id/1015/1200/800"),
 				Mode:    ui.ImageFill,
 				Label:   ui.Val("A river between mountains"),
-				Style:   ui.Style{AspectRatio: 16.0 / 9, CornerRadius: 12, Background: ui.SecondaryBackground},
+				Style:   ui.Style{AspectRatio: 16.0 / 9, CornerRadius: 12, Background: colors.SecondaryBackground},
 				OnLoad:  func(w, h float32) { status.Set(fmt.Sprintf("Loaded, %.0f×%.0f", w, h)) },
 				OnError: func(m string) { status.Set("Failed: " + m) },
 			}),
-			ui.Text(status, ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel}),
-			ui.StaticText("From the app's assets, at its natural size", ui.Style{Font: ui.Headline}),
+			ui.Text(status, ui.Style{Font: fonts.Footnote, Color: colors.SecondaryLabel}),
+			ui.StaticText("From the app's assets, at its natural size", ui.Style{Font: fonts.Headline}),
 			ui.Image(ui.ImageProps{Source: ui.Val("sunset.png"), Style: ui.Style{AlignSelf: ui.AlignStart}}),
 		),
 	)
@@ -60,8 +62,8 @@ func gestures() ui.Node {
 				return l
 			}
 			return "Drag the card, pinch it, let go"
-		}), ui.Style{Color: ui.SecondaryLabel}),
-		ui.View(ui.ViewProps{Style: ui.Style{Grow: 1, Background: ui.SecondaryBackground, CornerRadius: 16, Clip: true}},
+		}), ui.Style{Color: colors.SecondaryLabel}),
+		ui.View(ui.ViewProps{Style: ui.Style{Grow: 1, Background: colors.SecondaryBackground, CornerRadius: 16, Clip: true}},
 			ui.View(ui.ViewProps{
 				OnPan: func(g ui.Gesture) {
 					switch g.State {
@@ -88,14 +90,14 @@ func gestures() ui.Node {
 				Style: ui.StyleFunc(func() ui.Style {
 					s := size.Get()
 					return ui.Style{Absolute: true, Left: ui.Pt(40 + x.Get()), Top: ui.Pt(40 + y.Get()),
-						Width: ui.Pt(s), Height: ui.Pt(s), Background: ui.Accent, CornerRadius: 24,
+						Width: ui.Pt(s), Height: ui.Pt(s), Background: colors.Accent, CornerRadius: 24,
 						Justify: ui.JustifyCenter, Align: ui.AlignCenter}
 				}),
-			}, ui.StaticText("Drag me", ui.Style{Color: ui.RGB(255, 255, 255), Font: ui.Headline})),
+			}, ui.StaticText("Drag me", ui.Style{Color: colors.RGB(255, 255, 255), Font: fonts.Headline})),
 		),
 		ui.View(ui.ViewProps{
 			OnSwipe: func(d ui.SwipeDirection) { swipe.Set("Swiped " + names[d]) },
-			Style:   ui.Style{Height: ui.Pt(72), Background: ui.SecondaryBackground, CornerRadius: 16, Justify: ui.JustifyCenter, Align: ui.AlignCenter},
+			Style:   ui.Style{Height: ui.Pt(72), Background: colors.SecondaryBackground, CornerRadius: 16, Justify: ui.JustifyCenter, Align: ui.AlignCenter},
 		}, ui.Text(swipe)),
 	)
 }
@@ -107,21 +109,21 @@ func animation() ui.Node {
 			ui.Animate(func() { open.Set(!open.Peek()) })
 		}}),
 		ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style {
-			s := ui.Style{Height: ui.Pt(80), Background: ui.Orange, CornerRadius: 12, Opacity: 0.6, Padding: ui.All(16)}
+			s := ui.Style{Height: ui.Pt(80), Background: colors.Orange, CornerRadius: 12, Opacity: 0.6, Padding: ui.All(16)}
 			if open.Get() {
-				s.Height, s.Background, s.CornerRadius, s.Opacity = ui.Pt(240), ui.Purple, 32, 1
+				s.Height, s.Background, s.CornerRadius, s.Opacity = ui.Pt(240), colors.Purple, 32, 1
 			}
 			return s
-		})}, ui.StaticText("A card that grows, rounds and darkens", ui.Style{Color: ui.RGB(255, 255, 255)})),
+		})}, ui.StaticText("A card that grows, rounds and darkens", ui.Style{Color: colors.RGB(255, 255, 255)})),
 		ui.Row(ui.Style{Gap: 12},
 			ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style {
 				w := float32(60)
 				if open.Get() {
 					w = 200
 				}
-				return ui.Style{Width: ui.Pt(w), Height: ui.Pt(24), Background: ui.Green, CornerRadius: 12}
+				return ui.Style{Width: ui.Pt(w), Height: ui.Pt(24), Background: colors.Green, CornerRadius: 12}
 			})}),
-			ui.View(ui.ViewProps{Style: ui.Style{Grow: 1, Height: ui.Pt(24), Background: ui.Blue, CornerRadius: 12}}),
+			ui.View(ui.ViewProps{Style: ui.Style{Grow: 1, Height: ui.Pt(24), Background: colors.Blue, CornerRadius: 12}}),
 		),
 	)
 }
@@ -129,7 +131,7 @@ func animation() ui.Node {
 func nativeView() ui.Node {
 	selected := signal.New(1)
 	return ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 16},
-		ui.StaticText("A segmented control the app registers on each platform: Swift on iOS (ios/) and macOS (macos/), Kotlin on Android (android/), JavaScript on the web (web/), and Go on Windows and Linux (natives_*.go):", ui.Style{Color: ui.SecondaryLabel}),
+		ui.StaticText("A segmented control the app registers on each platform: Swift on iOS (ios/) and macOS (macos/), Kotlin on Android (android/), JavaScript on the web (web/), and Go on Windows and Linux (natives_*.go):", ui.Style{Color: colors.SecondaryLabel}),
 		ui.Native("Segmented", ui.NativeProps{
 			Props: map[string]any{"items": "Day,Week,Month", "selected": selected},
 			On: map[string]func(ui.NativeEvent){"changed": func(e ui.NativeEvent) {

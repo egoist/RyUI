@@ -21,6 +21,8 @@ import (
 	"time"
 
 	"github.com/egoist/asuka/camera"
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	. "github.com/egoist/asuka/internal/gtk"
 	"github.com/egoist/asuka/maps"
 	"github.com/egoist/asuka/ops"
@@ -619,8 +621,8 @@ func TestVisionText(t *testing.T) {
 		t.Fatal("no English data")
 	}
 	h, _ := mount(t, func() ui.Node {
-		return ui.Column(ui.Style{Background: ui.RGB(255, 255, 255), Padding: ui.All(20), Align: ui.AlignStart},
-			ui.StaticText("HELLO BROWN WORLD", ui.Style{Color: ui.RGB(0, 0, 0), Font: ui.Font{Size: 48}}))
+		return ui.Column(ui.Style{Background: colors.RGB(255, 255, 255), Padding: ui.All(20), Align: ui.AlignStart},
+			ui.StaticText("HELLO BROWN WORLD", ui.Style{Color: colors.RGB(0, 0, 0), Font: fonts.Font{Size: 48}}))
 	})
 	var root *node
 	settle(t, h, func() bool {
@@ -926,7 +928,7 @@ func TestMapView(t *testing.T) {
 	h, _ := mount(t, func() ui.Node {
 		return maps.View(maps.Props{
 			Region:         region,
-			Markers:        signal.Static([]maps.Marker{{ID: "louvre", At: maps.Coordinate{Lat: 48.8606, Lng: 2.3376}, Title: "Louvre", Color: ui.RGB(255, 0, 0)}}),
+			Markers:        signal.Static([]maps.Marker{{ID: "louvre", At: maps.Coordinate{Lat: 48.8606, Lng: 2.3376}, Title: "Louvre", Color: colors.RGB(255, 0, 0)}}),
 			OnRegionChange: func(r maps.Region) { regions = append(regions, r) },
 			OnMarkerPress:  func(id string) { pressed = append(pressed, id) },
 			OnError:        func(m string) { errs = append(errs, m) },

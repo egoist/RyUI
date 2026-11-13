@@ -5,6 +5,7 @@ package darwin
 import (
 	"testing"
 
+	"github.com/egoist/asuka/fonts"
 	. "github.com/egoist/asuka/internal/darwin"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
@@ -84,7 +85,7 @@ func TestTextFieldRich(t *testing.T) {
 			r.Flush()
 		})
 		got := rich.Peek()
-		if len(got) < 3 || got[0].Text != "Hello" || !got[0].Italic || got[2].Text != "world\n" || got[2].Font.Weight != ui.Bold {
+		if len(got) < 3 || got[0].Text != "Hello" || !got[0].Italic || got[2].Text != "world\n" || got[2].Font.Weight != fonts.Bold {
 			fatalf(t, "rich %+v", got)
 		}
 		if len(formats) == 0 || !formats[len(formats)-1].Has(ui.FormatItalic) {

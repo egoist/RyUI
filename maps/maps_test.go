@@ -3,6 +3,7 @@ package maps
 import (
 	"testing"
 
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/host/fake"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
@@ -13,7 +14,7 @@ func TestEncode(t *testing.T) {
 	if s := encodeRegion(Region{Center: Coordinate{1.5, -2}, LatDelta: 0.1, LngDelta: 0.2}); s != `{"center":{"lat":1.5,"lng":-2},"latDelta":0.1,"lngDelta":0.2}` {
 		t.Fatal(s)
 	}
-	s := encodeMarkers([]Marker{{ID: "a", At: Coordinate{1, 2}, Title: "A", Color: ui.Hex(0xff0000)}, {ID: "b"}})
+	s := encodeMarkers([]Marker{{ID: "a", At: Coordinate{1, 2}, Title: "A", Color: colors.Hex(0xff0000)}, {ID: "b"}})
 	if s != `[{"id":"a","at":{"lat":1,"lng":2},"title":"A","subtitle":"","color":"#ff0000ff"},{"id":"b","at":{"lat":0,"lng":0},"title":"","subtitle":""}]` {
 		t.Fatal(s)
 	}

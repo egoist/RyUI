@@ -6,6 +6,8 @@ import (
 	"math"
 	"testing"
 
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	. "github.com/egoist/asuka/internal/gtk"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
@@ -37,7 +39,7 @@ func near(a, b, tol float32) bool { return math.Abs(float64(a-b)) <= float64(tol
 func TestRichTextMeasure(t *testing.T) {
 	text := signal.NewFunc(ui.Rich{
 		ui.Strong("Spans"), ui.Plain(" can be "), ui.Em("italic"), ui.Plain(", "),
-		{Text: "larger", Font: ui.Font{Size: 22}}, ui.Plain(", "), ui.Code("code"),
+		{Text: "larger", Font: fonts.Font{Size: 22}}, ui.Plain(", "), ui.Code("code"),
 		ui.Plain(" or "), ui.Link("links", "https://go.dev"),
 		ui.Plain(" and wrap across lines in a narrow column.\nA second paragraph."),
 	}, nil)
@@ -144,7 +146,7 @@ func TestRichTextInline(t *testing.T) {
 			ui.RichText(ui.RichTextProps{Text: ui.Val(ui.Rich{
 				ui.Plain("Before "),
 				ui.Embed("badge", func() ui.Node {
-					return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(30), Height: ui.Pt(12), Background: ui.Red}})
+					return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(30), Height: ui.Pt(12), Background: colors.Red}})
 				}),
 				ui.Plain(" after"),
 			})}),

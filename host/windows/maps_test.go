@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/egoist/asuka/colors"
 	. "github.com/egoist/asuka/internal/windows"
 	"github.com/egoist/asuka/maps"
 	"github.com/egoist/asuka/native"
@@ -109,7 +110,7 @@ func TestMapView(t *testing.T) {
 			Region: region,
 			Markers: signal.Static([]maps.Marker{
 				{ID: "ferry", At: maps.Coordinate{Lat: 37.7955, Lng: -122.3937}, Title: "Ferry Building", Subtitle: "Ferries"},
-				{ID: "park", At: maps.Coordinate{Lat: 37.7694, Lng: -122.4862}, Title: "Golden Gate Park", Color: ui.Hex(0x2E7D32)},
+				{ID: "park", At: maps.Coordinate{Lat: 37.7694, Lng: -122.4862}, Title: "Golden Gate Park", Color: colors.Hex(0x2E7D32)},
 			}),
 			Style: ui.Style{Width: ui.Pt(400), Height: ui.Pt(300)},
 		})

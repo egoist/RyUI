@@ -6,6 +6,7 @@ import (
 	"math"
 	"testing"
 
+	"github.com/egoist/asuka/colors"
 	. "github.com/egoist/asuka/internal/gtk"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/shader"
@@ -85,11 +86,11 @@ func TestShapeDraws(t *testing.T) {
 	trim := signal.New(float32(0.25))
 	h, _ := mount(t, func() ui.Node {
 		return ui.Row(ui.Style{Padding: ui.All(10), Gap: 10, Align: ui.AlignStart},
-			ui.Shape(ui.ShapeProps{Fill: ui.RGB(255, 0, 0), Style: ui.Style{Width: ui.Pt(60), Height: ui.Pt(60)},
+			ui.Shape(ui.ShapeProps{Fill: colors.RGB(255, 0, 0), Style: ui.Style{Width: ui.Pt(60), Height: ui.Pt(60)},
 				Path: func(w, h float32) *ui.Path { return new(ui.Path).Ellipse(0, 0, w, h) }}),
 			// A ring from the top, clockwise: its first quarter is the top
 			// right.
-			ui.Shape(ui.ShapeProps{Stroke: ui.RGB(0, 0, 255), LineWidth: 8, TrimEnd: trim, Style: ui.Style{Width: ui.Pt(60), Height: ui.Pt(60)},
+			ui.Shape(ui.ShapeProps{Stroke: colors.RGB(0, 0, 255), LineWidth: 8, TrimEnd: trim, Style: ui.Style{Width: ui.Pt(60), Height: ui.Pt(60)},
 				Path: func(w, h float32) *ui.Path {
 					return new(ui.Path).Arc(w/2, h/2, w/2-4, -math.Pi/2, 3*math.Pi/2, true)
 				}}),
@@ -153,7 +154,7 @@ func TestShapeTrimAnimates(t *testing.T) {
 	trim := signal.New(float32(0))
 	h, _ := mount(t, func() ui.Node {
 		return ui.Column(ui.Style{Padding: ui.All(10)},
-			ui.Shape(ui.ShapeProps{Stroke: ui.RGB(0, 0, 255), LineWidth: 4, TrimEnd: trim, Style: ui.Style{Width: ui.Pt(100), Height: ui.Pt(10)},
+			ui.Shape(ui.ShapeProps{Stroke: colors.RGB(0, 0, 255), LineWidth: 4, TrimEnd: trim, Style: ui.Style{Width: ui.Pt(100), Height: ui.Pt(10)},
 				Path: func(w, h float32) *ui.Path { return new(ui.Path).MoveTo(0, 5).LineTo(w, 5) }}))
 	})
 	var s *shapeView
@@ -186,19 +187,19 @@ func TestCanvasDraws(t *testing.T) {
 	h, _ := mount(t, func() ui.Node {
 		return ui.Column(ui.Style{Padding: ui.All(10)},
 			ui.Canvas(func(g *ui.Graphics) {
-				g.Fill(g.Path().Rect(0, 0, 40, 40), ui.RGB(255, 0, 0))
+				g.Fill(g.Path().Rect(0, 0, 40, 40), colors.RGB(255, 0, 0))
 				g.Save()
 				g.Clip(g.Path().Rect(50, 0, 20, 40))
-				g.Fill(g.Path().Rect(40, 0, 60, 40), ui.RGB(0, 0, 255)) // clipped to 50...70
+				g.Fill(g.Path().Rect(40, 0, 60, 40), colors.RGB(0, 0, 255)) // clipped to 50...70
 				g.Restore()
 				g.Save()
 				g.Translate(0, 50)
-				g.Fill(g.Path().Rect(0, 0, 40, 40), ui.RGB(0, 200, 0))
+				g.Fill(g.Path().Rect(0, 0, 40, 40), colors.RGB(0, 200, 0))
 				g.Restore()
-				g.FillGradient(g.Path().Rect(100, 0, 100, 40), ui.Gradient{Colors: []ui.Color{ui.RGB(255, 0, 0), ui.RGB(0, 0, 255)},
+				g.FillGradient(g.Path().Rect(100, 0, 100, 40), ui.Gradient{Colors: []ui.Color{colors.RGB(255, 0, 0), colors.RGB(0, 0, 255)},
 					Start: ui.Point{X: 100}, End: ui.Point{X: 200}})
-				g.Stroke(g.Path().MoveTo(100, 70).LineTo(200, 70), ui.RGB(0, 0, 255), ui.StrokeStyle{Width: 6})
-				g.Text("Hi", 220, 30, ui.TextStyle{Size: 30, Color: ui.RGB(0, 0, 0)})
+				g.Stroke(g.Path().MoveTo(100, 70).LineTo(200, 70), colors.RGB(0, 0, 255), ui.StrokeStyle{Width: 6})
+				g.Text("Hi", 220, 30, ui.TextStyle{Size: 30, Color: colors.RGB(0, 0, 0)})
 			}, ui.Style{Width: ui.Pt(300), Height: ui.Pt(100)}))
 	})
 	var n *node
@@ -321,7 +322,7 @@ func TestPaging(t *testing.T) {
 	h, _ := mount(t, func() ui.Node {
 		cards := make([]ui.Node, 4)
 		for i := range cards {
-			cards[i] = ui.View(ui.ViewProps{Style: ui.Style{Background: ui.Blue}})
+			cards[i] = ui.View(ui.ViewProps{Style: ui.Style{Background: colors.Blue}})
 		}
 		return ui.Column(ui.Style{Padding: ui.All(10), Align: ui.AlignStart},
 			ui.Scroll(ui.ScrollProps{Horizontal: true, Paging: true, Page: page, Style: ui.Style{Width: ui.Pt(200), Height: ui.Pt(100)}}, cards...))
@@ -460,10 +461,10 @@ func TestMatch(t *testing.T) {
 	big := signal.New(false)
 	h, _ := mount(t, func() ui.Node {
 		return ui.Column(ui.Style{Padding: ui.All(10), Align: ui.AlignStart},
-			ui.View(ui.ViewProps{Style: ui.Style{Padding: ui.All(10), Background: ui.Gray}}, ui.Show(big, func() ui.Node {
-				return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(200), Height: ui.Pt(150), Background: ui.Blue, Match: "card"}})
+			ui.View(ui.ViewProps{Style: ui.Style{Padding: ui.All(10), Background: colors.Gray}}, ui.Show(big, func() ui.Node {
+				return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(200), Height: ui.Pt(150), Background: colors.Blue, Match: "card"}})
 			}, func() ui.Node {
-				return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(40), Height: ui.Pt(30), Background: ui.Blue, Match: "card"}},
+				return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(40), Height: ui.Pt(30), Background: colors.Blue, Match: "card"}},
 					ui.StaticText("in it"))
 			})))
 	})

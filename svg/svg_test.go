@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/host/fake"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
@@ -355,7 +356,7 @@ func TestView(t *testing.T) {
 	h, _ := mount(t, func() ui.Node {
 		return ui.Column(ui.Style{},
 			svg.View(svg.Props{Icon: download, Style: ui.Style{Width: ui.Pt(24), Height: ui.Pt(24)}}),
-			svg.View(svg.Props{Icon: download, Label: ui.Val("Download"), Color: ui.Val(ui.Accent),
+			svg.View(svg.Props{Icon: download, Label: ui.Val("Download"), Color: ui.Val(colors.Accent),
 				Style: ui.Style{Width: ui.Pt(48), Height: ui.Pt(48)}}),
 		)
 	})
@@ -379,7 +380,7 @@ func TestView(t *testing.T) {
 		v     *fake.View
 		color ui.Color
 		width float64
-	}{{small, ui.Label, 2}, {big, ui.Accent, 4}} {
+	}{{small, colors.Label, 2}, {big, colors.Accent, 4}} {
 		if _, ok := c.v.Props[ops.PropShapeFill]; ok {
 			t.Error("a fill=none layer is filled")
 		}
@@ -447,7 +448,7 @@ func TestViewColor(t *testing.T) {
 		<path d="M6 12h12" fill="none" stroke="currentColor" stroke-width="2"/>
 		<rect x="8" y="8" width="8" height="8" fill="currentColor" fill-opacity="0.5"/>
 	</svg>`)
-	color := signal.New(ui.RGB(0, 0, 255))
+	color := signal.New(colors.RGB(0, 0, 255))
 	h, r := mount(t, func() ui.Node {
 		return svg.View(svg.Props{Icon: ic, Color: color, Style: ui.Style{Width: ui.Pt(24), Height: ui.Pt(24)}})
 	})
@@ -456,15 +457,15 @@ func TestViewColor(t *testing.T) {
 		t.Fatalf("%d shapes", len(shapes))
 	}
 	red := shapes[0]
-	if ui.Color(red.Int(ops.PropShapeFill)) != ui.RGB(255, 0, 0) || ui.Color(shapes[1].Int(ops.PropShapeStroke)) != ui.RGB(0, 0, 255) ||
-		ui.Color(shapes[2].Int(ops.PropShapeFill)) != ui.RGBA(0, 0, 255, 128) {
+	if ui.Color(red.Int(ops.PropShapeFill)) != colors.RGB(255, 0, 0) || ui.Color(shapes[1].Int(ops.PropShapeStroke)) != colors.RGB(0, 0, 255) ||
+		ui.Color(shapes[2].Int(ops.PropShapeFill)) != colors.RGBA(0, 0, 255, 128) {
 		t.Fatalf("colors: %v %v %v", red.Props[ops.PropShapeFill], shapes[1].Props[ops.PropShapeStroke], shapes[2].Props[ops.PropShapeFill])
 	}
 
 	// The two layers painted with the icon's color are made again with
 	// the new one; the red circle isn't touched.
 	h.Reset()
-	color.Set(ui.RGB(0, 128, 0))
+	color.Set(colors.RGB(0, 128, 0))
 	r.Flush()
 	if h.Count(ops.OpCreate) != 2 || h.Count(ops.OpDestroy) != 2 {
 		t.Fatalf("%d creates, %d destroys:\n%s", h.Count(ops.OpCreate), h.Count(ops.OpDestroy), h.Log())
@@ -475,17 +476,17 @@ func TestViewColor(t *testing.T) {
 		}
 	}
 	shapes = h.OfKind(ops.KindShape)
-	if len(shapes) != 3 || shapes[0] != red || ui.Color(shapes[1].Int(ops.PropShapeStroke)) != ui.RGB(0, 128, 0) ||
-		ui.Color(shapes[2].Int(ops.PropShapeFill)) != ui.RGBA(0, 128, 0, 128) || shapes[1].Float(ops.PropShapeLineWidth) != 2 ||
+	if len(shapes) != 3 || shapes[0] != red || ui.Color(shapes[1].Int(ops.PropShapeStroke)) != colors.RGB(0, 128, 0) ||
+		ui.Color(shapes[2].Int(ops.PropShapeFill)) != colors.RGBA(0, 128, 0, 128) || shapes[1].Float(ops.PropShapeLineWidth) != 2 ||
 		shapePath(shapes[1]) != "M 6 12 L 18 12" {
 		t.Fatalf("after:\n%s", h.Log())
 	}
 
 	// A semantic color can't take the layer's opacity: the view does.
-	color.Set(ui.Accent)
+	color.Set(colors.Accent)
 	r.Flush()
 	shapes = h.OfKind(ops.KindShape)
-	if ui.Color(shapes[2].Int(ops.PropShapeFill)) != ui.Accent || shapes[2].Float(ops.PropOpacity) != 0.5 {
+	if ui.Color(shapes[2].Int(ops.PropShapeFill)) != colors.Accent || shapes[2].Float(ops.PropOpacity) != 0.5 {
 		t.Fatalf("semantic: %v %v", shapes[2].Props[ops.PropShapeFill], shapes[2].Props[ops.PropOpacity])
 	}
 }
@@ -495,10 +496,10 @@ func TestViewStatic(t *testing.T) {
 	// mounting, nothing changes.
 	ic := svg.MustParse(materialHome)
 	h, r := mount(t, func() ui.Node {
-		return svg.View(svg.Props{Icon: ic, Color: ui.Val(ui.Red), Style: ui.Style{Width: ui.Pt(24), Height: ui.Pt(24)}})
+		return svg.View(svg.Props{Icon: ic, Color: ui.Val(colors.Red), Style: ui.Style{Width: ui.Pt(24), Height: ui.Pt(24)}})
 	})
 	s := h.One(ops.KindShape, "")
-	if ui.Color(s.Int(ops.PropShapeFill)) != ui.Red {
+	if ui.Color(s.Int(ops.PropShapeFill)) != colors.Red {
 		t.Fatal(s.Props)
 	}
 	if _, ok := s.Props[ops.PropShapeStroke]; ok {

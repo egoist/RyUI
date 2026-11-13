@@ -27,7 +27,7 @@ func Details() ui.Node {
 			if expanded.Get() {
 				h = 240
 			}
-			return ui.Style{Height: ui.Pt(h), CornerRadius: 16, Background: ui.SecondaryBackground}
+			return ui.Style{Height: ui.Pt(h), CornerRadius: 16, Background: colors.SecondaryBackground}
 		})}),
 	)
 }
@@ -68,7 +68,7 @@ call it inside `ui.Post`.
 func Pulse() ui.Node {
 	on := signal.New(false)
 	dot := ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style {
-		s := ui.Style{Width: ui.Pt(24), Height: ui.Pt(24), CornerRadius: 12, Background: ui.Red}
+		s := ui.Style{Width: ui.Pt(24), Height: ui.Pt(24), CornerRadius: 12, Background: colors.Red}
 		if on.Get() {
 			s.Transform = ui.Transform{Scale: 1.6}
 			s.Opacity = 0.35
@@ -164,7 +164,7 @@ func Flip() ui.Node {
 			if flipped.Get() {
 				t = ui.Transform{Rotate: 6, Scale: 1.04}
 			}
-			return ui.Style{Height: ui.Pt(120), CornerRadius: 20, Background: ui.Accent, Transform: t}
+			return ui.Style{Height: ui.Pt(120), CornerRadius: 20, Background: colors.Accent, Transform: t}
 		}),
 	})
 }
@@ -177,9 +177,10 @@ during `ui.Animate` (a `Show` turning true, an item added to a `For`),
 and goes out to when it's removed during one. A removed view stays on
 screen until it has gone out, and takes no touches meanwhile.
 
-- `ui.Fade` fades in and out.
-- `ui.Pop` fades and grows in from 85% (a popover, a badge).
-- `ui.SlideUp` fades in from 24 points below (a toast, a new row).
+- `ui.TransitionFade` fades in and out.
+- `ui.TransitionPop` fades and grows in from 85% (a popover, a badge).
+- `ui.TransitionSlideUp` fades in from 24 points below (a toast, a new
+  row).
 - `ui.Transition{...}` is your own: `Fade`, `Scale` (0: none) and an
   offset `X`, `Y` in points. They combine: `ui.Transition{Fade: true,
   Scale: 0.5, Y: -8}`.
@@ -199,8 +200,8 @@ func Toast() ui.Node {
 		ui.Button(ui.ButtonProps{Title: ui.Val("Save"), OnPress: save}),
 		ui.Show(shown, func() ui.Node {
 			return ui.View(ui.ViewProps{Style: ui.Style{Absolute: true, Left: ui.Pt(20), Right: ui.Pt(20), Bottom: ui.Pt(20),
-				Background: ui.SecondaryBackground, CornerRadius: 16, Padding: ui.Symmetric(14, 18),
-				Transition: ui.SlideUp}},
+				Background: colors.SecondaryBackground, CornerRadius: 16, Padding: ui.Symmetric(14, 18),
+				Transition: ui.TransitionSlideUp}},
 				ui.StaticText("Saved"))
 		}),
 	)
@@ -227,16 +228,16 @@ func Matched() ui.Node {
 		ui.AnimateWith(ui.Animation{Curve: ui.Spring, Duration: 0.5}, func() { open.Set(!open.Peek()) })
 	}
 	art := func(size float32, radius float32) ui.Style {
-		return ui.Style{Width: ui.Pt(size), Height: ui.Pt(size), CornerRadius: radius, Background: ui.Orange, Match: "album"}
+		return ui.Style{Width: ui.Pt(size), Height: ui.Pt(size), CornerRadius: radius, Background: colors.Orange, Match: "album"}
 	}
 	return ui.Show(open, func() ui.Node {
 		return ui.View(ui.ViewProps{OnPress: toggle, Style: ui.Style{Gap: 12, Align: ui.AlignCenter}},
 			ui.View(ui.ViewProps{Style: art(240, 24)}),
-			ui.StaticText("Night Drive", ui.Style{Font: ui.Title2, Match: "album-title"}))
+			ui.StaticText("Night Drive", ui.Style{Font: fonts.Title2, Match: "album-title"}))
 	}, func() ui.Node {
 		return ui.View(ui.ViewProps{OnPress: toggle, Style: ui.Style{Direction: ui.RowDir, Gap: 12, Align: ui.AlignCenter}},
 			ui.View(ui.ViewProps{Style: art(56, 10)}),
-			ui.StaticText("Night Drive", ui.Style{Font: ui.Headline, Match: "album-title"}))
+			ui.StaticText("Night Drive", ui.Style{Font: fonts.Headline, Match: "album-title"}))
 	})
 }
 ```
@@ -305,7 +306,7 @@ func ring(w, h float32) *ui.Path {
 func Ring() ui.Node {
 	done := signal.New(float32(0.3))
 	return ui.Column(ui.Style{Gap: 12},
-		ui.Shape(ui.ShapeProps{Path: ring, Stroke: ui.Accent, LineWidth: 8, LineCap: ui.CapRound, TrimEnd: done,
+		ui.Shape(ui.ShapeProps{Path: ring, Stroke: colors.Accent, LineWidth: 8, LineCap: ui.CapRound, TrimEnd: done,
 			Style: ui.Style{Width: ui.Pt(72), Height: ui.Pt(72)}}),
 		ui.Button(ui.ButtonProps{Title: ui.Val("Finish"), OnPress: func() {
 			ui.AnimateWith(ui.Animation{Duration: 0.8}, func() { done.Set(1) })
@@ -337,7 +338,7 @@ func Spinner() ui.Node {
 	})
 	return ui.View(ui.ViewProps{Decorative: true, Style: ui.StyleFunc(func() ui.Style {
 		return ui.Style{Transform: ui.Transform{Rotate: angle.Get()}}
-	})}, ui.Symbol(ui.IconSettings, ui.Style{Font: ui.LargeTitle, Color: ui.Accent}))
+	})}, ui.Symbol(ui.IconSettings, ui.Style{Font: fonts.LargeTitle, Color: colors.Accent}))
 }
 ```
 
@@ -402,7 +403,7 @@ func Puck() ui.Node {
 		},
 		Style: ui.StyleFunc(func() ui.Style {
 			g := drag.Get()
-			return ui.Style{Width: ui.Pt(64), Height: ui.Pt(64), CornerRadius: 32, Background: ui.Accent,
+			return ui.Style{Width: ui.Pt(64), Height: ui.Pt(64), CornerRadius: 32, Background: colors.Accent,
 				Transform: ui.Transform{TranslateX: g.TranslationX, TranslateY: g.TranslationY}}
 		}),
 	})
@@ -431,7 +432,7 @@ return ui.View(ui.ViewProps{
 		}
 	},
 	Style: ui.StyleFunc(func() ui.Style {
-		return ui.Style{Width: ui.Pt(160), Height: ui.Pt(160), CornerRadius: 24, Background: ui.Purple,
+		return ui.Style{Width: ui.Pt(160), Height: ui.Pt(160), CornerRadius: 24, Background: colors.Purple,
 			Transform: ui.Transform{Rotate: angle.Get(), Scale: scale.Get()}}
 	}),
 })
@@ -469,12 +470,12 @@ func Card(title string, open func()) ui.Node {
 		OnPress:     open,
 		Interaction: card,
 		Style: ui.Style{Direction: ui.RowDir, Padding: ui.All(16), CornerRadius: 12,
-			Background: ui.SecondaryGroupedBackground,
-			Hovered:    &ui.Style{Background: ui.SecondaryBackground},
-			Pressed:    &ui.Style{Background: ui.Separator, Transform: ui.Transform{Scale: 0.97}}},
+			Background: colors.SecondaryGroupedBackground,
+			Hovered:    &ui.Style{Background: colors.SecondaryBackground},
+			Pressed:    &ui.Style{Background: colors.Separator, Transform: ui.Transform{Scale: 0.97}}},
 	},
 		// The card's hover, followed by its title: a group's hover.
-		ui.StaticText(title, ui.Style{Grow: 1}.When(card.Hovered, ui.Style{Color: ui.Accent})),
+		ui.StaticText(title, ui.Style{Grow: 1}.When(card.Hovered, ui.Style{Color: colors.Accent})),
 	)
 }
 ```
@@ -499,7 +500,7 @@ How variants and `When` combine:
 
 - A variant sets only the fields it names. The rest stay as the style
   has them.
-- `Font` is merged field by field, so `Font{Weight: ui.Bold}` keeps the
+- `Font` is merged field by field, so `Font{Weight: fonts.Bold}` keeps the
   text style. Every other field is replaced whole.
 - Variants apply in the order Hovered, Pressed, Dragging, DragOver, so
   pressed wins over hovered.
@@ -519,7 +520,7 @@ ui.View(ui.ViewProps{Interaction: row},
 ```
 
 `When` and `Unless` take any `func() bool`, so a style can follow any
-signal too: `base.When(selected.Get, ui.Style{Background: ui.Accent})`.
+signal too: `base.When(selected.Get, ui.Style{Background: colors.Accent})`.
 
 A view tracks only the states that something reads: its variants, or
 reads of its `Interaction`.
@@ -548,7 +549,7 @@ ui.View(ui.ViewProps{
 		}
 	},
 	Label: ui.Val("Hold to record"),
-	Style:           ui.Style{Padding: ui.All(16), Pressed: &ui.Style{Background: ui.Red}},
+	Style:           ui.Style{Padding: ui.All(16), Pressed: &ui.Style{Background: colors.Red}},
 }, ...)
 ```
 
@@ -598,8 +599,8 @@ func DoneColumn(move func(*Task), cards ...ui.Node) ui.Node {
 			},
 		},
 		// Outlined while a task is dragged over it.
-		Style: ui.Style{Gap: 8, Padding: ui.All(8), BorderWidth: 2, BorderColor: ui.Clear,
-			DragOver: &ui.Style{BorderColor: ui.Accent}},
+		Style: ui.Style{Gap: 8, Padding: ui.All(8), BorderWidth: 2, BorderColor: colors.Clear,
+			DragOver: &ui.Style{BorderColor: colors.Accent}},
 	}, cards...)
 }
 ```

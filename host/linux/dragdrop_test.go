@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/egoist/asuka/colors"
 	. "github.com/egoist/asuka/internal/gtk"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
@@ -38,7 +39,7 @@ func TestDragDropInApp(t *testing.T) {
 					},
 					OnPhase: func(p ui.DragPhase) { phases = append(phases, p) },
 				},
-				Style: ui.Style{Width: ui.Pt(80), Height: ui.Pt(80), Background: ui.Blue},
+				Style: ui.Style{Width: ui.Pt(80), Height: ui.Pt(80), Background: colors.Blue},
 			}),
 			ui.View(ui.ViewProps{
 				Drop: &ui.DropTarget{
@@ -46,7 +47,7 @@ func TestDragDropInApp(t *testing.T) {
 					OnOverChange: func(on bool) { overs = append(overs, on) },
 					OnDrop:       func(d ui.Drop) { drops = append(drops, d) },
 				},
-				Style: ui.Style{Width: ui.Pt(120), Height: ui.Pt(120), Background: ui.Gray},
+				Style: ui.Style{Width: ui.Pt(120), Height: ui.Pt(120), Background: colors.Gray},
 			}),
 		)
 	})
@@ -137,11 +138,11 @@ func TestDropFromOtherApp(t *testing.T) {
 					Items:   func() []ui.DragItem { return sets[items.Get()] },
 					OnPhase: func(p ui.DragPhase) { phases = append(phases, p) },
 				},
-				Style: ui.Style{Width: ui.Pt(80), Height: ui.Pt(80), Background: ui.Blue},
+				Style: ui.Style{Width: ui.Pt(80), Height: ui.Pt(80), Background: colors.Blue},
 			}),
 			ui.View(ui.ViewProps{
 				Drop:  &ui.DropTarget{Accept: []string{"*/*"}, OnDrop: func(d ui.Drop) { drops = append(drops, d) }},
-				Style: ui.Style{Width: ui.Pt(120), Height: ui.Pt(120), Background: ui.Gray},
+				Style: ui.Style{Width: ui.Pt(120), Height: ui.Pt(120), Background: colors.Gray},
 			}),
 		)
 	})

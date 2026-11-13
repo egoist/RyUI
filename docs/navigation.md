@@ -417,7 +417,7 @@ Its children are what it points at:
 open := signal.New(false)
 return ui.Popover(ui.PopoverProps{Open: open, MaxWidth: 280, Content: func() ui.Node {
 	return ui.Column(ui.Style{Padding: ui.All(16), Gap: 8},
-		ui.StaticText("Shared with 3 people", ui.Style{Font: ui.Headline}),
+		ui.StaticText("Shared with 3 people", ui.Style{Font: fonts.Headline}),
 		ui.Button(ui.ButtonProps{Title: ui.Val("Manage"), OnPress: manage}))
 }}, ui.Button(ui.ButtonProps{Icon: "person.2", Label: ui.Val("Sharing"), OnPress: func() { open.Set(true) }}))
 ```
@@ -607,7 +607,7 @@ bar's height as `SafeTop`: a `ui.SafeArea` keeps clear of the buttons,
 and a background, a sidebar or a picture can go under them:
 
 ```go
-app.RunWindow(ui.WindowOptions{TitleBar: ui.TitleBarHidden, Background: ui.RGB(0x1e, 0x1e, 0x1e)}, func() ui.Node {
+app.RunWindow(ui.WindowOptions{TitleBar: ui.TitleBarHidden, Background: colors.RGB(0x1e, 0x1e, 0x1e)}, func() ui.Node {
 	return ui.SafeArea(ui.Style{Grow: 1, Padding: ui.All(16)}, editor())
 })
 ```

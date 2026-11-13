@@ -8,6 +8,8 @@ import (
 	"fmt"
 
 	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )
@@ -17,7 +19,7 @@ func Counter() ui.Node {
 	return ui.SafeArea(ui.Style{Justify: ui.JustifyCenter, Align: ui.AlignCenter, Gap: 16, Padding: ui.All(24)},
 		ui.Text(signal.Func(func() string {
 			return fmt.Sprintf("Count: %d", count.Get())
-		}), ui.Style{Font: ui.LargeTitle.Weighted(ui.Bold)}),
+		}), ui.Style{Font: fonts.LargeTitle.Weighted(fonts.Bold)}),
 		ui.Row(ui.Style{Gap: 12},
 			ui.Button(ui.ButtonProps{
 				Title:   ui.Val("Reset"),
@@ -32,7 +34,7 @@ func Counter() ui.Node {
 		),
 		ui.Show(signal.Func(func() bool { return count.Get() >= 10 }),
 			func() ui.Node {
-				return ui.StaticText("That's a lot", ui.Style{Color: ui.SecondaryLabel})
+				return ui.StaticText("That's a lot", ui.Style{Color: colors.SecondaryLabel})
 			}),
 	)
 }

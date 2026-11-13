@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/examples/i18n/locales"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/i18n"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
@@ -35,20 +37,20 @@ func inbox() ui.Node {
 	seen := time.Date(2026, 3, 14, 15, 9, 0, 0, time.Local)
 	return ui.SafeArea(ui.Style{Grow: 1}, ui.Scroll(ui.ScrollProps{},
 		ui.Column(ui.Style{Padding: ui.All(16), Gap: 12},
-			ui.Text(locales.Live.Greeting(ui.Val("Ada")), ui.Style{Font: ui.Title2}),
+			ui.Text(locales.Live.Greeting(ui.Val("Ada")), ui.Style{Font: fonts.Title2}),
 			ui.Text(locales.Live.Unread(count)),
 			// Start and End mirror; Row does by itself.
 			ui.Row(ui.Style{Gap: 8},
 				ui.Button(ui.ButtonProps{Title: locales.Live.More(), OnPress: func() { count.Update(func(n int) int { return n + 1 }) }}),
 				ui.Button(ui.ButtonProps{Title: locales.Live.Less(), OnPress: func() { count.Update(func(n int) int { return max(n-1, 0) }) }}),
 			),
-			ui.Text(locales.Live.LastSeen(ui.Val(seen)), ui.Style{Color: ui.SecondaryLabel}),
-			ui.Text(locales.Live.Storage(ui.Val(0.42)), ui.Style{Color: ui.SecondaryLabel}),
+			ui.Text(locales.Live.LastSeen(ui.Val(seen)), ui.Style{Color: colors.SecondaryLabel}),
+			ui.Text(locales.Live.Storage(ui.Val(0.42)), ui.Style{Color: colors.SecondaryLabel}),
 			// In the language's way, and the user's regional formats.
 			ui.Text(signal.Func(func() string {
 				return i18n.FormatNumber(ui.FormatLocale(), 1234567.891, i18n.NumberOptions{})
-			}), ui.Style{Color: ui.SecondaryLabel}),
-			ui.View(ui.ViewProps{Style: ui.Style{Background: ui.SecondaryBackground, CornerRadius: 8, Padding: ui.Edges{Top: 8, Bottom: 8, Start: 24, End: 8}}},
+			}), ui.Style{Color: colors.SecondaryLabel}),
+			ui.View(ui.ViewProps{Style: ui.Style{Background: colors.SecondaryBackground, CornerRadius: 8, Padding: ui.Edges{Top: 8, Bottom: 8, Start: 24, End: 8}}},
 				ui.Text(locales.Live.Wide()),
 			),
 			ui.WithDirection(ui.LeftToRight, func() ui.Node {
@@ -78,7 +80,7 @@ func inbox() ui.Node {
 func chips() []ui.Node {
 	var out []ui.Node
 	for _, n := range []int{1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233} {
-		out = append(out, ui.View(ui.ViewProps{Style: ui.Style{Background: ui.SecondaryBackground, CornerRadius: 12, Padding: ui.Symmetric(6, 12)}},
+		out = append(out, ui.View(ui.ViewProps{Style: ui.Style{Background: colors.SecondaryBackground, CornerRadius: 12, Padding: ui.Symmetric(6, 12)}},
 			ui.Text(signal.Func(func() string { return i18n.FormatNumber(ui.FormatLocale(), n, i18n.NumberOptions{}) })),
 		))
 	}
@@ -114,7 +116,7 @@ func settings() ui.Node {
 					return locales.SystemLanguage()
 				})),
 				ui.Show(signal.Func(func() bool { return tag.Get() == ui.Locale() }), func() ui.Node {
-					return ui.Symbol("checkmark", ui.Style{Color: ui.Accent})
+					return ui.Symbol("checkmark", ui.Style{Color: colors.Accent})
 				}),
 			)
 		})

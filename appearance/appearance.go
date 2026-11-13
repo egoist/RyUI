@@ -4,7 +4,7 @@
 // the accessibility settings Increase Contrast and Reduce Transparency.
 //
 // The platform's controls already follow them, and on desktops
-// ui.Accent is the system's accent unless asuka.json sets the app's. An
+// colors.Accent is the system's accent unless asuka.json sets the app's. An
 // app reads them for what it draws itself: a chart in the user's accent
 // whatever the app's, borders on its own cards with Increase Contrast,
 // an opaque backdrop instead of a blur with Reduce Transparency.
@@ -13,6 +13,7 @@ package appearance
 import (
 	"errors"
 
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/internal/follow"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
@@ -20,7 +21,7 @@ import (
 
 // Settings are the system's appearance settings now.
 type Settings struct {
-	// Accent is the system's accent color, as an RGB color (ui.RGB): the
+	// Accent is the system's accent color, as an RGB color (colors.RGB): the
 	// one the user picked (macOS's Accent color, Windows's accent color,
 	// GNOME's accent color through the settings portal, Android 12's
 	// wallpaper color, the browser's AccentColor where it has one). 0
@@ -54,7 +55,7 @@ func decode(b []byte) (Settings, error) {
 	}
 	s := Settings{IncreaseContrast: b[4] == 1, ReduceTransparency: b[5] == 1}
 	if b[0] == 1 {
-		s.Accent = ui.RGB(b[1], b[2], b[3])
+		s.Accent = colors.RGB(b[1], b[2], b[3])
 	}
 	return s, nil
 }

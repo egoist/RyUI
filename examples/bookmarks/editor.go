@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/sqlite"
 	"github.com/egoist/asuka/ui"
@@ -123,11 +125,11 @@ func Editor(d *draft, heading string, onClose func(), onSave func()) ui.Node {
 	})
 	d.fetch()
 
-	return ui.Column(ui.Style{Grow: 1, Background: ui.GroupedBackground},
+	return ui.Column(ui.Style{Grow: 1, Background: colors.GroupedBackground},
 		// The header.
 		ui.Row(ui.Style{Padding: ui.Symmetric(12, 16), Gap: 12, Align: ui.AlignCenter},
 			ui.Button(ui.ButtonProps{Icon: "xmark", Label: ui.Val("Close"), Variant: ui.ButtonGlass, OnPress: onClose}),
-			ui.StaticText(heading, ui.Style{Grow: 1, Font: ui.Headline, TextAlign: ui.TextCenter}),
+			ui.StaticText(heading, ui.Style{Grow: 1, Font: fonts.Headline, TextAlign: ui.TextCenter}),
 			ui.Button(ui.ButtonProps{Title: ui.Val("Save"), Variant: ui.ButtonGlassProminent,
 				Disabled: signal.Func(func() bool { return saving.Get() || (d.URL.Get() == "" && d.Cover.Get() == "") }),
 				OnPress: func() {
@@ -141,12 +143,12 @@ func Editor(d *draft, heading string, onClose func(), onSave func()) ui.Node {
 				ui.Row(ui.Style{Padding: ui.Edges{Top: 14, Right: 16, Bottom: 10, Left: 16}, Gap: 12},
 					ui.Column(ui.Style{Grow: 1, Shrink: 1, Gap: 2},
 						ui.TextField(ui.TextFieldProps{Value: d.Title, Placeholder: ui.Val("Title"), Multiline: true, Plain: true,
-							Style: ui.Style{Font: ui.Title3.Weighted(ui.Semibold), Lines: 4}}),
+							Style: ui.Style{Font: fonts.Title3.Weighted(fonts.Semibold), Lines: 4}}),
 						ui.TextField(ui.TextFieldProps{Value: d.Description, Placeholder: ui.Val("Add description"), Multiline: true, Plain: true,
-							Style: ui.Style{Font: ui.Subheadline, Color: ui.SecondaryLabel, Lines: 4}}),
+							Style: ui.Style{Font: fonts.Subheadline, Color: colors.SecondaryLabel, Lines: 4}}),
 					),
 					ui.Image(ui.ImageProps{Source: d.Cover, Mode: ui.ImageFill, Label: ui.Val("Cover"),
-						Style: ui.Style{Width: ui.Pt(72), MinWidth: ui.Pt(72), Height: ui.Pt(72), CornerRadius: 10, Clip: true, Background: ui.GroupedBackground}}),
+						Style: ui.Style{Width: ui.Pt(72), MinWidth: ui.Pt(72), Height: ui.Pt(72), CornerRadius: 10, Clip: true, Background: colors.GroupedBackground}}),
 				),
 				divider(),
 				ui.TextField(ui.TextFieldProps{Value: d.Note, Placeholder: ui.Val("Note"), Multiline: true, Plain: true,
@@ -163,10 +165,10 @@ func Editor(d *draft, heading string, onClose func(), onSave func()) ui.Node {
 			}), signal.Func(func() bool { return len(d.Tags.Get()) == 0 }), func() { pickTags.Set(true) })),
 			// The link.
 			card(ui.Row(ui.Style{Padding: ui.Symmetric(14, 16), Gap: 14, Align: ui.AlignCenter},
-				ui.Symbol("link", ui.Style{Color: ui.SecondaryLabel, Width: ui.Pt(24)}),
+				ui.Symbol("link", ui.Style{Color: colors.SecondaryLabel, Width: ui.Pt(24)}),
 				ui.TextField(ui.TextFieldProps{Value: d.URL, Placeholder: ui.Val("https://"), Keyboard: ui.KeyboardURL,
 					Autocapitalize: ui.CapitalizeNone, Autocorrect: ui.AutocorrectNo, OnBlur: d.fetch, OnSubmit: d.fetch, Plain: true,
-					Style: ui.Style{Grow: 1, Color: ui.SecondaryLabel}}),
+					Style: ui.Style{Grow: 1, Color: colors.SecondaryLabel}}),
 			)),
 		),
 		ui.Sheet(ui.SheetProps{Open: pickCollection, Detents: ui.DetentMedium | ui.DetentLarge, Grabber: true, Content: func() ui.Node {
@@ -180,11 +182,11 @@ func Editor(d *draft, heading string, onClose func(), onSave func()) ui.Node {
 
 // card groups rows on the grouped background.
 func card(children ...ui.Node) ui.Node {
-	return ui.Column(ui.Style{Background: ui.SecondaryGroupedBackground, CornerRadius: 24, Clip: true}, children...)
+	return ui.Column(ui.Style{Background: colors.SecondaryGroupedBackground, CornerRadius: 24, Clip: true}, children...)
 }
 
 func divider() ui.Node {
-	return ui.View(ui.ViewProps{Style: ui.Style{Height: ui.Pt(0.5), Background: ui.Separator, Margin: ui.Edges{Left: 16}}})
+	return ui.View(ui.ViewProps{Style: ui.Style{Height: ui.Pt(0.5), Background: colors.Separator, Margin: ui.Edges{Left: 16}}})
 }
 
 // row is a card's row that opens a picker: an icon, a value (secondary
@@ -192,15 +194,15 @@ func divider() ui.Node {
 func row(icon ui.Icon, text signal.Accessor[string], placeholder signal.Accessor[bool], onPress func()) ui.Node {
 	return ui.View(ui.ViewProps{OnPress: onPress, Role: ui.RoleButton,
 		Style: ui.Style{Direction: ui.RowDir, Padding: ui.Symmetric(16, 16), Gap: 14, Align: ui.AlignCenter}},
-		ui.Symbol(icon, ui.Style{Color: ui.SecondaryLabel, Width: ui.Pt(24)}),
+		ui.Symbol(icon, ui.Style{Color: colors.SecondaryLabel, Width: ui.Pt(24)}),
 		ui.Text(text, ui.StyleFunc(func() ui.Style {
-			s := ui.Style{Grow: 1, Shrink: 1, Font: ui.Body, Lines: 1}
+			s := ui.Style{Grow: 1, Shrink: 1, Font: fonts.Body, Lines: 1}
 			if placeholder != nil && placeholder.Get() {
-				s.Color = ui.SecondaryLabel
+				s.Color = colors.SecondaryLabel
 			}
 			return s
 		})),
-		ui.Symbol(ui.IconForward, ui.Style{Color: ui.TertiaryLabel}),
+		ui.Symbol(ui.IconForward, ui.Style{Color: colors.TertiaryLabel}),
 	)
 }
 
@@ -225,23 +227,23 @@ func CollectionPicker(collections signal.Accessor[sqlite.Result[collection]], ch
 	all := signal.Func(func() []collection {
 		return append([]collection{{ID: 0, Name: "Unsorted"}}, collections.Get().Rows...)
 	})
-	return ui.Column(ui.Style{Grow: 1, Background: ui.GroupedBackground, Padding: ui.Edges{Top: 24, Right: 16, Left: 16}, Gap: 16},
-		ui.StaticText("Collection", ui.Style{Font: ui.Title3.Weighted(ui.Bold)}),
+	return ui.Column(ui.Style{Grow: 1, Background: colors.GroupedBackground, Padding: ui.Edges{Top: 24, Right: 16, Left: 16}, Gap: 16},
+		ui.StaticText("Collection", ui.Style{Font: fonts.Title3.Weighted(fonts.Bold)}),
 		card(ui.For(all, func(c collection) int64 { return c.ID }, func(c signal.Accessor[collection], i signal.Accessor[int]) ui.Node {
 			return ui.Column(ui.Style{},
 				ui.Show(signal.Func(func() bool { return i.Get() > 0 }), divider),
 				ui.View(ui.ViewProps{OnPress: func() { chosen.Set(signal.Untrack(c.Get).ID); done() }, Role: ui.RoleButton,
 					Style: ui.Style{Direction: ui.RowDir, Padding: ui.Symmetric(14, 16), Gap: 14, Align: ui.AlignCenter}},
-					ui.Symbol(ui.Icon(map[bool]string{true: "tray", false: "folder"}[signal.Untrack(c.Get).ID == 0]), ui.Style{Color: ui.Accent, Width: ui.Pt(24)}),
+					ui.Symbol(ui.Icon(map[bool]string{true: "tray", false: "folder"}[signal.Untrack(c.Get).ID == 0]), ui.Style{Color: colors.Accent, Width: ui.Pt(24)}),
 					ui.Text(signal.Func(func() string { return c.Get().Name }), ui.Style{Grow: 1}),
 					ui.Show(signal.Func(func() bool { return chosen.Get() == c.Get().ID }), func() ui.Node {
-						return ui.Symbol("checkmark", ui.Style{Color: ui.Accent})
+						return ui.Symbol("checkmark", ui.Style{Color: colors.Accent})
 					}),
 				),
 			)
 		})),
 		card(ui.Row(ui.Style{Padding: ui.Symmetric(10, 16), Gap: 12, Align: ui.AlignCenter},
-			ui.Symbol("plus", ui.Style{Color: ui.Accent, Width: ui.Pt(24)}),
+			ui.Symbol("plus", ui.Style{Color: colors.Accent, Width: ui.Pt(24)}),
 			ui.TextField(ui.TextFieldProps{Value: name, Placeholder: ui.Val("New collection"), ReturnKey: ui.ReturnDone, OnSubmit: add, Plain: true,
 				Style: ui.Style{Grow: 1}}),
 		)),
@@ -278,10 +280,10 @@ func TagPicker(tags *signal.Signal[[]string]) ui.Node {
 		}
 		typed.Set("")
 	}
-	return ui.Column(ui.Style{Grow: 1, Background: ui.GroupedBackground, Padding: ui.Edges{Top: 24, Right: 16, Left: 16}, Gap: 16},
-		ui.StaticText("Tags", ui.Style{Font: ui.Title3.Weighted(ui.Bold)}),
+	return ui.Column(ui.Style{Grow: 1, Background: colors.GroupedBackground, Padding: ui.Edges{Top: 24, Right: 16, Left: 16}, Gap: 16},
+		ui.StaticText("Tags", ui.Style{Font: fonts.Title3.Weighted(fonts.Bold)}),
 		card(ui.Row(ui.Style{Padding: ui.Symmetric(10, 16), Gap: 12, Align: ui.AlignCenter},
-			ui.Symbol("tag", ui.Style{Color: ui.SecondaryLabel, Width: ui.Pt(24)}),
+			ui.Symbol("tag", ui.Style{Color: colors.SecondaryLabel, Width: ui.Pt(24)}),
 			ui.TextField(ui.TextFieldProps{Value: typed, Placeholder: ui.Val("Add a tag"), ReturnKey: ui.ReturnDone, OnSubmit: add, Plain: true,
 				Autocapitalize: ui.CapitalizeNone, Style: ui.Style{Grow: 1}}),
 		)),
@@ -297,15 +299,15 @@ func TagPicker(tags *signal.Signal[[]string]) ui.Node {
 				})
 				return ui.View(ui.ViewProps{OnPress: func() { toggle(signal.Untrack(t.Get)) }, Role: ui.RoleButton,
 					Style: ui.StyleFunc(func() ui.Style {
-						s := ui.Style{Padding: ui.Symmetric(8, 14), CornerRadius: 16, Background: ui.SecondaryGroupedBackground}
+						s := ui.Style{Padding: ui.Symmetric(8, 14), CornerRadius: 16, Background: colors.SecondaryGroupedBackground}
 						if on.Get() {
-							s.Background = ui.Accent
+							s.Background = colors.Accent
 						}
 						return s
 					})},
 					ui.Text(signal.Func(func() string { return fmt.Sprintf("#%s", t.Get()) }), ui.StyleFunc(func() ui.Style {
 						if on.Get() {
-							return ui.Style{Color: ui.RGB(255, 255, 255)}
+							return ui.Style{Color: colors.RGB(255, 255, 255)}
 						}
 						return ui.Style{}
 					})),

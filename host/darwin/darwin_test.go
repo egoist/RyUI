@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/egoist/asuka/colors"
 	. "github.com/egoist/asuka/internal/darwin"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
@@ -401,7 +402,7 @@ func TestTransitions(t *testing.T) {
 	h, _ := mount(t, func() ui.Node {
 		return ui.Column(ui.Style{},
 			ui.Show(shown, func() ui.Node {
-				return ui.View(ui.ViewProps{Style: ui.Style{Height: ui.Pt(40), Background: ui.Red, Transition: ui.SlideUp}},
+				return ui.View(ui.ViewProps{Style: ui.Style{Height: ui.Pt(40), Background: colors.Red, Transition: ui.TransitionSlideUp}},
 					ui.StaticText("toast"),
 					ui.View(ui.ViewProps{Style: ui.Style{Height: ui.Pt(20), Material: ui.MaterialThin}}))
 			}))
@@ -592,9 +593,9 @@ func TestMatch(t *testing.T) {
 	h, _ := mount(t, func() ui.Node {
 		return ui.Column(ui.Style{Padding: ui.All(10), Align: ui.AlignStart},
 			ui.Show(big, func() ui.Node {
-				return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(200), Height: ui.Pt(150), Background: ui.Blue, Match: "card"}})
+				return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(200), Height: ui.Pt(150), Background: colors.Blue, Match: "card"}})
 			}, func() ui.Node {
-				return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(40), Height: ui.Pt(30), Background: ui.Blue, Match: "card"}})
+				return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(40), Height: ui.Pt(30), Background: colors.Blue, Match: "card"}})
 			}))
 	})
 	onMain(func() {

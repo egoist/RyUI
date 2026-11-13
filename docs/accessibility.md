@@ -37,14 +37,14 @@ the screen readers read them from there:
 
   On Windows, Linux and the web the keyboard reaches it too (see
   [The keyboard](#the-keyboard)).
-- **Text scales.** Every font, the semantic ones (`ui.Body`,
-  `ui.Headline`...), a fixed size (`ui.System(15)`) and your own fonts,
+- **Text scales.** Every font, the semantic ones (`fonts.Body`,
+  `fonts.Headline`...), a fixed size (`fonts.System(15)`) and your own fonts,
   follows the user's text size: Dynamic Type, Android's font scale,
   Windows' text size, GNOME's text scaling, the browser's text size.
   When the user changes it, Asuka measures the text again and lays out
   what it moves. A Mac has no text size setting.
-- **Colors adapt.** Semantic colors (`ui.Label`, `ui.SecondaryLabel`,
-  `ui.SystemBackground`, `ui.Accent`...) are the platform's (see
+- **Colors adapt.** Semantic colors (`colors.Label`, `colors.SecondaryLabel`,
+  `colors.Background`, `colors.Accent`...) are the platform's (see
   [Layout and style](layout.md)): they follow dark mode, on iOS and
   macOS Increase Contrast, and on Linux GNOME's High Contrast.
 - **Layout-only views stay out of the way.** A `View`, `Row` or `Column`
@@ -66,7 +66,7 @@ ui.Row(ui.Style{Gap: 12},
 	ui.Image(ui.ImageProps{Source: ui.Val("https://picsum.photos/id/1015/600/400"), Label: ui.Val("A river in a valley"),
 		Style: ui.Style{AspectRatio: 3.0 / 2}}),
 	ui.View(ui.ViewProps{Label: ui.Val("Favorite"), Role: ui.RoleImage},
-		ui.Symbol(ui.IconHeart.Filled(), ui.Style{Color: ui.Red})),
+		ui.Symbol(ui.IconHeart.Filled(), ui.Style{Color: colors.Red})),
 )
 ```
 
@@ -122,10 +122,10 @@ func Row(m message, open func()) ui.Node {
 		Hint:    ui.Val("Opens the message"),
 		Style:   ui.Style{Direction: ui.RowDir, Gap: 12, Padding: ui.Symmetric(12, 20)},
 	},
-		ui.View(ui.ViewProps{Decorative: true}, ui.Symbol(ui.IconPerson.Filled(), ui.Style{Color: ui.SecondaryLabel})),
+		ui.View(ui.ViewProps{Decorative: true}, ui.Symbol(ui.IconPerson.Filled(), ui.Style{Color: colors.SecondaryLabel})),
 		ui.Column(ui.Style{Grow: 1, Gap: 2},
-			ui.StaticText(m.from, ui.Style{Font: ui.Headline}),
-			ui.StaticText(m.subject, ui.Style{Color: ui.SecondaryLabel}),
+			ui.StaticText(m.from, ui.Style{Font: fonts.Headline}),
+			ui.StaticText(m.subject, ui.Style{Color: colors.SecondaryLabel}),
 		),
 	)
 }
@@ -140,9 +140,9 @@ func Row(m message, open func()) ui.Node {
 ```go
 ui.View(ui.ViewProps{Label: fmt.Sprintf("%s by %s, %d minutes", title, artist, minutes),
 	Style: ui.Style{Direction: ui.RowDir, Gap: 8}},
-	ui.StaticText(title, ui.Style{Font: ui.Headline}),
-	ui.StaticText(artist, ui.Style{Color: ui.SecondaryLabel}),
-	ui.StaticText(fmt.Sprintf("%d:00", minutes), ui.Style{Color: ui.SecondaryLabel}),
+	ui.StaticText(title, ui.Style{Font: fonts.Headline}),
+	ui.StaticText(artist, ui.Style{Color: colors.SecondaryLabel}),
+	ui.StaticText(fmt.Sprintf("%d:00", minutes), ui.Style{Color: colors.SecondaryLabel}),
 )
 ```
 
@@ -153,7 +153,7 @@ an ornament, an icon next to a text that says the same, a checkmark in a
 toast that reads "Saved".
 
 ```go
-ui.View(ui.ViewProps{Decorative: true}, ui.Symbol(ui.IconCheck, ui.Style{Color: ui.Green}))
+ui.View(ui.ViewProps{Decorative: true}, ui.Symbol(ui.IconCheck, ui.Style{Color: colors.Green}))
 ```
 
 ## Headings
@@ -167,9 +167,9 @@ already.
 
 ```go
 ui.RichText(ui.RichTextProps{Text: ui.Val(ui.Rich{ui.Plain("Recent")}), Role: ui.RoleHeader,
-	Style: ui.Style{Font: ui.Title2.Weighted(ui.Bold)}}),
+	Style: ui.Style{Font: fonts.Title2.Weighted(fonts.Bold)}}),
 ui.View(ui.ViewProps{Label: ui.Val("Settings"), Role: ui.RoleHeader},
-	ui.StaticText("Settings", ui.Style{Font: ui.Title2})),
+	ui.StaticText("Settings", ui.Style{Font: fonts.Title2})),
 ```
 
 A `RichText`'s links are elements of their own, which a screen reader
@@ -244,9 +244,9 @@ func Rating() ui.Node {
 	for i := range 5 {
 		icons = append(icons, ui.Symbol(ui.IconStar.Filled(), ui.StyleFunc(func() ui.Style {
 			if i < stars.Get() {
-				return ui.Style{Color: ui.Orange}
+				return ui.Style{Color: colors.Orange}
 			}
-			return ui.Style{Color: ui.TertiaryLabel}
+			return ui.Style{Color: colors.TertiaryLabel}
 		})))
 	}
 	return ui.View(ui.ViewProps{
@@ -351,7 +351,7 @@ func Adaptive() ui.Node {
 		return ui.Style{Direction: ui.RowDir, Gap: 12, Align: ui.AlignCenter}
 	})},
 		ui.StaticText("Wi-Fi", ui.Style{Grow: 1}),
-		ui.StaticText("Home", ui.Style{Color: ui.SecondaryLabel}),
+		ui.StaticText("Home", ui.Style{Color: colors.SecondaryLabel}),
 	)
 }
 ```

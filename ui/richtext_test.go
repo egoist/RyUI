@@ -3,6 +3,8 @@ package ui_test
 import (
 	"testing"
 
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/host/fake"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
@@ -17,15 +19,15 @@ func TestRichText(t *testing.T) {
 	var links []string
 	h, r := mount(t, func() ui.Node {
 		return ui.Column(ui.Style{}, ui.RichText(ui.RichTextProps{Text: text, OnLink: func(u string) { links = append(links, u) },
-			Style: ui.Style{Font: ui.Body, Color: ui.SecondaryLabel}}))
+			Style: ui.Style{Font: fonts.Body, Color: colors.SecondaryLabel}}))
 	})
 	v := h.OfKind(ops.KindRichText)[0]
 	paras := v.Rich()
 	if len(paras) != 2 || paras[0].Text() != "Hello world, see the docs." || paras[1].Text() != "Run go test." {
 		t.Fatalf("%+v", paras)
 	}
-	if paras[0][1].Style.Weight != ui.Bold || paras[0][3].Style.Link != "https://x.dev" || !paras[1][1].Style.Mono ||
-		paras[1][1].Style.Background != ui.SecondaryBackground || paras[0][0].Style != paras[0][2].Style {
+	if paras[0][1].Style.Weight != fonts.Bold || paras[0][3].Style.Link != "https://x.dev" || !paras[1][1].Style.Mono ||
+		paras[1][1].Style.Background != colors.SecondaryBackground || paras[0][0].Style != paras[0][2].Style {
 		t.Fatalf("%+v", paras)
 	}
 	// The view's own style carries the defaults, as a Text's does.

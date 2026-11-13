@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/egoist/asuka/colors"
 	. "github.com/egoist/asuka/internal/windows"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
@@ -37,9 +38,9 @@ func redAlong(img *stdimage.NRGBA, x, y, steps int) []float64 {
 // rounded corners, antialiased; and the corners follow what the child
 // draws.
 func TestRoundedClip(t *testing.T) {
-	color := signal.New(ui.RGB(255, 0, 0))
+	color := signal.New(colors.RGB(255, 0, 0))
 	h, _ := mount(t, func() ui.Node {
-		return ui.View(ui.ViewProps{Style: ui.Style{Padding: ui.All(20), Background: ui.RGB(255, 255, 255)}},
+		return ui.View(ui.ViewProps{Style: ui.Style{Padding: ui.All(20), Background: colors.RGB(255, 255, 255)}},
 			ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(100), Height: ui.Pt(100), Clip: true, CornerRadius: 30}},
 				ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style { return ui.Style{Grow: 1, Background: color.Get()} })}),
 			),
@@ -96,7 +97,7 @@ func TestRoundedClip(t *testing.T) {
 	check("red", func(r, g, b uint8) bool { return r > 200 && g == b })
 	// The child alone repaints: the parent draws the corners again.
 	onMain(t, func() {
-		h.enter(func() { ui.Post(func() { color.Set(ui.RGB(0, 0, 255)) }) })
+		h.enter(func() { ui.Post(func() { color.Set(colors.RGB(0, 0, 255)) }) })
 		h.runPosted()
 		paintNow(h)
 	})

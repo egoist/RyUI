@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/egoist/asuka/colors"
 	. "github.com/egoist/asuka/internal/gtk"
 	"github.com/egoist/asuka/internal/winstate"
 	"github.com/egoist/asuka/ops"
@@ -34,7 +35,7 @@ func within(d time.Duration, cond func() bool) bool {
 // The main window's options, as GTK has them.
 func TestWindowOptionsApplied(t *testing.T) {
 	ui.SetWindowOptions(ui.WindowOptions{Width: 500, Height: 400, MinWidth: 360, DisableResize: true, DisableClose: true,
-		DisableMinimize: true, TitleBar: ui.TitleBarHidden, Background: ui.RGB(0x1e, 0x1e, 0x1e)})
+		DisableMinimize: true, TitleBar: ui.TitleBarHidden, Background: colors.RGB(0x1e, 0x1e, 0x1e)})
 	defer ui.SetWindowOptions(ui.WindowOptions{})
 	h, _ := mount(t, func() ui.Node { return ui.SafeArea(ui.Style{}, ui.StaticText("x")) })
 	onMain(func() {

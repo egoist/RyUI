@@ -11,7 +11,9 @@ import (
 	"strings"
 
 	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/device"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/sqlite"
 	"github.com/egoist/asuka/ui"
@@ -62,27 +64,27 @@ func App() ui.Node {
 					on := signal.Func(func() bool { return filter.Get() == c.Get().ID })
 					return ui.View(ui.ViewProps{OnPress: func() { filter.Set(signal.Untrack(c.Get).ID) }, Role: ui.RoleButton,
 						Style: ui.StyleFunc(func() ui.Style {
-							s := ui.Style{Padding: ui.Symmetric(7, 14), CornerRadius: 16, Background: ui.GroupedBackground}
+							s := ui.Style{Padding: ui.Symmetric(7, 14), CornerRadius: 16, Background: colors.GroupedBackground}
 							if on.Get() {
-								s.Background = ui.Accent
+								s.Background = colors.Accent
 							}
 							return s
 						})},
 						ui.Text(signal.Func(func() string { return c.Get().Name }), ui.StyleFunc(func() ui.Style {
 							if on.Get() {
-								return ui.Style{Color: ui.RGB(255, 255, 255), Font: ui.Subheadline.Weighted(ui.Semibold)}
+								return ui.Style{Color: colors.RGB(255, 255, 255), Font: fonts.Subheadline.Weighted(fonts.Semibold)}
 							}
-							return ui.Style{Font: ui.Subheadline}
+							return ui.Style{Font: fonts.Subheadline}
 						})),
 					)
 				}),
 			),
 			ui.Show(signal.Func(func() bool { r := marks.Get(); return !r.Loading && len(r.Rows) == 0 }), func() ui.Node {
 				return ui.Column(ui.Style{Grow: 1, Justify: ui.JustifyCenter, Align: ui.AlignCenter, Gap: 10, Padding: ui.All(32)},
-					ui.Symbol("bookmark", ui.Style{Font: ui.LargeTitle, Color: ui.TertiaryLabel}),
-					ui.StaticText("No bookmarks yet", ui.Style{Font: ui.Headline}),
+					ui.Symbol("bookmark", ui.Style{Font: fonts.LargeTitle, Color: colors.TertiaryLabel}),
+					ui.StaticText("No bookmarks yet", ui.Style{Font: fonts.Headline}),
 					ui.StaticText("Share a page from your browser, or a video or photo from any app, and pick Bookmarks.",
-						ui.Style{Color: ui.SecondaryLabel, TextAlign: ui.TextCenter}),
+						ui.Style{Color: colors.SecondaryLabel, TextAlign: ui.TextCenter}),
 				)
 			}),
 			ui.List(ui.ListProps{SwipeActions: func(i int) []ui.Action {
@@ -101,9 +103,9 @@ func App() ui.Node {
 					Style: ui.Style{Direction: ui.RowDir, Gap: 14, Padding: ui.Symmetric(12, 16), Align: ui.AlignCenter},
 				},
 					ui.Image(ui.ImageProps{Source: signal.Func(func() string { return b.Get().Cover }), Mode: ui.ImageFill,
-						Style: ui.Style{Width: ui.Pt(56), MinWidth: ui.Pt(56), Height: ui.Pt(56), CornerRadius: 10, Clip: true, Background: ui.GroupedBackground}}),
+						Style: ui.Style{Width: ui.Pt(56), MinWidth: ui.Pt(56), Height: ui.Pt(56), CornerRadius: 10, Clip: true, Background: colors.GroupedBackground}}),
 					ui.Column(ui.Style{Grow: 1, Shrink: 1, Gap: 3},
-						ui.Text(signal.Func(func() string { return b.Get().Title }), ui.Style{Font: ui.Body.Weighted(ui.Semibold), Lines: 2}),
+						ui.Text(signal.Func(func() string { return b.Get().Title }), ui.Style{Font: fonts.Body.Weighted(fonts.Semibold), Lines: 2}),
 						ui.Text(signal.Func(func() string {
 							m := b.Get()
 							parts := []string{}
@@ -114,9 +116,9 @@ func App() ui.Node {
 								parts = append(parts, "#"+t)
 							}
 							return strings.Join(parts, " · ")
-						}), ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel, Lines: 1}),
+						}), ui.Style{Font: fonts.Footnote, Color: colors.SecondaryLabel, Lines: 1}),
 						ui.Show(signal.Func(func() bool { return b.Get().Note != "" }), func() ui.Node {
-							return ui.Text(signal.Func(func() string { return b.Get().Note }), ui.Style{Font: ui.Footnote, Lines: 2})
+							return ui.Text(signal.Func(func() string { return b.Get().Note }), ui.Style{Font: fonts.Footnote, Lines: 2})
 						}),
 					),
 				)

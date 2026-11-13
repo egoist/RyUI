@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )
@@ -23,13 +25,13 @@ func App() ui.Node {
 				ui.RichText(ui.RichTextProps{OnLink: onLink, Text: ui.Val(ui.Rich{
 					ui.Strong("Spans"), ui.Plain(" can be "), ui.Em("italic"), ui.Plain(", "),
 					ui.Strong("bold"), ui.Plain(", "), {Text: "underlined", Underline: true}, ui.Plain(", "),
-					{Text: "struck", Strike: true}, ui.Plain(", "), ui.Plain("colored").Colored(ui.Purple),
-					ui.Plain(" or "), ui.Plain("highlighted across a line break, which a label can't draw").Highlighted(ui.RGBA(255, 214, 10, 110)),
+					{Text: "struck", Strike: true}, ui.Plain(", "), ui.Plain("colored").Colored(colors.Purple),
+					ui.Plain(" or "), ui.Plain("highlighted across a line break, which a label can't draw").Highlighted(colors.RGBA(255, 214, 10, 110)),
 					ui.Plain(". Inline "), ui.Code("code"), ui.Plain(" and "), ui.Link("links", "https://go.dev"),
-					ui.Plain(" too.\n\nA second paragraph, "), {Text: "larger", Font: ui.Font{Size: 22}},
-					ui.Plain(" and "), {Text: "smaller", Font: ui.Footnote}, ui.Plain("."),
+					ui.Plain(" too.\n\nA second paragraph, "), {Text: "larger", Font: fonts.Font{Size: 22}},
+					ui.Plain(" and "), {Text: "smaller", Font: fonts.Footnote}, ui.Plain("."),
 				})}),
-				ui.RichText(ui.RichTextProps{Style: ui.Style{Lines: 2, Color: ui.SecondaryLabel}, Text: ui.Val(ui.Rich{
+				ui.RichText(ui.RichTextProps{Style: ui.Style{Lines: 2, Color: colors.SecondaryLabel}, Text: ui.Val(ui.Rich{
 					ui.Strong("Two lines at most: "),
 					ui.Plain("this paragraph goes on long enough to wrap past its second line, where it's cut off with an ellipsis instead."),
 				})}),
@@ -109,7 +111,7 @@ func stream(onLink func(string)) ui.Node {
 			}
 			return "Stream a reply"
 		}), Variant: ui.ButtonFilled, Disabled: streaming, OnPress: start}),
-		ui.View(ui.ViewProps{Style: ui.Style{Padding: ui.All(14), Background: ui.SecondaryBackground, CornerRadius: 18}},
+		ui.View(ui.ViewProps{Style: ui.Style{Padding: ui.All(14), Background: colors.SecondaryBackground, CornerRadius: 18}},
 			ui.RichText(ui.RichTextProps{Text: text, OnLink: onLink})),
 	)
 }

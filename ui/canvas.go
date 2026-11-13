@@ -5,6 +5,8 @@ import (
 	"math"
 	"slices"
 
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
 )
@@ -139,7 +141,7 @@ func (g *Graphics) FillGradient(p *Path, gr Gradient) {
 // TextStyle is how Graphics.Text draws.
 type TextStyle struct {
 	Size   float32 // points; 0: 17 (the body text's)
-	Weight Weight
+	Weight fonts.Weight
 	Color  Color // 0: Label
 	// Align is where x is on the text: its left edge (TextStart), its
 	// center, or its right edge (TextEnd), physically, whatever the
@@ -155,7 +157,7 @@ func (g *Graphics) Text(s string, x, y float32, t TextStyle) {
 		size = 17
 	}
 	if c == 0 {
-		c = Label
+		c = colors.Label
 	}
 	g.op(ops.CanvasOpText)
 	g.color(c)
@@ -177,7 +179,7 @@ func (g *Graphics) Text(s string, x, y float32, t TextStyle) {
 //	ui.Canvas(func(g *ui.Graphics) {
 //		w, h := g.Size()
 //		p := g.Path().Ellipse(0, 0, w, h)
-//		g.Fill(p, ui.Hex(0x34c759))
+//		g.Fill(p, colors.Hex(0x34c759))
 //	}, ui.Style{Width: ui.Pt(80), Height: ui.Pt(80)})
 func Canvas(draw func(g *Graphics), style ...Styler) Node {
 	e := newElement(ops.KindCanvas, true)

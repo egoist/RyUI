@@ -4,7 +4,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/device"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )
@@ -55,7 +57,7 @@ func radius() float32 {
 // page is a screen's background: iOS's grouped one; Android's surface.
 func page() ui.Color {
 	if ios {
-		return ui.GroupedBackground
+		return colors.GroupedBackground
 	}
 	return 0
 }
@@ -64,7 +66,7 @@ func page() ui.Color {
 func card(style ui.Style, kids ...ui.Node) ui.Node {
 	return ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style {
 		s := style
-		s.Background, s.CornerRadius = ui.SecondaryGroupedBackground, radius()
+		s.Background, s.CornerRadius = colors.SecondaryGroupedBackground, radius()
 		return s
 	})}, kids...)
 }
@@ -73,10 +75,10 @@ func card(style ui.Style, kids ...ui.Node) ui.Node {
 // Android.
 func section(title string) ui.Node {
 	if ios {
-		return ui.StaticText(strings.ToUpper(title), ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel,
+		return ui.StaticText(strings.ToUpper(title), ui.Style{Font: fonts.Footnote, Color: colors.SecondaryLabel,
 			Margin: ui.Edges{Top: 18, Left: 16, Right: 16, Bottom: -4}})
 	}
-	return ui.StaticText(title, ui.Style{Font: ui.Subheadline.Weighted(ui.Semibold), Color: ui.Accent,
+	return ui.StaticText(title, ui.Style{Font: fonts.Subheadline.Weighted(fonts.Semibold), Color: colors.Accent,
 		Margin: ui.Edges{Top: 16, Left: 4}})
 }
 
@@ -86,7 +88,7 @@ func note(text string) ui.Node {
 	if ios {
 		m = ui.Edges{Left: 16, Right: 16, Top: -4}
 	}
-	return ui.StaticText(text, ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel, Margin: m})
+	return ui.StaticText(text, ui.Style{Font: fonts.Footnote, Color: colors.SecondaryLabel, Margin: m})
 }
 
 // group is rows together: on iOS one rounded box, its rows apart by
@@ -111,7 +113,7 @@ func cell(style ui.Style, kids ...ui.Node) ui.Node {
 func cellWith(p ui.ViewProps, kids ...ui.Node) ui.Node {
 	if !ios {
 		s := p.Style.(ui.Style)
-		s.Background = ui.SecondaryBackground
+		s.Background = colors.SecondaryBackground
 		p.Style = s
 		return ui.View(p, kids...)
 	}
@@ -121,7 +123,7 @@ func cellWith(p ui.ViewProps, kids ...ui.Node) ui.Node {
 // separator is a cell's bottom line, inset as UIKit's are.
 func separator() ui.Node {
 	return ui.View(ui.ViewProps{Decorative: true, Style: ui.Style{Absolute: true, Left: ui.Pt(16), Right: ui.Pt(0), Bottom: ui.Pt(0),
-		Height: ui.Pt(hairline), Background: ui.Separator}})
+		Height: ui.Pt(hairline), Background: colors.Separator}})
 }
 
 // row is a cell with its content side by side.
@@ -144,7 +146,7 @@ func stacked(kids ...ui.Node) ui.Node {
 // chevron says a row opens another screen.
 func chevron() ui.Node {
 	if ios {
-		return ui.Symbol(ui.IconForward, ui.Style{Font: ui.Footnote.Weighted(ui.Semibold), Color: ui.TertiaryLabel})
+		return ui.Symbol(ui.IconForward, ui.Style{Font: fonts.Footnote.Weighted(fonts.Semibold), Color: colors.TertiaryLabel})
 	}
-	return ui.Symbol(ui.IconForward, ui.Style{Color: ui.SecondaryLabel})
+	return ui.Symbol(ui.IconForward, ui.Style{Color: colors.SecondaryLabel})
 }

@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/svg"
 	"github.com/egoist/asuka/ui"
@@ -33,7 +35,7 @@ func detail(id string) ui.Node {
 		return ws
 	})
 	renaming, signing := signal.New(false), signal.New(false)
-	big := ui.LargeTitle.Weighted(ui.Bold)
+	big := fonts.LargeTitle.Weighted(fonts.Bold)
 	big.Size = 44
 	return ui.View(ui.ViewProps{Style: ui.Style{Grow: 1}},
 		ui.Scroll(ui.ScrollProps{
@@ -44,7 +46,7 @@ func detail(id string) ui.Node {
 			ui.Row(ui.Style{Gap: 20, Align: ui.AlignCenter, Padding: ui.Symmetric(12, 8)},
 				badge("claude", 80),
 				ui.Column(ui.Style{Grow: 1, Shrink: 1},
-					ui.Text(signal.Func(func() string { return first.Get().Title() }), ui.Style{Font: ui.Subheadline, Color: ui.SecondaryLabel}),
+					ui.Text(signal.Func(func() string { return first.Get().Title() }), ui.Style{Font: fonts.Subheadline, Color: colors.SecondaryLabel}),
 					ui.Text(signal.Func(func() string { return quota(first.Get().Used) }), ui.Style{Font: big, Lines: 1}),
 				),
 			),
@@ -112,23 +114,23 @@ func detail(id string) ui.Node {
 func forecastCard(w signal.Accessor[Window]) ui.Node {
 	f := signal.Func(func() Forecast { return w.Get().Forecast(clock.Get()) })
 	color := func() ui.Color { return paceColor(f.Get().Pace) }
-	headline := ui.Title.Weighted(ui.Bold)
+	headline := fonts.Title.Weighted(fonts.Bold)
 	return card(ui.Style{Padding: ui.All(cardPadding()), Gap: 4},
 		ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
-			ui.Text(signal.Func(func() string { return w.Get().Title() }), ui.Style{Grow: 1, Shrink: 1, Color: ui.SecondaryLabel}),
+			ui.Text(signal.Func(func() string { return w.Get().Title() }), ui.Style{Grow: 1, Shrink: 1, Color: colors.SecondaryLabel}),
 			// The pace, a chip in its color.
 			ui.Dynamic(func() ui.Node {
 				c := color()
 				return ui.Row(ui.Style{Gap: 6, Align: ui.AlignCenter, Padding: ui.Symmetric(6, 14), Background: c.Opacity(0.16), CornerRadius: 999},
 					svg.View(svg.Props{Icon: paceIcon(f.Get().Pace), Color: ui.Val(c), Style: ui.Style{Width: ui.Pt(18), Height: ui.Pt(18)}}),
-					ui.Text(signal.Func(func() string { return f.Get().Pace.String() }), ui.Style{Font: ui.Subheadline.Weighted(ui.Semibold), Color: c}),
+					ui.Text(signal.Func(func() string { return f.Get().Pace.String() }), ui.Style{Font: fonts.Subheadline.Weighted(fonts.Semibold), Color: c}),
 				)
 			}),
 		),
 		ui.Text(signal.Func(func() string { return upper(outlook(f.Get(), clock.Get())) }), ui.StyleFunc(func() ui.Style {
 			return ui.Style{Font: headline, Color: color(), Margin: ui.Edges{Top: 8}}
 		})),
-		ui.Text(signal.Func(func() string { return "Resets " + when(w.Get().Resets, clock.Get()) }), ui.Style{Color: ui.SecondaryLabel}),
+		ui.Text(signal.Func(func() string { return "Resets " + when(w.Get().Resets, clock.Get()) }), ui.Style{Color: colors.SecondaryLabel}),
 		ui.View(ui.ViewProps{Style: ui.Style{Margin: ui.Edges{Top: 20}}}, chart(w)),
 	)
 }
@@ -162,7 +164,7 @@ func actions(id string, acc signal.Accessor[Account], renaming, signing *signal.
 		group(rows...),
 		group(ui.View(ui.ViewProps{OnPress: confirm, Label: ui.Val("Remove Account"), Role: ui.RoleButton,
 			Style: ui.Style{Padding: ui.Symmetric(11, 16), MinHeight: ui.Pt(48), Justify: ui.JustifyCenter, Align: ui.AlignCenter}},
-			ui.StaticText("Remove Account", ui.Style{Color: ui.Red}))),
+			ui.StaticText("Remove Account", ui.Style{Color: colors.Red}))),
 	)
 }
 
@@ -179,14 +181,14 @@ func field(name string, value signal.Accessor[string]) ui.Node {
 	return ui.Show(signal.Func(func() bool { return value.Get() != "" }), func() ui.Node {
 		return row(
 			ui.StaticText(name, ui.Style{Grow: 1, Shrink: 0}),
-			ui.Text(value, ui.Style{Shrink: 1, Color: ui.SecondaryLabel, TextAlign: ui.TextEnd, Lines: 1}),
+			ui.Text(value, ui.Style{Shrink: 1, Color: colors.SecondaryLabel, TextAlign: ui.TextEnd, Lines: 1}),
 		)
 	})
 }
 
 // action is a row that does something.
 func action(icon ui.Icon, title, detail string, press func()) ui.Node {
-	return actionRow(ui.Symbol(icon, ui.Style{Color: ui.Accent}), title, detail, press, nil)
+	return actionRow(ui.Symbol(icon, ui.Style{Color: colors.Accent}), title, detail, press, nil)
 }
 
 // link is an action row that opens a page in the browser.
@@ -196,9 +198,9 @@ func link(title, detail, url string) ui.Node {
 		if ios {
 			size = 18
 		}
-		return svg.View(svg.Props{Icon: iconExternal, Color: ui.Val(ui.TertiaryLabel), Style: ui.Style{Width: ui.Pt(size), Height: ui.Pt(size)}})
+		return svg.View(svg.Props{Icon: iconExternal, Color: ui.Val(colors.TertiaryLabel), Style: ui.Style{Width: ui.Pt(size), Height: ui.Pt(size)}})
 	}
-	return actionRow(svg.View(svg.Props{Icon: iconExternal, Color: ui.Val(ui.Accent), Style: ui.Style{Width: ui.Pt(20), Height: ui.Pt(20)}}),
+	return actionRow(svg.View(svg.Props{Icon: iconExternal, Color: ui.Val(colors.Accent), Style: ui.Style{Width: ui.Pt(20), Height: ui.Pt(20)}}),
 		title, detail, func() { ui.OpenURL(url) }, ext)
 }
 
@@ -208,14 +210,14 @@ func link(title, detail, url string) ui.Node {
 func actionRow(icon ui.Node, title, detail string, press func(), trailing func() ui.Node) ui.Node {
 	var kids []ui.Node
 	if ios {
-		kids = []ui.Node{ui.StaticText(title, ui.Style{Grow: 1, Shrink: 1, Color: ui.Accent})}
+		kids = []ui.Node{ui.StaticText(title, ui.Style{Grow: 1, Shrink: 1, Color: colors.Accent})}
 	} else {
 		kids = []ui.Node{
-			ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(48), Height: ui.Pt(48), CornerRadius: 24, Background: ui.Accent.Opacity(0.14),
+			ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(48), Height: ui.Pt(48), CornerRadius: 24, Background: colors.Accent.Opacity(0.14),
 				Align: ui.AlignCenter, Justify: ui.JustifyCenter}}, icon),
 			ui.Column(ui.Style{Grow: 1, Shrink: 1, Gap: 2},
-				ui.StaticText(title, ui.Style{Font: ui.Body.Weighted(ui.Medium)}),
-				ui.StaticText(detail, ui.Style{Font: ui.Subheadline, Color: ui.SecondaryLabel}),
+				ui.StaticText(title, ui.Style{Font: fonts.Body.Weighted(fonts.Medium)}),
+				ui.StaticText(detail, ui.Style{Font: fonts.Subheadline, Color: colors.SecondaryLabel}),
 			),
 		}
 	}
@@ -243,7 +245,7 @@ func renameSheet(open *signal.Signal[bool], id string) ui.Node {
 			open.Set(false)
 		}
 		return ui.SafeArea(ui.Style{Padding: ui.All(24), Gap: 16},
-			ui.StaticText("Rename", ui.Style{Font: ui.Title2.Weighted(ui.Bold)}),
+			ui.StaticText("Rename", ui.Style{Font: fonts.Title2.Weighted(fonts.Bold)}),
 			ui.TextField(ui.TextFieldProps{Value: name, Placeholder: ui.Val(services[a.Service].Name),
 				Autocapitalize: ui.CapitalizeWords, ReturnKey: ui.ReturnDone, OnSubmit: done}),
 			note(fmt.Sprintf("Empty, it's called %s.", services[a.Service].Name)),

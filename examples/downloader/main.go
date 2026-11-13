@@ -25,7 +25,9 @@ import (
 
 	"github.com/egoist/asuka/app"
 	"github.com/egoist/asuka/background"
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/dock"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/js"
 	"github.com/egoist/asuka/library"
 	"github.com/egoist/asuka/network"
@@ -69,9 +71,9 @@ func App() ui.Node {
 				svg.View(svg.Props{Icon: iconWifi, Style: ui.Style{Width: ui.Pt(22), Height: ui.Pt(22)},
 					Color: signal.Func(func() ui.Color {
 						if n := net.Get(); n.Connected && !n.Metered {
-							return ui.Green
+							return colors.Green
 						}
-						return ui.SecondaryLabel
+						return colors.SecondaryLabel
 					})}),
 				ui.Text(signal.Func(func() string {
 					n := net.Get()
@@ -83,7 +85,7 @@ func App() ui.Node {
 						s += ", metered"
 					}
 					return s
-				}), ui.Style{Grow: 1, Color: ui.SecondaryLabel}),
+				}), ui.Style{Grow: 1, Color: colors.SecondaryLabel}),
 				ui.StaticText("Wi-Fi only"),
 				ui.Toggle(ui.ToggleProps{Value: wifiOnly}),
 			),
@@ -107,7 +109,7 @@ func App() ui.Node {
 			),
 			ui.Row(ui.Style{Gap: 8, Align: ui.AlignCenter},
 				svg.View(svg.Props{Icon: iconDownload, Style: ui.Style{Width: ui.Pt(18), Height: ui.Pt(18)}}),
-				ui.Text(status, ui.Style{Grow: 1, Color: ui.SecondaryLabel, Font: ui.Footnote}),
+				ui.Text(status, ui.Style{Grow: 1, Color: colors.SecondaryLabel, Font: fonts.Footnote}),
 			),
 		)
 	}, ui.ScreenOptions{Title: ui.Val("Downloader")})
@@ -299,12 +301,12 @@ func browser(link, status *signal.Signal[string]) ui.Node {
 					return s.Title
 				}
 				return s.URL
-			}), ui.Style{Grow: 1, Lines: 1, Font: ui.Footnote}),
+			}), ui.Style{Grow: 1, Lines: 1, Font: fonts.Footnote}),
 			ui.Button(ui.ButtonProps{Icon: ui.IconRefresh, Label: ui.Val("Reload"), Variant: ui.ButtonGray, OnPress: func() { ui.WebReload(web) }}),
 		),
 		web,
 		ui.Column(ui.Style{Padding: ui.All(12), Gap: 8},
-			ui.Text(signal.Func(func() string { return fmt.Sprintf("Videos found: %d", len(media.Get())) }), ui.Style{Font: ui.Headline}),
+			ui.Text(signal.Func(func() string { return fmt.Sprintf("Videos found: %d", len(media.Get())) }), ui.Style{Font: fonts.Headline}),
 			ui.For(signal.Func(func() []string {
 				m := media.Get()
 				return m[max(0, len(m)-3):]

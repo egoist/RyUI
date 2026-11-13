@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/egoist/asuka/colors"
 	. "github.com/egoist/asuka/internal/darwin"
 	"github.com/egoist/asuka/ops"
 	kage "github.com/egoist/asuka/shader"
@@ -107,10 +108,10 @@ func TestCanvas(t *testing.T) {
 	h, _ := mount(t, func() ui.Node {
 		return ui.Canvas(func(g *ui.Graphics) {
 			w, ht := g.Size()
-			g.Fill(g.Path().Rect(0, 0, w/2, ht), ui.RGB(255, 0, 0))
+			g.Fill(g.Path().Rect(0, 0, w/2, ht), colors.RGB(255, 0, 0))
 			g.Save()
 			g.Translate(w/2, 0)
-			g.Fill(g.Path().Rect(0, 0, w/2, ht), ui.RGB(0, 255, 0))
+			g.Fill(g.Path().Rect(0, 0, w/2, ht), colors.RGB(0, 255, 0))
 			g.Restore()
 			g.Text("Hi", w/2, ht/2, ui.TextStyle{Align: ui.TextCenter})
 		}, ui.Style{Width: ui.Pt(100), Height: ui.Pt(40)})

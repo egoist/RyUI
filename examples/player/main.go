@@ -14,6 +14,8 @@ import (
 
 	"github.com/egoist/asuka/app"
 	"github.com/egoist/asuka/audio"
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/nowplaying"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
@@ -81,8 +83,8 @@ func Track(t track, playing *signal.Signal[bool], next, previous func()) ui.Node
 		ui.Image(ui.ImageProps{Source: ui.Val(t.cover),
 			Style: ui.Style{Width: ui.Pt(cover), Height: ui.Pt(cover), CornerRadius: 16}}),
 		ui.Column(ui.Style{Align: ui.AlignCenter, Gap: 4},
-			ui.StaticText(t.title, ui.Style{Font: ui.Title2.Weighted(ui.Bold)}),
-			ui.StaticText(artist+" — "+album, ui.Style{Color: ui.SecondaryLabel}),
+			ui.StaticText(t.title, ui.Style{Font: fonts.Title2.Weighted(fonts.Bold)}),
+			ui.StaticText(artist+" — "+album, ui.Style{Color: colors.SecondaryLabel}),
 		),
 		ui.Progress(signal.Func(func() float64 {
 			s := status.Get()
@@ -94,7 +96,7 @@ func Track(t track, playing *signal.Signal[bool], next, previous func()) ui.Node
 		ui.Text(signal.Func(func() string {
 			s := status.Get()
 			return clock(s.Position) + " / " + clock(s.Duration)
-		}), ui.Style{Color: ui.SecondaryLabel, Font: ui.Footnote}),
+		}), ui.Style{Color: colors.SecondaryLabel, Font: fonts.Footnote}),
 		ui.Row(ui.Style{Gap: 12},
 			ui.Button(ui.ButtonProps{Title: ui.Val("Previous"), Variant: ui.ButtonGray, OnPress: previous}),
 			ui.Button(ui.ButtonProps{

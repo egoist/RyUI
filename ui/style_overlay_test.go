@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"reflect"
 	"testing"
 )
@@ -21,9 +23,9 @@ func TestOverlayLaysEveryField(t *testing.T) {
 		}
 	}
 	// A zero field keeps the base's; a Font is laid field by field.
-	s := Style{Background: Accent, Font: Body}
-	s.overlay(&Style{Color: Red, Font: Font{Weight: Bold}})
-	if s.Background != Accent || s.Color != Red || s.Font != Body.Weighted(Bold) {
+	s := Style{Background: colors.Accent, Font: fonts.Body}
+	s.overlay(&Style{Color: colors.Red, Font: fonts.Font{Weight: fonts.Bold}})
+	if s.Background != colors.Accent || s.Color != colors.Red || s.Font != fonts.Body.Weighted(fonts.Bold) {
 		t.Fatalf("%+v", s)
 	}
 }

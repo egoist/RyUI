@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/egoist/asuka/colors"
 	. "github.com/egoist/asuka/internal/windows"
 	"github.com/egoist/asuka/ops"
 	kage "github.com/egoist/asuka/shader"
@@ -44,7 +45,7 @@ func pumpUntil(ok func() bool) bool {
 }
 
 func TestShader(t *testing.T) {
-	color := signal.New(ui.Hex(0xff0000))
+	color := signal.New(colors.Hex(0xff0000))
 	h, r := mount(t, func() ui.Node {
 		return ui.Shader(ui.ShaderProps{Program: tint,
 			Uniforms: signal.Func(func() []ui.Uniform { return []ui.Uniform{ui.ColorUniform("Tint", color.Get())} }),
@@ -70,7 +71,7 @@ func TestShader(t *testing.T) {
 		if got := px(s.pw-1, s.ph-1); got != [4]byte{} {
 			fatalf("right pixel %v", got)
 		}
-		h.enter(func() { ui.Post(func() { color.Set(ui.Hex(0x0000ff)) }) }) // flushed as the app's code is
+		h.enter(func() { ui.Post(func() { color.Set(colors.Hex(0x0000ff)) }) }) // flushed as the app's code is
 		h.runPosted()
 		if !pumpUntil(func() bool { return px(0, 0) == [4]byte{255, 0, 0, 255} }) {
 			fatalf("after a change: %v", px(0, 0))

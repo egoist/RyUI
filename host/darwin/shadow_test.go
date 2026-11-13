@@ -5,6 +5,7 @@ package darwin
 import (
 	"testing"
 
+	"github.com/egoist/asuka/colors"
 	. "github.com/egoist/asuka/internal/darwin"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
@@ -20,13 +21,13 @@ func TestClipShadow(t *testing.T) {
 		return ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style {
 			s := ui.Style{Width: ui.Pt(60), Height: ui.Pt(60), Clip: true, CornerRadius: 12}
 			if shadow.Get() {
-				s.Shadow = ui.Shadow{Color: ui.RGB(0, 0, 0), Radius: 8}
+				s.Shadow = ui.Shadow{Color: colors.RGB(0, 0, 0), Radius: 8}
 			}
 			return s
 		})},
-			ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(100), Height: ui.Pt(100), Background: ui.RGB(255, 0, 0)}}),
+			ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(100), Height: ui.Pt(100), Background: colors.RGB(255, 0, 0)}}),
 			ui.Show(more, func() ui.Node {
-				return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(10), Height: ui.Pt(10), Background: ui.RGB(0, 0, 255)}})
+				return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(10), Height: ui.Pt(10), Background: colors.RGB(0, 0, 255)}})
 			}),
 		)
 	})
@@ -88,8 +89,8 @@ func TestClipShadow(t *testing.T) {
 // (none) as it moves into a window: Style.Shadow holds.
 func TestShadowInWindow(t *testing.T) {
 	h, _ := mount(t, func() ui.Node {
-		return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(60), Height: ui.Pt(30), Background: ui.RGB(255, 0, 0),
-			Shadow: ui.Shadow{Color: ui.RGB(0, 0, 0), Radius: 8, Y: 4}}})
+		return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(60), Height: ui.Pt(30), Background: colors.RGB(255, 0, 0),
+			Shadow: ui.Shadow{Color: colors.RGB(0, 0, 0), Radius: 8, Y: 4}}})
 	})
 	onMain(func() {
 		var n *node
@@ -120,7 +121,7 @@ func TestTransformHolds(t *testing.T) {
 	scale := signal.New(float32(0.5))
 	h, _ := mount(t, func() ui.Node {
 		return ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style {
-			return ui.Style{Width: ui.Pt(60), Height: ui.Pt(60), Background: ui.RGB(255, 0, 0), Transform: ui.Transform{Scale: scale.Get()}}
+			return ui.Style{Width: ui.Pt(60), Height: ui.Pt(60), Background: colors.RGB(255, 0, 0), Transform: ui.Transform{Scale: scale.Get()}}
 		})})
 	})
 	onMain(func() {

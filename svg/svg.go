@@ -14,10 +14,11 @@
 //	var downloadSVG string
 //	var download = svg.MustParse(downloadSVG)
 //
-//	svg.View(svg.Props{Icon: download, Color: ui.Val(ui.Accent), Style: ui.Style{Width: ui.Pt(24), Height: ui.Pt(24)}})
+//	svg.View(svg.Props{Icon: download, Color: ui.Val(colors.Accent), Style: ui.Style{Width: ui.Pt(24), Height: ui.Pt(24)}})
 package svg
 
 import (
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/layout"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
@@ -85,7 +86,7 @@ func (ic *Icon) Fit(w, h float32) (scale, dx, dy float32) {
 type Props struct {
 	Icon *Icon
 	// Color paints what the SVG paints with currentColor, and fills it
-	// doesn't give (nil: ui.Label, the text color).
+	// doesn't give (nil: colors.Label, the text color).
 	Color signal.Accessor[ui.Color]
 	// Style sizes it; without a width or height, it's the Icon's Width
 	// and Height, and with one of them, the other keeps its aspect ratio.
@@ -106,7 +107,7 @@ func View(p Props) ui.Node {
 	if ic == nil {
 		ic = &Icon{}
 	}
-	color, static := ui.Label, true
+	color, static := colors.Label, true
 	if p.Color != nil {
 		if c, ok := signal.StaticValue(p.Color); ok {
 			color = c
@@ -205,7 +206,7 @@ var whole = ui.Style{Absolute: true, Left: ui.Pt(0), Top: ui.Pt(0), Width: ui.Pc
 // its stroke scaled by scale.
 func (ic *Icon) shape(l *Layer, color ui.Color, scale float32) ui.Node {
 	if color == 0 {
-		color = ui.Label
+		color = colors.Label
 	}
 	style := whole
 	fc, fo := l.Fill.with(color)
@@ -244,7 +245,7 @@ func (p Paint) with(color ui.Color) (ui.Color, float32) {
 		return color, 1
 	}
 	if r, g, b, a, ok := color.RGBA(); ok {
-		return ui.RGBA(r, g, b, uint8(float32(a)*p.Opacity+0.5)), 1
+		return colors.RGBA(r, g, b, uint8(float32(a)*p.Opacity+0.5)), 1
 	}
 	return color, p.Opacity
 }

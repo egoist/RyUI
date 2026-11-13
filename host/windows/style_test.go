@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/egoist/asuka/colors"
 	. "github.com/egoist/asuka/internal/windows"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
@@ -44,11 +45,11 @@ func TestOpacityPicture(t *testing.T) {
 	op := signal.New(float32(0.5))
 	presses := 0
 	h, _ := mount(t, func() ui.Node {
-		return ui.View(ui.ViewProps{Style: ui.Style{Padding: ui.All(20), Background: ui.RGB(255, 255, 255)}},
+		return ui.View(ui.ViewProps{Style: ui.Style{Padding: ui.All(20), Background: colors.RGB(255, 255, 255)}},
 			ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style {
 				return ui.Style{Width: ui.Pt(80), Height: ui.Pt(80), Opacity: op.Get()}
 			})},
-				ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(40), Height: ui.Pt(40), Background: ui.RGB(255, 0, 0)}, OnPress: func() { presses++ }}),
+				ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(40), Height: ui.Pt(40), Background: colors.RGB(255, 0, 0)}, OnPress: func() { presses++ }}),
 			),
 		)
 	})
@@ -93,9 +94,9 @@ func TestOpacityPicture(t *testing.T) {
 func TestTransform(t *testing.T) {
 	tf := signal.New(ui.Transform{Scale: 0.5})
 	h, _ := mount(t, func() ui.Node {
-		return ui.View(ui.ViewProps{Style: ui.Style{Padding: ui.All(20), Background: ui.RGB(255, 255, 255)}},
+		return ui.View(ui.ViewProps{Style: ui.Style{Padding: ui.All(20), Background: colors.RGB(255, 255, 255)}},
 			ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style {
-				return ui.Style{Width: ui.Pt(100), Height: ui.Pt(100), Background: ui.RGB(0, 0, 255), Transform: tf.Get()}
+				return ui.Style{Width: ui.Pt(100), Height: ui.Pt(100), Background: colors.RGB(0, 0, 255), Transform: tf.Get()}
 			})},
 				ui.Text(ui.Val("Hi"), ui.Style{Absolute: true, Left: ui.Pt(10), Top: ui.Pt(10)}),
 			),
@@ -150,8 +151,8 @@ func TestTransform(t *testing.T) {
 // A material blurs what's behind it and tints it.
 func TestMaterial(t *testing.T) {
 	h, _ := mount(t, func() ui.Node {
-		return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(200), Height: ui.Pt(100), Background: ui.RGB(255, 255, 255)}},
-			ui.View(ui.ViewProps{Style: ui.Style{Absolute: true, Left: ui.Pt(100), Top: ui.Pt(0), Width: ui.Pt(100), Height: ui.Pt(100), Background: ui.RGB(0, 0, 0)}}),
+		return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(200), Height: ui.Pt(100), Background: colors.RGB(255, 255, 255)}},
+			ui.View(ui.ViewProps{Style: ui.Style{Absolute: true, Left: ui.Pt(100), Top: ui.Pt(0), Width: ui.Pt(100), Height: ui.Pt(100), Background: colors.RGB(0, 0, 0)}}),
 			ui.View(ui.ViewProps{Style: ui.Style{Absolute: true, Left: ui.Pt(50), Top: ui.Pt(20), Width: ui.Pt(100), Height: ui.Pt(60), Material: ui.MaterialRegular}}),
 		)
 	})

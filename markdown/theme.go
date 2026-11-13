@@ -1,29 +1,33 @@
 package markdown
 
-import "github.com/egoist/asuka/ui"
+import (
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
+	"github.com/egoist/asuka/ui"
+)
 
 // Theme is how Markdown looks: fonts, colors and spacing for each kind
 // of block and inline. What it leaves zero takes DefaultTheme's value, so
 // that a theme sets only what it changes:
 //
-//	markdown.Props{Theme: &markdown.Theme{Link: ui.Purple, CodeFont: ui.Font{Size: 13}}}
+//	markdown.Props{Theme: &markdown.Theme{Link: colors.Purple, CodeFont: fonts.Font{Size: 13}}}
 //
 // Fonts are text styles, so that they follow the user's text size; a
 // font's fields left zero are the default's (a Weight alone keeps the
 // default's style). Colors are the platform's semantic colors by default,
 // so dark mode needs nothing. Lengths are in points.
 type Theme struct {
-	// Font is body text's: ui.Body.
-	Font ui.Font
-	// Text colors text (ui.Label when zero), Muted what is secondary
-	// (list markers, footnotes; ui.SecondaryLabel), Link links (the
+	// Font is body text's: fonts.Body.
+	Font fonts.Font
+	// Text colors text (colors.Label when zero), Muted what is secondary
+	// (list markers, footnotes; colors.SecondaryLabel), Link links (the
 	// accent color), and Strong strong text (Text).
 	Text, Muted, Link, Strong ui.Color
-	// StrongWeight is the weight of strong text: ui.Bold.
-	StrongWeight ui.Weight
+	// StrongWeight is the weight of strong text: fonts.Bold.
+	StrongWeight fonts.Weight
 
 	// Code colors code spans (Text), with CodeBackground behind them
-	// (ui.SecondaryBackground).
+	// (colors.SecondaryBackground).
 	Code, CodeBackground ui.Color
 
 	// BlockSpacing is the space between blocks: 12. ItemSpacing is that
@@ -38,43 +42,43 @@ type Theme struct {
 	// unchecked ones are Muted.
 	Checkbox ui.Color
 
-	// QuoteBar colors the bar along block quotes (ui.Separator),
+	// QuoteBar colors the bar along block quotes (colors.Separator),
 	// QuoteBarWidth wide (3), and QuoteText their text (Muted).
 	QuoteBar, QuoteText ui.Color
 	QuoteBarWidth       float32
 
-	// Rule colors thematic breaks: ui.Separator.
+	// Rule colors thematic breaks: colors.Separator.
 	Rule ui.Color
 
-	// CodeFont is code blocks' (monospaced): ui.Callout.
-	// CodeBlockBackground (ui.SecondaryBackground) and CodeBlockBorder
+	// CodeFont is code blocks' (monospaced): fonts.Callout.
+	// CodeBlockBackground (colors.SecondaryBackground) and CodeBlockBorder
 	// (none) color code blocks, with corners of CodeBlockRadius (10) and
 	// CodeBlockPadding of room inside (12).
-	CodeFont                             ui.Font
+	CodeFont                             fonts.Font
 	CodeBlockBackground, CodeBlockBorder ui.Color
 	CodeBlockRadius, CodeBlockPadding    float32
 
-	// TableFont is table cells' (ui.Callout; the header's semibold).
-	// TableBorder colors a table's lines (ui.Separator), TableHeader the
-	// background of its header row (ui.SecondaryBackground), and
+	// TableFont is table cells' (fonts.Callout; the header's semibold).
+	// TableBorder colors a table's lines (colors.Separator), TableHeader the
+	// background of its header row (colors.SecondaryBackground), and
 	// TableStripe that of every other row (none). TableCellPadding is the
 	// room in cells, across and down: 10 and 8. TableColumnWidth is a
 	// column's width: 140. TableRadius rounds the table's corners: 8.
-	TableFont                             ui.Font
+	TableFont                             fonts.Font
 	TableBorder, TableHeader, TableStripe ui.Color
 	TableCellPadding                      [2]float32
 	TableColumnWidth, TableRadius         float32
 
 	// ImageRadius rounds images alone in a paragraph: 8.
 	ImageRadius float32
-	// FootnoteFont is footnote labels': ui.Footnote.
-	FootnoteFont ui.Font
+	// FootnoteFont is footnote labels': fonts.Footnote.
+	FootnoteFont fonts.Font
 }
 
 // HeadingStyle is how headings of one level look.
 type HeadingStyle struct {
 	// Font is theirs; Color colors them (Theme.Text when zero).
-	Font  ui.Font
+	Font  fonts.Font
 	Color ui.Color
 	// Top is the room above them, more than Theme.BlockSpacing: 4.
 	Top float32
@@ -84,36 +88,36 @@ type HeadingStyle struct {
 // platform's text styles and semantic colors, as its own text looks.
 func DefaultTheme() *Theme {
 	return &Theme{
-		Font:                ui.Body,
-		Muted:               ui.SecondaryLabel,
-		StrongWeight:        ui.Bold,
-		CodeBackground:      ui.SecondaryBackground,
+		Font:                fonts.Body,
+		Muted:               colors.SecondaryLabel,
+		StrongWeight:        fonts.Bold,
+		CodeBackground:      colors.SecondaryBackground,
 		BlockSpacing:        12,
 		ItemSpacing:         4,
 		ListIndent:          28,
-		Checkbox:            ui.Accent,
-		QuoteBar:            ui.Separator,
+		Checkbox:            colors.Accent,
+		QuoteBar:            colors.Separator,
 		QuoteBarWidth:       3,
-		Rule:                ui.Separator,
-		CodeFont:            ui.Callout,
-		CodeBlockBackground: ui.SecondaryBackground,
+		Rule:                colors.Separator,
+		CodeFont:            fonts.Callout,
+		CodeBlockBackground: colors.SecondaryBackground,
 		CodeBlockRadius:     10,
 		CodeBlockPadding:    12,
-		TableFont:           ui.Callout,
-		TableBorder:         ui.Separator,
-		TableHeader:         ui.SecondaryBackground,
+		TableFont:           fonts.Callout,
+		TableBorder:         colors.Separator,
+		TableHeader:         colors.SecondaryBackground,
 		TableCellPadding:    [2]float32{10, 8},
 		TableColumnWidth:    140,
 		TableRadius:         8,
 		ImageRadius:         8,
-		FootnoteFont:        ui.Footnote,
+		FootnoteFont:        fonts.Footnote,
 		Headings: [6]HeadingStyle{
-			{Font: ui.Title.Weighted(ui.Bold), Top: 4},
-			{Font: ui.Title2.Weighted(ui.Bold), Top: 4},
-			{Font: ui.Title3.Weighted(ui.Semibold), Top: 4},
-			{Font: ui.Headline, Top: 4},
-			{Font: ui.Subheadline.Weighted(ui.Semibold), Top: 4},
-			{Font: ui.Footnote.Weighted(ui.Semibold), Top: 4},
+			{Font: fonts.Title.Weighted(fonts.Bold), Top: 4},
+			{Font: fonts.Title2.Weighted(fonts.Bold), Top: 4},
+			{Font: fonts.Title3.Weighted(fonts.Semibold), Top: 4},
+			{Font: fonts.Headline, Top: 4},
+			{Font: fonts.Subheadline.Weighted(fonts.Semibold), Top: 4},
+			{Font: fonts.Footnote.Weighted(fonts.Semibold), Top: 4},
 		},
 	}
 }
@@ -134,7 +138,7 @@ func resolve(th, def *Theme) Theme {
 			*v = d
 		}
 	}
-	font := func(v *ui.Font, d ui.Font) {
+	font := func(v *fonts.Font, d fonts.Font) {
 		if v.Style == 0 {
 			v.Style = d.Style
 		}

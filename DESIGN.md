@@ -340,12 +340,19 @@ elsewhere (documented per host): `Background`, `CornerRadius`, `Border`,
 `TextAlign`, `LineLimit`. Defaults are the platform's own; an app that
 sets nothing looks native.
 
-Colors and fonts can be semantic (`ui.Label`, `ui.SecondaryLabel`,
-`ui.Accent`, `ui.Body`, `ui.Title`), resolved by the host (UIKit's
-semantic colors and text styles; Material 3's color roles and type
-scale), so dark mode and Dynamic Type / font scale need no app code.
+A style's values live in `ui` when they're layout's (`ui.AlignCenter`,
+`ui.JustifySpaceBetween`, `ui.TextCenter`: prefixed by their type) and
+in their own packages when they're open-ended sets: `colors` and
+`fonts`, so `ui` keeps its names for components and a color can't be
+read as a weight (`fonts.Black`, `colors.Red`).
 
-`Font.Family` (`ui.Custom("Inter-Bold", ui.Title)`) takes a font file
+Colors and fonts can be semantic (`colors.Label`, `colors.SecondaryLabel`,
+`colors.Accent`, `fonts.Body`, `fonts.Title`), resolved by the host
+(UIKit's semantic colors and text styles; Material 3's color roles and
+type scale), so dark mode and Dynamic Type / font scale need no app
+code.
+
+`Font.Family` (`fonts.Custom("Inter-Bold", fonts.Title)`) takes a font file
 of the app's, by its name in `assets/fonts`; a family of them (`Inter`:
 `Inter-Regular`, `Inter-Bold`..., picked by `Weight`); a generic family
 (`serif`, `monospace`, `rounded`: on iOS the system font's designs); or
@@ -1007,11 +1014,11 @@ travels with the Go code, not the shell: the CLI builds it in
 (`-ldflags -X`, `internal/boot`), and each root, as it mounts, sends
 the `Accent` command before any view is made. That way the dev player,
 which runs any app, takes each one's, and drops it between apps. On iOS
-it's the windows' tint color, which UIKit's controls and `ui.Accent`
+it's the windows' tint color, which UIKit's controls and `colors.Accent`
 take. On Android it's the seed of a Material 3 color scheme
 (`SchemeContent`, light and dark, as Material's `DynamicColors` makes
 it) on Android 12 and later; before that, Material's baseline colors,
-with Asuka's own uses of the accent (links, `ui.Accent`) taking the color
+with Asuka's own uses of the accent (links, `colors.Accent`) taking the color
 itself. `"android": {"dynamicColor": true}` takes the wallpaper's colors
 instead, where the system has them. The theme context is made again
 and the views that resolved theme colors are rebuilt, as on a dark mode
@@ -1129,6 +1136,8 @@ the new code, with no install. The app's logs are the process's output.
 asuka/
   signal/            reactivity
   ui/                components, nodes, flush, flattening, navigation
+  colors/            semantic colors and RGB/Hex, for a Style
+  fonts/             semantic text styles, weights, families, for a Style
   layout/            flexbox
   ops/               schema, Go encoder; generate writes Swift/Kotlin decoders
   i18n/              languages, catalogs, ICU messages, CLDR's formats

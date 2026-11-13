@@ -6,6 +6,8 @@ import (
 	"math"
 	"strings"
 
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/layout"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
@@ -19,7 +21,7 @@ type Rich []Span
 // the RichText's style (its Font, Color).
 type Span struct {
 	Text      string
-	Font      Font // each zero field (style, size, weight) is the RichText's
+	Font      fonts.Font // each zero field (style, size, weight) is the RichText's
 	Italic    bool
 	Mono      bool  // monospaced, for code
 	Color     Color // 0: the RichText's; a link's default is the accent color
@@ -56,13 +58,15 @@ func Embed(key string, build func() Node) Span {
 func Plain(text string) Span { return Span{Text: text} }
 
 // Strong is a bold span.
-func Strong(text string) Span { return Span{Text: text, Font: Font{Weight: ops.FontWeightBold}} }
+func Strong(text string) Span { return Span{Text: text, Font: fonts.Font{Weight: ops.FontWeightBold}} }
 
 // Em is an italic span.
 func Em(text string) Span { return Span{Text: text, Italic: true} }
 
 // Code is monospaced text on the secondary background.
-func Code(text string) Span { return Span{Text: text, Mono: true, Background: SecondaryBackground} }
+func Code(text string) Span {
+	return Span{Text: text, Mono: true, Background: colors.SecondaryBackground}
+}
 
 // Link is a span that reports url when it's tapped.
 func Link(text, url string) Span { return Span{Text: text, Link: url} }
@@ -74,7 +78,7 @@ func (s Span) Colored(c Color) Span { s.Color = c; return s }
 func (s Span) Highlighted(c Color) Span { s.Background = c; return s }
 
 // Weighted returns s with weight w.
-func (s Span) Weighted(w Weight) Span { s.Font.Weight = w; return s }
+func (s Span) Weighted(w fonts.Weight) Span { s.Font.Weight = w; return s }
 
 // String returns the text without its styles.
 func (r Rich) String() string {
@@ -289,7 +293,7 @@ func RichText(p RichTextProps) Node {
 
 // styleKey is a span's look, deduplicated in the encoding.
 type styleKey struct {
-	font              Font
+	font              fonts.Font
 	flags             byte
 	color, background Color
 	link              string

@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/markdown/parser"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
@@ -255,7 +257,7 @@ func (v *view) block(b signal.Accessor[block], tight bool, quote int) ui.Node {
 						ui.For(cells, func(c block) int { return c.start }, func(c signal.Accessor[block], ci signal.Accessor[int]) ui.Node {
 							font := th.TableFont
 							if header && (v.p.Theme == nil || v.p.Theme.TableFont.Weight == 0) {
-								font = font.Weighted(ui.Semibold)
+								font = font.Weighted(fonts.Semibold)
 							}
 							pad := th.TableCellPadding
 							// Aligned as its column says, on the page: a
@@ -426,7 +428,7 @@ func (v *view) spans(i int) ui.Rich {
 					// Its destination is still being written.
 					t.Link = ""
 					if t.Color == 0 {
-						t.Color = ui.Accent
+						t.Color = colors.Accent
 					}
 				}
 				walk(k+1, n.Next, t)
@@ -436,7 +438,7 @@ func (v *view) spans(i int) ui.Rich {
 					// Its source is still being written: its text, for now.
 					t := s
 					t.Text = "[" + alt + "]"
-					t.Color = ui.SecondaryLabel
+					t.Color = colors.SecondaryLabel
 					out = append(out, t)
 					break
 				}
@@ -455,8 +457,8 @@ func (v *view) spans(i int) ui.Rich {
 			case parser.FootnoteRef:
 				t := s
 				t.Text = "[" + n.Text + "]"
-				t.Color = ui.Accent
-				t.Font.Style = ui.Footnote.Style
+				t.Color = colors.Accent
+				t.Font.Style = fonts.Footnote.Style
 				out = append(out, t)
 			}
 			if n.Next > k+1 {

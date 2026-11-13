@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"testing"
 
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
@@ -96,7 +97,7 @@ func TestTextFieldRich(t *testing.T) {
 	if h.Count(ops.OpSetProp) != 0 {
 		t.Fatalf("the user's edit went back\n%s", h.Log())
 	}
-	if s := rich.Peek(); len(s) != 3 || !s[0].Italic || s[0].Text != "Hello" || s[2].Font.Weight != ui.Bold {
+	if s := rich.Peek(); len(s) != 3 || !s[0].Italic || s[0].Text != "Hello" || s[2].Font.Weight != fonts.Bold {
 		t.Fatalf("rich %+v", s)
 	}
 	// Decoding is canonical: the paragraphs, the link.

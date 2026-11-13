@@ -31,10 +31,10 @@ import (
 //	ui.View(ui.ViewProps{
 //		OnPress:     open,
 //		Interaction: card,
-//		Style: ui.Style{Padding: ui.All(16), CornerRadius: 12, Background: ui.SecondaryBackground,
-//			Hovered: &ui.Style{BorderColor: ui.Accent},
-//			Pressed: &ui.Style{Background: ui.Separator}},
-//	}, ui.Text(title, ui.Style{}.When(card.Hovered, ui.Style{Color: ui.Accent})))
+//		Style: ui.Style{Padding: ui.All(16), CornerRadius: 12, Background: colors.SecondaryBackground,
+//			Hovered: &ui.Style{BorderColor: colors.Accent},
+//			Pressed: &ui.Style{Background: colors.Separator}},
+//	}, ui.Text(title, ui.Style{}.When(card.Hovered, ui.Style{Color: colors.Accent})))
 
 // Interaction is a View's interaction states (ViewProps.Interaction), as
 // values that styles, texts and effects read and follow: Compose's

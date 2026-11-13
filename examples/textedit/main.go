@@ -14,7 +14,9 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/document"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )
@@ -47,7 +49,7 @@ func editor(doc *document.Document[string]) ui.Node {
 	state := doc.State()
 	return ui.Column(ui.Style{Grow: 1},
 		ui.Show(signal.Func(func() bool { return state.Get().Conflict }), func() ui.Node {
-			return ui.Row(ui.Style{Gap: 12, Padding: ui.Symmetric(8, 16), Align: ui.AlignCenter, Background: ui.SecondaryBackground},
+			return ui.Row(ui.Style{Gap: 12, Padding: ui.Symmetric(8, 16), Align: ui.AlignCenter, Background: colors.SecondaryBackground},
 				ui.StaticText("Another app changed this file.", ui.Style{Grow: 1}),
 				ui.Button(ui.ButtonProps{Title: ui.Val("Revert"), OnPress: func() { doc.Revert(nil) }}),
 				ui.Button(ui.ButtonProps{Title: ui.Val("Keep Mine"), Variant: ui.ButtonFilled, OnPress: func() { doc.SaveAnyway(nil) }}),
@@ -57,7 +59,7 @@ func editor(doc *document.Document[string]) ui.Node {
 			Value:     doc.Content(),
 			Multiline: true,
 			Plain:     true,
-			Style:     ui.Style{Grow: 1, Padding: ui.All(16), Font: ui.Custom("monospace", ui.Body)},
+			Style:     ui.Style{Grow: 1, Padding: ui.All(16), Font: fonts.Custom("monospace", fonts.Body)},
 		}),
 		ui.Text(signal.Func(func() string {
 			s := state.Get()
@@ -72,6 +74,6 @@ func editor(doc *document.Document[string]) ui.Node {
 				status = "Edited"
 			}
 			return fmt.Sprintf("%d words · %s", words, status)
-		}), ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel, Padding: ui.Symmetric(6, 16)}),
+		}), ui.Style{Font: fonts.Footnote, Color: colors.SecondaryLabel, Padding: ui.Symmetric(6, 16)}),
 	)
 }

@@ -5,6 +5,7 @@ import (
 	"math"
 	"testing"
 
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/internal/shadercode"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/shader"
@@ -27,7 +28,7 @@ func Fragment(dst vec4, pos vec2) vec4 {
 // A shader sends its compiled code once, and its uniforms' lanes when
 // they change: a vec4's floats where its lanes are, an int as an int.
 func TestShader(t *testing.T) {
-	tint := signal.New(ui.Hex(0x38bdf8))
+	tint := signal.New(colors.Hex(0x38bdf8))
 	h, r := mount(t, func() ui.Node {
 		return ui.Shader(ui.ShaderProps{
 			Program: glow,
@@ -57,12 +58,12 @@ func TestShader(t *testing.T) {
 		t.Fatalf("Count %d", word(at))
 	}
 	h.Reset()
-	tint.Set(ui.Hex(0x38bdf8)) // the same: nothing sent
+	tint.Set(colors.Hex(0x38bdf8)) // the same: nothing sent
 	r.Flush()
 	if h.Count(ops.OpSetProp) != 0 {
 		t.Fatal("unchanged uniforms were sent")
 	}
-	tint.Set(ui.Hex(0xff0000))
+	tint.Set(colors.Hex(0xff0000))
 	r.Flush()
 	if h.Count(ops.OpSetProp) != 1 {
 		t.Fatal("changed uniforms weren't sent")

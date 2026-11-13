@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/host/fake"
 	"github.com/egoist/asuka/internal/boot"
 	"github.com/egoist/asuka/layout"
@@ -112,7 +113,7 @@ func TestFlattenedContainerMakesNoView(t *testing.T) {
 	h, _ := mount(t, func() ui.Node {
 		return ui.Column(ui.Style{Padding: ui.All(10)},
 			ui.Row(ui.Style{Gap: 4}, ui.StaticText("a"), ui.StaticText("b")),
-			ui.View(ui.ViewProps{Style: ui.Style{Background: ui.Red}}, ui.StaticText("c")),
+			ui.View(ui.ViewProps{Style: ui.Style{Background: colors.Red}}, ui.StaticText("c")),
 		)
 	})
 	views := h.OfKind(ops.KindView)
@@ -132,7 +133,7 @@ func TestStyleFuncMakesContainerReal(t *testing.T) {
 			ui.Column(ui.StyleFunc(func() ui.Style {
 				s := ui.Style{Padding: ui.All(5)}
 				if on.Get() {
-					s.Background = ui.Blue
+					s.Background = colors.Blue
 				}
 				return s
 			}), ui.StaticText("x")),
@@ -531,7 +532,7 @@ func TestAccent(t *testing.T) {
 		t.Fatalf("%d accent commands", len(cmds))
 	}
 	args := cmds[0].Value.Bytes
-	if len(args) != 9 || ops.Color(binary.LittleEndian.Uint64(args)) != ui.RGB(0x7c, 0x3a, 0xed) || args[8] != 1 {
+	if len(args) != 9 || ops.Color(binary.LittleEndian.Uint64(args)) != colors.RGB(0x7c, 0x3a, 0xed) || args[8] != 1 {
 		t.Fatalf("args %v", args)
 	}
 	for i, op := range h.Ops {
@@ -544,10 +545,10 @@ func TestAccent(t *testing.T) {
 			break
 		}
 	}
-	if c, ok := ui.ParseHex("7c3aed80"); !ok || c != ui.RGBA(0x7c, 0x3a, 0xed, 0x80) {
+	if c, ok := colors.ParseHex("7c3aed80"); !ok || c != colors.RGBA(0x7c, 0x3a, 0xed, 0x80) {
 		t.Fatalf("ParseHex %x %v", c, ok)
 	}
-	if _, ok := ui.ParseHex("#7c3ae"); ok {
+	if _, ok := colors.ParseHex("#7c3ae"); ok {
 		t.Fatal("ParseHex took 5 digits")
 	}
 }
@@ -557,8 +558,8 @@ func TestAccent(t *testing.T) {
 func TestSymbol(t *testing.T) {
 	h, _ := mount(t, func() ui.Node {
 		return ui.Column(ui.Style{},
-			ui.Symbol(ui.IconHeart.Filled(), ui.Style{Color: ui.Red}),
-			ui.Symbol(ui.IconHeart.Filled(), ui.Style{Color: ui.Red}),
+			ui.Symbol(ui.IconHeart.Filled(), ui.Style{Color: colors.Red}),
+			ui.Symbol(ui.IconHeart.Filled(), ui.Style{Color: colors.Red}),
 			ui.Button(ui.ButtonProps{Title: ui.Val("Share"), Icon: ui.IconShare, Menu: []ui.Action{
 				{Title: ui.Val("Copy"), Icon: ui.IconCopy}, {Title: ui.Val("Delete"), Role: ui.ActionDestructive},
 			}}),
@@ -751,8 +752,8 @@ func TestTransformShadowGradient(t *testing.T) {
 	h, r := mount(t, func() ui.Node {
 		return ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style {
 			return ui.Style{Transform: ui.Transform{TranslateX: 10, Scale: 2, Rotate: spin.Get()},
-				Shadow:   ui.Shadow{Color: ui.Label, Radius: 8, Y: 2},
-				Gradient: ui.LinearGradient(ui.Red, ui.Blue)}
+				Shadow:   ui.Shadow{Color: colors.Label, Radius: 8, Y: 2},
+				Gradient: ui.LinearGradient(colors.Red, colors.Blue)}
 		})}, ui.StaticText("x"))
 	})
 	v := h.Find(ops.KindView, "")[0]
@@ -1147,24 +1148,24 @@ func TestWheelStepper(t *testing.T) {
 }
 
 func TestColorPicker(t *testing.T) {
-	c := signal.New(ui.Hex(0x3366cc))
+	c := signal.New(colors.Hex(0x3366cc))
 	h, r := mount(t, func() ui.Node {
 		return ui.Row(ui.Style{Align: ui.AlignStart}, ui.ColorPicker(ui.ColorPickerProps{Value: c, Alpha: true, Title: ui.Val("Tint")}))
 	})
 	p := h.OfKind(ops.KindColorPicker)[0]
-	if ops.Color(p.Int(ops.PropColorPickerValue)) != ui.Hex(0x3366cc) || !p.Bool(ops.PropColorPickerAlpha) || p.String(ops.PropColorPickerTitle) != "Tint" || p.Frame[2] != 28 || p.Frame[3] != 28 {
+	if ops.Color(p.Int(ops.PropColorPickerValue)) != colors.Hex(0x3366cc) || !p.Bool(ops.PropColorPickerAlpha) || p.String(ops.PropColorPickerTitle) != "Tint" || p.Frame[2] != 28 || p.Frame[3] != 28 {
 		t.Fatalf("props %v frame %v", p.Props, p.Frame)
 	}
 	// The user's choice is the signal's, and isn't sent back.
 	h.Reset()
-	h.PickColor(p, ui.RGBA(255, 0, 0, 128))
+	h.PickColor(p, colors.RGBA(255, 0, 0, 128))
 	r.Flush()
-	if c.Peek() != ui.RGBA(255, 0, 0, 128) || h.Count(ops.OpSetProp) != 0 {
+	if c.Peek() != colors.RGBA(255, 0, 0, 128) || h.Count(ops.OpSetProp) != 0 {
 		t.Fatalf("picked %x\n%s", uint64(c.Peek()), h.Log())
 	}
-	c.Set(ui.Hex(0x00ff00))
+	c.Set(colors.Hex(0x00ff00))
 	r.Flush()
-	if ops.Color(p.Int(ops.PropColorPickerValue)) != ui.Hex(0x00ff00) || h.Count(ops.OpSetProp) != 1 {
+	if ops.Color(p.Int(ops.PropColorPickerValue)) != colors.Hex(0x00ff00) || h.Count(ops.OpSetProp) != 1 {
 		t.Fatalf("after the app's write\n%s", h.Log())
 	}
 	r.Dispose()

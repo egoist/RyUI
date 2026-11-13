@@ -12,7 +12,7 @@ cleanup, the main thread, and the environment.
 ```go
 func App() ui.Node {
 	return ui.SafeArea(ui.Style{Padding: ui.All(16), Gap: 12},
-		ui.StaticText("Hello", ui.Style{Font: ui.LargeTitle}),
+		ui.StaticText("Hello", ui.Style{Font: fonts.LargeTitle}),
 		Greeting("Ada"),
 	)
 }
@@ -340,7 +340,7 @@ func Clock() ui.Node {
 		ticker.Stop()
 		close(done)
 	})
-	return ui.Text(now, ui.Style{Font: ui.Title.Weighted(ui.Semibold)})
+	return ui.Text(now, ui.Style{Font: fonts.Title.Weighted(fonts.Semibold)})
 }
 ```
 

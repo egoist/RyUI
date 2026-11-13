@@ -15,9 +15,11 @@ import (
 	"github.com/egoist/asuka/camera"
 	"github.com/egoist/asuka/camera/record"
 	"github.com/egoist/asuka/chart"
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/compose"
 	"github.com/egoist/asuka/crash"
 	"github.com/egoist/asuka/device"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/location"
 	"github.com/egoist/asuka/notify"
 	"github.com/egoist/asuka/preview"
@@ -47,7 +49,7 @@ func App() ui.Node {
 	}
 	return ui.SplitView(ui.SplitViewProps{Title: ui.Val("Gallery"), Sections: []ui.SidebarSection{
 		{Title: ui.Val("Views"), Destinations: []ui.Destination{
-			dest("Text and fonts", "textformat", page(fonts, textInput)),
+			dest("Text and fonts", "textformat", page(fontsPage, textInput)),
 			dest("Symbols", ui.IconHome, page(symbols)),
 			dest("Images", ui.IconPhoto, page(images)),
 			dest("Video", "play.rectangle", page(video)),
@@ -99,7 +101,7 @@ func motionPage() ui.Node {
 // section is a titled group of examples.
 func section(title string, kids ...ui.Node) ui.Node {
 	return ui.Column(ui.Style{Gap: 12},
-		append([]ui.Node{ui.StaticText(title, ui.Style{Font: ui.Headline})}, kids...)...)
+		append([]ui.Node{ui.StaticText(title, ui.Style{Font: fonts.Headline})}, kids...)...)
 }
 
 func symbols() ui.Node {
@@ -113,9 +115,9 @@ func symbols() ui.Node {
 	return section("Symbols",
 		ui.Row(ui.Style{Gap: 14, Wrap: true}, row...),
 		ui.Row(ui.Style{Gap: 14, Align: ui.AlignCenter},
-			ui.Symbol(ui.IconStar.Filled(), ui.Style{Color: ui.Yellow, Font: ui.Title}),
-			ui.Symbol(ui.IconHeart.Filled(), ui.Style{Color: ui.Red, Font: ui.Title2}),
-			ui.Symbol(ui.IconCheck, ui.Style{Color: ui.Green, Font: ui.Caption}),
+			ui.Symbol(ui.IconStar.Filled(), ui.Style{Color: colors.Yellow, Font: fonts.Title}),
+			ui.Symbol(ui.IconHeart.Filled(), ui.Style{Color: colors.Red, Font: fonts.Title2}),
+			ui.Symbol(ui.IconCheck, ui.Style{Color: colors.Green, Font: fonts.Caption}),
 		),
 		ui.Row(ui.Style{Gap: 12, Wrap: true},
 			ui.Button(ui.ButtonProps{Title: ui.Val("Compose"), Icon: ui.IconCompose, Variant: ui.ButtonFilled}),
@@ -134,16 +136,16 @@ func symbols() ui.Node {
 	)
 }
 
-// fonts: a font file in the app's assets (assets/fonts/Pacifico-Regular.ttf,
+// fontsPage: a font file in the app's assets (assets/fonts/Pacifico-Regular.ttf,
 // under the SIL Open Font License), and a system family. Both scale with
 // the text size the user picked, as the text styles do.
-func fonts() ui.Node {
+func fontsPage() ui.Node {
 	return section("Fonts",
-		ui.StaticText("Hello from Pacifico", ui.Style{Font: ui.Custom("Pacifico-Regular", ui.Title)}),
-		ui.StaticText("The system's serif, in bold", ui.Style{Font: ui.Font{Family: "serif", Weight: ui.Bold}}),
-		ui.StaticText("And its monospace", ui.Style{Font: ui.Custom("monospace", ui.Callout)}),
+		ui.StaticText("Hello from Pacifico", ui.Style{Font: fonts.Custom("Pacifico-Regular", fonts.Title)}),
+		ui.StaticText("The system's serif, in bold", ui.Style{Font: fonts.Font{Family: "serif", Weight: fonts.Bold}}),
+		ui.StaticText("And its monospace", ui.Style{Font: fonts.Custom("monospace", fonts.Callout)}),
 		ui.Button(ui.ButtonProps{Title: ui.Val("A button in Pacifico"), Variant: ui.ButtonTinted,
-			Style: ui.Style{Font: ui.Font{Family: "Pacifico-Regular"}}}),
+			Style: ui.Style{Font: fonts.Font{Family: "Pacifico-Regular"}}}),
 	)
 }
 
@@ -169,7 +171,7 @@ func video() ui.Node {
 		ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
 			ui.Button(ui.ButtonProps{Title: ui.Val("Start over"), Variant: ui.ButtonGray, OnPress: func() { ui.Seek(v, 0); ui.Play(v) }}),
 			ui.Text(signal.Func(func() string { return fmt.Sprintf("Played through %d times", ends.Get()) }),
-				ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel})))
+				ui.Style{Font: fonts.Footnote, Color: colors.SecondaryLabel})))
 }
 
 // shapes draws outlines (ui.Shape): a ring whose trim animates, and a
@@ -179,11 +181,11 @@ func shapes() ui.Node {
 	return section("Shapes",
 		ui.Row(ui.Style{Gap: 24, Align: ui.AlignCenter, Wrap: true}, // on a narrow phone, the button goes under
 			ui.View(ui.ViewProps{Label: ui.Val("Progress"), Style: ui.Style{Width: ui.Pt(72), Height: ui.Pt(72)}},
-				ui.Shape(ui.ShapeProps{Path: ring, Stroke: ui.SecondaryBackground, LineWidth: 8,
+				ui.Shape(ui.ShapeProps{Path: ring, Stroke: colors.SecondaryBackground, LineWidth: 8,
 					Style: ui.Style{Absolute: true, Left: ui.Pt(0), Top: ui.Pt(0), Width: ui.Pt(72), Height: ui.Pt(72)}}),
-				ui.Shape(ui.ShapeProps{Path: ring, Stroke: ui.Accent, LineWidth: 8, LineCap: ui.CapRound, TrimEnd: done,
+				ui.Shape(ui.ShapeProps{Path: ring, Stroke: colors.Accent, LineWidth: 8, LineCap: ui.CapRound, TrimEnd: done,
 					Style: ui.Style{Absolute: true, Left: ui.Pt(0), Top: ui.Pt(0), Width: ui.Pt(72), Height: ui.Pt(72)}})),
-			ui.Shape(ui.ShapeProps{Path: star, Fill: ui.Orange, Style: ui.Style{Width: ui.Pt(72), Height: ui.Pt(72)}}),
+			ui.Shape(ui.ShapeProps{Path: star, Fill: colors.Orange, Style: ui.Style{Width: ui.Pt(72), Height: ui.Pt(72)}}),
 			ui.Button(ui.ButtonProps{Title: ui.Val("Fill the ring"), Variant: ui.ButtonGray, OnPress: func() {
 				next := float32(0.3)
 				if done.Peek() < 1 {
@@ -237,7 +239,7 @@ func textInput() ui.Node {
 				return "Grows to five lines, then scrolls."
 			}
 			return "Sent: " + sent.Get()
-		}), ui.Style{Color: ui.SecondaryLabel, Font: ui.Footnote}),
+		}), ui.Style{Color: colors.SecondaryLabel, Font: fonts.Footnote}),
 	)
 }
 
@@ -249,12 +251,12 @@ func controls() ui.Node {
 	sizes := []string{"Extra small", "Small", "Medium", "Large", "Extra large"}
 	size := signal.New(2)
 	cups := signal.New(2.0)
-	tint := signal.New(ui.Hex(0x039be5))
+	tint := signal.New(colors.Hex(0x039be5))
 	return section("Controls",
 		ui.Segmented(ui.SegmentedProps{Segments: ui.Val([]string{"Day", "Week", "Month"}), Selected: period}),
 		ui.Text(signal.Func(func() string {
 			return []string{"Today", "This week", "This month"}[period.Get()]
-		}), ui.Style{Color: ui.SecondaryLabel}),
+		}), ui.Style{Color: colors.SecondaryLabel}),
 		ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
 			ui.Symbol(ui.IconSpeaker),
 			ui.Slider(ui.SliderProps{Value: volume, Style: ui.Style{Grow: 1}}),
@@ -271,20 +273,20 @@ func controls() ui.Node {
 		),
 		ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
 			ui.Activity(),
-			ui.StaticText("Loading…", ui.Style{Color: ui.SecondaryLabel}),
+			ui.StaticText("Loading…", ui.Style{Color: colors.SecondaryLabel}),
 		),
 		ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
 			ui.Text(signal.Func(func() string { return fmt.Sprintf("%.0f cups", cups.Get()) }), ui.Style{Grow: 1}),
 			ui.Stepper(ui.StepperProps{Value: cups, Min: 1, Max: 8}),
 		),
 		ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
-			ui.Symbol(ui.Icon("heart.fill"), ui.StyleFunc(func() ui.Style { return ui.Style{Color: tint.Get(), Font: ui.Title2} })),
+			ui.Symbol(ui.Icon("heart.fill"), ui.StyleFunc(func() ui.Style { return ui.Style{Color: tint.Get(), Font: fonts.Title2} })),
 			ui.StaticText("Tint", ui.Style{Grow: 1}),
 			ui.ColorPicker(ui.ColorPickerProps{Value: tint, Alpha: true, Title: ui.Val("Tint")}),
 		),
 		popover(),
 		ui.Wheel(ui.WheelProps{Items: ui.Val(sizes), Selected: size}),
-		ui.Text(signal.Func(func() string { return "Size: " + sizes[size.Get()] }), ui.Style{Color: ui.SecondaryLabel}),
+		ui.Text(signal.Func(func() string { return "Size: " + sizes[size.Get()] }), ui.Style{Color: colors.SecondaryLabel}),
 	)
 }
 
@@ -312,7 +314,7 @@ func editor() ui.Node {
 		Accessory: func() ui.Node {
 			return ui.Row(ui.Style{Padding: ui.Symmetric(6, 16), Align: ui.AlignCenter, Material: ui.MaterialBar},
 				ui.Text(signal.Func(func() string { return fmt.Sprintf("%d characters", len([]rune(text.Get()))) }),
-					ui.Style{Grow: 1, Color: ui.SecondaryLabel, Font: ui.Footnote}),
+					ui.Style{Grow: 1, Color: colors.SecondaryLabel, Font: fonts.Footnote}),
 				ui.Button(ui.ButtonProps{Title: ui.Val("Done"), OnPress: func() { ui.Blur(field) }}))
 		}})
 	return ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 12},
@@ -328,9 +330,9 @@ func popover() ui.Node {
 		ui.StaticText("Popover", ui.Style{Grow: 1}),
 		ui.Popover(ui.PopoverProps{Open: open, MaxWidth: 280, Content: func() ui.Node {
 			return ui.Column(ui.Style{Padding: ui.All(16), Gap: 8},
-				ui.StaticText("About this gallery", ui.Style{Font: ui.Headline}),
+				ui.StaticText("About this gallery", ui.Style{Font: fonts.Headline}),
 				ui.StaticText("Every view here is the platform's own, laid out by Asuka's core and driven by signals.",
-					ui.Style{Color: ui.SecondaryLabel}),
+					ui.Style{Color: colors.SecondaryLabel}),
 				ui.Button(ui.ButtonProps{Title: ui.Val("Done"), Variant: ui.ButtonTinted, OnPress: func() { open.Set(false) }}))
 		}}, ui.Button(ui.ButtonProps{Icon: ui.Icon("info.circle"), Label: ui.Val("About"), Tooltip: ui.Val("About"),
 			OnPress: func() { open.Set(true) }})))
@@ -361,17 +363,17 @@ func canvas() ui.Node {
 			cx, cy := w/2, h-12
 			r := min(w/2, cy) - 10 // room for half the stroke
 			track := g.Path().Arc(cx, cy, r, math.Pi, 2*math.Pi, true)
-			g.Stroke(track, ui.SecondaryBackground, ui.StrokeStyle{Width: 14, Cap: ui.CapRound})
+			g.Stroke(track, colors.SecondaryBackground, ui.StrokeStyle{Width: 14, Cap: ui.CapRound})
 			v := float32(level.Get())
 			arc := g.Path().Arc(cx, cy, r, math.Pi, math.Pi*float32(1+v), true)
-			g.Stroke(arc, ui.Accent, ui.StrokeStyle{Width: 14, Cap: ui.CapRound})
+			g.Stroke(arc, colors.Accent, ui.StrokeStyle{Width: 14, Cap: ui.CapRound})
 			for i := 0; i <= 10; i++ {
 				a := math.Pi * (1 + float64(i)/10)
 				x0, y0 := cx+float32(math.Cos(a))*(r-22), cy+float32(math.Sin(a))*(r-22)
 				x1, y1 := cx+float32(math.Cos(a))*(r-30), cy+float32(math.Sin(a))*(r-30)
-				g.Stroke(g.Path().MoveTo(x0, y0).LineTo(x1, y1), ui.TertiaryLabel, ui.StrokeStyle{Width: 2, Cap: ui.CapRound})
+				g.Stroke(g.Path().MoveTo(x0, y0).LineTo(x1, y1), colors.TertiaryLabel, ui.StrokeStyle{Width: 2, Cap: ui.CapRound})
 			}
-			g.Text(fmt.Sprintf("%.0f%%", v*100), cx, cy-8, ui.TextStyle{Size: 34, Weight: ui.Semibold, Align: ui.TextCenter})
+			g.Text(fmt.Sprintf("%.0f%%", v*100), cx, cy-8, ui.TextStyle{Size: 34, Weight: fonts.Semibold, Align: ui.TextCenter})
 		}, ui.Style{Height: ui.Pt(170)}),
 		ui.Slider(ui.SliderProps{Value: level}),
 		// A GPU program: an aurora that flows, in the slider's hue.
@@ -381,7 +383,7 @@ func canvas() ui.Node {
 				return []ui.Uniform{{Name: "Tint", Value: []float32{0.2, float32(0.5 + level.Get()*0.5), 0.6, 1}}}
 			}),
 			Animated: true,
-			Style:    ui.Style{Height: ui.Pt(140), CornerRadius: 16, Clip: true, Background: ui.Hex(0x0b1030)},
+			Style:    ui.Style{Height: ui.Pt(140), CornerRadius: 16, Clip: true, Background: colors.Hex(0x0b1030)},
 		}),
 	)
 }
@@ -397,7 +399,7 @@ func charts() ui.Node {
 		chart.View(chart.Props{
 			Series: ui.Val([]chart.Series{
 				{Name: "Heart rate", Kind: chart.Area, Smooth: true, Values: []float64{62, 71, 68, 90, 84, 76, 70}},
-				{Name: "Resting", Kind: chart.Line, Color: ui.Hex(0xff9500), Values: []float64{58, 58, 59, 60, 59, 58, 57}},
+				{Name: "Resting", Kind: chart.Line, Color: colors.Hex(0xff9500), Values: []float64{58, 58, 59, 60, 59, 58, 57}},
 			}),
 			Labels: days, Label: ui.Val("Heart rate this week"), Style: ui.Style{Height: ui.Pt(180)},
 		}),
@@ -407,20 +409,20 @@ func charts() ui.Node {
 // pages is a carousel: a paging Scroll and a PageControl sharing a page.
 func pages() ui.Node {
 	page := signal.New(0)
-	colors := []ui.Color{ui.Hex(0x039be5), ui.Hex(0x43a047), ui.Hex(0xfb8c00), ui.Hex(0x8e24aa)}
-	cards := make([]ui.Node, len(colors))
-	for i, c := range colors {
+	tints := []ui.Color{colors.Hex(0x039be5), colors.Hex(0x43a047), colors.Hex(0xfb8c00), colors.Hex(0x8e24aa)}
+	cards := make([]ui.Node, len(tints))
+	for i, c := range tints {
 		cards[i] = ui.View(ui.ViewProps{Style: ui.Style{Background: c, CornerRadius: 16, Margin: ui.Symmetric(0, 4), Justify: ui.JustifyCenter, Align: ui.AlignCenter}},
-			ui.StaticText(fmt.Sprintf("Page %d", i+1), ui.Style{Font: ui.Title2, Color: ui.RGB(255, 255, 255)}))
+			ui.StaticText(fmt.Sprintf("Page %d", i+1), ui.Style{Font: fonts.Title2, Color: colors.RGB(255, 255, 255)}))
 	}
 	return section("Pages",
 		ui.Scroll(ui.ScrollProps{Horizontal: true, Paging: true, Page: page, Style: ui.Style{Height: ui.Pt(160)}}, cards...),
 		ui.Row(ui.Style{Justify: ui.JustifyCenter, Align: ui.AlignCenter, Gap: 8},
 			ui.Button(ui.ButtonProps{Icon: ui.Icon("chevron.backward"), Tooltip: ui.Val("Previous page"), Label: ui.Val("Previous page"),
 				OnPress: func() { page.Set(max(page.Peek()-1, 0)) }}),
-			ui.PageControl(ui.PageControlProps{Count: ui.Val(len(colors)), Page: page}),
+			ui.PageControl(ui.PageControlProps{Count: ui.Val(len(tints)), Page: page}),
 			ui.Button(ui.ButtonProps{Icon: ui.Icon("chevron.forward"), Tooltip: ui.Val("Next page"), Label: ui.Val("Next page"),
-				OnPress: func() { page.Set(min(page.Peek()+1, len(colors)-1)) }})),
+				OnPress: func() { page.Set(min(page.Peek()+1, len(tints)-1)) }})),
 	)
 }
 
@@ -437,7 +439,7 @@ func dates() ui.Node {
 		row("Starts", ui.DateAndTime),
 		ui.DatePicker(ui.DatePickerProps{Value: when, Inline: true, Min: time.Now()}),
 		ui.Text(signal.Func(func() string { return when.Get().Format("Mon Jan 2, 15:04") }),
-			ui.Style{Color: ui.SecondaryLabel, Font: ui.Footnote}),
+			ui.Style{Color: colors.SecondaryLabel, Font: fonts.Footnote}),
 	)
 }
 
@@ -487,7 +489,7 @@ func photos() ui.Node {
 
 // photo is one photo, large: its screen zooms out of the grid's.
 func photo(id int) ui.Node {
-	return ui.Column(ui.Style{Grow: 1, Background: ui.RGB(0, 0, 0), Justify: ui.JustifyCenter},
+	return ui.Column(ui.Style{Grow: 1, Background: colors.RGB(0, 0, 0), Justify: ui.JustifyCenter},
 		ui.Image(ui.ImageProps{Source: ui.Val(fmt.Sprintf("https://picsum.photos/id/%d/1200/1200", id)),
 			Placeholder: "placeholder.png", Mode: ui.ImageFit, Style: ui.Style{AspectRatio: 1}}))
 }
@@ -518,10 +520,10 @@ func inbox() ui.Node {
 			Actions: []ui.A11yAction{{Name: ui.Val("Archive"), Do: act}, {Name: ui.Val("Delete"), Do: act}},
 			Style:   ui.Style{Direction: ui.RowDir, Padding: ui.Symmetric(12, 20), Gap: 12, Align: ui.AlignCenter},
 		},
-			ui.Symbol(ui.IconPerson.Filled(), ui.Style{Color: ui.SecondaryLabel, Font: ui.Title2}),
+			ui.Symbol(ui.IconPerson.Filled(), ui.Style{Color: colors.SecondaryLabel, Font: fonts.Title2}),
 			ui.Column(ui.Style{Grow: 1, Gap: 2},
-				ui.Text(signal.Func(func() string { return m.Get().from }), ui.Style{Font: ui.Headline}),
-				ui.Text(signal.Func(func() string { return m.Get().subject }), ui.Style{Color: ui.SecondaryLabel}),
+				ui.Text(signal.Func(func() string { return m.Get().from }), ui.Style{Font: fonts.Headline}),
+				ui.Text(signal.Func(func() string { return m.Get().subject }), ui.Style{Color: colors.SecondaryLabel}),
 			),
 		)
 	})
@@ -559,13 +561,13 @@ func settings() ui.Node {
 	}, items, func(s setting) string { return s.title }, func(s signal.Accessor[setting], _ signal.Accessor[int]) ui.Node {
 		it := signal.Untrack(s.Get)
 		kids := []ui.Node{
-			ui.Symbol(it.icon, ui.Style{Color: ui.Accent}),
+			ui.Symbol(it.icon, ui.Style{Color: colors.Accent}),
 			ui.StaticText(it.title, ui.Style{Grow: 1}),
 		}
 		if it.on != nil {
 			kids = append(kids, ui.Toggle(ui.ToggleProps{Value: it.on}))
 		} else {
-			kids = append(kids, ui.Symbol(ui.IconForward, ui.Style{Color: ui.TertiaryLabel}))
+			kids = append(kids, ui.Symbol(ui.IconForward, ui.Style{Color: colors.TertiaryLabel}))
 		}
 		return ui.Row(ui.Style{Padding: ui.Symmetric(10, 16), MinHeight: ui.Pt(52), Gap: 16, Align: ui.AlignCenter}, kids...)
 	})
@@ -574,7 +576,7 @@ func settings() ui.Node {
 func services() ui.Node {
 	copied := signal.New(false)
 	return section("Services",
-		ui.StaticText("The segment above is kept: relaunch to see it.", ui.Style{Color: ui.SecondaryLabel, Font: ui.Footnote}),
+		ui.StaticText("The segment above is kept: relaunch to see it.", ui.Style{Color: colors.SecondaryLabel, Font: fonts.Footnote}),
 		ui.Row(ui.Style{Gap: 12},
 			ui.Button(ui.ButtonProps{Title: signal.Func(func() string {
 				if copied.Get() {
@@ -662,7 +664,7 @@ func documents() ui.Node {
 				})
 			}}),
 		),
-		ui.Text(status, ui.Style{Color: ui.SecondaryLabel, Font: ui.Footnote}),
+		ui.Text(status, ui.Style{Color: colors.SecondaryLabel, Font: fonts.Footnote}),
 	)
 }
 
@@ -682,15 +684,15 @@ func motion(toast *signal.Signal[bool]) ui.Node {
 				t = ui.Transform{Rotate: 6, Scale: 1.04}
 			}
 			return ui.Style{Height: ui.Pt(120), CornerRadius: 20, Padding: ui.All(20), Justify: ui.JustifyEnd,
-				Gradient:  ui.LinearGradient(ui.RGB(99, 102, 241), ui.RGB(236, 72, 153)),
-				Shadow:    ui.Shadow{Color: ui.RGBA(0, 0, 0, 80), Radius: 16, Y: 8},
+				Gradient:  ui.LinearGradient(colors.RGB(99, 102, 241), colors.RGB(236, 72, 153)),
+				Shadow:    ui.Shadow{Color: colors.RGBA(0, 0, 0, 80), Radius: 16, Y: 8},
 				Transform: t}
 		}),
-	}, ui.StaticText("Tap me", ui.Style{Color: ui.RGB(255, 255, 255), Font: ui.Title3.Weighted(ui.Bold)}),
+	}, ui.StaticText("Tap me", ui.Style{Color: colors.RGB(255, 255, 255), Font: fonts.Title3.Weighted(fonts.Bold)}),
 		// A material: frosted glass over the gradient.
 		ui.View(ui.ViewProps{Style: ui.Style{Absolute: true, Top: ui.Pt(16), Right: ui.Pt(16), Material: ui.MaterialThin,
 			CornerRadius: 12, Padding: ui.Symmetric(6, 12)}},
-			ui.StaticText("Material", ui.Style{Font: ui.Footnote.Weighted(ui.Semibold)})))
+			ui.StaticText("Material", ui.Style{Font: fonts.Footnote.Weighted(fonts.Semibold)})))
 	puck := ui.View(ui.ViewProps{
 		OnPan: func(g ui.Gesture) {
 			if g.State == ui.GestureEnded || g.State == ui.GestureCancelled {
@@ -709,8 +711,8 @@ func motion(toast *signal.Signal[bool]) ui.Node {
 		},
 		Style: ui.StyleFunc(func() ui.Style {
 			g := drag.Get()
-			return ui.Style{Width: ui.Pt(64), Height: ui.Pt(64), CornerRadius: 32, Background: ui.Accent,
-				Shadow:    ui.Shadow{Color: ui.RGBA(0, 0, 0, 60), Radius: 10, Y: 4},
+			return ui.Style{Width: ui.Pt(64), Height: ui.Pt(64), CornerRadius: 32, Background: colors.Accent,
+				Shadow:    ui.Shadow{Color: colors.RGBA(0, 0, 0, 60), Radius: 10, Y: 4},
 				Transform: ui.Transform{TranslateX: g.TranslationX, TranslateY: g.TranslationY}}
 		}),
 	})
@@ -718,7 +720,7 @@ func motion(toast *signal.Signal[bool]) ui.Node {
 		card,
 		ui.Row(ui.Style{Gap: 16, Align: ui.AlignCenter},
 			puck,
-			ui.StaticText("Drag the dot; it springs back.", ui.Style{Color: ui.SecondaryLabel, Font: ui.Footnote, Grow: 1}),
+			ui.StaticText("Drag the dot; it springs back.", ui.Style{Color: colors.SecondaryLabel, Font: fonts.Footnote, Grow: 1}),
 		),
 		matched(),
 		pulse(),
@@ -744,19 +746,19 @@ func matched() ui.Node {
 	}
 	art := func(size ui.Dim, radius float32) ui.Style {
 		return ui.Style{Width: size, Height: size, AspectRatio: 1, CornerRadius: radius, Match: "album",
-			Gradient: ui.LinearGradient(ui.RGB(251, 146, 60), ui.RGB(219, 39, 119))}
+			Gradient: ui.LinearGradient(colors.RGB(251, 146, 60), colors.RGB(219, 39, 119))}
 	}
 	return ui.Column(ui.Style{},
 		ui.Show(open, func() ui.Node {
 			return ui.View(ui.ViewProps{OnPress: toggle, Label: ui.Val("Night Drive, close"),
 				Style: ui.Style{Gap: 12, Align: ui.AlignCenter}},
 				ui.View(ui.ViewProps{Style: art(ui.Pt(240), 24)}),
-				ui.StaticText("Night Drive", ui.Style{Font: ui.Title2.Weighted(ui.Bold), Match: "album-title"}))
+				ui.StaticText("Night Drive", ui.Style{Font: fonts.Title2.Weighted(fonts.Bold), Match: "album-title"}))
 		}, func() ui.Node {
 			return ui.View(ui.ViewProps{OnPress: toggle, Label: ui.Val("Night Drive, open"),
 				Style: ui.Style{Direction: ui.RowDir, Gap: 12, Align: ui.AlignCenter}},
 				ui.View(ui.ViewProps{Style: art(ui.Pt(56), 10)}),
-				ui.StaticText("Night Drive", ui.Style{Font: ui.Headline, Match: "album-title"}))
+				ui.StaticText("Night Drive", ui.Style{Font: fonts.Headline, Match: "album-title"}))
 		}))
 }
 
@@ -778,7 +780,7 @@ func spinner() ui.Node {
 	return ui.Row(ui.Style{Gap: 16, Align: ui.AlignCenter},
 		ui.View(ui.ViewProps{Decorative: true, Style: ui.StyleFunc(func() ui.Style {
 			return ui.Style{Width: ui.Pt(64), Justify: ui.JustifyCenter, Align: ui.AlignCenter, Transform: ui.Transform{Rotate: angle.Get()}}
-		})}, ui.Symbol(ui.IconSettings, ui.Style{Font: ui.LargeTitle, Color: ui.Accent})),
+		})}, ui.Symbol(ui.IconSettings, ui.Style{Font: fonts.LargeTitle, Color: colors.Accent})),
 		ui.Slider(ui.SliderProps{Value: speed, Min: 0, Max: 2, Style: ui.Style{Grow: 1}}))
 }
 
@@ -803,12 +805,12 @@ func turner() ui.Node {
 				}
 			},
 			Style: ui.StyleFunc(func() ui.Style {
-				return ui.Style{Width: ui.Pt(160), Height: ui.Pt(160), CornerRadius: 24, Background: ui.Purple,
+				return ui.Style{Width: ui.Pt(160), Height: ui.Pt(160), CornerRadius: 24, Background: colors.Purple,
 					Transform: ui.Transform{Rotate: angle.Get(), Scale: scale.Get()}}
 			}),
 		}),
 		ui.Text(signal.Func(func() string { return fmt.Sprintf("Turned %.0f°, at %.1f×", angle.Get(), scale.Get()) }),
-			ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel}))
+			ui.Style{Font: fonts.Footnote, Color: colors.SecondaryLabel}))
 }
 
 func pulse() ui.Node {
@@ -816,7 +818,7 @@ func pulse() ui.Node {
 	return ui.Row(ui.Style{Gap: 16, Align: ui.AlignCenter},
 		ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(64), Height: ui.Pt(64), Justify: ui.JustifyCenter, Align: ui.AlignCenter}},
 			ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style {
-				s := ui.Style{Width: ui.Pt(24), Height: ui.Pt(24), CornerRadius: 12, Background: ui.Red}
+				s := ui.Style{Width: ui.Pt(24), Height: ui.Pt(24), CornerRadius: 12, Background: colors.Red}
 				if on.Get() {
 					s.Transform = ui.Transform{Scale: 1.6}
 					s.Opacity = 0.35
@@ -851,7 +853,7 @@ func platform() ui.Node {
 		}
 	}()
 	return section("Platform",
-		ui.Text(info, ui.Style{Color: ui.SecondaryLabel}),
+		ui.Text(info, ui.Style{Color: colors.SecondaryLabel}),
 		ui.Row(ui.Style{Gap: 12, Wrap: true},
 			ui.Button(ui.ButtonProps{Title: ui.Val("Keep a secret"), Icon: ui.IconLock, Variant: ui.ButtonGray, OnPress: func() {
 				secure.Save("token", "s3cr3t-"+time.Now().Format("150405"), func(err error) {
@@ -924,8 +926,8 @@ func platform() ui.Node {
 				}()
 			}}),
 		),
-		ui.Text(secret, ui.Style{Color: ui.SecondaryLabel, Font: ui.Footnote}),
-		ui.Text(where, ui.Style{Color: ui.SecondaryLabel, Font: ui.Footnote}),
+		ui.Text(secret, ui.Style{Color: colors.SecondaryLabel, Font: fonts.Footnote}),
+		ui.Text(where, ui.Style{Color: colors.SecondaryLabel, Font: fonts.Footnote}),
 		ui.Row(ui.Style{Gap: 8}, ui.For(photos, func(p string) string { return p }, func(p signal.Accessor[string], _ signal.Accessor[int]) ui.Node {
 			return ui.Image(ui.ImageProps{Source: p, Mode: ui.ImageFill, Style: ui.Style{Width: ui.Pt(96), Height: ui.Pt(96), CornerRadius: 12, Clip: true}})
 		})),
@@ -940,7 +942,7 @@ func crashes() ui.Node {
 	crash.OnReport(func(r crash.Report) { reports.Set(append(reports.Peek(), r)) })
 	crash.Breadcrumb("gallery: opened")
 	return section("Crash reports",
-		ui.StaticText("Crash the app, open it again: the crash is here, with what the app was doing.", ui.Style{Color: ui.SecondaryLabel, Font: ui.Footnote}),
+		ui.StaticText("Crash the app, open it again: the crash is here, with what the app was doing.", ui.Style{Color: colors.SecondaryLabel, Font: fonts.Footnote}),
 		ui.Row(ui.Style{Gap: 12, Wrap: true},
 			ui.Button(ui.ButtonProps{Title: ui.Val("Crash the app"), Icon: ui.IconWarning, Variant: ui.ButtonGray, OnPress: func() {
 				crash.Breadcrumb("gallery: crashing on purpose")
@@ -957,12 +959,12 @@ func crashes() ui.Node {
 			}}),
 		),
 		ui.Show(signal.Func(func() bool { return len(reports.Get()) == 0 }), func() ui.Node {
-			return ui.StaticText("No reports.", ui.Style{Color: ui.SecondaryLabel})
+			return ui.StaticText("No reports.", ui.Style{Color: colors.SecondaryLabel})
 		}),
 		ui.Column(ui.Style{Gap: 10}, ui.For(reports, func(r crash.Report) string { return r.ID }, func(r signal.Accessor[crash.Report], _ signal.Accessor[int]) ui.Node {
 			return ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
 				ui.Column(ui.Style{Grow: 1, Shrink: 1, Gap: 2},
-					ui.Text(signal.Func(func() string { return r.Get().Message }), ui.Style{Font: ui.Subheadline, Lines: 2}),
+					ui.Text(signal.Func(func() string { return r.Get().Message }), ui.Style{Font: fonts.Subheadline, Lines: 2}),
 					ui.Text(signal.Func(func() string {
 						c := r.Get().Context
 						s := fmt.Sprintf("%s · %s · %s %s", r.Get().Kind, r.Get().Time.Local().Format("Jan 2 15:04"), c.AppVersion, c.Build)
@@ -970,7 +972,7 @@ func crashes() ui.Node {
 							s += " · last: " + c.Breadcrumbs[n-1].Message
 						}
 						return s
-					}), ui.Style{Color: ui.SecondaryLabel, Font: ui.Footnote, Lines: 2})),
+					}), ui.Style{Color: colors.SecondaryLabel, Font: fonts.Footnote, Lines: 2})),
 				ui.Button(ui.ButtonProps{Icon: ui.IconTrash, Label: ui.Val("Delete"), Variant: ui.ButtonPlain, OnPress: func() {
 					id := r.Get().ID
 					crash.Delete(id)
@@ -995,12 +997,12 @@ func toastOverlay(shown signal.Accessor[bool]) ui.Node {
 	return ui.Show(shown, func() ui.Node {
 		return ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style {
 			return ui.Style{Absolute: true, Left: ui.Pt(20), Right: ui.Pt(20), Bottom: ui.Pt(env.Get().SafeBottom + 12),
-				Background: ui.SecondaryBackground, CornerRadius: 16, Padding: ui.Symmetric(14, 18),
-				Shadow:     ui.Shadow{Color: ui.RGBA(0, 0, 0, 50), Radius: 14, Y: 4},
-				Transition: ui.SlideUp}
+				Background: colors.SecondaryBackground, CornerRadius: 16, Padding: ui.Symmetric(14, 18),
+				Shadow:     ui.Shadow{Color: colors.RGBA(0, 0, 0, 50), Radius: 14, Y: 4},
+				Transition: ui.TransitionSlideUp}
 		})},
 			ui.Row(ui.Style{Gap: 10, Align: ui.AlignCenter},
-				ui.View(ui.ViewProps{Decorative: true}, ui.Symbol(ui.IconCheck, ui.Style{Color: ui.Green})),
+				ui.View(ui.ViewProps{Decorative: true}, ui.Symbol(ui.IconCheck, ui.Style{Color: colors.Green})),
 				ui.StaticText("Saved")))
 	})
 }
@@ -1011,7 +1013,7 @@ func topButton(shown signal.Accessor[bool], top func()) ui.Node {
 	env := ui.UseEnvironment()
 	return ui.Show(shown, func() ui.Node {
 		return ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style {
-			return ui.Style{Absolute: true, Right: ui.Pt(20), Bottom: ui.Pt(env.Get().SafeBottom + 12), Transition: ui.Pop}
+			return ui.Style{Absolute: true, Right: ui.Pt(20), Bottom: ui.Pt(env.Get().SafeBottom + 12), Transition: ui.TransitionPop}
 		})},
 			ui.Button(ui.ButtonProps{Icon: ui.IconUp, Label: ui.Val("Back to top"), Variant: ui.ButtonFilled, OnPress: top}))
 	})
@@ -1037,7 +1039,7 @@ func cameraScreen() ui.Node {
 				return ui.Image(ui.ImageProps{Source: last, Mode: ui.ImageFill, Label: ui.Val("The last photo"),
 					Style: ui.Style{Width: ui.Pt(56), Height: ui.Pt(56), CornerRadius: 8, Clip: true}})
 			}),
-			ui.Text(status, ui.Style{Grow: 1, Color: ui.SecondaryLabel, Font: ui.Footnote}),
+			ui.Text(status, ui.Style{Grow: 1, Color: colors.SecondaryLabel, Font: fonts.Footnote}),
 			ui.Button(ui.ButtonProps{Icon: ui.IconVideo, Variant: ui.ButtonTinted,
 				Title: signal.Func(func() string {
 					if recording.Get() {

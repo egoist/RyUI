@@ -8,6 +8,8 @@ import (
 	"fmt"
 
 	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )
@@ -50,9 +52,9 @@ func App() ui.Node {
 
 	return ui.SafeArea(ui.Style{},
 		ui.Column(ui.Style{Padding: ui.Symmetric(8, 16), Gap: 2},
-			ui.StaticText("10,000 rows", ui.Style{Font: ui.LargeTitle.Weighted(ui.Bold)}),
+			ui.StaticText("10,000 rows", ui.Style{Font: fonts.LargeTitle.Weighted(fonts.Bold)}),
 			ui.Text(signal.Func(func() string { return fmt.Sprintf("%d starred · tap a row to star it", starred.Get()) }),
-				ui.Style{Font: ui.Subheadline, Color: ui.SecondaryLabel}),
+				ui.Style{Font: fonts.Subheadline, Color: colors.SecondaryLabel}),
 		),
 		ui.List(ui.ListProps{}, items, func(it item) int { return it.id },
 			func(it signal.Accessor[item], _ signal.Accessor[int]) ui.Node {
@@ -61,15 +63,15 @@ func App() ui.Node {
 					OnPress: func() { toggle(it.Get().id) },
 				},
 					ui.Column(ui.Style{Grow: 1, Gap: 2},
-						ui.Text(signal.Func(func() string { return it.Get().title }), ui.Style{Font: ui.Body}),
-						ui.Text(signal.Func(func() string { return it.Get().detail }), ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel}),
+						ui.Text(signal.Func(func() string { return it.Get().title }), ui.Style{Font: fonts.Body}),
+						ui.Text(signal.Func(func() string { return it.Get().detail }), ui.Style{Font: fonts.Footnote, Color: colors.SecondaryLabel}),
 					),
 					ui.Text(signal.Func(func() string {
 						if it.Get().starred {
 							return "★"
 						}
 						return "☆"
-					}), ui.Style{Font: ui.Title3, Color: ui.Orange}),
+					}), ui.Style{Font: fonts.Title3, Color: colors.Orange}),
 				)
 			}),
 	)

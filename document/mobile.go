@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/internal/appdir"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
@@ -185,7 +186,7 @@ func (ds *Documents[T]) mobileRoot() ui.Node {
 			func() ui.Node { return list },
 			func() ui.Node {
 				return ui.View(ui.ViewProps{Style: ui.Style{Grow: 1, Justify: ui.JustifyCenter, Align: ui.AlignCenter}},
-					ui.Text(signal.Func(func() string { return say("noDocuments") }), ui.Style{Color: ui.SecondaryLabel}))
+					ui.Text(signal.Func(func() string { return say("noDocuments") }), ui.Style{Color: colors.SecondaryLabel}))
 			})
 	}, ui.ScreenOptions{
 		Title: signal.Func(func() string { return say("documents") }),

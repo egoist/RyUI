@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/notify"
 	"github.com/egoist/asuka/push"
 	"github.com/egoist/asuka/signal"
@@ -145,7 +147,7 @@ func messagesScreen() ui.Node {
 	}
 	return ui.Scroll(ui.ScrollProps{Style: ui.Style{Grow: 1}},
 		ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 10},
-			ui.Text(status, ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel}),
+			ui.Text(status, ui.Style{Font: fonts.Footnote, Color: colors.SecondaryLabel}),
 			// One at a time: a message scheduled with the conversation's
 			// ID replaces the one waiting.
 			item("Ana writes in 5 s", run(message(ana, "Who's in for Saturday?", 5*time.Second))),
@@ -182,7 +184,7 @@ func messagesScreen() ui.Node {
 				store.Get("pushes", &count)
 				status.Set(fmt.Sprintf("%d (kept in %s)", count, filepath.Base(store.Dir())))
 			}),
-			ui.StaticText(pushHelp(), ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel}),
+			ui.StaticText(pushHelp(), ui.Style{Font: fonts.Footnote, Color: colors.SecondaryLabel}),
 		),
 	)
 }

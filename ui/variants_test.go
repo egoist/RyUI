@@ -3,6 +3,7 @@ package ui_test
 import (
 	"testing"
 
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
@@ -17,27 +18,27 @@ func TestStyleVariants(t *testing.T) {
 	h, _ := mount(t, func() ui.Node {
 		return ui.View(ui.ViewProps{
 			OnPress: func() { presses++ },
-			Style: ui.Style{Background: ui.SecondaryBackground,
-				Hovered: &ui.Style{Background: ui.SecondaryGroupedBackground, BorderColor: ui.Accent},
-				Pressed: &ui.Style{Background: ui.Separator}},
+			Style: ui.Style{Background: colors.SecondaryBackground,
+				Hovered: &ui.Style{Background: colors.SecondaryGroupedBackground, BorderColor: colors.Accent},
+				Pressed: &ui.Style{Background: colors.Separator}},
 		})
 	})
 	v := h.OfKind(ops.KindView)[1]
 	border := func() ops.Color { return ops.Color(v.Int(ops.PropBorderColor)) }
-	if bg(v) != ui.SecondaryBackground || border() != 0 {
+	if bg(v) != colors.SecondaryBackground || border() != 0 {
 		t.Fatalf("at rest: %v %v", bg(v), border())
 	}
 	h.SetHovered(v, true)
-	if bg(v) != ui.SecondaryGroupedBackground || border() != ui.Accent {
+	if bg(v) != colors.SecondaryGroupedBackground || border() != colors.Accent {
 		t.Fatalf("hovered: %v %v", bg(v), border())
 	}
 	h.SetPressed(v, true)
-	if bg(v) != ui.Separator || border() != ui.Accent {
+	if bg(v) != colors.Separator || border() != colors.Accent {
 		t.Fatalf("pressed and hovered: %v %v", bg(v), border())
 	}
 	h.SetPressed(v, false)
 	h.SetHovered(v, false)
-	if bg(v) != ui.SecondaryBackground || border() != ui.Clear && border() != 0 {
+	if bg(v) != colors.SecondaryBackground || border() != colors.Clear && border() != 0 {
 		t.Fatalf("left: %v %v", bg(v), border())
 	}
 	h.Click(v)
@@ -82,7 +83,7 @@ func TestStyleFuncVariants(t *testing.T) {
 			ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style {
 				s := ui.Style{Padding: ui.All(4)}
 				if selectable.Get() {
-					s.Pressed = &ui.Style{Background: ui.Separator}
+					s.Pressed = &ui.Style{Background: colors.Separator}
 				}
 				return s
 			})}, ui.StaticText("x")),
@@ -99,7 +100,7 @@ func TestStyleFuncVariants(t *testing.T) {
 	}
 	v := vs[1]
 	h.SetPressed(v, true)
-	if bg(v) != ui.Separator {
+	if bg(v) != colors.Separator {
 		t.Fatalf("pressed: %v", bg(v))
 	}
 	h.SetPressed(v, false)
@@ -117,7 +118,7 @@ func TestInteractionGroupAndPeer(t *testing.T) {
 	h, r := mount(t, func() ui.Node {
 		return ui.Column(nil,
 			ui.View(ui.ViewProps{OnPress: func() {}, Interaction: card},
-				ui.StaticText("Title", ui.Style{Color: ui.Label}.When(card.Hovered, ui.Style{Color: ui.Accent}))),
+				ui.StaticText("Title", ui.Style{Color: colors.Label}.When(card.Hovered, ui.Style{Color: colors.Accent}))),
 			ui.Show(peer, func() ui.Node {
 				return ui.Text(signal.Func(func() string {
 					if card.Pressed() {
@@ -135,11 +136,11 @@ func TestInteractionGroupAndPeer(t *testing.T) {
 	}
 	color := func() ops.Color { return ops.Color(title.Int(ops.PropColor)) }
 	h.SetHovered(v, true)
-	if color() != ui.Accent {
+	if color() != colors.Accent {
 		t.Fatalf("group hover: %v", color())
 	}
 	h.SetHovered(v, false)
-	if color() != ui.Label {
+	if color() != colors.Label {
 		t.Fatalf("left: %v", color())
 	}
 	peer.Set(true) // reads card.Pressed: the view reports it from now on
@@ -235,7 +236,7 @@ func TestDragVariants(t *testing.T) {
 			}),
 			ui.View(ui.ViewProps{
 				Drop:  &ui.DropTarget{Accept: []string{"text/plain"}},
-				Style: ui.Style{BorderWidth: 2, DragOver: &ui.Style{BorderColor: ui.Accent}},
+				Style: ui.Style{BorderWidth: 2, DragOver: &ui.Style{BorderColor: colors.Accent}},
 			}),
 		)
 	})
@@ -246,12 +247,12 @@ func TestDragVariants(t *testing.T) {
 		t.Fatalf("dragging: %v", source.Float(ops.PropOpacity))
 	}
 	h.DragOver(target, ops.GestureStateBegan, 1, 1)
-	if ops.Color(target.Int(ops.PropBorderColor)) != ui.Accent {
+	if ops.Color(target.Int(ops.PropBorderColor)) != colors.Accent {
 		t.Fatal("drag over")
 	}
 	h.DragOver(target, ops.GestureStateCancelled, 1, 1)
 	h.SetDragPhase(source, ops.DragPhaseCancelled)
-	if ops.Color(target.Int(ops.PropBorderColor)) == ui.Accent || src.Dragging() {
+	if ops.Color(target.Int(ops.PropBorderColor)) == colors.Accent || src.Dragging() {
 		t.Fatal("drag ended")
 	}
 }
@@ -259,8 +260,8 @@ func TestDragVariants(t *testing.T) {
 // Following a state costs no allocation per change.
 func TestVariantsDontAllocate(t *testing.T) {
 	h, _ := mount(t, func() ui.Node {
-		return ui.View(ui.ViewProps{OnPress: func() {}, Style: ui.Style{Background: ui.SecondaryBackground,
-			Pressed: &ui.Style{Background: ui.Separator}}})
+		return ui.View(ui.ViewProps{OnPress: func() {}, Style: ui.Style{Background: colors.SecondaryBackground,
+			Pressed: &ui.Style{Background: colors.Separator}}})
 	})
 	v := h.OfKind(ops.KindView)[1]
 	h.SetPressed(v, true)

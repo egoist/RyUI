@@ -31,9 +31,9 @@ fonts below to fixed ones, so the app keeps following the platform.
 [Styles that change](#styles-that-change)).
 
 ```go
-ui.Text(title, ui.Style{Font: ui.Headline, Color: ui.SecondaryLabel})
+ui.Text(title, ui.Style{Font: fonts.Headline, Color: colors.SecondaryLabel})
 ui.Button(ui.ButtonProps{Title: ui.Val("Follow"), Style: ui.Style{Shrink: ui.NoShrink}})
-ui.View(ui.ViewProps{Style: ui.Style{Height: ui.Pt(1), Background: ui.Separator}})
+ui.View(ui.ViewProps{Style: ui.Style{Height: ui.Pt(1), Background: colors.Separator}})
 ```
 
 Visual props apply where the native widget supports them: a button
@@ -50,8 +50,8 @@ an empty one.
 ui.Row(ui.Style{Align: ui.AlignCenter, Gap: 12},
 	Avatar(),
 	ui.Column(ui.Style{Grow: 1, Gap: 2},
-		ui.StaticText("Ada Lovelace", ui.Style{Font: ui.Headline}),
-		ui.StaticText("Notes on the Analytical Engine", ui.Style{Font: ui.Subheadline, Color: ui.SecondaryLabel, Lines: 1}),
+		ui.StaticText("Ada Lovelace", ui.Style{Font: fonts.Headline}),
+		ui.StaticText("Notes on the Analytical Engine", ui.Style{Font: fonts.Subheadline, Color: colors.SecondaryLabel, Lines: 1}),
 	),
 	ui.Button(ui.ButtonProps{Title: ui.Val("Follow"), Style: ui.Style{Shrink: ui.NoShrink}}),
 )
@@ -91,14 +91,14 @@ direction, and sizes that include padding and borders.
 ```go
 // Two boxes sharing the width, one twice the other.
 ui.Row(ui.Style{Gap: 8, Height: ui.Pt(60)},
-	ui.View(ui.ViewProps{Style: ui.Style{Grow: 2, Background: ui.SecondaryBackground}}),
-	ui.View(ui.ViewProps{Style: ui.Style{Grow: 1, Background: ui.SecondaryBackground}}),
+	ui.View(ui.ViewProps{Style: ui.Style{Grow: 2, Background: colors.SecondaryBackground}}),
+	ui.View(ui.ViewProps{Style: ui.Style{Grow: 1, Background: colors.SecondaryBackground}}),
 )
 
 // A label and a value at either end.
 ui.Row(ui.Style{Justify: ui.JustifySpaceBetween, Align: ui.AlignCenter},
 	ui.StaticText("Total"),
-	ui.StaticText("$42", ui.Style{Font: ui.Title2}),
+	ui.StaticText("$42", ui.Style{Font: fonts.Title2}),
 )
 
 // Chips that wrap onto more lines.
@@ -127,7 +127,7 @@ ui.View(ui.ViewProps{Style: ui.Style{
 	MinWidth:    ui.Pt(120),
 	MaxWidth:    ui.Pt(320),
 	AspectRatio: 16.0 / 9,
-	Background:  ui.Gray,
+	Background:  colors.Gray,
 }})
 ```
 
@@ -179,7 +179,7 @@ ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(44), Height: ui.Pt(44)}},
 	ui.View(ui.ViewProps{Style: ui.Style{
 		Absolute: true, Top: ui.Pt(-4), Right: ui.Pt(-4),
 		Width: ui.Pt(18), Height: ui.Pt(18), CornerRadius: 9,
-		Background: ui.Red, Align: ui.AlignCenter, Justify: ui.JustifyCenter,
+		Background: colors.Red, Align: ui.AlignCenter, Justify: ui.JustifyCenter,
 	}}, Badge()),
 )
 ```
@@ -198,7 +198,7 @@ ui.View(ui.ViewProps{Style: ui.Style{Gap: 8, Grid: &ui.Grid{
 	Columns: []layout.GridTrack{layout.Repeat(3, layout.Fr(1))},
 }}},
 	Avatar(), Avatar(), Avatar(), Avatar(),
-	ui.View(ui.ViewProps{Style: ui.Style{GridColumn: layout.Placement{Start: layout.Span(3)}, Height: ui.Pt(20), Background: ui.Gray}}),
+	ui.View(ui.ViewProps{Style: ui.Style{GridColumn: layout.Placement{Start: layout.Span(3)}, Height: ui.Pt(20), Background: colors.Gray}}),
 )
 ```
 
@@ -215,7 +215,7 @@ text field, a send button) stays above it.
 
 ```go
 ui.SafeArea(ui.Style{Padding: ui.All(16), Gap: 12},
-	ui.StaticText("Todos", ui.Style{Font: ui.LargeTitle.Weighted(ui.Bold)}),
+	ui.StaticText("Todos", ui.Style{Font: fonts.LargeTitle.Weighted(fonts.Bold)}),
 	ui.Scroll(ui.ScrollProps{Style: ui.Style{Grow: 1}}, rows...),
 	composer,
 )
@@ -271,23 +271,25 @@ Pull to refresh and scroll positions are in
 
 ## Colors
 
-A `ui.Color` is one of:
+A `ui.Color` comes from the package `colors`
+(`github.com/egoist/asuka/colors`), and is one of:
 
 - **The platform's default**: the zero value, a prop left unset.
 - **A semantic color**, resolved by the platform, so it follows dark
   mode:
-  - text: `ui.Label`, `ui.SecondaryLabel`, `ui.TertiaryLabel`;
-  - backgrounds: `ui.SystemBackground`, `ui.SecondaryBackground`,
-    `ui.GroupedBackground`, and `ui.SecondaryGroupedBackground` for
+  - text: `colors.Label`, `colors.SecondaryLabel`, `colors.TertiaryLabel`;
+  - backgrounds: `colors.Background`, `colors.SecondaryBackground`,
+    `colors.GroupedBackground`, and `colors.SecondaryGroupedBackground` for
     a grouped list's rows on it (iOS's inset grouped cells);
-  - `ui.Separator`, `ui.Accent` (the app's accent), `ui.OnAccent` (what
-    reads on it: an icon on a button filled with the accent), `ui.Clear`
-    (transparent);
-  - the system's hues: `ui.Red`, `ui.Orange`, `ui.Yellow`, `ui.Green`,
-    `ui.Blue`, `ui.Purple`, `ui.Pink`, `ui.Gray`.
-- **A fixed color**: `ui.RGB(r, g, b)`, `ui.RGBA(r, g, b, a)`,
-  `ui.Hex(0x7c3aed)`, or `ui.ParseHex("#7c3aed")` (also `"#rrggbbaa"`),
-  which reports whether it parsed.
+  - `colors.Separator`, `colors.Accent` (the app's accent),
+    `colors.OnAccent` (what reads on it: an icon on a button filled with
+    the accent), `colors.Clear` (transparent);
+  - the system's hues: `colors.Red`, `colors.Orange`, `colors.Yellow`,
+    `colors.Green`, `colors.Blue`, `colors.Purple`, `colors.Pink`,
+    `colors.Gray`.
+- **A fixed color**: `colors.RGB(r, g, b)`, `colors.RGBA(r, g, b, a)`,
+  `colors.Hex(0x7c3aed)`, or `colors.ParseHex("#7c3aed")` (also
+  `"#rrggbbaa"`), which reports whether it parsed.
 
 Where the semantic colors come from:
 
@@ -301,19 +303,19 @@ Where the semantic colors come from:
 | The web | Asuka's palette, as CSS variables, light and dark |
 
 On the desktops the grouped backgrounds are the plain ones:
-`ui.GroupedBackground` is the window's background, and
-`ui.SecondaryGroupedBackground` a card's, as `ui.SecondaryBackground` is.
+`colors.GroupedBackground` is the window's background, and
+`colors.SecondaryGroupedBackground` a card's, as `colors.SecondaryBackground` is.
 
 ```go
-ui.Column(ui.Style{Padding: ui.All(16), Gap: 4, Background: ui.SystemBackground, CornerRadius: 12},
-	ui.StaticText("Title", ui.Style{Font: ui.Headline}),
-	ui.StaticText("Details", ui.Style{Font: ui.Subheadline, Color: ui.SecondaryLabel}),
+ui.Column(ui.Style{Padding: ui.All(16), Gap: 4, Background: colors.Background, CornerRadius: 12},
+	ui.StaticText("Title", ui.Style{Font: fonts.Headline}),
+	ui.StaticText("Details", ui.Style{Font: fonts.Subheadline, Color: colors.SecondaryLabel}),
 )
 ```
 
 `c.Opacity(a)` is a color drawn at an opacity from 0 to 1 (SwiftUI's
 `.opacity`, Compose's `copy(alpha =)`). A semantic color stays one, so
-`ui.Accent.Opacity(0.15)` is a tint of the accent in light and dark
+`colors.Accent.Opacity(0.15)` is a tint of the accent in light and dark
 alike: a chip's background, a chart's fill, a track.
 
 `Color` is the text's color, or a control's tint.
@@ -357,18 +359,18 @@ alike: a chip's background, a chart's fill, a track.
 ui.View(ui.ViewProps{Style: ui.Style{
 	Height:       ui.Pt(120),
 	CornerRadius: 16,
-	Gradient:     ui.LinearGradient(ui.Hex(0x6366f1), ui.Hex(0xec4899)),
-	Shadow:       ui.Shadow{Color: ui.RGBA(0, 0, 0, 80), Radius: 16, Y: 8},
+	Gradient:     ui.LinearGradient(colors.Hex(0x6366f1), colors.Hex(0xec4899)),
+	Shadow:       ui.Shadow{Color: colors.RGBA(0, 0, 0, 80), Radius: 16, Y: 8},
 }})
 
-ui.View(ui.ViewProps{Style: ui.Style{Padding: ui.All(12), BorderWidth: 1, BorderColor: ui.Separator, CornerRadius: 8, Clip: true}},
+ui.View(ui.ViewProps{Style: ui.Style{Padding: ui.All(12), BorderWidth: 1, BorderColor: colors.Separator, CornerRadius: 8, Clip: true}},
 	ui.StaticText("Bordered"),
 )
 
 // Left to right.
 ui.View(ui.ViewProps{Style: ui.Style{
 	Height:   ui.Pt(80),
-	Gradient: &ui.Gradient{Colors: []ui.Color{ui.Blue, ui.Purple}, Start: ui.Point{X: 0, Y: 0.5}, End: ui.Point{X: 1, Y: 0.5}},
+	Gradient: &ui.Gradient{Colors: []ui.Color{colors.Blue, colors.Purple}, Start: ui.Point{X: 0, Y: 0.5}, End: ui.Point{X: 1, Y: 0.5}},
 }})
 ```
 
@@ -389,49 +391,50 @@ for animation: see [Motion](motion.md).
 
 ## Text
 
-`Font` sets a text's font:
+`Font` sets a text's font, a `fonts.Font` from the package `fonts`
+(`github.com/egoist/asuka/fonts`):
 
 - **Semantic fonts**, the platform's text styles, scaled with the
-  user's text size: `ui.LargeTitle`, `ui.Title`, `ui.Title2`,
-  `ui.Title3`, `ui.Headline`, `ui.Subheadline`, `ui.Body`, `ui.Callout`,
-  `ui.Footnote`, `ui.Caption`, `ui.Caption2`.
-- **`ui.System(size)`**: the system font at a size, in points.
-- **`.Weighted(w)`** gives a font a weight: `ui.Ultralight`, `ui.Thin`,
-  `ui.Light`, `ui.Regular`, `ui.Medium`, `ui.Semibold`, `ui.Bold`,
-  `ui.Heavy`, `ui.Black`.
+  user's text size: `fonts.LargeTitle`, `fonts.Title`, `fonts.Title2`,
+  `fonts.Title3`, `fonts.Headline`, `fonts.Subheadline`, `fonts.Body`,
+  `fonts.Callout`, `fonts.Footnote`, `fonts.Caption`, `fonts.Caption2`.
+- **`fonts.System(size)`**: the system font at a size, in points.
+- **`.Weighted(w)`** gives a font a weight: `fonts.Ultralight`,
+  `fonts.Thin`, `fonts.Light`, `fonts.Regular`, `fonts.Medium`,
+  `fonts.Semibold`, `fonts.Bold`, `fonts.Heavy`, `fonts.Black`.
 
 `Color` is the text's color, `TextAlign` its alignment (`ui.TextStart`,
 `ui.TextCenter`, `ui.TextEnd`, `ui.TextJustify`), and `Lines` the most
 lines it shows; 0, the default, is no limit. Text wraps by default.
 
 ```go
-ui.StaticText("Brand", ui.Style{Color: ui.RGB(124, 58, 237), Font: ui.Title.Weighted(ui.Bold)})
-ui.StaticText("A long paragraph that stops after two lines.", ui.Style{Font: ui.Body, Lines: 2, TextAlign: ui.TextCenter})
-ui.StaticText("Fixed size", ui.Style{Font: ui.System(20).Weighted(ui.Medium)})
+ui.StaticText("Brand", ui.Style{Color: colors.RGB(124, 58, 237), Font: fonts.Title.Weighted(fonts.Bold)})
+ui.StaticText("A long paragraph that stops after two lines.", ui.Style{Font: fonts.Body, Lines: 2, TextAlign: ui.TextCenter})
+ui.StaticText("Fixed size", ui.Style{Font: fonts.System(20).Weighted(fonts.Medium)})
 ```
 
 For text with several styles in it, links and inline views, see
 [RichText](components.md).
 
 The text styles are iOS's names; each platform maps them to its own
-type ramp, so `ui.Body` is the size the platform's apps use for body
+type ramp, so `fonts.Body` is the size the platform's apps use for body
 text:
 
-| Platform | Text styles | `ui.Body` |
+| Platform | Text styles | `fonts.Body` |
 | --- | --- | --- |
 | iOS | UIKit's text styles, in San Francisco | 17 |
-| Android | Material 3's type scale (`ui.Body` is Body Large), in Roboto | 16 |
+| Android | Material 3's type scale (`fonts.Body` is Body Large), in Roboto | 16 |
 | macOS | AppKit's text styles (`NSFont.preferredFont(forTextStyle:)`), in San Francisco | 13 |
 | Windows | Windows 11's type ramp, in Segoe UI Variable (Segoe UI before Windows 11) | 14 |
 | Linux | libadwaita's type classes (`.title-1`, `.heading`, `.caption`...), relative to the desktop's interface font | the interface font's size |
 | The web | Asuka's ramp, in the system's font (`system-ui`) | 16 |
 
-On Windows the styles take the nearest of the ramp's: `ui.LargeTitle` is
-Title Large (40), `ui.Title` Title (28), `ui.Title2` Subtitle (20),
-`ui.Headline` Body Strong (14, semibold), `ui.Footnote` and `ui.Caption`
-Caption (12). On Linux, with GNOME's 11 pt interface font, `ui.LargeTitle`
-is `.title-1` (181%, heavy), `ui.Title` `.title-2`, `ui.Headline`
-`.heading` (bold), and `ui.Caption` `.caption` (82%).
+On Windows the styles take the nearest of the ramp's: `fonts.LargeTitle` is
+Title Large (40), `fonts.Title` Title (28), `fonts.Title2` Subtitle (20),
+`fonts.Headline` Body Strong (14, semibold), `fonts.Footnote` and `fonts.Caption`
+Caption (12). On Linux, with GNOME's 11 pt interface font, `fonts.LargeTitle`
+is `.title-1` (181%, heavy), `fonts.Title` `.title-2`, `fonts.Headline`
+`.heading` (bold), and `fonts.Caption` `.caption` (82%).
 
 What scales with the user's text size:
 
@@ -451,7 +454,7 @@ What scales with the user's text size:
 ## Custom fonts
 
 Put font files (`.ttf`, `.otf`) in the app's `assets/fonts`. A font's
-`Family`, or `ui.Custom(family, font)`, picks one:
+`Family`, or `fonts.Custom(family, font)`, picks one:
 
 - a file's name: `assets/fonts/Inter-Bold.ttf` is `"Inter-Bold"`;
 - a family of files: `"Inter"` is `Inter-Regular`, `Inter-Bold`... as
@@ -469,9 +472,9 @@ have shows in the system font. Every platform loads the files in
 `assets/fonts` for the app alone: they aren't installed for other apps.
 
 ```go
-ui.StaticText("Inter Bold", ui.Style{Font: ui.Custom("Inter-Bold", ui.Title)})
-ui.StaticText("Inter", ui.Style{Font: ui.Custom("Inter", ui.Body).Weighted(ui.Semibold)})
-ui.StaticText("Code", ui.Style{Font: ui.Custom("monospace", ui.Footnote)})
+ui.StaticText("Inter Bold", ui.Style{Font: fonts.Custom("Inter-Bold", fonts.Title)})
+ui.StaticText("Inter", ui.Style{Font: fonts.Custom("Inter", fonts.Body).Weighted(fonts.Semibold)})
+ui.StaticText("Code", ui.Style{Font: fonts.Custom("monospace", fonts.Footnote)})
 ```
 
 ## Dark mode
@@ -483,9 +486,9 @@ mode, read `Dark` from the environment in a `StyleFunc`:
 ```go
 env := ui.UseEnvironment()
 ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style {
-	s := ui.Style{Height: ui.Pt(80), CornerRadius: 12, Background: ui.RGB(255, 255, 255)}
+	s := ui.Style{Height: ui.Pt(80), CornerRadius: 12, Background: colors.RGB(255, 255, 255)}
 	if env.Get().Dark {
-		s.Background = ui.RGB(28, 28, 30)
+		s.Background = colors.RGB(28, 28, 30)
 	}
 	return s
 })})
@@ -502,11 +505,11 @@ sent to the view.
 ui.View(ui.ViewProps{
 	OnPress: func() { selected.Set(!selected.Peek()) },
 	Style: ui.StyleFunc(func() ui.Style {
-		s := ui.Style{Padding: ui.All(12), CornerRadius: 10, Background: ui.SecondaryBackground}
+		s := ui.Style{Padding: ui.All(12), CornerRadius: 10, Background: colors.SecondaryBackground}
 		if selected.Get() {
-			s.Background = ui.Accent
+			s.Background = colors.Accent
 			s.BorderWidth = 2
-			s.BorderColor = ui.Label
+			s.BorderColor = colors.Label
 		}
 		return s
 	}),
@@ -518,7 +521,7 @@ Make the change inside `ui.Animate` and it animates (see
 
 ## The accent color
 
-`ui.Accent`, and the controls that use it, take the app's accent color
+`colors.Accent`, and the controls that use it, take the app's accent color
 from `asuka.json`:
 
 ```json

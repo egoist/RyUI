@@ -15,6 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/host"
 	"github.com/egoist/asuka/internal/boot"
 	"github.com/egoist/asuka/layout"
@@ -377,7 +378,7 @@ func (r *Root) layoutFit(e *element, p *layout.Pass) {
 // sendAccent tells the host the app's accent color (asuka.json's), before
 // any view is made with the theme.
 func (r *Root) sendAccent() {
-	c, ok := ParseHex(boot.Accent)
+	c, ok := colors.ParseHex(boot.Accent)
 	if !ok && boot.DynamicColor == "" {
 		return
 	}

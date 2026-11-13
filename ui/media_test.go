@@ -9,6 +9,8 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/internal/boot"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
@@ -169,8 +171,8 @@ func TestFontFamily(t *testing.T) {
 	t.Cleanup(func() { boot.AssetBase = "" })
 	h, _ := mount(t, func() ui.Node {
 		return ui.Column(ui.Style{},
-			ui.StaticText("a", ui.Style{Font: ui.Custom("Pacifico-Regular", ui.Title)}),
-			ui.StaticText("b", ui.Style{Font: ui.Custom("serif", ui.Body)}),
+			ui.StaticText("a", ui.Style{Font: fonts.Custom("Pacifico-Regular", fonts.Title)}),
+			ui.StaticText("b", ui.Style{Font: fonts.Custom("serif", fonts.Body)}),
 		)
 	})
 	if v := h.One(ops.KindText, "a").String(ops.PropFontFamily); v != "http://127.0.0.1:7462/fonts/Pacifico-Regular.ttf" {
@@ -267,7 +269,7 @@ func TestShape(t *testing.T) {
 				i := inset.Get()
 				return new(ui.Path).Ellipse(i, i, w-2*i, h-2*i)
 			},
-			Stroke: ui.Accent, LineWidth: 4, LineCap: ui.CapRound, TrimEnd: progress,
+			Stroke: colors.Accent, LineWidth: 4, LineCap: ui.CapRound, TrimEnd: progress,
 			Style: ui.Style{Width: ui.Pt(100), Height: ui.Pt(100)},
 		})
 	})
@@ -306,7 +308,7 @@ func TestShapeDash(t *testing.T) {
 	h, _ := mount(t, func() ui.Node {
 		return ui.Shape(ui.ShapeProps{
 			Path:   func(w, h float32) *ui.Path { return new(ui.Path).MoveTo(0, h/2).LineTo(w, h/2) },
-			Stroke: ui.Accent, Dash: []float32{6, 4}, DashPhase: 2,
+			Stroke: colors.Accent, Dash: []float32{6, 4}, DashPhase: 2,
 			Style: ui.Style{Width: ui.Pt(100), Height: ui.Pt(10)},
 		})
 	})

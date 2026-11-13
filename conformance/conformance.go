@@ -32,6 +32,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/ui"
 )
 
@@ -77,7 +78,7 @@ const (
 )
 
 // Magenta is the registration markers' color, which no case uses.
-var Magenta = ui.RGB(255, 0, 255)
+var Magenta = colors.RGB(255, 0, 255)
 
 // SheetSize is the sheet's size in points.
 func SheetSize() (w, h float32) {
@@ -111,7 +112,7 @@ func Sheet() ui.Node {
 		kids = append(kids, ui.View(ui.ViewProps{Style: at(x, y, Cell, Cell, ui.Style{})}, c.Scene()))
 	}
 	return ui.View(ui.ViewProps{Style: ui.Style{
-		Width: ui.Pt(w), Height: ui.Pt(h), Background: ui.RGB(255, 255, 255),
+		Width: ui.Pt(w), Height: ui.Pt(h), Background: colors.RGB(255, 255, 255),
 		AlignSelf: ui.AlignCenter,
 	}}, kids...)
 }

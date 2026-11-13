@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/host/fake"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
@@ -333,7 +334,7 @@ func TestGrowingWrapperAroundScroll(t *testing.T) {
 			return ui.View(ui.ViewProps{Style: ui.Style{Grow: 1}},
 				ui.Scroll(ui.ScrollProps{Style: ui.Style{Grow: 1}}, rows...),
 				ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style {
-					return ui.Style{Absolute: true, Left: ui.Pt(20), Right: ui.Pt(20), Bottom: ui.Pt(env.Get().SafeBottom + 12), Height: ui.Pt(48), Background: ui.Red}
+					return ui.Style{Absolute: true, Left: ui.Pt(20), Right: ui.Pt(20), Bottom: ui.Pt(env.Get().SafeBottom + 12), Height: ui.Pt(48), Background: colors.Red}
 				})}))
 		}, ui.ScreenOptions{})
 	})

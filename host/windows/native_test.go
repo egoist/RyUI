@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/egoist/asuka/colors"
 	. "github.com/egoist/asuka/internal/windows"
 	"github.com/egoist/asuka/native"
 	"github.com/egoist/asuka/ops"
@@ -132,8 +133,8 @@ func TestRefreshKey(t *testing.T) {
 func TestShadow(t *testing.T) {
 	h, _ := mount(t, func() ui.Node {
 		return ui.Column(ui.Style{Padding: ui.All(40), Align: ui.AlignStart},
-			ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(100), Height: ui.Pt(60), Background: ui.RGB(255, 255, 255), CornerRadius: 8,
-				Shadow: ui.Shadow{Color: ui.RGBA(0, 0, 0, 90), Radius: 6, Y: 4}}}))
+			ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(100), Height: ui.Pt(60), Background: colors.RGB(255, 255, 255), CornerRadius: 8,
+				Shadow: ui.Shadow{Color: colors.RGBA(0, 0, 0, 90), Radius: 6, Y: 4}}}))
 	})
 	onMain(t, func() {
 		showHost(h)
@@ -167,7 +168,7 @@ func TestTransitions(t *testing.T) {
 	h, _ := mount(t, func() ui.Node {
 		return ui.Column(ui.Style{Padding: ui.All(10)},
 			ui.Show(shown, func() ui.Node {
-				return ui.View(ui.ViewProps{Style: ui.Style{Height: ui.Pt(40), Background: ui.Red, Transition: ui.SlideUp}},
+				return ui.View(ui.ViewProps{Style: ui.Style{Height: ui.Pt(40), Background: colors.Red, Transition: ui.TransitionSlideUp}},
 					ui.StaticText("toast"))
 			}))
 	})
@@ -218,9 +219,9 @@ func TestMatch(t *testing.T) {
 	h, _ := mount(t, func() ui.Node {
 		return ui.Column(ui.Style{Padding: ui.All(10), Align: ui.AlignStart},
 			ui.Show(big, func() ui.Node {
-				return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(200), Height: ui.Pt(150), Background: ui.Blue, Match: "card"}})
+				return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(200), Height: ui.Pt(150), Background: colors.Blue, Match: "card"}})
 			}, func() ui.Node {
-				return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(40), Height: ui.Pt(30), Background: ui.Blue, Match: "card"}})
+				return ui.View(ui.ViewProps{Style: ui.Style{Width: ui.Pt(40), Height: ui.Pt(30), Background: colors.Blue, Match: "card"}})
 			}))
 	})
 	onMain(t, func() {

@@ -14,8 +14,10 @@ import (
 	"strings"
 
 	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/device"
 	"github.com/egoist/asuka/dialog"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/hotkey"
 	"github.com/egoist/asuka/shell"
 	"github.com/egoist/asuka/signal"
@@ -153,7 +155,7 @@ func App() ui.Node {
 			ui.Window(ui.WindowProps{Open: stats, Handle: statsWin, Title: ui.Val("Statistics"), Width: 280, Height: 140,
 				StateKey: "statistics", AlwaysOnTop: true, DisableMaximize: true, Content: func() ui.Node {
 					return ui.Column(ui.Style{Padding: ui.All(20), Gap: 6},
-						ui.Text(signal.Func(func() string { return fmt.Sprintf("%d notes", len(rows.Get())) }), ui.Style{Font: ui.Title2}),
+						ui.Text(signal.Func(func() string { return fmt.Sprintf("%d notes", len(rows.Get())) }), ui.Style{Font: fonts.Title2}),
 						ui.Text(signal.Func(func() string {
 							done := 0
 							for _, n := range rows.Get() {
@@ -162,11 +164,11 @@ func App() ui.Node {
 								}
 							}
 							return fmt.Sprintf("%d done", done)
-						}), ui.Style{Color: ui.SecondaryLabel}))
+						}), ui.Style{Color: colors.SecondaryLabel}))
 				}}),
 			ui.Show(signal.Func(func() bool { err := clip.Err(); return err != nil && err != hotkey.ErrNotAvailable }), func() ui.Node {
 				return ui.Text(signal.Func(func() string { return fmt.Sprint("The shortcut to add the clipboard: ", clip.Err()) }),
-					ui.Style{Padding: ui.Symmetric(4, 16), Font: ui.Footnote, Color: ui.SecondaryLabel})
+					ui.Style{Padding: ui.Symmetric(4, 16), Font: fonts.Footnote, Color: colors.SecondaryLabel})
 			}),
 			ui.Row(ui.Style{Gap: 8, Padding: ui.Symmetric(8, 16), Align: ui.AlignEnd},
 				ui.TextField(ui.TextFieldProps{Value: draft, Placeholder: ui.Val("New note"), ReturnKey: ui.ReturnDone,
@@ -176,13 +178,13 @@ func App() ui.Node {
 			),
 			ui.Show(signal.Func(func() bool { r := notes.Get(); return !r.Loading && len(r.Rows) == 0 }), func() ui.Node {
 				return ui.Column(ui.Style{Grow: 1, Justify: ui.JustifyCenter, Align: ui.AlignCenter, Gap: 8},
-					ui.Symbol(ui.IconDocument, ui.Style{Font: ui.LargeTitle, Color: ui.TertiaryLabel}),
+					ui.Symbol(ui.IconDocument, ui.Style{Font: fonts.LargeTitle, Color: colors.TertiaryLabel}),
 					ui.Text(signal.Func(func() string {
 						if query.Get() != "" {
 							return "No notes match"
 						}
 						return "No notes yet"
-					}), ui.Style{Color: ui.SecondaryLabel}))
+					}), ui.Style{Color: colors.SecondaryLabel}))
 			}),
 			ui.List(ui.ListProps{SwipeActions: func(i int) []ui.Action {
 				return []ui.Action{{Title: ui.Val("Delete"), Icon: ui.IconTrash, Role: ui.ActionDestructive, OnPress: func() {
@@ -197,13 +199,13 @@ func App() ui.Node {
 				},
 					ui.Dynamic(func() ui.Node {
 						if n.Get().Done {
-							return ui.Symbol("checkmark.circle.fill", ui.Style{Color: ui.Accent})
+							return ui.Symbol("checkmark.circle.fill", ui.Style{Color: colors.Accent})
 						}
-						return ui.Symbol("circle", ui.Style{Color: ui.TertiaryLabel})
+						return ui.Symbol("circle", ui.Style{Color: colors.TertiaryLabel})
 					}),
 					ui.Text(signal.Func(func() string { return n.Get().Text }), ui.StyleFunc(func() ui.Style {
 						if n.Get().Done {
-							return ui.Style{Grow: 1, Color: ui.SecondaryLabel}
+							return ui.Style{Grow: 1, Color: colors.SecondaryLabel}
 						}
 						return ui.Style{Grow: 1}
 					})),

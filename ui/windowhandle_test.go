@@ -3,6 +3,7 @@ package ui_test
 import (
 	"testing"
 
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/host/fake"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
@@ -268,12 +269,12 @@ func TestChildWindow(t *testing.T) {
 // The main window's options, all of them, as the host gets them.
 func TestWindowOptionsAll(t *testing.T) {
 	ui.SetWindowOptions(ui.WindowOptions{Width: 900, MaxWidth: 1600, X: 40, Y: 50, DisableMaximize: true, AlwaysOnTop: true,
-		TitleBar: ui.TitleBarHidden, Background: ui.RGB(0x1e, 0x1e, 0x1e), Hidden: true, StateKey: "editor"})
+		TitleBar: ui.TitleBarHidden, Background: colors.RGB(0x1e, 0x1e, 0x1e), Hidden: true, StateKey: "editor"})
 	defer ui.SetWindowOptions(ui.WindowOptions{})
 	var w *ui.WindowHandle
 	h, _ := mount(t, func() ui.Node { w = ui.UseWindow(); return ui.StaticText("x") })
 	c := h.Window(h.Root()).Config
-	want := ops.WindowConfig{Width: 900, MaxWidth: 1600, X: 40, Y: 50, TitleBar: ops.TitleBarHidden, Background: ui.RGB(0x1e, 0x1e, 0x1e),
+	want := ops.WindowConfig{Width: 900, MaxWidth: 1600, X: 40, Y: 50, TitleBar: ops.TitleBarHidden, Background: colors.RGB(0x1e, 0x1e, 0x1e),
 		Flags: ops.WindowNoMaximize | ops.WindowAlwaysOnTop | ops.WindowHidden | ops.WindowPositioned, StateKey: "editor"}
 	if c != want {
 		t.Fatalf("config %+v\nwant %+v", c, want)

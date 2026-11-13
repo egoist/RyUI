@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/tray"
 	"github.com/egoist/asuka/ui"
@@ -116,7 +117,7 @@ func Focus() ui.Node {
 
 	panel := func() ui.Node {
 		return ui.Column(ui.Style{Justify: ui.JustifyCenter, Align: ui.AlignCenter, Gap: 16, Padding: ui.All(24), Grow: 1},
-			ui.Text(clock, ui.Style{Font: ui.LargeTitle.Weighted(ui.Bold)}),
+			ui.Text(clock, ui.Style{Font: fonts.LargeTitle.Weighted(fonts.Bold)}),
 			ui.Button(ui.ButtonProps{Title: startTitle, Variant: ui.ButtonFilled, OnPress: toggle}),
 		)
 	}
@@ -144,7 +145,7 @@ func Focus() ui.Node {
 			}
 		})
 		return ui.Column(ui.Style{Gap: 14, Padding: ui.All(18), Align: ui.AlignCenter},
-			ui.Text(clock, ui.Style{Font: ui.LargeTitle.Weighted(ui.Bold)}),
+			ui.Text(clock, ui.Style{Font: fonts.LargeTitle.Weighted(fonts.Bold)}),
 			ui.Segmented(ui.SegmentedProps{Segments: ui.Val(names), Selected: chosen}),
 			ui.Row(ui.Style{Gap: 8},
 				ui.Button(ui.ButtonProps{Title: startTitle, Variant: ui.ButtonFilled, OnPress: toggle}),

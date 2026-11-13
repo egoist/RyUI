@@ -40,7 +40,7 @@ type Marker struct {
 	At       Coordinate `json:"at"`
 	Title    string     `json:"title"`    // in its callout (iOS) or info window (Android)
 	Subtitle string     `json:"subtitle"` // under the title
-	// Color tints it (ui.RGB, ui.Hex; default: the platform's red).
+	// Color tints it (colors.RGB, colors.Hex; default: the platform's red).
 	Color ui.Color `json:"-"`
 }
 

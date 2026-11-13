@@ -22,9 +22,11 @@ import (
 	"github.com/egoist/asuka/audio/record"
 	"github.com/egoist/asuka/biometric"
 	"github.com/egoist/asuka/calendar"
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/contacts"
 	"github.com/egoist/asuka/device"
 	"github.com/egoist/asuka/dock"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/imageedit"
 	"github.com/egoist/asuka/integrity"
 	"github.com/egoist/asuka/maps"
@@ -79,7 +81,7 @@ func App() ui.Node {
 			return ui.Button(ui.ButtonProps{Title: ui.Val(title), Variant: ui.ButtonTinted, OnPress: f})
 		}
 		section := func(title string) ui.Node {
-			return ui.StaticText(title, ui.Style{Font: ui.Headline, Margin: ui.Edges{Top: 8}})
+			return ui.StaticText(title, ui.Style{Font: fonts.Headline, Margin: ui.Edges{Top: 8}})
 		}
 		recording := signal.New(false)
 		lastImage := signal.New("")
@@ -91,7 +93,7 @@ func App() ui.Node {
 		signal.OnCleanup(power.OnSuspend(func() { log.Println("services: going to sleep") }))
 		return ui.Scroll(ui.ScrollProps{Style: ui.Style{Grow: 1}},
 			ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 10},
-				ui.Text(status, ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel}),
+				ui.Text(status, ui.Style{Font: fonts.Footnote, Color: colors.SecondaryLabel}),
 
 				section("Accounts"),
 				appleauth.Button(appleauth.ButtonProps{Style: appleauth.Automatic, OnPress: run(func() string {
@@ -400,14 +402,14 @@ func App() ui.Node {
 						s += " · no transparency"
 					}
 					return s
-				}), ui.Style{Font: ui.Footnote}),
+				}), ui.Style{Font: fonts.Footnote}),
 				ui.Text(signal.Func(func() string {
 					var out []string
 					for _, d := range displays.Get() {
 						out = append(out, fmt.Sprintf("%s %gx%g@%gx %gHz", d.Name, d.Bounds.Width, d.Bounds.Height, d.Scale, d.RefreshRate))
 					}
 					return strings.Join(out, "\n")
-				}), ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel}),
+				}), ui.Style{Font: fonts.Footnote, Color: colors.SecondaryLabel}),
 				item("Idle time", run(func() string {
 					d, err := power.IdleTime()
 					if err != nil {
@@ -507,7 +509,7 @@ func mapScreen() ui.Node {
 	picked := signal.New("Tap a pin")
 	pins := []maps.Marker{
 		{ID: "ferry", At: maps.Coordinate{Lat: 37.7955, Lng: -122.3937}, Title: "Ferry Building"},
-		{ID: "park", At: maps.Coordinate{Lat: 37.7694, Lng: -122.4862}, Title: "Golden Gate Park", Color: ui.Hex(0x2E7D32)},
+		{ID: "park", At: maps.Coordinate{Lat: 37.7694, Lng: -122.4862}, Title: "Golden Gate Park", Color: colors.Hex(0x2E7D32)},
 	}
 	return ui.Column(ui.Style{Grow: 1},
 		maps.View(maps.Props{

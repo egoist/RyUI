@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"example.com/vettest/msgs"
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/markdown"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
@@ -37,13 +38,13 @@ func SwitchOn(n *signal.Signal[int]) ui.Node {
 }
 
 func Styled(dim *signal.Memo[bool]) ui.Node {
-	c := ui.Label
+	c := colors.Label
 	return ui.View(ui.ViewProps{Style: ui.Style{Color: pick(dim.Get(), c)}}) // want `dim.Get\(\) is read once, while Styled builds its views, so the style made from it never changes: make the style a ui.StyleFunc, or use dim.Peek\(\)`
 }
 
 func pick(dim bool, c ui.Color) ui.Color {
 	if dim {
-		return ui.SecondaryLabel
+		return colors.SecondaryLabel
 	}
 	return c
 }

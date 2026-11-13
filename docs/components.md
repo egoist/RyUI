@@ -53,14 +53,14 @@ never changes.
 count := signal.New(0)
 label := signal.Func(func() string { return fmt.Sprintf("%d unread", count.Get()) })
 return ui.Column(ui.Style{Gap: 8},
-	ui.StaticText("Inbox", ui.Style{Font: ui.Title2.Weighted(ui.Bold)}),
-	ui.Text(label, ui.Style{Color: ui.SecondaryLabel}),
+	ui.StaticText("Inbox", ui.Style{Font: fonts.Title2.Weighted(fonts.Bold)}),
+	ui.Text(label, ui.Style{Color: colors.SecondaryLabel}),
 	ui.StaticText("A long description that stops after two lines.", ui.Style{Lines: 2}),
 )
 ```
 
 The style's `Font`, `Color`, `TextAlign` and `Lines` are the text's.
-Text styles (`ui.Body`, `ui.Headline`, `ui.Footnote`...) follow the
+Text styles (`fonts.Body`, `fonts.Headline`, `fonts.Footnote`...) follow the
 text size the user picked.
 
 ### RichText
@@ -74,7 +74,7 @@ ui.RichText(ui.RichTextProps{
 	Text: ui.Val(ui.Rich{
 		ui.Strong("asuka"), ui.Plain(" draws "), ui.Em("native"), ui.Plain(" views. Run "),
 		ui.Code("asuka dev"), ui.Plain(", or read "), ui.Link("the docs", "https://example.com/docs"),
-		ui.Plain(".\nA second paragraph, "), ui.Plain("in red").Colored(ui.Red), ui.Plain("."),
+		ui.Plain(".\nA second paragraph, "), ui.Plain("in red").Colored(colors.Red), ui.Plain("."),
 	}),
 	OnLink: ui.OpenURL,
 })
@@ -109,8 +109,8 @@ and its state, from one `Rich` to the next.
 ui.RichText(ui.RichTextProps{Text: ui.Val(ui.Rich{
 	ui.Plain("Status: "),
 	ui.Embed("badge", func() ui.Node {
-		return ui.View(ui.ViewProps{Style: ui.Style{Background: ui.Green, CornerRadius: 6, Padding: ui.Symmetric(2, 6)}},
-			ui.StaticText("live", ui.Style{Font: ui.Caption, Color: ui.RGB(255, 255, 255)}))
+		return ui.View(ui.ViewProps{Style: ui.Style{Background: colors.Green, CornerRadius: 6, Padding: ui.Symmetric(2, 6)}},
+			ui.StaticText("live", ui.Style{Font: fonts.Caption, Color: colors.RGB(255, 255, 255)}))
 	}),
 	ui.Plain(" since this morning."),
 })})
@@ -224,7 +224,7 @@ web), on a secondary click:
 ui.Menu(ui.MenuProps{LongPress: true, Actions: []ui.Action{
 	{Title: ui.Val("Reply"), Icon: ui.IconMessage},
 	{Title: ui.Val("Delete"), Role: ui.ActionDestructive},
-}, Style: ui.Style{Padding: ui.All(16), Background: ui.SecondaryBackground, CornerRadius: 12}},
+}, Style: ui.Style{Padding: ui.All(16), Background: colors.SecondaryBackground, CornerRadius: 12}},
 	ui.StaticText("Long-press for a menu"),
 )
 ```
@@ -436,8 +436,8 @@ by default).
 ```go
 return ui.Row(ui.Style{Gap: 14, Align: ui.AlignCenter},
 	ui.Symbol(ui.IconBell),
-	ui.Symbol(ui.IconStar.Filled(), ui.Style{Color: ui.Yellow, Font: ui.Title}),
-	ui.Symbol(ui.Icon("archivebox"), ui.Style{Color: ui.SecondaryLabel}),
+	ui.Symbol(ui.IconStar.Filled(), ui.Style{Color: colors.Yellow, Font: fonts.Title}),
+	ui.Symbol(ui.Icon("archivebox"), ui.Style{Color: colors.SecondaryLabel}),
 )
 ```
 
@@ -466,13 +466,13 @@ vector drawing; nothing is rasterized. `svg.MustParse` reads the markup
 var download = svg.MustParse(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>`)
 
 func downloadIcon() ui.Node {
-	return svg.View(svg.Props{Icon: download, Color: ui.Val(ui.Accent), Label: ui.Val("Download"),
+	return svg.View(svg.Props{Icon: download, Color: ui.Val(colors.Accent), Label: ui.Val("Download"),
 		Style: ui.Style{Width: ui.Pt(24), Height: ui.Pt(24)}})
 }
 ```
 
 `Color` paints what the SVG paints with `currentColor`, and fills it
-doesn't give; it's `ui.Label`, the text color, by default. Without a
+doesn't give; it's `colors.Label`, the text color, by default. Without a
 width or height in its `Style`, the view is the SVG's own size; with
 one, the other keeps the aspect ratio. Keep an icon in a file with
 `//go:embed` and parse it once, in a package variable.
@@ -628,7 +628,7 @@ ui.Shape(ui.ShapeProps{
 	Path: func(w, h float32) *ui.Path {
 		return new(ui.Path).MoveTo(w/2, 0).LineTo(w, h).LineTo(0, h).Close()
 	},
-	Fill:  ui.Orange,
+	Fill:  colors.Orange,
 	Style: ui.Style{Width: ui.Pt(48), Height: ui.Pt(48)},
 })
 ```
@@ -658,8 +658,8 @@ func ring(w, h float32) *ui.Path {
 func progressRing(done signal.Accessor[float32]) ui.Node {
 	box := ui.Style{Absolute: true, Left: ui.Pt(0), Top: ui.Pt(0), Width: ui.Pct(100), Height: ui.Pct(100)}
 	return ui.View(ui.ViewProps{Label: ui.Val("Progress"), Style: ui.Style{Width: ui.Pt(72), Height: ui.Pt(72)}},
-		ui.Shape(ui.ShapeProps{Path: ring, Stroke: ui.SecondaryBackground, LineWidth: 8, Style: box}),
-		ui.Shape(ui.ShapeProps{Path: ring, Stroke: ui.Accent, LineWidth: 8, LineCap: ui.CapRound,
+		ui.Shape(ui.ShapeProps{Path: ring, Stroke: colors.SecondaryBackground, LineWidth: 8, Style: box}),
+		ui.Shape(ui.ShapeProps{Path: ring, Stroke: colors.Accent, LineWidth: 8, LineCap: ui.CapRound,
 			TrimEnd: done, Style: box}),
 	)
 }
@@ -674,9 +674,9 @@ game's board, whatever no view is. Its function draws with a
 ```go
 ui.Canvas(func(g *ui.Graphics) {
 	w, h := g.Size()
-	g.Fill(g.Path().RoundedRect(0, 0, w, h, 12), ui.SecondaryBackground)
-	g.Fill(g.Path().RoundedRect(0, 0, w*level.Get(), h, 12), ui.Accent)
-	g.Text(fmt.Sprintf("%.0f%%", level.Get()*100), w/2, h/2+6, ui.TextStyle{Weight: ui.Semibold, Align: ui.TextCenter})
+	g.Fill(g.Path().RoundedRect(0, 0, w, h, 12), colors.SecondaryBackground)
+	g.Fill(g.Path().RoundedRect(0, 0, w*level.Get(), h, 12), colors.Accent)
+	g.Text(fmt.Sprintf("%.0f%%", level.Get()*100), w/2, h/2+6, ui.TextStyle{Weight: fonts.Semibold, Align: ui.TextCenter})
 }, ui.Style{Height: ui.Pt(36)})
 ```
 
@@ -686,7 +686,7 @@ ui.Canvas(func(g *ui.Graphics) {
   at y, its left edge, center or right edge at x.
 - `Save` and `Restore` bracket `Translate`, `Scale`, `Rotate` (degrees,
   clockwise), `Clip` and `Opacity`.
-- Colors can be semantic (`ui.Label`, `ui.Separator`, `ui.Accent`):
+- Colors can be semantic (`colors.Label`, `colors.Separator`, `colors.Accent`):
   they follow dark mode.
 
 It draws once it's laid out, and again when its size changes or the
@@ -709,7 +709,7 @@ by it, scaled with the user's text size).
 chart.View(chart.Props{
 	Series: ui.Val([]chart.Series{
 		{Name: "Steps", Kind: chart.Bar, Values: steps},
-		{Name: "Goal", Kind: chart.Line, Values: goal, Color: ui.Hex(0xff9500)},
+		{Name: "Goal", Kind: chart.Line, Values: goal, Color: colors.Hex(0xff9500)},
 	}),
 	Labels: ui.Val([]string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}),
 	Label:  ui.Val("Steps this week"),
@@ -748,9 +748,9 @@ func Fragment(dst vec4, pos vec2) vec4 {
 
 ui.Shader(ui.ShaderProps{
 	Program:  glow,
-	Uniforms: ui.Val([]ui.Uniform{ui.ColorUniform("Tint", ui.Hex(0x38bdf8))}),
+	Uniforms: ui.Val([]ui.Uniform{ui.ColorUniform("Tint", colors.Hex(0x38bdf8))}),
 	Animated: true,
-	Style:    ui.Style{Height: ui.Pt(200), CornerRadius: 16, Clip: true, Background: ui.Hex(0x0b1030)},
+	Style:    ui.Style{Height: ui.Pt(200), CornerRadius: 16, Clip: true, Background: colors.Hex(0x0b1030)},
 })
 ```
 
@@ -799,12 +799,12 @@ return ui.View(ui.ViewProps{
 	OnPress:     func() { open.Set(!open.Peek()) },
 	OnLongPress: func() { ui.Haptic(ui.HapticMedium) },
 	Label:       ui.Val("Ada, 2 unread"),
-	Style:       ui.Style{Direction: ui.RowDir, Gap: 12, Padding: ui.All(16), Background: ui.SecondaryBackground, CornerRadius: 12},
+	Style:       ui.Style{Direction: ui.RowDir, Gap: 12, Padding: ui.All(16), Background: colors.SecondaryBackground, CornerRadius: 12},
 },
 	ui.Symbol(ui.IconPerson.Filled()),
 	ui.Column(ui.Style{Grow: 1, Gap: 2},
-		ui.StaticText("Ada", ui.Style{Font: ui.Headline}),
-		ui.StaticText("2 unread", ui.Style{Color: ui.SecondaryLabel}),
+		ui.StaticText("Ada", ui.Style{Font: fonts.Headline}),
+		ui.StaticText("2 unread", ui.Style{Color: colors.SecondaryLabel}),
 	),
 )
 ```
@@ -946,7 +946,7 @@ formats := signal.New(ui.TextFormats{})
 var field ui.Node
 field = ui.TextField(ui.TextFieldProps{Rich: body, Plain: true, OnFormats: formats.Set, Style: ui.Style{Grow: 1}})
 bold := ui.Button(ui.ButtonProps{Icon: "bold", Label: ui.Val("Bold"),
-	Style:   ui.StyleFunc(func() ui.Style { if formats.Get().Has(ui.FormatBold) { return ui.Style{Background: ui.SecondaryBackground} }; return ui.Style{} }),
+	Style:   ui.StyleFunc(func() ui.Style { if formats.Get().Has(ui.FormatBold) { return ui.Style{Background: colors.SecondaryBackground} }; return ui.Style{} }),
 	OnPress: func() { ui.ToggleFormat(field, ui.FormatBold) }})
 ```
 
@@ -980,8 +980,8 @@ return ui.List(ui.ListProps{}, messages, func(m message) int { return m.ID }, ro
 ```go
 func row(m signal.Accessor[message], _ signal.Accessor[int]) ui.Node {
 	return ui.Column(ui.Style{Gap: 2, Padding: ui.Symmetric(12, 20)},
-		ui.Text(signal.Func(func() string { return m.Get().From }), ui.Style{Font: ui.Headline}),
-		ui.Text(signal.Func(func() string { return m.Get().Subject }), ui.Style{Color: ui.SecondaryLabel}),
+		ui.Text(signal.Func(func() string { return m.Get().From }), ui.Style{Font: fonts.Headline}),
+		ui.Text(signal.Func(func() string { return m.Get().Subject }), ui.Style{Color: colors.SecondaryLabel}),
 	)
 }
 ```
@@ -1087,7 +1087,7 @@ reused for another section after.
 ui.List(ui.ListProps{
 	Section: func(i int) string { return day(msgs.Peek()[i].At) },
 	Header: func(day signal.Accessor[string]) ui.Node {
-		return ui.Text(day, ui.Style{Font: ui.Footnote.Weighted(ui.Semibold), Padding: ui.Symmetric(6, 20)})
+		return ui.Text(day, ui.Style{Font: fonts.Footnote.Weighted(fonts.Semibold), Padding: ui.Symmetric(6, 20)})
 	},
 }, msgs, key, row)
 ```
@@ -1162,7 +1162,7 @@ section under a header.
 
 ```go
 ui.Scroll(ui.ScrollProps{Style: ui.Style{Grow: 1}, ContentStyle: ui.Style{Padding: ui.All(20), Gap: 8}},
-	ui.StaticText("Tags", ui.Style{Font: ui.Headline}),
+	ui.StaticText("Tags", ui.Style{Font: fonts.Headline}),
 	ui.For(tags, func(t string) string { return t }, func(t signal.Accessor[string], _ signal.Accessor[int]) ui.Node {
 		return ui.Text(t)
 	}),

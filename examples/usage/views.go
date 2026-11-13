@@ -5,6 +5,8 @@ import (
 	"math"
 	"time"
 
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/svg"
 	"github.com/egoist/asuka/ui"
@@ -24,8 +26,8 @@ var (
 // Claude's colors: its terracotta mark on its cream, as its app's icon,
 // the same in light and dark.
 var (
-	claude      = ui.Hex(0xD97757)
-	claudeCream = ui.Hex(0xF4F3EE)
+	claude      = colors.Hex(0xD97757)
+	claudeCream = colors.Hex(0xF4F3EE)
 )
 
 // fill is a view's whole box, for views stacked over each other.
@@ -72,13 +74,13 @@ func cookie(w, h float32) *ui.Path {
 func paceColor(p Pace) ui.Color {
 	switch p {
 	case PaceOK:
-		return ui.Green
+		return colors.Green
 	case PaceTight:
-		return ui.Orange
+		return colors.Orange
 	case PaceOver, PaceUsedUp:
-		return ui.Red
+		return colors.Red
 	}
-	return ui.SecondaryLabel
+	return colors.SecondaryLabel
 }
 
 func paceIcon(p Pace) *svg.Icon {
@@ -127,20 +129,20 @@ func meter(w signal.Accessor[Window]) ui.Node {
 					CornerRadius: 3, Background: color()}
 			})})
 		}
-		return ui.View(ui.ViewProps{Label: ui.Val("Meter"), Style: ui.Style{Height: ui.Pt(6), CornerRadius: 3, Clip: true, Background: ui.Gray.Opacity(0.2)}},
+		return ui.View(ui.ViewProps{Label: ui.Val("Meter"), Style: ui.Style{Height: ui.Pt(6), CornerRadius: 3, Clip: true, Background: colors.Gray.Opacity(0.2)}},
 			over(func() float32 { f, b, _ := parts(); return f + b }, func() ui.Color { return paceColor(pace.Get()).Opacity(0.4) }),
-			over(func() float32 { f, _, _ := parts(); return f }, func() ui.Color { return ui.Accent }),
+			over(func() float32 { f, _, _ := parts(); return f }, func() ui.Color { return colors.Accent }),
 		)
 	}
 	return ui.View(ui.ViewProps{
 		Label: ui.Val("Meter"),
 		Style: ui.Style{Direction: ui.RowDir, Gap: 4, Height: ui.Pt(4)},
 	},
-		part(func() float32 { f, _, _ := parts(); return f }, func() ui.Color { return ui.Accent }),
+		part(func() float32 { f, _, _ := parts(); return f }, func() ui.Color { return colors.Accent }),
 		part(func() float32 { _, b, _ := parts(); return b }, func() ui.Color { return paceColor(pace.Get()).Opacity(0.45) }),
-		part(func() float32 { _, _, t := parts(); return t }, func() ui.Color { return ui.Accent.Opacity(0.2) }),
+		part(func() float32 { _, _, t := parts(); return t }, func() ui.Color { return colors.Accent.Opacity(0.2) }),
 		ui.View(ui.ViewProps{Style: ui.Style{Absolute: true, Right: ui.Pt(0), Top: ui.Pt(0),
-			Width: ui.Pt(4), Height: ui.Pt(4), CornerRadius: 2, Background: ui.Accent}}),
+			Width: ui.Pt(4), Height: ui.Pt(4), CornerRadius: 2, Background: colors.Accent}}),
 	)
 }
 
@@ -219,14 +221,14 @@ func chart(w signal.Accessor[Window]) ui.Node {
 			Style:    ui.Style{Height: ui.Pt(150)},
 		},
 			// The limit, and nothing used.
-			ui.Shape(ui.ShapeProps{Style: fill, Stroke: ui.SecondaryLabel.Opacity(0.5), Dash: []float32{2, 4},
+			ui.Shape(ui.ShapeProps{Style: fill, Stroke: colors.SecondaryLabel.Opacity(0.5), Dash: []float32{2, 4},
 				Path: func(width, height float32) *ui.Path { return new(ui.Path).MoveTo(pad, pad).LineTo(width-pad, pad) }}),
-			ui.Shape(ui.ShapeProps{Style: fill, Stroke: ui.Separator,
+			ui.Shape(ui.ShapeProps{Style: fill, Stroke: colors.Separator,
 				Path: func(width, height float32) *ui.Path {
 					return new(ui.Path).MoveTo(pad, height-pad).LineTo(width-pad, height-pad)
 				}}),
-			ui.Shape(ui.ShapeProps{Style: fill, Path: area, Fill: ui.Accent.Opacity(0.15)}),
-			ui.Shape(ui.ShapeProps{Style: fill, Path: line, Stroke: ui.Accent, LineWidth: 3, LineCap: ui.CapRound, LineJoin: ui.JoinRound}),
+			ui.Shape(ui.ShapeProps{Style: fill, Path: area, Fill: colors.Accent.Opacity(0.15)}),
+			ui.Shape(ui.ShapeProps{Style: fill, Path: line, Stroke: colors.Accent, LineWidth: 3, LineCap: ui.CapRound, LineJoin: ui.JoinRound}),
 			// The forecast, in its pace's color: made again when that changes.
 			ui.Dynamic(func() ui.Node {
 				p := pace.Get()
@@ -244,18 +246,18 @@ func chart(w signal.Accessor[Window]) ui.Node {
 					ui.Shape(ui.ShapeProps{Style: fill, Fill: c, Path: dot(5, end)}),
 				)
 			}),
-			ui.Shape(ui.ShapeProps{Style: fill, Fill: ui.Accent, Stroke: ui.SecondaryGroupedBackground, LineWidth: 3, Path: dot(8, now)}),
+			ui.Shape(ui.ShapeProps{Style: fill, Fill: colors.Accent, Stroke: colors.SecondaryGroupedBackground, LineWidth: 3, Path: dot(8, now)}),
 			ui.Text(ui.Val("Now"), ui.StyleFunc(func() ui.Style {
 				s := size.Get()
 				x, y := now(max(s[0], 1), max(s[1], 1))
 				// Centered over the dot, inside the chart.
 				return ui.Style{Absolute: true, Left: ui.Pt(min(max(x-30, 0), s[0]-60)), Top: ui.Pt(max(y-36, 0)),
-					Width: ui.Pt(60), TextAlign: ui.TextCenter, Font: ui.Footnote, Color: ui.SecondaryLabel}
+					Width: ui.Pt(60), TextAlign: ui.TextCenter, Font: fonts.Footnote, Color: colors.SecondaryLabel}
 			})),
 		),
 		ui.Row(ui.Style{Justify: ui.JustifySpaceBetween},
-			ui.Text(signal.Func(func() string { return label(w.Get().Resets.Add(-w.Get().Period())) }), ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel}),
-			ui.Text(signal.Func(func() string { return label(w.Get().Resets) }), ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel}),
+			ui.Text(signal.Func(func() string { return label(w.Get().Resets.Add(-w.Get().Period())) }), ui.Style{Font: fonts.Footnote, Color: colors.SecondaryLabel}),
+			ui.Text(signal.Func(func() string { return label(w.Get().Resets) }), ui.Style{Font: fonts.Footnote, Color: colors.SecondaryLabel}),
 		),
 	)
 }

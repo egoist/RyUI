@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/secure"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
@@ -116,9 +118,9 @@ func addSheet(open *signal.Signal[bool], id string) ui.Node {
 		return ui.Scroll(ui.ScrollProps{Style: ui.Style{Grow: 1}},
 			ui.SafeArea(ui.Style{Padding: ui.Edges{Top: 40, Left: 24, Right: 24, Bottom: 24}, Gap: 16, Align: ui.AlignCenter},
 				badge("claude", 72),
-				ui.StaticText(title, ui.Style{Font: ui.Title2.Weighted(ui.Bold), TextAlign: ui.TextCenter}),
+				ui.StaticText(title, ui.Style{Font: fonts.Title2.Weighted(fonts.Bold), TextAlign: ui.TextCenter}),
 				ui.StaticText("Sign in with your Claude account to follow its plan's limits. This app only reads your usage and your profile: it can't send messages or see your chats.",
-					ui.Style{Color: ui.SecondaryLabel, TextAlign: ui.TextCenter}),
+					ui.Style{Color: colors.SecondaryLabel, TextAlign: ui.TextCenter}),
 				ui.Column(ui.Style{Gap: 12, AlignSelf: ui.AlignStretch, Margin: ui.Edges{Top: 8}},
 					ui.Button(ui.ButtonProps{Title: ui.Val("Continue with Claude"), Variant: ui.ButtonFilled, OnPress: start,
 						Disabled: working}),
@@ -147,7 +149,7 @@ func addSheet(open *signal.Signal[bool], id string) ui.Node {
 				}),
 				ui.Show(working, func() ui.Node { return ui.Activity() }),
 				ui.Show(signal.Func(func() bool { return failed.Get() != "" }), func() ui.Node {
-					return ui.Text(failed, ui.Style{Font: ui.Footnote, Color: ui.Red, TextAlign: ui.TextCenter})
+					return ui.Text(failed, ui.Style{Font: fonts.Footnote, Color: colors.Red, TextAlign: ui.TextCenter})
 				}),
 			),
 		)

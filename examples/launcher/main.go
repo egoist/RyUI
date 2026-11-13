@@ -15,6 +15,8 @@ import (
 
 	"github.com/egoist/asuka/app"
 	"github.com/egoist/asuka/apps"
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/hotkey"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/tray"
@@ -117,7 +119,7 @@ func Launcher() ui.Node {
 		Placeholder: ui.Val("Search apps"),
 		Plain:       true,
 		Autocorrect: ui.AutocorrectNo,
-		Style:       ui.Style{Grow: 1, Font: ui.Title2},
+		Style:       ui.Style{Grow: 1, Font: fonts.Title2},
 		OnSubmit: func() {
 			if r, i := signal.Untrack(results.Get), sel.Peek(); i < len(r) {
 				open(r[i])
@@ -134,12 +136,12 @@ func Launcher() ui.Node {
 	})
 	return ui.Column(ui.Style{},
 		ui.Row(ui.Style{Padding: ui.Edges{Top: 14, Bottom: 14, Left: 18, Right: 18}, Gap: 12, Align: ui.AlignCenter},
-			ui.Symbol("magnifyingglass", ui.Style{Font: ui.Title2, Color: ui.SecondaryLabel}),
+			ui.Symbol("magnifyingglass", ui.Style{Font: fonts.Title2, Color: colors.SecondaryLabel}),
 			field,
 		),
 		ui.Show(signal.Func(func() bool { return len(results.Get()) > 0 }), func() ui.Node {
 			return ui.Column(ui.Style{Padding: ui.Edges{Bottom: 8, Left: 8, Right: 8}},
-				ui.View(ui.ViewProps{Style: ui.Style{Height: ui.Pt(1), Background: ui.Separator, Margin: ui.Edges{Bottom: 6, Left: 10, Right: 10}}}),
+				ui.View(ui.ViewProps{Style: ui.Style{Height: ui.Pt(1), Background: colors.Separator, Margin: ui.Edges{Bottom: 6, Left: 10, Right: 10}}}),
 				ui.For(results, func(a apps.App) string { return a.Path }, func(a signal.Accessor[apps.App], i signal.Accessor[int]) ui.Node {
 					return row(a, signal.Func(func() bool { return i.Get() == sel.Get() }), open)
 				}),
@@ -161,13 +163,13 @@ func row(a signal.Accessor[apps.App], selected signal.Accessor[bool], open func(
 	})
 	base := ui.Style{Padding: ui.Edges{Top: 6, Bottom: 6, Left: 10, Right: 10}, Gap: 12, Align: ui.AlignCenter,
 		Direction: ui.RowDir, CornerRadius: 8,
-		Hovered: &ui.Style{Background: ui.Separator}}
+		Hovered: &ui.Style{Background: colors.Separator}}
 	return ui.View(ui.ViewProps{
-		Style:   base.When(selected.Get, ui.Style{Background: ui.Separator}),
+		Style:   base.When(selected.Get, ui.Style{Background: colors.Separator}),
 		OnPress: func() { open(signal.Untrack(a.Get)) },
 		Label:   signal.Func(func() string { return a.Get().Name }),
 	},
 		ui.Image(ui.ImageProps{Source: icon, Style: ui.Style{Width: ui.Pt(32), Height: ui.Pt(32)}}),
-		ui.Text(signal.Func(func() string { return a.Get().Name }), ui.Style{Font: ui.Body}),
+		ui.Text(signal.Func(func() string { return a.Get().Name }), ui.Style{Font: fonts.Body}),
 	)
 }

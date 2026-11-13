@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )
@@ -147,14 +149,14 @@ func Chat() ui.Node {
 		return ui.Column(ui.StyleFunc(func() ui.Style {
 			s := ui.Style{Padding: ui.Symmetric(8, 12), CornerRadius: 18, MaxWidth: ui.Pct(78), Gap: 2}
 			if item.Get().From == "" {
-				s.AlignSelf, s.Background = ui.AlignEnd, ui.Accent
+				s.AlignSelf, s.Background = ui.AlignEnd, colors.Accent
 			} else {
-				s.AlignSelf, s.Background = ui.AlignStart, ui.SecondaryBackground
+				s.AlignSelf, s.Background = ui.AlignStart, colors.SecondaryBackground
 			}
 			return s
 		}),
 			ui.Show(signal.Func(func() bool { return item.Get().From != "" }), func() ui.Node {
-				return ui.Text(signal.Func(func() string { return item.Get().From }), ui.Style{Font: ui.Caption.Weighted(ui.Semibold), Color: ui.SecondaryLabel})
+				return ui.Text(signal.Func(func() string { return item.Get().From }), ui.Style{Font: fonts.Caption.Weighted(fonts.Semibold), Color: colors.SecondaryLabel})
 			}),
 			ui.Show(signal.Func(func() bool { return item.Get().Image != "" }), func() ui.Node {
 				return ui.Image(ui.ImageProps{Source: signal.Func(func() string { return item.Get().Image }), Mode: ui.ImageFill,
@@ -163,7 +165,7 @@ func Chat() ui.Node {
 			ui.Show(signal.Func(func() bool { return item.Get().Text != "" }), func() ui.Node {
 				return ui.Text(signal.Func(func() string { return item.Get().Text }), ui.StyleFunc(func() ui.Style {
 					if item.Get().From == "" {
-						return ui.Style{Color: ui.OnAccent}
+						return ui.Style{Color: colors.OnAccent}
 					}
 					return ui.Style{}
 				}))
@@ -178,8 +180,8 @@ func Chat() ui.Node {
 		Section:        func(i int) string { return day(at(i).At) },
 		Header: func(d signal.Accessor[string]) ui.Node {
 			return ui.Row(ui.Style{Justify: ui.JustifyCenter, Padding: ui.Symmetric(6, 0)},
-				ui.View(ui.ViewProps{Style: ui.Style{Padding: ui.Symmetric(3, 10), CornerRadius: 999, Background: ui.SecondaryBackground}},
-					ui.Text(d, ui.Style{Font: ui.Caption.Weighted(ui.Semibold), Color: ui.SecondaryLabel})))
+				ui.View(ui.ViewProps{Style: ui.Style{Padding: ui.Symmetric(3, 10), CornerRadius: 999, Background: colors.SecondaryBackground}},
+					ui.Text(d, ui.Style{Font: fonts.Caption.Weighted(fonts.Semibold), Color: colors.SecondaryLabel})))
 		},
 		LeadingSwipeActions: func(i int) []ui.Action {
 			m := at(i)
@@ -231,7 +233,7 @@ func Chat() ui.Node {
 	toolbar := func() ui.Node {
 		return ui.Row(ui.Style{Justify: ui.JustifySpaceBetween, Align: ui.AlignCenter, Padding: ui.Symmetric(8, 16)},
 			ui.Text(signal.Func(func() string { return fmt.Sprintf("%d selected", len(chosen.Get())) })),
-			ui.Button(ui.ButtonProps{Title: ui.Val("Delete"), Style: ui.Style{Color: ui.Red},
+			ui.Button(ui.ButtonProps{Title: ui.Val("Delete"), Style: ui.Style{Color: colors.Red},
 				Disabled: signal.Func(func() bool { return len(chosen.Get()) == 0 }),
 				OnPress:  func() { remove(chosen.Peek()); endSelecting() }}),
 		)

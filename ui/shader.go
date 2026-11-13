@@ -70,7 +70,7 @@ type ShaderProps struct {
 //	}`)
 //
 //	ui.Shader(ui.ShaderProps{Program: glow, Animated: true,
-//		Uniforms: ui.Val([]ui.Uniform{ui.ColorUniform("Tint", ui.Hex(0x38bdf8))}),
+//		Uniforms: ui.Val([]ui.Uniform{ui.ColorUniform("Tint", colors.Hex(0x38bdf8))}),
 //		Style:    ui.Style{Height: ui.Pt(200), CornerRadius: 16, Clip: true}})
 //
 //go:noinline

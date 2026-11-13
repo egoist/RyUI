@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/egoist/asuka/ui"
+	"github.com/egoist/asuka/colors"
 )
 
 // A timeline goes sorted by time, its times in ms and its tint as #rrggbbaa.
@@ -13,7 +13,7 @@ func TestEncode(t *testing.T) {
 	at := time.UnixMilli(2_000_000)
 	b := encode("today", []Entry{
 		{Title: "later", At: at},
-		{Title: "now", Value: "3", Tint: ui.Hex(0x336699), Until: time.UnixMilli(5_000), ShowProgress: true, Progress: 0.5},
+		{Title: "now", Value: "3", Tint: colors.Hex(0x336699), Until: time.UnixMilli(5_000), ShowProgress: true, Progress: 0.5},
 	})
 	var got struct {
 		Kind    string           `json:"kind"`

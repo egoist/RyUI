@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )
@@ -86,17 +88,17 @@ func Mail() ui.Node {
 			ui.View(ui.ViewProps{Style: ui.StyleFunc(func() ui.Style {
 				s := ui.Style{Width: ui.Pt(10), Height: ui.Pt(10), CornerRadius: 5, Margin: ui.Edges{Top: 6}}
 				if item.Get().Unread {
-					s.Background = ui.Accent
+					s.Background = colors.Accent
 				}
 				return s
 			})}),
 			ui.Column(ui.Style{Grow: 1, Shrink: 1, Gap: 2},
 				ui.Row(ui.Style{Justify: ui.JustifySpaceBetween, Gap: 8},
-					ui.Text(signal.Func(func() string { return item.Get().From }), ui.Style{Font: ui.Headline, Lines: 1, Shrink: 1}),
-					ui.Text(signal.Func(func() string { return item.Get().At.Format("15:04") }), ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel}),
+					ui.Text(signal.Func(func() string { return item.Get().From }), ui.Style{Font: fonts.Headline, Lines: 1, Shrink: 1}),
+					ui.Text(signal.Func(func() string { return item.Get().At.Format("15:04") }), ui.Style{Font: fonts.Footnote, Color: colors.SecondaryLabel}),
 				),
 				ui.Text(signal.Func(func() string { return item.Get().Subject }), ui.Style{Lines: 1}),
-				ui.Text(signal.Func(func() string { return item.Get().Preview }), ui.Style{Font: ui.Subheadline, Color: ui.SecondaryLabel, Lines: 2}),
+				ui.Text(signal.Func(func() string { return item.Get().Preview }), ui.Style{Font: fonts.Subheadline, Color: colors.SecondaryLabel, Lines: 2}),
 			),
 		)
 	}
@@ -105,7 +107,7 @@ func Mail() ui.Node {
 		Section: func(i int) string { return day(at(i).At) },
 		Header: func(d signal.Accessor[string]) ui.Node {
 			return ui.View(ui.ViewProps{Style: ui.Style{Padding: ui.Symmetric(6, 16)}},
-				ui.Text(d, ui.Style{Font: ui.Footnote.Weighted(ui.Semibold), Color: ui.SecondaryLabel}))
+				ui.Text(d, ui.Style{Font: fonts.Footnote.Weighted(fonts.Semibold), Color: colors.SecondaryLabel}))
 		},
 		LeadingSwipeActions: func(i int) []ui.Action {
 			m := at(i)
@@ -171,7 +173,7 @@ func compose(open *signal.Signal[bool]) ui.Node {
 	style := func(f ui.TextFormat) ui.Styler {
 		return ui.StyleFunc(func() ui.Style {
 			if formats.Get().Has(f) {
-				return ui.Style{Background: ui.SecondaryBackground, CornerRadius: 8}
+				return ui.Style{Background: colors.SecondaryBackground, CornerRadius: 8}
 			}
 			return ui.Style{}
 		})
@@ -187,14 +189,14 @@ func compose(open *signal.Signal[bool]) ui.Node {
 	})
 	line := func(label string, v *signal.Signal[string], kb ui.KeyboardType) ui.Node {
 		return ui.Row(ui.Style{Gap: 8, Align: ui.AlignCenter, Padding: ui.Symmetric(8, 16)},
-			ui.StaticText(label, ui.Style{Color: ui.SecondaryLabel}),
+			ui.StaticText(label, ui.Style{Color: colors.SecondaryLabel}),
 			ui.TextField(ui.TextFieldProps{Value: v, Plain: true, Keyboard: kb, Autocapitalize: ui.CapitalizeNone, Style: ui.Style{Grow: 1}}),
 		)
 	}
 	return ui.SafeArea(ui.Style{Grow: 1},
 		ui.Row(ui.Style{Justify: ui.JustifySpaceBetween, Align: ui.AlignCenter, Padding: ui.Symmetric(8, 16)},
 			ui.Button(ui.ButtonProps{Title: ui.Val("Cancel"), OnPress: func() { open.Set(false) }}),
-			ui.StaticText("New Message", ui.Style{Font: ui.Headline}),
+			ui.StaticText("New Message", ui.Style{Font: fonts.Headline}),
 			ui.Button(ui.ButtonProps{Title: ui.Val("Send"), Variant: ui.ButtonFilled,
 				Disabled: signal.Func(func() bool { return strings.TrimSpace(to.Get()) == "" }),
 				OnPress:  func() { open.Set(false) }}),
@@ -211,7 +213,7 @@ func compose(open *signal.Signal[bool]) ui.Node {
 			ui.Button(ui.ButtonProps{Icon: "link", Label: ui.Val("Link"),
 				Style: ui.StyleFunc(func() ui.Style {
 					if formats.Get().Link != "" {
-						return ui.Style{Background: ui.SecondaryBackground, CornerRadius: 8}
+						return ui.Style{Background: colors.SecondaryBackground, CornerRadius: 8}
 					}
 					return ui.Style{}
 				}),

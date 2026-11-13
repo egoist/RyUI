@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )
@@ -62,7 +64,7 @@ func App() ui.Node {
 	})
 
 	return ui.SafeArea(ui.Style{Padding: ui.Symmetric(8, 16), Gap: 12},
-		ui.StaticText("Todos", ui.Style{Font: ui.LargeTitle.Weighted(ui.Bold)}),
+		ui.StaticText("Todos", ui.Style{Font: fonts.LargeTitle.Weighted(fonts.Bold)}),
 		ui.Scroll(ui.ScrollProps{Style: ui.Style{Grow: 1}},
 			ui.For(todos, func(t *todo) int { return t.id }, func(item signal.Accessor[*todo], _ signal.Accessor[int]) ui.Node {
 				t := item.Get() // a row's key is its todo, so the todo never changes
@@ -71,13 +73,13 @@ func App() ui.Node {
 					ui.Text(ui.Val(t.title), ui.StyleFunc(func() ui.Style {
 						s := ui.Style{Grow: 1}
 						if t.done.Get() {
-							s.Color = ui.SecondaryLabel
+							s.Color = colors.SecondaryLabel
 						}
 						return s
 					})),
 					ui.Button(ui.ButtonProps{
 						Title:   ui.Val("Delete"),
-						Style:   ui.Style{Color: ui.Red},
+						Style:   ui.Style{Color: colors.Red},
 						OnPress: func() { remove(t.id) },
 					}),
 				)
@@ -89,7 +91,7 @@ func App() ui.Node {
 				return "1 thing left"
 			}
 			return fmt.Sprintf("%d things left", n)
-		}), ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel}),
+		}), ui.Style{Font: fonts.Footnote, Color: colors.SecondaryLabel}),
 		ui.Row(ui.Style{Gap: 8, Align: ui.AlignCenter},
 			ui.TextField(ui.TextFieldProps{
 				Value:       draft,

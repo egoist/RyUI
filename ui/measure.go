@@ -3,6 +3,7 @@ package ui
 import (
 	"math"
 
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/layout"
 	"github.com/egoist/asuka/ops"
 )
@@ -14,7 +15,7 @@ type measureKey struct {
 	kind      ops.Kind
 	text      string
 	variant   int32
-	font      Font
+	font      fonts.Font
 	lines     int
 	fontScale float32
 	scale     float32 // its window's: text measured in points differs with pixel rounding

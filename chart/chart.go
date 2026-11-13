@@ -16,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/layout"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
@@ -70,7 +72,7 @@ type Props struct {
 
 // Palette is the colors series take, in turn, when they give none: the
 // app's accent, then the system's colors.
-var Palette = []ui.Color{ui.Accent, ui.Hex(0xff9500), ui.Hex(0x34c759), ui.Hex(0xaf52de), ui.Hex(0xff2d55), ui.Hex(0x5ac8fa)}
+var Palette = []ui.Color{colors.Accent, colors.Hex(0xff9500), colors.Hex(0x34c759), colors.Hex(0xaf52de), colors.Hex(0xff2d55), colors.Hex(0x5ac8fa)}
 
 const (
 	plotPad   = 4 // the plot's inset, top and bottom: room for a line's width and a dot
@@ -181,7 +183,7 @@ func View(p Props) ui.Node {
 	}, grid)
 }
 
-var labelStyle = ui.Style{Font: ui.Caption, Color: ui.SecondaryLabel}
+var labelStyle = ui.Style{Font: fonts.Caption, Color: colors.SecondaryLabel}
 
 func place(n int) layout.Placement { return layout.Placement{Start: layout.Line(n)} }
 
@@ -324,7 +326,7 @@ func draw(g *ui.Graphics, series []Series, s scale, n int, grid bool) {
 	if grid {
 		for _, t := range s.ticks {
 			ty := y(t)
-			g.Stroke(g.Path().MoveTo(0, ty).LineTo(w, ty), ui.Separator, ui.StrokeStyle{Width: 1})
+			g.Stroke(g.Path().MoveTo(0, ty).LineTo(w, ty), colors.Separator, ui.StrokeStyle{Width: 1})
 		}
 	}
 	colorOf := func(i int, s Series) ui.Color {

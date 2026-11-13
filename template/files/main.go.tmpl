@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )
@@ -13,7 +14,7 @@ func App() ui.Node {
 	return ui.SafeArea(ui.Style{Justify: ui.JustifyCenter, Align: ui.AlignCenter, Gap: 16},
 		ui.Text(signal.Func(func() string {
 			return fmt.Sprintf("{{.Name}}: %d", count.Get())
-		}), ui.Style{Font: ui.Title}),
+		}), ui.Style{Font: fonts.Title}),
 		ui.Button(ui.ButtonProps{
 			Title:   ui.Val("Add"),
 			Variant: ui.ButtonFilled,

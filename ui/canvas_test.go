@@ -3,6 +3,7 @@ package ui_test
 import (
 	"testing"
 
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
@@ -19,9 +20,9 @@ func TestCanvas(t *testing.T) {
 			draws++
 			other.Get()
 			w, ht := g.Size()
-			g.Fill(g.Path().RoundedRect(0, 0, w, ht, 8), ui.SecondaryBackground)
-			g.Fill(g.Path().Rect(0, 0, w*level.Get(), ht), ui.Hex(0x34c759))
-			g.Stroke(g.Path().MoveTo(0, ht).LineTo(w, 0), ui.Label, ui.StrokeStyle{Width: 2, Dash: []float32{4, 2}})
+			g.Fill(g.Path().RoundedRect(0, 0, w, ht, 8), colors.SecondaryBackground)
+			g.Fill(g.Path().Rect(0, 0, w*level.Get(), ht), colors.Hex(0x34c759))
+			g.Stroke(g.Path().MoveTo(0, ht).LineTo(w, 0), colors.Label, ui.StrokeStyle{Width: 2, Dash: []float32{4, 2}})
 			g.Text("50%", w/2, ht/2, ui.TextStyle{Align: ui.TextCenter})
 		}, ui.Style{Width: ui.Pt(200), Height: ui.Pt(40)})
 	})

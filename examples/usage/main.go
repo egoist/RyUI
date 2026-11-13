@@ -19,6 +19,8 @@ import (
 	"time"
 
 	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/secure"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/store"
@@ -92,9 +94,9 @@ func home(adding *signal.Signal[bool]) ui.Node {
 			ui.Show(signal.Func(func() bool { return len(accounts.Get()) == 0 }), func() ui.Node {
 				return ui.Column(ui.Style{Padding: ui.Symmetric(80, 24), Gap: 16, Align: ui.AlignCenter},
 					badge("claude", 72),
-					ui.StaticText("Follow your plan's limits", ui.Style{Font: ui.Title3.Weighted(ui.Semibold), TextAlign: ui.TextCenter}),
+					ui.StaticText("Follow your plan's limits", ui.Style{Font: fonts.Title3.Weighted(fonts.Semibold), TextAlign: ui.TextCenter}),
 					ui.StaticText("See how much of your 5-hour window and your week is left, and whether the week will last.",
-						ui.Style{Color: ui.SecondaryLabel, TextAlign: ui.TextCenter}),
+						ui.Style{Color: colors.SecondaryLabel, TextAlign: ui.TextCenter}),
 					ui.Button(ui.ButtonProps{Title: ui.Val("Add an account"), Icon: ui.IconPlus, Variant: ui.ButtonFilled,
 						OnPress: func() { adding.Set(true) }}),
 				)
@@ -127,14 +129,14 @@ func accountCard(a signal.Accessor[Account]) ui.Node {
 			})
 		},
 		Style: ui.StyleFunc(func() ui.Style {
-			return ui.Style{Padding: ui.All(cardPadding()), Gap: 18, Background: ui.SecondaryGroupedBackground, CornerRadius: radius()}
+			return ui.Style{Padding: ui.All(cardPadding()), Gap: 18, Background: colors.SecondaryGroupedBackground, CornerRadius: radius()}
 		}),
 	},
 		ui.Row(ui.Style{Gap: 16, Align: ui.AlignCenter},
 			badge(signal.Untrack(a.Get).Service, map[bool]float32{true: 44, false: 52}[ios]),
 			ui.Column(ui.Style{Grow: 1, Shrink: 1, Gap: 2},
 				ui.Text(signal.Func(func() string { return a.Get().Title() }), ui.Style{Font: titleFont(), Lines: 1}),
-				ui.Text(signal.Func(func() string { return status(a.Get()) }), ui.Style{Font: ui.Subheadline, Color: ui.SecondaryLabel, Lines: 1}),
+				ui.Text(signal.Func(func() string { return status(a.Get()) }), ui.Style{Font: fonts.Subheadline, Color: colors.SecondaryLabel, Lines: 1}),
 			),
 			chevron(),
 		),
@@ -143,7 +145,7 @@ func accountCard(a signal.Accessor[Account]) ui.Node {
 		}),
 		ui.Show(signal.Func(func() bool { return a.Get().Error != "" }), func() ui.Node {
 			return ui.Text(signal.Func(func() string { return "Couldn't refresh: " + a.Get().Error }),
-				ui.Style{Font: ui.Footnote, Color: ui.Red})
+				ui.Style{Font: fonts.Footnote, Color: colors.Red})
 		}),
 	)
 }
@@ -164,12 +166,12 @@ func status(a Account) string {
 func windowRow(w signal.Accessor[Window], forecast bool) ui.Node {
 	return ui.Column(ui.Style{Gap: 10},
 		ui.Row(ui.Style{Gap: 12, Align: ui.AlignBaseline},
-			ui.Text(signal.Func(func() string { return w.Get().Title() }), ui.Style{Grow: 1, Shrink: 1, Font: ui.Headline, Lines: 1}),
-			ui.Text(signal.Func(func() string { return quota(w.Get().Used) }), ui.Style{Color: ui.SecondaryLabel}),
+			ui.Text(signal.Func(func() string { return w.Get().Title() }), ui.Style{Grow: 1, Shrink: 1, Font: fonts.Headline, Lines: 1}),
+			ui.Text(signal.Func(func() string { return quota(w.Get().Used) }), ui.Style{Color: colors.SecondaryLabel}),
 		),
 		meter(w),
 		ui.Show(signal.Func(func() bool { return !w.Get().Resets.IsZero() }), func() ui.Node {
-			return ui.RichText(ui.RichTextProps{Style: ui.Style{Font: ui.Subheadline, Color: ui.SecondaryLabel}, Text: signal.Func(func() ui.Rich {
+			return ui.RichText(ui.RichTextProps{Style: ui.Style{Font: fonts.Subheadline, Color: colors.SecondaryLabel}, Text: signal.Func(func() ui.Rich {
 				win, now := w.Get(), clock.Get()
 				r := ui.Rich{ui.Plain("Resets " + when(win.Resets, now))}
 				if f := win.Forecast(now); forecast && f.Pace != PaceUnknown {
@@ -288,11 +290,11 @@ func refreshStale() {
 }
 
 // titleFont is a card's title: a headline on iOS, Material's title.
-func titleFont() ui.Font {
+func titleFont() fonts.Font {
 	if ios {
-		return ui.Headline
+		return fonts.Headline
 	}
-	return ui.Title3.Weighted(ui.Semibold)
+	return fonts.Title3.Weighted(fonts.Semibold)
 }
 
 func main() { app.Run(App) }

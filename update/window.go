@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/internal/boot"
 	"github.com/egoist/asuka/internal/l10n"
 	"github.com/egoist/asuka/markdown"
@@ -199,11 +201,11 @@ func (c *controller) icon(size float32) []ui.Node {
 // statusView is a title, a message, a detail (an error's) and buttons.
 func (c *controller) statusView(title, message signal.Accessor[string], detail string, buttons ...button) ui.Node {
 	text := []ui.Node{
-		ui.Text(title, ui.Style{Font: ui.Headline}),
-		ui.Text(message, ui.Style{Font: ui.Callout}),
+		ui.Text(title, ui.Style{Font: fonts.Headline}),
+		ui.Text(message, ui.Style{Font: fonts.Callout}),
 	}
 	if detail != "" {
-		text = append(text, ui.StaticText(detail, ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel, Lines: 3}))
+		text = append(text, ui.StaticText(detail, ui.Style{Font: fonts.Footnote, Color: colors.SecondaryLabel, Lines: 3}))
 	}
 	var bs []ui.Node
 	for _, b := range buttons {
@@ -220,14 +222,14 @@ func (c *controller) statusView(title, message signal.Accessor[string], detail s
 // unknown), and Cancel.
 func (c *controller) progressView(title signal.Accessor[string], value signal.Accessor[float64], cancelKey string, cancel func()) ui.Node {
 	col := []ui.Node{
-		ui.Text(title, ui.Style{Font: ui.Headline}),
+		ui.Text(title, ui.Style{Font: fonts.Headline}),
 		ui.Progress(value, ui.Style{Width: ui.Pct(100)}),
 	}
 	if value != nil {
 		col = append(col, ui.Text(signal.Func(func() string {
 			s := c.state.Get()
 			return l10n.Catalog.Format(ui.Locale(), "updateProgress", map[string]any{"done": formatSize(s.Downloaded), "total": formatSize(s.Total)})
-		}), ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel}))
+		}), ui.Style{Font: fonts.Footnote, Color: colors.SecondaryLabel}))
 	}
 	rows := []ui.Node{ui.Row(ui.Style{Gap: 16, Align: ui.AlignCenter}, append(c.icon(48), ui.Column(ui.Style{Grow: 1, Shrink: 1, Gap: 8}, col...))...)}
 	if cancel != nil {
@@ -246,15 +248,15 @@ func (c *controller) releaseView() ui.Node {
 		notes = r.Notes
 	}
 	text := []ui.Node{
-		ui.Text(say("updateAvailable", func() map[string]any { return map[string]any{"app": appName()} }), ui.Style{Font: ui.Headline}),
-		ui.Text(say("updateAvailableMessage", c.releaseArgs), ui.Style{Font: ui.Callout}),
+		ui.Text(say("updateAvailable", func() map[string]any { return map[string]any{"app": appName()} }), ui.Style{Font: fonts.Headline}),
+		ui.Text(say("updateAvailableMessage", c.releaseArgs), ui.Style{Font: fonts.Callout}),
 	}
 	col := []ui.Node{ui.Row(ui.Style{Gap: 16, Align: ui.AlignStart}, append(c.icon(64), ui.Column(ui.Style{Grow: 1, Shrink: 1, Gap: 6}, text...))...)}
 	if strings.TrimSpace(notes) != "" {
 		col = append(col,
-			ui.Text(say("updateReleaseNotes", nil), ui.Style{Font: ui.Footnote.Weighted(ui.Semibold)}),
+			ui.Text(say("updateReleaseNotes", nil), ui.Style{Font: fonts.Footnote.Weighted(fonts.Semibold)}),
 			ui.Scroll(ui.ScrollProps{
-				Style:        ui.Style{Grow: 1, Shrink: 1, Basis: ui.Pt(0), BorderWidth: 1, BorderColor: ui.Separator, CornerRadius: 6, Background: ui.SecondaryBackground},
+				Style:        ui.Style{Grow: 1, Shrink: 1, Basis: ui.Pt(0), BorderWidth: 1, BorderColor: colors.Separator, CornerRadius: 6, Background: colors.SecondaryBackground},
 				ContentStyle: ui.Style{Padding: ui.All(12)},
 			}, markdown.View(markdown.Props{Text: ui.Val(notes)})),
 		)
@@ -264,7 +266,7 @@ func (c *controller) releaseView() ui.Node {
 	col = append(col,
 		ui.Row(ui.Style{Gap: 6, Align: ui.AlignCenter},
 			ui.Toggle(ui.ToggleProps{Value: automatic, Checkbox: true}),
-			ui.Text(say("updateAutomatically", nil), ui.Style{Font: ui.Callout, Shrink: 1}),
+			ui.Text(say("updateAutomatically", nil), ui.Style{Font: fonts.Callout, Shrink: 1}),
 		),
 		ui.Row(ui.Style{Gap: 8, Align: ui.AlignCenter},
 			button{"updateSkip", ui.ButtonGray, func() { c.skip(automatic.Peek()) }}.node(),

@@ -17,7 +17,9 @@ import (
 	"time"
 
 	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/dialog"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/store"
 	"github.com/egoist/asuka/ui"
@@ -154,12 +156,12 @@ func App() ui.Node {
 		})
 		return ui.SafeArea(ui.Style{Grow: 1},
 			ui.Column(ui.Style{Padding: ui.Symmetric(8, 16), Gap: 8},
-				ui.Text(folder, ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel, Lines: 2}),
+				ui.Text(folder, ui.Style{Font: fonts.Footnote, Color: colors.SecondaryLabel, Lines: 2}),
 				ui.Row(ui.Style{Gap: 8},
 					ui.Button(ui.ButtonProps{Title: ui.Val("New File"), Icon: ui.IconPlus, Variant: ui.ButtonFilled, OnPress: newFile}),
 					ui.Button(ui.ButtonProps{Title: ui.Val("Choose Folder…"), Icon: ui.IconFolder, OnPress: chooseFolder}),
 				),
-				ui.Text(status, ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel}),
+				ui.Text(status, ui.Style{Font: fonts.Footnote, Color: colors.SecondaryLabel}),
 			),
 			ui.List(ui.ListProps{SwipeActions: func(i int) []ui.Action {
 				return []ui.Action{{Title: ui.Val("Delete"), Icon: ui.IconTrash, Role: ui.ActionDestructive, OnPress: func() {
@@ -172,9 +174,9 @@ func App() ui.Node {
 				return ui.Row(ui.Style{Gap: 12, Padding: ui.Symmetric(12, 20), Align: ui.AlignCenter},
 					ui.Dynamic(func() ui.Node {
 						if e.Get().Dir {
-							return ui.Symbol(ui.IconFolder, ui.Style{Color: ui.Accent})
+							return ui.Symbol(ui.IconFolder, ui.Style{Color: colors.Accent})
 						}
-						return ui.Symbol(ui.IconDocument, ui.Style{Color: ui.SecondaryLabel})
+						return ui.Symbol(ui.IconDocument, ui.Style{Color: colors.SecondaryLabel})
 					}),
 					ui.Text(signal.Func(func() string { return e.Get().Name }), ui.Style{Grow: 1, Lines: 1}),
 					ui.Text(signal.Func(func() string {
@@ -182,13 +184,13 @@ func App() ui.Node {
 							return ""
 						}
 						return fmt.Sprintf("%d B", e.Get().Size)
-					}), ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel}),
+					}), ui.Style{Font: fonts.Footnote, Color: colors.SecondaryLabel}),
 				)
 			}),
 			ui.Column(ui.Style{Padding: ui.Symmetric(8, 16), Gap: 4},
-				ui.Text(ui.Val("Changes"), ui.Style{Font: ui.Headline}),
+				ui.Text(ui.Val("Changes"), ui.Style{Font: fonts.Headline}),
 				ui.For(changes, func(s string) string { return s }, func(s signal.Accessor[string], _ signal.Accessor[int]) ui.Node {
-					return ui.Text(s, ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel, Lines: 1})
+					return ui.Text(s, ui.Style{Font: fonts.Footnote, Color: colors.SecondaryLabel, Lines: 1})
 				}),
 			),
 		)

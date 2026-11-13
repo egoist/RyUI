@@ -3,9 +3,8 @@ package ui
 import (
 	"encoding/binary"
 	"math"
-	"strconv"
-	"strings"
 
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/layout"
 	"github.com/egoist/asuka/ops"
 )
@@ -88,124 +87,8 @@ const (
 const NoShrink = -1
 
 // Color is the platform's default (the zero value), a semantic color or
-// RGBA.
+// RGBA: the package colors makes them.
 type Color = ops.Color
-
-// RGB makes an opaque color.
-func RGB(r, g, b uint8) Color { return ops.RGBA(r, g, b, 255) }
-
-// RGBA makes a color with alpha.
-func RGBA(r, g, b, a uint8) Color { return ops.RGBA(r, g, b, a) }
-
-// Hex makes an opaque color from 0xRRGGBB.
-func Hex(v uint32) Color { return RGB(uint8(v>>16), uint8(v>>8), uint8(v)) }
-
-// ParseHex parses "#rrggbb" or "#rrggbbaa" (the "#" optional).
-func ParseHex(s string) (Color, bool) {
-	s = strings.TrimPrefix(s, "#")
-	if len(s) != 6 && len(s) != 8 {
-		return 0, false
-	}
-	var v [4]uint8
-	v[3] = 255
-	for i := 0; i < len(s)/2; i++ {
-		n, err := strconv.ParseUint(s[2*i:2*i+2], 16, 8)
-		if err != nil {
-			return 0, false
-		}
-		v[i] = uint8(n)
-	}
-	return RGBA(v[0], v[1], v[2], v[3]), true
-}
-
-func semantic(c ops.SemanticColor) Color { return ops.SemanticColorValue(c) }
-
-// Semantic colors, resolved by the host (UIKit's semantic colors,
-// Material 3's color roles), so dark mode needs no app code.
-var (
-	Label               = semantic(ops.SemanticColorLabel)
-	SecondaryLabel      = semantic(ops.SemanticColorSecondaryLabel)
-	TertiaryLabel       = semantic(ops.SemanticColorTertiaryLabel)
-	SystemBackground    = semantic(ops.SemanticColorBackground)
-	SecondaryBackground = semantic(ops.SemanticColorSecondaryBackground)
-	GroupedBackground   = semantic(ops.SemanticColorGroupedBackground)
-	// SecondaryGroupedBackground is a grouped list's rows, on
-	// GroupedBackground (iOS's inset grouped cells; Material's surface
-	// container).
-	SecondaryGroupedBackground = semantic(ops.SemanticColorSecondaryGroupedBackground)
-	Separator                  = semantic(ops.SemanticColorSeparator)
-	Accent                     = semantic(ops.SemanticColorAccent)
-	// OnAccent is what reads on Accent: an icon or text on a view filled with
-	// it. White on iOS; Material's on-primary on Android, whose accent is light
-	// in dark mode.
-	OnAccent = semantic(ops.SemanticColorOnAccent)
-	Red      = semantic(ops.SemanticColorRed)
-	Orange   = semantic(ops.SemanticColorOrange)
-	Yellow   = semantic(ops.SemanticColorYellow)
-	Green    = semantic(ops.SemanticColorGreen)
-	Blue     = semantic(ops.SemanticColorBlue)
-	Purple   = semantic(ops.SemanticColorPurple)
-	Pink     = semantic(ops.SemanticColorPink)
-	Gray     = semantic(ops.SemanticColorGray)
-	Clear    = semantic(ops.SemanticColorClear)
-)
-
-// Weight is a font weight.
-type Weight = ops.FontWeight
-
-const (
-	Ultralight = ops.FontWeightUltralight
-	Thin       = ops.FontWeightThin
-	Light      = ops.FontWeightLight
-	Regular    = ops.FontWeightRegular
-	Medium     = ops.FontWeightMedium
-	Semibold   = ops.FontWeightSemibold
-	Bold       = ops.FontWeightBold
-	Heavy      = ops.FontWeightHeavy
-	Black      = ops.FontWeightBlack
-)
-
-// Font is a semantic text style (scaled by Dynamic Type / font scale)
-// or a system font of a size, with an optional weight.
-type Font struct {
-	Style  ops.TextStyle
-	Size   float32 // points; 0: the text style's size
-	Weight Weight
-	// Family is a font of the app's: a font file's name in its assets
-	// (assets/fonts/Inter-Bold.ttf is "Inter-Bold"), a family of them
-	// ("Inter": Inter-Regular, Inter-Bold..., in Weight), a generic
-	// family ("serif", "monospace", "rounded": the system font's designs
-	// on iOS; Android has no rounded one), or a system family
-	// ("Georgia"). It's scaled as its text style is (Dynamic Type,
-	// Android's font scale). Empty, or one the platform hasn't: the
-	// system font.
-	Family string
-}
-
-// Weighted returns f with weight w.
-func (f Font) Weighted(w Weight) Font { f.Weight = w; return f }
-
-// Custom is f in the font family (see Font.Family), scaled as f is:
-// Custom("Inter-Bold", Title).
-func Custom(family string, f Font) Font { f.Family = family; return f }
-
-// System is the system font at size points.
-func System(size float32) Font { return Font{Size: size} }
-
-// Semantic fonts.
-var (
-	LargeTitle  = Font{Style: ops.TextStyleLargeTitle}
-	Title       = Font{Style: ops.TextStyleTitle}
-	Title2      = Font{Style: ops.TextStyleTitle2}
-	Title3      = Font{Style: ops.TextStyleTitle3}
-	Headline    = Font{Style: ops.TextStyleHeadline}
-	Subheadline = Font{Style: ops.TextStyleSubheadline}
-	Body        = Font{Style: ops.TextStyleBody}
-	Callout     = Font{Style: ops.TextStyleCallout}
-	Footnote    = Font{Style: ops.TextStyleFootnote}
-	Caption     = Font{Style: ops.TextStyleCaption}
-	Caption2    = Font{Style: ops.TextStyleCaption2}
-)
 
 // TextAlign aligns text within its box.
 type TextAlign = ops.TextAlign
@@ -301,7 +184,7 @@ type Style struct {
 	// Keys are the root's: one view at a time has each.
 	Match string
 
-	Font      Font
+	Font      fonts.Font
 	Color     Color // text color, or tint for controls
 	TextAlign TextAlign
 	Lines     int // max lines of text; 0: no limit
@@ -318,8 +201,8 @@ type Style struct {
 	// it. Other components ignore them: their style follows a View's
 	// states through its Interaction and When.
 	//
-	//	ui.Style{Padding: ui.All(16), Background: ui.SecondaryBackground,
-	//		Pressed: &ui.Style{Background: ui.Separator, Transform: ui.Transform{Scale: 0.97}}}
+	//	ui.Style{Padding: ui.All(16), Background: colors.SecondaryBackground,
+	//		Pressed: &ui.Style{Background: colors.Separator, Transform: ui.Transform{Scale: 0.97}}}
 	Hovered, Pressed, Dragging, DragOver *Style
 }
 
@@ -329,7 +212,7 @@ type Style struct {
 // leaves zero keeps s's, so a state can't clear one: Unless sets it in
 // the other state. They chain, later ones laid over earlier:
 //
-//	ui.Style{Color: ui.SecondaryLabel}.When(card.Hovered, ui.Style{Color: ui.Accent})
+//	ui.Style{Color: colors.SecondaryLabel}.When(card.Hovered, ui.Style{Color: colors.Accent})
 //	ui.Style{}.Unless(row.Hovered, ui.Style{Hidden: true}) // shown on the row's hover
 func (s Style) When(cond func() bool, over Style) StyleFunc {
 	return func() Style {
@@ -492,12 +375,13 @@ type Transition struct {
 }
 
 var (
-	// Fade fades a view in and out.
-	Fade = Transition{Fade: true}
-	// Pop fades and grows a view in (a popover, a badge).
-	Pop = Transition{Fade: true, Scale: 0.85}
-	// SlideUp fades a view in from a little below (a toast, a new row).
-	SlideUp = Transition{Fade: true, Y: 24}
+	// TransitionFade fades a view in and out.
+	TransitionFade = Transition{Fade: true}
+	// TransitionPop fades and grows a view in (a popover, a badge).
+	TransitionPop = Transition{Fade: true, Scale: 0.85}
+	// TransitionSlideUp fades a view in from a little below (a toast, a new
+	// row).
+	TransitionSlideUp = Transition{Fade: true, Y: 24}
 )
 
 func (t Transition) bytes(b []byte) []byte {

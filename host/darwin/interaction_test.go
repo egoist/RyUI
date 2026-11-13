@@ -13,6 +13,7 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
+	"github.com/egoist/asuka/colors"
 	. "github.com/egoist/asuka/internal/darwin"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
@@ -259,7 +260,7 @@ func TestDrop(t *testing.T) {
 				Drag: &ui.DragSource{
 					Items: func() []ui.DragItem { return []ui.DragItem{{Value: c, MIME: "application/x-card", Text: c.title}} },
 				},
-				Style: ui.Style{Width: ui.Pt(80), Height: ui.Pt(40), Background: ui.Accent},
+				Style: ui.Style{Width: ui.Pt(80), Height: ui.Pt(40), Background: colors.Accent},
 			}),
 		)
 	})
@@ -389,7 +390,7 @@ func TestDragSource(t *testing.T) {
 					},
 					OnPhase: func(p ui.DragPhase) { log = append(log, fmt.Sprint("drag ", p)) },
 				},
-				Style: ui.Style{Width: ui.Pt(80), Height: ui.Pt(40), Background: ui.Accent},
+				Style: ui.Style{Width: ui.Pt(80), Height: ui.Pt(40), Background: colors.Accent},
 			}),
 		)
 	})

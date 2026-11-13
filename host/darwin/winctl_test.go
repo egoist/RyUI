@@ -5,6 +5,7 @@ package darwin
 import (
 	"testing"
 
+	"github.com/egoist/asuka/colors"
 	. "github.com/egoist/asuka/internal/darwin"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
@@ -36,7 +37,7 @@ func TestWindowControl(t *testing.T) {
 	h, _ := mount(t, func() ui.Node {
 		return ui.Window(ui.WindowProps{Open: open, Handle: handle, Title: ui.Val("Tool"), Width: 300, Height: 200,
 			MaxWidth: 600, MaxHeight: 500, Hidden: true, DisableResize: true, DisableMinimize: true, AlwaysOnTop: true,
-			SkipTaskbar: true, TitleBar: ui.TitleBarHidden, Background: ui.RGB(255, 0, 0),
+			SkipTaskbar: true, TitleBar: ui.TitleBarHidden, Background: colors.RGB(255, 0, 0),
 			Content: func() ui.Node {
 				return ui.Text(signal.Func(func() string { return "top " + itoa(int(ui.UseEnvironment().Get().SafeTop)) }))
 			}})

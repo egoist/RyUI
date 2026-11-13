@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/egoist/asuka/fonts"
 	. "github.com/egoist/asuka/internal/gtk"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
@@ -163,7 +164,7 @@ func TestFieldRich(t *testing.T) {
 	})
 	settle(t, h, func() bool {
 		got := rich.Peek()
-		return len(got) >= 3 && got[0].Text == "Hello" && got[0].Italic && got[2].Text == "world\n" && got[2].Font.Weight == ui.Bold
+		return len(got) >= 3 && got[0].Text == "Hello" && got[0].Italic && got[2].Text == "world\n" && got[2].Font.Weight == fonts.Bold
 	})
 	onMain(func() {
 		if len(formats) == 0 || !formats[len(formats)-1].Has(ui.FormatItalic) {
@@ -182,7 +183,7 @@ func TestFieldRich(t *testing.T) {
 	})
 	settle(t, h, func() bool {
 		got := rich.Peek()
-		return len(got) >= 2 && got[1].Text == "world!\n" && got[1].Font.Weight == ui.Bold
+		return len(got) >= 2 && got[1].Text == "world!\n" && got[1].Font.Weight == fonts.Bold
 	})
 	// A link on "bye", then the cursor in it: Formats has the link.
 	onMain(func() {

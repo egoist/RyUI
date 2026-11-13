@@ -3,6 +3,7 @@ package ui
 import (
 	"math"
 
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/host"
 	"github.com/egoist/asuka/layout"
 	"github.com/egoist/asuka/ops"
@@ -479,7 +480,7 @@ func layoutPart(s Style) Style {
 	s.Background, s.BorderColor, s.Color = 0, 0, 0
 	s.CornerRadius, s.Opacity = 0, 0
 	s.Hidden = false
-	s.Font, s.TextAlign, s.Lines = Font{}, 0, 0
+	s.Font, s.TextAlign, s.Lines = fonts.Font{}, 0, 0
 	s.Transform, s.Shadow, s.Gradient, s.Transition, s.Material = Transform{}, Shadow{}, nil, Transition{}, 0 // drawn, not laid out
 	s.Hovered, s.Pressed, s.Dragging, s.DragOver = nil, nil, nil, nil                                         // a View's are laid on before
 	return s

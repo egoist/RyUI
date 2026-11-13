@@ -5,6 +5,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
@@ -28,15 +29,15 @@ func TestPressedAndHoverStates(t *testing.T) {
 			Style: ui.StyleFunc(func() ui.Style {
 				switch {
 				case pressed.Get():
-					return ui.Style{Background: ui.Separator}
+					return ui.Style{Background: colors.Separator}
 				case hovered.Get():
-					return ui.Style{Background: ui.SecondaryBackground}
+					return ui.Style{Background: colors.SecondaryBackground}
 				}
 				return ui.Style{}
 			}),
 		}, ui.Text(ui.Val("Title"), ui.StyleFunc(func() ui.Style {
 			if hovered.Get() {
-				return ui.Style{Color: ui.Accent}
+				return ui.Style{Color: colors.Accent}
 			}
 			return ui.Style{}
 		})))
@@ -50,17 +51,17 @@ func TestPressedAndHoverStates(t *testing.T) {
 	color := func() ops.Color { return ops.Color(text.Props[ops.PropColor].Int) }
 
 	h.SetHovered(v, true)
-	if bg() != ui.SecondaryBackground || color() != ui.Accent {
+	if bg() != colors.SecondaryBackground || color() != colors.Accent {
 		t.Fatalf("hovered: background %v, text %v", bg(), color())
 	}
 	h.Click(v)
-	if presses != 1 || !slices.Equal(log, []string{"pressed", "released"}) || bg() != ui.SecondaryBackground {
+	if presses != 1 || !slices.Equal(log, []string{"pressed", "released"}) || bg() != colors.SecondaryBackground {
 		t.Fatalf("click: %d presses, %v, background %v", presses, log, bg())
 	}
 	// A repeated report changes nothing.
 	h.SetPressed(v, true)
 	h.SetPressed(v, true)
-	if !slices.Equal(log, []string{"pressed", "released", "pressed"}) || bg() != ui.Separator {
+	if !slices.Equal(log, []string{"pressed", "released", "pressed"}) || bg() != colors.Separator {
 		t.Fatalf("held: %v, background %v", log, bg())
 	}
 	h.SetPressed(v, false)

@@ -10,6 +10,7 @@ import (
 
 	"github.com/ebitengine/purego/objc"
 
+	"github.com/egoist/asuka/colors"
 	. "github.com/egoist/asuka/internal/darwin"
 	"github.com/egoist/asuka/native"
 	"github.com/egoist/asuka/signal"
@@ -440,8 +441,8 @@ func TestColorWellTitle(t *testing.T) {
 	title := ui.Val("Tint")
 	h, _ := mount(t, func() ui.Node {
 		return ui.Row(ui.Style{},
-			ui.ColorPicker(ui.ColorPickerProps{Value: signal.New(ui.Hex(0x3366cc)), Alpha: true, Title: title}),
-			ui.ColorPicker(ui.ColorPickerProps{Value: signal.New(ui.Hex(0x000000))}))
+			ui.ColorPicker(ui.ColorPickerProps{Value: signal.New(colors.Hex(0x3366cc)), Alpha: true, Title: title}),
+			ui.ColorPicker(ui.ColorPickerProps{Value: signal.New(colors.Hex(0x000000))}))
 	})
 	onMain(func() {
 		var wells []ID

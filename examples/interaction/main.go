@@ -16,6 +16,8 @@ import (
 	"strings"
 
 	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )
@@ -41,7 +43,7 @@ func home() ui.Node {
 
 func section(title string, content ui.Node) ui.Node {
 	return ui.Column(ui.Style{Gap: 8},
-		ui.StaticText(title, ui.Style{Font: ui.Headline}),
+		ui.StaticText(title, ui.Style{Font: fonts.Headline}),
 		content,
 	)
 }
@@ -56,19 +58,19 @@ func cards() ui.Node {
 	card := func(name string) ui.Node {
 		it := ui.NewInteraction()
 		all = append(all, it)
-		accent := ui.Style{Color: ui.Accent}
+		accent := ui.Style{Color: colors.Accent}
 		return ui.View(ui.ViewProps{
 			OnPress:     func() { presses.Update(func(n int) int { return n + 1 }) },
 			Interaction: it,
 			Label:       ui.Val(name),
 			Style: ui.Style{Direction: ui.RowDir, Align: ui.AlignCenter, Gap: 12, Padding: ui.All(16), CornerRadius: 12,
-				Background: ui.SecondaryGroupedBackground, BorderWidth: 1, BorderColor: ui.Separator,
-				Hovered: &ui.Style{Background: ui.SecondaryBackground, BorderColor: ui.Accent},
-				Pressed: &ui.Style{Background: ui.Separator, Transform: ui.Transform{Scale: 0.97}}},
+				Background: colors.SecondaryGroupedBackground, BorderWidth: 1, BorderColor: colors.Separator,
+				Hovered: &ui.Style{Background: colors.SecondaryBackground, BorderColor: colors.Accent},
+				Pressed: &ui.Style{Background: colors.Separator, Transform: ui.Transform{Scale: 0.97}}},
 		},
 			ui.Symbol(ui.IconStar),
-			ui.StaticText(name, ui.Style{Grow: 1, Font: ui.Body}.When(it.Hovered, accent)),
-			ui.Symbol(ui.IconForward, ui.Style{Color: ui.TertiaryLabel}.When(it.Hovered, accent)),
+			ui.StaticText(name, ui.Style{Grow: 1, Font: fonts.Body}.When(it.Hovered, accent)),
+			ui.Symbol(ui.IconForward, ui.Style{Color: colors.TertiaryLabel}.When(it.Hovered, accent)),
 		)
 	}
 	// which is the name of the card in a state, read from their
@@ -86,8 +88,8 @@ func cards() ui.Node {
 		ui.Text(signal.Func(func() string {
 			return fmt.Sprintf("Pressed: %s · Hovered: %s",
 				which((*ui.Interaction).Pressed), which((*ui.Interaction).Hovered))
-		}), ui.Style{Color: ui.SecondaryLabel}),
-		ui.Text(signal.Func(func() string { return fmt.Sprintf("Presses: %d", presses.Get()) }), ui.Style{Color: ui.SecondaryLabel}),
+		}), ui.Style{Color: colors.SecondaryLabel}),
+		ui.Text(signal.Func(func() string { return fmt.Sprintf("Presses: %d", presses.Get()) }), ui.Style{Color: colors.SecondaryLabel}),
 	)
 }
 
@@ -98,14 +100,14 @@ func cards() ui.Node {
 func hold() ui.Node {
 	it := ui.NewInteraction()
 	recording := signal.New(false)
-	onRed := ui.Style{}.When(it.Pressed, ui.Style{Color: ui.RGB(255, 255, 255)})
+	onRed := ui.Style{}.When(it.Pressed, ui.Style{Color: colors.RGB(255, 255, 255)})
 	return ui.View(ui.ViewProps{
 		OnPressedChange: recording.Set, // start and stop the recorder here
 		Interaction:     it,
 		Label:           ui.Val("Hold to record"),
 		Style: ui.Style{Direction: ui.RowDir, Align: ui.AlignCenter, Justify: ui.JustifyCenter, Gap: 8, Padding: ui.All(16), CornerRadius: 28,
-			Background: ui.SecondaryBackground,
-			Pressed:    &ui.Style{Background: ui.Red}},
+			Background: colors.SecondaryBackground,
+			Pressed:    &ui.Style{Background: colors.Red}},
 	},
 		ui.Symbol(ui.IconMic, onRed),
 		ui.Text(signal.Func(func() string {
@@ -191,13 +193,13 @@ func keys() ui.Node {
 				s += ", picked: " + p
 			}
 			return s
-		}), ui.Style{Font: ui.Footnote, Color: ui.SecondaryLabel}),
+		}), ui.Style{Font: fonts.Footnote, Color: colors.SecondaryLabel}),
 		ui.Column(ui.Style{},
 			ui.For(results, func(f string) string { return f }, func(f signal.Accessor[string], i signal.Accessor[int]) ui.Node {
 				on := signal.Func(func() bool { return i.Get() == sel.Get() })
 				return ui.View(ui.ViewProps{
 					Style: ui.Style{Padding: ui.Edges{Top: 6, Bottom: 6, Left: 10, Right: 10}, CornerRadius: 8}.
-						When(on.Get, ui.Style{Background: ui.Separator}),
+						When(on.Get, ui.Style{Background: colors.Separator}),
 					OnPress: func() { sel.Set(signal.Untrack(i.Get)); pick() },
 				}, ui.Text(f, ui.Style{}))
 			}),
@@ -245,10 +247,10 @@ func board() ui.Node {
 				},
 			},
 			Style: ui.Style{Grow: 1, Basis: ui.Pt(0), Gap: 8, Padding: ui.All(8), CornerRadius: 12, MinHeight: ui.Pt(160),
-				Background: ui.SecondaryBackground, BorderWidth: 2, BorderColor: ui.Clear,
-				DragOver: &ui.Style{BorderColor: ui.Accent}},
+				Background: colors.SecondaryBackground, BorderWidth: 2, BorderColor: colors.Clear,
+				DragOver: &ui.Style{BorderColor: colors.Accent}},
 		},
-			ui.StaticText(title, ui.Style{Font: ui.Subheadline, Color: ui.SecondaryLabel}),
+			ui.StaticText(title, ui.Style{Font: fonts.Subheadline, Color: colors.SecondaryLabel}),
 			ui.For(mine, func(t *task) int { return t.id }, func(t signal.Accessor[*task], _ signal.Accessor[int]) ui.Node {
 				return ui.View(ui.ViewProps{
 					Drag: &ui.DragSource{
@@ -256,7 +258,7 @@ func board() ui.Node {
 							return []ui.DragItem{{Value: t.Get(), MIME: "application/x-asuka-task", Text: t.Get().title}}
 						},
 					},
-					Style: ui.Style{Padding: ui.All(12), CornerRadius: 8, Background: ui.SystemBackground,
+					Style: ui.Style{Padding: ui.All(12), CornerRadius: 8, Background: colors.Background,
 						Dragging: &ui.Style{Opacity: 0.4}},
 				}, ui.Text(signal.Func(func() string { return t.Get().title })))
 			}),
@@ -293,9 +295,9 @@ func dropZone() ui.Node {
 			},
 		},
 		Style: ui.Style{Align: ui.AlignCenter, Justify: ui.JustifyCenter, Padding: ui.All(24), MinHeight: ui.Pt(120), CornerRadius: 12,
-			BorderWidth: 2, BorderColor: ui.Separator, Background: ui.SecondaryBackground,
-			DragOver: &ui.Style{BorderColor: ui.Accent, Background: ui.SecondaryGroupedBackground}},
-	}, ui.Text(dropped, ui.Style{TextAlign: ui.TextCenter, Color: ui.SecondaryLabel}))
+			BorderWidth: 2, BorderColor: colors.Separator, Background: colors.SecondaryBackground,
+			DragOver: &ui.Style{BorderColor: colors.Accent, Background: colors.SecondaryGroupedBackground}},
+	}, ui.Text(dropped, ui.Style{TextAlign: ui.TextCenter, Color: colors.SecondaryLabel}))
 }
 
 // sources drag a text and a link out of the app (to Notes, a browser, a
@@ -304,7 +306,7 @@ func sources() ui.Node {
 	chip := func(label string, item ui.DragItem) ui.Node {
 		return ui.View(ui.ViewProps{
 			Drag: &ui.DragSource{Items: func() []ui.DragItem { return []ui.DragItem{item} }},
-			Style: ui.Style{Padding: ui.Symmetric(8, 14), CornerRadius: 16, Background: ui.SecondaryBackground,
+			Style: ui.Style{Padding: ui.Symmetric(8, 14), CornerRadius: 16, Background: colors.SecondaryBackground,
 				Dragging: &ui.Style{Opacity: 0.4}},
 		}, ui.StaticText(label))
 	}

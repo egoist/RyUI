@@ -43,7 +43,7 @@ type Entry struct {
 	// Until counts down to a time, live, without the app ("12:34"), and
 	// then up from it.
 	Until time.Time `json:"-"`
-	// Tint colors the title, the symbol and the progress (ui.RGB, ui.Hex;
+	// Tint colors the title, the symbol and the progress (colors.RGB, colors.Hex;
 	// default: the app's accent).
 	Tint ui.Color `json:"-"`
 	// URL is what tapping it opens the app with (one of its scheme's).

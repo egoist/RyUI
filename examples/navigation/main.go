@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/egoist/asuka/app"
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )
@@ -100,15 +102,15 @@ func inbox() ui.Node {
 				Style:   ui.Style{Direction: ui.RowDir, Align: ui.AlignCenter, Gap: 12, Padding: ui.Symmetric(10, 16)},
 			},
 				ui.Column(ui.Style{Grow: 1, Gap: 2},
-					ui.Text(signal.Func(func() string { return m.Get().from }), ui.Style{Font: ui.Headline}),
-					ui.Text(signal.Func(func() string { return m.Get().subject }), ui.Style{Font: ui.Subheadline, Color: ui.SecondaryLabel}),
+					ui.Text(signal.Func(func() string { return m.Get().from }), ui.Style{Font: fonts.Headline}),
+					ui.Text(signal.Func(func() string { return m.Get().subject }), ui.Style{Font: fonts.Subheadline, Color: colors.SecondaryLabel}),
 				),
 				ui.Text(signal.Func(func() string {
 					if m.Get().starred {
 						return "★"
 					}
 					return ""
-				}), ui.Style{Color: ui.Orange}),
+				}), ui.Style{Color: colors.Orange}),
 			)
 		})
 	}, ui.ScreenOptions{Title: ui.Val("Inbox")})
@@ -134,14 +136,14 @@ func detail(msg message, update func(int, func(*message)), remove func(int)) ui.
 	}
 	return ui.Scroll(ui.ScrollProps{Style: ui.Style{Grow: 1}},
 		ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 16},
-			ui.StaticText(msg.subject, ui.Style{Font: ui.Title2.Weighted(ui.Bold)}),
-			ui.StaticText(msg.body, ui.Style{Color: ui.SecondaryLabel}),
+			ui.StaticText(msg.subject, ui.Style{Font: fonts.Title2.Weighted(fonts.Bold)}),
+			ui.StaticText(msg.body, ui.Style{Color: colors.SecondaryLabel}),
 			ui.Text(signal.Func(func() string {
 				if n := note.Get(); n != "" {
 					return "Note: " + n
 				}
 				return "No note yet."
-			}), ui.Style{Font: ui.Footnote, Color: ui.TertiaryLabel}),
+			}), ui.Style{Font: fonts.Footnote, Color: colors.TertiaryLabel}),
 			ui.Row(ui.Style{Gap: 12, Wrap: true},
 				ui.Button(ui.ButtonProps{Title: ui.Val("Add a note"), Variant: ui.ButtonFilled, OnPress: func() { sheet.Set(true) }}),
 				ui.Button(ui.ButtonProps{Title: ui.Val("More"), Variant: ui.ButtonGray, Menu: []ui.Action{
@@ -152,13 +154,13 @@ func detail(msg message, update func(int, func(*message)), remove func(int)) ui.
 			ui.Menu(ui.MenuProps{LongPress: true, Actions: []ui.Action{
 				{Title: ui.Val("Reply"), OnPress: func() { ui.Haptic(ui.HapticLight) }},
 				{Title: ui.Val("Delete…"), Role: ui.ActionDestructive, OnPress: confirmDelete},
-			}, Style: ui.Style{Padding: ui.All(16), Background: ui.SecondaryBackground, CornerRadius: 12}},
+			}, Style: ui.Style{Padding: ui.All(16), Background: colors.SecondaryBackground, CornerRadius: 12}},
 				ui.StaticText("Long-press here for a context menu"),
 			),
 			ui.Sheet(ui.SheetProps{Open: sheet, Detents: ui.DetentMedium | ui.DetentLarge, Grabber: true, Content: func() ui.Node {
 				draft := signal.New(note.Peek())
 				return ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 12},
-					ui.StaticText("Note", ui.Style{Font: ui.Title3.Weighted(ui.Semibold)}),
+					ui.StaticText("Note", ui.Style{Font: fonts.Title3.Weighted(fonts.Semibold)}),
 					ui.TextField(ui.TextFieldProps{Value: draft, Placeholder: ui.Val("Write a note"), ReturnKey: ui.ReturnDone,
 						OnSubmit: func() { note.Set(draft.Peek()); sheet.Set(false) }}),
 					ui.Button(ui.ButtonProps{Title: ui.Val("Save"), Variant: ui.ButtonFilled, OnPress: func() {
@@ -193,8 +195,8 @@ func settings() ui.Node {
 			ui.Button(ui.ButtonProps{Title: ui.Val("About"), OnPress: func() {
 				nav.Push(func() ui.Node {
 					return ui.SafeArea(ui.Style{Padding: ui.All(20), Gap: 8},
-						ui.StaticText("asuka", ui.Style{Font: ui.LargeTitle.Weighted(ui.Bold)}),
-						ui.StaticText("Native widgets, driven by Go and fine-grained signals.", ui.Style{Color: ui.SecondaryLabel}),
+						ui.StaticText("asuka", ui.Style{Font: fonts.LargeTitle.Weighted(fonts.Bold)}),
+						ui.StaticText("Native widgets, driven by Go and fine-grained signals.", ui.Style{Color: colors.SecondaryLabel}),
 					)
 				}, ui.ScreenOptions{Title: ui.Val("About")})
 			}}),

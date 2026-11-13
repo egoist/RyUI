@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/egoist/asuka/colors"
+	"github.com/egoist/asuka/fonts"
 	"github.com/egoist/asuka/host/fake"
 	"github.com/egoist/asuka/markdown"
 	"github.com/egoist/asuka/ops"
@@ -50,7 +52,7 @@ func TestBlocks(t *testing.T) {
 				t.Error("emphasis")
 			}
 		case "strong":
-			if r.Style.Weight != ui.Bold {
+			if r.Style.Weight != fonts.Bold {
 				t.Error("strong")
 			}
 		case "code":
@@ -158,15 +160,15 @@ func TestLinkedImage(t *testing.T) {
 func TestTheme(t *testing.T) {
 	src := "# Title\n\nSee [docs](https://x.dev) and `code`.\n\n```\nx\n```\n"
 	th := &markdown.Theme{
-		Link:                ui.Purple,
-		CodeBlockBackground: ui.Yellow,
-		Headings:            [6]markdown.HeadingStyle{{Font: ui.Font{Weight: ui.Semibold}}},
+		Link:                colors.Purple,
+		CodeBlockBackground: colors.Yellow,
+		Headings:            [6]markdown.HeadingStyle{{Font: fonts.Font{Weight: fonts.Semibold}}},
 	}
 	h, _ := mount(t, func() ui.Node { return markdown.View(markdown.Props{Text: ui.Val(src), Theme: th}) })
 	rts := h.OfKind(ops.KindRichText)
 	title := rts[0]
 	// The weight it set, the style it didn't.
-	if title.Props[ops.PropFontWeight].Int != int64(ui.Semibold) || title.Props[ops.PropTextStyle].Int != int64(ops.TextStyleTitle) {
+	if title.Props[ops.PropFontWeight].Int != int64(fonts.Semibold) || title.Props[ops.PropTextStyle].Int != int64(ops.TextStyleTitle) {
 		t.Fatalf("heading props %+v", title.Props)
 	}
 	var link, code fake.RichRun
@@ -178,16 +180,16 @@ func TestTheme(t *testing.T) {
 			code = r
 		}
 	}
-	if link.Style.Color != ui.Purple || link.Style.Link != "https://x.dev" {
+	if link.Style.Color != colors.Purple || link.Style.Link != "https://x.dev" {
 		t.Fatalf("link %+v", link)
 	}
-	if code.Style.Background != ui.SecondaryBackground {
+	if code.Style.Background != colors.SecondaryBackground {
 		t.Fatalf("code span %+v", code)
 	}
 	block := rts[2]
 	for p := block.Parent; p != nil; p = p.Parent {
 		if p.Props[ops.PropBackground].Int != 0 {
-			if ops.Color(p.Props[ops.PropBackground].Int) != ui.Yellow {
+			if ops.Color(p.Props[ops.PropBackground].Int) != colors.Yellow {
 				t.Fatalf("code block background %x", p.Props[ops.PropBackground].Int)
 			}
 			return
