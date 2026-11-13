@@ -583,8 +583,10 @@ keyboard's focus is in it (`ViewProps.Keys`, `TextFieldProps.Keys`, a
   WM_SYSKEYDOWN before TranslateMessage, IsDialogMessage and the
   accelerators: the focused HWND's node, out. Linux, a key controller
   on each window in the capture phase: the focus widget's node, out. The
-  web, a keydown listener on the document in the capture phase:
-  `event.target`'s node, out, `preventDefault` and `stopPropagation`.
+  web, a keydown listener on the window in the capture phase, ahead of
+  the menu bar's: `event.target`'s node (a Window panel's ends at its
+  Window node; the page's body: the root), out, `preventDefault` and
+  `stopImmediatePropagation`.
   iOS, `pressesBegan` on the host's window, ahead of the first responder
   (UIKit gives presses to it first otherwise), with `UIKeyCommand`s on
   the root view controller for what a text field would take
