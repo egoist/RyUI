@@ -74,6 +74,14 @@ func TestFileDialogs(t *testing.T) {
 			fatalf("open: %q, %v", b, err)
 		}
 
+		// Open, starting at a file: its name in the field, so OK opens it.
+		answer(press(1))
+		b, err = call("open", map[string]any{"start": filepath.Join(dir, "a.txt")})
+		paths = nil
+		if err != nil || json.Unmarshal(b, &paths) != nil || len(paths) != 1 || !strings.EqualFold(paths[0], filepath.Join(dir, "a.txt")) {
+			fatalf("open, from a file: %q, %v", b, err)
+		}
+
 		// Save, a name typed without an extension: the filter's added.
 		answer(func(dlg, hwnd uintptr) {
 			SetFileDialogName(dlg, "Notes")

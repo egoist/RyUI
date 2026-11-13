@@ -77,6 +77,21 @@ func TestFileDialogs(t *testing.T) {
 		t.Fatalf("open, cancelled: %q, %v", b, err)
 	}
 
+	// Open, starting at a file: in its folder, the file chosen.
+	b, err = show("open", map[string]any{"start": filepath.Join(dir, "a.txt")}, func(p ID) {
+		// The panel selects it once it has loaded the folder.
+		if !spin(func() bool { return len(ArrayItems(Send(p, "URLs"))) == 1 }) || dirOf(p) != dir {
+			fatalf(t, "the open panel, from a file: nothing selected, in %q", dirOf(p))
+		}
+	}, 1)
+	var opened []string
+	if err != nil || json.Unmarshal(b, &opened) != nil || len(opened) != 1 {
+		t.Fatalf("open, from a file: %q, %v", b, err)
+	}
+	if got, _ := filepath.EvalSymlinks(opened[0]); got != filepath.Join(dir, "a.txt") {
+		t.Fatalf("open, from a file: %q, not a.txt", opened)
+	}
+
 	// Save, chosen: the folder and the name as the panel has them.
 	b, err = show("save", map[string]any{"start": filepath.Join(dir, "Old.txt"), "name": "Notes.md",
 		"filters": []map[string]any{{"name": "Markdown", "extensions": []string{"md"}}}},

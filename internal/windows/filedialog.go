@@ -78,7 +78,7 @@ type FileDialogOptions struct {
 	Title    string
 	Button   string // the OK button's label
 	Folder   string // the folder it starts in
-	Name     string // the file name it suggests (Save)
+	Name     string // the file name in the name field (Save: suggested; Open: selected)
 	Filters  []FileFilter
 	// DefaultExt is added to a name the user types without one (Save;
 	// no dot): the chosen filter's own, as Windows does, once it's set.

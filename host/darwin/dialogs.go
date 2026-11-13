@@ -89,7 +89,10 @@ func (h *Host) fileDialog(kind string, args []byte, reply func([]byte, error)) {
 	Send(p, "setShowsHiddenFiles:", Bool(a.Hidden))
 	Send(p, "setCanCreateDirectories:", Bool(kind != "open"))
 	dir, name := startIn(a.Start, kind == "folder")
-	if dir != "" {
+	if st, err := os.Stat(a.Start); kind == "open" && err == nil && !st.IsDir() {
+		// A file's URL: the panel shows its folder with it selected.
+		Send(p, "setDirectoryURL:", uintptr(FileURL(a.Start)))
+	} else if dir != "" {
 		Send(p, "setDirectoryURL:", uintptr(FileURL(dir)))
 	}
 	if a.Name != "" {

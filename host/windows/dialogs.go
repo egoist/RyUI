@@ -101,8 +101,17 @@ func (h *Host) fileDialog(kind string, args []byte, reply func([]byte, error)) {
 	if a.Name != "" {
 		o.Name = a.Name
 	}
-	if kind != "save" {
+	switch {
+	case kind == "folder":
 		o.Name = ""
+	case kind == "open":
+		// A file that's there is selected (its name in the name field);
+		// Name is Save's.
+		if st, err := os.Stat(a.Start); err != nil || st.IsDir() {
+			o.Name = ""
+		} else {
+			o.Name = filepath.Base(a.Start)
+		}
 	}
 	if kind != "folder" {
 		o.Filters, o.DefaultExt = dialogFilters(a.Filters)
