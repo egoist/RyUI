@@ -72,8 +72,8 @@ func (h *Host) measure(n *node, c layout.Constraints) layout.Size {
 			s.Height = 20
 		}
 	case ops.KindProgressRing:
-		// Its regular control size's (32 points), or square: a style
-		// that sizes one side sizes the other.
+		// AppKit's regular control size's (32 points), or square: a
+		// style that sizes one side sizes the other.
 		s = Size{Width: ringRegular, Height: ringRegular}
 		if c.Width == c.Width {
 			s.Height = float64(c.Width)

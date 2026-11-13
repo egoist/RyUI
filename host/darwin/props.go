@@ -129,6 +129,9 @@ func (h *Host) applyLayerColors(n *node) {
 	if n.shape != nil {
 		n.shape.colors(h, n)
 	}
+	if n.ring != nil {
+		n.ring.colors(h, n)
+	}
 	if n.list != nil {
 		n.list.colors(h)
 	}
@@ -392,10 +395,14 @@ func (h *Host) applyColor(n *node) {
 		n.rich.invalidate(h, n)
 	case ops.KindImage, ops.KindSymbol:
 		Send(n.view, "setContentTintColor:", uintptr(c))
-	case ops.KindActivity, ops.KindProgress, ops.KindProgressRing:
-		if c != 0 && RespondsTo(n.view, "setContentFilters:") {
-			// AppKit's indicators draw in the accent color; no tint.
+	case ops.KindProgressRing:
+		// AppKit's indicator draws in the accent color only: the ring is
+		// drawn in another (progressring.go).
+		if n.placed {
+			n.ring.layout(h, n)
 		}
+	case ops.KindActivity, ops.KindProgress:
+		// AppKit's indicators draw in the accent color; no tint.
 	case ops.KindSlider, ops.KindToggle:
 		if RespondsTo(n.view, "setTrackFillColor:") {
 			Send(n.view, "setTrackFillColor:", uintptr(c))

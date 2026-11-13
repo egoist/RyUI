@@ -85,15 +85,7 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 		MsgSetFloat(v, Sel("setMinValue:"), 0)
 		MsgSetFloat(v, Sel("setMaxValue:"), 1)
 	case ops.KindProgressRing:
-		// The spinning style, determinate: AppKit's own circle, filling
-		// clockwise; indeterminate, the spinner. VoiceOver reads it as a
-		// progress indicator, with its percentage.
-		v = initView("NSProgressIndicator")
-		Send(v, "setStyle:", 1) // spinning
-		Send(v, "setIndeterminate:", 0)
-		Send(v, "setControlSize:", 0)
-		MsgSetFloat(v, Sel("setMinValue:"), 0)
-		MsgSetFloat(v, Sel("setMaxValue:"), 1)
+		v = h.makeRing(n) // progressring.go
 	case ops.KindImage:
 		v = initView("AsukaImageView")
 		Send(v, "setImageScaling:", 3) // proportionally up or down
@@ -331,17 +323,7 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 			}
 		}
 	case ops.KindProgressRing:
-		switch p {
-		case ops.PropProgressRingValue:
-			MsgSetFloat(n.view, Sel("setDoubleValue:"), v.Float)
-		case ops.PropProgressRingIndeterminate:
-			Send(n.view, "setIndeterminate:", Bool(v.Int != 0))
-			if v.Int != 0 {
-				Send(n.view, "startAnimation:", 0)
-			} else {
-				Send(n.view, "stopAnimation:", 0)
-			}
-		}
+		h.setRing(n, p, v)
 	case ops.KindImage:
 		h.setImageProp(n, p, v)
 	case ops.KindSymbol:
@@ -892,29 +874,4 @@ func (h *Host) gesture(g ID, e ops.EventKind) {
 		gs.Rotation = -float32(MsgFloat(g, Sel("rotation")))
 	}
 	h.emit(n, ops.Event{Kind: e, G: gs})
-}
-
-// ringRegular is the size AppKit draws a regular spinning
-// NSProgressIndicator at, its determinate circle and its spinner.
-const ringRegular = 32
-
-// ringFrame fits a ProgressRing's NSProgressIndicator to the frame the
-// core gave it: AppKit draws its circle at its control sizes only (16
-// points small, 32 regular; scaled, its drawing breaks apart), so it
-// takes the largest that fits the frame's shorter side, centered in it,
-// and a frame smaller still shrinks the small one.
-func ringFrame(v ID, r Rect) Rect {
-	side := min(r.Size.Width, r.Size.Height)
-	size, at := uintptr(0), float64(ringRegular) // regular
-	if side < ringRegular {
-		size, at = 1, 16 // small
-	}
-	if SendInt(v, "controlSize") != int(size) {
-		Send(v, "setControlSize:", size)
-	}
-	at = min(at, side)
-	return Rect{
-		Origin: Point{X: r.Origin.X + (r.Size.Width-at)/2, Y: r.Origin.Y + (r.Size.Height-at)/2},
-		Size:   Size{Width: at, Height: at},
-	}
 }

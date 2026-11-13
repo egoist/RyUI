@@ -91,6 +91,7 @@ type node struct {
 	rich           *rich
 	field          *richField // a Rich TextField's
 	shape          *shape
+	ring           *progressRing // a ProgressRing's (progressring.go)
 	web            *web
 	video          *video
 	selected       int
@@ -178,6 +179,8 @@ type Host struct {
 	postMu sync.Mutex
 	posted []func()
 	source *MainSource
+
+	ringsObserved bool // its target follows what drawn rings' colors follow (progressring.go)
 
 	animating     bool
 	anim          animation
@@ -523,6 +526,9 @@ func (h *Host) release(n *node) {
 		if n.video != nil {
 			n.video.close()
 		}
+		if n.ring != nil {
+			n.ring.release() // its layers, AppKit's indicators
+		}
 		if n.scroll {
 			clip := Send(n.view, "contentView")
 			center := Send(Class("NSNotificationCenter"), "defaultCenter")
@@ -660,9 +666,6 @@ func (h *Host) place(n *node, f [4]float32) {
 	}
 	n.frame = r
 	v := n.view
-	if n.kind == ops.KindProgressRing {
-		r = ringFrame(v, r)
-	}
 	// A horizontal Scroll keeps its distance from the end it starts at as its
 	// content or its width changes.
 	keep := h.horizontalScroll(n)
@@ -710,6 +713,9 @@ func (h *Host) place(n *node, f [4]float32) {
 	}
 	if n.shape != nil {
 		n.shape.resized(n)
+	}
+	if n.ring != nil {
+		n.ring.layout(h, n)
 	}
 	if n.cornerRadius != 0 {
 		h.applyCorner(n)

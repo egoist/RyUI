@@ -964,9 +964,10 @@ func Progress(value signal.Accessor[float64], style ...Styler) Node {
 // ProgressView with a value draws (UIKit has none), and shows a
 // UIActivityIndicatorView without one; Android's is Material's
 // CircularProgressIndicator; a Mac's NSProgressIndicator in its spinning
-// style, determinate; Windows draws Fluent's ProgressRing; Linux draws a
-// ring in GNOME's style, and shows an AdwSpinner without a value; the web
-// an SVG ring. Its Style's Color is its fill (the accent color by
+// style at AppKit's sizes (16 and 32 points) and colors, and what it
+// draws, drawn, at any other size or in a Color; Windows draws Fluent's
+// ProgressRing; Linux draws a ring in GNOME's style, and shows an
+// AdwSpinner without a value; the web an SVG ring. Its Style's Color is its fill (the accent color by
 // default). It's measured: the platform's size, unless its Style sizes
 // it. Screen readers read it as a progress indicator, with its
 // percentage.

@@ -1465,7 +1465,11 @@ Each one ends with its examples running and its tests in CI.
     (the platform's indeterminate indicator). It is Material's
     CircularProgressIndicator, NSProgressIndicator's spinning style and
     Fluent's ProgressRing. iOS and Linux, which have no determinate
-    ring, draw one in their own style. The web draws an SVG ring.
+    ring, draw one in their own style. The web draws an SVG ring. A
+    Mac's NSProgressIndicator draws only at 16 and 32 points and only
+    in the accent color, so at any other size or in a Color the macOS
+    host draws AppKit's circle and spinner itself, in the colors read
+    from AppKit's own drawing.
   - List swipe actions, `OnEndReached` and `ui.ScrollToItem`.
   - `ui.OnFrame`: a callback each vsync (CADisplayLink at up to 120 Hz,
     Choreographer) while one is registered, for animation the app
