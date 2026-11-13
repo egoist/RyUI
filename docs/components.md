@@ -384,7 +384,8 @@ return ui.Column(ui.Style{Gap: 16},
 - **Wheel** picks one of many `Items` on a spinning wheel:
   `UIPickerView`, Android's `NumberPicker`. The desktop and the web
   have no wheel: it's a pop-up menu of the items there (`NSPopUpButton`,
-  a drop-down combo box, `GtkDropDown`, `<select>`).
+  a drop-down combo box drawn as WinUI's `ComboBox`, `GtkDropDown`,
+  `<select>`).
 - **Picker** picks one of many `Items` from a menu, showing the chosen
   one (SwiftUI's `Picker` in its menu style; Material's exposed dropdown
   menu). `Selected` out of range (-1) is none chosen, and the picker
@@ -397,7 +398,7 @@ return ui.Column(ui.Style{Gap: 16},
   | iOS | a plain `UIButton` in the tint color with the pop-up indicator, its menu checking the chosen item (`changesSelectionAsPrimaryAction`) |
   | Android | an outlined `TextInputLayout` in the exposed dropdown menu style over a `MaterialAutoCompleteTextView` the user can't type in; TalkBack reads a drop-down list |
   | macOS | `NSPopUpButton` (the label a hidden item, shown while none is chosen) |
-  | Windows | a drop-down list combo box, in the system's light or dark style; the label its cue banner and its name for UI Automation |
+  | Windows | a drop-down list combo box drawn as WinUI 3's `ComboBox` (the control fill and stroke, the chevron at the end; its list owner-drawn on the flyout surface, the chosen item's accent pill at the start, rounded by DWM on Windows 11); the label drawn in the secondary text color while none is chosen, and its name for UI Automation |
   | Linux | `GtkDropDown` over a `GtkStringList`, the label a dim label where the chosen item goes |
   | Web | `<select>`, its first option a hidden placeholder showing the label |
 - **ColorPicker** is a swatch that opens the platform's picker, writing

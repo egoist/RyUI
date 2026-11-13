@@ -1320,9 +1320,10 @@ type PickerProps struct {
 
 // Picker picks one of many options from a menu, showing the chosen one
 // (SwiftUI's Picker in its menu style: a pop-up button on iOS and the
-// Mac; Material 3's exposed dropdown menu on Android; a drop-down list on
-// Windows, a GtkDropDown on Linux, a <select> on the web). For a few
-// options side by side, use Segmented; on a spinning wheel, Wheel.
+// Mac; Material 3's exposed dropdown menu on Android; a drop-down list
+// drawn as WinUI's ComboBox on Windows, a GtkDropDown on Linux, a <select>
+// on the web). For a few options side by side, use Segmented; on a
+// spinning wheel, Wheel.
 func Picker(p PickerProps) Node {
 	e := newElement(ops.KindPicker, true)
 	e.measure()

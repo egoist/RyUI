@@ -90,20 +90,7 @@ func (h *Host) measure(n *node, c layout.Constraints) layout.Size {
 		SelectObject(dc, old)
 		w, ht = (widest+28)*float32(len(n.items)), 32
 	case ops.KindWheel, ops.KindPicker:
-		// As wide as its widest item (a Picker's label too), and the arrow.
-		widest := float32(0)
-		dc := h.measureDC
-		old := SelectObject(dc, h.nodeFont(n))
-		for _, s := range n.items {
-			tw, _ := TextExtent(dc, UTF16Units(s))
-			widest = max(widest, h.pt(n, tw))
-		}
-		if n.kind == ops.KindPicker && n.pickerLabel != "" {
-			tw, _ := TextExtent(dc, UTF16Units(n.pickerLabel))
-			widest = max(widest, h.pt(n, tw))
-		}
-		SelectObject(dc, old)
-		w, ht = max(widest+48, 120), 32
+		w, ht = h.measureCombo(n) // as wide as its widest item, and the chevron (combo.go)
 	case ops.KindDatePicker:
 		w, ht = h.measureDate(n)
 	case ops.KindColorPicker:

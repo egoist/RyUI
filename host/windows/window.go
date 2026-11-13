@@ -156,6 +156,13 @@ func (h *Host) parentMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
 		if c := h.byHwnd[lp]; c != nil {
 			return h.controlColors(c, wp, m), true
 		}
+	case WM_DRAWITEM:
+		// An owner-drawn combo box's item (a Wheel's or Picker's list).
+		d := Native[DrawItem](lp)
+		if c := h.byHwnd[d.HwndItem]; d.CtlType == ODT_COMBOBOX && c != nil && c.ctl == d.HwndItem {
+			h.drawComboItem(c, d) // combo.go
+			return 1, true
+		}
 	}
 	return 0, false
 }

@@ -12,7 +12,9 @@ import (
 // in light and dark mode while keeping the controls' keyboard, focus and
 // accessibility: BUTTON for buttons (Filled is the accent button), a
 // BUTTON check box drawn as a toggle switch (Win32 has no switch), a
-// trackbar for sliders. Fields are EDITs in a frame the host draws.
+// trackbar for sliders, a drop-down list combo box drawn as WinUI's
+// ComboBox for Wheel and Picker (combo.go). Fields are EDITs in a frame
+// the host draws.
 
 // buttonGlyph is the icon a host-made button shows.
 func (h *Host) buttonGlyph(n *node, ctl uintptr) (glyph uint16, title string) {
@@ -684,9 +686,7 @@ func (h *Host) layoutField(n *node) {
 			SetWindowPos(n.ctl, 0, r.Left+x, y, max(r.W()-2*x, 1), lh, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 		}
 	case ops.KindWheel, ops.KindPicker:
-		// The selection field fills the view; the list drops below it.
-		SendMessage(n.ctl, CB_SETITEMHEIGHT, ^uintptr(0), uintptr(max(r.H()-h.px(n, 8), 1)))
-		SetWindowPos(n.ctl, 0, 0, 0, r.W(), r.H()+h.px(n, 300), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
+		h.layoutCombo(n, r) // the box fills the view; the list drops below it (combo.go)
 	case ops.KindDatePicker:
 		h.layoutDate(n, r)
 	case ops.KindSlider:

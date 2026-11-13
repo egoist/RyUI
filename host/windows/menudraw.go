@@ -466,11 +466,16 @@ func (h *Host) roundMenu(hwnd uintptr) {
 		return
 	}
 	SetCornerPreference(hwnd, 3) // DWMWCP_ROUNDSMALL
-	border := uint32(0xE5E5E5)
+	SetBorderColor(hwnd, h.flyoutBorder().ref())
+}
+
+// flyoutBorder is the border DWM draws around Windows 11's menus and
+// flyouts, light or dark.
+func (h *Host) flyoutBorder() rgba {
 	if h.dark {
-		border = 0x3E3E3E
+		return hex(0x3E3E3E)
 	}
-	SetBorderColor(hwnd, border)
+	return hex(0xE5E5E5)
 }
 
 // paintMenuFrame paints a menu window's frame (what's outside its client

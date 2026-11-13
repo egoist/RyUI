@@ -2178,8 +2178,12 @@ How the Windows host maps Asuka (`host/windows`):
   drawn as Fluent's toggle switch (Win32 has no switch), the trackbar
   as Fluent's slider, `EDIT` in a frame the host draws (secure with a
   password character, multiline with return, Number with `ES_NUMBER`),
-  `COMBOBOX` for `Wheel` and `Picker` (its label the cue banner and
-  its Dynamic Annotation name), the date and time picker (inline, a month
+  a drop-down list `COMBOBOX` for `Wheel` and `Picker`, drawn as WinUI
+  3's `ComboBox` (it paints its own box, its list's items owner-drawn on
+  the flyout surface with the chosen item's accent pill, the list's
+  window padded and rounded by DWM; a contrast theme's system colors;
+  a Picker's label drawn while none is chosen and its Dynamic
+  Annotation name), the date and time picker (inline, a month
   calendar, with a time picker under it for a date and time), two buttons for
   `Stepper`, a swatch opening the color dialog for `ColorPicker`. The
   segmented control, progress bar and ring are the host's own views,

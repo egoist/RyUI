@@ -89,3 +89,22 @@ func OwnedBy(w, owner uintptr) bool {
 	}
 	return false
 }
+
+// ComboBoxInfo is COMBOBOXINFO.
+type ComboBoxInfo struct {
+	Size              uint32
+	Item, Button      Rect
+	ButtonState       uint32
+	Combo, Edit, List uintptr
+}
+
+// ComboList is a drop-down combo box's list window (class ComboLBox), a
+// pop-up of its own the combo box shows and hides; 0 if it has none.
+func ComboList(cb uintptr) uintptr {
+	ci := ComboBoxInfo{}
+	ci.Size = uint32(unsafe.Sizeof(ci))
+	if SendMessage(cb, CB_GETCOMBOBOXINFO, 0, uintptr(unsafe.Pointer(&ci))) == 0 {
+		return 0
+	}
+	return ci.List
+}

@@ -100,10 +100,11 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 		}
 		h.nameStepper(n)
 	case ops.KindWheel, ops.KindPicker:
-		h.makeControl(n, "COMBOBOX", wheelStyle, h.wheelExStyle(n))
+		h.makeControl(n, "COMBOBOX", comboStyle, h.wheelExStyle(n))
 		if kind == ops.KindPicker {
 			n.selected = -1 // none, till the core says
 		}
+		h.setupCombo(n) // drawn as WinUI's ComboBox (combo.go)
 	case ops.KindDatePicker:
 		n.hwnd = h.makeView(0)
 		h.makeDateControls(n)
@@ -130,7 +131,7 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 }
 
 // themeControl gives a control the system's dark or light visual style
-// where it has one (scroll bars, combo boxes).
+// where it has one (scroll bars, a combo box's list's).
 func (h *Host) themeControl(n *node) {
 	theme := "Explorer"
 	if h.dark {
@@ -150,6 +151,8 @@ func (h *Host) themeControl(n *node) {
 			} else {
 				SetWindowTheme(n.ctl, "")
 			}
+			h.styleComboList(n) // combo.go
+			Invalidate(n.ctl)
 		}
 	case ops.KindTextField:
 		if n.ctl != 0 && n.multiline {
@@ -169,8 +172,6 @@ func (h *Host) themeControl(n *node) {
 
 func (n *node) stepButtons() []uintptr { return []uintptr{n.ctl, n.ctl2} }
 
-const wheelStyle = CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-
 // wheelExStyle is a combo box's direction: right to left, its text on the
 // right and its arrow on the left.
 func (h *Host) wheelExStyle(n *node) uint32 {
@@ -181,21 +182,24 @@ func (h *Host) wheelExStyle(n *node) uint32 {
 }
 
 // selectPicker selects a Picker's chosen item in its combo box; with none
-// (out of range) the box is empty, and shows its label (its cue banner).
+// (out of range) the box is empty, and shows its label.
 func (h *Host) selectPicker(n *node) {
 	i := n.selected
 	if i < 0 || i >= len(n.items) {
 		i = -1
 	}
 	SendMessage(n.ctl, CB_SETCURSEL, uintptr(i), 0)
+	Invalidate(n.ctl)
 }
 
 // labelPicker shows a Picker's label in its combo box while none is chosen
-// (its cue banner), and names it for screen readers (its own text is the
-// chosen item).
+// (the box draws it, in the secondary text color, where the combo box's
+// cue banner would be), and names it for screen readers (its own text is
+// the chosen item).
 func (h *Host) labelPicker(n *node) {
 	SendMessage(n.ctl, CB_SETCUEBANNER, 0, Str(n.pickerLabel))
 	SetAccessibleName(n.ctl, n.pickerLabel)
+	Invalidate(n.ctl)
 }
 
 // remakeWheel makes a combo box again in its direction: a combo box takes
@@ -205,11 +209,12 @@ func (h *Host) remakeWheel(n *node) {
 	if old == 0 {
 		return
 	}
-	h.makeControlIn(n, "COMBOBOX", wheelStyle, h.wheelExStyle(n))
+	h.makeControlIn(n, "COMBOBOX", comboStyle, h.wheelExStyle(n))
 	h.byHwnd[n.ctl] = n
 	h.forgetTree(old)
 	DestroyWindow(old)
 	h.byHwnd[n.ctl] = n
+	h.setupCombo(n)
 	for _, s := range n.items {
 		SendMessage(n.ctl, CB_ADDSTRING, 0, Str(s))
 	}
@@ -383,6 +388,7 @@ func (h *Host) setOwn(n *node, p ops.PropID, v *ops.Value) {
 			n.selected = int(v.Int)
 			SendMessage(n.ctl, CB_SETCURSEL, uintptr(v.Int), 0)
 		}
+		Invalidate(n.ctl)
 	case ops.KindPicker:
 		switch p {
 		case ops.PropPickerItems:
@@ -586,10 +592,7 @@ func (h *Host) controlCommand(n *node, ctl uintptr, code uint32) {
 			h.emit(n, ops.Event{Kind: ops.EventBlur})
 		}
 	case ops.KindWheel, ops.KindPicker:
-		if code == CBN_SELCHANGE {
-			n.selected = int(int32(SendMessage(ctl, CB_GETCURSEL, 0, 0)))
-			h.emit(n, ops.Event{Kind: ops.EventSelected, Int: int64(n.selected)})
-		}
+		h.comboCommand(n, ctl, code) // combo.go
 	case kindHeader:
 		h.headerCommand(n, ctl)
 	case kindCommandBar:
@@ -672,11 +675,9 @@ func (h *Host) controlColors(n *node, dc uintptr, m uint32) uintptr {
 	case kindAlertWindow:
 		return h.alertDialogColors(dc) // its title and message
 	case ops.KindWheel, ops.KindPicker:
-		bg := h.theme.fieldBg
-		if h.dark {
-			bg = h.theme.control
-		}
-		SetTextColor(dc, h.theme.label.ref())
+		// Its list's, should it ask here (combo.go answers it first).
+		bg := h.comboListBg()
+		SetTextColor(dc, h.comboListText().ref())
 		SetBkColor(dc, bg.ref())
 		return h.brush(bg)
 	}

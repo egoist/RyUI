@@ -694,6 +694,26 @@ const (
 	CB_GETCOMBOBOXINFO = 0x0164
 	CBN_SELCHANGE      = 1
 
+	// Owner-drawn combo boxes: the box's field and its list's items drawn
+	// by its parent (WM_DRAWITEM, ODT_COMBOBOX), the items keeping their
+	// strings (typing to search, screen readers).
+	CBS_OWNERDRAWFIXED = 0x0010
+	CBS_HASSTRINGS     = 0x0200
+	CB_GETITEMHEIGHT   = 0x0154
+	CBN_DROPDOWN       = 7
+	CBN_CLOSEUP        = 8
+	ODT_COMBOBOX       = 3
+	ODS_FOCUS          = 0x0010
+	ODS_COMBOBOXEDIT   = 0x1000
+
+	// System colors (GetSysColor): what a contrast theme sets.
+	COLOR_WINDOW        = 5
+	COLOR_WINDOWTEXT    = 8
+	COLOR_HIGHLIGHT     = 13
+	COLOR_HIGHLIGHTTEXT = 14
+	COLOR_BTNFACE       = 15
+	COLOR_BTNTEXT       = 18
+
 	TBS_HORZ           = 0x0000
 	TBS_NOTICKS        = 0x0010
 	TBS_BOTH           = 0x0008

@@ -131,6 +131,8 @@ type node struct {
 	keyboard       int32
 	items          []string // Segmented, Wheel
 	pickerLabel    string   // a Picker's Label
+	comboList      uintptr  // a Wheel's or Picker's combo box's list window (combo.go)
+	comboHot       bool     // the pointer is over its combo box
 	selected       int
 	pages          int     // a PageControl's
 	paging         bool    // a Scroll that moves by pages
