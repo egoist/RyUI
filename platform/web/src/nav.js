@@ -605,11 +605,19 @@ export class Navigation {
   /** raiseWindow brings a Window's panel to the front: under those always on top, unless it is. */
   raiseWindow(n) {
     const c = this.h.container;
-    if (n.backdrop) c.appendChild(n.backdrop);
-    if (n.dialog) c.appendChild(n.dialog);
+    const tail = [n.backdrop, n.dialog];
     for (const x of this.dialogs) {
-      if (x !== n && x.kind === Kind.Window && x.win.onTop && x.dialog) c.appendChild(x.dialog);
+      if (x !== n && x.kind === Kind.Window && x.win.onTop) tail.push(x.dialog);
     }
+    const els = tail.filter(Boolean);
+    // Moved only if they aren't where they go already: a press whose
+    // element moves in the page gets no click.
+    let at = c.lastElementChild;
+    let placed = true;
+    for (let i = els.length - 1; i >= 0; i--, at = at?.previousElementSibling) {
+      if (at !== els[i]) { placed = false; break; }
+    }
+    if (!placed) for (const el of els) c.appendChild(el);
   }
 
   drag(handle, move, end) {
