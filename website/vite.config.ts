@@ -18,16 +18,18 @@ const docs = fs
   .filter((file) => file.endsWith(".md") && file !== "README.md" && !unpublished.has(file))
   .map((file) => `/docs/${file.slice(0, -3).split(path.sep).join("/").replace(/\/README$/, "")}`)
 
-// Asuka's version: the latest release tag. A shallow clone may come without
-// tags, so fetch them once before giving up.
+// Asuka's version: the highest release tag. Not `git describe`: it needs the
+// tag's commit in HEAD's history, which a shallow clone (Cloudflare's builds)
+// cuts off. A shallow clone may also come without tags, so fetch them once.
 const asukaVersion = (() => {
-  const describe = () => execFileSync("git", ["describe", "--tags", "--abbrev=0", "--match", "v*"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim()
-  try {
-    return describe()
-  } catch {
+  const latest = () => execFileSync("git", ["tag", "--list", "v*", "--sort=-v:refname"], { encoding: "utf8" }).split("\n")[0].trim()
+  let version = latest()
+  if (!version) {
     execFileSync("git", ["fetch", "--tags", "--quiet"], { stdio: "ignore" })
-    return describe()
+    version = latest()
   }
+  if (!version) throw new Error("no v* release tag found, even after git fetch --tags")
+  return version
 })()
 
 export default defineConfig({
