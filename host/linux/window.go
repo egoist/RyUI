@@ -45,6 +45,7 @@ type win struct {
 	cssName    string // its widget name, which that style selects
 	sent       ops.WindowState
 	reported   bool
+	desk       deskState // as a panel, a flyout... (deskwin.go)
 }
 
 func (h *Host) newMainWindow() *win {
@@ -144,6 +145,7 @@ func (w *win) setRoot(h *Host, n *node) {
 // allocated is the window's content view sized: the root takes the size,
 // and the core hears of it.
 func (w *win) allocated(h *Host, width, height int32) {
+	h.deskAllocated(w)
 	fw, fh := float32(width), float32(height)
 	if w.root != nil && w.root.widget != 0 {
 		allocate(w.root.widget, width, height, 0, 0, nil)
