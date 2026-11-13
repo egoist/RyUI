@@ -2,7 +2,8 @@
 // updates itself to the second and relaunches into it. With --report
 // <file>, each launch writes its version there; the first checks, installs
 // and relaunches with update's API, the second quits. Without it, it's an
-// app with the update window and "Check for Updates…" in its menu.
+// app with the update window and "Check for Updates…" in its menu
+// (--check: the window at once).
 package main
 
 import (
@@ -21,6 +22,10 @@ func main() {
 		if len(os.Args) == 3 && os.Args[1] == "--report" {
 			// Once the app runs: Quit and Relaunch need its host.
 			signal.Effect(func() { go selfUpdate(os.Args[2]) })
+		}
+		if len(os.Args) == 2 && os.Args[1] == "--check" {
+			// The update window, as "Check for Updates…" opens it.
+			signal.Effect(update.CheckForUpdates)
 		}
 		return ui.Column(ui.Style{Padding: ui.All(24), Gap: 12},
 			update.Window(update.Options{}),

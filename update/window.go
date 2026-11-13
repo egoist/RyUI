@@ -95,13 +95,25 @@ func appName() string {
 func (c *controller) content() ui.Node {
 	win := ui.UseWindow()
 	phase := signal.NewMemo(func() Phase { return c.state.Get().Phase })
+	// Each phase comes to the front (the app's main window, shown after
+	// the updater's at launch, would hide it); a release's view, with its
+	// notes, is larger, and centered again as the size changes.
+	release := -1
 	signal.Effect(func() {
-		if p := phase.Get(); p == Available {
-			win.SetSize(releaseWidth, releaseHeight)
-		} else {
-			win.SetSize(statusWidth, statusHeight)
+		r := 0
+		if phase.Get() == Available {
+			r = 1
 		}
-		win.Center()
+		if r != release {
+			release = r
+			if r == 1 {
+				win.SetSize(releaseWidth, releaseHeight)
+			} else {
+				win.SetSize(statusWidth, statusHeight)
+			}
+			win.Center()
+		}
+		win.Focus()
 	})
 	// A view of its own (Clip): a window holds one.
 	return ui.Column(ui.Style{Grow: 1, Clip: true}, ui.Dynamic(func() ui.Node {
