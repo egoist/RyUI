@@ -24,6 +24,12 @@ import (
 //		{Key: "enter"}: open,
 //	}}, field, results)
 //
+// Out is through the views' parents as the app built them; a List's row
+// goes on to its List, and a Sheet's or a Popover's content to the
+// window it covers (on a phone, the app's root), ending at that window's
+// UseKeys. A Window's content ends at its own UseKeys, never the main
+// window's.
+//
 // A character with no modifiers takes typing from a field inside: give
 // characters a modifier, or put the map where no field is. The keys of
 // an input method composing text (a Japanese or Chinese keyboard's) go to

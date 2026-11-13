@@ -41,6 +41,11 @@ type View struct {
 	Sections []ListSection
 
 	presented bool
+	// list is the List a cell is bound into (Bind); over is the window
+	// (the root, a Window) a sheet was presented over: the key window as
+	// it was presented. Keys go on there from a node with no parent.
+	list *View
+	over ops.NodeID
 }
 
 // ListSection is a List's section, as ListUpdate sends it.
@@ -265,6 +270,11 @@ func (h *Host) apply(op *ops.Op) {
 				panic(fmt.Sprintf("fake: Present on a %s", v.Kind))
 			}
 			v.presented = true
+			if v.Kind == ops.KindSheet {
+				if w := h.KeyWindow(); w != nil {
+					v.over = w.ID
+				}
+			}
 		}
 		h.windowCommand(v, op.Cmd, op.Value.Bytes)
 	case ops.OpSetRoot:
@@ -549,17 +559,20 @@ func (h *Host) Submit(v *View) {
 	h.dispatch(ops.Event{ID: v.ID, Kind: ops.EventSubmit})
 }
 
-// Key presses a key while focused (a view, or nil: the window) has the
-// keyboard's focus, as the platforms route it: to the nearest view, from
-// focused out through its ancestors, whose Keys prop has the key (name: a
+// Key presses a key while focused (a view, or nil: nothing, in the key
+// window) has the keyboard's focus, as the platforms route it: to the
+// nearest view, from focused out, whose Keys prop has the key (name: a
 // character, any case, or a named key; mods: 1 primary, 2 shift, 4 alt, 8
 // control), which gets Key with its index. It reports whether a view took
-// it (false: the focused control or the menus would have).
+// it (false: the focused control or the menus would have). Out is through
+// the parents (KeyOut); with nothing focused a key starts at the
+// KeyWindow's root (the root, or a Window); pass a sheet's or a popover's
+// view for one with the keyboard and nothing focused in it.
 func (h *Host) Key(focused *View, name string, mods uint8) bool {
 	if focused == nil {
-		focused = h.Root()
+		focused = h.KeyWindow()
 	}
-	for v := focused; v != nil; v = v.Parent {
+	for v := focused; v != nil; v = h.KeyOut(v) {
 		b, ok := v.Props[ops.PropKeys]
 		if !ok {
 			continue
@@ -571,6 +584,43 @@ func (h *Host) Key(focused *View, name string, mods uint8) bool {
 		}
 	}
 	return false
+}
+
+// KeyOut is where a key goes on from v, not taking it: v's parent; for
+// a node the core leaves without one, where it shows: a cell (a List's
+// row) its List, a sheet the window it was presented over (that
+// window's root: the root, a Window), a popover the root of what its
+// anchor is in (a window's, or a sheet's node). The root and a Window
+// are ends (nil): a Window's keys are its own.
+func (h *Host) KeyOut(v *View) *View {
+	if v.Parent != nil {
+		return v.Parent
+	}
+	if v.list != nil && h.Views[v.list.ID] == v.list {
+		return v.list
+	}
+	switch v.Kind {
+	case ops.KindSheet:
+		if w := h.Views[v.over]; w != nil && w != v {
+			return w
+		}
+		return h.Root()
+	case ops.KindPopover:
+		if a := h.Views[ops.NodeID(v.Int(ops.PropPopoverAnchor))]; a != nil {
+			for a.Parent != nil || a.list != nil {
+				if a.Parent != nil {
+					a = a.Parent
+				} else {
+					a = a.list
+				}
+			}
+			if a != v {
+				return a
+			}
+		}
+		return h.Root()
+	}
+	return nil
 }
 
 // Flip toggles a switch.
@@ -641,11 +691,13 @@ func (h *Host) NewCell() *View {
 
 // Bind asks the core to bind item index of list into cell.
 func (h *Host) Bind(list *View, index int, cell *View) {
+	cell.list = list
 	h.core.ListBind(list.ID, index, cell.ID)
 }
 
 // Unbind asks the core to let go of cell.
 func (h *Host) Unbind(list *View, cell *View) {
+	cell.list = nil
 	h.core.ListUnbind(list.ID, cell.ID)
 }
 

@@ -393,7 +393,11 @@ func (w *WindowHandle) ClickThrough() signal.Accessor[bool] { return w.through }
 // the focused view and its ancestors (their KeyMaps), and first when no
 // view has the focus (a window of no text field: a game's arrows, a
 // viewer's Space). Its funcs run as a KeyMap's do; of two UseKeys with a
-// key, the one called last takes it.
+// key, the one called last takes it. The window is a Window's for its
+// content, else the main window's; a Sheet's or a Popover's content is
+// in the window it covers, so its UseKeys are that window's, and a key
+// in a sheet reaches them after the sheet's views. A Window's keys are
+// its own: a key in it never reaches the main window's UseKeys.
 func UseKeys(m KeyMap) {
 	w := windowCtx.Use()
 	if w == nil {

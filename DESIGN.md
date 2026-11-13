@@ -566,10 +566,22 @@ keyboard's focus is in it (`ViewProps.Keys`, `TextFieldProps.Keys`, a
   (`asuka dev` on a phone).
 - The nearest first, as the responder chains go (AppKit's, UIKit's,
   the DOM's bubbling): a field's own Keys, then the views around it, then
-  the window's (`UseKeys`: the root's, or a Window node's, Keys prop),
-  which is also where a key starts when no view has the focus. A key a
-  view takes doesn't reach the focused control (Up and Down in a search
-  field move a selection, not its caret) nor the menu bar.
+  the window's (`UseKeys`: the root's, or a Window node's, Keys prop).
+  A key goes out from the focused node through its parents in the
+  core's tree. A node the core leaves without a parent, but which shows
+  inside another, goes on where it shows: a List's row (a cell the host
+  made and bound) to its List; a Sheet's or a Popover's node to what
+  it's presented from: on a desktop, the window it covers (the window
+  of a popover's anchor: a sheet's node, for a popover in a sheet), so
+  its way ends at that window's root and its `UseKeys` (a sheet
+  presented from a Window node's content, at that Window node); on a
+  phone, the root. A Window node is an end: its window's own keys (its
+  `UseKeys`), never the main window's; the root is one too. With
+  nothing focused, a key starts at the root of the window that has the
+  keyboard: the root, a Window node, or a sheet's or a popover's node
+  (then out, as above). A key a view takes doesn't reach the focused
+  control (Up and Down in a search field move a selection, not its
+  caret) nor the menu bar.
 - Matching: the key as it types without modifiers (a character, lower
   case: Shift is a modifier like the others), and exactly the declared
   modifiers. Never while an input method composes text (marked text):
