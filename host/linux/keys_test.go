@@ -250,6 +250,89 @@ func TestKeysSheetListRow(t *testing.T) {
 	waitLog(t, h, &log, append(want, "window f5")...)
 }
 
+// A sheet and an alert go on the window they're declared in (their
+// Window prop), whichever window is in use: a sheet opened in the same
+// batch as its Window, before that Window is in use, on that Window, its
+// keys on to that Window's UseKeys, never the main window's; a sheet of
+// the main window's, with a Window in use, on the main window; an alert
+// from a button in a Window, on that Window.
+func TestSheetAlertOnDeclaredWindow(t *testing.T) {
+	var log keyLog
+	win, mainSheet := signal.New(false), signal.New(false)
+	h, r := mount(t, func() ui.Node {
+		ui.UseKeys(ui.KeyMap{{Key: "f2"}: log.add("main f2")})
+		return ui.Column(ui.Style{},
+			ui.StaticText("main"),
+			ui.Sheet(ui.SheetProps{Open: mainSheet, Content: func() ui.Node { return ui.StaticText("main sheet") }}),
+			ui.Window(ui.WindowProps{Open: win, Width: 400, Height: 300, Content: func() ui.Node {
+				ui.UseKeys(ui.KeyMap{{Key: "f5"}: log.add("window f5")})
+				return ui.View(ui.ViewProps{Keys: ui.KeyMap{{Key: "f6"}: log.add("window view f6")}},
+					ui.Button(ui.ButtonProps{Title: ui.Val("Alert"), OnPress: func() { ui.Alert(ui.AlertProps{Title: "In the window"}) }}),
+					ui.Sheet(ui.SheetProps{Open: signal.New(true), Content: func() ui.Node {
+						return ui.TextField(ui.TextFieldProps{Value: signal.New("")})
+					}}))
+			}}),
+		)
+	})
+	keyboard(t, h.main) // the main window in use
+	onMain(func() { h.enter(func() { win.Set(true); r.Flush() }) })
+	w := theWindow(t, h)
+	sheetOn := func(n *node) Ptr { return WidgetGetRoot(n.nav.dialog) }
+	var winSheet *node
+	settle(t, h, func() bool {
+		for _, n := range find(h, ops.KindSheet) {
+			if n.nav.dialog != 0 && sheetOn(n) != 0 {
+				winSheet = n
+				return true
+			}
+		}
+		return false
+	})
+	onMain(func() {
+		if sheetOn(winSheet) != w.window {
+			fatalf(t, "the Window's sheet is on %#x, not the Window %#x (main %#x)", sheetOn(winSheet), w.window, h.main.window)
+		}
+	})
+	press := keyboard(t, w)
+	settle(t, h, func() bool {
+		f := find(h, ops.KindTextField)
+		if len(f) == 1 && WidgetGetMapped(f[0].widget) {
+			WidgetGrabFocus(f[0].field.editable)
+			return WidgetHasFocus(EditableGetDelegate(f[0].field.editable))
+		}
+		return false
+	})
+	press("F2", "F5")
+	waitLog(t, h, &log, "window f5")
+
+	// The main window's sheet, with the Window in use.
+	onMain(func() {
+		if h.activeWin != w {
+			fatalf(t, "the Window isn't in use")
+		}
+		h.enter(func() { mainSheet.Set(true); r.Flush() })
+	})
+	settle(t, h, func() bool {
+		for _, n := range find(h, ops.KindSheet) {
+			if n != winSheet {
+				return n.nav.dialog != 0 && sheetOn(n) == h.main.window
+			}
+		}
+		return false
+	})
+
+	// An alert from a button in the Window: on the Window.
+	onMain(func() {
+		for _, b := range find(h, ops.KindButton) {
+			h.emit(b, ops.Event{Kind: ops.EventPress})
+		}
+	})
+	settle(t, h, func() bool {
+		a := find(h, ops.KindAlert)
+		return len(a) == 1 && a[0].nav.dialog != 0 && sheetOn(a[0]) == w.window
+	})
+}
+
 // A panel's content declaring Escape takes it before the panel's own
 // Escape, which closes it; a popover's likewise, and its window's keys
 // (UseKeys) are reached from it.

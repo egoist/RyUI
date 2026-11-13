@@ -21,12 +21,12 @@ import (
 // (chrome), or the tabs' switcher, or the window's title.
 
 type nav struct {
-	view     Ptr  // a Stack's AdwNavigationView; Tabs' AdwViewStack
-	page     Ptr  // a Screen's AdwNavigationPage, or its AdwViewStackPage in Tabs
-	dialog   Ptr  // a Sheet's AdwDialog, an Alert's AdwAlertDialog
-	over     *win // the window a Sheet was presented over
-	bar      Ptr  // Tabs' AdwViewSwitcherBar
-	switcher Ptr  // Tabs' AdwViewSwitcher, for the header bar
+	view     Ptr        // a Stack's AdwNavigationView; Tabs' AdwViewStack
+	page     Ptr        // a Screen's AdwNavigationPage, or its AdwViewStackPage in Tabs
+	dialog   Ptr        // a Sheet's AdwDialog, an Alert's AdwAlertDialog
+	window   ops.NodeID // a Sheet's or an Alert's Window: the window it's declared in (the root, a Window node)
+	bar      Ptr        // Tabs' AdwViewSwitcherBar
+	switcher Ptr        // Tabs' AdwViewSwitcher, for the header bar
 	narrow   bool
 	popping  bool // the host is popping (no Popped)
 	gone     bool // the user popped or dismissed it
@@ -224,6 +224,8 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) bool {
 		case ops.PropSheetDetents:
 			n.nav.detents = v.Int
 			h.sizeSheet(n)
+		case ops.PropSheetWindow:
+			n.nav.window = ops.NodeID(v.Int)
 		}
 	case ops.KindAlert:
 		switch p {
@@ -235,6 +237,8 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) bool {
 			n.actions = decodeMenu(v.Bytes)
 		case ops.PropAlertStyle:
 			n.alertStyle = int32(v.Int)
+		case ops.PropAlertWindow:
+			n.nav.window = ops.NodeID(v.Int)
 		}
 	case ops.KindWindow:
 		w := n.win
@@ -443,19 +447,15 @@ func (h *Host) destroyNav(n *node) bool {
 	return false
 }
 
-// present shows a sheet or alert over the window in use.
+// present shows a sheet or alert over the window it's declared in (its
+// Window prop), or opens a Window or a popover.
 func (h *Host) present(n *node) {
-	parent := h.presentingWidget()
 	switch n.kind {
 	case ops.KindSheet:
 		h.sizeSheet(n)
-		n.nav.over = h.main
-		if w := h.activeWin; w != nil {
-			n.nav.over = w
-		}
-		AdwDialogPresent(n.nav.dialog, parent)
+		AdwDialogPresent(n.nav.dialog, h.declaredWin(n).content)
 	case ops.KindAlert:
-		h.presentAlert(n, parent)
+		h.presentAlert(n, h.declaredWin(n).content)
 	case ops.KindWindow:
 		h.openWindow(n)
 	case ops.KindPopover:
@@ -463,12 +463,21 @@ func (h *Host) present(n *node) {
 	}
 }
 
-// presentingWidget is what a dialog shows over: the window in use.
-func (h *Host) presentingWidget() Ptr {
-	if w := h.activeWin; w != nil {
-		return w.content
+// declaredWin is the window a sheet or an alert is declared in (its
+// Window prop: the main window for the root, a Window node's), whichever
+// window is in use; the main window if it has none, or that one closed.
+func (h *Host) declaredWin(n *node) *win {
+	if n.nav != nil {
+		if x := h.nodes[n.nav.window]; x != nil {
+			if x.win != nil && !x.win.closing {
+				return x.win
+			}
+			if h.main != nil && x == h.main.root {
+				return h.main
+			}
+		}
 	}
-	return h.main.content
+	return h.main
 }
 
 // sizeSheet sizes a sheet's dialog: as wide as a dialog of libadwaita's
@@ -479,10 +488,7 @@ func (h *Host) sizeSheet(n *node) {
 	if d == 0 {
 		return
 	}
-	w := h.activeWin
-	if w == nil {
-		w = h.main
-	}
+	w := h.declaredWin(n)
 	ww, wh := w.envW, w.envH
 	if ww == 0 {
 		ww, wh = 800, 600

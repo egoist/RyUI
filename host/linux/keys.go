@@ -20,8 +20,8 @@ import (
 // entry, its screen's), or the window's root (the main window's root, a
 // Window node; a popover's node) where no node has the focus, and goes
 // out through the nodes' parents, and on from a node with none where it
-// shows (keyOut): a sheet's (an AdwDialog in the window it was presented
-// over) and a popover's node to that window's root, which ends it, a
+// shows (keyOut): a sheet's (an AdwDialog on the window it's declared
+// in) and a popover's node to that window's root, which ends it, a
 // Window node ending its content (a list's cells are the host's views,
 // in the list). The
 // first node whose Keys have the key takes it: the controller stops it,
@@ -114,9 +114,10 @@ func (h *Host) routeKey(n *node, name string, mods uint8) bool {
 // keyOut is where a key goes on from n, not taking it: n's parent (a
 // list's cells and rows are views of the host's in it, with their
 // parents); from a node the core leaves without one, where it shows: a
-// sheet's node the root of the window it was presented over (the main
-// window's root, a Window node), a popover's node the root of what its
-// anchor is in (a window's, or a sheet's node). The root and a Window
+// sheet's node the root of the window it's declared in (its Window
+// prop: the main window's root, a Window node), a popover's node the
+// root of what its anchor is in (a window's, or a sheet's node). The
+// root and a Window
 // node are ends (nil): a Window's keys are its own.
 func (h *Host) keyOut(n *node) *node {
 	if n.parent != nil {
@@ -124,7 +125,7 @@ func (h *Host) keyOut(n *node) *node {
 	}
 	switch n.kind {
 	case ops.KindSheet:
-		if w := n.nav.over; w != nil && !w.closing && w.root != nil && w.root != n {
+		if w := h.declaredWin(n); w != nil && w.root != nil && w.root != n {
 			return w.root
 		}
 	case ops.KindPopover:
