@@ -12,7 +12,8 @@
 //   - A Popover is a popover element next to what it points at.
 //   - A SplitView is a sidebar beside its detail Stack; on a narrow
 //     window, a drawer the detail's header opens.
-//   - A Window is a panel in the page the user can move and resize.
+//   - A Window is a panel in the page the user can move and resize
+//     (window.js: what a WindowHandle does to it, and its options).
 //
 // Going back is the browser's: its back button (a history entry stands
 // for the app's back while there's somewhere to go back to), Escape,
@@ -22,7 +23,8 @@
 // Screens, sheets, popovers and windows are sized by the host, which
 // reports each one's Environment.
 
-import { Kind, KindProp as P, Event, Events, Command, Reader, environment as newEnv } from "./ops.js";
+import { Kind, KindProp as P, Event, Events, Command, Reader, TitleBar, environment as newEnv } from "./ops.js";
+import { Flag } from "./window.js";
 import { own } from "./views.js";
 import { decodeActions } from "./host.js";
 import { symbolSVG } from "./media.js";
@@ -87,7 +89,7 @@ export class Navigation {
   // --- Screens' environments ---
 
   /** report sends a screen's, sheet's or popover's environment if it changed. */
-  report(n, w, h, el) {
+  report(n, w, h, el, top = 0) {
     if (w <= 0 || h <= 0) return;
     const e = this.h.env();
     e.width = w;
@@ -101,6 +103,7 @@ export class Navigation {
     e.safeBottom = Math.max(0, e.safeBottom - db);
     e.safeRight = Math.max(0, e.safeRight - dr);
     if (e.keyboard) e.keyboard = Math.max(0, e.keyboard - db);
+    e.safeTop = Math.max(e.safeTop, top); // a Window's hidden title bar
     const key = JSON.stringify(e);
     if (n.envKey === key) return;
     n.envKey = key;
@@ -328,9 +331,14 @@ export class Navigation {
     if (!d) return;
     let w, h;
     if (n.kind === Kind.Window) {
-      w = n.win.w; h = n.win.h;
-      d.style.left = n.win.x + "px";
-      d.style.top = n.win.y + "px";
+      const wn = n.win;
+      if (wn.maximized) { wn.x = 0; wn.y = 0; wn.w = c.width; wn.h = c.height; }
+      w = wn.w; h = wn.minimized ? Math.max(wn.bar, 36) : wn.h;
+      d.style.left = wn.x + "px";
+      d.style.top = wn.y + "px";
+      d.classList.toggle("asuka-window-top", !!wn.onTop);
+      d.classList.toggle("asuka-window-minimized", !!wn.minimized);
+      d.classList.toggle("asuka-window-maximized", !!wn.maximized);
     } else {
       const wide = this.wide();
       d.classList.toggle("asuka-wide", wide);
@@ -354,10 +362,15 @@ export class Navigation {
     d.style.height = h + "px";
     const s = n.el.style;
     const top = n.kind === Kind.Window ? n.win.bar : 0;
+    if (n.kind === Kind.Window && n.win.minimized) {
+      this.h.windows.report(n);
+      return;
+    }
     s.left = "0px"; s.top = top + "px"; s.width = w + "px"; s.height = h - top + "px";
     n.frame = [0, top, w, h - top];
     n.placed = true;
-    this.report(n, w, h - top, n.el);
+    this.report(n, w, h - top, n.el, n.kind === Kind.Window ? n.win.safeTop : 0);
+    if (n.kind === Kind.Window) this.h.windows.report(n);
   }
 
   /** dismiss is the user's: the sheet's ui.OnBack asks the core, or the core hears it was dismissed. */
@@ -516,41 +529,90 @@ export class Navigation {
   presentWindow(n) {
     if (n.shown) return;
     const c = this.h.container.getBoundingClientRect();
-    const bar = 36;
+    const cfg = n.win.cfg || decodeWindowConfig(new Uint8Array(0));
+    const hiddenBar = cfg.titleBar === TitleBar.Hidden;
+    const barH = 36, bar = hiddenBar ? 0 : barH;
     const w = Math.min(n.win.width || 480, c.width - 16), h = Math.min((n.win.height || 600) + bar, c.height - 16);
     const open = this.dialogs.filter((x) => x.kind === Kind.Window).length;
-    n.win = { ...n.win, w, h, x: Math.max(8, (c.width - w) / 2 + open * 24), y: Math.max(8, (c.height - h) / 2 + open * 24), bar };
+    let x = Math.max(8, (c.width - w) / 2 + open * 24), y = Math.max(8, (c.height - h) / 2 + open * 24);
+    if (cfg.flags & Flag.Centered) { x = Math.max(0, (c.width - w) / 2); y = Math.max(0, (c.height - h) / 2); }
+    if (cfg.flags & Flag.Positioned) { x = cfg.x; y = cfg.y; }
+    n.win = { ...n.win, w, h, x, y, bar, safeTop: hiddenBar ? barH : 0, maxWidth: cfg.maxWidth, maxHeight: cfg.maxHeight,
+      hidden: false, minimized: false, maximized: false, onTop: !!(cfg.flags & Flag.AlwaysOnTop) };
     const d = div("asuka-window");
     d.setAttribute("role", "dialog");
+    d.tabIndex = -1;
     const title = div("asuka-window-bar");
+    title.classList.toggle("asuka-window-bar-hidden", hiddenBar);
     const name = div("asuka-window-title");
     name.textContent = n.title || "";
-    const close = iconButton("xmark", "Close", false);
-    close.addEventListener("click", () => this.h.emit(n, Event.Dismissed, Events.dismissed));
-    title.append(name, close);
+    title.append(name);
+    if (!(cfg.flags & Flag.NoClose)) {
+      const close = iconButton("xmark", "Close", false);
+      close.addEventListener("click", () => this.h.windows.userClose(n));
+      title.append(close);
+    }
     d.append(title, n.el);
-    const grip = div("asuka-window-grip");
-    d.appendChild(grip);
+    const bg = this.h.windows.background(n);
+    if (bg) d.style.background = bg;
+    if (cfg.flags & Flag.Modal) {
+      // Modal: the page under it takes no input until it closes.
+      n.backdrop = div("asuka-window-backdrop");
+      this.h.container.appendChild(n.backdrop);
+    }
+    const resizable = !(cfg.flags & Flag.FixedSize);
+    if (resizable) {
+      const grip = div("asuka-window-grip");
+      d.appendChild(grip);
+      this.drag(grip, (dx, dy) => {
+        const wn = n.win;
+        if (wn.maximized) return;
+        wn.w = this.h.windows.clamp(wn.w + dx, wn.minWidth || 200, wn.maxWidth);
+        wn.h = this.h.windows.clamp(wn.h - wn.bar + dy, wn.minHeight || 120, wn.maxHeight) + wn.bar;
+        this.sizeDialog(n);
+      }, () => this.h.windows.save(n));
+    }
     this.h.container.appendChild(d);
     n.dialog = d;
     n.winTitle = name;
     n.shown = true;
     this.dialogs.push(n);
-    this.drag(title, (dx, dy) => { n.win.x += dx; n.win.y += dy; this.sizeDialog(n); });
-    this.drag(grip, (dx, dy) => {
-      n.win.w = Math.max(n.win.w + dx, (n.win.minWidth || 200));
-      n.win.h = Math.max(n.win.h + dy, (n.win.minHeight || 120) + bar);
+    this.drag(title, (dx, dy) => {
+      const wn = n.win;
+      if (wn.maximized) return;
+      wn.x += dx; wn.y += dy;
       this.sizeDialog(n);
-    });
-    d.addEventListener("pointerdown", () => {
-      // The window clicked comes to the front.
-      this.h.container.appendChild(d);
-    });
+    }, () => this.h.windows.save(n));
+    if (resizable && !(cfg.flags & Flag.NoMaximize)) {
+      title.addEventListener("dblclick", (e) => {
+        if (e.target.closest("button")) return;
+        this.h.windows.maximize(n, !n.win.maximized);
+        this.sizeDialog(n);
+        this.h.windows.save(n);
+      });
+    }
+    // The window clicked comes to the front; its keyboard focus is reported.
+    d.addEventListener("pointerdown", () => this.raiseWindow(n));
+    d.addEventListener("focusin", () => this.h.windows.report(n));
+    d.addEventListener("focusout", () => queueMicrotask(() => this.h.windows.report(n)));
+    if (!this.h.windows.restore(n) && cfg.flags & Flag.Maximized) this.h.windows.maximize(n, true);
+    if (cfg.flags & Flag.Hidden) this.h.windows.setHidden(n, true);
+    else this.raiseWindow(n);
     this.sizeDialog(n);
     this.updateGuard();
   }
 
-  drag(handle, move) {
+  /** raiseWindow brings a Window's panel to the front: under those always on top, unless it is. */
+  raiseWindow(n) {
+    const c = this.h.container;
+    if (n.backdrop) c.appendChild(n.backdrop);
+    if (n.dialog) c.appendChild(n.dialog);
+    for (const x of this.dialogs) {
+      if (x !== n && x.kind === Kind.Window && x.win.onTop && x.dialog) c.appendChild(x.dialog);
+    }
+  }
+
+  drag(handle, move, end) {
     let last = null;
     handle.addEventListener("pointerdown", (e) => {
       if (e.target.closest("button")) return;
@@ -562,7 +624,10 @@ export class Navigation {
       move(e.clientX - last[0], e.clientY - last[1]);
       last = [e.clientX, e.clientY];
     });
-    handle.addEventListener("pointerup", () => { last = null; });
+    handle.addEventListener("pointerup", () => {
+      if (last && end) end();
+      last = null;
+    });
   }
 
   // --- SplitView ---
@@ -1084,6 +1149,7 @@ const windowKind = {
       case P.Window.Title: n.title = v; if (n.winTitle) n.winTitle.textContent = v; break;
       case P.Window.Config: {
         const c = decodeWindowConfig(v);
+        n.win.cfg = c;
         n.win.width = c.width; n.win.height = c.height;
         n.win.minWidth = c.minWidth; n.win.minHeight = c.minHeight;
         break;
@@ -1094,8 +1160,11 @@ const windowKind = {
   destroy(h, n) {
     if (n.shown) {
       n.shown = false;
+      h.windows.save(n);
+      if (document.fullscreenElement === n.dialog) document.exitFullscreen().catch(() => {});
       h.nav.dialogs = h.nav.dialogs.filter((x) => x !== n);
       n.dialog.remove();
+      n.backdrop?.remove();
       h.nav.updateGuard();
     }
     return true;

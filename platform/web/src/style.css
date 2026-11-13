@@ -464,6 +464,14 @@ textarea.asuka-field { overflow-y: auto; display: block; }
 .asuka-window-title { flex: 1; font-size: 0.8125rem; font-weight: 600; text-align: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .asuka-window-bar .asuka-bar-button { height: 28px; min-width: 28px; color: var(--asuka-secondary-label); }
 .asuka-window-bar .asuka-bar-button .asuka-symbol { width: 18px; height: 18px; }
+.asuka-window-top { z-index: 21; }
+.asuka-window-minimized > :not(.asuka-window-bar), .asuka-window-minimized > .asuka-window-grip { display: none; }
+.asuka-window-maximized { border-radius: 0; }
+.asuka-window-maximized .asuka-window-grip { display: none; }
+.asuka-window-bar-hidden { background: transparent; box-shadow: none; z-index: 1; }
+.asuka-window-bar-hidden .asuka-window-title { visibility: hidden; }
+.asuka-window-backdrop { position: absolute; inset: 0; z-index: 20; background: rgb(0 0 0 / 0.12); }
+.asuka-window[hidden], .asuka-window-backdrop[hidden] { display: none; }
 .asuka-window-grip { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; touch-action: none; z-index: 2; }
 
 .asuka-accessory { position: fixed; left: 0; z-index: 30; display: none; }

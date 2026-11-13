@@ -15,6 +15,7 @@ import { decode, Reader, Events, Kind, Prop, Event, Command, environment as newE
 import { kinds } from "./views.js";
 import { Interaction } from "./interaction.js";
 import { Navigation, decodeWindowConfig } from "./nav.js";
+import { Windows } from "./window.js";
 import { Modules } from "./modules.js";
 import { Menus } from "./menu.js";
 import { Motion } from "./motion.js";
@@ -90,6 +91,7 @@ export class Host {
     container.classList.add("asuka");
     this.interaction = new Interaction(this);
     this.nav = new Navigation(this);
+    this.windows = new Windows(this);
     this.modules = new Modules(this);
     this.menus = new Menus(this);
     this.motion = new Motion(this);
@@ -331,6 +333,7 @@ export class Host {
     const n = this.nodes.get(id);
     if (!n) return;
     n.listens.add(e);
+    if (e === Event.WindowState && this.windows.listen(n, e)) return;
     if (n.impl.listen && n.impl.listen(this, n, e)) return;
     this.interaction.listen(n, e);
   }
@@ -701,8 +704,14 @@ export class Host {
         const c = decodeWindowConfig(args);
         this.windowTitle = c.title;
         this.nav.updateTitle();
+        // Of the main window's options, a tab takes its title and its
+        // background (window.js: what else a page can't do).
+        if (c.background) this.container.style.background = color.css(this, c.background);
         break;
       }
+      case Command.WindowAction:
+        this.windows.action(n, args);
+        break;
       case Command.WindowTitle:
         this.windowTitle = new TextDecoder().decode(args);
         this.nav.updateTitle();
