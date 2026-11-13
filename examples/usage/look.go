@@ -24,8 +24,8 @@ var (
 
 // useLook notes the platform, from the root's environment.
 func useLook() {
+	ios = ui.Platform() == ui.PlatformIOS
 	env := signal.Untrack(ui.UseEnvironment().Get)
-	ios = env.Platform == ui.PlatformIOS
 	if env.Scale > 0 {
 		hairline = 1 / env.Scale
 	}

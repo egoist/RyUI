@@ -164,7 +164,7 @@ type ButtonProps struct {
 // and macOS. Elsewhere, where there's no Sign in with Apple, it's
 // nothing.
 func Button(p ButtonProps) ui.Node {
-	if pl := ui.UseEnvironment().Get().Platform; pl != ui.PlatformIOS && pl != ui.PlatformMacOS {
+	if pl := ui.Platform(); pl != ui.PlatformIOS && pl != ui.PlatformMacOS {
 		return ui.Show(signal.Static(false), nil)
 	}
 	np := ui.NativeProps{Style: p.Layout, Props: map[string]any{

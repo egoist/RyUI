@@ -1510,3 +1510,21 @@ func TestCheckbox(t *testing.T) {
 		t.Fatalf("%d measures: the checkbox took the switch's", h.Measures)
 	}
 }
+
+// Platform is the platform of the root being made: asuka dev serves an
+// iPhone and an Android phone from one process, a root each.
+func TestPlatformIsTheRoots(t *testing.T) {
+	got := map[ui.PlatformKind]ui.PlatformKind{}
+	for _, p := range []ui.PlatformKind{ui.PlatformIOS, ui.PlatformAndroid} {
+		h := fake.New()
+		h.Env.Platform = p
+		r := ui.Mount(h, func() ui.Node {
+			got[p] = ui.Platform()
+			return ui.View(ui.ViewProps{})
+		})
+		t.Cleanup(r.Dispose)
+	}
+	if got[ui.PlatformIOS] != ui.PlatformIOS || got[ui.PlatformAndroid] != ui.PlatformAndroid {
+		t.Fatalf("got %v", got)
+	}
+}

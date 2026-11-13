@@ -572,7 +572,7 @@ return ui.Column(nil,
 | The web | a panel in the page, which the user can move and resize |
 
 A phone has no windows: opening one on iOS or Android panics. A
-component that offers one checks `ui.UseEnvironment().Platform` first,
+component that offers one checks `ui.Platform()` first,
 or opens it only from what only a desktop has, as the menu bar below.
 
 ### Options
