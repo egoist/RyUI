@@ -18,6 +18,7 @@ import (
 	"sync"
 
 	"github.com/egoist/asuka/host"
+	"github.com/egoist/asuka/internal/fileurl"
 	"github.com/egoist/asuka/layout"
 	"github.com/egoist/asuka/ops"
 )
@@ -557,6 +558,26 @@ func (h *Host) SetEnvironment(e host.Environment) {
 		id = r.ID
 	}
 	h.dispatch(ops.Event{ID: id, Kind: ops.EventEnvironment, Env: e})
+}
+
+// OpenURL opens the app with a URL (its scheme's, a link), as a host
+// does: ui.OnOpenURL gets it.
+func (h *Host) OpenURL(u string) {
+	h.dispatch(ops.Event{ID: h.rootID(), Kind: ops.EventIncomingURL, Str: u})
+}
+
+// OpenFiles opens the app with files, together, as a host does (a
+// double click in the file manager, a second launch's arguments):
+// ui.OnOpenFiles gets them.
+func (h *Host) OpenFiles(paths ...string) {
+	h.dispatch(ops.Event{ID: h.rootID(), Kind: ops.EventIncomingURL, Str: fileurl.Join(paths)})
+}
+
+func (h *Host) rootID() ops.NodeID {
+	if r := h.Root(); r != nil {
+		return r.ID
+	}
+	return 0
 }
 
 // Lifecycle reports an app lifecycle change.

@@ -839,6 +839,41 @@ func TestIncomingURL(t *testing.T) {
 	}
 }
 
+// Files the app is opened with go to OnOpenFiles, together, never to
+// OnOpenURL; those before any handler wait for the first, in order, and
+// a handler stops with its owner.
+func TestOpenFiles(t *testing.T) {
+	var files [][]string
+	var urls []string
+	h, _ := mount(t, func() ui.Node {
+		ui.OnOpenURL(func(string) {}) // takes a link another test left waiting
+		return ui.StaticText("x")
+	})
+	h.OpenFiles("/a/launch.md")
+	h.OpenFiles("/a/b c.md", "/a/d.md")
+	r2 := ui.Mount(h, func() ui.Node {
+		ui.OnOpenURL(func(u string) { urls = append(urls, u) })
+		ui.OnOpenFiles(func(ps []string) { files = append(files, ps) })
+		return ui.StaticText("y")
+	})
+	if fmt.Sprint(files) != "[[/a/launch.md] [/a/b c.md /a/d.md]]" {
+		t.Fatalf("pending files: %q", files)
+	}
+	h.OpenFiles("/later.md")
+	h.OpenURL("myapp://note/1")
+	// A host may send a link with files (a second launch's arguments).
+	h.Dispatch(ops.Event{Kind: ops.EventIncomingURL, Str: "file:///x.md\nmyapp://y"})
+	if fmt.Sprint(files) != "[[/a/launch.md] [/a/b c.md /a/d.md] [/later.md] [/x.md]]" ||
+		fmt.Sprint(urls) != "[myapp://note/1 myapp://y]" {
+		t.Fatalf("files %q, urls %q", files, urls)
+	}
+	r2.Dispose()
+	h.OpenFiles("/gone.md")
+	if len(files) != 4 {
+		t.Fatalf("a disposed handler got %q", files[4:])
+	}
+}
+
 // A Scroll reports its offset as it scrolls, and scrolls from code.
 func TestScrollOffset(t *testing.T) {
 	var at [2]float32

@@ -12,16 +12,13 @@ package store
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
-	"strings"
 	"sync"
 	"time"
 
+	"github.com/egoist/asuka/internal/appdir"
 	"github.com/egoist/asuka/internal/boot"
-	"github.com/egoist/asuka/mobile/shareddir"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
 )
@@ -52,54 +49,7 @@ var (
 // runs in its share extension), or, running elsewhere (the asuka dev
 // player's Mac), the user's config directory. Keep the app's files here
 // for its share sheet (app.ShareSheet) to see them.
-func Dir() string {
-	if d := os.Getenv("ASUKA_DATA"); d != "" {
-		return d
-	}
-	if shared := shareddir.Dir(); shared != "" {
-		return sharedDir(shared)
-	}
-	// Android sets ASUKA_DATA once the library is loaded, after the
-	// packages' init: a store.Signal in a package variable reads the
-	// store before it. The files directory is the package's, for the
-	// process's user: what Context.getFilesDir returns.
-	if runtime.GOOS == "android" {
-		if b, err := os.ReadFile("/proc/self/cmdline"); err == nil {
-			pkg, _, _ := strings.Cut(string(b), "\x00")
-			pkg, _, _ = strings.Cut(pkg, ":") // a process of the app's, "pkg:sync"
-			if pkg != "" && !strings.Contains(pkg, "/") {
-				return fmt.Sprintf("/data/user/%d/%s/files", os.Getuid()/100000, pkg)
-			}
-		}
-	}
-	d, err := os.UserConfigDir()
-	if err != nil {
-		d = os.TempDir()
-	}
-	return filepath.Join(d, "asuka", filepath.Base(os.Args[0]))
-}
-
-var migrate sync.Once
-
-// sharedDir is the data directory in an iOS app's App Group (shared,
-// its Application Support), where the app's data moves from its
-// container once, the first time it has a share sheet.
-func sharedDir(shared string) string {
-	dir := filepath.Join(shared, "asuka", "app")
-	migrate.Do(func() {
-		if _, err := os.Stat(dir); err == nil {
-			return
-		}
-		if base, err := os.UserConfigDir(); err == nil {
-			old := filepath.Join(base, "asuka", filepath.Base(os.Args[0]))
-			if _, err := os.Stat(old); err == nil {
-				os.MkdirAll(filepath.Dir(dir), 0o700)
-				os.Rename(old, dir)
-			}
-		}
-	})
-	return dir
-}
+func Dir() string { return appdir.Data() }
 
 func load() {
 	if loaded {
