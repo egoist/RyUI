@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process"
 import fs from "node:fs"
 import path from "node:path"
 import tailwindcss from "@tailwindcss/vite"
@@ -17,7 +18,22 @@ const docs = fs
   .filter((file) => file.endsWith(".md") && file !== "README.md" && !unpublished.has(file))
   .map((file) => `/docs/${file.slice(0, -3).split(path.sep).join("/").replace(/\/README$/, "")}`)
 
+// Asuka's version: the latest release tag. A shallow clone may come without
+// tags, so fetch them once before giving up.
+const asukaVersion = (() => {
+  const describe = () => execFileSync("git", ["describe", "--tags", "--abbrev=0", "--match", "v*"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim()
+  try {
+    return describe()
+  } catch {
+    execFileSync("git", ["fetch", "--tags", "--quiet"], { stdio: "ignore" })
+    return describe()
+  }
+})()
+
 export default defineConfig({
+  define: {
+    __ASUKA_VERSION__: JSON.stringify(asukaVersion),
+  },
   resolve: { tsconfigPaths: true },
   plugins: [
     llmsDocs(path.resolve(import.meta.dirname, "..")),
