@@ -55,12 +55,28 @@
   src: url("/fonts/shippori-mincho-b1-800.woff2") format("woff2");
 }
 
+/* The same face for Latin only: the subset's few kanji would otherwise win
+   over the Chinese face for those characters alone, one heavy mincho 本
+   among Song. */
+@font-face {
+  font-family: "Shippori Mincho B1 Latin";
+  font-weight: 800;
+  font-display: swap;
+  src: url("/fonts/shippori-mincho-b1-800.woff2") format("woff2");
+  unicode-range: U+0000-2E7F;
+}
+
 /* Chinese pages: the system's Chinese faces after the Latin ones, which
    have no Chinese, before the Japanese ones, which lack simplified forms.
    Mincho's counterpart in Chinese is Song. */
 html:lang(zh) {
-  --font-display: "Shippori Mincho B1", "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", "Noto Serif SC", "SimSun", serif;
+  --font-display: "Shippori Mincho B1 Latin", "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", "Noto Serif SC", "SimSun", serif;
   font-family: "Geist Variable", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* The Japanese labels on Chinese pages keep the whole face, kanji too. */
+html:lang(zh) :lang(ja) {
+  --font-display: "Shippori Mincho B1", "Hiragino Mincho ProN", "Yu Mincho", serif;
 }
 
 /* Code's face: Ioskeley Mono (Iosevka, set as Berkeley Mono is), cut down to
