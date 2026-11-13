@@ -3,6 +3,7 @@ import { ArrowRightIcon } from "lucide-react"
 import type { ReactNode } from "react"
 
 import { InstallCommand } from "@/components/install-command"
+import { LiveCounter } from "@/components/live-counter"
 import { Wordmark } from "@/components/logo"
 import { Translation } from "@/components/translation"
 import type { HomeData } from "@/lib/home"
@@ -374,17 +375,9 @@ export function Home({ locale, data }: { locale: Locale; data: HomeData }) {
           {t.hello.heading}
         </Heading>
         <div className="inner pb-24">
-          <div className="hud grid border bg-code lg:grid-cols-[1.4fr_1fr] lg:divide-x">
-            <figure className="min-w-0">
-              <figcaption className="label flex items-center justify-between border-b px-4 py-3 sm:px-6">
-                <span className="flex items-center gap-2">
-                  <span className="size-1.5 bg-signal" /> main.go
-                </span>
-                <span>{t.hello.source}</span>
-              </figcaption>
-              <div className="overflow-x-auto px-4 py-5 sm:px-6" dangerouslySetInnerHTML={{ __html: data.main }} />
-            </figure>
-            <div className="flex min-w-0 flex-col border-t lg:border-t-0">
+          <LiveCounter code={data.main} />
+          <div className="mt-4 grid border lg:grid-cols-[1.35fr_1fr] lg:divide-x">
+            <div className="min-w-0">
               <p className="label flex items-center justify-between border-b px-4 py-3 sm:px-6">
                 <span className="flex items-center gap-2">
                   <span className="size-1.5 bg-unit" /> {t.hello.run}
@@ -400,14 +393,16 @@ export function Home({ locale, data }: { locale: Locale; data: HomeData }) {
                   </span>
                 ))}
               </pre>
-              <p className="mt-auto border-t px-4 py-4 text-sm leading-6 text-muted-foreground sm:px-6">
+            </div>
+            <p className="flex items-end border-t px-4 py-5 text-sm leading-6 text-muted-foreground sm:px-6 lg:border-t-0">
+              <span>
                 {t.hello.note(
                   <a href={`${site.repo}/tree/main/examples`} className="text-foreground underline decoration-unit/50 underline-offset-4 hover:decoration-unit">
                     {t.hello.examples}
                   </a>
                 )}
-              </p>
-            </div>
+              </span>
+            </p>
           </div>
         </div>
       </section>

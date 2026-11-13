@@ -277,6 +277,31 @@ html:lang(zh) :lang(ja) {
   }
 }
 
+/* The home page's live counter (LiveCounter): the view a flush changed,
+   boxed in brackets for a moment; the log's rows sliding in, the oldest
+   fading out at its top. */
+.live-box {
+  --hud: var(--signal);
+  --l: 8px;
+}
+.live-row {
+  animation: live-row 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes live-row {
+  from {
+    opacity: 0;
+    translate: -6px 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-row {
+    animation: none;
+  }
+}
+.live-log {
+  mask-image: linear-gradient(to bottom, transparent, #000 3.5rem);
+}
+
 /* How far the reader is through a page of the docs, on a phone: the bar
    under its title fills, and its sync rate counts (--read and
    --read-percent, set as the page scrolls; see DocPage). */
