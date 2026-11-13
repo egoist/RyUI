@@ -202,7 +202,7 @@ func TestI18nCommands(t *testing.T) {
 	if err := cmdI18n([]string{"init", dir}); err == nil {
 		t.Error("init twice: no error")
 	}
-	if err := cmdI18n([]string{"add", "de", "zh-TW", "-dir", dir}); err != nil {
+	if err := cmdI18n([]string{"add", "de", "zh-TW", "--dir", dir}); err != nil {
 		t.Fatal(err)
 	}
 	de, err := os.ReadFile(filepath.Join(dir, "locales", "de.json"))
@@ -212,17 +212,17 @@ func TestI18nCommands(t *testing.T) {
 	if !strings.Contains(string(de), `"appTitle": "Hello"`) || !strings.Contains(string(de), `"@@locale": "de"`) {
 		t.Errorf("de.json: %s", de)
 	}
-	if err := cmdI18n([]string{"add", "en-XA", "-dir", dir}); err == nil {
+	if err := cmdI18n([]string{"add", "en-XA", "--dir", dir}); err == nil {
 		t.Error("a pseudo locale's catalog: no error")
 	}
 	if err := cmdI18n([]string{"check", dir}); err != nil {
 		t.Error(err)
 	}
 	if err := setDevLocale("not a tag!", ""); err == nil {
-		t.Error("-lang of no language: no error")
+		t.Error("--lang of no language: no error")
 	}
 	if err := setDevLocale("", "up"); err == nil {
-		t.Error("-dir up: no error")
+		t.Error("--dir up: no error")
 	}
 	defer func() { devLang, devDirection = "", "" }()
 	if err := setDevLocale("zh_TW", "rtl"); err != nil || devLang != "zh-TW" || devDirection != "rtl" {

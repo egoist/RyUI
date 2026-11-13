@@ -4,7 +4,7 @@ plugins {
     id("org.jetbrains.kotlin.android") version "2.1.20" apply false
 }
 
-// asuka build -platform android -aar: the optional modules (asuka-*) an embedded app
+// asuka build --platform android --aar: the optional modules (asuka-*) an embedded app
 // uses are published beside it, their dependency on :asuka as the app's
 // coordinates.
 providers.gradleProperty("asukaMavenRepo").orNull?.let { repo ->

@@ -124,7 +124,7 @@ and give its password in ASUKA_KEYSTORE_PASSWORD (and ASUKA_KEY_PASSWORD if the 
 		}
 		fmt.Println("asuka:", to)
 	}
-	fmt.Printf("asuka: built in %.0fs; asuka publish -platform android builds and uploads it to Google Play\n", time.Since(start).Seconds())
+	fmt.Printf("asuka: built in %.0fs; asuka publish --platform android builds and uploads it to Google Play\n", time.Since(start).Seconds())
 	return nil
 }
 

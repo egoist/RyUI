@@ -147,7 +147,7 @@ func vetBuild(dir string, on bool) {
 // what's new since the last run.
 var devVet struct {
 	sync.Mutex
-	on             bool   // asuka dev, unless -vet=false
+	on             bool   // asuka dev, unless --no-vet
 	dir            string // the app's
 	running, again bool
 	last           []string

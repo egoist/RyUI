@@ -1,7 +1,7 @@
 // Todo shows For (keyed rows), TextField, Toggle and SafeArea moving
 // content above the keyboard.
 //
-//	go run ./cmd/asuka dev -platform ios examples/todo
+//	go run ./cmd/asuka dev --platform ios examples/todo
 package main
 
 import (

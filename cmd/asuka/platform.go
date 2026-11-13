@@ -1,14 +1,13 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"runtime"
 	"slices"
 	"strings"
 )
 
-// The platforms an app runs on, as -platform names them.
+// The platforms an app runs on, as --platform names them.
 const (
 	platformIOS     = "ios"
 	platformAndroid = "android"
@@ -18,10 +17,10 @@ const (
 	platformLinux   = "linux"
 )
 
-// platformFlag defines -platform on fs: one of names, stored in p. Its
-// usage names its argument in backquotes, as flag.UnquoteUsage reads it.
-func platformFlag(fs *flag.FlagSet, p *string, names []string, usage string) {
-	fs.Func("platform", usage, func(s string) error {
+// platformFlag defines --platform (-p) on fs: one of names, stored in p.
+// Its usage names its argument in backquotes, as printFlags reads it.
+func platformFlag(fs *flagSet, p *string, names []string, usage string) {
+	fs.Func("platform", 'p', usage, func(s string) error {
 		if !slices.Contains(names, s) {
 			return fmt.Errorf("%q: one of %s", s, strings.Join(names, ", "))
 		}

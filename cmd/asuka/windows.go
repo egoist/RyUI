@@ -17,12 +17,12 @@ import (
 // Windows: the app's Go code and its host (host/windows, Win32 through
 // syscall) are one Go program, built with CGO_ENABLED=0 for amd64 or
 // arm64: asuka dev builds for this PC's, asuka build for amd64 unless
-// -arch arm64 (an amd64 build runs on Windows on Arm too, emulated).
+// --arch arm64 (an amd64 build runs on Windows on Arm too, emulated).
 //
-// asuka dev -platform windows runs it here and, on each change, rebuilds it and runs
+// asuka dev --platform windows runs it here and, on each change, rebuilds it and runs
 // it again (its signals' state kept, as with the player: Windows can't
 // send a process SIGINT, so Asuka closes its standard input, ASUKA_STOP=stdin,
-// and it saves its state and quits). asuka build -platform windows makes a folder
+// and it saves its state and quits). asuka build --platform windows makes a folder
 // with the .exe, its icon, manifest and version information built in
 // (a .syso written beside the app's Go code for the build), and its
 // assets beside it; it builds from any system. With ASUKA_WINDOWS_CERT
@@ -56,7 +56,7 @@ func windowsLdflags(app *goApp, release bool) string {
 
 func devWindows(dir string, o *devOptions, stop <-chan os.Signal) error {
 	if runtime.GOOS != "windows" {
-		return errors.New("asuka dev -platform windows runs the app on this PC: run it on Windows (asuka build -platform windows builds from anywhere)")
+		return errors.New("asuka dev --platform windows runs the app on this PC: run it on Windows (asuka build --platform windows builds from anywhere)")
 	}
 	app, err := loadApp(dir)
 	if err != nil {
@@ -97,7 +97,7 @@ func windowsArch(arch string) (string, error) {
 	case "amd64", "arm64":
 		return arch, nil
 	}
-	return "", fmt.Errorf("-arch %q: amd64 or arm64", arch)
+	return "", fmt.Errorf("--arch %q: amd64 or arm64", arch)
 }
 
 func buildWindows(app *goApp, o *buildOptions) error {

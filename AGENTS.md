@@ -58,32 +58,32 @@ go run platform/web/gen_symbols.go  # the web host's symbols, from the Android h
 go generate ./i18n                  # CLDR's tables, from the pinned release
 go run ./cmd/asuka generate examples/i18n  # an app's catalog functions (dev and build do it too)
 go run ./cmd/asuka vet ./...                # the analyzers (package vet): a signal read once, written off the main thread
-go run ./cmd/asuka dev -platform ios -lang ar examples/i18n  # a language for one run; -lang ar-XB, en-XA: pseudo locales; -dir rtl: any app right to left
-go run ./cmd/asuka dev -platform ios examples/counter       # iOS simulator (Xcode): the Go code runs here, in the player
-go run ./cmd/asuka dev -platform android examples/counter   # Android emulator (SDK + NDK), likewise
-go run ./cmd/asuka dev -platform ios -once examples/counter # build the app with its Go code, launch once (-embed: and watch)
+go run ./cmd/asuka dev --platform ios --lang ar examples/i18n  # a language for one run; --lang ar-XB, en-XA: pseudo locales; --dir rtl: any app right to left
+go run ./cmd/asuka dev --platform ios examples/counter       # iOS simulator (Xcode): the Go code runs here, in the player
+go run ./cmd/asuka dev --platform android examples/counter   # Android emulator (SDK + NDK), likewise
+go run ./cmd/asuka dev --platform ios --once examples/counter # build the app with its Go code, launch once (--embed: and watch)
 go test ./internal/remote                        # the dev transport, against the fake host
 go test -tags e2e ./e2e -run IOS                 # GUI tests: the examples on the simulator (Android: -run Android, an emulator running)
-go run ./cmd/asuka build -platform ios -simulator examples/counter    # a release build (-platform ios alone: a signed .ipa)
-go run ./cmd/asuka build -platform android examples/counter           # an .aab (ASUKA_KEYSTORE, ASUKA_KEY_ALIAS, ASUKA_KEYSTORE_PASSWORD)
-go run ./cmd/asuka publish -platform ios -groups Friends examples/counter  # build and upload to TestFlight (ASUKA_ASC_KEY_ID, ASUKA_ASC_ISSUER_ID, ASUKA_ASC_KEY)
-go run ./cmd/asuka publish -platform android -track internal examples/counter  # build and upload to Google Play (ASUKA_PLAY_SERVICE_ACCOUNT)
-go run ./cmd/asuka dev examples/counter            # macOS (on a Mac, no -platform: mac): the app and its AppKit host in one process, rerun on save
-go run ./cmd/asuka build examples/counter          # likewise: a universal .app (-sign "Developer ID Application: ..."; default ad hoc)
+go run ./cmd/asuka build --platform ios --simulator examples/counter    # a release build (--platform ios alone: a signed .ipa)
+go run ./cmd/asuka build --platform android examples/counter           # an .aab (ASUKA_KEYSTORE, ASUKA_KEY_ALIAS, ASUKA_KEYSTORE_PASSWORD)
+go run ./cmd/asuka publish --platform ios --groups Friends examples/counter  # build and upload to TestFlight (ASUKA_ASC_KEY_ID, ASUKA_ASC_ISSUER_ID, ASUKA_ASC_KEY)
+go run ./cmd/asuka publish --platform android --track internal examples/counter  # build and upload to Google Play (ASUKA_PLAY_SERVICE_ACCOUNT)
+go run ./cmd/asuka dev examples/counter            # macOS (on a Mac, no --platform: mac): the app and its AppKit host in one process, rerun on save
+go run ./cmd/asuka build examples/counter          # likewise: a universal .app (--sign "Developer ID Application: ..."; default ad hoc)
 go test ./host/darwin                            # the macOS host, driving real AppKit views (macOS)
 go test ./host/darwin -run Swift               # an app's macos/*.swift, compiled and loaded by the host (Xcode's command line tools)
 (cd examples/counter && ASUKA_SNAPSHOT=/tmp/c.png ASUKA_DUMP=1 go run .)  # macOS: the window as a PNG and its view tree, then quit
-go run ./cmd/asuka dev examples/counter            # Windows (on a PC, no -platform: windows): the app and its Win32 host in one process, rerun on save
-go run ./cmd/asuka build -platform windows examples/counter  # a folder: the .exe (icon, manifest, version) and its assets; from any system
+go run ./cmd/asuka dev examples/counter            # Windows (on a PC, no --platform: windows): the app and its Win32 host in one process, rerun on save
+go run ./cmd/asuka build --platform windows examples/counter  # a folder: the .exe (icon, manifest, version) and its assets; from any system
 go test ./host/windows                           # the Windows host, driving real Win32 windows (Windows)
 xvfb-run -a dbus-run-session go test ./host/linux  # the Linux host, driving real GTK windows (GTK 4.14, libadwaita 1.5)
-go run ./cmd/asuka dev examples/counter            # Linux (on Linux, no -platform: linux): the app and its GTK host in one process, rerun on save
-go run ./cmd/asuka build -platform linux examples/counter    # an install prefix, a .tar.gz and a Flatpak manifest; from any system
+go run ./cmd/asuka dev examples/counter            # Linux (on Linux, no --platform: linux): the app and its GTK host in one process, rerun on save
+go run ./cmd/asuka build --platform linux examples/counter    # an install prefix, a .tar.gz and a Flatpak manifest; from any system
 go run host/linux/gen_symbols.go                 # the Linux host's fallback symbols, from the web host's
 go test -tags e2e ./e2e -run Linux               # GUI tests: the examples under Xvfb (Linux)
 (cd examples/counter && ASUKA_SNAPSHOT=c.png ASUKA_DUMP=1 ASUKA_SCRIPT="tap:Add" go run .)  # Windows: steps, then the window as a PNG and its view tree
-go run ./cmd/asuka dev -platform web examples/counter       # the web: served to the browser, reloaded on save (-lan: to a phone)
-go run ./cmd/asuka build -platform web examples/counter     # a static site, in examples/counter/dist/web
+go run ./cmd/asuka dev --platform web examples/counter       # the web: served to the browser, reloaded on save (--lan: to a phone)
+go run ./cmd/asuka build --platform web examples/counter     # a static site, in examples/counter/dist/web
 GOOS=js GOARCH=wasm go vet ./host/web ./app       # the web host's Go side
 go test -tags e2e ./e2e -run Web                  # GUI tests: the examples in headless Chrome
 ```

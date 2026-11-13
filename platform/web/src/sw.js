@@ -1,8 +1,8 @@
 // The app's service worker: what shows and answers the app's
 // notifications while no page of it is open, or none is in front.
 //
-// The CLI ships it with every web app (asuka build -platform web:
-// sw.<digest>.js beside index.html; asuka dev -platform web: sw.js), as
+// The CLI ships it with every web app (asuka build --platform web:
+// sw.<digest>.js beside index.html; asuka dev --platform web: sw.js), as
 // one file: globalThis.asukaApp (the app's name, title, assets and
 // icon), notify-core.js, then this. The page registers it (asuka.js),
 // scoped to the app's directory. It has no fetch handler: the page loads

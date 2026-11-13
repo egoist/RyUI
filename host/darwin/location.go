@@ -18,7 +18,7 @@ import (
 // name ("name"). Replies are JSON: lat, lon, acc (meters), alt, t (Unix
 // ms); "denied" fails when the user hasn't allowed it. macOS asks the
 // user once, with the app's NSLocationUsageDescription (asuka.json's
-// ios.usage), which needs the app's bundle (asuka build -platform mac).
+// ios.usage), which needs the app's bundle (asuka build --platform mac).
 
 type locator struct {
 	manager     ID

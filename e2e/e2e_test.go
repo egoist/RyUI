@@ -2,11 +2,11 @@
 
 // Package e2e drives the example apps on a simulator and an emulator,
 // through the platform's widgets, not the core. The tests build each app
-// with `asuka dev -once` (its Go code embedded, a debug build), then tap
+// with `asuka dev --once` (its Go code embedded, a debug build), then tap
 // and read the screen through the debug hosts' automation
 // (platform/ios/Sources/AsukaHost/Automation.swift, a notification;
 // platform/android/asuka/src/main/java/dev/asuka/Automation.kt, a broadcast;
-// platform/web/src/automation.js, through asuka dev -web's server;
+// platform/web/src/automation.js, through asuka dev --platform web's server;
 // host/linux/automation.go, a file).
 //
 //	go test -tags e2e ./e2e -run IOS      # a booted simulator, else the newest iPhone
@@ -59,20 +59,20 @@ func appDir(app string) string {
 }
 
 // launch builds and launches an app (appDir) on the platform with asuka
-// dev -once, and returns what it printed. ASUKA_DEVICE picks the
-// simulator, emulator or device (asuka dev's -device), when there's more
+// dev --once, and returns what it printed. ASUKA_DEVICE picks the
+// simulator, emulator or device (asuka dev's --device), when there's more
 // than one.
 func launch(t *testing.T, platform, app string) string {
 	t.Helper()
-	args := []string{"run", "./cmd/asuka", "dev", "-platform", platform, "-once"}
+	args := []string{"run", "./cmd/asuka", "dev", "--platform", platform, "--once"}
 	if d := os.Getenv("ASUKA_DEVICE"); d != "" {
-		args = append(args, "-device", d)
+		args = append(args, "--device", d)
 	}
 	c := exec.Command("go", append(args, appDir(app))...)
 	c.Dir = root(t)
 	out, err := c.CombinedOutput()
 	if err != nil {
-		t.Fatalf("asuka dev -platform %s -once %s: %v\n%s", platform, appDir(app), err, out)
+		t.Fatalf("asuka dev --platform %s --once %s: %v\n%s", platform, appDir(app), err, out)
 	}
 	return string(out)
 }
@@ -397,7 +397,7 @@ func TestLanguagesAndroid(t *testing.T) {
 
 // Web
 
-// webScreen is a page asuka dev -web serves, open in headless Chrome; the
+// webScreen is a page asuka dev --platform web serves, open in headless Chrome; the
 // automation's commands go through the dev server to the page.
 type webScreen struct {
 	t   *testing.T
@@ -477,7 +477,7 @@ func webApp(t *testing.T, example string) *webScreen {
 	return &webScreen{t: t, url: url}
 }
 
-// webServer serves an app (appDir) with asuka dev -platform web, and
+// webServer serves an app (appDir) with asuka dev --platform web, and
 // returns its URL.
 func webServer(t *testing.T, example string) string {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
@@ -493,14 +493,14 @@ func webServer(t *testing.T, example string) string {
 	if b, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("building the CLI: %v\n%s", err, b)
 	}
-	dev := exec.Command(cli, "dev", "-platform", "web", "-no-open", "-vet=false", "-port", fmt.Sprint(port), appDir(example))
+	dev := exec.Command(cli, "dev", "--platform", "web", "--no-open", "--no-vet", "--port", fmt.Sprint(port), appDir(example))
 	dev.Dir = root(t)
 	out, _ := dev.StdoutPipe()
 	var logs strings.Builder
 	dev.Stderr = &logs
 	t.Cleanup(func() {
 		if t.Failed() {
-			t.Logf("asuka dev -web:\n%s", logs.String())
+			t.Logf("asuka dev --platform web:\n%s", logs.String())
 		}
 	})
 	if err := dev.Start(); err != nil {
@@ -516,7 +516,7 @@ func webServer(t *testing.T, example string) string {
 		}
 	}
 	if url == "" {
-		t.Fatal("asuka dev -web printed no URL")
+		t.Fatal("asuka dev --platform web printed no URL")
 	}
 	go io.Copy(io.Discard, out)
 	return url
@@ -530,7 +530,7 @@ func TestLanguagesWeb(t *testing.T)  { languages(t, webApp(t, "i18n")) }
 
 // Linux
 
-// linuxScreen is an app asuka dev -platform linux -once runs on this
+// linuxScreen is an app asuka dev --platform linux --once runs on this
 // machine's display (xvfb-run's, in CI); the automation's commands go
 // through a directory (ASUKA_COMMANDS), as on iOS.
 type linuxScreen struct {
@@ -561,7 +561,7 @@ func (b *syncBuffer) String() string {
 }
 
 func (s *linuxScreen) start() {
-	c := exec.Command(s.cli, "dev", "-platform", "linux", "-once", "-vet=false", appDir(s.app))
+	c := exec.Command(s.cli, "dev", "--platform", "linux", "--once", "--no-vet", appDir(s.app))
 	c.Dir = root(s.t)
 	c.Env = append(os.Environ(), "ASUKA_COMMANDS="+s.dir)
 	c.Stdout, c.Stderr = &s.logs, &s.logs
@@ -664,7 +664,7 @@ func linuxApp(t *testing.T, example string) *linuxScreen {
 	t.Cleanup(func() {
 		s.stop()
 		if t.Failed() {
-			t.Logf("asuka dev -platform linux:\n%s", s.logs.String())
+			t.Logf("asuka dev --platform linux:\n%s", s.logs.String())
 		}
 	})
 	return s

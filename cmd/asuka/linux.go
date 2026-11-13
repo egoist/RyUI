@@ -20,14 +20,14 @@ import (
 // libadwaita through purego) are one Go program, built with
 // CGO_ENABLED=0 for amd64 or arm64, from any system.
 //
-// asuka dev -platform linux runs it here and, on each change, rebuilds it
+// asuka dev --platform linux runs it here and, on each change, rebuilds it
 // and runs it again (its signals' state kept, as with the player: Asuka
 // sends it SIGINT, and it saves its state and quits). On another system
 // it builds it, and runs it only where ASUKA_LINUX_RUN says how: a
 // command that runs a program on a Linux machine that sees this one's
 // files at the same paths (a VM: orb -m ubuntu, limactl shell default).
 //
-// asuka build -platform linux makes a folder laid out as an install
+// asuka build --platform linux makes a folder laid out as an install
 // prefix: bin/<exe>; share/<exe>/assets, where the host finds them from
 // the executable; the desktop file, icons and AppStream metainfo named
 // for the app's ID, as desktops and software centers look them up; a
@@ -100,7 +100,7 @@ func linuxArch(arch string) (string, error) {
 		}
 		return "amd64", nil
 	}
-	return "", fmt.Errorf("-arch %q: amd64 or arm64", arch)
+	return "", fmt.Errorf("--arch %q: amd64 or arm64", arch)
 }
 
 // gAppIDValid reports whether id is a valid GApplication ID, as
@@ -148,7 +148,7 @@ func devLinux(dir string, o *devOptions, stop <-chan os.Signal) error {
 			if err := proc.build(); err != nil {
 				return err
 			}
-			return fmt.Errorf("built %s (linux/%s), but a Linux app runs only on Linux: run asuka dev there, or set ASUKA_LINUX_RUN to a command that runs a program on a Linux machine with a display that sees this computer's files at the same paths (orb -m ubuntu, limactl shell default). asuka build -platform linux builds a release from here", proc.bin, proc.goarch)
+			return fmt.Errorf("built %s (linux/%s), but a Linux app runs only on Linux: run asuka dev there, or set ASUKA_LINUX_RUN to a command that runs a program on a Linux machine with a display that sees this computer's files at the same paths (orb -m ubuntu, limactl shell default). asuka build --platform linux builds a release from here", proc.bin, proc.goarch)
 		}
 		// The machine's architecture, from uname.
 		out, err := exec.Command(wrap[0], append(wrap[1:len(wrap):len(wrap)], "uname", "-m")...).Output()
@@ -394,7 +394,7 @@ func flatpakManifest(app *goApp, exe string) string {
 	if rt == "" {
 		rt = flatpakRuntime
 	}
-	return fmt.Sprintf(`# A Flatpak of %[1]s, from asuka build -platform linux (the binary it built,
+	return fmt.Sprintf(`# A Flatpak of %[1]s, from asuka build --platform linux (the binary it built,
 # for one architecture): flatpak-builder --user --install --force-clean build %[2]s.yml
 # Then: flatpak run %[2]s
 app-id: %[2]s

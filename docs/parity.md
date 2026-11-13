@@ -171,7 +171,7 @@ desktop's own frameworks (Electron, Tauri, Wails), see
 | Uploading to the stores | Xcode, EAS Submit | ✓ `asuka publish`: TestFlight, App Review, Google Play's tracks; not the Mac App Store yet |
 | GUI tests | XCUITest, Detox, Maestro | ✓ `e2e/`: the examples on the iOS simulator, an Android emulator, Linux under Xvfb and headless Chrome; the Mac's and Windows' host tests drive real AppKit views and Win32 windows |
 | Benchmarks | Instruments | ✓ `bench/` (against SwiftUI and Compose) |
-| Embedding in an existing app | — | brownfield (React Native's) | ✓ `asuka build -platform ios -xcframework`, `asuka build -platform android -aar` |
+| Embedding in an existing app | — | brownfield (React Native's) | ✓ `asuka build --platform ios --xcframework`, `asuka build --platform android --aar` |
 | Over-the-air updates | — | EAS Update: ✗ |
 
 ## On the desktop

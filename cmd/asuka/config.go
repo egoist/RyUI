@@ -98,7 +98,7 @@ type appConfig struct {
 		// path, name or UUID, which push, Sign in with Apple and App Attest
 		// need (default: ASUKA_MAC_PROFILE, else, for an app that uses them,
 		// the best match installed); AppStoreProfile, a Mac App Store one,
-		// for -appstore.
+		// for --appstore.
 		Profile         string `json:"profile"`
 		AppStoreProfile string `json:"appStoreProfile"`
 	} `json:"mac"`

@@ -63,7 +63,7 @@ class AsukaRuntime private constructor(val app: Application) : AsukaOpHandler {
     /** The language the app shows (the Locale command's), whatever the system's; null until the core says. */
     var shownLocale: java.util.Locale? = null
         private set
-    /** Whether the app is laid out right to left: the Locale command's flag, which may disagree with its tag (asuka dev -dir). */
+    /** Whether the app is laid out right to left: the Locale command's flag, which may disagree with its tag (asuka dev --dir). */
     var rtl = false
         private set
     /** The user's languages and formats, as the environment reports them. */

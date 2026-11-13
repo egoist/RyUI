@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -38,20 +37,20 @@ type i18nConfig struct {
 	Source string `json:"source"`
 }
 
-// devLang and devDirection are asuka dev's -lang and -dir: built into the app
+// devLang and devDirection are asuka dev's --lang and --dir: built into the app
 // for this run.
 var devLang, devDirection string
 
-// setDevLocale checks asuka dev's -lang and -dir.
+// setDevLocale checks asuka dev's --lang and --dir.
 func setDevLocale(lang, dir string) error {
 	if lang != "" {
 		if i18n.Normalize(lang) == "" {
-			return fmt.Errorf("-lang %q is not a language tag (try de, zh-Hans, or the pseudo locales en-XA and ar-XB)", lang)
+			return fmt.Errorf("--lang %q is not a language tag (try de, zh-Hans, or the pseudo locales en-XA and ar-XB)", lang)
 		}
 		devLang = i18n.Normalize(lang)
 	}
 	if dir != "" && dir != "rtl" && dir != "ltr" {
-		return fmt.Errorf("-dir %q: want rtl or ltr", dir)
+		return fmt.Errorf("--dir %q: want rtl or ltr", dir)
 	}
 	devDirection = dir
 	return nil
@@ -148,7 +147,7 @@ func plural(n int, one, other string) string {
 	return other
 }
 
-// warnDevLang says when -lang asks for a language the app has no catalog of,
+// warnDevLang says when --lang asks for a language the app has no catalog of,
 // which then shows its own.
 func warnDevLang(c *appConfig) {
 	if devLang == "" || i18n.IsPseudo(devLang) {
@@ -161,7 +160,7 @@ func warnDevLang(c *appConfig) {
 		}
 	}
 	if i18n.Match([]string{devLang}, langs) == "" {
-		fmt.Fprintf(os.Stderr, "asuka: the app isn't in %s, so -lang %s shows its own language; try -dir rtl to see it right to left, or the pseudo locale -lang ar-XB\n", devLang, devLang)
+		fmt.Fprintf(os.Stderr, "asuka: the app isn't in %s, so --lang %s shows its own language; try --dir rtl to see it right to left, or the pseudo locale --lang ar-XB\n", devLang, devLang)
 	}
 }
 
@@ -182,11 +181,9 @@ func warnCatalogsUnused(c *appConfig, deps []string) {
 
 // cmdGenerate is asuka generate.
 func cmdGenerate(args []string) error {
-	fs := flag.NewFlagSet("generate", flag.ContinueOnError)
-	fs.Usage = func() {
-		fmt.Fprint(os.Stderr, "usage: asuka generate [dir]\n\nWrites the typed functions of the app's catalogs (locales/catalog_gen.go), as asuka dev and\nasuka build do. Commit them, so that go build and go test work without the CLI.\n")
-	}
-	if err := fs.Parse(args); err != nil {
+	fs := newFlagSet("generate", "[dir]")
+	fs.about = "Writes the typed functions of the app's catalogs (locales/catalog_gen.go), as asuka dev and\nasuka build do. Commit them, so that go build and go test work without the CLI."
+	if err := fs.parse(args); err != nil {
 		return err
 	}
 	c, err := configOf(fs.Arg(0))
@@ -217,9 +214,9 @@ func configOf(dir string) (*appConfig, error) {
 // cmdI18n is asuka i18n.
 func cmdI18n(args []string) error {
 	const usage = `usage:
-  asuka i18n init [-source en] [dir]   start the app's catalogs: locales/en.json and its functions
-  asuka i18n add <tag>... [-dir dir]   add languages, each with the source's messages to translate
-  asuka i18n check [dir]               check the catalogs: errors exit 1, warnings don't
+  asuka i18n init [--source en] [dir]   start the app's catalogs: locales/en.json and its functions
+  asuka i18n add <tag>... [--dir dir]   add languages, each with the source's messages to translate
+  asuka i18n check [dir]                check the catalogs: errors exit 1, warnings don't
 `
 	if len(args) == 0 {
 		fmt.Fprint(os.Stderr, usage)
@@ -232,8 +229,8 @@ func cmdI18n(args []string) error {
 		return i18nAdd(args[1:])
 	case "check":
 		return i18nCheck(args[1:])
-	case "-h", "-help", "--help", "help":
-		fmt.Fprint(os.Stderr, usage)
+	case "-h", "--help", "help":
+		fmt.Fprint(os.Stdout, usage)
 		return nil
 	}
 	fmt.Fprint(os.Stderr, usage)
@@ -241,8 +238,9 @@ func cmdI18n(args []string) error {
 }
 
 func i18nCheck(args []string) error {
-	fs := flag.NewFlagSet("i18n check", flag.ContinueOnError)
-	if err := fs.Parse(args); err != nil {
+	fs := newFlagSet("i18n check", "[dir]")
+	fs.about = "Checks the catalogs: errors exit 1, warnings don't."
+	if err := fs.parse(args); err != nil {
 		return err
 	}
 	c, err := configOf(fs.Arg(0))
@@ -267,14 +265,16 @@ func i18nCheck(args []string) error {
 }
 
 func i18nInit(args []string) error {
-	fs := flag.NewFlagSet("i18n init", flag.ContinueOnError)
-	source := fs.String("source", "en", "the language the app is written in")
-	if err := fs.Parse(args); err != nil {
+	fs := newFlagSet("i18n init", "[dir]")
+	fs.about = "Starts the app's catalogs: locales/<source>.json and its functions."
+	var source string
+	fs.String(&source, "source", 0, "en", "the `language` the app is written in")
+	if err := fs.parse(args); err != nil {
 		return err
 	}
-	tag := i18n.Normalize(*source)
+	tag := i18n.Normalize(source)
 	if tag == "" || i18n.IsPseudo(tag) {
-		return fmt.Errorf("-source %q is not a language", *source)
+		return fmt.Errorf("--source %q is not a language", source)
 	}
 	dir := fs.Arg(0)
 	if dir == "" {
@@ -316,20 +316,18 @@ func i18nInit(args []string) error {
 }
 
 func i18nAdd(args []string) error {
-	fs := flag.NewFlagSet("i18n add", flag.ContinueOnError)
-	dir := fs.String("dir", ".", "the app's directory")
-	var tags []string
-	for len(args) > 0 && !strings.HasPrefix(args[0], "-") {
-		tags, args = append(tags, args[0]), args[1:]
-	}
-	if err := fs.Parse(args); err != nil {
+	fs := newFlagSet("i18n add", "<tag>...")
+	fs.about = "Adds languages to the catalogs, each with the source's messages to translate."
+	var dir string
+	fs.String(&dir, "dir", 'C', ".", "the app's `directory`")
+	if err := fs.parse(args); err != nil {
 		return err
 	}
-	tags = append(tags, fs.Args()...)
+	tags := fs.Args()
 	if len(tags) == 0 {
 		return errors.New("i18n add: which languages? asuka i18n add de zh-Hans")
 	}
-	c, err := configOf(*dir)
+	c, err := configOf(dir)
 	if err != nil {
 		return err
 	}

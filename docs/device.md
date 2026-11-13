@@ -65,7 +65,7 @@ web need nothing declared (see each one's section below).
 
 An entitlement needs its capability on the app's App ID
 (developer.apple.com, Identifiers) for a release build: the provisioning
-profile has it then. `asuka build -platform ios` stops with what's missing if the
+profile has it then. `asuka build --platform ios` stops with what's missing if the
 profile lacks one; simulator builds have them all.
 
 The purpose strings Asuka writes are generic ("To take a photo."). iOS
@@ -103,7 +103,7 @@ match installed). Without one, the app builds, the CLI says what won't
 work, and on the Mac registering for pushes and signing in with Apple
 fail, and App Attest says it isn't supported. `asuka dev` signs ad hoc,
 without a profile, so the same holds there. A Mac App Store build
-(`-appstore`) is sandboxed, with the network and the files the user
+(`--appstore`) is sandboxed, with the network and the files the user
 picks. See [Shipping](shipping.md).
 
 The packages work on macOS as on iOS, through the same frameworks
@@ -134,7 +134,7 @@ UserNotifications, AuthenticationServices), except where a Mac differs:
 
 ## On Windows
 
-A Windows app declares nothing: `asuka build -platform windows` writes no
+A Windows app declares nothing: `asuka build --platform windows` writes no
 capabilities, and Windows asks a desktop app for no permission. The
 privacy switches in Settings (Privacy & security) still hold for the
 camera, the microphone and location: with one off, the camera and
@@ -183,7 +183,7 @@ A Linux app declares nothing either. Where the host goes through an XDG
 desktop portal (files, the camera, location, notifications, mail,
 printing, opening files and links, keeping the system awake), the
 portal asks the user as it does, and it works in a Flatpak sandbox as
-out of one. The Flatpak manifest `asuka build -platform linux` writes
+out of one. The Flatpak manifest `asuka build --platform linux` writes
 lets the app reach only the display, the GPU, the network and the
 portals. Services the host reaches without a portal (Speech Dispatcher,
 Evolution Data Server for contacts and calendars, NetworkManager for the
@@ -230,7 +230,7 @@ names what's missing.
 A page declares nothing: the browser asks the user the first time a
 package needs the camera, the microphone, location or notifications.
 Most of these APIs need a secure page, served over `https` or from
-`localhost` (`asuka dev -platform web`'s, but not `-lan`'s addresses).
+`localhost` (`asuka dev --platform web`'s, but not `--lan`'s addresses).
 The packages call the web's APIs; [the web](web.md) has the details,
 and its service worker for notifications and Web Push.
 
@@ -1447,7 +1447,7 @@ go from the extension to the app through an App Group,
 
 Under `asuka dev`, the player takes shares of anything, whatever the
 app's `shareTarget`. On Android the files' paths are on the device, not
-the Mac the Go code runs on: try files with `asuka dev -platform android -once`.
+the Mac the Go code runs on: try files with `asuka dev --platform android --once`.
 
 What a link leads to (a page, an image, a video) is the app's to find
 out, with `net/http`: expo-sharing's "resolved" payloads, in Go.
@@ -1665,7 +1665,7 @@ about ten seconds, and the notification shows. A data message whose
 rewrite leaves no title or body doesn't show.
 
 Under `asuka dev`'s player there's no extension (the app's Go code runs on
-the computer): pushes show as they came. `asuka dev -platform ios -once` and a
+the computer): pushes show as they came. `asuka dev --platform ios --once` and a
 build have it. The simulator runs the extension only for pushes that
 come from APNs, not for `xcrun simctl push`.
 
@@ -2293,5 +2293,5 @@ alone.
 **Under `asuka dev`** the Go code runs on your Mac (or PC): its crashes
 print in the terminal, as ever, and are kept there, so `crash.Reports`
 on the next run has them. The player's own native crashes aren't the
-app's, and aren't reported to it; a build of the app (`asuka dev -once`,
+app's, and aren't reported to it; a build of the app (`asuka dev --once`,
 `asuka build`) reports everything.

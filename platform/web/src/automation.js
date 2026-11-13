@@ -1,4 +1,4 @@
-// Debug automation (asuka dev -platform web): the commands the iOS and Android
+// Debug automation (asuka dev --platform web): the commands the iOS and Android
 // hosts' debug builds take, so the same GUI tests (e2e/) drive the page.
 // They come from the dev server one line each:
 //

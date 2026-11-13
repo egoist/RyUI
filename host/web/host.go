@@ -77,7 +77,7 @@ func newHost() *Host {
 	}
 	jh := js.Global().Get(name)
 	if jh.IsUndefined() {
-		panic("asuka: no web host on this page (" + name + "); load the app with platform/web's loader, as asuka dev -platform web and asuka build -platform web do")
+		panic("asuka: no web host on this page (" + name + "); load the app with platform/web's loader, as asuka dev --platform web and asuka build --platform web do")
 	}
 	h := &Host{js: jh}
 	theHost = h

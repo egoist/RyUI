@@ -60,7 +60,7 @@ jobs:
       - name: GUI tests, the examples on GTK
         run: xvfb-run -a -s '-screen 0 1400x1000x24' dbus-run-session go test -tags e2e ./e2e -run Linux -v
       - name: a release builds
-        run: go run ./cmd/asuka build -platform linux -vet=false examples/counter && tar -tzf examples/counter/dist/linux/counter-*.tar.gz
+        run: go run ./cmd/asuka build --platform linux --no-vet examples/counter && tar -tzf examples/counter/dist/linux/counter-*.tar.gz
   # GUI tests: the examples on a simulator and an emulator, driven
   # through the debug hosts' automation (e2e/).
   e2e-ios:

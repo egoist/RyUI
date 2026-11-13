@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"html"
 	"os"
@@ -24,48 +23,49 @@ type buildOptions struct {
 	aar          bool   // Android: an .aar to embed in another app
 	arch         string // Linux and Windows: amd64 or arm64
 	verbose      bool
-	vet          bool
+	noVet        bool
 }
 
-func buildFlags(o *buildOptions) *flag.FlagSet {
-	fs := flag.NewFlagSet("build", flag.ContinueOnError)
+func buildFlags(o *buildOptions) *flagSet {
+	fs := newFlagSet("build", "[dir]")
+	fs.about = "Makes a release build of the app, in dist in its directory."
 	platformFlag(fs, &o.platform, []string{platformIOS, platformAndroid, platformMac, platformWindows, platformLinux, platformWeb},
-		"the `platform` to build for: ios, an .ipa for the App Store (or -distribution); android, an .aab for Google Play; mac, a universal .app (arm64 and x86_64); windows, a folder with the .exe (its icon and version built in) and its assets; linux, a folder in dist/linux laid out to install (the executable, its desktop file, icons, metainfo and assets), a .tar.gz of it and a Flatpak manifest; web, a static site (WebAssembly and the web host) in dist/web. Default on macOS, Windows and Linux: this computer's")
-	fs.StringVar(&o.sign, "sign", "", "macOS: a signing identity, e.g. \"Developer ID Application: ...\" (default: ad hoc)")
-	fs.StringVar(&o.notarize, "notarize", "", "macOS: notarize the signed app and staple the ticket: a notarytool keychain profile (xcrun notarytool store-credentials), or \"env\" for ASUKA_APPLE_ID, ASUKA_APPLE_PASSWORD (app-specific) and ASUKA_TEAM_ID")
-	fs.BoolVar(&o.simulator, "simulator", false, "iOS: a release .app for the simulator instead (not signed for devices)")
-	fs.BoolVar(&o.xcframework, "xcframework", false, "iOS: AsukaApp.xcframework, the app to embed in an app made in Xcode (import AsukaApp; AsukaViewController())")
-	fs.StringVar(&o.arch, "arch", "", "Linux: amd64 or arm64 (default: this machine's, else amd64); Windows: amd64 or arm64 (default: amd64, which runs on Windows on Arm too)")
-	fs.BoolVar(&o.aar, "aar", false, "Android: an .aar, the app to embed in an app made in Android Studio (start dev.asuka.AsukaActivity)")
-	fs.StringVar(&o.distribution, "distribution", "app-store", "iOS: app-store, ad-hoc or development")
-	fs.StringVar(&o.profile, "profile", "", "iOS and macOS: a provisioning profile's path, name or UUID (default: asuka.json's (macOS: or ASUKA_MAC_PROFILE), else the best match installed; macOS: only for an app whose packages need one: push, Sign in with Apple, App Attest)")
-	fs.BoolVar(&o.appStore, "appstore", false, "macOS: a .pkg for the Mac App Store: the app sandboxed, signed with a Mac App Store profile's certificate (Apple Distribution), the .pkg with Mac Installer Distribution")
-	fs.StringVar(&o.out, "o", "", "the output directory (default: dist in the app's directory)")
-	fs.BoolVar(&o.verbose, "v", false, "print the commands asuka runs")
-	fs.BoolVar(&o.vet, "vet", true, "run asuka vet first and print what it finds (warnings: the build goes on)")
+		"the `platform` to build for: ios, an .ipa for the App Store (or --distribution); android, an .aab for Google Play; mac, a universal .app (arm64 and x86_64); windows, a folder with the .exe (its icon and version built in) and its assets; linux, a folder in dist/linux laid out to install (the executable, its desktop file, icons, metainfo and assets), a .tar.gz of it and a Flatpak manifest; web, a static site (WebAssembly and the web host) in dist/web. Default on macOS, Windows and Linux: this computer's")
+	fs.String(&o.sign, "sign", 0, "", "macOS: a signing `identity`, e.g. \"Developer ID Application: ...\" (default: ad hoc)")
+	fs.String(&o.notarize, "notarize", 0, "", "macOS: notarize the signed app and staple the ticket: a notarytool keychain `profile` (xcrun notarytool store-credentials), or \"env\" for ASUKA_APPLE_ID, ASUKA_APPLE_PASSWORD (app-specific) and ASUKA_TEAM_ID")
+	fs.Bool(&o.simulator, "simulator", 0, "iOS: a release .app for the simulator instead (not signed for devices)")
+	fs.Bool(&o.xcframework, "xcframework", 0, "iOS: AsukaApp.xcframework, the app to embed in an app made in Xcode (import AsukaApp; AsukaViewController())")
+	fs.String(&o.arch, "arch", 0, "", "Linux: amd64 or arm64 (default: this machine's, else amd64); Windows: amd64 or arm64 (default: amd64, which runs on Windows on Arm too)")
+	fs.Bool(&o.aar, "aar", 0, "Android: an .aar, the app to embed in an app made in Android Studio (start dev.asuka.AsukaActivity)")
+	fs.String(&o.distribution, "distribution", 0, "app-store", "iOS: app-store, ad-hoc or development")
+	fs.String(&o.profile, "profile", 0, "", "iOS and macOS: a provisioning `profile`'s path, name or UUID (default: asuka.json's (macOS: or ASUKA_MAC_PROFILE), else the best match installed; macOS: only for an app whose packages need one: push, Sign in with Apple, App Attest)")
+	fs.Bool(&o.appStore, "appstore", 0, "macOS: a .pkg for the Mac App Store: the app sandboxed, signed with a Mac App Store profile's certificate (Apple Distribution), the .pkg with Mac Installer Distribution")
+	fs.String(&o.out, "out", 'o', "", "the output `directory` (default: dist in the app's directory)")
+	fs.Bool(&o.noVet, "no-vet", 0, "don't run asuka vet first (by default it prints what it finds, as warnings: the build goes on)")
+	fs.Bool(&o.verbose, "verbose", 'v', "print the commands asuka runs")
 	return fs
 }
 
 func cmdBuild(args []string) error {
 	var o buildOptions
 	fs := buildFlags(&o)
-	if err := fs.Parse(args); err != nil {
+	if err := fs.parse(args); err != nil {
 		return err
 	}
 	dir := "."
-	if fs.NArg() > 0 {
+	if fs.Arg(0) != "" {
 		dir = fs.Arg(0)
 	}
 	if o.platform == "" {
 		if o.platform = thisComputer(); o.platform == "" {
-			return errors.New("usage: asuka build -platform ios|android|mac|windows|linux|web [flags] [dir]")
+			return errors.New("usage: asuka build --platform ios|android|mac|windows|linux|web [flags] [dir]")
 		}
 	}
 	app, err := loadApp(dir)
 	if err != nil {
 		return err
 	}
-	vetBuild(app.dir, o.vet)
+	vetBuild(app.dir, !o.noVet)
 	if o.out == "" {
 		o.out = filepath.Join(app.dir, "dist")
 	}

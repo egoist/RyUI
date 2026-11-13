@@ -94,7 +94,7 @@ func forcedLocale() string {
 // launches where the system keeps an app's language, which Settings shows:
 // iOS's and macOS's AppleLanguages (UIKit and AppKit say their own words,
 // as Cancel in a date picker, in it from the next launch) and Android 13's
-// per-app language; Asuka keeps it elsewhere. asuka dev -lang chooses a
+// per-app language; Asuka keeps it elsewhere. asuka dev --lang chooses a
 // language for one run, and then nothing is kept.
 //
 // The pseudo locales en-XA and ar-XB always show, to test what translations
@@ -163,7 +163,7 @@ func PreferredLanguages() []string {
 }
 
 // IsRTL reports whether the app is laid out right to left, as the language
-// it shows is written, unless asuka dev -dir says otherwise. Row runs from
+// it shows is written, unless asuka dev --dir says otherwise. Row runs from
 // the right then, Start is the right side, and the platform's views mirror.
 // An effect that calls it follows it. Safe from any goroutine.
 func IsRTL() bool {

@@ -52,7 +52,7 @@ func (h *Host) pushModule() map[string]method {
 	return map[string]method{
 		"register": func(_ []byte, reply func([]byte, error)) {
 			if !bundled() {
-				reply(nil, errors.New("asuka/push: APNs needs the app's bundle: build it with asuka build -platform mac"))
+				reply(nil, errors.New("asuka/push: APNs needs the app's bundle: build it with asuka build --platform mac"))
 				return
 			}
 			h.installNotifications()

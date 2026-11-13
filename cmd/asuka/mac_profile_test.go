@@ -214,8 +214,8 @@ func TestPickMacProfile(t *testing.T) {
 	if _, err := pickMacProfile("", "com.example.app", f, false, ids); err == nil {
 		t.Error("another app's: no error")
 	}
-	if _, err := pickMacProfile("", "dev.asuka.services", f, true, ids); err == nil || !strings.Contains(err.Error(), "-appstore needs a Mac App Store one") {
-		t.Errorf("-appstore with a Developer ID profile: %v", err)
+	if _, err := pickMacProfile("", "dev.asuka.services", f, true, ids); err == nil || !strings.Contains(err.Error(), "--appstore needs a Mac App Store one") {
+		t.Errorf("--appstore with a Developer ID profile: %v", err)
 	}
 	expired := writeTestProfile(t, "ABCDE12345.dev.asuka.services", "")
 	b, _ := os.ReadFile(expired)
@@ -224,7 +224,7 @@ func TestPickMacProfile(t *testing.T) {
 		t.Errorf("expired: %v", err)
 	}
 
-	// The identity: the profile's; -sign's if the profile allows it; ad
+	// The identity: the profile's; --sign's if the profile allows it; ad
 	// hoc for one that isn't Apple's.
 	if id, _, err := macIdentity("", p, ids); err != nil || id != certSHA("cert") {
 		t.Errorf("the profile's: %q, %v", id, err)
@@ -234,10 +234,10 @@ func TestPickMacProfile(t *testing.T) {
 	}
 	p.signed = true
 	if id, _, err := macIdentity("Developer ID Application", p, ids); err != nil || id != certSHA("cert") {
-		t.Errorf("-sign Developer ID: %q, %v", id, err)
+		t.Errorf("--sign Developer ID: %q, %v", id, err)
 	}
 	if _, _, err := macIdentity("Apple Development", p, ids); err == nil || !strings.Contains(err.Error(), "doesn't allow") {
-		t.Errorf("-sign with a certificate the profile doesn't list: %v", err)
+		t.Errorf("--sign with a certificate the profile doesn't list: %v", err)
 	}
 	p.identity = ""
 	if _, _, err := macIdentity("", p, ids); err == nil || !strings.Contains(err.Error(), "keychain") {

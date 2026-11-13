@@ -484,7 +484,7 @@ func TestPublishIOSRefusals(t *testing.T) {
 		t.Fatalf("no app: %v", err)
 	}
 
-	// -build at or below the store's highest.
+	// --build at or below the store's highest.
 	c, _ = testASC(t)
 	if err = publishIOS(c, testApp(t), &publishOptions{build: 8}, nil, build); err == nil || !strings.Contains(err.Error(), "has build 8 already") {
 		t.Fatalf("low build: %v", err)
@@ -537,7 +537,7 @@ func TestPublishIOSFile(t *testing.T) {
 	if a := f.attrs("POST /v1/buildUploads", 0); a["cfBundleVersion"] != "42" {
 		t.Fatalf("%v", a)
 	}
-	// -no-wait: nothing after the upload.
+	// --no-wait: nothing after the upload.
 	if f.uploadPolls != 0 || f.count("GET /v1/builds") != 0 {
 		t.Fatalf("waited: %v", f.log)
 	}

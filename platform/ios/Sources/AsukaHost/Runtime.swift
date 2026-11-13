@@ -12,7 +12,7 @@ import AsukaOps
 
 /// A native view the core made, or a list cell the host made.
 /// The app's assets/: in the app's bundle, or, for an app embedded in
-/// another (asuka build -xcframework), in the framework that holds its code.
+/// another (asuka build --xcframework), in the framework that holds its code.
 let asukaAssets: URL? = {
     for b in [Bundle(for: AsukaRuntime.self), Bundle.main] {
         if let u = b.resourceURL?.appendingPathComponent("assets"), FileManager.default.fileExists(atPath: u.path) { return u }

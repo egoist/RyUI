@@ -17,7 +17,7 @@ import (
 // language) answers JSON text, segments, language. On the device only:
 // it never falls back to Apple's servers. macOS asks the user once, with
 // the app's NSSpeechRecognitionUsageDescription, which needs the app's
-// bundle (asuka build -platform mac).
+// bundle (asuka build --platform mac).
 
 func init() {
 	moduleHooks = append(moduleHooks, func(h *Host, m map[string]map[string]method) {

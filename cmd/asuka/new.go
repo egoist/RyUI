@@ -90,6 +90,6 @@ func cmdNew(args []string) error {
 			return fmt.Errorf("go %s: %v", strings.Join(s, " "), err)
 		}
 	}
-	fmt.Printf("asuka: made %s\n\n  cd %s\n  asuka dev -platform ios    # or android, web; on macOS, Windows or Linux, asuka dev runs it on this computer\n", dir, dir)
+	fmt.Printf("asuka: made %s\n\n  cd %s\n  asuka dev --platform ios    # or android, web; on macOS, Windows or Linux, asuka dev runs it on this computer\n", dir, dir)
 	return nil
 }

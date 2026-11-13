@@ -44,17 +44,17 @@ func main() { app.Run(Counter) }
   Google Play; **`asuka publish`** uploads them, numbered after the store's
   last build, to TestFlight (its groups, App Review) or a Play track.
 - **macOS**: the same app on AppKit, in one Go process
-  (`asuka dev -platform mac`, `asuka build -platform mac`).
+  (`asuka dev --platform mac`, `asuka build --platform mac`).
 - **Windows**: the same app on Win32 and the common controls,
-  drawn as Windows 11's, in one Go process (`asuka dev -platform windows`,
-  `asuka build -platform windows`).
+  drawn as Windows 11's, in one Go process (`asuka dev --platform windows`,
+  `asuka build --platform windows`).
 - **Linux**: the same app on GTK 4 and libadwaita, called
-  without cgo, in one Go process (`asuka dev -platform linux`, `asuka build
-  -platform linux`: a folder to install, a `.tar.gz` and a Flatpak
+  without cgo, in one Go process (`asuka dev --platform linux`, `asuka build
+  --platform linux`: a folder to install, a `.tar.gz` and a Flatpak
   manifest, from any system).
 - **The web**: the same app in a browser, its Go code compiled to
   WebAssembly and its views the page's DOM, placed where Asuka's layout
-  puts them (`asuka dev -platform web`, `asuka build -platform web`: a static site). See
+  puts them (`asuka dev --platform web`, `asuka build --platform web`: a static site). See
   [the web](docs/web.md).
 
 ## Quick start
@@ -68,7 +68,7 @@ started](docs/getting-started.md).
 go install github.com/egoist/asuka/cmd/asuka@latest
 asuka new hello
 cd hello
-asuka dev -platform ios     # or android, web; on a Mac, PC or Linux, asuka dev alone runs it there
+asuka dev --platform ios     # or android, web; on a Mac, PC or Linux, asuka dev alone runs it there
 ```
 
 See [the documentation](docs/README.md) for the guides, and

@@ -6,7 +6,7 @@ plugins {
 
 fun prop(name: String) = providers.gradleProperty(name).orNull
 
-// asuka build -platform android -aar: an app to embed in another, this library with
+// asuka build --platform android --aar: an app to embed in another, this library with
 // the app's Go code (asukaJniLibs) and assets, and AsukaActivity declared,
 // published to a Maven repository (asukaMavenRepo) so its dependencies come
 // with it.

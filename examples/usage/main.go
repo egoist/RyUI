@@ -9,7 +9,7 @@
 // with semantic colors at an opacity (Color.Opacity), and has an
 // appearance setting (ui.SetColorScheme).
 //
-//	go run ./cmd/asuka dev -platform android examples/usage
+//	go run ./cmd/asuka dev --platform android examples/usage
 package main
 
 import (

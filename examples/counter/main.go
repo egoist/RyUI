@@ -1,7 +1,7 @@
 // Counter is the smallest Asuka app: a signal, a Text that reads it and a
 // Button that writes it.
 //
-//	go run ./cmd/asuka dev -platform ios examples/counter
+//	go run ./cmd/asuka dev --platform ios examples/counter
 package main
 
 import (

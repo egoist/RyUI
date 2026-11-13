@@ -24,7 +24,7 @@ import (
 
 // In a browser, the driver is SQLite's own WebAssembly build, which the
 // page loads beside the app (platform/web/src/sqlite.js; asuka build
-// -platform web ships it with the apps that import this package). Each
+// --platform web ships it with the apps that import this package). Each
 // call crosses into JavaScript once: its arguments read from this
 // program's memory, its answer written into it. A query's rows come a
 // chunk at a time. The tables a commit wrote and a query read come back
@@ -73,7 +73,7 @@ func web() (js.Value, error) {
 		}
 		api := h.Get("sqlite")
 		if api.IsUndefined() || api.IsNull() {
-			webErr = errors.New("sqlite: the page didn't load SQLite (asuka build -platform web ships it with the apps that import asuka/sqlite; a page of your own passes start its sqlite option)")
+			webErr = errors.New("sqlite: the page didn't load SQLite (asuka build --platform web ships it with the apps that import asuka/sqlite; a page of your own passes start its sqlite option)")
 			return
 		}
 		webCall = api.Get("call").Call("bind", api)

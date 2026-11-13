@@ -7,10 +7,10 @@ should see; note anything that doesn't match.
 ## Getting the apps on a phone
 
 - **Android**: plug the phone in with USB debugging on, then
-  `go run ./cmd/asuka dev -platform android examples/gallery` (the player; your
-  code runs on the Mac and reloads on save), or add `-once` for a build
+  `go run ./cmd/asuka dev --platform android examples/gallery` (the player; your
+  code runs on the Mac and reloads on save), or add `--once` for a build
   with the Go code in it.
-- **iPhone**: `go run ./cmd/asuka build -platform ios examples/gallery` makes a
+- **iPhone**: `go run ./cmd/asuka build --platform ios examples/gallery` makes a
   signed `.ipa` (it needs your team in `asuka.json`'s `ios.team` and a
   provisioning profile); install it with Xcode's Devices window or
   `xcrun devicectl device install app`.

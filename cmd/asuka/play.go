@@ -588,7 +588,7 @@ func (p *playClient) commit(pkg, edit string, cancelReview bool) (sent bool, err
 		return false, err
 	}
 	if errors.As(err, &pe) && pe.contains("in review") && !cancelReview {
-		return false, fmt.Errorf("%v\nthe app has changes in review: wait for it, or publish again with -cancel-review to cancel that review and send these changes with the others", err)
+		return false, fmt.Errorf("%v\nthe app has changes in review: wait for it, or publish again with --cancel-review to cancel that review and send these changes with the others", err)
 	}
 	return err == nil, err
 }

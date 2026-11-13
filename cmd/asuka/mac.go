@@ -20,15 +20,15 @@ import (
 // macOS: the app's Go code and its host (host/darwin, AppKit through
 // purego) are one Go program, built for this Mac with CGO_ENABLED=0.
 //
-// asuka dev -platform mac runs it here, from an .app like a release's (its
+// asuka dev --platform mac runs it here, from an .app like a release's (its
 // Info.plist, icon and languages, signed ad hoc, answering for its own
 // privacy prompts), and on each change rebuilds it and runs it again (its
-// signals' state kept, as with the player). asuka build -platform mac
+// signals' state kept, as with the player). asuka build --platform mac
 // makes an .app: a universal binary (arm64 and x86_64), its Info.plist,
-// icon and assets, signed (ad hoc unless -sign names an identity), with
+// icon and assets, signed (ad hoc unless --sign names an identity), with
 // its provisioning profile (Contents/embedded.provisionprofile) and the
 // entitlements the app's packages need of it (mac_profile.go); with
-// -appstore, sandboxed, in a .pkg for the Mac App Store.
+// --appstore, sandboxed, in a .pkg for the Mac App Store.
 
 const macMin = "11.0"
 
@@ -248,7 +248,7 @@ func signMac(bundle, identity, entitlements string, run func(dir string, env []s
 
 func buildMac(app *goApp, o *buildOptions) error {
 	if o.appStore && o.notarize != "" {
-		return errors.New("asuka: -notarize is for an app distributed outside the Mac App Store, which reviews the app itself: leave it out with -appstore")
+		return errors.New("asuka: --notarize is for an app distributed outside the Mac App Store, which reviews the app itself: leave it out with --appstore")
 	}
 	work, err := workDir(app, "mac-release")
 	if err != nil {
@@ -307,7 +307,7 @@ func buildMac(app *goApp, o *buildOptions) error {
 	}
 	if o.notarize != "" {
 		if identity == "-" {
-			return errors.New("asuka: -notarize needs -sign \"Developer ID Application: ...\": Apple notarizes only apps signed with a Developer ID")
+			return errors.New("asuka: --notarize needs --sign \"Developer ID Application: ...\": Apple notarizes only apps signed with a Developer ID")
 		}
 		if err := notarize(work, bundle, o.notarize, o.verbose); err != nil {
 			return err
@@ -324,18 +324,18 @@ func buildMac(app *goApp, o *buildOptions) error {
 	}
 	if identity == "-" {
 		if prof != nil {
-			fmt.Println("asuka: signed ad hoc, with the profile's entitlements: macOS opens it only signed with a certificate the profile allows (-sign)")
+			fmt.Println("asuka: signed ad hoc, with the profile's entitlements: macOS opens it only signed with a certificate the profile allows (--sign)")
 		} else {
-			fmt.Println("asuka: signed ad hoc; to distribute it, sign with -sign \"Developer ID Application: ...\" and -notarize")
+			fmt.Println("asuka: signed ad hoc; to distribute it, sign with --sign \"Developer ID Application: ...\" and --notarize")
 		}
 	}
 	return nil
 }
 
 // macSigning is the profile (nil for none) and the identity ("-": ad
-// hoc) a Mac build signs with: the profile -profile, ASUKA_MAC_PROFILE or
+// hoc) a Mac build signs with: the profile --profile, ASUKA_MAC_PROFILE or
 // asuka.json names, else for an app whose packages need one (or for the
-// Mac App Store) the best match installed; the identity -sign names, else
+// Mac App Store) the best match installed; the identity --sign names, else
 // the profile's, else ad hoc. Without a profile, it says what won't work.
 func macSigning(cfg *appConfig, o *buildOptions) (*macProfile, string, error) {
 	want := o.profile
@@ -445,14 +445,14 @@ func notarize(work, bundle, profile string, verbose bool) error {
 	return nil
 }
 
-// notaryCredentials are notarytool's credential flags for -notarize.
+// notaryCredentials are notarytool's credential flags for --notarize.
 func notaryCredentials(profile string, getenv func(string) string) ([]string, error) {
 	if profile != "env" {
 		return []string{"--keychain-profile", profile}, nil
 	}
 	id, pw, team := getenv("ASUKA_APPLE_ID"), getenv("ASUKA_APPLE_PASSWORD"), getenv("ASUKA_TEAM_ID")
 	if id == "" || pw == "" || team == "" {
-		return nil, errors.New("asuka: -notarize env needs ASUKA_APPLE_ID, ASUKA_APPLE_PASSWORD (an app-specific password) and ASUKA_TEAM_ID")
+		return nil, errors.New("asuka: --notarize env needs ASUKA_APPLE_ID, ASUKA_APPLE_PASSWORD (an app-specific password) and ASUKA_TEAM_ID")
 	}
 	return []string{"--apple-id", id, "--password", pw, "--team-id", team}, nil
 }

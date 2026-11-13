@@ -15,7 +15,7 @@ import (
 	iosHost "github.com/egoist/asuka/platform/ios"
 )
 
-// An app embedded in another (asuka build -platform ios -xcframework): its Go code
+// An app embedded in another (asuka build --platform ios --xcframework): its Go code
 // and the UIKit host in AsukaApp.xcframework, a framework for devices and
 // one for the simulator, with a Swift module interface, so an app made in
 // Xcode adds it and shows the Asuka app where it likes:

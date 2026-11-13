@@ -11,16 +11,16 @@ measure theirs. Controls are the browser's own (`<button>`, `<input>`,
 autofill, spelling and screen readers come with them.
 
 ```sh
-asuka dev -platform web examples/counter       # serves it and opens it in your browser; reloads as you save
-asuka build -platform web examples/counter     # a static site, in examples/counter/dist/web
+asuka dev --platform web examples/counter       # serves it and opens it in your browser; reloads as you save
+asuka build --platform web examples/counter     # a static site, in examples/counter/dist/web
 ```
 
 What follows says what the web does, and, where a browser can't do what
 a phone does, what happens instead.
 
-## asuka dev -platform web
+## asuka dev --platform web
 
-`asuka dev -platform web` builds the app for the browser (`GOOS=js GOARCH=wasm`),
+`asuka dev --platform web` builds the app for the browser (`GOOS=js GOARCH=wasm`),
 serves it at `http://localhost:8790/` (or a free port) and opens it. Each
 save rebuilds it, in well under a second for the examples, and the page
 loads the new build with the app's signals' values kept, as the other
@@ -28,17 +28,17 @@ platforms' reloads keep them. The app's output (`fmt.Println`, `log`, a
 panic) and the page's errors print in the terminal; a build that fails
 shows its errors over the page until the next one builds.
 
-The flags, beside `asuka dev`'s own (`-lang`, `-dir`, `-vet`, `-v`):
+The flags, beside `asuka dev`'s own (`--lang`, `--dir`, `--no-vet`, `-v`):
 
-- `-port`: the server's port.
-- `-lan`: serve to your network too, and print its addresses: open the
+- `--port`: the server's port.
+- `--lan`: serve to your network too, and print its addresses: open the
   app in a phone's browser.
-- `-no-open`: don't open the browser.
-- `-once`: build and serve, without watching.
+- `--no-open`: don't open the browser.
+- `--once`: build and serve, without watching.
 
-## asuka build -platform web
+## asuka build --platform web
 
-`asuka build -platform web` makes a static site in `dist/web`:
+`asuka build --platform web` makes a static site in `dist/web`:
 
 - `index.html` and `manifest.webmanifest` (a web app manifest, so a
   browser offers to install the app; its icons from `asuka.json`'s
@@ -147,7 +147,7 @@ to the home screen).
 
 `asuka/sqlite` works as on the other platforms, live queries included.
 Its SQLite is SQLite's own WebAssembly build (from sqlite.org, which
-`asuka build -platform web` and `asuka dev -platform web` ship with the
+`asuka build --platform web` and `asuka dev --platform web` ship with the
 apps that import `asuka/sqlite`, and load before the app starts), driven
 from Go synchronously. A database is a file in the app's data directory,
 like any other, so Go's `os` sees it (a backup is `os.ReadFile`), and it
@@ -267,7 +267,7 @@ starts, scoped to the app's folder. It has no fetch handler, so the page
 loads as it would without it; it shows the app's notifications and
 pushes, and answers their clicks, whether or not a page of the app is
 open. A browser runs service workers only for pages served over HTTPS,
-or from `localhost` (`asuka dev`'s, but not `-lan`'s addresses).
+or from `localhost` (`asuka dev`'s, but not `--lan`'s addresses).
 
 ### asuka/notify
 
@@ -545,7 +545,7 @@ reloads the page when a script in `web/` changes.
 
 ## Embedding
 
-The page `asuka build -platform web` makes runs the app full page. To run it in an
+The page `asuka build --platform web` makes runs the app full page. To run it in an
 element of a page of your own, load the host's loader and start the app
 in it; it then follows the element's size:
 

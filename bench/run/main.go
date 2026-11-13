@@ -303,7 +303,7 @@ func simulator() (string, error) {
 }
 
 func buildAsukaIOS() (string, error) {
-	out, err := output(root, nil, "go", "run", "./cmd/asuka", "build", "-platform", "ios", "-simulator", "bench/asuka")
+	out, err := output(root, nil, "go", "run", "./cmd/asuka", "build", "--platform", "ios", "--simulator", "bench/asuka")
 	if err != nil {
 		return "", err
 	}
@@ -444,7 +444,7 @@ func buildAsukaAndroid() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	out, err := output(root, env, "go", "run", "./cmd/asuka", "build", "-platform", "android", "bench/asuka")
+	out, err := output(root, env, "go", "run", "./cmd/asuka", "build", "--platform", "android", "bench/asuka")
 	if err != nil {
 		return "", err
 	}

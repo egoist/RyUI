@@ -892,7 +892,7 @@ func (c *ascClient) submitReview(appID, buildID, version string, notes map[strin
 		for _, locale := range slices.Sorted(maps.Keys(notes)) {
 			i := slices.IndexFunc(locs, func(l ascRes[ascLocalization]) bool { return strings.EqualFold(l.Attributes.Locale, locale) })
 			if i < 0 {
-				return fmt.Errorf("version %s has no %s localization for -notes; it has %s", version, locale,
+				return fmt.Errorf("version %s has no %s localization for --notes; it has %s", version, locale,
 					localeList(locs, func(l ascLocalization) string { return l.Locale }))
 			}
 			if err := c.do(http.MethodPatch, "/v1/appStoreVersionLocalizations/"+locs[i].ID, data("appStoreVersionLocalizations", locs[i].ID,
@@ -908,11 +908,11 @@ func (c *ascClient) submitReview(appID, buildID, version string, notes map[strin
 			}
 		}
 		if len(empty) > 0 {
-			return fmt.Errorf("version %s has no What's New in %s, which an update needs: give it with -notes (@dir: a file per language, as %s.txt)",
+			return fmt.Errorf("version %s has no What's New in %s, which an update needs: give it with --notes (@dir: a file per language, as %s.txt)",
 				version, strings.Join(empty, ", "), empty[0])
 		}
 	} else if len(notes) > 0 {
-		fmt.Println("asuka: App Store: a first version has no What's New; -notes went to TestFlight only")
+		fmt.Println("asuka: App Store: a first version has no What's New; --notes went to TestFlight only")
 	}
 	// The submission: the draft one, or the one with issues to answer,
 	// else a new one.

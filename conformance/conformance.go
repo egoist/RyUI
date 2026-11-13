@@ -20,7 +20,7 @@
 //
 // Sheet's app (conformance/app) shows it on any platform:
 //
-//	go run ./cmd/asuka dev -platform ios conformance/app
+//	go run ./cmd/asuka dev --platform ios conformance/app
 package conformance
 
 import (

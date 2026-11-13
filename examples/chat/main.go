@@ -5,7 +5,7 @@
 // actions both ways, selecting messages to delete, and a composer that
 // rides on the keyboard, inserts at the cursor and takes pasted images.
 //
-//	go run ./cmd/asuka dev -platform ios examples/chat
+//	go run ./cmd/asuka dev --platform ios examples/chat
 package main
 
 import (

@@ -1,7 +1,7 @@
 // Conformance shows package conformance's sheet, for its runners to
 // capture (e2e's TestConformance*), or to look at:
 //
-//	go run ./cmd/asuka dev -platform ios conformance/app
+//	go run ./cmd/asuka dev --platform ios conformance/app
 package main
 
 import (

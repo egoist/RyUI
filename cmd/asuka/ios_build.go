@@ -19,7 +19,7 @@ import (
 )
 
 // buildIOS makes a release build: an .ipa signed for distribution, or
-// with -simulator a release .app for the simulator. No Xcode project:
+// with --simulator a release .app for the simulator. No Xcode project:
 // swiftc compiles the host (optimized), the Go archive is built for the
 // device, actool compiles the icon, and the bundle is signed with the
 // provisioning profile that fits.
@@ -245,7 +245,7 @@ func buildIOS(app *goApp, o *buildOptions) error {
 	}
 	fmt.Printf("asuka: %s in %.0fs\n", ipa, time.Since(start).Seconds())
 	if prof.kind == "app-store" {
-		fmt.Println("asuka: asuka publish -platform ios builds and uploads it to App Store Connect (or upload this one: asuka publish -platform ios -file " + ipa + ")")
+		fmt.Println("asuka: asuka publish --platform ios builds and uploads it to App Store Connect (or upload this one: asuka publish --platform ios --file " + ipa + ")")
 	}
 	return nil
 }
@@ -581,7 +581,7 @@ func pickProfile(team, id, want, distribution string) (*profile, error) {
 		sort.Strings(near)
 		msg += "; close ones: " + strings.Join(near, ", ")
 	}
-	return nil, errors.New(msg + ". Make one for the app ID in Xcode (Settings › Accounts) or at developer.apple.com, or pass -profile")
+	return nil, errors.New(msg + ". Make one for the app ID in Xcode (Settings › Accounts) or at developer.apple.com, or pass --profile")
 }
 
 // plistKey is a plist key as plutil's key paths take it: plutil reads a

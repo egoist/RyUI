@@ -167,7 +167,7 @@ func macProfileFiles() []string {
 // kind (developer-id; app-store for the Mac App Store) for id and team
 // (if given) whose certificate is in the keychain (ids, by SHA-1). A
 // profile want names may have no certificate in the keychain: the
-// caller decides (an ad hoc build, a -sign identity).
+// caller decides (an ad hoc build, a --sign identity).
 func pickMacProfile(team, id, want string, appStore bool, ids map[string]string) (*macProfile, error) {
 	kind := "developer-id"
 	if appStore {
@@ -205,9 +205,9 @@ func pickMacProfile(team, id, want string, appStore bool, ids map[string]string)
 		if p.kind != kind {
 			if explicit && (p.kind == "app-store") != appStore {
 				if appStore {
-					return nil, fmt.Errorf("the profile %q is a %s profile: -appstore needs a Mac App Store one", p.name, p.kind)
+					return nil, fmt.Errorf("the profile %q is a %s profile: --appstore needs a Mac App Store one", p.name, p.kind)
 				}
-				return nil, fmt.Errorf("the profile %q is a Mac App Store profile: build with -appstore, or use a Developer ID one", p.name)
+				return nil, fmt.Errorf("the profile %q is a Mac App Store profile: build with --appstore, or use a Developer ID one", p.name)
 			}
 			if !explicit {
 				near = append(near, fmt.Sprintf("%q (%s)", p.name, p.kind))
@@ -247,7 +247,7 @@ func pickMacProfile(team, id, want string, appStore bool, ids map[string]string)
 		msg += "; close ones: " + strings.Join(near, ", ")
 	}
 	return nil, errors.New(msg + ". Make one for the app ID at developer.apple.com (Profiles: macOS, " +
-		map[bool]string{false: "Developer ID", true: "Mac App Store Connect"}[appStore] + ") and download it, or pass -profile")
+		map[bool]string{false: "Developer ID", true: "Mac App Store Connect"}[appStore] + ") and download it, or pass --profile")
 }
 
 func orAny(team string) string {
@@ -257,11 +257,11 @@ func orAny(team string) string {
 	return team
 }
 
-// macIdentity is what signs an app with prof: sign (-sign: a name, part
+// macIdentity is what signs an app with prof: sign (--sign: a name, part
 // of one or a SHA-1; "-" ad hoc), which the profile must allow, else the
 // keychain identity the profile allows. An unsigned profile (a plain
-// plist) is signed ad hoc without -sign. It returns the identity
-// (a SHA-1, or what -sign says, or "-") and its name, to print.
+// plist) is signed ad hoc without --sign. It returns the identity
+// (a SHA-1, or what --sign says, or "-") and its name, to print.
 func macIdentity(sign string, prof *macProfile, ids map[string]string) (string, string, error) {
 	if sign == "-" {
 		return "-", "ad hoc", nil
@@ -273,7 +273,7 @@ func macIdentity(sign string, prof *macProfile, ids map[string]string) (string, 
 		if !prof.signed {
 			return "-", "ad hoc", nil
 		}
-		return "", "", fmt.Errorf("none of the certificates the profile %q allows is in the keychain: install one (Xcode › Settings › Accounts › Manage Certificates), or pass -sign", prof.name)
+		return "", "", fmt.Errorf("none of the certificates the profile %q allows is in the keychain: install one (Xcode › Settings › Accounts › Manage Certificates), or pass --sign", prof.name)
 	}
 	var matched []string
 	for sha, name := range ids {

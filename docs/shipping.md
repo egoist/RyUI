@@ -5,16 +5,16 @@ app's directory (or the one given), into its `dist`. `asuka publish`
 uploads the iOS and Android builds to their stores: to TestFlight and
 App Review, or a Google Play track (see [Publishing](#publishing)).
 
-| `-platform` | What it makes, in `dist` | Builds on | Given to users |
+| `--platform` | What it makes, in `dist` | Builds on | Given to users |
 |---|---|---|---|
 | `ios` | `<Name>.ipa`, signed for the App Store | a Mac with Xcode | TestFlight, the App Store (`asuka publish`) |
 | `android` | `<Name>.aab`, signed with your upload key | any system with a JDK, the Android SDK and the NDK | Google Play (`asuka publish`) |
-| `mac` | `<Name>.app`, universal; or a `.pkg` (`-appstore`) | a Mac with Xcode's command line tools | a download, signed and notarized; the Mac App Store |
+| `mac` | `<Name>.app`, universal; or a `.pkg` (`--appstore`) | a Mac with Xcode's command line tools | a download, signed and notarized; the Mac App Store |
 | `windows` | `<Name>/`, the `.exe` and its assets | any system | a zip, or an installer or MSIX of yours |
 | `linux` | `linux/`: an install prefix, a `.tar.gz`, a Flatpak manifest | any system | the `.tar.gz`, a Flatpak |
 | `web` | `web/`, a static site | any system | any web server or CDN |
 
-Without `-platform`, on a Mac, a Windows PC or a Linux machine, it
+Without `--platform`, on a Mac, a Windows PC or a Linux machine, it
 builds for that computer. Every build but iOS's and Android's is plain
 Go with `CGO_ENABLED=0`, so it needs no C toolchain.
 
@@ -123,20 +123,20 @@ Write your own in `ios.usage`: the default is generic. Some need a
 capability on the App ID too (Push Notifications for `asuka/push`, Sign
 in with Apple for `asuka/appleauth`, App Attest for `asuka/integrity`,
 Declared Age Range for `asuka/agerange`): turn it on at
-developer.apple.com, then make the profile again. `asuka build -platform ios` (and
-`-platform mac`) says which a profile lacks.
+developer.apple.com, then make the profile again. `asuka build --platform ios` (and
+`--platform mac`) says which a profile lacks.
 
 ## iOS
 
 ```sh
-asuka build -platform ios
+asuka build --platform ios
 ```
 
 makes a `.ipa` signed for the App Store, with the team's distribution
 certificate (in your keychain, from Xcode's Accounts) and a provisioning
-profile for the app's ID: `ios.profile`, or `-profile`, else the best
-match installed. `-distribution ad-hoc` or `development` signs it for the
-devices of its profile instead, and `-simulator` makes an unsigned `.app`
+profile for the app's ID: `ios.profile`, or `--profile`, else the best
+match installed. `--distribution ad-hoc` or `development` signs it for the
+devices of its profile instead, and `--simulator` makes an unsigned `.app`
 for the simulator.
 
 With `shareTarget`, the share extension is signed too, with a profile
@@ -154,7 +154,7 @@ stops, saying so, if a profile lacks the group. The simulator needs
 none of this. An app with its own share sheet (`app.ShareSheet`) needs
 the group too, for its data, whatever it takes.
 
-`asuka publish -platform ios` makes it and uploads it to App Store Connect (see
+`asuka publish --platform ios` makes it and uploads it to App Store Connect (see
 [Publishing](#publishing)); Apple's Transporter uploads one too.
 
 **Privacy manifest.** The App Store requires one, giving a reason for
@@ -177,14 +177,14 @@ Name it in `asuka.json` (`android.keystore`, `android.keyAlias`), and give
 its password in the environment:
 
 ```sh
-ASUKA_KEYSTORE_PASSWORD=... asuka build -platform android
+ASUKA_KEYSTORE_PASSWORD=... asuka build --platform android
 ```
 
 (`ASUKA_KEY_PASSWORD` too if the key's differs; `ASUKA_KEYSTORE` and
 `ASUKA_KEY_ALIAS` name them in CI.) It makes an `.aab` for Google Play, for
 64-bit and 32-bit ARM phones and x86_64 (emulators, Chromebooks),
 Android 13 and later; Play makes each phone's APK from it, with only
-that phone's architecture. `asuka publish -platform android` makes it and uploads it to Google Play (see
+that phone's architecture. `asuka publish --platform android` makes it and uploads it to Google Play (see
 [Publishing](#publishing)).
 
 ## Publishing
@@ -195,7 +195,7 @@ stop it (that the app is there and the key may upload to it, that the
 version still takes builds, that the TestFlight groups exist), so
 nothing is built for an upload that would fail. Each build is numbered
 one above the store's highest (and at least `asuka.json`'s `build`):
-there's nothing to bump between releases. `-build 42` gives one.
+there's nothing to bump between releases. `--build 42` gives one.
 
 **App Store Connect.** Make an API key in App Store Connect (Users and
 Access › Integrations › App Store Connect API) with the App Manager
@@ -214,30 +214,30 @@ App), with its bundle ID.
 ```
 
 ```sh
-asuka publish -platform ios                                  # to TestFlight: the team's testers
-asuka publish -platform ios -groups "Friends, QA" -notes "Try the new sync."
-asuka publish -platform ios -review -notes @release-notes/ios -release manual
+asuka publish --platform ios                                  # to TestFlight: the team's testers
+asuka publish --platform ios --groups "Friends, QA" --notes "Try the new sync."
+asuka publish --platform ios --review --notes @release-notes/ios --release manual
 ```
 
 It uploads the `.ipa`, waits for Apple to process it (minutes, usually;
 at times an hour or more), printing what Apple warns of or turns down,
 then:
 
-- `-notes` is TestFlight's What to Test and, with `-review`, the App
+- `--notes` is TestFlight's What to Test and, with `--review`, the App
   Store's What's New: text, or `@file`, in the app's primary language;
   or `@dir`, a file per language, named as App Store Connect names it
   (`en-US.txt`, `ja.txt`). An update needs What's New in each of the
   version's languages.
-- `-groups` gives the build to TestFlight groups, by name. With an
+- `--groups` gives the build to TestFlight groups, by name. With an
   external group (testers outside your team), the build goes to beta
   review; fill in the test information in TestFlight first.
-- `-review` makes the App Store version (`asuka.json`'s `version`) if
+- `--review` makes the App Store version (`asuka.json`'s `version`) if
   there isn't one, gives it the build, and submits it for review. A
   first submission needs its listing, screenshots and privacy answers
   filled in App Store Connect first; what's missing is printed.
-  `-release auto` releases it once approved, `-release manual` waits for
+  `--release auto` releases it once approved, `--release manual` waits for
   you.
-- `-no-wait` stops once Apple has the upload.
+- `--no-wait` stops once Apple has the upload.
 
 **Google Play.** Make a service account in Google Cloud, with a JSON key
 (IAM › Service accounts › Keys), in a project with the Google Play
@@ -249,31 +249,31 @@ first `.aab` only in the Play Console: create the app there and upload
 its first build by hand; `asuka publish` uploads the ones after.
 
 ```sh
-asuka publish -platform android                              # the internal test track
-asuka publish -platform android -track beta -notes @release-notes/android
-asuka publish -platform android -track production -rollout 0.1
+asuka publish --platform android                              # the internal test track
+asuka publish --platform android --track beta --notes @release-notes/android
+asuka publish --platform android --track production --rollout 0.1
 ```
 
-- `-track` is `internal` (default), `alpha` (closed testing), `beta`
+- `--track` is `internal` (default), `alpha` (closed testing), `beta`
   (open testing), `production`, or a closed track's name.
-- `-rollout 0.1` rolls the release out to a tenth of users; raise it in
-  the Play Console. `-draft` makes a draft, to roll out there. Until the
+- `--rollout 0.1` rolls the release out to a tenth of users; raise it in
+  the Play Console. `--draft` makes a draft, to roll out there. Until the
   app is published, Play takes drafts only: the release becomes one.
-- `-notes` are the release notes (at most 500 characters): text or
+- `--notes` are the release notes (at most 500 characters): text or
   `@file` in the listing's default language, or `@dir` with a file per
   language as Play names it (`en-US.txt`, `ja-JP.txt`).
-- If the app has changes in review, it stops; `-cancel-review` cancels
+- If the app has changes in review, it stops; `--cancel-review` cancels
   that review and sends them with this release. If Play holds the app's
   changes for you to send (after a rejection), they're saved, and you
   send them in the Play Console.
 
-`-file dist/Notes.ipa` (or `.aab`) uploads a build `asuka build` made,
+`--file dist/Notes.ipa` (or `.aab`) uploads a build `asuka build` made,
 instead of making one.
 
 ## macOS
 
 ```sh
-asuka build -platform mac
+asuka build --platform mac
 ```
 
 makes `dist/<Name>.app` on a Mac: a universal app (Apple silicon and
@@ -294,13 +294,13 @@ Developer ID and have Apple notarize it, so Gatekeeper opens it:
 
 ```sh
 xcrun notarytool store-credentials asuka   # once: your Apple ID, team and an app-specific password
-asuka build -platform mac -sign "Developer ID Application: Your Name (TEAMID)" -notarize asuka
+asuka build --platform mac --sign "Developer ID Application: Your Name (TEAMID)" --notarize asuka
 ```
 
-`-notarize` sends the signed app to Apple's notary service, waits for
+`--notarize` sends the signed app to Apple's notary service, waits for
 its verdict (a few minutes, usually), prints the service's log if it's
 rejected, and staples the ticket to the app, so it opens offline too.
-In CI, `-notarize env` takes `ASUKA_APPLE_ID`, `ASUKA_APPLE_PASSWORD` (an
+In CI, `--notarize env` takes `ASUKA_APPLE_ID`, `ASUKA_APPLE_PASSWORD` (an
 app-specific password) and `ASUKA_TEAM_ID` from the environment instead
 of a keychain profile.
 
@@ -310,7 +310,7 @@ Make a macOS Developer ID profile for the app's ID at developer.apple.com
 (Profiles), with those capabilities on for the ID, and download it:
 
 ```sh
-asuka build -platform mac -profile Notes.provisionprofile -notarize asuka
+asuka build --platform mac --profile Notes.provisionprofile --notarize asuka
 ```
 
 The profile goes in the app as `Contents/embedded.provisionprofile`, and
@@ -319,28 +319,28 @@ entitlements (`com.apple.developer.aps-environment`,
 `com.apple.developer.applesignin`,
 `com.apple.developer.devicecheck.appattest-environment`), its app ID and
 team, and the hardened runtime. The build says which a profile lacks.
-Without `-sign`, the identity is the keychain's certificate the profile
-allows (Developer ID Application); a `-sign` the profile doesn't list is
-an error. `-profile` takes a path, or an installed profile's name or UUID;
+Without `--sign`, the identity is the keychain's certificate the profile
+allows (Developer ID Application); a `--sign` the profile doesn't list is
+an error. `--profile` takes a path, or an installed profile's name or UUID;
 `ASUKA_MAC_PROFILE` and asuka.json's `mac.profile` say the same. With none,
 an app that uses those packages is signed with the best match installed
 for its ID (in Xcode's profile folders), else without one: the build
 says what won't work on the Mac, and the rest of the app does.
 
-`-appstore` makes `dist/<Name>.pkg` for the Mac App Store instead: the app in the
+`--appstore` makes `dist/<Name>.pkg` for the Mac App Store instead: the app in the
 App Sandbox (with the network and the files the user picks), signed
 with a Mac App Store profile's certificate (Apple Distribution;
-asuka.json's `mac.appStoreProfile`, else `-profile`, else the best match),
+asuka.json's `mac.appStoreProfile`, else `--profile`, else the best match),
 and the package with the team's Mac Installer Distribution certificate.
 Upload it with Transporter or `xcrun altool --upload-package`;
 `asuka publish` doesn't upload Mac builds yet. Notarizing is for apps
-outside the store: `-notarize` with `-appstore` is an error.
+outside the store: `--notarize` with `--appstore` is an error.
 
 ## Windows
 
 ```sh
-asuka build -platform windows               # x64, which Windows on Arm runs emulated
-asuka build -platform windows -arch arm64   # native on Arm PCs
+asuka build --platform windows               # x64, which Windows on Arm runs emulated
+asuka build --platform windows --arch arm64  # native on Arm PCs
 ```
 
 makes a folder, `dist/<Name>`, from any system: `<Name>.exe` and the
@@ -355,7 +355,7 @@ Sign the `.exe`, so SmartScreen knows who it's from, with a code signing
 certificate exported as a `.pfx`:
 
 ```sh
-ASUKA_WINDOWS_CERT=cert.pfx ASUKA_WINDOWS_CERT_PASSWORD=... asuka build -platform windows
+ASUKA_WINDOWS_CERT=cert.pfx ASUKA_WINDOWS_CERT_PASSWORD=... asuka build --platform windows
 ```
 
 The build signs it with SHA-256 and has the signature timestamped, so
@@ -378,8 +378,8 @@ toasts: its AppUserModelID is asuka.json's `id` (else one of its name).
 ## Linux
 
 ```sh
-asuka build -platform linux                # this machine's architecture, else amd64
-asuka build -platform linux -arch arm64    # amd64 or arm64
+asuka build --platform linux                # this machine's architecture, else amd64
+asuka build --platform linux --arch arm64   # amd64 or arm64
 ```
 
 It builds from any system: the host calls GTK 4 and libadwaita without
@@ -442,7 +442,7 @@ software centers want the summary, description, license and developer.
 ## The web
 
 ```sh
-asuka build -platform web
+asuka build --platform web
 ```
 
 makes a static site in `dist/web`: `index.html`, the app as
@@ -462,7 +462,7 @@ feature written once in Go, shown from a native app. (On the web, the
 build's app runs in an element of a page of yours: see
 [the web](web.md).)
 
-**iOS.** `asuka build -platform ios -xcframework` makes `dist/AsukaApp.xcframework`:
+**iOS.** `asuka build --platform ios --xcframework` makes `dist/AsukaApp.xcframework`:
 the app's Go code and the UIKit host, for devices and the simulator, with
 a Swift module interface and the app's assets. Add it to your target
 (Embed & Sign), then show the Asuka app as any view controller:
@@ -474,7 +474,7 @@ present(AsukaViewController(), animated: true)
 // or push it, or make it a tab, or a window's root
 ```
 
-**Android.** `asuka build -platform android -aar` makes a Maven repository in
+**Android.** `asuka build --platform android --aar` makes a Maven repository in
 `dist/maven`: the host library with the app's Go code for each ABI, its
 assets, and `AsukaActivity` declared, with its dependencies (Material,
 AndroidX) in its POM, and the optional modules the app uses (`asuka/push`,
@@ -503,7 +503,7 @@ functions and lines with the build's symbols. Go's own stack traces
 need none (their tables are in the binary), so a Go panic reads as it
 is.
 
-**iOS.** `asuka build -platform ios` compiles the host with debug information,
+**iOS.** `asuka build --platform ios` compiles the host with debug information,
 keeps the Go code's, and makes a dSYM of each binary (the app, its
 framework when it has a share sheet, its extensions), as Xcode's archive
 does, then strips the binaries. They're in `dist/<Name>.dSYMs`, beside
@@ -517,7 +517,7 @@ sentry-cli debug-files upload --org ORG --project PROJECT dist/Notes.dSYMs
 upload-symbols -gsp GoogleService-Info.plist -p ios dist/Notes.dSYMs
 ```
 
-**Android.** `asuka build -platform android` keeps the Go libraries' symbol tables
+**Android.** `asuka build --platform android` keeps the Go libraries' symbol tables
 for Gradle, which strips the libraries it packages and puts their
 symbols in the `.aab`, with R8's map of the Kotlin it renamed: Google
 Play symbolicates native crashes and ANRs, and deobfuscates stack
@@ -542,9 +542,9 @@ for the reports themselves.
 
 Run the release build where your users will, before you release it:
 
-- On a phone: an iOS build with `-distribution development`, and the
+- On a phone: an iOS build with `--distribution development`, and the
   Android build from Play's internal test track (`asuka publish
-  -platform android -track internal`), which installs the APK Play makes
+  --platform android --track internal`), which installs the APK Play makes
   from the `.aab`. TestFlight and a Play internal test also check what a
   simulator can't.
 - On the Mac: the signed, notarized `.app`, downloaded on another Mac
@@ -622,7 +622,7 @@ jobs:
           ASUKA_ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASUKA_ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASUKA_ASC_KEY: ${{ secrets.ASC_KEY }}
-        run: asuka publish -platform ios -profile $RUNNER_TEMP/app.mobileprovision -no-wait
+        run: asuka publish --platform ios --profile $RUNNER_TEMP/app.mobileprovision --no-wait
       - uses: actions/upload-artifact@v4
         with: { name: ios, path: dist/*.ipa }
       - name: attach to the tag's release
@@ -653,7 +653,7 @@ jobs:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
         run: echo "$KEYSTORE" | base64 --decode > $RUNNER_TEMP/upload.jks
       - name: build, and upload to Play's internal test track
-        run: asuka publish -platform android -track internal
+        run: asuka publish --platform android --track internal
         env:
           ASUKA_KEYSTORE: ${{ runner.temp }}/upload.jks
           ASUKA_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -690,7 +690,7 @@ base64 (`base64 -i file | pbcopy`):
 
 The CLI carries the iOS and Android hosts, so it's installed at the
 version of Asuka in the app's `go.mod`. Each build is numbered after the
-store's highest, so nothing is bumped before you tag; `-no-wait` ends
+store's highest, so nothing is bumped before you tag; `--no-wait` ends
 the iOS job once Apple has the upload, not once it's processed. The App Store takes builds
 made with a recent Xcode only; if the runner's default is older, pick
 one with `sudo xcode-select -s /Applications/Xcode_<version>.app`.
@@ -733,7 +733,7 @@ are named after `asuka.json`'s `name`.)
           ASUKA_APPLE_ID: ${{ secrets.APPLE_ID }}
           ASUKA_APPLE_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
           ASUKA_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: asuka build -platform mac -sign "Developer ID Application: Your Name (TEAMID)" -notarize env
+        run: asuka build --platform mac --sign "Developer ID Application: Your Name (TEAMID)" --notarize env
       - name: attach to the tag's release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -762,14 +762,14 @@ are named after `asuka.json`'s `name`.)
           ASUKA_WINDOWS_CERT: ${{ runner.temp }}/cert.pfx
           ASUKA_WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         run: |
-          asuka build -platform windows -o dist/x64
-          asuka build -platform windows -arch arm64 -o dist/arm64
+          asuka build --platform windows -o dist/x64
+          asuka build --platform windows --arch arm64 -o dist/arm64
           (cd dist/x64 && zip -r ../Notes-windows-x64.zip Notes)
           (cd dist/arm64 && zip -r ../Notes-windows-arm64.zip Notes)
       - name: Linux, amd64 and arm64
         run: |
-          asuka build -platform linux
-          asuka build -platform linux -arch arm64
+          asuka build --platform linux
+          asuka build --platform linux --arch arm64
       - name: attach to the tag's release
         env:
           GH_TOKEN: ${{ github.token }}

@@ -64,30 +64,30 @@ cd hello
 
 ```sh
 asuka dev                      # this computer: on a Mac, a PC or Linux
-asuka dev -platform ios        # the iOS simulator
-asuka dev -platform android    # an Android emulator or phone
-asuka dev -platform web        # your browser
+asuka dev --platform ios        # the iOS simulator
+asuka dev --platform android    # an Android emulator or phone
+asuka dev --platform web        # your browser
 ```
 
 Save a Go file and the app reloads in a moment, the values of its
 signals kept. Its output (`fmt.Println`, panics) is in the terminal.
 
-- **On your computer** (`asuka dev`, or `-platform mac`, `windows`,
+- **On your computer** (`asuka dev`, or `--platform mac`, `windows`,
   `linux`), the app and its host are one Go program: Asuka builds it,
   runs it in a window, and builds and runs it again on each save.
 - **On a phone**, the first run builds and installs Asuka's player app,
   which shows your app's views; your Go code runs on your computer and
   talks to it, so a save reloads without reinstalling.
-  `-device` picks the simulator (its name or UDID) or the Android device
-  (an adb serial or an AVD's name). `-embed` builds your Go code into
-  the app instead, as a release build has it; `-once` builds it in and
+  `--device` picks the simulator (its name or UDID) or the Android device
+  (an adb serial or an AVD's name). `--embed` builds your Go code into
+  the app instead, as a release build has it; `--once` builds it in and
   launches it once.
 - **In a browser**, Asuka serves the app at `http://localhost:8790/` and
-  opens it; each save reloads the page. `-lan` serves it to your
+  opens it; each save reloads the page. `--lan` serves it to your
   network, to try it in a phone's browser. See [the web](web.md).
 
-To run on an iPhone, make a build signed for it: `asuka build -platform ios
--distribution development`, then install the `.ipa` with Xcode's Devices
+To run on an iPhone, make a build signed for it: `asuka build --platform ios
+--distribution development`, then install the `.ipa` with Xcode's Devices
 window.
 
 [Development](development.md) has the rest: what a reload keeps,

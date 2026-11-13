@@ -191,7 +191,7 @@ func messagesScreen() ui.Node {
 func pushHelp() string {
 	box := base64.StdEncoding.EncodeToString([]byte("See you at the crag at 9"))
 	if os.Getenv("ASUKA_REMOTE") != "" {
-		return "Under asuka dev's player, pushes aren't rewritten: run with -once to try it."
+		return "Under asuka dev's player, pushes aren't rewritten: run with --once to try it."
 	}
 	keys := `"box":"` + box + `","sender":"Ana","senderID":"ana","chat":"climbing","chatTitle":"Climbing"`
 	if runtime.GOOS == "android" {

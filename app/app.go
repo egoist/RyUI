@@ -50,7 +50,7 @@ func Run(root func() ui.Node) {
 		desktop(root)
 		return
 	}
-	panic("asuka: no host on this platform yet; run the app with `asuka dev -platform ios` (or -platform android)")
+	panic("asuka: no host on this platform yet; run the app with `asuka dev --platform ios` (or --platform android)")
 }
 
 var shareScreen func(*ui.ShareSheet) ui.Node

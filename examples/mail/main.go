@@ -3,7 +3,7 @@
 // (Unread, Archive), selecting mails to archive together, and a Rich text
 // field with a formatting toolbar for the message.
 //
-//	go run ./cmd/asuka dev -platform ios examples/mail
+//	go run ./cmd/asuka dev --platform ios examples/mail
 package main
 
 import (

@@ -1087,6 +1087,6 @@ Go code and native code, and rebuilds and reinstalls it on each save,
 Swift and Kotlin included. Its signals' values aren't kept across those
 reloads. See [Development](development.md#on-a-phone-the-player-and-built-apps).
 
-**On the web**, `asuka dev -platform web` reloads the page as a script in
+**On the web**, `asuka dev --platform web` reloads the page as a script in
 `web/` changes, its signals' values kept; see
 [the web](web.md#native-code).

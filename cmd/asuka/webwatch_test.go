@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// asuka dev -platform web reloads the page when JavaScript it loads as it
+// asuka dev --platform web reloads the page when JavaScript it loads as it
 // is changes: the app's web/*.js, the host's files and those under them
 // (a checkout's src/modules/).
 func TestWebWatcher(t *testing.T) {

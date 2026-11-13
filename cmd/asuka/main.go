@@ -1,18 +1,17 @@
 // Command Asuka makes, runs and builds Asuka apps.
 //
-//	asuka new <dir>                         a project from the template
-//	asuka dev -platform ios <dir>           build, run on the iOS simulator, rebuild on save
-//	asuka dev -platform android <dir>       build, run on an Android emulator or device, rebuild on save
-//	asuka dev -platform mac <dir>           build, run on this Mac, rebuild on save
-//	asuka dev -platform windows <dir>       build, run on this PC, rebuild on save
-//	asuka dev -platform linux <dir>         build, run on this Linux machine, rebuild on save
-//	asuka dev -platform web <dir>           build, serve and open in the browser, rebuild on save
-//	asuka dev <dir>                         on macOS, Windows or Linux: run on this computer
+//	asuka new <dir>                          a project from the template
+//	asuka dev --platform ios <dir>           build, run on the iOS simulator, rebuild on save
+//	asuka dev --platform android <dir>       build, run on an Android emulator or device, rebuild on save
+//	asuka dev --platform mac <dir>           build, run on this Mac, rebuild on save
+//	asuka dev --platform windows <dir>       build, run on this PC, rebuild on save
+//	asuka dev --platform linux <dir>         build, run on this Linux machine, rebuild on save
+//	asuka dev --platform web <dir>           build, serve and open in the browser, rebuild on save
+//	asuka dev <dir>                          on macOS, Windows or Linux: run on this computer
 package main
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -24,17 +23,19 @@ import (
 
 func usage() {
 	fmt.Fprint(os.Stderr, `usage:
-  asuka new <dir>                  make a project from the template
-  asuka dev [-platform p] [flags] [dir]     run, rebuilding on save, on p: ios (the simulator), android (an
-                                           emulator or device), mac, windows, linux or web (the browser);
-                                           default on macOS, Windows and Linux: this computer
-  asuka build [-platform p] [flags] [dir]   a release build for p, likewise (asuka build -h)
-  asuka publish -platform ios|android [flags] [dir]   a release build, uploaded to TestFlight or Google Play (asuka publish -h)
-  asuka generate [dir]             write the functions of the app's catalogs
-  asuka i18n init|add|check        start, add languages to, and check the catalogs
-  asuka vet [flags] [packages]     report what builds but runs wrong, as a signal read once
+  asuka new <dir>                           make a project from the template
+  asuka dev [-p platform] [flags] [dir]     run, rebuilding on save, on platform: ios (the
+                                            simulator), android (an emulator or device), mac,
+                                            windows, linux or web (the browser); default on
+                                            macOS, Windows and Linux: this computer
+  asuka build [-p platform] [flags] [dir]   a release build for platform, likewise
+  asuka publish -p ios|android [flags] [dir]
+                                            a release build, uploaded to TestFlight or Google Play
+  asuka generate [dir]                      write the functions of the app's catalogs
+  asuka i18n init|add|check                 start, add languages to, and check the catalogs
+  asuka vet [flags] [packages]              report what builds but runs wrong, as a signal read once
 
-asuka dev flags:
+asuka <command> --help lists its flags.
 `)
 }
 
@@ -63,13 +64,15 @@ func main() {
 		err = cmdI18n(os.Args[2:])
 	case "vet":
 		err = cmdVet(os.Args[2:])
-	case "-h", "-help", "--help", "help":
+	case "-h", "--help", "help":
 		usage()
-		devFlags(new(devOptions)).PrintDefaults()
 		return
 	default:
 		usage()
 		os.Exit(2)
+	}
+	if errors.Is(err, errHelp) {
+		return
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "asuka:", err)
@@ -87,43 +90,44 @@ type devOptions struct {
 	embed     bool
 	verbose   bool
 	lang, dir string
-	vet       bool
+	noVet     bool
 }
 
-func devFlags(o *devOptions) *flag.FlagSet {
-	fs := flag.NewFlagSet("dev", flag.ContinueOnError)
+func devFlags(o *devOptions) *flagSet {
+	fs := newFlagSet("dev", "[dir]")
+	fs.about = "Runs the app, and runs it again with each change you save."
 	platformFlag(fs, &o.platform, []string{platformIOS, platformAndroid, platformMac, platformWindows, platformLinux, platformWeb},
 		"the `platform` to run on: ios (the simulator), android (a device or emulator), mac (this Mac), windows (this PC), linux (this Linux machine, or ASUKA_LINUX_RUN's), or web (the browser: the Go code as WebAssembly, the views the page's DOM); default on macOS, Windows and Linux: this computer")
-	fs.IntVar(&o.port, "port", 0, "web: the dev server's port (default 8790, or a free one)")
-	fs.BoolVar(&o.lan, "lan", false, "web: serve to this network too (a phone's browser), not only this machine")
-	fs.BoolVar(&o.noOpen, "no-open", false, "web: don't open the page in the browser")
-	fs.StringVar(&o.device, "device", "", "iOS: simulator name or UDID (default: the booted one, else the newest iPhone); Android: adb serial or AVD name")
-	fs.BoolVar(&o.once, "once", false, "build the app with its Go code and launch it once, without watching or streaming logs")
-	fs.BoolVar(&o.embed, "embed", false, "build the app with its Go code (the default runs the Go code here, in the player)")
-	fs.BoolVar(&o.verbose, "v", false, "print the commands asuka runs")
-	fs.StringVar(&o.lang, "lang", "", "show this language for this run, as de or zh-Hans, or a pseudo locale: en-XA (accented, a third longer) or ar-XB (right to left)")
-	fs.StringVar(&o.dir, "dir", "", "lay the app out rtl or ltr for this run, whatever its language")
-	fs.BoolVar(&o.vet, "vet", true, "run asuka vet in the background, on start and on each change, and print what it finds")
+	fs.Int(&o.port, "port", 0, 0, "web: the dev server's `port` (default 8790, or a free one)")
+	fs.Bool(&o.lan, "lan", 0, "web: serve to this network too (a phone's browser), not only this machine")
+	fs.Bool(&o.noOpen, "no-open", 0, "web: don't open the page in the browser")
+	fs.String(&o.device, "device", 'd', "", "iOS: simulator name or UDID (default: the booted one, else the newest iPhone); Android: adb serial or AVD name")
+	fs.Bool(&o.once, "once", 0, "build the app with its Go code and launch it once, without watching or streaming logs")
+	fs.Bool(&o.embed, "embed", 0, "build the app with its Go code (the default runs the Go code here, in the player)")
+	fs.String(&o.lang, "lang", 0, "", "show this `language` for this run, as de or zh-Hans, or a pseudo locale: en-XA (accented, a third longer) or ar-XB (right to left)")
+	fs.String(&o.dir, "dir", 0, "", "lay the app out in this `direction` for this run, rtl or ltr, whatever its language")
+	fs.Bool(&o.noVet, "no-vet", 0, "don't run asuka vet in the background (by default it runs on start and on each change, and prints what it finds)")
+	fs.Bool(&o.verbose, "verbose", 'v', "print the commands asuka runs")
 	return fs
 }
 
 func cmdDev(args []string) error {
 	var o devOptions
 	fs := devFlags(&o)
-	if err := fs.Parse(args); err != nil {
+	if err := fs.parse(args); err != nil {
 		return err
 	}
 	if err := setDevLocale(o.lang, o.dir); err != nil {
 		return err
 	}
-	devVet.on = o.vet
+	devVet.on = !o.noVet
 	dir := "."
-	if fs.NArg() > 0 {
+	if fs.Arg(0) != "" {
 		dir = fs.Arg(0)
 	}
 	if o.platform == "" {
 		if o.platform = thisComputer(); o.platform == "" {
-			return errors.New("pick a platform: asuka dev -platform ios|android|web <dir>")
+			return errors.New("pick a platform: asuka dev --platform ios|android|web <dir>")
 		}
 	}
 	stop := make(chan os.Signal, 1)

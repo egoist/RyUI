@@ -45,8 +45,8 @@ var Scheme string
 // where the platform has no bundle to read them from (Windows).
 var Version, Build string
 
-// Lang is the language `asuka dev -lang` shows (a BCP 47 tag, a pseudo locale
-// too), and Direction "rtl" or "ltr" what `asuka dev -dir` lays the app out
+// Lang is the language `asuka dev --lang` shows (a BCP 47 tag, a pseudo locale
+// too), and Direction "rtl" or "ltr" what `asuka dev --dir` lays the app out
 // in, whatever the language: set by the Asuka CLI for one run (-ldflags -X),
 // and they keep nothing. The environment's ASUKA_LOCALE and ASUKA_DIRECTION
 // do the same for an app run with go run.

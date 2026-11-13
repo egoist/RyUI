@@ -104,7 +104,7 @@ browser.
   signed and notarized Mac app, a Windows folder, a Linux archive and
   Flatpak manifest, and what `asuka.json` says of the app.
 - [The web](web.md): the same app in a browser, as WebAssembly and the
-  page's DOM; `asuka dev -platform web`, a static site to deploy,
+  page's DOM; `asuka dev --platform web`, a static site to deploy,
   embedding, and what it doesn't do yet.
 
 ## Reference

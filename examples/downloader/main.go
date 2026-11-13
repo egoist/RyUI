@@ -6,7 +6,7 @@
 // before the page's own (WebViewProps.Preload), and blocks ads; its icons
 // are SVG (asuka/svg); asuka/js runs a script off screen.
 //
-//	go run ./cmd/asuka dev -platform android -once examples/downloader
+//	go run ./cmd/asuka dev --platform android --once examples/downloader
 package main
 
 import (

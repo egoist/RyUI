@@ -10,7 +10,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
-	"flag"
 	"fmt"
 	"io"
 	"net/http"
@@ -330,26 +329,24 @@ func TestPublishFlags(t *testing.T) {
 		err  string
 	}{
 		{[]string{}, "usage"},
-		{[]string{"-platform", "mac"}, "one of ios, android"},
-		{[]string{"-platform", "ios", "-track", "beta"}, "-track is for -platform android"},
-		{[]string{"-platform", "android", "-groups", "x"}, "-groups is for -platform ios"},
-		{[]string{"-platform", "ios", "-file", "a.ipa", "-build", "3"}, "-file's number"},
-		{[]string{"-platform", "ios", "-release", "later"}, "auto or manual"},
-		{[]string{"-platform", "ios", "-release", "auto"}, "goes with -review"},
-		{[]string{"-platform", "ios", "-no-wait", "-groups", "x"}, "-no-wait"},
-		{[]string{"-platform", "android", "-rollout", "1"}, "above 0 and below 1"},
-		{[]string{"-platform", "android", "-rollout", "0.2", "-draft"}, "a draft isn't rolled out"},
-		{[]string{"-platform", "ios", "-groups", "a", "-review", "-release", "manual"}, ""},
-		{[]string{"-platform", "android", "-track", "beta", "-rollout", "0.5"}, ""},
+		{[]string{"--platform", "mac"}, "one of ios, android"},
+		{[]string{"--platform", "ios", "--track", "beta"}, "--track is for --platform android"},
+		{[]string{"--platform", "android", "--groups", "x"}, "--groups is for --platform ios"},
+		{[]string{"--platform", "ios", "--file", "a.ipa", "--build", "3"}, "--file's number"},
+		{[]string{"--platform", "ios", "--release", "later"}, "auto or manual"},
+		{[]string{"--platform", "ios", "--release", "auto"}, "goes with --review"},
+		{[]string{"--platform", "ios", "--no-wait", "--groups", "x"}, "--no-wait"},
+		{[]string{"--platform", "android", "--rollout", "1"}, "above 0 and below 1"},
+		{[]string{"--platform", "android", "--rollout", "0.2", "--draft"}, "a draft isn't rolled out"},
+		{[]string{"--platform", "ios", "--groups", "a", "--review", "--release", "manual"}, ""},
+		{[]string{"--platform", "android", "--track", "beta", "--rollout", "0.5"}, ""},
 	} {
 		var o publishOptions
 		fs := publishFlags(&o)
-		fs.SetOutput(io.Discard)
-		err := fs.Parse(c.args)
+		fs.out = io.Discard
+		err := fs.parse(c.args)
 		if err == nil {
-			set := map[string]bool{}
-			fs.Visit(func(f *flag.Flag) { set[f.Name] = true })
-			err = o.check(set)
+			err = o.check(fs.set)
 		}
 		if (err == nil) != (c.err == "") || (err != nil && !strings.Contains(err.Error(), c.err)) {
 			t.Errorf("%v: %v, want %q", c.args, err, c.err)
@@ -396,7 +393,7 @@ func TestNextBuild(t *testing.T) {
 		}
 	}
 	if _, err := nextBuild(7, 1, 7); err == nil {
-		t.Error("-build at the store's highest")
+		t.Error("--build at the store's highest")
 	}
 	for s, n := range map[string]int{"12": 12, "12.3": 12, "": 0, "x": 0, "2024.1.5": 2024} {
 		if buildNumber(s) != n {

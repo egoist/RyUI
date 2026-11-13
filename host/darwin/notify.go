@@ -28,7 +28,7 @@ import (
 // notifications (a message shows as a notification, its sender's name its
 // title). Pushes (APNs) shown or tapped go to asuka/push too (push.go),
 // their data the payload's keys beside aps. The center needs the
-// app's bundle (asuka build -platform mac): an executable run on its own (go run,
+// app's bundle (asuka build --platform mac): an executable run on its own (go run,
 // asuka dev) has no bundle ID, and gets an error.
 
 // Presentation options (UNNotificationPresentationOptions).
@@ -101,7 +101,7 @@ func bundled() bool {
 	return Send(Send(Class("NSBundle"), "mainBundle"), "bundleIdentifier") != 0
 }
 
-var errNoBundle = errors.New("asuka/notify: macOS's notifications need the app's bundle: build it with asuka build -platform mac")
+var errNoBundle = errors.New("asuka/notify: macOS's notifications need the app's bundle: build it with asuka build --platform mac")
 
 // installNotifications makes the center's delegate, if the app is a
 // bundle: before it finishes launching, to see a response that launched

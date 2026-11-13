@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/xml"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"maps"
@@ -39,41 +38,40 @@ type publishOptions struct {
 	cancelReview bool
 }
 
-func publishFlags(o *publishOptions) *flag.FlagSet {
-	fs := flag.NewFlagSet("publish", flag.ContinueOnError)
+func publishFlags(o *publishOptions) *flagSet {
+	fs := newFlagSet("publish", "[dir]")
+	fs.about = "Makes a release build of the app and uploads it to App Store Connect or Google Play."
 	platformFlag(fs, &o.platform, []string{platformIOS, platformAndroid},
 		"the `platform` whose store to upload to: ios, App Store Connect (TestFlight and the App Store); android, Google Play")
-	fs.StringVar(&o.file, "file", "", "upload this .ipa or .aab (from asuka build) instead of building one")
-	fs.IntVar(&o.build, "build", 0, "the build number (default: one more than the store's highest, at least asuka.json's build)")
-	fs.StringVar(&o.notes, "notes", "", "what's new: text in the store's default language, @file likewise, or @dir with a file per language as the store names it (en-US.txt); TestFlight's What to Test and, with -review, the App Store's What's New; Play's release notes")
-	fs.StringVar(&o.groups, "groups", "", "iOS: the TestFlight groups to give the build to, by name, comma separated (with an external group, the build goes to beta review)")
-	fs.BoolVar(&o.review, "review", false, "iOS: submit the version, with this build, for App Store review")
-	fs.StringVar(&o.release, "release", "", "iOS, with -review: once approved, release it automatically (auto) or by hand (manual); default: as App Store Connect has it")
-	fs.BoolVar(&o.noWait, "no-wait", false, "iOS: stop once App Store Connect has the upload, without waiting for Apple to process it")
-	fs.StringVar(&o.track, "track", "internal", "Android: the track to release to: internal, alpha, beta, production, or a closed track's name")
-	fs.Float64Var(&o.rollout, "rollout", 0, "Android: roll the release out to this fraction of users, as 0.1, raised later in the Play Console (default: all)")
-	fs.BoolVar(&o.draft, "draft", false, "Android: a draft release, to roll out in the Play Console")
-	fs.BoolVar(&o.cancelReview, "cancel-review", false, "Android: if the app has changes in review, cancel that review and send them with this release (default: stop)")
-	fs.StringVar(&o.profile, "profile", "", "iOS: a provisioning profile's path, name or UUID (default: asuka.json's, else the best match installed)")
-	fs.StringVar(&o.out, "o", "", "the output directory of the build (default: dist in the app's directory)")
-	fs.BoolVar(&o.verbose, "v", false, "print the commands asuka runs and its requests to the store")
-	fs.BoolVar(&o.vet, "vet", true, "run asuka vet first and print what it finds (warnings: the build goes on)")
+	fs.String(&o.file, "file", 0, "", "upload this .ipa or .aab (from asuka build) instead of building one")
+	fs.Int(&o.build, "build", 0, 0, "the build `number` (default: one more than the store's highest, at least asuka.json's build)")
+	fs.String(&o.notes, "notes", 0, "", "what's new: text in the store's default language, @file likewise, or @dir with a file per language as the store names it (en-US.txt); TestFlight's What to Test and, with --review, the App Store's What's New; Play's release notes")
+	fs.String(&o.groups, "groups", 0, "", "iOS: the TestFlight groups to give the build to, by name, comma separated (with an external group, the build goes to beta review)")
+	fs.Bool(&o.review, "review", 0, "iOS: submit the version, with this build, for App Store review")
+	fs.String(&o.release, "release", 0, "", "iOS, with --review: once approved, release it automatically (auto) or by hand (manual); default: as App Store Connect has it")
+	fs.Bool(&o.noWait, "no-wait", 0, "iOS: stop once App Store Connect has the upload, without waiting for Apple to process it")
+	fs.String(&o.track, "track", 0, "internal", "Android: the track to release to: internal, alpha, beta, production, or a closed track's name")
+	fs.Float(&o.rollout, "rollout", 0, 0, "Android: roll the release out to this `fraction` of users, as 0.1, raised later in the Play Console (default: all)")
+	fs.Bool(&o.draft, "draft", 0, "Android: a draft release, to roll out in the Play Console")
+	fs.Bool(&o.cancelReview, "cancel-review", 0, "Android: if the app has changes in review, cancel that review and send them with this release (default: stop)")
+	fs.String(&o.profile, "profile", 0, "", "iOS: a provisioning `profile`'s path, name or UUID (default: asuka.json's, else the best match installed)")
+	fs.String(&o.out, "out", 'o', "", "the output `directory` of the build (default: dist in the app's directory)")
+	fs.Bool(&o.noVet, "no-vet", 0, "don't run asuka vet first (by default it prints what it finds, as warnings: the build goes on)")
+	fs.Bool(&o.verbose, "verbose", 'v', "print the commands asuka runs and its requests to the store")
 	return fs
 }
 
 func cmdPublish(args []string) error {
 	var o publishOptions
 	fs := publishFlags(&o)
-	if err := fs.Parse(args); err != nil {
+	if err := fs.parse(args); err != nil {
 		return err
 	}
 	dir := "."
-	if fs.NArg() > 0 {
+	if fs.Arg(0) != "" {
 		dir = fs.Arg(0)
 	}
-	set := map[string]bool{}
-	fs.Visit(func(f *flag.Flag) { set[f.Name] = true })
-	if err := o.check(set); err != nil {
+	if err := o.check(fs.set); err != nil {
 		return err
 	}
 	notes, err := readNotes(o.notes)
@@ -101,13 +99,13 @@ func cmdPublish(args []string) error {
 // check refuses flags that don't go together, before anything is built.
 func (o *publishOptions) check(set map[string]bool) error {
 	if o.platform == "" {
-		return errors.New("usage: asuka publish -platform ios|android [flags] [dir]")
+		return errors.New("usage: asuka publish --platform ios|android [flags] [dir]")
 	}
 	ios := o.platform == platformIOS
 	only := func(platform string, names ...string) error {
 		for _, n := range names {
 			if set[n] {
-				return fmt.Errorf("-%s is for -platform %s", n, platform)
+				return fmt.Errorf("--%s is for --platform %s", n, platform)
 			}
 		}
 		return nil
@@ -120,30 +118,30 @@ func (o *publishOptions) check(set map[string]bool) error {
 		return err
 	}
 	if want := map[bool]string{true: ".ipa", false: ".aab"}[ios]; o.file != "" && !strings.EqualFold(filepath.Ext(o.file), want) {
-		return fmt.Errorf("-file %s: a %s", o.file, want)
+		return fmt.Errorf("--file %s: a %s", o.file, want)
 	}
 	if o.file != "" && set["build"] {
-		return errors.New("-build numbers a build asuka makes; the -file's number is its own")
+		return errors.New("--build numbers a build asuka makes; the --file's number is its own")
 	}
 	if set["build"] && o.build <= 0 {
-		return errors.New("-build: a number above 0")
+		return errors.New("--build: a number above 0")
 	}
 	switch o.release {
 	case "", "auto", "manual":
 	default:
-		return fmt.Errorf("-release %q: auto or manual", o.release)
+		return fmt.Errorf("--release %q: auto or manual", o.release)
 	}
 	if o.release != "" && !o.review {
-		return errors.New("-release goes with -review")
+		return errors.New("--release goes with --review")
 	}
 	if o.noWait && (o.groups != "" || o.notes != "" || o.review) {
-		return errors.New("-no-wait: -groups, -notes and -review need the build processed, so they wait")
+		return errors.New("--no-wait: --groups, --notes and --review need the build processed, so they wait")
 	}
 	if set["rollout"] && (o.rollout <= 0 || o.rollout >= 1) {
-		return fmt.Errorf("-rollout %v: a fraction of users above 0 and below 1, as 0.1", o.rollout)
+		return fmt.Errorf("--rollout %v: a fraction of users above 0 and below 1, as 0.1", o.rollout)
 	}
 	if o.draft && set["rollout"] {
-		return errors.New("-draft or -rollout: a draft isn't rolled out")
+		return errors.New("--draft or --rollout: a draft isn't rolled out")
 	}
 	return nil
 }
@@ -156,7 +154,7 @@ func buildForStore(app *goApp, o *buildOptions) (string, error) {
 	if err := os.MkdirAll(o.out, 0o755); err != nil {
 		return "", err
 	}
-	vetBuild(app.dir, o.vet)
+	vetBuild(app.dir, !o.noVet)
 	if o.platform == platformIOS {
 		o.distribution = "app-store"
 		return ipaPath(app.cfg, o), buildIOS(app, o)
@@ -178,14 +176,14 @@ func aabPath(cfg *appConfig, o *buildOptions) string {
 func nextBuild(highest, configured, want int) (int, error) {
 	if want > 0 {
 		if want <= highest {
-			return 0, fmt.Errorf("-build %d: the store has build %d already; a build must be numbered higher", want, highest)
+			return 0, fmt.Errorf("--build %d: the store has build %d already; a build must be numbered higher", want, highest)
 		}
 		return want, nil
 	}
 	return max(highest+1, configured), nil
 }
 
-// readNotes reads -notes: text, or @file, for the store's default
+// readNotes reads --notes: text, or @file, for the store's default
 // language (the key ""); or @dir, a file per language (<locale>.txt).
 func readNotes(s string) (map[string]string, error) {
 	if strings.TrimSpace(s) == "" {
@@ -197,7 +195,7 @@ func readNotes(s string) (map[string]string, error) {
 	}
 	st, err := os.Stat(path)
 	if err != nil {
-		return nil, fmt.Errorf("-notes: %v", err)
+		return nil, fmt.Errorf("--notes: %v", err)
 	}
 	if !st.IsDir() {
 		b, err := os.ReadFile(path)
@@ -205,7 +203,7 @@ func readNotes(s string) (map[string]string, error) {
 			return nil, err
 		}
 		if strings.TrimSpace(string(b)) == "" {
-			return nil, fmt.Errorf("-notes: %s is empty", path)
+			return nil, fmt.Errorf("--notes: %s is empty", path)
 		}
 		return map[string]string{"": strings.TrimSpace(string(b))}, nil
 	}
@@ -228,7 +226,7 @@ func readNotes(s string) (map[string]string, error) {
 		}
 	}
 	if len(notes) == 0 {
-		return nil, fmt.Errorf("-notes: no <locale>.txt with text in %s (as en-US.txt)", path)
+		return nil, fmt.Errorf("--notes: no <locale>.txt with text in %s (as en-US.txt)", path)
 	}
 	return notes, nil
 }
@@ -245,7 +243,7 @@ func localizeNotes(notes map[string]string, lang string, limit int, what string)
 			k = lang
 		}
 		if n := utf8.RuneCountInString(v); n > limit {
-			return nil, fmt.Errorf("-notes (%s): %d characters; %s takes at most %d", k, n, what, limit)
+			return nil, fmt.Errorf("--notes (%s): %d characters; %s takes at most %d", k, n, what, limit)
 		}
 		out[k] = v
 	}
@@ -339,7 +337,7 @@ func plistStrings(data []byte) (map[string]string, error) {
 	}
 }
 
-// publishIOS builds the app (or takes -file), uploads it to App Store
+// publishIOS builds the app (or takes --file), uploads it to App Store
 // Connect, waits for Apple to process it, and hands it to TestFlight's
 // groups and to App Review as asked.
 func publishIOS(c *ascClient, app *goApp, o *publishOptions, notes map[string]string, build func(*goApp, *buildOptions) (string, error)) error {
@@ -440,7 +438,7 @@ func ascHint(err error, key *ascKey) error {
 	return err
 }
 
-// publishAndroid builds the app (or takes -file), uploads it to Google
+// publishAndroid builds the app (or takes --file), uploads it to Google
 // Play and releases it on the track.
 func publishAndroid(p *playClient, app *goApp, o *publishOptions, notes map[string]string, build func(*goApp, *buildOptions) (string, error)) error {
 	cfg := app.cfg

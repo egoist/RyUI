@@ -904,16 +904,16 @@ The CLI does these builds itself (no gomobile).
 
 ```
 asuka new <dir>                             a project from the template
-asuka dev -platform ios|android <dir>       build, run, rebuild and restart on save
-asuka build -platform ios|android <dir>     a release build for the stores
-asuka publish -platform ios|android <dir>   the release build, uploaded: TestFlight, App Review; a Play track
-asuka dev -platform mac <dir>               build and run on this Mac, rerun on save
-asuka build -platform mac <dir>             a universal .app, signed (-sign; default ad hoc), its profile embedded (-profile); -appstore: a .pkg
-asuka dev -platform windows <dir>           build and run on this PC, rerun on save
-asuka build -platform windows <dir>         a folder: the .exe (icon, manifest, version; signed with ASUKA_WINDOWS_CERT) and its assets (-arch arm64)
-asuka dev -platform web <dir>               serve it to the browser, rebuild and reload on save
-asuka build -platform web <dir>             a static site: WebAssembly, the web host, a manifest
-asuka dev|build <dir>                       no -platform: this computer's, on macOS (mac) and Windows (windows)
+asuka dev --platform ios|android <dir>       build, run, rebuild and restart on save
+asuka build --platform ios|android <dir>     a release build for the stores
+asuka publish --platform ios|android <dir>   the release build, uploaded: TestFlight, App Review; a Play track
+asuka dev --platform mac <dir>               build and run on this Mac, rerun on save
+asuka build --platform mac <dir>             a universal .app, signed (--sign; default ad hoc), its profile embedded (--profile); --appstore: a .pkg
+asuka dev --platform windows <dir>           build and run on this PC, rerun on save
+asuka build --platform windows <dir>         a folder: the .exe (icon, manifest, version; signed with ASUKA_WINDOWS_CERT) and its assets (--arch arm64)
+asuka dev --platform web <dir>               serve it to the browser, rebuild and reload on save
+asuka build --platform web <dir>             a static site: WebAssembly, the web host, a manifest
+asuka dev|build <dir>                       no --platform: this computer's, on macOS (mac) and Windows (windows)
 asuka generate <dir>                        the typed functions of the app's catalogs
 asuka i18n init|add|check                   start, add languages to, and check the catalogs
 asuka vet [packages]                        what builds but runs wrong: a signal read once, written off the main thread
@@ -944,7 +944,7 @@ instead, where the system has them. The theme context is made again
 and the views that resolved theme colors are rebuilt, as on a dark mode
 change.
 
-**`asuka build -platform ios`** makes an `.ipa`, still without an Xcode project:
+**`asuka build --platform ios`** makes an `.ipa`, still without an Xcode project:
 the host compiled optimized (no debug automation), the Go archive for
 `arm64` devices, linked with dead stripping; an Info.plist with the
 keys App Store validation checks (`DT*` from the SDK and Xcode,
@@ -954,10 +954,10 @@ profile that fits the app ID best (exact before prefix before `*`) for
 the distribution (`app-store` by default, `ad-hoc`, `development`),
 unexpired, whose certificate's identity is in the keychain; its
 entitlements, with a wildcard app ID made the app's; `codesign` with
-the identity's SHA-1, verified. `-simulator` makes the same release build
+the identity's SHA-1, verified. `--simulator` makes the same release build
 for the simulator.
 
-**`asuka build -platform android`** makes an `.aab` for Google Play (no
+**`asuka build --platform android`** makes an `.aab` for Google Play (no
 `.apk`: Play makes each device's from it, with only that device's ABI):
 the Go code as a stripped `.so` for arm64-v8a, armeabi-v7a and x86_64,
 the assets, launcher icons (legacy per density, and adaptive: the icon
@@ -969,7 +969,7 @@ release build never loads a library from the app's files, as debug
 builds do in development; cleartext HTTP (the player's assets) is
 debug-only, as is iOS's local networking exception.
 
-**`asuka publish -platform ios`** and **`-platform android`** make the release build and
+**`asuka publish --platform ios`** and **`--platform android`** make the release build and
 upload it, through the stores' APIs from Go (no altool, no Gradle
 plugin), so a release is one command, in CI too. Everything the store
 can refuse is asked first, before the build: the app (App Store Connect
@@ -977,18 +977,18 @@ by bundle ID; Play by package, in an edit opened to look and deleted),
 whether the version still takes builds (approved or released: no), the
 TestFlight groups by name, and the store's highest build number. The
 build is numbered one above it (and at least `asuka.json`'s `build`), so
-`build` needn't be raised by hand; `-build` sets one. iOS: a JWT signed
+`build` needn't be raised by hand; `--build` sets one. iOS: a JWT signed
 with the App Store Connect API key (ES256, renewed every 10 minutes);
 the `.ipa` sent as `buildUploads` says, in parts, a few at a time, each
 retried; then the upload and the build polled until Apple has processed
 it (its warnings and errors printed), What to Test set, the build given
 to the groups (an internal group with every build skipped; an external
-one sends it to beta review), and with `-review` the App Store version
+one sends it to beta review), and with `--review` the App Store version
 made or found, given the build, its What's New (each language's, which
 an update needs) and submitted. Android: an OAuth token from the service
 account's signed assertion (RS256); the `.aab` in a resumable upload,
 chunk by chunk, resumed from where Play says it got to; a release on the
-track (`completed`, `inProgress` with `-rollout`, or a draft, which an
+track (`completed`, `inProgress` with `--rollout`, or a draft, which an
 app never published takes only); the edit committed without cancelling
 changes in review unless asked, and, if Play holds changes for the
 Console, committed unsent. Requests are retried when rate limited
@@ -1038,8 +1038,8 @@ the new code, with no install. The app's logs are the process's output.
   `adb reverse`. Assets are served over HTTP from the Mac
   (`boot.AssetBase`).
 - **Not in the player**: an app's own native code (`ios/`, `android/`),
-  which only an app built with it can show. Such apps, `-once` and
-  `-embed` build the app with its Go code, as before: `asuka dev`
+  which only an app built with it can show. Such apps, `--once` and
+  `--embed` build the app with its Go code, as before: `asuka dev`
   rebuilds the library and relaunches on the iOS simulator (no Xcode
   project: `swiftc` compiles the embedded host, with the app's Swift,
   into one object, cached; each change rebuilds the archive, links,
@@ -1110,7 +1110,7 @@ Desktop adds `host/darwin` and `internal/darwin` (macOS),
   platform/ios`; `./gradlew :asuka:testDebugUnitTest` in `platform/android`;
   `node --test platform/web`).
 - Hosts: GUI tests (`e2e/`, build tag `e2e`, in CI on a simulator and
-  an emulator) build `examples/` with `asuka dev -once` and drive them
+  an emulator) build `examples/` with `asuka dev --once` and drive them
   through the native views. Debug builds take automation commands (tap,
   type, submit, back, tab, rotate, dump: what the screen shows), on iOS from a file in the
   app's container on the `dev.asuka.automation` Darwin notification
@@ -1144,11 +1144,11 @@ Each one ends with its examples running and its tests in CI.
 - **M0, core without UI** (done): `signal`, `ui` with `host/fake`,
   `layout`, `ops` with the Go encoder. Everything above under `go test`.
 - **M1, iOS** (done): Swift codegen for `ops`, `mobile/`, `platform/ios`,
-  `asuka new`, `asuka dev -platform ios` on the simulator. Counter, todo (`For`,
+  `asuka new`, `asuka dev --platform ios` on the simulator. Counter, todo (`For`,
   `TextField`, `Toggle`, `SafeArea` with the keyboard) and list10k
   (`List`) run. Not yet: XCUITest GUI tests and CI on macOS runners.
 - **M2, Android** (done): Kotlin codegen, `platform/android`,
-  `asuka dev -platform android` on the emulator, Activity recreation
+  `asuka dev --platform android` on the emulator, Activity recreation
   (`asuka_attach`). The same examples run unchanged; live rotation, dark
   mode, font scale and the keyboard (insets, animated) work. Not yet:
   Espresso GUI tests.
@@ -1167,8 +1167,8 @@ Each one ends with its examples running and its tests in CI.
   player apps (iOS simulator, Android emulator and devices); app state
   survives a reload with no code. Not yet: physical iOS devices (the
   player would need signing and the Mac's address).
-- **M6, shipping** (done): `asuka.json`, `asuka build -platform ios` (signed `.ipa`;
-  `-simulator`), `asuka build -platform android` (`.aab`), `asuka
+- **M6, shipping** (done): `asuka.json`, `asuka build --platform ios` (signed `.ipa`;
+  `--simulator`), `asuka build --platform android` (`.aab`), `asuka
   publish` (the build uploaded through the stores' APIs: TestFlight's
   groups and beta review, App Review; a Play track, staged). Not yet:
   screenshots and store listings (App Store Connect and the Play Console
@@ -1320,7 +1320,7 @@ Each one ends with its examples running and its tests in CI.
     navigation drawer; `Replace` resets a stack at once); springs with
     `Damping` and `Velocity`, `Delay` and `OnDone`; `ToggleProps.Checkbox`;
     named `ContentType`s; and embedding in an existing app
-    (`asuka build -platform ios -xcframework`, `asuka build -platform android -aar`).
+    (`asuka build --platform ios --xcframework`, `asuka build --platform android --aar`).
 
   docs/parity.md has what Asuka has against SwiftUI and Expo;
   docs/device-checklist.md, what's left to check on real devices.
@@ -1333,9 +1333,9 @@ Each one ends with its examples running and its tests in CI.
   Linux and the web, each its own host, done.
 - **macOS** (done): `host/darwin`, AppKit in the app's process
   through purego (`internal/darwin`, MyGo's Objective-C runtime layer),
-  no cgo; `app.Run` runs it on macOS. `asuka dev -platform mac` (an `.app` like a
+  no cgo; `app.Run` runs it on macOS. `asuka dev --platform mac` (an `.app` like a
   release's, its assets read in place, its privacy prompts its own;
-  rebuild and rerun on save, signals' state kept) and `asuka build -platform mac` (a universal,
+  rebuild and rerun on save, signals' state kept) and `asuka build --platform mac` (a universal,
   signed `.app` with its icon and assets). The examples run. Done: the
   v0 components, navigation (below), rich text (an `NSTextView`), shapes,
   images, symbols, gestures, menus, animation, `WebView`, `Video`; tests
@@ -1359,7 +1359,7 @@ Each one ends with its examples running and its tests in CI.
   matched views (`Match`); pull to refresh (a trackpad's elastic pull
   past the top); `ui.Native` and the app's modules in Go (package
   `native`, below) or Swift (`macos/*.swift`, loaded from the bundle);
-  notarization (`asuka build -platform mac -notarize`).
+  notarization (`asuka build --platform mac --notarize`).
   Every module the packages call answers (below): the camera (its view,
   capture, recording, codes; `Take` a sheet of the host's), audio
   recording, contacts, calendars, the photo library and saving to it,
@@ -1368,14 +1368,14 @@ Each one ends with its examples running and its tests in CI.
   webauth, maps (`MKMapView`), tracking, App Attest, screen capture;
   sensors, widgets and the age range aren't a Mac's ("not available").
   The CLI gives a Mac app its purpose strings and its hardened runtime's
-  entitlements for them, and its provisioning profile (`-profile`,
+  entitlements for them, and its provisioning profile (`--profile`,
   `ASUKA_MAC_PROFILE`, asuka.json's `mac.profile`, else the best match
   installed for an app that needs one): embedded as
   `Contents/embedded.provisionprofile`, the app signed with its app ID,
   team and what its packages need of the profile's entitlements (push's
   `com.apple.developer.aps-environment`, Sign in with Apple, App Attest,
   detected from the imports as on iOS), with the identity the profile
-  allows; without one the build says what won't work. `-appstore`: the
+  allows; without one the build says what won't work. `--appstore`: the
   app sandboxed, signed with a Mac App Store profile, in a `.pkg`
   (`productbuild`, Mac Installer Distribution). Not yet: `ZoomFrom`'s
   zoom (a push slides), beginning a List's selection with a gesture
@@ -1383,14 +1383,14 @@ Each one ends with its examples running and its tests in CI.
 - **Windows** (done): `host/windows`, Win32 and the common
   controls (version 6) in the app's process through `syscall`
   (`internal/windows`, much of it MyGo's), no cgo, no WinUI; `app.Run`
-  runs it on Windows (amd64 and arm64). `asuka dev -platform windows` (rebuild and rerun on
-  save, signals' state kept) and `asuka build -platform windows` (a folder of the
+  runs it on Windows (amd64 and arm64). `asuka dev --platform windows` (rebuild and rerun on
+  save, signals' state kept) and `asuka build --platform windows` (a folder of the
   `.exe`, with its icon, manifest and version built in, signed and
   timestamped with `ASUKA_WINDOWS_CERT` (by the first timestamp server
   that answers, `ASUKA_WINDOWS_TIMESTAMP`'s or DigiCert's, Sectigo's,
   GlobalSign's; signtool on Windows, osslsigncode elsewhere), and its
   assets; for amd64, or
-  `-arch arm64`; from any system). The examples run (counter, todo, list10k,
+  `--arch arm64`; from any system). The examples run (counter, todo, list10k,
   navigation, gallery, richtext, markdown, notes, media but its native
   view, usage, downloader), light and dark, at any DPI. Done: the v0
   components, navigation, rich text (RichEdit), shapes, images, symbols
@@ -1427,9 +1427,9 @@ Each one ends with its examples running and its tests in CI.
   Nominatim), codes in images and the camera's frames (`internal/barcode`,
   in Go), a map view of OpenStreetMap's tiles.
 - **Web** (done): `host/web` and `platform/web` (below); `app.Run`
-  runs it on `js/wasm`. `asuka dev -platform web` (serve, rebuild and reload on
+  runs it on `js/wasm`. `asuka dev --platform web` (serve, rebuild and reload on
   save, signals' state kept; the app's output and the page's errors in
-  the terminal) and `asuka build -platform web` (a static site). The examples run,
+  the terminal) and `asuka build --platform web` (a static site). The examples run,
   light and dark, left to right and right to left, at any size;
   GUI tests (`e2e`, `-run Web`) drive them in headless Chrome. Done: the
   v0 components, navigation (the browser's back included), rich text and rich text fields (an editable element; formatting through the browser's editing, so its undo covers it),
@@ -1461,9 +1461,9 @@ Each one ends with its examples running and its tests in CI.
 - **Linux** (done): `host/linux`, GTK 4 and libadwaita in the app's
   process through purego (`internal/gtk`), no cgo; `app.Run` runs it on
   Linux (amd64 and arm64; GTK 4.14 and libadwaita 1.5 or later). `asuka
-  dev -platform linux` (on Linux: rebuild and rerun on save, signals'
+  dev --platform linux` (on Linux: rebuild and rerun on save, signals'
   state kept; `ASUKA_LINUX_RUN` runs it on another machine) and `asuka
-  build -platform linux` (from any system: an install prefix with the
+  build --platform linux` (from any system: an install prefix with the
   binary, its assets, its desktop file, icons and AppStream metainfo, a
   `.tar.gz`, and a Flatpak manifest on GNOME's runtime). The examples
   run; tests in `host/linux` drive real GTK windows under Xvfb, and GUI
@@ -2449,12 +2449,12 @@ calls:
   loads, unless it answers Asuka's `postMessage` protocol (docs/web.md).
 - Symbols are the Android host's Material Symbols, as SVG paths
   (`platform/web/gen_symbols.go` reads its drawables).
-- `asuka dev -platform web` serves the page, the host's files (a checkout's, so
+- `asuka dev --platform web` serves the page, the host's files (a checkout's, so
   changing them reloads the page too), the build and the assets, and
   keeps a connection to the page (server-sent events): a new build
   reloads it (the signals' values saved in its session storage first),
   a failed one shows its errors over it, and the GUI tests' automation
-  commands go through it. `asuka build -platform web` names the files by their
+  commands go through it. `asuka build --platform web` names the files by their
   content's digest, so only `index.html` and the manifest need fetching
   again.
 

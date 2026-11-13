@@ -5,8 +5,8 @@
 // columns, carrying Go values) and with other apps (files, photos,
 // links, text).
 //
-//	go run ./cmd/asuka dev -platform ios examples/interaction
-//	go run ./cmd/asuka dev -platform mac examples/interaction
+//	go run ./cmd/asuka dev --platform ios examples/interaction
+//	go run ./cmd/asuka dev --platform mac examples/interaction
 package main
 
 import (
