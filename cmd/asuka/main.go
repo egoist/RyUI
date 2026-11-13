@@ -29,8 +29,10 @@ func usage() {
                                             windows, linux or web (the browser); default on
                                             macOS, Windows and Linux: this computer
   asuka build [-p platform] [flags] [dir]   a release build for platform, likewise
-  asuka publish -p ios|android [flags] [dir]
-                                            a release build, uploaded to TestFlight or Google Play
+  asuka publish -p platform [flags] [dir]
+                                            a release build, uploaded to TestFlight or Google Play;
+                                            mac, windows, linux: its update, to asuka.json's updates
+  asuka update keygen                       make the key pair that signs a desktop app's updates
   asuka generate [dir]                      write the functions of the app's catalogs
   asuka i18n init|add|check                 start, add languages to, and check the catalogs
   asuka vet [flags] [packages]              report what builds but runs wrong, as a signal read once
@@ -62,6 +64,8 @@ func main() {
 		err = cmdGenerate(os.Args[2:])
 	case "i18n":
 		err = cmdI18n(os.Args[2:])
+	case "update":
+		err = cmdUpdate(os.Args[2:])
 	case "vet":
 		err = cmdVet(os.Args[2:])
 	case "-h", "--help", "help":

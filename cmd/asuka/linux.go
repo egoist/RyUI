@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	iupdate "github.com/egoist/asuka/internal/update"
 )
 
 // Linux: the app's Go code and its host (host/linux, GTK 4 and
@@ -217,7 +219,8 @@ func buildLinux(app *goApp, o *buildOptions) error {
 	if err := os.MkdirAll(filepath.Join(out, "bin"), 0o755); err != nil {
 		return err
 	}
-	args := []string{"build", "-trimpath", linuxLdflags(app, true), "-o", filepath.Join(out, "bin", exe), "."}
+	target := "linux-" + arch
+	args := []string{"build", "-trimpath", linuxLdflags(app, true) + updateLdflags(app, target), "-o", filepath.Join(out, "bin", exe), "."}
 	if o.verbose {
 		fmt.Println("+ GOOS=linux GOARCH="+arch+" CGO_ENABLED=0 go", strings.Join(args, " "))
 	}
@@ -230,9 +233,24 @@ func buildLinux(app *goApp, o *buildOptions) error {
 	if err := writeLinuxShare(app, out, exe); err != nil {
 		return err
 	}
+	u, _ := app.cfg.updates()
+	b := updateBuild{target: target, kind: iupdate.Prefix, dir: base, root: out}
+	if u != nil {
+		// What the version installs, which its update replaces.
+		if err := writeFileList(b); err != nil {
+			return err
+		}
+	}
 	tgz := filepath.Join(base, fmt.Sprintf("%s-%s-linux-%s.tar.gz", exe, app.cfg.Version, arch))
 	if err := tarGz(out, tgz); err != nil {
 		return err
+	}
+	if u != nil || o.publishing {
+		// The tarball is the update's archive.
+		b.tarball = tgz
+		if _, err := writeUpdates(app, o.out, b, o.publishing); err != nil {
+			return err
+		}
 	}
 	manifest := filepath.Join(base, app.bundleID+".yml")
 	if err := os.WriteFile(manifest, []byte(flatpakManifest(app, exe)), 0o644); err != nil {

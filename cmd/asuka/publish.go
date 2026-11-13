@@ -40,9 +40,13 @@ type publishOptions struct {
 
 func publishFlags(o *publishOptions) *flagSet {
 	fs := newFlagSet("publish", "[dir]")
-	fs.about = "Makes a release build of the app and uploads it to App Store Connect or Google Play."
-	platformFlag(fs, &o.platform, []string{platformIOS, platformAndroid},
-		"the `platform` whose store to upload to: ios, App Store Connect (TestFlight and the App Store); android, Google Play")
+	fs.about = "Makes a release build of the app and uploads it to App Store Connect or Google Play; a desktop app's, with its update, to asuka.json's updates (GitHub's releases, an S3 bucket)."
+	platformFlag(fs, &o.platform, []string{platformIOS, platformAndroid, platformMac, platformWindows, platformLinux},
+		"the `platform` whose store to upload to: ios, App Store Connect (TestFlight and the App Store); android, Google Play; mac, windows or linux, the update files where asuka.json's updates say (installed apps update to it)")
+	fs.String(&o.sign, "sign", 0, "", "macOS: a signing `identity`, e.g. \"Developer ID Application: ...\" (default: ad hoc)")
+	fs.String(&o.notarize, "notarize", 0, "", "macOS: notarize the app and staple the ticket: a notarytool keychain `profile`, or \"env\"")
+	fs.String(&o.arch, "arch", 0, "", "Linux and Windows: amd64 or arm64")
+	fs.String(&o.version, "version", 0, "", "the `version` to build, in place of asuka.json's (as CI takes it from the tag)")
 	fs.String(&o.file, "file", 0, "", "upload this .ipa or .aab (from asuka build) instead of building one")
 	fs.Int(&o.build, "build", 0, 0, "the build `number` (default: one more than the store's highest, at least asuka.json's build)")
 	fs.String(&o.notes, "notes", 0, "", "what's new: text in the store's default language, @file likewise, or @dir with a file per language as the store names it (en-US.txt); TestFlight's What to Test and, with --review, the App Store's What's New; Play's release notes")
@@ -52,7 +56,7 @@ func publishFlags(o *publishOptions) *flagSet {
 	fs.Bool(&o.noWait, "no-wait", 0, "iOS: stop once App Store Connect has the upload, without waiting for Apple to process it")
 	fs.String(&o.track, "track", 0, "internal", "Android: the track to release to: internal, alpha, beta, production, or a closed track's name")
 	fs.Float(&o.rollout, "rollout", 0, 0, "Android: roll the release out to this `fraction` of users, as 0.1, raised later in the Play Console (default: all)")
-	fs.Bool(&o.draft, "draft", 0, "Android: a draft release, to roll out in the Play Console")
+	fs.Bool(&o.draft, "draft", 0, "Android: a draft release, to roll out in the Play Console; mac, windows, linux on GitHub: upload to a draft release, which you publish once every platform is there (default: published)")
 	fs.Bool(&o.cancelReview, "cancel-review", 0, "Android: if the app has changes in review, cancel that review and send them with this release (default: stop)")
 	fs.String(&o.profile, "profile", 0, "", "iOS: a provisioning `profile`'s path, name or UUID (default: asuka.json's, else the best match installed)")
 	fs.String(&o.out, "out", 'o', "", "the output `directory` of the build (default: dist in the app's directory)")
@@ -73,6 +77,13 @@ func cmdPublish(args []string) error {
 	}
 	if err := o.check(fs.set); err != nil {
 		return err
+	}
+	if desktopPlatform(o.platform) {
+		app, err := loadApp(dir)
+		if err != nil {
+			return err
+		}
+		return publishDesktop(app, &o)
 	}
 	notes, err := readNotes(o.notes)
 	if err != nil {
@@ -99,7 +110,7 @@ func cmdPublish(args []string) error {
 // check refuses flags that don't go together, before anything is built.
 func (o *publishOptions) check(set map[string]bool) error {
 	if o.platform == "" {
-		return errors.New("usage: asuka publish --platform ios|android [flags] [dir]")
+		return errors.New("usage: asuka publish --platform ios|android|mac|windows|linux [flags] [dir]")
 	}
 	ios := o.platform == platformIOS
 	only := func(platform string, names ...string) error {
@@ -109,6 +120,19 @@ func (o *publishOptions) check(set map[string]bool) error {
 			}
 		}
 		return nil
+	}
+	if desktopPlatform(o.platform) {
+		// The release notes are the changelog's; the rest is the stores'.
+		if err := only("ios or android", "file", "build", "notes", "groups", "review", "release", "no-wait", "track", "rollout", "cancel-review", "profile"); err != nil {
+			return err
+		}
+		if o.platform != platformMac {
+			return only("mac", "sign", "notarize")
+		}
+		return only("linux or windows", "arch")
+	}
+	if err := only("mac, windows or linux", "sign", "notarize", "arch", "version"); err != nil {
+		return err
 	}
 	if ios {
 		if err := only("android", "track", "rollout", "draft", "cancel-review"); err != nil {
