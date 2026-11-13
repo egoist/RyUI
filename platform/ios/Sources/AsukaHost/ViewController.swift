@@ -62,6 +62,14 @@ public final class AsukaViewController: UIViewController {
     public override var preferredStatusBarStyle: UIStatusBarStyle { AsukaScreen.statusBarStyle }
     public override var prefersStatusBarHidden: Bool { AsukaScreen.statusBarHidden }
 
+    // A hardware keyboard's keys: the Keys of the views the keyboard's
+    // focus is in (KeyCommands.swift). UIKit asks the responder chain, from the
+    // first responder, which comes here (a presented controller's goes
+    // through the one presenting it).
+    public override var keyCommands: [UIKeyCommand]? { AsukaRuntime.shared.keyCommands() }
+
+    @objc func asukaKey(_ c: UIKeyCommand) { AsukaRuntime.shared.keyCommand(c) }
+
     func mount(_ v: UIView) {
         root?.removeFromSuperview()
         root = v

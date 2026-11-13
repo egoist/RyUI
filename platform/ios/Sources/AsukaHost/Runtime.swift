@@ -81,6 +81,8 @@ let asukaAssets: URL? = {
     var textAlign: Int32 = 0
     /// The LayoutDirection prop: inherit is the app's.
     var direction = AsukaLayoutDirection.inherit
+    /// Its Keys prop's keys, as key commands (KeyCommands.swift).
+    var keyCommands: [UIKeyCommand] = []
 
     /// Whether an ancestor is being popped or dismissed.
     var underDying: Bool {
@@ -285,6 +287,8 @@ final class AsukaTextField: UITextField {
     public static let shared = AsukaRuntime()
 
     var nodes: [UInt32: AsukaNode] = [:]
+    /// The nodes with Keys.
+    var keyed = Set<UInt32>()
     /// Buttons with a glass variant (roundGlass).
     var glassButtons = Set<ObjectIdentifier>()
     weak var controller: AsukaViewController?
@@ -605,6 +609,7 @@ final class AsukaTextField: UITextField {
 
     public func destroy(_ id: UInt32) {
         guard let n = nodes.removeValue(forKey: id) else { return }
+        keyed.remove(id)
         if destroyController(n) { return }
         for c in n.children { c.parent = nil }
         if matchOut(n) { return }
