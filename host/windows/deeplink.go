@@ -4,8 +4,9 @@ import "strings"
 
 // Links into the app, apart from the host (it builds anywhere, so it's
 // tested anywhere). An app with an ID (asuka.json's, set by the Asuka CLI)
-// runs once: a second launch hands the first its URL, or brings it to the
-// front, and quits (deeplink_windows.go). An app with a scheme
+// runs once (unless asuka.json's "singleInstance" is false): a second
+// launch hands the first its arguments and working directory, which bring
+// it to the front, and quits (deeplink_windows.go, files.go). An app with a scheme
 // (asuka.json's "scheme") is its URLs' handler: registered for the user as
 // it starts, its command line `"app.exe" "myapp://..."`.
 
@@ -40,20 +41,6 @@ func notItself(getenv func(string) string) bool {
 		}
 	}
 	return false
-}
-
-// launchURL is the URL of scheme's the app was started with (args:
-// os.Args), or "".
-func launchURL(args []string, scheme string) string {
-	if scheme == "" {
-		return ""
-	}
-	for _, a := range args[min(1, len(args)):] {
-		if len(a) > len(scheme) && strings.EqualFold(a[:len(scheme)], scheme) && a[len(scheme)] == ':' {
-			return a
-		}
-	}
-	return ""
 }
 
 // urlSchemeValues are the registry values, under HKEY_CURRENT_USER, that

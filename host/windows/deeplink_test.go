@@ -5,30 +5,6 @@ import (
 	"testing"
 )
 
-// The URL an app was started with is its scheme's, whatever its case,
-// found among the other arguments.
-func TestLaunchURL(t *testing.T) {
-	for _, c := range []struct {
-		args   []string
-		scheme string
-		want   string
-	}{
-		{[]string{`C:\a\App.exe`, "myapp://item/1"}, "myapp", "myapp://item/1"},
-		{[]string{`C:\a\App.exe`, "MyApp:item?x=1%202"}, "myapp", "MyApp:item?x=1%202"},
-		{[]string{`C:\a\App.exe`, "-ToastActivated"}, "myapp", ""},
-		{[]string{`C:\a\App.exe`, "myapp"}, "myapp", ""},
-		{[]string{`C:\a\App.exe`, "myapps://x"}, "myapp", ""},
-		{[]string{`C:\a\App.exe`, "https://example.com", "myapp://b"}, "myapp", "myapp://b"},
-		{[]string{`C:\a\App.exe`, "myapp://x"}, "", ""},
-		{[]string{"myapp://x"}, "myapp", ""}, // the program, not an argument
-		{nil, "myapp", ""},
-	} {
-		if got := launchURL(c.args, c.scheme); got != c.want {
-			t.Errorf("launchURL(%q, %q) = %q, want %q", c.args, c.scheme, got, c.want)
-		}
-	}
-}
-
 // The scheme's handler is the app for the user: a URL protocol whose
 // command passes the URL, quoted, to the executable.
 func TestURLSchemeValues(t *testing.T) {

@@ -86,7 +86,7 @@ func (h *Host) message(hwnd uintptr, m uint32, wp, lp uintptr) (uintptr, bool) {
 			return 0, true
 		case WM_COPYDATA:
 			if tag, b := CopyDataBytes(lp); tag == instanceTag {
-				h.launchedAgain(string(b)) // deeplink_windows.go
+				h.launchedAgain(b) // deeplink_windows.go
 				return 1, true
 			}
 		}
@@ -177,6 +177,10 @@ func (h *Host) makeWindow() {
 func (h *Host) windowMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
 	h.placementMessage(m, wp)
 	h.badgeMessage(m)
+	// Closing it, and the session ending, quit the app (files_windows.go).
+	if r, ok := h.quitMessage(m, wp, lp); ok {
+		return r, true
+	}
 	if r, ok := h.menuBarMessage(h.window, m, wp, lp); ok {
 		return r, true
 	}
