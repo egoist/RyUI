@@ -165,10 +165,22 @@ func registerTarget() {
 			h().lifecycle(ops.LifecycleBackground)
 			saveState()
 		}),
-		Method("applicationDidHide:", func(self ID, _ SEL, n ID) { h().lifecycle(ops.LifecycleBackground) }),
-		Method("applicationDidUnhide:", func(self ID, _ SEL, n ID) { h().lifecycle(ops.LifecycleForeground) }),
-		Method("applicationDidResignActive:", func(self ID, _ SEL, n ID) { h().appActive(false) }),
-		Method("applicationDidBecomeActive:", func(self ID, _ SEL, n ID) { h().appActive(true) }),
+		Method("applicationDidHide:", func(self ID, _ SEL, n ID) {
+			h().lifecycle(ops.LifecycleBackground)
+			h().windowsChanged()
+		}),
+		Method("applicationDidUnhide:", func(self ID, _ SEL, n ID) {
+			h().lifecycle(ops.LifecycleForeground)
+			h().windowsChanged()
+		}),
+		Method("applicationDidResignActive:", func(self ID, _ SEL, n ID) {
+			h().appActive(false)
+			h().windowsChanged()
+		}),
+		Method("applicationDidBecomeActive:", func(self ID, _ SEL, n ID) {
+			h().appActive(true)
+			h().windowsChanged()
+		}),
 		Method("application:openURLs:", func(self ID, _ SEL, app, urls ID) {
 			for _, u := range ArrayItems(urls) {
 				h().openURL(GoString(Send(u, "absoluteString")))
@@ -177,10 +189,19 @@ func registerTarget() {
 		Method("applicationSupportsSecureRestorableState:", func(self ID, _ SEL, app ID) bool { return true }),
 
 		// The window.
-		Method("windowDidResize:", func(self ID, _ SEL, n ID) { h().environmentChanged() }),
+		Method("windowDidResize:", func(self ID, _ SEL, n ID) {
+			h().environmentChanged()
+			h().windowsChanged()
+		}),
 		Method("windowDidChangeBackingProperties:", func(self ID, _ SEL, n ID) { h().environmentChanged() }),
-		Method("windowDidMiniaturize:", func(self ID, _ SEL, n ID) { h().lifecycle(ops.LifecycleBackground) }),
-		Method("windowDidDeminiaturize:", func(self ID, _ SEL, n ID) { h().lifecycle(ops.LifecycleForeground) }),
+		Method("windowDidMiniaturize:", func(self ID, _ SEL, n ID) {
+			h().lifecycle(ops.LifecycleBackground)
+			h().windowsChanged()
+		}),
+		Method("windowDidDeminiaturize:", func(self ID, _ SEL, n ID) {
+			h().lifecycle(ops.LifecycleForeground)
+			h().windowsChanged()
+		}),
 		Method("observeValueForKeyPath:ofObject:change:context:", func(self ID, _ SEL, keyPath, object, change ID, ctx uintptr) {
 			switch GoString(keyPath) {
 			case "presentationSize":

@@ -199,6 +199,7 @@ type Host struct {
 	wins          map[ID]*win       // the Windows' windows, by NSWindow
 	appMenus      []appMenu         // MenuBar's
 	chromeQueued  bool
+	winQueued     bool // a report of the windows' states waits (winctl.go)
 	a11yActions   map[ID]a11yAction
 	exiting       map[ID]bool // views going out with a transition
 
@@ -275,14 +276,15 @@ func Run(root func() ui.Node) {
 		// asuka/notify: the center's delegate before launch ends.
 		h.installNotifications()
 		h.enter(func() { ui.Mount(h, root) })
-		if os.Getenv("ASUKA_SNAPSHOT") != "" {
-			// Automation: shown, without taking the user's focus.
-			Send(h.window, "orderFront:", 0)
-		} else {
-			Send(h.window, "makeKeyAndOrderFront:", 0)
-			// A plain executable (go run, asuka dev) doesn't come to the
-			// front on its own.
-			Send(Send(Class("NSApplication"), "sharedApplication"), "activateIgnoringOtherApps:", 1)
+		if !h.main.configured {
+			// No WindowOptions: the host's, kept under "main".
+			h.configure(h.main, ops.WindowConfig{})
+		}
+		// Shown (automation: without taking the user's focus) unless the
+		// app shows it itself; a plain executable (go run, asuka dev)
+		// doesn't come to the front on its own.
+		if h.main.cfg.Flags&ops.WindowHidden == 0 {
+			h.showWin(h.main, true)
 		}
 		h.automation()
 	})

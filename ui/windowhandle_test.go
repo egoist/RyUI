@@ -174,6 +174,9 @@ func TestWindowCloseRequestAndHandle(t *testing.T) {
 		t.Fatalf("open %v, %d presented, same handle %v", open.Peek(), len(ps), inner == handle)
 	}
 	win := ps[0]
+	if !win.Listens[ops.EventWindowState] {
+		t.Fatal("a Handle's window doesn't report its state")
+	}
 	c := h.Window(win).Config
 	if c.Flags != ops.WindowHidden|ops.WindowFixedSize || c.StateKey != "inspector" {
 		t.Fatalf("config %+v", c)

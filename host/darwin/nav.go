@@ -46,8 +46,8 @@ type nav struct {
 	alert  ID
 	order  []int // an alert's buttons' indexes, in the alert's order
 
-	// Window: its content's size when it opens, and its least.
-	size, minSize Size
+	// Window: its options (Config).
+	cfg ops.WindowConfig
 }
 
 func (h *Host) createNav(n *node) bool {
@@ -228,6 +228,12 @@ func (h *Host) destroyNav(n *node) bool {
 		if w := n.nav.window; w != 0 {
 			delete(h.wins, w)
 			Send(w, "setDelegate:", 0)
+			if p := Send(w, "sheetParent"); p != 0 {
+				Send(p, "endSheet:", uintptr(w))
+			}
+			if p := Send(w, "parentWindow"); p != 0 {
+				Send(p, "removeChildWindow:", uintptr(w))
+			}
 			Send(w, "orderOut:", 0)
 			Send(w, "close")
 			Release(w)
@@ -359,6 +365,9 @@ func (h *Host) reportScreen(n *node, s Size) {
 	env := h.env
 	env.Width, env.Height = float32(s.Width), float32(s.Height)
 	env.SafeTop, env.SafeRight, env.SafeBottom, env.SafeLeft = 0, 0, 0, 0
+	if n.kind == ops.KindWindow {
+		env.SafeTop = h.wins[n.nav.window].safeTop()
+	}
 	// Its window's display's scale: a Window on another display than the
 	// main window's has its own.
 	if w := Send(n.view, "window"); w != 0 {
@@ -428,9 +437,7 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 				h.updateWindowChrome()
 			}
 		case ops.PropWindowConfig:
-			c := ops.DecodeWindowConfig(v.Bytes)
-			n.nav.size = Size{Width: float64(c.Width), Height: float64(c.Height)}
-			n.nav.minSize = Size{Width: float64(c.MinWidth), Height: float64(c.MinHeight)}
+			n.nav.cfg = ops.DecodeWindowConfig(v.Bytes)
 		}
 	case ops.KindAlert:
 		switch p {
@@ -571,6 +578,15 @@ type win struct {
 	root            *node  // what it shows: the root, or the Window node
 	base            string // its title when no screen names it
 	chrome          chrome
+
+	// Its options and state (winctl.go).
+	cfg        ops.WindowConfig
+	state      ops.WindowState // as last reported
+	stateSent  bool
+	shown      bool // has shown: what it opens as (zoomed, full screen) is done
+	configured bool // its options are applied
+	child      ID   // the window it's a child window of
+	sheetOf    ID   // the window it's a sheet of (Modal)
 }
 
 // chrome is what a window's title and toolbar show: the innermost shown
@@ -969,11 +985,21 @@ func navMethods() []objc.MethodDef {
 		Method("windowShouldClose:", func(self ID, _ SEL, w ID) bool {
 			h := theHost
 			if h.main != nil && w == h.main.window {
+				// The core asks the app first, and closes it if it may.
+				if h.root != nil && h.root.listening(ops.EventCloseRequest) {
+					h.emit(h.root, ops.Event{Kind: ops.EventCloseRequest})
+					return false
+				}
 				return true
 			}
-			// A Window's or a sheet's: the core closes it.
+			// A Window's or a sheet's: the core closes it, asking the app
+			// first if it wants to be.
 			if x := h.wins[w]; x != nil {
-				h.emit(x.root, ops.Event{Kind: ops.EventDismissed})
+				if x.root.listening(ops.EventCloseRequest) {
+					h.emit(x.root, ops.Event{Kind: ops.EventCloseRequest})
+				} else {
+					h.emit(x.root, ops.Event{Kind: ops.EventDismissed})
+				}
 				return false
 			}
 			h.cancel(Send(w, "contentView"))

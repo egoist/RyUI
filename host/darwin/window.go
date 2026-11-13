@@ -3,9 +3,7 @@
 package darwin
 
 import (
-	"os"
 	"strings"
-	"testing"
 
 	. "github.com/egoist/asuka/internal/darwin"
 	"github.com/egoist/asuka/internal/l10n"
@@ -41,11 +39,8 @@ func (h *Host) makeWindow() {
 	MsgSetSize(w, Sel("setContentMinSize:"), Size{Width: 320, Height: 320})
 	Send(w, "setDelegate:", uintptr(h.target))
 	Send(w, "center")
-	// The window comes back where the user left it (not a test's, nor
-	// an automation run's: they'd leave theirs in the user's defaults).
-	if !testing.Testing() && os.Getenv("ASUKA_SNAPSHOT") == "" {
-		Send(w, "setFrameAutosaveName:", uintptr(String("asuka "+h.appName)))
-	}
+	// Where the user left it comes back as its options are applied
+	// (configure, under its key).
 	h.window, h.content = w, content
 	h.main = &win{window: w, content: content, base: h.appName}
 	// A toolbar coming or going resizes the content, not the window.
@@ -223,7 +218,8 @@ func (h *Host) environment() ops.Environment {
 	ws := Send(Class("NSWorkspace"), "sharedWorkspace")
 	return ops.Environment{
 		Width: float32(b.Size.Width), Height: float32(b.Size.Height),
-		Scale: float32(scale), FontScale: 1,
+		SafeTop: h.main.safeTop(),
+		Scale:   float32(scale), FontScale: 1,
 		Dark:         h.isDark(),
 		ReduceMotion: SendBool(ws, "accessibilityDisplayShouldReduceMotion"),
 		ScreenReader: SendBool(ws, "isVoiceOverEnabled"),
@@ -304,29 +300,34 @@ func (h *Host) openURL(u string) {
 	h.dispatch(ops.Event{ID: h.root.id, Kind: ops.EventIncomingURL, Str: u})
 }
 
-// openWindow opens a Window's window: its content's size (the main
-// window's default if the app gives none), its least, its title; placed down and right of the window in use, as new windows
-// cascade.
+// openWindow opens a Window's window with its options (winctl.go): its
+// content's size (the main window's default if the app gives none), its
+// least and most, its title; where the user left it if it has a key, else
+// where its options say, else down and right of the window in use, as new
+// windows cascade. A child goes above its parent, a modal one is a sheet
+// of it. It shows unless it opens hidden.
 func (h *Host) openWindow(n *node) {
 	if n.nav.window != 0 {
 		return
 	}
-	size := n.nav.size
+	c := n.nav.cfg
+	size := Size{Width: float64(c.Width), Height: float64(c.Height)}
 	if size.Width <= 0 {
 		size.Width = defaultWindowWidth
 	}
 	if size.Height <= 0 {
 		size.Height = defaultWindowHeight
 	}
+	c.Width, c.Height = float32(size.Width), float32(size.Height)
 	w := MsgInitWindow(Send(Class("NSWindow"), "alloc"), Sel("initWithContentRect:styleMask:backing:defer:"),
-		Rect{Size: size}, styleTitled|styleClosable|styleMiniaturizable|styleResizable, backingBuffered, false)
+		Rect{Size: size}, styleMask(&c), backingBuffered, false)
 	Send(w, "setReleasedWhenClosed:", 0)
 	content := MsgInitRect(Send(Class("AsukaView"), "alloc"), Sel("initWithFrame:"), Rect{Size: size})
 	Send(content, "setAutoresizesSubviews:", 0)
 	Send(w, "setContentView:", uintptr(content))
 	Release(content)
-	if n.nav.minSize.Width > 0 || n.nav.minSize.Height > 0 {
-		MsgSetSize(w, Sel("setContentMinSize:"), Size{Width: max(n.nav.minSize.Width, 1), Height: max(n.nav.minSize.Height, 1)})
+	if c.MinWidth > 0 || c.MinHeight > 0 {
+		MsgSetSize(w, Sel("setContentMinSize:"), Size{Width: max(float64(c.MinWidth), 1), Height: max(float64(c.MinHeight), 1)})
 	}
 	Send(w, "setDelegate:", uintptr(h.target))
 	MsgSetRect(n.view, selSetFrame, Rect{Size: size})
@@ -339,42 +340,37 @@ func (h *Host) openWindow(n *node) {
 	h.wins[w] = x
 	n.nav.window = w
 	n.presented = true
-	// Cascade from the window in use.
+	if c.Flags&ops.WindowChild != 0 {
+		parent := h.parentWindow(c.Parent)
+		if c.Flags&ops.WindowModal != 0 {
+			x.sheetOf = parent
+		} else {
+			x.child = parent
+		}
+	}
+	// Cascade from the window in use, unless it's placed.
 	from := MsgRect(h.keyWin().window, Sel("frame"))
 	MsgPointID(w, Sel("cascadeTopLeftFromPoint:"), Point{X: from.Origin.X + 24, Y: from.Origin.Y + from.Size.Height - 24})
-	h.reportScreen(n, size)
+	h.configure(x, c)
+	h.reportScreen(n, MsgRect(content, Sel("bounds")).Size)
 	h.updateWindowChrome()
-	if os.Getenv("ASUKA_SNAPSHOT") != "" {
-		Send(w, "orderFront:", 0)
-	} else {
-		Send(w, "makeKeyAndOrderFront:", 0)
+	if c.Flags&ops.WindowHidden == 0 {
+		h.showWin(x, false)
 	}
 }
 
 // windowOptions applies WindowOptions to the main window: its title, its
-// least size, and its size unless the user's is remembered.
+// least size, and its other options (configure: its size and place
+// unless the user's are remembered).
 func (h *Host) windowOptions(args []byte) {
 	c := ops.DecodeWindowConfig(args)
-	w, ht, minW, minH := float64(c.Width), float64(c.Height), float64(c.MinWidth), float64(c.MinHeight)
-	if title := c.Title; title != "" {
-		h.main.base = title
+	if c.Title != "" {
+		h.main.base = c.Title
 	}
-	if minW > 0 || minH > 0 {
-		MsgSetSize(h.window, Sel("setContentMinSize:"), Size{Width: max(minW, 1), Height: max(minH, 1)})
+	if c.MinWidth > 0 || c.MinHeight > 0 {
+		MsgSetSize(h.window, Sel("setContentMinSize:"), Size{Width: max(float64(c.MinWidth), 1), Height: max(float64(c.MinHeight), 1)})
 	}
-	defaults := Send(Class("NSUserDefaults"), "standardUserDefaults")
-	saved := Send(defaults, "objectForKey:", uintptr(String("NSWindow Frame asuka "+h.appName))) != 0
-	if (w > 0 || ht > 0) && !saved {
-		cur := MsgRect(h.content, Sel("bounds")).Size
-		if w <= 0 {
-			w = cur.Width
-		}
-		if ht <= 0 {
-			ht = cur.Height
-		}
-		MsgSetSize(h.window, Sel("setContentSize:"), Size{Width: w, Height: ht})
-		Send(h.window, "center")
-	}
+	h.configure(h.main, c)
 	h.updateWindowChrome()
 	h.environmentChanged()
 }

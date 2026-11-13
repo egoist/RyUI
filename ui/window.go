@@ -149,6 +149,8 @@ func Window(p WindowProps) Node {
 	wh := p.Handle
 	if wh == nil {
 		wh = NewWindowHandle()
+	} else {
+		wh.watched = true // the app reads it from outside
 	}
 	wh.r = r
 	wh.open = p.Open

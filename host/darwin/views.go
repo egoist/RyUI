@@ -696,6 +696,10 @@ func (h *Host) goColor(c ID) ops.Color {
 // listen adds what an event needs on the native side: gesture
 // recognizers on views, scroll observation.
 func (h *Host) listen(n *node, e ops.EventKind) {
+	if e == ops.EventWindowState {
+		h.listenWindow(n)
+		return
+	}
 	if e == ops.EventScrolled && (n.kind == ops.KindScroll || n.kind == ops.KindList) && !n.scroll {
 		n.scroll = true
 		clip := Send(n.view, "contentView")
