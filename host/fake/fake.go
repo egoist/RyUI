@@ -73,6 +73,10 @@ type Host struct {
 	// Modules answer Calls, by module name: as a host's, with Result
 	// events (posted: run them with RunPosted).
 	Modules map[string]func(method string, args []byte) ([]byte, error)
+	// AsyncModules answer Calls later, as a host's methods that wait do
+	// (a "next" answered at the next change): reply posts the Result,
+	// once, from any goroutine. A module here is asked before Modules.
+	AsyncModules map[string]func(method string, args []byte, reply func([]byte, error))
 
 	core     host.Core
 	posted   []func()
@@ -423,6 +427,11 @@ func (h *Host) call(root ops.NodeID, b []byte) {
 	n = le.Uint32(b)
 	method := string(b[4 : 4+n])
 	args := append([]byte(nil), b[4+n:]...)
+	if f := h.AsyncModules[module]; f != nil {
+		var once sync.Once
+		f(method, args, func(res []byte, err error) { once.Do(func() { h.result(root, id, res, err) }) })
+		return
+	}
 	var res []byte
 	var err error
 	if f := h.Modules[module]; f != nil {
@@ -430,7 +439,12 @@ func (h *Host) call(root ops.NodeID, b []byte) {
 	} else {
 		err = fmt.Errorf("no module %q", module)
 	}
-	out := le.AppendUint32(nil, id)
+	h.result(root, id, res, err)
+}
+
+// result posts a Call's Result.
+func (h *Host) result(root ops.NodeID, id uint32, res []byte, err error) {
+	out := binary.LittleEndian.AppendUint32(nil, id)
 	if err != nil {
 		out = append(append(out, 0), err.Error()...)
 	} else {

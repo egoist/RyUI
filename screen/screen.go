@@ -1,7 +1,9 @@
 // Package screen is what an app sets about the screen it runs on: the
 // orientations it may turn to (expo-screen-orientation), the system bars
 // (expo-status-bar, expo-navigation-bar), whether what it shows may be
-// captured, and the screenshots the user takes (expo-screen-capture).
+// captured, and the screenshots the user takes (expo-screen-capture);
+// and the displays the device has (Electron's screen): where each is,
+// its work area, scale and refresh rate, and when they change.
 //
 // Each setting holds until it's set again; they're the app's, not a
 // screen's: a screen that sets one resets it as it goes (signal.OnCleanup).
