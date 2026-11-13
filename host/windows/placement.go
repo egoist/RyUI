@@ -3,26 +3,28 @@
 package windows
 
 import (
-	"bytes"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 
 	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/internal/winstate"
 )
 
-// The main window comes back where the user left it, as macOS's frame
-// autosave has it: its normal rectangle (in screen pixels, at the DPI it
-// was at) and whether it was maximized, kept in a file in the app's data
-// directory (ASUKA_DATA: Local AppData\<name>), saved when the user is done
-// moving or sizing it, maximizes or restores it, or closes it, not on
+// The app's windows come back where the user left them, as macOS's frame
+// autosave has it: the main window always (under the key "main", or the
+// app's StateKey), a Window with a StateKey. Each one's normal rectangle
+// (in screen pixels, at the DPI it was at) and whether it was maximized
+// are kept by key (internal/winstate) in a file in the app's data
+// directory (ASUKA_DATA: Local AppData\<name>), saved when the user is
+// done moving or sizing it, maximizes or restores it, or closes it, not on
 // every pixel of a drag. It's restored before the window shows, onto a
 // monitor that's there (the nearest, if the one it was on is gone), and
-// wins over WindowOptions' size; their least size still holds. The host
-// keeps the normal rectangle itself, in screen coordinates
+// wins over the options' size and place; their least and most sizes still
+// hold. The host keeps the normal rectangle itself, in screen coordinates
 // (GetWindowPlacement's are workspace coordinates, off by the taskbar
-// when it's on the top or left).
+// when it's on the top or left). A file an older host wrote, the main
+// window's alone, is read as the main window's.
 
 const placementName = "asuka-window.json"
 
@@ -32,9 +34,9 @@ type placement struct {
 	Maximized           bool
 }
 
-// placementFile is where the main window's placement is kept, or "" if
-// it isn't: not for a test (go test) or an automation run (ASUKA_SNAPSHOT,
-// ASUKA_SCRIPT), which would leave theirs on the machine.
+// placementFile is where the windows' placements are kept, or "" if
+// they aren't: not for a test (go test) or an automation run
+// (ASUKA_SNAPSHOT, ASUKA_SCRIPT), which would leave theirs on the machine.
 func placementFile() string {
 	if testing.Testing() || snapshotting() || os.Getenv("ASUKA_SCRIPT") != "" {
 		return ""
@@ -46,62 +48,73 @@ func placementFile() string {
 	return filepath.Join(d, placementName)
 }
 
-// savePlacement keeps the main window's placement, once it has shown,
-// if it changed. A minimized window keeps what it had.
-func (h *Host) savePlacement() {
-	if h.placementPath == "" || !h.placed || IsIconic(h.window) {
+// store is the placements' file, read once (again if its path changed).
+func (h *Host) store() *winstate.Store {
+	if h.states == nil || h.statesPath != h.placementPath {
+		h.states, h.statesPath = winstate.Open(h.placementPath), h.placementPath
+	}
+	return h.states
+}
+
+// savePlacement keeps a window's placement, once it has shown. A
+// minimized window, or one in full screen, keeps what it had.
+func (h *Host) savePlacement(c *wctl) {
+	if c == nil || c.key == "" || h.placementPath == "" || !c.placed || c.full != nil || !IsWindow(c.hwnd) || IsIconic(c.hwnd) {
 		return
 	}
-	zoomed := IsZoomed(h.window)
+	zoomed := IsZoomed(c.hwnd)
 	if !zoomed {
-		h.normal = WindowRect(h.window)
+		c.normal = WindowRect(c.hwnd)
 	}
-	r := h.normal
+	r := c.normal
 	if r.W() <= 0 || r.H() <= 0 {
 		return
 	}
-	b, _ := json.Marshal(placement{X: r.Left, Y: r.Top, Width: r.W(), Height: r.H(), DPI: h.dpi, Maximized: zoomed})
-	if bytes.Equal(b, h.savedPlacement) {
-		return
-	}
-	os.MkdirAll(filepath.Dir(h.placementPath), 0o755)
-	if os.WriteFile(h.placementPath, b, 0o644) == nil {
-		h.savedPlacement = b
-	}
+	h.store().Save(c.key, placement{X: r.Left, Y: r.Top, Width: r.W(), Height: r.H(), DPI: DPI(c.hwnd), Maximized: zoomed})
 }
 
-// restorePlacement places the main window where it was left, before it
-// shows; it reports whether it was maximized.
-func (h *Host) restorePlacement() (maximized bool) {
-	if h.placementPath == "" {
+// restorePlacement places a window where it was left, before it shows;
+// it reports whether it was found, and remembers whether it was
+// maximized (showCtl maximizes it).
+func (h *Host) restorePlacement(c *wctl) bool {
+	if c == nil || c.key == "" || h.placementPath == "" {
 		return false
 	}
-	b, err := os.ReadFile(h.placementPath)
 	var p placement
-	if err != nil || json.Unmarshal(b, &p) != nil || p.Width <= 0 || p.Height <= 0 {
+	if !h.store().Load(c.key, &p) || p.Width <= 0 || p.Height <= 0 {
 		return false
 	}
-	h.savedPlacement = b
 	r := onScreen(Rect{Left: p.X, Top: p.Y, Right: p.X + p.Width, Bottom: p.Y + p.Height})
 	// To its monitor first, so the window takes its DPI, then its size
 	// there: in pixels at the DPI it was saved at, scaled if the
 	// monitor's is another.
-	SetWindowPos(h.window, 0, r.Left, r.Top, 0, 0, SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE)
-	if d := DPI(h.window); d != h.dpi {
-		h.dpiChanged(d, WindowRect(h.window))
+	SetWindowPos(c.hwnd, 0, r.Left, r.Top, 0, 0, SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE)
+	dpi := DPI(c.hwnd)
+	switch {
+	case c.main && dpi != h.dpi:
+		h.dpiChanged(dpi, WindowRect(c.hwnd))
+	case c.frame != nil && dpiScale(dpi) != c.frame.k:
+		h.windowDPIChanged(c.frame, dpi, WindowRect(c.hwnd))
 	}
-	if p.DPI > 0 && p.DPI != h.dpi {
-		r.Right = r.Left + int32(int64(r.W())*int64(h.dpi)/int64(p.DPI))
-		r.Bottom = r.Top + int32(int64(r.H())*int64(h.dpi)/int64(p.DPI))
+	if p.DPI > 0 && p.DPI != dpi {
+		r.Right = r.Left + int32(int64(r.W())*int64(dpi)/int64(p.DPI))
+		r.Bottom = r.Top + int32(int64(r.H())*int64(dpi)/int64(p.DPI))
 	}
 	var mi MinMaxInfo
-	h.minTrackSize(h.window, h.leastSize(), &mi)
+	h.minMax(c, &mi)
 	r.Right = r.Left + max(r.W(), mi.MinTrackSize.X)
 	r.Bottom = r.Top + max(r.H(), mi.MinTrackSize.Y)
+	if mi.MaxTrackSize.X > 0 {
+		r.Right = r.Left + min(r.W(), mi.MaxTrackSize.X)
+	}
+	if mi.MaxTrackSize.Y > 0 {
+		r.Bottom = r.Top + min(r.H(), mi.MaxTrackSize.Y)
+	}
 	r = onScreen(r)
-	SetWindowPos(h.window, 0, r.Left, r.Top, r.W(), r.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
-	h.normal = r
-	return p.Maximized
+	SetWindowPos(c.hwnd, 0, r.Left, r.Top, r.W(), r.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
+	c.normal = r
+	c.restoreMax = p.Maximized
+	return true
 }
 
 // onScreen moves a window's rectangle onto the work area of the monitor
@@ -122,23 +135,23 @@ func clampTo(r, work Rect) Rect {
 }
 
 // placementMessage follows the user moving, sizing, maximizing and
-// restoring the main window, to save its placement when it settles.
-func (h *Host) placementMessage(m uint32, wp uintptr) {
+// restoring a window, to save its placement when it settles.
+func (h *Host) placementMessage(c *wctl, m uint32, wp uintptr) {
 	switch m {
 	case WM_ENTERSIZEMOVE:
-		h.sizing = true
+		c.sizing = true
 	case WM_EXITSIZEMOVE:
-		h.sizing = false
-		h.savePlacement()
+		c.sizing = false
+		h.savePlacement(c)
 	case WM_SIZE:
 		// Maximized, restored, snapped by the keyboard (Win+arrows):
 		// not while a drag goes on.
-		if !h.sizing && (wp == sizeRestored || wp == sizeMaximized) {
-			h.savePlacement()
+		if !c.sizing && (wp == sizeRestored || wp == sizeMaximized) {
+			h.savePlacement(c)
 		}
 	case WM_MOVE:
-		if !h.sizing && !IsZoomed(h.window) {
-			h.savePlacement()
+		if !c.sizing && !IsZoomed(c.hwnd) {
+			h.savePlacement(c)
 		}
 	}
 }

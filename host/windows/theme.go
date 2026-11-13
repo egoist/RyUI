@@ -220,7 +220,7 @@ func (h *Host) brush(c rgba) uintptr {
 // backdrop is the opaque color behind a view: its nearest ancestor's
 // background, or the window's.
 func (h *Host) backdrop(n *node) rgba {
-	bg := h.theme.bg
+	bg := h.bgIn(n.hwnd)
 	var chain []rgba
 	for p := n; p != nil; p = p.parent {
 		if c, ok := h.resolve(p.background); ok && c.a > 0 {
@@ -231,7 +231,7 @@ func (h *Host) backdrop(n *node) rgba {
 		}
 		if p.kind == ops.KindScreen || p.kind == ops.KindSheet || p.kind == ops.KindWindow {
 			if len(chain) == 0 {
-				chain = append(chain, h.theme.bg)
+				chain = append(chain, bg)
 			}
 			break
 		}

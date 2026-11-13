@@ -61,6 +61,9 @@ func (h *Host) message(hwnd uintptr, m uint32, wp, lp uintptr) (uintptr, bool) {
 			return r, true
 		}
 	}
+	if c := h.chrome[hwnd]; c != nil {
+		return h.chromeMessage(c, hwnd, m, wp, lp)
+	}
 	switch hwnd {
 	case h.msgWin:
 		switch m {
@@ -172,10 +175,14 @@ func (h *Host) makeWindow() {
 	y := work.Top + (work.H()-ht)/2
 	SetWindowPos(h.window, 0, x, y, w, ht, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 	h.acceptDrops(h.window)
+	h.mainCtl = &wctl{hwnd: h.window, main: true, key: mainKey(&ops.WindowConfig{})}
+	h.ctls[h.window] = h.mainCtl
 }
 
 func (h *Host) windowMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
-	h.placementMessage(m, wp)
+	if r, ok := h.ctlMessage(h.mainCtl, m, wp, lp); ok {
+		return r, true
+	}
 	h.badgeMessage(m)
 	if r, ok := h.menuBarMessage(h.window, m, wp, lp); ok {
 		return r, true
@@ -190,11 +197,8 @@ func (h *Host) windowMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
 		return 0, true
 	case WM_ERASEBKGND:
 		r := ClientRect(h.window)
-		FillColor(wp, r, h.theme.bg.ref())
+		FillColor(wp, r, h.bgOf(h.window).ref())
 		return 1, true
-	case WM_GETMINMAXINFO:
-		h.minTrackSize(h.window, h.leastSize(), Native[MinMaxInfo](lp))
-		return 0, true
 	case WM_DPICHANGED:
 		h.dpiChanged(int(LoWord(wp)), *Native[Rect](lp))
 		return 0, true
@@ -213,9 +217,7 @@ func (h *Host) windowMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
 		}
 		return 0, false
 	case WM_CLOSE:
-		h.savePlacement()
-		h.quitting = true
-		DestroyWindow(h.window)
+		h.closeMain()
 		return 0, true
 	case WM_DESTROY:
 		PostQuitMessage(0)
@@ -232,11 +234,13 @@ func (h *Host) windowMessage(m uint32, wp, lp uintptr) (uintptr, bool) {
 // environment is the window's: its client area's size, its DPI as the
 // scale, the text size, dark mode, animations (Reduce Motion), the time
 // zone, the user's languages and regional formats. A desktop window has
-// no safe area or keyboard over it.
+// no keyboard over it, and no safe area but a hidden title bar's strip
+// at the top, where its caption buttons are (SafeTop).
 func (h *Host) environment() ops.Environment {
 	r := ClientRect(h.window)
 	return ops.Environment{
 		Width: h.pt(nil, r.W()), Height: h.pt(nil, r.H()),
+		SafeTop:      h.mainCtl.safeTop(),
 		Scale:        h.scale,
 		FontScale:    TextScale(),
 		Dark:         h.dark,
@@ -389,6 +393,9 @@ func (h *Host) setDark(dark bool) {
 	}
 	for _, w := range h.wins {
 		RedrawWindow(w.nav.window, RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_ERASE|RDW_FRAME)
+	}
+	for _, c := range h.ctls {
+		h.layoutChrome(c) // hidden title bars' buttons, in the new colors
 	}
 }
 

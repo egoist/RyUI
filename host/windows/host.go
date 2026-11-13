@@ -22,6 +22,7 @@ import (
 	"github.com/egoist/asuka/host"
 	"github.com/egoist/asuka/internal/boot"
 	. "github.com/egoist/asuka/internal/windows"
+	"github.com/egoist/asuka/internal/winstate"
 	"github.com/egoist/asuka/layout"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/ui"
@@ -272,12 +273,16 @@ type Host struct {
 	savedLocale string
 	localePath  string
 
-	// The main window's placement (placement.go).
-	placementPath  string
-	placed         bool // it has shown: what the user does with it is kept
-	sizing         bool // the user moves or sizes it
-	normal         Rect // its rectangle when not maximized or minimized
-	savedPlacement []byte
+	// The windows the app controls (winctl.go), by window: the main one
+	// and the Windows'; their hidden title bars' windows (titlebar.go);
+	// where their placements are kept (placement.go).
+	mainCtl       *wctl
+	ctls          map[uintptr]*wctl
+	chrome        map[uintptr]*wctl
+	placementPath string
+	states        *winstate.Store
+	statesPath    string
+	started       bool // showMain ran: Windows show as they open
 
 	// Owner-drawn menu items (menudraw.go).
 	owned      map[uintptr]*ownerItem
@@ -319,6 +324,8 @@ func newHost() *Host {
 		byHwnd:  map[uintptr]*node{},
 		fonts:   map[fontKey]uintptr{},
 		brushes: map[uint32]uintptr{},
+		ctls:    map[uintptr]*wctl{},
+		chrome:  map[uintptr]*wctl{},
 	}
 	theHost = h
 	h.appName = appName()
@@ -369,29 +376,21 @@ func Run(root func() ui.Node) {
 	saveState()
 }
 
-// showMain shows the app's window, where the user left it, and its
-// Windows.
+// showMain shows the app's window, where the user left it (unless it
+// opens hidden: WindowAction Show shows it), and its Windows.
 func (h *Host) showMain() {
-	// Where the user left it, over WindowOptions' size.
-	maximized := h.restorePlacement()
-	if os.Getenv("ASUKA_SNAPSHOT") != "" {
-		// Automation: shown, without taking the user's focus.
-		ShowWindow(h.window, SW_SHOWNOACTIVATE)
-	} else {
-		if maximized {
-			ShowWindow(h.window, SW_SHOWMAXIMIZED)
-		} else {
-			ShowWindow(h.window, SW_SHOWNORMAL)
-		}
-		SetForegroundWindow(h.window)
+	c := h.mainCtl
+	// Where the user left it, over WindowOptions' size and place.
+	h.restorePlacement(c)
+	h.started = true
+	if !c.has(ops.WindowHidden) {
+		h.showCtl(c, true)
+		UpdateWindow(h.window)
 	}
-	if !maximized {
-		h.normal = WindowRect(h.window)
-	}
-	h.placed = true
-	UpdateWindow(h.window)
 	for _, n := range h.wins {
-		h.showWindow(n.nav.window)
+		if w := n.nav.ctl; w != nil && !w.has(ops.WindowHidden) && !IsWindowVisible(w.hwnd) {
+			h.showCtl(w, true)
+		}
 	}
 }
 

@@ -75,7 +75,9 @@ func (h *Host) buildMenuBar() {
 		h.appItems = append(h.appItems, m.items...)
 	}
 	var bar uintptr
-	if len(h.appMenus) > 0 {
+	// A hidden title bar's main window has no menu bar: Windows would
+	// draw it under a caption that isn't there (titlebar.go).
+	if len(h.appMenus) > 0 && (h.mainCtl == nil || !h.mainCtl.hidden) {
 		bar = CreateMenu()
 		titles := make([]string, len(h.appMenus))
 		for i, m := range h.appMenus {

@@ -623,6 +623,10 @@ func (h *Host) listen(n *node, e ops.EventKind) {
 	if n.hwnd == 0 {
 		return
 	}
+	if e == ops.EventWindowState {
+		h.listenWindow(n, e) // winctl.go
+		return
+	}
 	switch e {
 	case ops.EventPress:
 		if n.kind == ops.KindView {
@@ -648,7 +652,10 @@ func (h *Host) viewMessage(n *node, hwnd uintptr, m uint32, wp, lp uintptr) (uin
 			return r, true
 		}
 	case wmNCHitTest:
-		if !n.interactive() {
+		if !n.interactive() || n.kind == kindHeader && h.underCaption(hwnd) {
+			// Through to what's under it: under a hidden title bar, the
+			// window's caption (a header's empty room too; its buttons are
+			// windows of their own).
 			return htTransparent, true
 		}
 	case WM_ERASEBKGND:

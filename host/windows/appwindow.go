@@ -10,20 +10,27 @@ import (
 )
 
 // The app's windows (ui.Window): each a top-level window of its own,
-// resizable, with its own title and taskbar button, its content (the
-// Window node's child) laid out at its client size. Closing it asks the
-// core (Dismissed), which destroys it. Each has its own scale, its DPI:
+// resizable unless its options say otherwise (winctl.go), with its own
+// title and taskbar button, its content (the Window node's child) laid
+// out at its client size. Closing it asks the core (Dismissed, or
+// CloseRequest while the core listens for that), which destroys it, or
+// keeps it. Each has its own scale, its DPI:
 // one opens at the DPI of the monitor it opens on, and one moved to a
 // monitor of another DPI takes the size Windows suggests and draws its
 // views at the new scale (WM_DPICHANGED), its Environment reported again.
 
-// openWindow opens a Window's window: its content's size (the main
-// window's default if the app gives none), placed down and right of the window in
-// use, as new windows cascade. It shows once the main window does.
+// openWindow opens a Window's window with its options (winctl.go): its
+// content's size (the main window's default if the app gives none), its
+// abilities and title bar; where it was left (its StateKey), at its X and
+// Y, centered on the window in use's monitor, or placed down and right of
+// the window in use, as new windows cascade. A child is owned by its
+// parent's window, a modal one disabling it. It shows once the main window
+// does (showMain), unless it opens hidden.
 func (h *Host) openWindow(n *node) {
 	if n.nav.window != 0 {
 		return
 	}
+	cfg := n.nav.cfg
 	w, ht := n.nav.size[0], n.nav.size[1]
 	if w <= 0 {
 		w = defaultWindowWidth
@@ -31,36 +38,59 @@ func (h *Host) openWindow(n *node) {
 	if ht <= 0 {
 		ht = defaultWindowHeight
 	}
-	style := uint32(WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN)
-	dpi := DPI(h.windowInUse())
+	c := &wctl{n: n, cfg: cfg, key: cfg.StateKey}
+	style := c.style()
+	from := h.windowInUse()
+	dpi := DPI(from)
 	r := frameRect(w, ht, style, dpi)
 	x, y := h.cascade(r.W(), r.H())
-	win := CreateWindow(h.topLevelStyle(), classWindow, h.windowTitle(n), style, x, y, r.W(), r.H(), 0, 0)
-	if d := DPI(win); d != dpi {
-		// It opened on a monitor of another DPI.
-		dpi = d
-		r = frameRect(w, ht, style, dpi)
-		SetWindowPos(win, 0, 0, 0, r.W(), r.H(), SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE)
+	if cfg.Flags&ops.WindowChild != 0 {
+		c.owner = h.parentWindow(cfg.Parent)
 	}
+	win := CreateWindow(h.topLevelStyle(), classWindow, h.windowTitle(n), style, x, y, r.W(), r.H(), c.owner, 0)
+	c.hwnd = win
 	fw := newNode(0, kindWindowFrame)
 	fw.hwnd = win
 	fw.nav = &nav{}
 	fw.parent = n
-	fw.k = dpiScale(dpi)
+	fw.k = dpiScale(DPI(win)) // the DPI of the monitor it opened on
+	c.frame = fw
 	h.byHwnd[win] = fw
+	h.ctls[win] = c
+	n.nav.ctl = c
 	h.acceptDrops(win)
 	SetDarkTitleBar(win, h.dark)
 	n.nav.window = win
 	n.presented = true
 	SetParent(n.hwnd, win)
 	h.rescale(n.hwnd, fw.k)
+	h.configure(c)
 	cr := ClientRect(win)
 	SetWindowPos(n.hwnd, 0, 0, 0, cr.W(), cr.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
-	h.wins = append(h.wins, n)
-	h.reportScreen(n, h.pt(n, cr.W()), h.pt(n, cr.H()))
-	if IsWindowVisible(h.window) {
-		h.showWindow(win)
+	h.sizeContent(c, w, ht) // its frame as configured (a hidden title bar's), at its DPI
+	if !h.restorePlacement(c) {
+		switch {
+		case cfg.Flags&ops.WindowPositioned != 0:
+			h.moveTo(c, cfg.X, cfg.Y)
+		case cfg.Flags&ops.WindowCentered != 0:
+			h.center(c, from)
+		}
 	}
+	h.wins = append(h.wins, n)
+	cr = ClientRect(win)
+	h.reportScreen(n, h.pt(n, cr.W()), h.pt(n, cr.H()))
+	if cfg.Flags&ops.WindowModal != 0 && c.owner != 0 {
+		EnableWindow(c.owner, false)
+	}
+	if h.started && cfg.Flags&ops.WindowHidden == 0 {
+		h.showCtl(c, true)
+	}
+	id := n.id
+	h.afterCore(func() {
+		if n := h.nodes[id]; n != nil && n.nav.ctl == c {
+			h.reportState(c)
+		}
+	})
 }
 
 // dpiScale is the pixels per point at a DPI.
@@ -93,14 +123,6 @@ func (h *Host) windowDPIChanged(f *node, dpi int, s Rect) {
 		h.reportScreen(n, h.pt(n, cr.W()), h.pt(n, cr.H()))
 	}
 	RedrawWindow(f.hwnd, RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_ERASE)
-}
-
-func (h *Host) showWindow(win uintptr) {
-	if snapshotting() {
-		ShowWindow(win, SW_SHOWNOACTIVATE)
-	} else {
-		ShowWindow(win, SW_SHOW)
-	}
 }
 
 func (h *Host) windowTitle(n *node) string {
@@ -186,12 +208,15 @@ func (h *Host) rootOf(w uintptr) *node {
 	return nil
 }
 
-// closeWindow closes a Window's window, and the sheets over it.
+// closeWindow closes a Window's window, and the sheets over it: its
+// placement kept first, and a modal one's owner enabled again before it
+// goes, so that the owner is activated.
 func (h *Host) closeWindow(n *node) {
 	win := n.nav.window
 	if win == 0 {
 		return
 	}
+	c := n.nav.ctl
 	for i, w := range h.wins {
 		if w == n {
 			h.wins = append(h.wins[:i], h.wins[i+1:]...)
@@ -204,13 +229,29 @@ func (h *Host) closeWindow(n *node) {
 			h.emit(s, ops.Event{Kind: ops.EventDismissed})
 		}
 	}
-	// The main window is the one in use next, not another app's.
+	if c != nil {
+		h.savePlacement(c)
+		if c.cfg.Flags&ops.WindowModal != 0 && c.owner != 0 && IsWindow(c.owner) {
+			EnableWindow(c.owner, true)
+		}
+		h.forgetChrome(c)
+		delete(h.ctls, win)
+		n.nav.ctl = nil
+	}
+	// The window it belongs to (or the main one) is the one in use next,
+	// not another app's.
 	if ForegroundWindow() == win && !snapshotting() {
-		SetForegroundWindow(h.window)
+		next := h.window
+		if c != nil && c.owner != 0 && c.owner != h.park && IsWindow(c.owner) {
+			next = c.owner
+		}
+		SetForegroundWindow(next)
 	}
 	SetParent(n.hwnd, h.park)
 	h.forgetTree(win)
-	DestroyWindow(win)
+	if IsWindow(win) {
+		DestroyWindow(win)
+	}
 	n.nav.window = 0
 	if h.inUse == win {
 		h.inUse = 0
@@ -219,6 +260,11 @@ func (h *Host) closeWindow(n *node) {
 
 func (h *Host) windowFrameMessage(fw *node, m uint32, wp, lp uintptr) (uintptr, bool) {
 	n := fw.parent
+	if c := h.ctls[fw.hwnd]; c != nil {
+		if r, ok := h.ctlMessage(c, m, wp, lp); ok {
+			return r, true
+		}
+	}
 	switch m {
 	case WM_SIZE:
 		if n != nil && n.hwnd != 0 {
@@ -228,15 +274,10 @@ func (h *Host) windowFrameMessage(fw *node, m uint32, wp, lp uintptr) (uintptr, 
 		}
 		return 0, true
 	case WM_ERASEBKGND:
-		FillColor(wp, ClientRect(fw.hwnd), h.theme.bg.ref())
+		FillColor(wp, ClientRect(fw.hwnd), h.bgOf(fw.hwnd).ref())
 		return 1, true
 	case WM_PRINTCLIENT:
-		FillColor(wp, ClientRect(fw.hwnd), h.theme.bg.ref())
-		return 0, true
-	case WM_GETMINMAXINFO:
-		if n != nil && (n.nav.minSize[0] > 0 || n.nav.minSize[1] > 0) {
-			h.minTrackSize(fw.hwnd, n.nav.minSize, Native[MinMaxInfo](lp))
-		}
+		FillColor(wp, ClientRect(fw.hwnd), h.bgOf(fw.hwnd).ref())
 		return 0, true
 	case WM_DPICHANGED:
 		h.windowDPIChanged(fw, int(LoWord(wp)), *Native[Rect](lp))
@@ -256,23 +297,6 @@ func (h *Host) windowFrameMessage(fw *node, m uint32, wp, lp uintptr) (uintptr, 
 	return 0, false
 }
 
-// minTrackSize is the least a window can be sized to: its client area
-// least points (a side 0: the system's least), its frame and menu bar,
-// at its DPI.
-func (h *Host) minTrackSize(hwnd uintptr, least [2]float32, mi *MinMaxInfo) {
-	dpi := DPI(hwnd)
-	r := frameRect(least[0], least[1], uint32(WindowLong(hwnd, GWL_STYLE)), dpi)
-	if GetMenu(hwnd) != 0 {
-		r.Bottom += int32(SystemMetric(SM_CYMENU, dpi))
-	}
-	if least[0] > 0 {
-		mi.MinTrackSize.X = max(mi.MinTrackSize.X, r.W())
-	}
-	if least[1] > 0 {
-		mi.MinTrackSize.Y = max(mi.MinTrackSize.Y, r.H())
-	}
-}
-
 // setWindowTitle is the main window's title; "": the app's name.
 func (h *Host) setWindowTitle(title string) {
 	if title == "" {
@@ -281,19 +305,21 @@ func (h *Host) setWindowTitle(title string) {
 	SetWindowText(h.window, title)
 }
 
-// windowOptions applies WindowOptions to the main window: its title, its
-// least size, and its client size, centered in the work area (a placement
-// the host remembers, restored after, wins over it).
-func (h *Host) windowOptions(args []byte) {
-	c := ops.DecodeWindowConfig(args)
-	w, ht := c.Width, c.Height
-	h.minSize = [2]float32{c.MinWidth, c.MinHeight}
-	if title := c.Title; title != "" {
+// windowOptions applies WindowOptions to the main window, before it
+// shows: its title, its least and most sizes, its abilities and title bar
+// (winctl.go), its client size, centered in the work area or at its X and
+// Y; where it was left (its StateKey, "main" by default), restored as it
+// shows, wins over them.
+func (h *Host) windowOptions(n *node, args []byte) {
+	cfg := ops.DecodeWindowConfig(args)
+	c := h.mainCtl
+	c.n, c.cfg, c.key = n, cfg, mainKey(&cfg)
+	h.minSize = [2]float32{cfg.MinWidth, cfg.MinHeight}
+	if title := cfg.Title; title != "" {
 		h.setWindowTitle(title)
 	}
-	if w <= 0 && ht <= 0 {
-		return
-	}
+	h.configure(c)
+	w, ht := cfg.Width, cfg.Height
 	cr := ClientRect(h.window)
 	if w <= 0 {
 		w = h.pt(nil, cr.W())
@@ -301,8 +327,9 @@ func (h *Host) windowOptions(args []byte) {
 	if ht <= 0 {
 		ht = h.pt(nil, cr.H())
 	}
-	w, ht = max(w, h.minSize[0]), max(ht, h.minSize[1])
-	// The frame as it is (a menu bar too), around the new client area.
+	w, ht = h.clampSize(c, w, ht)
+	// The frame as it is (a menu bar too, or no caption), around the new
+	// client area.
 	wr := WindowRect(h.window)
 	fw, fh := wr.W()-cr.W(), wr.H()-cr.H()
 	pw, ph := h.px(nil, w)+fw, h.px(nil, ht)+fh
@@ -310,4 +337,9 @@ func (h *Host) windowOptions(args []byte) {
 	ph = min(ph, work.H())
 	pw = min(pw, work.W())
 	SetWindowPos(h.window, 0, work.Left+(work.W()-pw)/2, work.Top+(work.H()-ph)/2, pw, ph, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
+	if cfg.Flags&ops.WindowPositioned != 0 {
+		h.moveTo(c, cfg.X, cfg.Y)
+	}
+	h.environmentChanged() // a hidden title bar's room
+
 }

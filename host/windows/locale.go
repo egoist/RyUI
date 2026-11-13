@@ -136,6 +136,9 @@ func (h *Host) mirrorWindow(win uintptr, content *node) {
 		r := ClientRect(win)
 		SetWindowPos(content.hwnd, 0, 0, 0, r.W(), r.H(), SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS)
 	}
+	if c := h.ctls[win]; c != nil {
+		h.layoutChrome(c) // a hidden title bar's buttons to the other side
+	}
 	RedrawWindow(win, RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_ERASE|RDW_FRAME)
 	if GetMenu(win) != 0 {
 		DrawMenuBar(win)

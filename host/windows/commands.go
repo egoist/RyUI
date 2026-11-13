@@ -99,7 +99,9 @@ func (h *Host) command(n *node, c ops.CommandID, args []byte) {
 	case ops.CmdMenuBar:
 		h.setMenuBar(args)
 	case ops.CmdWindowOptions:
-		h.windowOptions(args)
+		h.windowOptions(n, args)
+	case ops.CmdWindowAction:
+		h.windowAction(n, args)
 	case ops.CmdWindowTitle:
 		h.setWindowTitle(string(args))
 	case ops.CmdLocale:

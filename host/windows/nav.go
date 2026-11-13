@@ -56,8 +56,11 @@ type nav struct {
 	anchor     ops.NodeID
 	popW, popH float32
 
-	// Window: its content's size when it opens, and its least, in points.
+	// Window: its content's size when it opens, and its least, in points;
+	// its options (Config), and its window as the app controls it.
 	size, minSize [2]float32
+	cfg           ops.WindowConfig
+	ctl           *wctl
 }
 
 const (
@@ -283,6 +286,9 @@ func (h *Host) reportScreen(n *node, w, ht float32) {
 	env.Width, env.Height = w, ht
 	env.Scale = h.scaleOf(n)
 	env.SafeTop, env.SafeRight, env.SafeBottom, env.SafeLeft = 0, 0, 0, 0
+	if n.kind == ops.KindWindow {
+		env.SafeTop = n.nav.ctl.safeTop() // under a hidden title bar's buttons
+	}
 	if n.nav.reported && env == n.nav.env {
 		return
 	}
@@ -335,6 +341,7 @@ func (h *Host) setNavProp(n *node, p ops.PropID, v *ops.Value) {
 			}
 		case ops.PropWindowConfig:
 			c := ops.DecodeWindowConfig(v.Bytes)
+			n.nav.cfg = c
 			n.nav.size = [2]float32{c.Width, c.Height}
 			n.nav.minSize = [2]float32{c.MinWidth, c.MinHeight}
 		}
@@ -785,6 +792,19 @@ func (h *Host) present(n *node) {
 		}
 		h.openSheet(n)
 	case ops.KindWindow:
+		// A child of a Window comes before its parent in the batch that
+		// opens them both (the core presents a Window once its content,
+		// the child among it, is built): it opens once the batch is
+		// applied, owned by its parent's window.
+		if p := h.nodes[n.nav.cfg.Parent]; n.nav.cfg.Flags&ops.WindowChild != 0 && p != nil && p.kind == ops.KindWindow && p.nav.window == 0 {
+			id := n.id
+			h.afterCore(func() {
+				if n := h.nodes[id]; n != nil && !n.dying {
+					h.openWindow(n)
+				}
+			})
+			return
+		}
 		h.openWindow(n)
 	case ops.KindPopover:
 		id := n.id

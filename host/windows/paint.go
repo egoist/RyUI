@@ -71,10 +71,9 @@ func (h *Host) paintOwn(n *node, hwnd, dc uintptr, r Rect) {
 	bg, hasBg := h.resolve(n.background)
 	switch {
 	case hasBg:
-	case n.kind == ops.KindScreen || n.kind == ops.KindSheet || n.kind == ops.KindWindow:
-		bg, hasBg = h.theme.bg, true
-	case n.kind == kindHeader || n.kind == kindTabBar || n.kind == kindSidebar:
-		bg, hasBg = h.theme.bg, true
+	case n.kind == ops.KindScreen || n.kind == ops.KindSheet || n.kind == ops.KindWindow,
+		n.kind == kindHeader || n.kind == kindTabBar || n.kind == kindSidebar:
+		bg, hasBg = h.bgIn(hwnd), true // its window's (winctl.go)
 	}
 	if a := n.ownAlpha(); a < 1 {
 		bg = bg.withAlpha(a)
@@ -422,7 +421,7 @@ func (h *Host) paintBehind(hwnd, dc uintptr) {
 		DrawParentBackground(hwnd, dc, nil)
 	} else {
 		g := NewGraphics(dc)
-		b := SolidBrush(h.theme.bg.argb())
+		b := SolidBrush(h.bgOf(parent).argb())
 		g.FillRect(b, 0, 0, float32(pr.W()), float32(pr.H()))
 		b.Close()
 		g.Close()
