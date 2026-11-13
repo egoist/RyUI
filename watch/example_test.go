@@ -32,7 +32,7 @@ func ExamplePath() {
 				ui.Post(func() { names.Set(list) })
 			}()
 		}
-		reload()
+		signal.Effect(func() { dir.Get(); reload() }) // and as dir changes
 		w := watch.Path(dir, watch.Options{Ignore: watch.Patterns(".*")}, func([]watch.Event) {
 			reload()
 		})
