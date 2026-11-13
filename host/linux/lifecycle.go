@@ -119,7 +119,10 @@ func (h *Host) quit() {
 func (h *Host) watchApp() {
 	if hasProperty(h.app, "register-session") {
 		SetBoolProperty(h.app, "register-session", true)
-		Connect(h.app, "query-end", func() { h.lifecycle(ops.LifecycleBackground) })
+		Connect(h.app, "query-end", func() {
+			h.askQuit(true) // OnQuit, which can't cancel it now
+			h.lifecycle(ops.LifecycleBackground)
+		})
 	}
 	Connect(h.app, "shutdown", func() {
 		h.lifecycle(ops.LifecycleBackground)
@@ -128,7 +131,8 @@ func (h *Host) watchApp() {
 }
 
 // watchSignals quits the app on SIGTERM, SIGINT and SIGHUP as closing it
-// does, so its last values are written; a second signal ends it at once
+// does (OnQuit's handlers asked first), so its last values are written;
+// a second signal ends it at once
 // (the main thread may be stuck). Not under asuka dev, whose SIGINT saves
 // the run's state (devstate.go).
 func (h *Host) watchSignals() {
@@ -139,7 +143,7 @@ func (h *Host) watchSignals() {
 	signal.Notify(sig, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
 	go func() {
 		s := <-sig
-		h.Post(h.quit)
+		h.Post(h.requestQuit) // OnQuit first, which may cancel it
 		<-sig
 		code := 128
 		if n, ok := s.(syscall.Signal); ok {

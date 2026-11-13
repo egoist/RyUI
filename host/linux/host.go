@@ -19,7 +19,6 @@ package linux
 import (
 	"fmt"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -181,6 +180,7 @@ type Host struct {
 	inhibit       uint32
 	inBackground  bool // no window of the app's shows (lifecycle.go)
 	quitting      bool
+	quitAllowed   bool // OnQuit's handlers let the app quit (quit.go)
 	fontFamilies  map[string]string
 }
 
@@ -216,62 +216,37 @@ func (h *Host) run(root func() ui.Node) {
 	if id := os.Getenv("ASUKA_NOTIFY"); id != "" {
 		os.Exit(h.notifyHeadless(id))
 	}
-	// One instance per app ID (a second launch activates the first, and
-	// hands it the URLs it was opened with), but not in automation runs,
-	// tests and asuka dev, nor without an ID of the app's.
-	flags := uint32(1 << 2) // G_APPLICATION_HANDLES_OPEN: its URL scheme
-	if os.Getenv("ASUKA_SNAPSHOT") != "" || os.Getenv("ASUKA_SCRIPT") != "" || os.Getenv("ASUKA_STATE") != "" ||
-		os.Getenv("ASUKA_COMMANDS") != "" || boot.ID == "" {
-		flags |= 1 << 5 // G_APPLICATION_NON_UNIQUE
-	}
+	// One instance per app ID (a second launch hands the first its command
+	// line, files.go), but not in automation runs, tests and asuka dev,
+	// nor without an ID of the app's, nor when asuka.json's
+	// "singleInstance" is false.
+	flags := appFlags(boot.ID, boot.MultipleInstances, os.Getenv)
 	h.app = AdwApplicationNew(h.appID, flags)
-	notifyUnique = flags&(1<<5) == 0
+	notifyUnique = flags&appNonUnique == 0
 	h.installNotifyActions() // a notification due, or tapped, reaches it
 	h.watchApp()
 	h.watchSignals()
 	h.watchMemory()
-	started := false
-	start := func() bool {
-		if started {
-			if h.main != nil {
-				WindowPresent(h.main.window)
-			}
-			return false
-		}
-		started = true
-		h.start(root)
-		return true
-	}
-	Connect(h.app, "activate", func() { start() })
-	// Opened with URLs (its scheme, from a browser or xdg-open): each is
-	// IncomingURL on the root, once it's mounted.
-	Connect(h.app, "open", func(files, n, hint uintptr) {
-		start()
-		for i := 0; i < int(int32(n)); i++ {
-			f := *At[Ptr](files + uintptr(i)*8)
-			if u := GoStringFree(FileGetURI(f)); u != "" {
-				h.incomingURL(u)
-			}
-		}
-	})
-	// GApplication reads its arguments: the program and the URLs it was
-	// opened with (the desktop file's %U), not the rest, which aren't
-	// its to parse.
-	args := []string{os.Args[0]}
-	for _, a := range os.Args[1:] {
-		if strings.Contains(a, ":") && !strings.HasPrefix(a, "-") {
-			args = append(args, a)
-		}
-	}
-	argv := make([]*byte, len(args)+1)
-	for i, a := range args {
+	boot.Quit = func() { h.Post(h.requestQuit) }
+	SetApplicationName(h.appName) // what GTK records the files the app opens under (recent.go)
+	h.watchLaunches(root)
+	// GApplication gets the whole command line: with HANDLES_COMMAND_LINE
+	// and no options of its own, it parses none of the app's (unknown
+	// options stay, --help too), and hands the lot to the instance that
+	// runs (command-line, files.go).
+	argv := make([]*byte, len(os.Args)+1)
+	for i, a := range os.Args {
 		argv[i] = CString(a)
 	}
-	os.Exit(int(ApplicationRun(h.app, int32(len(args)), Addr(&argv[0]))))
+	os.Exit(int(ApplicationRun(h.app, int32(len(os.Args)), Addr(&argv[0]))))
 }
 
-// incomingURL reports a URL the app was opened with to the root.
+// incomingURL reports an IncomingURL string (a URL, or the files the app
+// is opened with, internal/fileurl) to the root.
 func (h *Host) incomingURL(u string) {
+	if u == "" {
+		return
+	}
 	h.afterCore(func() {
 		if h.root == nil {
 			return

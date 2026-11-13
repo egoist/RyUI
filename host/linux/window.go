@@ -57,6 +57,11 @@ func (h *Host) newMainWindow() *win {
 	WindowSetDefaultSize(w.window, int32(width), int32(height)+headerHeight)
 	h.restoreWindow(w)
 	Connect(w.window, "close-request", func() bool {
+		// Closing the app's last window quits it: OnQuit's handlers may
+		// keep it open (quit.go).
+		if h.closingLast(w) && !h.askQuit(false) {
+			return true
+		}
 		h.saveWindow(w)
 		return false
 	})
