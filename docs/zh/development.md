@@ -228,4 +228,4 @@ go run ./bench/run -android    # 在正在运行的 Android 模拟器或设备�
 
 ## asuka.json
 
-`asuka dev` 和 `asuka build` 读取的是同一个 `asuka.json`，各字段的说明参见 [发布](shipping.md#asukajson)。
+`asuka dev` 和 `asuka build` 读取的是同一个 `asuka.json`。每个键的说明参见 [asuka.json 参考](asuka-json.md)，发布时它们如何配合参见 [发布](shipping.md#asukajson)。

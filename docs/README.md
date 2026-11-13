@@ -124,6 +124,8 @@ browser.
 
 ## Reference
 
+- [asuka.json](asuka-json.md): every key of an app's `asuka.json`, its
+  type, its default and what it does on each platform.
 - [Compared to SwiftUI and Expo](parity.md): what Asuka has, and what it
   doesn't yet.
 - [Asuka and MyGo](mygo.md): the platform's widgets or UI drawn by the
