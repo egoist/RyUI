@@ -395,6 +395,25 @@ func TestAlert(t *testing.T) {
 	}
 }
 
+// An alert still up as its root goes (unmounted, reloaded) goes with
+// it: the hosts keep a view until it's destroyed.
+func TestAlertGoesWithItsRoot(t *testing.T) {
+	h := fake.New()
+	r := ui.Mount(h, func() ui.Node {
+		return ui.Button(ui.ButtonProps{Title: ui.Val("Ask"), OnPress: func() {
+			ui.Alert(ui.AlertProps{Title: "Sure?"})
+		}})
+	})
+	h.Tap(h.One(ops.KindButton, "Ask"))
+	if len(h.Presented()) != 1 {
+		t.Fatal("no alert")
+	}
+	r.Dispose()
+	if len(h.Views) != 0 {
+		t.Fatalf("%d views left\n%s", len(h.Views), h.Log())
+	}
+}
+
 func TestMenuAndButtonMenu(t *testing.T) {
 	var picked []string
 	h, _ := mount(t, func() ui.Node {

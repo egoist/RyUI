@@ -46,6 +46,7 @@ milestone, in order.
 ```sh
 go build ./... && go vet ./...      # CGO_ENABLED=0: everything but mobile/
 go test ./...                       # signal, layout, ui with host/fake, ops, CLI
+go test ./uitest ./examples/...     # apps' UI tests: uitest drives them on host/fake (-uitest.update: their snapshots)
 go test ./layout -run CSS -update-known  # after fixing layout: refresh known_failures.txt
 go test ./ops -update               # after changing the wire format: refresh golden files
 go test ./host/darwin -run Conformance   # what the macOS host draws for a Style, measured (package conformance)

@@ -278,9 +278,16 @@ func List[T any, K comparable](p ListProps, items signal.Accessor[[]T], key func
 		})
 	})
 	signal.OnCleanup(func() {
-		for _, c := range st.order {
+		// The bound rows go with the list: their owners, and their
+		// views, which the hosts keep by ID until they're destroyed (the
+		// cells are the host's, and go with the list's view).
+		for id, c := range st.cells {
 			c.dispose()
+			c.el.destroy()
+			delete(elems, id)
 		}
+		clear(st.cells)
+		st.order = nil
 	})
 	return Node{e}
 }
