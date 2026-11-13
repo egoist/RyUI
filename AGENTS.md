@@ -67,7 +67,7 @@ go run ./cmd/asuka vet ./...                # the analyzers (package vet): a sig
 go run ./cmd/asuka dev --platform ios --lang ar examples/i18n  # a language for one run; --lang ar-XB, en-XA: pseudo locales; --dir rtl: any app right to left
 go run ./cmd/asuka dev --platform ios examples/counter       # iOS simulator (Xcode): the Go code runs here, in the player
 go run ./cmd/asuka dev --platform android examples/counter   # Android emulator (SDK + NDK), likewise
-go run ./cmd/asuka dev --platform ios --once examples/counter # build the app with its Go code, launch once (--embed: and watch)
+go run ./cmd/asuka dev --platform ios --once examples/counter # build the app with its Go code, launch once (--no-hot: and watch)
 go test ./internal/remote                        # the dev transport, against the fake host
 go test -tags e2e ./e2e -run IOS                 # GUI tests: the examples on the simulator (Android: -run Android, an emulator running)
 go run ./cmd/asuka build --platform ios --simulator examples/counter    # a release build (--platform ios alone: a signed .ipa)

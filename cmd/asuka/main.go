@@ -97,7 +97,7 @@ type devOptions struct {
 	noOpen    bool // web: don't open the browser
 	device    string
 	once      bool
-	embed     bool
+	noHot     bool
 	verbose   bool
 	lang, dir string
 	noVet     bool
@@ -113,7 +113,7 @@ func devFlags(o *devOptions) *flagSet {
 	fs.Bool(&o.noOpen, "no-open", 0, "web: don't open the page in the browser")
 	fs.String(&o.device, "device", 'd', "", "iOS: simulator name or UDID (default: the booted one, else the newest iPhone); Android: adb serial or AVD name")
 	fs.Bool(&o.once, "once", 0, "build the app with its Go code and launch it once, without watching or streaming logs")
-	fs.Bool(&o.embed, "embed", 0, "build the app with its Go code (the default runs the Go code here, in the player)")
+	fs.Bool(&o.noHot, "no-hot", 0, "iOS, Android: no hot reload: build the app with its Go code and reinstall it on each save (the default runs the Go code here, in the player, and keeps its state across reloads)")
 	fs.String(&o.lang, "lang", 0, "", "show this `language` for this run, as de or zh-Hans, or a pseudo locale: en-XA (accented, a third longer) or ar-XB (right to left)")
 	fs.String(&o.dir, "dir", 0, "", "lay the app out in this `direction` for this run, rtl or ltr, whatever its language")
 	fs.Bool(&o.noVet, "no-vet", 0, "don't run asuka vet in the background (by default it runs on start and on each change, and prints what it finds)")

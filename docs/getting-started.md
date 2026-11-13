@@ -79,7 +79,7 @@ signals kept. Its output (`fmt.Println`, panics) is in the terminal.
   which shows your app's views; your Go code runs on your computer and
   talks to it, so a save reloads without reinstalling.
   `--device` picks the simulator (its name or UDID) or the Android device
-  (an adb serial or an AVD's name). `--embed` builds your Go code into
+  (an adb serial or an AVD's name). `--no-hot` builds your Go code into
   the app instead, as a release build has it; `--once` builds it in and
   launches it once.
 - **In a browser**, Asuka serves the app at `http://localhost:8790/` and

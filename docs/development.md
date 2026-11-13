@@ -41,7 +41,8 @@ On a phone:
   iPhone, else a recent iPhone Pro, which it boots); on Android, an adb
   serial or an AVD's name (by default the first device adb lists, else
   the first AVD, which it starts).
-- `--embed`: build the app with its Go code in it, and watch.
+- `--no-hot`: no hot reload: build the app with its Go code in it, and
+  rebuild and reinstall it on each save, starting it again from nothing.
 
 In a browser: `--port`, `--lan` (serve to your network, for a phone's
 browser) and `--no-open`; see [the
@@ -109,7 +110,7 @@ On a save, Asuka rebuilds the Go code for your computer and restarts it,
 in about a second; the player reconnects and shows the new code.
 Nothing is installed.
 
-With `--embed` or `--once`, or when the app uses native packages with code
+With `--no-hot` or `--once`, or when the app uses native packages with code
 for the platform (a `Package.swift` or `android/`, see [Native
 code](native.md)), Asuka builds the app itself instead, its Go code inside
 as a release build has it, under the app's own name and ID:
@@ -126,7 +127,7 @@ as a release build has it, under the app's own name and ID:
 The player has every permission any Asuka package needs, and its own
 purpose strings. What `asuka.json` gives the app itself (its name, its
 ID, a URL `scheme`, `links`, `ios.usage`) only a built app has: try
-those with `--embed`. The `accent` color applies in the player too.
+those with `--no-hot`. The `accent` color applies in the player too.
 
 ## What a reload keeps
 
@@ -147,7 +148,7 @@ What isn't kept:
 - Signals whose type changed, and those of a type after one of the same
   type you added at the same place.
 
-A built phone app (`--embed`, `--once`, native code) starts again from
+A built phone app (`--no-hot`, `--once`, native code) starts again from
 nothing on each reload.
 
 Files your Go code writes (`asuka/sdk/store`, `asuka/sdk/sqlite`) are on your
