@@ -608,7 +608,8 @@ app.RunWindow(ui.WindowOptions{TitleBar: ui.TitleBarHidden, Background: ui.RGB(0
 ```
 
 The strip under the buttons still drags the window, where the content
-takes no clicks.
+takes no clicks. On Windows the main window has no menu bar under a
+hidden title bar; its shortcuts still work.
 
 A window that shows only once it's ready opens `Hidden` and shows from
 code: its content is built, laid out and drawn meanwhile, so it shows
@@ -637,8 +638,9 @@ ui.Text(signal.Func(func() string {
 - `Show` and `Hide` show and hide it; hidden, it stays open, its content
   living on. `Focus` shows it if it's hidden or minimized, brings it to
   the front with the keyboard in it, and brings the app to the front:
-  how a tray icon's menu brings a window back. On a closed `Window`,
-  `Show` and `Focus` open it.
+  how a tray icon's menu brings a window back (Windows lets an app come
+  to the front after the user's input to it, as a click on its tray icon
+  is). On a closed `Window`, `Show` and `Focus` open it.
 - `Minimize`, `Maximize` and `Restore` (from either); `SetFullscreen`.
 - `SetSize` (its content's, in points), `SetPosition` (its frame's top
   left, from the main display's top left), `Center`.

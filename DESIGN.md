@@ -2006,7 +2006,56 @@ How the Windows host maps Asuka (`host/windows`):
 - `WindowOptions` set the main window's title, its client size
   (centered in the work area; 800 by 600 points if the app gives none)
   and its least size (320 points square if the app gives none).
-- The main window comes back where the user left it, as macOS's frame
+- Windows' options (the main window's, a `Window`'s `Config`) are applied
+  before the window shows (`winctl.go`): the abilities taken away are
+  window styles (no `WS_THICKFRAME` and maximize box for a window that
+  can't be resized, no `WS_MINIMIZEBOX` or `WS_MAXIMIZEBOX`; one that
+  can't be closed has its close button and the system menu's Close
+  grayed, and the user's `WM_CLOSE` and `SC_CLOSE` ignored), the most
+  size `WM_GETMINMAXINFO`'s as the least is, always on top
+  `HWND_TOPMOST`, a place the visible frame's top left
+  (`DWMWA_EXTENDED_FRAME_BOUNDS`) in points at the window's scale. Left
+  out of the taskbar, a window is owned by the host's hidden window:
+  Windows gives owned windows no taskbar button, which holds as it shows
+  again and as Explorer restarts (`ITaskbarList::DeleteTab` would have to
+  be redone then); it stays in Alt+Tab. A child `Window` is owned by its
+  parent's window (above it, minimized and hidden with it), a modal one
+  disables its owner while it's open, as a sheet does, and enables it
+  again before it's destroyed, so the owner is activated. A background
+  fills behind the content wherever the host paints the window's
+  background. Transparent isn't: every view is a child window, composed
+  over the top-level window's opaque surface, so a transparent window
+  shows its background color.
+- A hidden title bar is MyGo's: `WM_NCCALCSIZE` gives the client area
+  the whole window (Windows 11 keeps a pixel at the top, without which it
+  opens no snap layouts; a maximized window fits its monitor's work
+  area); the caption buttons are a layered child window drawn as Windows
+  11's, in Segoe Fluent Icons (Segoe MDL2 Assets on Windows 10),
+  answering `HTMINBUTTON`, `HTMAXBUTTON` and `HTCLOSE`, so snap layouts
+  open over maximize (at the top left, close first, right to left); an
+  invisible top edge answers `HTTOP` and its corners, so the window
+  resizes from the top; and the top 32 points answer `HTCAPTION` where
+  the views let the mouse through (a view that takes no input, a stack's
+  header bar, answer `HTTRANSPARENT`): the strip drags, a double click
+  maximizes, a secondary click opens the system menu. `SafeTop` is 32
+  (0 in full screen). The main window has no menu bar under a hidden
+  title bar (its shortcuts still work): Windows would draw it under a
+  caption that isn't there.
+- The actions are `ShowWindow`'s (`SW_SHOWNOACTIVATE` while
+  snapshotting), `SetWindowPos`'s, and for `Focus` a restore from
+  minimized, then `BringWindowToTop` and `SetForegroundWindow`, which
+  Windows' foreground lock allows after the user's input to the app (a
+  click on its tray icon, in its windows). Full screen takes the caption
+  and frame off and covers the monitor, keeping the placement to put
+  back. A size or place restores a maximized or minimized window first.
+  The state is reported on `WM_SIZE`, `WM_MOVE`, `WM_WINDOWPOSCHANGED`
+  and `WM_ACTIVATE`; a minimized window keeps its last place and size.
+  The user's `WM_CLOSE` (the close button, Alt+F4, the taskbar's menu)
+  on a window the core asks about sends `CloseRequest` instead of
+  `Dismissed`, or of quitting for the main window; `WindowAction` Close
+  takes the main window's closing path (its placement saved, destroyed,
+  the app quits).
+- Each window comes back where the user left it, as macOS's frame
   autosave has it: its normal rectangle (screen pixels, and the DPI it
   was at) and whether it was maximized, in `asuka-window.json` in the
   app's data directory (`ASUKA_DATA`, Local AppData\<name>; a file rather
@@ -2020,9 +2069,12 @@ How the Windows host maps Asuka (`host/windows`):
   that monitor's DPI is another now), and put whole on the nearest
   monitor's work area (`MonitorFromRect`) if it's off the monitors or
   mostly off one. The host keeps the normal rectangle itself, in screen
-  coordinates (`GetWindowPlacement`'s are workspace coordinates). Tests
-  (`go test`) and automation runs (`ASUKA_SNAPSHOT`, `ASUKA_SCRIPT`) keep
-  none, and the data directory is made by what writes there.
+  coordinates (`GetWindowPlacement`'s are workspace coordinates). Each
+  is kept by its key (the main window's `main`, a `Window`'s
+  `StateKey`), a `Window`'s saved as it closes and restored over its
+  options, within its least and most size. Tests (`go test`) and
+  automation runs (`ASUKA_SNAPSHOT`, `ASUKA_SCRIPT`) keep none, and the
+  data directory is made by what writes there.
 - `List` is core-virtualized, as on macOS: rows the host places at
   their offsets in the list's window (one `DeferWindowPos`), binds
   through `ListBind` and recycles. Scroll bars are an indicator over the
