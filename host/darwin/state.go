@@ -22,7 +22,7 @@ func init() {
 			if name == "" {
 				name = filepath.Base(os.Args[0])
 			}
-			// Made by what writes there (asuka/sdk/store, asuka/sqlite), not here.
+			// Made by what writes there (asuka/sdk/store, asuka/sdk/sqlite), not here.
 			os.Setenv("ASUKA_DATA", filepath.Join(home, "Library", "Application Support", name))
 		}
 	}

@@ -46,7 +46,7 @@ The flags, beside `asuka dev`'s own (`--lang`, `--dir`, `--no-vet`, `-v`):
 - the app, `app.<digest>.wasm`, built stripped and with `-trimpath`;
 - the web host's files in `asuka/<digest>/` (with SQLite's WebAssembly
   build, about 0.9 MB, 0.4 MB gzipped, for an app that imports
-  `asuka/plugins/sqlite`), and the app's own scripts (`web/*.js`) in
+  `asuka/sdk/sqlite`), and the app's own scripts (`web/*.js`) in
   `web/<digest>/`;
 - the app's service worker, `sw.<digest>.js`, beside `index.html` (its
   scope is the site's folder): it shows the app's notifications and
@@ -148,10 +148,10 @@ to the home screen).
 
 ## SQLite
 
-`asuka/plugins/sqlite` works as on the other platforms, live queries included.
+`asuka/sdk/sqlite` works as on the other platforms, live queries included.
 It's the same SQLite and the same library of Asuka's, built to
 WebAssembly (`asqlite.wasm`, which `asuka dev --platform web` and `asuka
-build --platform web` ship with the apps that import `asuka/plugins/sqlite`). It
+build --platform web` ship with the apps that import `asuka/sdk/sqlite`). It
 runs in a worker of the page's, which keeps the databases of the app's
 data directory in the browser's origin private file system: a database
 isn't loaded into memory whole, and a commit is on disk when it returns.
@@ -188,10 +188,10 @@ What differs:
 - A database an earlier version of Asuka kept among the app's files (in
   IndexedDB) moves to the worker as the app first opens it.
 
-A page of your own that embeds an app (below) passes `sqlite`, the URL of
-the directory of `asqlite.wasm` (the build's `asuka/<digest>/plugins/sqlite/`), to
-`start`; the worker's script is the host's (`sqlite-worker.js`, beside
-`asuka.js`).
+A page of your own that embeds an app (below) passes `libs`, the URLs of
+the app's plugins' files by their names, to `start`: for SQLite,
+`{"asqlite.wasm": "asuka/<digest>/lib/asqlite.wasm"}`, the build's file. The
+worker's script is the host's (`sqlite-worker.js`, beside `asuka.js`).
 
 ## Native modules
 

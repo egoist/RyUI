@@ -1,4 +1,4 @@
-// asq is asuka/sqlite's side of SQLite: one entry point that Go calls
+// asq is asuka/sdk/sqlite's side of SQLite: one entry point that Go calls
 // with a whole statement's arguments and gets its answer (its rows, a
 // chunk at a time) back in one crossing, on every platform: through
 // purego (macOS, Linux, iOS, Android), syscall (Windows) and JavaScript

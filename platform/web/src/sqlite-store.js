@@ -192,7 +192,7 @@ export class IDBStore {
       f.dirty = null;
     }
     const prev = this.writing;
-    this.writing = Promise.all([prev, done(tx)]).catch((e) => console.warn("asuka/sqlite: a database wasn't saved:", this.path, e));
+    this.writing = Promise.all([prev, done(tx)]).catch((e) => console.warn("asuka/sdk/sqlite: a database wasn't saved:", this.path, e));
   }
 }
 

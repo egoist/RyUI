@@ -36,7 +36,7 @@ async function init({ wasm }) {
     idb.catch(() => {});
     store = (path) => new IDBStore(idb, path);
   } else {
-    console.warn("asuka/sqlite: no origin private file system or IndexedDB here: databases last only as long as the page");
+    console.warn("asuka/sdk/sqlite: no origin private file system or IndexedDB here: databases last only as long as the page");
   }
   vfs = new VFS({ kept, store });
   engine = await Engine.load(await res, vfs);
@@ -72,7 +72,7 @@ onmessage = (e) => {
   const m = e.data;
   if (m.init) {
     ready = init(m.init).catch((e) => {
-      console.error("asuka/sqlite: SQLite didn't load:", e);
+      console.error("asuka/sdk/sqlite: SQLite didn't load:", e);
       throw new Error(`SQLite didn't load: ${e?.message ?? e}`);
     });
     ready.catch(() => {}); // each call says it

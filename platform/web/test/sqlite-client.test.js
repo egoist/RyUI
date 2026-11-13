@@ -1,4 +1,4 @@
-// The page's side of SQLite (src/sqlite.js), as plugins/sqlite/lib_js.go calls
+// The page's side of SQLite (src/sqlite.js), as sdk/sqlite/lib_js.go calls
 // it, with a worker that answers what the test says: answers written into
 // Go's memory, a long one kept for TAKE, a database the page's files kept
 // sent to the worker and removed once it's moved, a worker that won't
@@ -25,7 +25,7 @@ function fakeWorker(reply) {
 
 function setup(reply) {
   let worker;
-  const c = new Client("http://x/sqlite/", () => (worker = fakeWorker(reply)));
+  const c = new Client("http://x/lib/asqlite.wasm", () => (worker = fakeWorker(reply)));
   const mem = new WebAssembly.Memory({ initial: 1 });
   const api = c.api(() => mem, "/data/app");
   const woken = [];
@@ -39,7 +39,7 @@ const tick = () => new Promise((r) => setTimeout(r, 5));
 test("an answer is written into Go's buffer; a long one is kept for TAKE", async () => {
   const long = new Uint8Array(100).map((_, i) => i);
   const s = setup((call) => ({ answer: (call.outCap >= 100 ? long.slice(0, 10) : long.slice()).buffer, took: false }));
-  assert.equal(s.worker().sent[0].init.wasm, "http://x/sqlite/asqlite.wasm");
+  assert.equal(s.worker().sent[0].init.wasm, "http://x/lib/asqlite.wasm");
   assert.deepEqual(s.worker().sent[1], { roots: ["/data/app"] });
   s.heap().set([1, 2, 3], 0);
   assert.equal(s.api.call(EXEC, 7, 0, 0, 3, 1000, 16, 1), undefined, "Go waits");
@@ -79,7 +79,7 @@ test("a database the page's files kept goes to the worker, and leaves them once 
 });
 
 test("a worker that won't start answers each call with an error", async () => {
-  const c = new Client("http://x/sqlite/", () => { throw new Error("no workers here"); });
+  const c = new Client("http://x/lib/asqlite.wasm", () => { throw new Error("no workers here"); });
   const mem = new WebAssembly.Memory({ initial: 1 });
   const api = c.api(() => mem, "/data/app");
   let n = 0;

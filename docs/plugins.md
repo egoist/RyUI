@@ -3,7 +3,7 @@
 A plugin is a Go package that brings native libraries with it: code in
 C, Zig or Rust, prebuilt for each platform, that its Go code calls
 without cgo. Using one is importing it; the CLI ships its libraries with
-the app, on every platform. `asuka/plugins/sqlite` is one
+the app, on every platform. `asuka/sdk/sqlite` is one
 ([Data](data.md#records-the-sqlite-plugin)).
 
 ## Using a plugin
@@ -11,7 +11,7 @@ the app, on every platform. `asuka/plugins/sqlite` is one
 Import it:
 
 ```go
-import "github.com/egoist/asuka/plugins/sqlite"
+import "github.com/egoist/asuka/sdk/sqlite"
 
 db, err := sqlite.Open("notes.db")
 ```
@@ -32,7 +32,10 @@ manifest names before it's used.
 | Linux | `lib/<app>` of the install prefix | in the tarball and the Flatpak |
 | iOS | `Frameworks/<library>.framework` | its Info.plist and privacy manifest, signed with the app |
 | Android | beside `libasuka.so`, in each ABI | uncompressed, 16 KB pages |
-| The web | `plugins/<plugin>` of the host's files | |
+| The web | `lib/` of the host's files | the page's `libs` option names each file's URL |
+
+The libraries of an app's plugins all go in one place, so no two may
+have a file of the same name for a platform: the build says which two do.
 
 An app built into another (`asuka build --platform ios --xcframework`)
 comes with an XCFramework of each library, for that app to embed too.
@@ -64,7 +67,7 @@ A plugin is a package with a manifest beside it, `asuka-plugin.json`:
 }
 ```
 
-- `name` is the plugin's: its web files go in `plugins/<name>`.
+- `name` is the plugin's, as the CLI's messages name it.
 - `sources` are what its libraries are built from, relative to the
   manifest: a library whose sources changed since it was built isn't
   published. Without it, every file of the package but its tests.
@@ -103,15 +106,15 @@ one's work (the sqlite plugin calls once per statement).
 ### Building and publishing
 
 A plugin builds its libraries with a tool of its own, as they need:
-`plugins/sqlite/internal/build` compiles SQLite with Xcode, the Android
+`sdk/sqlite/internal/build` compiles SQLite with Xcode, the Android
 NDK and Zig. It writes each target's file with `plugin.StoreBuild`,
 with the plugin's `plugin.SourceHash`, into `build/<target>` beside the
 manifest. That directory isn't checked in. In a checkout, the plugin's
 own tests and the apps beside it use the build there.
 
 ```sh
-go generate ./plugins/sqlite                         # build every target
-go run ./cmd/asuka plugin publish plugins/sqlite     # publish
+go generate ./sdk/sqlite                         # build every target
+go run ./cmd/asuka plugin publish sdk/sqlite     # publish
 ```
 
 `asuka plugin publish` gzips each file and names it for its hash

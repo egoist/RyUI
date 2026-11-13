@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/egoist/asuka/plugins/sqlite"
+	"github.com/egoist/asuka/sdk/sqlite"
 )
 
 type benchRow struct {

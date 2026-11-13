@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/egoist/asuka/host/fake"
-	"github.com/egoist/asuka/plugins/sqlite"
+	"github.com/egoist/asuka/sdk/sqlite"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )

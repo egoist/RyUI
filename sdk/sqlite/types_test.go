@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/egoist/asuka/plugins/sqlite"
+	"github.com/egoist/asuka/sdk/sqlite"
 )
 
 type status string

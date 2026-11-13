@@ -96,7 +96,7 @@ func TestSignMacFrameworks(t *testing.T) {
 	}
 }
 
-// A Mac build of an app that uses asuka/sqlite ships the library in its
+// A Mac build of an app that uses asuka/sdk/sqlite ships the library in its
 // Frameworks, signed with it, and is built without the copy the package
 // embeds: it runs from the .app, finding the library there.
 func TestBuildMacSQLite(t *testing.T) {

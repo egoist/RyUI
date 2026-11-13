@@ -1,4 +1,4 @@
-// An app that uses asuka/sqlite, without a window: the desktop builds'
+// An app that uses asuka/sdk/sqlite, without a window: the desktop builds'
 // tests build it (desktop_test.go), and it runs from a build's folder to
 // show the library the build ships is the one it loads. Each run adds a
 // row to the database its argument names (else one in memory), and
@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/egoist/asuka/plugins/sqlite"
+	"github.com/egoist/asuka/sdk/sqlite"
 )
 
 func main() {

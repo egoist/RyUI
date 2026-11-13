@@ -1,7 +1,7 @@
-// SQLite on the page, for asuka's sqlite plugin (plugins/sqlite/lib_js.go): the page's
+// SQLite on the page, for asuka's sqlite plugin (sdk/sqlite/lib_js.go): the page's
 // side of its SQLite worker (sqlite-worker.js), which runs SQLite's
 // WebAssembly module (asqlite.wasm, which the CLI ships with the apps
-// that use asuka/sqlite) and keeps databases in the origin private file
+// that use asuka/sdk/sqlite) and keeps databases in the origin private file
 // system.
 //
 // Go calls api.call(op, conn, arg, inPtr, inLen, outPtr, outCap, id) from
@@ -23,14 +23,14 @@ const ERROR = 1;
 
 let client = null;
 
-/** load starts the page's SQLite worker once, with the module at base (the directory of asqlite.wasm). */
-export function load(base) {
-  client ??= new Client(base);
+/** load starts the page's SQLite worker once, with its module (asqlite.wasm) at the URL wasm. */
+export function load(wasm) {
+  client ??= new Client(wasm);
   return Promise.resolve(client);
 }
 
 export class Client {
-  constructor(base, makeWorker = (url) => new Worker(url, { type: "module" })) {
+  constructor(wasm, makeWorker = (url) => new Worker(url, { type: "module" })) {
     this.waiting = new Map(); // message id -> answer handler
     this.nextID = 0;
     this.broken = null; // why the worker doesn't answer
@@ -38,7 +38,7 @@ export class Client {
       this.worker = makeWorker(new URL("./sqlite-worker.js", import.meta.url));
       this.worker.onmessage = (e) => this.answer(e.data);
       this.worker.onerror = (e) => this.fail(e.message || "the worker failed");
-      this.worker.postMessage({ init: { wasm: new URL("asqlite.wasm", base).href } });
+      this.worker.postMessage({ init: { wasm: new URL(wasm).href } });
     } catch (e) {
       this.fail(e.message);
     }
@@ -46,7 +46,7 @@ export class Client {
 
   fail(why) {
     this.broken = `SQLite's worker didn't start: ${why}`;
-    console.error("asuka/sqlite:", this.broken);
+    console.error("asuka/sdk/sqlite:", this.broken);
     const waiting = [...this.waiting.values()];
     this.waiting.clear();
     for (const f of waiting) f({ answer: errorAnswer(ERROR, this.broken).buffer, took: false });

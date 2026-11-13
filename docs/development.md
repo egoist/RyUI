@@ -149,7 +149,7 @@ What isn't kept:
 A built phone app (`--embed`, `--once`, native code) starts again from
 nothing on each reload.
 
-Files your Go code writes (`asuka/sdk/store`, `asuka/plugins/sqlite`) are on your
+Files your Go code writes (`asuka/sdk/store`, `asuka/sdk/sqlite`) are on your
 computer, in the player as on the desktop: `store.Dir()` is a `data`
 directory of the app's own in Asuka's cache, one for each platform, as
 two devices would have theirs. Delete it to start the app again with no

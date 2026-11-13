@@ -25,6 +25,6 @@ node_modules/
 # Claude Code worktrees
 .claude/worktrees/
 
-# Plugins' libraries, as their build tools build them (go generate ./plugins/sqlite);
+# Plugins' libraries, as their build tools build them (go generate ./sdk/sqlite);
 # asuka-plugin.json names the published ones
-/plugins/*/build/
+/sdk/*/build/

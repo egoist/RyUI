@@ -270,7 +270,7 @@ func TestLinuxSQLiteLib(t *testing.T) {
 	}
 }
 
-// A Linux build of an app that uses asuka/sqlite puts the library in
+// A Linux build of an app that uses asuka/sdk/sqlite puts the library in
 // the prefix, the tarball and the Flatpak, and is built without the copy
 // the package embeds; on Linux, it runs from the prefix, finding it.
 func TestBuildLinuxSQLite(t *testing.T) {

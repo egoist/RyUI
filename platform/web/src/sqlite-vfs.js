@@ -148,7 +148,7 @@ class Database {
     try {
       await this.store.close();
     } catch (e) {
-      console.warn("asuka/sqlite:", this.path, e);
+      console.warn("asuka/sdk/sqlite:", this.path, e);
     } finally {
       const unlock = this.unlock;
       this.unlock = null;
@@ -241,7 +241,7 @@ export class VFS {
 
   fail(code, e) {
     this.lastError = e;
-    if (e) console.warn("asuka/sqlite:", e);
+    if (e) console.warn("asuka/sdk/sqlite:", e);
     return code;
   }
 
@@ -462,7 +462,7 @@ let warned = false;
 function localLocks() {
   if (!warned) {
     warned = true;
-    console.warn("asuka/sqlite: this page has no Web Locks (it isn't a secure context): two tabs of the app writing one database may lose each other's writes");
+    console.warn("asuka/sdk/sqlite: this page has no Web Locks (it isn't a secure context): two tabs of the app writing one database may lose each other's writes");
   }
   const queues = new Map();
   return {

@@ -118,7 +118,7 @@ function rowsOf(r, ncols, rows) {
 
 test("the module is the SQLite the Go package was built for", async () => {
   const { e } = await engine();
-  const src = await readFile(new URL("../../../plugins/sqlite/version_gen.go", import.meta.url), "utf8");
+  const src = await readFile(new URL("../../../sdk/sqlite/version_gen.go", import.meta.url), "utf8");
   assert.equal(e.version(), Number(/libVersion = (\d+)/.exec(src)[1]));
 });
 

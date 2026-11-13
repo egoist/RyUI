@@ -13,6 +13,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/egoist/asuka/plugin"
 )
 
 // writeTestPluginLib writes the sqlite plugin's library for target to
@@ -64,6 +66,51 @@ func TestAppPlugins(t *testing.T) {
 	}
 	if pluginBuildFlags(nil) != nil || len(pluginBuildFlags([]pluginLib{{}})) != 1 {
 		t.Error("pluginBuildFlags")
+	}
+}
+
+// A web build puts the plugins' files in lib/ of the host's files and
+// names each in the page's libs: sqliteapp's asqlite.wasm, which the host
+// starts SQLite's worker with.
+func TestWebPluginFiles(t *testing.T) {
+	app := sqliteTestApp(t)
+	files, err := webPluginFiles(app)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := files["lib/asqlite.wasm"]; !ok || len(files) != 1 {
+		t.Fatalf("files: %v", files)
+	}
+	opts := map[string]any{}
+	webPluginOptions(files, "asuka/0123/", opts)
+	if want := map[string]string{"asqlite.wasm": "asuka/0123/lib/asqlite.wasm"}; !reflect.DeepEqual(opts["libs"], want) {
+		t.Errorf("libs: %v, want %v", opts["libs"], want)
+	}
+	none := map[string]any{}
+	webPluginOptions(nil, "asuka/", none)
+	if _, ok := none["libs"]; ok {
+		t.Error("an app without plugins: libs")
+	}
+}
+
+// The libraries go in one place on every platform, so two plugins with a
+// file of the same name for a target don't build; for another target
+// they may.
+func TestPluginLibsSameName(t *testing.T) {
+	plug := func(name, lib string, files map[string]string) appPlugin {
+		l := plugin.Library{Name: lib, Files: map[string]plugin.File{}}
+		for target, f := range files {
+			l.Files[target] = plugin.File{Name: f}
+		}
+		return appPlugin{dir: name, m: &plugin.Manifest{Name: name, Libraries: []plugin.Library{l}}}
+	}
+	a := plug("a", "liba", map[string]string{"wasm": "x.wasm", "linux-amd64": "liba.so"})
+	b := plug("b", "libb", map[string]string{"wasm": "x.wasm", "linux-amd64": "libb.so"})
+	if _, err := pluginLibs([]appPlugin{a, b}, "wasm"); err == nil || !strings.Contains(err.Error(), "plugins a and b both have a file x.wasm") {
+		t.Errorf("same name: %v", err)
+	}
+	if libs, err := pluginLibs([]appPlugin{a, b}, "linux-amd64"); err != nil || len(libs) != 2 {
+		t.Errorf("different names: %v %v", libs, err)
 	}
 }
 

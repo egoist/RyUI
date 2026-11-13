@@ -257,7 +257,7 @@ func TestWindowsSQLiteImports(t *testing.T) {
 	}
 }
 
-// A Windows build of an app that uses asuka/sqlite puts the library for
+// A Windows build of an app that uses asuka/sdk/sqlite puts the library for
 // its architecture beside the .exe (sqlite/locate_windows.go), and is
 // built without the copy the package embeds, with GOFLAGS' tags.
 func TestBuildWindowsSQLite(t *testing.T) {

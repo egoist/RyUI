@@ -18,7 +18,7 @@ import (
 // in Contents/Frameworks on macOS, beside the .exe on Windows, in
 // lib/<exe> of the prefix on Linux, as a framework each in an iOS app's
 // Frameworks, beside libasuka.so in each of an APK's ABIs, and in
-// plugins/<name> of a web build. A desktop build that ships any builds
+// lib/ of a web build's host files. A desktop build that ships any builds
 // with pluginTag, which leaves out the plugins' fetching their own for go
 // run and go test. The files are the plugins' checkout's builds, or the
 // published ones, downloaded once into the user's cache.
@@ -105,14 +105,25 @@ func appLibs(dir, goos, goarch, target string) ([]pluginLib, error) {
 	if err != nil {
 		return nil, err
 	}
+	return pluginLibs(ps, target)
+}
+
+// pluginLibs are the libraries of plugins ps for target. Every platform
+// puts them in one place, by their files' names, so no two may share one.
+func pluginLibs(ps []appPlugin, target string) ([]pluginLib, error) {
 	var libs []pluginLib
+	byName := map[string]pluginLib{}
 	for _, p := range ps {
 		for _, l := range p.m.Libraries {
 			f, ok := l.Files[target]
 			if !ok {
 				return nil, fmt.Errorf("plugin %s: library %s has no file for %s", p.m.Name, l.Name, target)
 			}
-			libs = append(libs, pluginLib{appPlugin: p, lib: l, file: f, target: target})
+			if o, ok := byName[f.Name]; ok {
+				return nil, fmt.Errorf("plugins %s and %s both have a file %s for %s", o.m.Name, p.m.Name, f.Name, target)
+			}
+			byName[f.Name] = pluginLib{appPlugin: p, lib: l, file: f, target: target}
+			libs = append(libs, byName[f.Name])
 		}
 	}
 	return libs, nil

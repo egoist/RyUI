@@ -16,7 +16,7 @@ import (
 	"testing"
 )
 
-// TestSQLitePackageWeb runs asuka/sqlite's own tests (go test -c, js/wasm)
+// TestSQLitePackageWeb runs asuka/sdk/sqlite's own tests (go test -c, js/wasm)
 // in headless Chrome, on a page with the web host's file system and
 // SQLite worker, twice: databases under /tmp (the worker's memory), and
 // under the data directory (the origin private file system); then its
@@ -29,7 +29,7 @@ func TestSQLitePackageWeb(t *testing.T) {
 	}
 	dir := t.TempDir()
 	wasm := filepath.Join(dir, "sqlite.test.wasm")
-	build := exec.Command("go", "test", "-c", "-o", wasm, "./plugins/sqlite")
+	build := exec.Command("go", "test", "-c", "-o", wasm, "./sdk/sqlite")
 	build.Dir = root(t)
 	build.Env = append(os.Environ(), "GOOS=js", "GOARCH=wasm")
 	if b, err := build.CombinedOutput(); err != nil {
@@ -95,7 +95,7 @@ func hostServer(t *testing.T, page string, more func(*http.ServeMux)) *httptest.
 	mux.Handle("/asuka/", http.StripPrefix("/asuka/", http.FileServer(http.Dir(filepath.Join(root(t), "platform", "web", "src")))))
 	// The sqlite plugin's: the checkout's build of it, or the published
 	// one (package plugin).
-	dir := filepath.Join(root(t), "plugins", "sqlite")
+	dir := filepath.Join(root(t), "sdk", "sqlite")
 	data, err := os.ReadFile(filepath.Join(dir, plugin.ManifestFile))
 	if err != nil {
 		t.Fatal(err)
@@ -135,7 +135,7 @@ await new Promise((resolve, reject) => {
   s.onerror = reject;
   document.head.appendChild(s);
 });
-const client = await load(new URL("/sqlite/", location.href));
+const client = await load(new URL("/sqlite/asqlite.wasm", location.href));
 const go = new Go();
 let instance;
 globalThis.asukaHost = { sqlite: client.api(() => instance.exports.mem, "/data/test") };

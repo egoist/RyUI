@@ -173,7 +173,7 @@ func TestGoTags(t *testing.T) {
 	}
 }
 
-// sqliteTestApp is testdata/sqliteapp, an app that uses asuka/sqlite and
+// sqliteTestApp is testdata/sqliteapp, an app that uses asuka/sdk/sqlite and
 // has no window: it prints how many times it has run with a database.
 func sqliteTestApp(t *testing.T) *goApp {
 	t.Helper()

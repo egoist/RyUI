@@ -24,7 +24,7 @@ func init() {
 			if name == "" {
 				name = appName()
 			}
-			// Made by what writes there (asuka/sdk/store, asuka/sqlite, the
+			// Made by what writes there (asuka/sdk/store, asuka/sdk/sqlite, the
 			// window's placement), not here.
 			os.Setenv("ASUKA_DATA", filepath.Join(base, name))
 		}

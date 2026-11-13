@@ -7,7 +7,7 @@ import (
 
 	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/fonts"
-	"github.com/egoist/asuka/plugins/sqlite"
+	"github.com/egoist/asuka/sdk/sqlite"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )

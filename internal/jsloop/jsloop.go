@@ -3,7 +3,7 @@
 // request. The page waits for the callback to return, so the goroutine
 // it runs on can't wait for anything the page must do first (a worker's
 // answer): Go's runtime would find every goroutine asleep. A package
-// that would wait for the page (asuka/sqlite) asks InCallback first and
+// that would wait for the page (asuka/sdk/sqlite) asks InCallback first and
 // fails instead.
 //
 // host/web brackets the callbacks that run the app's code with Enter and

@@ -95,7 +95,7 @@ func webSource(app *goApp) (fs.FS, string) {
 
 // webPluginFiles are the web's files of the plugins app uses (their
 // libraries' wasm files, plugins.go), by their paths in the host's
-// directory: plugins/<plugin>/<file>.
+// directory: lib/<file>, as Linux's are in lib/ of the prefix.
 func webPluginFiles(app *goApp) (map[string]pluginLib, error) {
 	libs, err := appLibs(app.dir, "js", "wasm", "wasm")
 	if err != nil {
@@ -103,21 +103,24 @@ func webPluginFiles(app *goApp) (map[string]pluginLib, error) {
 	}
 	files := map[string]pluginLib{}
 	for _, l := range libs {
-		files["plugins/"+l.m.Name+"/"+l.file.Name] = l
+		files["lib/"+l.file.Name] = l
 	}
 	return files, nil
 }
 
-// webPluginOptions sets the page's options for the plugins the host
-// itself drives, their files under base (the host's directory, with a
-// slash): the sqlite plugin's module, which the host's SQLite worker runs
-// (platform/web/src/sqlite.js).
+// webPluginOptions tells the page the plugins' files, under base (the
+// host's directory, with a slash): libs, each file's URL by its name,
+// which the host looks up for what it drives itself (SQLite's worker
+// runs asqlite.wasm, platform/web/src/sqlite.js).
 func webPluginOptions(files map[string]pluginLib, base string, opts map[string]any) {
-	for _, l := range files {
-		if l.m.Name == "sqlite" {
-			opts["sqlite"] = base + "plugins/sqlite/"
-		}
+	if len(files) == 0 {
+		return
 	}
+	libs := map[string]string{}
+	for p, l := range files {
+		libs[l.file.Name] = base + p
+	}
+	opts["libs"] = libs
 }
 
 // wasmExec is the Go release's JavaScript side of its WebAssembly port,
@@ -470,7 +473,7 @@ func (s *devServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case p == "/asuka/wasm_exec.js":
 		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 		w.Write(s.exec)
-	case strings.HasPrefix(p, "/asuka/plugins/"):
+	case strings.HasPrefix(p, "/asuka/lib/"):
 		l, ok := (*s.plugins.Load())[strings.TrimPrefix(p, "/asuka/")]
 		if !ok {
 			http.NotFound(w, r)

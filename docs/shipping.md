@@ -174,7 +174,7 @@ match installed. `--distribution ad-hoc` or `development` signs it for the
 devices of its profile instead, and `--simulator` makes an unsigned `.app`
 for the simulator.
 
-An app that uses `asuka/plugins/sqlite` has SQLite in its `Frameworks`, as
+An app that uses `asuka/sdk/sqlite` has SQLite in its `Frameworks`, as
 `asqlite.framework` (the device's or the simulator's), signed with the
 app, which loads it the first time it opens a database. Its extensions
 (the share sheet, the Notification Service Extension) load the app's.
@@ -226,7 +226,7 @@ ASUKA_KEYSTORE_PASSWORD=... asuka build --platform android
 `ASUKA_KEY_ALIAS` name them in CI.) It makes an `.aab` for Google Play, for
 64-bit and 32-bit ARM phones and x86_64 (emulators, Chromebooks),
 Android 13 and later; Play makes each phone's APK from it, with only
-that phone's architecture. An app that uses `asuka/plugins/sqlite` has SQLite
+that phone's architecture. An app that uses `asuka/sdk/sqlite` has SQLite
 beside its Go code in each architecture, `libasqlite.so`, which Android
 loads from the APK as it does the app's (uncompressed, on 16 KB pages). `asuka publish --platform android` makes it and uploads it to Google Play (see
 [Publishing](#publishing)).
@@ -331,7 +331,7 @@ entitlements for them (`com.apple.security.device.camera`,
 an app signed with a Developer ID is refused the camera, the microphone
 or the user's data. An app with Swift of its own (`macos/*.swift`) has it
 compiled for both architectures into `Contents/Frameworks`, signed with
-the app (see [Native code](native.md)). An app that uses `asuka/plugins/sqlite`
+the app (see [Native code](native.md)). An app that uses `asuka/sdk/sqlite`
 has SQLite's library there too (`libasqlite.dylib`, for both
 architectures), signed as the app is: with a Developer ID, the hardened
 runtime loads only libraries signed by the app's own team, and the
@@ -392,7 +392,7 @@ asuka build --platform windows --arch arm64  # native on Arm PCs
 ```
 
 makes a folder, `dist/<Name>`, from any system: `<Name>.exe` and the
-app's assets beside it, and for an app that uses `asuka/plugins/sqlite`,
+app's assets beside it, and for an app that uses `asuka/sdk/sqlite`,
 SQLite's library, `asqlite.dll`, for the same architecture (it needs
 only what every Windows 10 and 11 has: the Universal C Runtime). The
 `.exe` is a GUI program (no console window) with its resources built
@@ -441,7 +441,7 @@ cgo. In `dist/linux` it makes:
   - `share/my-notes/assets`, its assets, which it finds from
     `bin/`;
   - `lib/my-notes/libasqlite.so`, SQLite's library, for an app that
-    uses `asuka/plugins/sqlite`, which it finds from `bin/` too (glibc 2.17 or
+    uses `asuka/sdk/sqlite`, which it finds from `bin/` too (glibc 2.17 or
     later; it shows none of SQLite's own symbols, so a system SQLite in
     the same process doesn't mind it);
   - `share/applications/<id>.desktop`, what launchers show and run;
@@ -752,7 +752,7 @@ present(AsukaViewController(), animated: true)
 // or push it, or make it a tab, or a window's root
 ```
 
-An app that uses `asuka/plugins/sqlite` comes with `dist/asqlite.xcframework`
+An app that uses `asuka/sdk/sqlite` comes with `dist/asqlite.xcframework`
 beside it, SQLite's library: embed it too (Embed & Sign). The Go code
 loads it from your app's `Frameworks`; it has its own privacy manifest.
 
@@ -761,7 +761,7 @@ loads it from your app's `Frameworks`; it has its own privacy manifest.
 assets, and `AsukaActivity` declared, with its dependencies (Material,
 AndroidX) in its POM, and the optional modules the app uses (`asuka/sdk/push`,
 `asuka/sdk/maps`) beside it, and SQLite's library for each ABI when the app
-uses `asuka/plugins/sqlite`. Add the repository and the dependency the
+uses `asuka/sdk/sqlite`. Add the repository and the dependency the
 command prints, then start the activity:
 
 ```kotlin

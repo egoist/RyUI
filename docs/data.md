@@ -1,7 +1,7 @@
 # Data
 
 An app keeps its data in a few places: small values in `asuka/sdk/store`, records
-in SQLite with `asuka/plugins/sqlite`, secrets in the platform's keychain with
+in SQLite with `asuka/sdk/sqlite`, secrets in the platform's keychain with
 `asuka/sdk/secure`, and files of its own with Go's `os`. This page covers each,
 the network through `net/http`, watching files, and which calls may block
 the main thread.
@@ -92,7 +92,7 @@ the app goes to the background; you need it only in tests.
 
 ## Records: the sqlite plugin
 
-`asuka/plugins/sqlite` is an app's SQLite database, a
+`asuka/sdk/sqlite` is an app's SQLite database, a
 [plugin](plugins.md): import it, and the CLI ships its library with the
 app. It's SQLite itself, its C, one release built the same way for
 every platform, with a small library of Asuka's that runs a whole
@@ -344,7 +344,7 @@ the math functions, `dbstat`, `STAT4` and `soundex` built in, loadable
 extensions left out, and temporary tables kept in memory (a phone may
 have no temporary directory). It's the plugin's library, `asqlite`,
 built for each platform and published to the plugin's GitHub release;
-its manifest (`plugins/sqlite/asuka-plugin.json`) names each file and
+its manifest (`sdk/sqlite/asuka-plugin.json`) names each file and
 its SHA-256, and the CLI and the package download them from there,
 once, into the user's cache. An app's developers need no C compiler.
 
@@ -362,10 +362,10 @@ once, into the user's cache. An app's developers need no C compiler.
   plugin's; the package checks its SQLite version).
 
 To change SQLite or the plugin's C, in a checkout: `go generate
-./plugins/sqlite` builds every platform's library (Xcode for Apple's
+./sdk/sqlite` builds every platform's library (Xcode for Apple's
 platforms, the Android NDK, Zig for Linux, Windows and the web) into
-`plugins/sqlite/build`, which the checkout's own tests and examples use
-from then on, and `go run ./cmd/asuka plugin publish plugins/sqlite`
+`sdk/sqlite/build`, which the checkout's own tests and examples use
+from then on, and `go run ./cmd/asuka plugin publish sdk/sqlite`
 publishes it.
 
 ## Secrets: asuka/sdk/secure

@@ -17,7 +17,7 @@
 // Its build tool (its own: a plugin's libraries are built as it needs)
 // writes each target's library with StoreBuild, into build/<target>
 // beside the manifest; asuka plugin publish uploads them and records them
-// in the manifest. plugins/sqlite is one.
+// in the manifest. sdk/sqlite is one.
 //
 // Native modules (Swift, Kotlin and JavaScript a plugin brings to the
 // hosts) will be a manifest's "modules", beside "libraries".
@@ -34,7 +34,7 @@ const ManifestFile = "asuka-plugin.json"
 
 // Manifest is a plugin's manifest.
 type Manifest struct {
-	// Name is the plugin's: where the web's files go (plugins/<name>).
+	// Name is the plugin's, as the CLI names it in its messages.
 	Name string `json:"name"`
 	// Sources are what its libraries are built from, paths relative to
 	// the manifest (directories whole); SourceHash hashes them.

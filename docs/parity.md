@@ -101,7 +101,7 @@ draws its own UI, see [Asuka and MyGo](mygo.md).
 |---|---|---|---|
 | State | `@State`, `@Observable` | hooks | ✓ signals (fine-grained: a write updates only what reads it) |
 | Small persisted values | `@AppStorage` | AsyncStorage | ✓ `asuka/sdk/store` |
-| SQLite | SwiftData / GRDB | `expo-sqlite` | ✓ `asuka/plugins/sqlite` (migrations, typed queries, transactions, writes off the main thread, live queries that run again when a table they read is written, also with arguments that change: `WatchWith`; in the browser too, SQLite's WebAssembly build) |
+| SQLite | SwiftData / GRDB | `expo-sqlite` | ✓ `asuka/sdk/sqlite` (migrations, typed queries, transactions, writes off the main thread, live queries that run again when a table they read is written, also with arguments that change: `WatchWith`; in the browser too, SQLite's WebAssembly build) |
 | Secure storage | Keychain | `expo-secure-store` | ✓ `asuka/sdk/secure` (on the web: encrypted in IndexedDB under a key the browser won't let out; not a keychain) |
 | Files, network | Foundation | `expo-file-system`, fetch | ✓ Go's `os`, `net/http` |
 | Photos | `PhotosPicker` | `expo-image-picker` | ✓ `device.PickPhotos` |

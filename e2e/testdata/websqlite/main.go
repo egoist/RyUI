@@ -1,4 +1,4 @@
-// Web SQLite is a web e2e's app (e2e/websqlite_test.go): asuka/sqlite in
+// Web SQLite is a web e2e's app (e2e/websqlite_test.go): asuka/sdk/sqlite in
 // a browser, driven by the test through window.sqliteTest (hooks_js.go),
 // and a live query's count on screen.
 package main
@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/egoist/asuka/app"
-	"github.com/egoist/asuka/plugins/sqlite"
+	"github.com/egoist/asuka/sdk/sqlite"
 	"github.com/egoist/asuka/signal"
 	"github.com/egoist/asuka/ui"
 )

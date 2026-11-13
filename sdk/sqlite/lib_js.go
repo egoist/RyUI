@@ -68,7 +68,7 @@ func loadLibrary() (library, error) {
 	}
 	api := h.Get("sqlite")
 	if api.IsUndefined() || api.IsNull() {
-		return nil, errors.New("the page didn't load SQLite (asuka build --platform web ships it with the apps that import asuka/sqlite; a page of your own passes start its sqlite option)")
+		return nil, errors.New("the page didn't load SQLite (asuka build --platform web ships it with the apps that import asuka/sdk/sqlite; a page of your own passes start asqlite.wasm in its libs option)")
 	}
 	l := &webLib{pending: map[uint32]chan int{}}
 	l.done = js.FuncOf(func(_ js.Value, args []js.Value) any {

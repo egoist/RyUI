@@ -9,9 +9,9 @@
 // of the Go release's wasm_exec.js; "wasm_exec.js" beside this file by
 // default), assets (where its assets are served: "assets"), name (the
 // app's: its stored data is kept under it), fonts (the app's font files,
-// assets/fonts), env (more environment variables for the Go code), sqlite
-// (the URL of the directory of SQLite's module, asqlite.wasm, for an app
-// that imports asuka/sqlite: its worker starts with the app),
+// assets/fonts), env (more environment variables for the Go code), libs (the
+// URLs of the app's plugins' files, by their names: an app that imports
+// asuka/sdk/sqlite has asqlite.wasm, and SQLite's worker starts with it),
 // serviceWorker (the URL of the app's service worker, sw.js with the
 // app's settings, which the page registers: its notifications and
 // pushes), vapidPublicKey (the app's VAPID key, for asuka/sdk/push), icon (a
@@ -45,8 +45,9 @@ export async function start(options = {}) {
   // The app's service worker, listened to before the app starts: a tap
   // on a notification may be what opened the page.
   worker.register(options.serviceWorker);
-  // SQLite's worker starts beside the app (asuka/sqlite), loading its module meanwhile.
-  const sqlite = options.sqlite ? import("./sqlite.js").then((m) => m.load(new URL(options.sqlite, document.baseURI))) : null;
+  // SQLite's worker starts beside the app (asuka/sdk/sqlite), loading its module meanwhile.
+  const sqliteWasm = options.libs?.["asqlite.wasm"];
+  const sqlite = sqliteWasm ? import("./sqlite.js").then((m) => m.load(new URL(sqliteWasm, document.baseURI))) : null;
   sqlite?.catch(() => {});
   const data = "/data/" + name.replace(/[^\w.-]/g, "_");
   await fs.mount({ name, dir: data, output: dev?.log });

@@ -12,7 +12,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/egoist/asuka/plugins/sqlite"
+	"github.com/egoist/asuka/sdk/sqlite"
 )
 
 // TestSQLiteWeb runs e2e/testdata/websqlite in headless Chrome, through

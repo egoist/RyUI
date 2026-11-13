@@ -956,8 +956,10 @@ library's file where `LibraryPath` looks: `Contents/Frameworks` on macOS
 (signed with the app), beside the `.exe` on Windows, `lib/<exe>` of the
 prefix on Linux, a framework of its own on iOS (named for the library;
 an Info.plist, a privacy manifest from the binary's imports, signed with
-the app), beside `libasuka.so` in each Android ABI, and `plugins/<name>`
-on the web. A desktop build that ships any builds with `asuka_bundled`.
+the app), beside `libasuka.so` in each Android ABI, and `lib/` of the
+host's files on the web (the page's `libs` option names each file's
+URL): all in one place, so two plugins with a file of the same name for
+a platform don't build. A desktop build that ships any builds with `asuka_bundled`.
 A plugin builds its libraries with its own tool (they need what they
 need: SQLite, Xcode, the NDK and Zig), which writes each with
 `plugin.StoreBuild` and the hash of the plugin's sources (the manifest's
@@ -968,10 +970,10 @@ hosts) are to be a manifest's `modules`, beside its `libraries`.
 
 ### SQLite
 
-`asuka/plugins/sqlite` is a plugin: SQLite's own C, one pinned release
+`asuka/sdk/sqlite` is a plugin: SQLite's own C, one pinned release
 built with the same options for every platform by
-`plugins/sqlite/internal/build` (Xcode, the NDK, Zig). With it, one library of Asuka's
-(`plugins/sqlite/csrc/asq.c`) and one entry point: `asq_call(op, conn, arg, in,
+`sdk/sqlite/internal/build` (Xcode, the NDK, Zig). With it, one library of Asuka's
+(`sdk/sqlite/csrc/asq.c`) and one entry point: `asq_call(op, conn, arg, in,
 inLen, out, outCap)`, every argument pointer-sized. A call is a whole
 statement: its SQL and arguments in, its answer (a query's columns and
 first rows, as many as fit the buffer) out; `next` brings the rest a
@@ -1225,9 +1227,9 @@ asuka/
     remote/          what asuka dev links in to serve a player
   sdk/               the packages beyond the core: what the platform offers
                      (biometric, camera, push, tray…) over native modules,
-                     and libraries over ui (chart, markdown, svg, store…)
+                     and libraries over ui (chart, markdown, svg, store…);
+                     sdk/sqlite is a plugin (SQLite's own C, no cgo)
   plugin/            plugins' manifests, fetching and linking
-  plugins/sqlite/    the first plugin
   cmd/asuka/         CLI
   template/          what `asuka new` copies
   examples/counter/  examples/todo/  examples/list10k/  examples/navigation/
@@ -1378,7 +1380,7 @@ Each one ends with its examples running and its tests in CI.
   - The device's time zone as Go's `time.Local`.
   - Motion: `Style.Transform`, shadows, gradients, `Style.Material`
     (blur), repeating animations, enter and exit `Transition`s.
-  - `asuka/plugins/sqlite` (SQLite's C, no cgo; live queries with `sqlite.Watch`), native
+  - `asuka/sdk/sqlite` (SQLite's C, no cgo; live queries with `sqlite.Watch`), native
     modules (`ui.Call`: `asuka/sdk/secure`, the keychain and Keystore;
     `asuka/sdk/device`: info, an in-app browser, the photo picker).
   - A search field in the navigation bar (`ScreenOptions.Search`).
@@ -1598,7 +1600,7 @@ Each one ends with its examples running and its tests in CI.
   v0 components, navigation (the browser's back included), rich text and rich text fields (an editable element; formatting through the browser's editing, so its undo covers it),
   shapes, canvas, shaders (WebGL 2), images, symbols, video,
   gestures, drag and drop, menus, animation, transitions, matched views,
-  the app's files kept (IndexedDB, large files in chunks), `asuka/plugins/sqlite`
+  the app's files kept (IndexedDB, large files in chunks), `asuka/sdk/sqlite`
   (its C built to WebAssembly, in a worker, below; live queries), the native modules
   a browser has (`platform/web/src/modules`: the secure store under a
   non-extractable WebCrypto key, device, clipboard, pickers, share,
@@ -3583,16 +3585,17 @@ calls:
   `BroadcastChannel`, and the others read them again (one a tab changed
   and hasn't written stays its own, written whole: last writer wins,
   never a mix of chunks).
-- SQLite: `asuka/plugins/sqlite`'s C (SQLite and `plugins/sqlite/csrc/asq.c`), built to
-  WebAssembly by `plugins/sqlite/internal/build` (zig, `wasm32-wasi`, `-Os`) with
-  `plugins/sqlite/csrc/asq_wasm.c` as its system (`SQLITE_OS_OTHER`, one thread:
+- SQLite: `asuka/sdk/sqlite`'s C (SQLite and `sdk/sqlite/csrc/asq.c`), built to
+  WebAssembly by `sdk/sqlite/internal/build` (zig, `wasm32-wasi`, `-Os`) with
+  `sdk/sqlite/csrc/asq_wasm.c` as its system (`SQLITE_OS_OTHER`, one thread:
   a VFS, the time zone and randomness imported from JavaScript, no WASI
   imports): the plugin's `wasm` file, which the CLI ships with the apps
-  that use it, in `plugins/sqlite` (as any plugin's, [Plugins](#plugins)),
-  and passes the page as its `sqlite` option. It runs in a worker of the
+  that use it, in `lib/` (as any plugin's, [Plugins](#plugins)), named in
+  the page's `libs` option; the page starts the worker when it has
+  `asqlite.wasm`. It runs in a worker of the
   page's (`platform/web/src/sqlite-worker.js`; `sqlite-engine.js` the
   module, `sqlite-vfs.js` its files, `sqlite-store.js` where they're
-  kept). Go's side (`plugins/sqlite/lib_js.go`) posts each call to the worker
+  kept). Go's side (`sdk/sqlite/lib_js.go`) posts each call to the worker
   through `sqlite.js` and waits on a channel; the page writes the answer
   into Go's buffer (one too long is kept page-side for `TAKE`, answered
   at once) and wakes the goroutine. The page's callbacks can't wait (the
