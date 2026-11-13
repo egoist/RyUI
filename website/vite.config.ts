@@ -17,12 +17,7 @@ const docs = fs
   .filter((file) => file.endsWith(".md") && file !== "README.md" && !unpublished.has(file))
   .map((file) => `/docs/${file.slice(0, -3).split(path.sep).join("/").replace(/\/README$/, "")}`)
 
-const goVersion = /^go (\d+\.\d+)/m.exec(fs.readFileSync(repo("go.mod"), "utf8"))?.[1]
-
 export default defineConfig({
-  define: {
-    __GO_VERSION__: JSON.stringify(goVersion),
-  },
   resolve: { tsconfigPaths: true },
   plugins: [
     llmsDocs(path.resolve(import.meta.dirname, "..")),

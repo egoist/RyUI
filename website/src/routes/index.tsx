@@ -50,11 +50,7 @@ function Home() {
   return (
     <main>
       <section className="px-4 py-20 sm:px-10 md:py-28">
-        <p className="label inline-flex items-center gap-2">
-          <span className="size-1.5 rounded-full bg-gopher" />
-          iOS · Android · macOS · Windows · Linux · Web · Go {__GO_VERSION__}+
-        </p>
-        <h1 className="mt-6 text-4xl leading-[1.05] font-semibold tracking-[-0.04em] sm:text-5xl md:text-6xl">
+        <h1 className="text-4xl leading-[1.05] font-semibold tracking-[-0.04em] sm:text-5xl md:text-6xl">
           Native apps in Go.
           <span className="block text-muted-foreground">The platform&apos;s widgets, not a web view.</span>
         </h1>
