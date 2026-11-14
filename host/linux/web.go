@@ -484,11 +484,24 @@ func (w *web) released() {
 // The web module and asuka/sdk/js.
 
 // evalBody runs s in the page's world and answers with its value as
-// JSON: the last statement's, or what its promise resolves to.
-const evalBody = `const v = await (0, eval)(s); return JSON.stringify(v === undefined ? null : v)`
+// JSON: the last statement's, or what its promise resolves to. A page
+// whose Content Security Policy blocks eval answers evalBlocked instead,
+// before any of s has run.
+const evalBody = `try { (0, eval)("0") } catch { return "!eval" }
+const v = await (0, eval)(s); return JSON.stringify(v === undefined ? null : v)`
+
+// evalBlocked is evalBody's answer on a page that blocks eval: not JSON,
+// so no value of a script's is mistaken for it.
+const evalBlocked = "!eval"
+
+// errEvalUnsupported is what a script answers, on a page that blocks
+// eval, when its value isn't one WebKit returns.
+var errEvalUnsupported = errors.New("the script's value is a promise, a function or another value WebKit can't return: the page's Content Security Policy blocks eval, so the script ran as EvalJS runs it, and a promise isn't awaited")
 
 // evalIn runs script in a web view and answers with its value as JSON,
-// or what it threw.
+// or what it threw. On a page that blocks eval, it runs as EvalJS runs
+// it (webkit_web_view_evaluate_javascript, which no Content Security
+// Policy applies to): its last statement's value.
 func evalIn(view Ptr, script string, reply func([]byte, error)) {
 	d := WebGLib.VariantDictNew(0)
 	WebGLib.VariantDictInsert(d, "s", VariantNewString(script))
@@ -512,9 +525,42 @@ func evalIn(view Ptr, script string, reply func([]byte, error)) {
 			}
 			ObjectUnref(val)
 		}
+		if string(out) == evalBlocked {
+			evalNative(view, script, reply)
+			return
+		}
 		reply(out, nil)
 	})
 	WebGLib.VariantUnref(args)
+}
+
+// evalNative runs script as the program it is and answers with its last
+// statement's value as JSON (jsc_value_to_json: JSON.stringify's).
+func evalNative(view Ptr, script string, reply func([]byte, error)) {
+	Async(func(a AsyncCall) {
+		WebKitWebViewEvaluateJavascript(view, script, -1, 0, 0, 0, a.Callback, a.Data)
+	}, func(src, res Ptr) {
+		var gerr Ptr
+		val := WebKitWebViewEvaluateJavascriptFinish(src, res, &gerr)
+		if gerr != 0 {
+			domain, code, msg := WebKitError(gerr)
+			ErrorFree(gerr)
+			if domain == WebKitJavascriptErrorQuark() && code == WebKitJavascriptErrorInvalidResult {
+				reply(nil, errEvalUnsupported)
+				return
+			}
+			reply(nil, errors.New(msg))
+			return
+		}
+		out := []byte("null") // undefined
+		if val != 0 {
+			if s := GoStringFree(JSCValueToJSON(val, 0)); s != "" {
+				out = []byte(s)
+			}
+			ObjectUnref(val)
+		}
+		reply(out, nil)
+	})
 }
 
 // webModule is the "web" module: "eval" (args: u32 a WebView's node id,

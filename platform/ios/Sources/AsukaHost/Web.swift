@@ -164,19 +164,59 @@ import AsukaOps
     }
 
     /// Runs script, answering with its value as JSON (a promise's, awaited), or what it threw.
+    /// On a page whose Content Security Policy blocks eval, it runs as EvalJS runs it
+    /// (evaluateJavaScript, which no policy applies to): its last statement's value.
     func evalResult(_ script: String, _ reply: @escaping (Result<Data, Error>) -> Void) {
-        let body = "const v = await (0, eval)(s); return JSON.stringify(v === undefined ? null : v)"
+        callAsync(Self.evalBody, ["s": script]) { [weak self] r in
+            switch r {
+            case .success(Self.evalBlocked?):
+                guard let self else { reply(.failure(AsukaModuleError("not a WebView"))); return }
+                self.evalNative(script, reply)
+            case .success(let s): reply(.success(Data((s ?? "null").utf8)))
+            case .failure(let e): reply(.failure(e))
+            }
+        }
+    }
+
+    /// Runs s in the page's world, answering with its value as JSON: the last statement's,
+    /// or what its promise resolves to. A page that blocks eval answers evalBlocked instead,
+    /// before any of s has run.
+    static let evalBody = """
+        try { (0, eval)("0") } catch { return "!eval" }
+        const v = await (0, eval)(s); return JSON.stringify(v === undefined ? null : v)
+        """
+    /// evalBody's answer on a page that blocks eval: not JSON, so no script's value is taken for it.
+    static let evalBlocked = "!eval"
+
+    /// Runs script as the program it is, answering with its last statement's value as JSON,
+    /// which the page's JSON.stringify writes: the value WebKit returns goes back in as an argument.
+    private func evalNative(_ script: String, _ reply: @escaping (Result<Data, Error>) -> Void) {
+        evaluateJavaScript(script) { [weak self] v, e in
+            if let e { reply(.failure(Self.jsError(e))); return }
+            guard let v, let self else { reply(.success(Data("null".utf8))); return }
+            self.callAsync("return JSON.stringify(v)", ["v": v]) { r in reply(r.map { Data(($0 ?? "null").utf8) }) }
+        }
+    }
+
+    /// Runs body as an async function in the page's world, answering with the string it
+    /// returned (nil for anything else) or what it threw.
+    private func callAsync(_ body: String, _ args: [String: Any], _ answer: @escaping (Result<String?, Error>) -> Void) {
         // The Objective-C method, not the Swift overlay's: built for iOS 16,
         // the overlay's links /usr/lib/swift/libswiftWebKit.dylib, which
         // iOS 18.5 doesn't have (the overlay moved into WebKit in 18.4).
-        __callAsyncJavaScript(body, arguments: ["s": script], inFrame: nil, in: .page) { v, e in
-            if let e {
-                let m = (e as NSError).userInfo["WKJavaScriptExceptionMessage"] as? String ?? e.localizedDescription
-                reply(.failure(AsukaModuleError(m)))
-                return
-            }
-            reply(.success(Data(((v as? String) ?? "null").utf8)))
+        __callAsyncJavaScript(body, arguments: args, inFrame: nil, in: .page) { v, e in
+            if let e { answer(.failure(Self.jsError(e))); return }
+            answer(.success(v as? String))
         }
+    }
+
+    /// A web view's error running script: the message of what it threw.
+    static func jsError(_ e: Error) -> Error {
+        let n = e as NSError
+        if n.domain == WKErrorDomain && n.code == 5 { // WKErrorJavaScriptResultTypeIsUnsupported
+            return AsukaModuleError("the script's value is a promise, a function or another value WebKit can't return: the page's Content Security Policy blocks eval, so the script ran as EvalJS runs it, and a promise isn't awaited")
+        }
+        return AsukaModuleError(n.userInfo["WKJavaScriptExceptionMessage"] as? String ?? e.localizedDescription)
     }
 
     /// The "web" module: "eval" (args: u32 a WebView's node id, then the

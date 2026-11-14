@@ -47,6 +47,7 @@ var (
 	WebKitWebViewGetUserContentManager       func(v Ptr) Ptr
 	WebKitWebViewGetBackForwardList          func(v Ptr) Ptr
 	WebKitWebViewEvaluateJavascript          func(v Ptr, script string, length int, world, sourceURI, cancellable, cb, data Ptr)
+	WebKitWebViewEvaluateJavascriptFinish    func(v, res Ptr, err *Ptr) Ptr
 	WebKitWebViewCallAsyncJavascriptFunction func(v Ptr, body string, length int, args, world, sourceURI, cancellable, cb, data Ptr)
 	WebKitWebViewCallAsyncJavascriptFinish   func(v, res Ptr, err *Ptr) Ptr
 	WebKitSettingsSetUserAgent               func(s Ptr, ua Ptr)
@@ -88,6 +89,8 @@ var (
 	SoupCookieFree                       func(c Ptr)
 	SoupMessageHeadersGetOne             func(h Ptr, name string) Ptr
 	JSCValueToString                     func(v Ptr) Ptr
+	JSCValueToJSON                       func(v Ptr, indent uint32) Ptr
+	WebKitJavascriptErrorQuark           func() uint32
 	webKitWebViewGetTypeForCheck         func() GType
 )
 
@@ -107,6 +110,7 @@ const (
 	WebKitInjectAtDocEnd                  = 1
 	WebKitPolicyErrorFrameLoadInterrupted = 102 // WEBKIT_POLICY_ERROR_FRAME_LOAD_INTERRUPTED_BY_POLICY_CHANGE
 	WebKitNetworkErrorCancelled           = 302 // WEBKIT_NETWORK_ERROR_CANCELLED
+	WebKitJavascriptErrorInvalidResult    = 601 // WEBKIT_JAVASCRIPT_ERROR_INVALID_RESULT
 )
 
 var webKitFuncs = []struct {
@@ -131,6 +135,8 @@ var webKitFuncs = []struct {
 	{&libWebKit, &WebKitWebViewGetUserContentManager, "webkit_web_view_get_user_content_manager"},
 	{&libWebKit, &WebKitWebViewGetBackForwardList, "webkit_web_view_get_back_forward_list"},
 	{&libWebKit, &WebKitWebViewEvaluateJavascript, "webkit_web_view_evaluate_javascript"},
+	{&libWebKit, &WebKitWebViewEvaluateJavascriptFinish, "webkit_web_view_evaluate_javascript_finish"},
+	{&libWebKit, &WebKitJavascriptErrorQuark, "webkit_javascript_error_quark"},
 	{&libWebKit, &WebKitWebViewCallAsyncJavascriptFunction, "webkit_web_view_call_async_javascript_function"},
 	{&libWebKit, &WebKitWebViewCallAsyncJavascriptFinish, "webkit_web_view_call_async_javascript_function_finish"},
 	{&libWebKit, &WebKitSettingsSetUserAgent, "webkit_settings_set_user_agent"},
@@ -170,6 +176,7 @@ var webKitFuncs = []struct {
 	{&libSoup, &SoupCookieFree, "soup_cookie_free"},
 	{&libSoup, &SoupMessageHeadersGetOne, "soup_message_headers_get_one"},
 	{&libJSC, &JSCValueToString, "jsc_value_to_string"},
+	{&libJSC, &JSCValueToJSON, "jsc_value_to_json"},
 }
 
 // LoadWebKit opens WebKitGTK 6.0, once. It fails, saying what to

@@ -523,7 +523,7 @@ web = ui.WebView(ui.WebViewProps{
 })
 ```
 
-在 iOS、Android、macOS、Linux 和 Web 上，`ui.EvalJSResult` 用页面的 `eval` 执行脚本，所以如果页面的内容安全策略（CSP）不允许 `'unsafe-eval'`，它会被拒绝并报 `EvalError`。在原生平台上，可以用 `ui.EvalJS` 执行脚本，再通过 `asuka.postMessage` 把值发回来。Web 上的 `ui.EvalJS` 也用 `eval`，同样受此限制。
+`ui.EvalJSResult` 借助页面的 `eval` 来等待 promise，而页面的内容安全策略（CSP）如果不允许 `'unsafe-eval'`，就会拦下 `eval`。在这样的页面上，iOS、Android、macOS 和 Linux 会改用 `ui.EvalJS` 的方式执行脚本，这种方式不受 CSP 限制：得到的仍是最后一条语句的值，出错时仍是脚本抛出的错误，只是不会等待 promise（Android 上得到 `{}`，其他平台报错），而且在 iOS 和 macOS 上，对象的键可能换了顺序。Windows 不需要 `eval`，照常等待 promise。在 Web 上，浏览器会对应用在页面里执行的脚本施加页面自己的策略，所以禁止 `eval` 的页面会同时拒绝 `ui.EvalJS` 和 `ui.EvalJSResult`。
 
 `ui.WebCookies(url, done)` 获取 Web 视图中某个 URL 的 cookie，形式是一个 `Cookie` 请求头。这样用户在页面里登录之后，你自己发出的请求也能带上这份登录状态。
 

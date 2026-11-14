@@ -225,6 +225,69 @@ func TestWebViewPreloadBack(t *testing.T) {
 	})
 }
 
+// On a page whose Content Security Policy blocks eval, EvalJSResult
+// still answers with the last statement's value, as JSON; what a script
+// threw, or a value WebKit can't return (a promise), is an error.
+func TestWebViewEvalContentSecurityPolicy(t *testing.T) {
+	needWebKit(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Security-Policy", "script-src 'self'")
+		if r.URL.Path == "/ok.js" {
+			w.Header().Set("Content-Type", "text/javascript")
+			w.Write([]byte("window.loaded = 1"))
+			return
+		}
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`<!doctype html><title>Locked</title><script src="/ok.js"></script>`))
+	}))
+	defer srv.Close()
+	var loads []string
+	var page ui.Node
+	mount(t, func() ui.Node {
+		page = ui.WebView(ui.WebViewProps{
+			URL:    ui.Val(srv.URL + "/"),
+			OnLoad: func(u string) { loads = append(loads, u) },
+			Style:  ui.Style{Width: ui.Pt(300), Height: ui.Pt(200)},
+		})
+		return page
+	})
+	waitFor(t, "the page loads", func() bool { return len(loads) > 0 })
+	eval := func(script string) (string, error) {
+		var r callResult
+		ui.Post(func() {
+			ui.EvalJSResult(page, script, func(b json.RawMessage, err error) { r = callResult{b, err, true} })
+		})
+		waitFor(t, "eval "+script, func() bool { return r.done })
+		return string(r.b), r.err
+	}
+	for _, c := range []struct{ script, want string }{
+		{"document.title", `"Locked"`},
+		{"window.loaded", `1`},
+		{"let a = 2; a * 3", `6`},
+		{"({a: [1, 'x', null]})", `{"a":[1,"x",null]}`},
+		{"new Date(0)", `"1970-01-01T00:00:00.000Z"`},
+		{"undefined", `null`},
+		{"var kept = 5", `null`},
+		{"kept", `5`},
+	} {
+		if v, err := eval(c.script); err != nil || v != c.want {
+			t.Fatalf("%s: %q, %v; want %s", c.script, v, err, c.want)
+		}
+	}
+	if _, err := eval("eval('1')"); err == nil {
+		t.Fatal("the page doesn't block eval")
+	}
+	if _, err := eval("throw new Error('nope')"); err == nil || !strings.Contains(err.Error(), "nope") {
+		t.Fatalf("a throw: %v", err)
+	}
+	if _, err := eval("1 +"); err == nil || !strings.Contains(err.Error(), "SyntaxError") {
+		t.Fatalf("a syntax error: %v", err)
+	}
+	if _, err := eval("Promise.resolve(1)"); err == nil || !strings.Contains(err.Error(), "Content Security Policy") {
+		t.Fatalf("a promise: %v", err)
+	}
+}
+
 // asuka/sdk/js's module runs a script in a web view of its own: its value, a
 // promise's, or what it threw; none is kept after.
 func TestJSModule(t *testing.T) {

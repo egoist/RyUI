@@ -123,40 +123,110 @@ func (h *Host) decideResponse(v, resp, handler ID) {
 }
 
 // evalBody runs s in the page's world and answers with its value as
-// JSON: the last statement's, or what its promise resolves to.
-const evalBody = `const v = await (0, eval)(s); return JSON.stringify(v === undefined ? null : v)`
+// JSON: the last statement's, or what its promise resolves to. A page
+// whose Content Security Policy blocks eval answers evalBlocked instead,
+// before any of s has run.
+const evalBody = `try { (0, eval)("0") } catch { return "!eval" }
+const v = await (0, eval)(s); return JSON.stringify(v === undefined ? null : v)`
+
+// evalBlocked is evalBody's answer on a page that blocks eval: not JSON,
+// so no value of a script's is mistaken for it.
+const evalBlocked = "!eval"
+
+// errEvalUnsupported is what a script answers, on a page that blocks
+// eval, when its value isn't one WebKit returns.
+var errEvalUnsupported = errors.New("the script's value is a promise, a function or another value WebKit can't return: the page's Content Security Policy blocks eval, so the script ran as EvalJS runs it, and a promise isn't awaited")
 
 // evalIn runs script in a web view (callAsyncJavaScript) and answers
-// with its value as JSON, or what it threw.
+// with its value as JSON, or what it threw. On a page that blocks eval,
+// it runs as EvalJS runs it (evaluateJavaScript, which no Content
+// Security Policy applies to): its last statement's value.
 func (h *Host) evalIn(view ID, script string, reply func([]byte, error)) {
+	h.callAsync(view, evalBody, Dict(String("s"), String(script)), func(s string, ok bool, err error) {
+		switch {
+		case err != nil:
+			reply(nil, err)
+		case ok && s == evalBlocked:
+			h.evalNative(view, script, reply)
+		case ok:
+			reply([]byte(s), nil)
+		default:
+			reply([]byte("null"), nil)
+		}
+	})
+}
+
+// evalNative runs script as the program it is and answers with its last
+// statement's value as JSON, which the page's JSON.stringify writes: the
+// value WebKit returns (strings, numbers, dates, arrays and objects of
+// them) goes back in as an argument.
+func (h *Host) evalNative(view ID, script string, reply func([]byte, error)) {
 	var done objc.Block
 	done = NewBlock(func(_ objc.Block, result, err ID) {
-		var out []byte
-		var msg string
-		if err != 0 {
-			msg = GoString(Send(Send(err, "userInfo"), "objectForKey:", uintptr(String("WKJavaScriptExceptionMessage"))))
-			if msg == "" {
-				msg = GoString(Send(err, "localizedDescription"))
+		if err != 0 || result == 0 { // what it threw, or undefined or null
+			e := jsError(err)
+			h.Post(func() {
+				done.Release()
+				if e != nil {
+					reply(nil, e)
+					return
+				}
+				reply([]byte("null"), nil)
+			})
+			return
+		}
+		h.callAsync(view, "return JSON.stringify(v)", Dict(String("v"), result), func(s string, ok bool, err error) {
+			done.Release()
+			switch {
+			case err != nil:
+				reply(nil, err)
+			case ok:
+				reply([]byte(s), nil)
+			default:
+				reply([]byte("null"), nil)
 			}
-		} else {
-			out = []byte("null")
-			if result != 0 && SendBool(result, "isKindOfClass:", uintptr(Class("NSString"))) {
-				out = []byte(GoString(result))
-			}
+		})
+	})
+	Send(view, "evaluateJavaScript:completionHandler:", uintptr(String(script)), uintptr(done))
+}
+
+// callAsync runs body as an async function in the page's world, with
+// args, and answers on the main thread with the string it returned (ok
+// false for anything else) or what it threw.
+func (h *Host) callAsync(view ID, body string, args ID, answer func(s string, ok bool, err error)) {
+	var done objc.Block
+	done = NewBlock(func(_ objc.Block, result, err ID) {
+		var s string
+		ok := false
+		e := jsError(err)
+		if e == nil && result != 0 && SendBool(result, "isKindOfClass:", uintptr(Class("NSString"))) {
+			s, ok = GoString(result), true
 		}
 		h.Post(func() {
 			done.Release()
-			if msg != "" {
-				reply(nil, errors.New(msg))
-				return
-			}
-			reply(out, nil)
+			answer(s, ok, e)
 		})
 	})
-	args := Dict(String("s"), String(script))
 	world := Send(Class("WKContentWorld"), "pageWorld")
 	Send(view, "callAsyncJavaScript:arguments:inFrame:inContentWorld:completionHandler:",
-		uintptr(String(evalBody)), uintptr(args), 0, uintptr(world), uintptr(done))
+		uintptr(String(body)), uintptr(args), 0, uintptr(world), uintptr(done))
+}
+
+// jsError is a WKWebView's error running script: the message of what it
+// threw, or nil for none.
+func jsError(err ID) error {
+	if err == 0 {
+		return nil
+	}
+	// WKErrorJavaScriptResultTypeIsUnsupported
+	if GoString(Send(err, "domain")) == "WKErrorDomain" && SendInt(err, "code") == 5 {
+		return errEvalUnsupported
+	}
+	msg := GoString(Send(Send(err, "userInfo"), "objectForKey:", uintptr(String("WKJavaScriptExceptionMessage"))))
+	if msg == "" {
+		msg = GoString(Send(err, "localizedDescription"))
+	}
+	return errors.New(msg)
 }
 
 // webModule is the "web" module: "eval" (args: u32 a WebView's node id,

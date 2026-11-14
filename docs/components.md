@@ -804,11 +804,16 @@ web = ui.WebView(ui.WebViewProps{
 })
 ```
 
-On iOS, Android, macOS, Linux and the web, `ui.EvalJSResult` runs the
-script with the page's `eval`, so a page whose Content Security Policy
-doesn't allow `'unsafe-eval'` refuses it with an `EvalError`. On native
-platforms, use `ui.EvalJS` and have the script send its value with
-`asuka.postMessage`. On the web, `ui.EvalJS` uses `eval` too.
+`ui.EvalJSResult` awaits a promise with the page's `eval`, which a
+page's Content Security Policy can block (without `'unsafe-eval'`). On
+such a page, on iOS, Android, macOS and Linux, it runs the script as
+`ui.EvalJS` does, which no policy applies to: the value is still the
+last statement's, and an error is still what the script threw, but a
+promise isn't awaited (Android answers `{}` for it, the others with an
+error), and on iOS and macOS an object's keys can come back in another
+order. Windows needs no `eval` and awaits as usual. On the web the
+browser applies the page's policy to what the app runs in it, so a page
+that blocks `eval` refuses both `ui.EvalJS` and `ui.EvalJSResult`.
 
 `ui.WebCookies(url, done)` gets the cookies web views have for a URL, as
 a `Cookie` header: what the user signed in to in a page, for your own

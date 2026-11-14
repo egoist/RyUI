@@ -220,7 +220,9 @@ func webNavigate(web Node, to byte) {
 // EvalJSResult runs script in a WebView's page, as EvalJS, and calls done
 // on the main thread with its value as JSON: the last statement's, or
 // what the promise it returns resolves to (null for undefined); or what
-// it threw. Main thread.
+// it threw. On a page whose Content Security Policy blocks eval, a
+// native host runs it as EvalJS does: the last statement's value, a
+// promise not awaited (docs/components.md). Main thread.
 func EvalJSResult(web Node, script string, done func(result json.RawMessage, err error)) {
 	e := web.e
 	if e == nil || e.kind != ops.KindWebView || e.dead {

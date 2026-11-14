@@ -178,18 +178,45 @@ class AsukaWebView(private val rt: AsukaRuntime, private val asukaID: Int) : Web
         }
     }
 
-    /** Runs script, answering with its value as JSON (a promise's, awaited), or what it threw. */
+    /**
+     * Runs script, answering with its value as JSON (a promise's, awaited), or what it threw.
+     * On a page whose Content Security Policy blocks eval, it runs as EvalJS runs it
+     * (evaluateJavascript, which no policy applies to): its last statement's value.
+     */
     fun evalResult(script: String, reply: (Result<ByteArray>) -> Unit) {
         val id = nextEval++
         evals[id] = reply
-        val wrapped = "(function(){var s=" + JSONObject.quote(script) + ";" +
+        // false, before any of script has run, when the page blocks eval.
+        val wrapped = "(function(){try{(0,eval)('0')}catch(e){return false}var s=" + JSONObject.quote(script) + ";" +
             "Promise.resolve().then(function(){return (0,eval)(s)}).then(" +
             "function(v){asuka.evalDone($id,JSON.stringify(v===undefined?null:v))}," +
-            "function(e){asuka.evalFail($id,e&&e.stack?String(e.stack):String(e))})})()"
-        evaluateJavascript(wrapped, null)
+            "function(e){asuka.evalFail($id,e&&e.stack?String(e.stack):String(e))});return true})()"
+        evaluateJavascript(wrapped) { if (it == "false") evalNative(id, script) }
+    }
+
+    /**
+     * Runs script as the program it is: evaluateJavascript answers with its last statement's
+     * value as JSON. It says nothing of what the script threw, so the program catches it, in
+     * a try statement whose value is its block's; and nothing of a syntax error, so the
+     * program says it ran first, in a block whose value is none.
+     */
+    private fun evalNative(id: Int, script: String) {
+        val program = "{let _=asuka.evalRan($id)}try{\n" + script + "\n}" +
+            "catch(e){asuka.evalFail($id,e&&e.stack?String(e.stack):String(e))}"
+        evaluateJavascript(program) { json ->
+            // Posted, as the bridge's calls are: after them, which the script made before
+            // it ended (Chromium may answer through the looper's file descriptor, first).
+            rt.onMain {
+                val ran = evalsRan.remove(id)
+                val reply = evals.remove(id) ?: return@onMain // what it threw, answered
+                if (!ran) reply(Result.failure(Exception("SyntaxError: the script doesn't parse (the page's Content Security Policy blocks eval, so the script ran as EvalJS runs it, which doesn't say where)")))
+                else reply(Result.success((json ?: "null").toByteArray()))
+            }
+        }
     }
 
     private val evals = HashMap<Int, (Result<ByteArray>) -> Unit>()
+    private val evalsRan = HashSet<Int>()
     private var nextEval = 1
 
     private inner class Bridge {
@@ -204,6 +231,9 @@ class AsukaWebView(private val rt: AsukaRuntime, private val asukaID: Int) : Web
 
         @JavascriptInterface
         fun evalFail(id: Int, message: String) { rt.onMain { evals.remove(id)?.invoke(Result.failure(Exception(message))) } }
+
+        @JavascriptInterface
+        fun evalRan(id: Int) { rt.onMain { evalsRan.add(id) } }
     }
 
     /** Loads source: an http(s) URL, a file (an absolute path, file://), or one of the app's assets. */

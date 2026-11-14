@@ -465,7 +465,7 @@ web = ui.WebView(ui.WebViewProps{
 })
 ```
 
-iOS、Android、macOS、Linux、Web では、`ui.EvalJSResult` はページの `eval` を使ってスクリプトを実行するため、コンテンツセキュリティポリシー（CSP）で `'unsafe-eval'` を許可していないページでは `EvalError` になります。ネイティブプラットフォームでは、`ui.EvalJS` でスクリプトを実行し、`asuka.postMessage` で値を送り返せます。Web では `ui.EvalJS` も `eval` を使うため、同じ制限を受けます。
+`ui.EvalJSResult` は Promise を待つためにページの `eval` を使いますが、コンテンツセキュリティポリシー（CSP）で `'unsafe-eval'` を許可していないページでは `eval` がブロックされます。そのようなページでは、iOS、Android、macOS、Linux はスクリプトを `ui.EvalJS` と同じ方法で実行します。この方法には CSP が適用されません。値はこれまでどおり最後の文の値で、エラーもスクリプトが投げたものですが、Promise は待ちません（Android では `{}` が返り、ほかのプラットフォームではエラーになります）。また、iOS と macOS ではオブジェクトのキーの順序が変わることがあります。Windows は `eval` を使わないので、これまでどおり Promise を待ちます。Web では、アプリがページ内で実行するスクリプトにもブラウザーがページのポリシーを適用するため、`eval` をブロックするページでは `ui.EvalJS` も `ui.EvalJSResult` も拒否されます。
 
 `ui.WebCookies(url, done)` は、Web ビューが持っているその URL の Cookie を、`Cookie` ヘッダーの形で取得します。ユーザーがページでサインインした状態を、アプリ自身のリクエストで使うためのものです。
 
