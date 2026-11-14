@@ -8,7 +8,7 @@ save.
 
 **Go 1.26** or later, for every platform. Then, for the ones you want:
 
-- **iOS**: a Mac with Xcode, and its iOS simulator.
+- **iOS**: a Mac with Xcode, and its iOS simulator or an iPhone.
 - **Android**: a Mac or Linux, with Android Studio and, from its SDK
   Manager, an NDK (SDK Tools → NDK), and an emulator from its Device
   Manager, or a phone with USB debugging on. Asuka finds the SDK in its
@@ -65,6 +65,7 @@ cd hello
 ```sh
 asuka dev                      # this computer: on a Mac, a PC or Linux
 asuka dev --platform ios        # the iOS simulator
+asuka dev --platform ios --device iphone  # the iPhone plugged in
 asuka dev --platform android    # an Android emulator or phone
 asuka dev --platform web        # your browser
 ```
@@ -78,17 +79,21 @@ signals kept. Its output (`fmt.Println`, panics) is in the terminal.
 - **On a phone**, the first run builds and installs Asuka's player app,
   which shows your app's views; your Go code runs on your computer and
   talks to it, so a save reloads without reinstalling.
-  `--device` picks the simulator (its name or UDID) or the Android device
-  (an adb serial or an AVD's name). `--no-hot` builds your Go code into
+  `--device` picks the simulator or the iPhone (its name or UDID, or
+  `iphone` for the one plugged in) or the Android device (an adb serial
+  or an AVD's name). `--no-hot` builds your Go code into
   the app instead, as a release build has it; `--once` builds it in and
   launches it once.
 - **In a browser**, Asuka serves the app at `http://localhost:8790/` and
   opens it; each save reloads the page. `--lan` serves it to your
   network, to try it in a phone's browser. See [the web](web.md).
 
-To run on an iPhone, make a build signed for it: `asuka build --platform ios
---distribution development`, then install the `.ipa` with Xcode's Devices
-window.
+To run on an iPhone, plug it in, unlock it, tap Trust and turn on
+Developer Mode (Settings › Privacy & Security), and add your Apple ID
+to Xcode (Settings › Accounts): `asuka dev --platform ios --device
+iphone` signs the player with your team and installs it, the first
+time, and reloads it as you save, by USB or Wi-Fi. See
+[Devices](development.md#devices).
 
 [Development](development.md) has the rest: what a reload keeps,
 devices, logs, and the problems you may meet.

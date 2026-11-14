@@ -6,17 +6,21 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/egoist/asuka/internal/devtunnel"
 	"github.com/egoist/asuka/internal/remote"
 	"github.com/egoist/asuka/mobile"
 	"github.com/egoist/asuka/mobile/shareddir"
 )
 
 // DefaultAddr is where the player finds `asuka dev`: on the simulator, the
-// Mac's loopback; on Android, `adb reverse` maps it to the Mac.
+// Mac's loopback; on Android, `adb reverse` maps it to the Mac. On an
+// iPhone, asuka dev gives the player a devtunnel.Spec instead: tunnels
+// over USB, and the Mac's addresses on the network.
 const DefaultAddr = "127.0.0.1:7461"
 
 // configuredAddr is the address asuka dev gave the player: the
@@ -25,21 +29,25 @@ const DefaultAddr = "127.0.0.1:7461"
 //
 // On iOS the player's share extension (its share sheet) has no
 // environment from simctl: the player leaves the address in their App
-// Group for it.
+// Group for it. It keeps it in its own files too, for a launch from the
+// home screen on a device (whose team may have no App Groups).
 func configuredAddr() string {
-	shared := ""
+	var kept []string
 	if d := shareddir.Dir(); d != "" {
-		shared = filepath.Join(d, "asuka", "remote")
+		kept = append(kept, filepath.Join(d, "asuka", "remote"))
+	}
+	if home, err := os.UserHomeDir(); err == nil && os.Getenv("ASUKA_SHARE_SHEET") != "1" && filepath.IsAbs(home) {
+		kept = append(kept, filepath.Join(home, "Library", "Application Support", "asuka", "remote"))
 	}
 	if a := os.Getenv("ASUKA_REMOTE"); a != "" {
-		if shared != "" {
-			os.MkdirAll(filepath.Dir(shared), 0o700)
-			os.WriteFile(shared, []byte(a), 0o600)
+		for _, f := range kept {
+			os.MkdirAll(filepath.Dir(f), 0o700)
+			os.WriteFile(f, []byte(a), 0o600)
 		}
 		return a
 	}
-	if shared != "" {
-		if b, err := os.ReadFile(shared); err == nil {
+	for _, f := range kept {
+		if b, err := os.ReadFile(f); err == nil {
 			return strings.TrimSpace(string(b))
 		}
 	}
@@ -65,6 +73,16 @@ func init() {
 			x.SetEnvironment(e)
 		}
 		mobile.SetCore(x)
+		if spec, ok := devtunnel.ParseSpec(addr); ok {
+			d, err := devtunnel.NewDialer(spec)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "asuka: player:", err)
+				spec.Tunnel, spec.AssetsPort = 0, 0 // the network alone
+				d, _ = devtunnel.NewDialer(spec)
+			}
+			go x.ConnectWith(d.Remote)
+			return
+		}
 		go x.Connect(addr)
 	}
 }

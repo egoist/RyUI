@@ -30,6 +30,9 @@ type buildOptions struct {
 	version      string // asuka.json's version, for this build
 	publishing   bool   // asuka publish: the update files are required
 	base         string // web: the path the site is served at (asuka.json's web.base)
+
+	// dev, for iOS: asuka dev on a device (ios_device.go).
+	dev *iosDevBuild
 }
 
 func buildFlags(o *buildOptions) *flagSet {

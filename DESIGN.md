@@ -1484,14 +1484,39 @@ the new code, with no install. The app's logs are the process's output.
   emulator reaches it at `10.0.2.2`, directly (`adb reverse` adds a
   round trip's worth of latency to every call); a device goes through
   `adb reverse`. Assets are served over HTTP from the Mac
-  (`boot.AssetBase`).
+  (`boot.AssetBase`). An iPhone has no `adb reverse`, and its apps can't
+  open connections through the cable, but the Mac can, to a port on the
+  phone (usbmuxd, `internal/usbmux`): `asuka dev` keeps a few idle
+  connections open to the player's tunnel port, and the player takes
+  one for each of its connections, naming in a byte what it's for (the
+  app, or its assets, which it serves on its loopback as the URLs say);
+  the Mac connects it there and answers (`internal/devtunnel`). The
+  player closes a tunnel idle for a second and the Mac opens another,
+  so the newest listener on the port, with `SO_REUSEPORT`, gets them:
+  the share extension's while it runs. Unplugged, the player dials the
+  Mac's addresses on the network and its Bonjour name (iOS's Local
+  Network permission), through relays `asuka dev` keeps, which also
+  tell it which way the player came. Both are in the `devtunnel.Spec`
+  it's launched with (`devicectl --environment-variables`), and keeps
+  for a launch from the home screen.
+- **Signing for an iPhone**: the player's App ID is the team's own
+  (`dev.asuka.player.<team>`). A development profile that fits (the
+  device among its devices, the capabilities the build's entitlements
+  need) is used as it is; else `asuka dev` writes an Xcode project of
+  one empty app per bundle ID, with those entitlements, and has
+  `xcodebuild -allowProvisioningUpdates
+  -allowProvisioningDeviceRegistration` make the profiles (the Xcode
+  account's, or the App Store Connect key's), once a session. The
+  player goes without the capabilities its team can't have.
 - **Not in the player**: an app's own native code (`ios/`, `android/`),
   which only an app built with it can show. Such apps, `--once` and
   `--no-hot` build the app with its Go code, as before: `asuka dev`
   rebuilds the library and relaunches on the iOS simulator (no Xcode
   project: `swiftc` compiles the embedded host, with the app's Swift,
   into one object, cached; each change rebuilds the archive, links,
-  ad-hoc signs and reinstalls with `xcrun simctl`, in about a second)
+  ad-hoc signs and reinstalls with `xcrun simctl`, in about a second;
+  on an iPhone it signs for development and reinstalls with `xcrun
+  devicectl`, whose `--console` brings the app's output)
   or an Android device or emulator (Gradle builds the shell app, with
   the app's Kotlin, once per host version and app ID; each change
   rebuilds the `.so`, pushes it into the app's private files with `adb`
@@ -1632,9 +1657,8 @@ Each one ends with its examples running and its tests in CI.
   host, with a cache; the media example runs on both. (`Activity`, the
   spinner, came with M1.)
 - **M5, dev without reinstalling** (done): the socket transport and the
-  player apps (iOS simulator, Android emulator and devices); app state
-  survives a reload with no code. Not yet: physical iOS devices (the
-  player would need signing and the Mac's address).
+  player apps (iOS simulator and devices, Android emulator and devices);
+  app state survives a reload with no code.
 - **M6, shipping** (done): `asuka.json`, `asuka build --platform ios` (signed `.ipa`;
   `--simulator`), `asuka build --platform android` (`.aab`), `asuka
   publish` (the build uploaded through the stores' APIs: TestFlight's

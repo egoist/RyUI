@@ -1,0 +1,57 @@
+{
+  "info": {"arguments": ["devicectl", "list", "devices", "--json-output", "devices.json"], "commandType": "devicectl.list.devices", "jsonVersion": 5, "outcome": "success", "version": "651.32"},
+  "result": {
+    "devices": [
+      {
+        "connectionProperties": {"authenticationType": "manualPairing", "pairingState": "paired", "potentialHostnames": ["Kims-iPhone.coredevice.local"], "transportType": "wired", "tunnelState": "connected"},
+        "deviceProperties": {"developerModeStatus": "enabled", "name": "Kim’s iPhone", "osVersionNumber": "27.2"},
+        "hardwareProperties": {"deviceType": "iPhone", "marketingName": "iPhone 16", "platform": "iOS", "productType": "iPhone17,3", "reality": "physical", "udid": "00008140-0011223344556677"},
+        "identifier": "11111111-2222-3333-4444-555555555555",
+        "properties": {
+          "connection": {"authenticationType": "manualPairing", "pairingState": "paired", "state": "connected", "transportType": "wired"},
+          "hardware": {"deviceType": "iPhone", "marketingName": "iPhone 16", "platform": "iOS", "reality": "physical", "udid": "00008140-0011223344556677"},
+          "software": {"osVersionNumber": {"components": [27, 2, 0, 0, 0], "originalComponentsCount": 2, "stringValue": "27.2"}},
+          "state": {"developerModeStatus": {"enabled": {"mode": 1}}, "name": "Kim’s iPhone"}
+        },
+        "visibilityClass": "default"
+      },
+      {
+        "connectionProperties": {"pairingState": "paired", "transportType": "localNetwork", "tunnelState": "disconnected"},
+        "deviceProperties": {"developerModeStatus": "enabled", "name": "Studio iPad", "osVersionNumber": "18.1"},
+        "hardwareProperties": {"deviceType": "iPad", "marketingName": "iPad Air 11-inch (M2)", "platform": "iOS", "reality": "physical", "udid": "00008112-000A0B0C0D0E0F10"},
+        "identifier": "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE"
+      },
+      {
+        "connectionProperties": {"pairingState": "paired", "tunnelState": "unavailable"},
+        "deviceProperties": {"developerModeStatus": "enabled", "name": "Old iPhone", "osVersionNumber": "17.5"},
+        "hardwareProperties": {"deviceType": "iPhone", "marketingName": "iPhone 12", "platform": "iOS", "reality": "physical", "udid": "00008101-0001020304050607"},
+        "identifier": "99999999-8888-7777-6666-555555555555",
+        "properties": {"connection": {"pairingState": "paired", "state": "unavailable"}}
+      },
+      {
+        "connectionProperties": {"pairingState": "unpaired", "transportType": "wired", "tunnelState": "disconnected"},
+        "deviceProperties": {"name": "Guest iPhone", "osVersionNumber": "26.0"},
+        "hardwareProperties": {"deviceType": "iPhone", "marketingName": "iPhone 15", "platform": "iOS", "reality": "physical", "udid": "00008120-0A0B0C0D0E0F1011"},
+        "identifier": "12121212-3434-5656-7878-909090909090"
+      },
+      {
+        "connectionProperties": {"pairingState": "paired", "transportType": "wired", "tunnelState": "connected"},
+        "deviceProperties": {"developerModeStatus": "disabled", "name": "Work iPhone", "osVersionNumber": "26.1"},
+        "hardwareProperties": {"deviceType": "iPhone", "marketingName": "iPhone 15 Pro", "platform": "iOS", "reality": "physical", "udid": "00008130-0102030405060708"},
+        "identifier": "ABABABAB-CDCD-EFEF-0101-232323232323"
+      },
+      {
+        "connectionProperties": {"pairingState": "paired", "tunnelState": "connected"},
+        "deviceProperties": {"name": "iPhone 17", "osVersionNumber": "27.2"},
+        "hardwareProperties": {"deviceType": "iPhone", "marketingName": "iPhone 17", "platform": "iOS", "reality": "simulated", "udid": "149848C0-0000-0000-0000-000000000000"},
+        "identifier": "149848C0-0000-0000-0000-000000000000"
+      },
+      {
+        "connectionProperties": {"pairingState": "paired", "tunnelState": "connected"},
+        "deviceProperties": {"name": "Kim’s Apple Watch", "osVersionNumber": "26.0"},
+        "hardwareProperties": {"deviceType": "appleWatch", "marketingName": "Apple Watch Series 10", "platform": "watchOS", "reality": "physical", "udid": "00008310-0000000000000000"},
+        "identifier": "CCCCCCCC-0000-0000-0000-000000000000"
+      }
+    ]
+  }
+}

@@ -1,7 +1,7 @@
 // Command Asuka makes, runs and builds Asuka apps.
 //
 //	asuka new <dir>                          a project from the template
-//	asuka dev --platform ios <dir>           build, run on the iOS simulator, rebuild on save
+//	asuka dev --platform ios <dir>           build, run on the iOS simulator or an iPhone, rebuild on save
 //	asuka dev --platform android <dir>       build, run on an Android emulator or device, rebuild on save
 //	asuka dev --platform mac <dir>           build, run on this Mac, rebuild on save
 //	asuka dev --platform windows <dir>       build, run on this PC, rebuild on save
@@ -96,6 +96,7 @@ type devOptions struct {
 	lan       bool // web: served to the network too, for phones
 	noOpen    bool // web: don't open the browser
 	device    string
+	team      string // iOS: the team that signs for a device
 	once      bool
 	noHot     bool
 	verbose   bool
@@ -107,11 +108,12 @@ func devFlags(o *devOptions) *flagSet {
 	fs := newFlagSet("dev", "[dir]")
 	fs.about = "Runs the app, and runs it again with each change you save."
 	platformFlag(fs, &o.platform, []string{platformIOS, platformAndroid, platformMac, platformWindows, platformLinux, platformWeb},
-		"the `platform` to run on: ios (the simulator), android (a device or emulator), mac (this Mac), windows (this PC), linux (this Linux machine, or ASUKA_LINUX_RUN's), or web (the browser: the Go code as WebAssembly, the views the page's DOM); default on macOS, Windows and Linux: this computer")
+		"the `platform` to run on: ios (the simulator, or an iPhone with --device), android (a device or emulator), mac (this Mac), windows (this PC), linux (this Linux machine, or ASUKA_LINUX_RUN's), or web (the browser: the Go code as WebAssembly, the views the page's DOM); default on macOS, Windows and Linux: this computer")
 	fs.Int(&o.port, "port", 0, 0, "web: the dev server's `port` (default 8790, or a free one)")
 	fs.Bool(&o.lan, "lan", 0, "web: serve to this network too (a phone's browser), not only this machine")
 	fs.Bool(&o.noOpen, "no-open", 0, "web: don't open the page in the browser")
-	fs.String(&o.device, "device", 'd', "", "iOS: simulator name or UDID (default: the booted one, else the newest iPhone); Android: adb serial or AVD name")
+	fs.String(&o.device, "device", 'd', "", "iOS: a simulator's or a connected iPhone's or iPad's name or UDID, or iphone for the one connected (default: the booted simulator, else the newest iPhone simulator); Android: adb serial or AVD name")
+	fs.String(&o.team, "team", 0, "", "iOS, on a device: the Apple Developer `team` ID that signs the player and the app (default: ASUKA_TEAM_ID, asuka.json's ios.team, else the keychain's one Apple Development team)")
 	fs.Bool(&o.once, "once", 0, "build the app with its Go code and launch it once, without watching or streaming logs")
 	fs.Bool(&o.noHot, "no-hot", 0, "iOS, Android: no hot reload: build the app with its Go code and reinstall it on each save (the default runs the Go code here, in the player, and keeps its state across reloads)")
 	fs.String(&o.lang, "lang", 0, "", "show this `language` for this run, as de or zh-Hans, or a pseudo locale: en-XA (accented, a third longer) or ar-XB (right to left)")

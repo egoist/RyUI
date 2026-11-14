@@ -1,16 +1,18 @@
 # Development
 
-`asuka dev` runs an app and reloads it as you save: on the iOS simulator,
-an Android emulator or phone, your Mac, PC or Linux machine, or your
-browser. This page covers how it does that on each, what a reload keeps,
-devices, assets and logs, what it can't reload, `asuka vet`, the problems
-you may meet, and Asuka's own tests and benchmarks.
+`asuka dev` runs an app and reloads it as you save: on the iOS simulator
+or an iPhone, an Android emulator or phone, your Mac, PC or Linux
+machine, or your browser. This page covers how it does that on each,
+what a reload keeps, devices, assets and logs, what it can't reload,
+`asuka vet`, the problems you may meet, and Asuka's own tests and
+benchmarks.
 
 ## asuka dev
 
 ```sh
 asuka dev [flags] [dir]                     # this computer: macOS, Windows or Linux
 asuka dev --platform ios [flags] [dir]       # the iOS simulator
+asuka dev --platform ios --device iphone [dir]  # the iPhone (or iPad) plugged in
 asuka dev --platform android [flags] [dir]   # an Android emulator or phone
 asuka dev --platform web [flags] [dir]       # your browser
 ```
@@ -38,9 +40,13 @@ package that calls `app.Run`. The flags:
 On a phone:
 
 - `--device`: on iOS, a simulator's name or UDID (by default the booted
-  iPhone, else a recent iPhone Pro, which it boots); on Android, an adb
-  serial or an AVD's name (by default the first device adb lists, else
-  the first AVD, which it starts).
+  iPhone, else a recent iPhone Pro, which it boots), a connected iPhone's
+  or iPad's name or UDID, or `iphone` for the one connected (see
+  [An iPhone](#devices)); on Android, an adb serial or an AVD's name (by
+  default the first device adb lists, else the first AVD, which it
+  starts).
+- `--team`: on an iPhone, the Apple Developer team that signs the player
+  and the app.
 - `--no-hot`: no hot reload: build the app with its Go code in it, and
   rebuild and reinstall it on each save, starting it again from nothing.
 
@@ -126,7 +132,8 @@ as a release build has it, under the app's own name and ID:
 - **iOS**: the host, with the native packages' Swift, is built once
   and again only as it changes;
   each save rebuilds the Go code, links the app, signs it for the
-  simulator and reinstalls it with `xcrun simctl`.
+  simulator and reinstalls it with `xcrun simctl`, or, on an iPhone,
+  signs it for development and reinstalls it with `xcrun devicectl`.
 - **Android**: Gradle builds the app, with its Kotlin, once for each
   version of the host, of the Kotlin and of the manifest; each save
   rebuilds the Go library, pushes it into the app's private files with
@@ -232,10 +239,40 @@ The phone reaches your computer through `adb reverse`, which Asuka sets
 up for ports 7461 (the app) and 7462 (its assets). In development Asuka
 builds for 64-bit phones and emulators (arm64-v8a, x86_64).
 
-**An iPhone**: `asuka dev` runs on the simulator only. To run on an
-iPhone, make a build signed for it, `asuka build --platform ios
---distribution development` (see [Shipping](shipping.md#ios)), and
-install the `.ipa` with Xcode's Devices window.
+**An iPhone** (or iPad), by USB or Wi-Fi, with Xcode 15 or later: plug
+it in, unlock it and tap Trust; turn on Developer Mode in its Settings ›
+Privacy & Security (it shows once the phone has met Xcode; the phone
+restarts). Then `asuka dev --platform ios --device iphone` runs on it,
+or `--device` with its name or UDID when several are connected (`xcrun
+devicectl list devices` lists them). A phone paired with this Mac in
+Xcode's Devices window works over Wi-Fi too, unplugged.
+
+- **Signing**: the player and the app are signed for development by
+  your team: `--team`, else `ASUKA_TEAM_ID`, else `asuka.json`'s
+  `ios.team`, else the team of the Apple Development certificate in
+  your keychain. The first run has Xcode make the development profiles
+  it needs (`xcodebuild -allowProvisioningUpdates`), registering the
+  phone with the team and turning on the capabilities the app uses
+  (push, App Groups...), with the Apple ID in Xcode › Settings ›
+  Accounts, or with an [App Store Connect API key](shipping.md) if
+  `ASUKA_ASC_KEY_ID` (or `ios.appStoreConnect`) sets one. A team's
+  profiles that already fit, wildcard ones too, are used as they are.
+- **The player** on a phone is your team's own, `dev.asuka.player.`
+  and the team ID, as an App ID belongs to one team. Its share sheet,
+  widgets and capabilities follow the team's: with a free team, which
+  has no push or App Groups, it goes without them, and says so.
+- **Reaching your Mac**: over USB the Mac opens connections to the
+  player through the cable (usbmuxd, as Xcode does), so nothing goes
+  over the network. Without the cable, the player connects to the
+  Mac's addresses on the network, and its Bonjour name, which follows
+  the Mac to a new address: the phone must be on the Mac's network, and
+  iOS asks once whether the player may find devices on it (allow it;
+  its Settings › Apps › asuka › Local Network turns it on later). If
+  the player doesn't connect, Asuka says what to check. Either way the
+  player reconnects as each save restarts the Go code.
+- **Built apps** (`--no-hot`, `--once`, native code) are signed the same
+  way, with the app's own ID, and each save rebuilds, signs,
+  reinstalls and relaunches the app with `xcrun devicectl`.
 
 **A phone's browser**: `asuka dev --platform web --lan` serves the app to
 your network, and prints the addresses to open.
@@ -259,7 +296,7 @@ changed.
 - **In the browser**, the terminal shows the app's output and the
   page's errors too.
 - **A built app on iOS**: the app's output, Go's and Swift's `print`,
-  through the simulator's console.
+  through the simulator's console, or on an iPhone through `devicectl`'s.
 - **A built app on Android**: the app's logcat. Android drops a
   process's standard output, so the Go code's goes to logcat, tagged
   `asuka`.
@@ -354,6 +391,21 @@ ASUKA_SCRIPT="tap:Add;tap:Add" ASUKA_SNAPSHOT=shot.png go run .   # Windows, Lin
   `no iPhone simulator; add one in Xcode` and `no simulator "..."`
   mean there's no simulator of that name: `xcrun simctl list devices`
   lists them.
+- **An iPhone that isn't ready**: `... isn't paired with this Mac`
+  (plug it in, unlock it and tap Trust), `... isn't reachable` (plug it
+  in, or wake it on the Mac's Wi-Fi), `... has Developer Mode off`
+  (Settings › Privacy & Security › Developer Mode), `... is locked`
+  (unlock it). `no iPhone or iPad is connected` with one plugged in:
+  check that `xcrun devicectl list devices` lists it.
+- **`Xcode couldn't make the development profiles`**: sign in to Xcode
+  with the team's Apple ID (Xcode › Settings › Accounts), or set an App
+  Store Connect API key; a bundle ID another team has needs another
+  `id` in `asuka.json`. `the keychain has Apple Development certificates
+  of N teams`: pick one with `--team`.
+- **`the player hasn't connected yet`**: by USB, check the cable and
+  unlock the phone; over Wi-Fi, put it on the Mac's network, allow the
+  player's Local Network access, and let `asuka` take connections in
+  the Mac's firewall (System Settings › Network › Firewall).
 - **`no Android SDK: install Android Studio or set ANDROID_HOME`**: Asuka
   looks in `ANDROID_HOME`, `ANDROID_SDK_ROOT`, then
   `~/Library/Android/sdk` on a Mac and `~/Android/Sdk` on Linux.

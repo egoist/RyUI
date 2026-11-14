@@ -6,7 +6,7 @@
 
 所有平台都需要 **Go 1.26** 或更高版本。此外，按你要支持的平台准备：
 
-- **iOS**：一台装有 Xcode 及其 iOS 模拟器的 Mac。
+- **iOS**：一台装有 Xcode 的 Mac，以及 iOS 模拟器或一部 iPhone。
 - **Android**：一台 Mac 或 Linux 电脑，装好 Android Studio，并在它的 SDK Manager 中安装 NDK（SDK Tools → NDK）；再从 Device Manager 创建一个 Android 模拟器，或者准备一部开启了 USB 调试的手机。Asuka 会在 SDK 的默认安装位置或 `ANDROID_HOME` 中查找 SDK，并使用 Android Studio 自带的 Java。
 - **macOS**：一台运行 macOS 11 或更高版本的 Mac。只是运行应用的话，不需要别的东西；发布构建，以及自带 Swift 代码（`macos/*.swift`）的应用，需要 Xcode 命令行工具（`xcode-select --install`），装了 Xcode 就已经包含了。
 - **Windows**：一台运行 Windows 10 或 11 的 PC，x64 或 Arm 均可。不需要别的东西：Asuka 直接从 Go 调用 Win32。`ui.WebView` 和 `ui.Video` 依赖 Microsoft Edge WebView2 Runtime，Windows 11 自带，大多数 Windows 10 电脑上也已经有了。
@@ -47,6 +47,7 @@ cd hello
 ```sh
 asuka dev                      # 在本机运行：Mac、PC 或 Linux
 asuka dev --platform ios        # iOS 模拟器
+asuka dev --platform ios --device iphone  # 连接着的 iPhone
 asuka dev --platform android    # Android 模拟器或手机
 asuka dev --platform web        # 你的浏览器
 ```
@@ -54,10 +55,10 @@ asuka dev --platform web        # 你的浏览器
 保存 Go 文件后，应用片刻间就会重新加载，signal 里的值都会保留下来。应用的输出（`fmt.Println`、panic）会显示在终端里。
 
 - **在电脑上运行**（`asuka dev`，或 `--platform mac`、`windows`、`linux`）时，应用和它的宿主是同一个 Go 程序：Asuka 构建它、在窗口中运行它，每次保存后再重新构建并运行。
-- **在手机上运行**时，第一次会先构建并安装 Asuka 的播放器应用，由它来显示你的应用的视图；你的 Go 代码则在电脑上运行，并与播放器通信，所以保存后无需重新安装就能重新加载。`--device` 用来指定 iOS 模拟器（名称或 UDID）或 Android 设备（adb 序列号或 AVD 名称）。`--no-hot` 会像发布构建那样，把 Go 代码直接编进应用；`--once` 则把代码编进应用后只启动一次。
+- **在手机上运行**时，第一次会先构建并安装 Asuka 的播放器应用，由它来显示你的应用的视图；你的 Go 代码则在电脑上运行，并与播放器通信，所以保存后无需重新安装就能重新加载。`--device` 用来指定 iOS 模拟器或 iPhone（名称或 UDID，写 `iphone` 则表示连接着的那台）或 Android 设备（adb 序列号或 AVD 名称）。`--no-hot` 会像发布构建那样，把 Go 代码直接编进应用；`--once` 则把代码编进应用后只启动一次。
 - **在浏览器中运行**时，Asuka 会在 `http://localhost:8790/` 上启动服务并自动打开页面，每次保存都会刷新。加上 `--lan` 可以把应用开放给局域网，方便用手机浏览器试用。详见 [Web](web.md)。
 
-要在 iPhone 真机上运行，需要先构建一个为它签名的版本：`asuka build --platform ios --distribution development`，然后通过 Xcode 的 Devices 窗口安装生成的 `.ipa`。
+要在 iPhone 真机上运行，先把它连上 Mac，解锁后点“信任”，在“设置 › 隐私与安全性”中打开“开发者模式”，并在 Xcode 中添加你的 Apple ID（“设置 › 账户”）。然后运行 `asuka dev --platform ios --device iphone`：第一次它会用你的团队为播放器签名并安装，之后每次保存都会重新加载，USB 和 Wi-Fi 都可以。参见 [设备](development.md#设备)。
 
 更多内容见[开发](development.md)：重新加载时会保留什么、设备、日志，以及你可能遇到的问题。
 

@@ -262,8 +262,14 @@ func answerStacks(method byte, _ []byte) ([]byte, bool) {
 // Connect keeps a connection to addr, reconnecting when it drops (the
 // core restarted). Call it on its own goroutine.
 func (x *Proxy) Connect(addr string) {
+	x.ConnectWith(func() (net.Conn, error) { return net.Dial("tcp", addr) })
+}
+
+// ConnectWith is Connect with dial for the connection (a phone's: a
+// tunnel over USB, or the network; package devtunnel).
+func (x *Proxy) ConnectWith(dial func() (net.Conn, error)) {
 	for {
-		conn, err := net.Dial("tcp", addr)
+		conn, err := dial()
 		if err != nil {
 			time.Sleep(200 * time.Millisecond)
 			continue

@@ -692,5 +692,10 @@ func playerConfig() *appConfig {
 	// bluetooth.background).
 	c.Bluetooth.Background = []string{"central", "peripheral"}
 	c.bluetoothExtras()
+	// On a device over Wi-Fi, it reaches asuka dev on the local network.
+	if c.IOS.Usage == nil {
+		c.IOS.Usage = map[string]string{}
+	}
+	c.IOS.Usage["NSLocalNetworkUsageDescription"] = "To reach asuka dev on your computer, which runs the app you're working on."
 	return c
 }
