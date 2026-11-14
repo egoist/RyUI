@@ -33,6 +33,7 @@ instead, and writes it. See [Concepts](concepts.md).
 | `ProgressRing` | drawn as SwiftUI's circular gauge; `UIActivityIndicatorView` without a value | `CircularProgressIndicator` | `NSProgressIndicator`, spinning, at 16 and 32 points; drawn in its style at other sizes or in a `Color` | Fluent's `ProgressRing`, drawn | drawn in GNOME's style; `AdwSpinner` without a value | an SVG ring |
 | `Activity` | `UIActivityIndicatorView` | `CircularProgressIndicator` | `NSProgressIndicator`, spinning | Fluent's progress ring, drawn | `AdwSpinner` (`GtkSpinner` before libadwaita 1.6) | a spinner, drawn |
 | `Image` | `UIImageView` | `ImageView` | `NSImageView` | drawn with GDI+ | drawn from GDK textures | `<img>` |
+| `lottie.View` | lottie-ios | lottie-android | lottie-ios | drawn with `ui.Canvas` | drawn with `ui.Canvas` | lottie-web |
 | `Symbol` | SF Symbols | Material Symbols | SF Symbols | Segoe Fluent Icons | the icon theme's, else Material Symbols | Material Symbols |
 | `Video` | `AVPlayerViewController` | Media3's player | `AVPlayerView` | a `<video>` in WebView2 | `GtkVideo` (GStreamer) | `<video>` |
 | `WebView` | `WKWebView` | `WebView` | `WKWebView` | WebView2 | `WebKitWebView` (WebKitGTK 6.0) | `<iframe>` |
@@ -631,6 +632,85 @@ It sizes itself as an `Image` does: empty until the video's size is
 known, unless its style gives it one, then keeping the video's aspect
 ratio. `Seek` takes seconds from the start.
 
+## Lottie animations
+
+`asuka/sdk/lottie` plays Lottie animations (After Effects animations
+exported as Lottie JSON, `.json`, or as dotLottie, `.lottie`), as
+lottie-react-native does in Expo. Each platform draws them with its own
+Lottie player: lottie-ios on iOS and the Mac, lottie-android on Android,
+lottie-web on the web. Windows and Linux have no player to call, so the
+package draws the animation itself, with `ui.Canvas`.
+
+```go
+progress := signal.New(0.0)
+return ui.Column(ui.Style{Gap: 12},
+	lottie.View(lottie.Props{
+		Source:   ui.Val("success.json"),
+		Loop:     true,
+		Progress: progress,
+		Overrides: ui.Val([]lottie.Override{
+			lottie.Colors("Ring", colors.Hex(0x0a84ff), colors.Hex(0x64d2ff)),
+		}),
+		Style: ui.Style{Width: ui.Pt(200)},
+	}),
+	ui.Slider(ui.SliderProps{Value: progress}),
+)
+```
+
+- `Source` is the file: an http(s) URL, a path in the app's `assets`, or
+  an absolute path; `Data` is the file's bytes instead (`go:embed`).
+  `Animation` picks one of a dotLottie's animations by its ID.
+- `Playing` plays it while true and pauses it where it is while false;
+  without it, it plays as soon as it loads. `Loop` plays it again and
+  again; otherwise it stops at its end and `OnComplete` is called.
+  `Speed` scales its frame rate (negative: backwards).
+- `Progress` is where it is, from 0 to 1. The view writes it as it plays,
+  frame by frame, and a value the app writes moves it there: a slider
+  scrubs it, a gesture drives it. Written inside `ui.Animate`, it
+  animates there with the animation's duration and curve, and then
+  plays on if it's playing.
+- `Segment` (frames, `From` to `To`) or `Marker` (one of its markers, by
+  name) is the part it plays. `OnLoad` gets its `Info`: its size, frames,
+  frame rate and markers.
+- `Mode` is how it fills its box, as an image's. Without a size in its
+  style, it's the animation's size, no wider than its space; with one
+  side, the other keeps the animation's aspect ratio.
+- `Overrides` change its colors and values by keypath, for a theme or
+  dark mode: `lottie.Color` (the fills and strokes under a keypath),
+  `lottie.Colors` (one color in light mode, another in dark mode),
+  `lottie.Opacity`, `lottie.StrokeWidth`. A keypath is the names of
+  layers, groups and shapes from the root, separated by dots, with `*`
+  for any one name and `**` for any number of them, as lottie-ios' and
+  lottie-android's: `"Ring"`, `"Circle.Disc.Fill 1"`, `"**.Stroke 1"`.
+- `ReduceMotion` is what it does while the user asks for less motion:
+  by default (`ReduceToEnd`) it doesn't play and shows its last frame;
+  `ReduceToStart` shows its first; `ReduceIgnore` plays it anyway, for
+  an animation whose motion is what it says.
+- `Label` describes it to screen readers; without one it's decorative.
+
+An app that imports the package is built with these players: a Swift
+package (lottie-ios' binary, lottie-spm), a Gradle library
+(`com.airbnb.android:lottie`) and lottie-web's script, loaded once a view
+shows; apps that don't import it go without. It's a
+[native package](native.md), so under `asuka dev` on a phone, an app
+with it runs as a build of its own rather than in the player.
+
+On Windows and Linux the package's renderer draws shape, solid, null
+and precomposition layers: rectangles, ellipses, stars, polygons and
+paths; fills and strokes, solid or gradient (linear and radial, with a
+highlight), dashed; trim paths, round corners and repeaters; the
+transforms of layers and groups (anchor, position, separate or along a
+curve, scale, rotation, skew, opacity), parenting, time remapping and
+stretch; keyframes with eased, held and spatial interpolation. Masks
+(add, subtract, intersect, inverted) and track mattes (alpha and luma,
+inverted) clip by their outlines. It doesn't draw image and text layers,
+expressions, effects, layer styles, blend modes, 3D, merge paths (the
+paths are drawn as they are), offset paths, pucker and bloat, twist or
+zig zag; a mask's opacity, feather and expansion; or a matte's own
+transparency (a matte clips by its layer's filled outlines, a
+precomposition matte by its bounds). lottie-web's light build, which the
+web uses, doesn't run expressions either.
+
 ## Web pages
 
 `ui.WebView` shows a web page in the platform's web view, with its
@@ -797,10 +877,15 @@ ui.Canvas(func(g *ui.Graphics) {
 
 - `g.Path()` is a path to build (as a Shape's), reused from draw to draw.
 - `Fill`, `Stroke` (a `StrokeStyle`: width, caps, joins, dashes) and
-  `FillGradient` paint a path; `Text` draws a line of text, its baseline
-  at y, its left edge, center or right edge at x.
+  `FillGradient` paint a path; `FillRadialGradient` fills one with a
+  `RadialGradient` (its center, radius, and a focus it starts from), and
+  `StrokeGradient` and `StrokeRadialGradient` paint its outline with a
+  gradient; `Text` draws a line of text, its baseline at y, its left
+  edge, center or right edge at x.
 - `Save` and `Restore` bracket `Translate`, `Scale`, `Rotate` (degrees,
-  clockwise), `Clip` and `Opacity`.
+  clockwise), `Transform` (any affine matrix, a skew too), `Clip`,
+  `Opacity` and `EvenOdd`, which fills and clips by the even-odd rule
+  (by default, the nonzero rule).
 - Colors can be semantic (`colors.Label`, `colors.Separator`, `colors.Accent`):
   they follow dark mode.
 

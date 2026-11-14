@@ -554,3 +554,34 @@ func TestAnimatedImagesFollowReduceMotion(t *testing.T) {
 		t.Fatal("Animated true again doesn't play")
 	}
 }
+
+// Animating says, to the effects a change in Animate runs, what animation
+// it's in; outside one, nothing.
+func TestAnimating(t *testing.T) {
+	v := signal.New(0)
+	var seen []float32
+	_, r := mount(t, func() ui.Node {
+		signal.RenderEffect(func() {
+			v.Get()
+			if a, ok := ui.Animating(); ok {
+				seen = append(seen, a.Duration)
+			} else {
+				seen = append(seen, -1)
+			}
+		})
+		return ui.View(ui.ViewProps{})
+	})
+	ui.AnimateWith(ui.Animation{Duration: 0.4}, func() { v.Set(1) })
+	r.Flush()
+	v.Set(2)
+	r.Flush()
+	if len(seen) != 3 || seen[0] != -1 || seen[1] != 0.4 || seen[2] != -1 {
+		t.Fatal(seen)
+	}
+	if st := ui.StyleValue(ui.StyleFunc(func() ui.Style { return ui.Style{Grow: 2} })); st.Grow != 2 {
+		t.Fatal("StyleValue of a StyleFunc")
+	}
+	if st := ui.StyleValue(ui.Style{Grow: 3}); st.Grow != 3 || ui.StyleValue(nil).Grow != 0 {
+		t.Fatal("StyleValue of a Style")
+	}
+}

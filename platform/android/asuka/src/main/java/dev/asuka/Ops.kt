@@ -677,6 +677,10 @@ object AsukaCanvasOp {
     const val STROKE = 9
     const val GRADIENT = 10
     const val TEXT = 11
+    const val TRANSFORM = 12
+    const val FILL_RULE = 13
+    const val RADIAL_GRADIENT = 14
+    const val STROKE_GRADIENT = 15
 }
 
 object AsukaAnimationCurve {

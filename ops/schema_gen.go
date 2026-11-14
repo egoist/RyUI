@@ -466,7 +466,7 @@ const (
 
 // Canvas props.
 const (
-	// PropCanvasCommands: what it draws, in points from its top left, in order: per command a u8 CanvasOp and its arguments. Save, Restore: none; Translate, Scale: f32 x, y; Rotate: f32 degrees, clockwise; Alpha: f32 (multiplies what's drawn after); Clip: a path; Fill: u64 color, a path; Stroke: u64 color, f32 width, u8 LineCap, u8 LineJoin, u32 dash count, f32 dash phase, f32 each dash, a path; Gradient: u32 stop count, per stop u64 color and f32 location, f32 start x, y, end x, y, a path (filled); Text: u64 color, f32 size, u8 FontWeight, u8 TextAlign (Start: its left edge at x, Center, End: its right edge at x), f32 x, y (its baseline), u32-length string. A path is u32 length, then Shape's Path format. Colors may be semantic, resolved in the view's appearance.
+	// PropCanvasCommands: what it draws, in points from its top left, in order: per command a u8 CanvasOp and its arguments. Save, Restore: none; Translate, Scale: f32 x, y; Rotate: f32 degrees, clockwise; Alpha: f32 (multiplies what's drawn after); Clip: a path; Fill: u64 color, a path; Stroke: u64 color, f32 width, u8 LineCap, u8 LineJoin, u32 dash count, f32 dash phase, f32 each dash, a path; Gradient: u32 stop count, per stop u64 color and f32 location, f32 start x, y, end x, y, a path (filled); Text: u64 color, f32 size, u8 FontWeight, u8 TextAlign (Start: its left edge at x, Center, End: its right edge at x), f32 x, y (its baseline), u32-length string; Transform: f32 a, b, c, d, tx, ty (concatenates the matrix [a c tx; b d ty]); FillRule: u8 (0 nonzero, 1 even-odd: for the Clip, Fill, Gradient and RadialGradient after it, until Restore); RadialGradient: u32 stop count, per stop u64 color and f32 location, f32 center x, y, radius, focal x, y, a path (filled); StrokeGradient: Stroke's f32 width, u8 LineCap, u8 LineJoin, u32 dash count, f32 dash phase, f32 each dash, then u8 kind (0 linear, 1 radial), the stops as Gradient's, f32 start x, y, end x, y (linear) or center x, y, radius, focal x, y (radial), a path (stroked). A path is u32 length, then Shape's Path format. Colors may be semantic, resolved in the view's appearance.
 	PropCanvasCommands PropID = 64
 )
 
@@ -988,6 +988,10 @@ const (
 	CanvasOpStroke
 	CanvasOpGradient
 	CanvasOpText
+	CanvasOpTransform
+	CanvasOpFillRule
+	CanvasOpRadialGradient
+	CanvasOpStrokeGradient
 )
 
 type AnimationCurve int32

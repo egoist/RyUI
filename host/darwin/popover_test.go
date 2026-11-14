@@ -243,3 +243,57 @@ func TestDatePickerInline(t *testing.T) {
 		}
 	})
 }
+
+// The canvas's transforms, even-odd fills, radial gradients and gradient
+// strokes: a ring filled even-odd (its hole empty), a radial gradient
+// from red at its center to blue at its edge, drawn through a skewing
+// Transform, and a thick stroke painted with a linear gradient.
+func TestCanvasPaints(t *testing.T) {
+	h, _ := mount(t, func() ui.Node {
+		return ui.Canvas(func(g *ui.Graphics) {
+			g.Save()
+			g.EvenOdd(true)
+			g.Fill(g.Path().Ellipse(0, 0, 40, 40).Ellipse(10, 10, 20, 20), colors.RGB(0, 200, 0))
+			g.Restore()
+			g.Save()
+			g.Transform(1, 0, 0, 1, 50, 0) // a translation, as a matrix
+			g.FillRadialGradient(g.Path().Rect(0, 0, 40, 40), ui.RadialGradient{
+				Colors: []ui.Color{colors.RGB(255, 0, 0), colors.RGB(0, 0, 255)}, Center: ui.Point{X: 20, Y: 20}, Radius: 20})
+			g.Restore()
+			g.StrokeGradient(g.Path().MoveTo(100, 20).LineTo(140, 20), ui.StrokeStyle{Width: 20},
+				ui.Gradient{Colors: []ui.Color{colors.RGB(255, 0, 0), colors.RGB(0, 0, 255)}, Start: ui.Point{X: 100}, End: ui.Point{X: 140}})
+		}, ui.Style{Width: ui.Pt(150), Height: ui.Pt(40)})
+	})
+	onMain(func() {
+		c := find(h, ops.KindCanvas)[0]
+		b := MsgRect(c.view, Sel("bounds"))
+		rep := MsgRectToID(c.view, Sel("bitmapImageRepForCachingDisplayInRect:"), b)
+		MsgRectIDVoid(c.view, Sel("cacheDisplayInRect:toBitmapImageRep:"), b, rep)
+		k := int(SendInt(rep, "pixelsWide")) / 150
+		px := func(x, y int) (r, g, b, a uint8) {
+			r, g, b, a, _ = h.goColor(Send(rep, "colorAtX:y:", uintptr(x*k), uintptr(y*k))).RGBA()
+			return
+		}
+		if _, g, _, a := px(5, 20); g < 150 || a < 200 {
+			fatal(t, "the ring isn't filled")
+		}
+		if _, _, _, a := px(20, 20); a > 20 {
+			fatalf(t, "the ring's hole is filled (alpha %d)", a)
+		}
+		if r, _, bl, _ := px(70, 20); r < 200 || bl > 60 {
+			fatalf(t, "the radial gradient's center: %d, %d", r, bl)
+		}
+		if r, _, bl, _ := px(51, 20); bl < 150 || r > 100 {
+			fatalf(t, "the radial gradient's edge: %d, %d", r, bl)
+		}
+		if r, _, bl, a := px(102, 20); r < 180 || bl > 80 || a < 200 {
+			fatalf(t, "the gradient stroke's start: %d, %d, %d", r, bl, a)
+		}
+		if r, _, bl, _ := px(138, 20); bl < 180 || r > 80 {
+			fatalf(t, "the gradient stroke's end: %d, %d", r, bl)
+		}
+		if _, _, _, a := px(120, 2); a > 20 {
+			fatal(t, "the gradient stroke is wider than its width")
+		}
+	})
+}

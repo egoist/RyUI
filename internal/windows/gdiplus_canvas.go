@@ -22,7 +22,101 @@ var (
 	gdipDrawString         = gdiplus.NewProc("GdipDrawString")
 	gdipCellAscent         = gdiplus.NewProc("GdipGetCellAscent")
 	gdipEmHeight           = gdiplus.NewProc("GdipGetEmHeight")
+	gdipCreateMatrix2      = gdiplus.NewProc("GdipCreateMatrix2")
+	gdipDeleteMatrix       = gdiplus.NewProc("GdipDeleteMatrix")
+	gdipMultiplyTransform  = gdiplus.NewProc("GdipMultiplyWorldTransform")
+	gdipSetPathFillMode    = gdiplus.NewProc("GdipSetPathFillMode")
+	gdipCreatePathGradient = gdiplus.NewProc("GdipCreatePathGradientFromPath")
+	gdipSetPathGradCenter  = gdiplus.NewProc("GdipSetPathGradientCenterPoint")
+	gdipSetPathGradBlend   = gdiplus.NewProc("GdipSetPathGradientPresetBlend")
+	gdipCreatePen2         = gdiplus.NewProc("GdipCreatePen2")
 )
+
+// Transform multiplies the world transform by the matrix [a c tx; b d ty]
+// (applied before what's there, as a nested transform is).
+func (g Graphics) Transform(a, b, c, d, tx, ty float32) {
+	var m uintptr
+	fcall(gdipCreateMatrix2, 0x3f, f(a), f(b), f(c), f(d), f(tx), f(ty), uintptr(unsafe.Pointer(&m)))
+	if m == 0 {
+		return
+	}
+	gdipMultiplyTransform.Call(uintptr(g), m, 0) // MatrixOrderPrepend
+	gdipDeleteMatrix.Call(m)
+}
+
+// ExcludeClip limits drawing to outside p as well.
+func (g Graphics) ExcludeClip(p Path) { gdipSetClipPath.Call(uintptr(g), uintptr(p), 4) } // CombineModeExclude
+
+// SetFillMode fills p by the even-odd rule (GDI+'s alternate) or the
+// nonzero one (winding).
+func (p Path) SetFillMode(evenOdd bool) {
+	mode := uintptr(1) // FillModeWinding
+	if evenOdd {
+		mode = 0
+	}
+	gdipSetPathFillMode.Call(uintptr(p), mode)
+}
+
+// RadialBrush is a gradient out from (fx, fy) to the circle of radius r
+// around (cx, cy) through colors at positions (0, the center, to 1, the
+// circle): a path gradient over the circle. It paints only the circle:
+// RadialFill fills the rest in the last color.
+func RadialBrush(cx, cy, r, fx, fy float32, colors []ARGB, positions []float32) Brush {
+	if len(colors) < 2 || r <= 0 {
+		if len(colors) > 0 {
+			return SolidBrush(colors[len(colors)-1])
+		}
+		return 0
+	}
+	circle := NewPath()
+	defer circle.Close()
+	circle.Ellipse(cx-r, cy-r, 2*r, 2*r)
+	var b uintptr
+	gdipCreatePathGradient.Call(uintptr(circle), uintptr(unsafe.Pointer(&b)))
+	if b == 0 {
+		return 0
+	}
+	focus := struct{ X, Y float32 }{fx, fy}
+	gdipSetPathGradCenter.Call(b, uintptr(unsafe.Pointer(&focus)))
+	// GDI+'s positions run from the boundary (0) in to the center (1).
+	n := len(colors)
+	cs := make([]ARGB, n)
+	ps := make([]float32, n)
+	for i := range n {
+		cs[i] = colors[n-1-i]
+		ps[i] = 1 - positions[n-1-i]
+	}
+	ps[0], ps[n-1] = 0, 1
+	gdipSetPathGradBlend.Call(b, uintptr(unsafe.Pointer(&cs[0])), uintptr(unsafe.Pointer(&ps[0])), uintptr(n))
+	return Brush(b)
+}
+
+// RadialFill fills p with a radial gradient: the last color outside its
+// circle, the gradient in it.
+func (g Graphics) RadialFill(p Path, cx, cy, r, fx, fy float32, colors []ARGB, positions []float32) {
+	if len(colors) == 0 {
+		return
+	}
+	s := g.Save()
+	circle := NewPath()
+	circle.Ellipse(cx-r, cy-r, 2*r, 2*r)
+	g.ExcludeClip(circle)
+	last := SolidBrush(colors[len(colors)-1])
+	g.FillPath(last, p)
+	last.Close()
+	circle.Close()
+	g.Restore(s)
+	br := RadialBrush(cx, cy, r, fx, fy, colors, positions)
+	g.FillPath(br, p)
+	br.Close()
+}
+
+// NewBrushPen is a pen painting with a brush (a gradient).
+func NewBrushPen(b Brush, width float32) Pen {
+	var p uintptr
+	fcall(gdipCreatePen2, 0x2, uintptr(b), f(width), 2, uintptr(unsafe.Pointer(&p))) // UnitPixel
+	return Pen(p)
+}
 
 // Save remembers the graphics state (transform, clip), for Restore.
 func (g Graphics) Save() uint32 {

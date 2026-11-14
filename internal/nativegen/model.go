@@ -141,7 +141,7 @@ type View struct {
 	Name   string // the view's: the struct's name without Props
 	Props  []*Field
 	Events []*Field // func fields: Type.Func
-	Style  bool     // has a Style ui.Style field
+	Style  bool     // has a Style ui.Style (or ui.Styler: a StyleFunc too) field
 	Doc    string
 }
 
@@ -725,7 +725,7 @@ func (l *loader) view(d decl) (*View, error) {
 			return nil, l.errorf(f.Pos(), "%s.%s: a view's props are exported fields", name, f.Name())
 		}
 		ft := f.Type()
-		if f.Name() == "Style" && isNamed(ft, "github.com/egoist/asuka/ui", "Style") {
+		if f.Name() == "Style" && (isNamed(ft, "github.com/egoist/asuka/ui", "Style") || isNamed(ft, "github.com/egoist/asuka/ui", "Styler")) {
 			v.Style = true
 			continue
 		}

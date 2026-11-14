@@ -674,6 +674,10 @@ public enum AsukaCanvasOp: Int32 {
     case stroke = 9
     case gradient = 10
     case text = 11
+    case transform = 12
+    case fillRule = 13
+    case radialGradient = 14
+    case strokeGradient = 15
 }
 
 public enum AsukaAnimationCurve: Int32 {

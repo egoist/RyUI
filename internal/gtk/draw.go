@@ -26,6 +26,15 @@ var Draw struct {
 	TransformScale        func(t Ptr, x, y float32) Ptr
 	TransformRotate       func(t Ptr, degrees float32) Ptr
 
+	// A canvas's affine transforms (through a graphene matrix), radial
+	// gradients and gradient strokes.
+	GrapheneMatrixAlloc          func() Ptr
+	GrapheneMatrixInitFrom2D     func(m Ptr, xx, yx, xy, yy, x0, y0 float64) Ptr
+	GrapheneMatrixFree           func(m Ptr)
+	TransformMatrix              func(t, m Ptr) Ptr
+	SnapshotAppendRadialGradient func(s Ptr, bounds *Rect, center *Point, hradius, vradius, start, end float32, stops *ColorStop, n uintptr)
+	SnapshotPushStroke           func(s, path, stroke Ptr)
+
 	// Textures.
 	TextureDownload func(t Ptr, data *byte, stride uintptr)
 
@@ -98,6 +107,12 @@ func init() {
 		binding{&d.StrokeSetMiterLimit, "gsk_stroke_set_miter_limit"},
 		binding{&d.TransformScale, "gsk_transform_scale"},
 		binding{&d.TransformRotate, "gsk_transform_rotate"},
+		binding{&d.GrapheneMatrixAlloc, "graphene_matrix_alloc"},
+		binding{&d.GrapheneMatrixInitFrom2D, "graphene_matrix_init_from_2d"},
+		binding{&d.GrapheneMatrixFree, "graphene_matrix_free"},
+		binding{&d.TransformMatrix, "gsk_transform_matrix"},
+		binding{&d.SnapshotAppendRadialGradient, "gtk_snapshot_append_radial_gradient"},
+		binding{&d.SnapshotPushStroke, "gtk_snapshot_push_stroke"},
 		binding{&d.TextureDownload, "gdk_texture_download"},
 		binding{&d.WidgetRemoveTickCallback, "gtk_widget_remove_tick_callback"},
 		binding{&d.DragSourceNew, "gtk_drag_source_new"},

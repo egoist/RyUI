@@ -82,6 +82,22 @@ func AnimateWith(a Animation, f func()) {
 	}
 }
 
+// Animating is the animation the changes being made now are in: inside
+// Animate's f and the effects it causes, until its flush ends; ok is
+// false outside one. For what the host's animations can't reach (a
+// native view's own value, as a Lottie's progress), to animate it the
+// same way itself. Main thread.
+func Animating() (a Animation, ok bool) {
+	if cur == nil && len(roots) == 0 {
+		return Animation{}, false
+	}
+	r := activeRoot()
+	if !r.animating {
+		return Animation{}, false
+	}
+	return r.anim, true
+}
+
 func (r *Root) animBegin() {
 	binary.LittleEndian.PutUint32(r.animArgs[:4], math.Float32bits(r.anim.Duration))
 	r.animArgs[4] = byte(r.anim.Curve)
