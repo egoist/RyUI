@@ -2,6 +2,11 @@
   "name": "Services",
   "id": "dev.asuka.services",
   "scheme": "asukaservices",
+  "ios": {
+    "locationPurposes": {
+      "route": "To draw your route exactly."
+    }
+  },
   "splash": {
     "image": "logo.png",
     "size": 96,

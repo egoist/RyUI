@@ -225,6 +225,7 @@ func buildAndroidLibs(app *goApp, tc *androidToolchain, work string) (string, er
 		}
 		cfg.shareSheet = hasSheet(out)
 		cfg.pushRewrite = hasSymbol(out, rewriteSymbol)
+		cfg.useLocation(func(s string) bool { return hasSymbol(out, s) })
 	}
 	return jni, nil
 }

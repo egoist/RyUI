@@ -10,6 +10,7 @@ package ui
 
 import (
 	"encoding/binary"
+	"errors"
 	"runtime/debug"
 	"slices"
 	"sync/atomic"
@@ -149,7 +150,19 @@ func (r *Root) Dispose() {
 			break
 		}
 	}
+	// The last root gone, no host answers the Calls still waiting: they
+	// fail, so a package's goroutine waiting on one ends rather than
+	// waits for good (and a root mounted later starts it again).
+	if len(roots) == 0 && len(calls) > 0 {
+		waiting := calls
+		calls = map[uint32]func([]byte, error){}
+		for _, done := range waiting {
+			done(nil, errRootGone)
+		}
+	}
 }
+
+var errRootGone = errors.New("ui: the root is gone")
 
 // Environment returns the root view's environment; reading it in an
 // effect tracks it.

@@ -100,7 +100,7 @@ SwiftUI 也能在 Mac 上运行。Expo 支持 iOS、Android 和 Web；React Nati
 | 文档 | `UIDocumentPickerViewController` | `expo-document-picker` | ✓ `device.PickFiles`（MIME 类型、多选） |
 | 相机 | AVFoundation | `expo-camera` | ✓ `asuka/sdk/camera`：`Take`（系统相机；在 Mac、Windows 和 Linux 上是一个带实时预览的对话框；Windows 上用 Media Foundation 的采集引擎；Linux 上用相机 portal，或通过 GStreamer 调用 Video4Linux）、`View`（实时预览，前置或后置摄像头）、`Capture`；`asuka/sdk/camera/record` 可以录制带声音的视频 |
 | 条形码、二维码 | AVFoundation、Vision | `expo-camera` 的扫描功能 | ✓ `asuka/sdk/scan`：可以在 `camera.View` 里实时识别（`Scan: scan.Codes(...)`），也可以识别图片文件（`scan.File`）；Android 上用 ML Kit，只会打包进导入了它的应用；Linux 上用 ZBar；Windows 上用 Asuka 自己用 Go 写的识别器（`internal/barcode`：QR、Data Matrix、EAN、UPC、Code 128、Code 39） |
-| 定位 | Core Location | `expo-location` | ✓ `asuka/sdk/location`（地名查询：Windows 上用 OpenStreetMap 的 Nominatim） |
+| 定位 | Core Location | `expo-location` | ✓ `asuka/sdk/location`（地名查询：Windows 上用 OpenStreetMap 的 Nominatim）；“使用期间”和“始终”两级权限，精确或大致位置；后台定位更新和地理围栏（相当于 `expo-task-manager` 的任务：iOS 和 Android 上会为这些事件启动应用；系统不提供时，在应用运行期间根据位置计算） |
 | 翻译、复数、区域格式 | String Catalogs、FormatStyle | `expo-localization`、i18next | ✓ `asuka/i18n`、翻译目录（[多语言](i18n.md)） |
 | 从右到左布局 | `layoutDirection` | `I18nManager` | ✓ 跟随语言，也可用 `ui.WithDirection` 设置 |
 | 本地通知 | UserNotifications | `expo-notifications` | ✓ `asuka/sdk/notify`（立即或定时发送，支持图片；iOS、Android、macOS、Linux；Windows 上是 toast 通知，通过应用的 COM 激活器支持按钮和回复；Web 上通过应用的 service worker 发送，所以页面关闭后通知仍然保留、仍能响应操作；定时通知在应用有页面打开时会按时显示，否则等下次打开页面时再显示：浏览器无法预约通知） |

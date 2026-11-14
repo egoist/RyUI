@@ -67,6 +67,11 @@ type appConfig struct {
 		Usage map[string]string `json:"usage"`
 		// InfoPlist adds string keys to Info.plist.
 		InfoPlist map[string]string `json:"infoPlist"`
+		// LocationPurposes are the reasons location.RequestPrecise shows,
+		// by the purpose key it's given (Info.plist's
+		// NSLocationTemporaryUsageDescriptionDictionary; default: "default",
+		// "To show exactly where you are.").
+		LocationPurposes map[string]string `json:"locationPurposes"`
 		// NonExemptEncryption is what a build says of its encryption
 		// (ITSAppUsesNonExemptEncryption), a legal statement that's yours to
 		// make: "no" (the default), "yes", or "ask", which says nothing, so App
@@ -167,6 +172,9 @@ type appConfig struct {
 	// pushRewrite: the app's Go code calls push.Rewrite (rewriteSymbol):
 	// on iOS it has a Notification Service Extension, which runs it.
 	pushRewrite bool
+	// locationPrecise: the app's Go code calls location.RequestPrecise
+	// (ASUKA_LOCATION_PRECISE): Info.plist has its purposes.
+	locationPrecise bool
 	// liveActivity: the app's Go code calls asuka/sdk/liveactivity
 	// (ASUKA_LIVEACTIVITY): on iOS its widget extension has the Live
 	// Activities' template, with or without widgets.
@@ -548,6 +556,54 @@ var featurePermissions = []struct {
 		plistArrays: map[string][]string{"LSApplicationQueriesSchemes": {"mailto"}},
 		androidTop: []string{`<queries><intent><action android:name="android.intent.action.SENDTO" /><data android:scheme="mailto" /></intent>` +
 			`<intent><action android:name="android.intent.action.SENDTO" /><data android:scheme="smsto" /></intent></queries>`}},
+}
+
+// locationSymbols are asuka/sdk/location's functions that need more of
+// Android than the position in the foreground: by what each needs.
+var locationSymbols = struct{ always, updates, regions []string }{
+	always:  []string{"github.com/egoist/asuka/sdk/location.RequestAlways"},
+	updates: []string{"github.com/egoist/asuka/sdk/location.StartUpdates"},
+	regions: []string{"github.com/egoist/asuka/sdk/location.Monitor"},
+}
+
+// useLocation adds what the app's calls into asuka/sdk/location's
+// background part need on Android, has telling which it calls (its
+// library's symbols): ACCESS_BACKGROUND_LOCATION for RequestAlways (which
+// Google Play asks about, so only then); for StartUpdates, the foreground
+// service of the location type and its notification; for both
+// StartUpdates and Monitor, the receiver their PendingIntents and a
+// reboot (which clears them) go to, and the asuka-location module (Google
+// Play services' Fused Location Provider and geofences).
+func (c *appConfig) useLocation(has func(symbol string) bool) {
+	uses := func(syms []string) bool { return slices.ContainsFunc(syms, has) }
+	always, updates, regions := uses(locationSymbols.always), uses(locationSymbols.updates), uses(locationSymbols.regions)
+	var perms, app []string
+	if always {
+		perms = append(perms, "android.permission.ACCESS_BACKGROUND_LOCATION")
+	}
+	if updates {
+		perms = append(perms, "android.permission.FOREGROUND_SERVICE", "android.permission.FOREGROUND_SERVICE_LOCATION", "android.permission.POST_NOTIFICATIONS")
+		app = append(app, `<service android:name="dev.asuka.AsukaLocationService" android:exported="false" android:foregroundServiceType="location" />`)
+	}
+	if updates || regions {
+		perms = append(perms, "android.permission.RECEIVE_BOOT_COMPLETED")
+		app = append(app, `<receiver android:name="dev.asuka.AsukaLocationReceiver" android:exported="false"><intent-filter>`+
+			`<action android:name="android.intent.action.BOOT_COMPLETED" /><action android:name="android.intent.action.MY_PACKAGE_REPLACED" />`+
+			`</intent-filter></receiver>`)
+		if !slices.Contains(c.androidModules, "location") {
+			c.androidModules = append(c.androidModules, "location")
+		}
+	}
+	for _, p := range perms {
+		if !slices.Contains(c.Android.Permissions, p) {
+			c.Android.Permissions = append(c.Android.Permissions, p)
+		}
+	}
+	for _, x := range app {
+		if !slices.Contains(c.androidApp, x) {
+			c.androidApp = append(c.androidApp, x)
+		}
+	}
 }
 
 // permissionsFor adds the permissions the packages deps (an app's

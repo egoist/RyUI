@@ -247,8 +247,9 @@ type Host struct {
 	materials  int             // views with a material (material.go)
 	blurTmp    []byte          // the material's blur's buffer
 
-	svc  services                          // the modules of Windows's services (services.go)
-	more map[string]map[string]asyncMethod // the modules moduleHooks add (more.go)
+	svc          services                          // the modules of Windows's services (services.go)
+	regionsState locRegions                        // asuka/sdk/location's authorization and regions (location_regions.go)
+	more         map[string]map[string]asyncMethod // the modules moduleHooks add (more.go)
 
 	depth   int // calls into the core in progress
 	pending []ops.Event

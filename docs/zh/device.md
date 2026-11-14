@@ -12,7 +12,7 @@ Asuka 提供了一系列包，让应用用上视图之外的设备能力：相�
 | --- | --- | --- |
 | `asuka/sdk/camera` | `CAMERA` | `NSCameraUsageDescription` |
 | `asuka/sdk/camera/record` | `RECORD_AUDIO` | `NSMicrophoneUsageDescription` |
-| `asuka/sdk/location` | `ACCESS_COARSE_LOCATION`、`ACCESS_FINE_LOCATION` | `NSLocationWhenInUseUsageDescription` |
+| `asuka/sdk/location` | `ACCESS_COARSE_LOCATION`、`ACCESS_FINE_LOCATION`；调用了 `RequestAlways` 的应用另有 `ACCESS_BACKGROUND_LOCATION`；调用了 `StartUpdates` 的另有 `FOREGROUND_SERVICE_LOCATION` 和一个前台服务；调用了 `StartUpdates` 或 `Monitor` 的另有 `RECEIVE_BOOT_COMPLETED`、一个广播接收器和 Play 服务的定位库 | `NSLocationWhenInUseUsageDescription`；调用了 `RequestAlways` 的应用另有 `NSLocationAlwaysAndWhenInUseUsageDescription`；调用了 `StartUpdates` 的另有 `location` 后台模式；调用了 `RequestPrecise` 的另有 `NSLocationTemporaryUsageDescriptionDictionary` |
 | `asuka/sdk/notify` | `POST_NOTIFICATIONS` | |
 | `asuka/sdk/network` | `ACCESS_NETWORK_STATE` | |
 | `asuka/sdk/library` | `WRITE_EXTERNAL_STORAGE`（Android 9 及更早版本） | `NSPhotoLibraryAddUsageDescription`；应用的 Documents 目录会出现在“文件”App 中 |
@@ -105,7 +105,7 @@ Windows 应用不需要声明任何东西：`asuka build --platform windows` 不
 | `asuka/sdk/nowplaying` | 应用窗口的 SystemMediaTransportControls（没有窗口的应用会用一个自己的隐藏窗口）：对应 Windows 10 的音量浮出面板、Windows 11 快速设置里的媒体控件、锁屏以及键盘上的媒体键。跳过操作对应它的快进和快退按钮；它没有切换操作（播放/暂停键发送的是播放或暂停） |
 | `asuka/sdk/speech` | SAPI 的语音，即系统已安装的那些（设置 > 时间和语言 > 语音） |
 | `asuka/sdk/network` | 网络列表管理器（Network List Manager）：Wi-Fi、蜂窝网络或有线网络；按流量计费的连接为 `Metered`，接近或超出流量上限时为 `Constrained` |
-| `asuka/sdk/location` | WinRT 的 Geolocator。`PlaceName` 查询 OpenStreetMap 的 Nominatim（Windows 自带的地理编码器需要 Bing Maps 密钥）：每秒最多发一次请求，查询结果保存在应用的缓存目录中 |
+| `asuka/sdk/location` | WinRT 的 Geolocator。`PlaceName` 查询 OpenStreetMap 的 Nominatim（Windows 自带的地理编码器需要 Bing Maps 密钥）：每秒最多发一次请求，查询结果保存在应用的缓存目录中。区域监控用 `GeofenceMonitor`，仅在应用运行期间有效；后台定位更新根据位置计算 |
 | `asuka/sdk/biometric` | Windows Hello 的提示框；`Check` 返回的类型就是传感器的类型；Hello 总会提供 PIN 选项，取消按钮的文字也由它自己决定 |
 | `asuka/sdk/webauth` | 在应用窗口之上打开一个内嵌 WebView2 的窗口（使用应用的 Web 配置文件；设置 `Ephemeral` 时使用一个用完即弃的配置文件） |
 | `asuka/sdk/js` | 一个从不显示的 WebView2 |
@@ -138,7 +138,7 @@ Linux 宿主访问桌面服务时，有门户就走门户，此外还用到 GLib
 | `asuka/sdk/device` | `PickPhotos` 和 `PickFiles`：GTK 的文件对话框（在沙盒中是门户提供的），选中的文件会复制到应用的缓存目录。剪贴板里的图片及剪贴板的变化通过 GDK 的剪贴板获取。`Browse` 在用户的浏览器中打开页面。`KeepAwake` 阻止会话进入空闲状态。`GetInfo`：`Model` 为 `"PC"`，`System` 为 `"Linux"`，`SystemVersion` 为发行版的版本（取自 `/etc/os-release`） |
 | `asuka/sdk/secure` | 密钥环（通过 libsecret：GNOME Keyring、KWallet、KeePassXC），每个键存为一项，标签为应用名；没有 libsecret 或密钥环时，调用会失败并说明原因 |
 | `asuka/sdk/network` | GNetworkMonitor（在沙盒中是门户提供的）；Wi-Fi、以太网还是蜂窝网络，由 NetworkManager 提供；从不报告受限 |
-| `asuka/sdk/location` | 定位门户（背后是 GeoClue，由它询问用户），没有门户时直接使用 GeoClue；装了 geocode-glib 时，`PlaceName` 用它来查询 |
+| `asuka/sdk/location` | 定位门户（背后是 GeoClue，由它询问用户），没有门户时直接使用 GeoClue；装了 geocode-glib 时，`PlaceName` 用它来查询。GeoClue 没有地理围栏：区域和后台定位更新都在应用运行期间根据位置计算 |
 | `asuka/sdk/speech` | Speech Dispatcher（没在运行时会启动它）：使用它的语音、语速、音调和音量 |
 | `asuka/sdk/audio`、`asuka/sdk/audio/record` | GStreamer：用 AAC 编码器（FDK、libav 的等等）录音，默认音源即麦克风 |
 | `asuka/sdk/nowplaying` | 有内容显示时，在会话总线上注册一个 MPRIS 播放器，名为 `org.mpris.MediaPlayer2.<app>.instance<pid>`：对应 GNOME 和 KDE 的媒体控件与锁屏、媒体键以及 `playerctl`。如果应用支持跳过，MPRIS 的 `Seek` 就是跳过，否则是跳转播放位置；封面图是一个 `file://` 或 http(s) URL |
@@ -174,7 +174,7 @@ Linux 宿主访问桌面服务时，有门户就走门户，此外还用到 GLib
 | `asuka/sdk/imageedit` | 用 canvas 处理：输出 JPEG 或 PNG；远程图片需要 CORS |
 | `asuka/sdk/photos` | 网页无法读取照片库：访问权限为 `Denied`（要选照片请用 `device.PickPhotos`） |
 | `asuka/sdk/library` | `Save` 会把文件下载下来 |
-| `asuka/sdk/location` | Geolocation API；Web 上没有 `PlaceName`（浏览器没有地理编码器） |
+| `asuka/sdk/location` | Geolocation API；Web 上没有 `PlaceName`（浏览器没有地理编码器）。区域和后台定位更新根据位置计算，只在页面打开期间有效 |
 | `asuka/sdk/network` | 是否在线取自 `navigator.onLine`；浏览器提供相关信息时（Android 上的 Chrome）能区分 Wi-Fi、蜂窝网络和以太网，蜂窝网络视为按流量计费，开启省流量模式（Data Saver）时视为受限 |
 | `asuka/sdk/notify`、`asuka/sdk/push` | 通过应用的 service worker 使用 Notification API 和 Web Push（`push.Register` 的 `Service` 为 `"webpush"`）；应用没有任何页面打开时，定时通知无法显示 |
 | `asuka/sdk/audio`、`asuka/sdk/audio/record` | 每个播放器对应一个 audio 元素（受浏览器的自动播放规则约束：要在用户点按时开始播放）；录音用 `MediaRecorder`，浏览器支持时录成 MPEG-4 封装的 AAC，否则录成 WebM 封装的 Opus |
@@ -600,7 +600,7 @@ iOS 模拟器上既没有“邮件”账户，也没有“信息”：请在真�
 
 ## 定位：asuka/sdk/location
 
-`asuka/sdk/location` 提供设备的当前位置，以及移动过程中的位置变化。它需要用户许可，并会在第一次使用时请求。iOS 和 Mac 上用 Core Location；Android 上用系统的位置管理器，不依赖 Google Play 服务；Windows 上用 WinRT 的 Geolocator，Linux 上用定位门户（或 GeoClue），浏览器中用 Geolocation API。它请求的是“使用应用期间”的定位权限，而不是后台定位。
+`asuka/sdk/location` 提供设备的当前位置，以及移动过程中的位置变化。它需要用户许可，并会在第一次使用时请求。iOS 和 Mac 上用 Core Location；Android 上用系统的位置管理器，不依赖 Google Play 服务；Windows 上用 WinRT 的 Geolocator，Linux 上用定位门户（或 GeoClue），浏览器中用 Geolocation API。它默认请求“使用应用期间”的定位权限；应用不在前台时，它也能在后台持续跟踪设备位置，并替应用监控区域（相当于 expo-location 的后台定位更新和地理围栏），见下文。
 
 `location.Current()` 返回设备当前的位置。不能在主线程上调用：它要先等用户回应，再等定位结果。如果用户没有允许，错误为 `location.ErrDenied`。
 
@@ -641,6 +641,116 @@ func Track() ui.Node {
 `location.Position` 包含 `Latitude`、`Longitude`、`Accuracy`（单位为米：设备所在范围的半径）、`Altitude`（海拔，单位为米；未知时为 0）和 `Time`。
 
 **Android**：如果最近一分钟内有过定位结果，`Current` 会直接返回它；否则最多等待 10 秒获取新的定位，仍然没有的话就返回最后一次已知的位置，或者以 `"no location"` 失败。
+
+### 权限级别
+
+用户可以只在使用应用期间允许定位（`WhenInUse`），也可以始终允许（`Always`）。区域监控、显著位置变化，以及应用没有运行时的事件，都需要 `Always`。用户还可以选择给出精确位置还是大致位置（误差在几公里以内：即 iOS 关闭了“精确位置”，或 Android 上选了“大致位置”）。
+
+- `location.Request()` 在第一次调用时请求 `WhenInUse`（`Current` 和 `Watch` 也是这样请求的），返回用户作出选择后的 `location.Authorization`：其中 `Level` 是级别（`NotAsked`、`Denied`、`Restricted`、`WhenInUse`、`Always`），`Precise` 表示是否为精确位置，`Off` 表示整台设备的定位服务是否已关闭。
+- `location.RequestAlways()` 请求 `Always`；如果用户还没允许 `WhenInUse`，会先请求它。iOS 只会弹出一次询问；Android 11 及以后的版本会把用户带到应用的定位设置页面，让用户选择“始终允许”。
+- `location.RequestPrecise(purpose)` 向只允许了大致位置的用户请求精确位置。在 iOS 上，这只在应用离开前台之前有效（临时完全精度），`purpose` 指定向用户展示的理由，是 asuka.json 中 `ios.locationPurposes` 的一个键（其中已经有 `"default"`，内容是 "To show exactly where you are."）；在 Android 上，用户的选择会一直有效。
+- `location.Authorized()` 返回当前的授权状态，不会询问用户；`location.UseAuthorization()` 把它作为 signal 提供给组件使用，`location.WatchAuthorization(f)` 则在每次变化时调用 `f`（包括用户在“设置”中的修改）。`location.OpenSettings()` 打开系统中这个应用的定位设置：一旦变成 `Denied`，就只能由用户在那里修改了。
+
+这些调用都要等待用户回应，不能在主线程上调用。
+
+```go
+go func() {
+	a, err := location.RequestAlways()
+	if err == nil && a.Level != location.Always {
+		ui.Post(func() { status.Set("Choose Always in Settings to be told at the shop") })
+	}
+}()
+```
+
+调用了 `RequestAlways` 的应用会获得 `Always` 的用途说明（可以用 `ios.usage.NSLocationAlwaysAndWhenInUseUsageDescription` 写得更贴切），以及 Android 的 `ACCESS_BACKGROUND_LOCATION`。Google Play 会在管理中心询问应用为什么需要这个权限，所以只有调用了它的应用才会获得。
+
+### 后台定位更新
+
+`location.StartUpdates(o)` 开始一组在应用离开前台后仍会继续的定位更新，它在应用重新启动后依然有效，直到调用 `location.StopUpdates()` 为止；`location.Updating()` 返回它的选项以及是否正在运行。`location.OnUpdates(f)` 接收这些更新：每次在主线程上收到一个 `location.Batch`，里面是一批位置。请在应用显示在屏幕上时开始更新。不能在主线程上调用。
+
+```go
+err := location.StartUpdates(location.Updates{
+	Accuracy: location.AccuracyHigh, // Navigation、Balanced（100 米）、Low（1 公里）、Passive
+	Distance: 20,                    // 两次更新之间相隔的米数
+	Activity: location.ActivityFitness,
+	Defer:    time.Minute, // 一批最多晚一分钟送达：应用被唤醒的次数更少
+	Notification: location.Notification{Title: "Tracking your run"}, // Android 前台服务的通知
+})
+```
+
+`Significant` 只接收显著的位置变化（约 500 米），几乎不耗电：在 iOS 上，有 `Always` 授权时，即使用户关掉了应用，这些变化也会启动它。`Interval` 只用于 Android（默认 10 秒）；`AutoPause` 和 `Indicator` 只用于 iOS（设备不动时暂停；状态栏上的蓝色指示器）。
+
+**iOS**：调用了 `StartUpdates` 的应用会获得 `location` 后台模式。对于 `AccuracyHigh` 和 `AccuracyNavigation`，用 iOS 17 的 `CLLocationUpdate.liveUpdates` 加上一个 `CLBackgroundActivitySession`（这样 `WhenInUse` 就够用，同时会显示指示器）；其余情况用开启了 `allowsBackgroundLocationUpdates` 的 `CLLocationManager`，或它的显著位置变化服务。`Defer` 由宿主实现：iOS 自己已经不再提供批量送达。
+
+**Android**：用 Fused Location Provider（Google Play 服务；没有 Play 服务的设备上用系统的位置管理器），结果送到一个 `PendingIntent`，所以应用没有运行时也能收到更新；`Defer` 就是它的批量送达。设置了 `Notification` 时，更新期间会运行一个定位类型的前台服务，应用不在前台时更新也能按设定的频率送达，有 `WhenInUse` 就够了。不设置的话，Android 对后台应用每小时只给几次更新，而且需要 `Always`。设备重启或应用更新会清除这些请求，之后会重新发起。
+
+### 区域
+
+`location.Monitor(r)` 替应用监控一个圆形区域：它的 `Enter`、`Exit`，以及（平台支持时的）`Dwell` 转换，会作为 `location.Crossing`（区域的 ID、转换类型 `Kind`、发生的地点和时间）交给 `location.OnCrossing(f)` 的处理函数；应用在后台时也会收到，在 iOS 和 Android 上应用没有运行时也会收到。如果开始监控时设备已经在区域内，会收到一个 `Enter`。区域在应用重新启动后依然有效；用同一个 ID 再次监控会修改那个区域。`location.StopMonitoring(id)`、`location.StopMonitoringAll()` 和 `location.Monitored()` 的作用如其名。在 iOS 和 Android 上需要 `Always`（否则返回 `location.ErrNeedsAlways`），在 Android 上还需要精确位置。不能在主线程上调用。
+
+```go
+err := location.Monitor(location.Region{
+	ID: "shop", Latitude: 35.6812, Longitude: 139.7671, Radius: 150,
+	Events: location.Enter | location.Dwell, Dwell: 5 * time.Minute,
+})
+```
+
+各个系统都限制了一个应用能监控的区域数量；超过限制时，`Monitor` 返回 `location.ErrTooManyRegions`。`location.Supported()` 说明当前平台上系统能做什么：是否由系统自己送达更新、监控区域（否则会在应用运行期间根据位置计算），它的 `MaxRegions` 和 `MaxRadius`，是否会有 `Dwell`，以及事件能否启动应用。区域半径在约 100 米以上时才比较可靠。
+
+| | 区域 | 最多 | Dwell | 应用没有运行时 |
+| --- | --- | --- | --- | --- |
+| iOS | `CLMonitor`（iOS 17），之前的版本用 `CLCircularRegion` | 20 | 无 | 启动应用 |
+| Android | Play 服务的 `GeofencingClient`（没有 Play 服务时用位置管理器的接近提醒） | 100 | 有 | 启动应用 |
+| macOS | Core Location 的区域监控 | 20 | 无 | 不会：仅在应用运行期间 |
+| Windows | `Windows.Devices.Geolocation.Geofencing` 的 `GeofenceMonitor` | 没有明确限制 | 无 | 不会：仅在应用运行期间（后台任务的触发器需要打包的应用） |
+| Linux | 根据位置计算（GeoClue 没有地理围栏） | 无限制 | 有 | 不会：仅在应用运行期间 |
+| Web | 根据位置计算 | 无限制 | 有 | 不会：仅在页面打开期间 |
+
+通过计算得到的区域，只有在某个位置的精度足以判断时才会改变状态：位置在半径以内、并且精度不低于半径时，判定为在区域内；连它最近的一点都在区域外时，判定为在区域外。GeoClue 根据 Wi-Fi 或 IP 地址得到的位置，对小区域来说可能太粗。在桌面平台和 Web 上，后台定位更新也用同样的方式计算（距离过滤、`Defer` 的批量送达），数据来自应用运行期间的位置：桌面应用本来就会在后台继续运行；页面则只在打开期间。
+
+### 应用没有运行时的事件
+
+当一个更新或区域转换到来而应用没有运行时，iOS 和 Android 会在后台、不带界面地启动应用，就像 `asuka/sdk/periodic` 那样：`main` 会运行，根组件也会挂载，然后事件交给处理函数。请在应用启动时设置 `OnUpdates` 和 `OnCrossing`，放在 `main` 中（`app.Run` 之前）或根组件中；在任何处理函数设置之前到来的事件，会等到第一个处理函数。每个事件都会保存下来，直到某个处理函数返回为止（iOS 上存在应用的 Application Support 中，Android 上存在它的 files 目录中），所以应用被结束时恰好到来的事件，会在下次启动时再交给应用。处理函数发生 panic 时会记录日志，它的事件照样算作处理完毕。
+
+系统在后台给应用的时间很短：iOS 上约 30 秒，Android 上约 10 秒（运行着前台服务时没有限制）。`Batch.Defer()` 和 `Crossing.Defer()` 可以让应用继续运行，完成处理函数返回后仍在进行的工作，比如把位置发送到服务器，直到调用 `done` 或者 context 到期为止：
+
+```go
+func main() {
+	location.OnUpdates(func(b location.Batch) {
+		ctx, done := b.Defer()
+		go func() {
+			defer done()
+			upload(ctx, b.Positions)
+		}()
+	})
+	location.OnCrossing(func(c location.Crossing) {
+		_, done := c.Defer()
+		go func() { // Show 需要等待：不能在主线程上调用
+			defer done()
+			notify.Show(notify.Notification{Title: "Welcome back", Body: c.Region})
+		}()
+	})
+	app.Run(App)
+}
+```
+
+`Position` 还有 `Speed`（米每秒）和 `Course`（与正北方向的夹角，单位为度），未知时为负数。
+
+在 `asuka dev` 的播放器中，播放器拥有所有权限和后台模式；播放器与应用的 Go 代码保持连接期间，事件会送到 Go 代码。要看到应用为了某个事件被启动，请单独运行应用（`asuka dev --once`，或者构建出来运行）。
+
+### 用 uitest 测试
+
+`host/fake` 的 `Location()` 在测试中模拟一部手机的定位服务：用户如何回应（`Answer`、`AnswerPrecise`），设备在哪里（`Move`），用户在“设置”中允许了什么（`Allow`），经过了哪些区域（`Move`，或者用 `Cross` 模拟系统报告的转换，包括 `RegionDwell`），以及还没处理完的事件（`Pending`）。在应用挂载之前排队的事件，就相当于系统为它们启动了应用。`Computed` 让它表现得像桌面平台或网页，后台部分由 Go 包自己计算。
+
+```go
+a := uitest.Mount(t, App, uitest.Setup(func(h *fake.Host) {
+	loc := h.Location()
+	loc.Answer = fake.LocationAlways
+	loc.Level = fake.LocationAlways
+	loc.Cross("shop", fake.RegionEnter) // 系统为它启动了应用
+}))
+a.WaitFor("At the shop")
+```
 
 ## 通知：asuka/sdk/notify
 

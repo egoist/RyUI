@@ -989,6 +989,16 @@ runs, the root component mounts into views no window holds yet, and the
 task's Go code runs. A screen that comes later (the user opens the app)
 takes that root as a recreated Activity does (`asuka_attach` on Android;
 the root controller mounts the existing root view on iOS).
+`asuka/sdk/location`'s background updates and regions start it the same
+way (iOS relaunches the app for them: `AsukaLocationBackground` registers
+at launch; Android's `PendingIntent`s reach `AsukaLocationReceiver`); the
+host keeps each event in a file until Go reports it handled, and holds
+the app (a background task, the broadcast's `goAsync`) meanwhile. Where
+the system has neither (macOS's and Windows's updates, Linux's and the
+web's regions), the Go package computes them from the positions while the
+app runs (`locationspec.Capabilities` says which). The last root's
+`Dispose` fails the Calls still waiting, so a package's goroutine ends
+with it.
 
 Packages that need a framework or library of their own cost only the
 apps that use them. On iOS, the host's Swift for them is compiled under a

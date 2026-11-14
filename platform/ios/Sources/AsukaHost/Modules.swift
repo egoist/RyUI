@@ -189,6 +189,10 @@ struct AsukaModuleError: LocalizedError {
         #endif
         #if ASUKA_LOCATION
         modules["location"] = AsukaLocation.shared.methods()
+        modules["locationAccess"] = AsukaLocationAccess.shared.methods()
+        #endif
+        #if ASUKA_LOCATION_BACKGROUND
+        modules["locationBackground"] = AsukaLocationBackground.shared.methods()
         #endif
         #if ASUKA_NETWORK
         modules["network"] = AsukaNetwork.shared.methods()

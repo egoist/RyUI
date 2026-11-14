@@ -3,7 +3,7 @@
 // contacts, calendar, screen, biometric): node --test platform/web.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { networkState, positionJSON, encodeSample, quaternion, motionValues, Sensor, modules as sensorModules } from "../src/modules/hardware-sensors.js";
+import { networkState, positionJSON, accessState, encodeSample, quaternion, motionValues, Sensor, modules as sensorModules } from "../src/modules/hardware-sensors.js";
 import { splitID, f64, encodeStatus, parseRecordArgs, recordingType, levelOf, nowPlaying, encodeCommands } from "../src/modules/hardware-audio.js";
 import { encodeCodes, formatsOf, kindOf, target, rotatedSize, pixelate } from "../src/modules/hardware-camera.js";
 import { vCard, iCalendar, orientation, userVerified, biometricKind, modules as moreModules } from "../src/modules/hardware-more.js";
@@ -49,9 +49,18 @@ test("network.next answers once the state changes; stop fails it with stopped", 
   }
 });
 
-test("location: JSON lat, lon, acc, alt, t", () => {
-  const j = JSON.parse(positionJSON({ coords: { latitude: 37.5, longitude: -122.25, accuracy: 12, altitude: null }, timestamp: 1700000000123.4 }));
-  assert.deepEqual(j, { lat: 37.5, lon: -122.25, acc: 12, alt: 0, t: 1700000000123 });
+test("location: JSON lat, lon, acc, alt, spd, crs, t", () => {
+  const j = JSON.parse(positionJSON({ coords: { latitude: 37.5, longitude: -122.25, accuracy: 12, altitude: null, speed: 3, heading: NaN }, timestamp: 1700000000123.4 }));
+  assert.deepEqual(j, { lat: 37.5, lon: -122.25, acc: 12, alt: 0, spd: 3, crs: -1, t: 1700000000123 });
+});
+
+test("locationAccess: the permission's state as three bytes; the background part computed", () => {
+  assert.deepEqual([...accessState("granted")], [3, 1, 0]);
+  assert.deepEqual([...accessState("denied")], [1, 1, 0]);
+  assert.deepEqual([...accessState("prompt")], [0, 1, 0]);
+  const m = hardware(fakeHost);
+  assert.deepEqual(JSON.parse(m.locationBackground.capabilities()), { updates: false, regions: false, limit: 0, dwell: false, relaunch: false });
+  assert.throws(() => m.locationBackground.monitor(), /computed by the Go code/);
 });
 
 // As sensors.decode reads them.
@@ -247,7 +256,7 @@ test("screen, biometric, tracking and what the web hasn't", async () => {
 
 test("every module the hardware file has, and camera.View's native view", () => {
   const all = hardware(fakeHost);
-  for (const name of ["network", "location", "sensors", "speech", "audio", "audioRecord", "nowPlaying", "camera", "scan", "vision", "imageEdit", "biometric", "review", "tracking", "integrity", "ageRange", "appleAuth", "webAuth", "periodic", "background", "widget", "splash", "screen", "transcribe", "photoLibrary", "library", "contacts", "calendar"]) {
+  for (const name of ["network", "location", "locationAccess", "locationBackground", "sensors", "speech", "audio", "audioRecord", "nowPlaying", "camera", "scan", "vision", "imageEdit", "biometric", "review", "tracking", "integrity", "ageRange", "appleAuth", "webAuth", "periodic", "background", "widget", "splash", "screen", "transcribe", "photoLibrary", "library", "contacts", "calendar"]) {
     assert.ok(all[name], name);
   }
   assert.equal(typeof natives["asuka.camera"], "function");

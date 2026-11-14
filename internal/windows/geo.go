@@ -13,9 +13,10 @@ import (
 // threads: the callbacks are called there.
 
 var (
-	iidGeolocator         = NewGUID("A9C3BF62-4524-4989-8AA2-DE5F28A8A49C")
+	iidGeolocator         = NewGUID("A9C3BF62-4524-4989-8AA9-DE019D2E551F")
 	iidGeolocatorStatics  = NewGUID("9A8E7571-2DF5-4591-9F87-EB5FD894E9B7")
-	iidGeoposition        = NewGUID("C18D0454-7D41-4FF7-A957-9DBA05AB9CE8")
+	iidGeoposition        = NewGUID("C18D0454-7D41-4FF7-A957-9DFFB4EF7F5B")
+	iidStatusChangedArg   = NewGUID("3453D2DA-8C93-4111-A205-9AECFC9BE5C0")
 	iidPositionChangedArg = NewGUID("37859CE5-9D1E-46C5-BF3B-6AD8CAC1A093")
 
 	asyncHandler        = "{fcdcf02c-e5d8-4478-915a-4d90b74b83a5}"
@@ -24,15 +25,20 @@ var (
 	iidPositionChanged  = ParamIID("pinterface({9de1c534-6ae1-11e0-84e1-18a905bcc53f};" +
 		RuntimeClassSig("Windows.Devices.Geolocation.Geolocator", iidGeolocator) + ";" +
 		RuntimeClassSig("Windows.Devices.Geolocation.PositionChangedEventArgs", iidPositionChangedArg) + ")")
+	iidStatusChanged = ParamIID("pinterface({9de1c534-6ae1-11e0-84e1-18a905bcc53f};" +
+		RuntimeClassSig("Windows.Devices.Geolocation.Geolocator", iidGeolocator) + ";" +
+		RuntimeClassSig("Windows.Devices.Geolocation.StatusChangedEventArgs", iidStatusChangedArg) + ")")
 
 	// ErrLocationDenied is the user's (or the system's) no.
 	ErrLocationDenied = errors.New("location: denied")
 )
 
-// Fix is a position: degrees, meters (altitude 0: not known), Unix
-// milliseconds.
+// Fix is a position: degrees, meters (altitude 0: not known), meters per
+// second and degrees (speed and course -1: not known), Unix milliseconds.
 type Fix struct {
 	Lat, Lon, Acc, Alt float64
+	Spd                float64 `json:"spd"`
+	Crs                float64 `json:"crs"`
 	T                  int64
 }
 
@@ -90,7 +96,7 @@ func readFix(pos uintptr) (Fix, bool) {
 		return Fix{}, false
 	}
 	defer Release(c)
-	var f Fix
+	f := Fix{Spd: -1, Crs: -1}
 	var ts int64
 	ComCall(c, 6, uintptr(unsafe.Pointer(&f.Lat))) // get_Latitude
 	ComCall(c, 7, uintptr(unsafe.Pointer(&f.Lon))) // get_Longitude
@@ -100,6 +106,17 @@ func readFix(pos uintptr) (Fix, bool) {
 	if !Failed(ComCall(c, 8, uintptr(unsafe.Pointer(&alt)))) && alt != 0 { // get_Altitude: IReference<double>
 		ComCall(alt, 6, uintptr(unsafe.Pointer(&f.Alt)))
 		Release(alt)
+	}
+	for i, dst := range []*float64{&f.Crs, &f.Spd} { // get_Heading, get_Speed: IReference<double>, null if not known
+		var ref uintptr
+		if !Failed(ComCall(c, 11+i, uintptr(unsafe.Pointer(&ref)))) && ref != 0 {
+			var v float64
+			ComCall(ref, 6, uintptr(unsafe.Pointer(&v)))
+			if !math.IsNaN(v) {
+				*dst = v
+			}
+			Release(ref)
+		}
 	}
 	f.T = ts/10000 - 11644473600000
 	if math.IsNaN(f.Lat) || math.IsNaN(f.Lon) {
@@ -170,4 +187,34 @@ func (l *Geolocator) Stop() {
 		ComCall(l.g, 16, uintptr(l.token)) // remove_PositionChanged
 		l.token = 0
 	}
+}
+
+// Position statuses (Geolocator's LocationStatus).
+const (
+	PositionReady = iota
+	PositionInitializing
+	PositionNoData
+	PositionDisabled // the user (or a policy) doesn't allow it, or location is off
+	PositionNotInitialized
+	PositionNotAvailable // no location on this PC
+)
+
+// Status is the locator's status now.
+func (l *Geolocator) Status() int {
+	var s int32
+	ComCall(l.g, 12, uintptr(unsafe.Pointer(&s))) // get_LocationStatus
+	return int(s)
+}
+
+// WatchStatus calls changed with each new status (on WinRT's thread),
+// until the locator goes.
+func (l *Geolocator) WatchStatus(changed func(int)) {
+	h := NewDelegate(iidStatusChanged, func(_, args uintptr) {
+		var s int32
+		ComCall(args, 6, uintptr(unsafe.Pointer(&s))) // get_Status
+		changed(int(s))
+	})
+	var token int64
+	ComCall(l.g, 17, h, uintptr(unsafe.Pointer(&token))) // add_StatusChanged
+	Release(h)
 }

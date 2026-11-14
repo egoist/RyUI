@@ -33,7 +33,7 @@ web need nothing declared (see each one's section below).
 | --- | --- | --- |
 | `asuka/sdk/camera` | `CAMERA` | `NSCameraUsageDescription` |
 | `asuka/sdk/camera/record` | `RECORD_AUDIO` | `NSMicrophoneUsageDescription` |
-| `asuka/sdk/location` | `ACCESS_COARSE_LOCATION`, `ACCESS_FINE_LOCATION` | `NSLocationWhenInUseUsageDescription` |
+| `asuka/sdk/location` | `ACCESS_COARSE_LOCATION`, `ACCESS_FINE_LOCATION`; for an app that calls `RequestAlways`, `ACCESS_BACKGROUND_LOCATION`; `StartUpdates`, `FOREGROUND_SERVICE_LOCATION` and a foreground service; `StartUpdates` or `Monitor`, `RECEIVE_BOOT_COMPLETED`, a receiver and Play services' location library | `NSLocationWhenInUseUsageDescription`; for an app that calls `RequestAlways`, `NSLocationAlwaysAndWhenInUseUsageDescription`; `StartUpdates`, the `location` background mode; `RequestPrecise`, `NSLocationTemporaryUsageDescriptionDictionary` |
 | `asuka/sdk/notify` | `POST_NOTIFICATIONS` | |
 | `asuka/sdk/network` | `ACCESS_NETWORK_STATE` | |
 | `asuka/sdk/library` | `WRITE_EXTERNAL_STORAGE` (Android 9 and earlier) | `NSPhotoLibraryAddUsageDescription`; the app's Documents shown in Files |
@@ -160,7 +160,7 @@ device without it:
 | `asuka/sdk/nowplaying` | The app window's SystemMediaTransportControls (a hidden window of its own for an app without one): the volume flyout on Windows 10, quick settings' media controls on Windows 11, the lock screen, the keyboard's media keys. The skips are its fast-forward and rewind buttons; it has no toggle (the play/pause key sends play or pause) |
 | `asuka/sdk/speech` | SAPI's voices, those installed (Settings, Time & language, Speech) |
 | `asuka/sdk/network` | The Network List Manager: Wi-Fi, cellular or a cable; `Metered` for a connection with a cost, `Constrained` near or over its data limit |
-| `asuka/sdk/location` | WinRT's Geolocator. `PlaceName` asks OpenStreetMap's Nominatim (Windows's own geocoder needs a Bing Maps key): one request a second at most, answers kept in the app's caches |
+| `asuka/sdk/location` | WinRT's Geolocator. `PlaceName` asks OpenStreetMap's Nominatim (Windows's own geocoder needs a Bing Maps key): one request a second at most, answers kept in the app's caches. Regions: the `GeofenceMonitor`, while the app runs; background updates computed from the positions |
 | `asuka/sdk/biometric` | Windows Hello's prompt; `Check`'s kind is the sensor's; Hello always offers its PIN, and names its own cancel button |
 | `asuka/sdk/webauth` | A window over the app's with WebView2 in it (the app's web profile; `Ephemeral`: a throwaway one) |
 | `asuka/sdk/js` | A WebView2 that's never shown |
@@ -208,7 +208,7 @@ names what's missing.
 | `asuka/sdk/device` | `PickPhotos` and `PickFiles`: GTK's file dialog (the portal's in a sandbox), copies in the app's caches. Clipboard images and changes through GDK's clipboard. `Browse` opens the page in the user's browser. `KeepAwake` keeps the session from idling. `GetInfo`: `Model` `"PC"`, `System` `"Linux"`, `SystemVersion` the distribution's (`/etc/os-release`) |
 | `asuka/sdk/secure` | The keyring (libsecret: GNOME Keyring, KWallet, KeePassXC), an item per key labeled with the app's name; without libsecret or a keyring, the calls fail saying so |
 | `asuka/sdk/network` | GNetworkMonitor (the portal's in a sandbox); Wi-Fi, ethernet or cellular from NetworkManager; never constrained |
-| `asuka/sdk/location` | The location portal (GeoClue's, which asks the user), else GeoClue itself; `PlaceName` with geocode-glib, when it's installed |
+| `asuka/sdk/location` | The location portal (GeoClue's, which asks the user), else GeoClue itself; `PlaceName` with geocode-glib, when it's installed. GeoClue has no geofences: regions and background updates are computed from the positions while the app runs |
 | `asuka/sdk/speech` | Speech Dispatcher (started when it isn't running): its voices, rate, pitch, volume |
 | `asuka/sdk/audio`, `asuka/sdk/audio/record` | GStreamer: an AAC encoder (FDK, libav's...) records, the default source the microphone |
 | `asuka/sdk/nowplaying` | An MPRIS player on the session bus, named `org.mpris.MediaPlayer2.<app>.instance<pid>` while something shows: GNOME's and KDE's media controls and lock screens, the media keys, `playerctl`. MPRIS's `Seek` is a skip where the app skips, else a seek; the artwork is a `file://` or http(s) URL |
@@ -249,7 +249,7 @@ and its service worker for notifications and Web Push.
 | `asuka/sdk/imageedit` | A canvas: JPEG or PNG; a remote image needs CORS |
 | `asuka/sdk/photos` | A page can't read the library: access is `Denied` (`device.PickPhotos` picks photos) |
 | `asuka/sdk/library` | `Save` downloads the file |
-| `asuka/sdk/location` | The Geolocation API; `PlaceName` isn't on the web (a browser has no geocoder) |
+| `asuka/sdk/location` | The Geolocation API; `PlaceName` isn't on the web (a browser has no geocoder). Regions and background updates are computed from the positions, only while the page is open |
 | `asuka/sdk/network` | Online from `navigator.onLine`; Wi-Fi, cellular or Ethernet where the browser says (Chrome on Android), metered for cellular, constrained for Data Saver |
 | `asuka/sdk/notify`, `asuka/sdk/push` | The Notification API and Web Push, through the app's service worker (`push.Register`'s `Service` is `"webpush"`); a notification due later can't show while no page of the app is open |
 | `asuka/sdk/audio`, `asuka/sdk/audio/record` | An audio element per player (the browser's autoplay rules apply: play from a tap); `MediaRecorder`, AAC in MPEG-4 where the browser records it, else Opus in WebM |
@@ -864,8 +864,10 @@ on a device.
 user's permission, which it asks for the first time. It's Core Location
 on iOS and the Mac, and Android's location manager, which needs no Google
 Play services; WinRT's Geolocator on Windows, the location portal (or
-GeoClue) on Linux, and the Geolocation API in a browser. It asks for the location while the app is in use, not in the
-background.
+GeoClue) on Linux, and the Geolocation API in a browser. It asks for the location while the app is in use; with the
+app out of sight too, it follows the device in the background and
+watches regions for the app (expo-location's background updates and
+geofencing), below.
 
 `location.Current()` returns where the device is. Not on the main thread:
 it waits for the user to answer, then for a fix. If the user hasn't
@@ -919,6 +921,205 @@ not known) and `Time`.
 **Android**: `Current` gives a fix from the last minute if there is one;
 otherwise it waits up to 10 seconds for a new one, then gives the last
 known, or fails with `"no location"`.
+
+### Permission levels
+
+The user allows the location while the app is in use (`WhenInUse`), or
+always (`Always`), which the regions and the significant changes need,
+and the app's events with the app not running. They also choose precise
+positions or approximate ones (within a few kilometers: iOS's Precise
+Location off, Android's Approximate).
+
+- `location.Request()` asks for `WhenInUse` the first time (`Current`
+  and `Watch` ask the same) and returns the `location.Authorization` the
+  user left: its `Level` (`NotAsked`, `Denied`, `Restricted`,
+  `WhenInUse`, `Always`), `Precise`, and `Off` when location services are
+  off for the whole device.
+- `location.RequestAlways()` asks for `Always`, after `WhenInUse` if the
+  user hasn't allowed that yet. iOS shows its question once; Android 11
+  and later take the user to the app's location settings, to choose
+  "Allow all the time".
+- `location.RequestPrecise(purpose)` asks a user who allowed approximate
+  positions for precise ones: on iOS until the app leaves the foreground
+  (temporary full accuracy), `purpose` naming the reason shown, a key of
+  asuka.json's `ios.locationPurposes` (`"default"` is there, "To show
+  exactly where you are."); on Android for good.
+- `location.Authorized()` is the authorization now, without asking;
+  `location.UseAuthorization()` is it as a signal, for a component, and
+  `location.WatchAuthorization(f)` calls `f` with each change (the user
+  in Settings too). `location.OpenSettings()` opens the system's location
+  settings for the app: once `Denied`, only the user there changes it.
+
+Each of these waits for the user: not on the main thread.
+
+```go
+go func() {
+	a, err := location.RequestAlways()
+	if err == nil && a.Level != location.Always {
+		ui.Post(func() { status.Set("Choose Always in Settings to be told at the shop") })
+	}
+}()
+```
+
+An app that calls `RequestAlways` is given `Always`'s purpose string
+(`ios.usage.NSLocationAlwaysAndWhenInUseUsageDescription` says why
+better) and Android's `ACCESS_BACKGROUND_LOCATION`, which Google Play
+asks about in its console: only those apps.
+
+### Updates in the background
+
+`location.StartUpdates(o)` starts updates that go on with the app out of
+sight, and across launches, until `location.StopUpdates()`;
+`location.Updating()` returns their options and whether they run.
+`location.OnUpdates(f)` gets them, a `location.Batch` of positions at a
+time, on the main thread. Start them with the app on screen. Not on the
+main thread.
+
+```go
+err := location.StartUpdates(location.Updates{
+	Accuracy: location.AccuracyHigh, // Navigation, Balanced (100 m), Low (1 km), Passive
+	Distance: 20,                    // meters between two updates
+	Activity: location.ActivityFitness,
+	Defer:    time.Minute, // a batch at most a minute late: the app wakes less
+	Notification: location.Notification{Title: "Tracking your run"}, // Android's foreground service
+})
+```
+
+`Significant` gets only the significant changes (about 500 m), at
+almost no power: on iOS, with `Always`, they start the app even after
+the user ended it. `Interval` is Android's (default 10 seconds);
+`AutoPause` and `Indicator` are iOS's (pause while the device doesn't
+move; the blue status bar indicator).
+
+**iOS**: an app that calls `StartUpdates` is given the `location`
+background mode. iOS 17's `CLLocationUpdate.liveUpdates` with a
+`CLBackgroundActivitySession` for `AccuracyHigh` and
+`AccuracyNavigation` (which keeps `WhenInUse` enough, with the indicator
+showing), else a `CLLocationManager` with
+`allowsBackgroundLocationUpdates`, or its significant-change service.
+`Defer` is the host's: iOS has no batching of its own any more.
+
+**Android**: the Fused Location Provider (Google Play services; the
+location manager on a device without them), delivered to a
+`PendingIntent`, so updates come with the app not running; `Defer` is
+its batching. With a `Notification`, a foreground service of the
+location type runs while they do, and they come at their rate with the
+app out of sight, `WhenInUse` enough. Without one, Android gives a
+backgrounded app a few updates an hour, and only with `Always`. They're
+asked for again after a reboot or an update, which clear them.
+
+### Regions
+
+`location.Monitor(r)` watches a circle for the app: its `Enter`,
+`Exit` and (where there is) `Dwell` transitions go to
+`location.OnCrossing(f)`'s handlers, as a `location.Crossing` (the
+region's ID, its `Kind`, where and when), with the app in the
+background, or not running on iOS and Android. If the device is inside
+as monitoring starts, an `Enter` comes. Regions hold across launches;
+monitoring an ID again changes that region.
+`location.StopMonitoring(id)`, `location.StopMonitoringAll()` and
+`location.Monitored()` do what they say. They need `Always` on iOS and
+Android (`location.ErrNeedsAlways`), and precise positions on Android.
+Not on the main thread.
+
+```go
+err := location.Monitor(location.Region{
+	ID: "shop", Latitude: 35.6812, Longitude: 139.7671, Radius: 150,
+	Events: location.Enter | location.Dwell, Dwell: 5 * time.Minute,
+})
+```
+
+The systems limit how many regions an app has; past the limit, `Monitor`
+fails with `location.ErrTooManyRegions`. `location.Supported()` says what
+the system does here: whether it delivers updates and monitors regions
+itself (else they're computed from the positions while the app runs),
+its `MaxRegions` and `MaxRadius`, whether `Dwell` comes and whether an
+event starts the app. Regions are reliable from about 100 meters.
+
+| | Regions | At most | Dwell | With the app not running |
+| --- | --- | --- | --- | --- |
+| iOS | `CLMonitor` (iOS 17), `CLCircularRegion` before | 20 | no | the app starts |
+| Android | Play services' `GeofencingClient` (the location manager's proximity alerts without them) | 100 | yes | the app starts |
+| macOS | Core Location's region monitoring | 20 | no | no: while the app runs |
+| Windows | `Windows.Devices.Geolocation.Geofencing`'s `GeofenceMonitor` | none stated | no | no: while the app runs (a background task's trigger needs a packaged app) |
+| Linux | computed from the positions (GeoClue has no geofences) | none | yes | no: while the app runs |
+| Web | computed from the positions | none | yes | no: while the page is open |
+
+A region that's computed changes state only when a position's accuracy
+decides it: inside when it's within the radius and no less exact than
+it, outside when even its nearest point is out. GeoClue's positions from
+Wi-Fi or an IP address may be too coarse for a small region. On a
+desktop, and on the web, the background updates are computed the same
+way (the distance filter, `Defer`'s batches), from the positions while
+the app runs: a desktop app runs out of sight anyway; a page only while
+it's open.
+
+### Events with the app not running
+
+When an update or a crossing comes and the app isn't running, iOS and
+Android start it in the background, without a screen, as they do for
+`asuka/sdk/periodic`: `main` runs, and the root component, then the
+event goes to the handlers. Set `OnUpdates` and `OnCrossing` as the app
+starts, in `main` (before `app.Run`) or the root component; an event that
+comes before any handler waits for the first. Each event is kept until a
+handler has returned (on iOS in the app's Application Support, on Android
+in its files), so one that came as the app was ended is handed over at
+the next launch. A handler that panics is logged, and its event done all
+the same.
+
+The system gives the app little time in the background: about 30
+seconds on iOS, about 10 on Android (none while a foreground service
+runs). `Batch.Defer()` and `Crossing.Defer()` keep it running for work
+that goes on after the handler returns, such as sending the positions to
+a server, until `done`, or the context's deadline:
+
+```go
+func main() {
+	location.OnUpdates(func(b location.Batch) {
+		ctx, done := b.Defer()
+		go func() {
+			defer done()
+			upload(ctx, b.Positions)
+		}()
+	})
+	location.OnCrossing(func(c location.Crossing) {
+		_, done := c.Defer()
+		go func() { // Show waits: not on the main thread
+			defer done()
+			notify.Show(notify.Notification{Title: "Welcome back", Body: c.Region})
+		}()
+	})
+	app.Run(App)
+}
+```
+
+A `Position` has `Speed` (meters per second) and `Course` (degrees from
+north) too, negative when not known.
+
+Under `asuka dev`'s player, the player has every permission and the
+background mode; events reach the app's Go code while the player is
+connected to it. To see the app started for an event, run it on its own
+(`asuka dev --once`, or a build).
+
+### Testing with uitest
+
+`host/fake`'s `Location()` is a phone's location services for a test:
+what the user answers (`Answer`, `AnswerPrecise`), where the device is
+(`Move`), what they allow in Settings (`Allow`), regions crossed
+(`Move`, or `Cross` for a transition the system reports, `RegionDwell`
+too), and the events not done yet (`Pending`). Events queued before the
+app mounts are those the system started it for. `Computed` makes it a
+desktop's or a page's, whose background part the Go package computes.
+
+```go
+a := uitest.Mount(t, App, uitest.Setup(func(h *fake.Host) {
+	loc := h.Location()
+	loc.Answer = fake.LocationAlways
+	loc.Level = fake.LocationAlways
+	loc.Cross("shop", fake.RegionEnter) // the app was started for it
+}))
+a.WaitFor("At the shop")
+```
 
 ## Notifications: asuka/sdk/notify
 

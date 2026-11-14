@@ -1,5 +1,6 @@
 // Services: what the platform does beyond views, a button each: sign-in,
-// biometrics, push and a messaging app's notifications, files, the
+// biometrics, push and a messaging app's notifications, location in the
+// background (updates, regions), files, the
 // screen, the stores' services, a map, recording and work in the
 // background; the displays, the battery, the system's accent and a
 // progress on the app's icon (asuka/sdk/screen, asuka/sdk/power,
@@ -142,6 +143,9 @@ func App() ui.Node {
 					return fmt.Sprintf("%s token %.12s… (allowed: %v)", r.Service, r.Token, r.Allowed)
 				})),
 				item("Messages: replies, threads, the badge", func() { nav.Push(messagesScreen, ui.ScreenOptions{Title: ui.Val("Climbing")}) }),
+
+				section("Location"),
+				item("In the background: tracking, regions", func() { nav.Push(locationScreen, ui.ScreenOptions{Title: ui.Val("Location")}) }),
 
 				section("Files and sound"),
 				item("Pick files", func() {
@@ -577,5 +581,6 @@ func mapScreen() ui.Node {
 
 func main() {
 	push.Rewrite(rewriteMessage)
+	setUpLocation()
 	app.Run(App)
 }

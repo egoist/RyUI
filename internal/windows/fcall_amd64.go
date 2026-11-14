@@ -30,3 +30,11 @@ func ComCallRect(obj uintptr, i int, r Rect) uintptr {
 func ComCallDouble(obj uintptr, i int, v float64) uintptr {
 	return ComCall(obj, i, uintptr(math.Float64bits(v)))
 }
+
+// comCallCircle calls IGeocircleFactory.Create(BasicGeoposition, radius,
+// out): the 24-byte struct by reference on x64, the radius in the XMM
+// register of its position.
+func comCallCircle(obj uintptr, i int, lat, lon, alt, radius float64, out *uintptr) uintptr {
+	pos := [3]float64{lat, lon, alt}
+	return ComCall(obj, i, uintptr(unsafe.Pointer(&pos)), uintptr(math.Float64bits(radius)), uintptr(unsafe.Pointer(out)))
+}

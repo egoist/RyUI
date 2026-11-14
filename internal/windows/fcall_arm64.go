@@ -68,3 +68,17 @@ func ComCallDouble(obj uintptr, i int, v float64) uintptr {
 func ComCallRect(obj uintptr, i int, r Rect) uintptr {
 	return ComCall(obj, i, uintptr(uint32(r.Left))|uintptr(uint32(r.Top))<<32, uintptr(uint32(r.Right))|uintptr(uint32(r.Bottom))<<32)
 }
+
+// comCallCircle calls IGeocircleFactory.Create(BasicGeoposition, radius,
+// out): the struct, three doubles (a homogeneous aggregate), in D0 to
+// D2, the radius in D3, through fcallTramp.
+func comCallCircle(obj uintptr, i int, lat, lon, alt, radius float64, out *uintptr) uintptr {
+	vtbl := *(*uintptr)(native(obj))
+	var fr fframe
+	fr.fn = *(*uintptr)(unsafe.Add(native(vtbl), i*int(unsafe.Sizeof(uintptr(0)))))
+	fr.x[0] = obj
+	fr.x[1] = uintptr(unsafe.Pointer(out))
+	fr.v[0], fr.v[1], fr.v[2], fr.v[3] = math.Float64bits(lat), math.Float64bits(lon), math.Float64bits(alt), math.Float64bits(radius)
+	r, _, _ := syscall.SyscallN(fcallTrampAddr, uintptr(unsafe.Pointer(&fr)))
+	return r
+}
