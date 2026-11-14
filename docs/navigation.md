@@ -21,8 +21,9 @@ platform's own:
 - **The web**: a header bar of the host's, `<dialog>`s and popovers, and
   the browser's back button (see [the web](web.md)).
 
-This page covers them, along with going back, and the links and shares
-that open the app. [`examples/navigation`](../examples/navigation) has
+This page covers them, along with going back, routes (every screen at
+an address, as on the web), and the links and shares that open the
+app. [`examples/navigation`](../examples/navigation) has
 all of them; [`examples/notes`](../examples/notes) has a menu bar and a
 window.
 
@@ -1069,6 +1070,206 @@ shown with `ui.Show` and brought in with a
 calls `ui.Announce` so that screen readers say it too. See
 [`examples/gallery`](../examples/gallery).
 
+## Routes
+
+With a `ui.Router`, every screen has an address, an `ui.Href` such as
+`/inbox/18` or `/search?q=go`, as a web page has. The app declares its
+routes once, path patterns mapped to screens under the navigators that
+show them, and navigates by address as well as with the navigator:
+
+```go
+func App() ui.Node {
+	return ui.Router(ui.RouterProps{},
+		ui.Route{Path: "/", Redirect: "/inbox"},
+		ui.Route{Layout: ui.LayoutTabs, Children: []ui.Route{
+			{Path: "/inbox", Title: ui.Val("Inbox"), Icon: ui.IconMail, Layout: ui.LayoutStack, Children: []ui.Route{
+				{Screen: inbox, Title: ui.Val("Inbox")},
+				{Path: ":id", Screen: message, Options: messageOptions},
+				{Path: ":id/reply", Screen: reply, Sheet: &ui.SheetRoute{FullScreen: true}},
+			}},
+			{Path: "/settings", Title: ui.Val("Settings"), Icon: ui.IconSettings, Layout: ui.LayoutStack, Children: []ui.Route{
+				{Screen: settings, Title: ui.Val("Settings")},
+				{Path: "about", Screen: about, Title: ui.Val("About")},
+			}},
+		}},
+	)
+}
+
+func message(p ui.Params) ui.Node {
+	id := p.Int("id")
+	// ...
+	return ui.Button(ui.ButtonProps{Title: ui.Val("Reply"), Href: ui.HrefOf("/inbox/:id/reply", id)})
+}
+```
+
+What an address does then comes for free: the web's address bar, back
+and forward show it, a reload or a pasted link opens it, a link of the
+app's scheme or domains goes to it, and a desktop window opens where it
+was left. [`examples/navigation`](../examples/navigation) is routed.
+
+### Patterns and parameters
+
+A route's `Path` is relative to its parent's, unless it starts with `/`.
+Its segments are matched one by one:
+
+- `chat` matches itself;
+- `:id` is a parameter, any one segment: `p.Get("id")`, `p.Int("id")`;
+- `*path` is a catch-all, the rest of the path, none or more segments
+  (last in a pattern): `p.Get("path")` is `docs/a.md`,
+  `p.Segments("path")` `["docs", "a.md"]`;
+- `""` is the parent's own path, its index.
+
+When several routes match, the most specific wins, as in expo-router:
+segment by segment, a static one before a parameter before a
+catch-all. `/files/new` takes `/files/new`; `/files/:id` takes
+`/files/3`; `/files/*path` the rest.
+
+A screen gets its `ui.Params`: the path's parameters, then the query's
+(`p.Get("q")` of `/search?q=go`). The path's never change for a screen;
+its query can (`RouterHandle.SetQuery`, or navigating to the same
+screen with another query), and `p.Get` and `p.Query()` in an effect
+follow it. `ui.UseParams()` gives them to a component under the screen.
+
+### Navigators and sheets
+
+A route with `Children` is a navigator of them, by its `Layout`, or a
+group:
+
+- `ui.LayoutStack`: a `Stack`. Its children are its screens, and sheets.
+- `ui.LayoutTabs`: `Tabs`. Each child is a tab (`Title`, `Icon`,
+  `Badge`), a screen or a stack of its own.
+- `ui.LayoutSplit`: a `SplitView`. Each child is a destination of the
+  sidebar, a screen or a stack (the detail's); a group's `Title` makes
+  its children a section.
+- `ui.LayoutSlot`: one child at a time, filling its place with no bar:
+  an app's signed-out and signed-in parts.
+- No layout: a group, whose children join its parent's navigator under
+  its path and its guard.
+
+A route with a `Sheet` is presented in a sheet over its navigator (its
+stack's top screen, the tabs) rather than pushed or chosen: one screen,
+or a navigator of its own (a stack, for a sheet of several steps).
+Going back dismisses it; so does navigating to a screen of the
+navigator under it.
+
+A screen's bar comes from its route's `Options(p)` (`ui.ScreenOptions`,
+made from its parameters: a message's sender as its title), else its
+`Title`. The router's top level is a slot of the routes given it, with
+the not-found route last.
+
+### Navigating
+
+`ui.UseRouter()` (while building a component) gives the `RouterHandle`
+of the router it's in; `ui.Navigate(href)` uses the one the calling code
+belongs to.
+
+- `Navigate(href)` goes to the screen: the tabs, destinations and slots
+  on the way switch to it; in its stack, an earlier screen with the same
+  address is gone back to, else it's pushed; a sheet's is presented.
+- `Push(href)` always pushes, even a screen whose address is there.
+- `Replace(href)` shows the screen in place of the current one (a
+  sheet's place too), which is disposed; the history doesn't grow.
+- `Back()` goes back as the user's back would (without asking `OnBack`):
+  the newest sheet, else the innermost stack on screen. `CanGoBack()`
+  says whether it would.
+- `Dismiss()` dismisses the newest sheet.
+- `SetQuery(q)` changes the shown screen's query, keeping the screen.
+- `Href()` is the address shown, an accessor a sidebar or a link can
+  follow; `Takes(href)` says whether a route takes an href.
+
+A view or a button with an `Href` goes there when it's pressed (after its
+`OnPress`), and `ui.NavLink` is content that does, which screen readers
+call a link. In a router, a rich text's link to one of the app's hrefs
+(`ui.Link("the inbox", "/inbox")`) goes there too. `RouterProps.Handle`
+(`ui.NewRouterHandle()`) navigates a router from outside it: a menu
+bar's command, a test.
+
+The navigator keeps working in a routed stack: `UseNavigator().Push`
+pushes a screen that has no route. It has its stack's address under it
+and a history entry of its own (the browser's back pops it), but a
+reload or a link can't bring it back.
+
+Every screen is an owner, as everywhere: a screen a route pops, replaces
+or leaves (another tab's screen doesn't) is disposed.
+
+### The screens under a link
+
+A link builds the screens it stands for, so back from it goes somewhere
+sensible: in each stack on the way, the stack's `Initial` screen (its
+first child unless it names another, as expo-router's
+`initialRouteName`), then the stack's screens up the link's path
+(`/inbox/:id` under `/inbox/:id/reply`), then the one linked to; the
+other tabs at their first screens. Their parameters come from the
+link's, by name; one that needs a parameter the link hasn't, or that a
+guard keeps the user out of, isn't made.
+
+### Redirects, guards and not found
+
+A route with a `Redirect` sends whoever comes to its path to another
+href, with its parameters filled in, replacing it: `{Path: "/",
+Redirect: "/inbox"}`, `{Path: "/m/:id", Redirect: "/inbox/:id"}`.
+
+A `Guard` is asked before its screens (and its children's) show: it
+returns `""` to let the user in, or where to send them instead. It can
+read signals: when what it read changes, the screens shown are asked
+again, and those it no longer lets in go (with what's over them in their
+stacks), the router going where the guard sends the user. A signed-out
+user is sent to the login with where they were going, and back there
+after:
+
+```go
+ui.Route{Path: "/login", Screen: login, Guard: func(to ui.Href) ui.Href {
+	if signedIn.Get() {
+		if next := to.Query().Get("next"); next != "" {
+			return ui.Href(next) // where they were going
+		}
+		return "/"
+	}
+	return ""
+}},
+ui.Route{Guard: func(to ui.Href) ui.Href { // a group: everything else
+	if !signedIn.Get() {
+		return ui.Href("/login").With("next", string(to))
+	}
+	return ""
+}, Children: app},
+```
+
+An href no route takes shows `RouterProps.NotFound` (a plain screen with
+a way home if it's nil), its `path` parameter the href's path. A
+catch-all route of the app's own (`/*path`) takes them instead.
+
+### Where it starts, and where it's kept
+
+A router starts at the link the app was opened with, if it takes it;
+else where its window was left; else at `RouterProps.Initial` (`/`).
+Its whole state (each stack's screens, each tab's, the sheets) is kept
+with the address, as JSON, and read back as far as the routes still
+match it:
+
+| | Where it's kept |
+|---|---|
+| iOS, Android | in the app while it runs; not across launches (as a native app's navigation isn't) |
+| macOS, Windows, Linux | with where each window was: the main window's always, a `Window`'s with a `StateKey`, in `asuka-routes.json` in the app's data directory; it opens there next time |
+| The web | the address bar, and each history entry: back, forward and a reload come back to the screens they stand for (see [the web](web.md#addresses-and-history)) |
+| `asuka dev` | every platform: a reload of new code comes back to the screens it showed |
+
+A window's first router has its address; one in a `Window` has that
+window's.
+
+### Typed links
+
+Go can't check a string at compile time, so `asuka vet` (which `asuka
+dev` and `asuka build` run) does: its `routes` analyzer reports a
+constant href no route of the app's takes, an `Href`, a `Navigate`'s or
+a `Redirect`'s, which would show the not-found screen, and a
+`ui.HrefOf` given more or fewer values than its pattern has
+parameters. `ui.HrefOf("/inbox/:id", id)` builds an href from a route's
+pattern, escaping what it's given; the pattern is checked too. A link
+in a package that sees no routes is checked in the package that declares
+them. It says nothing when the routes can't all be known from the code
+(a function builds some) or the app has a catch-all of its own.
+
 ## Deep links
 
 An app opens for URLs of its own scheme, and for https links to its own
@@ -1099,6 +1300,12 @@ domains, when `asuka.json` lists them:
   Android, as each platform's docs describe. The desktops don't open
   for them.
 
+With a [router](#routes), these links need no code: the app's scheme
+(`notes://inbox/18`, its host the first segment, as expo-router reads
+it, so `/inbox/18`), a universal or app link's path, and a
+notification's URL go to their route, at launch or while the app runs.
+`ui.OnOpenURL` gets the URLs no route takes.
+
 `ui.OnOpenURL` gets each URL the app is opened with, at launch or while
 it runs. The URL that launched the app comes before any handler exists,
 so it goes to the first handler. The handler stops with its component's
@@ -1118,9 +1325,9 @@ ui.OnOpenURL(func(raw string) {
 
 [`examples/notes`](../examples/notes) adds a note for
 `asukanotes://add?text=...`. A notification's URL arrives the same way
-when the user taps it, on every platform (see [Device](device.md)). A
-web app has no links of its own: its page's address doesn't change as it
-navigates, and opening it doesn't call `OnOpenURL`.
+when the user taps it, on every platform (see [Device](device.md)). On
+the web, a router's addresses are the page's: a link to the app's site
+opens its screen, and opening the page doesn't call `OnOpenURL`.
 
 ## Shares from other apps
 

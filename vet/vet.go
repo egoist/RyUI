@@ -7,6 +7,8 @@
 //   - mainthread: a signal written from a goroutine, which must reach the
 //     main thread with ui.Post.
 //   - memowrites: a signal written inside a memo, which panics.
+//   - routes: a link to an href no route of the app's takes, which shows
+//     the not-found screen; ui.HrefOf given the wrong number of values.
 //
 // Each reports only what's certain from the code: a check that cries wolf
 // gets turned off. Its analyzers run under go vet too:
@@ -26,7 +28,7 @@ import (
 )
 
 // Analyzers are the checks, in the order they report.
-var Analyzers = []*analysis.Analyzer{Reads, MainThread, MemoWrites}
+var Analyzers = []*analysis.Analyzer{Reads, MainThread, MemoWrites, Routes}
 
 const (
 	module     = "github.com/egoist/asuka"

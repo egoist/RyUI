@@ -27,6 +27,7 @@
 //     doesn't.
 //   - Android's channels don't exist here: accepted and ignored, as on iOS.
 
+import { appURL } from "../history.js";
 import "../notify-core.js";
 import * as fs from "../fs.js";
 import { Events } from "../ops.js";
@@ -135,7 +136,7 @@ export function notifyModule(h, env = {}) {
       try { globalThis.focus?.(); } catch {}
       n.close();
       ch.actions.deliver(enc.encode(JSON.stringify({ token: core.newID(), action: "", reply: "", seconds: actionSeconds, notification: entry.s })));
-      if (s.url) h.dispatch(Events.incomingURL(0, s.url));
+      if (s.url) h.dispatch(Events.incomingURL(0, appURL(s.url)));
     };
   };
 

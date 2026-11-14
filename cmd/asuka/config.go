@@ -221,6 +221,11 @@ type appConfig struct {
 		// subscribes with it, and the server signs with its private key
 		// (asuka/sdk/push/webpush: GenerateKeys makes a pair).
 		VapidPublicKey string `json:"vapidPublicKey"`
+		// Base is the path the site is served at ("/app/" for
+		// https://example.com/app/; default "/"): the page's <base href>,
+		// so that its files are found from any route's path, and under
+		// which a Router's hrefs are the page's addresses.
+		Base string `json:"base"`
 	} `json:"web"`
 	Android struct {
 		// DynamicColor takes the colors from the user's wallpaper where

@@ -67,7 +67,9 @@ SwiftUI 也能在 Mac 上运行。Expo 支持 iOS、Android 和 Web；React Nati
 | 气泡弹窗 | `.popover` | — | ✓ `Popover`（在 iPhone 上也是 popover） |
 | 警告框、操作表 | `.alert`、`.confirmationDialog` | `Alert` | ✓ `Alert`（两种样式都支持；警告框可以带输入框：`Fields`，密码框用 `Secure`，按钮通过 `Disabled` 跟随输入内容） |
 | Snackbar、toast（带“撤销”的简短提示） | — | 社区方案（react-native-paper 的 `Snackbar`） | ✓ `Snackbar`（Android 上是 Material 的 Snackbar，Linux 上是 `AdwToast`；iOS、macOS、Windows 和 Web 上按平台的样式绘制） |
-| 深度链接、通用链接和 App Links | `.onOpenURL` | Linking | ✓ `OnOpenURL`、`asuka.json` 里的 scheme 和 links |
+| 深度链接、通用链接和 App Links | `.onOpenURL` | Linking | ✓ `Router` 自己处理能匹配其路由的链接（应用 scheme 的链接、通用链接和 App Links、通知里的 URL），其余交给 `OnOpenURL`；`asuka.json` 里的 scheme 和 links |
+| URL 路由：路径模式、嵌套导航器、链接下方的初始页面、重定向、守卫、未找到页面 | 配合 `Codable` 值的 `NavigationPath` | expo-router（`[id]`、`[...rest]`、`unstable_settings`、`<Redirect>`、`Stack.Protected`、`+not-found`） | ✓ `Router` 和 `Route`（`:id`、`*rest`、`Initial`、`Redirect`、`Guard`、`NotFound`；导航栈、标签页、分栏视图、slot 和弹出面板都可以是路由），`Navigate`、`Push`、`Replace`、`Back`、`SetQuery`，`NavLink` 以及视图和按钮上的 `Href`；导航状态能从地址恢复（刷新页面、桌面窗口上次的位置、`asuka dev` 的重新加载） |
+| 类型安全的链接 | `NavigationPath` 的值 | 类型化路由（生成的 `.d.ts`） | ✓ `asuka vet` 的 `routes` 检查（没有路由能匹配的常量 href、`HrefOf` 的参数个数）；`ui.HrefOf` 按路由的模式填入参数 |
 | 下拉刷新、滑动操作 | `.refreshable`、`.swipeActions` | `RefreshControl` | ✓（两侧都支持：`SwipeActions`、`LeadingSwipeActions`） |
 
 ## 动画

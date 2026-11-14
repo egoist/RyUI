@@ -192,6 +192,10 @@ public enum AsukaProp {
         public static let animating: UInt16 = 64
     }
 
+    public enum Stack {
+        public static let routed: UInt16 = 64
+    }
+
     public enum Screen {
         public static let title: UInt16 = 64
         public static let actions: UInt16 = 65
@@ -218,6 +222,7 @@ public enum AsukaProp {
         public static let grabber: UInt16 = 65
         public static let window: UInt16 = 66
         public static let fullScreen: UInt16 = 67
+        public static let routed: UInt16 = 68
     }
 
     public enum Alert {
@@ -432,6 +437,7 @@ public enum AsukaEventKind: UInt16 {
     case closeRequest = 55
     case key = 56
     case fieldChanged = 57
+    case location = 58
 }
 
 public enum AsukaCommand: UInt16 {
@@ -470,6 +476,7 @@ public enum AsukaCommand: UInt16 {
     case backExit = 33
     case replace = 34
     case windowAction = 35
+    case location = 36
 }
 
 public enum AsukaRole: Int32 {
@@ -772,6 +779,13 @@ public enum AsukaSnackbarDuration: Int32 {
     case short = 0
     case long = 1
     case indefinite = 2
+}
+
+public enum AsukaLocationAction: Int32 {
+    case replace = 0
+    case push = 1
+    case back = 2
+    case forward = 3
 }
 
 /// A prop value. Bytes are valid only during the handler call.
@@ -1105,5 +1119,8 @@ public enum AsukaEvents {
     }
     public static func fieldChanged(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
         var w = AsukaWriter(); w.header(id, 57); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
+    }
+    public static func location(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
+        var w = AsukaWriter(); w.header(id, 58); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
     }
 }

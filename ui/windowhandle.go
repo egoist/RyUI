@@ -39,6 +39,11 @@ type WindowHandle struct {
 	keyMaps  []*KeyMap
 	keysSent []byte // the Keys prop last sent to the window's element
 
+	// stateKey is a Window's StateKey: where the host keeps where it was,
+	// and the address of its Router.
+	stateKey string
+	router   *router // the Router that has its address (the first in it)
+
 	visible, focused, minimized, maximized, fullscreen, onTop, through *signal.Signal[bool]
 	pos                                                                *signal.Signal[Point]
 	size                                                               *signal.Signal[Size]
@@ -137,6 +142,18 @@ func (w *WindowHandle) el() *element {
 		return nil
 	}
 	return w.e
+}
+
+// key is where the host keeps the window's state: its StateKey; the main
+// window's "main" unless it names another. "" for a Window without one.
+func (w *WindowHandle) key() string {
+	if !w.main {
+		return w.stateKey
+	}
+	if o := mainWindow; o != nil && o.StateKey != "" {
+		return o.StateKey
+	}
+	return "main"
 }
 
 // desktop reports whether the window's host has windows (not a phone's).

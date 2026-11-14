@@ -54,3 +54,7 @@ func TestMainThread(t *testing.T) {
 func TestMemoWrites(t *testing.T) {
 	analysistest.Run(t, module(t), vet.MemoWrites, "./writes/memos")
 }
+
+func TestRoutes(t *testing.T) {
+	analysistest.Run(t, module(t), vet.Routes, "./routes/app", "./routes/open")
+}

@@ -9,7 +9,7 @@
 - **Linux**：全部来自 libadwaita：窗口的顶栏、`AdwNavigationView`、视图切换器、`AdwDialog`、`AdwAlertDialog`、GTK 的 popover 菜单，以及主菜单。
 - **Web**：由宿主绘制的顶栏、`<dialog>` 和 popover，以及浏览器的后退按钮（见 [Web](web.md)）。
 
-本页逐一介绍它们，也会讲到返回操作，以及如何通过链接和分享打开应用。[`examples/navigation`](../../examples/navigation) 演示了上面所有内容；[`examples/notes`](../../examples/notes) 里有菜单栏和窗口的例子。
+本页逐一介绍它们，也会讲到返回操作、路由（像 Web 一样，每个页面都有自己的地址），以及如何通过链接和分享打开应用。[`examples/navigation`](../../examples/navigation) 演示了上面所有内容；[`examples/notes`](../../examples/notes) 里有菜单栏和窗口的例子。
 
 ## 导航栈
 
@@ -716,6 +716,129 @@ iOS 和 Android 会忽略 `MenuBar`，所以无论应用跑在哪个平台上，
 
 Asuka 没有提供 toast 组件，因为 iOS 和 Android 都没有一个各应用通用的标准 toast。你可以自己做一个：把一个视图放在页面上方，用 `ui.Show` 控制它是否显示，再配一个[过渡](motion.md#进入与退出)让它进场。gallery 示例里的 toast 就是这么做的，它还调用了 `ui.Announce`，让屏幕阅读器也把内容读出来。见 [`examples/gallery`](../../examples/gallery)。
 
+## 路由
+
+用了 `ui.Router` 之后，每个页面都有一个地址，也就是 `ui.Href`，比如 `/inbox/18` 或 `/search?q=go`，和网页的地址一样。应用只需声明一次路由：把路径模式映射到页面，并放在负责显示它们的导航器下。之后既可以按地址导航，也可以照旧用导航器：
+
+```go
+func App() ui.Node {
+	return ui.Router(ui.RouterProps{},
+		ui.Route{Path: "/", Redirect: "/inbox"},
+		ui.Route{Layout: ui.LayoutTabs, Children: []ui.Route{
+			{Path: "/inbox", Title: ui.Val("Inbox"), Icon: ui.IconMail, Layout: ui.LayoutStack, Children: []ui.Route{
+				{Screen: inbox, Title: ui.Val("Inbox")},
+				{Path: ":id", Screen: message, Options: messageOptions},
+				{Path: ":id/reply", Screen: reply, Sheet: &ui.SheetRoute{FullScreen: true}},
+			}},
+			{Path: "/settings", Title: ui.Val("Settings"), Icon: ui.IconSettings, Layout: ui.LayoutStack, Children: []ui.Route{
+				{Screen: settings, Title: ui.Val("Settings")},
+				{Path: "about", Screen: about, Title: ui.Val("About")},
+			}},
+		}},
+	)
+}
+
+func message(p ui.Params) ui.Node {
+	id := p.Int("id")
+	// ...
+	return ui.Button(ui.ButtonProps{Title: ui.Val("Reply"), Href: ui.HrefOf("/inbox/:id/reply", id)})
+}
+```
+
+有了地址，很多事情就不用再写代码：在 Web 上，地址栏、后退和前进按钮都跟着它走，刷新页面或粘贴链接会打开对应的页面；应用 scheme 或域名的链接会直接跳到这个页面；桌面窗口重新打开时会回到上次离开的地方。[`examples/navigation`](../../examples/navigation) 就是用路由写的。
+
+### 模式与参数
+
+路由的 `Path` 是相对于父路由的路径，以 `/` 开头时则是绝对路径。路径按段逐一匹配：
+
+- `chat` 只匹配它自己；
+- `:id` 是参数，匹配任意一段：用 `p.Get("id")`、`p.Int("id")` 取值；
+- `*path` 是通配，匹配剩下的整段路径，可以是零段或多段（只能放在模式最后）：`p.Get("path")` 得到 `docs/a.md`，`p.Segments("path")` 得到 `["docs", "a.md"]`；
+- `""` 表示父路由自己的路径，也就是它的首页。
+
+有多个路由都能匹配时，和 expo-router 一样，越具体的越优先：逐段比较，静态段优先于参数，参数优先于通配。所以 `/files/new` 由 `/files/new` 处理，`/files/3` 由 `/files/:id` 处理，其余的交给 `/files/*path`。
+
+页面会收到它的 `ui.Params`：先是路径里的参数，然后是查询参数（`/search?q=go` 的 `p.Get("q")`）。同一个页面的路径参数永远不变；查询参数则可以变化（调用 `RouterHandle.SetQuery`，或者以另一个查询导航到同一个页面），在 effect 里读取 `p.Get` 和 `p.Query()` 会跟着更新。页面下层的组件可以用 `ui.UseParams()` 拿到它们。
+
+### 导航器与弹出面板
+
+带 `Children` 的路由会按它的 `Layout` 成为子路由的导航器，或者只是一个分组：
+
+- `ui.LayoutStack`：一个 `Stack`。子路由是它的页面，也可以是弹出面板。
+- `ui.LayoutTabs`：`Tabs`。每个子路由是一个标签页（`Title`、`Icon`、`Badge`），可以是单个页面，也可以有自己的导航栈。
+- `ui.LayoutSplit`：`SplitView`。每个子路由是侧边栏里的一个目的地，可以是单个页面，也可以是导航栈（详情区域的导航栈）；分组的 `Title` 会让它的子路由成为侧边栏里的一节。
+- `ui.LayoutSlot`：一次只显示一个子路由，铺满所在位置，没有自己的导航栏。适合把应用分成未登录和已登录两部分。
+- 不设 `Layout`：一个分组。它的子路由并入父级的导航器，只是共享它的路径前缀和守卫。
+
+设置了 `Sheet` 的路由不会被推入或选中，而是以弹出面板的形式盖在它所在的导航器上（导航栈最上面的页面，或者标签页）。它可以是单个页面，也可以是自己的导航器（比如一个分好几步的弹出面板就用导航栈）。返回会关闭它；导航到它下面那个导航器里的页面也会关闭它。
+
+页面的导航栏来自路由的 `Options(p)`：根据参数生成 `ui.ScreenOptions`，比如用消息发件人作标题；没有 `Options` 时用路由的 `Title`。路由器的最顶层是一个 slot，里面是传给它的那些路由，最后是“未找到”路由。
+
+### 导航
+
+在构建组件时调用 `ui.UseRouter()`，会得到组件所在路由器的 `RouterHandle`；`ui.Navigate(href)` 则使用调用方所属的那个路由器。
+
+- `Navigate(href)` 前往对应的页面：沿途的标签页、目的地和 slot 都会切换过去；如果目标导航栈里已经有一个地址相同的页面，就返回到它，否则推入新页面；弹出面板的路由则弹出面板。
+- `Push(href)` 总是推入新页面，即使已经有一个地址相同的页面。
+- `Replace(href)` 用新页面替换当前页面（当前是弹出面板时，替换的就是它），旧页面会被销毁，历史记录不会变长。
+- `Back()` 像用户返回那样返回，但不会询问 `OnBack`：先关闭最新的弹出面板，否则让屏幕上最内层的导航栈弹出。`CanGoBack()` 告诉你它能不能返回。
+- `Dismiss()` 关闭最新的弹出面板。
+- `SetQuery(q)` 修改当前页面的查询参数，页面本身保持不变。
+- `Href()` 是当前显示的地址，它是一个访问器，侧边栏或链接可以跟随它；`Takes(href)` 告诉你有没有路由能处理某个 href。
+
+设置了 `Href` 的视图或按钮在被按下时（先执行 `OnPress`）会前往该地址；`ui.NavLink` 则是一段点按后跳转的内容，屏幕阅读器会把它读作链接。在路由器里，富文本中指向应用自身 href 的链接（`ui.Link("the inbox", "/inbox")`）也会直接跳过去。`RouterProps.Handle`（用 `ui.NewRouterHandle()` 创建）可以在路由器外部控制它，比如菜单栏命令或测试。
+
+在有路由的导航栈里，导航器照样能用：`UseNavigator().Push` 推入的页面没有自己的路由。它的地址沿用下面那个页面的，在历史记录里也有自己的一条（浏览器的后退会把它弹出），但刷新页面或打开链接时无法恢复它。
+
+和别处一样，每个页面都是一个 owner：被路由弹出、替换或离开的页面都会被销毁（其他标签页里的页面不会）。
+
+### 链接下方的页面
+
+打开一个链接时，会把它所代表的整组页面都建好，这样从这里返回也能去到合理的地方：在沿途的每个导航栈里，先是导航栈的 `Initial` 页面（默认是第一个子路由，也可以另外指定，相当于 expo-router 的 `initialRouteName`），然后是该导航栈里位于链接路径上方的页面（`/inbox/:id/reply` 下面是 `/inbox/:id`），最后才是链接指向的页面；其他标签页则停在各自的第一个页面。这些页面的参数按名字从链接里取。如果某个页面需要的参数链接里没有，或者守卫不让用户进入，它就不会被建出来。
+
+### 重定向、守卫与未找到
+
+设置了 `Redirect` 的路由会把访问它的人送到另一个 href（填入它的参数），并替换掉当前的记录：例如 `{Path: "/", Redirect: "/inbox"}`、`{Path: "/m/:id", Redirect: "/inbox/:id"}`。
+
+`Guard` 会在它的页面（以及子路由的页面）显示之前被询问：返回 `""` 表示放行，否则返回要把用户送去的地址。守卫可以读取 signal：它读到的值变化时，屏幕上的页面会被重新询问一遍，不再被放行的页面（连同导航栈里盖在它上面的页面）会离开，路由器随之前往守卫指定的地方。比如把未登录的用户送去登录页，同时记下他原本要去的地方，登录后再回去：
+
+```go
+ui.Route{Path: "/login", Screen: login, Guard: func(to ui.Href) ui.Href {
+	if signedIn.Get() {
+		if next := to.Query().Get("next"); next != "" {
+			return ui.Href(next) // 用户原本要去的地方
+		}
+		return "/"
+	}
+	return ""
+}},
+ui.Route{Guard: func(to ui.Href) ui.Href { // 一个分组：其余所有页面
+	if !signedIn.Get() {
+		return ui.Href("/login").With("next", string(to))
+	}
+	return ""
+}, Children: app},
+```
+
+没有路由能处理的 href 会显示 `RouterProps.NotFound`（为 nil 时显示一个带“回首页”按钮的简单页面），它的 `path` 参数就是该 href 的路径。如果应用自己声明了通配路由（`/*path`），这些 href 就交给它处理。
+
+### 从哪里开始，保存在哪里
+
+路由器启动时，如果打开应用的链接能被它处理，就从那里开始；否则回到窗口上次离开的地方；再不然就从 `RouterProps.Initial`（默认 `/`）开始。它的完整状态（每个导航栈里的页面、每个标签页、所有弹出面板）会以 JSON 的形式和地址一起保存，读回时，只要路由还对得上，就尽可能地恢复：
+
+| | 保存在哪里 |
+|---|---|
+| iOS、Android | 应用运行期间保存在应用里；重新启动后不保留（和原生应用的导航一样） |
+| macOS、Windows、Linux | 和窗口上次的位置保存在一起：主窗口总是保存，`Window` 设置了 `StateKey` 才保存，存在应用数据目录的 `asuka-routes.json` 里；下次打开时回到那里 |
+| Web | 地址栏，以及每一条历史记录：后退、前进和刷新都会回到对应的页面（见 [Web](web.md#地址与历史记录)） |
+| `asuka dev` | 所有平台：载入新代码后，回到重新加载前显示的页面 |
+
+每个窗口里第一个路由器拥有这个窗口的地址；`Window` 里的路由器拥有那个窗口的地址。
+
+### 类型安全的链接
+
+Go 没法在编译时检查字符串，所以这件事交给 `asuka vet`（`asuka dev` 和 `asuka build` 都会运行它）：它的 `routes` 检查会报告没有任何路由能处理的常量 href（`Href`、`Navigate` 的参数、`Redirect`），因为它们会显示“未找到”页面；也会报告传给 `ui.HrefOf` 的值比模式里的参数多或少的情况。`ui.HrefOf("/inbox/:id", id)` 按路由的模式生成 href，并对填入的值做转义，模式本身也会被检查。如果某个包里有链接、但看不到任何路由，它的链接会在声明路由的那个包里检查。当路由无法完全从代码中得知（有的由函数生成），或者应用有自己的通配路由时，它不会报告任何东西。
+
 ## 深度链接
 
 只要在 `asuka.json` 里声明，应用就可以通过自己 scheme 的 URL 打开，也可以通过指向自己域名的 https 链接打开：
@@ -732,6 +855,8 @@ Asuka 没有提供 toast 组件，因为 iOS 和 Android 都没有一个各应�
 - `scheme` 让 `notes://anything` 这样的链接可以打开应用，支持的平台有：iOS 和 Android；Mac（由应用的 `Info.plist` 声明）；Linux，前提是应用已经安装（由它的 desktop 文件处理这个 scheme；应用运行时打开的链接会交给正在运行的应用，因为 GNOME 应用都是单实例的）；以及 Windows（应用启动时会在 `HKEY_CURRENT_USER\Software\Classes` 下为当前用户注册，应用被移动过的话会重新注册；应用运行时打开的链接会交给它）。在 Linux 和 Windows 上，设置了 `id` 的应用只会运行一个实例：再次启动时，已有的实例会被切到前台。`asuka dev` 在 Linux 和 Windows 上不会注册 scheme，它运行的应用也不会把自己交给已安装的那份应用，所以要测试链接，请使用构建出来的版本。
 - `links` 让 `https://notes.example.com/...` 这样的链接可以打开应用：在 iOS 上是通用链接（universal links），在 Android 上是 App Links。域名那边也要声明这一点：按照各平台文档的说明，为 iOS 提供 `apple-app-site-association`，为 Android 提供 `assetlinks.json`。桌面端不会因为这类链接打开应用。
 
+有了[路由](#路由)，这些链接不需要写任何代码：应用 scheme 的链接（`notes://inbox/18`，和 expo-router 一样，主机部分算作第一段，也就是 `/inbox/18`）、通用链接和 App Links 的路径、通知携带的 URL，都会在启动时或运行中直接前往对应的路由。`ui.OnOpenURL` 收到的是没有路由能处理的那些 URL。
+
 `ui.OnOpenURL` 会收到打开应用的每一个 URL，无论是在启动时还是在运行中。启动应用的那个 URL 到达时还没有任何处理函数，所以它会交给第一个注册的处理函数。处理函数会随所在组件的 owner 一起停止。你可以在处理函数里用导航器跳转，或者通过设置 signal 来切换页面。
 
 ```go
@@ -746,7 +871,7 @@ ui.OnOpenURL(func(raw string) {
 })
 ```
 
-[`examples/notes`](../../examples/notes) 在收到 `asukanotes://add?text=...` 时会添加一条笔记。用户点击通知时，通知携带的 URL 也会以同样的方式送达，所有平台都一样（见[设备](device.md)）。Web 应用没有自己的链接：页面在应用内导航时地址不会变，打开它也不会调用 `OnOpenURL`。
+[`examples/notes`](../../examples/notes) 在收到 `asukanotes://add?text=...` 时会添加一条笔记。用户点击通知时，通知携带的 URL 也会以同样的方式送达，所有平台都一样（见[设备](device.md)）。在 Web 上，路由器的地址就是页面的地址：指向应用站点的链接会打开对应的页面，打开页面本身不会调用 `OnOpenURL`。
 
 ## 接收其他应用的分享
 

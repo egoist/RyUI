@@ -273,6 +273,7 @@ Web 构建的配置。
 | 键 | 类型 | 默认值 | 说明 |
 |---|---|---|---|
 | `vapidPublicKey` | 字符串 | 无 | 应用服务器的 VAPID 公钥（base64url），浏览器用它为 `asuka/sdk/push` 订阅 Web Push。 |
+| `base` | 字符串 | `"/"` | 网站所在的路径（`https://example.com/app/` 就写 `"/app/"`）：页面的 `<base href>`，路由器的 href 就是它下面的页面地址。`asuka build --base` 会覆盖它。见[地址与历史记录](web.md#地址与历史记录)。 |
 
 见 [Web Push](web.md#asukasdkpushweb-push)。
 

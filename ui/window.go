@@ -273,6 +273,7 @@ func Window(p WindowProps) Node {
 		wh.watched = true // the app reads it from outside
 	}
 	wh.r = r
+	wh.stateKey = p.StateKey
 	wh.open = p.Open
 	wh.ask = p.OnCloseRequest
 	var win *element

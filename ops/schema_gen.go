@@ -242,6 +242,12 @@ const (
 	PropActivityAnimating PropID = 64
 )
 
+// Stack props.
+const (
+	// PropStackRouted: a Router's stack: its screens have addresses, and the web's history follows the router's Location commands, so the web host keeps no back entry of its own for it.
+	PropStackRouted PropID = 64
+)
+
 // Screen props.
 const (
 	PropScreenTitle PropID = 64
@@ -287,6 +293,8 @@ const (
 	PropSheetWindow PropID = 66
 	// PropSheetFullScreen: it covers the whole screen (iOS's full-screen cover, Material's full-screen dialog; a desktop's sheet over all of its window's content, the web's dialog over the viewport), sent before Present: Detents and Grabber don't apply, and no swipe or tap outside dismisses it.
 	PropSheetFullScreen PropID = 67
+	// PropSheetRouted: a Router's sheet, a route of its own: as Stack's Routed, the web keeps no back entry of its own for it.
+	PropSheetRouted PropID = 68
 )
 
 // Alert props.
@@ -526,7 +534,7 @@ const (
 
 var commonProps = [...]propInfo{{}, {"Background", TColor}, {"CornerRadius", TFloat}, {"BorderWidth", TFloat}, {"BorderColor", TColor}, {"Opacity", TFloat}, {"Hidden", TBool}, {"Clip", TBool}, {"A11yLabel", TString}, {"A11yHint", TString}, {"A11yRole", TEnum}, {"A11yActions", TBytes}, {"A11yAdjustable", TBool}, {"A11yHidden", TBool}, {"Color", TColor}, {"TextStyle", TEnum}, {"FontSize", TFloat}, {"FontWeight", TEnum}, {"TextAlign", TEnum}, {"LineLimit", TInt}, {"Disabled", TBool}, {"Menu", TBytes}, {"MenuTrigger", TEnum}, {"Transform", TBytes}, {"Shadow", TBytes}, {"Gradient", TBytes}, {"Transition", TBytes}, {"Material", TEnum}, {"FontFamily", TString}, {"SwipeActions", TBytes}, {"LayoutDirection", TEnum}, {"ContentInset", TEdges}, {"LeadingSwipeActions", TBytes}, {"Selected", TBool}, {"Match", TString}, {"InterceptBack", TBool}, {"Tooltip", TString}, {"Keys", TBytes}}
 
-var kindProps = [...][]propInfo{nil, {{"DropAccept", TBytes}, {"DragItems", TBytes}}, {{"Text", TString}}, {{"Title", TString}, {"Variant", TEnum}, {"Icon", TString}}, {{"Value", TString}, {"Placeholder", TString}, {"Keyboard", TEnum}, {"ReturnKey", TEnum}, {"Secure", TBool}, {"Autocapitalize", TEnum}, {"Autocorrect", TEnum}, {"ContentType", TString}, {"Multiline", TBool}, {"Plain", TBool}, {"Selection", TBytes}, {"Rich", TBytes}, {"PasteTypes", TBytes}, {"Accessory", TInt}}, {{"On", TBool}, {"Checkbox", TBool}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}}, {{"Horizontal", TBool}, {"Refreshable", TBool}, {"Refreshing", TBool}, {"Paging", TBool}}, {{"Refreshable", TBool}, {"Refreshing", TBool}, {"Columns", TInt}, {"Gap", TFloat}, {"Appearance", TEnum}, {"Inset", TFloat}, {"Anchor", TEnum}, {"Selecting", TBool}}, {{"Animating", TBool}}, {}, {{"Title", TString}, {"Actions", TBytes}, {"BackGesture", TBool}, {"Icon", TString}, {"Search", TString}, {"SearchText", TString}, {"SearchButton", TBool}, {"ZoomFrom", TString}, {"LargeTitle", TBool}, {"BarColor", TColor}, {"Toolbar", TBytes}, {"Primary", TBytes}, {"PrimaryExtended", TBool}, {"Badge", TString}}, {{"Selected", TInt}}, {{"Detents", TInt}, {"Grabber", TBool}, {"Window", TInt}, {"FullScreen", TBool}}, {{"Title", TString}, {"Message", TString}, {"Buttons", TBytes}, {"Style", TEnum}, {"Window", TInt}, {"Fields", TBytes}}, {{"Source", TString}, {"Mode", TEnum}, {"Placeholder", TString}}, {{"Type", TString}, {"Prop", TBytes}}, {{"Content", TBytes}, {"Inlines", TBytes}}, {}, {{"Name", TString}}, {{"Segments", TBytes}, {"Selected", TInt}}, {{"Items", TBytes}, {"Selected", TInt}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}, {"Step", TFloat}}, {{"Value", TColor}, {"Alpha", TBool}, {"Title", TString}}, {{"Value", TFloat}, {"Indeterminate", TBool}}, {{"Path", TBytes}, {"Fill", TColor}, {"Stroke", TColor}, {"LineWidth", TFloat}, {"LineCap", TEnum}, {"LineJoin", TEnum}, {"TrimStart", TFloat}, {"TrimEnd", TFloat}, {"Dash", TBytes}}, {{"Source", TString}, {"Mode", TEnum}, {"HideControls", TBool}, {"AutoPlay", TBool}, {"Loop", TBool}, {"Muted", TBool}}, {{"URL", TString}, {"HTML", TString}, {"Preload", TString}, {"UserAgent", TString}, {"Block", TBytes}, {"Requests", TBool}}, {{"Value", TInt}, {"Mode", TEnum}, {"Min", TInt}, {"Max", TInt}, {"Inline", TBool}}, {{"Count", TInt}, {"Page", TInt}}, {{"Anchor", TInt}, {"Width", TFloat}, {"Height", TFloat}}, {{"Width", TFloat}, {"Height", TFloat}}, {{"Commands", TBytes}}, {{"Items", TBytes}, {"Selected", TInt}, {"Title", TString}}, {{"Code", TBytes}, {"Uniforms", TBytes}, {"Animated", TBool}}, {{"Title", TString}, {"Config", TBytes}, {"Flyout", TBytes}, {"Edited", TBool}, {"File", TString}}, {{"Items", TBytes}, {"Selected", TInt}, {"Label", TString}}, {{"Value", TFloat}, {"Indeterminate", TBool}}, {{"Message", TString}, {"Action", TString}, {"Duration", TEnum}, {"Window", TInt}}}
+var kindProps = [...][]propInfo{nil, {{"DropAccept", TBytes}, {"DragItems", TBytes}}, {{"Text", TString}}, {{"Title", TString}, {"Variant", TEnum}, {"Icon", TString}}, {{"Value", TString}, {"Placeholder", TString}, {"Keyboard", TEnum}, {"ReturnKey", TEnum}, {"Secure", TBool}, {"Autocapitalize", TEnum}, {"Autocorrect", TEnum}, {"ContentType", TString}, {"Multiline", TBool}, {"Plain", TBool}, {"Selection", TBytes}, {"Rich", TBytes}, {"PasteTypes", TBytes}, {"Accessory", TInt}}, {{"On", TBool}, {"Checkbox", TBool}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}}, {{"Horizontal", TBool}, {"Refreshable", TBool}, {"Refreshing", TBool}, {"Paging", TBool}}, {{"Refreshable", TBool}, {"Refreshing", TBool}, {"Columns", TInt}, {"Gap", TFloat}, {"Appearance", TEnum}, {"Inset", TFloat}, {"Anchor", TEnum}, {"Selecting", TBool}}, {{"Animating", TBool}}, {{"Routed", TBool}}, {{"Title", TString}, {"Actions", TBytes}, {"BackGesture", TBool}, {"Icon", TString}, {"Search", TString}, {"SearchText", TString}, {"SearchButton", TBool}, {"ZoomFrom", TString}, {"LargeTitle", TBool}, {"BarColor", TColor}, {"Toolbar", TBytes}, {"Primary", TBytes}, {"PrimaryExtended", TBool}, {"Badge", TString}}, {{"Selected", TInt}}, {{"Detents", TInt}, {"Grabber", TBool}, {"Window", TInt}, {"FullScreen", TBool}, {"Routed", TBool}}, {{"Title", TString}, {"Message", TString}, {"Buttons", TBytes}, {"Style", TEnum}, {"Window", TInt}, {"Fields", TBytes}}, {{"Source", TString}, {"Mode", TEnum}, {"Placeholder", TString}}, {{"Type", TString}, {"Prop", TBytes}}, {{"Content", TBytes}, {"Inlines", TBytes}}, {}, {{"Name", TString}}, {{"Segments", TBytes}, {"Selected", TInt}}, {{"Items", TBytes}, {"Selected", TInt}}, {{"Value", TFloat}, {"Min", TFloat}, {"Max", TFloat}, {"Step", TFloat}}, {{"Value", TColor}, {"Alpha", TBool}, {"Title", TString}}, {{"Value", TFloat}, {"Indeterminate", TBool}}, {{"Path", TBytes}, {"Fill", TColor}, {"Stroke", TColor}, {"LineWidth", TFloat}, {"LineCap", TEnum}, {"LineJoin", TEnum}, {"TrimStart", TFloat}, {"TrimEnd", TFloat}, {"Dash", TBytes}}, {{"Source", TString}, {"Mode", TEnum}, {"HideControls", TBool}, {"AutoPlay", TBool}, {"Loop", TBool}, {"Muted", TBool}}, {{"URL", TString}, {"HTML", TString}, {"Preload", TString}, {"UserAgent", TString}, {"Block", TBytes}, {"Requests", TBool}}, {{"Value", TInt}, {"Mode", TEnum}, {"Min", TInt}, {"Max", TInt}, {"Inline", TBool}}, {{"Count", TInt}, {"Page", TInt}}, {{"Anchor", TInt}, {"Width", TFloat}, {"Height", TFloat}}, {{"Width", TFloat}, {"Height", TFloat}}, {{"Commands", TBytes}}, {{"Items", TBytes}, {"Selected", TInt}, {"Title", TString}}, {{"Code", TBytes}, {"Uniforms", TBytes}, {"Animated", TBool}}, {{"Title", TString}, {"Config", TBytes}, {"Flyout", TBytes}, {"Edited", TBool}, {"File", TString}}, {{"Items", TBytes}, {"Selected", TInt}, {"Label", TString}}, {{"Value", TFloat}, {"Indeterminate", TBool}}, {{"Message", TString}, {"Action", TString}, {"Duration", TEnum}, {"Window", TInt}}}
 
 // Events.
 const (
@@ -632,11 +640,13 @@ const (
 	EventKey EventKind = 56
 	// EventFieldChanged: the user changed the text of an Alert's field (ops.AppendFieldChanged, ops.DecodeFieldChanged): u32 the field's index, then a string, its text.
 	EventFieldChanged EventKind = 57
+	// EventLocation: the user went back or forward in the browser's history to an entry a Router made, or one a Window's router left (ops.AppendLocationEvent): u32-length href (the app's path and query, /chat/7?tab=info), u32-length state (the router's, as its Location command sent it; empty: none, build it from the href); to the root, or the Window node.
+	EventLocation EventKind = 58
 )
 
-var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh", "Pan", "Pinch", "Rotate", "Swipe", "Loaded", "Failed", "Native", "Link", "A11yAction", "Adjust", "Ended", "Navigated", "Message", "IncomingURL", "FontLoaded", "Frame", "Result", "ColorChanged", "WebState", "Request", "Download", "NewWindow", "Shared", "Pressed", "Hover", "DragOver", "Drop", "SelectionChanged", "RichChanged", "Formats", "Pasted", "RowSelected", "RowSelectBegin", "RowInset", "Dragging", "Back", "Paged", "WindowState", "CloseRequest", "Key", "FieldChanged"}
+var eventNames = [...]string{"", "Press", "LongPress", "TextChanged", "Submit", "Focus", "Blur", "Toggled", "ValueChanged", "Scrolled", "Environment", "Lifecycle", "Popped", "Selected", "Action", "Dismissed", "Refresh", "Pan", "Pinch", "Rotate", "Swipe", "Loaded", "Failed", "Native", "Link", "A11yAction", "Adjust", "Ended", "Navigated", "Message", "IncomingURL", "FontLoaded", "Frame", "Result", "ColorChanged", "WebState", "Request", "Download", "NewWindow", "Shared", "Pressed", "Hover", "DragOver", "Drop", "SelectionChanged", "RichChanged", "Formats", "Pasted", "RowSelected", "RowSelectBegin", "RowInset", "Dragging", "Back", "Paged", "WindowState", "CloseRequest", "Key", "FieldChanged", "Location"}
 
-var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone, PGesture, PGesture, PGesture, PInt, PPoint, PString, PBytes, PString, PInt, PInt, PNone, PString, PString, PString, PString, PFloat, PBytes, PInt, PBytes, PString, PBytes, PString, PBytes, PBool, PBool, PGesture, PBytes, PBytes, PBytes, PBytes, PBytes, PBool, PNone, PPoint, PInt, PNone, PInt, PBytes, PNone, PInt, PBytes}
+var eventPayloads = [...]Payload{0, PNone, PNone, PString, PNone, PNone, PNone, PBool, PFloat, PPoint, PEnvironment, PInt, PInt, PInt, PInt, PNone, PNone, PGesture, PGesture, PGesture, PInt, PPoint, PString, PBytes, PString, PInt, PInt, PNone, PString, PString, PString, PString, PFloat, PBytes, PInt, PBytes, PString, PBytes, PString, PBytes, PBool, PBool, PGesture, PBytes, PBytes, PBytes, PBytes, PBytes, PBool, PNone, PPoint, PInt, PNone, PInt, PBytes, PNone, PInt, PBytes, PBytes}
 
 func (e EventKind) String() string {
 	if int(e) < len(eventNames) && e > 0 {
@@ -722,9 +732,11 @@ const (
 	CmdReplace CommandID = 34
 	// CmdWindowAction: args: u8 WindowAction, then for Size and Fit f32 width, height (its content's, points; Fit: what its content measures, for a window sized to it, which a flyout is placed again at and a panel grows down from its top at) and for Position f32 x, y (its frame's top left, points from the main display's top left); sent to a Window node or, for the main window, the root (desktop and the web; mobile hosts have none).
 	CmdWindowAction CommandID = 35
+	// CmdLocation: args (ops.AppendLocation): u8 LocationAction, i32 delta (Back: how many entries back, negative), u32-length href (the app's path and query, /chat/7?tab=info), u32-length state (the router's navigation state, which it reads back), u32-length window key (its StateKey, main for the main window unless it names another; empty: none); sent to the root (the main window) or a Window node as a Router's screens change: the web shows the href in the address bar and keeps the state in the history entry (Push a new entry, Replace this one's, Back to an earlier one, Forward to the one the user left: a back the app refused); a desktop host keeps the last one with where the window was, and gives it back as the window opens again (host.Locator); a phone ignores it.
+	CmdLocation CommandID = 36
 )
 
-var commandNames = [...]string{"", "Focus", "Blur", "ListUpdate", "Present", "Haptic", "AnimateBegin", "AnimateEnd", "OpenURL", "Call", "Copy", "Play", "Pause", "Seek", "Eval", "Frames", "Announce", "Share", "ScrollTo", "ScrollToOffset", "Accent", "WebNavigate", "MenuBar", "WindowOptions", "WindowTitle", "ColorScheme", "Locale", "SaveLocale", "Format", "SetLink", "InsertText", "ShareClose", "A11yFocus", "BackExit", "Replace", "WindowAction"}
+var commandNames = [...]string{"", "Focus", "Blur", "ListUpdate", "Present", "Haptic", "AnimateBegin", "AnimateEnd", "OpenURL", "Call", "Copy", "Play", "Pause", "Seek", "Eval", "Frames", "Announce", "Share", "ScrollTo", "ScrollToOffset", "Accent", "WebNavigate", "MenuBar", "WindowOptions", "WindowTitle", "ColorScheme", "Locale", "SaveLocale", "Format", "SetLink", "InsertText", "ShareClose", "A11yFocus", "BackExit", "Replace", "WindowAction", "Location"}
 
 func (c CommandID) String() string {
 	if int(c) < len(commandNames) && c > 0 {
@@ -1101,4 +1113,13 @@ const (
 	SnackbarDurationShort SnackbarDuration = iota
 	SnackbarDurationLong
 	SnackbarDurationIndefinite
+)
+
+type LocationAction int32
+
+const (
+	LocationActionReplace LocationAction = iota
+	LocationActionPush
+	LocationActionBack
+	LocationActionForward
 )

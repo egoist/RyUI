@@ -429,6 +429,7 @@ func (n *Navigator) Depth() int { return len(n.st.screens) }
 type stackScreen struct {
 	el      *element
 	dispose func()
+	back    *backScope // where the user's going back from it is taken (nil: the stack's first screen)
 	actions []Action
 	toolbar []Action
 	primary []Action // ScreenOptions.Primary, a menu of one
@@ -453,6 +454,9 @@ type stackState struct {
 	nav     *Navigator
 	owner   *signal.Owner
 	screens []*stackScreen
+	// pushed and removed tell a Router's stack of the screens pushed and
+	// removed, by code (a Navigator, the Router itself) or by the user.
+	pushed, removed func(*stackScreen)
 }
 
 // Stack is a navigation stack (UINavigationController; on Android a
@@ -499,7 +503,7 @@ func (st *stackState) reset(root func() Node, o ScreenOptions) {
 	st.push(root, o)
 }
 
-func (st *stackState) push(build func() Node, o ScreenOptions) {
+func (st *stackState) push(build func() Node, o ScreenOptions) *stackScreen {
 	r := st.e.r
 	s := &stackScreen{actions: o.Actions, toolbar: o.Toolbar}
 	if o.Primary != nil {
@@ -553,11 +557,12 @@ func (st *stackState) push(build func() Node, o ScreenOptions) {
 						content() // going back from the first screen leaves the stack: the scope around it
 						return
 					}
-					backCtx.Provide(newBackScope(s.el, func() {
+					s.back = newBackScope(s.el, func() {
 						if slices.Contains(st.screens, s) {
 							st.remove(s)
 						}
-					}), content)
+					})
+					backCtx.Provide(s.back, content)
 				})
 			})
 		})
@@ -565,6 +570,10 @@ func (st *stackState) push(build func() Node, o ScreenOptions) {
 	})
 	st.screens = append(st.screens, s)
 	st.e.appendKid(s.el) // the host pushes it
+	if st.pushed != nil {
+		st.pushed(s)
+	}
+	return s
 }
 
 // remove pops s: its effects stop and its views are destroyed (the host
@@ -578,6 +587,9 @@ func (st *stackState) remove(s *stackScreen) {
 	}
 	s.dispose()
 	st.e.removeKid(s.el, true)
+	if st.removed != nil {
+		st.removed(s)
+	}
 }
 
 // Tab is a page of Tabs.
@@ -609,6 +621,9 @@ type TabsProps struct {
 	// Selected is the shown tab's index; the user's choice writes it.
 	Selected *signal.Signal[int]
 	Style    Styler
+
+	// chosen tells a Router of the user's choice, after Selected.
+	chosen func(int)
 }
 
 // Tabs shows one page at a time with a tab bar (UITabBarController;
@@ -665,6 +680,9 @@ func Tabs(p TabsProps, tabs ...Tab) Node {
 		e.handlers().selected = func(i int64) {
 			reported, known = int(i), true
 			p.Selected.Set(int(i))
+			if p.chosen != nil {
+				p.chosen(int(i))
+			}
 		}
 		e.listen(ops.EventSelected)
 	}
@@ -731,73 +749,103 @@ func Sheet(p SheetProps) Node {
 	if win == nil {
 		win = r.win
 	}
-	var sheet *element
-	var dispose func()
+	var shown *sheetView
 	closeSheet := func() {
-		if sheet == nil {
-			return
+		if shown != nil {
+			shown.close()
+			shown = nil
 		}
-		dispose()
-		sheet.destroy()
-		sheet, dispose = nil, nil
 	}
 	signal.RenderEffect(func() {
 		open := p.Open.Get()
-		if open == (sheet != nil) {
+		if open == (shown != nil) {
 			return
 		}
 		if !open {
 			closeSheet()
 			return
 		}
-		withRoot(r, func() Node {
-			sheet = newProvider(ops.KindSheet)
-			sheet.up = win.el()
-			if sheet.up == nil {
-				sheet.up = r.el
+		shown = showSheet(r, win, owner, p, false, func() {
+			p.Open.Set(false)
+			if p.OnDismiss != nil {
+				p.OnDismiss()
 			}
-			r.batch.SetInt(sheet.id, ops.PropSheetWindow, int64(sheet.up.id))
-			if p.FullScreen {
-				r.batch.SetBool(sheet.id, ops.PropSheetFullScreen, true)
-			} else {
-				if p.Detents != 0 {
-					r.batch.SetInt(sheet.id, ops.PropSheetDetents, int64(p.Detents))
-				}
-				if p.Grabber {
-					r.batch.SetBool(sheet.id, ops.PropSheetGrabber, true)
-				}
-			}
-			sheet.handlers().dismissed = func() {
-				p.Open.Set(false)
-				if p.OnDismiss != nil {
-					p.OnDismiss()
-				}
-			}
-			sheet.listen(ops.EventDismissed)
-			s := sheet
-			signal.RunWithOwner(owner, func() {
-				signal.Root(func(d func()) {
-					dispose = d
-					scope := newBackScope(s, func() {
-						if sheet == s {
-							s.h.dismissed() // as if the user dismissed it
-						}
-					})
-					backCtx.Provide(scope, func() {
-						envCtx.Provide(s.env, func() {
-							if n := p.Content(); n.e != nil {
-								s.appendKid(onlyKid(n))
-							}
-						})
-					})
-				})
-			})
-			r.batch.Command(s.id, ops.CmdPresent, nil)
-			return Node{}
-		})
+		}, p.Content)
 	})
 	signal.OnCleanup(closeSheet)
 	return Node{f}
+}
+
+// sheetView is a sheet shown: its element, its content's owner and where
+// the user's going back from it is taken.
+type sheetView struct {
+	el      *element
+	dispose func()
+	back    *backScope
+}
+
+// showSheet presents a sheet of p's on win, its content built under
+// owner; dismissed is the user's dismissal (and going back's, when no
+// OnBack takes it). A Router's sheet is routed.
+func showSheet(r *Root, win *WindowHandle, owner *signal.Owner, p SheetProps, routed bool, dismissed func(), content func() Node) *sheetView {
+	v := &sheetView{}
+	withRoot(r, func() Node {
+		sheet := newProvider(ops.KindSheet)
+		v.el = sheet
+		sheet.up = win.el()
+		if sheet.up == nil {
+			sheet.up = r.el
+		}
+		r.batch.SetInt(sheet.id, ops.PropSheetWindow, int64(sheet.up.id))
+		if p.FullScreen {
+			r.batch.SetBool(sheet.id, ops.PropSheetFullScreen, true)
+		} else {
+			if p.Detents != 0 {
+				r.batch.SetInt(sheet.id, ops.PropSheetDetents, int64(p.Detents))
+			}
+			if p.Grabber {
+				r.batch.SetBool(sheet.id, ops.PropSheetGrabber, true)
+			}
+		}
+		if routed {
+			r.batch.SetBool(sheet.id, ops.PropSheetRouted, true)
+		}
+		sheet.handlers().dismissed = func() {
+			if !sheet.dead {
+				dismissed()
+			}
+		}
+		sheet.listen(ops.EventDismissed)
+		signal.RunWithOwner(owner, func() {
+			signal.Root(func(d func()) {
+				v.dispose = d
+				v.back = newBackScope(sheet, func() {
+					if !sheet.dead {
+						sheet.h.dismissed() // as if the user dismissed it
+					}
+				})
+				backCtx.Provide(v.back, func() {
+					envCtx.Provide(sheet.env, func() {
+						if n := content(); n.e != nil {
+							sheet.appendKid(onlyKid(n))
+						}
+					})
+				})
+			})
+		})
+		r.batch.Command(sheet.id, ops.CmdPresent, nil)
+		return Node{}
+	})
+	return v
+}
+
+// close dismisses the sheet: its content is disposed, its view destroyed.
+func (v *sheetView) close() {
+	if v.el.dead {
+		return
+	}
+	v.dispose()
+	v.el.destroy()
 }
 
 // PopoverProps configures a Popover.

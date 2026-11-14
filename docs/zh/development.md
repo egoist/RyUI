@@ -143,6 +143,7 @@ asuka vet [flags] [packages]
 - **reads**：在组件构建视图时读取了 signal，导致显示的内容永远不会更新，例如在组件函数体中写 `ui.StaticText(fmt.Sprint(count.Get()))` 或 `if open.Get() { ... }`。参见 [什么会更新](concepts.md#哪些部分会更新)。
 - **mainthread**：在 goroutine 中写入了 signal，而不是在 `ui.Post` 中写入。参见 [主线程](concepts.md#主线程)。
 - **memowrites**：在 memo 内部写入了 signal，这会导致 panic。
+- **routes**：没有任何路由能处理的常量 href（拼错的链接、指向已经挪走的路由），它会显示“未找到”页面；以及传给 `ui.HrefOf` 的值的个数不对。参见[类型安全的链接](navigation.md#类型安全的链接)。
 
 ```
 $ asuka vet

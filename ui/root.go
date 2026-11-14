@@ -92,42 +92,53 @@ func Mount(h host.Host, root func() Node) *Root {
 	if c, ok := h.(host.Connector); ok {
 		c.Connect(core{})
 	}
-	withRoot(r, func() Node {
-		signal.Root(func(dispose func()) {
-			r.dispose = dispose
-			r.owner = signal.CurrentOwner()
-			r.el = newElement(ops.KindView, true)
-			r.win = newMainWindow(r)
-			r.sendAccent()
-			r.sendLocale(shown.Load(), false)
-			if pendingSave != nil {
-				r.batch.Command(r.el.id, ops.CmdSaveLocale, []byte(*pendingSave))
-				pendingSave = nil
-			}
-			r.sendWindowOptions()
-			if colorScheme != ColorSchemeSystem {
-				r.batch.Command(r.el.id, ops.CmdColorScheme, []byte{byte(colorScheme)})
-			}
-			st := layout.DefaultStyle
-			st.FlexDirection = layout.Column
-			st.Width, st.Height = layout.Pct(100), layout.Pct(100)
-			st.Direction = rootDirection(isRTLNow())
-			r.el.box.SetStyle(st)
-			if o := mainWindow; o != nil && o.FitContent && r.win.desktop() && r.envV.Platform != ops.PlatformWeb { // the tab fills the page
-				c := o.config()
-				fitWindow(r.el, &c)
-			}
-			var n Node
-			windowCtx.Provide(r.win, func() {
-				envCtx.Provide(r.env, func() { n = root() })
+	func() {
+		building++
+		defer func() { building-- }()
+		withRoot(r, func() Node {
+			signal.Root(func(dispose func()) {
+				r.dispose = dispose
+				r.owner = signal.CurrentOwner()
+				r.el = newElement(ops.KindView, true)
+				r.win = newMainWindow(r)
+				r.sendAccent()
+				r.sendLocale(shown.Load(), false)
+				if pendingSave != nil {
+					r.batch.Command(r.el.id, ops.CmdSaveLocale, []byte(*pendingSave))
+					pendingSave = nil
+				}
+				r.sendWindowOptions()
+				if colorScheme != ColorSchemeSystem {
+					r.batch.Command(r.el.id, ops.CmdColorScheme, []byte{byte(colorScheme)})
+				}
+				st := layout.DefaultStyle
+				st.FlexDirection = layout.Column
+				st.Width, st.Height = layout.Pct(100), layout.Pct(100)
+				st.Direction = rootDirection(isRTLNow())
+				r.el.box.SetStyle(st)
+				if o := mainWindow; o != nil && o.FitContent && r.win.desktop() && r.envV.Platform != ops.PlatformWeb { // the tab fills the page
+					c := o.config()
+					fitWindow(r.el, &c)
+				}
+				var n Node
+				windowCtx.Provide(r.win, func() {
+					envCtx.Provide(r.env, func() { n = root() })
+				})
+				if n.e != nil {
+					fill(n)
+					r.el.appendKid(n.e)
+				}
 			})
-			if n.e != nil {
-				fill(n)
-				r.el.appendKid(n.e)
-			}
+			return Node{}
 		})
-		return Node{}
-	})
+	}()
+	if building == 0 {
+		fs := built
+		built = nil
+		for _, f := range fs {
+			withRoot(r, func() Node { f(); return Node{} })
+		}
+	}
 	r.batch.SetRoot(r.el.id)
 	r.Flush()
 	boot.Mounted()
@@ -618,6 +629,10 @@ func dispatch(ev ops.Event) {
 		}
 	case ops.EventBack:
 		call(h.back)
+	case ops.EventLocation:
+		if h.location != nil {
+			h.location(ev.Bytes)
+		}
 	case ops.EventPaged:
 		if h.paged != nil {
 			h.paged(ev.Int)

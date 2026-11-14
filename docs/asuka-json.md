@@ -315,6 +315,7 @@ The web build's.
 | Key | Type | Default | What it is |
 |---|---|---|---|
 | `vapidPublicKey` | string | none | The app server's VAPID public key (base64url), with which the browser subscribes to Web Push for `asuka/sdk/push`. |
+| `base` | string | `"/"` | The path the site is served at (`"/app/"` for `https://example.com/app/`): the page's `<base href>`, under which a router's hrefs are its addresses. `asuka build --base` overrides it. See [Addresses and history](web.md#addresses-and-history). |
 
 See [Web Push](web.md#asukasdkpush-web-push).
 

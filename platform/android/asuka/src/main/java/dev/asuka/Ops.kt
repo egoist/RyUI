@@ -195,6 +195,10 @@ object AsukaProp {
         const val ANIMATING = 64
     }
 
+    object Stack {
+        const val ROUTED = 64
+    }
+
     object Screen {
         const val TITLE = 64
         const val ACTIONS = 65
@@ -221,6 +225,7 @@ object AsukaProp {
         const val GRABBER = 65
         const val WINDOW = 66
         const val FULL_SCREEN = 67
+        const val ROUTED = 68
     }
 
     object Alert {
@@ -435,6 +440,7 @@ object AsukaEventKind {
     const val CLOSE_REQUEST = 55
     const val KEY = 56
     const val FIELD_CHANGED = 57
+    const val LOCATION = 58
 }
 
 object AsukaCommand {
@@ -473,6 +479,7 @@ object AsukaCommand {
     const val BACK_EXIT = 33
     const val REPLACE = 34
     const val WINDOW_ACTION = 35
+    const val LOCATION = 36
 }
 
 object AsukaRole {
@@ -777,6 +784,13 @@ object AsukaSnackbarDuration {
     const val INDEFINITE = 2
 }
 
+object AsukaLocationAction {
+    const val REPLACE = 0
+    const val PUSH = 1
+    const val BACK = 2
+    const val FORWARD = 3
+}
+
 /** Receives decoded ops, in order, on the main thread. */
 interface AsukaOpHandler {
     fun create(id: Int, kind: Int)
@@ -978,4 +992,5 @@ object AsukaEvents {
     fun closeRequest(id: Int): ByteArray = AsukaWriter().apply { header(id, 55) }.bytes()
     fun key(id: Int, v: Long): ByteArray = AsukaWriter().apply { header(id, 56); u64(v) }.bytes()
     fun fieldChanged(id: Int, v: ByteArray): ByteArray = AsukaWriter().apply { header(id, 57); u32(v.size); raw(v) }.bytes()
+    fun location(id: Int, v: ByteArray): ByteArray = AsukaWriter().apply { header(id, 58); u32(v.size); raw(v) }.bytes()
 }

@@ -166,6 +166,7 @@ func fontFiles(app *goApp) []string {
 
 type webPage struct {
 	Name, Lang       string
+	Base             string // the path the site is served at: its <base href>
 	Host, Wasm, Exec string // the URLs of the host's directory, the app's wasm, wasm_exec.js
 	Options          map[string]any
 	Icon, Manifest   bool
@@ -174,7 +175,18 @@ type webPage struct {
 	Scripts []string
 }
 
-// webIndex is the page that runs the app.
+// siteBase is a site's base path, with its slashes: "/", "/app/".
+func siteBase(b string) string {
+	b = strings.Trim(b, "/")
+	if b == "" {
+		return "/"
+	}
+	return "/" + b + "/"
+}
+
+// webIndex is the page that runs the app: its <base href> is the site's
+// base, so it finds its files from any route's path (a Router's
+// addresses, which the server answers with this page).
 func webIndex(p webPage) string {
 	opts := map[string]any{"wasm": p.Wasm, "exec": p.Exec, "assets": "assets"}
 	for k, v := range p.Options {
@@ -186,6 +198,7 @@ func webIndex(p webPage) string {
 <html lang="%s">
 <head>
 <meta charset="utf-8">
+<base href="%[3]s">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
@@ -194,7 +207,7 @@ func webIndex(p webPage) string {
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="%[2]s">
 <title>%[2]s</title>
-`, html.EscapeString(p.Lang), html.EscapeString(p.Name))
+`, html.EscapeString(p.Lang), html.EscapeString(p.Name), html.EscapeString(siteBase(p.Base)))
 	if p.Manifest {
 		b.WriteString(`<link rel="manifest" href="manifest.webmanifest">` + "\n")
 	}
@@ -494,18 +507,7 @@ func (s *devServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	switch {
 	case p == "/" || p == "/index.html":
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		opts := map[string]any{"name": s.app.cfg.ID, "title": s.app.displayName(), "dev": "/__asuka/", "fonts": fontFiles(s.app), "version": s.app.cfg.Version, "build": s.app.cfg.Build, "serviceWorker": "sw.js"}
-		if s.vapid != "" {
-			opts["vapidPublicKey"] = s.vapid
-		}
-		webPluginOptions(*s.plugins.Load(), "asuka/", opts)
-		io.WriteString(w, webIndex(webPage{
-			Name: s.app.displayName(), Lang: devLangOr("en"),
-			Host: "asuka", Wasm: "app.wasm?" + s.stamp, Exec: "asuka/wasm_exec.js",
-			Scripts: prefixed("asuka/", scriptPaths(*s.scripts.Load())),
-			Options: opts,
-		}))
+		s.index(w)
 	case p == "/app.wasm":
 		w.Header().Set("Content-Type", "application/wasm")
 		http.ServeFile(w, r, s.wasm)
@@ -575,9 +577,30 @@ func (s *devServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case p == "/__asuka/log" && r.Method == http.MethodPost:
 		b, _ := io.ReadAll(r.Body)
 		printLog(b)
+	case r.Method == http.MethodGet && strings.Contains(r.Header.Get("Accept"), "text/html"):
+		// A page's address no file has: a Router's route, which the app
+		// shows (the browser's reload, a link pasted).
+		s.index(w)
 	default:
 		http.NotFound(w, r)
 	}
+}
+
+// index serves the page that runs the app (at / and at any route's
+// path: a Router's addresses).
+func (s *devServer) index(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	opts := map[string]any{"name": s.app.cfg.ID, "title": s.app.displayName(), "dev": "/__asuka/", "fonts": fontFiles(s.app), "version": s.app.cfg.Version, "build": s.app.cfg.Build, "serviceWorker": "sw.js"}
+	if s.vapid != "" {
+		opts["vapidPublicKey"] = s.vapid
+	}
+	webPluginOptions(*s.plugins.Load(), "asuka/", opts)
+	io.WriteString(w, webIndex(webPage{
+		Name: s.app.displayName(), Lang: devLangOr("en"),
+		Host: "asuka", Wasm: "app.wasm?" + s.stamp, Exec: "asuka/wasm_exec.js",
+		Scripts: prefixed("asuka/", scriptPaths(*s.scripts.Load())),
+		Options: opts,
+	}))
 }
 
 // events is the page's connection for reloads (server-sent events).
@@ -858,8 +881,13 @@ func buildWeb(app *goApp, o *buildOptions) error {
 		opts["vapidPublicKey"] = vapid
 	}
 	webPluginOptions(plugins, hostDir+"/", opts)
+	base := o.base
+	if base == "" {
+		base = app.cfg.Web.Base
+	}
+	base = siteBase(base)
 	page := webIndex(webPage{
-		Name: name, Lang: "en", Host: hostDir, Wasm: wasmName, Exec: hostDir + "/wasm_exec.js",
+		Name: name, Lang: "en", Base: base, Host: hostDir, Wasm: wasmName, Exec: hostDir + "/wasm_exec.js",
 		Options:  opts,
 		Icon:     icon,
 		Manifest: true,
@@ -872,13 +900,43 @@ func buildWeb(app *goApp, o *buildOptions) error {
 	if err := os.WriteFile(filepath.Join(out, "version.json"), versionFile(app), 0o644); err != nil {
 		return err
 	}
-	headers := "/index.html\n  Cache-Control: no-cache\n/manifest.webmanifest\n  Cache-Control: no-cache\n/version.json\n  Cache-Control: no-cache\n/asuka/*\n  Cache-Control: public, max-age=31536000, immutable\n/web/*\n  Cache-Control: public, max-age=31536000, immutable\n/sw.*.js\n  Cache-Control: public, max-age=31536000, immutable\n/*.wasm\n  Cache-Control: public, max-age=31536000, immutable\n  Content-Type: application/wasm\n"
-	if err := os.WriteFile(filepath.Join(out, "_headers"), []byte(headers), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(out, "_headers"), []byte(webHeaders(base)), 0o644); err != nil {
+		return err
+	}
+	// Every route's path is the app's page (a Router's addresses: a
+	// reload, a link pasted): Netlify's rewrite (Cloudflare Pages does it
+	// for a site with no 404.html; docs/web.md: the other hosts).
+	if err := os.WriteFile(filepath.Join(out, "_redirects"), []byte(webRedirects(base)), 0o644); err != nil {
 		return err
 	}
 	fmt.Printf("asuka: %s (%s of WebAssembly, %s gzipped)\n", out, size(len(wasm)), size(gzipSize(wasm)))
-	fmt.Println("asuka: a static site: serve the folder from any web server or CDN, index.html and manifest.webmanifest with no-cache, the rest for good (_headers says so for Cloudflare and Netlify)")
+	fmt.Printf("asuka: a static site for %s: serve the folder there from any web server or CDN, index.html and manifest.webmanifest with no-cache, the rest for good (_headers says so for Cloudflare and Netlify), and index.html for the paths that have no file (a Router's routes: _redirects does it on Netlify; docs/web.md for others)\n", base)
 	return nil
+}
+
+// webHeaders is the site's _headers (Cloudflare's and Netlify's): the
+// page and the manifest fetched again, what's named by its digest cached
+// for good.
+func webHeaders(base string) string {
+	var b strings.Builder
+	for _, h := range []struct{ path, header string }{
+		{"index.html", "Cache-Control: no-cache"},
+		{"manifest.webmanifest", "Cache-Control: no-cache"},
+		{"version.json", "Cache-Control: no-cache"},
+		{"asuka/*", "Cache-Control: public, max-age=31536000, immutable"},
+		{"web/*", "Cache-Control: public, max-age=31536000, immutable"},
+		{"sw.*.js", "Cache-Control: public, max-age=31536000, immutable"},
+		{"*.wasm", "Cache-Control: public, max-age=31536000, immutable\n  Content-Type: application/wasm"},
+	} {
+		fmt.Fprintf(&b, "%s%s\n  %s\n", base, h.path, h.header)
+	}
+	return b.String()
+}
+
+// webRedirects is the site's _redirects (Netlify's): a path with no file
+// is the app's page, which shows its route.
+func webRedirects(base string) string {
+	return base + "*  " + base + "index.html  200\n"
 }
 
 // writeWeb writes a file of the site, and a gzipped copy of what

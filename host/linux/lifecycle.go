@@ -39,6 +39,7 @@ var toplevelState = func(surface Ptr) uint32 {
 func (h *Host) lifecycle(s ops.Lifecycle) {
 	switch s {
 	case ops.LifecycleBackground:
+		routeStore().Flush()
 		if h.inBackground {
 			return
 		}

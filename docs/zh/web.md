@@ -30,9 +30,39 @@ asuka build --platform web examples/counter     # 生成静态网站，位于 ex
 - 应用的 service worker `sw.<digest>.js`，与 `index.html` 放在一起（作用域是网站所在的文件夹）：即使没有打开应用的任何页面，它也能显示应用的通知和推送（见 [通知与 Web Push](#通知与-web-push)）；
 - 应用的 `assets/`；
 - 每个脚本和 wasm 文件的 gzip 压缩副本（`.gz`），供支持预压缩文件的服务器使用；
-- `_headers`，Cloudflare 和 Netlify 会读取它：`index.html` 和清单设为 `no-cache`，以摘要命名的文件则永久缓存。
+- `_headers`，Cloudflare 和 Netlify 会读取它：`index.html` 和清单设为 `no-cache`，以摘要命名的文件则永久缓存；
+- `_redirects`，Netlify 会读取它：没有对应文件的路径都返回应用的页面，这样[路由器](#地址与历史记录)的地址才能打开应用。
+
+`index.html` 的 `<base href>` 是网站所在的路径：默认是 `/`，也可以用 `asuka.json` 的 `web.base` 或 `--base` 指定（`https://example.com/app/` 就写 `"/app/"`）。这样页面无论在它下面的哪个地址打开，都能找到自己的文件，路由器的 href 也就是它下面的页面地址（`/chat/7` 对应 `https://example.com/app/chat/7`）。
 
 这个文件夹可以放在任何 Web 服务器或 CDN 上。以内容摘要命名的文件一旦内容变化，文件名也会跟着变，所以可以放心地永久缓存，只有 `index.html` 需要重新获取。`.wasm` 文件要以 `application/wasm` 类型提供。一个计数器应用的 WebAssembly 约 6.5 MB，gzip 后 1.7 MB（用 brotli 压缩是 1.3 MB，CDN 一般可以帮你做）；应用自己的代码和它导入的包会在此基础上增加体积。
+
+## 地址与历史记录
+
+用了 [`ui.Router`](navigation.md#路由) 之后，页面的地址就是当前显示的页面：用 `pushState` 和 `replaceState` 写入网站根路径下的真实路径，而不是 `#` 片段。路由器导航的每一步都是页面历史里的一条记录，并保存着路由器的完整状态（每个导航栈里的页面、每个标签页、所有弹出面板）。因此：
+
+- 浏览器的后退和前进会在导航栈、标签页和弹出面板之间来回，回到每条记录对应的页面；浏览器后退时会先询问页面或弹出面板的 `ui.OnBack`，如果它拦下了这次返回，页面就停在原地；
+- 刷新后回到同样的页面，连同栈顶下面的页面一起；粘贴或从别处打开的链接会建出它所代表的整组页面（见[链接下方的页面](navigation.md#链接下方的页面)）；
+- 页面标题跟随栈顶页面的标题（`标题 · 应用名`）。
+
+历史记录的变化方式和 react-navigation 的 linking 一致：导航得更深（推入页面、打开弹出面板、切到第一个以外的标签页）会新增一条记录；返回时回到最近一条地址相同的记录（如果历史里从来没有这条记录，比如深度链接建出的页面被一个个弹出，就替换当前记录）；其余情况替换当前记录（`Replace`、重定向、守卫把用户送到别处、在第一个以外的标签页之间切换、`SetQuery`）。应用内的返回按钮、Escape 和 Alt+Left 会弹出导航栈，历史记录也随之后退。`Alert`、应用自己的 `Sheet`，以及不归路由器管理的导航栈，仍然像没有路由器时那样，为浏览器的后退保留自己的一条记录。
+
+嵌在页面某个元素里的应用（见[嵌入](#嵌入)）不会改动页面的地址，它的路由器地址只留在应用自己内部。`Window` 面板里的路由器会把地址和面板的 `StateKey` 一起存在 `localStorage` 里。通知携带的、指向应用自身站点的 URL 会打开对应的页面。
+
+### 让每个地址都能打开
+
+刷新页面或粘贴链接时，浏览器会向服务器请求这个地址本身（`/app/chat/7`），而它并没有对应的文件：服务器必须返回应用的 `index.html`。`asuka dev --platform web` 已经这样做了。静态网站则需要：
+
+| | |
+|---|---|
+| Netlify | 构建时生成的 `_redirects` |
+| Cloudflare Pages | 什么都不用做：没有 `404.html` 的网站会被当作单页应用（它会提示 `_redirects` 里的规则形成了循环，并忽略这条规则） |
+| Vercel | `vercel.json`：`{"rewrites": [{"source": "/(.*)", "destination": "/index.html"}]}`（放在网站根路径下） |
+| Firebase Hosting | `firebase.json` 的 `hosting.rewrites`：`[{"source": "**", "destination": "/index.html"}]` |
+| GitHub Pages | 把 `index.html` 复制一份命名为 `404.html`（任何地址都会以 404 状态返回它）；项目站点要把 `web.base` 设为仓库的路径 |
+| nginx | 在网站的 `location /app/` 里写 `try_files $uri /app/index.html;` |
+| Caddy | 在 `file_server` 块里写 `try_files {path} /app/index.html` |
+| S3 和 CloudFront | 分发的错误页面：403 和 404 都以 200 状态返回 `/index.html` |
 
 ## 页面提供的环境信息
 
@@ -47,7 +77,7 @@ Web 应用看到的环境（`ui.UseEnvironment`）来自浏览器：
 ## 视图如何对应到页面
 
 - 文本就是浏览器渲染的文本，使用系统字体（`system-ui`：Apple 系统上是 San Francisco，Windows 上是 Segoe UI，Android 上是 Roboto），字号层级采用 Web 的惯例（正文 16）。应用放在 `assets/fonts` 里的字体会按应用给的名字加载（`Font.Family`）。
-- `Stack` 在自己的标题栏下面显示栈顶的页面：标题栏里有返回按钮、页面标题、栏按钮和搜索框。push 和 pop 都带滑动动画。浏览器的返回也能用：只要应用里还有可以返回的页面，浏览器的返回按钮（以及手机上的返回手势）就会在应用内返回；Escape、Alt+Left（Mac 上是 ⌘[）以及在触摸屏上从起始边缘滑动也一样。和其他平台一样，这些操作都由 `ui.OnBack` 处理。
+- `Stack` 在自己的标题栏下面显示栈顶的页面：标题栏里有返回按钮、页面标题、栏按钮和搜索框。push 和 pop 都带滑动动画。浏览器的返回也能用：只要应用里还有可以返回的页面，浏览器的返回按钮（以及手机上的返回手势）就会在应用内返回；Escape、Alt+Left（Mac 上是 ⌘[）以及在触摸屏上从起始边缘滑动也一样。和其他平台一样，这些操作都由 `ui.OnBack` 处理。用了路由器之后，地址栏会显示当前页面，历史记录就是它的导航记录（见[地址与历史记录](#地址与历史记录)）。
 - `Tabs` 是底部的标签栏；`SplitView` 是侧边栏加详情区，窗口较窄时侧边栏变成抽屉，由详情区的标题栏打开。
 - `Sheet` 是一个模态 `<dialog>`：窄窗口下是底部弹出面板（medium 占一半高度，可以拖动顶部的把手把它拉高或拖走），宽窗口下是居中的卡片。按 Escape、点击外部或向下滑动都能关闭它。`Alert` 也是模态 `<dialog>`，操作表的按钮显示为列表。`Popover` 和菜单是显示在目标旁边的弹出层。`ui.Window` 是页面里的一个面板，用户可以移动它、调整它的大小。
 - `List` 由宿主做虚拟化，和 Mac、Windows、Linux 上一样：只有可见范围内（以及上下各半屏）的行会被绑定；分组标题会吸顶；聊天列表会停在末尾。行的滑动操作变成它们的上下文菜单（右键或长按触发）。

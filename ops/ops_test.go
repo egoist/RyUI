@@ -404,3 +404,19 @@ func TestSizeClassBreakpoints(t *testing.T) {
 		}
 	}
 }
+
+// A Router's Location command and event read back as written.
+func TestLocationRoundTrip(t *testing.T) {
+	l := Location{Action: LocationActionBack, Delta: -2, Href: "/chat/7?tab=info", State: []byte(`{"e":[]}`), Window: "main"}
+	got, ok := DecodeLocation(AppendLocation(nil, l))
+	if !ok || got.Action != l.Action || got.Delta != l.Delta || got.Href != l.Href || string(got.State) != string(l.State) || got.Window != l.Window {
+		t.Fatalf("%+v %v", got, ok)
+	}
+	if _, ok := DecodeLocation(AppendLocation(nil, l)[:7]); ok {
+		t.Fatal("a cut command decoded")
+	}
+	h, st, ok := DecodeLocationEvent(AppendLocationEvent(nil, "/a", []byte("s")))
+	if !ok || h != "/a" || string(st) != "s" {
+		t.Fatalf("%q %q %v", h, st, ok)
+	}
+}

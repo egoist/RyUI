@@ -351,6 +351,117 @@ How the kinds map (ops/schema.go has the wire contract):
   `SwipeRefreshLayout` around the scroll view or list; haptic feedback
   constants.
 
+#### Routes
+
+`ui.Router` gives every screen an address, an `ui.Href` (a path and a
+query, `/chat/7?tab=info`), as expo-router does, declared in Go: a tree
+of `ui.Route` values, each a path pattern (static segments, `:param`,
+a last `*catchAll`; relative to its parent's unless it starts with `/`)
+mapped to a `Screen func(ui.Params) ui.Node`, or holding routes under a
+navigator (`Layout`: `LayoutStack`, `LayoutTabs`, `LayoutSplit`,
+`LayoutSlot`) or in a group (no layout: a path prefix, a guard, a
+sidebar section). A route with a `Sheet` is presented over its
+navigator instead of pushed or chosen. A `Redirect` replaces an href
+with another; a `Guard func(to Href) Href` sends the user elsewhere
+(`""` lets them in). The router compiles the tree once (ui/router.go),
+panicking at shapes the navigators can't show (a tabs inside a stack:
+two bars), and ranks the screens' full patterns as expo-router does
+(static before parameter before catch-all, segment by segment); its
+top level is a slot of the routes given it and a not-found catch-all.
+Nothing on the hot path: routing runs as the user navigates, and
+reflection only reads and writes the saved state's JSON.
+
+The navigation state is a tree, react-navigation's shape: each
+navigator's entries (a stack's screens bottom first; a tab's or a
+destination's or a slot's chosen entry, each tab keeping its own) and
+the sheets over it, each entry a route with its parameters and query,
+or a navigator. Every change is made on a description of the state
+(`navDesc`, from the live one with each entry's key), then the live
+state is reconciled to it, as a view diff: entries both have are kept
+(by key; by route and parameters for a description from outside, a
+history entry, a reload), the stack's others popped (the lower first,
+so one pop animates) or pushed, the sheets dismissed or presented, the
+tab, destination or slot switched. The views are the existing
+components': `Stack` (pushes through `stackState`, which reports the
+pushes and pops it didn't make, a Navigator's and the user's), `Tabs`
+and `SplitView` (internal hooks report the user's choice), `showSheet`
+(Sheet's own), and a slot (a fragment whose child is swapped). An entry
+is an owner as any screen is: one a route pops, replaces or leaves is
+disposed; a navigator closes its sheets as its owner goes.
+
+- **Navigating**: `Navigate(href)` switches the tabs, destinations and
+  slots on the way, goes back to an entry with the same address in the
+  target's stack or pushes it, presents a sheet (react-navigation's
+  `navigate`); `Push` always pushes; `Replace` replaces the focused
+  entry (a sheet: closed and the screen pushed); `Back` pops the
+  innermost stack or sheet; `SetQuery` changes the focused screen's
+  query, which `Params` follows. `ViewProps.Href`, `ButtonProps.Href`,
+  `NavLink` and a rich text's link to one of the app's hrefs navigate.
+  The imperative API stays: a screen pushed with a Navigator on a routed
+  stack is an entry without a route, at its stack's address.
+- **An href builds a state** (`fresh`): in each stack on the way, the
+  stack's `Initial` entry (expo-router's `initialRouteName`; its first
+  route by default), then its screens whose patterns are prefixes of the
+  target's (`/inbox/:id` under `/inbox/:id/reply`), then the target,
+  each taking its parameters from the target's by name and left out if
+  it can't (a parameter missing, a guard); the other tabs at their
+  first entries. Redirects and guards are resolved first, at most 32
+  steps (more is a loop: a panic naming the hrefs).
+- **Guards follow signals**: a render effect asks the guards of the
+  entries shown, and again as what they read or the state changes; one
+  that keeps the user out drops those entries (with what's over them in
+  their stacks; the other tabs are kept) and the router goes where the
+  focused href resolves now, replacing it.
+- **The state serializes** (`savedNav`: entries by their route's key
+  and their href, JSON), so it reads back after the routes change, as
+  far as they still match. The router sends its address with every
+  change (`Location`, to its window's element: the root or a `Window`
+  node): the focused routed entry's href, the state, the window's key,
+  and how the history moved, decided as react-navigation's linking
+  decides: where the old and new focused chains part, a navigator's
+  history length grew (Push), shrank (Back by as many) or stayed
+  (Replace); a stack's length is its entries', a tabs' or a split's is 1
+  on its first entry and 2 on another ("firstRoute"), plus their sheets.
+  Redirects and guards replace. A host that keeps windows' addresses
+  (`host.Locator`) gives the last back as the router mounts.
+- **Where it starts**: a launch URL it takes (a link that came before
+  any handler: `OnOpenURL` gives it to the routers first, once the root
+  is built), else the window's address (`host.Locator`: the web's
+  address and history entry; a desktop window's last run), else the
+  last run's under `asuka dev` (`signal.KeepValue`, kept with the
+  signals), else `RouterProps.Initial`. URLs the app is opened with
+  later (its scheme's, universal and app links, notifications') go to
+  the first router that takes them, the main window's first:
+  `scheme://a/b` is `/a/b` (the host the first segment, as expo-router
+  reads it), an https link its path; the rest go to `OnOpenURL`.
+- **The web** keeps the address in the page's (history.js):
+  `pushState`, `replaceState`, back to the latest entry with the href
+  (none: replace, a deep link's screens popped one by one), each entry
+  holding its index and the router's state, so back, forward and a
+  reload rebuild the screens. The user's back and forward send the
+  entry to the core (`Location` event); while it handles it, its answer
+  only rewrites the entry, and a back of one that a screen's or sheet's
+  `OnBack` takes answers `Forward`, which goes back to the entry the
+  user left. Routed stacks and sheets (`Routed`) go back through the
+  history; the host's own back entry stands only for what the router
+  doesn't route (an alert, a sheet of the app's). `<base href>` is the
+  site's path (`web.base`), and the dev server and the static site
+  answer every route's path with the page.
+- **The desktops** keep each window's last address with where the
+  window was (`internal/routestate`, `asuka-routes.json` in the app's
+  data directory, written a moment after it changes, off the main
+  thread): a window comes back at its screens. Phones don't keep it
+  across launches, as their native apps don't.
+- **Typed links**: Go has no compile step to check a string, so `asuka
+  vet`'s `routes` analyzer checks constant hrefs (of type `ui.Href`, a
+  `Redirect`, `HrefOf`'s pattern) against the app's routes (its
+  `ui.Route` literals, Children in place or in a variable), in the
+  package or through facts where the routes are, and `HrefOf`'s count of
+  values; it reports nothing when the routes can't all be known.
+  Generated route constructors were the alternative: they'd need a
+  generator run on every edit of a route and a name for each, for what
+  the analyzer already catches before the app runs.
+
 ### Style
 
 `ui.Style` is a plain struct (static), or a `ui.StyleFunc` that runs in
@@ -3790,6 +3901,9 @@ calls:
   back in the app: a history entry stands for it while there's a dialog
   to close or a stack to pop, and its `popstate` goes back (closing the
   newest dialog, or popping the innermost stack, or `ui.OnBack`'s Back).
+  With a `Router`, the page's address and history are its (see
+  "Routes": history.js), and that entry stands only for what it doesn't
+  route.
 - `List` is core-virtualized, as on the desktop hosts, in a scrolling
   element: rows placed by the host with transforms, bound through
   `ListBind` as they come into view, recycled as they leave; a row's

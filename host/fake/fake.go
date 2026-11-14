@@ -86,15 +86,24 @@ type Host struct {
 	// (a "next" answered at the next change): reply posts the Result,
 	// once, from any goroutine. A module here is asked before Modules.
 	AsyncModules map[string]func(method string, args []byte, reply func([]byte, error))
+	// Locations are where each window was left, by its key ("main", a
+	// StateKey): as a desktop host keeps them, the last Location command
+	// each window was sent, which a Router mounted on the host starts at.
+	// A test sets one to start there, as a browser's address or a
+	// window's last run would.
+	Locations map[string]Saved
 
-	core     host.Core
-	posted   []func()
-	postMu   sync.Mutex
-	wake     chan struct{} // a Post's signal to WaitPost
-	nextCell ops.NodeID
-	opsAlloc []byte
-	wins     map[ops.NodeID]*WindowInfo // window.go
-	key      ops.NodeID                 // the window in use (window.go): 0 the main one
+	core      host.Core
+	posted    []func()
+	postMu    sync.Mutex
+	wake      chan struct{} // a Post's signal to WaitPost
+	nextCell  ops.NodeID
+	opsAlloc  []byte
+	wins      map[ops.NodeID]*WindowInfo // window.go
+	key       ops.NodeID                 // the window in use (window.go): 0 the main one
+	histories map[ops.NodeID]*History    // history.go: by window
+	popping   bool                       // a Go's Location event is being handled
+	popFrom   int                        // the entry Go left
 }
 
 // New makes a fake host with a 390×844 portrait phone environment.
@@ -303,6 +312,10 @@ func (h *Host) apply(op *ops.Op) {
 		v := h.view(op.ID, "Command")
 		if op.Cmd == ops.CmdCall {
 			h.call(op.ID, op.Value.Bytes)
+			return
+		}
+		if op.Cmd == ops.CmdLocation {
+			h.location(v, op.Value.Bytes)
 			return
 		}
 		if op.Cmd == ops.CmdListUpdate {

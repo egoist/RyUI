@@ -97,9 +97,10 @@ export const KindProp = Object.freeze({
   Scroll: Object.freeze({ Horizontal: 64, Refreshable: 65, Refreshing: 66, Paging: 67 }),
   List: Object.freeze({ Refreshable: 64, Refreshing: 65, Columns: 66, Gap: 67, Appearance: 68, Inset: 69, Anchor: 70, Selecting: 71 }),
   Activity: Object.freeze({ Animating: 64 }),
+  Stack: Object.freeze({ Routed: 64 }),
   Screen: Object.freeze({ Title: 64, Actions: 65, BackGesture: 66, Icon: 67, Search: 68, SearchText: 69, SearchButton: 70, ZoomFrom: 71, LargeTitle: 72, BarColor: 73, Toolbar: 74, Primary: 75, PrimaryExtended: 76, Badge: 77 }),
   Tabs: Object.freeze({ Selected: 64 }),
-  Sheet: Object.freeze({ Detents: 64, Grabber: 65, Window: 66, FullScreen: 67 }),
+  Sheet: Object.freeze({ Detents: 64, Grabber: 65, Window: 66, FullScreen: 67, Routed: 68 }),
   Alert: Object.freeze({ Title: 64, Message: 65, Buttons: 66, Style: 67, Window: 68, Fields: 69 }),
   Image: Object.freeze({ Source: 64, Mode: 65, Placeholder: 66 }),
   Native: Object.freeze({ Type: 64, Prop: 65 }),
@@ -185,6 +186,7 @@ export const Event = Object.freeze({
   CloseRequest: 55,
   Key: 56,
   FieldChanged: 57,
+  Location: 58,
 });
 
 /** Commands the core sends. */
@@ -224,6 +226,7 @@ export const Command = Object.freeze({
   BackExit: 33,
   Replace: 34,
   WindowAction: 35,
+  Location: 36,
 });
 
 export const Role = Object.freeze({ None: 0, Button: 1, Header: 2, Image: 3, Link: 4, Text: 5, Search: 6 });
@@ -260,6 +263,7 @@ export const WindowAction = Object.freeze({ Show: 0, Hide: 1, Focus: 2, Minimize
 export const Placement = Object.freeze({ Bottom: 0, BottomStart: 1, BottomEnd: 2, Top: 3, TopStart: 4, TopEnd: 5, Right: 6, RightStart: 7, RightEnd: 8, Left: 9, LeftStart: 10, LeftEnd: 11 });
 export const TitleBar = Object.freeze({ Default: 0, Hidden: 1 });
 export const SnackbarDuration = Object.freeze({ Short: 0, Long: 1, Indefinite: 2 });
+export const LocationAction = Object.freeze({ Replace: 0, Push: 1, Back: 2, Forward: 3 });
 
 const utf8 = new TextDecoder();
 const utf8Out = new TextEncoder();
@@ -452,4 +456,5 @@ export const Events = Object.freeze({
   closeRequest: (id) => new Writer().header(id, 55).done(),
   key: (id, v) => new Writer().header(id, 56).i64(v).done(),
   fieldChanged: (id, v) => new Writer().header(id, 57).bytes(v).done(),
+  location: (id, v) => new Writer().header(id, 58).bytes(v).done(),
 });

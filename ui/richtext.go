@@ -30,7 +30,9 @@ type Span struct {
 	// Background is drawn behind the span on each line it covers, with
 	// rounded corners: highlights, inline code.
 	Background Color
-	// Link is reported to RichTextProps.OnLink when the span is tapped.
+	// Link is reported to RichTextProps.OnLink when the span is tapped;
+	// without one, in a Router, a link to one of the app's hrefs
+	// ("/chat/7") goes there, and another opens as it would.
 	Link string
 	// Inline makes the span a component in the text instead (Text is
 	// ignored): see Embed.
@@ -267,8 +269,21 @@ func RichText(p RichTextProps) Node {
 	if p.Role != RoleNone {
 		e.r.batch.SetEnum(e.id, ops.PropA11yRole, int32(p.Role))
 	}
-	if p.OnLink != nil {
-		e.handlers().link = p.OnLink
+	onLink := p.OnLink
+	if onLink == nil {
+		// In a Router, a link to one of the app's hrefs goes there.
+		if rt := UseRouter(); rt != nil {
+			onLink = func(u string) {
+				if strings.HasPrefix(u, "/") && rt.Takes(Href(u)) {
+					rt.Navigate(Href(u))
+					return
+				}
+				OpenURL(u)
+			}
+		}
+	}
+	if onLink != nil {
+		e.handlers().link = onLink
 		e.listen(ops.EventLink)
 	}
 	if p.Text == nil {

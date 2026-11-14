@@ -29,6 +29,7 @@ type buildOptions struct {
 	noVet        bool
 	version      string // asuka.json's version, for this build
 	publishing   bool   // asuka publish: the update files are required
+	base         string // web: the path the site is served at (asuka.json's web.base)
 }
 
 func buildFlags(o *buildOptions) *flagSet {
@@ -40,6 +41,7 @@ func buildFlags(o *buildOptions) *flagSet {
 	fs.String(&o.notarize, "notarize", 0, "", "macOS: notarize the signed app and staple the ticket: a notarytool keychain `profile` (xcrun notarytool store-credentials), or \"env\" for ASUKA_APPLE_ID, ASUKA_APPLE_PASSWORD (app-specific) and ASUKA_TEAM_ID")
 	fs.Bool(&o.simulator, "simulator", 0, "iOS: a release .app for the simulator instead (not signed for devices)")
 	fs.Bool(&o.xcframework, "xcframework", 0, "iOS: AsukaApp.xcframework, the app to embed in an app made in Xcode (import AsukaApp; AsukaViewController())")
+	fs.String(&o.base, "base", 0, "", "web: the `path` the site is served at, \"/app/\" for https://example.com/app/ (default: asuka.json's web.base, else \"/\")")
 	fs.String(&o.arch, "arch", 0, "", "Linux: amd64 or arm64 (default: this machine's, else amd64); Windows: amd64 or arm64 (default: amd64, which runs on Windows on Arm too)")
 	fs.Bool(&o.aar, "aar", 0, "Android: an .aar, the app to embed in an app made in Android Studio (start dev.asuka.AsukaActivity)")
 	fs.String(&o.distribution, "distribution", 0, "app-store", "iOS: app-store, ad-hoc or development")

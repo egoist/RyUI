@@ -40,6 +40,8 @@ type Destination struct {
 type SidebarSection struct {
 	Title        signal.Accessor[string] // nil: none
 	Destinations []Destination
+
+	group *rnode // a Router's: the group of routes it shows
 }
 
 // SplitViewProps configures a SplitView.
@@ -52,6 +54,17 @@ type SplitViewProps struct {
 	// it. nil: the first, kept by the view.
 	Selected *signal.Signal[int]
 	Style    Styler
+
+	// routed is a Router's split view: it shows the destinations' screens
+	// in the detail stack itself.
+	routed *splitRouting
+}
+
+// splitRouting is how a Router drives a SplitView: it's given the detail
+// stack as it's made, and told of the user's choices.
+type splitRouting struct {
+	stack  func(st *stackState)
+	chosen func(i int)
 }
 
 // SplitView is an app's top level navigation, many destinations in a
@@ -94,10 +107,16 @@ func SplitView(p SplitViewProps) Node {
 		sel = signal.New(0)
 	}
 	detail, st := newStack(nil, ScreenOptions{}, nil)
+	if p.routed != nil {
+		p.routed.stack(st)
+	}
 	shown := -1 // the destination the stack shows
 	signal.RenderEffect(func() {
 		i := sel.Get()
 		r.batch.SetInt(e.id, ops.PropSplitSelected, int64(i))
+		if p.routed != nil {
+			return // the Router shows it
+		}
 		if i == shown || i < 0 || i >= len(all) {
 			return
 		}
@@ -116,7 +135,12 @@ func SplitView(p SplitViewProps) Node {
 			return struct{}{}
 		})
 	})
-	e.handlers().selected = func(i int64) { sel.Set(int(i)) }
+	e.handlers().selected = func(i int64) {
+		sel.Set(int(i))
+		if p.routed != nil {
+			p.routed.chosen(int(i))
+		}
+	}
 	e.listen(ops.EventSelected)
 	e.appendKid(detail.e)
 	return Node{e}

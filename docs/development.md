@@ -297,6 +297,10 @@ It reports:
 - **mainthread**: a signal written on a goroutine instead of in
   `ui.Post`. See [The main thread](concepts.md#the-main-thread).
 - **memowrites**: a signal written inside a memo, which panics.
+- **routes**: a constant href no route of the app's takes (a link with a
+  typo, to a route that moved), which shows the not-found screen, and a
+  `ui.HrefOf` given the wrong number of values. See [Typed
+  links](navigation.md#typed-links).
 
 ```
 $ asuka vet

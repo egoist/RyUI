@@ -11,6 +11,9 @@
 //	choose <text>  the item with that text of a picker or wheel showing (a <select>)
 //	dump           what the screen shows: a text a line
 //	reload         the page loads again: the app relaunches
+//	history <n>    the browser's back (-1) or forward (1), n entries
+//	visit <path>   the page opens at the app's path, as a link pasted
+//	location       the page's address: its path and query under its base
 //
 // It answers with what dump read, or an error.
 
@@ -40,6 +43,9 @@ export async function run(h, commands) {
         // Once what it wrote is kept, as an app's files are on a disk.
         flush().then(() => location.reload());
         break;
+      case "history": history.go(Number(arg) || -1); break;
+      case "visit": location.assign(new URL(arg.replace(/^\//, ""), document.baseURI).href); break;
+      case "location": out = location.pathname + location.search + "\n"; break;
       default: throw new Error("unknown automation command: " + cmd);
     }
     await new Promise((r) => setTimeout(r, 0));

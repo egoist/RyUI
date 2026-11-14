@@ -26,8 +26,12 @@ const (
 
 // ViewProps configures a View.
 type ViewProps struct {
-	Style       Styler
-	OnPress     func()
+	Style   Styler
+	OnPress func()
+	// Href makes the view a link: pressing it (after OnPress) goes to
+	// Href in the Router it's in (RouterHandle.Navigate), and screen
+	// readers say it's a link (unless Role says otherwise).
+	Href        Href
 	OnLongPress func()
 	// Gestures, with the platform's recognizers: a pan (drag), a pinch,
 	// and swipes in any direction.
@@ -210,6 +214,12 @@ func addKids(e *element, kids []Node) {
 // props it makes no native view: its children are placed in the nearest
 // ancestor that has one.
 func View(p ViewProps, children ...Node) Node {
+	if p.Href != "" {
+		p.OnPress = hrefPress(p.OnPress, p.Href)
+		if p.Role == RoleNone {
+			p.Role = RoleLink
+		}
+	}
 	real := p.OnPress != nil || p.OnLongPress != nil || hasText(p.Label) || hasText(p.Hint) || hasText(p.Tooltip) || p.Role != RoleNone || p.Decorative || p.OnLayout != nil ||
 		len(p.Actions) > 0 || p.OnAdjust != nil || len(p.Keys) > 0 ||
 		p.OnPan != nil || p.OnPinch != nil || p.OnSwipe != nil || p.OnRotate != nil || p.interactive()
@@ -415,6 +425,9 @@ const (
 type ButtonProps struct {
 	Title   signal.Accessor[string]
 	OnPress func()
+	// Href goes to Href when the button is pressed (after OnPress), in the
+	// Router it's in (RouterHandle.Navigate).
+	Href Href
 	// Menu shows these actions when the button is tapped (instead of
 	// OnPress).
 	Menu    []Action
@@ -435,6 +448,9 @@ type ButtonProps struct {
 
 // Button is the platform's button.
 func Button(p ButtonProps) Node {
+	if p.Href != "" {
+		p.OnPress = hrefPress(p.OnPress, p.Href)
+	}
 	e := newElement(ops.KindButton, true)
 	e.measure()
 	e.setStyle(p.Style, true)

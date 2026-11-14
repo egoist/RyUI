@@ -111,6 +111,13 @@ Phase 2 is an API addition, and needs its own review against
 DESIGN.md's navigation section; it's sketched here so phase 1 doesn't
 make choices it would have to undo.
 
+Phase 2 has since been built another way, as URL routes (`ui.Router`,
+DESIGN.md's "Routes"): a screen is a route's pattern and parameters, not
+a registered type, so its state serializes to an href and JSON, and it
+comes back after `asuka dev`'s reloads, a browser's reload, a desktop
+window's next launch and from a link. Replay remains for screens pushed
+with a Navigator.
+
 ## Testing
 
 With the fake host (ui's and internal/remote's tests):

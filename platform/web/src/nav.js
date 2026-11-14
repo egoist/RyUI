@@ -32,6 +32,12 @@
 // Alt+Left (⌘[ on a Mac) and a swipe from the leading edge on touch
 // screens: it closes the newest dialog, or pops the innermost stack.
 //
+// With a Router (history.js), the address bar shows the screen and each
+// step of the router's navigation is an entry of the page's history: its
+// stacks and sheets (Routed) go back through it, and the entry standing
+// for the app's back is kept only for what the router doesn't route (an
+// Alert, a Sheet of its own, a Stack outside it).
+//
 // Screens, sheets, popovers and windows are sized by the host, which
 // reports each one's Environment.
 
@@ -46,6 +52,7 @@ import { symbolSVG } from "./media.js";
 import { decodeSidebar, sameShape, badgeNumber } from "./sidebar.js";
 import * as text from "./text.js";
 import { snackbarKind, presentSnackbar, placeSnackbar } from "./snackbar.js";
+import { RouteHistory, decodeLocation, encodeLocationEvent } from "./history.js";
 
 const headerHeight = 52;
 const searchHeight = 48;
@@ -78,7 +85,8 @@ export class Navigation {
     this.dialogs = []; // shown sheets, alerts, popovers and windows, oldest first
     this.guard = false; // a history entry stands for the app's back
     this.words = {};
-    addEventListener("popstate", () => this.popstate());
+    this.routes = null; // the main window's Router's address (history.js)
+    addEventListener("popstate", (e) => this.popstate(e));
     addEventListener("keydown", (e) => this.key(e));
     addEventListener("pointerdown", (e) => this.pressOutside(e), true);
     this.edgeSwipe();
@@ -152,7 +160,19 @@ export class Navigation {
     // The safe area it overlaps: the root's insets less how far it is from each edge.
     const c = this.h.container.getBoundingClientRect();
     const r = (el || n.el).getBoundingClientRect();
-    const dt = r.top - c.top, dl = r.left - c.left, db = c.bottom - (r.top + h), dr = c.right - (r.left + w);
+    // Where it rests: a dialog sliding in (or out) is measured without the
+    // animation's translation, so its environment is its place's.
+    let x = r.left, y = r.top;
+    const d = (el || n.el).closest?.("dialog");
+    if (d) {
+      const t = getComputedStyle(d).transform;
+      if (t && t !== "none") {
+        const m = new DOMMatrixReadOnly(t);
+        x -= m.m41;
+        y -= m.m42;
+      }
+    }
+    const dt = y - c.top, dl = x - c.left, db = c.bottom - (y + h), dr = c.right - (x + w);
     e.safeTop = Math.max(0, e.safeTop - dt);
     e.safeLeft = Math.max(0, e.safeLeft - dl);
     e.safeBottom = Math.max(0, e.safeBottom - db);
@@ -1082,20 +1102,20 @@ export class Navigation {
 
   // --- Back ---
 
-  /** canGoBack: there's a dialog to close or a stack to pop. */
-  canGoBack() {
-    if (this.dialogs.length) return true;
-    return !!this.innermostStack();
+  /** canGoBack: there's a dialog to close or a stack to pop (unrouted: one a Router doesn't route). */
+  canGoBack(unrouted) {
+    if (this.dialogs.some((d) => !(unrouted && d.routed))) return true;
+    return !!this.innermostStack(unrouted);
   }
 
-  /** innermostStack is the innermost shown stack that can pop. */
-  innermostStack() {
+  /** innermostStack is the innermost shown stack that can pop (unrouted: of those a Router doesn't route). */
+  innermostStack(unrouted) {
     let found = null;
     const visit = (n) => {
       if (!n) return;
       if (n.kind === Kind.Tabs) { visit(n.children[n.tabs.selected]); return; }
       if (n.kind === Kind.Stack) {
-        if (this.live(n) > 1) found = n;
+        if (this.live(n) > 1 && !(unrouted && n.routed)) found = n;
         visit(this.topScreen(n));
         return;
       }
@@ -1208,7 +1228,12 @@ export class Navigation {
   updateGuard() {
     if (!this.h.options.fullPage) return;
     queueMicrotask(() => {
-      const want = this.canGoBack() || !!this.h.root?.interceptBack;
+      // What a Router routes goes back through its own entries.
+      const want = this.canGoBack(true) || !!this.h.root?.interceptBack;
+      if (this.routes) {
+        this.routes.guard(want);
+        return;
+      }
       if (want && !this.guard && !this.dropping) {
         history.pushState({ asuka: true }, "");
         this.guard = true;
@@ -1221,7 +1246,11 @@ export class Navigation {
     });
   }
 
-  popstate() {
+  popstate(e) {
+    if (this.routes) {
+      if (!this.leaving) this.routes.popstate(e);
+      return;
+    }
     if (this.dropping) {
       this.dropping = false;
       this.updateGuard(); // something to go back to came meanwhile
@@ -1234,6 +1263,58 @@ export class Navigation {
       this.back();
       this.updateGuard();
     });
+  }
+
+  /**
+   * location follows a Router's Location command: the main window's goes
+   * to the page's address and history (a page the app fills; an app in an
+   * element of a page keeps it to itself), a Window panel's is kept with
+   * where the panel was (its StateKey's, in localStorage).
+   */
+  location(n, args) {
+    const l = decodeLocation(args);
+    if (n.kind === Kind.Window) {
+      const k = l.window;
+      if (k) try { localStorage.setItem(this.h.prefix() + "route." + k, JSON.stringify({ href: l.href, state: l.state })); } catch {}
+      return;
+    }
+    this.mainRoute = { href: l.href, state: l.state };
+    this.mainID = n.id;
+    if (!this.h.options.fullPage) return;
+    if (!this.routes) {
+      this.routes = new RouteHistory(window, {
+        located: (href, state) => {
+          this.mainRoute = { href, state };
+          this.h.dispatch(Events.location(this.mainID, encodeLocationEvent(href, state)));
+        },
+        guardBack: () => this.h.afterCore(() => { this.back(); this.updateGuard(); }),
+      });
+      // The guard of before (a dialog open as the router mounted) goes.
+      if (this.guard && history.state?.asuka === true) this.guard = false;
+    }
+    this.routes.apply(l);
+  }
+
+  /**
+   * savedLocation is where a window's Router was left (host.Locator): the
+   * main window's, the page's address and the state its entry kept; a
+   * Window panel's, what its StateKey kept. null: none.
+   */
+  savedLocation(key) {
+    const main = !key || key === (this.mainKey || "main");
+    if (main) {
+      if (this.routes) return this.routes.location();
+      if (!this.h.options.fullPage) return this.mainRoute || null;
+      const st = history.state?.asuka;
+      const r = new RouteHistory(window, { located() {}, guardBack() {} });
+      return { href: r.href(), state: (st && typeof st === "object" && st.route) || "" };
+    }
+    try {
+      const v = localStorage.getItem(this.h.prefix() + "route." + key);
+      return v ? JSON.parse(v) : null;
+    } catch {
+      return null;
+    }
   }
 
   /** edgeSwipe: a touch from the leading edge, moving across, goes back in the innermost stack. */
@@ -1289,6 +1370,9 @@ function showAccessory(h, a, on) {
 // --- The kinds ---
 
 const stack = {
+  prop(h, n, p, v) {
+    if (p === P.Stack.Routed) { n.routed = !!v; h.nav.updateGuard(); }
+  },
   create(h, n) {
     const el = own(n, div("asuka-stack"));
     const bar = div("asuka-bar");
@@ -1539,6 +1623,7 @@ const sheet = {
     if (p === P.Sheet.Grabber) n.grabber = !!v;
     if (p === P.Sheet.Window) n.winID = v; // the window it's declared in: the root's, a Window's
     if (p === P.Sheet.FullScreen) n.fullScreen = !!v; // before Present
+    if (p === P.Sheet.Routed) n.routed = !!v; // a Router's: the history goes back from it
   },
   frame() { return true; },
   destroy(h, n) {

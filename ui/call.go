@@ -3,6 +3,7 @@ package ui
 import (
 	"encoding/binary"
 	"errors"
+	"slices"
 
 	"github.com/egoist/asuka/internal/fileurl"
 	"github.com/egoist/asuka/ops"
@@ -103,9 +104,11 @@ var (
 
 // OnOpenURL calls f with each URL the app is opened with: its scheme
 // (asuka.json's "scheme", myapp://...), or a universal or app link
-// (asuka.json's "links"), at launch or since. A URL that came before any
-// handler (the one the app launched with) goes to the first. It stops
-// with the component's owner. Main thread.
+// (asuka.json's "links"), at launch or since, that no Router's route
+// takes (a Router goes to those itself). A URL that came before any
+// handler (the one the app launched with) goes to the first, once the
+// app is mounted (a Router mounted with it has it first). It stops with
+// the component's owner. Main thread.
 //
 // Files are OnOpenFiles', not its: a file:// URL never comes here.
 func OnOpenURL(f func(url string)) {
@@ -113,10 +116,34 @@ func OnOpenURL(f func(url string)) {
 	urlHandlers = append(urlHandlers, p)
 	signal.OnCleanup(func() { urlHandlers = without(urlHandlers, p) })
 	if pendingURL != "" {
-		u := pendingURL
-		pendingURL = ""
-		f(u)
+		afterBuild(func() {
+			if pendingURL == "" || !slices.Contains(urlHandlers, p) {
+				return
+			}
+			u := pendingURL
+			pendingURL = ""
+			if !routeURL(u) {
+				f(u)
+			}
+		})
 	}
+}
+
+// building counts the roots being built (Mount); built is what waits for
+// them to be (afterBuild).
+var (
+	building int
+	built    []func()
+)
+
+// afterBuild runs f once the root being mounted is built (now, if none
+// is): a launch URL waits for the Routers mounted with it.
+func afterBuild(f func()) {
+	if building > 0 {
+		built = append(built, f)
+		return
+	}
+	f()
 }
 
 // fileHandlers get the files the app is opened with; pendingFiles are
@@ -183,6 +210,9 @@ func incoming(s string) {
 }
 
 func openURL(url string) {
+	if routeURL(url) {
+		return
+	}
 	if len(urlHandlers) == 0 {
 		pendingURL = url
 		return

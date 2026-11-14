@@ -70,6 +70,8 @@ func (h *Host) command(n *node, c ops.CommandID, args []byte) {
 		if w := h.winFor(n); w != nil {
 			h.windowAction(w, args)
 		}
+	case ops.CmdLocation:
+		h.location(args)
 	case ops.CmdWindowTitle:
 		if h.main != nil {
 			h.main.name = string(args)

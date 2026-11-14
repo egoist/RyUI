@@ -118,6 +118,8 @@ func (h *Host) command(n *node, c ops.CommandID, args []byte) {
 		h.windowAction(n, args)
 	case ops.CmdWindowTitle:
 		h.setWindowTitle(string(args))
+	case ops.CmdLocation:
+		h.location(args)
 	case ops.CmdLocale:
 		h.setLocale(args)
 	case ops.CmdSaveLocale:

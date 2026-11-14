@@ -162,3 +162,27 @@ func keepSignal[T any](s *Signal[T], equal func(a, b T) bool) {
 		delete(used, i)
 	})
 }
+
+// KeepValue keeps a value of Asuka's own across asuka dev's reloads, as
+// signals are kept, under key, which the caller makes unique (the
+// router's: its window's): save gives it, as JSON, when the state is
+// saved, and it's returned, with ok, to the same key in the next run.
+// The value goes with the current owner. Off in a built app: it returns
+// nothing and keeps nothing. Main thread.
+func KeepValue(key string, save func() []byte) (saved []byte, ok bool) {
+	k := keep
+	if k == nil {
+		return nil, false
+	}
+	key = "asuka:" + key
+	saved, ok = k.saved[key]
+	if ok {
+		delete(k.saved, key)
+	}
+	k.live[key] = func() ([]byte, bool) {
+		b := save()
+		return b, len(b) > 0 && json.Valid(b)
+	}
+	OnCleanup(func() { delete(k.live, key) })
+	return saved, ok
+}

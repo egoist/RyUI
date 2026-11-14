@@ -861,6 +861,8 @@ final class AsukaTextField: UITextField {
             setAccent(asukaColor(r.u64()))
         case .menuBar, .windowOptions, .windowTitle, .windowAction:
             break // desktop hosts' (a phone has no menu bar or windows)
+        case .location:
+            break // a Router's address: the web's and the desktops' (a phone has no address bar, and its windows don't come back where they were)
         case .locale:
             setLocale(args)
         case .saveLocale:

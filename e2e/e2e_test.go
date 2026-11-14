@@ -571,6 +571,53 @@ func TestNavigationWeb(t *testing.T) {
 	waitFor(t, s, []string{"Inbox", "2"}, "3")
 }
 
+// TestRoutesWeb: the address bar shows the screen (a router's); a reload
+// comes back to it, the inbox under it; the browser's back and forward
+// go through the stack and the tabs; a link pasted opens its screens.
+func TestRoutesWeb(t *testing.T) {
+	s := webApp(t, "navigation")
+	waitFor(t, s, []string{"Message 20"})
+	waitLocation(t, s, "/inbox")
+	s.tap("Message 20")
+	waitFor(t, s, []string{"No note yet."}, "Message 19")
+	waitLocation(t, s, "/inbox/20")
+	s.relaunch()
+	waitFor(t, s, []string{"Message 20", "No note yet."})
+	s.command("history -1")
+	waitFor(t, s, []string{"Message 19"}, "No note yet.")
+	waitLocation(t, s, "/inbox")
+	s.command("history 1")
+	waitFor(t, s, []string{"No note yet."}, "Message 19")
+	s.command("tab Settings")
+	waitLocation(t, s, "/settings")
+	s.command("history -1")
+	waitFor(t, s, []string{"No note yet."}, "Notifications")
+	s.command("visit /inbox/18/reply")
+	time.Sleep(time.Second) // the page goes; the next command waits for the new one
+	waitFor(t, s, []string{"To: Ada", "Covers the screen"})
+	s.tap("Cancel")
+	waitFor(t, s, []string{"Message 18", "No note yet."}, "To: Ada")
+	waitLocation(t, s, "/inbox/18")
+	s.command("back")
+	waitFor(t, s, []string{"Message 19"}, "No note yet.")
+	waitLocation(t, s, "/inbox")
+}
+
+// waitLocation waits for the page's address to be path.
+func waitLocation(t *testing.T, s *webScreen, path string) {
+	t.Helper()
+	var got string
+	for range 100 {
+		if out, err := s.post("location"); err == nil {
+			if got = strings.TrimSpace(out); got == path {
+				return
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatalf("the page's address is %q, not %q", got, path)
+}
+
 // TestToolbarWeb: the inbox's primary action, a floating button, composes a
 // message; a message's bottom bar has its toolbar's buttons, which follow
 // the app's state, one opening a menu, and its primary action.

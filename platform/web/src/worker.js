@@ -12,6 +12,7 @@
 //     (notify.Present).
 //   - "closed": a notification the user dismissed.
 
+import { appURL } from "./history.js";
 import "./notify-core.js";
 import { Events } from "./ops.js";
 
@@ -127,7 +128,7 @@ export function receive(m, port) {
     case "response":
       c.actions.deliver(json(m.response));
       if (m.push) c.opened.deliver(json(m.push));
-      if (m.url) whenConnected(h, () => h.dispatch(Events.incomingURL(0, m.url)));
+      if (m.url) whenConnected(h, () => h.dispatch(Events.incomingURL(0, appURL(m.url))));
       break;
     case "received":
       c.received.deliver(json(m.message));

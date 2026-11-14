@@ -56,7 +56,15 @@ The flags, beside `asuka dev`'s own (`--lang`, `--dir`, `--no-vet`, `-v`):
 - a gzipped copy of each script and of the wasm (`.gz`), for servers that
   serve precompressed files;
 - `_headers`, which Cloudflare and Netlify read: `index.html` and the
-  manifest `no-cache`, the files named by their digests cached for good.
+  manifest `no-cache`, the files named by their digests cached for good;
+- `_redirects`, which Netlify reads: a path with no file is the app's
+  page, so a [router](#addresses-and-history)'s addresses open the app.
+
+`index.html`'s `<base href>` is the path the site is served at: `/` by
+default, else `asuka.json`'s `web.base` or `--base` (`"/app/"` for
+`https://example.com/app/`). The page finds its files from any address
+under it, and a router's hrefs are the page's addresses under it
+(`/chat/7` is `https://example.com/app/chat/7`).
 
 Serve the folder from any web server or CDN: the files named by their
 content's digest change name when they change, so they can be cached for
@@ -64,6 +72,58 @@ good, and only `index.html` must be fetched again. Serve `.wasm` as
 `application/wasm`. A counter is about 6.5 MB of WebAssembly, 1.7 MB
 gzipped (1.3 MB with brotli, which your CDN can do); the app's own code
 and the packages it imports add to that.
+
+## Addresses and history
+
+With a [`ui.Router`](navigation.md#routes), the page's address is the
+screen shown: real paths under the site's base, with `pushState` and
+`replaceState`, not a `#` fragment. Each step of the router's navigation
+is an entry of the page's history, keeping the router's whole state
+(each stack's screens, each tab's, the sheets), so:
+
+- the browser's back and forward go back and forward through the
+  stacks, the tabs and the sheets, to the screens each entry stood for;
+  the browser's back asks a screen's or a sheet's `ui.OnBack` first, and
+  when it takes it, the page stays where it was;
+- a reload comes back to the same screens, the ones under the top
+  included; a link pasted, or opened from elsewhere, builds the screens
+  it stands for ([The screens under a link](navigation.md#the-screens-under-a-link));
+- the page's title follows the top screen's title (`Title · App`).
+
+The history moves as react-navigation's linking moves it: a navigation
+that goes deeper (a push, a sheet, another tab than the first) pushes an
+entry; one that goes back goes back to the latest entry with its
+address (or, when the history never had it, a deep link's screens popped
+one by one, replaces the entry); the rest replace it (a `Replace`, a
+redirect, a guard sending the user elsewhere, between tabs other than
+the first, `SetQuery`). The in-app back button, Escape and Alt+Left pop
+the stack and go back in the history with it. An Alert, a `Sheet` of the
+app's own and a stack the router doesn't route keep their own entry for
+the browser's back, as without a router.
+
+An app in an element of a page ([Embedding](#embedding)) leaves the
+page's address alone: its router's address stays its own. A router in a
+`Window` panel keeps its address with the panel's `StateKey`, in
+`localStorage`. A notification's URL of the app's own site opens its
+screen.
+
+### Serving every address
+
+A reload or a pasted link asks the server for the address itself
+(`/app/chat/7`), which has no file: the server must answer with the
+app's `index.html`. `asuka dev --platform web` does. For the static
+site:
+
+| | |
+|---|---|
+| Netlify | `_redirects`, which the build writes |
+| Cloudflare Pages | nothing: a site with no `404.html` is served as a single-page app (it warns that `_redirects`' rule loops, and ignores it) |
+| Vercel | `vercel.json`: `{"rewrites": [{"source": "/(.*)", "destination": "/index.html"}]}` (under the base) |
+| Firebase Hosting | `firebase.json`'s `hosting.rewrites`: `[{"source": "**", "destination": "/index.html"}]` |
+| GitHub Pages | a copy of `index.html` as `404.html` (served, with a 404 status, for any address); `web.base` set to the repository's path for a project site |
+| nginx | `try_files $uri /app/index.html;` in the site's `location /app/` |
+| Caddy | `try_files {path} /app/index.html` in its `file_server` block |
+| S3 and CloudFront | the distribution's error pages: 403 and 404 answered with `/index.html`, status 200 |
 
 ## What the page reports
 
@@ -94,7 +154,8 @@ The environment a web app sees (`ui.UseEnvironment`) is the browser's:
   a phone's back gesture) goes back in the app while there's somewhere to
   go back to, as do Escape, Alt+Left (⌘[ on a Mac), and a swipe from the
   leading edge on a touch screen. `ui.OnBack` takes them as on the other
-  platforms.
+  platforms. With a router, the address bar shows the screen and the
+  history is its navigation's ([Addresses and history](#addresses-and-history)).
 - `Tabs` are a tab bar at the bottom; a `SplitView` a sidebar beside its
   detail, or a drawer the detail's header opens on a narrow window.
 - A `Sheet` is a modal `<dialog>`: a bottom sheet on a narrow window

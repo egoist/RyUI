@@ -79,7 +79,9 @@ draws its own UI, see [Asuka and MyGo](mygo.md).
 | Popovers | `.popover` | — | ✓ `Popover` (a popover on iPhone too) |
 | Alerts, action sheets | `.alert`, `.confirmationDialog` | `Alert` | ✓ `Alert` (both styles; an alert's text fields: `Fields`, a password's `Secure`, buttons following them through `Disabled`) |
 | Snackbars, toasts (a brief message with Undo) | — | community (react-native-paper's `Snackbar`) | ✓ `Snackbar` (Material's on Android, `AdwToast` on Linux; drawn as the platform's on iOS, macOS, Windows and the web) |
-| Deep links, universal and app links | `.onOpenURL` | Linking | ✓ `OnOpenURL`, `asuka.json` scheme and links |
+| Deep links, universal and app links | `.onOpenURL` | Linking | ✓ a `Router` goes to its routes' links itself (the scheme's, universal and app links, notifications' URLs); `OnOpenURL` for the rest; `asuka.json` scheme and links |
+| URL routes: path patterns, nested navigators, an initial route under a link, redirects, guards, not found | `NavigationPath` with `Codable` values | expo-router (`[id]`, `[...rest]`, `unstable_settings`, `<Redirect>`, `Stack.Protected`, `+not-found`) | ✓ `Router` and `Route` (`:id`, `*rest`, `Initial`, `Redirect`, `Guard`, `NotFound`; stacks, tabs, split views, slots and sheets as routes), `Navigate`, `Push`, `Replace`, `Back`, `SetQuery`, `NavLink` and `Href` on views and buttons; the state restores from its address (a reload, a desktop window's last run, `asuka dev`'s reloads) |
+| Typed links | `NavigationPath` values | typed routes (generated `.d.ts`) | ✓ `asuka vet`'s `routes` (a constant href no route takes, `HrefOf`'s values); `ui.HrefOf` fills a route's pattern |
 | Pull to refresh, swipe actions | `.refreshable`, `.swipeActions` | `RefreshControl` | ✓ (both edges: `SwipeActions`, `LeadingSwipeActions`) |
 
 ## Motion

@@ -330,3 +330,15 @@ func (w webNative) Start(h uint64, method uint32, in []byte, call uint64) {
 
 func (w webNative) Cancel(call uint64) { w.h.js.Call("nativeCancel", float64(call)) }
 func (w webNative) Release(h uint64)   { w.h.js.Call("nativeRelease", float64(h)) }
+
+// Location implements host.Locator: the main window's is the page's
+// address (under its base) and the state its history entry kept; a
+// Window panel's, what its StateKey kept (platform/web/src/history.js).
+func (h *Host) Location(window string) (string, []byte, bool) {
+	v := h.js.Call("location", window)
+	if v.Type() != js.TypeObject {
+		return "", nil, false
+	}
+	href, state := v.Index(0).String(), v.Index(1).String()
+	return href, []byte(state), href != "" || state != ""
+}

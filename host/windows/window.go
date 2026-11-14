@@ -443,6 +443,9 @@ func (h *Host) applyFonts() {
 }
 
 func (h *Host) lifecycle(s ops.Lifecycle) {
+	if s == ops.LifecycleBackground {
+		routeStore().Flush()
+	}
 	if h.root == nil {
 		return
 	}

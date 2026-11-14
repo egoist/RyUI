@@ -178,7 +178,9 @@ var Schema = SchemaDef{
 		{Name: "Activity", Props: []PropDef{
 			{Name: "Animating", Type: TBool},
 		}},
-		{Name: "Stack", Doc: "a navigation stack; its children are Screens: an Insert pushes, a Destroy pops (animated when it's the top). A pop the user makes (back gesture, back button) is reported with Popped, the screen's ID"},
+		{Name: "Stack", Props: []PropDef{
+			{Name: "Routed", Type: TBool, Doc: "a Router's stack: its screens have addresses, and the web's history follows the router's Location commands, so the web host keeps no back entry of its own for it"},
+		}, Doc: "a navigation stack; its children are Screens: an Insert pushes, a Destroy pops (animated when it's the top). A pop the user makes (back gesture, back button) is reported with Popped, the screen's ID"},
 		{Name: "Screen", Props: []PropDef{
 			{Name: "Title", Type: TString},
 			{Name: "Actions", Type: TBytes, Doc: "bar buttons, encoded as Menu: a disabled one is dimmed, one with a submenu opens it as a menu (SwiftUI's Menu in a toolbar); Action events carry the item's number"},
@@ -203,6 +205,7 @@ var Schema = SchemaDef{
 			{Name: "Grabber", Type: TBool},
 			{Name: "Window", Type: TInt, Doc: "the window it's declared in: the root's or a Window node's ID. A desktop host presents it on that window, and a key goes on from it to that window's root; a phone's one window takes it and ignores it"},
 			{Name: "FullScreen", Type: TBool, Doc: "it covers the whole screen (iOS's full-screen cover, Material's full-screen dialog; a desktop's sheet over all of its window's content, the web's dialog over the viewport), sent before Present: Detents and Grabber don't apply, and no swipe or tap outside dismisses it"},
+			{Name: "Routed", Type: TBool, Doc: "a Router's sheet, a route of its own: as Stack's Routed, the web keeps no back entry of its own for it"},
 		}, Doc: "a modal sheet with one child, its content: Present shows it, Destroy dismisses it; the user's dismissal is reported with Dismissed. Sized by the host, which reports its Environment"},
 		{Name: "Alert", Props: []PropDef{
 			{Name: "Title", Type: TString},
@@ -393,6 +396,7 @@ var Schema = SchemaDef{
 		{Name: "CloseRequest", Payload: PNone, Doc: "the user asked to close a window (its close button, a shortcut, the taskbar's or Dock's menu) while the core listens for this on its Window node or, for the main window, the root: the window stays open, and the core closes it (a Window: Destroy; the main window: WindowAction Close) if the app lets it"},
 		{Name: "Key", Payload: PInt, Doc: "a key of the view's Keys went down, or repeated, while the keyboard's focus was in it: its index"},
 		{Name: "FieldChanged", Payload: PBytes, Doc: "the user changed the text of an Alert's field (ops.AppendFieldChanged, ops.DecodeFieldChanged): u32 the field's index, then a string, its text"},
+		{Name: "Location", Payload: PBytes, Doc: "the user went back or forward in the browser's history to an entry a Router made, or one a Window's router left (ops.AppendLocationEvent): u32-length href (the app's path and query, /chat/7?tab=info), u32-length state (the router's, as its Location command sent it; empty: none, build it from the href); to the root, or the Window node"},
 	},
 	Commands: []CommandDef{
 		{Name: "Focus"},
@@ -430,6 +434,7 @@ var Schema = SchemaDef{
 		{Name: "BackExit", Doc: "sent to the root: the app's OnBack handlers let the user's back go on from the root, so the host does what the system would have (Android's back: the activity finishes or goes to the background)"},
 		{Name: "Replace", Doc: "sent to a Stack: its screens destroyed after it, and the screen inserted next (its new first), change at once, with no pop or push: a SplitView's destination changing"},
 		{Name: "WindowAction", Doc: "args: u8 WindowAction, then for Size and Fit f32 width, height (its content's, points; Fit: what its content measures, for a window sized to it, which a flyout is placed again at and a panel grows down from its top at) and for Position f32 x, y (its frame's top left, points from the main display's top left); sent to a Window node or, for the main window, the root (desktop and the web; mobile hosts have none)"},
+		{Name: "Location", Doc: "args (ops.AppendLocation): u8 LocationAction, i32 delta (Back: how many entries back, negative), u32-length href (the app's path and query, /chat/7?tab=info), u32-length state (the router's navigation state, which it reads back), u32-length window key (its StateKey, main for the main window unless it names another; empty: none); sent to the root (the main window) or a Window node as a Router's screens change: the web shows the href in the address bar and keeps the state in the history entry (Push a new entry, Replace this one's, Back to an earlier one, Forward to the one the user left: a back the app refused); a desktop host keeps the last one with where the window was, and gives it back as the window opens again (host.Locator); a phone ignores it"},
 	},
 	Enums: []EnumDef{
 		{Name: "Role", Values: []string{"None", "Button", "Header", "Image", "Link", "Text", "Search"}},
@@ -466,5 +471,6 @@ var Schema = SchemaDef{
 		{Name: "Placement", Values: []string{"Bottom", "BottomStart", "BottomEnd", "Top", "TopStart", "TopEnd", "Right", "RightStart", "RightEnd", "Left", "LeftStart", "LeftEnd"}},
 		{Name: "TitleBar", Values: []string{"Default", "Hidden"}},
 		{Name: "SnackbarDuration", Values: []string{"Short", "Long", "Indefinite"}},
+		{Name: "LocationAction", Values: []string{"Replace", "Push", "Back", "Forward"}},
 	},
 }

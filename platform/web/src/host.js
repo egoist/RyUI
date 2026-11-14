@@ -216,6 +216,12 @@ export class Host {
     this.postChannel.port2.postMessage(0);
   }
 
+  /** location is where the window keyed key was left, for its Router (host.Locator): [href, state], or null. */
+  location(key) {
+    const l = this.nav.savedLocation(key);
+    return l ? [l.href, l.state || ""] : null;
+  }
+
   /** savedState: asuka dev's signal values from the last build (null: not dev). */
   savedState() {
     if (!this.options.dev) return null;
@@ -724,6 +730,7 @@ export class Host {
         break;
       case Command.WindowOptions: {
         const c = decodeWindowConfig(args);
+        this.nav.mainKey = c.stateKey || "main";
         this.windowTitle = c.title;
         this.nav.updateTitle();
         // Of the main window's options, a tab takes its title and its
@@ -774,6 +781,9 @@ export class Host {
         break;
       case Command.BackExit:
         this.nav.backExit();
+        break;
+      case Command.Location:
+        this.nav.location(n, args);
         break;
       case Command.A11yFocus:
         if (n.el) { if (!n.el.hasAttribute("tabindex")) n.el.tabIndex = -1; n.el.focus({ preventScroll: true }); }
