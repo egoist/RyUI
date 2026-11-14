@@ -1,9 +1,10 @@
 # Asuka and MyGo
 
-[MyGo](https://mygo.run) makes desktop apps in Go. Both are Go alone,
-and both call the desktop without cgo. They differ in where an app runs
-and, above all, in what shows its interface: MyGo draws it, or shows a
-web page; Asuka shows the platform's own widgets.
+[MyGo](https://mygo.run) makes desktop apps in Go, with phones coming
+soon. Both are Go alone, and both call the desktop without cgo. They
+differ in where an app runs and, above all, in what shows its
+interface: MyGo draws it, or shows a web page; Asuka shows the
+platform's own widgets.
 
 ## What shows the interface
 
@@ -50,7 +51,7 @@ What follows from it:
 
 | | MyGo | Asuka |
 |---|---|---|
-| Phones | — | iOS and Android |
+| Phones | coming soon | iOS and Android |
 | Desktops | Mac, Windows, Linux | Mac, Windows, Linux |
 | Browsers | its drawn UI, on a canvas with WebGL 2 | the page's DOM, from WebAssembly ([The web](web.md)) |
 
@@ -65,8 +66,8 @@ it, in one batch for the frame ([Concepts](concepts.md)).
 
 Use Asuka when:
 
-- the app is for phones, or for phones, desktops and the web from one
-  code base;
+- the app is for phones today, or for phones, desktops and the web from
+  one code base;
 - it should look and work as each platform's apps do: its controls, its
   text input, its accessibility, its navigation.
 

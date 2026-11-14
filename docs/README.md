@@ -129,6 +129,7 @@ browser.
 - [Compared to SwiftUI and Expo](parity.md): what Asuka has, and what it
   doesn't yet.
 - [Asuka and MyGo](mygo.md): the platform's widgets or UI drawn by the
-  framework, phones or the desktop alone, and when to use each.
+  framework, where each runs (MyGo's phones: coming soon), and when to
+  use each.
 - The Go API: `go doc -all github.com/egoist/asuka/ui`, and the other
   packages of the module.
