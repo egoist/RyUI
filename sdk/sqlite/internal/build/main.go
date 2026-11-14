@@ -23,7 +23,6 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
-	"github.com/egoist/asuka/plugin"
 	"io"
 	"log"
 	"net/http"
@@ -31,8 +30,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"sort"
 	"strings"
+
+	"github.com/egoist/asuka/internal/androidsdk"
+	"github.com/egoist/asuka/plugin"
 )
 
 // The SQLite release asuka/sdk/sqlite is built from.
@@ -292,48 +293,43 @@ func buildApple(sdk string, archs []string, min, installName string) func(target
 	}
 }
 
-func ndkBin() (string, error) {
-	var roots []string
+// ndkClang is the Android NDK's clang for this computer
+// (androidsdk: clang.exe on Windows): ANDROID_NDK_HOME's, else the
+// newest NDK in the SDK with a build for this computer.
+func ndkClang() (string, error) {
+	sys := androidsdk.Local()
 	if v := os.Getenv("ANDROID_NDK_HOME"); v != "" {
-		roots = append(roots, v)
-	}
-	sdks := []string{os.Getenv("ANDROID_HOME"), os.Getenv("ANDROID_SDK_ROOT")}
-	if home, err := os.UserHomeDir(); err == nil {
-		sdks = append(sdks, filepath.Join(home, "Library", "Android", "sdk"), filepath.Join(home, "Android", "Sdk"))
-	}
-	for _, s := range sdks {
-		if s == "" {
-			continue
+		if bin := sys.NDKBin(v); bin != "" {
+			return sys.Clang(bin), nil
 		}
-		vs, _ := filepath.Glob(filepath.Join(s, "ndk", "*"))
-		sort.Strings(vs)
-		for i := len(vs) - 1; i >= 0; i-- {
-			roots = append(roots, vs[i])
-		}
+		return "", fmt.Errorf("ANDROID_NDK_HOME (%s) has no build for %s", v, sys.HostTag())
 	}
-	for _, r := range roots {
-		bins, _ := filepath.Glob(filepath.Join(r, "toolchains", "llvm", "prebuilt", "*", "bin"))
-		if len(bins) > 0 {
-			return bins[0], nil
-		}
+	sdk := sys.SDK()
+	if sdk == "" {
+		return "", fmt.Errorf("no Android SDK: set ANDROID_HOME, or ANDROID_NDK_HOME")
 	}
-	return "", fmt.Errorf("no Android NDK: set ANDROID_NDK_HOME")
+	_, bin, err := sys.NDK(sdk)
+	if err != nil {
+		return "", err
+	}
+	return sys.Clang(bin), nil
 }
 
 func buildAndroid(triple string) func(target, string, string) error {
 	return func(t target, src, out string) error {
-		bin, err := ndkBin()
+		clang, err := ndkClang()
 		if err != nil {
 			return err
 		}
-		cc := filepath.Join(bin, triple+androidAPI+"-clang")
-		args := []string{"-shared", "-o", out, "-Wl,-soname,libasqlite.so", "-Wl,-z,max-page-size=16384",
+		// clang itself with the target, as the NDK's wrappers run it (on
+		// Windows a .cmd, through cmd.exe).
+		args := []string{"--target=" + triple + androidAPI, "-shared", "-o", out, "-Wl,-soname,libasqlite.so", "-Wl,-z,max-page-size=16384",
 			"-Wl,--gc-sections", "-Wl,--build-id=none", "-s"}
 		args = append(args, unixOptions...)
 		args = append(args, nativeOptions...)
 		args = append(args, common(src)...)
 		args = append(args, "-lm")
-		return run("", nil, cc, args...)
+		return run("", nil, clang, args...)
 	}
 }
 

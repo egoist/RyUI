@@ -13,6 +13,8 @@ import (
 
 // androidABIs are the ABIs a release build carries: phones (arm64), old
 // phones (armv7) and emulators and Chromebooks (x86_64).
+// clang is the NDK's target triple (its clang's --target, the API level
+// added).
 var androidABIs = []struct{ abi, goarch, goarm, clang string }{
 	{"arm64-v8a", "arm64", "", "aarch64-linux-android"},
 	{"armeabi-v7a", "arm", "7", "armv7a-linux-androideabi"},
@@ -203,12 +205,7 @@ func buildAndroidLibs(app *goApp, tc *androidToolchain, work string) (string, er
 	}
 	for _, a := range androidABIs {
 		out := filepath.Join(jni, a.abi, "libasuka.so")
-		env := []string{"GOOS=android", "GOARCH=" + a.goarch, "CGO_ENABLED=1",
-			"CC=" + filepath.Join(tc.ndkBin, a.clang+androidMinAPI+"-clang"),
-			"CGO_LDFLAGS=-Wl,-z,max-page-size=16384"}
-		if a.goarm != "" {
-			env = append(env, "GOARM="+a.goarm)
-		}
+		env := tc.cgoEnv(a.goarch, a.goarm, a.clang)
 		// The symbol table stays, for the native debug symbols: Gradle
 		// strips the libraries it packages (with the NDK the build names).
 		if err := tc.run(app.dir, env, "go", "build", "-buildmode=c-shared", "-trimpath", cfg.ldflagsStrip("-w"),

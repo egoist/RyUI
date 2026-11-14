@@ -1,2 +1,5 @@
 # Golden files and fixtures are compared byte for byte: never CRLF.
 ops/testdata/** -text
+# Windows runs gradlew.bat through cmd.exe, whose labels and gotos need
+# CRLF: kept as it is, on every system (the CLI embeds it).
+platform/android/gradlew.bat -text

@@ -81,7 +81,8 @@ func Stale(p *Package) ([]string, error) {
 }
 
 // Write writes the package's generated files where they changed, and
-// returns those it wrote.
+// returns those it wrote. A file that differs only in its line ends (a
+// Windows checkout's, CRLF by git's core.autocrlf) hasn't changed.
 func Write(p *Package) ([]string, error) {
 	files, err := Files(p)
 	if err != nil {
@@ -90,7 +91,7 @@ func Write(p *Package) ([]string, error) {
 	var wrote []string
 	for rel, b := range files {
 		path := filepath.Join(p.Dir, rel)
-		if old, err := os.ReadFile(path); err == nil && bytes.Equal(old, b) {
+		if old, err := os.ReadFile(path); err == nil && sameText(old, b) {
 			continue
 		}
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -103,4 +104,14 @@ func Write(p *Package) ([]string, error) {
 	}
 	sort.Strings(wrote)
 	return wrote, nil
+}
+
+// sameText reports whether a and b are the same text, CRLF and LF line
+// ends alike.
+func sameText(a, b []byte) bool {
+	if bytes.Equal(a, b) {
+		return true
+	}
+	crlf := []byte("\r\n")
+	return bytes.Equal(bytes.ReplaceAll(a, crlf, []byte("\n")), bytes.ReplaceAll(b, crlf, []byte("\n")))
 }

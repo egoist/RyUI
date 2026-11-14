@@ -17,7 +17,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -195,7 +194,7 @@ func (p *hostProcess) restart() error {
 	}
 	conn, exited := p.ctl.wait(p.run.proc.Pid, p.run.done, controlWait)
 	if exited && old != nil {
-		p.run = old
+		p.setRun(old)
 		return errors.New("the new build quit as it started (its output is above); the app keeps running the last one")
 	}
 	took := time.Since(began)
@@ -253,10 +252,20 @@ func (p *hostProcess) start(more []string) error {
 			c = exec.Command(p.wrap[0], args...)
 		}
 		c.Dir = p.app.dir // assets/ is served from here
-		// The listeners asuka dev keeps, from descriptor 3 on.
-		for i, l := range p.listeners {
+		// The listeners asuka dev keeps: handed over from descriptor 3 on,
+		// or relayed to the run's own.
+		for _, l := range p.listeners {
+			if l.relay != nil {
+				addr, err := loopbackAddr()
+				if err != nil {
+					return err
+				}
+				r.addrs = append(r.addrs, addr)
+				env = append(env, l.addrEnv+"="+addr)
+				continue
+			}
 			c.ExtraFiles = append(c.ExtraFiles, l.file)
-			env = append(env, fmt.Sprintf("%s=%d", l.env, 3+i))
+			env = append(env, fmt.Sprintf("%s=%d", l.env, 2+len(c.ExtraFiles)))
 		}
 		c.Env = env
 		c.Stdout, c.Stderr = os.Stdout, os.Stderr
@@ -277,14 +286,32 @@ func (p *hostProcess) start(more []string) error {
 		wait()
 		close(r.done)
 	}()
-	p.run = r
+	p.setRun(r)
 	return nil
+}
+
+// setRun makes r the running build (nil: none), which the relayed
+// listeners' connections go to from now on.
+func (p *hostProcess) setRun(r *hostRun) {
+	p.run = r
+	i := 0
+	for _, l := range p.listeners {
+		if l.relay == nil {
+			continue
+		}
+		addr := ""
+		if r != nil && i < len(r.addrs) {
+			addr = r.addrs[i]
+		}
+		l.relay.route(addr)
+		i++
+	}
 }
 
 // stop stops the running build: it saves its state and quits.
 func (p *hostProcess) stop() {
 	p.run.stop()
-	p.run = nil
+	p.setRun(nil)
 }
 
 // done is closed when the running build exits (nil when none runs).
@@ -295,35 +322,161 @@ func (p *hostProcess) done() <-chan struct{} {
 	return p.run.done
 }
 
-// inherit listens on addr for the app's runs, which take the listener
-// on a descriptor that the environment variable env names
-// (internal/remote): it stays across reloads.
-func (p *hostProcess) inherit(env, addr string) error {
+// inherit listens on addr for the app's runs (internal/remote), and
+// keeps the listener across reloads: a run takes it on a descriptor that
+// the environment variable env names. Where a process can't be handed a
+// listener (relayListeners), each run listens on a port of its own on
+// the loopback, which the environment variable addrEnv gives it, and
+// asuka dev relays each connection to the running one's.
+func (p *hostProcess) inherit(env, addrEnv, addr string) error {
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
+	}
+	at := ln.Addr().String()
+	if relayListeners {
+		p.listeners = append(p.listeners, inherited{addr: at, addrEnv: addrEnv, relay: newRelay(ln)})
+		return nil
 	}
 	f, err := ln.(*net.TCPListener).File()
 	ln.Close() // f is a copy
 	if err != nil {
 		return err
 	}
-	p.listeners = append(p.listeners, inherited{env: env, file: f})
+	p.listeners = append(p.listeners, inherited{addr: at, env: env, file: f})
 	return nil
 }
+
+// relayListeners: a run can't be handed a listener on Windows (Go has no
+// net.FileListener there, nor exec.Cmd.ExtraFiles), so asuka dev relays.
+var relayListeners = runtime.GOOS == "windows"
 
 // inheritRemote keeps the player's port, and the assets' after it, for
 // the runs (internal/remote's listen).
 func (p *hostProcess) inheritRemote(port int) error {
-	if err := p.inherit("ASUKA_REMOTE_FD", fmt.Sprintf("127.0.0.1:%d", port)); err != nil {
+	if err := p.inherit("ASUKA_REMOTE_FD", "ASUKA_REMOTE", fmt.Sprintf("127.0.0.1:%d", port)); err != nil {
 		return err
 	}
-	return p.inherit("ASUKA_ASSETS_FD", fmt.Sprintf("127.0.0.1:%d", port+1))
+	return p.inherit("ASUKA_ASSETS_FD", "ASUKA_ASSETS_ADDR", fmt.Sprintf("127.0.0.1:%d", port+1))
 }
 
+// inherited is a listener the runs take, at addr: its descriptor (file,
+// which env names), or its relay to the run's own (at the address
+// addrEnv names).
 type inherited struct {
+	addr string
+
 	env  string
 	file *os.File
+
+	addrEnv string
+	relay   *relay
+}
+
+// loopbackAddr is a free port's address on the loopback, for a run to
+// listen on.
+func loopbackAddr() (string, error) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return "", err
+	}
+	defer l.Close()
+	return l.Addr().String(), nil
+}
+
+// relay accepts connections on a listener asuka dev keeps across a
+// run's reloads, and joins each to the running build's own listener: a
+// connection made while one run stops and the next starts waits for the
+// next to listen, as it would in a listener's backlog.
+type relay struct {
+	ln      net.Listener
+	mu      sync.Mutex
+	target  string        // the running build's address; "" while none runs
+	changed chan struct{} // closed when target changes
+}
+
+// relayWait is how long a connection waits for a run to listen: one
+// starting waits for the one before it to stop (controlWait, and its 3s
+// to save its state), then starts.
+const relayWait = controlWait + 20*time.Second
+
+func newRelay(ln net.Listener) *relay {
+	r := &relay{ln: ln, changed: make(chan struct{})}
+	go r.accept()
+	return r
+}
+
+// route sends the connections made from now on to addr.
+func (r *relay) route(addr string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if addr == r.target {
+		return
+	}
+	r.target = addr
+	close(r.changed)
+	r.changed = make(chan struct{})
+}
+
+func (r *relay) current() (string, <-chan struct{}) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.target, r.changed
+}
+
+func (r *relay) accept() {
+	for {
+		c, err := r.ln.Accept()
+		if err != nil {
+			return
+		}
+		go r.serve(c)
+	}
+}
+
+func (r *relay) serve(c net.Conn) {
+	defer c.Close()
+	up, err := r.dial()
+	if err != nil {
+		return
+	}
+	defer up.Close()
+	done := make(chan struct{})
+	go func() {
+		// The client done sending: the run reads to the end, and answers.
+		io.Copy(up, c)
+		if tc, ok := up.(*net.TCPConn); ok {
+			tc.CloseWrite()
+		}
+		close(done)
+	}()
+	// The run done (it answered, or quit): the connection's over.
+	io.Copy(c, up)
+	c.Close()
+	up.Close()
+	<-done
+}
+
+// dial connects to the running build, waiting (relayWait at most) for
+// one to listen.
+func (r *relay) dial() (net.Conn, error) {
+	deadline := time.Now().Add(relayWait)
+	err := errors.New("no run listens")
+	for time.Now().Before(deadline) {
+		addr, changed := r.current()
+		if addr != "" {
+			var up net.Conn
+			if up, err = net.DialTimeout("tcp", addr, time.Second); err == nil {
+				return up, nil
+			}
+		}
+		// Not listening yet: when the run changes, or a moment later.
+		select {
+		case <-changed:
+		case <-time.After(25 * time.Millisecond):
+		}
+	}
+	return nil, err
 }
 
 // hostRun is one run of the app's build.
@@ -333,6 +486,8 @@ type hostRun struct {
 	// stdin, when the process is told to stop by closing it (Windows,
 	// which can't send it SIGINT).
 	stdin io.WriteCloser
+	// addrs are where it listens for the relayed listeners, in order.
+	addrs []string
 	// ctl is its control connection (devstate.Wait), once it waits: closed
 	// to stop it.
 	mu  sync.Mutex
@@ -362,7 +517,11 @@ func (r *hostRun) stop() {
 	case r.stdin != nil:
 		r.stdin.Close() // likewise
 	default:
-		r.proc.Signal(syscall.SIGINT)
+		// Windows has no SIGINT to send: a run asuka dev doesn't control
+		// there (it never connected) holds no state yet, and is killed.
+		if err := r.proc.Signal(os.Interrupt); err != nil {
+			r.proc.Kill()
+		}
 	}
 	select {
 	case <-r.done:
@@ -630,13 +789,12 @@ func devAndroidPlayer(app *goApp, tc *androidToolchain, work, serial string, sto
 	if err := tc.installOnce(serial, androidPackage(playerID), apk, hash, filepath.Join(dir, "installed-"+serial)); err != nil {
 		return err
 	}
-	goarch, clang, err := tc.goArch(serial)
+	goarch, triple, err := tc.goArch(serial)
 	if err != nil {
 		return err
 	}
 	lib := filepath.Join(dir, "libasuka-"+goarch+".so")
-	env := []string{"GOOS=android", "GOARCH=" + goarch, "CGO_ENABLED=1", "CC=" + filepath.Join(tc.ndkBin, clang),
-		"CGO_LDFLAGS=-Wl,-z,max-page-size=16384"}
+	env := tc.cgoEnv(goarch, "", triple)
 	if err := tc.run(app.dir, env, "go", "build", "-buildmode=c-shared", "-trimpath", "-ldflags=-buildid=", "-o", lib, playerPkg); err != nil {
 		return err
 	}

@@ -11,11 +11,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/egoist/asuka/internal/androidsdk"
 	androidHost "github.com/egoist/asuka/platform/android"
 )
 
@@ -27,53 +27,53 @@ import (
 const androidMinAPI = "33"
 
 type androidToolchain struct {
-	sdk, ndk, ndkBin, adb, javaHome string
-	verbose                         bool
-}
-
-func findAndroidSDK() string {
-	for _, k := range []string{"ANDROID_HOME", "ANDROID_SDK_ROOT"} {
-		if v := os.Getenv(k); v != "" {
-			return v
-		}
-	}
-	home, _ := os.UserHomeDir()
-	for _, p := range []string{filepath.Join(home, "Library", "Android", "sdk"), filepath.Join(home, "Android", "Sdk")} {
-		if _, err := os.Stat(p); err == nil {
-			return p
-		}
-	}
-	return ""
+	// sys is the computer the tools are on (androidsdk: their places
+	// and names, adb.exe and gradlew.bat on Windows).
+	sys                     androidsdk.System
+	sdk, ndk, ndkBin, clang string
+	adb, emulator, javaHome string
+	verbose                 bool
 }
 
 func newAndroidToolchain(verbose bool) (*androidToolchain, error) {
-	sdk := findAndroidSDK()
+	return newAndroidToolchainOn(androidsdk.Local(), verbose)
+}
+
+// newAndroidToolchainOn finds the tools on sys.
+func newAndroidToolchainOn(sys androidsdk.System, verbose bool) (*androidToolchain, error) {
+	sdk := sys.SDK()
 	if sdk == "" {
 		return nil, errors.New("no Android SDK: install Android Studio or set ANDROID_HOME")
 	}
-	ndks, _ := filepath.Glob(filepath.Join(sdk, "ndk", "*"))
-	if len(ndks) == 0 {
-		return nil, errors.New("no Android NDK: install one with Android Studio's SDK Manager")
+	ndk, bin, err := sys.NDK(sdk)
+	if err != nil {
+		return nil, err
 	}
-	sort.Strings(ndks)
-	host := "darwin-x86_64"
-	if runtime.GOOS == "linux" {
-		host = "linux-x86_64"
+	return &androidToolchain{
+		sys:      sys,
+		sdk:      sdk,
+		ndk:      ndk,
+		ndkBin:   bin,
+		clang:    sys.Clang(bin),
+		adb:      sys.ADB(sdk),
+		emulator: sys.Emulator(sdk),
+		javaHome: sys.Java(),
+		verbose:  verbose,
+	}, nil
+}
+
+// cgoEnv is the environment of a cgo build of Go code for Android:
+// goarch (and goarm), with the NDK's clang for target (a triple, the API
+// level added) as CC, called directly with --target (no NDK wrapper,
+// which on Windows is a .cmd through cmd.exe), and 16 KB pages.
+func (t *androidToolchain) cgoEnv(goarch, goarm, triple string) []string {
+	env := []string{"GOOS=android", "GOARCH=" + goarch, "CGO_ENABLED=1",
+		"CC=" + androidsdk.CC(t.clang, triple+androidMinAPI),
+		"CGO_LDFLAGS=-Wl,-z,max-page-size=16384"}
+	if goarm != "" {
+		env = append(env, "GOARM="+goarm)
 	}
-	t := &androidToolchain{
-		sdk:     sdk,
-		ndk:     ndks[len(ndks)-1],
-		ndkBin:  filepath.Join(ndks[len(ndks)-1], "toolchains", "llvm", "prebuilt", host, "bin"),
-		adb:     filepath.Join(sdk, "platform-tools", "adb"),
-		verbose: verbose,
-	}
-	t.javaHome = os.Getenv("JAVA_HOME")
-	if t.javaHome == "" {
-		if jbr := "/Applications/Android Studio.app/Contents/jbr/Contents/Home"; exists(jbr) {
-			t.javaHome = jbr
-		}
-	}
-	return t, nil
+	return env
 }
 
 func exists(p string) bool { _, err := os.Stat(p); return err == nil }
@@ -107,6 +107,10 @@ func (t *androidToolchain) adbOut(serial string, args ...string) (string, error)
 // pickDevice returns a connected device or emulator (want: a serial or
 // AVD name), starting an emulator if none is running.
 func (t *androidToolchain) pickDevice(want string) (string, error) {
+	// adb's server first, with none of this process's output: on Windows
+	// a server started by a command whose output is read (adb devices)
+	// can hold its pipe open after it, and the read never ends.
+	exec.Command(t.adb, "start-server").Run()
 	devices := func() []string {
 		out, _ := exec.Command(t.adb, "devices").Output()
 		var ds []string
@@ -122,7 +126,7 @@ func (t *androidToolchain) pickDevice(want string) (string, error) {
 			return d, nil
 		}
 	}
-	emulator := filepath.Join(t.sdk, "emulator", "emulator")
+	emulator := t.emulator
 	out, err := exec.Command(emulator, "-list-avds").Output()
 	if err != nil {
 		return "", fmt.Errorf("no Android device or emulator: %v", err)
@@ -162,16 +166,16 @@ func (t *androidToolchain) pickDevice(want string) (string, error) {
 	return "", errors.New("the emulator didn't boot")
 }
 
-func (t *androidToolchain) goArch(serial string) (goarch, clang string, err error) {
+// goArch is the device's GOARCH, and its target triple (the NDK's).
+func (t *androidToolchain) goArch(serial string) (goarch, triple string, err error) {
 	abi, err := t.adbOut(serial, "shell", "getprop", "ro.product.cpu.abi")
 	if err != nil {
 		return "", "", fmt.Errorf("adb: %v: %s", err, abi)
 	}
-	switch abi {
-	case "arm64-v8a":
-		return "arm64", "aarch64-linux-android" + androidMinAPI + "-clang", nil
-	case "x86_64":
-		return "amd64", "x86_64-linux-android" + androidMinAPI + "-clang", nil
+	for _, a := range androidABIs {
+		if a.abi == abi && a.goarm == "" {
+			return a.goarch, a.clang, nil
+		}
 	}
 	return "", "", fmt.Errorf("unsupported Android ABI %q", abi)
 }
@@ -179,7 +183,7 @@ func (t *androidToolchain) goArch(serial string) (goarch, clang string, err erro
 // buildGo builds the app's Go code for the device, work/libasuka.so, and
 // writes its plugins' libraries beside it (plugins: their paths).
 func (t *androidToolchain) buildGo(app *goApp, work, serial string) (lib string, plugins []string, err error) {
-	goarch, clang, err := t.goArch(serial)
+	goarch, triple, err := t.goArch(serial)
 	if err != nil {
 		return "", nil, err
 	}
@@ -188,8 +192,7 @@ func (t *androidToolchain) buildGo(app *goApp, work, serial string) (lib string,
 		return "", nil, err
 	}
 	lib = filepath.Join(work, "libasuka.so")
-	env := []string{"GOOS=android", "GOARCH=" + goarch, "CGO_ENABLED=1", "CC=" + filepath.Join(t.ndkBin, clang),
-		"CGO_LDFLAGS=-Wl,-z,max-page-size=16384"}
+	env := t.cgoEnv(goarch, "", triple)
 	if err := t.run(app.dir, env, "go", "build", "-buildmode=c-shared", app.cfg.ldflags(false), "-overlay", ov, "-o", lib, "."); err != nil {
 		return "", nil, err
 	}
@@ -266,11 +269,32 @@ func (t *androidToolchain) gradle(src string, args ...string) error {
 }
 
 func (t *androidToolchain) gradleEnv(src string, extra []string, args ...string) error {
-	env := append([]string{"ANDROID_HOME=" + t.sdk}, extra...)
+	name, args, env := t.gradleCommand(src, extra, args)
+	return t.run(src, env, name, args...)
+}
+
+// gradleCommand is Gradle's command in src, with extra in its
+// environment: the wrapper (gradlew; gradlew.bat on Windows), given the
+// tasks and flags on its command line and the properties (-Pname=value)
+// in its environment, as ORG_GRADLE_PROJECT_name, as a password already
+// goes. There no value passes through a shell: gradlew.bat's cmd.exe
+// would expand a % in an app's name or a path, end an argument at a
+// quote, and refuse a command line over 8191 characters (one path per
+// native package).
+func (t *androidToolchain) gradleCommand(src string, extra, args []string) (name string, cmdArgs, env []string) {
+	env = append([]string{"ANDROID_HOME=" + t.sdk}, extra...)
 	if t.javaHome != "" {
 		env = append(env, "JAVA_HOME="+t.javaHome)
 	}
-	return t.run(src, env, filepath.Join(src, "gradlew"), append([]string{"-q"}, args...)...)
+	cmdArgs = []string{"-q"}
+	for _, a := range args {
+		if k, v, ok := strings.Cut(strings.TrimPrefix(a, "-P"), "="); ok && strings.HasPrefix(a, "-P") {
+			env = append(env, "ORG_GRADLE_PROJECT_"+k+"="+v)
+			continue
+		}
+		cmdArgs = append(cmdArgs, a)
+	}
+	return filepath.Join(src, t.sys.Script("gradlew")), cmdArgs, env
 }
 
 // androidHostDir is where the Android host is built, shared by every app
@@ -547,7 +571,8 @@ func (t *androidToolchain) pushAssets(app *goApp, work, serial, pkg string) erro
 	tmp := "/data/local/tmp/asuka-" + pkg + "-assets"
 	// adb doesn't make a directory with nothing in it, which an empty assets is.
 	t.run(work, nil, t.adb, "-s", serial, "shell", "rm", "-rf", tmp, "&&", "mkdir", "-p", tmp)
-	if err := t.run(work, nil, t.adb, "-s", serial, "push", dir+"/.", tmp); err != nil {
+	// dir's "." pushes what's in it into tmp, not tmp/assets.
+	if err := t.run(work, nil, t.adb, "-s", serial, "push", dir+string(filepath.Separator)+".", tmp); err != nil {
 		return err
 	}
 	if err := t.run(work, nil, t.adb, "-s", serial, "shell", "run-as", pkg, "sh", "-c",

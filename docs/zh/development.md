@@ -46,7 +46,7 @@ asuka dev --platform web [flags] [dir]       # 浏览器
 
 ## 在手机上：播放器应用与构建的应用
 
-iOS 开发需要 Mac；Android 开发需要 Mac 或 Linux。默认情况下，`asuka dev` 在你的电脑上运行 Go 代码，视图则显示在**播放器应用**里。播放器是一个名为 Asuka 的应用（`dev.asuka.player`），它就是一个不含任何应用的平台宿主。播放器只需构建和安装一次，所有应用共用，只有它本身变化时（Asuka 发布了新版本）才会重新安装。Go 代码和播放器之间通过 socket 通信。
+iOS 开发需要 Mac；Android 开发需要 Mac、Windows 电脑或 Linux。默认情况下，`asuka dev` 在你的电脑上运行 Go 代码，视图则显示在**播放器应用**里。播放器是一个名为 Asuka 的应用（`dev.asuka.player`），它就是一个不含任何应用的平台宿主。播放器只需构建和安装一次，所有应用共用，只有它本身变化时（Asuka 发布了新版本）才会重新安装。Go 代码和播放器之间通过 socket 通信。
 
 保存时，Asuka 会为你的电脑重新构建 Go 代码并重启它，大约一秒钟：新的进程启动时，旧进程仍在为播放器服务；旧进程停止后播放器会重新连接，并显示新代码的效果。整个过程不需要安装任何东西。
 
@@ -183,10 +183,10 @@ ASUKA_SCRIPT="tap:Add;tap:Add" ASUKA_SNAPSHOT=shot.png go run .   # Windows、Li
 - **iPhone 没有准备好**：`... isn't paired with this Mac`（连上数据线，解锁后点“信任”）、`... isn't reachable`（连上数据线，或在 Mac 所在的 Wi-Fi 下唤醒它）、`... has Developer Mode off`（“设置 › 隐私与安全性 › 开发者模式”）、`... is locked`（解锁手机）。明明连着手机却提示 `no iPhone or iPad is connected` 时，检查 `xcrun devicectl list devices` 能否列出它。
 - **`Xcode couldn't make the development profiles`**：在 Xcode 中登录团队的 Apple ID（Xcode › 设置 › 账户），或者设置 App Store Connect API 密钥；如果 bundle ID 已经属于另一个团队，就需要在 `asuka.json` 里换一个 `id`。`the keychain has Apple Development certificates of N teams`：用 `--team` 选一个团队。
 - **`the player hasn't connected yet`**：使用 USB 时，检查数据线并解锁手机；使用 Wi-Fi 时，让手机连上 Mac 所在的网络，允许播放器访问本地网络，并在 Mac 的防火墙中允许 `asuka` 接受连接（“系统设置 › 网络 › 防火墙”）。
-- **`no Android SDK: install Android Studio or set ANDROID_HOME`**：Asuka 会依次在 `ANDROID_HOME`、`ANDROID_SDK_ROOT` 中查找，然后是 Mac 上的 `~/Library/Android/sdk` 和 Linux 上的 `~/Android/Sdk`。
-- **`no Android NDK`**：在 Android Studio 的 SDK Manager 中安装一个（SDK Tools 下的 NDK）。
+- **`no Android SDK: install Android Studio or set ANDROID_HOME`**：Asuka 会依次在 `ANDROID_HOME`、`ANDROID_SDK_ROOT` 中查找，然后是 Mac 上的 `~/Library/Android/sdk`、Windows 上的 `%LOCALAPPDATA%\Android\Sdk` 和 Linux 上的 `~/Android/Sdk`。
+- **`no Android NDK`**：在 Android Studio 的 SDK Manager 中安装一个（SDK Tools 下的 NDK）。Asuka 会选用最新的、带有你这台电脑可用版本的 NDK（任何 Windows 电脑上都是 `windows-x86_64`，Arm 电脑也一样）。
 - **`no Android device or emulator`**：在 Android Studio 的 Device Manager 中创建一个 AVD，或者连接一部手机。对于 Asuka 自己启动的模拟器，它最多会等四分钟让模拟器完成启动（超时会报 `the emulator didn't boot`）。
-- **Java**：Gradle 需要 JDK：优先使用 `JAVA_HOME`，否则使用 Android Studio 自带的 JDK。
+- **Java**：Gradle 需要 JDK：优先使用 `JAVA_HOME`，否则使用 Android Studio 自带的 JDK，无论 Android Studio 是用安装程序还是 JetBrains Toolbox 装的（在 Windows 上，位于 Program Files 或 `%LOCALAPPDATA%\Programs` 下）。
 - **第一次 Android 构建很慢**：Gradle 要下载它自己和 Android 的库，这只发生一次。
 - **`the player connected ... and hasn't shown the app`**：播放器连接上了你的 Go 代码，但始终没有显示应用，因为它的主线程卡住了。Asuka 会把播放器的 goroutine 堆栈保存到 Asuka 缓存中该应用目录下的 `player-stacks.txt`（路径会打印出来），提交 bug 时请附上它。重新启动播放器，或者用 `--no-hot` 运行，构建一个包含 Go 代码的应用。
 - **手机上装有发布构建**：为了安装调试版，由 `asuka build` 安装的应用（签名密钥不同）会被卸载，其数据也会一起删除。
@@ -224,7 +224,7 @@ xvfb-run -a dbus-run-session go test -tags e2e ./e2e -run Linux  # GTK 4，在 L
 
 每个测试先用 `asuka dev --once` 构建一个示例（包含 Go 代码的调试构建），然后点按、输入并读取屏幕内容：iOS 上通过通知，Android 上通过广播，Web 上通过开发服务器（`platform/web/src/automation.js`），Linux 上通过 `ASUKA_COMMANDS` 指定目录中的文件（`host/linux/automation.go`）。计数器、笔记、聊天、导航和多语言这几个示例都有测试，各平台的测试内容相同。测试会等待屏幕显示出预期的内容，最多等一分钟，而不是固定等待一段时间。
 
-iOS 测试需要 Xcode（`xcrun`）；Android 测试需要 `PATH` 中有 `adb`，以及 `asuka dev --platform android` 所需的 SDK 和 NDK；Linux 测试需要一个显示服务器（CI 中用 Xvfb 的）和一个会话总线。缺少这些条件时，相应的测试会被跳过。macOS 和 Windows 目前还没有 e2e 测试，它们的宿主测试会直接驱动真实的窗口。
+iOS 测试需要 Xcode（`xcrun`）；Android 测试需要 `asuka dev --platform android` 所需的 SDK 和 NDK（`adb` 优先从 `PATH` 中找，找不到就用 SDK 里的），在 Mac、PC 或 Linux 上都能运行；Linux 测试需要一个显示服务器（CI 中用 Xvfb 的）和一个会话总线。缺少这些条件时，相应的测试会被跳过。macOS 和 Windows 目前还没有 e2e 测试，它们的宿主测试会直接驱动真实的窗口。
 
 ## 基准测试
 

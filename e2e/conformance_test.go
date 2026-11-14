@@ -60,7 +60,7 @@ func TestConformanceIOS(t *testing.T) {
 func TestConformanceAndroid(t *testing.T) {
 	s := androidApp(t, "conformance/app", "dev.asuka.conformance")
 	img := sheetShot(t, func() ([]byte, error) {
-		return exec.Command("adb", "-s", s.serial, "exec-out", "screencap", "-p").Output()
+		return exec.Command(adb(), "-s", s.serial, "exec-out", "screencap", "-p").Output()
 	})
 	conformance.Check(t, "android", img, "android")
 }
