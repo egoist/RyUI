@@ -26,8 +26,13 @@ export const Route = createRootRoute({
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
     ],
     // Before anything shows: the page in the reader's language.
-    scripts: [{ children: localeScript }],
-    // An analytics script, if the site has one, goes here (in production only).
+    scripts: [
+      { children: localeScript },
+      // Analytics, in production only.
+      ...(import.meta.env.PROD
+        ? [{ defer: true, "data-domain": "asuka.egoist.dev", src: "https://tt.egoist.dev/js/script.js" }]
+        : []),
+    ],
   }),
   shellComponent: RootDocument,
   component: RootLayout,
