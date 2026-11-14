@@ -75,8 +75,15 @@ func encodeLocation(l ID) []byte {
 	if MsgFloat(l, Sel("verticalAccuracy")) >= 0 {
 		alt = MsgFloat(l, Sel("altitude"))
 	}
+	spd, crs := -1.0, -1.0
+	if MsgFloat(l, Sel("speedAccuracy")) >= 0 {
+		spd = MsgFloat(l, Sel("speed"))
+	}
+	if MsgFloat(l, Sel("courseAccuracy")) >= 0 {
+		crs = MsgFloat(l, Sel("course"))
+	}
 	b, _ := json.Marshal(map[string]any{
-		"lat": c.Lat, "lon": c.Lon, "acc": MsgFloat(l, Sel("horizontalAccuracy")), "alt": alt,
+		"lat": c.Lat, "lon": c.Lon, "acc": MsgFloat(l, Sel("horizontalAccuracy")), "alt": alt, "spd": spd, "crs": crs,
 		"t": int64(MsgFloat(Send(l, "timestamp"), Sel("timeIntervalSince1970")) * 1000),
 	})
 	return b
@@ -176,7 +183,11 @@ func (h *Host) locationModule() map[string]method {
 // locationAuthorized is the delegate's authorization change.
 func (h *Host) locationAuthorized() {
 	l := &h.loc
-	if l.manager == 0 || SendInt(l.manager, "authorizationStatus") == clNotDetermined {
+	if l.manager == 0 {
+		return
+	}
+	h.accessChanged()
+	if SendInt(l.manager, "authorizationStatus") == clNotDetermined {
 		return
 	}
 	ws := l.authorizing

@@ -176,6 +176,8 @@ private fun AsukaRuntime.registerBuiltinModules() {
         },
     )
     modules["location"] = AsukaLocation(this).methods()
+    modules["locationAccess"] = AsukaLocationAccess(this).methods()
+    modules["locationBackground"] = AsukaLocationBackground(this).methods()
     modules["network"] = AsukaNetwork(this).methods()
     modules["displays"] = AsukaDisplays(this).methods()
     modules["power"] = AsukaPower(this).methods()

@@ -3,6 +3,15 @@
 // Location; Android's location manager, which needs no Play services).
 // An app that imports it is given the permissions it needs; asuka.json's
 // ios.usage.NSLocationWhenInUseUsageDescription says why to the user.
+//
+// With the app out of sight too (expo-location's background updates and
+// geofencing): the permission's levels (Request, RequestAlways,
+// RequestPrecise, UseAuthorization), updates that go on in the
+// background (StartUpdates, OnUpdates) and regions the system watches
+// for the app (Monitor, OnCrossing). Their events reach the app's Go code
+// even when it isn't running: the system starts the app in the
+// background, without a screen (main runs, and the root component), and
+// hands them over; set the handlers as the app starts.
 package location
 
 import (
@@ -12,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/egoist/asuka/internal/locationspec"
 	"github.com/egoist/asuka/ui"
 )
 
@@ -20,7 +30,10 @@ type Position struct {
 	Latitude, Longitude float64
 	Accuracy            float64 // meters: the radius the device is within
 	Altitude            float64 // meters above sea level; 0: not known
-	Time                time.Time
+	// Speed (meters per second) and Course (degrees from true north,
+	// clockwise): negative when not known.
+	Speed, Course float64
+	Time          time.Time
 }
 
 // ErrDenied is the error when the user hasn't allowed the app their
@@ -34,14 +47,21 @@ func decode(b []byte, err error) (Position, error) {
 		}
 		return Position{}, err
 	}
-	var w struct {
-		Lat, Lon, Acc, Alt float64
-		T                  int64
-	}
+	w := locationspec.Position{Spd: -1, Crs: -1}
 	if err := json.Unmarshal(b, &w); err != nil {
 		return Position{}, err
 	}
-	return Position{Latitude: w.Lat, Longitude: w.Lon, Accuracy: w.Acc, Altitude: w.Alt, Time: time.UnixMilli(w.T)}, nil
+	return position(w), nil
+}
+
+// position is a host's position; one that leaves out speed and course
+// doesn't know them (its Spd and Crs were -1 before it was read).
+func position(w locationspec.Position) Position {
+	return Position{Latitude: w.Lat, Longitude: w.Lon, Accuracy: w.Acc, Altitude: w.Alt, Speed: w.Spd, Course: w.Crs, Time: time.UnixMilli(w.T)}
+}
+
+func (p Position) wire() locationspec.Position {
+	return locationspec.Position{Lat: p.Latitude, Lon: p.Longitude, Acc: p.Accuracy, Alt: p.Altitude, Spd: p.Speed, Crs: p.Course, T: p.Time.UnixMilli()}
 }
 
 // Current asks for permission if it hasn't been, then returns where the
@@ -58,6 +78,11 @@ var (
 	mu       sync.Mutex
 	watchers = map[*func(Position)]bool{}
 	running  bool
+	// gen is the goroutine that follows: one that wakes to a gen moved
+	// on (the last watcher stopped, perhaps another began) ends without
+	// touching the watchers, so a new watch never waits on a goroutine
+	// whose "next" the stop answers later, or never (a root gone).
+	gen int
 )
 
 // Watch calls f, on the main thread, with each position as the device
@@ -73,9 +98,13 @@ func Watch(f func(Position)) (stop func()) {
 	watchers[fp] = true
 	start := !running
 	running = true
+	if start {
+		gen++
+	}
+	g := gen
 	mu.Unlock()
 	if start {
-		go follow()
+		go follow(g)
 	}
 	var once sync.Once
 	return func() {
@@ -83,6 +112,10 @@ func Watch(f func(Position)) (stop func()) {
 			mu.Lock()
 			delete(watchers, fp)
 			last := len(watchers) == 0
+			if last {
+				running = false
+				gen++
+			}
 			mu.Unlock()
 			if last {
 				ui.Post(func() { ui.Call("location", "stop", nil, nil) })
@@ -91,21 +124,30 @@ func Watch(f func(Position)) (stop func()) {
 	}
 }
 
-// follow asks the host for each next position while anyone watches.
-func follow() {
+// follow asks the host for each next position while anyone watches:
+// until gen isn't g.
+func follow(g int) {
 	for {
 		p, err := decode(ui.CallWait("location", "next", nil))
 		mu.Lock()
+		if gen != g {
+			mu.Unlock()
+			return
+		}
 		fs := make([]func(Position), 0, len(watchers))
 		for f := range watchers {
 			fs = append(fs, *f)
 		}
-		if len(fs) == 0 || err != nil {
+		if len(fs) == 0 || err != nil && err.Error() != "stopped" {
 			running = false
+			gen++
 			mu.Unlock()
 			return
 		}
 		mu.Unlock()
+		if err != nil {
+			continue
+		}
 		ui.Post(func() {
 			for _, f := range fs {
 				f(p)

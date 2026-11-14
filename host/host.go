@@ -46,10 +46,10 @@ type Connector interface {
 // the main window; WindowProps.StateKey). A Router starts where its window
 // was left, unless the app was opened with a link it takes.
 type Locator interface {
-	// Location returns where the window keyed window (its StateKey; "main"
+	// WindowRoute returns where the window keyed window (its StateKey; "main"
 	// for the main window) was left: its href (the app's path and query)
 	// and the router's state, as the last Location command sent them (the
 	// web: the page's address and its history entry's state; a pasted
 	// link has no state). ok is false when there's none.
-	Location(window string) (href string, state []byte, ok bool)
+	WindowRoute(window string) (href string, state []byte, ok bool)
 }

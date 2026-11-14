@@ -66,9 +66,9 @@ func (h *Host) History(v *View) *History {
 	return h.histories[v.ID]
 }
 
-// Location implements host.Locator: where the window keyed window was
+// WindowRoute implements host.Locator: where the window keyed window was
 // left (Locations).
-func (h *Host) Location(window string) (string, []byte, bool) {
+func (h *Host) WindowRoute(window string) (string, []byte, bool) {
 	s, ok := h.Locations[window]
 	return s.Href, s.State, ok
 }

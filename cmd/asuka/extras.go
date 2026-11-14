@@ -40,6 +40,14 @@ func (c *appConfig) plistExtras() map[string]any {
 		sort.Strings(vs)
 		m[k] = vs
 	}
+	// location.RequestPrecise's purposes (temporary full accuracy).
+	if c.locationPrecise {
+		ps := map[string]any{"default": "To show exactly where you are."}
+		for k, v := range c.IOS.LocationPurposes {
+			ps[k] = v
+		}
+		m["NSLocationTemporaryUsageDescriptionDictionary"] = ps
+	}
 	if len(c.IOS.BackgroundModes) > 0 {
 		vs, _ := m["UIBackgroundModes"].([]string)
 		for _, v := range c.IOS.BackgroundModes {

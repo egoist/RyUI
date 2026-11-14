@@ -295,6 +295,39 @@ var iosFeatures = []struct{ flag, symbol string }{
 	{"ASUKA_LOCATION", "github.com/egoist/asuka/sdk/location.Current"},
 	{"ASUKA_LOCATION", "github.com/egoist/asuka/sdk/location.Watch"},
 	{"ASUKA_LOCATION", "github.com/egoist/asuka/sdk/location.PlaceName"},
+	{"ASUKA_LOCATION", "github.com/egoist/asuka/sdk/location.Authorized"},
+	{"ASUKA_LOCATION", "github.com/egoist/asuka/sdk/location.Request"},
+	{"ASUKA_LOCATION", "github.com/egoist/asuka/sdk/location.RequestAlways"},
+	{"ASUKA_LOCATION", "github.com/egoist/asuka/sdk/location.RequestPrecise"},
+	{"ASUKA_LOCATION", "github.com/egoist/asuka/sdk/location.WatchAuthorization"},
+	{"ASUKA_LOCATION", "github.com/egoist/asuka/sdk/location.UseAuthorization"},
+	{"ASUKA_LOCATION", "github.com/egoist/asuka/sdk/location.OpenSettings"},
+	{"ASUKA_LOCATION", "github.com/egoist/asuka/sdk/location.StartUpdates"},
+	{"ASUKA_LOCATION", "github.com/egoist/asuka/sdk/location.StopUpdates"},
+	{"ASUKA_LOCATION", "github.com/egoist/asuka/sdk/location.Updating"},
+	{"ASUKA_LOCATION", "github.com/egoist/asuka/sdk/location.Monitor"},
+	{"ASUKA_LOCATION", "github.com/egoist/asuka/sdk/location.StopMonitoring"},
+	{"ASUKA_LOCATION", "github.com/egoist/asuka/sdk/location.StopMonitoringAll"},
+	{"ASUKA_LOCATION", "github.com/egoist/asuka/sdk/location.Monitored"},
+	{"ASUKA_LOCATION", "github.com/egoist/asuka/sdk/location.OnUpdates"},
+	{"ASUKA_LOCATION", "github.com/egoist/asuka/sdk/location.OnCrossing"},
+	{"ASUKA_LOCATION", "github.com/egoist/asuka/sdk/location.Supported"},
+	// The background part: background updates, regions, their events
+	// (AsukaLocationBackground); Always's purpose string, the location
+	// background mode, temporary full accuracy's purposes.
+	{"ASUKA_LOCATION_BACKGROUND", "github.com/egoist/asuka/sdk/location.StartUpdates"},
+	{"ASUKA_LOCATION_BACKGROUND", "github.com/egoist/asuka/sdk/location.StopUpdates"},
+	{"ASUKA_LOCATION_BACKGROUND", "github.com/egoist/asuka/sdk/location.Updating"},
+	{"ASUKA_LOCATION_BACKGROUND", "github.com/egoist/asuka/sdk/location.Monitor"},
+	{"ASUKA_LOCATION_BACKGROUND", "github.com/egoist/asuka/sdk/location.StopMonitoring"},
+	{"ASUKA_LOCATION_BACKGROUND", "github.com/egoist/asuka/sdk/location.StopMonitoringAll"},
+	{"ASUKA_LOCATION_BACKGROUND", "github.com/egoist/asuka/sdk/location.Monitored"},
+	{"ASUKA_LOCATION_BACKGROUND", "github.com/egoist/asuka/sdk/location.OnUpdates"},
+	{"ASUKA_LOCATION_BACKGROUND", "github.com/egoist/asuka/sdk/location.OnCrossing"},
+	{"ASUKA_LOCATION_BACKGROUND", "github.com/egoist/asuka/sdk/location.Supported"},
+	{"ASUKA_LOCATION_ALWAYS", "github.com/egoist/asuka/sdk/location.RequestAlways"},
+	{"ASUKA_LOCATION_UPDATES", "github.com/egoist/asuka/sdk/location.StartUpdates"},
+	{"ASUKA_LOCATION_PRECISE", "github.com/egoist/asuka/sdk/location.RequestPrecise"},
 	{"ASUKA_NOTIFY", "github.com/egoist/asuka/sdk/notify.Request"},
 	{"ASUKA_NOTIFY", "github.com/egoist/asuka/sdk/notify.Schedule"},
 	{"ASUKA_NOTIFY", "github.com/egoist/asuka/sdk/notify.Show"},
@@ -405,6 +438,7 @@ var featureExtras = map[string]struct {
 	entitlements map[string]any
 	plistArrays  map[string][]string
 	iosTrue      []string
+	usage        map[string]string
 }{
 	// Communication notifications: the capability, and the intent the
 	// app donates for each message.
@@ -422,6 +456,15 @@ var featureExtras = map[string]struct {
 	"ASUKA_LIVEACTIVITY": {
 		iosTrue: []string{"NSSupportsLiveActivities"},
 	},
+	// asuka/sdk/location: Always's purpose string (location.RequestAlways),
+	// updates in the background (location.StartUpdates). Temporary full
+	// accuracy's purposes are asuka.json's (locationPurposes).
+	"ASUKA_LOCATION_ALWAYS": {
+		usage: map[string]string{"NSLocationAlwaysAndWhenInUseUsageDescription": "To know where you are with the app closed."},
+	},
+	"ASUKA_LOCATION_UPDATES": {
+		plistArrays: map[string][]string{"UIBackgroundModes": {"location"}},
+	},
 }
 
 // addFeatureExtras adds what the features flags need (featureExtras).
@@ -429,6 +472,9 @@ func (c *appConfig) addFeatureExtras(flags []string) {
 	for _, f := range flags {
 		if f == "ASUKA_LIVEACTIVITY" {
 			c.liveActivity = true
+		}
+		if f == "ASUKA_LOCATION_PRECISE" {
+			c.locationPrecise = true
 		}
 		x, ok := featureExtras[f]
 		if !ok {
@@ -453,6 +499,14 @@ func (c *appConfig) addFeatureExtras(flags []string) {
 				if !slices.Contains(c.plistArrays[k], v) {
 					c.plistArrays[k] = append(c.plistArrays[k], v)
 				}
+			}
+		}
+		for k, v := range x.usage {
+			if c.IOS.Usage == nil {
+				c.IOS.Usage = map[string]string{}
+			}
+			if c.IOS.Usage[k] == "" {
+				c.IOS.Usage[k] = v
 			}
 		}
 	}

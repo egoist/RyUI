@@ -912,6 +912,9 @@ func TestEveryModuleAnswers(t *testing.T) {
 		"webAuth":      "cancel start",
 		"widget":       "set",
 	}
+	// asuka/sdk/location's authorization and regions (location_regions.go).
+	async["locationAccess"] = "current next stop request precise settings"
+	async["locationBackground"] = "capabilities start stop updating monitor unmonitor regions next done"
 	onMain(t, func() {
 		for module, methods := range async {
 			m := h.asyncModule(module)

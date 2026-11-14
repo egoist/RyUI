@@ -687,5 +687,6 @@ func playerConfig() *appConfig {
 	c := &appConfig{ID: playerID, ShareTarget: shareTarget{on: true, Types: []string{"text", "*/*"}, Max: 20}, shareSheet: true}
 	c.permissionsFor(nil)
 	c.addFeatureExtras(allFeatures())
+	c.useLocation(func(string) bool { return true })
 	return c
 }

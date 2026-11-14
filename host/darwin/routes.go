@@ -22,8 +22,8 @@ func routeStore() *routestate.Store {
 	return routes
 }
 
-// Location implements host.Locator.
-func (h *Host) Location(window string) (string, []byte, bool) {
+// WindowRoute implements host.Locator.
+func (h *Host) WindowRoute(window string) (string, []byte, bool) {
 	return routeStore().Location(window)
 }
 

@@ -7,8 +7,16 @@
 //     where the browser says (Chrome on Android); elsewhere Other. Metered:
 //     cellular; constrained: the user's Data Saver (saveData).
 //   - location: the Geolocation API: "current", "next", "stop", as JSON
-//     (lat, lon, acc, alt, t); "denied" when the user refused. "name" needs
-//     a geocoder, which a browser hasn't.
+//     (lat, lon, acc, alt, spd, crs, t); "denied" when the user refused.
+//     "name" needs a geocoder, which a browser hasn't.
+//   - locationAccess: the permission (navigator.permissions' geolocation),
+//     followed: "current", "next" (answered once it isn't the state given),
+//     "stop", three bytes (level: 0 not asked, 1 denied, 3 when in use: a
+//     page has positions only while it's open; precise, which a browser
+//     doesn't say: 1; off: 0); "request" asks for a position to ask.
+//   - locationBackground: only "capabilities", all false: a page has no
+//     background updates or geofences, so the Go code computes them from
+//     the positions while the page is open.
 //   - sensors: the Generic Sensor API where the browser has it
 //     (Accelerometer, Gyroscope, Magnetometer, AbsoluteOrientationSensor,
 //     AmbientLightSensor: Chrome), else DeviceMotion and DeviceOrientation
@@ -71,7 +79,8 @@ function network() {
 /** positionJSON is a GeolocationPosition as asuka/sdk/location's reply. */
 export function positionJSON(p) {
   const c = p.coords;
-  return JSON.stringify({ lat: c.latitude, lon: c.longitude, acc: c.accuracy, alt: c.altitude ?? 0, t: Math.round(p.timestamp) });
+  const known = (v) => (v == null || Number.isNaN(v) || v < 0 ? -1 : v);
+  return JSON.stringify({ lat: c.latitude, lon: c.longitude, acc: c.accuracy, alt: c.altitude ?? 0, spd: known(c.speed), crs: known(c.heading), t: Math.round(p.timestamp) });
 }
 
 function positionError(e) {
@@ -129,6 +138,71 @@ function location() {
       for (const w of next.splice(0)) w.reject(new Error("stopped"));
     },
     name: () => { throw new Error("asuka: location.name isn't on the web: a browser has no geocoder (ask a geocoding service with net/http)"); },
+  };
+}
+
+/** accessState is a permission state ("granted", "denied", "prompt") as locationAccess's three bytes. */
+export function accessState(state) {
+  const level = { granted: 3, denied: 1 }[state] ?? 0;
+  return new Uint8Array([level, 1, 0]);
+}
+
+function locationAccess() {
+  const waits = []; // { last, resolve }
+  let status = null; // the PermissionStatus, followed once asked for
+  let state = "prompt";
+  const now = () => accessState(state);
+  const changed = () => {
+    state = status?.state ?? state;
+    const s = now();
+    for (let i = waits.length - 1; i >= 0; i--) {
+      if (!same(waits[i].last, s)) {
+        waits[i].resolve(s);
+        waits.splice(i, 1);
+      }
+    }
+  };
+  const query = async () => {
+    if (!status && navigator.permissions?.query) {
+      try {
+        status = await navigator.permissions.query({ name: "geolocation" });
+        status.addEventListener("change", changed);
+        state = status.state;
+      } catch { /* a browser without the geolocation permission's name */ }
+    }
+    return now();
+  };
+  return {
+    current: () => query(),
+    next: async (last) => {
+      const s = await query();
+      if (!last.length || !same(last, s)) return s;
+      return new Promise((resolve, reject) => waits.push({ last: last.slice(), resolve, reject }));
+    },
+    stop: () => {
+      for (const w of waits.splice(0)) w.reject(new Error("stopped"));
+    },
+    request: async () => {
+      await query();
+      if (state === "prompt" && navigator.geolocation) {
+        await new Promise((resolve) => navigator.geolocation.getCurrentPosition(
+          () => { if (!status) state = "granted"; resolve(); },
+          (e) => { if (!status && e?.code === 1) state = "denied"; resolve(); }));
+      }
+      changed();
+      return now();
+    },
+    precise: () => query(),
+    settings: () => { throw new Error("not available: a page can't open the browser's settings"); },
+  };
+}
+
+function locationBackground() {
+  const computed = () => { throw new Error("not available: computed by the Go code while the page is open"); };
+  return {
+    capabilities: () => JSON.stringify({ updates: false, regions: false, limit: 0, dwell: false, relaunch: false }),
+    start: computed, stop: computed, updating: computed, monitor: computed, unmonitor: computed,
+    regions: computed, next: computed, done: computed,
   };
 }
 
@@ -372,5 +446,5 @@ function sensors() {
 }
 
 export function modules() {
-  return { network: network(), location: location(), sensors: sensors() };
+  return { network: network(), location: location(), locationAccess: locationAccess(), locationBackground: locationBackground(), sensors: sensors() };
 }

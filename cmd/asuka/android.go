@@ -401,6 +401,7 @@ func devAndroid(dir string, o *devOptions, stop <-chan os.Signal) error {
 		}
 		app.cfg.shareSheet = hasSheet(lib)
 		app.cfg.pushRewrite = hasSymbol(lib, rewriteSymbol)
+		app.cfg.useLocation(func(s string) bool { return hasSymbol(lib, s) })
 		apk, hash, err := tc.buildAPK(app, work)
 		if err != nil {
 			return err

@@ -898,6 +898,27 @@ func TestCall(t *testing.T) {
 	}
 }
 
+// A Call no host answered fails once the last root goes: a goroutine
+// waiting on it ends, rather than waits for good.
+func TestCallFailsWithTheRoot(t *testing.T) {
+	h := fake.New()
+	h.AsyncModules = map[string]func(string, []byte, func([]byte, error)){
+		"never": func(string, []byte, func([]byte, error)) {}, // answers nothing
+	}
+	r := ui.Mount(h, func() ui.Node { return ui.StaticText("x") })
+	var err error
+	ui.Call("never", "wait", nil, func(_ []byte, e error) { err = e })
+	r.Flush()
+	h.RunPosted()
+	if err != nil {
+		t.Fatalf("answered before the root went: %v", err)
+	}
+	r.Dispose()
+	if err == nil || err.Error() != "ui: the root went before the call was answered" {
+		t.Fatalf("after Dispose: %v", err)
+	}
+}
+
 // A URL the app is opened with goes to its handlers; one before any
 // handler waits for the first.
 func TestIncomingURL(t *testing.T) {

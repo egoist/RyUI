@@ -6,8 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"math"
+	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/egoist/asuka/internal/locationspec"
 
 	. "github.com/egoist/asuka/internal/gtk"
 )
@@ -22,6 +25,8 @@ import (
 func init() {
 	moduleHooks = append(moduleHooks, func(h *Host, m map[string]map[string]method) {
 		m["location"] = h.locationModule()
+		m["locationAccess"] = h.locationAccessModule()
+		m["locationBackground"] = locationBackgroundModule()
 	})
 }
 
@@ -33,6 +38,16 @@ type locator struct {
 	unseen   []byte // the newest, not yet given to a next
 	updating bool   // watching ("next" until "stop")
 	gen      int    // the source's: what an old one reports is dropped
+
+	// The authorization, as this run has seen it: known once a position
+	// came (allowed) or the portal or GeoClue refused.
+	known, allowed bool
+	accessWaits    []accessWait
+}
+
+type accessWait struct {
+	last  []byte
+	reply func([]byte, error)
 }
 
 // locSource is where positions come from: the portal's or GeoClue's.
@@ -142,6 +157,7 @@ func (h *Host) stopLocation() {
 // locationUpdate is a new position.
 func (h *Host) locationUpdate(data []byte) {
 	l := &loc
+	h.accessSeen(true)
 	cs := l.current
 	l.current = nil
 	for _, c := range cs {
@@ -165,6 +181,9 @@ func (h *Host) locationUpdate(data []byte) {
 // locationFailed ends what waits: the source couldn't start.
 func (h *Host) locationFailed(err error) {
 	l := &loc
+	if strings.Contains(err.Error(), "denied") {
+		h.accessSeen(false)
+	}
 	if s := l.src; s != nil {
 		l.src = nil
 		l.gen++
@@ -196,7 +215,15 @@ func encodePosition(p map[string]any) []byte {
 			t = int64(s)*1000 + int64(us)/1000
 		}
 	}
-	b, _ := json.Marshal(map[string]any{"lat": f("Latitude"), "lon": f("Longitude"), "acc": f("Accuracy"), "alt": alt, "t": t})
+	// GeoClue's speed and heading are -1 when not known; the portal's too.
+	known := func(k string) float64 {
+		if v, ok := p[k].(float64); ok && v >= 0 && !math.IsNaN(v) {
+			return v
+		}
+		return -1
+	}
+	b, _ := json.Marshal(map[string]any{"lat": f("Latitude"), "lon": f("Longitude"), "acc": f("Accuracy"), "alt": alt,
+		"spd": known("Speed"), "crs": known("Heading"), "t": t})
 	return b
 }
 
@@ -413,5 +440,97 @@ func (g *geoclueLoc) stop() {
 func (g *geoclueLoc) stopClient() {
 	if g.client != "" {
 		DBusCall(g.conn, geoclue, g.client, geoclue+".Client", "Stop", 0, -1, func(Ptr, error) {})
+	}
+}
+
+// asuka/sdk/location's authorization (locationspec's "locationAccess"):
+// neither the portal nor GeoClue says it before an app asks for a
+// position, so it's what this run has seen: NotAsked until a position
+// comes (Always: a desktop app runs out of sight) or a refusal (Denied).
+// "request" asks for a position to find out. Precise: the portal's
+// accuracy is the app's to choose, not the user's.
+
+func accessState() []byte {
+	switch {
+	case !loc.known:
+		return locationspec.Access(locationspec.NotAsked, false, false)
+	case loc.allowed:
+		return locationspec.Access(locationspec.Always, true, false)
+	}
+	return locationspec.Access(locationspec.Denied, false, false)
+}
+
+// accessSeen notes what a position (or a refusal) says, and answers the
+// followers.
+func (h *Host) accessSeen(allowed bool) {
+	l := &loc
+	if l.known && l.allowed == allowed {
+		return
+	}
+	l.known, l.allowed = true, allowed
+	s := accessState()
+	ws := l.accessWaits
+	l.accessWaits = nil
+	for _, w := range ws {
+		if string(w.last) != string(s) {
+			w.reply(s, nil)
+		} else {
+			l.accessWaits = append(l.accessWaits, w)
+		}
+	}
+}
+
+func (h *Host) locationAccessModule() map[string]method {
+	l := &loc
+	return map[string]method{
+		"current": func(_ []byte, reply func([]byte, error)) { reply(accessState(), nil) },
+		"next": func(last []byte, reply func([]byte, error)) {
+			if s := accessState(); len(last) == 0 || string(last) != string(s) {
+				reply(s, nil)
+				return
+			}
+			l.accessWaits = append(l.accessWaits, accessWait{append([]byte(nil), last...), reply})
+		},
+		"stop": func(_ []byte, reply func([]byte, error)) {
+			ws := l.accessWaits
+			l.accessWaits = nil
+			for _, w := range ws {
+				w.reply(nil, errors.New("stopped"))
+			}
+			reply(nil, nil)
+		},
+		"request": func(_ []byte, reply func([]byte, error)) {
+			if l.known {
+				reply(accessState(), nil)
+				return
+			}
+			l.current = append(l.current, func([]byte, error) { reply(accessState(), nil) })
+			h.startLocation()
+		},
+		"precise": func(_ []byte, reply func([]byte, error)) { reply(accessState(), nil) },
+		"settings": func(_ []byte, reply func([]byte, error)) {
+			if err := exec.Command("gnome-control-center", "location").Start(); err != nil {
+				reply(nil, errors.New("not available: no GNOME Settings"))
+				return
+			}
+			reply(nil, nil)
+		},
+	}
+}
+
+// locationBackgroundModule says GeoClue has no geofences and no
+// background updates: the Go package computes both from the positions
+// while the app runs.
+func locationBackgroundModule() map[string]method {
+	computed := func(_ []byte, reply func([]byte, error)) {
+		reply(nil, errors.New("not available: computed by the Go code on Linux"))
+	}
+	return map[string]method{
+		"capabilities": func(_ []byte, reply func([]byte, error)) {
+			b, _ := json.Marshal(locationspec.Capabilities{})
+			reply(b, nil)
+		},
+		"start": computed, "stop": computed, "updating": computed, "monitor": computed,
+		"unmonitor": computed, "regions": computed, "next": computed, "done": computed,
 	}
 }

@@ -203,6 +203,7 @@ type Host struct {
 	net           netMonitor              // asuka/sdk/network (services.go)
 	speech        speech                  // asuka/sdk/speech
 	loc           locator                 // asuka/sdk/location
+	locRegions    regionState             // asuka/sdk/location's authorization and regions
 	refreshTarget ID                      // the observer of refreshable scroll views (refresh.go)
 	players       map[string]*audioPlayer // asuka/sdk/audio's, by ID
 	sidebarSource ID

@@ -1985,7 +1985,7 @@ func (rt *router) start() *navDesc {
 	if rt.addressed {
 		if l, ok := rt.r.host.(host.Locator); ok {
 			if wk := rt.win.key(); wk != "" {
-				if h, state, ok := l.Location(wk); ok {
+				if h, state, ok := l.WindowRoute(wk); ok {
 					if d := rt.decode(state, Href(h)); d != nil {
 						return d
 					}
