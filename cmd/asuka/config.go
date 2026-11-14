@@ -78,6 +78,11 @@ type appConfig struct {
 		// BackgroundModes adds to Info.plist's UIBackgroundModes: "audio",
 		// to keep recording and playing with the screen locked.
 		BackgroundModes []string `json:"backgroundModes"`
+		// StoreKit is a StoreKit configuration file (Xcode's .storekit: the
+		// products, their prices, Ask to Buy, renewals sped up) that
+		// asuka dev's build for the simulator sells from, as Xcode's scheme
+		// does (asuka/sdk/purchase): asuka dev --no-hot or --once.
+		StoreKit string `json:"storekit"`
 		// IPhoneOnly leaves iPad out: the app runs there as an iPhone app,
 		// in a phone-sized window. By default it's an iPad app too, in
 		// Split View and Stage Manager, at any size the user gives it.
@@ -174,6 +179,10 @@ type appConfig struct {
 	// androidModules are the host's optional Gradle modules the app's
 	// packages need (featurePermissions).
 	androidModules []string
+	// macSwift are the Mac's Swift's compilation conditions the app's
+	// packages need (featurePermissions): the Mac's library
+	// (AsukaNatives.dylib) is built with them, natives or not.
+	macSwift []string
 	// iosTrue and androidApp: featurePermissions' Info.plist keys set to
 	// true, and application elements of the Android manifest.
 	iosTrue    []string
@@ -532,6 +541,12 @@ var featurePermissions = []struct {
 	{pkg: "github.com/egoist/asuka/sdk/liveactivity",
 		android:    []string{"android.permission.POST_NOTIFICATIONS", "android.permission.POST_PROMOTED_NOTIFICATIONS"},
 		androidApp: []string{`<receiver android:name="dev.asuka.AsukaLiveActivityReceiver" android:exported="false" />`}},
+	// In-app purchases: Play Billing (its library's manifest declares
+	// BILLING; said here too), only in the apps that sell; on the Mac,
+	// StoreKit 2's Swift in the app's library. iOS's comes with the
+	// feature (ASUKA_PURCHASE); the In-App Purchase capability needs no
+	// entitlement.
+	{pkg: "github.com/egoist/asuka/sdk/purchase", android: []string{"com.android.vending.BILLING"}, modules: []string{"purchase"}},
 	// Binding the text-to-speech engine: Android 11's package visibility.
 	{pkg: "github.com/egoist/asuka/sdk/speech", androidTop: []string{`<queries><intent><action android:name="android.intent.action.TTS_SERVICE" /></intent></queries>`}},
 	// The pedometer: iOS's Motion & Fitness; Android's physical activity.
@@ -548,6 +563,14 @@ var featurePermissions = []struct {
 		plistArrays: map[string][]string{"LSApplicationQueriesSchemes": {"mailto"}},
 		androidTop: []string{`<queries><intent><action android:name="android.intent.action.SENDTO" /><data android:scheme="mailto" /></intent>` +
 			`<intent><action android:name="android.intent.action.SENDTO" /><data android:scheme="smsto" /></intent></queries>`}},
+}
+
+// featureMacSwift are the parts of platform/macos's Swift a package
+// needs, as compilation conditions (macSwift): the Mac's library is built
+// with them for an app that imports it.
+var featureMacSwift = map[string][]string{
+	// StoreKit 2 is Swift's alone.
+	"github.com/egoist/asuka/sdk/purchase": {"ASUKA_PURCHASE"},
 }
 
 // permissionsFor adds the permissions the packages deps (an app's
@@ -576,6 +599,11 @@ func (c *appConfig) permissionsFor(deps []string) {
 		for _, x := range f.androidApp {
 			if !slices.Contains(c.androidApp, x) {
 				c.androidApp = append(c.androidApp, x)
+			}
+		}
+		for _, x := range featureMacSwift[f.pkg] {
+			if !slices.Contains(c.macSwift, x) {
+				c.macSwift = append(c.macSwift, x)
 			}
 		}
 		for _, x := range f.androidTop {

@@ -998,6 +998,23 @@ symbol (`iosFeatures`). On Android, each is an optional Gradle module
 package (`featurePermissions`), whose `AsukaPlugin` registers its methods
 and views by name at start.
 
+In-app purchases (`asuka/sdk/purchase`) are one module, `purchase`,
+whose JSON (`internal/purchasespec`) every host speaks: StoreKit 2 on
+iOS (`ASUKA_PURCHASE`) and on the Mac, where it's Swift the Objective-C
+runtime can't reach, so the same file (`Purchase.swift`, kept identical
+in platform/ios and platform/macos) is built into the app's Swift
+library for an app that imports the package (`featureMacSwift`), and
+`host/darwin` calls it through purego; Play Billing in the optional
+`asuka-purchase` module; the Microsoft Store from Go (`internal/windows`'
+StoreContext); the Digital Goods API on the web; none on Linux;
+`fake.Store` in tests. Each host follows the store's transactions from
+the app's start (StoreKit's `Transaction.updates` from launch, Play's
+listener and its unacknowledged purchases at each return to the front,
+the Store's license changes) and keeps them for `next`, so a purchase
+completed before the Go code observes isn't lost. A root's disposal
+answers the calls still waiting on its host (`ui: the root went`), so a
+package's poll of `next` ends with it.
+
 What runs outside the app's process is built from `asuka.json`. iOS's
 widget extension is WidgetKit's, so SwiftUI's (the one place the host
 uses it): one template (platform/ios/Widget) with the app's kinds,

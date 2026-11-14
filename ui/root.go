@@ -143,6 +143,7 @@ func (r *Root) Dispose() {
 	r.dispose = nil
 	r.el.destroy()
 	r.Flush()
+	failCalls(r)
 	for i, x := range roots {
 		if x == r {
 			roots = append(roots[:i], roots[i+1:]...)

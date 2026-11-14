@@ -52,6 +52,11 @@ func TestModulesAnswer(t *testing.T) {
 		fails("sensors", "next", nil, "not available")
 		fails("widget", "set", nil, "not available")
 		fails("liveActivity", "start", []byte(`{"id":"a","content":{}}`), "not available")
+		// The test's process isn't packaged: no Store.
+		fails("purchase", "products", []byte(`{"items":[{"id":"pro","kind":"nonConsumable"}]}`), "not available")
+		if b := ok("purchase", "available", nil); !bytes.Equal(b, []byte{0}) {
+			fatalf("purchase.available: %v", b)
+		}
 		if b := ok("liveActivity", "enabled", nil); !bytes.Equal(b, []byte{0}) {
 			fatalf("liveActivity.enabled: %v", b)
 		}
@@ -891,6 +896,7 @@ func TestEveryModuleAnswers(t *testing.T) {
 		"preview":      "show",
 		"print":        "file html webView pdf",
 		"push":         "nextRewrite register rewritten stop nextReceived nextOpened",
+		"purchase":     "available products buy finish entitlements restore status manage refund redeem storefront next stop",
 		"review":       "request",
 		"scan":         "file",
 		"screen":       "bars lock preventCapture screenshot stopScreenshots",

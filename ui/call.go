@@ -9,11 +9,33 @@ import (
 	"github.com/egoist/asuka/signal"
 )
 
-// calls are the Calls waiting for their Result, by call id.
+// calls are the Calls waiting for their Result, by call id; callRoots,
+// the root each went through, whose host answers it.
 var (
-	calls    = map[uint32]func([]byte, error){}
-	nextCall uint32
+	calls     = map[uint32]func([]byte, error){}
+	callRoots = map[uint32]*Root{}
+	nextCall  uint32
 )
+
+// errRootGone answers the Calls a disposed root's host never will.
+var errRootGone = errors.New("ui: the root went before the call was answered")
+
+// failCalls answers the Calls waiting on r's host, which is gone: a
+// goroutine in CallWait (a package's poll of "next") ends instead of
+// waiting forever.
+func failCalls(r *Root) {
+	for id, cr := range callRoots {
+		if cr != r {
+			continue
+		}
+		done := calls[id]
+		delete(calls, id)
+		delete(callRoots, id)
+		if done != nil {
+			done(nil, errRootGone)
+		}
+	}
+}
 
 // Call runs method of a native module (the host's own, such as
 // "secureStore" or "photos", or one the app registers in Swift and
@@ -36,6 +58,7 @@ func Call(module, method string, args []byte, done func(result []byte, err error
 	id := nextCall
 	if done != nil {
 		calls[id] = done
+		callRoots[id] = r
 	}
 	r.batch.CommandArgs(r.el.id, ops.CmdCall, func(b []byte) []byte {
 		le := binary.LittleEndian
@@ -87,6 +110,7 @@ func result(b []byte) {
 		return
 	}
 	delete(calls, id)
+	delete(callRoots, id)
 	if b[4] == 0 {
 		done(nil, errors.New(string(b[5:])))
 		return

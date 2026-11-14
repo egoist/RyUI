@@ -27,6 +27,11 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         // action launches it without a scene).
         AsukaNotifyCenter.shared.install()
         #endif
+        #if ASUKA_PURCHASE
+        // asuka/sdk/purchase: StoreKit's transactions, listened to from the
+        // start, so none that comes before the Go code observes is lost.
+        AsukaStore.shared.start()
+        #endif
         return true
     }
 

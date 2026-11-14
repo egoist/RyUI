@@ -219,6 +219,13 @@ struct AsukaModuleError: LocalizedError {
         #if ASUKA_REVIEW
         modules["review"] = AsukaReview.methods(self)
         #endif
+        #if ASUKA_PURCHASE
+        // asuka/sdk/purchase: StoreKit 2, its sheets in the app's scene.
+        AsukaStore.shared.scene = { [weak self] in self?.controller?.view.window?.windowScene }
+        modules["purchase"] = Dictionary(uniqueKeysWithValues: AsukaStore.methods.map { name in
+            (name, { args, reply in AsukaStore.shared.call(name, args, reply) } as AsukaModuleMethod)
+        })
+        #endif
         #if ASUKA_TRACKING
         modules["tracking"] = AsukaTracking.methods()
         #endif

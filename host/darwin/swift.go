@@ -108,6 +108,7 @@ func loadSwiftNatives(path string) error {
 	purego.RegisterLibFunc(&swift.malloc, libc, "malloc")
 	swift.loaded = true
 	swift.contexts = map[uint64]native.Context{}
+	loadSwiftPurchase(lib)
 	boot(purego.NewCallback(swiftEmit), purego.NewCallback(swiftDone), purego.NewCallback(swiftInvoke))
 	native.SetBackend(swiftBackend{})
 	return nil

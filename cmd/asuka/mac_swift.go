@@ -91,12 +91,21 @@ func macSwift(app *goApp, bundle, work string, archs []string, release bool, run
 	if err != nil {
 		return err
 	}
-	if len(natives) == 0 {
+	// What the app's packages build in (featurePermissions' macSwift:
+	// asuka/sdk/purchase's StoreKit), with or without natives.
+	var defines []string
+	if app.cfg != nil {
+		defines = app.cfg.macSwift
+	}
+	if len(natives) == 0 && len(defines) == 0 {
 		os.Remove(lib)
 		os.Remove(filepath.Join(fw, "libswift_Concurrency.dylib"))
 		return macEmbedPackages(nil, dir, fw, "")
 	}
 	if _, err := exec.LookPath("xcodebuild"); err != nil {
+		if len(natives) == 0 {
+			return fmt.Errorf("asuka: %s's packages need Swift on the Mac (%s): install Xcode", app.name, strings.Join(defines, ", "))
+		}
 		return fmt.Errorf("asuka: %s's native packages have Swift (%s): install Xcode", app.name, natives[0].path)
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -108,7 +117,7 @@ func macSwift(app *goApp, bundle, work string, archs []string, release bool, run
 	}
 	stamp := filepath.Join(dir, "stamp")
 	h := sha256.New()
-	fmt.Fprintln(h, archs, release, bundle)
+	fmt.Fprintln(h, archs, release, bundle, defines)
 	for name, b := range host {
 		fmt.Fprintln(h, name, len(b))
 		h.Write(b)
@@ -130,7 +139,7 @@ func macSwift(app *goApp, bundle, work string, archs []string, release bool, run
 	for _, a := range archs {
 		out := filepath.Join(dir, "AsukaNatives-"+a+".dylib")
 		b := &swiftBuild{dir: filepath.Join(dir, "packages"), platform: "macos", sdkName: "macosx",
-			arch: macSwiftArch(a), release: release, host: host, natives: natives, run: run}
+			arch: macSwiftArch(a), release: release, defines: defines, host: host, natives: natives, run: run}
 		o, err := b.build()
 		if err != nil {
 			return err

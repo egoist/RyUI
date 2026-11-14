@@ -203,6 +203,7 @@ iOS 构建的配置。`team` 同时也是 Mac 构建所用的团队，`usage` �
 | `infoPlist` | 对象 | 无 | 添加到 Info.plist 的字符串键。 |
 | `backgroundModes` | 字符串数组 | 无 | 添加到 Info.plist 的 `UIBackgroundModes`：`"audio"` 可以在锁屏时继续录音和播放。 |
 | `iphoneOnly` | 布尔值 | `false` | 不支持 iPad：应用在 iPad 上作为 iPhone 应用运行，窗口是手机大小。 |
+| `storekit` | 字符串 | 无 | StoreKit 配置文件（Xcode 的 `.storekit`）。`asuka dev` 的模拟器构建会像 Xcode 的 scheme 那样，用它来售卖商品：见[应用内购买](purchases.md#测试购买)。 |
 | `nonExemptEncryption` | 字符串 | `"no"` | 构建对自身加密情况的声明（`ITSAppUsesNonExemptEncryption`），这是一项需要你自己做出的法律声明：`"no"`、`"yes"`，或者 `"ask"`（不做声明，App Store Connect 会在每次上传时询问）。 |
 | `collected` | 对象数组 | 无 | 应用收集的数据，用于隐私清单（见下文）。 |
 | `appStoreConnect` | 对象 | | `asuka publish` 上传时使用的 App Store Connect API 密钥：`keyId`、`issuerId`（个人密钥没有）和 `key`，即 `.p8` 文件的路径（默认按 `altool` 的方式查找 `~/.appstoreconnect/private_keys` 下的 `AuthKey_<keyId>.p8`）。见[发布到应用商店](shipping.md#发布到应用商店)。 |

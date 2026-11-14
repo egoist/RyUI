@@ -17,7 +17,7 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "asuka-android"
-include(":asuka", ":app", ":asuka-scan", ":asuka-vision", ":asuka-review", ":asuka-push", ":asuka-integrity", ":asuka-agerange", ":asuka-maps", ":asuka-periodic")
+include(":asuka", ":app", ":asuka-scan", ":asuka-vision", ":asuka-review", ":asuka-push", ":asuka-integrity", ":asuka-agerange", ":asuka-maps", ":asuka-periodic", ":asuka-purchase")
 
 // The app's native packages' modules (their android/, the CLI's
 // asukaNativeModules: name=directory, ;-separated).

@@ -99,6 +99,9 @@ browser.
   biometrics, the screen and the launch screen, maps, the stores'
   services, sensors, image editing, speech, contacts and calendars, home
   screen widgets and shortcuts, and crash reports, on each platform.
+- [In-app purchases](purchases.md): consumables, non-consumables and
+  subscriptions through the App Store, Google Play and the Microsoft
+  Store, transactions, restoring, verifying on a server, and testing.
 - [The desktop](desktop.md): tray icons and the Dock menu, apps in the
   background, global shortcuts, file dialogs and the file manager,
   opening files, one instance, quitting, recent documents, starting at

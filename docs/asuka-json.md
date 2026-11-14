@@ -240,6 +240,7 @@ purpose strings go in the Mac's Info.plist as well.
 | `infoPlist` | object | none | String keys added to Info.plist. |
 | `backgroundModes` | strings | none | Added to Info.plist's `UIBackgroundModes`: `"audio"`, to record and play with the screen locked. |
 | `iphoneOnly` | boolean | `false` | Leaves iPad out: the app runs there as an iPhone app, in a phone-sized window. |
+| `storekit` | string | none | A StoreKit configuration file (Xcode's `.storekit`) that `asuka dev`'s simulator build sells from, as Xcode's scheme does: see [In-app purchases](purchases.md#testing-your-purchases). |
 | `nonExemptEncryption` | string | `"no"` | What a build says of its encryption (`ITSAppUsesNonExemptEncryption`), a legal statement that's yours to make: `"no"`, `"yes"`, or `"ask"`, which says nothing, so App Store Connect asks at each upload. |
 | `collected` | objects | none | The data the app collects, for its privacy manifest (see below). |
 | `appStoreConnect` | object | | The App Store Connect API key `asuka publish` uploads with: `keyId`, `issuerId` (none for an individual key) and `key`, the `.p8`'s path (default: `AuthKey_<keyId>.p8` in `~/.appstoreconnect/private_keys`, as `altool` looks). See [Publishing](shipping.md#publishing). |

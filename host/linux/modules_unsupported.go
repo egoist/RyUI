@@ -9,7 +9,8 @@ import "errors"
 // (no system prompt for the owner: none enrolled, no passcode), review
 // (no store prompt: handled, not shown), tracking (no tracking prompt:
 // allowed, as on Android), integrity (no attestation: not supported),
-// ageRange (not available) and push (no push service).
+// ageRange (not available), push (no push service) and purchase (no
+// store).
 
 func init() {
 	moduleHooks = append(moduleHooks, func(h *Host, m map[string]map[string]method) {
@@ -38,6 +39,17 @@ func init() {
 		}
 		m["ageRange"] = map[string]method{
 			"request": func(_ []byte, reply func([]byte, error)) { reply(nil, errors.New("not available")) },
+		}
+		// asuka/sdk/purchase: no store sells a Linux app's add-ons.
+		noStore := func(_ []byte, reply func([]byte, error)) {
+			reply(nil, errors.New("not available: Linux has no store that sells in apps"))
+		}
+		m["purchase"] = map[string]method{
+			"available": func(_ []byte, reply func([]byte, error)) { reply([]byte{0}, nil) },
+			"stop":      func(_ []byte, reply func([]byte, error)) { reply(nil, nil) },
+		}
+		for _, name := range []string{"products", "buy", "finish", "entitlements", "restore", "status", "manage", "refund", "redeem", "storefront", "next"} {
+			m["purchase"][name] = noStore
 		}
 		m["push"] = map[string]method{
 			"register":     unsupported("asuka/sdk/push"),
