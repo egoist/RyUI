@@ -58,7 +58,7 @@ draws its own UI, see [Asuka and MyGo](mygo.md).
 | Maps | `Map` | `expo-maps` | ✓ `asuka/sdk/maps` (Apple Maps; Google Maps with an API key: region, markers, the user's location, taps; libshumate's OpenStreetMap map on Linux; on Windows the host draws OpenStreetMap's tiles itself) |
 | Custom drawing | `Shape`, `Path`, `Canvas` | `react-native-svg`, Skia | ✓ `Shape` and `Path` (fill, stroke, caps, joins, dashes, an animatable trim); `Canvas` (paths, gradients, text, transforms, clips, opacity); SVG icons drawn natively (`asuka/sdk/svg`) |
 | Charts | Swift Charts | `victory-native`, community | ✓ `asuka/sdk/chart` (bars, lines, areas, points) |
-| Shaders | `.colorEffect(ShaderLibrary...)` | Skia's runtime effects | ✓ `Shader` (Kage, Go's syntax: Metal on iOS and the Mac, AGSL on Android, WebGL 2 on the web, the CPU on Windows and Linux) |
+| Shaders | `.colorEffect(ShaderLibrary...)` | Skia's runtime effects | ✓ `Shader` (Kage, Go's syntax: Metal on iOS and the Mac, AGSL on Android, WebGL 2 on the web, Direct3D 11 on Windows, OpenGL on Linux) |
 | Native escape hatch | `UIViewRepresentable` | native modules | ✓ native packages: typed modules and views declared in Go, implemented in Swift on iOS and macOS, Kotlin on Android, JavaScript on the web, Go on Windows and Linux ([Native code](native.md)) |
 | Paging, page dots | `.scrollTargetBehavior(.paging)`, `TabView(.page)` | `react-native-pager-view` | ✓ `ScrollProps.Paging`, `PageControl` |
 | Checkbox | `Toggle` (`.checkbox`, macOS) | community | ✓ `ToggleProps.Checkbox` |

@@ -19,7 +19,7 @@ var tint = kage.MustCompile(`package main
 var Tint vec4
 
 func Fragment(dst vec4, pos vec2) vec4 {
-	if pos.x < rectSize().x/2 {
+	if pos.x < rectSize().x/2 && pos.y < rectSize().y/2 {
 		return vec4(Tint.rgb, 1) * Tint.a
 	}
 	return vec4(0)
@@ -53,11 +53,12 @@ func TestShader(t *testing.T) {
 	})
 	onMain(t, func() {
 		ns := find(h, ops.KindShader)
-		if len(ns) != 1 || ns[0].kage == nil || ns[0].kage.prog == nil {
+		if len(ns) != 1 || ns[0].kage == nil || ns[0].kage.code == nil {
 			fatalf("no shader program: %v", ns)
 		}
 		s := ns[0].kage
-		// BGRA, premultiplied: the left half the tint, the right clear.
+		// BGRA, premultiplied: the top left quarter the tint, the rest
+		// clear, at the view's pixels.
 		px := func(x, y int) [4]byte {
 			o := (y*s.pw + x) * 4
 			return [4]byte(s.pix[o : o+4])
@@ -65,11 +66,20 @@ func TestShader(t *testing.T) {
 		if !pumpUntil(func() bool { return s.bmp != nil }) {
 			fatalf("no frame")
 		}
+		d3d.mu.Lock()
+		t.Logf("Direct3D 11, feature level %#x, WARP %v", d3d.level, d3d.software)
+		d3d.mu.Unlock()
 		if got := px(0, 0); got != [4]byte{0, 0, 255, 255} {
 			fatalf("left pixel %v", got)
 		}
-		if got := px(s.pw-1, s.ph-1); got != [4]byte{} {
+		if got := px(s.pw-1, 0); got != [4]byte{} {
 			fatalf("right pixel %v", got)
+		}
+		if got := px(0, s.ph-1); got != [4]byte{} {
+			fatalf("bottom pixel %v", got)
+		}
+		if k := h.scaleOf(ns[0]); s.pw != int(40*k) || s.ph != int(30*k) {
+			fatalf("a frame of %dx%d", s.pw, s.ph)
 		}
 		h.enter(func() { ui.Post(func() { color.Set(colors.Hex(0x0000ff)) }) }) // flushed as the app's code is
 		h.runPosted()

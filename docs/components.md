@@ -848,12 +848,16 @@ ui.Shader(ui.ShaderProps{
   between values that aren't constants.
 
 It's Metal on iOS and macOS (a `CAMetalLayer`), AGSL on Android (a
-`RuntimeShader`) and WebGL 2 in a browser (the program translated to
-GLSL ES 3.00). Windows and Linux run the same program on the CPU,
-across the cores and off the main thread: a frame shows when it's
-ready, and a large or animated box renders at a fraction of its
-resolution, scaled up. Give the box a `Background` that stands in until
-the first frame.
+`RuntimeShader`), WebGL 2 in a browser (the program translated to
+GLSL ES 3.00), Direct3D 11 on Windows (translated to HLSL; WARP, the
+system's software rasterizer, where there's no GPU) and OpenGL on Linux
+(translated to GLSL, drawn in a context of GTK's into a texture GTK
+draws). On Windows a frame renders off the main thread and shows when
+it's ready. Linux without GL (no driver, `GDK_DISABLE=gl`) runs the
+program on the CPU instead, across the cores and off the main thread,
+and a large or animated box renders at a fraction of its resolution
+there, scaled up. Give the box a `Background` that stands in until the
+first frame.
 
 ## Containers
 

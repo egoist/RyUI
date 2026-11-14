@@ -171,12 +171,12 @@ type node struct {
 	dying          bool
 	interceptBack  bool // ui.OnBack: going back asks the core (Back)
 	tooltip        string
-	keys           []ops.Key  // its Keys prop's, Control as primary (keys.go)
-	canvas         []byte     // a Canvas's display list
-	kage           *cpuShader // a Shader's program, on the CPU
-	paneNode       *node      // a SplitView's pane
-	checkbox       bool       // a Toggle drawn as a check box
-	pane           *splitPane // a pane's rows
+	keys           []ops.Key   // its Keys prop's, Control as primary (keys.go)
+	canvas         []byte      // a Canvas's display list
+	kage           *kageShader // a Shader's program, on the GPU
+	paneNode       *node       // a SplitView's pane
+	checkbox       bool        // a Toggle drawn as a check box
+	pane           *splitPane  // a pane's rows
 	a11yLabel      string
 	a11yHint       string // the screen reader props (a11y.go)
 	a11yRole       int32

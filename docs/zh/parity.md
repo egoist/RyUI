@@ -46,7 +46,7 @@ SwiftUI 也能在 Mac 上运行。Expo 支持 iOS、Android 和 Web；React Nati
 | 地图 | `Map` | `expo-maps` | ✓ `asuka/sdk/maps`（Apple 地图；Google 地图需要 API 密钥：支持区域、标记、用户位置、点按；Linux 上用 libshumate 的 OpenStreetMap 地图；Windows 上由宿主自己绘制 OpenStreetMap 的瓦片） |
 | 自定义绘制 | `Shape`、`Path`、`Canvas` | `react-native-svg`、Skia | ✓ `Shape` 和 `Path`（填充、描边、线帽、连接样式、虚线、可做动画的 trim）；`Canvas`（路径、渐变、文本、变换、裁剪、不透明度）；以原生方式绘制的 SVG 图标（`asuka/sdk/svg`） |
 | 图表 | Swift Charts | `victory-native`、社区方案 | ✓ `asuka/sdk/chart`（柱状图、折线图、面积图、散点图） |
-| 着色器 | `.colorEffect(ShaderLibrary...)` | Skia 的 runtime effect | ✓ `Shader`（用 Kage 编写，语法与 Go 相同：iOS 和 Mac 上用 Metal，Android 上用 AGSL，Web 上用 WebGL 2，Windows 和 Linux 上用 CPU） |
+| 着色器 | `.colorEffect(ShaderLibrary...)` | Skia 的 runtime effect | ✓ `Shader`（用 Kage 编写，语法与 Go 相同：iOS 和 Mac 上用 Metal，Android 上用 AGSL，Web 上用 WebGL 2，Windows 上用 Direct3D 11，Linux 上用 OpenGL） |
 | 调用原生代码 | `UIViewRepresentable` | 原生模块 | ✓ 原生包：在 Go 里声明带类型的模块和视图，在 iOS 和 macOS 上用 Swift 实现，在 Android 上用 Kotlin，在 Web 上用 JavaScript，在 Windows 和 Linux 上用 Go（[原生代码](native.md)） |
 | 分页、页面指示点 | `.scrollTargetBehavior(.paging)`、`TabView(.page)` | `react-native-pager-view` | ✓ `ScrollProps.Paging`、`PageControl` |
 | 复选框 | `Toggle`（`.checkbox`，macOS） | 社区方案 | ✓ `ToggleProps.Checkbox` |

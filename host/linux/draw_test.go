@@ -241,34 +241,64 @@ func TestCanvasDraws(t *testing.T) {
 	})
 }
 
-var flat = shader.MustCompile(`package main
+// A Shader renders into a texture the view draws: on the GPU where GDK
+// has GL, its rows the right way up.
+func TestShaderRenders(t *testing.T) {
+	testShader(t, true)
+}
+
+// Without GL, a Shader runs on the CPU and draws the same.
+func TestShaderRendersOnCPU(t *testing.T) {
+	var ctx Ptr
+	onMain(func() {
+		glReady()
+		ctx = glr.ctx
+		glr.ctx = 0
+	})
+	defer onMain(func() { glr.ctx = ctx })
+	testShader(t, false)
+}
+
+var halves = shader.MustCompile(`package main
 
 var Tint vec4
 
 func Fragment(dst vec4, pos vec2) vec4 {
-	return Tint
+	if pos.y < rectSize().y/2 {
+		return Tint
+	}
+	return vec4(0, 0, 1, 1)
 }
 `)
 
-// A Shader renders on the CPU into a texture the view draws.
-func TestShaderRenders(t *testing.T) {
+func testShader(t *testing.T, gpu bool) {
 	tint := signal.New([4]float32{0, 1, 0, 1})
 	h, _ := mount(t, func() ui.Node {
 		return ui.Column(ui.Style{Padding: ui.All(10)},
-			ui.Shader(ui.ShaderProps{Program: flat,
+			ui.Shader(ui.ShaderProps{Program: halves,
 				Uniforms: signal.Func(func() []ui.Uniform { v := tint.Get(); return []ui.Uniform{{Name: "Tint", Value: v[:]}} }),
 				Style:    ui.Style{Width: ui.Pt(80), Height: ui.Pt(40)}}))
 	})
 	var n *node
 	onMain(func() { n = onlyNode(t, h, ops.KindShader) })
-	settle(t, h, func() bool { return kages[n].texture != 0 && !kages[n].busy })
+	idle := func() bool { s := kages[n]; return s.cpu == nil || !s.cpu.busy }
+	settle(t, h, func() bool { return kages[n].texture != 0 && idle() })
 	onMain(func() {
-		if c := render(n).at(40, 20); !greenish(c) {
-			fatalf(t, "the shader drew %v", c)
+		if s := kages[n]; gpu && glReady() && s.cpu != nil {
+			fatalf(t, "the shader runs on the CPU with GL")
+		} else if !gpu && s.cpu == nil {
+			fatalf(t, "the shader runs on the GPU without GL")
+		}
+		p := render(n)
+		if c := p.at(40, 5); !greenish(c) {
+			fatalf(t, "the shader's top is %v", c)
+		}
+		if c := p.at(40, 35); !bluish(c) {
+			fatalf(t, "the shader's bottom is %v", c)
 		}
 		post(h, func() { tint.Set([4]float32{1, 0, 0, 1}) })
 	})
-	settle(t, h, func() bool { return !kages[n].busy && reddish(render(n).at(40, 20)) })
+	settle(t, h, func() bool { return idle() && reddish(render(n).at(40, 5)) })
 }
 
 // A PageControl is measured, draws its dots, and a click on a dot or an

@@ -574,7 +574,7 @@ ui.Shader(ui.ShaderProps{
 - `var Time float` 是着色器显示以来经过的秒数。`Animated` 让着色器持续运行：显示器每绘制一帧，这个框就绘制一次，而 Go 这边什么都不需要运行。
 - `shader.Compile` 会报告着色器中的错误及其所在行，并且在所有平台上都会同样指出 Android 无法运行的部分：AGSL 采用的是 GLSL ES 1.00 的语言，因此不支持无符号整数、位运算、整数取余（浮点数的 `mod` 可以用）、导数，以及上下界不是常量的循环。
 
-它在 iOS 和 macOS 上使用 Metal（一个 `CAMetalLayer`），在 Android 上使用 AGSL（一个 `RuntimeShader`），在浏览器中使用 WebGL 2（程序会被翻译成 GLSL ES 3.00）。Windows 和 Linux 在 CPU 上运行同一个程序，分摊到多个核心，并且在主线程之外执行：每一帧准备好之后才显示，较大或带动画的框会以较低的分辨率渲染，再放大显示。请给框设置一个 `Background`，在第一帧出来之前先顶上。
+它在 iOS 和 macOS 上使用 Metal（一个 `CAMetalLayer`），在 Android 上使用 AGSL（一个 `RuntimeShader`），在浏览器中使用 WebGL 2（程序会被翻译成 GLSL ES 3.00），在 Windows 上使用 Direct3D 11（程序会被翻译成 HLSL；没有 GPU 时用系统自带的软件光栅化器 WARP），在 Linux 上使用 OpenGL（程序会被翻译成 GLSL，在 GTK 的上下文中绘制到纹理里，再由 GTK 显示）。在 Windows 上，每一帧都在主线程之外渲染，准备好之后才显示。Linux 上如果没有 GL（没有驱动，或者设置了 `GDK_DISABLE=gl`），同一个程序会改在 CPU 上运行，分摊到多个核心，并且在主线程之外执行；这时较大或带动画的框会以较低的分辨率渲染，再放大显示。请给框设置一个 `Background`，在第一帧出来之前先顶上。
 
 ## 容器
 

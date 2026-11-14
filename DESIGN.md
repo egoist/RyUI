@@ -1665,8 +1665,8 @@ Each one ends with its examples running and its tests in CI.
     keyboard on Android); `ui.Canvas` (a display list, re-recorded with no
     allocation) and `asuka/sdk/chart` on it; `ui.Shader` (a Kage shader, Go's
     syntax, compiled in Go by package `shader`: Metal on iOS and macOS,
-    AGSL on Android, package interp's CPU on Windows, and GLSL kept for
-    Linux); `ui.SplitView`
+    AGSL on Android, HLSL and Direct3D 11 on Windows, GLSL and OpenGL on
+    Linux and WebGL 2 on the web); `ui.SplitView`
     (`UISplitViewController`, collapsing into a stack on iPhone; Material's
     navigation drawer; `Replace` resets a stack at once); springs with
     `Damping` and `Velocity`, `Delay` and `OnDone`; `ToggleProps.Checkbox`;
@@ -1824,7 +1824,7 @@ Each one ends with its examples running and its tests in CI.
   components, navigation (libadwaita's navigation view, view stack and
   switcher, dialogs, alert dialogs, the split view), lists
   (core-virtualized), rich text and rich fields, shapes, canvas,
-  shaders (on the CPU), images, symbols (the icon theme's, or Material
+  shaders (OpenGL), images, symbols (the icon theme's, or Material
   Symbols as symbolic icons), gestures, drag and drop, menus and the
   main menu with its shortcuts, windows, animation, transitions,
   matched views, the app's links (its scheme), `WebView` (WebKitGTK
@@ -2213,6 +2213,13 @@ How the Windows host maps Asuka (`host/windows`):
   word). Views that take no mouse events are `HTTRANSPARENT`, so a
   click on a text reaches the pressable row under it. A pressable view
   shows Fluent's hover and pressed fills and takes Enter and Space.
+- A `Shader` is its program as HLSL (package hlsl), compiled by
+  Windows's compiler (`d3dcompiler_47`) once per program and drawn with
+  Direct3D 11 (the GPU's device, or WARP's), on a goroutine, into a
+  texture of the view's size in pixels that the GPU copies back to
+  memory: the main thread paints it with GDI+ as it paints the views
+  around it, and never waits for the GPU. Animated, a timer starts a
+  frame whenever none is rendering.
 - A view that clips with a corner radius is shaped by a window region
   (`SetWindowRgn`), which clips its child windows too: the pixels its
   rounded rectangle covers whole. Its corners' edge pixels, outside the
@@ -2746,8 +2753,13 @@ How the Linux host maps Asuka (`host/linux`):
   an animation; a `Canvas`'s commands become paths, strokes,
   transforms and Pango layouts as they're set, replayed each frame with
   raw calls (Clip a fill clip, Alpha multiplying the colors). A `Shader`
-  runs on the CPU (package interp), as on Windows, into a
-  `GdkMemoryTexture`; animated, on the view's frame clock. A
+  is its program as GLSL (package glsl, a std140 uniform block), drawn
+  as the view snapshots, in a GL context of the display's (shared with
+  GTK's renderer), into a texture that becomes a `GdkGLTexture` with a
+  fence, no copy; the textures GTK lets go of are drawn into again, as
+  GtkGLArea's are. Animated, the view's frame clock queues a draw each
+  frame. Without GL it runs on the CPU (package interp), off the main
+  thread, into a `GdkMemoryTexture`. A
   `PageControl` is drawn as libadwaita's carousel dots, measured, and
   takes clicks and the arrow keys. A paging `Scroll` has no scroll bar
   and settles each swipe (a wheel's notch, a touchpad's or a

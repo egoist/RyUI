@@ -5,55 +5,38 @@ package linux
 import (
 	"log"
 	"math"
-	"runtime"
 	"slices"
-	"sync"
 	"time"
 
 	. "github.com/egoist/asuka/internal/gtk"
-	"github.com/egoist/asuka/internal/shader"
 	"github.com/egoist/asuka/internal/shadercode"
-	"github.com/egoist/asuka/internal/shaderir/interp"
 	"github.com/egoist/asuka/ops"
 )
 
-// A Shader on Linux, as on Windows: its Kage program run on the CPU
-// (package interp), off the main thread. A frame renders on goroutines,
-// across the cores, into a buffer of its own, and crosses back with
-// Post: the main thread makes it a GdkMemoryTexture, which the view
-// draws stretched over itself, and never waits for one. Inputs that
-// change while a frame renders render again once it's done. Animated,
-// the view's frame clock starts a frame whenever none is rendering, so
-// the frame rate is what the CPU affords, up to the display's.
+// A Shader on Linux: its Kage program compiled to GLSL and drawn on the
+// GPU, with OpenGL, in a context of GDK's, into a texture that GTK's
+// renderer draws over the view, stretched while a new size renders, and
+// clipped to its corners (shader_gl.go). A frame renders as the view
+// snapshots, when its inputs changed since the last one: its uniforms,
+// its size in pixels, the scale, and Time, which an animated shader's
+// frame clock moves on each frame the display draws.
 //
-// The pixels a frame has are capped (an animated shader's more tightly):
-// a large view renders at a fraction of its resolution, scaled up. The
-// positions the program gets are the view's pixels' still, so it draws
-// the same picture as on a GPU, coarser.
-
-const (
-	kageFramePixels  = 64 << 10  // an animated shader's pixels a frame, at most
-	kageStaticPixels = 512 << 10 // a still one's
-)
+// Where GDK has no GL (no driver, GDK_DISABLE=gl), the program runs on
+// the CPU instead, off the main thread (shader_cpu.go).
 
 type kageShader struct {
 	code     *shadercode.Code
-	prog     *interp.Program
 	words    []uint32 // the core's lanes
 	animated bool
 	start    time.Time
 	tick     uint32 // the frame clock's callback, animated
 
-	busy  bool // a frame is rendering
-	dirty bool // and the inputs changed since it started
+	texture Ptr // the frame on show
 
-	texture Ptr    // the frame on show
-	spare   []byte // the buffer the next frame renders into
-
-	lastInputs   []uint32 // the inputs of the last frame started
+	lastInputs   []uint32 // the inputs of the last frame rendered (or started)
 	lastW, lastH int      // and the view's size in pixels for it
 
-	gen *struct{} // a frame started for an older program is dropped
+	cpu *cpuShader // without GL
 }
 
 var kages = map[*node]*kageShader{}
@@ -63,7 +46,7 @@ func init() {
 		if n.kind != ops.KindShader {
 			return false
 		}
-		kages[n] = &kageShader{start: time.Now(), gen: new(struct{})}
+		kages[n] = &kageShader{start: time.Now()}
 		return true
 	})
 	propHooks = append(propHooks, func(h *Host, n *node, p ops.PropID, v *ops.Value) bool {
@@ -89,7 +72,9 @@ func init() {
 			if s.texture != 0 {
 				ObjectUnref(s.texture)
 			}
-			s.gen = new(struct{}) // a frame rendering is dropped
+			if s.cpu != nil {
+				s.cpu.gen = new(struct{}) // a frame rendering is dropped
+			}
 			delete(kages, n)
 		}
 	})
@@ -99,21 +84,17 @@ func (h *Host) setShaderProp(n *node, p ops.PropID, v *ops.Value) {
 	s := kages[n]
 	switch p {
 	case ops.PropShaderCode:
-		s.code, s.prog = nil, nil
-		s.gen = new(struct{})
+		s.code = nil
 		s.lastInputs = nil
+		s.cpu = nil
 		c, err := shadercode.Decode(v.Bytes)
-		if err == nil {
-			var prog *interp.Program
-			if prog, err = compileKage(c.Source); err == nil {
-				s.code, s.prog = c, prog
-			}
-		}
 		if err != nil {
 			log.Printf("asuka: a ui.Shader doesn't run: %v", err)
+			break
 		}
-		if s.code != nil && len(s.words) != s.code.Lanes {
-			s.words = make([]uint32, s.code.Lanes)
+		s.code = c
+		if len(s.words) != c.Lanes {
+			s.words = make([]uint32, c.Lanes)
 		}
 	case ops.PropShaderUniforms:
 		c := len(v.Bytes) / 4
@@ -129,20 +110,11 @@ func (h *Host) setShaderProp(n *node, p ops.PropID, v *ops.Value) {
 		return
 	}
 	h.shaderClock(n, s)
-	h.renderShader(n, s)
-}
-
-// compileKage compiles a shader's Kage source for package interp.
-func compileKage(src string) (*interp.Program, error) {
-	p, err := shader.CompileFragment([]byte(src))
-	if err != nil {
-		return nil, err
-	}
-	return interp.New(p)
+	queueDraw(n)
 }
 
 // shaderClock runs an animated shader's frames on its view's frame
-// clock: one starts whenever none is rendering.
+// clock: each frame queues a draw, which renders one with the new Time.
 func (h *Host) shaderClock(n *node, s *kageShader) {
 	on := s.animated && s.code != nil && s.code.Time >= 0 && n.widget != 0
 	if on == (s.tick != 0) {
@@ -157,7 +129,7 @@ func (h *Host) shaderClock(n *node, s *kageShader) {
 		if kages[n] != s || s.tick == 0 {
 			return false
 		}
-		h.renderShader(n, s)
+		queueDraw(n)
 		return true
 	})
 }
@@ -169,22 +141,18 @@ func (h *Host) pixels(n *node) (w, ht int, k float32) {
 	return int(math.Ceil(float64(fw * k))), int(math.Ceil(float64(fh * k))), k
 }
 
-// renderShader starts a frame of n's shader if its inputs changed since
-// the last one, or marks them changed if one is rendering.
-func (h *Host) renderShader(n *node, s *kageShader) {
-	if s.prog == nil || n.widget == 0 || !n.placed {
-		return
+// inputs are the lanes the next frame of n's shader renders with, and
+// its size in pixels; changed is false when they're the last frame's.
+func (h *Host) shaderInputs(n *node, s *kageShader) (in []uint32, w, ht int, k float32, changed bool) {
+	if s.code == nil || n.widget == 0 || !n.placed {
+		return nil, 0, 0, 0, false
 	}
-	w, ht, k := h.pixels(n)
-	if w <= 0 || ht <= 0 || len(s.words) != s.code.Lanes {
-		return
-	}
-	if s.busy {
-		s.dirty = true
-		return
-	}
+	w, ht, k = h.pixels(n)
 	c := s.code
-	in := slices.Clone(s.words)
+	if w <= 0 || ht <= 0 || len(s.words) != c.Lanes {
+		return nil, 0, 0, 0, false
+	}
+	in = slices.Clone(s.words)
 	in[c.Size] = math.Float32bits(float32(w) / k)
 	in[c.Size+1] = math.Float32bits(float32(ht) / k)
 	in[c.Scale] = math.Float32bits(k)
@@ -192,108 +160,36 @@ func (h *Host) renderShader(n *node, s *kageShader) {
 		in[c.Time] = math.Float32bits(float32(time.Since(s.start).Seconds()))
 	}
 	if w == s.lastW && ht == s.lastH && slices.Equal(in, s.lastInputs) {
+		return nil, 0, 0, 0, false
+	}
+	return in, w, ht, k, true
+}
+
+// renderShader renders a frame of n's shader if its inputs changed
+// since the last one: on the GPU, or, without GL, by starting one on the
+// CPU.
+func (h *Host) renderShader(n *node, s *kageShader) {
+	if s.cpu == nil && s.code != nil && glReady() {
+		in, w, ht, _, changed := h.shaderInputs(n, s)
+		if !changed {
+			return
+		}
+		s.lastInputs, s.lastW, s.lastH = in, w, ht
+		if t := renderGL(s.code, in, w, ht); t != 0 {
+			if s.texture != 0 {
+				ObjectUnref(s.texture)
+			}
+			s.texture = t
+		}
 		return
 	}
-	s.lastInputs, s.lastW, s.lastH = in, w, ht
-	budget := kageStaticPixels
-	if s.animated && c.Time >= 0 {
-		budget = kageFramePixels
-	}
-	step := max(1, math.Sqrt(float64(w*ht)/float64(budget)))
-	pw, ph := max(1, int(math.Ceil(float64(w)/step))), max(1, int(math.Ceil(float64(ht)/step)))
-	buf := s.spare
-	s.spare = nil
-	if cap(buf) < pw*ph*4 {
-		buf = make([]byte, pw*ph*4)
-	}
-	buf = buf[:pw*ph*4]
-	s.busy, s.dirty = true, false
-	gen, prog := s.gen, s.prog
-	sx, sy := float32(w)/float32(pw), float32(ht)/float32(ph)
-	go func() {
-		ok := kageShade(prog, in, buf, pw, ph, sx, sy, k)
-		h.Post(func() {
-			if kages[n] != s {
-				return
-			}
-			s.busy = false
-			if s.gen == gen && ok {
-				b := BytesNew(&buf[0], uintptr(len(buf)))
-				t := MemoryTextureNew(int32(pw), int32(ph), MemoryB8G8R8A8Premultiplied, b, uintptr(pw*4))
-				BytesUnref(b)
-				if s.texture != 0 {
-					ObjectUnref(s.texture)
-				}
-				s.texture = t
-				s.spare = buf // GBytes copied it
-				queueDraw(n)
-			}
-			if s.dirty || s.gen != gen {
-				s.dirty = false
-				h.renderShader(n, s)
-			}
-		})
-	}()
-}
-
-// kageShade renders the program into buf, pw by ph premultiplied BGRA
-// pixels, each sx by sy of the view's pixels, across the cores. It's
-// false if the program failed.
-func kageShade(prog *interp.Program, words []uint32, buf []byte, pw, ph int, sx, sy, k float32) (ok bool) {
-	workers := min(runtime.NumCPU(), ph)
-	rows := (ph + workers - 1) / workers
-	var wg sync.WaitGroup
-	var failed sync.Once
-	ok = true
-	for y0 := 0; y0 < ph; y0 += rows {
-		wg.Add(1)
-		go func(y0, y1 int) {
-			defer wg.Done()
-			defer func() {
-				if r := recover(); r != nil {
-					failed.Do(func() {
-						ok = false
-						log.Printf("asuka: a ui.Shader failed: %v", r)
-					})
-				}
-			}()
-			in := &interp.Inputs{Uniforms: words}
-			for y := y0; y < y1; y++ {
-				py := (float32(y) + 0.5) * sy
-				o := y * pw * 4
-				for x := range pw {
-					px := (float32(x) + 0.5) * sx
-					c, drawn := prog.Color(in, [4]float32{px, py, 0, 1}, px/k, py/k)
-					if !drawn {
-						c = [4]float32{}
-					}
-					a := unitClamp(c[3])
-					buf[o] = byte(min(unitClamp(c[2]), a)*255 + 0.5)
-					buf[o+1] = byte(min(unitClamp(c[1]), a)*255 + 0.5)
-					buf[o+2] = byte(min(unitClamp(c[0]), a)*255 + 0.5)
-					buf[o+3] = byte(a*255 + 0.5)
-					o += 4
-				}
-			}
-		}(y0, min(y0+rows, ph))
-	}
-	wg.Wait()
-	return ok
-}
-
-func unitClamp(v float32) float32 {
-	if !(v > 0) { // NaN too
-		return 0
-	}
-	return min(v, 1)
+	h.renderShaderCPU(n, s)
 }
 
 // drawShader draws the frame on show over the view, clipped to its
-// corners; a new size renders a frame for it.
+// corners, after rendering a new one if its inputs changed.
 func (h *Host) drawShader(n *node, s *kageShader, snap Ptr, bounds Rect) {
-	if w, ht, _ := h.pixels(n); w != s.lastW || ht != s.lastH {
-		h.renderShader(n, s)
-	}
+	h.renderShader(n, s)
 	if s.texture == 0 {
 		return
 	}
