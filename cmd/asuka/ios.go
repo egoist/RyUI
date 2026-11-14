@@ -408,6 +408,12 @@ var iosFeatures = []struct{ flag, symbol string }{
 	{"ASUKA_SENSORS", "github.com/egoist/asuka/sdk/sensors.setRate"},
 	{"ASUKA_SENSORS", "github.com/egoist/asuka/sdk/sensors.Available"},
 	{"ASUKA_SENSORS", "github.com/egoist/asuka/sdk/sensors.StepsBetween"},
+	// Core NFC: reader sessions, with the system's sheet.
+	{"ASUKA_NFC", "github.com/egoist/asuka/sdk/nfc.Start"},
+	{"ASUKA_NFC", "github.com/egoist/asuka/sdk/nfc.Check"},
+	{"ASUKA_NFC", "github.com/egoist/asuka/sdk/nfc.Watch"},
+	{"ASUKA_NFC", "github.com/egoist/asuka/sdk/nfc.OpenSettings"},
+	{"ASUKA_NFC", "github.com/egoist/asuka/sdk/nfc.OnOpen"},
 	{"ASUKA_SPEECH", "github.com/egoist/asuka/sdk/speech.Speak"},
 	{"ASUKA_SPEECH", "github.com/egoist/asuka/sdk/speech.Voices"},
 	{"ASUKA_IMAGEEDIT", "github.com/egoist/asuka/sdk/imageedit.Edit"},

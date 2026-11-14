@@ -330,6 +330,11 @@ Asuka's packages call the host's native modules (`ui.Call`). In a browser:
 - `asuka/sdk/library`: `Save` downloads the file. `asuka/sdk/contacts`: `Pick`
   where the browser has the Contact Picker (Chrome on Android); `Add`
   downloads a vCard, and `asuka/sdk/calendar`'s `Add` an `.ics` file.
+- `asuka/sdk/nfc`: Web NFC's `NDEFReader`, in Chrome on Android over a
+  secure context: reading and writing NDEF messages, making tags
+  read-only, the tag's serial number; no raw commands or capacity, and no
+  tag opens the page. Other browsers have no Web NFC: `ErrNotAvailable`
+  ([NFC tags](nfc.md)).
 - `asuka/sdk/tracking` answers Denied when the browser sends Global Privacy
   Control or Do Not Track, else Allowed, without a prompt.
 - `asuka/sdk/pay`: Apple Pay where the browser has it (Safari), through the

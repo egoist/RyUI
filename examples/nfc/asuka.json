@@ -1,0 +1,13 @@
+{
+  "name": "NFC Tags",
+  "id": "dev.asuka.nfc",
+  "version": "1.0.0",
+  "build": 1,
+  "orientations": ["portrait"],
+  "ios": {
+    "usage": {"NFCReaderUsageDescription": "To read and write the links on NFC tags."}
+  },
+  "nfc": {
+    "ndef": [{"uri": "https://asuka.dev/nfc/"}]
+  }
+}

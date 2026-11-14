@@ -182,8 +182,10 @@ store that sells what the test gives it, for `asuka/sdk/purchase` (see
 [In-app purchases](purchases.md#testing-your-purchases)); `h.Wallet()`
 is Apple Pay's or Google Pay's sheet for `asuka/sdk/pay`, in which the
 test chooses an address and pays (see [Wallet
-payments](device.md#wallet-payments-asukasdkpay)); and
-`h.NowPlaying()` is the system's media controls.
+payments](device.md#wallet-payments-asukasdkpay)); `h.NFC()` is a
+phone's NFC with tags to tap (see [NFC
+tags](nfc.md#testing-with-simulated-tags)); and `h.NowPlaying()` is the
+system's media controls.
 
 A [native package](native.md)'s module is a Go interface, so the
 simplest test gives your components the interface and the test its

@@ -102,6 +102,9 @@ browser.
 - [In-app purchases](purchases.md): consumables, non-consumables and
   subscriptions through the App Store, Google Play and the Microsoft
   Store, transactions, restoring, verifying on a server, and testing.
+- [NFC tags](nfc.md): reading and writing tags' NDEF messages, their
+  IDs and raw commands, iOS's sheet and Android's reader mode, Web NFC,
+  and the tags that open the app.
 - [The desktop](desktop.md): tray icons and the Dock menu, apps in the
   background, global shortcuts, file dialogs and the file manager,
   opening files, one instance, quitting, recent documents, starting at

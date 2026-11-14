@@ -110,6 +110,7 @@ func TestModulesLinuxHas(t *testing.T) {
 		"liveActivity": {"enabled", "start", "update", "end", "running", "next", "stop"},
 		"purchase":     {"available", "products", "buy", "finish", "entitlements", "restore", "status", "manage", "refund", "redeem", "storefront", "next", "stop"},
 		"pay":          {"available", "setUp", "present", "next", "answer"},
+		"nfc":          {"state", "nextState", "stopState", "settings", "start", "next", "restart", "alert", "stop", "read", "write", "lock", "status", "transceive", "classic", "nextOpened", "stopOpened"},
 	}
 	// asuka/sdk/location's authorization, and its background part (computed by the Go code).
 	want["locationAccess"] = []string{"current", "next", "stop", "request", "precise", "settings"}
