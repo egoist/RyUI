@@ -7,9 +7,11 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/egoist/asuka/platform/macos"
@@ -118,9 +120,9 @@ func macSwift(app *goApp, bundle, work string, archs []string, release bool, run
 	stamp := filepath.Join(dir, "stamp")
 	h := sha256.New()
 	fmt.Fprintln(h, archs, release, bundle, defines)
-	for name, b := range host {
-		fmt.Fprintln(h, name, len(b))
-		h.Write(b)
+	for _, name := range slices.Sorted(maps.Keys(host)) { // in order: a map's changes run to run
+		fmt.Fprintln(h, name, len(host[name]))
+		h.Write(host[name])
 	}
 	for _, p := range natives {
 		fmt.Fprintln(h, p.dir, dirDigest(p.dir)) // a local package changes as it's worked on
