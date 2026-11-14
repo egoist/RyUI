@@ -37,6 +37,14 @@ What follows from it:
 - **What no widget shows.** MyGo draws anything as it draws the rest.
   Asuka has packages for what has no widget, drawing with the platform:
   `asuka/sdk/chart`, `asuka/sdk/svg`, and `ui.Shader` for shaders.
+- **Images without a screen.** MyGo has a software renderer: it draws
+  on the CPU, in memory, with no window, display or GPU, so a test or a
+  server renders a view to an image on any machine (`ui.NewTester`,
+  `ui.Render`). Asuka's widgets are drawn by the platform, so an image
+  of them needs the platform running: a window on the desktop
+  (`ASUKA_SNAPSHOT`; Xvfb on a Linux server), the simulator, an emulator
+  or a browser. Without one, `uitest` describes the screen as text: each
+  view's kind, frame and what it shows ([Testing](testing.md)).
 
 ## Where it runs
 
@@ -68,4 +76,6 @@ Use MyGo when:
   existing web code, HTML and CSS, rich documents, what only a browser
   has;
 - it should have one look of its own, drawn the same on every desktop,
-  rather than each platform's: an editor, an inspector, a game.
+  rather than each platform's: an editor, an inspector, a game;
+- its views should render to images headlessly: snapshot tests that
+  compare pixels, or images made on a server.
