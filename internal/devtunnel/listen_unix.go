@@ -6,6 +6,8 @@ import (
 	"context"
 	"net"
 	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 // listenShared listens on addr with SO_REUSEPORT: the player's app and
@@ -16,7 +18,7 @@ func listenShared(addr string) (net.Listener, error) {
 	lc := net.ListenConfig{Control: func(_, _ string, c syscall.RawConn) error {
 		var serr error
 		err := c.Control(func(fd uintptr) {
-			serr = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEPORT, 1)
+			serr = unix.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
 		})
 		if err != nil {
 			return err
