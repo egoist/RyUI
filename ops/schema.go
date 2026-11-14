@@ -216,6 +216,10 @@ var Schema = SchemaDef{
 			{Name: "Source", Type: TString, Doc: "an http(s) URL, or a file in the app's assets"},
 			{Name: "Mode", Type: TEnum, Enum: "ImageMode"},
 			{Name: "Placeholder", Type: TString, Doc: "an image (usually an asset) shown until Source loads, and if it fails"},
+			{Name: "PlaceholderImage", Type: TBytes, Doc: "a placeholder the core decoded (a BlurHash's, a ThumbHash's), shown as Placeholder is, in its place: u32 width, u32 height, then its pixels row by row, RGBA, 8 bits each, not premultiplied, sRGB"},
+			{Name: "PlaceholderMode", Type: TEnum, Enum: "ImageMode", Doc: "how the placeholder fills the box; unset: as the image does (Mode)"},
+			{Name: "Transition", Type: TFloat, Doc: "seconds the image takes to fade in as it arrives: over its placeholder, cross-dissolving, or from nothing. Unset (0): over a placeholder, the platform's image transition (a cross-dissolve of its short duration), else none; negative: none"},
+			{Name: "Paused", Type: TBool, Doc: "an animated image (GIF, APNG, animated WebP, and AVIF and HEIF sequences where the platform decodes them) stops where it is (its first frame, before it has played); unset, it plays, as many times as the file says"},
 		}, Doc: "loaded and decoded off the main thread, cached (in memory; one fetched over http(s) on disk too, unless its response says no-store); reports Loaded with its natural size (one point per pixel), or Failed. Color tints it"},
 		{Name: "Native", Props: []PropDef{
 			{Name: "Type", Type: TString, Doc: "the registered native kind; sent right after Create"},
@@ -393,6 +397,7 @@ var Schema = SchemaDef{
 		{Name: "CloseRequest", Payload: PNone, Doc: "the user asked to close a window (its close button, a shortcut, the taskbar's or Dock's menu) while the core listens for this on its Window node or, for the main window, the root: the window stays open, and the core closes it (a Window: Destroy; the main window: WindowAction Close) if the app lets it"},
 		{Name: "Key", Payload: PInt, Doc: "a key of the view's Keys went down, or repeated, while the keyboard's focus was in it: its index"},
 		{Name: "FieldChanged", Payload: PBytes, Doc: "the user changed the text of an Alert's field (ops.AppendFieldChanged, ops.DecodeFieldChanged): u32 the field's index, then a string, its text"},
+		{Name: "Animated", Payload: PNone, Doc: "an Image that loaded (after its Loaded) has frames to play: an animated GIF, APNG, WebP, AVIF or HEIF sequence"},
 	},
 	Commands: []CommandDef{
 		{Name: "Focus"},

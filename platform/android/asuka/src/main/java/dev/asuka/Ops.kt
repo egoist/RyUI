@@ -236,6 +236,10 @@ object AsukaProp {
         const val SOURCE = 64
         const val MODE = 65
         const val PLACEHOLDER = 66
+        const val PLACEHOLDER_IMAGE = 67
+        const val PLACEHOLDER_MODE = 68
+        const val TRANSITION = 69
+        const val PAUSED = 70
     }
 
     object Native {
@@ -435,6 +439,7 @@ object AsukaEventKind {
     const val CLOSE_REQUEST = 55
     const val KEY = 56
     const val FIELD_CHANGED = 57
+    const val ANIMATED = 58
 }
 
 object AsukaCommand {
@@ -978,4 +983,5 @@ object AsukaEvents {
     fun closeRequest(id: Int): ByteArray = AsukaWriter().apply { header(id, 55) }.bytes()
     fun key(id: Int, v: Long): ByteArray = AsukaWriter().apply { header(id, 56); u64(v) }.bytes()
     fun fieldChanged(id: Int, v: ByteArray): ByteArray = AsukaWriter().apply { header(id, 57); u32(v.size); raw(v) }.bytes()
+    fun animated(id: Int): ByteArray = AsukaWriter().apply { header(id, 58) }.bytes()
 }

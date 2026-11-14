@@ -461,8 +461,7 @@ readers read it as a progress indicator with its percentage.
 `ui.Image` shows a picture. The platform loads and decodes it off the
 main thread, and caches it in memory. iOS and Android keep an image that
 came over http(s) on disk too, across launches; the desktop hosts keep
-it in memory only, and a browser in its own cache. Windows decodes PNG,
-JPEG and GIF; Linux those and what GDK's loaders read.
+it in memory only, and a browser in its own cache.
 
 ```go
 return ui.Column(ui.Style{Gap: 12},
@@ -473,6 +472,13 @@ return ui.Column(ui.Style{Gap: 12},
 		Mode:        ui.ImageFill,
 		Label:       ui.Val("A river in a valley"),
 		Style:       ui.Style{AspectRatio: 3.0 / 2, CornerRadius: 12, Clip: true},
+	}),
+	ui.Image(ui.ImageProps{
+		Source:     signal.Func(func() string { return photo.Get().URL }),
+		BlurHash:   signal.Func(func() string { return photo.Get().BlurHash }),
+		Mode:       ui.ImageFill,
+		Transition: 0.4,
+		Style:      ui.Style{AspectRatio: 1, CornerRadius: 12},
 	}),
 )
 ```
@@ -486,6 +492,28 @@ return ui.Column(ui.Style{Gap: 12},
 - `Placeholder` is shown until `Source` loads, and if it fails. Use an
   asset, which is there at once. Give the image a size so the
   placeholder has room.
+- `BlurHash` and `ThumbHash` are placeholders from a hash an app keeps
+  with the image ([BlurHash](https://blurha.sh),
+  [ThumbHash](https://evanw.github.io/thumbhash/), in base64), as
+  expo-image's are. The core decodes the hash into a small picture,
+  once (the last few hundred are kept), and shows it at once in
+  `Placeholder`'s place. A BlurHash has no shape of its own: it's
+  decoded at the style's `AspectRatio`, and without one it's square and
+  stretched to the box. A ThumbHash keeps its image's aspect ratio and
+  transparency. They're accessors, as a list's rows change images.
+- `PlaceholderMode` is how the placeholder fills the box:
+  `PlaceholderFit`, `PlaceholderFill`, `PlaceholderStretch`,
+  `PlaceholderCenter`; by default, as the image does.
+- `Transition` is how long, in seconds, the image takes to fade in as
+  it arrives: cross-dissolving over its placeholder, or from nothing.
+  By default an image fades in only over a placeholder, for the
+  platform's short duration (0.25 seconds; Android's
+  `config_shortAnimTime`); `ui.NoTransition` shows it at once.
+- `Animated` plays an animated image while true, and stops it where it
+  is while false. Without it, an animated image plays, as many times as
+  its file says, unless the user asks for less motion (Reduce Motion,
+  Android's animations off, `prefers-reduced-motion`): then it shows its
+  first frame.
 - `Label` describes it to screen readers; without one, the image is
   decorative.
 - `OnLoad` gets its natural size once it's loaded; `OnError` a message
@@ -495,6 +523,20 @@ Until it has loaded, an image without a size is empty. Then it takes its
 natural size, one point per pixel, no wider than the space it has. With
 one side set (a `Width`, or `Grow` in a row) it keeps its aspect ratio;
 `AspectRatio` sets one before it loads.
+
+Each platform decodes what its own decoders read:
+
+| | Decodes | Plays (GIF, APNG, animated WebP) |
+|---|---|---|
+| iOS | ImageIO: PNG, JPEG, GIF, WebP, HEIC, AVIF | ImageIO's `CGAnimateImageDataWithBlock`, which times and loops it as the file says (HEIF sequences too) |
+| Android | `BitmapFactory`, then `ImageDecoder`: PNG, JPEG, GIF, WebP, HEIF, AVIF | `AnimatedImageDrawable`: GIF and WebP (and AVIF sequences where the system plays them); an APNG shows its first frame |
+| macOS | `NSImage`: PNG, JPEG, GIF, WebP, HEIC, AVIF, SVG | as iOS |
+| Windows | WIC: PNG, JPEG, GIF, BMP, TIFF, ICO, and WebP, HEIF and AVIF where their codecs are installed (WebP's comes with Windows 11; HEIF needs the HEIF and HEVC Video Extensions, AVIF the AV1 Video Extension); Go's PNG, JPEG and GIF decoders where WIC can't | the host, frame after frame; an animated WebP's pictures by WIC's WebP codec |
+| Linux | Go's PNG, JPEG and GIF decoders, then GDK's loaders: WebP, AVIF, HEIF, SVG, JPEG XL, as installed | the host, frame after frame; an animated WebP's pictures by GDK's WebP loader |
+| Web | the browser | WebCodecs' `ImageDecoder` on a canvas (AVIF sequences too); where there's none (Safari), the `<img>` itself, which shows its first frame while paused |
+
+An SVG is an image on the Mac, Linux and the web only. For an SVG icon
+on every platform, draw it with [`asuka/sdk/svg`](#svg-icons), as vectors.
 
 ## Symbols and icons
 

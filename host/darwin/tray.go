@@ -217,7 +217,7 @@ func (h *Host) loadTrayImage(t *trayIcon) {
 	src, id := t.image, t.id
 	t.loading = src
 	go func() {
-		img, err := decodeImage(src, h.assets)
+		img, _, err := decodeImage(src, h.assets)
 		h.Post(func() {
 			WithPool(func() {
 				t := trayState.icons[id]

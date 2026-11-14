@@ -290,7 +290,7 @@ textarea.asuka-field { overflow-y: auto; display: block; }
 
 /* Images and symbols */
 
-.asuka-image img, .asuka-video video, .asuka-webview iframe, .asuka-canvas canvas, .asuka-shader canvas, .asuka-shape svg {
+.asuka-image img, .asuka-image canvas, .asuka-video video, .asuka-webview iframe, .asuka-canvas canvas, .asuka-shader canvas, .asuka-shape svg {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -299,7 +299,7 @@ textarea.asuka-field { overflow-y: auto; display: block; }
   display: block;
 }
 .asuka-image, .asuka-video, .asuka-webview, .asuka-canvas, .asuka-shader { overflow: hidden; }
-.asuka-image { background-repeat: no-repeat; background-position: center; }
+.asuka-image-placeholder { position: absolute; inset: 0; background-repeat: no-repeat; background-position: center; pointer-events: none; }
 .asuka-image img { object-fit: contain; }
 .asuka-shape svg { overflow: visible; }
 .asuka-symbol-box { display: flex; align-items: center; justify-content: center; color: var(--asuka-label); }

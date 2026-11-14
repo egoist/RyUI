@@ -486,7 +486,15 @@ module's `AndroidManifest.xml`.
   The core sizes the image itself: natural size, no wider than the space
   it has, the other side from the aspect ratio; a style's `AspectRatio`
   overrides the image's, so a box keeps its size before and after
-  loading.
+  loading. A BlurHash or ThumbHash placeholder is decoded by the core
+  (`internal/imagehash`, cached) and sent as pixels (`PlaceholderImage`);
+  the host shows it, in its own mode, until the image arrives and fades
+  in over it (`Transition`). An animated image plays: ImageIO's player on
+  Apple platforms, `AnimatedImageDrawable` on Android, the browser's (or
+  WebCodecs') on the web, and the host frame by frame on Windows and Linux
+  (`internal/animimage`). The host reports `Animated` after `Loaded`, and
+  only then does the core follow Reduce Motion for it (`Paused`), so a
+  still image costs no effect.
 - Gestures are `View` props (`OnPan`, `OnPinch`, `OnSwipe`) with the
   platform's recognizers on iOS (pan and pinch recognize together) and a
   touch listener on Android that claims the touch once it moves past the

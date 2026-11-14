@@ -73,6 +73,7 @@ let asukaAssets: URL? = {
     var imageSource: String?
     var imageLoaded = false
     var imagePlaceholder = ""
+    var imageHash: UIImage? // PlaceholderImage's
     var native: AsukaNativeView?
     /// DropAccept's patterns, and DragItems' items, and their interactions.
     var dropAccept: [String] = []
@@ -610,9 +611,7 @@ final class AsukaTextField: UITextField {
             }, for: .valueChanged)
             view = h
         case .image:
-            let iv = UIImageView()
-            iv.contentMode = .scaleAspectFit
-            view = iv
+            view = AsukaImageView(frame: .zero)
         case .native:
             view = AsukaNativeHostView()
         case .selectable:

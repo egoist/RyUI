@@ -101,7 +101,7 @@ export const KindProp = Object.freeze({
   Tabs: Object.freeze({ Selected: 64 }),
   Sheet: Object.freeze({ Detents: 64, Grabber: 65, Window: 66, FullScreen: 67 }),
   Alert: Object.freeze({ Title: 64, Message: 65, Buttons: 66, Style: 67, Window: 68, Fields: 69 }),
-  Image: Object.freeze({ Source: 64, Mode: 65, Placeholder: 66 }),
+  Image: Object.freeze({ Source: 64, Mode: 65, Placeholder: 66, PlaceholderImage: 67, PlaceholderMode: 68, Transition: 69, Paused: 70 }),
   Native: Object.freeze({ Type: 64, Prop: 65 }),
   RichText: Object.freeze({ Content: 64, Inlines: 65 }),
   Symbol: Object.freeze({ Name: 64 }),
@@ -185,6 +185,7 @@ export const Event = Object.freeze({
   CloseRequest: 55,
   Key: 56,
   FieldChanged: 57,
+  Animated: 58,
 });
 
 /** Commands the core sends. */
@@ -452,4 +453,5 @@ export const Events = Object.freeze({
   closeRequest: (id) => new Writer().header(id, 55).done(),
   key: (id, v) => new Writer().header(id, 56).i64(v).done(),
   fieldChanged: (id, v) => new Writer().header(id, 57).bytes(v).done(),
+  animated: (id) => new Writer().header(id, 58).done(),
 });

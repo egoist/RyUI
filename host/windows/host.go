@@ -711,7 +711,7 @@ func (h *Host) release(n *node) {
 		n.list.release(h)
 	}
 	if n.image != nil {
-		n.image.release()
+		n.image.close()
 	}
 	if n.kage != nil {
 		n.kage.release()

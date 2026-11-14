@@ -1005,9 +1005,15 @@ fun AsukaRuntime.setNavProp(n: AsukaNode, prop: Int, v: Any): Boolean {
             AsukaProp.Image.SOURCE -> loadImage(n, v as String)
             AsukaProp.Image.PLACEHOLDER -> {
                 n.imagePlaceholder = v as String
-                if (!n.imageLoaded) (n.view as android.widget.ImageView).setImageDrawable(null)
                 showPlaceholder(n)
             }
+            AsukaProp.Image.PLACEHOLDER_IMAGE -> {
+                n.imageHash = placeholderBitmap(v as ByteBuffer)
+                showPlaceholder(n)
+            }
+            AsukaProp.Image.PLACEHOLDER_MODE -> (n.view as AsukaImageView).placeholderMode = v as Int
+            AsukaProp.Image.TRANSITION -> (n.view as AsukaImageView).transition = v as Double
+            AsukaProp.Image.PAUSED -> (n.view as AsukaImageView).paused = v as Boolean
             AsukaProp.Image.MODE -> (n.view as android.widget.ImageView).scaleType = imageScaleType(v as Int)
             else -> return false
         }

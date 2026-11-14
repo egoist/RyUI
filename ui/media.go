@@ -26,7 +26,9 @@ const (
 type ImageProps struct {
 	// Source is an http(s) URL, the path of a file in the app's assets
 	// directory, or an absolute path (a file the app wrote, a picked
-	// photo).
+	// photo). PNG, JPEG, GIF, WebP, HEIC and AVIF, animated or not (GIF,
+	// APNG, WebP), and SVG, where the platform decodes them (docs:
+	// Images).
 	Source signal.Accessor[string]
 	Mode   ImageMode
 	Style  Styler
@@ -35,12 +37,52 @@ type ImageProps struct {
 	// box's size is still the image's (give it one so the placeholder
 	// has room).
 	Placeholder string
+	// BlurHash and ThumbHash are placeholders from a hash an app keeps
+	// with the image (blurha.sh, evanw.github.io/thumbhash; a ThumbHash
+	// in base64), decoded by the core into a small picture, once per
+	// hash, and shown in Placeholder's place until Source loads. A
+	// BlurHash has no shape of its own: it's decoded at the style's
+	// AspectRatio, or square and stretched to the box without one. A
+	// ThumbHash keeps its image's aspect ratio and alpha. Accessors, as a
+	// list's rows change images.
+	BlurHash  signal.Accessor[string]
+	ThumbHash signal.Accessor[string]
+	// PlaceholderMode is how the placeholder fills the box: as the image
+	// does (PlaceholderAsImage, the default), or its own.
+	PlaceholderMode PlaceholderMode
+	// Transition is how long, in seconds, the image takes to fade in as
+	// it arrives: over its placeholder, cross-dissolving, or from
+	// nothing. 0: over a placeholder, the platform's image transition
+	// (a cross-dissolve of its short duration: 0.25s on iOS and the Mac,
+	// config_shortAnimTime on Android), none without one; NoTransition:
+	// none.
+	Transition float32
+	// Animated plays an animated image (GIF, APNG, WebP, and AVIF and
+	// HEIF sequences where the platform decodes them) while true, and
+	// stops it where it is while false. nil: it plays, as many times as
+	// its file says, unless the user asked for less motion (Reduce
+	// Motion, animations off), when it shows its first frame.
+	Animated signal.Accessor[bool]
 	// Label describes the image to screen readers; without it the image
 	// is decorative.
 	Label   signal.Accessor[string]
 	OnLoad  func(width, height float32)
 	OnError func(message string)
 }
+
+// PlaceholderMode is how an Image's placeholder fills its box.
+type PlaceholderMode uint8
+
+const (
+	PlaceholderAsImage PlaceholderMode = iota // as the image does: its Mode
+	PlaceholderFit                            // all of it, letterboxed
+	PlaceholderFill                           // covers the box, cropped
+	PlaceholderStretch                        // the box's aspect ratio
+	PlaceholderCenter                         // its natural size, centered
+)
+
+// NoTransition is an ImageProps.Transition: the image shows at once.
+const NoTransition = -1
 
 // Image shows a picture the host loads and decodes off the main thread
 // (and caches: in memory, and one fetched over http(s) on disk, across
@@ -74,12 +116,64 @@ func Image(p ImageProps) Node {
 	if p.Placeholder != "" {
 		e.r.batch.SetString(e.id, ops.PropImagePlaceholder, assetURL(p.Placeholder))
 	}
+	if p.PlaceholderMode != PlaceholderAsImage {
+		e.r.batch.SetEnum(e.id, ops.PropImagePlaceholderMode, int32(p.PlaceholderMode-1))
+	}
+	if p.Transition != 0 {
+		e.r.batch.SetFloat(e.id, ops.PropImageTransition, float64(p.Transition))
+	}
+	if p.ThumbHash != nil {
+		bind(p.ThumbHash, func(v string) {
+			e.r.batch.SetBytes(e.id, ops.PropImagePlaceholderImage, thumbHashImage(v))
+		})
+	}
+	if p.Animated != nil {
+		bind(p.Animated, func(v bool) { e.r.batch.SetBool(e.id, ops.PropImagePaused, !v) })
+	} else {
+		// Only an image that turns out to have frames follows Reduce
+		// Motion: the effect is made once the host says so, owned by
+		// what owns the image.
+		owner := signal.CurrentOwner()
+		env := UseEnvironment()
+		watching := false
+		h.animated = func() {
+			if watching {
+				return
+			}
+			watching = true
+			signal.RunWithOwner(owner, func() {
+				paused := false
+				signal.RenderEffect(func() {
+					if v := env.Get().ReduceMotion; v != paused {
+						paused = v
+						e.r.batch.SetBool(e.id, ops.PropImagePaused, v)
+					}
+				})
+			})
+		}
+		e.listen(ops.EventAnimated)
+	}
 	if hasText(p.Label) {
 		bind(p.Label, func(v string) { e.r.batch.SetString(e.id, ops.PropA11yLabel, v) })
 		e.r.batch.SetEnum(e.id, ops.PropA11yRole, int32(RoleImage))
 	}
 	bind(p.Source, func(v string) { e.r.batch.SetString(e.id, ops.PropImageSource, assetURL(v)) })
 	e.setStyle(p.Style, false)
+	// After the style: a BlurHash takes its aspect ratio.
+	if p.BlurHash != nil {
+		stretch := p.PlaceholderMode == PlaceholderAsImage
+		bind(p.BlurHash, func(v string) {
+			ratio := e.style.AspectRatio
+			if ratio > 0 && stretch {
+				// Decoded at the image's shape, it fills the box as the
+				// image will; without one, stretched to it.
+				e.r.batch.SetEnum(e.id, ops.PropImagePlaceholderMode, int32(p.Mode))
+			} else if stretch {
+				e.r.batch.SetEnum(e.id, ops.PropImagePlaceholderMode, int32(ImageStretch))
+			}
+			e.r.batch.SetBytes(e.id, ops.PropImagePlaceholderImage, blurHashImage(v, ratio))
+		})
+	}
 	return Node{e}
 }
 

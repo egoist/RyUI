@@ -27,6 +27,9 @@ var (
 // others' vtable indices.
 const (
 	wicCreateDecoderFromFilename = 3
+	wicCreateDecoderFromStream   = 4
+	wicCreateStream              = 14
+	streamInitializeFromMemory   = 16
 	wicCreateFormatConverter     = 10
 	wicCreateBitmapScaler        = 11
 	decGetFrame                  = 13
@@ -103,6 +106,59 @@ func wicOrientation(frame uintptr) int {
 	return 1
 }
 
+// wicFrameOfData opens the first frame of an image file's bytes (a
+// reference the caller releases, with the stream it reads, which must
+// outlive it), with its EXIF orientation.
+func wicFrameOfData(factory uintptr, data []byte) (frame, stream uintptr, orientation int, err error) {
+	if len(data) == 0 {
+		return 0, 0, 0, ErrNoImage
+	}
+	if hr := ComCall(factory, wicCreateStream, uintptr(unsafe.Pointer(&stream))); Failed(hr) || stream == 0 {
+		return 0, 0, 0, ErrNoImage
+	}
+	if hr := ComCall(stream, streamInitializeFromMemory, uintptr(unsafe.Pointer(&data[0])), uintptr(len(data))); Failed(hr) {
+		Release(stream)
+		return 0, 0, 0, ErrNoImage
+	}
+	var dec uintptr
+	const onDemand = 0
+	if hr := ComCall(factory, wicCreateDecoderFromStream, stream, 0, onDemand, uintptr(unsafe.Pointer(&dec))); Failed(hr) || dec == 0 {
+		Release(stream)
+		return 0, 0, 0, ErrNoImage
+	}
+	defer Release(dec)
+	if hr := ComCall(dec, decGetFrame, 0, uintptr(unsafe.Pointer(&frame))); Failed(hr) || frame == 0 {
+		Release(stream)
+		return 0, 0, 0, ErrNoImage
+	}
+	return frame, stream, wicOrientation(frame), nil
+}
+
+// DecodeImageData decodes an image file's bytes with Windows's codecs
+// (what's installed: HEIF, WebP, AVIF and RAW with their extensions),
+// upright; with maxSide > 0, scaled down while it's decoded so its longer
+// side is at most maxSide. The calling thread must be in COM (WithCOM),
+// and data must not change while it runs.
+func DecodeImageData(data []byte, maxSide int) (*image.NRGBA, error) {
+	f := wicFactory()
+	if f == 0 {
+		return nil, errors.New("WIC isn't there")
+	}
+	defer Release(f)
+	frame, stream, o, err := wicFrameOfData(f, data)
+	if err != nil {
+		return nil, err
+	}
+	defer Release(stream)
+	defer Release(frame)
+	img, err := wicPixels(f, frame, maxSide)
+	if err != nil {
+		return nil, err
+	}
+	runtime.KeepAlive(data)
+	return Orient(img, o), nil
+}
+
 // ImageFileSize is an image file's size in pixels, upright, without
 // decoding it.
 func ImageFileSize(path string) (w, h int, err error) {
@@ -138,6 +194,16 @@ func DecodeImageFile(path string, maxSide int) (*image.NRGBA, error) {
 		return nil, err
 	}
 	defer Release(frame)
+	img, err := wicPixels(f, frame, maxSide)
+	if err != nil {
+		return nil, err
+	}
+	return Orient(img, o), nil
+}
+
+// wicPixels converts a frame to RGBA, not premultiplied, scaled down to
+// maxSide (> 0) on its longer side.
+func wicPixels(f, frame uintptr, maxSide int) (*image.NRGBA, error) {
 	src := frame
 	var w, h uint32
 	ComCall(frame, srcGetSize, uintptr(unsafe.Pointer(&w)), uintptr(unsafe.Pointer(&h)))
@@ -176,8 +242,7 @@ func DecodeImageFile(path string, maxSide int) (*image.NRGBA, error) {
 	for i := 0; i < len(buf); i += 4 {
 		buf[i], buf[i+2] = buf[i+2], buf[i] // BGRA to RGBA
 	}
-	img := &image.NRGBA{Pix: buf, Stride: stride, Rect: image.Rect(0, 0, int(w), int(h))}
-	return Orient(img, o), nil
+	return &image.NRGBA{Pix: buf, Stride: stride, Rect: image.Rect(0, 0, int(w), int(h))}, nil
 }
 
 // Orient turns an image as its EXIF orientation (1 to 8) says, so it's

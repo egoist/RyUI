@@ -91,7 +91,8 @@ type node struct {
 	imagePlaceholder string
 	imageMode        int32
 	symbol           string
-	texture          Ptr // an Image's decoded picture
+	texture          Ptr         // an Image's decoded picture
+	imgx             *imageExtra // an Image's placeholder, transition and frames (imageextra.go)
 	loading          string
 	scroll           *scrollView
 	nav              *nav
@@ -508,6 +509,7 @@ func (h *Host) release(n *node) {
 		ObjectUnref(n.texture)
 		n.texture = 0
 	}
+	n.imgx.release()
 	if n.widget != 0 {
 		if WidgetGetParent(n.widget) != 0 {
 			h.detach(n.widget)

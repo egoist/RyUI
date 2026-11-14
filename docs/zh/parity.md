@@ -40,7 +40,7 @@ SwiftUI 也能在 Mac 上运行。Expo 支持 iOS、Android 和 Web；React Nati
 | 滚轮选择器、菜单选择器、步进器 | `Picker`、`Stepper` | 社区方案 | ✓ `Wheel`、`Picker`（iOS 和 Mac 上是弹出按钮，Android 上是 Material 的 exposed dropdown menu）、`Stepper` |
 | 颜色选择器 | `ColorPicker` | 社区方案 | ✓ `ColorPicker`（iOS 上用系统的选择器；Android 没有系统选择器，就用一个 Material 对话框展示 Google 的调色板，支持不透明度） |
 | 图标 | SF Symbols | `@expo/vector-icons` | ✓ `Symbol`（iOS 和 Mac 上用 SF Symbols；同样的名字在 Android 和 Web 上对应 Material Symbols，在 Windows 上对应 Segoe Fluent Icons，在 Linux 上对应图标主题里的图标或 Material Symbols：这些是精选出来的一组图标） |
-| 图片（远程、缓存、占位图） | `AsyncImage` | `expo-image` | ✓ `Image`（内存和磁盘缓存、`Placeholder`） |
+| 图片（远程、缓存、占位图） | `AsyncImage` | `expo-image` | ✓ `Image`（内存和磁盘缓存、`Placeholder`、BlurHash 和 ThumbHash 占位图、交叉淡入的 `Transition`；平台能解码时支持 WebP、HEIC 和 AVIF，Windows 上通过 WIC 已安装的编解码器；GIF、APNG 和 WebP 动图在所有平台上播放，支持 `Animated` 和“减弱动态效果”；Mac、Linux 和 Web 上支持 SVG） |
 | 视频 | `VideoPlayer` | `expo-video` | ✓ `Video`（iOS 和 Mac 上用 AVKit，Android 上用 Media3，Windows 上用 WebView2，Linux 上用 GStreamer，Web 上用 `<video>`） |
 | 网页内容 | `WKWebView` | `react-native-webview` | ✓ `WebView`（iOS 和 Mac 上是 WKWebView，Android 上是系统的 WebView，Windows 上是 WebView2，Linux 上是 WebKitGTK；支持 URL、HTML、双向消息、先于页面脚本运行的脚本、拦截请求、页面状态和历史记录、下载、新窗口、cookie、获取脚本的返回值；Android 上还能逐个处理请求；在 Web 上，应用自己站点的页面和通过 `postMessage` 配合的页面能用上以上全部功能，其他站点的页面则只能加载）；`asuka/sdk/js` 可以在屏幕之外运行 JavaScript |
 | 地图 | `Map` | `expo-maps` | ✓ `asuka/sdk/maps`（Apple 地图；Google 地图需要 API 密钥：支持区域、标记、用户位置、点按；Linux 上用 libshumate 的 OpenStreetMap 地图；Windows 上由宿主自己绘制 OpenStreetMap 的瓦片） |

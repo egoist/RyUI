@@ -319,7 +319,7 @@ return ui.Column(ui.Style{Gap: 12},
 
 ## 图片
 
-`ui.Image` 显示一张图片。平台会在主线程之外加载和解码图片，并缓存在内存中。iOS 和 Android 还会把通过 http(s) 获取的图片存到磁盘上，应用重启后依然有效；桌面端宿主只缓存在内存里，浏览器则使用它自己的缓存。Windows 能解码 PNG、JPEG 和 GIF；Linux 除了这些，还支持 GDK 加载器能读取的其他格式。
+`ui.Image` 显示一张图片。平台会在主线程之外加载和解码图片，并缓存在内存中。iOS 和 Android 还会把通过 http(s) 获取的图片存到磁盘上，应用重启后依然有效；桌面端宿主只缓存在内存里，浏览器则使用它自己的缓存。
 
 ```go
 return ui.Column(ui.Style{Gap: 12},
@@ -331,16 +331,40 @@ return ui.Column(ui.Style{Gap: 12},
 		Label:       ui.Val("A river in a valley"),
 		Style:       ui.Style{AspectRatio: 3.0 / 2, CornerRadius: 12, Clip: true},
 	}),
+	ui.Image(ui.ImageProps{
+		Source:     signal.Func(func() string { return photo.Get().URL }),
+		BlurHash:   signal.Func(func() string { return photo.Get().BlurHash }),
+		Mode:       ui.ImageFill,
+		Transition: 0.4,
+		Style:      ui.Style{AspectRatio: 1, CornerRadius: 12},
+	}),
 )
 ```
 
 - `Source` 可以是 http(s) URL、应用 `assets` 目录下的路径（`"logo.png"` 即 `assets/logo.png`），也可以是绝对路径，比如应用自己写入的文件，或者用户选取的照片。
 - `Mode` 决定图片如何填充它的框：`ImageFit`（默认，完整显示，必要时留出空边）、`ImageFill`（铺满整个框，超出部分裁掉）、`ImageStretch`（拉伸成框的宽高比）、`ImageCenter`（按原始尺寸居中）。
 - `Placeholder` 在 `Source` 加载完成之前显示，加载失败时也会显示。占位图请用资源文件（asset），这样能立即显示。记得给图片设定尺寸，让占位图有地方显示。
+- `BlurHash` 和 `ThumbHash` 是用应用随图片保存的哈希生成的占位图（[BlurHash](https://blurha.sh)、[ThumbHash](https://evanw.github.io/thumbhash/)，后者为 base64 编码），和 expo-image 的一样。核心会把哈希解码成一张小图，每个哈希只解码一次（最近用过的几百个会被保留），并立即显示在 `Placeholder` 的位置上。BlurHash 本身不带形状信息：它按样式的 `AspectRatio` 解码，没有设置时解码成正方形并拉伸到整个框。ThumbHash 会保留原图的宽高比和透明度。它们都是访问器，因为列表的行在复用时会换成别的图片。
+- `PlaceholderMode` 决定占位图如何填充框：`PlaceholderFit`、`PlaceholderFill`、`PlaceholderStretch`、`PlaceholderCenter`；默认和图片本身的方式一样。
+- `Transition` 是图片加载完成时淡入所用的秒数：在占位图上交叉淡入，没有占位图时从无到有地淡入。默认只在有占位图时淡入，时长取平台的短动画时长（0.25 秒；Android 上是 `config_shortAnimTime`）；设为 `ui.NoTransition` 则立即显示。
+- `Animated` 为 true 时播放动图，为 false 时让它停在当前帧。不设置时，动图会按文件规定的次数播放；但如果用户要求减少动态效果（“减弱动态效果”、Android 关闭动画、`prefers-reduced-motion`），它只显示第一帧。
 - `Label` 向屏幕阅读器描述这张图片；不设置时，图片被视为纯装饰。
 - `OnLoad` 在图片加载完成后收到它的原始尺寸；`OnError` 在加载失败时收到错误信息。
 
 没有设置尺寸的图片在加载完成前是空的。加载后，它采用原始尺寸，一个像素对应一个点，但宽度不会超过可用空间。如果只确定了一边（设置了 `Width`，或在行中设置了 `Grow`），它会保持宽高比；用 `AspectRatio` 则可以在加载之前就确定宽高比。
+
+每个平台用它自己的解码器解码图片：
+
+| | 能解码的格式 | 动图（GIF、APNG、动态 WebP）的播放 |
+|---|---|---|
+| iOS | ImageIO：PNG、JPEG、GIF、WebP、HEIC、AVIF | ImageIO 的 `CGAnimateImageDataWithBlock`，按文件规定的时长和循环次数播放（也支持 HEIF 序列） |
+| Android | 先用 `BitmapFactory`，再用 `ImageDecoder`：PNG、JPEG、GIF、WebP、HEIF、AVIF | `AnimatedImageDrawable`：GIF 和 WebP（系统支持时也包括 AVIF 序列）；APNG 只显示第一帧 |
+| macOS | `NSImage`：PNG、JPEG、GIF、WebP、HEIC、AVIF、SVG | 同 iOS |
+| Windows | WIC：PNG、JPEG、GIF、BMP、TIFF、ICO，以及安装了对应编解码器时的 WebP、HEIF 和 AVIF（WebP 的随 Windows 11 自带；HEIF 需要 HEIF 和 HEVC 视频扩展，AVIF 需要 AV1 视频扩展）；WIC 解不了时，用 Go 的 PNG、JPEG 和 GIF 解码器 | 由宿主逐帧播放；动态 WebP 的每一帧用 WIC 的 WebP 编解码器解码 |
+| Linux | 先用 Go 的 PNG、JPEG 和 GIF 解码器，再用 GDK 的加载器：WebP、AVIF、HEIF、SVG、JPEG XL 等，视安装情况而定 | 由宿主逐帧播放；动态 WebP 的每一帧用 GDK 的 WebP 加载器解码 |
+| Web | 浏览器支持的格式 | 用 WebCodecs 的 `ImageDecoder` 在 canvas 上播放（也支持 AVIF 序列）；没有它的浏览器（Safari）由 `<img>` 自己播放，暂停时显示第一帧 |
+
+只有在 Mac、Linux 和 Web 上，SVG 才能作为图片显示。要在所有平台上显示 SVG 图标，请用 [`asuka/sdk/svg`](#svg-图标) 以矢量方式绘制。
 
 ## 符号与图标
 

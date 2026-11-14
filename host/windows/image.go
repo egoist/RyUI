@@ -4,6 +4,7 @@ package windows
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	stdimage "image"
 	"image/draw"
@@ -16,22 +17,45 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/egoist/asuka/internal/animimage"
 	. "github.com/egoist/asuka/internal/windows"
 	"github.com/egoist/asuka/ops"
 )
 
-// Images are fetched and decoded off the main thread (Go's decoders:
-// PNG, JPEG, GIF), kept in memory by source, and drawn with GDI+ at the
-// view's mode, clipped to its corners.
+// Images are fetched and decoded off the main thread by Windows's own
+// codecs (WIC: PNG, JPEG, GIF, BMP, TIFF, ICO, and HEIF, WebP, AVIF and
+// RAW where their extensions are installed; Go's PNG, JPEG and GIF
+// decoders if WIC can't), kept in memory by source, and drawn with GDI+
+// at the view's mode, clipped to its corners. An animated GIF, APNG or
+// WebP (its frames' pictures by WIC's WebP codec) plays here, frame after
+// frame on a timer (internal/animimage), while it isn't Paused. The
+// placeholder (an asset, or the core's decoded hash, in its own mode)
+// shows until the image arrives, which fades in over it (Transition;
+// 0.25s over a placeholder).
 type image struct {
 	source      string
 	placeholder string
 	mode        ops.ImageMode
-	bmp         *Bitmap // what shows: the source, or the placeholder until it loads
+	bmp         *Bitmap // the image (or its animation's frame) once it loads
 	loaded      bool
 	tinted      *Bitmap
 	tint        ops.Color
+	// The placeholder until the image arrives: an asset's (tinted as the
+	// image is) or the hash's (closed with the view).
+	ph       *Bitmap
+	phAsset  bool
+	hash     *Bitmap
+	phMode   int32 // PlaceholderMode; -1: Mode
+	trans    float64
+	fade     float32 // the image's opacity as it arrives
+	fadeGen  int
+	paused   bool
+	player   *animimage.Player
+	frame    *Bitmap // the animation's frame showing (closed when the next shows)
+	frameGen int
+	wait     time.Duration // the frame's time left, when paused
 }
 
 func (im *image) release() {
@@ -41,11 +65,28 @@ func (im *image) release() {
 	}
 }
 
-// decoded is an image's premultiplied BGRA pixels.
+// close lets go of what the view holds itself (the hash, the frame).
+func (im *image) close() {
+	im.release()
+	im.frameGen++
+	im.fadeGen++
+	if im.hash != nil {
+		im.hash.Close()
+		im.hash = nil
+	}
+	if im.frame != nil {
+		im.frame.Close()
+		im.frame = nil
+	}
+}
+
+// decoded is an image's premultiplied BGRA pixels (an animation's first
+// frame), and its animation.
 type decoded struct {
 	w, h   int32
 	pixels []byte
 	bmp    *Bitmap
+	anim   *animimage.Animation
 	err    error
 }
 
@@ -60,16 +101,87 @@ func (h *Host) setImageProp(n *node, p ops.PropID, v *ops.Value) {
 	switch p {
 	case ops.PropImageSource:
 		im.source, im.loaded = v.Str, false
+		im.bmp, im.player = nil, nil
+		im.frameGen++
+		im.fadeGen++
+		im.fade = 1
+		if im.frame != nil {
+			im.frame.Close()
+			im.frame = nil
+		}
+		im.release()
+		h.showPlaceholder(n)
 		h.loadImage(n, v.Str, false)
 	case ops.PropImagePlaceholder:
 		im.placeholder = v.Str
-		if !im.loaded {
-			h.loadImage(n, v.Str, true)
+		h.showPlaceholder(n)
+	case ops.PropImagePlaceholderImage:
+		if im.hash != nil {
+			im.hash.Close()
+			im.hash = nil
+		}
+		if px, w, hh, ok := placeholderPixels(v.Bytes); ok {
+			im.hash = NewBitmap(int32(w), int32(hh), px)
+		}
+		h.showPlaceholder(n)
+	case ops.PropImagePlaceholderMode:
+		im.phMode = int32(v.Int)
+		h.redraw(n)
+	case ops.PropImageTransition:
+		im.trans = v.Float
+	case ops.PropImagePaused:
+		im.paused = v.Int != 0
+		if im.paused {
+			im.frameGen++
+		} else {
+			h.nextFrame(n, im.wait)
 		}
 	case ops.PropImageMode:
 		im.mode = ops.ImageMode(v.Int)
 		h.redraw(n)
 	}
+}
+
+// placeholderPixels reads PlaceholderImage's bytes as premultiplied BGRA.
+func placeholderPixels(b []byte) (px []byte, w, h int, ok bool) {
+	if len(b) < 8 {
+		return nil, 0, 0, false
+	}
+	w, h = int(binary.LittleEndian.Uint32(b)), int(binary.LittleEndian.Uint32(b[4:]))
+	if w <= 0 || h <= 0 || len(b) < 8+w*h*4 {
+		return nil, 0, 0, false
+	}
+	return premultipliedBGRA(b[8 : 8+w*h*4]), w, h, true
+}
+
+// premultipliedBGRA is RGBA, not premultiplied, as GDI+'s PARGB (a copy).
+func premultipliedBGRA(rgba []byte) []byte {
+	out := make([]byte, len(rgba))
+	for i := 0; i+3 < len(rgba); i += 4 {
+		a := uint32(rgba[i+3])
+		out[i] = uint8(uint32(rgba[i+2]) * a / 255)
+		out[i+1] = uint8(uint32(rgba[i+1]) * a / 255)
+		out[i+2] = uint8(uint32(rgba[i]) * a / 255)
+		out[i+3] = uint8(a)
+	}
+	return out
+}
+
+// showPlaceholder shows the image's placeholder while it hasn't loaded:
+// the hash's, else the Placeholder image's.
+func (h *Host) showPlaceholder(n *node) {
+	im := n.image
+	if im.loaded {
+		return
+	}
+	if im.hash != nil {
+		im.ph, im.phAsset = im.hash, false
+		h.redraw(n)
+		return
+	}
+	im.ph = nil
+	h.redraw(n)
+	h.loadImage(n, im.placeholder, true)
 }
 
 // loadImage shows src in n once it's decoded, and reports Loaded (its
@@ -85,7 +197,7 @@ func (h *Host) loadImage(n *node, src string, placeholder bool) {
 			return
 		}
 		im := n.image
-		if placeholder && (im.loaded || im.placeholder != src) || !placeholder && im.source != src {
+		if placeholder && (im.loaded || im.placeholder != src || im.hash != nil) || !placeholder && im.source != src {
 			return
 		}
 		if d.err != nil {
@@ -97,13 +209,99 @@ func (h *Host) loadImage(n *node, src string, placeholder bool) {
 		if d.bmp == nil {
 			d.bmp = NewBitmap(d.w, d.h, d.pixels)
 		}
+		if placeholder {
+			im.ph, im.phAsset = d.bmp, true
+			h.redraw(n)
+			return
+		}
 		im.bmp = d.bmp
 		im.release()
-		if !placeholder {
-			im.loaded = true
-			h.emit(n, ops.Event{Kind: ops.EventLoaded, X: float64(d.w), Y: float64(d.h)})
+		im.loaded = true
+		h.arrive(n)
+		h.emit(n, ops.Event{Kind: ops.EventLoaded, X: float64(d.w), Y: float64(d.h)})
+		if d.anim != nil {
+			im.player = animimage.NewPlayer(d.anim)
+			im.player.Next() // the first frame, as the bitmap shows it
+			im.wait = d.anim.Frames[0].Delay
+			h.emit(n, ops.Event{Kind: ops.EventAnimated})
+			if !im.paused {
+				h.nextFrame(n, im.wait)
+			}
 		}
 		h.redraw(n)
+	})
+}
+
+// arrive fades the image in over its placeholder, or from nothing.
+func (h *Host) arrive(n *node) {
+	im := n.image
+	d := im.trans
+	switch {
+	case d < 0:
+		d = 0
+	case d == 0 && im.ph != nil:
+		d = 0.25
+	}
+	im.fadeGen++
+	if d <= 0 || n.hwnd == 0 || !IsWindowVisible(n.hwnd) {
+		im.fade, im.ph = 1, nil
+		return
+	}
+	im.fade = 0
+	gen, id, start := im.fadeGen, n.id, time.Now()
+	var step func()
+	step = func() {
+		time.AfterFunc(16*time.Millisecond, func() {
+			h.Post(func() {
+				n := h.nodes[id]
+				if n == nil || n.image == nil || n.image.fadeGen != gen {
+					return
+				}
+				t := float32(time.Since(start).Seconds() / d)
+				if t >= 1 {
+					n.image.fade, n.image.ph = 1, nil
+				} else {
+					n.image.fade = t
+					step()
+				}
+				h.redraw(n)
+			})
+		})
+	}
+	step()
+}
+
+// nextFrame shows the animation's next frame after wait, and the one
+// after it after its time, while it plays.
+func (h *Host) nextFrame(n *node, wait time.Duration) {
+	im := n.image
+	im.frameGen++
+	if im.player == nil || im.paused || !im.loaded {
+		return
+	}
+	gen, id := im.frameGen, n.id
+	time.AfterFunc(wait, func() {
+		h.Post(func() {
+			n := h.nodes[id]
+			if n == nil || n.image == nil || n.image.frameGen != gen {
+				return
+			}
+			im := n.image
+			d, done := im.player.Next()
+			if done {
+				return
+			}
+			c := im.player.Canvas()
+			b := NewBitmap(int32(c.Rect.Dx()), int32(c.Rect.Dy()), premultipliedBGRA(c.Pix))
+			if im.frame != nil {
+				im.frame.Close()
+			}
+			im.frame, im.bmp = b, b
+			im.release()
+			h.redraw(n)
+			im.wait = d
+			h.nextFrame(n, d)
+		})
 	})
 }
 
@@ -124,7 +322,8 @@ func (h *Host) fetchImage(src string, done func(*decoded)) {
 	}
 	assets := h.assets
 	go func() {
-		d := decodeImage(src, assets)
+		var d *decoded
+		WithCOM(func() { d = decodeImage(src, assets) })
 		imageMu.Lock()
 		imageCache[src] = d
 		fs := imageWait[src]
@@ -138,6 +337,8 @@ func (h *Host) fetchImage(src string, done func(*decoded)) {
 	}()
 }
 
+// decodeImage reads and decodes src: an animation (GIF, APNG, WebP), else
+// a still by WIC, else by Go's decoders. In COM (WithCOM).
 func decodeImage(src, assets string) *decoded {
 	var data []byte
 	var err error
@@ -153,6 +354,8 @@ func decodeImage(src, assets string) *decoded {
 				data, err = io.ReadAll(resp.Body)
 			}
 		}
+	case strings.HasPrefix(src, "file://"):
+		data, err = os.ReadFile(strings.TrimPrefix(src, "file://"))
 	default:
 		p := src
 		if !filepath.IsAbs(p) {
@@ -163,35 +366,39 @@ func decodeImage(src, assets string) *decoded {
 	if err != nil {
 		return &decoded{err: err}
 	}
-	img, _, err := stdimage.Decode(bytes.NewReader(data))
-	if err != nil {
-		return &decoded{err: err}
+	if animimage.IsAnimated(data) {
+		still := func(b []byte) (stdimage.Image, error) { return DecodeImageData(b, 0) }
+		if a, err := animimage.Decode(data, still); err == nil {
+			p := animimage.NewPlayer(a)
+			p.Next()
+			c := p.Canvas()
+			return &decoded{w: int32(a.Width), h: int32(a.Height), pixels: premultipliedBGRA(c.Pix), anim: a}
+		}
 	}
-	b := img.Bounds()
-	rgba := stdimage.NewRGBA(stdimage.Rect(0, 0, b.Dx(), b.Dy()))
-	draw.Draw(rgba, rgba.Bounds(), img, b.Min, draw.Src) // premultiplied
-	px := rgba.Pix
-	for i := 0; i < len(px); i += 4 {
-		px[i], px[i+2] = px[i+2], px[i] // RGBA to BGRA
+	var rgba *stdimage.NRGBA
+	if img, werr := DecodeImageData(data, 0); werr == nil {
+		rgba = img
+	} else {
+		img, _, err := stdimage.Decode(bytes.NewReader(data))
+		if err != nil {
+			return &decoded{err: fmt.Errorf("%s: a format Windows has no codec for (%v)", src, werr)}
+		}
+		b := img.Bounds()
+		rgba = stdimage.NewNRGBA(stdimage.Rect(0, 0, b.Dx(), b.Dy()))
+		draw.Draw(rgba, rgba.Bounds(), img, b.Min, draw.Src)
 	}
-	return &decoded{w: int32(b.Dx()), h: int32(b.Dy()), pixels: px}
+	b := rgba.Rect
+	if b.Dx() == 0 || b.Dy() == 0 {
+		return &decoded{err: fmt.Errorf("%s: an empty image", src)}
+	}
+	return &decoded{w: int32(b.Dx()), h: int32(b.Dy()), pixels: premultipliedBGRA(rgba.Pix)}
 }
 
-// paintImage draws the image at its mode: fit, fill (cropped), stretched
-// or centered at its size, clipped to the view's corners; Color tints it.
-func (h *Host) paintImage(n *node, g Graphics, w, ht, radius float32) {
-	im := n.image
-	b := im.bmp
-	if b == nil || b.W == 0 || b.H == 0 {
-		return
-	}
-	if n.color != 0 {
-		b = h.tinted(n)
-	}
-	iw, ih := float32(b.W), float32(b.H)
-	sx, sy, sw, sh := float32(0), float32(0), iw, ih
-	x, y, dw, dh := float32(0), float32(0), w, ht
-	switch im.mode {
+// place is where a bitmap of iw×ih goes in a box of w×ht at a mode: the
+// part of it drawn (sx, sy, sw, sh) and where (x, y, dw, dh).
+func (h *Host) place(n *node, mode ops.ImageMode, iw, ih, w, ht float32) (x, y, dw, dh, sx, sy, sw, sh float32) {
+	sw, sh, dw, dh = iw, ih, w, ht
+	switch mode {
 	case ops.ImageModeFit:
 		s := min(w/iw, ht/ih)
 		dw, dh = iw*s, ih*s
@@ -205,13 +412,42 @@ func (h *Host) paintImage(n *node, g Graphics, w, ht, radius float32) {
 		dw, dh = iw*k, ih*k
 		x, y = (w-dw)/2, (ht-dh)/2
 	}
+	return
+}
+
+// paintImage draws the placeholder, then the image over it (fading in as
+// it arrives), each at its mode: fit, fill (cropped), stretched or
+// centered at its size, clipped to the view's corners; Color tints the
+// image (and an asset placeholder).
+func (h *Host) paintImage(n *node, g Graphics, w, ht, radius float32) {
+	im := n.image
 	if radius > 0 {
 		p := NewPath()
 		p.RoundRect(0, 0, w, ht, radius)
 		g.ClipPath(p)
 		defer func() { g.ResetClip(); p.Close() }()
 	}
-	g.DrawImage(b, x, y, dw, dh, sx, sy, sw, sh)
+	if b := im.ph; b != nil && b.W > 0 && b.H > 0 && (!im.loaded || im.fade < 1) {
+		mode := im.mode
+		if im.phMode >= 0 {
+			mode = ops.ImageMode(im.phMode)
+		}
+		x, y, dw, dh, sx, sy, sw, sh := h.place(n, mode, float32(b.W), float32(b.H), w, ht)
+		a := float32(1)
+		if im.loaded {
+			a = 1 - im.fade
+		}
+		g.DrawImageAlpha(b, a, x, y, dw, dh, sx, sy, sw, sh)
+	}
+	b := im.bmp
+	if !im.loaded || b == nil || b.W == 0 || b.H == 0 {
+		return
+	}
+	if n.color != 0 {
+		b = h.tinted(n)
+	}
+	x, y, dw, dh, sx, sy, sw, sh := h.place(n, im.mode, float32(b.W), float32(b.H), w, ht)
+	g.DrawImageAlpha(b, im.fade, x, y, dw, dh, sx, sy, sw, sh)
 }
 
 // tinted is the image in n's color, its alpha kept (a template image).
@@ -227,13 +463,17 @@ func (h *Host) tinted(n *node) *Bitmap {
 	}
 	src := im.bmp
 	var px []byte
-	imageMu.Lock()
-	for _, d := range imageCache {
-		if d.bmp == src {
-			px = d.pixels
+	if im.frame == src && src != nil {
+		px = src.Pixels()
+	} else {
+		imageMu.Lock()
+		for _, d := range imageCache {
+			if d.bmp == src {
+				px = d.pixels
+			}
 		}
+		imageMu.Unlock()
 	}
-	imageMu.Unlock()
 	if px == nil {
 		return src
 	}

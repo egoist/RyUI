@@ -59,7 +59,7 @@ func (h *Host) create(id ops.NodeID, kind ops.Kind) {
 		case ops.KindProgress:
 			n.max = 1
 		case ops.KindImage:
-			n.image = &image{}
+			n.image = &image{phMode: -1, fade: 1}
 		}
 	case ops.KindSegmented, ops.KindPageControl:
 		n.hwnd = h.makeView(WS_TABSTOP)

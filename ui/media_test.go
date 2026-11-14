@@ -12,6 +12,7 @@ import (
 
 	"github.com/egoist/asuka/colors"
 	"github.com/egoist/asuka/fonts"
+	"github.com/egoist/asuka/host/fake"
 	"github.com/egoist/asuka/internal/boot"
 	"github.com/egoist/asuka/ops"
 	"github.com/egoist/asuka/signal"
@@ -457,5 +458,99 @@ func TestWebViewExtras(t *testing.T) {
 	}
 	if title != `"A page"` || cookies != "sid=1; theme=dark" || len(calls) != 2 {
 		t.Fatalf("title %q cookies %q calls %v", title, cookies, calls)
+	}
+}
+
+func TestImageHashPlaceholders(t *testing.T) {
+	blur := signal.New("LEHV6nWB2yk8pyo0adR*.7kCMdnj")
+	h, r := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{},
+			ui.Image(ui.ImageProps{Source: ui.Val("a.png"), BlurHash: blur, Transition: 0.4}),
+			ui.Image(ui.ImageProps{Source: ui.Val("b.png"), BlurHash: ui.Val("LEHV6nWB2yk8pyo0adR*.7kCMdnj"), Mode: ui.ImageFill,
+				Style: ui.Style{AspectRatio: 2}}),
+			ui.Image(ui.ImageProps{Source: ui.Val("c.png"), ThumbHash: ui.Val("1QcSHQRnh493V4dIh4eXh1h4kJUI"), PlaceholderMode: ui.PlaceholderFill,
+				Transition: ui.NoTransition}),
+		)
+	})
+	imgs := h.OfKind(ops.KindImage)
+	size := func(v *fake.View) (int, int, int) {
+		b := v.Props[ops.PropImagePlaceholderImage].Bytes
+		if len(b) < 8 {
+			return 0, 0, 0
+		}
+		return int(binary.LittleEndian.Uint32(b)), int(binary.LittleEndian.Uint32(b[4:])), len(b) - 8
+	}
+	// A BlurHash without a shape: square, stretched to the box.
+	if w, hh, n := size(imgs[0]); w != 32 || hh != 32 || n != 32*32*4 || imgs[0].Int(ops.PropImagePlaceholderMode) != int64(ui.ImageStretch) ||
+		float32(imgs[0].Float(ops.PropImageTransition)) != 0.4 {
+		t.Fatalf("blurhash: %d×%d (%d bytes), mode %d", w, hh, n, imgs[0].Int(ops.PropImagePlaceholderMode))
+	}
+	// At the style's aspect ratio, filling the box as the image will.
+	if w, hh, _ := size(imgs[1]); w != 32 || hh != 16 || imgs[1].Int(ops.PropImagePlaceholderMode) != int64(ui.ImageFill) {
+		t.Fatalf("blurhash at 2:1: %d×%d, mode %d", w, hh, imgs[1].Int(ops.PropImagePlaceholderMode))
+	}
+	// A ThumbHash keeps its own shape; its mode is the app's.
+	if w, hh, _ := size(imgs[2]); w == 0 || hh == 0 || imgs[2].Int(ops.PropImagePlaceholderMode) != int64(ui.ImageFill) || imgs[2].Float(ops.PropImageTransition) != -1 {
+		t.Fatalf("thumbhash: %d×%d", w, hh)
+	}
+	// A new hash (a recycled row) sends its picture; a malformed one, none.
+	before := imgs[0].Props[ops.PropImagePlaceholderImage].Bytes
+	blur.Set("L6PZfSi_.AyE_3t7t7R**0o#DgR4")
+	r.Flush()
+	if after := imgs[0].Props[ops.PropImagePlaceholderImage].Bytes; slices.Equal(before, after) || len(after) != 8+32*32*4 {
+		t.Fatal("the new hash's picture wasn't sent")
+	}
+	blur.Set("nonsense")
+	r.Flush()
+	if b := imgs[0].Props[ops.PropImagePlaceholderImage].Bytes; len(b) != 0 {
+		t.Fatalf("a malformed hash sent %d bytes", len(b))
+	}
+}
+
+func TestAnimatedImagesFollowReduceMotion(t *testing.T) {
+	playing := signal.New(true)
+	h, r := mount(t, func() ui.Node {
+		return ui.Column(ui.Style{},
+			ui.Image(ui.ImageProps{Source: ui.Val("a.gif")}),
+			ui.Image(ui.ImageProps{Source: ui.Val("b.gif"), Animated: playing}),
+		)
+	})
+	imgs := h.OfKind(ops.KindImage)
+	auto, ctl := imgs[0], imgs[1]
+	if !auto.Listens[ops.EventAnimated] || ctl.Listens[ops.EventAnimated] {
+		t.Fatal("only the image without Animated listens for frames")
+	}
+	if _, ok := auto.Props[ops.PropImagePaused]; ok {
+		t.Fatal("an image not known to animate sends Paused")
+	}
+	if !(ctl.Props[ops.PropImagePaused].Int == 0) {
+		t.Fatal("Animated true pauses")
+	}
+	playing.Set(false)
+	r.Flush()
+	if !ctl.Bool(ops.PropImagePaused) {
+		t.Fatal("Animated false doesn't pause")
+	}
+	// Reduce Motion pauses what the app leaves to it, once it's animated.
+	env := h.Env
+	env.ReduceMotion = true
+	h.SetEnvironment(env)
+	if _, ok := auto.Props[ops.PropImagePaused]; ok {
+		t.Fatal("Paused sent before the image said it animates")
+	}
+	h.Dispatch(ops.Event{ID: auto.ID, Kind: ops.EventLoaded, X: 10, Y: 10})
+	h.Dispatch(ops.Event{ID: auto.ID, Kind: ops.EventAnimated})
+	if !auto.Bool(ops.PropImagePaused) {
+		t.Fatal("Reduce Motion doesn't pause an animated image")
+	}
+	env.ReduceMotion = false
+	h.SetEnvironment(env)
+	if auto.Bool(ops.PropImagePaused) {
+		t.Fatal("it doesn't play again with Reduce Motion off")
+	}
+	playing.Set(true)
+	r.Flush()
+	if ctl.Bool(ops.PropImagePaused) {
+		t.Fatal("Animated true again doesn't play")
 	}
 }

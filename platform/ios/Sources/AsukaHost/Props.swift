@@ -196,6 +196,10 @@ func uiWeight(_ v: Int32) -> UIFont.Weight? {
         case let r as AsukaRichTextView:
             r.base.color = color
         case let s as AsukaSymbolView: s.tintColor = c ?? .label
+        case let i as AsukaImageView:
+            i.tintColor = c
+            i.tinted = c != nil
+            i.image = i.image?.withRenderingMode(c != nil ? .alwaysTemplate : .automatic)
         case let i as UIImageView:
             i.tintColor = c
             i.image = i.image?.withRenderingMode(c != nil ? .alwaysTemplate : .automatic)

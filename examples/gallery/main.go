@@ -174,10 +174,36 @@ func fontsPage() ui.Node {
 // images: a photo over the network, kept on disk once fetched; until it
 // arrives (or if it can't), a placeholder from the app's assets.
 func images() ui.Node {
-	return section("Images",
-		ui.Image(ui.ImageProps{Source: ui.Val("https://picsum.photos/id/1015/600/400"), Placeholder: "placeholder.png",
-			Mode: ui.ImageFill, Label: ui.Val("A river in a valley"),
-			Style: ui.Style{AspectRatio: 3.0 / 2, CornerRadius: 12}}),
+	const flower = "https://upload.wikimedia.org/wikipedia/commons/3/3f/JPEG_example_flower.jpg"
+	playing := signal.New(true)
+	return ui.Column(ui.Style{Gap: 28},
+		section("Images",
+			ui.Image(ui.ImageProps{Source: ui.Val("https://picsum.photos/id/1015/600/400"), Placeholder: "placeholder.png",
+				Mode: ui.ImageFill, Label: ui.Val("A river in a valley"),
+				Style: ui.Style{AspectRatio: 3.0 / 2, CornerRadius: 12}}),
+		),
+		// The same photo behind a BlurHash and a ThumbHash: shown at once,
+		// then the photo fades in over them.
+		section("Hash placeholders",
+			ui.Row(ui.Style{Gap: 12},
+				ui.Image(ui.ImageProps{Source: ui.Val(flower), BlurHash: ui.Val("UtP$I1t7%$tkxatRS2RP?^WBoztRR%aKRPoz"),
+					Mode: ui.ImageFill, Transition: 0.6, Label: ui.Val("A flower"),
+					Style: ui.Style{Grow: 1, AspectRatio: 1, CornerRadius: 12}}),
+				ui.Image(ui.ImageProps{Source: ui.Val(flower), ThumbHash: ui.Val("LGkOH4rImYSZZ3h/mWZniGZ6Z3MGJ2cA"),
+					Mode: ui.ImageFill, Transition: 0.6, Label: ui.Val("A flower"),
+					Style: ui.Style{Grow: 1, AspectRatio: 1, CornerRadius: 12}}),
+			),
+		),
+		// An animated GIF and WebP: they play, unless Reduce Motion is on,
+		// and the switch stops them where they are.
+		section("Animated",
+			ui.Row(ui.Style{Gap: 16, Align: ui.AlignCenter},
+				ui.Image(ui.ImageProps{Source: ui.Val("dots.gif"), Animated: playing, Label: ui.Val("Bouncing dots (GIF)")}),
+				ui.Image(ui.ImageProps{Source: ui.Val("dots.webp"), Animated: playing, Label: ui.Val("Bouncing dots (WebP)")}),
+				ui.View(ui.ViewProps{Style: ui.Style{Grow: 1}}),
+				ui.Toggle(ui.ToggleProps{Value: playing}),
+			),
+		),
 	)
 }
 
