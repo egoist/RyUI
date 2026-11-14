@@ -176,6 +176,7 @@ draws its own UI, see [Asuka and MyGo](mygo.md).
 | | Xcode / Expo | Asuka |
 |---|---|---|
 | Live reload, keeping state | previews, Fast Refresh | ✓ `asuka dev`: reloads on save, keeps signals' values (on a phone the Go code runs on your computer; on the desktop the app is rebuilt and run again; in the browser the page reloads) |
+| Running on a phone | Xcode's Run, Expo's dev builds | ✓ `asuka dev --device`: the simulator, an emulator, an Android phone (`adb reverse`), an iPhone by USB or Wi-Fi (signed by your team, its profiles made by Xcode; usbmuxd's tunnels, else the local network) |
 | Release builds and signing | Xcode, EAS Build | ✓ `asuka build`: an `.ipa`, an `.aab`, a universal `.app` signed and notarized (or a Mac App Store `.pkg`), a Windows folder with its `.exe` signed, a Linux install prefix with a `.tar.gz` and a Flatpak manifest, a static site ([Shipping](shipping.md)) |
 | Uploading to the stores | Xcode, EAS Submit | ✓ `asuka publish`: TestFlight, App Review, Google Play's tracks; not the Mac App Store yet |
 | GUI tests | XCUITest, Detox, Maestro | ✓ `e2e/`: the examples on the iOS simulator, an Android emulator, Linux under Xvfb and headless Chrome; the Mac's and Windows' host tests drive real AppKit views and Win32 windows |

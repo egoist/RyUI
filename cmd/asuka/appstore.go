@@ -30,6 +30,7 @@ import (
 type ascKey struct {
 	id, issuer string
 	key        *ecdsa.PrivateKey
+	p8         []byte // the key's file, for xcodebuild (asuka dev on a device)
 }
 
 const ascKeyHelp = `publishing to App Store Connect takes an API key: make one there (Users and Access › Integrations › App Store Connect API, with the App Manager role), then name it in asuka.json
@@ -82,7 +83,7 @@ func loadASCKey(cfg *appConfig) (*ascKey, error) {
 	if err != nil {
 		return nil, fmt.Errorf("the App Store Connect key %s: %v", id, err)
 	}
-	return &ascKey{id: id, issuer: issuer, key: key}, nil
+	return &ascKey{id: id, issuer: issuer, key: key, p8: data}, nil
 }
 
 // parseP8 reads an App Store Connect key: a P-256 key in PKCS #8 PEM.

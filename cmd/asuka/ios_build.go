@@ -34,8 +34,12 @@ func buildIOS(app *goApp, o *buildOptions) error {
 	if err != nil {
 		return err
 	}
-	tc.release = true
+	tc.release = o.dev == nil
 	work, err := workDir(app, "ios-release-"+sdkName)
+	if o.dev != nil {
+		// asuka dev on a device: a debug build, signed for it.
+		work, err = workDir(app, "ios-device")
+	}
 	if err != nil {
 		return err
 	}
@@ -48,18 +52,18 @@ func buildIOS(app *goApp, o *buildOptions) error {
 		if want == "" {
 			want = cfg.IOS.Profile
 		}
-		if prof, err = pickProfile(cfg.IOS.Team, cfg.ID, want, o.distribution); err != nil {
+		if prof, err = o.pickProfile(cfg.IOS.Team, cfg.ID, want); err != nil {
 			return err
 		}
 		fmt.Printf("asuka: signing with %q (%s, team %s) as %s\n", prof.name, prof.kind, prof.team, prof.identityName)
 		if cfg.ShareTarget.on {
-			if shareProf, err = pickProfile(prof.team, cfg.shareID(), cfg.IOS.ShareProfile, o.distribution); err != nil {
+			if shareProf, err = o.pickProfile(prof.team, cfg.shareID(), cfg.IOS.ShareProfile); err != nil {
 				return fmt.Errorf("the share extension (asuka.json's shareTarget): %v", err)
 			}
 			fmt.Printf("asuka: signing the share extension with %q\n", shareProf.name)
 		}
 		if len(cfg.Widgets) > 0 {
-			if widgetProf, err = pickProfile(prof.team, cfg.widgetID(), cfg.IOS.WidgetProfile, o.distribution); err != nil {
+			if widgetProf, err = o.pickProfile(prof.team, cfg.widgetID(), cfg.IOS.WidgetProfile); err != nil {
 				return fmt.Errorf("the widget extension (asuka.json's widgets): %v", err)
 			}
 			fmt.Printf("asuka: signing the widget extension with %q\n", widgetProf.name)
@@ -70,14 +74,21 @@ func buildIOS(app *goApp, o *buildOptions) error {
 	if err != nil {
 		return err
 	}
-	hostObj, err := tc.buildHost(work, app, usedFeatures(lib, cfg))
+	var hostObj string
+	if app.pkg != "" {
+		// The player (asuka dev on a device): every feature, as on the
+		// simulator, and no native packages.
+		hostObj, err = tc.buildHost(work, nil, allFeatures())
+	} else {
+		hostObj, err = tc.buildHost(work, app, usedFeatures(lib, cfg))
+	}
 	if err != nil {
 		return err
 	}
 	// The widget extension of an app with Live Activities and no widgets,
 	// likewise known once the Go code is.
 	if cfg.widgetExtension() && widgetProf == nil && !o.simulator {
-		if widgetProf, err = pickProfile(prof.team, cfg.widgetID(), cfg.IOS.WidgetProfile, o.distribution); err != nil {
+		if widgetProf, err = o.pickProfile(prof.team, cfg.widgetID(), cfg.IOS.WidgetProfile); err != nil {
 			return fmt.Errorf("the widget extension (asuka/sdk/liveactivity's Live Activities): %v", err)
 		}
 		fmt.Printf("asuka: signing the widget extension with %q\n", widgetProf.name)
@@ -85,7 +96,7 @@ func buildIOS(app *goApp, o *buildOptions) error {
 	// The Notification Service Extension (push.Rewrite), whose profile is
 	// known once the Go code is: signed with one of its own, likewise.
 	if cfg.pushRewrite && !o.simulator {
-		if notificationProf, err = pickProfile(prof.team, cfg.notificationID(), cfg.IOS.NotificationProfile, o.distribution); err != nil {
+		if notificationProf, err = o.pickProfile(prof.team, cfg.notificationID(), cfg.IOS.NotificationProfile); err != nil {
 			return fmt.Errorf("the Notification Service Extension (push.Rewrite): %v", err)
 		}
 		fmt.Printf("asuka: signing the Notification Service Extension with %q\n", notificationProf.name)
@@ -109,13 +120,15 @@ func buildIOS(app *goApp, o *buildOptions) error {
 		return err
 	}
 	os.RemoveAll(filepath.Join(work, "dSYMs"))
-	if cfg.sharedLayout() {
+	if cfg.sharedLayout() && o.dev == nil {
 		if err := tc.dsym(work, code, fwName+".framework"); err != nil {
 			return err
 		}
 	}
-	if err := tc.dsym(work, filepath.Join(bundle, appExe), filepath.Base(bundle)); err != nil {
-		return err
+	if o.dev == nil {
+		if err := tc.dsym(work, filepath.Join(bundle, appExe), filepath.Base(bundle)); err != nil {
+			return err
+		}
 	}
 	if err := copyDir(filepath.Join(app.dir, "assets"), filepath.Join(bundle, "assets")); err != nil {
 		return err
@@ -140,7 +153,7 @@ func buildIOS(app *goApp, o *buildOptions) error {
 	if err := os.WriteFile(infoPath, []byte(plist(info)), 0o644); err != nil {
 		return err
 	}
-	if cfg.Icon == "" {
+	if cfg.Icon == "" && o.dev == nil {
 		fmt.Println("asuka: no icon in asuka.json; the App Store needs one (1024×1024 PNG)")
 	}
 	if cfg.Icon != "" || cfg.splashOn() {
@@ -242,6 +255,10 @@ func buildIOS(app *goApp, o *buildOptions) error {
 	}
 	if err := prof.sign(tc, work, bundle, cfg.ID, cfg.associatedDomains(false), cfg.appGroup(), cfg.keychainGroup(prof.team), cfg); err != nil {
 		return err
+	}
+	if o.dev != nil {
+		o.dev.bundle = bundle
+		return nil
 	}
 	ipa := ipaPath(cfg, o)
 	if err := packIPA(tc, work, bundle, ipa); err != nil {
@@ -448,6 +465,7 @@ type profile struct {
 	kind                          string // app-store, ad-hoc, development, enterprise
 	expires                       time.Time
 	certs                         []string // SHA-1s of the certificates it allows
+	devices                       []string // the UDIDs a development or ad hoc one installs on
 	identity                      string   // the SHA-1 of the keychain identity that signs with it
 	identityName                  string
 }
@@ -488,6 +506,9 @@ func readProfile(path string) (*profile, error) {
 		p.kind = "ad-hoc"
 	default:
 		p.kind = "app-store"
+	}
+	if js, err := exec.Command("plutil", "-extract", "ProvisionedDevices", "json", "-o", "-", tmp.Name()).Output(); err == nil {
+		json.Unmarshal(js, &p.devices)
 	}
 	n, _ := strconv.Atoi(get("DeveloperCertificates"))
 	for i := 0; i < n; i++ {
@@ -534,6 +555,12 @@ func (p *profile) matches(team, id string) int {
 // match for id, the team (if given) and the distribution whose
 // certificate is in the keychain.
 func pickProfile(team, id, want, distribution string) (*profile, error) {
+	return pickProfileFor(team, id, want, distribution, "")
+}
+
+// pickProfileFor is pickProfile for a profile that installs on the
+// device udid too (if not "").
+func pickProfileFor(team, id, want, distribution, udid string) (*profile, error) {
 	ids := identities()
 	var all []*profile
 	for _, d := range profileDirs() {
@@ -571,6 +598,10 @@ func pickProfile(team, id, want, distribution string) (*profile, error) {
 			near = append(near, fmt.Sprintf("%q (expired %s)", p.name, p.expires.Format("2006-01-02")))
 			continue
 		}
+		if udid != "" && p.kind != "enterprise" && !slices.ContainsFunc(p.devices, func(d string) bool { return strings.EqualFold(d, udid) }) {
+			near = append(near, fmt.Sprintf("%q (without the device %s)", p.name, udid))
+			continue
+		}
 		for _, c := range p.certs {
 			if name, ok := ids[c]; ok {
 				p.identity, p.identityName = c, name // the SHA-1: names can be ambiguous
@@ -593,6 +624,35 @@ func pickProfile(team, id, want, distribution string) (*profile, error) {
 		msg += "; close ones: " + strings.Join(near, ", ")
 	}
 	return nil, errors.New(msg + ". Make one for the app ID in Xcode (Settings › Accounts) or at developer.apple.com, or pass --profile")
+}
+
+// pickEnvironments signs with one value of each environment a profile
+// allows several of (an Xcode team profile's App Attest: development and
+// production), as Xcode does: development's for a development profile,
+// else production's.
+func pickEnvironments(t *iosToolchain, work, ent, kind string) error {
+	js, err := exec.Command("plutil", "-convert", "json", "-o", "-", ent).Output()
+	if err != nil {
+		return nil // what codesign makes of it
+	}
+	var m map[string]any
+	json.Unmarshal(js, &m)
+	for k, v := range m {
+		vs, ok := v.([]any)
+		if !ok || !strings.HasSuffix(k, "-environment") || len(vs) == 0 {
+			continue
+		}
+		pick, _ := vs[0].(string)
+		for _, x := range vs {
+			if s, _ := x.(string); s == "development" && kind == "development" || s == "production" && kind != "development" {
+				pick = s
+			}
+		}
+		if err := t.run(work, nil, "plutil", "-replace", plistKey(k), "-string", pick, ent); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // plistKey is a plist key as plutil's key paths take it: plutil reads a
@@ -632,6 +692,9 @@ func (p *profile) sign(t *iosToolchain, work, bundle, id string, domains []strin
 	}
 	// A wildcard profile's app ID becomes the app's.
 	if err := t.run(work, nil, "plutil", "-replace", "application-identifier", "-string", p.team+"."+id, ent); err != nil {
+		return err
+	}
+	if err := pickEnvironments(t, work, ent, p.kind); err != nil {
 		return err
 	}
 	// Universal links: the domains, which the profile must allow (the

@@ -509,6 +509,16 @@ func writeOverlay(app *goApp, work string) (string, error) {
 
 // buildGo builds the app's Go code as a c-archive.
 func (t *iosToolchain) buildGo(app *goApp, work string) (string, error) {
+	if app.pkg != "" {
+		// The player's library: the same source makes the same archive (no
+		// paths, build ID or dates in it), so an unchanged player isn't
+		// installed again.
+		lib := filepath.Join(work, "libplayer.a")
+		flags := "-isysroot " + t.sdk + " -target " + t.target
+		env := []string{"GOOS=ios", "GOARCH=" + t.goarch, "CGO_ENABLED=1", "CC=" + t.clang, "CGO_CFLAGS=" + flags, "CGO_LDFLAGS=" + flags, "ZERO_AR_DATE=1"}
+		dir, pkg := app.goPackage()
+		return lib, t.run(dir, env, "go", "build", "-tags", "ios", "-buildmode=c-archive", "-trimpath", "-ldflags=-buildid=", "-o", lib, pkg)
+	}
 	ovPath, err := writeOverlay(app, work)
 	if err != nil {
 		return "", err
@@ -803,6 +813,12 @@ func devIOS(dir string, o *devOptions, stop <-chan os.Signal) error {
 	app, err := loadApp(dir)
 	if err != nil {
 		return err
+	}
+	// An iPhone or iPad --device names (ios_device.go).
+	if d, err := findIOSDevice(o.device); err != nil {
+		return err
+	} else if d != nil {
+		return devIOSDevice(app, o, d, stop)
 	}
 	tc, err := newIOSToolchain(o.verbose)
 	if err != nil {

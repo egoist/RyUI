@@ -164,6 +164,7 @@ SwiftUI 也能在 Mac 上运行。Expo 支持 iOS、Android 和 Web；React Nati
 | | Xcode / Expo | Asuka |
 |---|---|---|
 | 实时重载并保留状态 | 预览、Fast Refresh | ✓ `asuka dev`：保存即重载，并保留 signal 的值（在手机上，Go 代码运行在你的电脑上；在桌面端，应用会重新构建并运行；在浏览器里，页面会重新加载） |
+| 在手机上运行 | Xcode 的 Run、Expo 的开发构建 | ✓ `asuka dev --device`：iOS 模拟器、Android 模拟器、Android 手机（`adb reverse`），以及通过 USB 或 Wi-Fi 连接的 iPhone（由你的团队签名，描述文件由 Xcode 生成；优先走 usbmuxd 的隧道，否则走局域网） |
 | 发布构建和签名 | Xcode、EAS Build | ✓ `asuka build`：`.ipa`、`.aab`、经过签名和公证的通用 `.app`（或 Mac App Store 用的 `.pkg`）、包含已签名 `.exe` 的 Windows 文件夹、附带 `.tar.gz` 和 Flatpak 清单的 Linux 安装前缀、静态网站（[发布](shipping.md)） |
 | 上传到应用商店 | Xcode、EAS Submit | ✓ `asuka publish`：TestFlight、App 审核、Google Play 的各个发布轨道；暂不支持 Mac App Store |
 | GUI 测试 | XCUITest、Detox、Maestro | ✓ `e2e/`：在 iOS 模拟器、Android 模拟器、Xvfb 下的 Linux 和无头 Chrome 里运行示例；Mac 和 Windows 的宿主测试会驱动真实的 AppKit 视图和 Win32 窗口 |
