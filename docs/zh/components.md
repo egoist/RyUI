@@ -523,6 +523,8 @@ web = ui.WebView(ui.WebViewProps{
 })
 ```
 
+在 iOS、Android、macOS、Linux 和 Web 上，`ui.EvalJSResult` 用页面的 `eval` 执行脚本，所以如果页面的内容安全策略（CSP）不允许 `'unsafe-eval'`，它会被拒绝并报 `EvalError`。在原生平台上，可以用 `ui.EvalJS` 执行脚本，再通过 `asuka.postMessage` 把值发回来。Web 上的 `ui.EvalJS` 也用 `eval`，同样受此限制。
+
 `ui.WebCookies(url, done)` 获取 Web 视图中某个 URL 的 cookie，形式是一个 `Cookie` 请求头。这样用户在页面里登录之后，你自己发出的请求也能带上这份登录状态。
 
 [`examples/downloader`](../../examples/downloader) 用到了以上全部功能：一个带地址栏、预加载脚本、请求拦截和下载功能的浏览器。

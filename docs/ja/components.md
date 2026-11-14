@@ -465,6 +465,8 @@ web = ui.WebView(ui.WebViewProps{
 })
 ```
 
+iOS、Android、macOS、Linux、Web では、`ui.EvalJSResult` はページの `eval` を使ってスクリプトを実行するため、コンテンツセキュリティポリシー（CSP）で `'unsafe-eval'` を許可していないページでは `EvalError` になります。ネイティブプラットフォームでは、`ui.EvalJS` でスクリプトを実行し、`asuka.postMessage` で値を送り返せます。Web では `ui.EvalJS` も `eval` を使うため、同じ制限を受けます。
+
 `ui.WebCookies(url, done)` は、Web ビューが持っているその URL の Cookie を、`Cookie` ヘッダーの形で取得します。ユーザーがページでサインインした状態を、アプリ自身のリクエストで使うためのものです。
 
 [`examples/downloader`](../../examples/downloader) は、これらをすべて使った例です。アドレスバー、プリロードスクリプト、ブロック、ダウンロードを備えたブラウザーになっています。
