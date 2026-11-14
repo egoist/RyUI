@@ -3,6 +3,7 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 @import "@fontsource-variable/geist-mono";
+@import "@fontsource/noto-serif-sc/800.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -66,11 +67,15 @@
   unicode-range: U+0000-2E7F;
 }
 
-/* Chinese pages: the system's Chinese faces after the Latin ones, which
-   have no Chinese, before the Japanese ones, which lack simplified forms.
-   Mincho's counterpart in Chinese is Song. */
+/* Chinese pages: Mincho's counterpart in Chinese is Song, set as heavy as the
+   title cards: Noto Serif SC ExtraBold after the Latin face, which has no
+   Chinese. It is served, not taken from the system: Android has no Song but
+   a regular Noto Serif CJK, if any, and iOS none at all, so the title would
+   fall to a bold sans. Its slices (unicode-range) load only for the
+   characters a page sets. The system's faces stay behind it, for a slice
+   that fails to load. */
 html:lang(zh) {
-  --font-display: "Shippori Mincho B1 Latin", "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", "Noto Serif SC", "SimSun", serif;
+  --font-display: "Shippori Mincho B1 Latin", "Noto Serif SC", "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", "SimSun", serif;
   font-family: "Geist Variable", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", ui-sans-serif, system-ui, sans-serif;
 }
 
