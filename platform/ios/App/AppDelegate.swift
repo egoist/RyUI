@@ -37,6 +37,11 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         // start, so none that comes before the Go code observes is lost.
         AsukaStore.shared.start()
         #endif
+        #if ASUKA_BLUETOOTH
+        // asuka/sdk/bluetooth: relaunched for Bluetooth (state restoration),
+        // its managers again before launch ends.
+        AsukaBluetooth.shared.launched(options)
+        #endif
         return true
     }
 

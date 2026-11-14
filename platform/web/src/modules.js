@@ -15,6 +15,7 @@ import { modules as web } from "./modules/web.js";
 import { modules as desktop } from "./modules/desktop.js";
 import { modules as dialog } from "./modules/dialog.js";
 import { modules as purchase } from "./modules/purchase.js";
+import { modules as bluetooth } from "./modules/bluetooth.js";
 
 const enc = new TextEncoder();
 
@@ -50,7 +51,7 @@ export class Modules {
   }
 
   builtin(name) {
-    this.builtins ??= { ...system(this.h), ...hardware(this.h), ...web(this.h), ...desktop(this.h), ...dialog(this.h), ...purchase(this.h) };
+    this.builtins ??= { ...system(this.h), ...hardware(this.h), ...web(this.h), ...desktop(this.h), ...dialog(this.h), ...purchase(this.h), ...bluetooth(this.h) };
     return Object.hasOwn(this.builtins, name) ? this.builtins[name] : null;
   }
 }

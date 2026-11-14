@@ -213,6 +213,9 @@ type appConfig struct {
 	entitlements map[string]any
 	plistArrays  map[string][]string
 	androidTop   []string
+	// flatpakArgs are the Flatpak's finish-args the packages need (the
+	// system bus names they talk to).
+	flatpakArgs []string
 	// What the app's native packages' Swift needs (their Info.plist and
 	// entitlements, nativeNeeds): Info.plist's keys, and what each of
 	// their entitlements is for.
@@ -243,6 +246,22 @@ type appConfig struct {
 		// asks for (default: a recent one; 46 or later).
 		FlatpakRuntime string `json:"flatpakRuntime"`
 	} `json:"linux"`
+	// Bluetooth is what an app of asuka/sdk/bluetooth asks of the
+	// platforms beyond what importing the package gives (docs/bluetooth.md).
+	Bluetooth struct {
+		// Background are the roles the app keeps in the background:
+		// "central" (iOS's bluetooth-central mode, with state restoration;
+		// Android's background scan's receiver, and before Android 12 the
+		// background location permission it needs) and "peripheral" (iOS's
+		// bluetooth-peripheral mode).
+		Background []string `json:"background"`
+		// Location says the app finds where the user is from its scans
+		// (beacons): Android 12's BLUETOOTH_SCAN without neverForLocation,
+		// and the location permission that then needs. Without it, scans
+		// say they don't, and Android leaves some beacons' advertisements
+		// out of them.
+		Location bool `json:"location"`
+	} `json:"bluetooth"`
 	// Web is what a web build needs (cmd/asuka/web.go).
 	Web struct {
 		// VapidPublicKey is the app server's VAPID public key (base64url, an
@@ -339,6 +358,11 @@ func loadConfig(dir string) (*appConfig, error) {
 	for _, l := range c.Links {
 		if !domain.MatchString(l) {
 			return nil, fmt.Errorf("asuka.json: link domain %q (want a host name, as example.com)", l)
+		}
+	}
+	for _, r := range c.Bluetooth.Background {
+		if r != "central" && r != "peripheral" {
+			return nil, fmt.Errorf("asuka.json: bluetooth background %q (want central or peripheral)", r)
 		}
 	}
 	if err := c.checkFileTypes(dir); err != nil {
@@ -601,6 +625,18 @@ var featurePermissions = []struct {
 		plistArrays: map[string][]string{"LSApplicationQueriesSchemes": {"mailto"}},
 		androidTop: []string{`<queries><intent><action android:name="android.intent.action.SENDTO" /><data android:scheme="mailto" /></intent>` +
 			`<intent><action android:name="android.intent.action.SENDTO" /><data android:scheme="smsto" /></intent></queries>`}},
+	// Bluetooth LE: Android 12's nearby devices permissions (the scan's
+	// "neverForLocation" unless asuka.json's bluetooth.location; Asuka's
+	// Android is 13 and later, so not the older Bluetooth and location
+	// permissions); the companion device chooser. Core Bluetooth's
+	// purpose string. BlueZ on the system bus, from a Flatpak. asuka.json's
+	// bluetooth.background adds the background modes (bluetoothExtras).
+	{pkg: bluetoothPackage,
+		android: []string{"android.permission.BLUETOOTH_SCAN|neverForLocation", "android.permission.BLUETOOTH_CONNECT",
+			"android.permission.BLUETOOTH_ADVERTISE"},
+		usage: map[string]string{"NSBluetoothAlwaysUsageDescription": "To connect to your Bluetooth devices."},
+		androidTop: []string{`<uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />`,
+			`<uses-feature android:name="android.software.companion_device_setup" android:required="false" />`}},
 }
 
 // featureMacSwift are the parts of platform/macos's Swift a package
@@ -674,6 +710,16 @@ func (c *appConfig) payEntitlement(deps []string) {
 	c.entitlements["com.apple.developer.in-app-payments"] = c.ApplePay.MerchantIDs
 }
 
+// featureFlatpak are the Flatpak's finish-args a package needs (Linux):
+// the system bus names it talks to.
+var featureFlatpak = map[string][]string{
+	bluetoothPackage: {"--system-talk-name=org.bluez"},
+}
+
+// bluetoothPackage is asuka/sdk/bluetooth, whose needs asuka.json's
+// "bluetooth" adds to (bluetoothExtras).
+const bluetoothPackage = "github.com/egoist/asuka/sdk/bluetooth"
+
 // permissionsFor adds the permissions the packages deps (an app's
 // imports, all the way down) need. nil deps: every package's (the player
 // runs any app).
@@ -684,8 +730,11 @@ func (c *appConfig) permissionsFor(deps []string) {
 			continue
 		}
 		for _, p := range f.android {
-			if !slices.Contains(c.Android.Permissions, p) {
-				c.Android.Permissions = append(c.Android.Permissions, p)
+			c.addPermission(p)
+		}
+		for _, x := range featureFlatpak[f.pkg] {
+			if !slices.Contains(c.flatpakArgs, x) {
+				c.flatpakArgs = append(c.flatpakArgs, x)
 			}
 		}
 		for _, m := range f.modules {
@@ -739,6 +788,89 @@ func (c *appConfig) permissionsFor(deps []string) {
 		}
 	}
 	c.addNFC(deps)
+	if deps != nil && slices.Contains(deps, bluetoothPackage) {
+		c.bluetoothExtras()
+	}
+}
+
+// addPermission adds an Android permission ("name", "name:28" up to an
+// API level, "name|flag" with usesPermissionFlags), once per name: a
+// permission without a maximum wins over one with, as one without flags
+// does over one with (the flags narrow what it's for).
+func (c *appConfig) addPermission(p string) {
+	parse := func(p string) (name string, max int, flags string) {
+		p, flags, _ = strings.Cut(p, "|")
+		name, m, _ := strings.Cut(p, ":")
+		max, _ = strconv.Atoi(m) // 0: every level
+		return
+	}
+	name, max, flags := parse(p)
+	for i, q := range c.Android.Permissions {
+		qn, qmax, qflags := parse(q)
+		if qn != name {
+			continue
+		}
+		if max != 0 && (qmax == 0 || qmax > max) {
+			max = qmax
+		}
+		if qflags == "" {
+			flags = ""
+		}
+		merged := name
+		if max != 0 {
+			merged += ":" + strconv.Itoa(max)
+		}
+		if flags != "" {
+			merged += "|" + flags
+		}
+		c.Android.Permissions[i] = merged
+		return
+	}
+	c.Android.Permissions = append(c.Android.Permissions, p)
+}
+
+// bluetoothExtras are what asuka.json's "bluetooth" asks for, for an app
+// of asuka/sdk/bluetooth: the background modes, the location from scans.
+func (c *appConfig) bluetoothExtras() {
+	if c.Bluetooth.Location {
+		// Scans that find where the user is: no neverForLocation, and the
+		// location permission, which Android then wants granted to scan
+		// (Request asks for it).
+		for i, p := range c.Android.Permissions {
+			if name, _, _ := strings.Cut(p, "|"); name == "android.permission.BLUETOOTH_SCAN" {
+				c.Android.Permissions[i] = name
+			}
+		}
+		c.addPermission("android.permission.ACCESS_FINE_LOCATION")
+		c.addPermission("android.permission.ACCESS_COARSE_LOCATION")
+		if c.IOS.Usage == nil {
+			c.IOS.Usage = map[string]string{}
+		}
+		if c.IOS.Usage["NSLocationWhenInUseUsageDescription"] == "" {
+			c.IOS.Usage["NSLocationWhenInUseUsageDescription"] = "To find the Bluetooth beacons near you."
+		}
+	}
+	addMode := func(m string) {
+		if c.plistArrays == nil {
+			c.plistArrays = map[string][]string{}
+		}
+		if !slices.Contains(c.plistArrays["UIBackgroundModes"], m) {
+			c.plistArrays["UIBackgroundModes"] = append(c.plistArrays["UIBackgroundModes"], m)
+		}
+	}
+	for _, r := range c.Bluetooth.Background {
+		switch r {
+		case "central":
+			addMode("bluetooth-central")
+			// The background scan's results, with the app's process gone.
+			x := `<receiver android:name="dev.asuka.AsukaBluetoothScanReceiver" android:exported="false" />`
+			if !slices.Contains(c.androidApp, x) {
+				c.androidApp = append(c.androidApp, x)
+			}
+		case "peripheral":
+			addMode("bluetooth-peripheral")
+		}
+	}
 }
 
 // gradleProps are the Gradle properties naming the app's optional
@@ -759,9 +891,13 @@ func (c *appConfig) androidManifest(debug bool) string {
 	var b strings.Builder
 	b.WriteString("<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n")
 	for _, p := range c.Android.Permissions {
+		p, flags, _ := strings.Cut(p, "|")
 		name, max, _ := strings.Cut(p, ":")
 		if max != "" {
 			max = fmt.Sprintf(` android:maxSdkVersion="%s"`, html.EscapeString(max))
+		}
+		if flags != "" {
+			max += fmt.Sprintf(` android:usesPermissionFlags="%s"`, html.EscapeString(flags))
 		}
 		fmt.Fprintf(&b, "    <uses-permission android:name=\"%s\"%s />\n", html.EscapeString(name), max)
 	}

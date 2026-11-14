@@ -254,6 +254,9 @@ struct AsukaModuleError: LocalizedError {
         #if ASUKA_NFC
         modules["nfc"] = AsukaNFC.shared.methods()
         #endif
+        #if ASUKA_BLUETOOTH
+        modules["bluetooth"] = AsukaBluetooth.shared.methods()
+        #endif
         #if ASUKA_SPEECH
         modules["speech"] = AsukaSpeech.shared.methods()
         #endif

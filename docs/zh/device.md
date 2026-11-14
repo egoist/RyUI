@@ -42,6 +42,7 @@ Asuka 提供了一系列包，让应用用上视图之外的设备能力：相�
 | `asuka/sdk/calendar` | `READ_CALENDAR`（用于 `Calendars`、`Events`） | `NSCalendarsFullAccessUsageDescription`、`NSCalendarsUsageDescription` |
 | `asuka/sdk/compose` | 处理 `mailto:` 和 `smsto:` 的应用的可见性声明（`<queries>`） | `LSApplicationQueriesSchemes` 中的 `mailto` |
 | `asuka/sdk/nfc` | `NFC`；`uses-feature android.hardware.nfc`（非必需）；asuka.json 中 `nfc` 的过滤器（见 [NFC 标签](nfc.md)） | `NFCReaderUsageDescription`；Core NFC 的 entitlement；asuka.json 中 `nfc` 的 AID 和 FeliCa 系统代码 |
+| `asuka/sdk/bluetooth` | `BLUETOOTH_SCAN`（`neverForLocation`）、`BLUETOOTH_CONNECT`、`BLUETOOTH_ADVERTISE`；声明了 `asuka.json` 的 `bluetooth.background` 时还有扫描接收器（见[蓝牙](bluetooth.md#构建时添加的内容)） | `NSBluetoothAlwaysUsageDescription`；声明了 `bluetooth.background` 时还有 `bluetooth-central`、`bluetooth-peripheral` |
 
 `asuka/sdk/device`、`asuka/sdk/audio`、`asuka/sdk/splash`、`asuka/sdk/imageedit`、`asuka/sdk/widget`、`asuka/sdk/js`、`asuka/sdk/secure`、`asuka/sdk/preview` 和 `asuka/sdk/print` 不需要任何权限。
 

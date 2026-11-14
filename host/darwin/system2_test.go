@@ -70,6 +70,10 @@ func TestSystemModulesThere(t *testing.T) {
 			"vision":       {"analyze"},
 			"transcribe":   {"check", "file"},
 			"imageEdit":    {"edit", "size", "videoFrame"},
+			"bluetooth": {"state", "request", "next", "stop", "scan", "stopScan", "stopBackgroundScan", "choose", "known",
+				"connected", "connect", "disconnect", "services", "read", "write", "readDescriptor", "writeDescriptor",
+				"subscribe", "unsubscribe", "mtu", "requestMtu", "rssi", "priority", "advertise", "stopAdvertise",
+				"serve", "unserve", "respond", "notify", "restore"},
 		}
 		for _, kind := range []string{"asuka.camera", "asuka.map", "asuka.appleSignIn"} {
 			if builtinViews[kind] == nil {

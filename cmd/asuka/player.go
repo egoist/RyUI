@@ -688,5 +688,9 @@ func playerConfig() *appConfig {
 	c.permissionsFor(nil)
 	c.addFeatureExtras(allFeatures())
 	c.useLocation(func(string) bool { return true })
+	// Bluetooth in the background, for an app that asks (asuka.json's
+	// bluetooth.background).
+	c.Bluetooth.Background = []string{"central", "peripheral"}
+	c.bluetoothExtras()
 	return c
 }

@@ -251,6 +251,7 @@ var macResourceEntitlements = map[string]string{
 	"NSCalendarsFullAccessUsageDescription": "com.apple.security.personal-information.calendars",
 	"NSPhotoLibraryUsageDescription":        "com.apple.security.personal-information.photos-library",
 	"NSPhotoLibraryAddUsageDescription":     "com.apple.security.personal-information.photos-library",
+	"NSBluetoothAlwaysUsageDescription":     "com.apple.security.device.bluetooth",
 }
 
 // writeMacEntitlements writes the app's entitlements for its signature

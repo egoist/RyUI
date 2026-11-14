@@ -63,6 +63,7 @@ web need nothing declared (see each one's section below).
 | `asuka/sdk/calendar` | `READ_CALENDAR` (for `Calendars`, `Events`) | `NSCalendarsFullAccessUsageDescription`, `NSCalendarsUsageDescription` |
 | `asuka/sdk/compose` | the visibility of the apps for `mailto:` and `smsto:` (`<queries>`) | `mailto` in `LSApplicationQueriesSchemes` |
 | `asuka/sdk/nfc` | `NFC`; `uses-feature android.hardware.nfc` (not required); asuka.json's `nfc` filters ([NFC tags](nfc.md)) | `NFCReaderUsageDescription`; Core NFC's entitlement; asuka.json's `nfc` AIDs and FeliCa system codes |
+| `asuka/sdk/bluetooth` | `BLUETOOTH_SCAN` (`neverForLocation`), `BLUETOOTH_CONNECT`, `BLUETOOTH_ADVERTISE`; the scan's receiver for `asuka.json`'s `bluetooth.background` (see [Bluetooth](bluetooth.md#what-the-build-adds)) | `NSBluetoothAlwaysUsageDescription`; `bluetooth-central`, `bluetooth-peripheral` for `bluetooth.background` |
 
 `asuka/sdk/device`, `asuka/sdk/audio`, `asuka/sdk/splash`, `asuka/sdk/imageedit`,
 `asuka/sdk/widget`, `asuka/sdk/js`, `asuka/sdk/secure`, `asuka/sdk/preview` and

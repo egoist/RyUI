@@ -1,0 +1,9 @@
+{
+  "name": "Bluetooth",
+  "id": "dev.asuka.bluetooth",
+  "version": "1.0.0",
+  "build": 1,
+  "ios": {
+    "usage": {"NSBluetoothAlwaysUsageDescription": "To find your heart rate monitor and read your heart rate."}
+  }
+}

@@ -68,6 +68,7 @@ func TestModulesLinuxHas(t *testing.T) {
 		"audioRecord":  {"start", "stop", "pause", "resume", "level", "status"},
 		"background":   {"start", "update", "end", "next"},
 		"biometric":    {"check", "authenticate"},
+		"bluetooth":    {"state", "request", "next", "stop", "scan", "stopScan", "stopBackgroundScan", "choose", "known", "connected", "connect", "disconnect", "services", "read", "write", "readDescriptor", "writeDescriptor", "subscribe", "unsubscribe", "mtu", "requestMtu", "rssi", "priority", "advertise", "stopAdvertise", "serve", "unserve", "respond", "notify", "restore"},
 		"browser":      {"open"},
 		"calendar":     {"request", "calendars", "events", "add"},
 		"camera":       {"take", "capture", "record", "stopRecording"},
