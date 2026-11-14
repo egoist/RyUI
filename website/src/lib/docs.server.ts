@@ -17,7 +17,7 @@ import { site } from "@/lib/site"
 // Vite runs in website/, next to the repository's docs.
 const repoDir = path.resolve(process.cwd(), "..")
 
-/** The docs of a language: docs/, docs/zh/. */
+/** The docs of a language: docs/, docs/zh/, docs/ja/. */
 function docsDirOf(locale: Locale) {
   return path.join(repoDir, localeInfo[locale].docsDir)
 }

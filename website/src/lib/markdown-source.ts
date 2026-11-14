@@ -8,7 +8,7 @@ export interface LinkOptions {
   docsDir: string
   repoDir: string
   repoUrl: string
-  /** Where the docs are on the site: /docs, /zh/docs. */
+  /** Where the docs are on the site: /docs, /zh/docs, /ja/docs. */
   base: string
 }
 
@@ -16,9 +16,10 @@ export interface LinkOptions {
 const unpublished: Record<Locale, Set<string>> = {
   en: new Set(["device-checklist.md"]),
   zh: new Set(["TRANSLATING.md"]),
+  ja: new Set(["TRANSLATING.md"]),
 }
 
-/** The directories of the docs in other languages, inside docs/: zh. */
+/** The directories of the docs in other languages, inside docs/: zh, ja. */
 const translations = locales.flatMap((l) => (l === "en" ? [] : [localeInfo[l].docsDir.replace(/^docs\//, "")]))
 
 /** Whether a file of a language's docs, relative to them, is a page of the site. */

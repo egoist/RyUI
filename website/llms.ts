@@ -10,10 +10,13 @@ import { unified } from "unified"
 import { visit } from "unist-util-visit"
 import type { Plugin } from "vite"
 
-import { localeInfo, locales, localized, type Locale } from "./src/lib/locales.ts"
+import { localeInfo, locales, localized, prefixPattern, type Locale } from "./src/lib/locales.ts"
 import { docsBase, isPublished, omitRepositoryOnly, rewriteHref, slugOf, type LinkOptions } from "./src/lib/markdown-source.ts"
 import { messages } from "./src/lib/messages.ts"
 import { site } from "./src/lib/site.ts"
+
+// The downloads' paths, in any language: /llms.txt, /zh/docs/shipping.md.
+const markdownPath = new RegExp(`^${prefixPattern}(?:\\/llms\\.txt|\\/llms-full\\.txt|\\/docs(?:\\/.*)?\\.md)$`)
 
 /** All downloads, keyed by their site path, for the build and dev server. */
 export async function docsAssets(repoDir: string): Promise<Map<string, string>> {
@@ -25,7 +28,7 @@ export async function docsAssets(repoDir: string): Promise<Map<string, string>> 
 /**
  * A language's downloads: each page as Markdown (/docs/shipping.md,
  * /zh/docs/shipping.md), and its llms.txt and llms-full.txt (/llms.txt,
- * /zh/llms.txt).
+ * /zh/llms.txt, /ja/llms.txt).
  */
 async function localeAssets(repoDir: string, locale: Locale, assets: Map<string, string>) {
   const docsDir = path.join(repoDir, localeInfo[locale].docsDir)
@@ -90,7 +93,7 @@ export function llmsDocs(repoDir: string): Plugin {
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         const pathname = req.url?.split("?", 1)[0] ?? ""
-        if (!/^(?:\/zh)?(?:\/llms\.txt|\/llms-full\.txt|\/docs(?:\/.*)?\.md)$/.test(pathname)) return next()
+        if (!markdownPath.test(pathname)) return next()
         try {
           const source = (await docsAssets(repoDir)).get(pathname)
           if (source === undefined) return next()

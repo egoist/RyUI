@@ -12,7 +12,7 @@ import { isPublished } from "./src/lib/markdown-source.ts"
 const repo = (file: string) => new URL(`../${file}`, import.meta.url)
 
 // The pages of the repository's docs, in each language: shipping.md at
-// /docs/shipping (docs/zh/shipping.md at /zh/docs/shipping), and a
+// /docs/shipping (docs/zh/shipping.md at /zh/docs/shipping, docs/ja/shipping.md at /ja/docs/shipping), and a
 // directory's README at the directory. /docs itself, like every route
 // without parameters, is found without being listed.
 const docs = locales.flatMap((locale) =>
@@ -49,8 +49,7 @@ export default defineConfig({
       prerender: { enabled: true, crawlLinks: true, filter: ({ path }) => !path.includes("#") },
       pages: [
         ...docs.map((path) => ({ path })),
-        { path: "/docs/search.json" },
-        { path: "/zh/docs/search.json" },
+        ...locales.map((locale) => ({ path: localized(locale, "/docs/search.json") })),
         // Served by Cloudflare for any path that has no page.
         { path: "/404", prerender: { enabled: true, outputPath: "/404.html" } },
       ],

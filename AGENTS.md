@@ -127,10 +127,11 @@ go test -tags e2e ./e2e -run Updater               # a desktop app updates itsel
 - Every prop that shows text is an accessor, so it can follow the app's
   language (`locales.Live.Title()`); only what's shown once (an alert) takes a
   string. Frames are always physical: a host never mirrors what the core places.
-- The docs have a Chinese translation in `docs/zh`, the same pages with
-  the same headings (docs/zh/TRANSLATING.md: its style and terms). A
-  change to a page of `docs` changes its translation too, written as
-  natural Chinese, not word for word.
+- The docs have a Chinese translation in `docs/zh` and a Japanese one in
+  `docs/ja`, the same pages with the same headings (each one's
+  TRANSLATING.md: its style and terms). A change to a page of `docs`
+  changes its translations too, written as natural Chinese and Japanese,
+  not word for word.
 - Keep generated files (`ops` decoders, `locales/catalog_gen.go`, native
   packages' `*_native.go` and `*.asuka.*`) committed and up to date.
 - Platform code an app needs is a native package (docs/native.md): a Go

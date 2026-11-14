@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router"
 
 import { Mark } from "@/components/logo"
-import { messages, useLocale } from "@/lib/i18n"
+import { messages, routes, useLocale } from "@/lib/i18n"
 import { site } from "@/lib/site"
 
 export function SiteFooter() {
@@ -16,7 +16,7 @@ export function SiteFooter() {
         </a>
       </div>
       <nav className="flex flex-wrap gap-x-6 gap-y-2">
-        <Link to={locale === "zh" ? "/zh/docs" : "/docs"} className="hover:text-foreground">
+        <Link to={routes[locale].docs} className="hover:text-foreground">
           {t.docs}
         </Link>
         <a href={`${site.repo}/releases`} className="hover:text-foreground">

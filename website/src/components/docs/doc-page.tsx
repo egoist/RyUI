@@ -46,11 +46,12 @@ export function DocRoute({ doc }: { doc: Doc | null }) {
   return doc ? <DocPage doc={doc} /> : <NotFound />
 }
 
-/** The sidebar of the docs being read, English or Chinese. */
+/** The sidebar of the docs being read, in its language. */
 function useNav(): Navs {
   const en = useMatch({ from: "/docs", shouldThrow: false })
   const zh = useMatch({ from: "/zh/docs", shouldThrow: false })
-  return (zh ?? en)?.loaderData ?? []
+  const ja = useMatch({ from: "/ja/docs", shouldThrow: false })
+  return (zh ?? ja ?? en)?.loaderData ?? []
 }
 
 export function DocPage({ doc }: { doc: Doc }) {

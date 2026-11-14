@@ -4,6 +4,7 @@
 @import "@fontsource-variable/geist";
 @import "@fontsource-variable/geist-mono";
 @import "@fontsource/noto-serif-sc/800.css";
+@import "@fontsource/shippori-mincho-b1/800.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -11,7 +12,7 @@
   --font-heading: var(--font-sans);
   --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
-  --font-display: "Shippori Mincho B1", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --font-display: "Shippori Mincho B1 Cut", "Hiragino Mincho ProN", "Yu Mincho", serif;
   --font-code: "Ioskeley Mono", "Geist Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
   --color-unit: var(--unit);
   --color-unit-ink: var(--unit-ink);
@@ -48,9 +49,11 @@
 }
 
 /* The title cards' face: Shippori Mincho B1 ExtraBold, cut down to Latin and
-   the few kanji the site sets (public/fonts, under the OFL). */
+   the few kanji the site sets (public/fonts, under the OFL). Named apart
+   from the whole face, which Japanese pages take from @fontsource under the
+   face's own name. */
 @font-face {
-  font-family: "Shippori Mincho B1";
+  font-family: "Shippori Mincho B1 Cut";
   font-weight: 800;
   font-display: swap;
   src: url("/fonts/shippori-mincho-b1-800.woff2") format("woff2");
@@ -91,9 +94,30 @@ html:lang(zh) :is(pre, code, kbd, samp) {
   text-autospace: no-autospace;
 }
 
-/* The Japanese labels on Chinese pages keep the whole face, kanji too. */
+/* The Japanese labels on Chinese pages keep the cut face, kanji too. */
 html:lang(zh) :lang(ja) {
-  --font-display: "Shippori Mincho B1", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --font-display: "Shippori Mincho B1 Cut", "Hiragino Mincho ProN", "Yu Mincho", serif;
+}
+
+/* Japanese pages: the title cards in the same mincho, whole. The cut face
+   comes first, as on the English pages, and the rest of its characters
+   (kana, the kanji it lacks) come from the whole face, served in slices
+   (@fontsource, unicode-range) that load only for the characters a page
+   sets: no system has a mincho this heavy. The text
+   is in the system's Japanese gothic: a Chinese face would draw the kanji
+   that the two languages share in Chinese shapes. */
+html:lang(ja) {
+  --font-display: "Shippori Mincho B1 Cut", "Shippori Mincho B1", "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif CJK JP", serif;
+  font-family: "Geist Variable", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo UI", "Noto Sans CJK JP", "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Japanese pages, like Chinese ones, space kana and kanji from Latin letters
+   and digits where the text has no space, except in code. */
+html:lang(ja) {
+  text-autospace: normal;
+}
+html:lang(ja) :is(pre, code, kbd, samp) {
+  text-autospace: no-autospace;
 }
 
 /* Code's face: Ioskeley Mono (Iosevka, set as Berkeley Mono is), cut down to

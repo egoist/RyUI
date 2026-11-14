@@ -9,7 +9,7 @@ import { Kbd } from "@/components/ui/kbd"
 import { docHref, type SearchEntry } from "@/lib/docs"
 import { localized, messages, useLocale, type Locale } from "@/lib/i18n"
 
-// Prerendered by the /docs/search.json route (/zh/docs/search.json for the
+// Prerendered by the /docs/search.json route (/zh/docs/search.json, /ja/docs/search.json for the
 // Chinese docs), and fetched the first time the search opens.
 const indexes = new Map<Locale, Promise<SearchEntry[]>>()
 function loadIndex(locale: Locale) {

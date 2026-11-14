@@ -50,7 +50,7 @@ export function LanguageMenu() {
         render={<Button variant="ghost" className="h-8 gap-1.5 px-2 font-mono text-[12px] tracking-[0.08em] text-muted-foreground hover:text-foreground" aria-label={t.label} />}
       >
         <LanguagesIcon />
-        <span className="hidden sm:inline">{locale === "zh" ? "中文" : "EN"}</span>
+        <span className="hidden sm:inline">{localeInfo[locale].short}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" positionMethod="fixed" className="w-44">
         <DropdownMenuRadioGroup value={preference} onValueChange={(v) => choose(v as Preference)}>

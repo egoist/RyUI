@@ -47,6 +47,20 @@ const words: Record<Locale, Words> = {
     opCount: (n) => `${n} 个 op`,
     wider: "文字变宽，重新排版",
   },
+  ja: {
+    live: "稼働中",
+    source: "ソース",
+    ops: "ホストへの op",
+    recorded: "このコードについて host/fake が記録した op です。画面は iPhone の 390 × 844。",
+    replay: "リプレイ",
+    mount: "マウント",
+    flush: (n, ops, batches) => `フラッシュ ${String(n).padStart(2, "0")} · ${ops} op${batches > 1 ? ` · ${batches} バッチ` : ""}`,
+    ran: "実行",
+    times: (n) => `${n} 回`,
+    last: "直前のフラッシュ",
+    opCount: (n) => `${n} op`,
+    wider: "文字が広がり、フレームを更新",
+  },
 }
 
 /**
