@@ -58,6 +58,7 @@
 | `android` | 对象 | | Android 构建的配置。见 [android](#android)。 |
 | `linux` | 对象 | | Linux 构建对应用的描述。见 [linux](#linux)。 |
 | `web` | 对象 | | Web 构建的配置。见 [web](#web)。 |
+| `bluetooth` | 对象 | | 使用 `asuka/sdk/bluetooth` 的应用在包本身所需之外的额外声明：后台运行、通过扫描定位。见 [bluetooth](#bluetooth)。 |
 
 Windows 构建只需要上面这些键；它的签名证书通过环境变量提供（见[打包与发布](shipping.md#windows)）。
 
@@ -275,6 +276,21 @@ Web 构建的配置。
 | `vapidPublicKey` | 字符串 | 无 | 应用服务器的 VAPID 公钥（base64url），浏览器用它为 `asuka/sdk/push` 订阅 Web Push。 |
 
 见 [Web Push](web.md#asukasdkpushweb-push)。
+
+## bluetooth
+
+导入了 `asuka/sdk/bluetooth` 的应用，在这个包自动提供的权限和授权文案之外，还可以在这里声明额外的需求。没有导入这个包的应用，这些设置不起作用。
+
+```json
+"bluetooth": { "background": ["central"], "location": false }
+```
+
+| 键 | 类型 | 默认值 | 说明 |
+|---|---|---|---|
+| `background` | 字符串数组 | 无 | 应用在后台保持的角色。`"central"`：iOS 的 `bluetooth-central` 模式，并启用状态恢复（`bluetooth.OnRestore`），以及 Android 后台扫描（`ScanOptions.Background`）的接收器。`"peripheral"`：iOS 的 `bluetooth-peripheral` 模式。 |
+| `location` | 布尔值 | `false` | 应用会通过扫描确定用户的位置（比如信标）：Android 的 `BLUETOOTH_SCAN` 不再带 `neverForLocation`，`bluetooth.Request` 也会一并请求位置权限（iOS：`NSLocationWhenInUseUsageDescription`）。 |
+
+见[蓝牙](bluetooth.md#在后台)。
 
 ## 环境变量
 

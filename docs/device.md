@@ -60,6 +60,7 @@ web need nothing declared (see each one's section below).
 | `asuka/sdk/contacts` | `READ_CONTACTS` (for `List`) | `NSContactsUsageDescription` |
 | `asuka/sdk/calendar` | `READ_CALENDAR` (for `Calendars`, `Events`) | `NSCalendarsFullAccessUsageDescription`, `NSCalendarsUsageDescription` |
 | `asuka/sdk/compose` | the visibility of the apps for `mailto:` and `smsto:` (`<queries>`) | `mailto` in `LSApplicationQueriesSchemes` |
+| `asuka/sdk/bluetooth` | `BLUETOOTH_SCAN` (`neverForLocation`), `BLUETOOTH_CONNECT`, `BLUETOOTH_ADVERTISE`; the scan's receiver for `asuka.json`'s `bluetooth.background` (see [Bluetooth](bluetooth.md#what-the-build-adds)) | `NSBluetoothAlwaysUsageDescription`; `bluetooth-central`, `bluetooth-peripheral` for `bluetooth.background` |
 
 `asuka/sdk/device`, `asuka/sdk/audio`, `asuka/sdk/splash`, `asuka/sdk/imageedit`,
 `asuka/sdk/widget`, `asuka/sdk/js`, `asuka/sdk/secure`, `asuka/sdk/preview` and

@@ -27,6 +27,11 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         // action launches it without a scene).
         AsukaNotifyCenter.shared.install()
         #endif
+        #if ASUKA_BLUETOOTH
+        // asuka/sdk/bluetooth: relaunched for Bluetooth (state restoration),
+        // its managers again before launch ends.
+        AsukaBluetooth.shared.launched(options)
+        #endif
         return true
     }
 

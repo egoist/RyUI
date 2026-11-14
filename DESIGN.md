@@ -3598,6 +3598,41 @@ their commands back.
   the name goes. The web: the Media Session API (`metadata`,
   `playbackState`, action handlers, `setPositionState`).
 
+**Bluetooth LE** (`bluetooth`), on every platform: the app as a central
+(scans, the system's chooser, connections, GATT reads, writes and
+subscriptions) and as a peripheral (advertising, a GATT server).
+
+- Lasting things start on the main thread and stop with their owner, or
+  their stop: `Scan`, `Connect` (a `Connection` at once, `Connecting`; its
+  `State` a signal, `Wait`, `Done` and `Err` for goroutines),
+  `Characteristic.Subscribe`, `Advertise`, `Serve`, `Watch`/`Use`,
+  `OnRestore`. Calls that wait for a device or the user (`Request`,
+  `Choose`, `Services`, reads, writes, MTU, RSSI) are blocking, off the
+  main thread; a connection's wait for it to connect first. An error
+  ends a callback's stream once (`func(v, err)`).
+- One module, `bluetooth` (internal/bluetoothspec, the wire's reference):
+  JSON both ways, byte values base64, UUIDs 128-bit lower case. Go
+  numbers scans, connections, advertisements, servers and their local
+  characteristics; hosts number the remote attributes (stable handles
+  per connection). Events (advertisements, disconnections with their
+  reason, notifications, the server's requests, state changes) come
+  through one long poll, `next`, chained from the main thread (a Call's
+  callback calls again) while anything listens; `stop` when nothing
+  does. Several connections to one device share the platform's link.
+  host/fake implements the protocol whole, with simulated peripherals,
+  for uitest.
+- iOS: Core Bluetooth, compiled in for an app whose archive calls the
+  package (`ASUKA_BLUETOOTH`, through its `call` and `send`); state
+  restoration when the app has the background modes (asuka.json's
+  `bluetooth.background`), the managers made at launch for a relaunch.
+  macOS: the same through purego. Android: one merged scan, one GATT
+  operation at a time per connection, the companion device chooser, a
+  `PendingIntent` background scan whose results wait in a file for
+  `restore`. Windows: WinRT's Bluetooth, GATT and advertisement APIs, the
+  device picker. Linux: BlueZ on the system bus, the app's advertisement
+  and GATT application exported objects. The web: Web Bluetooth, the
+  chooser instead of a scan; no peripheral role (`not available`).
+
 **Updates** (`update`, `internal/update`, `app/relaunch.go`,
 `cmd/asuka/updates.go`): a desktop app updates itself as Sparkle's do,
 from releases `asuka build` signs; MyGo's updater, ported.

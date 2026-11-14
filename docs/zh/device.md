@@ -39,6 +39,7 @@ Asuka 提供了一系列包，让应用用上视图之外的设备能力：相�
 | `asuka/sdk/contacts` | `READ_CONTACTS`（用于 `List`） | `NSContactsUsageDescription` |
 | `asuka/sdk/calendar` | `READ_CALENDAR`（用于 `Calendars`、`Events`） | `NSCalendarsFullAccessUsageDescription`、`NSCalendarsUsageDescription` |
 | `asuka/sdk/compose` | 处理 `mailto:` 和 `smsto:` 的应用的可见性声明（`<queries>`） | `LSApplicationQueriesSchemes` 中的 `mailto` |
+| `asuka/sdk/bluetooth` | `BLUETOOTH_SCAN`（`neverForLocation`）、`BLUETOOTH_CONNECT`、`BLUETOOTH_ADVERTISE`；声明了 `asuka.json` 的 `bluetooth.background` 时还有扫描接收器（见[蓝牙](bluetooth.md#构建时添加的内容)） | `NSBluetoothAlwaysUsageDescription`；声明了 `bluetooth.background` 时还有 `bluetooth-central`、`bluetooth-peripheral` |
 
 `asuka/sdk/device`、`asuka/sdk/audio`、`asuka/sdk/splash`、`asuka/sdk/imageedit`、`asuka/sdk/widget`、`asuka/sdk/js`、`asuka/sdk/secure`、`asuka/sdk/preview` 和 `asuka/sdk/print` 不需要任何权限。
 

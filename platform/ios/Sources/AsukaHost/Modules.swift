@@ -240,6 +240,9 @@ struct AsukaModuleError: LocalizedError {
         #if ASUKA_SENSORS
         modules["sensors"] = AsukaSensors.shared.methods()
         #endif
+        #if ASUKA_BLUETOOTH
+        modules["bluetooth"] = AsukaBluetooth.shared.methods()
+        #endif
         #if ASUKA_SPEECH
         modules["speech"] = AsukaSpeech.shared.methods()
         #endif

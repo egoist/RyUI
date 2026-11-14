@@ -99,6 +99,10 @@ browser.
   biometrics, the screen and the launch screen, maps, the stores'
   services, sensors, image editing, speech, contacts and calendars, home
   screen widgets and shortcuts, and crash reports, on each platform.
+- [Bluetooth](bluetooth.md): Bluetooth LE devices, scanned for or
+  chosen, connected to, read, written and followed; the app as a
+  peripheral, advertising and serving; in the background; on each
+  platform.
 - [The desktop](desktop.md): tray icons and the Dock menu, apps in the
   background, global shortcuts, file dialogs and the file manager,
   opening files, one instance, quitting, recent documents, starting at

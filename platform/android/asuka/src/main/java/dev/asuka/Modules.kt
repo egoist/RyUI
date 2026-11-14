@@ -208,6 +208,7 @@ private fun AsukaRuntime.registerBuiltinModules() {
     modules["imageEdit"] = AsukaImageEdit(this).methods()
     modules["speech"] = AsukaSpeech(this).methods()
     modules["sensors"] = AsukaSensors(this).methods()
+    modules["bluetooth"] = AsukaBluetooth(this).methods()
     modules["contacts"] = contactsMethods()
     modules["calendar"] = calendarMethods()
     modules["widget"] = widgetMethods()

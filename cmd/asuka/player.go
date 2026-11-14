@@ -687,5 +687,9 @@ func playerConfig() *appConfig {
 	c := &appConfig{ID: playerID, ShareTarget: shareTarget{on: true, Types: []string{"text", "*/*"}, Max: 20}, shareSheet: true}
 	c.permissionsFor(nil)
 	c.addFeatureExtras(allFeatures())
+	// Bluetooth in the background, for an app that asks (asuka.json's
+	// bluetooth.background).
+	c.Bluetooth.Background = []string{"central", "peripheral"}
+	c.bluetoothExtras()
 	return c
 }

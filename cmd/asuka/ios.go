@@ -382,6 +382,9 @@ var iosFeatures = []struct{ flag, symbol string }{
 	{"ASUKA_COMPOSE", "github.com/egoist/asuka/sdk/compose.Mail"},
 	{"ASUKA_COMPOSE", "github.com/egoist/asuka/sdk/compose.Message"},
 	{"ASUKA_COMPOSE", "github.com/egoist/asuka/sdk/compose.Check"},
+	// Core Bluetooth: every call of asuka/sdk/bluetooth goes through one of these.
+	{"ASUKA_BLUETOOTH", "github.com/egoist/asuka/sdk/bluetooth.call"},
+	{"ASUKA_BLUETOOTH", "github.com/egoist/asuka/sdk/bluetooth.send"},
 }
 
 // featureExtras are what a feature needs of the app beyond its framework:

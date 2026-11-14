@@ -484,7 +484,7 @@ finish-args:
   - --socket=wayland
   - --socket=fallback-x11
   - --device=dri
-modules:
+%[6]smodules:
   - name: %[4]s
     buildsystem: simple
     build-commands:
@@ -492,7 +492,17 @@ modules:
     sources:
       - type: dir
         path: %[4]s
-`, app.displayName(), app.bundleID, rt, exe, dirs)
+`, app.displayName(), app.bundleID, rt, exe, dirs, flatpakExtraArgs(app.cfg))
+}
+
+// flatpakExtraArgs are the finish-args the app's packages need
+// (featureFlatpak), as the manifest's lines.
+func flatpakExtraArgs(c *appConfig) string {
+	var b strings.Builder
+	for _, a := range c.flatpakArgs {
+		b.WriteString("  - " + a + "\n")
+	}
+	return b.String()
 }
 
 // tarGz writes dir to file as a gzipped tar, its entries under dir's

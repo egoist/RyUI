@@ -68,6 +68,7 @@ These apply on every platform the key means something on.
 | `android` | object | | The Android build's. See [android](#android). |
 | `linux` | object | | What a Linux build says of the app. See [linux](#linux). |
 | `web` | object | | The web build's. See [web](#web). |
+| `bluetooth` | object | | What an app of `asuka/sdk/bluetooth` asks beyond the package's needs: the background, the location from scans. See [bluetooth](#bluetooth). |
 
 A Windows build needs nothing beyond these: its signing certificate is
 given in the environment (see [Shipping](shipping.md#windows)).
@@ -317,6 +318,23 @@ The web build's.
 | `vapidPublicKey` | string | none | The app server's VAPID public key (base64url), with which the browser subscribes to Web Push for `asuka/sdk/push`. |
 
 See [Web Push](web.md#asukasdkpush-web-push).
+
+## bluetooth
+
+What an app that imports `asuka/sdk/bluetooth` asks for beyond what the
+package gives it (its permissions and purpose string). It does nothing
+for an app that doesn't import the package.
+
+```json
+"bluetooth": { "background": ["central"], "location": false }
+```
+
+| Key | Type | Default | What it is |
+|---|---|---|---|
+| `background` | strings | none | The roles the app keeps in the background. `"central"`: iOS's `bluetooth-central` mode, with state restoration (`bluetooth.OnRestore`), and the receiver of Android's background scan (`ScanOptions.Background`). `"peripheral"`: iOS's `bluetooth-peripheral` mode. |
+| `location` | boolean | `false` | The app finds where the user is from its scans (beacons): Android's `BLUETOOTH_SCAN` without `neverForLocation`, and the location permission `bluetooth.Request` then asks for too (iOS: `NSLocationWhenInUseUsageDescription`). |
+
+See [Bluetooth](bluetooth.md#in-the-background).
 
 ## The environment
 

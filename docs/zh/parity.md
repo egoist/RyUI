@@ -129,6 +129,7 @@ SwiftUI 也能在 Mac 上运行。Expo 支持 iOS、Android 和 Web；React Nati
 | 应用完整性 | App Attest | `expo-app-integrity` | ✓ `asuka/sdk/integrity`（App Attest、Play Integrity） |
 | 年龄段 | Declared Age Range | `expo-age-range` | ✓ `asuka/sdk/agerange`（Declared Age Range、Play Age Signals） |
 | 传感器 | Core Motion | `expo-sensors` | ✓ `asuka/sdk/sensors`（加速度计、陀螺仪、磁力计、带姿态和朝向的设备运动、气压计、光线、计步器；两个平台上坐标轴和单位一致；Mac 和 Windows 没有传感器；Linux 上是 iio-sensor-proxy 提供的光线和方向） |
+| 低功耗蓝牙 | Core Bluetooth | 社区方案（`react-native-ble-plx`） | ✓ `asuka/sdk/bluetooth`（按服务过滤的扫描、重复上报和 RSSI、广播数据；连接及其断开原因、服务、读取、带响应和不带响应的写入、通知和指示、MTU、RSSI、Android 的连接优先级；已知设备和系统已连接的设备；广播和 GATT 服务端；iOS 的后台模式和状态恢复、Android 的后台扫描；Windows 上是 Windows.Devices.Bluetooth，Linux 上是 BlueZ；Web 上是 Web Bluetooth 的设备选择器，仅限 Chrome 和 Edge，没有外围设备角色） |
 | 图片编辑 | Core Graphics、ImageIO | `expo-image-manipulator` | ✓ `asuka/sdk/imageedit`（缩放、裁剪、旋转、翻转、填充、像素化；可以读入 HEIC，输出 JPEG 或 PNG，方向摆正，并去掉原图的元数据；Linux 上用 GdkPixbuf 的解码器，Windows 上用 WIC 的解码器） |
 | 识别图片里的文字、人脸和条码 | Vision | 无 | ✓ `asuka/sdk/vision`，会给出每一项的位置；Android 上用 ML Kit，只会打包进导入了它的应用；Linux 上用 ZBar 识别条码、Tesseract 识别文字，不支持人脸；Windows 上用系统 OCR 识别文字和人脸，用 Asuka 自己的识别器识别条码 |
 | 照片图库 | PhotoKit | `expo-media-library` | ✓ `asuka/sdk/photos`：权限、列出照片、缩略图、原始文件（Windows 上是“图片”文件夹） |
