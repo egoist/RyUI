@@ -166,13 +166,16 @@ import AsukaOps
     /// Runs script, answering with its value as JSON (a promise's, awaited), or what it threw.
     func evalResult(_ script: String, _ reply: @escaping (Result<Data, Error>) -> Void) {
         let body = "const v = await (0, eval)(s); return JSON.stringify(v === undefined ? null : v)"
-        callAsyncJavaScript(body, arguments: ["s": script], in: nil, in: .page) { r in
-            switch r {
-            case .success(let v): reply(.success(Data(((v as? String) ?? "null").utf8)))
-            case .failure(let e):
+        // The Objective-C method, not the Swift overlay's: built for iOS 16,
+        // the overlay's links /usr/lib/swift/libswiftWebKit.dylib, which
+        // iOS 18.5 doesn't have (the overlay moved into WebKit in 18.4).
+        __callAsyncJavaScript(body, arguments: ["s": script], inFrame: nil, in: .page) { v, e in
+            if let e {
                 let m = (e as NSError).userInfo["WKJavaScriptExceptionMessage"] as? String ?? e.localizedDescription
                 reply(.failure(AsukaModuleError(m)))
+                return
             }
+            reply(.success(Data(((v as? String) ?? "null").utf8)))
         }
     }
 
@@ -256,14 +259,15 @@ final class AsukaWebMessages: NSObject, WKScriptMessageHandler {
         // Indirect eval: the global scope, and the last statement's value;
         // callAsyncJavaScript awaits a promise.
         let body = "const v = await (0, eval)(s); return JSON.stringify(v === undefined ? null : v)"
-        w.callAsyncJavaScript(body, arguments: ["s": script], in: nil, in: .page) { [weak self] r in
-            switch r {
-            case .success(let v): self?.finish(.success(Data(((v as? String) ?? "null").utf8)))
-            case .failure(let e):
+        // The Objective-C method, as evalResult's.
+        w.__callAsyncJavaScript(body, arguments: ["s": script], inFrame: nil, in: .page) { [weak self] v, e in
+            if let e {
                 let info = (e as NSError).userInfo
                 let m = info["WKJavaScriptExceptionMessage"] as? String ?? e.localizedDescription
                 self?.finish(.failure(AsukaModuleError(m)))
+                return
             }
+            self?.finish(.success(Data(((v as? String) ?? "null").utf8)))
         }
     }
 
