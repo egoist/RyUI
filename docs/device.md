@@ -1746,8 +1746,10 @@ go from the extension to the app through an App Group,
 [Shipping](shipping.md#ios)).
 
 Under `asuka dev`, the player takes shares of anything, whatever the
-app's `shareTarget`. On Android the files' paths are on the device, not
-the Mac the Go code runs on: try files with `asuka dev --platform android --once`.
+app's `shareTarget`. On a phone the files are on the phone, not on the
+computer the Go code runs on, so `asuka dev` builds an app whose
+`shareTarget` takes files instead of running it in the player there (the
+simulator's files are the Mac's).
 
 What a link leads to (a page, an image, a video) is the app's to find
 out, with `net/http`: expo-sharing's "resolved" payloads, in Go.
@@ -1964,9 +1966,9 @@ code starts without a screen if the app isn't running, rewrites within
 about ten seconds, and the notification shows. A data message whose
 rewrite leaves no title or body doesn't show.
 
-Under `asuka dev`'s player there's no extension (the app's Go code runs on
-the computer): pushes show as they came. `asuka dev --platform ios --once` and a
-build have it. The simulator runs the extension only for pushes that
+The player in `asuka dev` has no extension (the app's Go code runs on
+the computer), so `asuka dev` builds an app that calls `push.Rewrite`
+instead of running it in the player, and the build has it. The simulator runs the extension only for pushes that
 come from APNs, not for `xcrun simctl push`.
 
 ## Sign in with Apple: asuka/sdk/appleauth

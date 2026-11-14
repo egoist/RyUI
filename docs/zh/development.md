@@ -25,7 +25,7 @@ asuka dev --platform web [flags] [dir]       # 浏览器
 在手机上还有：
 
 - `--device`：在 iOS 上可以是模拟器的名称或 UDID（默认使用已启动的 iPhone 模拟器，没有的话就选一个较新的 iPhone Pro 并启动它），也可以是已连接的 iPhone 或 iPad 的名称或 UDID，或者写 `iphone`，表示当前连接着的那一台（参见 [设备](#设备)）；在 Android 上是 adb 序列号或 AVD 名称（默认使用 adb 列出的第一台设备，没有的话就启动第一个 AVD）。
-- `--team`：在 iPhone 上运行时，为播放器和应用签名的 Apple 开发者团队。
+- `--team`：在 iPhone 上运行时，为开发 App 和应用签名的 Apple 开发者团队。
 - `--no-hot`：不使用热重载：构建一个把 Go 代码包含在内的应用，每次保存都重新构建并重新安装，应用从头启动。
 
 在浏览器中还有 `--port`、`--lan`（向局域网提供服务，供手机浏览器访问）和 `--no-open`，详见 [Web](web.md#asuka-dev---platform-web)。
@@ -44,22 +44,29 @@ asuka dev --platform web [flags] [dir]       # 浏览器
 
 **Linux。** 在 Linux 上，`asuka dev` 基于 GTK 4 和 libadwaita 运行应用，因此需要先安装它们（参见 [快速上手](getting-started.md#准备工作)），应用运行在你会话的显示服务器上，Wayland 或 X11 都可以。和发布版本一样，应用会使用 `asuka.json` 中的名称、ID、版本和强调色；Asuka 通过与每次运行保持的连接（或 SIGINT）让它停止，应用在退出时保存状态。在 Mac 或 PC 上，`asuka dev --platform linux` 能为 Linux 构建应用，但无法在本机运行它，除非 `ASUKA_LINUX_RUN` 指定了一条命令，能在一台带显示器、并且能以相同路径访问本机文件的 Linux 机器上运行程序。这通常是一台虚拟机，例如 `ASUKA_LINUX_RUN="orb -m ubuntu"`（OrbStack）或 `ASUKA_LINUX_RUN="limactl shell default"`（Lima）。Asuka 会针对那台机器的架构构建应用，并用这条命令运行它。
 
-## 在手机上：播放器应用与构建的应用
+## 在手机上：热重载模式与构建的应用
 
-iOS 开发需要 Mac；Android 开发需要 Mac、Windows 电脑或 Linux。默认情况下，`asuka dev` 在你的电脑上运行 Go 代码，视图则显示在**播放器应用**里。播放器是一个名为 Asuka 的应用（`dev.asuka.player`），它就是一个不含任何应用的平台宿主。播放器只需构建和安装一次，所有应用共用，只有它本身变化时（Asuka 发布了新版本）才会重新安装。Go 代码和播放器之间通过 socket 通信。
+iOS 开发需要 Mac；Android 开发需要 Mac、Windows 电脑或 Linux。默认情况下，`asuka dev` 以**热重载模式**运行：Go 代码在你的电脑上运行，视图则显示在**开发 App** 里。开发 App 是一个名为 Asuka 的应用（`dev.asuka.player`，英文文档里叫 player），它就是一个不含任何应用的平台宿主。它只需构建和安装一次，所有应用共用，只有它本身变化时（Asuka 发布了新版本）才会重新安装。Go 代码和开发 App 之间通过 socket 通信。
 
-保存时，Asuka 会为你的电脑重新构建 Go 代码并重启它，大约一秒钟：新的进程启动时，旧进程仍在为播放器服务；旧进程停止后播放器会重新连接，并显示新代码的效果。整个过程不需要安装任何东西。
+保存时，Asuka 会为你的电脑重新构建 Go 代码并重启它，大约一秒钟：新的进程启动时，旧进程仍在为开发 App 服务；旧进程停止后开发 App 会重新连接，并显示新代码的效果。整个过程不需要安装任何东西。
 
-如果使用了 `--no-hot` 或 `--once`，或者应用用到了含平台代码的原生包（有 `Package.swift` 或 `android/`，参见 [原生代码](native.md)），Asuka 就会改为构建应用本身：像发布构建一样把 Go 代码打包进去，并使用应用自己的名称和 ID。
+如果使用了 `--no-hot` 或 `--once`，应用用到了含平台代码的原生包（有 `Package.swift` 或 `android/`，参见 [原生代码](native.md)），或者用到了开发 App 替代不了的功能，Asuka 就会改为构建应用本身：像发布构建一样把 Go 代码打包进去，并使用应用自己的名称和 ID。终端会说明是哪种原因。开发 App 替代不了的功能有：
+
+- **iOS 上的 `asuka/sdk/purchase`**：App Store 只把应用的商品卖给应用本身。
+- **iOS 上的 `push.Rewrite`**：开发 App 没有用来改写推送的通知服务扩展。
+- **iPhone 上 `asuka.json` 的 `nfc.iso7816` 或 `nfc.felica`**：iOS 只会查找应用自己的 Info.plist 里列出的卡片。
+- **手机上接收文件的 `shareTarget`**：分享过来的文件在手机上，而不在运行 Go 代码的电脑上（iOS 模拟器的文件就在 Mac 上，所以模拟器上仍然使用热重载模式）。
+
+构建应用本身时：
 
 - **iOS**：宿主连同原生包的 Swift 代码只构建一次，之后只在有变化时才重新构建；每次保存都会重新构建 Go 代码、链接应用、为模拟器签名，并用 `xcrun simctl` 重新安装；在 iPhone 上则改为用开发证书签名，并用 `xcrun devicectl` 重新安装。
 - **Android**：Gradle 构建应用（包括其中的 Kotlin 代码），宿主、Kotlin 代码和清单文件的每个版本只构建一次；每次保存都会重新构建 Go 库，用 `adb` 推送到应用的私有文件目录（调试版应用会从那里加载它），然后重启应用。
 
-播放器拥有所有 Asuka 包可能需要的权限，并带有它自己的权限用途说明。`asuka.json` 中为应用本身配置的内容（名称、ID、URL `scheme`、`links`、`ios.usage`）只有构建出来的应用才具备：要测试这些，请使用 `--no-hot`。`accent` 强调色在播放器中同样生效。
+开发 App 拥有所有 Asuka 包可能需要的权限，并带有它自己的权限用途说明。`asuka.json` 中为应用本身配置的内容（名称、ID、URL `scheme`、`links`、`ios.usage`、Android 的 NFC 标签过滤器）只有构建出来的应用才具备，应用配置了这些时 `asuka dev` 会提示：要测试这些，请使用 `--no-hot`。`accent` 强调色在热重载模式下同样生效。
 
 ## 重载时会保留什么
 
-重载会保留应用中 signal 的值，你不需要为此写任何代码；播放器、桌面端和浏览器都是如此。应用停止时会把这些值保存到 `ASUKA_STATE` 环境变量指定的文件中（`asuka dev` 会把它设为 Asuka 缓存中该应用目录下的 `state.json`），下一次运行时，每个值会还给在相同位置创建的 signal。所谓相同位置，指的是相同的调用路径（创建它的那些函数，而不是行号）、相同的名称和相同的类型。
+重载会保留应用中 signal 的值，你不需要为此写任何代码；热重载模式、桌面端和浏览器都是如此。应用停止时会把这些值保存到 `ASUKA_STATE` 环境变量指定的文件中（`asuka dev` 会把它设为 Asuka 缓存中该应用目录下的 `state.json`），下一次运行时，每个值会还给在相同位置创建的 signal。所谓相同位置，指的是相同的调用路径（创建它的那些函数，而不是行号）、相同的名称和相同的类型。
 
 这些位置的名称来自你的源代码，Asuka 在构建时会读取源码：闭包按它在所属函数中的角色命名（赋给的变量或字段、作为参数传入的调用、`go` 或 `defer`），signal 则按它所赋给的变量或字段命名。因此，在 signal 周围编辑代码不会让它丢失值，比如在创建它的闭包之前添加一个处理函数，或者在它之前再添加一个同类型的 signal：
 
@@ -82,7 +89,7 @@ func Counter() ui.Node {
 
 构建出来的手机应用（`--no-hot`、`--once`、使用了原生代码）每次重载都从头启动。
 
-Go 代码写入的文件（`asuka/sdk/store`、`asuka/sdk/sqlite`）在使用播放器时和在桌面端一样，都位于你的电脑上：`store.Dir()` 是 Asuka 缓存中该应用自己的 `data` 目录，每个平台一份，就像两台设备各有各的数据一样。删除它就能让应用在没有数据的状态下重新开始。在浏览器中，这些文件属于页面（存放在 IndexedDB），参见 [Web](web.md#应用的文件)。
+Go 代码写入的文件（`asuka/sdk/store`、`asuka/sdk/sqlite`）在热重载模式下和在桌面端一样，都位于你的电脑上：`store.Dir()` 是 Asuka 缓存中该应用自己的 `data` 目录，每个平台一份，就像两台设备各有各的数据一样。删除它就能让应用在没有数据的状态下重新开始。在浏览器中，这些文件属于页面（存放在 IndexedDB），参见 [Web](web.md#应用的文件)。
 
 ## 重载
 
@@ -104,30 +111,30 @@ Asuka 会监听应用所在的目录及其模块的目录，依靠系统的文�
 
 **你的电脑**：在 Mac、PC 或 Linux 上直接运行 `asuka dev` 即可。
 
-**iOS 模拟器**与 Mac 共享网络，所以播放器可以直接连接到 `asuka dev`。
+**iOS 模拟器**与 Mac 共享网络，所以开发 App 可以直接连接到 `asuka dev`。
 
-**Android 模拟器**通过 `10.0.2.2` 访问你的电脑，播放器就连接到这个地址。
+**Android 模拟器**通过 `10.0.2.2` 访问你的电脑，开发 App 就连接到这个地址。
 
 **通过 USB 连接的 Android 手机**：在开发者选项中打开 USB 调试，连上电脑并同意弹出的授权提示，然后确认 `adb devices` 能列出它。`asuka dev --platform android` 使用 adb 列出的第一台设备，不论是手机还是模拟器；连接了多台设备时，用 `--device` 加序列号指定。手机通过 `adb reverse` 访问你的电脑，Asuka 会为 7461 端口（应用）和 7462 端口（资源）设置好转发。开发时，Asuka 只为 64 位手机和模拟器构建（arm64-v8a、x86_64）。
 
 **iPhone**（或 iPad），通过 USB 或 Wi-Fi 连接，需要 Xcode 15 或更新版本：把它连上 Mac，解锁后点“信任”；再在它的“设置 › 隐私与安全性”中打开“开发者模式”（手机连接过 Xcode 之后才会出现这个选项，打开后手机会重启）。之后运行 `asuka dev --platform ios --device iphone` 就会在它上面运行；连着多台设备时，用 `--device` 加上设备名称或 UDID 指定（`xcrun devicectl list devices` 可以列出它们）。在 Xcode 的 Devices 窗口里与这台 Mac 配对过的手机，拔掉线后也能通过 Wi-Fi 使用。
 
-- **签名**：播放器和应用都由你的团队用开发证书签名。团队依次取自 `--team`、`ASUKA_TEAM_ID`、`asuka.json` 的 `ios.team`，都没有的话就用钥匙串里 Apple Development 证书所属的团队。第一次运行时，Asuka 会让 Xcode 生成所需的开发描述文件（`xcodebuild -allowProvisioningUpdates`），顺带把这台手机注册到团队，并打开应用用到的功能（推送、App Groups 等）。这一步使用 Xcode “设置 › 账户”中登录的 Apple ID；如果设置了 `ASUKA_ASC_KEY_ID`（或 `ios.appStoreConnect`），则改用 [App Store Connect API 密钥](shipping.md)。团队已有的描述文件如果合适（包括通配符描述文件），就直接使用。
-- **播放器**在手机上属于你的团队自己，bundle ID 是 `dev.asuka.player.` 加团队 ID，因为一个 App ID 只能属于一个团队。它的分享面板、小组件和各项功能取决于团队拥有的功能：免费团队没有推送和 App Groups，播放器就不带这些功能，并会提示你。
-- **连接到 Mac**：通过 USB 时，由 Mac 经数据线主动连接播放器（和 Xcode 一样通过 usbmuxd），完全不走网络。没有数据线时，播放器会连接 Mac 在局域网上的地址，以及它的 Bonjour 名称（Mac 换了地址也能找到）：手机必须和 Mac 在同一个网络里，而且 iOS 会询问一次是否允许播放器查找本地网络中的设备，请选择允许；之后也可以在手机的“设置 › App › asuka › 本地网络”中打开。如果播放器一直没有连上，Asuka 会告诉你该检查什么。无论哪种方式，每次保存重启 Go 代码后，播放器都会自动重新连接。
+- **签名**：开发 App 和应用都由你的团队用开发证书签名。团队依次取自 `--team`、`ASUKA_TEAM_ID`、`asuka.json` 的 `ios.team`，都没有的话就用钥匙串里 Apple Development 证书所属的团队。第一次运行时，Asuka 会让 Xcode 生成所需的开发描述文件（`xcodebuild -allowProvisioningUpdates`），顺带把这台手机注册到团队，并打开应用用到的功能（推送、App Groups 等）。这一步使用 Xcode “设置 › 账户”中登录的 Apple ID；如果设置了 `ASUKA_ASC_KEY_ID`（或 `ios.appStoreConnect`），则改用 [App Store Connect API 密钥](shipping.md)。团队已有的描述文件如果合适（包括通配符描述文件），就直接使用。
+- **开发 App** 在手机上属于你的团队自己，bundle ID 是 `dev.asuka.player.` 加团队 ID，因为一个 App ID 只能属于一个团队。它的分享面板、小组件和各项功能取决于团队拥有的功能：免费团队没有推送和 App Groups，开发 App 就不带这些功能，并会提示你。
+- **连接到 Mac**：通过 USB 时，由 Mac 经数据线主动连接开发 App（和 Xcode 一样通过 usbmuxd），完全不走网络。没有数据线时，开发 App 会连接 Mac 在局域网上的地址，以及它的 Bonjour 名称（Mac 换了地址也能找到）：手机必须和 Mac 在同一个网络里，而且 iOS 会询问一次是否允许开发 App 查找本地网络中的设备，请选择允许；之后也可以在手机的“设置 › App › asuka › 本地网络”中打开。如果开发 App 一直没有连上，Asuka 会告诉你该检查什么。无论哪种方式，每次保存重启 Go 代码后，开发 App 都会自动重新连接。
 - **构建出来的应用**（`--no-hot`、`--once`、含原生代码的应用）也按同样的方式签名，使用应用自己的 ID；每次保存都会重新构建、签名，并用 `xcrun devicectl` 重新安装和启动应用。
 
 **手机浏览器**：`asuka dev --platform web --lan` 会向局域网提供应用，并打印可以打开的地址。
 
 ## 资源
 
-在桌面端，应用直接从原位置读取 `assets/`。使用播放器时，应用的 `assets/` 目录仍留在你的电脑上：Go 进程通过 HTTP 提供这些文件，播放器从那里加载 `ui.Image` 的资源路径以及 `assets/fonts` 中的字体。在浏览器中，则由开发服务器提供这些资源。修改任何资源都会让应用重新加载。
+在桌面端，应用直接从原位置读取 `assets/`。在热重载模式下，应用的 `assets/` 目录仍留在你的电脑上：Go 进程通过 HTTP 提供这些文件，开发 App 从那里加载 `ui.Image` 的资源路径以及 `assets/fonts` 中的字体。在浏览器中，则由开发服务器提供这些资源。修改任何资源都会让应用重新加载。
 
 构建出来的手机应用会把资源打包在应用内部：iOS 上每次构建时复制进应用；Android 上在资源有变化时推送到应用的私有文件目录。
 
 ## 日志
 
-- **在桌面端和播放器中**，终端会显示 Go 进程的输出：`fmt.Println`、`log`、panic。
+- **在桌面端和热重载模式下**，终端会显示 Go 进程的输出：`fmt.Println`、`log`、panic。
 - **在浏览器中**，终端还会显示应用的输出和页面的错误。
 - **iOS 上构建的应用**：应用的输出（Go 和 Swift 的 `print`）在模拟器上通过模拟器的控制台显示，在 iPhone 上通过 `devicectl` 的控制台显示。
 - **Android 上构建的应用**：查看应用的 logcat。Android 会丢弃进程的标准输出，所以 Go 代码的输出会写到 logcat，标签为 `asuka`。
@@ -135,9 +142,9 @@ Asuka 会监听应用所在的目录及其模块的目录，依靠系统的文�
 
 ## 应用切到后台
 
-在使用播放器时离开应用（比如去相机应用拍照，或者去浏览器登录）不会结束会话。播放器在后台时，系统可能会把它冻结，所以 Go 代码等待它回应的时间会从通常的十秒延长到最多十分钟。当 Android 切断后台应用的网络时，会话会保留三分钟；播放器在这段时间内回来，就能接着之前的会话继续，页面也保持原样。如果播放器回来得更晚，应用会从根页面重新启动。
+在热重载模式下离开应用（比如去相机应用拍照，或者去浏览器登录）不会结束会话。开发 App 在后台时，系统可能会把它冻结，所以 Go 代码等待它回应的时间会从通常的十秒延长到最多十分钟。当 Android 切断后台应用的网络时，会话会保留三分钟；开发 App 在这段时间内回来，就能接着之前的会话继续，页面也保持原样。如果它回来得更晚，应用会从根页面重新启动。
 
-停止 `asuka dev`（Ctrl-C）时也会停止播放器，这样它就不会加入下一个会话（那可能是另一个应用的会话）。在桌面端，停止 `asuka dev` 会停止应用。
+停止 `asuka dev`（Ctrl-C）时也会停止开发 App，这样它就不会加入下一个会话（那可能是另一个应用的会话）。在桌面端，停止 `asuka dev` 会停止应用。
 
 ## asuka vet
 
@@ -182,13 +189,13 @@ ASUKA_SCRIPT="tap:Add;tap:Add" ASUKA_SNAPSHOT=shot.png go run .   # Windows、Li
 - **`no iOS simulator SDK (install Xcode)`**：安装 Xcode，打开一次，然后在它的 Components 设置中添加 iOS 模拟器运行时。`no iPhone simulator; add one in Xcode` 和 `no simulator "..."` 表示没有该名称的模拟器：可以用 `xcrun simctl list devices` 列出所有模拟器。
 - **iPhone 没有准备好**：`... isn't paired with this Mac`（连上数据线，解锁后点“信任”）、`... isn't reachable`（连上数据线，或在 Mac 所在的 Wi-Fi 下唤醒它）、`... has Developer Mode off`（“设置 › 隐私与安全性 › 开发者模式”）、`... is locked`（解锁手机）。明明连着手机却提示 `no iPhone or iPad is connected` 时，检查 `xcrun devicectl list devices` 能否列出它。
 - **`Xcode couldn't make the development profiles`**：在 Xcode 中登录团队的 Apple ID（Xcode › 设置 › 账户），或者设置 App Store Connect API 密钥；如果 bundle ID 已经属于另一个团队，就需要在 `asuka.json` 里换一个 `id`。`the keychain has Apple Development certificates of N teams`：用 `--team` 选一个团队。
-- **`the player hasn't connected yet`**：使用 USB 时，检查数据线并解锁手机；使用 Wi-Fi 时，让手机连上 Mac 所在的网络，允许播放器访问本地网络，并在 Mac 的防火墙中允许 `asuka` 接受连接（“系统设置 › 网络 › 防火墙”）。
+- **`the player hasn't connected yet`**：使用 USB 时，检查数据线并解锁手机；使用 Wi-Fi 时，让手机连上 Mac 所在的网络，允许开发 App 访问本地网络，并在 Mac 的防火墙中允许 `asuka` 接受连接（“系统设置 › 网络 › 防火墙”）。
 - **`no Android SDK: install Android Studio or set ANDROID_HOME`**：Asuka 会依次在 `ANDROID_HOME`、`ANDROID_SDK_ROOT` 中查找，然后是 Mac 上的 `~/Library/Android/sdk`、Windows 上的 `%LOCALAPPDATA%\Android\Sdk` 和 Linux 上的 `~/Android/Sdk`。
 - **`no Android NDK`**：在 Android Studio 的 SDK Manager 中安装一个（SDK Tools 下的 NDK）。Asuka 会选用最新的、带有你这台电脑可用版本的 NDK（任何 Windows 电脑上都是 `windows-x86_64`，Arm 电脑也一样）。
 - **`no Android device or emulator`**：在 Android Studio 的 Device Manager 中创建一个 AVD，或者连接一部手机。对于 Asuka 自己启动的模拟器，它最多会等四分钟让模拟器完成启动（超时会报 `the emulator didn't boot`）。
 - **Java**：Gradle 需要 JDK：优先使用 `JAVA_HOME`，否则使用 Android Studio 自带的 JDK，无论 Android Studio 是用安装程序还是 JetBrains Toolbox 装的（在 Windows 上，位于 Program Files 或 `%LOCALAPPDATA%\Programs` 下）。
 - **第一次 Android 构建很慢**：Gradle 要下载它自己和 Android 的库，这只发生一次。
-- **`the player connected ... and hasn't shown the app`**：播放器连接上了你的 Go 代码，但始终没有显示应用，因为它的主线程卡住了。Asuka 会把播放器的 goroutine 堆栈保存到 Asuka 缓存中该应用目录下的 `player-stacks.txt`（路径会打印出来），提交 bug 时请附上它。重新启动播放器，或者用 `--no-hot` 运行，构建一个包含 Go 代码的应用。
+- **`the player connected ... and hasn't shown the app`**：开发 App 连接上了你的 Go 代码，但始终没有显示应用，因为它的主线程卡住了。Asuka 会把开发 App 的 goroutine 堆栈保存到 Asuka 缓存中该应用目录下的 `player-stacks.txt`（路径会打印出来），提交 bug 时请附上它。重新启动开发 App，或者用 `--no-hot` 运行，构建一个包含 Go 代码的应用。
 - **手机上装有发布构建**：为了安装调试版，由 `asuka build` 安装的应用（签名密钥不同）会被卸载，其数据也会一起删除。
 - **`asuka dev --platform windows runs the app on this PC`**：`asuka dev` 只能在 Windows 上运行 Windows 应用。在其他系统上可以用 `asuka build --platform windows` 构建，再把生成的文件夹复制到 PC 上。
 - **Linux 上提示 `... isn't installed`**：宿主需要 GTK 4.14 和 libadwaita 1.5 或更高版本（`the Linux host needs GTK 4.14 and libadwaita 1.5 or later`），某些包还需要各自的库：`ui.WebView` 需要 WebKitGTK 6.0，视频和音频需要 GStreamer，`asuka/sdk/secure` 需要 libsecret。错误信息会指出缺少的是哪个，用发行版的包管理器安装即可。

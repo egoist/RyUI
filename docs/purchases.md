@@ -211,8 +211,11 @@ server says, and finish the transaction once it has.
 
 ## Testing your purchases
 
-The stores sell only an app they know: the player in `asuka dev` can't
-sell your app's products. Test with a built app.
+The stores sell only to an app they know. On iOS, `asuka dev` builds an
+app that imports `asuka/sdk/purchase` as itself, without hot reload's
+player, so a save reinstalls it. On Android, Play sells only to a build
+installed from one of its tracks, so purchases are unavailable in
+`asuka dev`, and it says so.
 
 **The iOS simulator.** Make a StoreKit configuration file in Xcode (File ›
 New › File › StoreKit Configuration File; or sync it from App Store
@@ -230,7 +233,7 @@ its scheme does. Prices, Ask to Buy, failed transactions and faster
 renewals come from the file:
 
 ```sh
-asuka dev --platform ios --no-hot examples/store   # built, rebuilt on save
+asuka dev --platform ios examples/store            # built, rebuilt on save
 asuka dev --platform ios --once examples/store     # built and launched once
 ```
 

@@ -36,23 +36,47 @@ const (
 	devicePort = 7461
 )
 
-// usePlayer reports whether to run app with the player: not when its
-// native packages (it, or its dependencies) have native code for platform
-// (ios, android), which only an app built with it can show.
-func usePlayer(app *goApp, o *devOptions, platform string) bool {
-	if o.noHot || o.once {
-		return false
-	}
-	natives, err := nativeFor(app, platform, "arm64")
+// usePlayer reports whether to run app with the player on target (ios:
+// the simulator; ios-device; android): not when its native packages (it,
+// or its dependencies) have native code for the platform, which only an
+// app built with it can show, nor when it uses what the player can't
+// stand in for (playerGaps). It says what the player leaves out.
+func usePlayer(app *goApp, o *devOptions, target string) bool {
+	platform, _, _ := strings.Cut(target, "-")
+	dir, pkg := app.goPackage()
+	deps, err := appDeps(dir, pkg, platform, "arm64")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "asuka:", err)
 		return false // the build says so again
 	}
-	if len(natives) > 0 {
-		fmt.Printf("asuka: %s has native code for %s (%s): building it into the app (no player)\n", app.name, platform, natives[0].path)
-		return false
+	u := gapUse{app: app, target: target, deps: deps}
+	hot := !o.noHot && !o.once
+	if hot {
+		natives, err := nativeFor(app, platform, "arm64")
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "asuka:", err)
+			return false
+		}
+		if len(natives) > 0 {
+			fmt.Printf("asuka: %s has native code for %s (%s): building it into the app (no player)\n", app.name, platform, natives[0].path)
+			hot = false
+		}
 	}
-	return true
+	if hot {
+		if g, what, ok := firstGap(u); ok {
+			fmt.Printf("asuka: %s %s, and %s: building the app (no player)\n", app.name, what, g.why)
+			hot = false
+		}
+	}
+	for _, g := range playerGaps {
+		if g.build || !g.always && !hot || !slices.Contains(g.targets, target) {
+			continue
+		}
+		if what, ok := g.uses(u); ok {
+			fmt.Printf("asuka: %s %s: %s\n", app.name, what, g.why)
+		}
+	}
+	return hot
 }
 
 func freePort(want int) int {

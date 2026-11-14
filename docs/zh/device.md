@@ -748,7 +748,7 @@ func main() {
 
 `Position` 还有 `Speed`（米每秒）和 `Course`（与正北方向的夹角，单位为度），未知时为负数。
 
-在 `asuka dev` 的播放器中，播放器拥有所有权限和后台模式；播放器与应用的 Go 代码保持连接期间，事件会送到 Go 代码。要看到应用为了某个事件被启动，请单独运行应用（`asuka dev --once`，或者构建出来运行）。
+在 `asuka dev` 的热重载模式下，开发 App 拥有所有权限和后台模式；它与应用的 Go 代码保持连接期间，事件会送到 Go 代码。要看到应用为了某个事件被启动，请单独运行应用（`asuka dev --once`，或者构建出来运行）。
 
 ### 用 uitest 测试
 
@@ -1149,7 +1149,7 @@ func App() ui.Node {
 
 **iOS** 上，应用里包含一个分享扩展，它会像 Android 那样带着分享的内容打开应用，自己不显示任何界面。扩展的激活规则由所列类型生成：文本、链接、图片、视频和任意文件使用 Apple 提供的键，`max` 依然有效；其他类型（音频、PDF）则对附件类型做谓词判断，这时 `max` 不起作用。扩展会接收传给它的任何内容，所以请检查 `Kind` 和 `MIME`。文件通过 App Group（`group.<app ID>`）从扩展传给应用，真机构建所用的描述文件必须包含这个 App Group（见[发布](shipping.md#ios)）。
 
-在 `asuka dev` 下，播放器应用会接收任何内容的分享，不管应用的 `shareTarget` 怎么设置。在 Android 上，文件路径指向的是设备上的位置，而不是运行 Go 代码的那台 Mac：要测试文件分享，请用 `asuka dev --platform android --once`。
+在 `asuka dev` 的热重载模式下，开发 App 会接收任何内容的分享，不管应用的 `shareTarget` 怎么设置。在手机上，分享过来的文件在手机上，而不在运行 Go 代码的电脑上，所以 `shareTarget` 接收文件的应用在手机上会构建成应用本身来运行，而不使用热重载模式（iOS 模拟器的文件就在 Mac 上）。
 
 链接指向的是什么（网页、图片还是视频），需要应用自己用 `net/http` 去弄清楚，相当于用 Go 实现 expo-sharing 的 “resolved” 负载。
 
@@ -1185,7 +1185,7 @@ func main() {
 
 应用保存的数据在面板里同样可用：`asuka/sdk/store`、`store.Dir()` 中的 SQLite 文件（`sqlite.Open("app.db")`）以及 `asuka/sdk/secure`。在 Android 上，两个进程共享应用的文件。在 iOS 上，应用第一次带着面板运行时，会把数据一次性迁移到 App Group（`group.<app ID>`），它的钥匙串组也会与扩展共享。应用在运行期间不会得知面板写入了什么：等它回到前台时再检查一遍（`app.OnLifecycle`、`db.Changed()`）。
 
-CLI 发现应用的 Go 代码调用了 `app.ShareSheet` 时，就会构建这个面板，而不是那个只负责打开应用的扩展。此时在 iOS 上，应用的 Go 代码和宿主会打包成应用里的一个 framework，即 `Frameworks/AsukaApp.framework`，由应用和扩展共同加载；Xcode 在应用和扩展之间共享代码也是这样做的，所以加上面板并不会让应用变大。在 `asuka dev` 下，播放器应用的分享面板运行的同样是应用自己的面板，代码也在 Mac 上执行。[`examples/bookmarks`](../../examples/bookmarks) 就是一个类似 Raindrop 的面板：显示网页的标题、描述和图片，还可以添加备注、选择收藏夹和标签。
+CLI 发现应用的 Go 代码调用了 `app.ShareSheet` 时，就会构建这个面板，而不是那个只负责打开应用的扩展。此时在 iOS 上，应用的 Go 代码和宿主会打包成应用里的一个 framework，即 `Frameworks/AsukaApp.framework`，由应用和扩展共同加载；Xcode 在应用和扩展之间共享代码也是这样做的，所以加上面板并不会让应用变大。在 `asuka dev` 的热重载模式下，开发 App 的分享面板运行的同样是应用自己的面板，代码也在 Mac 上执行。[`examples/bookmarks`](../../examples/bookmarks) 就是一个类似 Raindrop 的面板：显示网页的标题、描述和图片，还可以添加备注、选择收藏夹和标签。
 
 ## 运行 JavaScript：asuka/sdk/js
 
@@ -1273,7 +1273,7 @@ func main() {
 
 **Android** 在应用的进程中改写 FCM 的数据消息：如果应用没有在运行，Go 代码会在没有界面的情况下启动，在大约十秒内完成改写，然后显示通知。如果改写后的数据消息既没有标题也没有正文，就不会显示。
 
-在 `asuka dev` 的播放器应用中没有扩展（应用的 Go 代码运行在电脑上）：推送会按原样显示。用 `asuka dev --platform ios --once` 或正式构建运行时则有扩展。模拟器只会对来自 APNs 的推送运行扩展，`xcrun simctl push` 发出的推送不会触发它。
+`asuka dev` 的开发 App 没有这个扩展（应用的 Go 代码运行在电脑上），所以调用了 `push.Rewrite` 的应用，`asuka dev` 会构建成应用本身来运行，构建出来的应用带有扩展。模拟器只会对来自 APNs 的推送运行扩展，`xcrun simctl push` 发出的推送不会触发它。
 
 ## 通过 Apple 登录：asuka/sdk/appleauth
 
@@ -1682,4 +1682,4 @@ Go 的崩溃由 Go 运行时自己保存（`runtime/debug.SetCrashOutput`，在�
 
 **各平台的细节。** iOS 只会把 MetricKit 链接进读取报告的应用（调用了 `crash.Reports` 或 `crash.OnReport` 的应用），并且把诊断交给应用本身，而不是它的分享扩展。带有自己分享面板（`app.ShareSheet`）的应用，会把面板的崩溃和应用自己的放在一起，保存在两者的 App Group 中，任何一方都能读取。从 iOS 17 开始，MetricKit 会给出崩溃的进程 ID，借此可以把崩溃关联到那一次运行的上下文；在此之前，则关联到崩溃之前的最后一次运行。MetricKit 在模拟器上不会送达诊断。Android 不需要额外配置；Android 11 之前没有原生崩溃和 ANR 的记录。macOS：MetricKit 从 macOS 12 开始可用；导致应用退出的未捕获 Objective-C 异常会以 MetricKit 崩溃报告的形式出现（主线程上的这类异常会被 AppKit 捕获并记入日志）。Windows：进程没有处理的每一个异常都由 Go 运行时处理（它是最后一个处理程序）：它会打印出异常和所有 goroutine，然后退出。在没有控制台的情况下（发布构建，以 GUI 程序构建），Asuka 会把运行时打印的内容写入本次运行对应的文件，下次启动时读取，生成一份 `Native` 报告。Asuka 不会设置自己的未处理异常过滤器：Go 的处理程序会先运行，替换它会破坏 Go 自身的异常处理。Windows 错误报告（Windows Error Reporting）照常保留它自己的记录。在浏览器中，Go 运行时无法把崩溃输出写入文件（`SetCrashOutput` 依赖 `dup`），所以宿主会在 Go 运行期间保存运行时打印的内容，等程序因 panic 或致命错误结束时，把它写入本次运行的记录，存放在应用的文件中（IndexedDB），下次启动时就会读取。未捕获的 JavaScript 错误（无论来自宿主还是应用的 `web/*.js`）会立即生成一份 `Exception` 报告，它是非致命的（页面会继续运行），并附带本次运行的上下文；每次运行最多 20 份，同一个错误只报告一次。每个页面都会在同源的 `localStorage` 里标记自己这次运行还活着，这样应用其他开着的页面就不会去动它的记录。
 
-**在 `asuka dev` 下**，Go 代码运行在你的 Mac（或 PC）上：它的崩溃照常打印在终端里，同时也保存在那台电脑上，所以下次运行时 `crash.Reports` 能读到它们。播放器应用自身的原生崩溃不属于你的应用，不会报告给它；应用的正式构建（`asuka dev --once`、`asuka build`）则会报告所有崩溃。
+**在 `asuka dev` 下**，Go 代码运行在你的 Mac（或 PC）上：它的崩溃照常打印在终端里，同时也保存在那台电脑上，所以下次运行时 `crash.Reports` 能读到它们。开发 App 自身的原生崩溃不属于你的应用，不会报告给它；应用的正式构建（`asuka dev --once`、`asuka build`）则会报告所有崩溃。

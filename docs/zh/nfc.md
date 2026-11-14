@@ -167,7 +167,7 @@ asuka.json 的 `nfc` 用来补充应用的标签所需的配置：
 
 ## 在 asuka dev 中
 
-iOS 模拟器和 Android 模拟器都没有 NFC：`Check` 会报告不支持。在 Android 手机上，播放器应用带有 `NFC` 权限，所以在 `asuka dev` 下，会话、读取、写入和命令都能用；能打开应用的标签则不行（过滤器只存在于应用自己的构建里）。在 iPhone 上，播放器应用的描述文件需要开启 NFC Tag Reading 能力；ISO 7816 卡和 FeliCa 则需要应用自己的构建（它们的 AID 和系统代码写在应用的 Info.plist 里）。Web NFC 需要安全上下文，而 `--lan` 的地址不是：运行 `asuka dev --platform web`，把端口转发到手机（`adb reverse tcp:<port> tcp:<port>`），再在手机的 Chrome 里打开 `http://localhost:<port>`。
+iOS 模拟器和 Android 模拟器都没有 NFC：`Check` 会报告不支持。在 Android 手机上，开发 App 带有 `NFC` 权限，所以在 `asuka dev` 的热重载模式下，会话、读取、写入和命令都能用；能打开应用的标签则不行（过滤器只存在于应用自己的构建里：请用 `--no-hot` 测试，`asuka dev` 也会提示）。在 iPhone 上，开发 App 的描述文件需要开启 NFC Tag Reading 能力；ISO 7816 卡和 FeliCa 则需要应用自己的构建（它们的 AID 和系统代码写在应用的 Info.plist 里），所以配置了 `nfc.iso7816` 或 `nfc.felica` 的应用，`asuka dev` 会构建成应用本身来运行，而不使用热重载模式。Web NFC 需要安全上下文，而 `--lan` 的地址不是：运行 `asuka dev --platform web`，把端口转发到手机（`adb reverse tcp:<port> tcp:<port>`），再在手机的 Chrome 里打开 `http://localhost:<port>`。
 
 ## 各平台上的表现
 

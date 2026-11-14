@@ -86,7 +86,7 @@ type appConfig struct {
 		// StoreKit is a StoreKit configuration file (Xcode's .storekit: the
 		// products, their prices, Ask to Buy, renewals sped up) that
 		// asuka dev's build for the simulator sells from, as Xcode's scheme
-		// does (asuka/sdk/purchase): asuka dev --no-hot or --once.
+		// does (asuka/sdk/purchase, which asuka dev builds into the app).
 		StoreKit string `json:"storekit"`
 		// IPhoneOnly leaves iPad out: the app runs there as an iPhone app,
 		// in a phone-sized window. By default it's an iPad app too, in

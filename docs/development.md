@@ -124,10 +124,24 @@ in about a second, the new run starting while the last one still serves
 the player; the player reconnects as the last one stops, and shows the
 new code. Nothing is installed.
 
-With `--no-hot` or `--once`, or when the app uses native packages with code
+With `--no-hot` or `--once`, when the app uses native packages with code
 for the platform (a `Package.swift` or `android/`, see [Native
-code](native.md)), Asuka builds the app itself instead, its Go code inside
-as a release build has it, under the app's own name and ID:
+code](native.md)), or when it uses something the player can't stand in
+for, Asuka builds the app itself instead, its Go code inside as a release
+build has it, under the app's own name and ID. It says which it was.
+What the player can't stand in for:
+
+- **On iOS, `asuka/sdk/purchase`**: the App Store sells an app's
+  products only to the app.
+- **On iOS, `push.Rewrite`**: the player has no notification service
+  extension to rewrite pushes in.
+- **On an iPhone, `asuka.json`'s `nfc.iso7816` or `nfc.felica`**: iOS
+  finds only the cards the app's own Info.plist names.
+- **On a phone, a `shareTarget` that takes files**: the files are on the
+  phone, not on the computer the Go code runs on (the simulator's are the
+  Mac's, so it keeps the player).
+
+A built app:
 
 - **iOS**: the host, with the native packages' Swift, is built once
   and again only as it changes;
@@ -141,7 +155,8 @@ as a release build has it, under the app's own name and ID:
 
 The player has every permission any Asuka package needs, and its own
 purpose strings. What `asuka.json` gives the app itself (its name, its
-ID, a URL `scheme`, `links`, `ios.usage`) only a built app has: try
+ID, a URL `scheme`, `links`, `ios.usage`, Android's NFC tag filters) only
+a built app has, and `asuka dev` says so when the app has them: try
 those with `--no-hot`. The `accent` color applies in the player too.
 
 ## What a reload keeps

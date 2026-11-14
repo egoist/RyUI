@@ -55,10 +55,10 @@ asuka dev --platform web        # 你的浏览器
 保存 Go 文件后，应用片刻间就会重新加载，signal 里的值都会保留下来。应用的输出（`fmt.Println`、panic）会显示在终端里。
 
 - **在电脑上运行**（`asuka dev`，或 `--platform mac`、`windows`、`linux`）时，应用和它的宿主是同一个 Go 程序：Asuka 构建它、在窗口中运行它，每次保存后再重新构建并运行。
-- **在手机上运行**时，第一次会先构建并安装 Asuka 的播放器应用，由它来显示你的应用的视图；你的 Go 代码则在电脑上运行，并与播放器通信，所以保存后无需重新安装就能重新加载。`--device` 用来指定 iOS 模拟器或 iPhone（名称或 UDID，写 `iphone` 则表示连接着的那台）或 Android 设备（adb 序列号或 AVD 名称）。`--no-hot` 会像发布构建那样，把 Go 代码直接编进应用；`--once` 则把代码编进应用后只启动一次。
+- **在手机上运行**时，第一次会先构建并安装 Asuka 的开发 App，由它来显示你的应用的视图；你的 Go 代码则在电脑上运行，并与它通信，所以保存后无需重新安装就能重新加载。`--device` 用来指定 iOS 模拟器或 iPhone（名称或 UDID，写 `iphone` 则表示连接着的那台）或 Android 设备（adb 序列号或 AVD 名称）。`--no-hot` 会像发布构建那样，把 Go 代码直接编进应用；`--once` 则把代码编进应用后只启动一次。
 - **在浏览器中运行**时，Asuka 会在 `http://localhost:8790/` 上启动服务并自动打开页面，每次保存都会刷新。加上 `--lan` 可以把应用开放给局域网，方便用手机浏览器试用。详见 [Web](web.md)。
 
-要在 iPhone 真机上运行，先把它连上 Mac，解锁后点“信任”，在“设置 › 隐私与安全性”中打开“开发者模式”，并在 Xcode 中添加你的 Apple ID（“设置 › 账户”）。然后运行 `asuka dev --platform ios --device iphone`：第一次它会用你的团队为播放器签名并安装，之后每次保存都会重新加载，USB 和 Wi-Fi 都可以。参见 [设备](development.md#设备)。
+要在 iPhone 真机上运行，先把它连上 Mac，解锁后点“信任”，在“设置 › 隐私与安全性”中打开“开发者模式”，并在 Xcode 中添加你的 Apple ID（“设置 › 账户”）。然后运行 `asuka dev --platform ios --device iphone`：第一次它会用你的团队为开发 App 签名并安装，之后每次保存都会重新加载，USB 和 Wi-Fi 都可以。参见 [设备](development.md#设备)。
 
 更多内容见[开发](development.md)：重新加载时会保留什么、设备、日志，以及你可能遇到的问题。
 

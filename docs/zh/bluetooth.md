@@ -147,7 +147,7 @@ level.Notify([]byte{battery()}) // 发给已订阅的中心设备
 | macOS | 授权文案，以及加固运行时（hardened runtime）的 `com.apple.security.device.bluetooth` entitlement |
 | Linux | Flatpak 的 `--system-talk-name=org.bluez` |
 
-在 `asuka dev` 中，播放器应用包含上面所有这些，后台模式也不例外。
+在 `asuka dev` 的热重载模式下，开发 App 已经带有上面所有这些，后台模式也不例外。
 
 ## 各平台的情况
 

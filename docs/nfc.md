@@ -261,10 +261,12 @@ They're added only for an app that imports the package. See
 The simulator and the emulator have no NFC: `Check` says unsupported.
 On an Android phone, the player has the `NFC` permission, so sessions,
 reading, writing and commands all work under `asuka dev`; tags that
-open the app don't (the filters are the app's own build's). On an
-iPhone the player's profile needs the NFC Tag Reading capability, and
-ISO 7816 cards and FeliCa need the app's own build (their AIDs and
-system codes are its Info.plist's). Web NFC needs a secure context, which
+open the app don't (the filters are the app's own build's: try them with
+`--no-hot`; `asuka dev` says so). On an iPhone the player's profile needs
+the NFC Tag Reading capability, and ISO 7816 cards and FeliCa need the
+app's own build (their AIDs and system codes are its Info.plist's), so
+`asuka dev` builds an app with `nfc.iso7816` or `nfc.felica` instead of
+running it in the player. Web NFC needs a secure context, which
 `--lan`'s addresses aren't: run `asuka dev --platform web`, forward its
 port to the phone (`adb reverse tcp:<port> tcp:<port>`), and open
 `http://localhost:<port>` in Chrome on the phone.

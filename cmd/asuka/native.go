@@ -34,15 +34,35 @@ type nativePackage struct {
 	main            bool // in the app's own module: asuka writes its generated files
 }
 
+// appPackages is what the go command lists of an app's package: its
+// native packages, and every package it imports, all the way down.
+type appPackages struct {
+	natives []nativePackage
+	deps    []string
+}
+
 var (
 	nativesMu    sync.Mutex
-	nativesCache = map[string][]nativePackage{}
+	nativesCache = map[string]appPackages{}
 )
 
 // appNatives are the native packages of package pkg, as the go command
 // in dir builds it for goos and goarch: its dependencies with generated
 // native code.
 func appNatives(dir, pkg, goos, goarch string) ([]nativePackage, error) {
+	ps, err := listApp(dir, pkg, goos, goarch)
+	return ps.natives, err
+}
+
+// appDeps are the import paths of package pkg and its dependencies, as
+// the go command in dir builds it for goos and goarch.
+func appDeps(dir, pkg, goos, goarch string) ([]string, error) {
+	ps, err := listApp(dir, pkg, goos, goarch)
+	return ps.deps, err
+}
+
+// listApp lists package pkg's dependencies once per build of it.
+func listApp(dir, pkg, goos, goarch string) (appPackages, error) {
 	key := dir + "\x00" + pkg + "\x00" + goos + "\x00" + goarch
 	nativesMu.Lock()
 	ps, ok := nativesCache[key]
@@ -60,14 +80,18 @@ func appNatives(dir, pkg, goos, goarch string) ([]nativePackage, error) {
 	c.Stderr = &stderr
 	out, err := c.Output()
 	if err != nil {
-		return nil, fmt.Errorf("go list: %v\n%s", err, stderr.Bytes())
+		return ps, fmt.Errorf("go list: %v\n%s", err, stderr.Bytes())
 	}
 	for _, l := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		f := strings.Split(l, "\t")
-		if len(f) != 4 || f[2] == "" || !exists(filepath.Join(f[2], nativegen.GoFile(f[1]))) {
+		if len(f) != 4 {
 			continue
 		}
-		ps = append(ps, nativePackage{path: f[0], name: f[1], dir: f[2], main: f[3] == "true"})
+		ps.deps = append(ps.deps, f[0])
+		if f[2] == "" || !exists(filepath.Join(f[2], nativegen.GoFile(f[1]))) {
+			continue
+		}
+		ps.natives = append(ps.natives, nativePackage{path: f[0], name: f[1], dir: f[2], main: f[3] == "true"})
 	}
 	nativesMu.Lock()
 	nativesCache[key] = ps

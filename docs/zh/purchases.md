@@ -10,7 +10,7 @@
 | Web | Google Play | Trusted Web Activity 中的 Digital Goods API 和 Payment Request |
 | Linux | 无 | |
 
-在没有应用商店的地方（Linux、不支持 Digital Goods API 的浏览器、不是从商店安装的 Windows 应用、`asuka dev` 里的播放器应用），`purchase.Available()` 为 false，其余调用都以 `purchase.ErrNotAvailable` 失败。
+在没有应用商店的地方（Linux、不支持 Digital Goods API 的浏览器、不是从商店安装的 Windows 应用、`asuka dev` 的热重载模式），`purchase.Available()` 为 false，其余调用都以 `purchase.ErrNotAvailable` 失败。
 
 ## 商品
 
@@ -123,7 +123,7 @@ ui.Show(signal.Func(func() bool { return owned.Get().Has(pro.ID) }), proFeatures
 
 ## 测试购买
 
-商店只向它认识的应用售卖商品：`asuka dev` 里的播放器应用卖不了你的应用的商品。请用构建出来的应用测试。
+商店只向它认识的应用售卖商品。在 iOS 上，导入了 `asuka/sdk/purchase` 的应用在 `asuka dev` 下不走热重载模式，而是构建成应用本身运行，所以每次保存都会重新安装。在 Android 上，Play 只向从它的某个测试轨道安装的构建售卖商品，所以 `asuka dev` 下无法测试应用内购买，运行时也会提示这一点。
 
 **iOS 模拟器。** 在 Xcode 里创建一个 StoreKit 配置文件（File › New › File › StoreKit Configuration File，也可以从 App Store Connect 同步），填好商品，然后在 `asuka.json` 里指定它：
 
@@ -136,7 +136,7 @@ ui.Show(signal.Func(func() bool { return owned.Get().Has(pro.ID) }), proFeatures
 `asuka dev` 为模拟器生成的构建会带上这个文件；由 `asuka dev` 启动时，它会像在 Xcode 的 scheme 里设置了这个文件的应用那样，从文件里售卖商品。价格、“询问购买”、交易失败和加速续期都由这个文件控制：
 
 ```sh
-asuka dev --platform ios --no-hot examples/store   # 构建出的应用，保存后重新构建
+asuka dev --platform ios examples/store            # 构建出的应用，保存后重新构建
 asuka dev --platform ios --once examples/store     # 构建并启动一次
 ```
 

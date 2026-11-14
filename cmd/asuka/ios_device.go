@@ -757,7 +757,7 @@ func devIOSDevice(app *goApp, o *devOptions, d *iosDevice, stop <-chan os.Signal
 	if err != nil {
 		return err
 	}
-	if usePlayer(app, o, "ios") {
+	if usePlayer(app, o, "ios-device") {
 		return devIOSDevicePlayer(app, tc, o, d, team, stop)
 	}
 	work, err := workDir(app, "ios-device")

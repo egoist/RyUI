@@ -70,10 +70,10 @@
 //
 // # Testing
 //
-// The stores sell only an app they know: in asuka dev the player can't
-// sell the app's products. Test with a built app: on the iOS simulator,
-// asuka.json's ios.storekit (a StoreKit configuration file, Xcode's) and
-// asuka dev --no-hot (or --once); on a device, a
+// The stores sell only to an app they know: on iOS, asuka dev builds an
+// app that imports this package as itself (no player). Test with a built
+// app: on the iOS simulator, asuka.json's ios.storekit (a StoreKit
+// configuration file, Xcode's) and asuka dev; on a device, a
 // TestFlight build (the sandbox); on Android, a build on Play's internal
 // track, installed by one of the license testers. In go test, host/fake's
 // Store sells what a test gives it (fake.Host.Store).

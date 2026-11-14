@@ -54,7 +54,7 @@
 | hot reload / reload on save | 热重载 / 保存即重载 | |
 | simulator | iOS 模拟器 | 指 Xcode 的 Simulator |
 | emulator | Android 模拟器 | 指 Android Emulator；两者都叫模拟器，需要时加平台名区分 |
-| player (app) | 播放器应用 | Asuka 的 player，开发时装在设备上的那个 App |
+| player (app) | 开发 App / 热重载模式 | Asuka 的 player，开发时装在设备上的那个 App。不要译成“播放器”（那是媒体播放器）；说在 player 里运行时译“热重载模式下”，说这个 App 本身（安装、签名、连接、权限）时译“开发 App” |
 | release build | 发布构建 | |
 | sign / signed | 签名 | |
 | notarize | 公证 | |
