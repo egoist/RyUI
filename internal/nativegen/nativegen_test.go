@@ -105,3 +105,15 @@ func TestNames(t *testing.T) {
 		t.Errorf("upperSnake: %s", got)
 	}
 }
+
+// A generated file checked out with CRLF line ends (git's core.autocrlf,
+// on Windows) is the same file: Write leaves it.
+func TestSameText(t *testing.T) {
+	gen := []byte("// Code generated\npackage x\n\nfunc F() {}\n")
+	if !sameText([]byte(strings.ReplaceAll(string(gen), "\n", "\r\n")), gen) || !sameText(gen, gen) {
+		t.Error("a CRLF checkout of the file differs")
+	}
+	if sameText([]byte("package y\r\n"), []byte("package x\n")) {
+		t.Error("another file is the same")
+	}
+}

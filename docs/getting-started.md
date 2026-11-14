@@ -9,10 +9,14 @@ save.
 **Go 1.26** or later, for every platform. Then, for the ones you want:
 
 - **iOS**: a Mac with Xcode, and its iOS simulator.
-- **Android**: a Mac or Linux, with Android Studio and, from its SDK
-  Manager, an NDK (SDK Tools → NDK), and an emulator from its Device
-  Manager, or a phone with USB debugging on. Asuka finds the SDK in its
-  usual place, or at `ANDROID_HOME`, and Android Studio's Java.
+- **Android**: a Mac, a Windows 10 or 11 PC (x64 or Arm) or Linux, with
+  Android Studio and, from its SDK Manager, an NDK (SDK Tools → NDK),
+  and an emulator from its Device Manager, or a phone with USB debugging
+  on. Asuka finds the SDK in its usual place, or at `ANDROID_HOME`, and
+  Android Studio's Java. On Windows that's all, too: Asuka builds the
+  Go code with the NDK's own clang, and Gradle with its `gradlew.bat`.
+  On an Arm PC, the NDK and the emulator run emulated (they're x64),
+  and the emulator needs an x86_64 system image.
 - **macOS**: a Mac, macOS 11 or later. Nothing else to run the app;
   release builds, and an app with Swift of its own (`macos/*.swift`),
   use Xcode's command line tools (`xcode-select --install`), which Xcode

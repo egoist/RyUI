@@ -106,12 +106,12 @@ it, for that machine's architecture.
 
 ## On a phone: the player and built apps
 
-iOS needs a Mac; Android, a Mac or Linux. By default, `asuka dev` runs
-your Go code on your computer, and its views in the **player**: an app
-named Asuka (`dev.asuka.player`) that is the platform's host with no app
-in it. The player is built and installed once, shared by every app, and
-installed again only when it changes (a new version of Asuka). The Go
-code and the player talk over a socket.
+iOS needs a Mac; Android, a Mac, a Windows PC or Linux. By default,
+`asuka dev` runs your Go code on your computer, and its views in the
+**player**: an app named Asuka (`dev.asuka.player`) that is the
+platform's host with no app in it. The player is built and installed
+once, shared by every app, and installed again only when it changes (a
+new version of Asuka). The Go code and the player talk over a socket.
 
 On a save, Asuka rebuilds the Go code for your computer and restarts it,
 in about a second, the new run starting while the last one still serves
@@ -352,13 +352,17 @@ ASUKA_SCRIPT="tap:Add;tap:Add" ASUKA_SNAPSHOT=shot.png go run .   # Windows, Lin
   lists them.
 - **`no Android SDK: install Android Studio or set ANDROID_HOME`**: Asuka
   looks in `ANDROID_HOME`, `ANDROID_SDK_ROOT`, then
-  `~/Library/Android/sdk` on a Mac and `~/Android/Sdk` on Linux.
+  `~/Library/Android/sdk` on a Mac, `%LOCALAPPDATA%\Android\Sdk` on
+  Windows and `~/Android/Sdk` on Linux.
 - **`no Android NDK`**: install one from Android Studio's SDK Manager
-  (SDK Tools, NDK).
+  (SDK Tools, NDK). Asuka takes the newest that has a build for your
+  computer (`windows-x86_64` on any Windows PC, Arm too).
 - **`no Android device or emulator`**: make an AVD in Android Studio's
   Device Manager, or plug in a phone. Asuka waits up to four minutes for
   an emulator it starts to boot (`the emulator didn't boot`).
-- **Java**: Gradle needs a JDK: `JAVA_HOME`, else Android Studio's own.
+- **Java**: Gradle needs a JDK: `JAVA_HOME`, else Android Studio's own,
+  where its installer or JetBrains Toolbox put it (on Windows, in
+  Program Files or `%LOCALAPPDATA%\Programs`).
 - **The first Android build is slow**: Gradle downloads itself and
   Android's libraries, once.
 - **`the player connected ... and hasn't shown the app`**: the player
@@ -432,8 +436,9 @@ counter, notes, chat, navigation and languages examples have tests, the
 same on each platform. They wait for the screen to show what they
 expect, up to a minute, never for a set time.
 
-The iOS tests need Xcode (`xcrun`); the Android ones need `adb` on your
-`PATH`, and the SDK and NDK that `asuka dev --platform android` needs; the
+The iOS tests need Xcode (`xcrun`); the Android ones need the SDK and
+NDK that `asuka dev --platform android` needs (`adb` from your `PATH`,
+else the SDK's), on a Mac, a PC or Linux; the
 Linux ones a display (Xvfb's, in CI) and a session bus. Without them,
 the tests are skipped. macOS and Windows have no e2e tests yet: their
 host tests drive real windows instead.

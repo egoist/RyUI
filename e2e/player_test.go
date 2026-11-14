@@ -9,8 +9,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
+	"strconv"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 )
@@ -50,7 +51,8 @@ func startPlayerDev(t *testing.T, platform string) *playerDev {
 		}
 		os.WriteFile(filepath.Join(dir, f), b, 0o644)
 	}
-	gomod := "module example.com/counter\n\ngo 1.26\n\nrequire github.com/egoist/asuka v0.0.0\n\nreplace github.com/egoist/asuka => " + repo + "\n"
+	// Quoted: a path with spaces, or a Windows path's backslashes.
+	gomod := "module example.com/counter\n\ngo 1.26\n\nrequire github.com/egoist/asuka v0.0.0\n\nreplace github.com/egoist/asuka => " + strconv.Quote(repo) + "\n"
 	os.WriteFile(filepath.Join(dir, "go.mod"), []byte(gomod), 0o644)
 	if sum, err := os.ReadFile(filepath.Join(repo, "go.sum")); err == nil {
 		os.WriteFile(filepath.Join(dir, "go.sum"), sum, 0o644)
@@ -64,6 +66,9 @@ func startPlayerDev(t *testing.T, platform string) *playerDev {
 		}
 	}
 	cli := filepath.Join(t.TempDir(), "asuka")
+	if runtime.GOOS == "windows" {
+		cli += ".exe" // what Windows runs
+	}
 	run(t, "go", "build", "-C", repo, "-o", cli, "./cmd/asuka")
 	args := []string{"dev", "--platform", platform, "--no-vet"}
 	if d := os.Getenv("ASUKA_DEVICE"); d != "" {
@@ -77,6 +82,7 @@ func startPlayerDev(t *testing.T, platform string) *playerDev {
 		out = io.MultiWriter(&p.logs, os.Stdout) // to follow a slow first build
 	}
 	c.Stdout, c.Stderr = out, out
+	interruptible(c)
 	if err := c.Start(); err != nil {
 		t.Fatal(err)
 	}
@@ -129,13 +135,15 @@ func (p *playerDev) edit(from, to string) {
 	}
 }
 
-// stop stops asuka dev (SIGINT), which stops the app's run and the
-// player.
+// stop stops asuka dev (Ctrl-C's: SIGINT, CTRL_BREAK_EVENT on Windows),
+// which stops the app's run and the player.
 func (p *playerDev) stop() {
 	if p.dev.Process == nil || p.dev.ProcessState != nil {
 		return
 	}
-	p.dev.Process.Signal(syscall.SIGINT)
+	if err := interrupt(p.dev.Process); err != nil {
+		p.dev.Process.Kill()
+	}
 	done := make(chan struct{})
 	go func() { p.dev.Wait(); close(done) }()
 	select {
@@ -186,7 +194,7 @@ func TestPlayerIOS(t *testing.T) {
 }
 
 func TestPlayerAndroid(t *testing.T) {
-	if _, err := exec.LookPath("adb"); err != nil {
+	if adb() == "" {
 		t.Skip("no adb")
 	}
 	p := startPlayerDev(t, "android")

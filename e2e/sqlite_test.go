@@ -66,12 +66,13 @@ func TestSQLiteReleaseIOS(t *testing.T) {
 // as Google Play makes a device's) has them uncompressed, on 16 KB
 // boundaries, so Android maps them from the APK.
 func TestSQLiteReleaseAndroid(t *testing.T) {
-	if _, err := exec.LookPath("keytool"); err != nil {
+	keytool := androidTool("keytool")
+	if keytool == "" {
 		t.Skip("no keytool")
 	}
 	out := t.TempDir()
 	keystore := filepath.Join(out, "upload.jks")
-	run(t, "keytool", "-genkeypair", "-keystore", keystore, "-alias", "upload", "-keyalg", "RSA", "-keysize", "2048",
+	run(t, keytool, "-genkeypair", "-keystore", keystore, "-alias", "upload", "-keyalg", "RSA", "-keysize", "2048",
 		"-validity", "1", "-storepass", "e2e-pass", "-keypass", "e2e-pass", "-dname", "CN=e2e")
 	t.Setenv("ASUKA_KEYSTORE", keystore)
 	t.Setenv("ASUKA_KEY_ALIAS", "upload")

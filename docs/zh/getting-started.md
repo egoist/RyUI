@@ -7,7 +7,7 @@
 所有平台都需要 **Go 1.26** 或更高版本。此外，按你要支持的平台准备：
 
 - **iOS**：一台装有 Xcode 及其 iOS 模拟器的 Mac。
-- **Android**：一台 Mac 或 Linux 电脑，装好 Android Studio，并在它的 SDK Manager 中安装 NDK（SDK Tools → NDK）；再从 Device Manager 创建一个 Android 模拟器，或者准备一部开启了 USB 调试的手机。Asuka 会在 SDK 的默认安装位置或 `ANDROID_HOME` 中查找 SDK，并使用 Android Studio 自带的 Java。
+- **Android**：一台 Mac、一台 Windows 10 或 11 电脑（x64 或 Arm）或者 Linux 电脑，装好 Android Studio，并在它的 SDK Manager 中安装 NDK（SDK Tools → NDK）；再从 Device Manager 创建一个 Android 模拟器，或者准备一部开启了 USB 调试的手机。Asuka 会在 SDK 的默认安装位置或 `ANDROID_HOME` 中查找 SDK，并使用 Android Studio 自带的 Java。在 Windows 上也只需要这些：Asuka 直接用 NDK 自带的 clang 编译 Go 代码，用 `gradlew.bat` 运行 Gradle。在 Arm 电脑上，NDK 和 Android 模拟器都是 x64 程序，会以模拟方式运行，模拟器需要使用 x86_64 系统镜像。
 - **macOS**：一台运行 macOS 11 或更高版本的 Mac。只是运行应用的话，不需要别的东西；发布构建，以及自带 Swift 代码（`macos/*.swift`）的应用，需要 Xcode 命令行工具（`xcode-select --install`），装了 Xcode 就已经包含了。
 - **Windows**：一台运行 Windows 10 或 11 的 PC，x64 或 Arm 均可。不需要别的东西：Asuka 直接从 Go 调用 Win32。`ui.WebView` 和 `ui.Video` 依赖 Microsoft Edge WebView2 Runtime，Windows 11 自带，大多数 Windows 10 电脑上也已经有了。
 - **Linux**：GTK 4.14 和 libadwaita 1.5 或更高版本（Ubuntu 24.04、Fedora 40、Debian 13 及之后的版本都已自带），Wayland 和 X11 均可：

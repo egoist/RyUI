@@ -36,6 +36,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/egoist/asuka/internal/androidsdk"
 )
 
 // within is how long a test waits for the screen to show what it expects.
@@ -338,8 +340,37 @@ type androidScreen struct {
 	pkg    string
 }
 
+// androidTool is one of the Android SDK's tools: on the PATH, else in
+// the SDK asuka dev finds (androidsdk; Windows' rarely has it on the
+// PATH); "" if there's none.
+func androidTool(name string) string {
+	if p, err := exec.LookPath(name); err == nil {
+		return p
+	}
+	sys := androidsdk.Local()
+	sdk := sys.SDK()
+	if sdk == "" {
+		return ""
+	}
+	var p string
+	switch name {
+	case "adb":
+		p = sys.ADB(sdk)
+	case "keytool": // the JDK's, which Gradle runs on
+		if java := sys.Java(); java != "" {
+			p = filepath.Join(java, "bin", sys.Exe("keytool"))
+		}
+	}
+	if _, err := os.Stat(p); p == "" || err != nil {
+		return ""
+	}
+	return p
+}
+
+func adb() string { return androidTool("adb") }
+
 func (s *androidScreen) adb(args ...string) (string, error) {
-	out, err := exec.Command("adb", append([]string{"-s", s.serial}, args...)...).CombinedOutput()
+	out, err := exec.Command(adb(), append([]string{"-s", s.serial}, args...)...).CombinedOutput()
 	return string(out), err
 }
 
@@ -381,7 +412,7 @@ func (s *androidScreen) relaunch() {
 }
 
 func androidApp(t *testing.T, example, pkg string) *androidScreen {
-	if _, err := exec.LookPath("adb"); err != nil {
+	if adb() == "" {
 		t.Skip("no adb")
 	}
 	out := launch(t, "android", example)

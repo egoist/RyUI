@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/egoist/asuka/internal/fileurl"
 )
 
 // An app embedded in another (asuka build --platform android --aar): the host library
@@ -48,17 +50,8 @@ func buildAndroidAAR(app *goApp, o *buildOptions) error {
 	if err != nil {
 		return err
 	}
-	activity := `        <!-- asuka build --aar: the Asuka app, which the embedding app starts. -->
-        <activity
-            android:name="dev.asuka.AsukaActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Asuka"
-            android:resizeableActivity="true"
-            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|fontScale|density|locale|layoutDirection"
-            android:windowSoftInputMode="adjustResize" />
-    </application>`
 	manifest := filepath.Join(work, "AndroidManifest.xml")
-	if err := os.WriteFile(manifest, []byte(strings.Replace(string(lib), "    </application>", activity, 1)), 0o644); err != nil {
+	if err := os.WriteFile(manifest, []byte(aarManifest(string(lib))), 0o644); err != nil {
 		return err
 	}
 	repo := filepath.Join(o.out, "maven")
@@ -87,10 +80,32 @@ func buildAndroidAAR(app *goApp, o *buildOptions) error {
 		return fmt.Errorf("no .aar at %s", aar)
 	}
 	fmt.Printf("asuka: %s in %s\n", repo, time.Since(start).Round(time.Second))
-	fmt.Printf("asuka: in your app's Gradle: repositories { maven { url = uri(%q) } }\n", repo)
+	// A file: URL, which Gradle reads the same on every system (a Windows
+	// path in a Kotlin string would need its backslashes doubled).
+	abs, err := filepath.Abs(repo)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("asuka: in your app's Gradle: repositories { maven { url = uri(%q) } }\n", fileurl.FromPath(abs))
 	for _, c := range coords {
 		fmt.Printf("asuka:   dependencies { implementation(%q) }\n", c)
 	}
 	fmt.Println("asuka: then: startActivity(Intent(this, dev.asuka.AsukaActivity::class.java))")
 	return nil
+}
+
+// aarManifest is the library's manifest lib with the activity the
+// embedding app starts. (No "--" in its comment: XML ends a comment at
+// one, and Gradle's manifest merger refuses the file.)
+func aarManifest(lib string) string {
+	activity := `        <!-- asuka build, for an .aar: the Asuka app, which the embedding app starts. -->
+        <activity
+            android:name="dev.asuka.AsukaActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Asuka"
+            android:resizeableActivity="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|fontScale|density|locale|layoutDirection"
+            android:windowSoftInputMode="adjustResize" />
+    </application>`
+	return strings.Replace(lib, "    </application>", activity, 1)
 }
