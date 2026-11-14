@@ -79,4 +79,41 @@ const zh: Messages = {
   },
 }
 
-export const messages: Record<Locale, Messages> = { en, zh }
+const ja: Messages = {
+  siteTitle: "Asuka — Go で書く、ネイティブ UI のアプリ。スマートフォンにも、デスクトップにも、Web にも",
+  siteDescription:
+    "Go で書いたアプリを、iOS、Android、macOS、Windows、Linux、Web で、各プラットフォーム純正のウィジェット（UIKit、Material 3、AppKit、Win32、GTK 4 と libadwaita、DOM）で動かせます。画面はきめ細かなシグナルで必要な部分だけが更新され、保存するたびにライブでリロードされます。リリースビルドもすべてのプラットフォーム向けに作れます。",
+  nav: { docs: "ドキュメント", examples: "サンプル", releases: "リリース", menu: "ナビゲーションメニュー", license: "MIT ライセンス" },
+  language: { label: "言語", auto: "自動" },
+  search: {
+    button: "ドキュメントを検索…",
+    title: "ドキュメントを検索",
+    description: "ドキュメントのページやセクションを探します。",
+    placeholder: "ドキュメントを検索…",
+    failed: "検索インデックスを読み込めませんでした。",
+    loading: "読み込み中…",
+    empty: (query: string) => `「${query}」に一致する結果はありません`,
+  },
+  docs: {
+    overview: "概要",
+    introduction: "はじめに",
+    more: "その他",
+    menu: "目次",
+    documentation: "ドキュメント",
+    previous: "前回",
+    next: "次回",
+    edit: "GitHub でこのページを編集",
+    copyCode: "コードをコピー",
+    sync: "シンクロ率",
+  },
+  notFound: {
+    label: "Error 404 / パターン不明",
+    title: "このページは存在しません",
+    text: "移動した可能性があります。ドキュメントか、その検索で探しているものが見つかるはずです。",
+    docs: "ドキュメントを読む",
+    home: "ホーム",
+    pageTitle: "ページが見つかりません · Asuka",
+  },
+}
+
+export const messages: Record<Locale, Messages> = { en, zh, ja }

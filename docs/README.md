@@ -1,7 +1,7 @@
 # Asuka documentation
 
 <!-- repository-only:start -->
-[简体中文](zh/README.md)
+[简体中文](zh/README.md) · [日本語](ja/README.md)
 <!-- repository-only:end -->
 
 Asuka makes apps in Go with each platform's own widgets, on iOS, Android,

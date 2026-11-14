@@ -81,7 +81,8 @@ asuka dev --platform ios     # or android, web; on a Mac, PC or Linux, asuka dev
 See [the documentation](docs/README.md) for the guides, and
 [`examples`](examples) for apps: [`gallery`](examples/gallery) shows
 every component. The documentation is also in
-[Chinese](docs/zh/README.md) (中文文档).
+[Chinese](docs/zh/README.md) (中文文档) and
+[Japanese](docs/ja/README.md) (日本語ドキュメント).
 
 ## License
 
