@@ -397,6 +397,9 @@ final class AsukaGestureDelegate: NSObject, UIGestureRecognizerDelegate {
         #if ASUKA_APPLEAUTH
         registerNative("asuka.appleSignIn") { AsukaAppleSignInButton($0) }
         #endif
+        #if ASUKA_PAY
+        registerNative("asuka.payButton") { AsukaPayButton($0) }
+        #endif
         // Packages' typed views are found as they're shown
         // (AsukaNative.makeView).
     }

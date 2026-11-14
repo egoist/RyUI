@@ -171,6 +171,12 @@ type appConfig struct {
 	// Shortcuts (Siri, Spotlight, the Shortcuts app, the Action button);
 	// on Android, the launcher's shortcuts. Each opens the app with its URL.
 	Shortcuts []shortcutConfig `json:"shortcuts"`
+	// ApplePay is Apple Pay's (asuka/sdk/pay): MerchantIDs are the
+	// merchant identifiers the app pays with ("merchant.com.example"),
+	// its in-app-payments entitlement's (iOS, macOS).
+	ApplePay struct {
+		MerchantIDs []string `json:"merchantIds"`
+	} `json:"applePay"`
 	// shareSheet: the app's Go code calls app.ShareSheet (its archive has
 	// it, sheetSymbol): the share target shows the app's sheet.
 	shareSheet bool
@@ -560,6 +566,11 @@ var featurePermissions = []struct {
 	// feature (ASUKA_PURCHASE); the In-App Purchase capability needs no
 	// entitlement.
 	{pkg: "github.com/egoist/asuka/sdk/purchase", android: []string{"com.android.vending.BILLING"}, modules: []string{"purchase"}},
+	// Google Pay: play-services-wallet, in the asuka-pay module, whose
+	// manifest enables its API and has the service Google Pay's sheet
+	// calls back. Apple Pay's entitlement has asuka.json's merchant IDs
+	// (payEntitlement).
+	{pkg: payPkg, modules: []string{"pay"}},
 	// Binding the text-to-speech engine: Android 11's package visibility.
 	{pkg: "github.com/egoist/asuka/sdk/speech", androidTop: []string{`<queries><intent><action android:name="android.intent.action.TTS_SERVICE" /></intent></queries>`}},
 	// The pedometer: iOS's Motion & Fitness; Android's physical activity.
@@ -634,10 +645,26 @@ func (c *appConfig) useLocation(has func(symbol string) bool) {
 	}
 }
 
+// payPkg is asuka/sdk/pay.
+const payPkg = "github.com/egoist/asuka/sdk/pay"
+
+// payEntitlement gives an app that imports asuka/sdk/pay (deps; nil:
+// any app) Apple Pay's entitlement, with asuka.json's merchant IDs.
+func (c *appConfig) payEntitlement(deps []string) {
+	if len(c.ApplePay.MerchantIDs) == 0 || deps != nil && !slices.Contains(deps, payPkg) {
+		return
+	}
+	if c.entitlements == nil {
+		c.entitlements = map[string]any{}
+	}
+	c.entitlements["com.apple.developer.in-app-payments"] = c.ApplePay.MerchantIDs
+}
+
 // permissionsFor adds the permissions the packages deps (an app's
 // imports, all the way down) need. nil deps: every package's (the player
 // runs any app).
 func (c *appConfig) permissionsFor(deps []string) {
+	c.payEntitlement(deps)
 	for _, f := range featurePermissions {
 		if deps != nil && !slices.Contains(deps, f.pkg) {
 			continue

@@ -109,6 +109,7 @@ func TestModulesLinuxHas(t *testing.T) {
 		"widget":       {"set"},
 		"liveActivity": {"enabled", "start", "update", "end", "running", "next", "stop"},
 		"purchase":     {"available", "products", "buy", "finish", "entitlements", "restore", "status", "manage", "refund", "redeem", "storefront", "next", "stop"},
+		"pay":          {"available", "setUp", "present", "next", "answer"},
 	}
 	// asuka/sdk/location's authorization, and its background part (computed by the Go code).
 	want["locationAccess"] = []string{"current", "next", "stop", "request", "precise", "settings"}
@@ -352,6 +353,8 @@ func TestPersonalDataModules(t *testing.T) {
 	check("purchase", "available", nil, "\x00", "")
 	check("purchase", "products", []byte(`{"items":[{"id":"pro","kind":"nonConsumable"}]}`), "", "not available")
 	check("purchase", "next", nil, "", "not available")
+	check("pay", "available", []byte(`{}`), `{"wallet":"","canPay":false,"hasCard":false}`, "")
+	check("pay", "present", []byte(`{"id":"a"}`), "", "not available")
 	check("transcribe", "check", []byte("en"), "", "not available")
 	check("contacts", "add", []byte(`{"givenName":"Ada","familyName":"Lovelace","phones":[{"label":"mobile","value":"+44 1"}],"emails":[{"label":"home","value":"ada@example.com"}]}`), "\x00", "")
 	start := time.Date(2026, 12, 24, 0, 0, 0, 0, time.UTC)

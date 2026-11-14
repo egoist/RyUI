@@ -332,6 +332,11 @@ Asuka's packages call the host's native modules (`ui.Call`). In a browser:
   downloads a vCard, and `asuka/sdk/calendar`'s `Add` an `.ics` file.
 - `asuka/sdk/tracking` answers Denied when the browser sends Global Privacy
   Control or Do Not Track, else Allowed, without a prompt.
+- `asuka/sdk/pay`: Apple Pay where the browser has it (Safari), through the
+  Payment Request API, the merchant validated by the app's server
+  (`OnValidateMerchant`) for a domain registered with Apple; Google Pay
+  elsewhere, through Google's web API (`pay.js`, loaded from
+  pay.google.com); each one's own button. A sheet shows only from a tap.
 - Not on the web, with an error that says so (or the package's own
   "not available"): `asuka/sdk/review`, `asuka/sdk/integrity`, `asuka/sdk/agerange`,
   `asuka/sdk/appleauth`, `asuka/sdk/periodic`, `asuka/sdk/widget`, `asuka/sdk/liveactivity`, `asuka/sdk/photos` (Denied:

@@ -413,6 +413,11 @@ var iosFeatures = []struct{ flag, symbol string }{
 	{"ASUKA_IMAGEEDIT", "github.com/egoist/asuka/sdk/imageedit.Edit"},
 	{"ASUKA_IMAGEEDIT", "github.com/egoist/asuka/sdk/imageedit.Size"},
 	{"ASUKA_IMAGEEDIT", "github.com/egoist/asuka/sdk/imageedit.VideoFrame"},
+	// PassKit: Apple Pay's sheet and button.
+	{"ASUKA_PAY", "github.com/egoist/asuka/sdk/pay.Pay"},
+	{"ASUKA_PAY", "github.com/egoist/asuka/sdk/pay.Available"},
+	{"ASUKA_PAY", "github.com/egoist/asuka/sdk/pay.SetUp"},
+	{"ASUKA_PAY", "github.com/egoist/asuka/sdk/pay.Button"},
 	{"ASUKA_APPLEAUTH", "github.com/egoist/asuka/sdk/appleauth.SignIn"},
 	{"ASUKA_APPLEAUTH", "github.com/egoist/asuka/sdk/appleauth.Available"},
 	{"ASUKA_APPLEAUTH", "github.com/egoist/asuka/sdk/appleauth.CredentialState"},

@@ -43,6 +43,7 @@ web need nothing declared (see each one's section below).
 | `asuka/sdk/photos` | `READ_MEDIA_IMAGES`, `READ_MEDIA_VISUAL_USER_SELECTED`; `READ_EXTERNAL_STORAGE` (Android 12 and earlier) | `NSPhotoLibraryUsageDescription` |
 | `asuka/sdk/push` | Firebase Cloud Messaging, `POST_NOTIFICATIONS` | the `aps-environment` entitlement; `remote-notification` background mode |
 | `asuka/sdk/appleauth` | | the Sign in with Apple entitlement |
+| `asuka/sdk/pay` | Google Pay's library, its API enabled, its callbacks service | the Apple Pay entitlement, with `asuka.json`'s `applePay.merchantIds` |
 | `asuka/sdk/biometric` | `USE_BIOMETRIC` | `NSFaceIDUsageDescription` |
 | `asuka/sdk/audio/record` | `RECORD_AUDIO`, `FOREGROUND_SERVICE_MICROPHONE`; a foreground service | `NSMicrophoneUsageDescription` |
 | `asuka/sdk/nowplaying` | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`; a foreground service | the `audio` background mode (for an app that calls `nowplaying.Show`) |
@@ -99,7 +100,7 @@ its Info.plist (location's as `NSLocationUsageDescription` too). Its
 signature has the hardened runtime's entitlements for what they ask
 (camera, microphone, location, contacts, calendars, photos), without
 which a Developer ID build is refused them. Push's `aps-environment`,
-Sign in with Apple and App Attest are entitlements only a provisioning
+Sign in with Apple, App Attest and Apple Pay are entitlements only a provisioning
 profile grants: `asuka build` embeds one for an app that uses them
 (`asuka.json`'s `mac.profile`, else `ASUKA_MAC_PROFILE`, else the best
 match installed). Without one, the app builds, the CLI says what won't
@@ -125,6 +126,7 @@ UserNotifications, AuthenticationServices), except where a Mac differs:
 | `asuka/sdk/biometric` | Touch ID's prompt, or the user's password (not with `NoPasscode`) |
 | `asuka/sdk/push` | APNs, as on iOS; no `Rewrite` (it needs a notification service extension). Needs a provisioning profile (above) |
 | `asuka/sdk/appleauth` | Apple's button and sheet, as on iOS. Needs a provisioning profile (above) |
+| `asuka/sdk/pay` | Apple Pay's sheet and button, as on iOS: a Mac with Touch ID pays, or one near the user's iPhone or Apple Watch. Needs a provisioning profile (above) |
 | `asuka/sdk/integrity` | App Attest, as on iOS. Needs a provisioning profile (above): without one `Supported` is false |
 | `asuka/sdk/background` | The task keeps App Nap from slowing the app; there's no notification, so `Update` changes nothing |
 | `asuka/sdk/periodic` | `NSBackgroundActivityScheduler`: the tasks run while the app runs (it isn't launched for them); one that wants power waits while the Mac is on its battery |
@@ -180,6 +182,7 @@ device without it:
 | `asuka/sdk/push`, `asuka/sdk/widget`, `asuka/sdk/review`, `asuka/sdk/integrity` | Packaged (Store) apps' or Apple's and Google's: `push.Register` fails, `widget.Set` does nothing, `review.Request` shows nothing, `integrity.Supported` is false |
 | `asuka/sdk/liveactivity` | A phone's: `Enabled` is false, `Start` fails with `ErrNotAvailable` |
 | `asuka/sdk/purchase` | The Microsoft Store, for an app installed from it; otherwise `Available` is false and the rest fail with `ErrNotAvailable` ([In-app purchases](purchases.md)) |
+| `asuka/sdk/pay` | No wallet pays for a Windows app: `Available` says none, `Pay` fails with `ErrNotAvailable`, `Button` shows nothing |
 | `asuka/sdk/appleauth`, `asuka/sdk/agerange`, `asuka/sdk/transcribe`, `asuka/sdk/sensors` | Not on Windows: unavailable, as on a device without them |
 | `ui.Haptic` | A PC has no haptics: it does nothing |
 | `asuka/sdk/splash` | A Windows app has no launch screen: `Hold` and `Hide` do nothing |
@@ -231,6 +234,7 @@ names what's missing.
 | `asuka/sdk/photos`' library, `asuka/sdk/appleauth`, `asuka/sdk/transcribe`, `asuka/sdk/widget`, `asuka/sdk/liveactivity` | None on Linux: the library's access is `Denied`; `appleauth.Available` is false and its button shows nothing; `transcribe` and `liveactivity.Start` fail with `ErrNotAvailable`; `widget.Set` does nothing. `asuka/sdk/splash` has nothing to hold |
 | `asuka/sdk/purchase` | No store: `Available` is false, the rest fail with `ErrNotAvailable` |
 | `asuka/sdk/biometric`, `asuka/sdk/integrity`, `asuka/sdk/agerange`, `asuka/sdk/push` | None on Linux: not available, not supported. `asuka/sdk/review` does nothing; `asuka/sdk/tracking` answers allowed |
+| `asuka/sdk/pay` | No wallet pays for a Linux app: `Available` says none, `Pay` fails with `ErrNotAvailable`, `Button` shows nothing |
 | `asuka/sdk/crash` | Go's crash output, which has a crash in native code too (a signal in GTK's code, a GLib abort), reported as `Native`; the system's own record (systemd-coredump, apport) isn't read |
 | `ui.Haptic` | A desktop has no haptics: it does nothing |
 | `ui.OnShare`, `app.ShareSheet`, shortcuts | iOS and Android only |
@@ -271,6 +275,7 @@ and its service worker for notifications and Web Push.
 | `asuka/sdk/review`, `asuka/sdk/integrity`, `asuka/sdk/agerange`, `asuka/sdk/appleauth`, `asuka/sdk/periodic`, `asuka/sdk/widget`, `asuka/sdk/liveactivity`, `asuka/sdk/transcribe` | Not on the web: an error that says so, or the package's `ErrNotAvailable` |
 | `asuka/sdk/purchase` | Google Play through the Digital Goods API, in a Trusted Web Activity; elsewhere no store (`ErrNotAvailable`) |
 | `asuka/sdk/maps` | OpenStreetMap's tiles, drawn by the host, as on Windows; `ShowsUser` once the page has the location permission |
+| `asuka/sdk/pay` | Apple Pay where the browser has it (Safari), through the Payment Request API, the merchant validated by the app's server (`OnValidateMerchant`); Google Pay elsewhere, through Google's web API (pay.js); each one's own button. A sheet shows only from a tap |
 | `asuka/sdk/crash` | Go's crashes (the host keeps the runtime's output) and uncaught JavaScript errors, as `Exception` reports that aren't fatal |
 | `asuka/sdk/splash` | `Hold` and `Hide` do nothing |
 | `ui.OnShare`, `app.ShareSheet`, shortcuts | iOS and Android only |
@@ -1995,6 +2000,150 @@ none: `Button` is nothing, `Available` is false and `SignIn` fails with
 `ErrNotAvailable`; so on Windows, Linux and the web. Sign in with Apple
 there on the web (`asuka/sdk/webauth`). The Mac has it as iOS does, with a
 provisioning profile (see [On a Mac](#on-a-mac)).
+
+## Wallet payments: asuka/sdk/pay
+
+`asuka/sdk/pay` takes payments with the platform's wallet: Apple Pay on
+iOS, macOS and in Safari, Google Pay on Android and in the other
+browsers. It's for physical goods and services (an order, a ride, a
+ticket, a donation); digital content sold in the app is the stores'
+in-app purchases. The user pays in the wallet's sheet, and the app gets
+the wallet's payment token for its processor (Stripe, Adyen,
+Braintree...), which its server charges. Asuka never charges a card.
+
+```go
+pay.Button(pay.ButtonProps{
+	Type:  pay.Buy,
+	Style: pay.Automatic, // black in light mode, white in dark
+	OnPress: func() {
+		go func() {
+			p, err := pay.Pay(pay.Request{
+				Country: "US", Currency: "USD",
+				Items: []pay.Item{{Label: "Tea set", Amount: "40.00"}, {Label: "Tax", Amount: "3.20", Kind: pay.Tax}},
+				Total: pay.Item{Label: "Asuka Tea", Amount: "43.20"},
+				Shipping: pay.Name | pay.Address | pay.Email,
+				Apple:    pay.Apple{MerchantID: "merchant.com.example.tea"},
+				Google:   pay.Google{Gateway: "stripe", GatewayParams: map[string]string{"stripe:version": "2018-10-31", "stripe:publishableKey": key}},
+				OnShippingContact: func(c pay.Contact) (pay.Update, error) {
+					return api.Quote(c.Address) // the items and total for the address
+				},
+				OnAuthorize: func(p pay.Payment) error {
+					return api.Charge(p.Token) // nil: paid; an error shows in the sheet
+				},
+			})
+			if err == nil {
+				ui.Post(func() { orderPlaced.Set(p.Shipping.Name) })
+			}
+		}()
+	},
+})
+```
+
+`pay.Available(request)` says what the wallet can do for the request's
+cards: its `Wallet`, `CanPay` (show the button) and `HasCard` (the user
+has one it takes). Show `Button` only where `CanPay` holds; it's the
+wallet's own (`PKPaymentButton`, Google's `PayButton`, Safari's and
+Google's on the web), whose brand guidelines ask that apps don't draw
+their own: its words (`Buy`, `Checkout`, `Book`, `Donate`, `Order`,
+`Subscribe`, `Plain`, and Apple's others) and logo are in the user's
+language, and its `Style` is `Black` on light backgrounds, `White` on
+dark ones, `WhiteOutline` on white, or `Automatic`. Its height is the
+wallet's (44 points on iOS, 30 on the Mac, Google's 48); give it the
+width. Where Apple Pay has no card yet, Apple's guidelines show the
+`SetUpButton`, which calls `pay.SetUp` to add one (or the Buy button,
+whose sheet adds one too); Google Pay's sheet adds a card itself.
+
+`pay.Pay(request)` shows the sheet and returns the `Payment` once it
+closes, or `ErrCanceled`; it isn't on the main thread. Amounts are
+decimal strings in the currency's major unit (`"12.75"`, at most two
+decimals for Google Pay; negative for a discount). The `Total`'s label
+is the business's name, as the card statement shows it ("Pay Asuka Tea"
+in Apple Pay's sheet); the `Items` are the lines above it, their `Kind`
+for Google Pay's sheet. The request also says the cards taken
+(`Networks`, `Cards`, `CardCountries`), what to ask for with the
+shipping and billing contacts (`Name`, `Email`, `Phone`, `Address`),
+the `ShippingType` and `ShippingMethods` (the first chosen), where
+Google Pay ships (`ShippingCountries`), and Apple Pay's coupon codes
+(`Coupons`). `Recurring` makes it a subscription's payment, with its
+regular billing and a trial; `Deferred`, one charged later (a hotel);
+`AutomaticReload`, a stored balance's top up. The wallet shows the
+charges to come, and its token is a merchant token for them.
+
+The handlers run on `Pay`'s goroutine while the sheet waits (about 30
+seconds at most), so they may call the app's server:
+`OnShippingContact` as the user picks an address (the wallets give only
+its city, state, postal code and country before the payment: enough for
+the tax and the shipping methods), `OnShippingMethod`,
+`OnPaymentMethod` (a card's surcharge) and `OnCoupon`. Each answers an
+`Update` (new items, total or methods; what's nil stays) and an error,
+which the sheet shows by its field: `pay.Invalid(pay.ShippingPostalCode,
+"...")`, `Unserviceable` for an address the app doesn't ship to,
+`CouponInvalid`, several in `errors.Join`. Write their messages for the
+user. `OnAuthorize` gets the `Payment` as the user pays (Face ID, Touch
+ID, a PIN): send its `Token` to the server, which charges it, and
+answer with its error. The sheet shows it, and the user may try again;
+`nil` closes the sheet with a check mark, and `Pay` returns the payment
+with its card, contacts and shipping method.
+
+The token is what the processor's SDKs send. Apple Pay's is the
+`PKPaymentToken`'s `paymentData`, a JSON object (Stripe takes it as
+`pk_token`, Braintree and Adyen as the Apple Pay token), signed for the
+merchant ID's payment processing certificate, which the processor holds.
+Google Pay's is tokenized by the request's `Google.Gateway`, with the
+gateway's parameters (Stripe's publishable key, Adyen's or Braintree's
+merchant account), or encrypted for the app's server with `DirectKey`.
+
+Apple Pay needs a merchant ID (developer.apple.com, Identifiers, Merchant
+IDs) with the processor's payment processing certificate, in
+`asuka.json`:
+
+```json
+{ "applePay": { "merchantIds": ["merchant.com.example.tea"] } }
+```
+
+An app that imports the package gets the in-app-payments entitlement
+with them; its App ID needs the Apple Pay capability with the same IDs,
+for the profile of a release build (a Mac app needs one too: see
+[On a Mac](#on-a-mac)). The simulator's sheet pays with its test cards,
+which return a token no processor charges. On the web, Apple Pay needs
+the site's domain registered for the merchant ID, and
+`OnValidateMerchant`: the app's server asks Apple for a merchant session
+with the merchant identity certificate. Google Pay's `TEST` environment
+needs no account and returns test tokens; `Google.Production` needs the
+merchant ID of the Google Pay & Wallet Console, and the app approved
+there. An Android app that imports the package gets the Google Pay
+library (`play-services-wallet`), its API enabled in the manifest and
+the service its sheet calls back; others go without.
+
+On iOS and the Mac it's PassKit's `PKPaymentAuthorizationController`
+and `PKPaymentButton`. On Android it's the Google Pay API: `isReadyToPay`,
+`loadPaymentData` through the Activity Result API, its dynamic price
+updates and authorization through its callbacks service. In a browser,
+Apple Pay where the browser has it (Safari, and an iPhone's or iPad's
+browsers) through the Payment Request API's Apple Pay method; Google Pay
+elsewhere, through Google's own web API (`pay.js`, loaded from
+pay.google.com), which has the same request and callbacks as Android in
+every browser. `Pay` is called from the button's tap: the browsers show
+a sheet only in answer to one. Windows and Linux have no wallet for
+apps: `Available` says none, `Pay` fails with `ErrNotAvailable` and
+`Button` is nothing.
+
+Tests play the user with `host/fake`'s `Wallet`: it shows what the app
+asked for, changes the address, the method or the coupon, and pays
+(Apple Pay's events, or Google Pay's on Android and the web):
+
+```go
+var w *fake.Wallet
+a := uitest.Mount(t, Checkout, uitest.Platform(ui.PlatformIOS), uitest.Setup(func(h *fake.Host) { w = h.Wallet() }))
+a.Tap("Buy with Apple Pay")
+a.Until("the sheet", func() bool { return w.Sheet != nil })
+w.ChangeShippingContact(fake.PayContact{State: "CA", PostalCode: "95014", CountryCode: "US"})
+a.Until("the tax", func() bool { return w.Sheet.Total.Amount == "43.20" })
+w.Authorize(fake.PayAuthorization{Token: "tok", Card: fake.PayCard{Network: "visa", Kind: "credit", Name: "Visa 1234"}})
+a.WaitFor("Thanks!")
+```
+
+[examples/checkout](../examples/checkout) sells a tea set this way.
 
 ## Face ID and fingerprints: asuka/sdk/biometric
 

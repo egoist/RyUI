@@ -40,6 +40,9 @@ type View struct {
 	// A List's, as its last ListUpdate had them.
 	Items    []int64
 	Sections []ListSection
+	// Native are a native view's named values (ui.Native's Props), as
+	// last set: a bool, int64, float64, string or []byte each.
+	Native map[string]any
 
 	presented bool
 	// list is the List a cell is bound into (Bind): keys go on there
@@ -298,6 +301,9 @@ func (h *Host) apply(op *ops.Op) {
 			panic("fake: SetProp: a sheet's FullScreen after its Present: a host presents it as it was")
 		}
 		v.Props[op.Prop] = op.Value
+		if op.Prop == ops.PropNativeProp {
+			v.setNative(op.Value.Bytes)
+		}
 	case ops.OpSetFrame:
 		h.view(op.ID, "SetFrame").Frame = op.Frame
 	case ops.OpListen:

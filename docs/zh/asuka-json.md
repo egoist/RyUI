@@ -55,6 +55,7 @@
 | `updates` | 对象 | 无 | 桌面应用的签名更新。见 [updates](#updates)。 |
 | `ios` | 对象 | | iOS 构建的配置，部分也用于 Mac。见 [ios](#ios)。 |
 | `mac` | 对象 | | Mac 构建的描述文件。见 [mac](#mac)。 |
+| `applePay` | 对象 | 无 | `{"merchantIds": ["merchant.com.example"]}`：Apple Pay 付款所用的商户 ID（`asuka/sdk/pay`），会写进导入了这个包的 iOS 或 Mac 应用的 in-app-payments entitlement。见[钱包支付](device.md#钱包支付asukasdkpay)。 |
 | `android` | 对象 | | Android 构建的配置。见 [android](#android)。 |
 | `linux` | 对象 | | Linux 构建对应用的描述。见 [linux](#linux)。 |
 | `web` | 对象 | | Web 构建的配置。见 [web](#web)。 |
@@ -229,7 +230,7 @@ Mac 构建签名所用的描述文件；团队取自 `ios.team`。
 
 | 键 | 类型 | 默认值 | 说明 |
 |---|---|---|---|
-| `profile` | 字符串 | `ASUKA_MAC_PROFILE`；没有时，如果应用需要，用已安装的最佳匹配 | Developer ID（或开发用）描述文件的路径、名称或 UUID，推送、通过 Apple 登录和 App Attest 都需要它。 |
+| `profile` | 字符串 | `ASUKA_MAC_PROFILE`；没有时，如果应用需要，用已安装的最佳匹配 | Developer ID（或开发用）描述文件的路径、名称或 UUID，推送、通过 Apple 登录、App Attest 和 Apple Pay 都需要它。 |
 | `appStoreProfile` | 字符串 | 已安装的最佳匹配 | Mac App Store 的描述文件，用于 `--appstore`。 |
 
 `--profile` 和 `ASUKA_MAC_PROFILE` 会覆盖它们。见[打包与发布](shipping.md#macos)。

@@ -131,6 +131,7 @@ Asuka 的包会调用宿主的原生模块（`ui.Call`）。在浏览器中：
 - `asuka/sdk/screen`：`Lock`（仅在全屏或已安装的应用中有效）；隐藏系统栏就是进入全屏。
 - `asuka/sdk/library`：`Save` 会下载文件。`asuka/sdk/contacts`：浏览器支持 Contact Picker 时（Android 上的 Chrome）可以用 `Pick`；`Add` 会下载一个 vCard 文件，`asuka/sdk/calendar` 的 `Add` 则下载一个 `.ics` 文件。
 - `asuka/sdk/tracking`：浏览器发送了 Global Privacy Control 或 Do Not Track 时返回 Denied，否则返回 Allowed，不会弹出提示。
+- `asuka/sdk/pay`：浏览器支持 Apple Pay 时（Safari）通过 Payment Request API 使用它，商户验证由应用的服务器完成（`OnValidateMerchant`），网站的域名需要在 Apple 注册；其他浏览器通过 Google 的 Web API（从 pay.google.com 加载的 `pay.js`）使用 Google Pay；两者都使用各自的官方按钮。支付面板只在点击时显示。
 - 以下功能在 Web 上不可用，调用时会返回说明原因的错误（或包自己的“不可用”结果）：`asuka/sdk/review`、`asuka/sdk/integrity`、`asuka/sdk/agerange`、`asuka/sdk/appleauth`、`asuka/sdk/periodic`、`asuka/sdk/widget`、`asuka/sdk/liveactivity`、`asuka/sdk/photos`（返回 Denied，可以用 `device.PickPhotos` 选择照片）、读取通讯录和日历、`asuka/sdk/transcribe` 的文件转写，以及 `asuka/sdk/screen` 的 `PreventCapture` 和 `OnScreenshot`。
 
 ## 通知与 Web Push

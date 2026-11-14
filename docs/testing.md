@@ -177,9 +177,13 @@ one: with nothing to answer them, they get an error, as on a platform
 without the service. `Setup` gives the fake host answers by module
 name (`h.Modules`, `h.AsyncModules`) before the app mounts, as
 Asuka's own tests do. For some, the fake host has a stand-in that
-behaves as the platform's: `h.Store()` is a store that sells what the
-test gives it, for `asuka/sdk/purchase` (see
-[In-app purchases](purchases.md#testing-your-purchases)).
+behaves as the platform's, which the test drives: `h.Store()` is a
+store that sells what the test gives it, for `asuka/sdk/purchase` (see
+[In-app purchases](purchases.md#testing-your-purchases)); `h.Wallet()`
+is Apple Pay's or Google Pay's sheet for `asuka/sdk/pay`, in which the
+test chooses an address and pays (see [Wallet
+payments](device.md#wallet-payments-asukasdkpay)); and
+`h.NowPlaying()` is the system's media controls.
 
 A [native package](native.md)'s module is a Go interface, so the
 simplest test gives your components the interface and the test its

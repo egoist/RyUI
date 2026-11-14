@@ -22,6 +22,7 @@ Asuka 提供了一系列包，让应用用上视图之外的设备能力：相�
 | `asuka/sdk/photos` | `READ_MEDIA_IMAGES`、`READ_MEDIA_VISUAL_USER_SELECTED`；`READ_EXTERNAL_STORAGE`（Android 12 及更早版本） | `NSPhotoLibraryUsageDescription` |
 | `asuka/sdk/push` | Firebase Cloud Messaging、`POST_NOTIFICATIONS` | `aps-environment` entitlement；`remote-notification` 后台模式 |
 | `asuka/sdk/appleauth` | | 通过 Apple 登录（Sign in with Apple）的 entitlement |
+| `asuka/sdk/pay` | Google Pay 的库，启用它的 API，以及它的回调服务 | Apple Pay 的 entitlement，带有 `asuka.json` 的 `applePay.merchantIds` |
 | `asuka/sdk/biometric` | `USE_BIOMETRIC` | `NSFaceIDUsageDescription` |
 | `asuka/sdk/audio/record` | `RECORD_AUDIO`、`FOREGROUND_SERVICE_MICROPHONE`；一个前台服务 | `NSMicrophoneUsageDescription` |
 | `asuka/sdk/nowplaying` | `FOREGROUND_SERVICE`、`FOREGROUND_SERVICE_MEDIA_PLAYBACK`；一个前台服务 | `audio` 后台模式（仅限调用了 `nowplaying.Show` 的应用） |
@@ -62,7 +63,7 @@ Asuka 写入的用途说明是通用的（"To take a photo."）。iOS 和 macOS 
 
 ## 在 Mac 上
 
-Mac 应用（无论是 `asuka dev` 还是 `asuka build` 生成的）的 Info.plist 里有同样的用途说明（定位的那条还会额外写成 `NSLocationUsageDescription`）。它的签名带有 hardened runtime 为这些请求所需的 entitlement（相机、麦克风、定位、通讯录、日历、照片）；缺了它们，Developer ID 构建的应用就拿不到相应的权限。推送的 `aps-environment`、通过 Apple 登录和 App Attest 这几项 entitlement 只能由描述文件授予：对于用到它们的应用，`asuka build` 会嵌入一个描述文件（优先取 `asuka.json` 的 `mac.profile`，其次是 `ASUKA_MAC_PROFILE`，最后是本机已安装的最佳匹配项）。没有描述文件时，应用照样能构建，CLI 会告诉你哪些功能将无法使用：在 Mac 上，注册推送和通过 Apple 登录都会失败，App Attest 会报告不受支持。`asuka dev` 使用 ad hoc 签名，不带描述文件，所以开发时也是同样的情况。Mac App Store 构建（`--appstore`）运行在沙盒中，可以访问网络以及用户选择的文件。详见[发布](shipping.md)。
+Mac 应用（无论是 `asuka dev` 还是 `asuka build` 生成的）的 Info.plist 里有同样的用途说明（定位的那条还会额外写成 `NSLocationUsageDescription`）。它的签名带有 hardened runtime 为这些请求所需的 entitlement（相机、麦克风、定位、通讯录、日历、照片）；缺了它们，Developer ID 构建的应用就拿不到相应的权限。推送的 `aps-environment`、通过 Apple 登录、App Attest 和 Apple Pay 这几项 entitlement 只能由描述文件授予：对于用到它们的应用，`asuka build` 会嵌入一个描述文件（优先取 `asuka.json` 的 `mac.profile`，其次是 `ASUKA_MAC_PROFILE`，最后是本机已安装的最佳匹配项）。没有描述文件时，应用照样能构建，CLI 会告诉你哪些功能将无法使用：在 Mac 上，注册推送和通过 Apple 登录都会失败，App Attest 会报告不受支持。`asuka dev` 使用 ad hoc 签名，不带描述文件，所以开发时也是同样的情况。Mac App Store 构建（`--appstore`）运行在沙盒中，可以访问网络以及用户选择的文件。详见[发布](shipping.md)。
 
 这些包在 macOS 上的工作方式与 iOS 相同，用的也是同一套框架（AVFoundation、PhotoKit、Core Location、MapKit、Vision、Speech、UserNotifications、AuthenticationServices），只有下面这些 Mac 与之不同的地方例外：
 
@@ -78,6 +79,7 @@ Mac 应用（无论是 `asuka dev` 还是 `asuka build` 生成的）的 Info.pli
 | `asuka/sdk/biometric` | Touch ID 的提示框，或者输入用户密码（设置了 `NoPasscode` 时除外） |
 | `asuka/sdk/push` | 和 iOS 一样使用 APNs；不支持 `Rewrite`（它需要通知服务扩展）。需要描述文件（见上文） |
 | `asuka/sdk/appleauth` | 和 iOS 一样，使用 Apple 提供的按钮和面板。需要描述文件（见上文） |
+| `asuka/sdk/pay` | 和 iOS 一样，使用 Apple Pay 的支付面板和按钮：带触控 ID 的 Mac 可以直接付款，否则用附近的 iPhone 或 Apple Watch 付款。需要描述文件（见上文） |
 | `asuka/sdk/integrity` | 和 iOS 一样使用 App Attest。需要描述文件（见上文）：没有的话 `Supported` 为 false |
 | `asuka/sdk/background` | 任务会阻止 App Nap 拖慢应用；没有通知，所以 `Update` 不起作用 |
 | `asuka/sdk/periodic` | `NSBackgroundActivityScheduler`：任务只在应用运行期间执行（系统不会为了它们启动应用）；需要接通电源的任务，会在 Mac 使用电池时等待 |
@@ -125,6 +127,7 @@ Windows 应用不需要声明任何东西：`asuka build --platform windows` 不
 | `asuka/sdk/push`、`asuka/sdk/widget`、`asuka/sdk/review`、`asuka/sdk/integrity` | 这些能力只属于打包（应用商店）应用，或者依赖 Apple 和 Google 的服务：`push.Register` 会失败，`widget.Set` 什么也不做，`review.Request` 不显示任何东西，`integrity.Supported` 为 false |
 | `asuka/sdk/liveactivity` | 这是手机的能力：`Enabled` 为 false，`Start` 以 `ErrNotAvailable` 失败 |
 | `asuka/sdk/purchase` | Microsoft Store，仅限从商店安装的应用；否则 `Available` 为 false，其余调用以 `ErrNotAvailable` 失败（见[应用内购买](purchases.md)） |
+| `asuka/sdk/pay` | Windows 上没有能为应用付款的钱包：`Available` 表示没有钱包，`Pay` 以 `ErrNotAvailable` 失败，`Button` 什么也不显示 |
 | `asuka/sdk/appleauth`、`asuka/sdk/agerange`、`asuka/sdk/transcribe`、`asuka/sdk/sensors` | Windows 上不支持：返回不可用，与在缺少这些功能的设备上一样 |
 | `ui.Haptic` | 电脑没有触感反馈：什么也不做 |
 | `asuka/sdk/splash` | Windows 应用没有启动屏：`Hold` 和 `Hide` 什么也不做 |
@@ -161,6 +164,7 @@ Linux 宿主访问桌面服务时，有门户就走门户，此外还用到 GLib
 | `asuka/sdk/photos` 的照片库、`asuka/sdk/appleauth`、`asuka/sdk/transcribe`、`asuka/sdk/widget`、`asuka/sdk/liveactivity` | Linux 上都没有：照片库的访问权限为 `Denied`；`appleauth.Available` 为 false，它的按钮什么也不显示；`transcribe` 和 `liveactivity.Start` 以 `ErrNotAvailable` 失败；`widget.Set` 什么也不做。`asuka/sdk/splash` 也没有启动屏可以保持 |
 | `asuka/sdk/purchase` | 没有应用商店：`Available` 为 false，其余调用以 `ErrNotAvailable` 失败 |
 | `asuka/sdk/biometric`、`asuka/sdk/integrity`、`asuka/sdk/agerange`、`asuka/sdk/push` | Linux 上都没有：返回不可用或不受支持。`asuka/sdk/review` 什么也不做；`asuka/sdk/tracking` 总是返回允许 |
+| `asuka/sdk/pay` | Linux 上没有能为应用付款的钱包：`Available` 表示没有钱包，`Pay` 以 `ErrNotAvailable` 失败，`Button` 什么也不显示 |
 | `asuka/sdk/crash` | Go 的崩溃输出，其中也包括原生代码中的崩溃（GTK 代码里收到的信号、GLib 的 abort），这类崩溃报告为 `Native`；不会读取系统自己的崩溃记录（systemd-coredump、apport） |
 | `ui.Haptic` | 桌面设备没有触感反馈：什么也不做 |
 | `ui.OnShare`、`app.ShareSheet`、快捷操作 | 仅限 iOS 和 Android |
@@ -196,6 +200,7 @@ Linux 宿主访问桌面服务时，有门户就走门户，此外还用到 GLib
 | `asuka/sdk/review`、`asuka/sdk/integrity`、`asuka/sdk/agerange`、`asuka/sdk/appleauth`、`asuka/sdk/periodic`、`asuka/sdk/widget`、`asuka/sdk/liveactivity`、`asuka/sdk/transcribe` | Web 上不支持：返回一个说明这一点的错误，或者该包的 `ErrNotAvailable` |
 | `asuka/sdk/purchase` | 在 Trusted Web Activity 里通过 Digital Goods API 使用 Google Play；其他情况下没有应用商店（`ErrNotAvailable`） |
 | `asuka/sdk/maps` | 和 Windows 一样，由宿主绘制 OpenStreetMap 的瓦片；页面获得定位权限后，`ShowsUser` 才会生效 |
+| `asuka/sdk/pay` | 浏览器支持 Apple Pay 时（Safari）通过 Payment Request API 使用它，商户验证由应用的服务器完成（`OnValidateMerchant`）；其他浏览器通过 Google 的 Web API（pay.js）使用 Google Pay；两者都使用各自的官方按钮。支付面板只在点击时显示 |
 | `asuka/sdk/crash` | Go 的崩溃（宿主会保留运行时的输出）和未捕获的 JavaScript 错误，都作为非致命的 `Exception` 报告 |
 | `asuka/sdk/splash` | `Hold` 和 `Hide` 什么也不做 |
 | `ui.OnShare`、`app.ShareSheet`、快捷操作 | 仅限 iOS 和 Android |
@@ -1288,6 +1293,71 @@ appleauth.Button(appleauth.ButtonProps{
 ```
 
 `Credential` 的 `User` 是账号的稳定 ID；把 `IdentityToken`（由 Apple 签名的 JWT）和 `AuthorizationCode` 发给你的服务器，由服务器向 Apple 验证。`Email`、`GivenName` 和 `FamilyName` 只在用户第一次登录这个应用时提供：务必在那时保存下来。`ErrCanceled` 表示用户关闭了登录面板。`appleauth.CredentialState(user)` 告诉你用户是否仍在这个应用上使用“通过 Apple 登录”（如果是 `Revoked`，就让用户退出登录）。Android 上没有这项功能：`Button` 什么也不显示，`Available` 为 false，`SignIn` 会以 `ErrNotAvailable` 失败；Windows、Linux 和 Web 上也是如此。在这些平台上，可以通过网页完成“通过 Apple 登录”（`asuka/sdk/webauth`）。Mac 和 iOS 一样支持这项功能，但需要描述文件（见[在 Mac 上](#在-mac-上)）。
+
+## 钱包支付：asuka/sdk/pay
+
+`asuka/sdk/pay` 用平台自带的钱包收款：在 iOS、macOS 和 Safari 里是 Apple Pay，在 Android 和其他浏览器里是 Google Pay。它适用于实体商品和服务（订单、打车、门票、捐款）；在应用里出售的数字内容要走应用商店的内购。用户在钱包的支付面板里付款，应用拿到钱包给出的支付令牌（token），交给自己的支付处理商（Stripe、Adyen、Braintree 等），由服务器完成扣款。Asuka 自己从不扣款。
+
+```go
+pay.Button(pay.ButtonProps{
+	Type:  pay.Buy,
+	Style: pay.Automatic, // 浅色模式下为黑色，深色模式下为白色
+	OnPress: func() {
+		go func() {
+			p, err := pay.Pay(pay.Request{
+				Country: "US", Currency: "USD",
+				Items: []pay.Item{{Label: "Tea set", Amount: "40.00"}, {Label: "Tax", Amount: "3.20", Kind: pay.Tax}},
+				Total: pay.Item{Label: "Asuka Tea", Amount: "43.20"},
+				Shipping: pay.Name | pay.Address | pay.Email,
+				Apple:    pay.Apple{MerchantID: "merchant.com.example.tea"},
+				Google:   pay.Google{Gateway: "stripe", GatewayParams: map[string]string{"stripe:version": "2018-10-31", "stripe:publishableKey": key}},
+				OnShippingContact: func(c pay.Contact) (pay.Update, error) {
+					return api.Quote(c.Address) // 这个地址对应的各项费用和总额
+				},
+				OnAuthorize: func(p pay.Payment) error {
+					return api.Charge(p.Token) // nil：付款成功；返回的错误会显示在面板里
+				},
+			})
+			if err == nil {
+				ui.Post(func() { orderPlaced.Set(p.Shipping.Name) })
+			}
+		}()
+	},
+})
+```
+
+`pay.Available(request)` 告诉你钱包对这个请求所接受的卡能做什么：`Wallet` 是哪个钱包，`CanPay` 表示能付款（这时才显示按钮），`HasCard` 表示用户有一张可用的卡。只在 `CanPay` 为 true 时显示 `Button`。它就是钱包自己的按钮（`PKPaymentButton`、Google 的 `PayButton`，以及 Web 上 Safari 和 Google 提供的按钮），两家的品牌规范都要求应用不要自己画：按钮上的文字（`Buy`、`Checkout`、`Book`、`Donate`、`Order`、`Subscribe`、`Plain`，以及 Apple 独有的其他几种）和标志都使用用户的语言；`Style` 在浅色背景上用 `Black`，在深色背景上用 `White`，在白色背景上用 `WhiteOutline`，也可以用 `Automatic`。按钮的高度由钱包决定（iOS 上 44 点，Mac 上 30 点，Google 的是 48），宽度由你给定。Apple Pay 里还没有卡时，Apple 的规范建议显示 `SetUpButton`，点击后调用 `pay.SetUp` 添加一张卡（也可以照常显示购买按钮，它的面板同样能添加卡）；Google Pay 的面板会自己引导用户添加卡。
+
+`pay.Pay(request)` 显示支付面板，面板关闭后返回 `Payment`；用户直接关掉面板时返回 `ErrCanceled`。它不能在主线程上调用。金额是以货币主单位表示的十进制字符串（`"12.75"`；Google Pay 最多两位小数；折扣用负数）。`Total` 的标签是商家名称，和用户账单上显示的一致（Apple Pay 的面板上写作“Pay Asuka Tea”）；`Items` 是总额上方的各行明细，其中的 `Kind` 供 Google Pay 的面板使用。请求里还可以指定接受哪些卡（`Networks`、`Cards`、`CardCountries`），需要用户提供哪些收货和账单信息（`Name`、`Email`、`Phone`、`Address`），`ShippingType` 和 `ShippingMethods`（默认选中第一项），Google Pay 可以配送到哪些国家（`ShippingCountries`），以及是否接受 Apple Pay 的优惠码（`Coupons`）。设置 `Recurring` 表示这是一笔订阅付款，包括常规扣款和试用期；`Deferred` 表示稍后扣款（比如酒店）；`AutomaticReload` 表示储值余额的自动充值。钱包会把今后的扣款显示给用户，给出的令牌是用于这些扣款的商户令牌（merchant token）。
+
+各个回调在 `Pay` 所在的 goroutine 上依次运行，运行期间面板会等待（最多大约 30 秒），所以回调里可以请求应用的服务器：用户选择收货地址时调用 `OnShippingContact`（付款之前，钱包只提供城市、州（省）、邮编和国家，足够计算税费和可选的配送方式），此外还有 `OnShippingMethod`、`OnPaymentMethod`（比如对信用卡加收手续费）和 `OnCoupon`。每个回调返回一个 `Update`（新的明细、总额或配送方式；为 nil 的字段保持不变）和一个错误，面板会把错误显示在对应的字段旁：`pay.Invalid(pay.ShippingPostalCode, "...")`；不配送的地址用 `Unserviceable`；优惠码无效用 `CouponInvalid`；多个错误可以用 `errors.Join` 合并。错误信息要写给用户看。用户付款时（面容 ID、触控 ID 或输入密码）`OnAuthorize` 会收到 `Payment`：把其中的 `Token` 发给服务器，由服务器扣款，再把结果作为错误返回。面板会显示这个错误，用户可以重试；返回 `nil` 则面板打勾关闭，`Pay` 返回这笔付款，其中包括卡片、联系人信息和所选的配送方式。
+
+这个令牌就是各家支付处理商的 SDK 所发送的内容。Apple Pay 的令牌是 `PKPaymentToken` 的 `paymentData`，一个 JSON 对象（Stripe 把它作为 `pk_token` 接收，Braintree 和 Adyen 作为 Apple Pay 令牌接收），它用商户 ID 的支付处理证书签名，这个证书由支付处理商持有。Google Pay 的令牌由请求中的 `Google.Gateway` 按网关的参数生成（Stripe 的 publishable key，Adyen 或 Braintree 的商户账号）；也可以用 `DirectKey` 加密给应用自己的服务器。
+
+Apple Pay 需要一个商户 ID（在 developer.apple.com 的 Identifiers 里创建 Merchant ID），并配上支付处理商提供的支付处理证书，写进 `asuka.json`：
+
+```json
+{ "applePay": { "merchantIds": ["merchant.com.example.tea"] } }
+```
+
+导入了这个包的应用会获得带有这些商户 ID 的 in-app-payments entitlement；发布构建的描述文件要求应用的 App ID 开启 Apple Pay 能力，并关联同样的商户 ID（Mac 应用也需要描述文件，见[在 Mac 上](#在-mac-上)）。模拟器里的支付面板用测试卡付款，返回的令牌任何支付处理商都不会扣款。在 Web 上，Apple Pay 要求网站的域名已为该商户 ID 注册，并且要提供 `OnValidateMerchant`：由应用的服务器用商户身份证书向 Apple 请求商户会话（merchant session）。Google Pay 的 `TEST` 环境不需要任何账号，返回的是测试令牌；`Google.Production` 需要 Google Pay & Wallet Console 里的商户 ID，并且应用要在那里通过审核。导入了这个包的 Android 应用会带上 Google Pay 的库（`play-services-wallet`），在 manifest 里启用它的 API，并注册它的面板所回调的服务；没导入的应用则不会带上这些。
+
+在 iOS 和 Mac 上，它使用 PassKit 的 `PKPaymentAuthorizationController` 和 `PKPaymentButton`。在 Android 上使用 Google Pay API：`isReadyToPay`，通过 Activity Result API 调用 `loadPaymentData`，动态价格更新和付款授权则通过它的回调服务完成。在浏览器里，如果浏览器支持 Apple Pay（Safari，以及 iPhone 和 iPad 上的浏览器），就通过 Payment Request API 的 Apple Pay 支付方式；其他浏览器使用 Google 自己的 Web API（从 pay.google.com 加载的 `pay.js`），它在所有浏览器里都和 Android 使用同样的请求和回调。要在按钮的点击里调用 `Pay`：浏览器只在响应点击时显示支付面板。Windows 和 Linux 上没有可供应用使用的钱包：`Available` 表示没有钱包，`Pay` 以 `ErrNotAvailable` 失败，`Button` 什么也不显示。
+
+测试中可以用 `host/fake` 的 `Wallet` 扮演用户：它展示应用请求的内容，可以修改地址、配送方式或优惠码，也可以付款（发出的是 Apple Pay 的事件；在 Android 和 Web 上则是 Google Pay 的事件）：
+
+```go
+var w *fake.Wallet
+a := uitest.Mount(t, Checkout, uitest.Platform(ui.PlatformIOS), uitest.Setup(func(h *fake.Host) { w = h.Wallet() }))
+a.Tap("Buy with Apple Pay")
+a.Until("the sheet", func() bool { return w.Sheet != nil })
+w.ChangeShippingContact(fake.PayContact{State: "CA", PostalCode: "95014", CountryCode: "US"})
+a.Until("the tax", func() bool { return w.Sheet.Total.Amount == "43.20" })
+w.Authorize(fake.PayAuthorization{Token: "tok", Card: fake.PayCard{Network: "visa", Kind: "credit", Name: "Visa 1234"}})
+a.WaitFor("Thanks!")
+```
+
+[examples/checkout](../../examples/checkout) 就是用这种方式卖一套茶具。
 
 ## 面容 ID 与指纹：asuka/sdk/biometric
 
