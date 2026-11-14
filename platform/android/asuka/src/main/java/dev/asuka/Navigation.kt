@@ -744,9 +744,12 @@ fun widthClass(dp: Float) = if (dp < 600f) 1 else if (dp < 840f) 2 else 3
 /** Material's window height class (as ops.SizeClass) of a height in dp. */
 fun heightClass(dp: Float) = if (dp < 480f) 1 else if (dp < 900f) 2 else 3
 
-/** The window's insets changed: bars move, screens report again. */
+/**
+ * The window's insets changed: bars move, screens report again. A report
+ * reaches the app at once, which may make or destroy nodes: over a copy.
+ */
 fun AsukaRuntime.insetsChanged() {
-    for (n in nodes.values) {
+    for (n in ArrayList(nodes.values)) {
         when (val v = n.view) {
             is AsukaStack, is AsukaTabs -> v.requestLayout()
             is AsukaScreen -> v.report()
@@ -757,7 +760,7 @@ fun AsukaRuntime.insetsChanged() {
 
 /** The keyboard moved: screens report again, and a snackbar stays above it. */
 fun AsukaRuntime.reportScreens() {
-    for (n in nodes.values) (n.view as? AsukaScreen)?.report()
+    for (n in ArrayList(nodes.values)) (n.view as? AsukaScreen)?.report()
     AsukaSnackbar.current?.place()
 }
 
