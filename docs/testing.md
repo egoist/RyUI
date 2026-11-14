@@ -176,7 +176,9 @@ location, notifications) call the host, which in a test is the fake
 one: with nothing to answer them, they get an error, as on a platform
 without the service. `Setup` gives the fake host answers by module
 name (`h.Modules`, `h.AsyncModules`) before the app mounts, as
-Asuka's own tests do.
+Asuka's own tests do. Some have a simulation of their own:
+`h.NFC()` is a phone's NFC with tags to tap (see
+[NFC tags](nfc.md#testing-with-simulated-tags)).
 
 A [native package](native.md)'s module is a Go interface, so the
 simplest test gives your components the interface and the test its

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	. "github.com/egoist/asuka/internal/gtk"
+	"github.com/egoist/asuka/internal/nfcspec"
 	"github.com/egoist/asuka/native"
 )
 
@@ -60,6 +61,11 @@ func init() {
 			"running": func(_ []byte, reply func([]byte, error)) { reply([]byte("[]"), nil) },
 			"next":    noActivities,
 			"stop":    answerNil,
+		}
+		// asuka/sdk/nfc: a phone's and Chrome's on Android; none here.
+		m["nfc"] = map[string]method{}
+		for k, f := range nfcspec.Unavailable("Linux gives apps no NFC for tags (a PC/SC reader's are smart cards)") {
+			m["nfc"][k] = f
 		}
 		notAvailable := func(_ []byte, reply func([]byte, error)) { reply(nil, errors.New("not available")) }
 		m["appleAuth"] = map[string]method{

@@ -2,7 +2,8 @@
 // hardware-sensors.js (network, location, sensors), hardware-audio.js
 // (speech, audio, audioRecord, nowPlaying), hardware-camera.js (camera, scan, vision,
 // imageEdit) and hardware-more.js (biometric, webAuth, screen, contacts,
-// calendar, library..., and the ones a browser can't do, which say why).
+// calendar, library..., and the ones a browser can't do, which say why)
+// and hardware-nfc.js (nfc: Web NFC).
 //
 // camera.View and maps.View are native views, "asuka.camera" and
 // "asuka.map" (maps.js): natives has their factories, which the host
@@ -12,10 +13,11 @@ import { modules as sensors } from "./hardware-sensors.js";
 import { modules as audio } from "./hardware-audio.js";
 import { modules as camera, cameraView } from "./hardware-camera.js";
 import { modules as more } from "./hardware-more.js";
+import { modules as nfc } from "./hardware-nfc.js";
 import { mapView } from "./maps.js";
 
 export function modules(h) {
-  return { ...sensors(h), ...audio(h), ...camera(h), ...more(h) };
+  return { ...sensors(h), ...audio(h), ...camera(h), ...more(h), ...nfc(h) };
 }
 
 /** natives are the native views (ui.Native kinds) Asuka's packages make, by kind. */

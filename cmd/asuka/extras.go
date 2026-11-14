@@ -112,6 +112,7 @@ func (c *appConfig) missingEntitlements(ent string) []string {
 		"com.apple.developer.devicecheck.appattest-environment": "App Attest (asuka/sdk/integrity)",
 		"com.apple.developer.declared-age-range":                "Declared Age Range (asuka/sdk/agerange)",
 		"com.apple.developer.usernotifications.communication":   "Communication Notifications (asuka/sdk/notify's From)",
+		"com.apple.developer.nfc.readersession.formats":         "NFC Tag Reading (asuka/sdk/nfc)",
 	}
 	data, err := os.ReadFile(ent)
 	if err != nil {
@@ -220,6 +221,11 @@ func androidRes(c *appConfig, res string) (bool, error) {
 		if err := c.androidShortcutRes(res); err != nil {
 			return false, err
 		}
+		wrote = true
+	}
+	if ok, err := c.androidNFCRes(res); err != nil {
+		return false, err
+	} else if ok {
 		wrote = true
 	}
 	if c.Android.GoogleServices != "" && slices.Contains(c.androidModules, "push") {

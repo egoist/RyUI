@@ -884,6 +884,7 @@ func TestEveryModuleAnswers(t *testing.T) {
 		"library":      "save",
 		"location":     "current name next stop",
 		"network":      "current next stop",
+		"nfc":          "state nextState stopState settings start next restart alert stop read write lock status transceive classic nextOpened stopOpened",
 		"notify":       "actionDone badge cancel categories channelGroups channels present presented remove removeAll removeThread request schedule showing stop nextAction nextPresent",
 		"periodic":     "cancel done next schedule",
 		"photoLibrary": "current export list manage request thumbnail",

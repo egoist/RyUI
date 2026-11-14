@@ -135,6 +135,9 @@ type appConfig struct {
 	// shared. true: texts and links; or what it takes,
 	// {"types": ["text", "image/*", "video/*"], "max": 10}.
 	ShareTarget shareTarget `json:"shareTarget"`
+	// NFC is what asuka/sdk/nfc needs of the platforms (nfc.go): iOS's
+	// AIDs and FeliCa system codes, Android's tags that open the app.
+	NFC nfcConfig `json:"nfc"`
 	// Splash is the launch screen: an image (a square PNG, a logo) in the
 	// middle of a color, until the app's first frame (or splash.Hide).
 	//	"splash": {"image": "logo.png", "size": 120, "background": "#ffffff", "darkBackground": "#000000"}
@@ -167,6 +170,9 @@ type appConfig struct {
 	// pushRewrite: the app's Go code calls push.Rewrite (rewriteSymbol):
 	// on iOS it has a Notification Service Extension, which runs it.
 	pushRewrite bool
+	// nfcOn: the app imports asuka/sdk/nfc (addNFC): its filters and
+	// uses-feature go in the manifest.
+	nfcOn bool
 	// liveActivity: the app's Go code calls asuka/sdk/liveactivity
 	// (ASUKA_LIVEACTIVITY): on iOS its widget extension has the Live
 	// Activities' template, with or without widgets.
@@ -315,6 +321,9 @@ func loadConfig(dir string) (*appConfig, error) {
 	}
 	if err := c.ShareTarget.check(); err != nil {
 		return nil, fmt.Errorf("asuka.json: shareTarget: %v", err)
+	}
+	if err := c.NFC.check(); err != nil {
+		return nil, fmt.Errorf("asuka.json: nfc: %v", err)
 	}
 	if _, err := c.updates(); err != nil {
 		return nil, err
@@ -532,6 +541,11 @@ var featurePermissions = []struct {
 	{pkg: "github.com/egoist/asuka/sdk/liveactivity",
 		android:    []string{"android.permission.POST_NOTIFICATIONS", "android.permission.POST_PROMOTED_NOTIFICATIONS"},
 		androidApp: []string{`<receiver android:name="dev.asuka.AsukaLiveActivityReceiver" android:exported="false" />`}},
+	// NFC: Android's permission (uses-feature, filters: addNFC); iOS's
+	// purpose string and Core NFC's entitlement, for both of its sessions.
+	{pkg: nfcPkg, android: []string{"android.permission.NFC"},
+		usage:        map[string]string{"NFCReaderUsageDescription": "To read and write NFC tags."},
+		entitlements: map[string]any{"com.apple.developer.nfc.readersession.formats": []string{"NDEF", "TAG"}}},
 	// Binding the text-to-speech engine: Android 11's package visibility.
 	{pkg: "github.com/egoist/asuka/sdk/speech", androidTop: []string{`<queries><intent><action android:name="android.intent.action.TTS_SERVICE" /></intent></queries>`}},
 	// The pedometer: iOS's Motion & Fitness; Android's physical activity.
@@ -608,6 +622,7 @@ func (c *appConfig) permissionsFor(deps []string) {
 			}
 		}
 	}
+	c.addNFC(deps)
 }
 
 // gradleProps are the Gradle properties naming the app's optional
@@ -688,6 +703,8 @@ func (c *appConfig) androidManifest(debug bool) string {
 	// asuka.json's fileTypes: opened from a file manager, or a mail's
 	// attachment (AsukaActivity copies a content:// URI's file).
 	b.WriteString(fileTypeFilters(c.fileTypes()))
+	// asuka/sdk/nfc's tags that open the app (asuka.json's nfc).
+	b.WriteString(c.nfcFilters())
 	b.WriteString("        </activity>\n")
 	// A share sheet (app.ShareSheet): the shares go to its Activity.
 	if c.ShareTarget.on && c.shareSheet {

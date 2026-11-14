@@ -49,6 +49,7 @@ func TestSystemModulesThere(t *testing.T) {
 			"sensors":      {"available", "start", "stop", "stopAll", "next", "steps", "simulate"},
 			"widget":       {"set"},
 			"liveActivity": {"enabled", "start", "update", "end", "running", "next", "stop"},
+			"nfc":          {"state", "nextState", "stopState", "settings", "start", "next", "restart", "alert", "stop", "read", "write", "lock", "status", "transceive", "classic", "nextOpened", "stopOpened"},
 			"splash":       {"hold", "hide"},
 			"screen":       {"lock", "bars", "preventCapture", "screenshot", "stopScreenshots"},
 			"tracking":     {"request", "status"},
@@ -174,6 +175,12 @@ func TestScreenAndOthers(t *testing.T) {
 		}
 		if _, err, _ := callNow(t, h, "liveActivity", "start", []byte(`{"id":"a","content":{}}`)); !strings.HasPrefix(errText(err), "not available") {
 			t.Errorf("liveActivity.start: %v", err)
+		}
+		if b, err, _ := callNow(t, h, "nfc", "state", nil); err != nil || string(b) != `{"supported":false,"enabled":false}` {
+			t.Errorf("nfc.state: %s, %v", b, err)
+		}
+		if _, err, _ := callNow(t, h, "nfc", "start", []byte(`{"id":1}`)); !strings.HasPrefix(errText(err), "not available: ") {
+			t.Errorf("nfc.start: %v", err)
 		}
 		if _, err, _ := callNow(t, h, "ageRange", "request", nil); errText(err) != "not available" {
 			t.Errorf("ageRange.request: %v", err)

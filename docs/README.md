@@ -99,6 +99,9 @@ browser.
   biometrics, the screen and the launch screen, maps, the stores'
   services, sensors, image editing, speech, contacts and calendars, home
   screen widgets and shortcuts, and crash reports, on each platform.
+- [NFC tags](nfc.md): reading and writing tags' NDEF messages, their
+  IDs and raw commands, iOS's sheet and Android's reader mode, Web NFC,
+  and the tags that open the app.
 - [The desktop](desktop.md): tray icons and the Dock menu, apps in the
   background, global shortcuts, file dialogs and the file manager,
   opening files, one instance, quitting, recent documents, starting at

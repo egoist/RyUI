@@ -108,6 +108,7 @@ func TestModulesLinuxHas(t *testing.T) {
 		"webAuth":      {"start", "cancel"},
 		"widget":       {"set"},
 		"liveActivity": {"enabled", "start", "update", "end", "running", "next", "stop"},
+		"nfc":          {"state", "nextState", "stopState", "settings", "start", "next", "restart", "alert", "stop", "read", "write", "lock", "status", "transceive", "classic", "nextOpened", "stopOpened"},
 	}
 	onMain(func() {
 		for mod, ms := range want {

@@ -49,6 +49,7 @@
 | `splash` | 对象 | 无 | 启动屏，仅限 iOS 和 Android。见 [splash](#splash)。 |
 | `widgets` | 对象数组 | 无 | 主屏幕小组件，仅限 iOS 和 Android。见 [widgets](#widgets)。 |
 | `shortcuts` | 对象数组 | 无 | 提供给 Siri、聚焦搜索和启动器的快捷操作，仅限 iOS 和 Android。见 [shortcuts](#shortcuts)。 |
+| `nfc` | 对象 | 无 | `asuka/sdk/nfc` 读写标签所需的配置：iOS 的 AID 和 FeliCa 系统代码，以及在 Android 上能打开应用的标签。见 [nfc](#nfc)。 |
 | `background` | 布尔值 | `false` | 在桌面端让应用常驻托盘，效果和 `app.RunInBackground` 一样：启动时不打开窗口，没有窗口时也继续运行；在 Mac 上从启动起就不显示程序坞（Dock）图标（`LSUIElement`）。见[后台应用](desktop.md#后台应用)。 |
 | `singleInstance` | 布尔值 | `true` | 在 Windows 和 Linux 上，再次启动时，新进程会把参数交给正在运行的应用（由 `app.OnSecondInstance` 接收，其中的文件交给 `ui.OnOpenFiles`），然后自行退出。设为 `false` 则每启动一次就运行一个新实例。Mac 上无论如何都只运行一个实例。见[单实例](desktop.md#单实例)。 |
 | `i18n` | 对象 | 存在时为 `locales` | 应用的目录文件放在哪里。见 [i18n](#i18n)。 |
@@ -150,6 +151,29 @@ iOS 和 Android 上的启动屏：一张图片居中显示在纯色背景上，�
 | `phrases` | 字符串数组 | `"<title> in ${app}"` | Siri 能识别的说法，每句都要包含代表应用名称的 `${app}`。仅限 iOS。 |
 
 见[快捷方式](device.md#快捷方式siri聚焦搜索与启动器)。
+
+## nfc
+
+除了权限之外，`asuka/sdk/nfc` 还需要平台提供的一些配置。只有导入了这个包的应用才会带上它们，没导入的应用一概没有：
+
+```json
+"nfc": {
+  "iso7816": ["D2760000850101"],
+  "felica": ["8008"],
+  "ndef": [{ "uri": "https://example.com/t/" }, { "mime": "application/vnd.example.ticket" }, { "external": "example.com:ticket" }],
+  "tech": [["IsoDep"], ["NfcA", "MifareUltralight"]]
+}
+```
+
+| 键 | 类型 | 默认值 | 说明 |
+|---|---|---|---|
+| `iso7816` | 字符串数组 | 无 | iOS 发现卡片时依次选择的 ISO 7816 应用（AID：5 到 16 字节，十六进制），写入 Info.plist 的 `com.apple.developer.nfc.readersession.iso7816.select-identifiers`。设置了 `Poll` 的会话只会发现带有其中某个应用的卡片。 |
+| `felica` | 字符串数组 | 无 | iOS 轮询的 FeliCa 系统代码（4 位十六进制数，不能是 `FFFF`），写入 `com.apple.developer.nfc.readersession.felica.systemcodes`。没有它，轮询 FeliCa 的会话会失败。 |
+| `ndef` | 对象数组 | 无 | 在 Android 上按消息的第一条记录打开应用的标签（NDEF_DISCOVERED）。每项是 `uri`（scheme、主机和路径前缀；URI 交给 `ui.OnOpenURL`）、`mime`（MIME 类型；文本记录是 `text/plain`）或 `external`（`domain:type`）三者之一；后两种标签交给 `nfc.OnOpen`。 |
+| `tech` | 字符串数组的数组 | 无 | 在 Android 上按技术类型打开应用的标签（TECH_DISCOVERED）：每个列表里是标签必须全部具备的 `android.nfc.tech` 类（`IsoDep`、`NfcA`、`MifareUltralight` ……）。 |
+| `required` | 布尔值 | `false` | 让应用只面向带 NFC 的手机：Google Play 不会向其他设备提供它。 |
+
+见 [NFC 标签](nfc.md#asukajson-与权限)。
 
 ## i18n
 

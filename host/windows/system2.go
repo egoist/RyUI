@@ -15,6 +15,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/egoist/asuka/internal/nfcspec"
 	. "github.com/egoist/asuka/internal/windows"
 )
 
@@ -31,7 +32,8 @@ import (
 //     notification for them, as macOS hasn't).
 //   - sensors: none an app reads here, as on a Mac.
 //   - widget: Windows's widgets are packaged apps' (a widget provider);
-//     not available. liveActivity: a phone's; none.
+//     not available. liveActivity: a phone's; none. nfc: a phone's
+//     and Chrome's on Android; none.
 //   - tracking: Windows has no prompt; the user's choice is Settings'
 //     advertising ID (Privacy & security, General): allowed while it's
 //     on, denied while it's off.
@@ -73,6 +75,10 @@ func init() {
 		}
 		m["tracking"] = trackingModule()
 		m["integrity"] = integrityModule()
+		m["nfc"] = map[string]asyncMethod{}
+		for k, f := range nfcspec.Unavailable("Windows gives apps no NFC for tags (a PC/SC reader's are smart cards)") {
+			m["nfc"][k] = f
+		}
 		m["ageRange"] = map[string]asyncMethod{"request": failing("not available")}
 		m["appleAuth"] = map[string]asyncMethod{
 			"available": func(_ []byte, reply func([]byte, error)) { reply([]byte{0}, nil) },

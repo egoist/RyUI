@@ -59,6 +59,7 @@ These apply on every platform the key means something on.
 | `splash` | object | none | The launch screen, on iOS and Android. See [splash](#splash). |
 | `widgets` | objects | none | Home screen widgets, on iOS and Android. See [widgets](#widgets). |
 | `shortcuts` | objects | none | Actions for Siri, Spotlight and the launcher, on iOS and Android. See [shortcuts](#shortcuts). |
+| `nfc` | object | none | What `asuka/sdk/nfc`'s tags need: iOS's AIDs and FeliCa system codes, the tags that open the app on Android. See [nfc](#nfc). |
 | `background` | boolean | `false` | On the desktop, an app that lives in the tray, as `app.RunInBackground` makes it: no window at launch, kept running with none, and on the Mac no Dock icon from launch (`LSUIElement`). See [Apps in the background](desktop.md#apps-in-the-background). |
 | `singleInstance` | boolean | `true` | On Windows and Linux, a second launch hands its arguments to the running app (`app.OnSecondInstance`, its files to `ui.OnOpenFiles`) and quits. `false` runs the app as often as it's started. The Mac runs an app once either way. See [One instance](desktop.md#one-instance). |
 | `i18n` | object | `locales`, when there | Where the app's catalogs are. See [i18n](#i18n). |
@@ -182,6 +183,30 @@ launcher shortcuts. Each opens the app with its URL, for
 | `phrases` | strings | `"<title> in ${app}"` | What Siri hears, each with `${app}`, the app's name. iOS only. |
 
 See [Shortcuts](device.md#shortcuts-siri-spotlight-the-launcher).
+
+## nfc
+
+What `asuka/sdk/nfc` needs of the platforms beyond its permissions, for
+an app that imports it (an app that doesn't gets none of it):
+
+```json
+"nfc": {
+  "iso7816": ["D2760000850101"],
+  "felica": ["8008"],
+  "ndef": [{ "uri": "https://example.com/t/" }, { "mime": "application/vnd.example.ticket" }, { "external": "example.com:ticket" }],
+  "tech": [["IsoDep"], ["NfcA", "MifareUltralight"]]
+}
+```
+
+| Key | Type | Default | What it is |
+|---|---|---|---|
+| `iso7816` | strings | none | The ISO 7816 applications (AIDs: 5 to 16 bytes, in hex) iOS selects as it finds a card, in order: Info.plist's `com.apple.developer.nfc.readersession.iso7816.select-identifiers`. A session with `Poll` finds only the cards with one of them. |
+| `felica` | strings | none | The FeliCa system codes (4 hex digits, not `FFFF`) iOS polls for: `com.apple.developer.nfc.readersession.felica.systemcodes`, without which a session that polls FeliCa fails. |
+| `ndef` | objects | none | The tags that open the app on Android by their message's first record (NDEF_DISCOVERED), each one of `uri` (its scheme, host and path prefix; the URI comes to `ui.OnOpenURL`), `mime` (a MIME type; text records are `text/plain`) and `external` (`domain:type`); the tag comes to `nfc.OnOpen`. |
+| `tech` | lists of strings | none | The tags that open the app on Android by their technologies (TECH_DISCOVERED): each list, the `android.nfc.tech` classes a tag must all have (`IsoDep`, `NfcA`, `MifareUltralight`...). |
+| `required` | boolean | `false` | Makes the app one for phones with NFC alone: Google Play doesn't offer it to others. |
+
+See [NFC tags](nfc.md#asukajson-and-permissions).
 
 ## i18n
 

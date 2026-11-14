@@ -126,6 +126,12 @@ open class AsukaActivity : AppCompatActivity() {
      * share sheet hands over (AsukaShareActivity: OpenApp).
      */
     private fun incoming(intent: android.content.Intent) {
+        // A tag of asuka.json's nfc filters (asuka/sdk/nfc): its URI for
+        // ui.OnOpenURL, the others kept for nfc.OnOpen.
+        AsukaNfcHub.opened(intent)?.let { uri ->
+            if (uri.isNotEmpty()) runtime.openURL(uri)
+            return
+        }
         if (intent.action == android.content.Intent.ACTION_SEND || intent.action == android.content.Intent.ACTION_SEND_MULTIPLE) {
             runtime.receive(intent)
             return
@@ -249,6 +255,7 @@ open class AsukaActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         runtime.resumed()
+        AsukaNfcHub.resumed(this) // a session's reader mode, for this Activity
     }
 
     override fun onStop() {

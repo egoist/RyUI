@@ -9,6 +9,7 @@ import (
 	"github.com/ebitengine/purego/objc"
 
 	. "github.com/egoist/asuka/internal/darwin"
+	"github.com/egoist/asuka/internal/nfcspec"
 )
 
 // More of the system's modules on a Mac: asuka/sdk/background (an activity
@@ -17,7 +18,7 @@ import (
 // asuka/sdk/splash, asuka/sdk/screen
 // (capture kept out of screenshots and recordings; screenshots seen by
 // Spotlight), asuka/sdk/tracking (App Tracking Transparency), asuka/sdk/integrity
-// (App Attest) and asuka/sdk/agerange.
+// (App Attest), asuka/sdk/agerange and asuka/sdk/nfc (none).
 
 func init() {
 	moduleHooks = append(moduleHooks, func(h *Host, m map[string]map[string]method) {
@@ -30,6 +31,10 @@ func init() {
 		m["tracking"] = trackingModule()
 		m["integrity"] = h.integrityModule()
 		m["ageRange"] = ageRangeModule()
+		m["nfc"] = map[string]method{}
+		for k, f := range nfcspec.Unavailable("a Mac gives apps no NFC (Core NFC is an iPhone's)") {
+			m["nfc"][k] = f
+		}
 	})
 }
 
