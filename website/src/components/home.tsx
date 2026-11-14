@@ -7,7 +7,7 @@ import { LiveCounter } from "@/components/live-counter"
 import { Wordmark } from "@/components/logo"
 import { Translation } from "@/components/translation"
 import type { HomeData } from "@/lib/home"
-import { alternates, messages, type Locale } from "@/lib/i18n"
+import { alternates, messages, routes, type Locale } from "@/lib/i18n"
 import { site } from "@/lib/site"
 import { cn } from "@/lib/utils"
 
@@ -300,7 +300,135 @@ const zh: Copy = {
   runsOn: "可运行于",
 }
 
-const copies: Record<Locale, Copy> = { en, zh }
+const ja: Copy = {
+  toolkits: ["UIKit", "Android Views · Material 3", "AppKit", "Win32（Windows 11 の外観）", "GTK 4 · libadwaita", "DOM"],
+  hero: {
+    status: "コア：Go / ホスト：ネイティブ / シンクロ率 100.0%",
+    framework: "フレームワーク：",
+    title: "全機種純正部品、Go で。",
+    // Breaks only after punctuation (break-keep), as in Chinese.
+    subtitle: "UIKit、Material、AppKit、Win32、GTK、そして\u00a0DOM。キャンバス描画でも、Web\u00a0View\u00a0でもない。",
+    lead: "Go だけでアプリを一つ書けば、スマートフォンでも、デスクトップでも、Web でも動きます。表示するのは各プラットフォーム純正のコントロールで、文字入力もアクセシビリティもそのまま。Asuka が更新するのは、変わった部分だけです。",
+  },
+  start: "はじめる",
+  spec: {
+    label: "仕様",
+    lines: [
+      { line: "言語は一つ。", note: "Go、ただ Go だけ" },
+      { line: "舞台は六つ。", note: "iOS · Android · macOS · Windows · Linux · Web" },
+      { line: "Web View はゼロ。", note: "すべて各プラットフォーム純正のウィジェット", red: true },
+    ],
+  },
+  translation: {
+    label: "変換",
+    aside: "ホストを選択",
+    heading: (
+      <>
+        書くのは Go。
+        <br />
+        <span className="text-unit">動くのはネイティブ。</span>
+      </>
+    ),
+  },
+  units: {
+    label: "出撃",
+    aside: (
+      <>
+        パイロット：Go
+        <br />
+        機体：6 / 6 起動
+      </>
+    ),
+    heading: (
+      <>
+        パイロットは一人。
+        <br />
+        <span className="text-unit">機体は六機。</span>
+      </>
+    ),
+    // Unit 01 is 初号機, the first; then 弐号機, 参号機 and on, as the units are named.
+    unit: (n) => `${["初", "弐", "参", "四", "伍", "六"][Number(n) - 1] ?? n}号機`,
+    active: "稼働中",
+    sync: "シンクロ率 100%",
+  },
+  hello: {
+    label: "第 00 話 / Hello",
+    aside: "ファイルは一つ。動くのは全プラットフォーム。",
+    heading: (
+      <>
+        こんにちは、<span className="text-unit">ネイティブ。</span>
+      </>
+    ),
+    source: "ソース",
+    run: "実行",
+    every: "全プラットフォーム",
+    runs: [
+      ["asuka new hello && cd hello", ""],
+      ["asuka dev", "このコンピューター：Mac、PC、Linux"],
+      ["asuka dev --platform ios", "iOS シミュレーター"],
+      ["asuka dev --platform android", "Android エミュレーターか実機"],
+      ["asuka dev --platform web", "ブラウザー"],
+    ],
+    note: (examples) => <>Go のファイルを保存すると、アプリはすぐにリロードされ、状態もそのまま残ります。ほかの使い方は{examples}をどうぞ。gallery ではすべてのコンポーネントを見られます。</>,
+    examples: "サンプル",
+  },
+  episodes: {
+    label: "全六話",
+    aside: "続きはドキュメントで",
+    heading: "できること",
+    features: [
+      {
+        title: "純正のウィジェット",
+        text: "ナビゲーション、リスト、入力欄、ピッカー、シート、メニュー。見た目も手触りも各プラットフォームのものと同じです。各プラットフォームのウィジェットそのものなのですから。",
+        href: "/ja/docs/parity",
+      },
+      {
+        title: "きめ細かなシグナル",
+        text: "コンポーネントは一度しか実行されません。シグナルが変わると、それを読むビューだけがフレームごとに一つのバッチで更新されます。ツリーの差分は取りません。",
+        href: "/ja/docs/getting-started#アプリの変更",
+      },
+      {
+        title: "保存すれば、すぐ動く",
+        text: "asuka dev はアプリをコンピューター、シミュレーター、エミュレーター、実機、ブラウザーで動かし、保存するたびに状態を保ったままリロードします。",
+        href: "/ja/docs/development",
+      },
+      {
+        title: "モーション",
+        text: "アニメーション、スプリング、変形、表示と退場のトランジション、あるビューから別のビューへと姿を変える共有要素、そしてジェスチャー。",
+        href: "/ja/docs/parity#モーション",
+      },
+      {
+        title: "全部入り",
+        text: "ライブクエリ付きの SQLite、セキュアストレージ、カメラとコードスキャン、写真、位置情報、通知、オーディオ、ビデオ、Web ビュー。",
+        href: "/ja/docs/parity#データとサービス",
+      },
+      {
+        title: "すぐにリリース",
+        text: "asuka build は、App Store 向けの署名済み .ipa、Google Play 向けの .aab、公証済みの Mac アプリ、署名済みの Windows .exe、Linux のアーカイブと Flatpak マニフェスト、そして静的サイトを作ります。",
+        href: "/ja/docs/shipping",
+      },
+    ],
+  },
+  finale: {
+    label: "次回予告",
+    // 上田敏が訳したブラウニングの一節、エヴァの結びの言葉「神は天にいまし、すべて世は事も無し」から。
+    motto: (
+      <>
+        <Tall>Go はコアにいまし、</Tall>
+        {/* Kana and kanji fill the em, so the lines need more room than Latin's. */}
+        <Tall className="mt-[0.22em]">すべて画面は</Tall>
+        <Tall className="mt-[0.22em]">
+          <span className="text-unit">ネイティブ</span>なり。
+        </Tall>
+      </>
+    ),
+    begin: "発進",
+    docs: "ドキュメントを読む",
+  },
+  runsOn: "動作環境：",
+}
+
+const copies: Record<Locale, Copy> = { en, zh, ja }
 
 export function homeHead(locale: Locale) {
   const t = messages[locale]
@@ -319,7 +447,7 @@ export function homeHead(locale: Locale) {
 function Start({ locale, className, children }: { locale: Locale; className?: string; children: ReactNode }) {
   return (
     <Link
-      to={locale === "zh" ? "/zh/docs/$" : "/docs/$"}
+      to={routes[locale].page}
       params={{ _splat: "getting-started" }}
       className={cn(
         "chamfer inline-flex h-12 items-center gap-2 bg-unit px-6 font-mono text-[13px] font-semibold tracking-[0.14em] text-white uppercase transition-[filter] hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2",
@@ -413,6 +541,30 @@ export function Home({ locale, data }: { locale: Locale; data: HomeData }) {
   )
 }
 
+/** The title card's two lines in Chinese and Japanese, and their sizes: see Hero. */
+const cards = {
+  zh: {
+    top: "跨平台原生控件，",
+    topSize: "text-[calc(100cqi/8.1)]",
+    bottom: (
+      <>
+        用 <span className="text-unit">Go</span> 写。
+      </>
+    ),
+    bottomSize: "text-[calc(100cqi/6.6)]",
+  },
+  ja: {
+    top: "全機種純正部品、",
+    topSize: "text-[calc(100cqi/8.1)]",
+    bottom: (
+      <>
+        <span className="text-unit">Go</span> で。
+      </>
+    ),
+    bottomSize: "text-[calc(100cqi/6.6)]",
+  },
+}
+
 /**
  * The title card, in the page's column and within a laptop's screen.
  *
@@ -423,13 +575,15 @@ export function Home({ locale, data }: { locale: Locale; data: HomeData }) {
  *
  * In Chinese, whose characters are each an em wide, likewise: 跨平台原生控件，
  * (8em) across the column, 用 Go 写。 flush right under it and larger, the
- * subtitle beside it.
+ * subtitle beside it. In Japanese, in kanji as a title card sets them, the
+ * same: 全機種純正部品、 (8em: every platform's genuine parts) across the
+ * column, Go で。 under it.
  */
 function Hero({ locale, t }: { locale: Locale; t: Copy }) {
   // Line height after the size: tailwind-merge drops a leading- that comes before a text- size.
   const big = (size: string) => cn("block origin-bottom-left scale-y-[1.14] whitespace-nowrap", size, "leading-[0.9]")
   const subtitle = (size: string) => cn("display text-balance", size, "leading-snug")
-  const zh = locale === "zh"
+  const card = locale === "en" ? undefined : cards[locale]
   return (
     <section className="relative overflow-hidden border-b">
       <div className="scanlines pointer-events-none absolute inset-0" />
@@ -451,15 +605,15 @@ function Hero({ locale, t }: { locale: Locale; t: Copy }) {
 
         <div className="@container mt-3">
           <h1 className="sr-only">{t.hero.title}</h1>
-          {zh ? (
+          {card ? (
             <>
-              <p aria-hidden className={cn("display", big("text-[calc(100cqi/8.1)]"))}>
-                跨平台原生控件，
+              <p aria-hidden className={cn("display", big(card.topSize))}>
+                {card.top}
               </p>
               <div className="mt-[1.6cqi] flex items-end justify-between gap-6">
                 <p className={cn(subtitle("text-[clamp(1.2rem,2.4cqi,1.8rem)]"), "hidden max-w-[17em] pb-[0.8cqi] break-keep sm:block")}>{t.hero.subtitle}</p>
-                <p aria-hidden className={cn("display ml-auto", big("text-[calc(100cqi/6.6)]"), "origin-bottom-right")}>
-                  用 <span className="text-unit">Go</span> 写。
+                <p aria-hidden className={cn("display ml-auto", big(card.bottomSize), "origin-bottom-right")}>
+                  {card.bottom}
                 </p>
               </div>
             </>
@@ -634,7 +788,7 @@ function Finale({ locale, t }: { locale: Locale; t: Copy }) {
         <div className="mt-12 flex flex-wrap items-center gap-3">
           <Start locale={locale}>{t.finale.begin}</Start>
           <Link
-            to={locale === "zh" ? "/zh/docs" : "/docs"}
+            to={routes[locale].docs}
             className="inline-flex h-12 items-center border px-6 font-mono text-[13px] tracking-[0.14em] uppercase transition-colors hover:border-foreground/40"
           >
             {t.finale.docs}

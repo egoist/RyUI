@@ -1,7 +1,7 @@
 # Asuka 文档
 
 <!-- repository-only:start -->
-[English](../README.md)
+[English](../README.md) · [日本語](../ja/README.md)
 <!-- repository-only:end -->
 
 Asuka 让你用 Go 编写应用，并在 iOS、Android、macOS、Windows、Linux 和 Web 上以各平台的原生控件呈现。应用的界面就是一些返回视图的 Go 函数：Asuka 用各平台自己的控件把它们显示出来；某个 signal 变化时，只有读取了它的视图才会更新。

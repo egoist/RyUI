@@ -14,7 +14,11 @@ import { unified } from "unified"
 import { visit } from "unist-util-visit"
 
 import type { TocItem } from "@/lib/docs"
+import { prefixPattern } from "@/lib/locales"
 import { omitRepositoryOnly, rewriteHref, type LinkOptions } from "@/lib/markdown-source"
+
+// A link to a page of the docs, in any language: /docs/layout, /zh/docs#….
+const docsHref = new RegExp(`^${prefixPattern}\\/docs(?:[/#]|$)`)
 
 export { slugOf } from "@/lib/markdown-source"
 
@@ -227,7 +231,7 @@ function card(li: Element): Element | undefined {
   if (head?.type === "element" && head.tagName === "a") {
     // A page of the docs, then what it covers.
     href = head.properties.href
-    if (typeof href !== "string" || !/^(?:\/zh)?\/docs(?:[/#]|$)/.test(href)) return
+    if (typeof href !== "string" || !docsHref.test(href)) return
     if (rest[0]?.type !== "text" || !/^[:：]/.test(rest[0].value)) return
     title = head.children
     description = rest

@@ -3,7 +3,7 @@
 
 import { useLocation } from "@tanstack/react-router"
 
-import { localeInfo, localeOf, localized, locales, type Locale } from "@/lib/locales"
+import { isLocale, localeInfo, localeOf, localized, locales, type Locale } from "@/lib/locales"
 import { messages } from "@/lib/messages"
 import { site } from "@/lib/site"
 
@@ -32,33 +32,38 @@ export function useMessages() {
 export const preferenceKey = "asuka-locale"
 export type Preference = Locale | "auto"
 
+// The languages the site has, as the inline script and detectLocale match
+// them: a language tag's primary subtag (zh-TW, ja-JP), and the prefix of
+// its pages.
+const prefixes = Object.fromEntries(locales.map((l) => [l, localeInfo[l].prefix]))
+
 // detectLocale, as the source of a function for the inline script, which
 // runs before any of the site's modules load.
-const detectSource = `function(){var a=navigator.languages&&navigator.languages.length?navigator.languages:[navigator.language];for(var i=0;i<a.length;i++){var x=String(a[i]).toLowerCase();if(x.indexOf("zh")===0)return"zh";if(x.indexOf("en")===0)return"en"}return"en"}`
+const detectSource = `function(){var a=navigator.languages&&navigator.languages.length?navigator.languages:[navigator.language];for(var i=0;i<a.length;i++){var x=String(a[i]).toLowerCase().split("-")[0];if(Object.prototype.hasOwnProperty.call(P,x))return x}return"en"}`
 
 /**
- * Run in <head> before the page shows, so a reader who prefers Chinese never
- * sees the English page first. A choice of language takes the reader to its
- * page; "auto" takes a reader whose browser prefers Chinese from an English
- * page to the Chinese one, and leaves a Chinese page that someone linked to
- * as it is (as it does for search engines' crawlers). Only the home page and
- * the docs have a page in each language.
+ * Run in <head> before the page shows, so a reader who prefers Chinese or
+ * Japanese never sees the English page first. A choice of language takes the
+ * reader to its page; "auto" takes a reader whose browser prefers another of
+ * the site's languages from an English page to that language's, and leaves a
+ * translated page that someone linked to as it is (as it does for search
+ * engines' crawlers). Only the home page and the docs have a page in each
+ * language.
  */
 export const localeScript = `(function(){try{
-var p=localStorage.getItem(${JSON.stringify(preferenceKey)})||"auto",l=location,path=l.pathname;
-var zh=path==="/zh"||path.indexOf("/zh/")===0,bare=zh?path.slice(3)||"/":path;
+var P=${JSON.stringify(prefixes)},p=localStorage.getItem(${JSON.stringify(preferenceKey)})||"auto",l=location,path=l.pathname,cur="en";
+for(var k in P)if(P[k]&&(path===P[k]||path.indexOf(P[k]+"/")===0))cur=k;
+var bare=P[cur]?path.slice(P[cur].length)||"/":path;
 if(bare!=="/"&&bare!=="/docs"&&bare.indexOf("/docs/")!==0)return;
-var want=p==="auto"?(zh?"zh":(${detectSource})()):p;
-if(want==="zh"&&!zh)l.replace((bare==="/"?"/zh":"/zh"+bare)+l.search+l.hash);
-else if(want==="en"&&zh)l.replace(bare+l.search+l.hash);
+var want=p==="auto"?(cur!=="en"?cur:(${detectSource})()):p;
+if(want!==cur&&Object.prototype.hasOwnProperty.call(P,want))l.replace((P[want]&&bare==="/"?P[want]:P[want]+bare)+l.search+l.hash);
 }catch(e){}})()`
 
 /** The browser's language, of the site's: the first of the reader's languages that the site has. */
 export function detectLocale(): Locale {
   for (const lang of navigator.languages?.length ? navigator.languages : [navigator.language]) {
-    const l = lang.toLowerCase()
-    if (l.startsWith("zh")) return "zh"
-    if (l.startsWith("en")) return "en"
+    const l = lang.toLowerCase().split("-")[0]
+    if (isLocale(l)) return l
   }
   return "en"
 }
@@ -66,7 +71,7 @@ export function detectLocale(): Locale {
 export function readPreference(): Preference {
   try {
     const p = localStorage.getItem(preferenceKey)
-    return p === "en" || p === "zh" ? p : "auto"
+    return isLocale(p) ? p : "auto"
   } catch {
     return "auto"
   }

@@ -15,8 +15,13 @@ import { Route as DocsRouteRouteImport } from './routes/docs/route'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as DocsSplatRouteImport } from './routes/docs/$'
 import { Route as DocsSearchDotjsonRouteImport } from './routes/docs/search[.]json'
+import { Route as JaIndexRouteImport } from './routes/ja/index'
+import { Route as JaDocsRouteRouteImport } from './routes/ja/docs/route'
 import { Route as ZhIndexRouteImport } from './routes/zh/index'
 import { Route as ZhDocsRouteRouteImport } from './routes/zh/docs/route'
+import { Route as JaDocsIndexRouteImport } from './routes/ja/docs/index'
+import { Route as JaDocsSplatRouteImport } from './routes/ja/docs/$'
+import { Route as JaDocsSearchDotjsonRouteImport } from './routes/ja/docs/search[.]json'
 import { Route as ZhDocsIndexRouteImport } from './routes/zh/docs/index'
 import { Route as ZhDocsSplatRouteImport } from './routes/zh/docs/$'
 import { Route as ZhDocsSearchDotjsonRouteImport } from './routes/zh/docs/search[.]json'
@@ -51,6 +56,16 @@ const DocsSearchDotjsonRoute = DocsSearchDotjsonRouteImport.update({
   path: '/search.json',
   getParentRoute: () => DocsRouteRoute,
 } as any)
+const JaIndexRoute = JaIndexRouteImport.update({
+  id: '/ja/',
+  path: '/ja/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JaDocsRouteRoute = JaDocsRouteRouteImport.update({
+  id: '/ja/docs',
+  path: '/ja/docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ZhIndexRoute = ZhIndexRouteImport.update({
   id: '/zh/',
   path: '/zh/',
@@ -60,6 +75,21 @@ const ZhDocsRouteRoute = ZhDocsRouteRouteImport.update({
   id: '/zh/docs',
   path: '/zh/docs',
   getParentRoute: () => rootRouteImport,
+} as any)
+const JaDocsIndexRoute = JaDocsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => JaDocsRouteRoute,
+} as any)
+const JaDocsSplatRoute = JaDocsSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => JaDocsRouteRoute,
+} as any)
+const JaDocsSearchDotjsonRoute = JaDocsSearchDotjsonRouteImport.update({
+  id: '/search.json',
+  path: '/search.json',
+  getParentRoute: () => JaDocsRouteRoute,
 } as any)
 const ZhDocsIndexRoute = ZhDocsIndexRouteImport.update({
   id: '/',
@@ -81,13 +111,18 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/docs': typeof DocsRouteRouteWithChildren
   '/404': typeof R404Route
+  '/ja/docs': typeof JaDocsRouteRouteWithChildren
   '/zh/docs': typeof ZhDocsRouteRouteWithChildren
   '/docs/$': typeof DocsSplatRoute
   '/docs/search.json': typeof DocsSearchDotjsonRoute
   '/docs/': typeof DocsIndexRoute
+  '/ja/': typeof JaIndexRoute
   '/zh/': typeof ZhIndexRoute
+  '/ja/docs/$': typeof JaDocsSplatRoute
+  '/ja/docs/search.json': typeof JaDocsSearchDotjsonRoute
   '/zh/docs/$': typeof ZhDocsSplatRoute
   '/zh/docs/search.json': typeof ZhDocsSearchDotjsonRoute
+  '/ja/docs/': typeof JaDocsIndexRoute
   '/zh/docs/': typeof ZhDocsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -96,9 +131,13 @@ export interface FileRoutesByTo {
   '/docs/$': typeof DocsSplatRoute
   '/docs/search.json': typeof DocsSearchDotjsonRoute
   '/docs': typeof DocsIndexRoute
+  '/ja': typeof JaIndexRoute
   '/zh': typeof ZhIndexRoute
+  '/ja/docs/$': typeof JaDocsSplatRoute
+  '/ja/docs/search.json': typeof JaDocsSearchDotjsonRoute
   '/zh/docs/$': typeof ZhDocsSplatRoute
   '/zh/docs/search.json': typeof ZhDocsSearchDotjsonRoute
+  '/ja/docs': typeof JaDocsIndexRoute
   '/zh/docs': typeof ZhDocsIndexRoute
 }
 export interface FileRoutesById {
@@ -106,13 +145,18 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/docs': typeof DocsRouteRouteWithChildren
   '/404': typeof R404Route
+  '/ja/docs': typeof JaDocsRouteRouteWithChildren
   '/zh/docs': typeof ZhDocsRouteRouteWithChildren
   '/docs/$': typeof DocsSplatRoute
   '/docs/search.json': typeof DocsSearchDotjsonRoute
   '/docs/': typeof DocsIndexRoute
+  '/ja/': typeof JaIndexRoute
   '/zh/': typeof ZhIndexRoute
+  '/ja/docs/$': typeof JaDocsSplatRoute
+  '/ja/docs/search.json': typeof JaDocsSearchDotjsonRoute
   '/zh/docs/$': typeof ZhDocsSplatRoute
   '/zh/docs/search.json': typeof ZhDocsSearchDotjsonRoute
+  '/ja/docs/': typeof JaDocsIndexRoute
   '/zh/docs/': typeof ZhDocsIndexRoute
 }
 export interface FileRouteTypes {
@@ -121,13 +165,18 @@ export interface FileRouteTypes {
     | '/'
     | '/docs'
     | '/404'
+    | '/ja/docs'
     | '/zh/docs'
     | '/docs/$'
     | '/docs/search.json'
     | '/docs/'
+    | '/ja/'
     | '/zh/'
+    | '/ja/docs/$'
+    | '/ja/docs/search.json'
     | '/zh/docs/$'
     | '/zh/docs/search.json'
+    | '/ja/docs/'
     | '/zh/docs/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -136,22 +185,31 @@ export interface FileRouteTypes {
     | '/docs/$'
     | '/docs/search.json'
     | '/docs'
+    | '/ja'
     | '/zh'
+    | '/ja/docs/$'
+    | '/ja/docs/search.json'
     | '/zh/docs/$'
     | '/zh/docs/search.json'
+    | '/ja/docs'
     | '/zh/docs'
   id:
     | '__root__'
     | '/'
     | '/docs'
     | '/404'
+    | '/ja/docs'
     | '/zh/docs'
     | '/docs/$'
     | '/docs/search.json'
     | '/docs/'
+    | '/ja/'
     | '/zh/'
+    | '/ja/docs/$'
+    | '/ja/docs/search.json'
     | '/zh/docs/$'
     | '/zh/docs/search.json'
+    | '/ja/docs/'
     | '/zh/docs/'
   fileRoutesById: FileRoutesById
 }
@@ -159,7 +217,9 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DocsRouteRoute: typeof DocsRouteRouteWithChildren
   R404Route: typeof R404Route
+  JaDocsRouteRoute: typeof JaDocsRouteRouteWithChildren
   ZhDocsRouteRoute: typeof ZhDocsRouteRouteWithChildren
+  JaIndexRoute: typeof JaIndexRoute
   ZhIndexRoute: typeof ZhIndexRoute
 }
 
@@ -207,6 +267,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsSearchDotjsonRouteImport
       parentRoute: typeof DocsRouteRoute
     }
+    '/ja/': {
+      id: '/ja/'
+      path: '/ja'
+      fullPath: '/ja/'
+      preLoaderRoute: typeof JaIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ja/docs': {
+      id: '/ja/docs'
+      path: '/ja/docs'
+      fullPath: '/ja/docs'
+      preLoaderRoute: typeof JaDocsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/zh/': {
       id: '/zh/'
       path: '/zh'
@@ -220,6 +294,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/zh/docs'
       preLoaderRoute: typeof ZhDocsRouteRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/ja/docs/': {
+      id: '/ja/docs/'
+      path: '/'
+      fullPath: '/ja/docs/'
+      preLoaderRoute: typeof JaDocsIndexRouteImport
+      parentRoute: typeof JaDocsRouteRoute
+    }
+    '/ja/docs/$': {
+      id: '/ja/docs/$'
+      path: '/$'
+      fullPath: '/ja/docs/$'
+      preLoaderRoute: typeof JaDocsSplatRouteImport
+      parentRoute: typeof JaDocsRouteRoute
+    }
+    '/ja/docs/search.json': {
+      id: '/ja/docs/search.json'
+      path: '/search.json'
+      fullPath: '/ja/docs/search.json'
+      preLoaderRoute: typeof JaDocsSearchDotjsonRouteImport
+      parentRoute: typeof JaDocsRouteRoute
     }
     '/zh/docs/': {
       id: '/zh/docs/'
@@ -261,6 +356,22 @@ const DocsRouteRouteWithChildren = DocsRouteRoute._addFileChildren(
   DocsRouteRouteChildren,
 )
 
+interface JaDocsRouteRouteChildren {
+  JaDocsSplatRoute: typeof JaDocsSplatRoute
+  JaDocsSearchDotjsonRoute: typeof JaDocsSearchDotjsonRoute
+  JaDocsIndexRoute: typeof JaDocsIndexRoute
+}
+
+const JaDocsRouteRouteChildren: JaDocsRouteRouteChildren = {
+  JaDocsSplatRoute: JaDocsSplatRoute,
+  JaDocsSearchDotjsonRoute: JaDocsSearchDotjsonRoute,
+  JaDocsIndexRoute: JaDocsIndexRoute,
+}
+
+const JaDocsRouteRouteWithChildren = JaDocsRouteRoute._addFileChildren(
+  JaDocsRouteRouteChildren,
+)
+
 interface ZhDocsRouteRouteChildren {
   ZhDocsSplatRoute: typeof ZhDocsSplatRoute
   ZhDocsSearchDotjsonRoute: typeof ZhDocsSearchDotjsonRoute
@@ -281,7 +392,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DocsRouteRoute: DocsRouteRouteWithChildren,
   R404Route: R404Route,
+  JaDocsRouteRoute: JaDocsRouteRouteWithChildren,
   ZhDocsRouteRoute: ZhDocsRouteRouteWithChildren,
+  JaIndexRoute: JaIndexRoute,
   ZhIndexRoute: ZhIndexRoute,
 }
 export const routeTree = rootRouteImport

@@ -35,6 +35,17 @@ const words: Record<Locale, Words> = {
     dom: "DOM",
     note: "这里的控件只是按各平台配色画的示意图；在真机上，它们就是平台自己的控件。",
   },
+  ja: {
+    platform: "プラットフォーム",
+    source: "ソース",
+    core: "コア",
+    host: "ホスト",
+    name: "名前",
+    save: "保存",
+    toggle: "BUTTON（トグル）",
+    dom: "DOM",
+    note: "ここに描いたウィジェットは各プラットフォームの配色によるスケッチです。実機では、プラットフォーム純正のウィジェットそのものが表示されます。",
+  },
 }
 
 // What each host makes of four of the core's components: the classes are the
