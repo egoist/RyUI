@@ -61,23 +61,50 @@ func (h *Host) setImageProp(n *node, p ops.PropID, v *ops.Value) {
 	case ops.PropImageSource:
 		n.source = v.Str
 		n.loaded = false
+		x := n.imx()
+		x.stopFrames()
+		x.anim, x.frame = nil, 0
+		Send(n.view, "setImage:", 0)
+		if SendBool(n.view, "wantsLayer") {
+			Send(Send(n.view, "layer"), "setContents:", 0)
+		}
+		h.showPlaceholder(n)
 		h.loadImage(n, v.Str, false)
 	case ops.PropImagePlaceholder:
 		n.placeholder = v.Str
-		if !n.loaded {
-			h.loadImage(n, v.Str, true)
+		h.showPlaceholder(n)
+	case ops.PropImagePlaceholderImage:
+		x := n.imx()
+		if x.hash != 0 {
+			Release(x.hash)
+		}
+		x.hash = hashImage(v.Bytes)
+		h.showPlaceholder(n)
+	case ops.PropImagePlaceholderMode:
+		n.imx().mode = int32(v.Int)
+		if x := n.imgx; x.shown != 0 {
+			h.setPlaceholderImage(n, x.shown, x.tinted)
+		}
+	case ops.PropImageTransition:
+		n.imx().transition = v.Float
+	case ops.PropImagePaused:
+		n.imx().paused = v.Int != 0
+		if n.imgx.paused {
+			n.imgx.stopFrames()
+		} else {
+			h.playFrames(n)
 		}
 	case ops.PropImageMode:
 		n.imageMode = int32(v.Int)
 		h.showImage(n, Send(n.view, "image"))
+		if x := n.imgx; x != nil && x.shown != 0 && x.mode < 0 {
+			h.setPlaceholderImage(n, x.shown, x.tinted)
+		}
 	}
 }
 
 func (h *Host) loadImage(n *node, src string, placeholder bool) {
 	if src == "" {
-		if !placeholder {
-			Send(n.view, "setImage:", 0)
-		}
 		return
 	}
 	id := n.id
@@ -86,26 +113,29 @@ func (h *Host) loadImage(n *node, src string, placeholder bool) {
 		return
 	}
 	go func() {
-		img, err := decodeImage(src, h.assets)
+		img, anim, err := decodeImage(src, h.assets)
 		h.Post(func() {
+			c := cachedImage{img, anim}
 			if err == nil {
-				images.put(src, img)
+				// Two loads of one source may race: the cache's is the one.
+				c = images.put(src, img, anim)
 				Release(img) // the cache holds it
 			}
-			h.imageLoaded(id, src, img, err, placeholder)
+			h.imageLoaded(id, src, c, err, placeholder)
 		})
 	}()
 }
 
-func (h *Host) imageLoaded(id ops.NodeID, src string, img ID, err error, placeholder bool) {
+func (h *Host) imageLoaded(id ops.NodeID, src string, c cachedImage, err error, placeholder bool) {
+	img := c.img
 	WithPool(func() {
 		n := h.nodes[id]
 		if n == nil || n.view == 0 {
 			return
 		}
 		if placeholder {
-			if !n.loaded && n.placeholder == src && err == nil {
-				h.showImage(n, img)
+			if !n.loaded && n.placeholder == src && err == nil && (n.imgx == nil || n.imgx.hash == 0) {
+				h.setPlaceholderImage(n, img, n.color != 0)
 			}
 			return
 		}
@@ -113,16 +143,22 @@ func (h *Host) imageLoaded(id ops.NodeID, src string, img ID, err error, placeho
 			return
 		}
 		if err != nil {
-			if n.placeholder != "" {
-				h.loadImage(n, n.placeholder, true)
-			}
 			h.emit(n, ops.Event{Kind: ops.EventFailed, Str: err.Error()})
 			return
 		}
 		n.loaded = true
+		x := n.imx()
+		x.anim, x.frame = c.anim, 0
+		// ImageIO plays an animated file (APNG and WebP too), not the view.
+		Send(n.view, "setAnimates:", Bool(c.anim == nil))
 		h.showImage(n, img)
+		h.arrive(n)
 		s := MsgSize(img, Sel("size"))
 		h.emit(n, ops.Event{Kind: ops.EventLoaded, X: s.Width, Y: s.Height})
+		if c.anim != nil {
+			h.emit(n, ops.Event{Kind: ops.EventAnimated})
+			h.playFrames(n)
+		}
 	})
 }
 
@@ -154,11 +190,12 @@ func (h *Host) showImage(n *node, img ID) {
 }
 
 // decodeImage reads and decodes an image off the main thread: an NSImage
-// (+1) sized one point per pixel.
-func decodeImage(src, assets string) (ID, error) {
+// (+1) sized one point per pixel (PNG, JPEG, GIF, WebP, HEIC, AVIF, SVG:
+// what NSImage reads), and an animated one's file.
+func decodeImage(src, assets string) (ID, []byte, error) {
 	data, err := readImage(src, assets)
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 	var img ID
 	WithPool(func() {
@@ -176,9 +213,13 @@ func decodeImage(src, assets string) (ID, error) {
 		}
 	})
 	if img == 0 {
-		return 0, fmt.Errorf("can't decode %s", src)
+		return 0, nil, fmt.Errorf("can't decode %s", src)
 	}
-	return img, nil
+	var anim []byte
+	if frameCount(data) > 1 {
+		anim = data
+	}
+	return img, anim, nil
 }
 
 func readImage(src, assets string) ([]byte, error) {
@@ -211,33 +252,41 @@ type imageCache struct {
 
 type cached struct {
 	key string
-	img ID
+	cachedImage
+}
+
+// cachedImage is a decoded image (an NSImage), and an animated one's file.
+type cachedImage struct {
+	img  ID
+	anim []byte
 }
 
 var images = &imageCache{order: clist.New(), byKey: map[string]*clist.Element{}}
 
 const imageCacheSize = 128
 
-func (c *imageCache) get(key string) (ID, bool) {
+func (c *imageCache) get(key string) (cachedImage, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	e := c.byKey[key]
 	if e == nil {
-		return 0, false
+		return cachedImage{}, false
 	}
 	c.order.MoveToFront(e)
-	return e.Value.(*cached).img, true
+	return e.Value.(*cached).cachedImage, true
 }
 
-func (c *imageCache) put(key string, img ID) {
+// put keeps img for key, and returns what the cache has for key: img,
+// or the image an earlier load put there.
+func (c *imageCache) put(key string, img ID, anim []byte) cachedImage {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if e := c.byKey[key]; e != nil {
 		c.order.MoveToFront(e)
-		return
+		return e.Value.(*cached).cachedImage
 	}
 	Retain(img)
-	c.byKey[key] = c.order.PushFront(&cached{key, img})
+	c.byKey[key] = c.order.PushFront(&cached{key, cachedImage{img, anim}})
 	for c.order.Len() > imageCacheSize {
 		e := c.order.Back()
 		x := e.Value.(*cached)
@@ -245,4 +294,5 @@ func (c *imageCache) put(key string, img ID) {
 		delete(c.byKey, x.key)
 		Release(x.img)
 	}
+	return cachedImage{img, anim}
 }

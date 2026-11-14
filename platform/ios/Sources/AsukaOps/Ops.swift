@@ -238,6 +238,10 @@ public enum AsukaProp {
         public static let source: UInt16 = 64
         public static let mode: UInt16 = 65
         public static let placeholder: UInt16 = 66
+        public static let placeholderImage: UInt16 = 67
+        public static let placeholderMode: UInt16 = 68
+        public static let transition: UInt16 = 69
+        public static let paused: UInt16 = 70
     }
 
     public enum Native {
@@ -438,6 +442,7 @@ public enum AsukaEventKind: UInt16 {
     case key = 56
     case fieldChanged = 57
     case location = 58
+    case animated = 59
 }
 
 public enum AsukaCommand: UInt16 {
@@ -676,6 +681,10 @@ public enum AsukaCanvasOp: Int32 {
     case stroke = 9
     case gradient = 10
     case text = 11
+    case transform = 12
+    case fillRule = 13
+    case radialGradient = 14
+    case strokeGradient = 15
 }
 
 public enum AsukaAnimationCurve: Int32 {
@@ -1122,5 +1131,8 @@ public enum AsukaEvents {
     }
     public static func location(_ id: UInt32, _ v: [UInt8]) -> [UInt8] {
         var w = AsukaWriter(); w.header(id, 58); w.u32(UInt32(v.count)); w.bytes.append(contentsOf: v); return w.bytes
+    }
+    public static func animated(_ id: UInt32) -> [UInt8] {
+        var w = AsukaWriter(); w.header(id, 59); return w.bytes
     }
 }

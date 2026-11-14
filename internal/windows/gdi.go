@@ -557,6 +557,9 @@ func NewBitmap(w, h int32, pixels []byte) *Bitmap {
 	return &Bitmap{h: b, W: w, H: h, pixels: pixels}
 }
 
+// Pixels are the bitmap's premultiplied BGRA pixels.
+func (b *Bitmap) Pixels() []byte { return b.pixels }
+
 func (b *Bitmap) Close() {
 	if b != nil && b.h != 0 {
 		gdipDisposeImage.Call(b.h)
@@ -571,6 +574,37 @@ func (g Graphics) DrawImage(b *Bitmap, x, y, w, h, sx, sy, sw, sh float32) {
 	}
 	fcall(gdipDrawImageRectRect, 0x3fc, uintptr(g), b.h, f(x), f(y), f(w), f(h), f(sx), f(sy), f(sw), f(sh), 2, 0, 0, 0) // UnitPixel
 }
+
+// DrawImageAlpha is DrawImage at an opacity (0 to 1): a color matrix
+// scaling the alpha, in image attributes kept per opacity drawn last.
+func (g Graphics) DrawImageAlpha(b *Bitmap, alpha float32, x, y, w, h, sx, sy, sw, sh float32) {
+	if b == nil || b.h == 0 || alpha <= 0 {
+		return
+	}
+	if alpha >= 1 {
+		g.DrawImage(b, x, y, w, h, sx, sy, sw, sh)
+		return
+	}
+	if alphaAttrs == 0 {
+		gdipCreateImageAttrs.Call(uintptr(unsafe.Pointer(&alphaAttrs)))
+	}
+	if alphaAttrs == 0 {
+		g.DrawImage(b, x, y, w, h, sx, sy, sw, sh)
+		return
+	}
+	if alpha != alphaAttrsAt {
+		m := [25]float32{0: 1, 6: 1, 12: 1, 18: alpha, 24: 1}
+		gdipSetImageAttrsMatrix.Call(alphaAttrs, 0, 1, uintptr(unsafe.Pointer(&m[0])), 0, 0) // ColorAdjustTypeDefault, enabled
+		alphaAttrsAt = alpha
+	}
+	fcall(gdipDrawImageRectRect, 0x3fc, uintptr(g), b.h, f(x), f(y), f(w), f(h), f(sx), f(sy), f(sw), f(sh), 2, alphaAttrs, 0, 0) // UnitPixel
+}
+
+var (
+	alphaAttrs              uintptr
+	alphaAttrsAt            float32 = -1
+	gdipSetImageAttrsMatrix         = gdiplus.NewProc("GdipSetImageAttributesColorMatrix")
+)
 
 // clampAttrs are image attributes that extend an image's edge pixels
 // past it (WrapModeTileFlipXY), so that scaling it up doesn't fade its

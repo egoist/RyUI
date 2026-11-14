@@ -340,6 +340,21 @@ type StyleFunc func() Style
 
 func (f StyleFunc) styler() (Style, func() Style) { return Style{}, f }
 
+// StyleValue is what s is now: the Style itself, or what the StyleFunc
+// returns (read in a StyleFunc or an effect, it's followed as it
+// changes). For a component that adds to the style it's given: its own
+// StyleFunc, from StyleValue(the app's).
+func StyleValue(s Styler) Style {
+	if s == nil {
+		return Style{}
+	}
+	st, f := s.styler()
+	if f != nil {
+		return f()
+	}
+	return st
+}
+
 func (s *Style) visual() bool {
 	return s.Background != 0 || s.CornerRadius != 0 || s.BorderWidth != 0 || s.BorderColor != 0 ||
 		s.Opacity != 0 || s.Hidden || s.Clip || s.Transform != (Transform{}) || s.Shadow.Color != 0 || s.Gradient != nil ||

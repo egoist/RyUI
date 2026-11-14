@@ -84,6 +84,7 @@ type node struct {
 	placeholder    string
 	loaded         bool
 	imageMode      int32
+	imgx           *imageExtra // an Image's placeholder, transition and frames (imageextra.go)
 	symbol         string
 	list           *list
 	cell           *cell
@@ -533,6 +534,7 @@ func (h *Host) release(n *node) {
 		if n.ring != nil {
 			n.ring.release() // its layers, AppKit's indicators
 		}
+		n.releaseImage()
 		if n.scroll {
 			clip := Send(n.view, "contentView")
 			center := Send(Class("NSNotificationCenter"), "defaultCenter")

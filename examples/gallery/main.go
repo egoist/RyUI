@@ -23,6 +23,7 @@ import (
 	"github.com/egoist/asuka/sdk/crash"
 	"github.com/egoist/asuka/sdk/device"
 	"github.com/egoist/asuka/sdk/location"
+	"github.com/egoist/asuka/sdk/lottie"
 	"github.com/egoist/asuka/sdk/notify"
 	"github.com/egoist/asuka/sdk/preview"
 	"github.com/egoist/asuka/sdk/print"
@@ -83,6 +84,7 @@ func App() ui.Node {
 		}},
 		{Title: ui.Val("Motion"), Destinations: []ui.Destination{
 			badged(dest("Motion", "wand.and.stars", motionPage), ui.Val("New")),
+			dest("Lottie", "sparkles", page(lottiePage)),
 		}},
 		{Title: ui.Val("Device"), Destinations: []ui.Destination{
 			dest("Camera", ui.IconCamera, cameraScreen),
@@ -174,11 +176,106 @@ func fontsPage() ui.Node {
 // images: a photo over the network, kept on disk once fetched; until it
 // arrives (or if it can't), a placeholder from the app's assets.
 func images() ui.Node {
-	return section("Images",
-		ui.Image(ui.ImageProps{Source: ui.Val("https://picsum.photos/id/1015/600/400"), Placeholder: "placeholder.png",
-			Mode: ui.ImageFill, Label: ui.Val("A river in a valley"),
-			Style: ui.Style{AspectRatio: 3.0 / 2, CornerRadius: 12}}),
+	const flower = "https://upload.wikimedia.org/wikipedia/commons/3/3f/JPEG_example_flower.jpg"
+	playing := signal.New(true)
+	return ui.Column(ui.Style{Gap: 28},
+		section("Images",
+			ui.Image(ui.ImageProps{Source: ui.Val("https://picsum.photos/id/1015/600/400"), Placeholder: "placeholder.png",
+				Mode: ui.ImageFill, Label: ui.Val("A river in a valley"),
+				Style: ui.Style{AspectRatio: 3.0 / 2, CornerRadius: 12}}),
+		),
+		// The same photo behind a BlurHash and a ThumbHash: shown at once,
+		// then the photo fades in over them.
+		section("Hash placeholders",
+			ui.Row(ui.Style{Gap: 12},
+				ui.Image(ui.ImageProps{Source: ui.Val(flower), BlurHash: ui.Val("UtP$I1t7%$tkxatRS2RP?^WBoztRR%aKRPoz"),
+					Mode: ui.ImageFill, Transition: 0.6, Label: ui.Val("A flower"),
+					Style: ui.Style{Grow: 1, AspectRatio: 1, CornerRadius: 12}}),
+				ui.Image(ui.ImageProps{Source: ui.Val(flower), ThumbHash: ui.Val("LGkOH4rImYSZZ3h/mWZniGZ6Z3MGJ2cA"),
+					Mode: ui.ImageFill, Transition: 0.6, Label: ui.Val("A flower"),
+					Style: ui.Style{Grow: 1, AspectRatio: 1, CornerRadius: 12}}),
+			),
+		),
+		// An animated GIF and WebP: they play, unless Reduce Motion is on,
+		// and the switch stops them where they are.
+		section("Animated",
+			ui.Row(ui.Style{Gap: 16, Align: ui.AlignCenter},
+				ui.Image(ui.ImageProps{Source: ui.Val("dots.gif"), Animated: playing, Label: ui.Val("Bouncing dots (GIF)")}),
+				ui.Image(ui.ImageProps{Source: ui.Val("dots.webp"), Animated: playing, Label: ui.Val("Bouncing dots (WebP)")}),
+				ui.View(ui.ViewProps{Style: ui.Style{Grow: 1}}),
+				ui.Toggle(ui.ToggleProps{Value: playing}),
+			),
+		),
 	)
+}
+
+// lottiePage plays a Lottie animation with the platform's player
+// (asuka/sdk/lottie): play and pause it, loop it, change its speed,
+// scrub it, play one of its markers, rewind it with ui.Animate, and color
+// it for dark mode.
+func lottiePage() ui.Node {
+	playing := signal.New(true)
+	loop := signal.New(true)
+	speed := signal.New(1.0)
+	progress := signal.New(0.0)
+	marker := signal.New(0)
+	markers := []string{"", "draw", "check", "sparkle"}
+	tinted := signal.New(false)
+	return section("Lottie",
+		ui.Show(loop, func() ui.Node { return successAnimation(playing, true, speed, progress, marker, markers, tinted) },
+			func() ui.Node { return successAnimation(playing, false, speed, progress, marker, markers, tinted) }),
+		// The slider follows the animation as it plays, and moves it as
+		// it's dragged.
+		ui.Slider(ui.SliderProps{Value: progress}),
+		ui.Segmented(ui.SegmentedProps{Segments: ui.Val([]string{"All", "Draw", "Check", "Sparkle"}), Selected: marker}),
+		ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
+			ui.StaticText("Playing"), ui.Toggle(ui.ToggleProps{Value: playing}),
+			ui.StaticText("Loop"), ui.Toggle(ui.ToggleProps{Value: loop}),
+		),
+		ui.Row(ui.Style{Gap: 12, Align: ui.AlignCenter},
+			ui.StaticText("Speed"),
+			ui.Slider(ui.SliderProps{Value: speed, Min: -2, Max: 2, Style: ui.Style{Grow: 1}}),
+			ui.Text(signal.Func(func() string { return fmt.Sprintf("%.1f×", speed.Get()) })),
+		),
+		ui.Row(ui.Style{Gap: 12, Wrap: true},
+			ui.Button(ui.ButtonProps{Title: ui.Val("Rewind"), Icon: "backward.fill", Variant: ui.ButtonGray, OnPress: func() {
+				playing.Set(false)
+				ui.AnimateWith(ui.Animation{Duration: 0.6, Curve: ui.Spring, Damping: 0.7}, func() { progress.Set(0) })
+			}}),
+			ui.Button(ui.ButtonProps{Title: signal.Func(func() string {
+				if tinted.Get() {
+					return "Green"
+				}
+				return "Blue"
+			}), Icon: "paintpalette", Variant: ui.ButtonGray, OnPress: func() { tinted.Set(!tinted.Peek()) }}),
+		),
+	)
+}
+
+// successAnimation is the gallery's Lottie (assets/success.json), looping
+// or not.
+func successAnimation(playing *signal.Signal[bool], loop bool, speed, progress *signal.Signal[float64], marker *signal.Signal[int], markers []string, tinted *signal.Signal[bool]) ui.Node {
+	return lottie.View(lottie.Props{
+		Source:   ui.Val("success.json"),
+		Playing:  playing,
+		Loop:     loop,
+		Speed:    speed,
+		Progress: progress,
+		Marker:   signal.Func(func() string { return markers[marker.Get()] }),
+		Overrides: signal.Func(func() []lottie.Override {
+			if !tinted.Get() {
+				return nil
+			}
+			// Blue in light mode, a lighter blue in dark mode.
+			return []lottie.Override{
+				lottie.Colors("Ring", colors.Hex(0x0a84ff), colors.Hex(0x64d2ff)),
+				lottie.Colors("Glow", colors.Hex(0xe5f1ff), colors.Hex(0x0b2540)),
+			}
+		}),
+		Label:      ui.Val("A check mark drawn in a circle"),
+		OnComplete: func() { playing.Set(false) },
+		Style:      ui.Style{Width: ui.Pt(200), AlignSelf: ui.AlignCenter},
+	})
 }
 
 // video plays a clip with the platform's player and its controls:

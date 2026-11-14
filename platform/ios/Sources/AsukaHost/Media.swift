@@ -69,7 +69,153 @@ final class AsukaImageLoader: @unchecked Sendable {
     private static func decode(_ data: Data?) -> Result<UIImage, Error> {
         // One point per pixel, as on the web; decoded now, off the main thread.
         guard let data, let img = UIImage(data: data, scale: 1) else { return .failure(AsukaImageError("can't decode the image")) }
-        return .success(img.preparingForDisplay() ?? img)
+        let shown = img.preparingForDisplay() ?? img
+        // An animated file (GIF, APNG, WebP, HEICS): its first frame, and
+        // the file, which ImageIO plays (AsukaImageView).
+        if let src = CGImageSourceCreateWithData(data as CFData, nil), CGImageSourceGetCount(src) > 1 {
+            objc_setAssociatedObject(shown, &asukaAnimatedKey, data as NSData, .OBJC_ASSOCIATION_RETAIN)
+        }
+        return .success(shown)
+    }
+}
+
+nonisolated(unsafe) private var asukaAnimatedKey = 0
+
+extension UIImage {
+    /// The file of an animated image the loader decoded (its frames' source).
+    var asukaAnimation: Data? { objc_getAssociatedObject(self, &asukaAnimatedKey) as? Data }
+
+    /// An image of the core's pixels: RGBA, 8 bits each, not premultiplied
+    /// (PlaceholderImage: u32 width, u32 height, the pixels).
+    static func asukaPixels(_ b: UnsafeRawBufferPointer) -> UIImage? {
+        guard b.count >= 8 else { return nil }
+        let w = Int(b.loadUnaligned(fromByteOffset: 0, as: UInt32.self).littleEndian)
+        let h = Int(b.loadUnaligned(fromByteOffset: 4, as: UInt32.self).littleEndian)
+        guard w > 0, h > 0, b.count >= 8 + w * h * 4,
+              let provider = CGDataProvider(data: Data(b[8..<(8 + w * h * 4)]) as CFData),
+              let cg = CGImage(width: w, height: h, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: w * 4,
+                               space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                               bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue),
+                               provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent)
+        else { return nil }
+        return UIImage(cgImage: cg, scale: 1, orientation: .up)
+    }
+}
+
+/// An Image's view: the picture, a placeholder over it until the picture
+/// arrives (an asset, or the core's decoded hash: in its own mode), the
+/// arrival cross-dissolving, and an animated picture's frames, which
+/// ImageIO times and loops as the file says (CGAnimateImageDataWithBlock)
+/// while the view is in a window and not paused.
+final class AsukaImageView: UIImageView {
+    let placeholderView = UIImageView()
+    /// PlaceholderMode (-1: the image's), Transition (seconds).
+    var placeholderMode: Int32 = -1 { didSet { syncPlaceholderMode() } }
+    var transition: Double = 0
+    var tinted = false
+    var paused = false { didSet { if paused != oldValue { restartFrames() } } }
+    private var animation: Data?
+    private var frame0 = 0
+    private var generation = 0
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        contentMode = .scaleAspectFit
+        placeholderView.isHidden = true
+        placeholderView.isUserInteractionEnabled = false
+        placeholderView.clipsToBounds = true
+        addSubview(placeholderView)
+    }
+    required init?(coder: NSCoder) { fatalError() }
+
+    override var contentMode: UIView.ContentMode { didSet { syncPlaceholderMode() } }
+    override var tintColor: UIColor! { didSet { placeholderView.tintColor = tintColor } }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        placeholderView.frame = bounds
+    }
+
+    private func syncPlaceholderMode() {
+        switch placeholderMode {
+        case -1: placeholderView.contentMode = contentMode
+        default: placeholderView.contentMode = AsukaImageView.contentMode(placeholderMode)
+        }
+    }
+
+    static func contentMode(_ m: Int32) -> UIView.ContentMode {
+        switch AsukaImageMode(rawValue: m) {
+        case .fill: return .scaleAspectFill
+        case .stretch: return .scaleToFill
+        case .center: return .center
+        default: return .scaleAspectFit
+        }
+    }
+
+    var showsPlaceholder: Bool { !placeholderView.isHidden && placeholderView.image != nil }
+
+    /// Shows a placeholder until the picture arrives (nil: none).
+    func setPlaceholder(_ img: UIImage?, template: Bool) {
+        placeholderView.layer.removeAllAnimations()
+        placeholderView.alpha = 1
+        placeholderView.image = template ? img?.withRenderingMode(.alwaysTemplate) : img
+        placeholderView.isHidden = img == nil
+    }
+
+    /// Takes the picture away (a new source is loading).
+    func clear() {
+        stopFrames()
+        animation = nil
+        image = nil
+    }
+
+    /// Shows the picture: faded in over the placeholder (or from
+    /// nothing) for Transition, then the placeholder goes.
+    func show(_ img: UIImage) {
+        layer.removeAnimation(forKey: "asuka.image")
+        let d = transition < 0 ? 0 : transition > 0 ? transition : showsPlaceholder ? 0.25 : 0
+        image = tinted ? img.withRenderingMode(.alwaysTemplate) : img
+        animation = img.asukaAnimation
+        frame0 = 0
+        restartFrames()
+        guard d > 0, window != nil else {
+            setPlaceholder(nil, template: false)
+            return
+        }
+        let t = CATransition()
+        t.type = .fade
+        t.duration = d
+        t.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        layer.add(t, forKey: "asuka.image")
+        if showsPlaceholder {
+            UIView.animate(withDuration: d, delay: 0, options: [.allowUserInteraction, .beginFromCurrentState], animations: {
+                self.placeholderView.alpha = 0
+            }) { [weak self] done in
+                if done, let self, self.placeholderView.alpha == 0 { self.setPlaceholder(nil, template: false) }
+            }
+        }
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        restartFrames()
+    }
+
+    private func stopFrames() { generation += 1 }
+
+    /// Plays the animation from the frame it's at, if it has one, is
+    /// shown, and isn't paused.
+    private func restartFrames() {
+        stopFrames()
+        guard let data = animation, window != nil, !paused else { return }
+        let gen = generation
+        let options = [kCGImageAnimationStartIndex: frame0] as CFDictionary
+        CGAnimateImageDataWithBlock(data as CFData, options) { [weak self] index, cg, stop in
+            guard let self, self.generation == gen else { stop.pointee = true; return }
+            self.frame0 = index
+            let img = UIImage(cgImage: cg, scale: 1, orientation: .up)
+            self.image = self.tinted ? img.withRenderingMode(.alwaysTemplate) : img
+        }
     }
 }
 
@@ -338,16 +484,21 @@ final class AsukaGestureDelegate: NSObject, UIGestureRecognizerDelegate {
             loadImage(n, v.string)
         case (.image, AsukaProp.Image.placeholder):
             n.imagePlaceholder = v.string
-            if !n.imageLoaded { (n.view as? UIImageView)?.image = nil }
             showPlaceholder(n)
+        case (.image, AsukaProp.Image.placeholderImage):
+            guard case .bytes(let b) = v else { return true }
+            n.imageHash = UIImage.asukaPixels(b)
+            showPlaceholder(n)
+        case (.image, AsukaProp.Image.placeholderMode):
+            (n.view as? AsukaImageView)?.placeholderMode = v.enumValue
+        case (.image, AsukaProp.Image.transition):
+            (n.view as? AsukaImageView)?.transition = v.float
+        case (.image, AsukaProp.Image.paused):
+            (n.view as? AsukaImageView)?.paused = v.bool
         case (.image, AsukaProp.Image.mode):
             let iv = n.view as! UIImageView
-            switch AsukaImageMode(rawValue: v.enumValue) {
-            case .fill: iv.contentMode = .scaleAspectFill; iv.clipsToBounds = true
-            case .stretch: iv.contentMode = .scaleToFill
-            case .center: iv.contentMode = .center
-            default: iv.contentMode = .scaleAspectFit
-            }
+            iv.contentMode = AsukaImageView.contentMode(v.enumValue)
+            if iv.contentMode == .scaleAspectFill { iv.clipsToBounds = true }
         case (.native, AsukaProp.Native.type):
             // The host's own kinds, else a package's typed view (its
             // module's class # its name).
@@ -386,38 +537,48 @@ final class AsukaGestureDelegate: NSObject, UIGestureRecognizerDelegate {
     func loadImage(_ n: AsukaNode, _ source: String) {
         n.imageSource = source
         n.imageLoaded = false
-        let iv = n.view as! UIImageView
+        let iv = n.view as! AsukaImageView
         let id = n.id
-        if source.isEmpty { iv.image = nil; showPlaceholder(n); return }
+        iv.clear()
+        if source.isEmpty { showPlaceholder(n); return }
         let show = { [weak self] (r: Result<UIImage, Error>) in
             guard let self, let n = self.nodes[id], n.imageSource == source else { return }
             switch r {
             case .success(let img):
                 n.imageLoaded = true
-                iv.image = n.color != 0 ? img.withRenderingMode(.alwaysTemplate) : img
+                iv.tinted = n.color != 0
+                iv.show(img)
                 let w = Double(img.size.width * img.scale), h = Double(img.size.height * img.scale)
                 self.emit(id, .loaded) { AsukaEvents.loaded(id, x: w, y: h) }
+                if img.asukaAnimation != nil { self.emit(id, .animated) { AsukaEvents.animated(id) } }
             case .failure(let e):
                 let m = e.localizedDescription
                 self.emit(id, .failed) { AsukaEvents.failed(id, m) }
             }
         }
         if let img = AsukaImageLoader.shared.cached(source) {
+            iv.setPlaceholder(nil, template: false)
             show(.success(img))
         } else {
-            iv.image = nil
             showPlaceholder(n)
             AsukaImageLoader.shared.load(source, done: show)
         }
     }
 
-    /// Shows an image's placeholder until (or unless) the image loads.
+    /// Shows an image's placeholder until (or unless) the image loads: the
+    /// core's decoded hash, else the Placeholder image (tinted as the
+    /// image is).
     func showPlaceholder(_ n: AsukaNode) {
-        guard !n.imagePlaceholder.isEmpty, !n.imageLoaded, let iv = n.view as? UIImageView else { return }
+        guard !n.imageLoaded, let iv = n.view as? AsukaImageView else { return }
+        if let img = n.imageHash {
+            iv.setPlaceholder(img, template: false)
+            return
+        }
+        guard !n.imagePlaceholder.isEmpty else { iv.setPlaceholder(nil, template: false); return }
         let id = n.id, p = n.imagePlaceholder
         AsukaImageLoader.shared.load(p) { [weak self] r in
-            guard let self, let n = self.nodes[id], !n.imageLoaded, n.imagePlaceholder == p, case .success(let img) = r else { return }
-            iv.image = n.color != 0 ? img.withRenderingMode(.alwaysTemplate) : img
+            guard let self, let n = self.nodes[id], !n.imageLoaded, n.imageHash == nil, n.imagePlaceholder == p, case .success(let img) = r else { return }
+            iv.setPlaceholder(img, template: n.color != 0)
         }
     }
 

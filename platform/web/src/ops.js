@@ -102,7 +102,7 @@ export const KindProp = Object.freeze({
   Tabs: Object.freeze({ Selected: 64 }),
   Sheet: Object.freeze({ Detents: 64, Grabber: 65, Window: 66, FullScreen: 67, Routed: 68 }),
   Alert: Object.freeze({ Title: 64, Message: 65, Buttons: 66, Style: 67, Window: 68, Fields: 69 }),
-  Image: Object.freeze({ Source: 64, Mode: 65, Placeholder: 66 }),
+  Image: Object.freeze({ Source: 64, Mode: 65, Placeholder: 66, PlaceholderImage: 67, PlaceholderMode: 68, Transition: 69, Paused: 70 }),
   Native: Object.freeze({ Type: 64, Prop: 65 }),
   RichText: Object.freeze({ Content: 64, Inlines: 65 }),
   Symbol: Object.freeze({ Name: 64 }),
@@ -187,6 +187,7 @@ export const Event = Object.freeze({
   Key: 56,
   FieldChanged: 57,
   Location: 58,
+  Animated: 59,
 });
 
 /** Commands the core sends. */
@@ -252,7 +253,7 @@ export const GestureState = Object.freeze({ Began: 0, Changed: 1, Ended: 2, Canc
 export const PathOp = Object.freeze({ End: 0, Move: 1, Line: 2, Quad: 3, Cubic: 4, Close: 5, Rect: 6, RoundedRect: 7, Ellipse: 8, Arc: 9 });
 export const LineCap = Object.freeze({ Butt: 0, Round: 1, Square: 2 });
 export const LineJoin = Object.freeze({ Miter: 0, Round: 1, Bevel: 2 });
-export const CanvasOp = Object.freeze({ End: 0, Save: 1, Restore: 2, Translate: 3, Scale: 4, Rotate: 5, Alpha: 6, Clip: 7, Fill: 8, Stroke: 9, Gradient: 10, Text: 11 });
+export const CanvasOp = Object.freeze({ End: 0, Save: 1, Restore: 2, Translate: 3, Scale: 4, Rotate: 5, Alpha: 6, Clip: 7, Fill: 8, Stroke: 9, Gradient: 10, Text: 11, Transform: 12, FillRule: 13, RadialGradient: 14, StrokeGradient: 15 });
 export const AnimationCurve = Object.freeze({ EaseInOut: 0, Linear: 1, EaseIn: 2, EaseOut: 3, Spring: 4 });
 export const ColorScheme = Object.freeze({ System: 0, Light: 1, Dark: 2 });
 export const SemanticColor = Object.freeze({ None: 0, Label: 1, SecondaryLabel: 2, TertiaryLabel: 3, Background: 4, SecondaryBackground: 5, GroupedBackground: 6, Separator: 7, Accent: 8, Red: 9, Orange: 10, Yellow: 11, Green: 12, Blue: 13, Purple: 14, Pink: 15, Gray: 16, Clear: 17, SecondaryGroupedBackground: 18, OnAccent: 19 });
@@ -457,4 +458,5 @@ export const Events = Object.freeze({
   key: (id, v) => new Writer().header(id, 56).i64(v).done(),
   fieldChanged: (id, v) => new Writer().header(id, 57).bytes(v).done(),
   location: (id, v) => new Writer().header(id, 58).bytes(v).done(),
+  animated: (id) => new Writer().header(id, 59).done(),
 });

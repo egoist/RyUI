@@ -81,6 +81,7 @@ class AsukaNode(val id: Int, val kind: Int, var view: View) {
     val a11yActions = ArrayList<Int>() // TalkBack actions' IDs (A11yActions)
     var imageLoaded = false
     var imagePlaceholder = ""
+    var imageHash: android.graphics.Bitmap? = null // PlaceholderImage's
     var gestures: AsukaGestures? = null
     var frameAnimator: android.animation.Animator? = null
     var backgroundAnimator: android.animation.Animator? = null

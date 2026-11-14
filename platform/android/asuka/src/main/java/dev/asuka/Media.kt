@@ -33,8 +33,12 @@ import kotlin.math.abs
 
 // Images
 
-/** A decoded image and its natural size (pixels). */
-class AsukaImage(val bitmap: Bitmap, val width: Int, val height: Int)
+/**
+ * A decoded image and its natural size (pixels); an animated one (GIF,
+ * WebP, AVIF and HEIF sequences: what ImageDecoder animates) keeps its
+ * file, which each view plays as an AnimatedImageDrawable of its own.
+ */
+class AsukaImage(val bitmap: Bitmap, val width: Int, val height: Int, val animation: ByteArray? = null)
 
 /**
  * Loads images off the main thread: fetched (http, https; kept on disk,
@@ -101,10 +105,30 @@ object AsukaImages {
         return app.assets.open(source).use { it.readBytes() }
     }
 
+    /** Makes an animated image's drawable off the main thread; done gets it there (null if it can't be). */
+    fun animation(data: ByteArray, done: (android.graphics.drawable.AnimatedImageDrawable?) -> Unit) {
+        pool.execute {
+            val d = runCatching {
+                android.graphics.ImageDecoder.decodeDrawable(android.graphics.ImageDecoder.createSource(ByteBuffer.wrap(data)))
+                    as? android.graphics.drawable.AnimatedImageDrawable
+            }.getOrNull()
+            main.post { done(d) }
+        }
+    }
+
+    /** Whether data is a file ImageDecoder animates: a GIF, a WebP with an ANIM chunk, an AVIF or HEIF sequence. */
+    private fun animates(data: ByteArray): Boolean {
+        fun at(i: Int, s: String) = data.size >= i + s.length && (s.indices).all { data[i + it] == s[it].code.toByte() }
+        if (at(0, "GIF8")) return true
+        if (at(0, "RIFF") && at(8, "WEBPVP8X") && data.size > 20) return data[20].toInt() and 2 != 0
+        if (at(4, "ftyp")) return at(8, "avis") || at(8, "msf1") || at(8, "hevs")
+        return false
+    }
+
     private fun decode(data: ByteArray, maxSide: Int): AsukaImage {
         val o = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(data, 0, data.size, o)
-        if (o.outWidth <= 0) error("can't decode the image")
+        if (o.outWidth <= 0) return decodeOther(data, maxSide)
         var sample = 1
         while (maxOf(o.outWidth, o.outHeight) / (sample * 2) >= maxSide) sample *= 2
         var b = BitmapFactory.decodeByteArray(data, 0, data.size, BitmapFactory.Options().apply { inSampleSize = sample })
@@ -119,7 +143,25 @@ object AsukaImages {
             if (m.second) { w = o.outHeight; h = o.outWidth }
         }
         b.prepareToDraw()
-        return AsukaImage(b, w, h)
+        return AsukaImage(b, w, h, if (animates(data)) data else null)
+    }
+
+    /** What BitmapFactory doesn't read (HEIF and AVIF, where the device has their codecs): ImageDecoder, which turns it upright itself. */
+    private fun decodeOther(data: ByteArray, maxSide: Int): AsukaImage {
+        var w = 0
+        var h = 0
+        val b = runCatching {
+            android.graphics.ImageDecoder.decodeBitmap(android.graphics.ImageDecoder.createSource(ByteBuffer.wrap(data))) { d, info, _ ->
+                w = info.size.width
+                h = info.size.height
+                var sample = 1
+                while (maxOf(w, h) / (sample * 2) >= maxSide) sample *= 2
+                d.setTargetSampleSize(sample)
+                d.allocator = android.graphics.ImageDecoder.ALLOCATOR_SOFTWARE
+            }
+        }.getOrNull() ?: error("can't decode the image")
+        b.prepareToDraw()
+        return AsukaImage(b, w, h, if (animates(data)) data else null)
     }
 
     // exifMatrix is the transform a JPEG's EXIF orientation asks for, and
@@ -146,17 +188,25 @@ object AsukaImages {
 fun AsukaRuntime.loadImage(n: AsukaNode, source: String) {
     n.imageSource = source
     n.imageLoaded = false
-    val iv = n.view as ImageView
+    val iv = n.view as AsukaImageView
     val id = n.id
-    if (source.isEmpty()) { iv.setImageDrawable(null); showPlaceholder(n); return }
+    iv.clear()
+    if (source.isEmpty()) { showPlaceholder(n); return }
     val show = { r: Result<AsukaImage> ->
         val cur = nodes[id]
         if (cur != null && cur.imageSource == source) {
-            r.onSuccess {
+            r.onSuccess { img ->
                 cur.imageLoaded = true
-                (cur.view as ImageView).setImageBitmap(it.bitmap)
+                iv.show(img.bitmap)
                 // One point per pixel, as on the web.
-                emit(id, AsukaEventKind.LOADED) { AsukaEvents.loaded(id, it.width.toDouble(), it.height.toDouble()) }
+                emit(id, AsukaEventKind.LOADED) { AsukaEvents.loaded(id, img.width.toDouble(), img.height.toDouble()) }
+                img.animation?.let { data ->
+                    emit(id, AsukaEventKind.ANIMATED) { AsukaEvents.animated(id) }
+                    AsukaImages.animation(data) { d ->
+                        val now = nodes[id]
+                        if (d != null && now != null && now.imageSource == source) iv.play(d)
+                    }
+                }
             }.onFailure {
                 val m = it.message ?: it.javaClass.simpleName
                 emit(id, AsukaEventKind.FAILED) { AsukaEvents.failed(id, m) }
@@ -164,22 +214,168 @@ fun AsukaRuntime.loadImage(n: AsukaNode, source: String) {
         }
     }
     val hit = AsukaImages.cached(source)
-    if (hit != null) show(Result.success(hit)) else {
-        iv.setImageDrawable(null)
+    if (hit != null) { iv.placeholder = null; show(Result.success(hit)) } else {
         showPlaceholder(n)
         AsukaImages.load(app, source, show)
     }
 }
 
-/** Shows an image's placeholder until (or unless) the image loads. */
+/**
+ * Shows an image's placeholder until (or unless) the image loads: the
+ * core's decoded hash, else the Placeholder image (tinted as the image is).
+ */
 fun AsukaRuntime.showPlaceholder(n: AsukaNode) {
+    if (n.imageLoaded) return
+    val iv = n.view as AsukaImageView
+    n.imageHash?.let { iv.placeholder = it; iv.placeholderTinted = false; return }
     val p = n.imagePlaceholder
-    if (p.isEmpty() || n.imageLoaded) return
+    if (p.isEmpty()) { iv.placeholder = null; return }
     val id = n.id
     AsukaImages.load(app, p) { r ->
         val cur = nodes[id] ?: return@load
-        if (cur.imageLoaded || cur.imagePlaceholder != p) return@load
-        r.onSuccess { (cur.view as ImageView).setImageBitmap(it.bitmap) }
+        if (cur.imageLoaded || cur.imageHash != null || cur.imagePlaceholder != p) return@load
+        r.onSuccess { iv.placeholder = it.bitmap; iv.placeholderTinted = true }
+    }
+}
+
+/** PlaceholderImage's bytes (u32 width, u32 height, RGBA not premultiplied) as a bitmap. */
+fun placeholderBitmap(b: ByteBuffer): Bitmap? {
+    val buf = b.duplicate().order(java.nio.ByteOrder.LITTLE_ENDIAN)
+    if (buf.remaining() < 8) return null
+    val w = buf.int
+    val h = buf.int
+    if (w <= 0 || h <= 0 || buf.remaining() < w * h * 4) return null
+    val px = IntArray(w * h) {
+        val r = buf.get().toInt() and 255
+        val g = buf.get().toInt() and 255
+        val bl = buf.get().toInt() and 255
+        val a = buf.get().toInt() and 255
+        (a shl 24) or (r shl 16) or (g shl 8) or bl
+    }
+    return Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888)
+}
+
+/**
+ * An Image's view: the picture (an ImageView's drawable, at its scale
+ * type), the placeholder under it until it arrives (in its own mode,
+ * drawn here), the arrival cross-dissolving them over Transition
+ * (config_shortAnimTime by default, over a placeholder), and an animated
+ * picture's AnimatedImageDrawable, running while attached and not paused.
+ */
+class AsukaImageView(context: Context) : androidx.appcompat.widget.AppCompatImageView(context) {
+    var placeholder: Bitmap? = null
+        set(v) { field = v; fade?.cancel(); fade = null; placeholderAlpha = 1f; invalidate() }
+    var placeholderTinted = false
+        set(v) { field = v; invalidate() }
+    /** PlaceholderMode: -1, the image's. */
+    var placeholderMode = -1
+        set(v) { field = v; invalidate() }
+    var transition = 0.0
+    var paused = false
+        set(v) { field = v; animating() }
+    private var placeholderAlpha = 1f
+    private var fade: ValueAnimator? = null
+    private var anim: android.graphics.drawable.AnimatedImageDrawable? = null
+    private val paint = android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG)
+    private val m = Matrix()
+
+    init { scaleType = ScaleType.FIT_CENTER }
+
+    /** Takes the picture away (a new source is loading). */
+    fun clear() {
+        anim?.stop()
+        anim = null
+        fade?.cancel()
+        fade = null
+        imageAlpha = 255
+        setImageDrawable(null)
+    }
+
+    /** Shows the picture, fading it in over the placeholder (or from nothing). */
+    fun show(b: Bitmap) {
+        fade?.cancel()
+        val d = when {
+            transition < 0 -> 0.0
+            transition > 0 -> transition
+            placeholder != null -> resources.getInteger(android.R.integer.config_shortAnimTime) / 1000.0
+            else -> 0.0
+        }
+        setImageBitmap(b)
+        if (d <= 0 || !isAttachedToWindow) {
+            imageAlpha = 255
+            placeholder = null
+            return
+        }
+        imageAlpha = 0
+        fade = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = (d * 1000).toLong()
+            interpolator = android.view.animation.DecelerateInterpolator()
+            addUpdateListener {
+                val t = it.animatedValue as Float
+                imageAlpha = (t * 255).toInt()
+                placeholderAlpha = 1 - t
+                invalidate()
+            }
+            addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(a: android.animation.Animator) {
+                    if (fade === a) { fade = null; imageAlpha = 255; placeholder = null }
+                }
+            })
+            start()
+        }
+    }
+
+    /** Plays an animated picture in place of its first frame. */
+    fun play(d: android.graphics.drawable.AnimatedImageDrawable) {
+        val a = imageAlpha
+        anim = d
+        setImageDrawable(d)
+        imageAlpha = a
+        animating()
+    }
+
+    private fun animating() {
+        val d = anim ?: return
+        if (!paused && isAttachedToWindow) { if (!d.isRunning) d.start() } else if (d.isRunning) d.stop()
+    }
+
+    override fun onAttachedToWindow() { super.onAttachedToWindow(); animating() }
+    override fun onDetachedFromWindow() { super.onDetachedFromWindow(); anim?.stop() }
+
+    override fun onDraw(c: android.graphics.Canvas) {
+        val p = placeholder
+        if (p != null && placeholderAlpha > 0f && width > 0 && height > 0) {
+            val mode = if (placeholderMode >= 0) placeholderMode else when (scaleType) {
+                ScaleType.CENTER_CROP -> AsukaImageMode.FILL
+                ScaleType.FIT_XY -> AsukaImageMode.STRETCH
+                ScaleType.CENTER -> AsukaImageMode.CENTER
+                else -> AsukaImageMode.FIT
+            }
+            val w = (width - paddingLeft - paddingRight).toFloat()
+            val h = (height - paddingTop - paddingBottom).toFloat()
+            val bw = p.width.toFloat()
+            val bh = p.height.toFloat()
+            m.reset()
+            when (mode) {
+                AsukaImageMode.STRETCH -> m.setScale(w / bw, h / bh)
+                AsukaImageMode.CENTER -> m.setTranslate((w - bw) / 2, (h - bh) / 2)
+                else -> {
+                    val k = if (mode == AsukaImageMode.FILL) maxOf(w / bw, h / bh) else minOf(w / bw, h / bh)
+                    m.setScale(k, k)
+                    m.postTranslate((w - bw * k) / 2, (h - bh * k) / 2)
+                }
+            }
+            m.postTranslate(paddingLeft.toFloat(), paddingTop.toFloat())
+            paint.alpha = (placeholderAlpha * 255).toInt()
+            val tint = imageTintList
+            paint.colorFilter = if (placeholderTinted && tint != null)
+                android.graphics.PorterDuffColorFilter(tint.defaultColor, android.graphics.PorterDuff.Mode.SRC_IN) else null
+            c.save()
+            c.clipRect(paddingLeft, paddingTop, width - paddingRight, height - paddingBottom)
+            c.drawBitmap(p, m, paint)
+            c.restore()
+        }
+        super.onDraw(c)
     }
 }
 

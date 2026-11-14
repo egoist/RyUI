@@ -176,42 +176,75 @@ function draw(h, n) {
   const path = () => new Path2D(pathData(r.bytes()));
   const col = (v) => color.resolve(h, v, "rgba(0,0,0,0)");
   const alphas = [1];
+  const rules = []; // FillRule's, kept with each save
+  let rule = "nonzero";
   const font = getComputedStyle(n.el).fontFamily;
+  const stops = () => {
+    const ns = r.u32();
+    const out = [];
+    for (let i = 0; i < ns; i++) out.push([r.u64(), r.f32()]);
+    return out;
+  };
+  const paint = (gr, st) => {
+    for (const [cl, at] of st) gr.addColorStop(Math.min(Math.max(at, 0), 1), col(cl));
+    return gr;
+  };
+  // A radial gradient from its focus out to its circle: center, radius, focus.
+  const radial = (st) => {
+    const cx = r.f32(), cy = r.f32(), rad = r.f32(), fx = r.f32(), fy = r.f32();
+    return paint(g.createRadialGradient(fx, fy, 0, cx, cy, Math.max(rad, 0)), st);
+  };
+  const strokeStyle = () => {
+    g.lineWidth = r.f32();
+    g.lineCap = caps[r.u8()] || "butt";
+    g.lineJoin = joins[r.u8()] || "miter";
+    const nd = r.u32();
+    const phase = r.f32();
+    const ds = [];
+    for (let i = 0; i < nd; i++) ds.push(r.f32());
+    g.setLineDash(ds);
+    g.lineDashOffset = phase;
+  };
   while (!r.atEnd) {
     const op = r.u8();
     switch (op) {
       case 0: return;
-      case 1: g.save(); alphas.push(g.globalAlpha); break;
-      case 2: g.restore(); alphas.pop(); break;
+      case 1: g.save(); alphas.push(g.globalAlpha); rules.push(rule); break;
+      case 2: g.restore(); alphas.pop(); if (rules.length) rule = rules.pop(); break;
       case 3: g.translate(r.f32(), r.f32()); break;
       case 4: g.scale(r.f32(), r.f32()); break;
       case 5: g.rotate((r.f32() * Math.PI) / 180); break;
       case 6: g.globalAlpha *= r.f32(); break;
-      case 7: g.clip(path()); break;
-      case 8: { const cl = col(r.u64()); g.fillStyle = cl; g.fill(path()); break; }
+      case 7: g.clip(path(), rule); break;
+      case 8: { const cl = col(r.u64()); g.fillStyle = cl; g.fill(path(), rule); break; }
       case 9: {
         g.strokeStyle = col(r.u64());
-        g.lineWidth = r.f32();
-        g.lineCap = caps[r.u8()] || "butt";
-        g.lineJoin = joins[r.u8()] || "miter";
-        const nd = r.u32();
-        const phase = r.f32();
-        const ds = [];
-        for (let i = 0; i < nd; i++) ds.push(r.f32());
-        g.setLineDash(ds);
-        g.lineDashOffset = phase;
+        strokeStyle();
         g.stroke(path());
         g.setLineDash([]);
         break;
       }
       case 10: {
-        const ns = r.u32();
-        const stops = [];
-        for (let i = 0; i < ns; i++) stops.push([r.u64(), r.f32()]);
-        const gr = g.createLinearGradient(r.f32(), r.f32(), r.f32(), r.f32());
-        for (const [cl, at] of stops) gr.addColorStop(Math.min(Math.max(at, 0), 1), col(cl));
-        g.fillStyle = gr;
-        g.fill(path());
+        const st = stops();
+        g.fillStyle = paint(g.createLinearGradient(r.f32(), r.f32(), r.f32(), r.f32()), st);
+        g.fill(path(), rule);
+        break;
+      }
+      case 12: g.transform(r.f32(), r.f32(), r.f32(), r.f32(), r.f32(), r.f32()); break;
+      case 13: rule = r.u8() === 1 ? "evenodd" : "nonzero"; break;
+      case 14: {
+        const st = stops();
+        g.fillStyle = radial(st);
+        g.fill(path(), rule);
+        break;
+      }
+      case 15: {
+        strokeStyle();
+        const kind = r.u8();
+        const st = stops();
+        g.strokeStyle = kind === 1 ? radial(st) : paint(g.createLinearGradient(r.f32(), r.f32(), r.f32(), r.f32()), st);
+        g.stroke(path());
+        g.setLineDash([]);
         break;
       }
       case 11: {

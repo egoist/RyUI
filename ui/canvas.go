@@ -138,6 +138,104 @@ func (g *Graphics) FillGradient(p *Path, gr Gradient) {
 	g.path(p)
 }
 
+// Transform multiplies what's drawn after by the affine matrix
+// [a c tx; b d ty] (a point x, y goes to a·x + c·y + tx, b·x + d·y + ty),
+// as Core Graphics' and the web's: a skew, or a whole transform at once.
+func (g *Graphics) Transform(a, b, c, d, tx, ty float32) {
+	g.op(ops.CanvasOpTransform)
+	g.f32(a, b, c, d, tx, ty)
+}
+
+// EvenOdd fills and clips by the even-odd rule after it (until Restore):
+// a path's overlaps alternate between in and out, so a shape inside
+// another is a hole whichever way it winds. Off, the default: the
+// nonzero rule.
+func (g *Graphics) EvenOdd(on bool) {
+	g.op(ops.CanvasOpFillRule)
+	if on {
+		g.b = append(g.b, 1)
+	} else {
+		g.b = append(g.b, 0)
+	}
+}
+
+// RadialGradient is a gradient out from a center: Colors at Locations
+// from Center (0) to the circle of Radius (1), in points of the canvas.
+// Focus moves where it starts (SVG's focal point; zero: the center).
+// Android 12 and later, Core Graphics and the web draw the focus;
+// Windows draws it; GTK starts at the center.
+type RadialGradient struct {
+	Colors    []Color
+	Locations []float32 // nil: evenly spaced
+	Center    Point
+	Radius    float32
+	Focus     *Point
+}
+
+func (g *Graphics) stops(colors []Color, locations []float32) {
+	g.b = binary.LittleEndian.AppendUint32(g.b, uint32(len(colors)))
+	for i, c := range colors {
+		loc := float32(0)
+		switch {
+		case i < len(locations):
+			loc = locations[i]
+		case len(colors) > 1:
+			loc = float32(i) / float32(len(colors)-1)
+		}
+		g.color(c)
+		g.f32(loc)
+	}
+}
+
+func (g *Graphics) radial(gr RadialGradient) {
+	f := gr.Center
+	if gr.Focus != nil {
+		f = *gr.Focus
+	}
+	g.f32(gr.Center.X, gr.Center.Y, gr.Radius, f.X, f.Y)
+}
+
+// FillRadialGradient fills p with a radial gradient.
+func (g *Graphics) FillRadialGradient(p *Path, gr RadialGradient) {
+	g.op(ops.CanvasOpRadialGradient)
+	g.stops(gr.Colors, gr.Locations)
+	g.radial(gr)
+	g.path(p)
+}
+
+func (g *Graphics) strokeStyle(s StrokeStyle) {
+	w := s.Width
+	if w <= 0 {
+		w = 1
+	}
+	g.f32(w)
+	g.b = append(g.b, byte(s.Cap), byte(s.Join))
+	g.b = binary.LittleEndian.AppendUint32(g.b, uint32(len(s.Dash)))
+	g.f32(s.DashPhase)
+	g.f32(s.Dash...)
+}
+
+// StrokeGradient draws p's outline painted with a linear gradient, its
+// Start and End in points of the canvas.
+func (g *Graphics) StrokeGradient(p *Path, s StrokeStyle, gr Gradient) {
+	g.op(ops.CanvasOpStrokeGradient)
+	g.strokeStyle(s)
+	g.b = append(g.b, 0)
+	g.stops(gr.Colors, gr.Locations)
+	g.f32(gr.Start.X, gr.Start.Y, gr.End.X, gr.End.Y)
+	g.path(p)
+}
+
+// StrokeRadialGradient draws p's outline painted with a radial gradient.
+func (g *Graphics) StrokeRadialGradient(p *Path, s StrokeStyle, gr RadialGradient) {
+	g.op(ops.CanvasOpStrokeGradient)
+	g.strokeStyle(s)
+	g.b = append(g.b, 1)
+	g.stops(gr.Colors, gr.Locations)
+	g.radial(gr)
+	g.path(p)
+}
+
 // TextStyle is how Graphics.Text draws.
 type TextStyle struct {
 	Size   float32 // points; 0: 17 (the body text's)

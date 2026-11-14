@@ -202,7 +202,7 @@ segmented.Segmented(segmented.SegmentedProps{
 - 类型在 [类型](#类型) 表中列出的字段，是只设置一次的属性。
 - `signal.Accessor[T]` 字段是每次变化都会重新设置的属性。视图的 effect 和其他 effect 一样有 owner，会随视图一起销毁。
 - 不返回值的 `func` 字段是事件，它在主线程上运行。
-- 如果结构体有 `Style ui.Style` 字段，它就是视图的样式。
+- 如果结构体有 `Style ui.Style` 字段，它就是视图的样式；写成 `Style ui.Styler` 时也可以接受 `StyleFunc`。
 
 每个平台都以协议的形式实现视图：包括视图本身、每个属性对应的 setter，以及创建时传入的事件对象：
 

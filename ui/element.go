@@ -28,6 +28,7 @@ type handlers struct {
 	swipe               func(SwipeDirection)
 	loaded              func(w, h float32)
 	failed              func(string)
+	animated            func() // an Image's: it has frames
 	native              func([]byte)
 	link                func(string)
 	scrolled            func(x, y float32)

@@ -16,7 +16,10 @@ import (
 // the colors in the theme then (semantic colors follow dark mode), with
 // raw calls and no allocation. Clip is a fill clip (gtk_snapshot_push_fill)
 // popped at the Restore that ends it; Alpha multiplies the colors drawn
-// after it, as Core Graphics' context alpha does.
+// after it, as Core Graphics' context alpha does. FillRule is read as the
+// commands are: each fill and clip keeps its rule. A Transform is a
+// GskTransform of its matrix; a radial gradient starts at its center (GSK
+// has no focal point); a gradient stroke is the gradient in a stroke clip.
 
 type canvasView struct {
 	cmds []canvasCmd
@@ -31,6 +34,9 @@ type canvasSave struct {
 
 type canvasCmd struct {
 	op     ops.CanvasOp
+	rule   uintptr // Clip, Fill, Gradient, RadialGradient: FillWinding or FillEvenOdd
+	radial bool    // RadialGradient, StrokeGradient: a radial one (from: its center)
+	radius float32
 	path   Ptr // Clip, Fill, Stroke, Gradient
 	stroke Ptr // Stroke's GskStroke
 	tr     Ptr // Translate, Scale, Rotate: a GskTransform
@@ -148,12 +154,104 @@ func (h *Host) compileCanvas(n *node, b []byte, out []canvasCmd) []canvasCmd {
 		i += c
 		return p
 	}
+	rule := uintptr(FillWinding)
+	var rules []uintptr
+	stops := func(cmd *canvasCmd) {
+		c := u32()
+		for range c {
+			if !ok(12) {
+				break
+			}
+			cmd.stops = append(cmd.stops, gradientStop{color: color(), location: f()})
+		}
+		cmd.cs = make([]ColorStop, max(len(cmd.stops), 2))
+	}
+	stroke := func(cmd *canvasCmd) bool {
+		w := f()
+		if !ok(2) {
+			return false
+		}
+		capv, join := int32(min(b[i], 2)), int32(min(b[i+1], 2))
+		i += 2
+		nd := u32()
+		phase := f()
+		dash := make([]float32, 0, min(nd, 64))
+		for range nd {
+			if !ok(4) {
+				break
+			}
+			dash = append(dash, f())
+		}
+		cmd.stroke = newStroke(w, capv, join, dash, phase)
+		cmd.radius = max(cmd.radius, w) // the stroke's reach past its path, for its gradient's bounds
+		return true
+	}
+	bounds := func(cmd *canvasCmd, pad float32) {
+		if cmd.path != 0 && !Draw.PathGetBounds(cmd.path, &cmd.bounds) {
+			Call(Draw.FnPathUnref, cmd.path)
+			cmd.path = 0
+		}
+		cmd.bounds.X -= pad
+		cmd.bounds.Y -= pad
+		cmd.bounds.W += 2 * pad
+		cmd.bounds.H += 2 * pad
+	}
 	for i < len(b) {
 		op := ops.CanvasOp(b[i])
 		i++
-		cmd := canvasCmd{op: op}
+		cmd := canvasCmd{op: op, rule: rule}
 		switch op {
-		case ops.CanvasOpSave, ops.CanvasOpRestore:
+		case ops.CanvasOpSave:
+			rules = append(rules, rule)
+		case ops.CanvasOpRestore:
+			if len(rules) > 0 {
+				rule = rules[len(rules)-1]
+				rules = rules[:len(rules)-1]
+			}
+		case ops.CanvasOpFillRule:
+			if ok(1) {
+				rule = FillWinding
+				if b[i] == 1 {
+					rule = FillEvenOdd
+				}
+				i++
+			}
+			continue
+		case ops.CanvasOpTransform:
+			a, bb, c, d, tx, ty := f(), f(), f(), f(), f(), f()
+			m := Draw.GrapheneMatrixAlloc()
+			Draw.GrapheneMatrixInitFrom2D(m, float64(a), float64(bb), float64(c), float64(d), float64(tx), float64(ty))
+			cmd.tr = Draw.TransformMatrix(0, m) // a copy
+			Draw.GrapheneMatrixFree(m)
+		case ops.CanvasOpRadialGradient:
+			stops(&cmd)
+			cmd.radial = true
+			cmd.from, cmd.radius = Point{X: f(), Y: f()}, f()
+			f() // its focus: GSK has none
+			f()
+			cmd.path = path()
+			bounds(&cmd, 0)
+		case ops.CanvasOpStrokeGradient:
+			if !stroke(&cmd) || !ok(1) {
+				return out
+			}
+			pad := cmd.radius
+			cmd.radius = 0
+			cmd.radial = b[i] == 1
+			i++
+			stops(&cmd)
+			if cmd.radial {
+				cmd.from, cmd.radius = Point{X: f(), Y: f()}, f()
+				f()
+				f()
+			} else {
+				cmd.from, cmd.to = Point{X: f(), Y: f()}, Point{X: f(), Y: f()}
+				if cmd.from == cmd.to {
+					cmd.to.Y += 1
+				}
+			}
+			cmd.path = path()
+			bounds(&cmd, pad)
 		case ops.CanvasOpTranslate:
 			p := Point{X: f(), Y: f()}
 			cmd.tr = Call(FnTransformTranslate, 0, Addr(&p))
@@ -174,42 +272,20 @@ func (h *Host) compileCanvas(n *node, b []byte, out []canvasCmd) []canvasCmd {
 			cmd.path = path()
 		case ops.CanvasOpStroke:
 			cmd.color = color()
-			w := f()
-			if !ok(2) {
+			if !stroke(&cmd) {
 				return out
 			}
-			capv, join := int32(min(b[i], 2)), int32(min(b[i+1], 2))
-			i += 2
-			nd := u32()
-			phase := f()
-			dash := make([]float32, 0, min(nd, 64))
-			for range nd {
-				if !ok(4) {
-					break
-				}
-				dash = append(dash, f())
-			}
+			cmd.radius = 0
 			cmd.path = path()
-			cmd.stroke = newStroke(w, capv, join, dash, phase)
 		case ops.CanvasOpGradient:
-			c := u32()
-			for range c {
-				if !ok(12) {
-					break
-				}
-				cmd.stops = append(cmd.stops, gradientStop{color: color(), location: f()})
-			}
+			stops(&cmd)
 			cmd.from = Point{X: f(), Y: f()}
 			cmd.to = Point{X: f(), Y: f()}
 			if cmd.from == cmd.to {
 				cmd.to.Y += 1
 			}
 			cmd.path = path()
-			if cmd.path != 0 && !Draw.PathGetBounds(cmd.path, &cmd.bounds) {
-				Call(Draw.FnPathUnref, cmd.path)
-				cmd.path = 0
-			}
-			cmd.cs = make([]ColorStop, max(len(cmd.stops), 2))
+			bounds(&cmd, 0)
 		case ops.CanvasOpText:
 			cmd.color = color()
 			size := f()
@@ -297,19 +373,21 @@ func (h *Host) replayCanvas(c *canvasView, snap Ptr) {
 			s := c.saves[len(c.saves)-1]
 			c.saves = c.saves[:len(c.saves)-1]
 			alpha, pushes = s.alpha, s.pushes
-		case ops.CanvasOpTranslate, ops.CanvasOpScale, ops.CanvasOpRotate:
+		case ops.CanvasOpTranslate, ops.CanvasOpScale, ops.CanvasOpRotate, ops.CanvasOpTransform:
 			if x.tr != 0 {
 				Call(Draw.FnSnapshotTransform, snap, x.tr)
 			}
 		case ops.CanvasOpAlpha:
 			alpha *= x.alpha
 		case ops.CanvasOpClip:
-			Call(FnSnapshotPushFill, snap, x.path, FillWinding)
+			Call(FnSnapshotPushFill, snap, x.path, x.rule)
 			pushes++
 		case ops.CanvasOpFill:
 			if col, ok := resolve(x.color); ok && x.path != 0 {
-				Call(FnSnapshotAppendFill, snap, x.path, FillWinding, Addr(&col))
+				Call(FnSnapshotAppendFill, snap, x.path, x.rule, Addr(&col))
 			}
+		case ops.CanvasOpRadialGradient, ops.CanvasOpStrokeGradient:
+			h.canvasGradient(x, snap, alpha)
 		case ops.CanvasOpStroke:
 			if col, ok := resolve(x.color); ok && x.path != 0 {
 				Call(FnSnapshotAppendStroke, snap, x.path, x.stroke, Addr(&col))
@@ -339,8 +417,8 @@ func (h *Host) replayCanvas(c *canvasView, snap Ptr) {
 	Call(FnSnapshotRestore, snap)
 }
 
-// canvasGradient fills a path with a linear gradient, padded before its
-// start and after its end.
+// canvasGradient fills a path (or a Stroke's outline) with a linear or
+// radial gradient, padded before its start and after its end.
 func (h *Host) canvasGradient(x *canvasCmd, snap Ptr, alpha float32) {
 	if x.path == 0 || len(x.stops) == 0 {
 		return
@@ -359,7 +437,15 @@ func (h *Host) canvasGradient(x *canvasCmd, snap Ptr, alpha float32) {
 		x.cs[0].Offset = 0
 		n = 2
 	}
-	Call(FnSnapshotPushFill, snap, x.path, FillWinding)
-	Call(FnSnapshotAppendLinearGradient, snap, Addr(&x.bounds), Addr(&x.from), Addr(&x.to), Addr(&x.cs[0]), uintptr(n))
+	if x.stroke != 0 {
+		Draw.SnapshotPushStroke(snap, x.path, x.stroke)
+	} else {
+		Call(FnSnapshotPushFill, snap, x.path, x.rule)
+	}
+	if x.radial {
+		Draw.SnapshotAppendRadialGradient(snap, &x.bounds, &x.from, x.radius, x.radius, 0, 1, &x.cs[0], uintptr(n))
+	} else {
+		Call(FnSnapshotAppendLinearGradient, snap, Addr(&x.bounds), Addr(&x.from), Addr(&x.to), Addr(&x.cs[0]), uintptr(n))
+	}
 	Call(FnSnapshotPop, snap)
 }

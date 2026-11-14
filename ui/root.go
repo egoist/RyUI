@@ -721,6 +721,10 @@ func dispatch(ev ops.Event) {
 		if h.failed != nil {
 			h.failed(ev.Str)
 		}
+	case ops.EventAnimated:
+		if h.animated != nil {
+			h.animated()
+		}
 	case ops.EventNative:
 		if h.native != nil {
 			h.native(ev.Bytes)

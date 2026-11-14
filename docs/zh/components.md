@@ -22,6 +22,7 @@
 | `ProgressRing` | 仿照 SwiftUI 的圆形仪表绘制；没有值时是 `UIActivityIndicatorView` | `CircularProgressIndicator` | 16 和 32 点时是旋转样式的 `NSProgressIndicator`；其他尺寸或设置了 `Color` 时，按它的样式自行绘制 | 自行绘制的 Fluent `ProgressRing` | 按 GNOME 的样式绘制；没有值时是 `AdwSpinner` | SVG 圆环 |
 | `Activity` | `UIActivityIndicatorView` | `CircularProgressIndicator` | 旋转样式的 `NSProgressIndicator` | 自行绘制的 Fluent 进度环 | `AdwSpinner`（libadwaita 1.6 之前为 `GtkSpinner`） | 自行绘制的加载指示器 |
 | `Image` | `UIImageView` | `ImageView` | `NSImageView` | 用 GDI+ 绘制 | 用 GDK 纹理绘制 | `<img>` |
+| `lottie.View` | lottie-ios | lottie-android | lottie-ios | 用 `ui.Canvas` 绘制 | 用 `ui.Canvas` 绘制 | lottie-web |
 | `Symbol` | SF Symbols | Material Symbols | SF Symbols | Segoe Fluent Icons | 图标主题中的图标，没有则用 Material Symbols | Material Symbols |
 | `Video` | `AVPlayerViewController` | Media3 的播放器 | `AVPlayerView` | WebView2 中的 `<video>` | `GtkVideo`（GStreamer） | `<video>` |
 | `WebView` | `WKWebView` | `WebView` | `WKWebView` | WebView2 | `WebKitWebView`（WebKitGTK 6.0） | `<iframe>` |
@@ -319,7 +320,7 @@ return ui.Column(ui.Style{Gap: 12},
 
 ## 图片
 
-`ui.Image` 显示一张图片。平台会在主线程之外加载和解码图片，并缓存在内存中。iOS 和 Android 还会把通过 http(s) 获取的图片存到磁盘上，应用重启后依然有效；桌面端宿主只缓存在内存里，浏览器则使用它自己的缓存。Windows 能解码 PNG、JPEG 和 GIF；Linux 除了这些，还支持 GDK 加载器能读取的其他格式。
+`ui.Image` 显示一张图片。平台会在主线程之外加载和解码图片，并缓存在内存中。iOS 和 Android 还会把通过 http(s) 获取的图片存到磁盘上，应用重启后依然有效；桌面端宿主只缓存在内存里，浏览器则使用它自己的缓存。
 
 ```go
 return ui.Column(ui.Style{Gap: 12},
@@ -331,16 +332,40 @@ return ui.Column(ui.Style{Gap: 12},
 		Label:       ui.Val("A river in a valley"),
 		Style:       ui.Style{AspectRatio: 3.0 / 2, CornerRadius: 12, Clip: true},
 	}),
+	ui.Image(ui.ImageProps{
+		Source:     signal.Func(func() string { return photo.Get().URL }),
+		BlurHash:   signal.Func(func() string { return photo.Get().BlurHash }),
+		Mode:       ui.ImageFill,
+		Transition: 0.4,
+		Style:      ui.Style{AspectRatio: 1, CornerRadius: 12},
+	}),
 )
 ```
 
 - `Source` 可以是 http(s) URL、应用 `assets` 目录下的路径（`"logo.png"` 即 `assets/logo.png`），也可以是绝对路径，比如应用自己写入的文件，或者用户选取的照片。
 - `Mode` 决定图片如何填充它的框：`ImageFit`（默认，完整显示，必要时留出空边）、`ImageFill`（铺满整个框，超出部分裁掉）、`ImageStretch`（拉伸成框的宽高比）、`ImageCenter`（按原始尺寸居中）。
 - `Placeholder` 在 `Source` 加载完成之前显示，加载失败时也会显示。占位图请用资源文件（asset），这样能立即显示。记得给图片设定尺寸，让占位图有地方显示。
+- `BlurHash` 和 `ThumbHash` 是用应用随图片保存的哈希生成的占位图（[BlurHash](https://blurha.sh)、[ThumbHash](https://evanw.github.io/thumbhash/)，后者为 base64 编码），和 expo-image 的一样。核心会把哈希解码成一张小图，每个哈希只解码一次（最近用过的几百个会被保留），并立即显示在 `Placeholder` 的位置上。BlurHash 本身不带形状信息：它按样式的 `AspectRatio` 解码，没有设置时解码成正方形并拉伸到整个框。ThumbHash 会保留原图的宽高比和透明度。它们都是访问器，因为列表的行在复用时会换成别的图片。
+- `PlaceholderMode` 决定占位图如何填充框：`PlaceholderFit`、`PlaceholderFill`、`PlaceholderStretch`、`PlaceholderCenter`；默认和图片本身的方式一样。
+- `Transition` 是图片加载完成时淡入所用的秒数：在占位图上交叉淡入，没有占位图时从无到有地淡入。默认只在有占位图时淡入，时长取平台的短动画时长（0.25 秒；Android 上是 `config_shortAnimTime`）；设为 `ui.NoTransition` 则立即显示。
+- `Animated` 为 true 时播放动图，为 false 时让它停在当前帧。不设置时，动图会按文件规定的次数播放；但如果用户要求减少动态效果（“减弱动态效果”、Android 关闭动画、`prefers-reduced-motion`），它只显示第一帧。
 - `Label` 向屏幕阅读器描述这张图片；不设置时，图片被视为纯装饰。
 - `OnLoad` 在图片加载完成后收到它的原始尺寸；`OnError` 在加载失败时收到错误信息。
 
 没有设置尺寸的图片在加载完成前是空的。加载后，它采用原始尺寸，一个像素对应一个点，但宽度不会超过可用空间。如果只确定了一边（设置了 `Width`，或在行中设置了 `Grow`），它会保持宽高比；用 `AspectRatio` 则可以在加载之前就确定宽高比。
+
+每个平台用它自己的解码器解码图片：
+
+| | 能解码的格式 | 动图（GIF、APNG、动态 WebP）的播放 |
+|---|---|---|
+| iOS | ImageIO：PNG、JPEG、GIF、WebP、HEIC、AVIF | ImageIO 的 `CGAnimateImageDataWithBlock`，按文件规定的时长和循环次数播放（也支持 HEIF 序列） |
+| Android | 先用 `BitmapFactory`，再用 `ImageDecoder`：PNG、JPEG、GIF、WebP、HEIF、AVIF | `AnimatedImageDrawable`：GIF 和 WebP（系统支持时也包括 AVIF 序列）；APNG 只显示第一帧 |
+| macOS | `NSImage`：PNG、JPEG、GIF、WebP、HEIC、AVIF、SVG | 同 iOS |
+| Windows | WIC：PNG、JPEG、GIF、BMP、TIFF、ICO，以及安装了对应编解码器时的 WebP、HEIF 和 AVIF（WebP 的随 Windows 11 自带；HEIF 需要 HEIF 和 HEVC 视频扩展，AVIF 需要 AV1 视频扩展）；WIC 解不了时，用 Go 的 PNG、JPEG 和 GIF 解码器 | 由宿主逐帧播放；动态 WebP 的每一帧用 WIC 的 WebP 编解码器解码 |
+| Linux | 先用 Go 的 PNG、JPEG 和 GIF 解码器，再用 GDK 的加载器：WebP、AVIF、HEIF、SVG、JPEG XL 等，视安装情况而定 | 由宿主逐帧播放；动态 WebP 的每一帧用 GDK 的 WebP 加载器解码 |
+| Web | 浏览器支持的格式 | 用 WebCodecs 的 `ImageDecoder` 在 canvas 上播放（也支持 AVIF 序列）；没有它的浏览器（Safari）由 `<img>` 自己播放，暂停时显示第一帧 |
+
+只有在 Mac、Linux 和 Web 上，SVG 才能作为图片显示。要在所有平台上显示 SVG 图标，请用 [`asuka/sdk/svg`](#svg-图标) 以矢量方式绘制。
 
 ## 符号与图标
 
@@ -398,6 +423,39 @@ return ui.Column(ui.Style{Gap: 12}, v,
 - 每次播放到结尾都会调用 `OnEnd`；无法播放时调用 `OnError`。
 
 它的尺寸规则和 `Image` 一样：在得知视频尺寸之前是空的（除非样式给了它尺寸），之后保持视频的宽高比。`Seek` 的参数是从开头算起的秒数。
+
+## Lottie 动画
+
+`asuka/sdk/lottie` 播放 Lottie 动画（从 After Effects 导出的 Lottie JSON（`.json`）或 dotLottie（`.lottie`）文件），和 Expo 中的 lottie-react-native 一样。每个平台都用它自己的 Lottie 播放器来绘制：iOS 和 Mac 上是 lottie-ios，Android 上是 lottie-android，Web 上是 lottie-web。Windows 和 Linux 没有可调用的播放器，这个包会自己用 `ui.Canvas` 绘制动画。
+
+```go
+progress := signal.New(0.0)
+return ui.Column(ui.Style{Gap: 12},
+	lottie.View(lottie.Props{
+		Source:   ui.Val("success.json"),
+		Loop:     true,
+		Progress: progress,
+		Overrides: ui.Val([]lottie.Override{
+			lottie.Colors("Ring", colors.Hex(0x0a84ff), colors.Hex(0x64d2ff)),
+		}),
+		Style: ui.Style{Width: ui.Pt(200)},
+	}),
+	ui.Slider(ui.SliderProps{Value: progress}),
+)
+```
+
+- `Source` 是动画文件：http(s) URL、应用 `assets` 中的路径或绝对路径；也可以用 `Data` 直接给出文件内容（`go:embed`）。`Animation` 按 ID 选出 dotLottie 中的某个动画。
+- `Playing` 为 true 时播放，为 false 时停在当前位置；不设置时，动画加载完就开始播放。`Loop` 让它循环播放；否则播到末尾停下，并调用 `OnComplete`。`Speed` 调整播放速度（负数表示倒放）。
+- `Progress` 是当前进度，从 0 到 1。播放时视图会逐帧写入它；应用写入的值会让动画跳到那里：用滑块拖动，或者用手势驱动。在 `ui.Animate` 中写入时，它会按那个动画的时长和曲线移动过去，之后如果正在播放就从那里继续。
+- `Segment`（帧，从 `From` 到 `To`）或 `Marker`（按名称指定的某个标记）决定播放哪一段。`OnLoad` 会收到动画的 `Info`：尺寸、帧范围、帧率和标记。
+- `Mode` 决定它如何填充自己的框，和图片一样。样式中没有尺寸时，它采用动画的尺寸，但不超过可用宽度；只给出一边时，另一边按动画的宽高比确定。
+- `Overrides` 按 keypath 修改动画的颜色和数值，用于主题或深色模式：`lottie.Color`（keypath 下所有填充和描边的颜色）、`lottie.Colors`（浅色模式一种颜色，深色模式另一种）、`lottie.Opacity`、`lottie.StrokeWidth`。keypath 是从根开始的图层、组和形状的名称，用点分隔，`*` 匹配任意一个名称，`**` 匹配任意多个，和 lottie-ios、lottie-android 的写法一样：`"Ring"`、`"Circle.Disc.Fill 1"`、`"**.Stroke 1"`。
+- `ReduceMotion` 决定用户要求减少动态效果时它怎么做：默认（`ReduceToEnd`）不播放，显示最后一帧；`ReduceToStart` 显示第一帧；`ReduceIgnore` 照常播放，适合动效本身就是含义的动画。
+- `Label` 向屏幕阅读器描述它；不设置时视为纯装饰。
+
+导入这个包的应用会带上这些播放器：一个 Swift 包（lottie-ios 的二进制发行版 lottie-spm）、一个 Gradle 库（`com.airbnb.android:lottie`），以及 lottie-web 的脚本（在第一个视图出现时才加载）；没有导入它的应用不会带上。它是一个[原生包](native.md)，所以在手机上用 `asuka dev` 开发时，带有它的应用会以独立构建的方式运行，而不是在播放器应用里运行。
+
+在 Windows 和 Linux 上，这个包的渲染器能绘制形状、纯色、空对象和预合成图层：矩形、椭圆、星形、多边形和路径；纯色或渐变（线性和径向，支持高光）的填充和描边，以及虚线；修剪路径、圆角和中继器；图层和组的变换（锚点、位置（可分离，可沿曲线运动）、缩放、旋转、倾斜、不透明度）、父子关系、时间重映射和时间伸缩；关键帧的缓动、定格和空间插值。蒙版（相加、相减、相交、反转）和轨道遮罩（Alpha 与亮度，以及反转）按轮廓裁剪。它不绘制图像图层和文本图层，不支持表达式、效果、图层样式、混合模式、3D、合并路径（路径按原样绘制）、偏移路径、收缩和膨胀、扭曲、锯齿；也不支持蒙版的不透明度、羽化和扩展，以及遮罩本身的透明度（遮罩按其图层中填充的轮廓裁剪，预合成遮罩按它的边界裁剪）。Web 上使用的 lottie-web 精简版同样不运行表达式。
 
 ## 网页
 
@@ -517,8 +575,8 @@ ui.Canvas(func(g *ui.Graphics) {
 ```
 
 - `g.Path()` 返回一个待构建的路径（和 Shape 用的一样），在多次绘制之间复用。
-- `Fill`、`Stroke`（接受一个 `StrokeStyle`：线宽、线帽、连接方式、虚线）和 `FillGradient` 用来绘制路径；`Text` 绘制一行文字，基线位于 y，左边缘、中心或右边缘位于 x。
-- `Save` 和 `Restore` 成对使用，把 `Translate`、`Scale`、`Rotate`（角度制，顺时针）、`Clip` 和 `Opacity` 包在中间。
+- `Fill`、`Stroke`（接受一个 `StrokeStyle`：线宽、线帽、连接方式、虚线）和 `FillGradient` 用来绘制路径；`FillRadialGradient` 用 `RadialGradient`（圆心、半径，以及渐变起始的焦点）填充路径，`StrokeGradient` 和 `StrokeRadialGradient` 用渐变描边；`Text` 绘制一行文字，基线位于 y，左边缘、中心或右边缘位于 x。
+- `Save` 和 `Restore` 成对使用，把 `Translate`、`Scale`、`Rotate`（角度制，顺时针）、`Transform`（任意仿射矩阵，包括倾斜）、`Clip`、`Opacity` 和 `EvenOdd` 包在中间；`EvenOdd` 让填充和裁剪按奇偶规则进行（默认是非零规则）。
 - 颜色可以使用语义颜色（`colors.Label`、`colors.Separator`、`colors.Accent`），它们会跟随深色模式变化。
 
 布局完成后，Canvas 会绘制一次；之后尺寸变化，或函数读取过的 signal 变化时，它会重新绘制，就像一个 effect。每次绘制都会记录一个显示列表（display list），只有和上一次不同时才会发送出去，再由平台回放：iOS 和 macOS 上用 Core Graphics，Android 上用 `Canvas`，Windows 上用 GDI+，Linux 上用 GTK 的 snapshot（GSK），浏览器中用 2D `<canvas>`。只要这个 canvas 之前已经画过同样多的内容，记录过程就不会分配内存。Canvas 本身不响应点击：请把它包在设置了 `OnPress` 或 `OnPan` 的 `ui.View` 里，回调给出的坐标就在它的坐标系中。屏幕阅读器不会读取 Canvas：请给外层视图设置 `Label`。

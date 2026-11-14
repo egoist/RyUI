@@ -241,6 +241,10 @@ object AsukaProp {
         const val SOURCE = 64
         const val MODE = 65
         const val PLACEHOLDER = 66
+        const val PLACEHOLDER_IMAGE = 67
+        const val PLACEHOLDER_MODE = 68
+        const val TRANSITION = 69
+        const val PAUSED = 70
     }
 
     object Native {
@@ -441,6 +445,7 @@ object AsukaEventKind {
     const val KEY = 56
     const val FIELD_CHANGED = 57
     const val LOCATION = 58
+    const val ANIMATED = 59
 }
 
 object AsukaCommand {
@@ -679,6 +684,10 @@ object AsukaCanvasOp {
     const val STROKE = 9
     const val GRADIENT = 10
     const val TEXT = 11
+    const val TRANSFORM = 12
+    const val FILL_RULE = 13
+    const val RADIAL_GRADIENT = 14
+    const val STROKE_GRADIENT = 15
 }
 
 object AsukaAnimationCurve {
@@ -993,4 +1002,5 @@ object AsukaEvents {
     fun key(id: Int, v: Long): ByteArray = AsukaWriter().apply { header(id, 56); u64(v) }.bytes()
     fun fieldChanged(id: Int, v: ByteArray): ByteArray = AsukaWriter().apply { header(id, 57); u32(v.size); raw(v) }.bytes()
     fun location(id: Int, v: ByteArray): ByteArray = AsukaWriter().apply { header(id, 58); u32(v.size); raw(v) }.bytes()
+    fun animated(id: Int): ByteArray = AsukaWriter().apply { header(id, 59) }.bytes()
 }

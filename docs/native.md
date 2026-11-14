@@ -277,7 +277,8 @@ segmented.Segmented(segmented.SegmentedProps{
   changes. The view's effect is owned like any other, and it goes when
   the view does.
 - A `func` returning nothing is an event. It runs on the main thread.
-- `Style ui.Style` is the view's style, if the struct has one.
+- `Style ui.Style` is the view's style, if the struct has one; a
+  `Style ui.Styler` takes a `StyleFunc` too.
 
 Each platform implements the view as a protocol: the view itself, a
 setter per prop, and an events object it gets as it's made:

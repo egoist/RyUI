@@ -706,7 +706,7 @@ class AsukaRuntime private constructor(val app: Application) : AsukaOpHandler {
             AsukaKind.SCREEN, AsukaKind.SHEET, AsukaKind.POPOVER -> AsukaScreen(ctx, id, this)
             AsukaKind.ALERT -> View(ctx)
             AsukaKind.SNACKBAR -> AsukaSnackbar(this, id)
-            AsukaKind.IMAGE -> androidx.appcompat.widget.AppCompatImageView(ctx).apply { scaleType = android.widget.ImageView.ScaleType.FIT_CENTER }
+            AsukaKind.IMAGE -> AsukaImageView(ctx)
             AsukaKind.NATIVE -> AsukaNativeHost(ctx)
             AsukaKind.RICH_TEXT -> AsukaRichText(this, id)
             AsukaKind.SELECTABLE -> AsukaSelectionArea(this)

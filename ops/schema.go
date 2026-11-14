@@ -219,6 +219,10 @@ var Schema = SchemaDef{
 			{Name: "Source", Type: TString, Doc: "an http(s) URL, or a file in the app's assets"},
 			{Name: "Mode", Type: TEnum, Enum: "ImageMode"},
 			{Name: "Placeholder", Type: TString, Doc: "an image (usually an asset) shown until Source loads, and if it fails"},
+			{Name: "PlaceholderImage", Type: TBytes, Doc: "a placeholder the core decoded (a BlurHash's, a ThumbHash's), shown as Placeholder is, in its place: u32 width, u32 height, then its pixels row by row, RGBA, 8 bits each, not premultiplied, sRGB"},
+			{Name: "PlaceholderMode", Type: TEnum, Enum: "ImageMode", Doc: "how the placeholder fills the box; unset: as the image does (Mode)"},
+			{Name: "Transition", Type: TFloat, Doc: "seconds the image takes to fade in as it arrives: over its placeholder, cross-dissolving, or from nothing. Unset (0): over a placeholder, the platform's image transition (a cross-dissolve of its short duration), else none; negative: none"},
+			{Name: "Paused", Type: TBool, Doc: "an animated image (GIF, APNG, animated WebP, and AVIF and HEIF sequences where the platform decodes them) stops where it is (its first frame, before it has played); unset, it plays, as many times as the file says"},
 		}, Doc: "loaded and decoded off the main thread, cached (in memory; one fetched over http(s) on disk too, unless its response says no-store); reports Loaded with its natural size (one point per pixel), or Failed. Color tints it"},
 		{Name: "Native", Props: []PropDef{
 			{Name: "Type", Type: TString, Doc: "the registered native kind; sent right after Create"},
@@ -303,7 +307,7 @@ var Schema = SchemaDef{
 			{Name: "Height", Type: TFloat},
 		}, Doc: "a TextField's bar over the keyboard (TextField's Accessory), a layout root of its own: UIKit's inputAccessoryView, moving with the keyboard and its interactive dismissal; on Android a bar on top of the keyboard, following it frame by frame, while the field is focused; desktops, with no on-screen keyboard, don't show it"},
 		{Name: "Canvas", Props: []PropDef{
-			{Name: "Commands", Type: TBytes, Doc: "what it draws, in points from its top left, in order: per command a u8 CanvasOp and its arguments. Save, Restore: none; Translate, Scale: f32 x, y; Rotate: f32 degrees, clockwise; Alpha: f32 (multiplies what's drawn after); Clip: a path; Fill: u64 color, a path; Stroke: u64 color, f32 width, u8 LineCap, u8 LineJoin, u32 dash count, f32 dash phase, f32 each dash, a path; Gradient: u32 stop count, per stop u64 color and f32 location, f32 start x, y, end x, y, a path (filled); Text: u64 color, f32 size, u8 FontWeight, u8 TextAlign (Start: its left edge at x, Center, End: its right edge at x), f32 x, y (its baseline), u32-length string. A path is u32 length, then Shape's Path format. Colors may be semantic, resolved in the view's appearance"},
+			{Name: "Commands", Type: TBytes, Doc: "what it draws, in points from its top left, in order: per command a u8 CanvasOp and its arguments. Save, Restore: none; Translate, Scale: f32 x, y; Rotate: f32 degrees, clockwise; Alpha: f32 (multiplies what's drawn after); Clip: a path; Fill: u64 color, a path; Stroke: u64 color, f32 width, u8 LineCap, u8 LineJoin, u32 dash count, f32 dash phase, f32 each dash, a path; Gradient: u32 stop count, per stop u64 color and f32 location, f32 start x, y, end x, y, a path (filled); Text: u64 color, f32 size, u8 FontWeight, u8 TextAlign (Start: its left edge at x, Center, End: its right edge at x), f32 x, y (its baseline), u32-length string; Transform: f32 a, b, c, d, tx, ty (concatenates the matrix [a c tx; b d ty]); FillRule: u8 (0 nonzero, 1 even-odd: for the Clip, Fill, Gradient and RadialGradient after it, until Restore); RadialGradient: u32 stop count, per stop u64 color and f32 location, f32 center x, y, radius, focal x, y, a path (filled); StrokeGradient: Stroke's f32 width, u8 LineCap, u8 LineJoin, u32 dash count, f32 dash phase, f32 each dash, then u8 kind (0 linear, 1 radial), the stops as Gradient's, f32 start x, y, end x, y (linear) or center x, y, radius, focal x, y (radial), a path (stroked). A path is u32 length, then Shape's Path format. Colors may be semantic, resolved in the view's appearance"},
 		}, Doc: "drawn by the app (SwiftUI's Canvas; Compose's and Android's Canvas): a display list replayed with Core Graphics, Android's Canvas, GDI+; it takes the size its style gives it"},
 		{Name: "Split", Props: []PropDef{
 			{Name: "Items", Type: TBytes, Doc: "the sidebar's destinations (AppendSidebar): u32 section count, per section a string title (empty: none) and u32 item count, per item a string title, a string icon (Symbol.Name; empty: none) and a string badge (empty: none). Set again when one changes: a host updates its rows in place when the sections' and items' counts stay"},
@@ -397,6 +401,7 @@ var Schema = SchemaDef{
 		{Name: "Key", Payload: PInt, Doc: "a key of the view's Keys went down, or repeated, while the keyboard's focus was in it: its index"},
 		{Name: "FieldChanged", Payload: PBytes, Doc: "the user changed the text of an Alert's field (ops.AppendFieldChanged, ops.DecodeFieldChanged): u32 the field's index, then a string, its text"},
 		{Name: "Location", Payload: PBytes, Doc: "the user went back or forward in the browser's history to an entry a Router made, or one a Window's router left (ops.AppendLocationEvent): u32-length href (the app's path and query, /chat/7?tab=info), u32-length state (the router's, as its Location command sent it; empty: none, build it from the href); to the root, or the Window node"},
+		{Name: "Animated", Payload: PNone, Doc: "an Image that loaded (after its Loaded) has frames to play: an animated GIF, APNG, WebP, AVIF or HEIF sequence"},
 	},
 	Commands: []CommandDef{
 		{Name: "Focus"},
@@ -460,7 +465,7 @@ var Schema = SchemaDef{
 		{Name: "PathOp", Values: []string{"End", "Move", "Line", "Quad", "Cubic", "Close", "Rect", "RoundedRect", "Ellipse", "Arc"}},
 		{Name: "LineCap", Values: []string{"Butt", "Round", "Square"}},
 		{Name: "LineJoin", Values: []string{"Miter", "Round", "Bevel"}},
-		{Name: "CanvasOp", Values: []string{"End", "Save", "Restore", "Translate", "Scale", "Rotate", "Alpha", "Clip", "Fill", "Stroke", "Gradient", "Text"}},
+		{Name: "CanvasOp", Values: []string{"End", "Save", "Restore", "Translate", "Scale", "Rotate", "Alpha", "Clip", "Fill", "Stroke", "Gradient", "Text", "Transform", "FillRule", "RadialGradient", "StrokeGradient"}},
 		{Name: "AnimationCurve", Values: []string{"EaseInOut", "Linear", "EaseIn", "EaseOut", "Spring"}},
 		{Name: "ColorScheme", Values: []string{"System", "Light", "Dark"}},
 		{Name: "SemanticColor", Values: []string{"None", "Label", "SecondaryLabel", "TertiaryLabel", "Background", "SecondaryBackground", "GroupedBackground", "Separator", "Accent", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink", "Gray", "Clear", "SecondaryGroupedBackground", "OnAccent"}},
