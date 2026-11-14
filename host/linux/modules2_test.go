@@ -108,6 +108,7 @@ func TestModulesLinuxHas(t *testing.T) {
 		"webAuth":      {"start", "cancel"},
 		"widget":       {"set"},
 		"liveActivity": {"enabled", "start", "update", "end", "running", "next", "stop"},
+		"pay":          {"available", "setUp", "present", "next", "answer"},
 	}
 	onMain(func() {
 		for mod, ms := range want {
@@ -345,6 +346,8 @@ func TestPersonalDataModules(t *testing.T) {
 	check("liveActivity", "enabled", nil, "\x00", "")
 	check("liveActivity", "start", []byte(`{"id":"a","content":{}}`), "", "not available")
 	check("liveActivity", "running", nil, "[]", "")
+	check("pay", "available", []byte(`{}`), `{"wallet":"","canPay":false,"hasCard":false}`, "")
+	check("pay", "present", []byte(`{"id":"a"}`), "", "not available")
 	check("transcribe", "check", []byte("en"), "", "not available")
 	check("contacts", "add", []byte(`{"givenName":"Ada","familyName":"Lovelace","phones":[{"label":"mobile","value":"+44 1"}],"emails":[{"label":"home","value":"ada@example.com"}]}`), "\x00", "")
 	start := time.Date(2026, 12, 24, 0, 0, 0, 0, time.UTC)

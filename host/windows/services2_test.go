@@ -55,6 +55,10 @@ func TestModulesAnswer(t *testing.T) {
 		if b := ok("liveActivity", "enabled", nil); !bytes.Equal(b, []byte{0}) {
 			fatalf("liveActivity.enabled: %v", b)
 		}
+		fails("pay", "present", []byte(`{"id":"a"}`), "not available")
+		if b := ok("pay", "available", []byte(`{}`)); string(b) != `{"wallet":"","canPay":false,"hasCard":false}` {
+			fatalf("pay.available: %s", b)
+		}
 		if b := ok("tracking", "status", nil); len(b) != 1 || (b[0] != 2 && b[0] != 3) {
 			fatalf("tracking.status: %v", b)
 		}

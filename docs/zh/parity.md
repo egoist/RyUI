@@ -123,6 +123,7 @@ SwiftUI 也能在 Mac 上运行。Expo 支持 iOS、Android 和 Web；React Nati
 | 音频 | AVAudioPlayer、AVAudioRecorder | `expo-audio` | ✓ `asuka/sdk/audio`（加载、播放、暂停、跳转、音量、循环）；`asuka/sdk/audio/record`（语音或音乐音质、暂停、电平表） |
 | 正在播放、锁屏控制、媒体键 | `MPNowPlayingInfoCenter`、`MPRemoteCommandCenter` | `expo-audio` 的锁屏控制、社区方案（`react-native-track-player`） | ✓ `asuka/sdk/nowplaying`（标题、艺人、专辑、封面、时长、由系统推进的播放位置，以及播放、暂停、下一首、上一首、跳转、快进快退、停止，设置了哪些处理函数就启用哪些控制；会自动跟随 `audio.Player`；Android 上用 MediaSession 和媒体播放服务；Mac 上是控制中心，Windows 上是媒体浮出控件，Linux 上是 MPRIS，Web 上是 Media Session API） |
 | 通过 Apple 登录 | `SignInWithAppleButton` | `expo-apple-authentication` | ✓ `asuka/sdk/appleauth`（Apple 的登录按钮、凭据及其状态；iOS 和 macOS） |
+| Apple Pay、Google Pay | PassKit（`PayWithApplePayButton`） | `@stripe/stripe-react-native` 的 Platform Pay、`react-native-payments` | ✓ `asuka/sdk/pay`（钱包的支付面板和按钮；交给应用支付处理商的令牌；修改配送、优惠码和卡片时更新总额；按字段显示错误；订阅、延后扣款和自动充值；iOS、macOS、Android，Safari 中的 Apple Pay 和其他浏览器中的 Google Pay） |
 | 面容 ID、指纹 | LocalAuthentication | `expo-local-authentication` | ✓ `asuka/sdk/biometric`（Windows 上用 Windows Hello；Web 上通过 WebAuthn 调用平台认证器） |
 | 应用商店评分 | `requestReview` | `expo-store-review` | ✓ `asuka/sdk/review`（App Store 的评分弹窗，Play 的应用内评价） |
 | 跟踪权限 | App Tracking Transparency | `expo-tracking-transparency` | ✓ `asuka/sdk/tracking` |

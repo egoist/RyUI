@@ -209,6 +209,9 @@ func shows(v *fake.View) []string {
 			add(items[i])
 		}
 	}
+	if v.Kind == ops.KindNative {
+		add(v.NativeString("label")) // a native button's title (pay.Button's)
+	}
 	add(v.String(ops.PropA11yLabel))
 	return out
 }

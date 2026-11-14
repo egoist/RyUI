@@ -1,0 +1,9 @@
+{
+  "name": "Checkout",
+  "id": "dev.asuka.checkout",
+  "version": "1.0.0",
+  "build": 1,
+  "icon": "icon.png",
+  "orientations": ["portrait"],
+  "applePay": { "merchantIds": ["merchant.dev.asuka.checkout"] }
+}

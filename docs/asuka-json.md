@@ -65,6 +65,7 @@ These apply on every platform the key means something on.
 | `updates` | object | none | A desktop app's signed updates. See [updates](#updates). |
 | `ios` | object | | The iOS build's, and some of the Mac's. See [ios](#ios). |
 | `mac` | object | | The Mac build's profiles. See [mac](#mac). |
+| `applePay` | object | none | `{"merchantIds": ["merchant.com.example"]}`: the merchant IDs Apple Pay pays with (`asuka/sdk/pay`), in the in-app-payments entitlement of an iOS or Mac app that imports the package. See [Wallet payments](device.md#wallet-payments-asukasdkpay). |
 | `android` | object | | The Android build's. See [android](#android). |
 | `linux` | object | | What a Linux build says of the app. See [linux](#linux). |
 | `web` | object | | The web build's. See [web](#web). |
@@ -267,7 +268,7 @@ What a Mac build signs the app with; its team is `ios.team`.
 
 | Key | Type | Default | What it is |
 |---|---|---|---|
-| `profile` | string | `ASUKA_MAC_PROFILE`, else, for an app that needs one, the best match installed | A Developer ID (or development) provisioning profile's path, name or UUID, which push, Sign in with Apple and App Attest need. |
+| `profile` | string | `ASUKA_MAC_PROFILE`, else, for an app that needs one, the best match installed | A Developer ID (or development) provisioning profile's path, name or UUID, which push, Sign in with Apple, App Attest and Apple Pay need. |
 | `appStoreProfile` | string | the best match installed | A Mac App Store profile, for `--appstore`. |
 
 `--profile` and `ASUKA_MAC_PROFILE` override them. See

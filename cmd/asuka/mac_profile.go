@@ -49,6 +49,7 @@ type macProfile struct {
 var macProfileFeatures = []struct{ ios, mac, what string }{
 	{"aps-environment", "com.apple.developer.aps-environment", "Push Notifications (asuka/sdk/push)"},
 	{"com.apple.developer.applesignin", "com.apple.developer.applesignin", "Sign in with Apple (asuka/sdk/appleauth)"},
+	{"com.apple.developer.in-app-payments", "com.apple.developer.in-app-payments", "Apple Pay (asuka/sdk/pay)"},
 	{"com.apple.developer.devicecheck.appattest-environment", "com.apple.developer.devicecheck.appattest-environment", "App Attest (asuka/sdk/integrity)"},
 }
 

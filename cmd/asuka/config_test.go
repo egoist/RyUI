@@ -191,6 +191,37 @@ func TestFeaturesFromImports(t *testing.T) {
 	}
 }
 
+// An app that imports asuka/sdk/pay gets Google Pay's module (whose
+// manifest has its API and callbacks service) and Apple Pay's
+// entitlement with asuka.json's merchant IDs (none without them); one
+// that doesn't, neither.
+func TestPayFeature(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "asuka.json"), []byte(`{"applePay": {"merchantIds": ["merchant.dev.asuka.shop"]}}`), 0o644)
+	c, err := loadConfig(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.permissionsFor([]string{"github.com/egoist/asuka/ui", payPkg})
+	if got := strings.Join(c.gradleProps(), " "); got != "-PasukaModules=pay" {
+		t.Errorf("modules: %s", got)
+	}
+	if ids, _ := c.entitlements["com.apple.developer.in-app-payments"].([]string); !slices.Equal(ids, []string{"merchant.dev.asuka.shop"}) {
+		t.Errorf("entitlement: %v", c.entitlements)
+	}
+	var without appConfig
+	without.ApplePay.MerchantIDs = []string{"merchant.dev.asuka.shop"}
+	without.permissionsFor([]string{"github.com/egoist/asuka/ui"})
+	if _, ok := without.entitlements["com.apple.developer.in-app-payments"]; ok || len(without.androidModules) != 0 {
+		t.Errorf("an app without the package: %v", without.entitlements)
+	}
+	var noIDs appConfig
+	noIDs.permissionsFor([]string{payPkg})
+	if _, ok := noIDs.entitlements["com.apple.developer.in-app-payments"]; ok {
+		t.Errorf("no merchant IDs: %v", noIDs.entitlements)
+	}
+}
+
 func TestIPad(t *testing.T) {
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "asuka.json"), []byte(`{"orientations": ["portrait"]}`), 0o644)

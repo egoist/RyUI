@@ -109,6 +109,7 @@ func (c *appConfig) missingEntitlements(ent string) []string {
 	what := map[string]string{
 		"aps-environment":                                       "Push Notifications (asuka/sdk/push)",
 		"com.apple.developer.applesignin":                       "Sign in with Apple (asuka/sdk/appleauth)",
+		"com.apple.developer.in-app-payments":                   "Apple Pay, with asuka.json's merchant IDs (asuka/sdk/pay)",
 		"com.apple.developer.devicecheck.appattest-environment": "App Attest (asuka/sdk/integrity)",
 		"com.apple.developer.declared-age-range":                "Declared Age Range (asuka/sdk/agerange)",
 		"com.apple.developer.usernotifications.communication":   "Communication Notifications (asuka/sdk/notify's From)",

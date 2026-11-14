@@ -61,6 +61,19 @@ func init() {
 			"next":    noActivities,
 			"stop":    answerNil,
 		}
+		// asuka/sdk/pay: a Linux desktop has no wallet that pays for apps.
+		noWallet := func(_ []byte, reply func([]byte, error)) {
+			reply(nil, errors.New("not available: no wallet on Linux (Apple Pay and Google Pay are the phones', the Mac's and browsers')"))
+		}
+		m["pay"] = map[string]method{
+			"available": func(_ []byte, reply func([]byte, error)) {
+				reply([]byte(`{"wallet":"","canPay":false,"hasCard":false}`), nil)
+			},
+			"setUp":   noWallet,
+			"present": noWallet,
+			"next":    func(_ []byte, reply func([]byte, error)) { reply(nil, errors.New("stopped")) },
+			"answer":  answerNil,
+		}
 		notAvailable := func(_ []byte, reply func([]byte, error)) { reply(nil, errors.New("not available")) }
 		m["appleAuth"] = map[string]method{
 			"available": func(_ []byte, reply func([]byte, error)) { reply([]byte{0}, nil) },

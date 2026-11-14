@@ -311,6 +311,7 @@ private val plugins = listOf(
     "dev.asuka.maps.AsukaMapsPlugin",
     "dev.asuka.push.AsukaPushPlugin",
     "dev.asuka.periodic.AsukaPeriodicPlugin",
+    "dev.asuka.pay.AsukaPayPlugin",
 )
 
 /**

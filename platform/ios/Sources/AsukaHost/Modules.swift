@@ -270,6 +270,9 @@ struct AsukaModuleError: LocalizedError {
         #if ASUKA_APPLEAUTH
         modules["appleAuth"] = AsukaAppleAuth.shared.methods(self)
         #endif
+        #if ASUKA_PAY
+        modules["pay"] = AsukaPay.shared.methods(self)
+        #endif
         #if ASUKA_FILES
         modules["files"] = AsukaFiles.methods(self)
         #endif

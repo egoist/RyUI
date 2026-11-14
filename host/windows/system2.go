@@ -31,7 +31,8 @@ import (
 //     notification for them, as macOS hasn't).
 //   - sensors: none an app reads here, as on a Mac.
 //   - widget: Windows's widgets are packaged apps' (a widget provider);
-//     not available. liveActivity: a phone's; none.
+//     not available. liveActivity: a phone's; none. pay: no wallet pays
+//     for a Windows app (asuka/sdk/pay: not available).
 //   - tracking: Windows has no prompt; the user's choice is Settings'
 //     advertising ID (Privacy & security, General): allowed while it's
 //     on, denied while it's off.
@@ -70,6 +71,15 @@ func init() {
 			"running": func(_ []byte, reply func([]byte, error)) { reply([]byte("[]"), nil) },
 			"next":    failing("not available: live activities are iOS's and Android's"),
 			"stop":    answerNil,
+		}
+		m["pay"] = map[string]asyncMethod{
+			"available": func(_ []byte, reply func([]byte, error)) {
+				reply([]byte(`{"wallet":"","canPay":false,"hasCard":false}`), nil)
+			},
+			"setUp":   failing("not available: no wallet on Windows (Apple Pay and Google Pay are the phones', the Mac's and browsers')"),
+			"present": failing("not available: no wallet on Windows (Apple Pay and Google Pay are the phones', the Mac's and browsers')"),
+			"next":    failing("stopped"),
+			"answer":  answerNil,
 		}
 		m["tracking"] = trackingModule()
 		m["integrity"] = integrityModule()

@@ -56,7 +56,8 @@ func (m *openMenu) items() []menuItem {
 // Tap taps what shows text: a button (its title or accessibility
 // label), a text in something that takes a press (a row, a pressable
 // view), a toggle, a tab, a segment, a navigation bar's button, an
-// alert's button, a snackbar's action, an open menu's item. A view with
+// alert's button, a snackbar's action, an open menu's item, a native
+// button with a "label" (pay.Button: "Buy with Apple Pay"). A view with
 // a menu opens it; a text field takes the focus (Type types into the
 // field tapped last). It fails if nothing shows text, or more than one
 // thing that takes the tap does, or it's disabled.
@@ -227,6 +228,8 @@ func (a *App) pressable(v *fake.View, long bool) *fake.View {
 			return p
 		case p.Kind == ops.KindToggle, p.Kind == ops.KindTextField:
 			return p
+		case p.Kind == ops.KindNative && p.Listens[ops.EventNative]:
+			return p // its "press" event
 		case p.Kind == ops.KindButton && idle == nil:
 			idle = p
 		case p.Kind == fake.KindCell && p.Listens[ops.EventRowSelected]:
@@ -288,6 +291,8 @@ func (a *App) press(v *fake.View, text string, long bool) {
 		a.Host.SelectRow(p, on)
 	case p.Listens[ops.EventPress]:
 		a.Host.Click(p)
+	case p.Kind == ops.KindNative:
+		a.Host.EmitNative(p, "press", nil)
 	}
 }
 
