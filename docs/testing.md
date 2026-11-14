@@ -176,7 +176,10 @@ location, notifications) call the host, which in a test is the fake
 one: with nothing to answer them, they get an error, as on a platform
 without the service. `Setup` gives the fake host answers by module
 name (`h.Modules`, `h.AsyncModules`) before the app mounts, as
-Asuka's own tests do.
+Asuka's own tests do. For some, the fake host has a stand-in that
+behaves as the platform's: `h.Store()` is a store that sells what the
+test gives it, for `asuka/sdk/purchase` (see
+[In-app purchases](purchases.md#testing-your-purchases)).
 
 A [native package](native.md)'s module is a Go interface, so the
 simplest test gives your components the interface and the test its

@@ -127,6 +127,7 @@ SwiftUI 也能在 Mac 上运行。Expo 支持 iOS、Android 和 Web；React Nati
 | 正在播放、锁屏控制、媒体键 | `MPNowPlayingInfoCenter`、`MPRemoteCommandCenter` | `expo-audio` 的锁屏控制、社区方案（`react-native-track-player`） | ✓ `asuka/sdk/nowplaying`（标题、艺人、专辑、封面、时长、由系统推进的播放位置，以及播放、暂停、下一首、上一首、跳转、快进快退、停止，设置了哪些处理函数就启用哪些控制；会自动跟随 `audio.Player`；Android 上用 MediaSession 和媒体播放服务；Mac 上是控制中心，Windows 上是媒体浮出控件，Linux 上是 MPRIS，Web 上是 Media Session API） |
 | 通过 Apple 登录 | `SignInWithAppleButton` | `expo-apple-authentication` | ✓ `asuka/sdk/appleauth`（Apple 的登录按钮、凭据及其状态；iOS 和 macOS） |
 | 面容 ID、指纹 | LocalAuthentication | `expo-local-authentication` | ✓ `asuka/sdk/biometric`（Windows 上用 Windows Hello；Web 上通过 WebAuthn 调用平台认证器） |
+| 应用内购买、订阅 | StoreKit 2 | `expo-iap`、`react-native-iap`、RevenueCat | ✓ `asuka/sdk/purchase`（带本地化价格和优惠的商品、购买、“询问购买”和待付款、从应用启动起的交易流：续订、退款、在应用外的购买；完成和消耗交易、作为 signal 的已购权益、恢复购买、订阅状态、Play 的升级和降级、管理订阅、申请退款和兑换优惠码的界面、供服务器验证的 JWS 和购买令牌；iOS 和 macOS 上用 StoreKit 2，Android 上用 Play Billing 9，Windows 上用 Microsoft Store，Trusted Web Activity 里用 Digital Goods API；测试用 `fake.Store`） |
 | 应用商店评分 | `requestReview` | `expo-store-review` | ✓ `asuka/sdk/review`（App Store 的评分弹窗，Play 的应用内评价） |
 | 跟踪权限 | App Tracking Transparency | `expo-tracking-transparency` | ✓ `asuka/sdk/tracking` |
 | 应用完整性 | App Attest | `expo-app-integrity` | ✓ `asuka/sdk/integrity`（App Attest、Play Integrity） |

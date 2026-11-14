@@ -49,6 +49,7 @@ func TestSystemModulesThere(t *testing.T) {
 			"sensors":      {"available", "start", "stop", "stopAll", "next", "steps", "simulate"},
 			"widget":       {"set"},
 			"liveActivity": {"enabled", "start", "update", "end", "running", "next", "stop"},
+			"purchase":     {"available", "products", "buy", "finish", "entitlements", "restore", "status", "manage", "refund", "redeem", "storefront", "next", "stop"},
 			"splash":       {"hold", "hide"},
 			"screen":       {"lock", "bars", "preventCapture", "screenshot", "stopScreenshots"},
 			"tracking":     {"request", "status"},
@@ -174,6 +175,13 @@ func TestScreenAndOthers(t *testing.T) {
 		}
 		if _, err, _ := callNow(t, h, "liveActivity", "start", []byte(`{"id":"a","content":{}}`)); !strings.HasPrefix(errText(err), "not available") {
 			t.Errorf("liveActivity.start: %v", err)
+		}
+		// The test's process has no Swift library: no StoreKit.
+		if b, err, _ := callNow(t, h, "purchase", "available", nil); err != nil || len(b) != 1 || b[0] != 0 {
+			t.Errorf("purchase.available: %v, %v", b, err)
+		}
+		if _, err, _ := callNow(t, h, "purchase", "products", []byte(`{"items":[{"id":"pro","kind":"nonConsumable"}]}`)); !strings.HasPrefix(errText(err), "not available") {
+			t.Errorf("purchase.products: %v", err)
 		}
 		if _, err, _ := callNow(t, h, "ageRange", "request", nil); errText(err) != "not available" {
 			t.Errorf("ageRange.request: %v", err)

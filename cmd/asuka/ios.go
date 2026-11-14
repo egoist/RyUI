@@ -330,6 +330,19 @@ var iosFeatures = []struct{ flag, symbol string }{
 	{"ASUKA_RECORD", "github.com/egoist/asuka/sdk/camera/record.Start"},
 	{"ASUKA_FILES", "github.com/egoist/asuka/sdk/device.PickFiles"},
 	{"ASUKA_REVIEW", "github.com/egoist/asuka/sdk/review.Request"},
+	// StoreKit 2: asuka/sdk/purchase.
+	{"ASUKA_PURCHASE", "github.com/egoist/asuka/sdk/purchase.Available"},
+	{"ASUKA_PURCHASE", "github.com/egoist/asuka/sdk/purchase.Products"},
+	{"ASUKA_PURCHASE", "github.com/egoist/asuka/sdk/purchase.Buy"},
+	{"ASUKA_PURCHASE", "github.com/egoist/asuka/sdk/purchase.(*Transaction).Finish"},
+	{"ASUKA_PURCHASE", "github.com/egoist/asuka/sdk/purchase.CurrentEntitlements"},
+	{"ASUKA_PURCHASE", "github.com/egoist/asuka/sdk/purchase.Restore"},
+	{"ASUKA_PURCHASE", "github.com/egoist/asuka/sdk/purchase.SubscriptionStatuses"},
+	{"ASUKA_PURCHASE", "github.com/egoist/asuka/sdk/purchase.ManageSubscriptions"},
+	{"ASUKA_PURCHASE", "github.com/egoist/asuka/sdk/purchase.RequestRefund"},
+	{"ASUKA_PURCHASE", "github.com/egoist/asuka/sdk/purchase.RedeemCode"},
+	{"ASUKA_PURCHASE", "github.com/egoist/asuka/sdk/purchase.CurrentStorefront"},
+	{"ASUKA_PURCHASE", "github.com/egoist/asuka/sdk/purchase.Observe"},
 	{"ASUKA_TRACKING", "github.com/egoist/asuka/sdk/tracking.Request"},
 	{"ASUKA_TRACKING", "github.com/egoist/asuka/sdk/tracking.Current"},
 	{"ASUKA_BIOMETRIC", "github.com/egoist/asuka/sdk/biometric.Check"},
@@ -547,6 +560,9 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 	if err := copyDir(filepath.Join(app.dir, "assets"), filepath.Join(bundle, "assets")); err != nil {
 		return "", err
 	}
+	if err := app.cfg.copyStoreKit(bundle); err != nil {
+		return "", err
+	}
 	urls := ""
 	if t := app.cfg.urlTypes(true); t != nil {
 		schemes := t[0].(map[string]any)["CFBundleURLSchemes"].([]string)
@@ -579,6 +595,7 @@ func (t *iosToolchain) link(app *goApp, work, hostObj, lib string) (string, erro
 	if app.cfg.pushRewrite {
 		urls += "<key>AsukaNotificationService</key><true/>\n"
 	}
+
 	devices := ""
 	for _, d := range app.cfg.iosDevices() {
 		devices += fmt.Sprintf("<integer>%d</integer>", d)
@@ -681,6 +698,11 @@ func simulatorEntitlements(work string, cfg *appConfig) ([]string, error) {
 	}
 	for k, v := range cfg.entitlements {
 		m[k] = v
+	}
+	if cfg.IOS.StoreKit != "" {
+		// storekitd takes a StoreKit configuration only for an app
+		// installed for development, as Xcode's debug builds are.
+		m["get-task-allow"] = true
 	}
 	text := plist(m)
 	if err := os.WriteFile(ent, []byte(text), 0o644); err != nil {
@@ -845,10 +867,12 @@ func devIOS(dir string, o *devOptions, stop <-chan os.Signal) error {
 			return err
 		}
 		fmt.Printf("asuka: built and installed in %.1fs\n", time.Since(start).Seconds())
+		launchEnv := app.cfg.storeKitLaunchEnv() // ios.storekit's session
 		if o.once {
-			return tc.run(work, nil, "xcrun", "simctl", "launch", "--terminate-running-process", sim.UDID, app.bundleID)
+			return tc.run(work, launchEnv, "xcrun", "simctl", "launch", "--terminate-running-process", sim.UDID, app.bundleID)
 		}
 		logs = exec.Command("xcrun", "simctl", "launch", "--console-pty", "--terminate-running-process", sim.UDID, app.bundleID)
+		logs.Env = append(os.Environ(), launchEnv...)
 		logs.Stdout, logs.Stderr = os.Stdout, os.Stderr
 		return logs.Start()
 	}
